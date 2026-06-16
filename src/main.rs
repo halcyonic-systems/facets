@@ -65,30 +65,54 @@ impl Lens {
     }
 }
 
+/// The bundled models. All generated offline via GSR `generate()` (never
+/// hand-authored). The thermostat is the bert#77 worked example; the three
+/// generics model what each thinker says a system *is* (bert#77 Deliverable A).
+/// Each generic is shaped so its lens-entry teaches: Klir's S=(T,R) has no bond,
+/// so it reads as an aggregate through Bunge.
+const MODELS: [(&str, &str); 4] = [
+    ("Thermostat", include_str!("../assets/thermostat.json")),
+    ("Klir — S=(T,R)", include_str!("../assets/klir-generic.json")),
+    ("Bunge — C/E/S", include_str!("../assets/bunge-generic.json")),
+    ("Mobus — 8-tuple", include_str!("../assets/mobus-generic.json")),
+];
+
+fn parse_model(idx: usize) -> WorldModel {
+    serde_json::from_str(MODELS[idx].1).expect("bundled model must deserialize")
+}
+
 struct LensApp {
     model: WorldModel,
     active: Lens,
+    /// Index into `MODELS` — the currently loaded model.
+    current: usize,
     /// The kernel projected once at load — the baseline the live invariant is checked against.
     baseline: Kernel,
     /// `Id` → display name for every relatum the lenses render (env, sources, sinks,
-    /// systems, interfaces). Built once; lookups never re-walk the model.
+    /// systems, interfaces). Built once per model; lookups never re-walk it.
     names: HashMap<Id, String>,
 }
 
 impl LensApp {
     fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        // Generated offline via GSR generate() — never hand-authored.
-        let json = include_str!("../assets/thermostat.json");
-        let model: WorldModel =
-            serde_json::from_str(json).expect("bundled thermostat must deserialize");
+        let model = parse_model(0);
         let baseline = model.kernel();
         let names = build_names(&model);
         Self {
             model,
             active: Lens::Klir,
+            current: 0,
             baseline,
             names,
         }
+    }
+
+    /// Switch to model `idx`: reparse, re-project the baseline kernel, rebuild names.
+    fn load(&mut self, idx: usize) {
+        self.current = idx;
+        self.model = parse_model(idx);
+        self.baseline = self.model.kernel();
+        self.names = build_names(&self.model);
     }
 
     fn entry(&self, lens: Lens) -> ValidationResult {
@@ -295,6 +319,21 @@ impl LensApp {
 
 impl eframe::App for LensApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::TopBottomPanel::top("model_bar").show(ctx, |ui| {
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.strong("Model:");
+                for (i, (label, _)) in MODELS.iter().enumerate() {
+                    if ui.selectable_label(self.current == i, *label).clicked() && self.current != i
+                    {
+                        self.load(i);
+                        self.active = Lens::Klir;
+                    }
+                }
+            });
+            ui.add_space(4.0);
+        });
+
         egui::TopBottomPanel::top("lens_bar").show(ctx, |ui| {
             ui.add_space(4.0);
             ui.horizontal(|ui| {
@@ -399,13 +438,50 @@ mod tests {
     use super::*;
 
     fn model() -> WorldModel {
-        serde_json::from_str(include_str!("../assets/thermostat.json"))
-            .expect("bundled thermostat parses")
+        parse_model(0)
     }
 
     #[test]
     fn thermostat_validates_clean() {
         assert!(!bert_core::validate::validate(&model()).has_errors());
+    }
+
+    #[test]
+    fn all_models_validate_clean() {
+        for i in 0..MODELS.len() {
+            assert!(
+                !bert_core::validate::validate(&parse_model(i)).has_errors(),
+                "model '{}' must validate clean",
+                MODELS[i].0
+            );
+        }
+    }
+
+    /// The teaching contract: each generic model enters exactly the lenses its
+    /// framework licenses. Klir's S=(T,R) has no bond, so it is an aggregate
+    /// through Bunge (Structural) — that asymmetry is the whole point.
+    #[test]
+    fn lens_entry_matrix_is_as_designed() {
+        // [Klir/Core, Bunge/Structural, Mobus/Operational]
+        let expect = [
+            (0, [true, true, true]),   // Thermostat — enters all three
+            (1, [true, false, true]),  // Klir generic — aggregate: NOT Bunge
+            (2, [true, true, true]),   // Bunge generic — bonded
+            (3, [true, true, true]),   // Mobus generic — bonded network
+        ];
+        for (idx, want) in expect {
+            let m = parse_model(idx);
+            for (lens, expected) in Lens::ALL.iter().zip(want) {
+                let enterable = !validate_mode(&m, lens.mode()).has_errors();
+                assert_eq!(
+                    enterable, expected,
+                    "model '{}' through {} lens: expected enterable={}",
+                    MODELS[idx].0,
+                    lens.name(),
+                    expected
+                );
+            }
+        }
     }
 
     #[test]
@@ -431,14 +507,17 @@ mod tests {
     /// `(unknown)` debug-fallback labels leak into the rendered structure.
     #[test]
     fn name_resolver_covers_kernel_things() {
-        let m = model();
-        let names = build_names(&m);
-        for id in &m.kernel().things {
-            assert!(
-                names.contains_key(id),
-                "kernel thing {:?} has no resolved name",
-                id
-            );
+        for i in 0..MODELS.len() {
+            let m = parse_model(i);
+            let names = build_names(&m);
+            for id in &m.kernel().things {
+                assert!(
+                    names.contains_key(id),
+                    "model '{}': kernel thing {:?} has no resolved name",
+                    MODELS[i].0,
+                    id
+                );
+            }
         }
     }
 
