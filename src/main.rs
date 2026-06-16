@@ -163,6 +163,14 @@ impl LensApp {
     /// dependency relation on them. Nothing else is asserted.
     fn render_klir(&self, ui: &mut egui::Ui) {
         let k = self.model.kernel();
+        ui.label(
+            egui::RichText::new(
+                "This lens is the kernel itself: S = (T, R). Klir's vocabulary adds nothing — \
+                 Bunge and Mobus read this same kernel with more on top.",
+            )
+            .strong(),
+        );
+        ui.add_space(6.0);
         egui::CollapsingHeader::new(format!("Things (T) — {} relata", k.things.len()))
             .default_open(true)
             .show(ui, |ui| {
