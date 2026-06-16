@@ -1,0 +1,742 @@
+{
+  "environment": {
+    "info": {
+      "description": "",
+      "id": "E-1",
+      "level": -1,
+      "name": ""
+    },
+    "sinks": [
+      {
+        "equivalence": "",
+        "info": {
+          "description": "Thermal energy delivered to the living space",
+          "id": "Snk-1.0",
+          "level": -1,
+          "name": "Room Heat"
+        },
+        "is_same_as_id": null,
+        "model": "",
+        "transform": {
+          "rotation": 0.0,
+          "translation": [
+            520.0,
+            -150.0
+          ]
+        },
+        "type": "Sink"
+      },
+      {
+        "equivalence": "",
+        "info": {
+          "description": "Current temperature shown to the occupant",
+          "id": "Snk-1.1",
+          "level": -1,
+          "name": "Status Display"
+        },
+        "is_same_as_id": null,
+        "model": "",
+        "transform": {
+          "rotation": 0.0,
+          "translation": [
+            520.0,
+            150.0
+          ]
+        },
+        "type": "Sink"
+      }
+    ],
+    "sources": [
+      {
+        "equivalence": "",
+        "info": {
+          "description": "User-configured desired temperature",
+          "id": "Src-1.0",
+          "level": -1,
+          "name": "Setpoint"
+        },
+        "is_same_as_id": null,
+        "model": "",
+        "transform": {
+          "rotation": -3.141592653589793,
+          "translation": [
+            -520.0,
+            -150.0
+          ]
+        },
+        "type": "Source"
+      },
+      {
+        "equivalence": "",
+        "info": {
+          "description": "Energy the furnace burns to make heat",
+          "id": "Src-1.1",
+          "level": -1,
+          "name": "Fuel Supply"
+        },
+        "is_same_as_id": null,
+        "model": "",
+        "transform": {
+          "rotation": -3.141592653589793,
+          "translation": [
+            -520.0,
+            150.0
+          ]
+        },
+        "type": "Source"
+      }
+    ]
+  },
+  "hidden_entities": [],
+  "interactions": [
+    {
+      "amount": "1",
+      "info": {
+        "description": "",
+        "id": "F-1.0",
+        "level": -1,
+        "name": "Desired Temperature"
+      },
+      "parameters": [],
+      "sink": "S0",
+      "sink_interface": "I0.50",
+      "source": "Src-1.0",
+      "source_interface": null,
+      "substance": {
+        "sub_type": "Setpoint",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "unit": "",
+      "usability": "Resource"
+    },
+    {
+      "amount": "1",
+      "info": {
+        "description": "",
+        "id": "F-1.1",
+        "level": -1,
+        "name": "Fuel"
+      },
+      "parameters": [],
+      "sink": "S0",
+      "sink_interface": "I0.51",
+      "source": "Src-1.1",
+      "source_interface": null,
+      "substance": {
+        "sub_type": "Gas",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "unit": "",
+      "usability": "Resource"
+    },
+    {
+      "amount": "1",
+      "info": {
+        "description": "",
+        "id": "F-1.2",
+        "level": -1,
+        "name": "Delivered Heat"
+      },
+      "parameters": [],
+      "sink": "Snk-1.0",
+      "sink_interface": null,
+      "source": "S0",
+      "source_interface": "I0.52",
+      "substance": {
+        "sub_type": "Heat",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "unit": "",
+      "usability": "Product"
+    },
+    {
+      "amount": "1",
+      "info": {
+        "description": "",
+        "id": "F-1.3",
+        "level": -1,
+        "name": "Temperature Readout"
+      },
+      "parameters": [],
+      "sink": "Snk-1.1",
+      "sink_interface": null,
+      "source": "S0",
+      "source_interface": "I0.53",
+      "substance": {
+        "sub_type": "Status",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "unit": "",
+      "usability": "Product"
+    },
+    {
+      "amount": "1",
+      "endpoint_offset": {
+        "end_angle": 2.4971561746152022,
+        "start_angle": -0.644436478974591
+      },
+      "info": {
+        "description": "Routes incoming flow from Setpoint Import to Controller",
+        "id": "F0.0",
+        "level": 1,
+        "name": "Setpoint Import routing"
+      },
+      "parameters": [],
+      "sink": "C0.1",
+      "sink_interface": null,
+      "source": "C0.50",
+      "source_interface": null,
+      "substance": {
+        "sub_type": "Setpoint",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "unit": "",
+      "usability": "Resource"
+    },
+    {
+      "amount": "1",
+      "endpoint_offset": {
+        "end_angle": -2.1752439923245874,
+        "start_angle": 0.9663486612652057
+      },
+      "info": {
+        "description": "Routes incoming flow from Fuel Import to Furnace",
+        "id": "F0.1",
+        "level": 1,
+        "name": "Fuel Import routing"
+      },
+      "parameters": [],
+      "sink": "C0.2",
+      "sink_interface": null,
+      "source": "C0.51",
+      "source_interface": null,
+      "substance": {
+        "sub_type": "Gas",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "unit": "",
+      "usability": "Resource"
+    },
+    {
+      "amount": "1",
+      "endpoint_offset": {
+        "end_angle": 2.2848070663726423,
+        "start_angle": -0.8567855872171511
+      },
+      "info": {
+        "description": "Routes outgoing flow from Furnace to Heat Export",
+        "id": "F0.2",
+        "level": 1,
+        "name": "Heat Export routing"
+      },
+      "parameters": [],
+      "sink": "C0.52",
+      "sink_interface": null,
+      "source": "C0.2",
+      "source_interface": null,
+      "substance": {
+        "sub_type": "Heat",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "unit": "",
+      "usability": "Resource"
+    },
+    {
+      "amount": "1",
+      "endpoint_offset": {
+        "end_angle": -2.095611298019037,
+        "start_angle": 1.0459813555707562
+      },
+      "info": {
+        "description": "Routes outgoing flow from Controller to Display Export",
+        "id": "F0.3",
+        "level": 1,
+        "name": "Display Export routing"
+      },
+      "parameters": [],
+      "sink": "C0.53",
+      "sink_interface": null,
+      "source": "C0.1",
+      "source_interface": null,
+      "substance": {
+        "sub_type": "Status",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "unit": "",
+      "usability": "Resource"
+    },
+    {
+      "amount": "1",
+      "endpoint_offset": {
+        "end_angle": 3.141592653589793,
+        "start_angle": 0.0
+      },
+      "info": {
+        "description": "",
+        "id": "F0.4",
+        "level": 1,
+        "name": "Measured Temperature"
+      },
+      "parameters": [],
+      "sink": "C0.1",
+      "sink_interface": null,
+      "source": "C0.0",
+      "source_interface": null,
+      "substance": {
+        "sub_type": "Reading",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "unit": "",
+      "usability": "Resource"
+    },
+    {
+      "amount": "1",
+      "endpoint_offset": {
+        "end_angle": -1.1150225708181911,
+        "start_angle": 2.026570082771602
+      },
+      "info": {
+        "description": "",
+        "id": "F0.5",
+        "level": 1,
+        "name": "Control Signal"
+      },
+      "parameters": [],
+      "sink": "C0.2",
+      "sink_interface": null,
+      "source": "C0.1",
+      "source_interface": null,
+      "substance": {
+        "sub_type": "Command",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "unit": "",
+      "usability": "Resource"
+    },
+    {
+      "amount": "1",
+      "endpoint_offset": {
+        "end_angle": 1.1150225708181911,
+        "start_angle": -2.026570082771602
+      },
+      "info": {
+        "description": "",
+        "id": "F0.6",
+        "level": 1,
+        "name": "Generated Heat"
+      },
+      "parameters": [],
+      "sink": "C0.0",
+      "sink_interface": null,
+      "source": "C0.2",
+      "source_interface": null,
+      "substance": {
+        "sub_type": "Heat",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "unit": "",
+      "usability": "Product"
+    }
+  ],
+  "systems": [
+    {
+      "boundary": {
+        "info": {
+          "description": "",
+          "id": "B0",
+          "level": 0,
+          "name": ""
+        },
+        "interfaces": [
+          {
+            "angle": 3.8,
+            "exports_to": [],
+            "info": {
+              "description": "Desired-temperature entry",
+              "id": "I0.50",
+              "level": 1,
+              "name": "Setpoint Import"
+            },
+            "protocol": "",
+            "receives_from": [
+              "Src-1.0"
+            ],
+            "type": "Import"
+          },
+          {
+            "angle": 2.5,
+            "exports_to": [],
+            "info": {
+              "description": "Fuel entry to the furnace",
+              "id": "I0.51",
+              "level": 1,
+              "name": "Fuel Import"
+            },
+            "protocol": "",
+            "receives_from": [
+              "Src-1.1"
+            ],
+            "type": "Import"
+          },
+          {
+            "angle": -0.5,
+            "exports_to": [
+              "Snk-1.0"
+            ],
+            "info": {
+              "description": "Heat delivered to the room",
+              "id": "I0.52",
+              "level": 1,
+              "name": "Heat Export"
+            },
+            "protocol": "",
+            "receives_from": [],
+            "type": "Export"
+          },
+          {
+            "angle": 0.5,
+            "exports_to": [
+              "Snk-1.1"
+            ],
+            "info": {
+              "description": "Status to the occupant",
+              "id": "I0.53",
+              "level": 1,
+              "name": "Display Export"
+            },
+            "protocol": "",
+            "receives_from": [],
+            "type": "Export"
+          }
+        ],
+        "parent_interface": null,
+        "perceptive_fuzziness": 0.0,
+        "porosity": 0.0
+      },
+      "complexity": {
+        "Complex": {
+          "adaptable": true,
+          "evolveable": true
+        }
+      },
+      "equivalence": "",
+      "history": "",
+      "info": {
+        "description": "A heating control system that holds a room at a setpoint by sensing temperature, computing error, and driving a furnace \u2014 the canonical feedback homeostat.",
+        "id": "S0",
+        "level": 0,
+        "name": "Home Thermostat"
+      },
+      "member_autonomy": 1.0,
+      "parent": "E-1",
+      "radius": 300.0,
+      "sinks": [],
+      "sources": [],
+      "time_constant": "Second",
+      "transform": {
+        "rotation": 0.0,
+        "translation": [
+          0.0,
+          0.0
+        ]
+      },
+      "transformation": ""
+    },
+    {
+      "boundary": {
+        "info": {
+          "description": "",
+          "id": "B0.0",
+          "level": 1,
+          "name": ""
+        },
+        "interfaces": [],
+        "parent_interface": null,
+        "perceptive_fuzziness": 0.0,
+        "porosity": 0.0
+      },
+      "complexity": "Atomic",
+      "equivalence": "",
+      "history": "",
+      "info": {
+        "description": "Measures ambient room temperature.",
+        "id": "C0.0",
+        "level": 1,
+        "name": "Temperature Sensor"
+      },
+      "member_autonomy": 1.0,
+      "parent": "S0",
+      "radius": 42.0,
+      "sinks": [],
+      "sources": [],
+      "time_constant": "Second",
+      "transform": {
+        "rotation": 0.0,
+        "translation": [
+          -125.0,
+          -95.0
+        ]
+      },
+      "transformation": ""
+    },
+    {
+      "boundary": {
+        "info": {
+          "description": "",
+          "id": "B0.1",
+          "level": 1,
+          "name": ""
+        },
+        "interfaces": [],
+        "parent_interface": null,
+        "perceptive_fuzziness": 0.0,
+        "porosity": 0.0
+      },
+      "complexity": {
+        "Complex": {
+          "adaptable": true,
+          "evolveable": false
+        }
+      },
+      "equivalence": "",
+      "history": "",
+      "info": {
+        "description": "Compares measured temperature to setpoint and computes the control action.",
+        "id": "C0.1",
+        "level": 1,
+        "name": "Controller"
+      },
+      "member_autonomy": 1.0,
+      "parent": "S0",
+      "radius": 42.0,
+      "sinks": [],
+      "sources": [],
+      "time_constant": "Second",
+      "transform": {
+        "rotation": 0.0,
+        "translation": [
+          125.0,
+          -95.0
+        ]
+      },
+      "transformation": ""
+    },
+    {
+      "boundary": {
+        "info": {
+          "description": "",
+          "id": "B0.2",
+          "level": 1,
+          "name": ""
+        },
+        "interfaces": [],
+        "parent_interface": null,
+        "perceptive_fuzziness": 0.0,
+        "porosity": 0.0
+      },
+      "complexity": "Atomic",
+      "equivalence": "",
+      "history": "",
+      "info": {
+        "description": "Converts fuel into heat under the controller's command.",
+        "id": "C0.2",
+        "level": 1,
+        "name": "Furnace"
+      },
+      "member_autonomy": 1.0,
+      "parent": "S0",
+      "radius": 42.0,
+      "sinks": [],
+      "sources": [],
+      "time_constant": "Second",
+      "transform": {
+        "rotation": 0.0,
+        "translation": [
+          0.0,
+          160.0
+        ]
+      },
+      "transformation": ""
+    },
+    {
+      "boundary": {
+        "info": {
+          "description": "",
+          "id": "B0.50",
+          "level": 1,
+          "name": ""
+        },
+        "interfaces": [],
+        "parent_interface": "I0.50",
+        "perceptive_fuzziness": 0.0,
+        "porosity": 0.0
+      },
+      "complexity": {
+        "Complex": {
+          "adaptable": false,
+          "evolveable": false
+        }
+      },
+      "equivalence": "",
+      "history": "",
+      "info": {
+        "description": "Mediates incoming flow at the Setpoint Import interface",
+        "id": "C0.50",
+        "level": 1,
+        "name": "Setpoint Intake"
+      },
+      "member_autonomy": 1.0,
+      "parent": "S0",
+      "radius": 12.0,
+      "sinks": [],
+      "sources": [],
+      "time_constant": "Second",
+      "transform": {
+        "rotation": -3.1415925,
+        "translation": [
+          -1.72,
+          0.0
+        ]
+      },
+      "transformation": ""
+    },
+    {
+      "boundary": {
+        "info": {
+          "description": "",
+          "id": "B0.51",
+          "level": 1,
+          "name": ""
+        },
+        "interfaces": [],
+        "parent_interface": "I0.51",
+        "perceptive_fuzziness": 0.0,
+        "porosity": 0.0
+      },
+      "complexity": {
+        "Complex": {
+          "adaptable": false,
+          "evolveable": false
+        }
+      },
+      "equivalence": "",
+      "history": "",
+      "info": {
+        "description": "Mediates incoming flow at the Fuel Import interface",
+        "id": "C0.51",
+        "level": 1,
+        "name": "Fuel Valve"
+      },
+      "member_autonomy": 1.0,
+      "parent": "S0",
+      "radius": 12.0,
+      "sinks": [],
+      "sources": [],
+      "time_constant": "Second",
+      "transform": {
+        "rotation": -3.1415925,
+        "translation": [
+          -1.72,
+          0.0
+        ]
+      },
+      "transformation": ""
+    },
+    {
+      "boundary": {
+        "info": {
+          "description": "",
+          "id": "B0.52",
+          "level": 1,
+          "name": ""
+        },
+        "interfaces": [],
+        "parent_interface": "I0.52",
+        "perceptive_fuzziness": 0.0,
+        "porosity": 0.0
+      },
+      "complexity": {
+        "Complex": {
+          "adaptable": false,
+          "evolveable": false
+        }
+      },
+      "equivalence": "",
+      "history": "",
+      "info": {
+        "description": "Mediates outgoing flow at the Heat Export interface",
+        "id": "C0.52",
+        "level": 1,
+        "name": "Heat Vent"
+      },
+      "member_autonomy": 1.0,
+      "parent": "S0",
+      "radius": 12.0,
+      "sinks": [],
+      "sources": [],
+      "time_constant": "Second",
+      "transform": {
+        "rotation": 0.0,
+        "translation": [
+          -1.72,
+          0.0
+        ]
+      },
+      "transformation": ""
+    },
+    {
+      "boundary": {
+        "info": {
+          "description": "",
+          "id": "B0.53",
+          "level": 1,
+          "name": ""
+        },
+        "interfaces": [],
+        "parent_interface": "I0.53",
+        "perceptive_fuzziness": 0.0,
+        "porosity": 0.0
+      },
+      "complexity": {
+        "Complex": {
+          "adaptable": false,
+          "evolveable": false
+        }
+      },
+      "equivalence": "",
+      "history": "",
+      "info": {
+        "description": "Mediates outgoing flow at the Display Export interface",
+        "id": "C0.53",
+        "level": 1,
+        "name": "Display Driver"
+      },
+      "member_autonomy": 1.0,
+      "parent": "S0",
+      "radius": 12.0,
+      "sinks": [],
+      "sources": [],
+      "time_constant": "Second",
+      "transform": {
+        "rotation": 0.0,
+        "translation": [
+          -1.72,
+          0.0
+        ]
+      },
+      "transformation": ""
+    }
+  ],
+  "version": 1
+}
