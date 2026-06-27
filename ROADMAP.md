@@ -18,9 +18,25 @@ example. Commits `bf7375e`, `f0ff7e7`.
 
 In-lens creation: author a model in a paradigm's vocabulary — Klir
 (things + relations), Bunge (composition + bonds), Mobus (components + flows).
-Live in-app generation routed through GSR `generate()` (never direct-to-Ollama;
-never `validate_repair_generate()`, which drops L2 flows), validated by the mode
-validators before it lands. This is what turns the viewer into a creation tool.
+Live in-app generation via in-process `generate()` (the GSR generator core linked
+as a Rust path-dependency — never the HTTP endpoint, never `validate_repair_generate()`
+which drops L2 flows, never direct-to-Ollama), validated by the mode validators before
+it lands. An optional LLM "co-create" seed drafts the initial lists; the compile path
+stays deterministic. This is what turns the viewer into a creation tool.
+
+**Full design: [`docs/arc2-authoring-design.md`](docs/arc2-authoring-design.md)** — the
+build-ready spec (deterministic spine, per-lens editable UI, live convergence, persistence,
+and the forward-design for the spatial canvas).
+
+**Build approach (2026-06-26): canvas-first, hand-built in egui.** We build the
+direct-manipulation canvas (drag thing → spawn relation → type → attach) here in the standalone
+egui shell, growing it layer by layer **Klir → Bunge → Mobus**. Visual foundation:
+[`docs/design-system.md`](docs/design-system.md) (palette + accreting shape grammar; visual sheet
+in `docs/mockups/`). v0 = a Klir canvas: draggable discs + **undirected** relation lines + the
+kernel-invariant chip; **Bunge** (composition/environment + **directed, typed-by-kind** bonds) and
+**Mobus** (boundary, ports, Message-as-peer flow, operational) layer on after. Faithful gradient +
+source evidence: `docs/design-system.md` §9 (boundary is **Mobus-only**, not Bunge; Bunge already
+directs and types — Bunge *Treatise* Ch. 1 §2.1/§1.3).
 
 ## Arc 3 — Translate
 

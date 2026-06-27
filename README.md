@@ -2,12 +2,18 @@
 
 A choose-a-paradigm prototype over the K≅2 kernel. Open it, pick a thinker's lens — **Klir**, **Bunge**, or **Mobus** — and read one system through that vocabulary. Switch lenses freely; the model underneath never changes.
 
+## Two binaries (current state, 2026-06-27)
+- **`bert-lenses`** (`src/main.rs`) — the **Arc-1 viewer**: the desktop app, reads bundled `WorldModel`s (thermostat + generics) through 3 lenses as structural lists, with cited `validate_mode` verdicts. **This is the one wired to `bert-core`.**
+- **`canvas`** (`src/bin/canvas.rs`, `cargo run --bin canvas`) — the **Arc-2 authoring canvas**: direct-manipulation (place/connect/type/name), live Mathematical view, save/load. The current build focus and the intended **new front door**. As-built reference: [`docs/canvas-architecture.md`](docs/canvas-architecture.md). **Standalone — not yet `bert-core`-backed.**
+
+**Integration direction:** the canvas becomes the front door (→ `main.rs`), backed by `bert-core` (`WorldModel` + `validate_mode` replacing the canvas's hand-rolled checks), consuming the viewer's example models + teaching copy; the list viewer becomes an optional outline mode or is archived. Faithfulness: [`docs/fidelity-audit.md`](docs/fidelity-audit.md).
+
 ## What this is the seed of
 
 bert-lenses is **step 1 of a model-*creation* tool, not a viewer.** The arc:
 
 1. **View** *(this prototype)* — see one stored model through Klir / Bunge / Mobus, and learn *why* a model is or isn't a faithful system in each (cited to the tradition, e.g. "an unbonded collection is an aggregate — Bunge Def 1.1").
-2. **Author** — build a model *in* a lens's vocabulary: as Klir (things + relations), as Bunge (composition + bonds), as Mobus (flows + boundary). The UI speaks that thinker's language.
+2. **Author** — build a model *in* a lens's vocabulary: as Klir (things + undirected relations), as Bunge (composition + **directed, typed-by-kind** bonds), as Mobus (typed flows + boundary, with Message a peer of Energy/Material). The UI speaks that thinker's language. The faithful Klir→Bunge→Mobus accretion gradient is documented in `docs/design-system.md` §9.
 3. **Translate** — move losslessly between lenses (read-only view-switching is lossless by theorem; explicit mode transitions project down with documented loss or generate up with minimal witnesses).
 
 Eventually this folds into BERT as the lens/mode-aware authoring surface.

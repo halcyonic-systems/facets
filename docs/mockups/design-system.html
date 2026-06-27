@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bert-lenses · design system sheet</title>
+<style>
+  :root{
+    --bg:#f7f4ee; --surface:#fffdf9; --panel-2:#f1ece2;
+    --ink:#2c2722; --ink-soft:#6b6258; --ink-faint:#9a9085;
+    --line:#e3dccf; --line-2:#d6cdbc; --accent:#c4622d;
+    --klir:#3f6f8f; --bunge:#8a5a9c; --mobus:#2f8472;
+    --ok:#4f7a3f; --ok-soft:#e4eedd; --warn:#b07a16; --warn-soft:#f3e8cd;
+    --energy:#b06a1f; --material:#5a7a4f; --message:#5566b0;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:14.5px/1.55 ui-sans-serif,-apple-system,"Inter","Segoe UI",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1080px;margin:0 auto;padding:30px 28px 70px;}
+  h1{font-size:21px;letter-spacing:-.015em;margin:0 0 2px;display:flex;align-items:center;gap:10px;}
+  h1 .dot{width:13px;height:13px;border-radius:50%;background:conic-gradient(var(--klir),var(--bunge),var(--mobus),var(--klir));}
+  .lede{color:var(--ink-soft);font-size:13.5px;margin:0 0 26px;}
+  h2{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);
+    margin:30px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--line);}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:13px;
+    box-shadow:0 1px 2px rgba(60,45,30,.05),0 6px 22px rgba(60,45,30,.05);padding:18px 20px;}
+  .row{display:flex;gap:18px;flex-wrap:wrap;}
+  /* swatches */
+  .sw{width:128px;}
+  .chip{height:54px;border-radius:9px;border:1px solid rgba(0,0,0,.06);}
+  .sw .nm{font-weight:650;font-size:12.5px;margin-top:7px;}
+  .sw .hx{font:11.5px ui-monospace,Menlo,monospace;color:var(--ink-faint);}
+  .lensrow{display:flex;gap:14px;flex-wrap:wrap;}
+  .lensbox{flex:1;min-width:210px;border:1px solid var(--line);border-radius:11px;overflow:hidden;}
+  .lensbox .hd{padding:9px 13px;color:#fff;font-weight:700;display:flex;align-items:center;gap:8px;}
+  .lensbox .bd{padding:11px 13px;font-size:12.5px;color:var(--ink-soft);}
+  /* shape grid */
+  .shapes{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .shape{border:1px solid var(--line);border-radius:11px;background:var(--surface);padding:6px 6px 12px;text-align:center;}
+  .shape svg{display:block;margin:0 auto;}
+  .shape .t{font-weight:650;font-size:13px;margin-top:4px;}
+  .shape .s{font-size:11.5px;color:var(--ink-faint);padding:0 8px;}
+  .lenslabel{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:3px 8px;border-radius:20px;display:inline-block;margin:6px 0 2px;}
+  .legend{font-size:12.5px;color:var(--ink-soft);margin-top:6px;}
+  .legend b{color:var(--ink);}
+  code{background:var(--panel-2);border:1px solid var(--line-2);border-radius:5px;padding:1px 6px;font-size:12px;}
+  .note{font-size:12.5px;color:var(--ink-soft);margin-top:10px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="dot"></span> bert-lenses · design system</h1>
+  <p class="lede">The visual language for the authoring canvas. One element, read with more structure as the lens deepens — a bare disc + <b>neutral</b> relation in Klir, <b>composition + directed, typed-by-kind bonds</b> in Bunge, a bounded system with <b>boundary + ports + Message-as-peer flows</b> in Mobus. <b>Direction & typing are recovered at Bunge</b> (his action a▷b is directed; he types connections — mechanical/chemical/informational/social); Klir forgets them (pseudo-constructivist play mode). Companion to <code>docs/design-system.md</code> §9.</p>
+
+  <h2>Base palette</h2>
+  <div class="card"><div class="row">
+    <div class="sw"><div class="chip" style="background:#f7f4ee"></div><div class="nm">bg</div><div class="hx">#f7f4ee</div></div>
+    <div class="sw"><div class="chip" style="background:#fffdf9"></div><div class="nm">surface</div><div class="hx">#fffdf9</div></div>
+    <div class="sw"><div class="chip" style="background:#f1ece2"></div><div class="nm">panel-2</div><div class="hx">#f1ece2</div></div>
+    <div class="sw"><div class="chip" style="background:#2c2722"></div><div class="nm">ink</div><div class="hx">#2c2722</div></div>
+    <div class="sw"><div class="chip" style="background:#6b6258"></div><div class="nm">ink-soft</div><div class="hx">#6b6258</div></div>
+    <div class="sw"><div class="chip" style="background:#9a9085"></div><div class="nm">ink-faint</div><div class="hx">#9a9085</div></div>
+    <div class="sw"><div class="chip" style="background:#e3dccf"></div><div class="nm">line</div><div class="hx">#e3dccf</div></div>
+    <div class="sw"><div class="chip" style="background:#c4622d"></div><div class="nm">accent</div><div class="hx">#c4622d</div></div>
+  </div></div>
+
+  <h2>Lens identity</h2>
+  <div class="lensrow">
+    <div class="lensbox"><div class="hd" style="background:#3f6f8f">● Klir <span style="opacity:.8;font-weight:500">#3f6f8f</span></div>
+      <div class="bd">slate blue — the bare kernel, epistemic. <i>S = (T, R).</i></div></div>
+    <div class="lensbox"><div class="hd" style="background:#8a5a9c">● Bunge <span style="opacity:.8;font-weight:500">#8a5a9c</span></div>
+      <div class="bd">muted violet — composition &amp; structure. <i>bonds make a system.</i></div></div>
+    <div class="lensbox"><div class="hd" style="background:#2f8472">● Mobus <span style="opacity:.8;font-weight:500">#2f8472</span></div>
+      <div class="bd">teal-green — working anatomy &amp; flow. <i>parts, boundary, flows.</i></div></div>
+  </div>
+
+  <h2>Semantic &amp; substance</h2>
+  <div class="card"><div class="row">
+    <div class="sw"><div class="chip" style="background:#4f7a3f"></div><div class="nm">ok / invariant</div><div class="hx">#4f7a3f</div></div>
+    <div class="sw"><div class="chip" style="background:#b07a16"></div><div class="nm">warn / aggregate</div><div class="hx">#b07a16</div></div>
+    <div class="sw"><div class="chip" style="background:#b06a1f"></div><div class="nm">Energy</div><div class="hx">#b06a1f</div></div>
+    <div class="sw"><div class="chip" style="background:#5a7a4f"></div><div class="nm">Material</div><div class="hx">#5a7a4f</div></div>
+    <div class="sw"><div class="chip" style="background:#5566b0"></div><div class="nm">Message</div><div class="hx">#5566b0</div></div>
+  </div>
+  <div class="note"><b>Color = substance</b> on flows; usability (Resource/Product/Waste/Disruption) is a small marker, not a color.</div>
+  </div>
+
+  <h2>Shape grammar — circle = thing inside · square = environment outside</h2>
+  <div class="card">
+    <div class="row" style="align-items:center;gap:34px;justify-content:center">
+      <div style="text-align:center">
+        <svg width="120" height="100" viewBox="0 0 120 100">
+          <circle cx="60" cy="46" r="30" fill="#fffdf9" stroke="#d6cdbc" stroke-width="1.5"/>
+          <text x="60" y="50" text-anchor="middle" font-size="12" fill="#2c2722" font-family="sans-serif">Thing</text>
+        </svg>
+        <div class="legend"><b>circle</b> — a thing / system (internal)</div>
+      </div>
+      <div style="text-align:center">
+        <svg width="160" height="100" viewBox="0 0 160 100">
+          <rect x="8" y="34" width="26" height="26" rx="5" fill="#fffdf9" stroke="#9a9085" stroke-width="1.5"/>
+          <text x="21" y="51" text-anchor="middle" font-size="12" fill="#9a9085" font-family="sans-serif">←</text>
+          <rect x="126" y="34" width="26" height="26" rx="5" fill="#fffdf9" stroke="#9a9085" stroke-width="1.5"/>
+          <text x="139" y="51" text-anchor="middle" font-size="12" fill="#9a9085" font-family="sans-serif">→</text>
+          <text x="80" y="51" text-anchor="middle" font-size="11.5" fill="#9a9085" font-family="sans-serif">source · sink</text>
+        </svg>
+        <div class="legend"><b>square</b> — environment entity (external)</div>
+      </div>
+    </div>
+  </div>
+
+  <h2>One element, accreting across lenses</h2>
+  <div class="shapes">
+    <div class="shape">
+      <span class="lenslabel" style="background:#e6edf2;color:#3f6f8f">Klir</span>
+      <svg width="150" height="120" viewBox="0 0 150 120">
+        <!-- two bare discs + an UNDIRECTED relation (no arrowhead) -->
+        <line x1="58" y1="60" x2="92" y2="60" stroke="#6b6258" stroke-width="1.5"/>
+        <circle cx="36" cy="60" r="22" fill="#fffdf9" stroke="#d6cdbc" stroke-width="1.5"/>
+        <circle cx="114" cy="60" r="22" fill="#fffdf9" stroke="#d6cdbc" stroke-width="1.5"/>
+        <text x="36" y="64" text-anchor="middle" font-size="10.5" fill="#2c2722" font-family="sans-serif">A</text>
+        <text x="114" y="64" text-anchor="middle" font-size="10.5" fill="#2c2722" font-family="sans-serif">B</text>
+      </svg>
+      <div class="t">bare discs + neutral relation</div>
+      <div class="s">a thing is a distinction; the relation has <b>no direction</b> — forgotten (pseudo-constructivist)</div>
+    </div>
+
+    <div class="shape">
+      <span class="lenslabel" style="background:#efe7f3;color:#8a5a9c">Bunge</span>
+      <svg width="150" height="120" viewBox="0 0 150 120">
+        <!-- composition (soft halo, NOT a boundary primitive) + bond + environment outside -->
+        <circle cx="56" cy="56" r="38" fill="#faf7fc" stroke="#d4c2de" stroke-width="1.2" stroke-dasharray="3 4"/>
+        <line x1="54" y1="56" x2="64" y2="56" stroke="#8a5a9c" stroke-width="2.5"/>
+        <polygon points="64,56 57,53 57,59" fill="#8a5a9c"/>
+        <circle cx="40" cy="56" r="14" fill="#f6f1f8" stroke="#b89cc6" stroke-width="1.5"/>
+        <circle cx="78" cy="56" r="14" fill="#f6f1f8" stroke="#b89cc6" stroke-width="1.5"/>
+        <line x1="92" y1="56" x2="118" y2="56" stroke="#9a9085" stroke-width="1.3"/>
+        <rect x="118" y="45" width="22" height="22" rx="5" fill="#fffdf9" stroke="#9a9085"/>
+        <text x="129" y="60" text-anchor="middle" font-size="11" fill="#9a9085" font-family="sans-serif">→</text>
+        <text x="62" y="110" text-anchor="middle" font-size="10.5" fill="#6b6258" font-family="sans-serif">directed bond · no boundary</text>
+      </svg>
+      <div class="t">composition + directed bonds</div>
+      <div class="s">bonds are <b>directed &amp; typed-by-kind</b> (mechanical/chemical/info/social); environment outside — <b>no boundary primitive</b></div>
+    </div>
+
+    <div class="shape">
+      <span class="lenslabel" style="background:#e3f0ec;color:#2f8472">Mobus</span>
+      <svg width="150" height="120" viewBox="0 0 150 120">
+        <circle cx="75" cy="58" r="42" fill="#fffdf9" stroke="#2f8472" stroke-width="2.5"/>
+        <!-- interface ports on the ring -->
+        <circle cx="33" cy="58" r="4.5" fill="#b06a1f"/>
+        <circle cx="117" cy="58" r="4.5" fill="#b06a1f"/>
+        <circle cx="75" cy="16" r="4.5" fill="#5566b0"/>
+        <!-- typed flows in/out -->
+        <line x1="8" y1="58" x2="28" y2="58" stroke="#b06a1f" stroke-width="2.5"/>
+        <polygon points="28,58 21,55 21,61" fill="#b06a1f"/>
+        <line x1="122" y1="58" x2="142" y2="58" stroke="#b06a1f" stroke-width="2.5"/>
+        <polygon points="142,58 135,55 135,61" fill="#b06a1f"/>
+        <circle cx="75" cy="58" r="14" fill="#e8f1ee" stroke="#79b3a6" stroke-width="1.5"/>
+        <text x="75" y="112" text-anchor="middle" font-size="10.5" fill="#6b6258" font-family="sans-serif">ports + typed flows</text>
+      </svg>
+      <div class="t">boundary + ports + flows</div>
+      <div class="s">the <b>boundary</b> ring lives here (a Mobus primitive); ports on it; flows <b>directed</b>, colored by substance</div>
+    </div>
+  </div>
+
+  <h2>Relation styles</h2>
+  <div class="card"><div class="row" style="gap:40px;align-items:center;justify-content:center">
+    <div style="text-align:center">
+      <svg width="150" height="44" viewBox="0 0 150 44">
+        <line x1="12" y1="22" x2="138" y2="22" stroke="#6b6258" stroke-width="1.5"/>
+      </svg>
+      <div class="legend"><b>relation</b> (Klir) — undirected line, neutral</div>
+    </div>
+    <div style="text-align:center">
+      <svg width="150" height="44" viewBox="0 0 150 44">
+        <line x1="12" y1="22" x2="132" y2="22" stroke="#8a5a9c" stroke-width="2.5"/><polygon points="132,22 122,17 122,27" fill="#8a5a9c"/>
+      </svg>
+      <div class="legend"><b>bond</b> (Bunge) — directed, typed-by-kind</div>
+    </div>
+    <div style="text-align:center">
+      <svg width="150" height="44" viewBox="0 0 150 44">
+        <line x1="12" y1="14" x2="132" y2="14" stroke="#b06a1f" stroke-width="2.5"/><polygon points="132,14 122,9 122,19" fill="#b06a1f"/>
+        <line x1="12" y1="32" x2="132" y2="32" stroke="#5566b0" stroke-width="2.5"/><polygon points="132,32 122,27 122,37" fill="#5566b0"/>
+      </svg>
+      <div class="legend"><b>typed flow</b> (Mobus) — arrow colored by substance</div>
+    </div>
+  </div></div>
+
+  <h2>Target aesthetic — a Klir canvas (v0 build scope)</h2>
+  <div class="card">
+    <svg width="100%" height="240" viewBox="0 0 640 240" style="display:block">
+      <rect x="0" y="0" width="640" height="240" rx="10" fill="#fffdf9" stroke="#e3dccf"/>
+      <!-- invariant chip -->
+      <rect x="16" y="16" width="208" height="26" rx="13" fill="#e4eedd" stroke="#cfe0c4"/>
+      <text x="30" y="33" font-size="12.5" font-weight="700" fill="#4f7a3f" font-family="sans-serif">✓ kernel · 5 things · 5 dependencies</text>
+      <!-- env squares -->
+      <rect x="28" y="150" width="24" height="24" rx="5" fill="#fffdf9" stroke="#9a9085"/><text x="40" y="166" text-anchor="middle" font-size="11" fill="#9a9085" font-family="sans-serif">←</text>
+      <text x="40" y="190" text-anchor="middle" font-size="10" fill="#9a9085" font-family="sans-serif">Mains</text>
+      <rect x="588" y="150" width="24" height="24" rx="5" fill="#fffdf9" stroke="#9a9085"/><text x="600" y="166" text-anchor="middle" font-size="11" fill="#9a9085" font-family="sans-serif">→</text>
+      <text x="600" y="190" text-anchor="middle" font-size="10" fill="#9a9085" font-family="sans-serif">Room</text>
+      <!-- undirected relation lines (Klir is neutral — no arrowheads) -->
+      <g stroke="#6b6258" stroke-width="1.5">
+        <line x1="236" y1="96" x2="318" y2="96"/>
+        <line x1="374" y1="96" x2="430" y2="96"/>
+        <line x1="56" y1="158" x2="432" y2="112"/>
+        <line x1="484" y1="108" x2="588" y2="156"/>
+      </g>
+      <!-- discs -->
+      <g>
+        <circle cx="208" cy="96" r="28" fill="#fffdf9" stroke="#d6cdbc" stroke-width="1.5"/><text x="208" y="100" text-anchor="middle" font-size="11" fill="#2c2722" font-family="sans-serif">Sensor</text>
+        <circle cx="346" cy="96" r="28" fill="#fffdf9" stroke="#d6cdbc" stroke-width="1.5"/><text x="346" y="100" text-anchor="middle" font-size="11" fill="#2c2722" font-family="sans-serif">Controller</text>
+        <circle cx="458" cy="96" r="28" fill="#fffdf9" stroke="#3f6f8f" stroke-width="2"/><text x="458" y="100" text-anchor="middle" font-size="11" fill="#2c2722" font-family="sans-serif">Heater</text>
+      </g>
+    </svg>
+    <div class="note">Heater shown <b>selected</b> (Klir-blue stroke). Discs drag freely; dragging from a disc spawns an <b>undirected</b> relation toward a target — Klir is neutral, direction is opt-in. This is what v0 builds in egui.</div>
+  </div>
+
+  <p class="note" style="text-align:center;margin-top:26px;color:var(--ink-faint)">
+    Foundation v0 · shapes &amp; palette to react to before they're encoded as egui <code>Color32</code> + <code>Painter</code> calls.
+  </p>
+</div>
+</body>
+</html>

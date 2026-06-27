@@ -1,5 +1,14 @@
 //! bert-lenses — choose-a-paradigm prototype over the K≅2 kernel.
 //!
+//! ┌─ REFERENCE — the canonical bert-core wiring ──────────────────────────────┐
+//! │ This is the Arc-1 *viewer*. The live app is now the direct-manipulation    │
+//! │ CANVAS (`src/bin/canvas.rs`). Kept on purpose: this file is the worked     │
+//! │ example of how to consume `bert-core` — `WorldModel` load, `kernel()`,     │
+//! │ and `validate_mode` (Structural=bond / Operational=irreflexive) — plus the │
+//! │ per-lens teaching copy. Mine it when the canvas↔bert-core *convergence*    │
+//! │ happens (see `docs/canvas-architecture.md` §convergence). Do not delete.   │
+//! └───────────────────────────────────────────────────────────────────────────┘
+//!
 //! One stored kernel (a generated thermostat); three faithful lenses (Klir /
 //! Bunge / Mobus). Switching a lens is read-only — the kernel never changes.
 //! All formalism lives in `bert-core`; this shell only renders and asks

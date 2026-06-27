@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bert-lenses · Arc 2 authoring (design mockup)</title>
+<style>
+  :root {
+    /* warm light palette */
+    --bg:        #f7f4ee;
+    --panel:     #fffdf9;
+    --panel-2:   #f1ece2;
+    --ink:       #2c2722;
+    --ink-soft:  #6b6258;
+    --ink-faint: #9a9085;
+    --line:      #e3dccf;
+    --line-2:    #d6cdbc;
+    --accent:    #c4622d;   /* terracotta */
+    --accent-sf: #f0d9cb;
+    --ok:        #4f7a3f;
+    --ok-sf:     #e4eedd;
+    --warn:      #b07a16;
+    --warn-sf:   #f3e8cd;
+    /* lens identities */
+    --klir:  #3f6f8f;
+    --bunge: #8a5a9c;
+    --mobus: #2f8472;
+    --radius: 11px;
+    --shadow: 0 1px 2px rgba(60,45,30,.05), 0 6px 22px rgba(60,45,30,.06);
+    font-feature-settings: "ss01", "cv01";
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 14.5px/1.5 ui-sans-serif, -apple-system, "Inter", "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 22px 26px 60px; }
+
+  /* ---------- top bar ---------- */
+  .topbar { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+  .brand { display: flex; align-items: center; gap: 9px; font-weight: 650; letter-spacing: -.01em; }
+  .brand .dot { width: 11px; height: 11px; border-radius: 50%;
+    background: conic-gradient(var(--klir), var(--bunge), var(--mobus), var(--klir)); }
+  .brand .sep { color: var(--ink-faint); font-weight: 400; }
+  .model-name { font-weight: 550; color: var(--ink); padding: 3px 9px; border-radius: 7px;
+    border: 1px solid transparent; cursor: text; }
+  .model-name:hover { border-color: var(--line-2); background: var(--panel); }
+  .spacer { flex: 1; }
+  .btn { font: inherit; font-weight: 550; font-size: 13.5px; border-radius: 9px; cursor: pointer;
+    padding: 8px 13px; border: 1px solid var(--line-2); background: var(--panel); color: var(--ink);
+    display: inline-flex; align-items: center; gap: 7px; transition: .12s; }
+  .btn:hover { border-color: var(--ink-faint); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.05); }
+  .btn .ico { font-size: 15px; line-height: 1; }
+
+  /* kernel ribbon */
+  .ribbon { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 11px 15px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  .kernel-chip { display: inline-flex; align-items: center; gap: 8px; font-weight: 600;
+    color: var(--ok); background: var(--ok-sf); border: 1px solid #cfe0c4;
+    padding: 5px 11px; border-radius: 20px; font-size: 13px; }
+  .kernel-chip .check { font-size: 14px; }
+  .ribbon .desc { color: var(--ink-soft); font-size: 13px; }
+  .ribbon .desc b { color: var(--ink); font-weight: 600; }
+  .vchips { display: flex; gap: 8px; margin-left: auto; }
+  .vchip { font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 7px;
+    display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-2); }
+  .vchip .lk { width: 7px; height: 7px; border-radius: 50%; }
+  .vchip.ok   { background: var(--ok-sf);   color: var(--ok);   border-color:#cfe0c4; }
+  .vchip.warn { background: var(--warn-sf); color: var(--warn); border-color:#e7d3a3; }
+
+  /* ---------- lens selector ---------- */
+  .lenses { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 18px; }
+  .lens-tab { text-align: left; cursor: pointer; background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 12px 14px; transition: .14s; position: relative; overflow: hidden; }
+  .lens-tab:hover { border-color: var(--line-2); transform: translateY(-1px); }
+  .lens-tab .bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--lc); opacity: .4; }
+  .lens-tab .lname { font-weight: 650; letter-spacing: -.01em; color: var(--lc); display:flex; align-items:center; gap:8px; }
+  .lens-tab .lvocab { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
+  .lens-tab.active { border-color: var(--lc); box-shadow: 0 0 0 1px var(--lc) inset, var(--shadow); background: #fff; }
+  .lens-tab.active .bar { opacity: 1; }
+  .lens-tab .badge { position:absolute; top:11px; right:12px; font-size:10.5px; font-weight:650;
+    text-transform: uppercase; letter-spacing:.04em; color: var(--ink-faint); }
+  .lens-tab.active .badge { color: var(--lc); }
+
+  /* ---------- main grid ---------- */
+  .main { display: grid; grid-template-columns: 1.32fr 1fr; gap: 16px; align-items: start; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); }
+  .card.editor { border-top: 3px solid var(--lc); }
+  .card-h { padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
+  .card-h .ttl { font-weight: 650; letter-spacing: -.01em; display:flex; align-items:center; gap:9px; }
+  .card-h .ttl .pill { font-size: 11px; font-weight: 650; color: var(--lc); background: var(--panel-2);
+    border:1px solid var(--line-2); padding: 2px 8px; border-radius: 20px; }
+  .card-h .sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 3px; }
+  .card-b { padding: 8px 16px 16px; }
+
+  .section { margin-top: 12px; }
+  .section:first-child { margin-top: 4px; }
+  .sec-h { display: flex; align-items: center; gap: 8px; margin: 8px 0 6px; }
+  .sec-h .label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--ink-faint); }
+  .sec-h .count { font-size: 11.5px; color: var(--ink-faint); background: var(--panel-2);
+    border-radius: 10px; padding: 1px 7px; }
+  .sec-h .hint { margin-left: auto; font-size: 11.5px; color: var(--ink-faint); font-style: italic; }
+
+  /* rows */
+  .row { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 8px;
+    border: 1px solid transparent; }
+  .row:hover { background: var(--panel-2); border-color: var(--line); }
+  .row .glyph { width: 18px; text-align: center; color: var(--ink-faint); font-size: 13px; }
+  .row input.f { font: inherit; border: none; background: transparent; color: var(--ink); flex: 1;
+    padding: 3px 4px; border-radius: 6px; min-width: 40px; }
+  .row input.f:focus { outline: none; background: #fff; box-shadow: 0 0 0 2px var(--accent-sf); }
+  .row .arrow { color: var(--ink-faint); }
+  .row .tag { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 6px;
+    background: var(--panel-2); border: 1px solid var(--line-2); color: var(--ink-soft); white-space: nowrap; }
+  .row .tag.energy   { color:#b06a1f; background:#f6e9d6; border-color:#e6cfa8;}
+  .row .tag.message  { color:#5566b0; background:#e7eaf7; border-color:#c8cdec;}
+  .row .tag.material { color:#5a7a4f; background:#e6efdf; border-color:#c8ddbb;}
+  .row .x { opacity: 0; cursor: pointer; color: var(--ink-faint); font-size: 15px; padding: 0 4px;
+    border-radius: 6px; }
+  .row:hover .x { opacity: 1; }
+  .row .x:hover { color: var(--accent); background: var(--accent-sf); }
+
+  .add { display: inline-flex; align-items: center; gap: 7px; font: inherit; font-size: 12.5px;
+    font-weight: 600; color: var(--lc); background: transparent; border: 1px dashed var(--line-2);
+    border-radius: 8px; padding: 6px 11px; cursor: pointer; margin-top: 5px; transition: .12s; }
+  .add:hover { background: #fff; border-color: var(--lc); }
+
+  .lens-note { margin-top: 14px; padding: 9px 12px; background: var(--panel-2); border-radius: 8px;
+    font-size: 12.5px; color: var(--ink-soft); border: 1px solid var(--line); }
+  .lens-note b { color: var(--ink); }
+
+  /* thing-centric blocks: relations declared ON things, in context */
+  .tblock { border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px 8px; margin: 7px 0; background: #fff; }
+  .tblock:hover { border-color: var(--line-2); }
+  .trow { display: flex; align-items: center; gap: 9px; }
+  .trow .glyph { width: 18px; text-align: center; color: var(--ink-faint); font-size: 13px; }
+  .trow input.f { font: inherit; font-weight: 600; border: none; background: transparent; color: var(--ink);
+    flex: 1; padding: 3px 5px; border-radius: 6px; letter-spacing: -.01em; }
+  .trow input.f:focus { outline: none; background: var(--panel-2); box-shadow: 0 0 0 2px var(--accent-sf); }
+  .trow .x { opacity: 0; cursor: pointer; color: var(--ink-faint); font-size: 15px; padding: 0 4px; border-radius: 6px; }
+  .tblock:hover .x { opacity: 1; }
+  .trow .x:hover { color: var(--accent); background: var(--accent-sf); }
+  .conns { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0 1px; padding-left: 27px; }
+  .conns .verb { font-size: 11.5px; color: var(--ink-faint); font-style: italic; margin-right: 3px; }
+  .conns .empty { font-size: 11.5px; color: var(--ink-faint); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 550; color: var(--ink);
+    background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 20px; padding: 3px 5px 3px 11px; }
+  .chip .ctag { font-size: 10px; font-weight: 800; letter-spacing: .02em; padding: 1px 6px; border-radius: 10px; }
+  .ctag.energy { color:#b06a1f; background:#f6e9d6; } .ctag.message { color:#5566b0; background:#e7eaf7; }
+  .ctag.material { color:#5a7a4f; background:#e6efdf; }
+  .chip .cx { cursor: pointer; color: var(--ink-faint); font-size: 12px; width: 17px; height: 17px;
+    border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+  .chip .cx:hover { color: var(--accent); background: var(--accent-sf); }
+  .connect { font: inherit; font-size: 11.5px; font-weight: 650; color: var(--lc); background: transparent;
+    border: 1px dashed var(--line-2); border-radius: 20px; padding: 3px 11px; cursor: pointer; transition: .12s; }
+  .connect:hover { background: #fff; border-color: var(--lc); }
+  .connect-input { font: inherit; font-size: 12px; padding: 3px 11px; border-radius: 20px;
+    border: 1px solid var(--lc); background: #fff; color: var(--ink); outline: none; min-width: 168px; }
+  .connect-input:focus { box-shadow: 0 0 0 2px var(--accent-sf); }
+
+  /* quick-capture: type the system as connection lines */
+  .qc { border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); padding: 9px 11px; margin: 2px 0 10px; }
+  .qc-h { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; margin-bottom: 6px; }
+  .qc-t { font-size: 12px; font-weight: 800; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .05em; }
+  .qc-s { font-size: 11.5px; color: var(--ink-faint); }
+  .qc-s code { background: #fff; border: 1px solid var(--line-2); border-radius: 5px; padding: 1px 5px;
+    font-size: 11px; color: var(--ink-soft); }
+  .qc textarea { width: 100%; min-height: 76px; resize: vertical; color: var(--ink);
+    font: 12.5px/1.65 ui-monospace, "SF Mono", Menlo, monospace;
+    border: 1px solid var(--line-2); border-radius: 8px; padding: 9px 11px; background: #fff; }
+  .qc textarea:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-sf); border-color: var(--accent); }
+
+  /* right rail */
+  .rail { display: flex; flex-direction: column; gap: 16px; }
+  .conv .card-h .ttl { color: var(--ink); }
+  .conv-line { font-size: 13px; color: var(--ink-soft); padding: 4px 0 2px; }
+  .conv-line b { color: var(--ink); }
+  .mini { margin-top: 10px; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .mini-h { display: flex; align-items: center; gap: 8px; padding: 8px 11px; background: var(--panel-2);
+    border-bottom: 1px solid var(--line); font-size: 12.5px; }
+  .mini-h .ld { width: 8px; height: 8px; border-radius: 50%; background: var(--lc); }
+  .mini-h .nm { font-weight: 650; color: var(--lc); }
+  .mini-h .vv { margin-left: auto; font-size: 11px; font-weight: 600; }
+  .mini-h .vv.ok { color: var(--ok); } .mini-h .vv.warn { color: var(--warn); }
+  .mini-b { padding: 7px 11px 10px; font-size: 12.5px; color: var(--ink-soft); }
+  .mini-b .l { padding: 2px 0; display: flex; gap: 7px; align-items:center;}
+  .mini-b .l .g { color: var(--ink-faint); width: 14px; text-align:center;}
+  .mini-b .mk { color: var(--ink); }
+
+  .verdict { display:flex; gap:10px; padding:10px 12px; border-radius:9px; margin-top:10px; font-size:12.5px; }
+  .verdict.warn { background: var(--warn-sf); border:1px solid #e7d3a3; color:#8a6212; }
+  .verdict .vi { font-size: 15px; }
+  .verdict b { color: #6f4e0e; }
+
+  /* co-create slide-over */
+  .scrim { position: fixed; inset: 0; background: rgba(44,39,34,.34); opacity:0; pointer-events:none;
+    transition:.18s; z-index: 40; }
+  .scrim.on { opacity: 1; pointer-events: auto; }
+  .slide { position: fixed; top: 0; right: 0; bottom: 0; width: 392px; max-width: 92vw; background: var(--panel);
+    border-left: 1px solid var(--line-2); box-shadow: -10px 0 40px rgba(60,45,30,.13); z-index: 41;
+    transform: translateX(100%); transition: transform .22s cubic-bezier(.4,.0,.2,1); padding: 22px; overflow:auto;}
+  .slide.on { transform: none; }
+  .slide h3 { margin: 4px 0 4px; font-size: 17px; letter-spacing: -.01em; }
+  .slide p.s { color: var(--ink-soft); font-size: 13px; margin: 0 0 16px; }
+  .slide textarea { width: 100%; min-height: 96px; resize: vertical; font: inherit; padding: 11px 12px;
+    border-radius: 10px; border: 1px solid var(--line-2); background: #fff; color: var(--ink); }
+  .slide textarea:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-sf); border-color: var(--accent); }
+  .seg { display: inline-flex; background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 9px;
+    padding: 3px; margin: 14px 0 8px; }
+  .seg button { font: inherit; font-size: 12.5px; font-weight: 600; border: 0; background: transparent;
+    color: var(--ink-soft); padding: 6px 13px; border-radius: 7px; cursor: pointer; }
+  .seg button.on { background: #fff; color: var(--ink); box-shadow: var(--shadow); }
+  .slide .foot { display:flex; gap:10px; margin-top: 16px; }
+  .slide .micro { font-size: 11.5px; color: var(--ink-faint); margin-top: 12px; line-height:1.5; }
+  .close-x { position: absolute; top: 16px; right: 18px; font-size: 20px; color: var(--ink-faint);
+    cursor: pointer; background:none; border:0; }
+
+  .footnote { margin-top: 26px; font-size: 12px; color: var(--ink-faint); text-align:center; line-height:1.6;}
+  @media (max-width: 920px){ .main{grid-template-columns:1fr;} .lenses{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- top bar -->
+  <div class="topbar">
+    <div class="brand">
+      <span class="dot"></span> bert-lenses
+      <span class="sep">·</span>
+      <span class="model-name" contenteditable="true" spellcheck="false">Thermostat</span>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" onclick="openCreate()"><span class="ico">✦</span> Co-create</button>
+    <button class="btn"><span class="ico">↧</span> Save</button>
+    <button class="btn primary"><span class="ico">↗</span> Share</button>
+  </div>
+
+  <!-- kernel ribbon = the convergence spine, always on -->
+  <div class="ribbon">
+    <span class="kernel-chip"><span class="check">✓</span> <span id="kchip">one kernel · 4 things · 5 dependencies</span></span>
+    <span class="desc">the lenses agree on the <b>invariant</b>; they differ on what they <b>surface</b></span>
+    <div class="vchips" id="vchips"></div>
+  </div>
+
+  <!-- pick the lens you author through -->
+  <div class="lenses" id="lenses"></div>
+
+  <!-- editor (active lens) + live convergence rail -->
+  <div class="main">
+    <div class="card editor" id="editor" style="--lc:var(--bunge)"></div>
+    <div class="rail">
+      <div class="card conv">
+        <div class="card-h">
+          <div class="ttl">Convergence — live</div>
+          <div class="sub">edit on the left; everything here updates as you build</div>
+        </div>
+        <div class="card-b" id="conv"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footnote">
+    Design mockup · the shipped tool is egui/Rust, so widgets will differ — this is the layout &amp; the convergence spine.<br/>
+    Companion to <code>docs/arc2-authoring-design.md</code>. Try: type a line in Quick capture (<code>Pump → Tank : water</code>), switch lenses, or remove a bond.
+  </div>
+</div>
+
+<!-- co-create slide-over -->
+<div class="scrim" id="scrim" onclick="closeCreate()"></div>
+<aside class="slide" id="slide">
+  <button class="close-x" onclick="closeCreate()">✕</button>
+  <h3>✦ Co-create a starting point</h3>
+  <p class="s">Describe the system in a line or two. An LLM drafts the initial things, relations and flows in your active lens — then you refine. The draft is editable; the compile underneath stays deterministic.</p>
+  <textarea placeholder="e.g. a home thermostat that senses room temperature and switches a heater to hold a setpoint…"></textarea>
+  <div class="seg">
+    <button class="on" onclick="segPick(this)">Local · Ollama</button>
+    <button onclick="segPick(this)">Cloud · Anthropic</button>
+  </div>
+  <div class="foot">
+    <button class="btn primary" onclick="closeCreate()" style="flex:1;justify-content:center">Draft into Bunge</button>
+    <button class="btn" onclick="closeCreate()">Cancel</button>
+  </div>
+  <p class="micro">Optional &amp; offline-safe — the tool works fully without this; it's the one place a network call appears, and only on demand. Routed through GSR, never direct-to-Ollama.</p>
+</aside>
+
+<script>
+/* ----- one kernel underneath, always. all three lenses render from this. ----- */
+const model = {
+  things: [
+    {id:'sensor', name:'Sensor'},
+    {id:'ctrl',   name:'Controller'},
+    {id:'heater', name:'Heater'},
+  ],
+  sources: [{id:'mains', name:'Mains power'}],
+  sinks:   [{id:'room',  name:'Room air'}],
+  // every interaction is a (source -> sink) edge; kind + type are lens-specific overlays
+  flows: [
+    {id:'f1', from:'sensor', to:'ctrl',   name:'temperature reading', kind:'bond',     type:'Message',  use:'Resource'},
+    {id:'f2', from:'ctrl',   to:'heater', name:'switch command',      kind:'bond',     type:'Message',  use:'Resource'},
+    {id:'f3', from:'mains',  to:'heater', name:'electrical supply',   kind:'boundary', type:'Energy',   use:'Resource'},
+    {id:'f4', from:'heater', to:'room',   name:'heat output',         kind:'boundary', type:'Energy',   use:'Product'},
+    {id:'f5', from:'room',   to:'sensor', name:'ambient heat',        kind:'boundary', type:'Energy',   use:'Resource'},
+  ],
+};
+
+const LENSES = [
+  {id:'klir',  name:'Klir',  vocab:'things + relations',                    badge:'the bare kernel'},
+  {id:'bunge', name:'Bunge', vocab:'composition + bonds + environment',     badge:'system vs heap'},
+  {id:'mobus', name:'Mobus', vocab:'components + typed flows + interfaces',  badge:'working anatomy'},
+];
+let active = 'bunge';
+let uid = 100;
+
+const nameOf = id => {
+  const t = model.things.find(x=>x.id===id); if (t) return t.name;
+  const s = model.sources.find(x=>x.id===id); if (s) return s.name;
+  const k = model.sinks.find(x=>x.id===id); if (k) return k.name;
+  return id;
+};
+const allThings = () => [...model.things, ...model.sources, ...model.sinks];
+const bonds = () => model.flows.filter(f=>f.kind==='bond');
+const kernelCounts = () => ({things: allThings().length, deps: model.flows.length});
+
+/* validators: Klir always Core-ok; Bunge needs >=1 bond; Mobus ok if no self-loop */
+function verdicts(){
+  const b = bonds().length;
+  const selfloop = model.flows.some(f=>f.from===f.to);
+  return {
+    klir:  {ok:true,  msg:'Core ✓'},
+    bunge: b>0 ? {ok:true, msg:'Structural ✓'} : {ok:false, msg:'aggregate — no bond'},
+    mobus: !selfloop ? {ok:true, msg:'Operational ✓'} : {ok:false, msg:'self-loop'},
+  };
+}
+
+/* ---------- render: ribbon + lens tabs ---------- */
+function renderTop(){
+  const k = kernelCounts();
+  document.getElementById('kchip').textContent =
+    `one kernel · ${k.things} things · ${k.deps} dependencies`;
+  const v = verdicts();
+  document.getElementById('vchips').innerHTML = LENSES.map(L=>{
+    const vv = v[L.id]; const cls = vv.ok?'ok':'warn';
+    return `<span class="vchip ${cls}"><span class="lk" style="background:var(--${L.id})"></span>${L.name} · ${vv.msg}</span>`;
+  }).join('');
+
+  document.getElementById('lenses').innerHTML = LENSES.map(L=>`
+    <div class="lens-tab ${active===L.id?'active':''}" style="--lc:var(--${L.id})" onclick="setLens('${L.id}')">
+      <span class="bar"></span>
+      <div class="lname"><span style="width:8px;height:8px;border-radius:50%;background:var(--${L.id});display:inline-block"></span>Author as ${L.name}</div>
+      <div class="lvocab">${L.vocab}</div>
+      <div class="badge">${L.badge}</div>
+    </div>`).join('');
+}
+
+/* ---------- render: editor for the active lens ---------- */
+function rowThing(t, glyph='•'){
+  return `<div class="row"><span class="glyph">${glyph}</span>
+    <input class="f" value="${t.name}" oninput="rename('${t.id}',this.value)"/>
+    <span class="x" onclick="delThing('${t.id}')">✕</span></div>`;
+}
+function rowEdge(f, opts={}){
+  const tag = opts.type ? `<span class="tag ${f.type.toLowerCase()}">${f.type} · ${f.use}</span>` : '';
+  const label = opts.showName ? `<input class="f" value="${f.name}" oninput="renameFlow('${f.id}',this.value)"/>` :
+    `<span style="flex:1;color:var(--ink-soft)">${f.name}</span>`;
+  return `<div class="row"><span class="glyph">${opts.glyph||'→'}</span>
+    <span class="mk" style="color:var(--ink)">${nameOf(f.from)}</span>
+    <span class="arrow">→</span>
+    <span class="mk" style="color:var(--ink)">${nameOf(f.to)}</span>
+    ${tag}<span style="flex:1"></span>${label}
+    <span class="x" onclick="delFlow('${f.id}')">✕</span></div>`;
+}
+function sec(label,count,hint,body){
+  return `<div class="section"><div class="sec-h"><span class="label">${label}</span>
+    <span class="count">${count}</span>${hint?`<span class="hint">${hint}</span>`:''}</div>${body}</div>`;
+}
+
+/* ----- the universal authoring primitive: a thing + the connections declared ON it -----
+   the lens only changes what a connection MEANS (dependency / bond / typed flow). ----- */
+function glyphFor(t){
+  if (model.sources.some(s=>s.id===t.id)) return '←';
+  if (model.sinks.some(s=>s.id===t.id))   return '→';
+  return '◻';
+}
+function thingBlock(t, lens, verb){
+  let items;
+  if (lens==='bunge'){
+    // bonds are couplings — show the neighbour at either end (symmetric)
+    items = bonds().filter(f=>f.from===t.id||f.to===t.id)
+      .map(f=>({f, label: nameOf(f.from===t.id?f.to:f.from), sym:'⋈', tag:''}));
+  } else {
+    // directed: a thing's outgoing connections (each edge authored once, from its source)
+    items = model.flows.filter(f=>f.from===t.id)
+      .map(f=>({f, label: nameOf(f.to), sym:'→',
+        tag: lens==='mobus' ? `<span class="ctag ${f.type.toLowerCase()}">${f.type}</span>` : ''}));
+  }
+  const chips = items.map(it=>
+    `<span class="chip">${it.sym} ${it.label} ${it.tag}<span class="cx" title="remove relation" onclick="delFlow('${it.f.id}')">✕</span></span>`).join('');
+  return `<div class="tblock">
+    <div class="trow"><span class="glyph">${glyphFor(t)}</span>
+      <input class="f" value="${t.name}" oninput="rename('${t.id}',this.value)"/>
+      <span class="x" title="remove thing" onclick="delThing('${t.id}')">✕</span></div>
+    <div class="conns"><span class="verb">${verb}</span>${chips||'<span class="empty">— not connected yet</span>'}
+      <button class="connect" onclick="startConnect('${t.id}','${lens}',this)">＋ connect</button></div>
+  </div>`;
+}
+const isComp = id => model.things.some(t=>t.id===id);
+function findOrCreateThing(name){
+  const key = name.trim().toLowerCase(); if (!key) return null;
+  const hit = allThings().find(x=>x.name.trim().toLowerCase()===key);
+  if (hit) return hit.id;
+  const id = 't'+(uid++); model.things.push({id, name:name.trim()}); return id;
+}
+
+/* create-on-type: name a target inline, existing or brand-new, in one gesture */
+function startConnect(fromId, lens, btn){
+  const inp = document.createElement('input');
+  inp.className = 'connect-input';
+  inp.placeholder = 'connect to… (type a name, Enter)';
+  inp.onkeydown = e => {
+    if (e.key === 'Enter') { e.preventDefault(); commitConnect(fromId, lens, inp.value); }
+    else if (e.key === 'Escape') render();
+  };
+  inp.onblur = () => setTimeout(()=>{ if (document.body.contains(inp)) render(); }, 120);
+  btn.replaceWith(inp); inp.focus();
+}
+function commitConnect(fromId, lens, name){
+  if (!name.trim()) { render(); return; }
+  const toId = findOrCreateThing(name);
+  model.flows.push({id:'f'+(uid++), from:fromId, to:toId, name:'connection',
+    kind: lens==='bunge' ? 'bond' : (isComp(fromId)&&isComp(toId) ? 'bond' : 'boundary'),
+    type:'Message', use:'Resource'});
+  render();
+}
+
+/* ----- text-first capture: the system as connection lines, mirrored live ----- */
+function serializeModel(){
+  return model.flows.map(f=>{
+    const lbl = (f.name && !['connection','new connection'].includes(f.name)) ? ' : '+f.name : '';
+    return `${nameOf(f.from)} → ${nameOf(f.to)}${lbl}`;
+  }).join('\n');
+}
+function parseText(text){
+  const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+  const out = [];
+  for (const line of lines){
+    const m = line.match(/^(.+?)\s*(?:->|→|=>)\s*([^:]+?)\s*(?::\s*(.+))?$/);
+    if (!m) continue;
+    const fromId = findOrCreateThing(m[1]); const toId = findOrCreateThing(m[2]);
+    if (!fromId || !toId) continue;
+    const label = (m[3]||'').trim();
+    const prev = model.flows.find(f=>f.from===fromId && f.to===toId);
+    out.push({ id: prev?prev.id:'f'+(uid++), from:fromId, to:toId,
+      name: label || (prev?prev.name:'connection'),
+      kind: prev?prev.kind : (isComp(fromId)&&isComp(toId) ? 'bond' : 'boundary'),
+      type: prev?prev.type:'Message', use: prev?prev.use:'Resource' });
+  }
+  model.flows = out;
+}
+function syncQc(){ const el = document.getElementById('qc'); if (el) el.value = serializeModel(); }
+function onQcInput(v){
+  parseText(v);
+  document.getElementById('blocks').innerHTML = blocksHtml();
+  renderTop(); renderConv();   /* update everything EXCEPT the textarea being typed in */
+}
+
+function blocksHtml(){
+  let body = '';
+
+  if (active==='klir'){
+    body =
+      sec('Things &amp; their relations', allThings().length+' things · '+model.flows.length+' relations',
+        'R is declared ON the things — connect them, don\'t keep a separate edge list',
+        allThings().map(t=>thingBlock(t,'klir','depends on')).join('') +
+        `<button class="add" onclick="addThing()">＋ add thing</button>`) +
+      `<div class="lens-note"><b>Klir surfaces:</b> the bare kernel S = (T, R). R is a <b>relation on T</b> — you author it by connecting things in place, not as a list apart. It hides bonds, flow types and the boundary.</div>`;
+  }
+
+  if (active==='bunge'){
+    body =
+      sec('Components &amp; their bonds', model.things.length+' components · '+bonds().length+' bonds',
+        'bonds are declared ON the components they couple',
+        model.things.map(t=>thingBlock(t,'bunge','couples with')).join('') +
+        `<button class="add" onclick="addThing()">＋ add component</button>`) +
+      sec('Environment', model.sources.length+model.sinks.length, 'sources &amp; sinks — what the components exchange with across the boundary',
+        model.sources.map(t=>thingBlock(t,'env','exchanges with')).join('') +
+        model.sinks.map(t=>thingBlock(t,'env','exchanges with')).join('') +
+        `<button class="add" onclick="addSource()">＋ source</button> <button class="add" onclick="addSink()">＋ sink</button>`) +
+      `<div class="lens-note"><b>Bunge surfaces:</b> composition + structure + environment. <b>Remove the bonds and you have an aggregate</b> — the validator says so live.</div>`;
+  }
+
+  if (active==='mobus'){
+    body =
+      sec('Components &amp; their flows', model.things.length+' components · '+model.flows.length+' flows',
+        'each typed flow is declared ON the component it leaves',
+        allThings().map(t=>thingBlock(t,'mobus','flows to')).join('') +
+        `<button class="add" onclick="addThing()">＋ add component</button>`) +
+      sec('Interfaces', model.flows.length, 'ports the flows cross (derived)',
+        model.flows.map(f=>`<div class="row"><span class="glyph">⬡</span>
+          <span class="mk">${nameOf(f.to)}</span><span class="tag">${f.type==='Energy'?'energy port':'signal port'}</span>
+          <span style="flex:1;color:var(--ink-soft)">${f.name}</span></div>`).join('')) +
+      `<div class="lens-note"><b>Mobus surfaces:</b> the working anatomy — components, the boundary, typed flows (Energy / Material / Message) and the interfaces they cross.</div>`;
+  }
+  return body;
+}
+
+function renderEditor(){
+  const ed = document.getElementById('editor');
+  ed.style.setProperty('--lc', `var(--${active})`);
+  const L = LENSES.find(x=>x.id===active);
+  ed.innerHTML = `
+    <div class="card-h">
+      <div class="ttl">Authoring <span class="pill" style="--lc:var(--${active})">as ${L.name}</span></div>
+      <div class="sub">${L.vocab} · each edit re-emits the spec and recompiles the kernel in-process</div>
+    </div>
+    <div class="card-b">
+      <div class="qc">
+        <div class="qc-h"><span class="qc-t">✎ Quick capture</span>
+          <span class="qc-s">type the system as connections — <code>A → B : what flows</code> — new things are created as you go, one kernel underneath</span></div>
+        <textarea id="qc" spellcheck="false" oninput="onQcInput(this.value)">${serializeModel()}</textarea>
+      </div>
+      <div id="blocks">${blocksHtml()}</div>
+    </div>`;
+}
+
+/* ---------- render: the live "other lenses" rail ---------- */
+function miniFor(id){
+  const L = LENSES.find(x=>x.id===id); const v = verdicts()[id];
+  let lines = '';
+  if (id==='klir'){
+    lines = `<div class="l"><span class="g">T</span><span class="mk">${allThings().length} things</span></div>` +
+            `<div class="l"><span class="g">R</span><span class="mk">${model.flows.length} dependencies</span></div>`;
+  } else if (id==='bunge'){
+    lines = `<div class="l"><span class="g">◻</span><span class="mk">${model.things.length} components</span></div>` +
+            `<div class="l"><span class="g">⋈</span><span class="mk">${bonds().length} bonds</span></div>` +
+            `<div class="l"><span class="g">⌂</span><span class="mk">${model.sources.length+model.sinks.length} environment</span></div>`;
+  } else {
+    lines = `<div class="l"><span class="g">→</span><span class="mk">${model.flows.length} typed flows</span></div>` +
+            `<div class="l"><span class="g">⬡</span><span class="mk">${model.flows.length} interfaces</span></div>`;
+  }
+  return `<div class="mini" style="--lc:var(--${id})">
+    <div class="mini-h"><span class="ld"></span><span class="nm">${L.name}</span>
+      <span class="vv ${v.ok?'ok':'warn'}">${v.ok?'✓ '+v.msg:'⚠ '+v.msg}</span></div>
+    <div class="mini-b">${lines}</div></div>`;
+}
+function renderConv(){
+  const k = kernelCounts();
+  const others = LENSES.filter(L=>L.id!==active).map(L=>miniFor(L.id)).join('');
+  const v = verdicts();
+  const warn = Object.entries(v).find(([,vv])=>!vv.ok);
+  const warnHtml = warn ? `<div class="verdict warn"><span class="vi">⚠</span>
+    <div><b>${LENSES.find(L=>L.id===warn[0]).name}: ${warn[1].msg}.</b> Add at least one internal bond and this model becomes a faithful system in every lens. <span style="color:var(--ink-faint)">(validate_mode · cited, deterministic)</span></div></div>` : '';
+  document.getElementById('conv').innerHTML = `
+    <div class="conv-line">Author once → <b>all three lenses</b> + the kernel invariant stay in sync. No re-authoring per lens.</div>
+    <div class="conv-line" style="color:var(--ink-faint);font-size:12px">kernel re-projected: <b style="color:var(--ok)">live == baseline</b> · ${k.things} things · ${k.deps} dependencies</div>
+    ${others}
+    ${warnHtml}`;
+}
+
+function render(){ renderTop(); renderEditor(); renderConv(); }
+
+/* ---------- edits (demonstrate the live spine) ---------- */
+function setLens(id){ active=id; render(); }
+function rename(id,v){ const t=allThings().find(x=>x.id===id); if(t)t.name=v; renderTop(); renderConv(); syncQc(); }
+function renameFlow(id,v){ const f=model.flows.find(x=>x.id===id); if(f)f.name=v; syncQc(); }
+function addThing(){ model.things.push({id:'t'+(uid++), name:'New component'}); render(); }
+function addSource(){ model.sources.push({id:'s'+(uid++), name:'New source'}); render(); }
+function addSink(){ model.sinks.push({id:'k'+(uid++), name:'New sink'}); render(); }
+function addEdge(kind){
+  const ids = model.things.map(t=>t.id);
+  model.flows.push({id:'f'+(uid++), from:ids[0]||'sensor', to:ids[1]||'ctrl',
+    name:kind==='bond'?'new coupling':'new flow', kind, type:'Message', use:'Resource'});
+  render();
+}
+function delThing(id){
+  model.things=model.things.filter(x=>x.id!==id);
+  model.sources=model.sources.filter(x=>x.id!==id);
+  model.sinks=model.sinks.filter(x=>x.id!==id);
+  model.flows=model.flows.filter(f=>f.from!==id&&f.to!==id);
+  render();
+}
+function delFlow(id){ model.flows=model.flows.filter(f=>f.id!==id); render(); }
+
+/* co-create */
+function openCreate(){ document.getElementById('scrim').classList.add('on'); document.getElementById('slide').classList.add('on'); }
+function closeCreate(){ document.getElementById('scrim').classList.remove('on'); document.getElementById('slide').classList.remove('on'); }
+function segPick(b){ b.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); }
+
+render();
+</script>
+</body>
+</html>
