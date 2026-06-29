@@ -1332,8 +1332,12 @@ impl CanvasApp {
                         if lens != Lens::Klir {
                             arrow_head(&painter, b, dir, stroke.color);
                         }
-                        // the relation's name (or a "name…" prompt when selected) floated off the line
-                        if self.editing_rel != Some(r.id) {
+                        // Labels are revealed on hover or selection only. Always-on midpoint labels
+                        // pile up illegibly on a dense graph; the canvas shows structure (things +
+                        // lines) and the names live in the math view's R. Kind is already carried by
+                        // edge colour in Bunge/Mobus.
+                        let hot = sel || hover.map_or(false, |h| dist_to_seg(h, a, b) <= 8.0);
+                        if self.editing_rel != Some(r.id) && hot {
                             let perp = egui::vec2(-dir.y, dir.x) * 11.0;
                             let mid = pa + (pb - pa) * 0.5 + perp;
                             if !r.name.is_empty() {
@@ -1344,7 +1348,7 @@ impl CanvasApp {
                                     egui::FontId::proportional(12.0),
                                     theme::INK_SOFT,
                                 );
-                            } else if matches!(self.selection, Selected::Rel(s) if s == r.id) {
+                            } else if sel {
                                 painter.text(
                                     mid,
                                     egui::Align2::CENTER_CENTER,
@@ -1353,8 +1357,6 @@ impl CanvasApp {
                                     theme::INK_FAINT,
                                 );
                             }
-                            // kind label below the line (Bunge/Mobus), in the kind's colour — so K
-                            // gives immediate feedback even while the bond is selected
                             if lens != Lens::Klir && r.is_bond && r.kind != Kind::Unspecified {
                                 painter.text(
                                     pa + (pb - pa) * 0.5 + egui::vec2(-dir.y, dir.x) * -13.0,
