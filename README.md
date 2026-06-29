@@ -35,9 +35,15 @@ Dependency order is **view → author → translate**: authoring-in-a-lens only 
 ## Run
 
 ```sh
-cargo run                      # native window
+cargo run                      # native window (the canvas front door)
+cargo run --bin viewer         # the demoted Arc-1 list viewer (reference)
 trunk serve --open             # WASM (after: rustup target add wasm32-unknown-unknown && cargo install trunk)
 ```
+
+**Self-contained macOS app:** `scripts/bundle-macos.sh` builds `/Applications/bert-lenses.app` with the
+release binary copied *inside* the bundle (`Contents/MacOS/`) — it keeps working after `cargo clean`.
+Re-run the script after code changes to refresh the app. Default install dir is `/Applications`; pass a
+path to override.
 
 ## Status
 
