@@ -478,6 +478,7 @@ impl CanvasApp {
         if self.lens.is_none() {
             self.lens = Some(Lens::Bunge); // bonds + kinds + roles all render faithfully in Bunge
         }
+        layout(self.lens.unwrap_or(Lens::Bunge), &mut self.things, LAYOUT_CENTER);
         self.selection = Selected::None;
         self.editing = None;
         self.editing_rel = None;
@@ -522,6 +523,59 @@ fn str_at<'a>(v: &'a serde_json::Value, key: &str) -> &'a str {
 }
 fn substance_type(flow: &serde_json::Value) -> Kind {
     substance_to_kind(flow.get("substance").and_then(|s| s.get("type")).and_then(|t| t.as_str()).unwrap_or(""))
+}
+
+/// Canonical layout origin for auto-arrange and Tidy.
+const LAYOUT_CENTER: egui::Pos2 = egui::pos2(520.0, 360.0);
+
+/// Place ids evenly on a circle of `radius` around `center` (id order = stable).
+fn place_ring(ids: &[u64], center: egui::Pos2, radius: f32, things: &mut [Thing]) {
+    let n = ids.len().max(1);
+    for (i, id) in ids.iter().enumerate() {
+        let a = std::f32::consts::TAU * (i as f32) / (n as f32) - std::f32::consts::FRAC_PI_2;
+        if let Some(t) = things.iter_mut().find(|t| t.id == *id) {
+            t.pos = center + radius * egui::vec2(a.cos(), a.sin());
+        }
+    }
+}
+
+/// Place ids in a centered row-major grid: cols = ceil(√n), cell size dx×dy.
+fn place_grid(ids: &[u64], center: egui::Pos2, dx: f32, dy: f32, things: &mut [Thing]) {
+    let n = ids.len().max(1);
+    let cols = (n as f32).sqrt().ceil().max(1.0);
+    let rows = (n as f32 / cols).ceil();
+    for (i, id) in ids.iter().enumerate() {
+        let col = (i % cols as usize) as f32;
+        let row = (i / cols as usize) as f32;
+        let off = egui::vec2((col - (cols - 1.0) / 2.0) * dx, (row - (rows - 1.0) / 2.0) * dy);
+        if let Some(t) = things.iter_mut().find(|t| t.id == *id) {
+            t.pos = center + off;
+        }
+    }
+}
+
+/// Arrange `things` in `lens`'s spatial idiom — the kernel is untouched, only positions move.
+/// Klir: one set T as a tidy grid. Bunge: components clustered, environment pushed outside.
+/// Mobus: components on an inner ring, environment on an outer ring. Deterministic (sorted by id).
+fn layout(lens: Lens, things: &mut [Thing], center: egui::Pos2) {
+    let mut all: Vec<u64> = things.iter().map(|t| t.id).collect();
+    let mut comps: Vec<u64> = things.iter().filter(|t| t.role == Role::Component).map(|t| t.id).collect();
+    let mut envs: Vec<u64> = things.iter().filter(|t| t.role == Role::Environment).map(|t| t.id).collect();
+    all.sort_unstable();
+    comps.sort_unstable();
+    envs.sort_unstable();
+    match lens {
+        Lens::Klir => place_grid(&all, center, 120.0, 104.0, things),
+        Lens::Bunge => {
+            place_grid(&comps, center, 104.0, 100.0, things);
+            let half = (comps.len().max(1) as f32).sqrt().ceil() * 104.0 / 2.0;
+            place_ring(&envs, center, half + 150.0, things);
+        }
+        Lens::Mobus => {
+            place_ring(&comps, center, 150.0, things);
+            place_ring(&envs, center, 320.0, things);
+        }
+    }
 }
 
 /// Distill the spec: subsystems→Component, sources/sinks→Environment, internal/external flows→
@@ -572,21 +626,8 @@ fn model_from_spec(spec: &serde_json::Value) -> (Vec<Thing>, Vec<Relation>, u64)
         rid += 1;
     }
 
-    // Auto-layout: components on an inner ring, environment on an outer ring.
-    let center = egui::pos2(480.0, 340.0);
-    let comps: Vec<u64> = things.iter().filter(|t| t.role == Role::Component).map(|t| t.id).collect();
-    let envs: Vec<u64> = things.iter().filter(|t| t.role == Role::Environment).map(|t| t.id).collect();
-    let place = |ids: &[u64], radius: f32, things: &mut Vec<Thing>| {
-        let n = ids.len().max(1);
-        for (i, id) in ids.iter().enumerate() {
-            let a = std::f32::consts::TAU * (i as f32) / (n as f32) - std::f32::consts::FRAC_PI_2;
-            if let Some(t) = things.iter_mut().find(|t| t.id == *id) {
-                t.pos = center + radius * egui::vec2(a.cos(), a.sin());
-            }
-        }
-    };
-    place(&comps, 150.0, &mut things);
-    place(&envs, 320.0, &mut things);
+    // Neutral default layout; the GUI re-idioms to the active lens on import (apply_spec).
+    layout(Lens::Bunge, &mut things, LAYOUT_CENTER);
 
     (things, relations, next)
 }
@@ -780,6 +821,13 @@ impl CanvasApp {
                     .clicked()
                 {
                     self.save_model(lens);
+                }
+                if ui
+                    .button(egui::RichText::new("Tidy").color(theme::INK_SOFT))
+                    .on_hover_text("Auto-arrange the layout to suit the current lens")
+                    .clicked()
+                {
+                    layout(lens, &mut self.things, LAYOUT_CENTER);
                 }
                 ui.add_space(14.0);
                 ui.separator();
@@ -1057,6 +1105,31 @@ impl CanvasApp {
                         x += step;
                     }
                     y += step;
+                }
+
+                // lens container, drawn behind relations + nodes: Klir = the set T; Bunge = composition.
+                let tint = |c: egui::Color32, a: u8| egui::Color32::from_rgba_unmultiplied(c.r(), c.g(), c.b(), a);
+                match lens {
+                    Lens::Klir => {
+                        let pts: Vec<egui::Pos2> = self.things.iter().map(|t| t.pos).collect();
+                        if !pts.is_empty() {
+                            let r = egui::Rect::from_points(&pts).expand(RADIUS + 26.0);
+                            let cr = egui::CornerRadius::same((r.height().min(r.width()) / 2.0).min(120.0) as u8);
+                            painter.rect_filled(r, cr, tint(theme::KLIR, 14));
+                            painter.rect_stroke(r, cr, egui::Stroke::new(1.0, theme::LINE2), egui::StrokeKind::Inside);
+                            painter.text(r.left_top() + egui::vec2(11.0, 7.0), egui::Align2::LEFT_TOP, "T", egui::FontId::proportional(13.0), theme::KLIR);
+                        }
+                    }
+                    Lens::Bunge => {
+                        let pts: Vec<egui::Pos2> = self.things.iter().filter(|t| t.role == Role::Component).map(|t| t.pos).collect();
+                        if !pts.is_empty() {
+                            let r = egui::Rect::from_points(&pts).expand(RADIUS + 24.0);
+                            let cr = egui::CornerRadius::same(28);
+                            painter.rect_filled(r, cr, tint(theme::BUNGE, 12));
+                            painter.rect_stroke(r, cr, egui::Stroke::new(1.0, tint(theme::BUNGE, 70)), egui::StrokeKind::Inside);
+                        }
+                    }
+                    Lens::Mobus => {}
                 }
 
                 // press on body moves; press near rim starts a relation
@@ -1693,5 +1766,34 @@ mod tests {
         assert_eq!(substance_to_kind("Energy"), Kind::Energy);
         assert_eq!(substance_to_kind("Message"), Kind::Informational);
         assert_eq!(substance_to_kind("whatever"), Kind::Unspecified);
+    }
+
+    fn thing(id: u64, role: Role) -> Thing {
+        Thing { id, name: format!("t{id}"), pos: egui::Pos2::ZERO, role }
+    }
+
+    #[test]
+    fn klir_layout_is_a_tidy_distinct_grid() {
+        let mut ts = vec![thing(1, Role::Component), thing(2, Role::Environment), thing(3, Role::Component), thing(4, Role::Environment)];
+        layout(Lens::Klir, &mut ts, egui::pos2(500.0, 350.0));
+        // every position distinct (no sprawl/overlap) and non-origin
+        for i in 0..ts.len() {
+            assert!(ts[i].pos != egui::Pos2::ZERO);
+            for j in (i + 1)..ts.len() {
+                assert!(ts[i].pos.distance(ts[j].pos) > RADIUS, "grid cells must not overlap");
+            }
+        }
+    }
+
+    #[test]
+    fn bunge_and_mobus_put_components_inside_environment() {
+        let center = egui::pos2(500.0, 350.0);
+        for lens in [Lens::Bunge, Lens::Mobus] {
+            let mut ts = vec![thing(1, Role::Component), thing(2, Role::Component), thing(3, Role::Environment)];
+            layout(lens, &mut ts, center);
+            let comp_max = ts.iter().filter(|t| t.role == Role::Component).map(|t| t.pos.distance(center)).fold(0.0_f32, f32::max);
+            let env_min = ts.iter().filter(|t| t.role == Role::Environment).map(|t| t.pos.distance(center)).fold(f32::MAX, f32::min);
+            assert!(comp_max < env_min, "components must sit inside the environment");
+        }
     }
 }
