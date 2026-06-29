@@ -162,6 +162,13 @@ struct Model {
     next_id: u64,
     things: Vec<Thing>,
     relations: Vec<Relation>,
+    /// Provenance pass-through: the GSR spec this model was distilled from (via Import spec or the
+    /// in-app generate). Preserved on save so the spec fields the canvas doesn't render — the Mobus-only
+    /// interfaces/processors/usability — are not *silently* lost (see GSR `docs/spec-architecture.md` §3,
+    /// §8: council-mandated pass-through). It records ORIGIN, not current state; it is NOT kept in sync
+    /// with later edits to the kernel.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    source_spec: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -198,6 +205,8 @@ struct CanvasApp {
     gen_busy: bool,
     gen_error: Option<String>,
     gen_rx: Option<std::sync::mpsc::Receiver<Result<serde_json::Value, String>>>,
+    /// Provenance of the current model when it came from a spec (Import or generate). Persisted on save.
+    source_spec: Option<serde_json::Value>,
 }
 
 fn arrow_head(painter: &egui::Painter, tip: egui::Pos2, dir: egui::Vec2, color: egui::Color32) {
@@ -319,6 +328,7 @@ impl CanvasApp {
                 next_id: self.next_id,
                 things: self.things.clone(),
                 relations: self.relations.clone(),
+                source_spec: self.source_spec.clone(),
             };
             if let Ok(json) = serde_json::to_string_pretty(&model) {
                 let _ = std::fs::write(path, json);
@@ -337,12 +347,57 @@ impl CanvasApp {
                     self.next_id = model.next_id;
                     self.things = model.things;
                     self.relations = model.relations;
+                    self.source_spec = model.source_spec;
                     self.editing = None;
                     self.editing_rel = None;
                     self.drag = None;
                     self.connecting = None;
                     self.selection = Selected::None;
                 }
+            }
+        }
+    }
+
+    /// Distill a GSR spec into the live model and record it as provenance (the single apply path,
+    /// shared by Import spec and the in-app generate — same `model_from_spec` as the headless `convert`).
+    /// Returns false if the spec had nothing to model. Lands in a lens so the result renders.
+    fn apply_spec(&mut self, spec: serde_json::Value) -> bool {
+        let (things, relations, next_id) = model_from_spec(&spec);
+        if things.is_empty() {
+            return false;
+        }
+        self.things = things;
+        self.relations = relations;
+        self.next_id = next_id;
+        self.source_spec = Some(spec);
+        if self.lens.is_none() {
+            self.lens = Some(Lens::Bunge); // bonds + kinds + roles all render faithfully in Bunge
+        }
+        self.selection = Selected::None;
+        self.editing = None;
+        self.editing_rel = None;
+        self.connecting = None;
+        true
+    }
+
+    /// Import a GSR spec from disk (the push half of the Facets→canvas bridge). Accepts a `/extract`
+    /// response (`{spec:…}`) or a bare spec — same acceptance as the headless `convert`.
+    fn import_spec(&mut self) {
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("GSR spec (json)", &["json"])
+            .pick_file()
+        {
+            match std::fs::read_to_string(&path) {
+                Ok(txt) => match serde_json::from_str::<serde_json::Value>(&txt) {
+                    Ok(v) => {
+                        let spec = v.get("spec").cloned().unwrap_or(v);
+                        if !self.apply_spec(spec) {
+                            self.gen_error = Some("the spec had nothing to model".to_string());
+                        }
+                    }
+                    Err(e) => self.gen_error = Some(format!("not valid JSON: {e}")),
+                },
+                Err(e) => self.gen_error = Some(format!("could not read file: {e}")),
             }
         }
     }
@@ -503,17 +558,8 @@ impl CanvasApp {
                 self.gen_busy = false;
                 match result {
                     Ok(spec) => {
-                        let (things, relations, next_id) = model_from_spec(&spec);
-                        if things.is_empty() {
+                        if !self.apply_spec(spec) {
                             self.gen_error = Some("the spec had nothing to model".to_string());
-                        } else {
-                            self.things = things;
-                            self.relations = relations;
-                            self.next_id = next_id;
-                            self.selection = Selected::None;
-                            self.editing = None;
-                            self.editing_rel = None;
-                            self.connecting = None;
                         }
                     }
                     Err(e) => self.gen_error = Some(e),
@@ -646,6 +692,13 @@ impl CanvasApp {
                     .clicked()
                 {
                     self.save_model(lens);
+                }
+                if ui
+                    .button(egui::RichText::new("Import spec").color(theme::INK_SOFT))
+                    .on_hover_text("Import a GSR spec (from Facets \"model this\", or /extract) and author it")
+                    .clicked()
+                {
+                    self.import_spec();
                 }
                 ui.add_space(14.0);
                 ui.separator();
@@ -1433,7 +1486,7 @@ fn main() -> eframe::Result<()> {
         let v: serde_json::Value = serde_json::from_str(&raw).expect("parse spec");
         let spec = v.get("spec").cloned().unwrap_or(v); // accept a /extract response or a bare spec
         let (things, relations, next_id) = model_from_spec(&spec);
-        let model = Model { lens: Lens::Bunge, next_id, things, relations };
+        let model = Model { lens: Lens::Bunge, next_id, things, relations, source_spec: Some(spec) };
         std::fs::write(&args[3], serde_json::to_string_pretty(&model).expect("serialize"))
             .expect("write model");
         eprintln!("wrote {} ({} things, {} relations)", args[3], model.things.len(), model.relations.len());
@@ -1496,6 +1549,36 @@ mod tests {
         assert_eq!((raw.a, raw.b), (reservoir, pump), "Import should flow env->component");
         // positions assigned (not at origin)
         assert!(things.iter().all(|t| t.pos != egui::Pos2::ZERO));
+    }
+
+    #[test]
+    fn apply_spec_populates_kernel_and_preserves_provenance() {
+        let spec = serde_json::json!({
+            "system": {"name": "Widget"},
+            "subsystems": [{"name": "A"}, {"name": "B"}],
+            "sources": [{"name": "Env"}],
+            "sinks": [],
+            "routing_table": [{"interface": "In", "type": "Import", "connected_to": "Env", "target_subsystem": "A", "has_processor": true}],
+            "internal_flows": [{"name": "Link", "source": "A", "sink": "B", "substance": {"type": "Message"}}],
+            "external_flows": [{"name": "Feed", "interface": "In", "substance": {"type": "Material"}, "usability": "Resource"}]
+        });
+        let mut app = CanvasApp::default();
+        assert!(app.apply_spec(spec.clone()));
+        // kernel populated
+        assert_eq!(app.things.len(), 3); // A, B, Env
+        assert_eq!(app.relations.len(), 2); // 1 internal + 1 external
+        assert!(matches!(app.lens, Some(Lens::Bunge))); // landed in a renderable lens
+        // provenance pass-through: the Mobus-only fields the canvas doesn't render are retained verbatim
+        let ss = app.source_spec.as_ref().expect("source_spec recorded");
+        assert_eq!(ss["external_flows"][0]["usability"], "Resource");
+        assert_eq!(ss["routing_table"][0]["has_processor"], true);
+        assert_eq!(ss["system"]["name"], "Widget");
+    }
+
+    #[test]
+    fn apply_spec_rejects_empty() {
+        let mut app = CanvasApp::default();
+        assert!(!app.apply_spec(serde_json::json!({"subsystems": [], "sources": [], "sinks": []})));
     }
 
     #[test]
