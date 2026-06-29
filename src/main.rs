@@ -211,6 +211,9 @@ struct CanvasApp {
     /// listed in the left panel for one-click loading. Lazy-initialised on first frame.
     models_dir: Option<std::path::PathBuf>,
     library: Vec<std::path::PathBuf>,
+    /// Set by import/Tidy; the next frame lays out centered on the visible canvas rect (so content
+    /// never lands off-screen). Deferred because the rect is only known during rendering.
+    relayout: bool,
 }
 
 fn arrow_head(painter: &egui::Painter, tip: egui::Pos2, dir: egui::Vec2, color: egui::Color32) {
@@ -478,7 +481,7 @@ impl CanvasApp {
         if self.lens.is_none() {
             self.lens = Some(Lens::Bunge); // bonds + kinds + roles all render faithfully in Bunge
         }
-        layout(self.lens.unwrap_or(Lens::Bunge), &mut self.things, LAYOUT_CENTER);
+        self.relayout = true; // lay out centered on the visible canvas next frame
         self.selection = Selected::None;
         self.editing = None;
         self.editing_rel = None;
@@ -824,10 +827,10 @@ impl CanvasApp {
                 }
                 if ui
                     .button(egui::RichText::new("Tidy").color(theme::INK_SOFT))
-                    .on_hover_text("Auto-arrange the layout to suit the current lens")
+                    .on_hover_text("Auto-arrange the layout to suit the current lens, centered in view")
                     .clicked()
                 {
-                    layout(lens, &mut self.things, LAYOUT_CENTER);
+                    self.relayout = true;
                 }
                 ui.add_space(14.0);
                 ui.separator();
@@ -1095,6 +1098,12 @@ impl CanvasApp {
                     ui.interact(rect, ui.id().with("canvas_bg"), egui::Sense::click_and_drag());
                 let hover = ui.input(|i| i.pointer.hover_pos());
 
+                // deferred relayout (import / Tidy) — center on the visible canvas so nothing drifts off-screen
+                if self.relayout {
+                    layout(lens, &mut self.things, rect.center());
+                    self.relayout = false;
+                }
+
                 // faint reference grid
                 let step = 30.0;
                 let mut y = rect.top() + step;
@@ -1145,9 +1154,14 @@ impl CanvasApp {
                     }
                 }
                 if resp.dragged() {
+                    let d = resp.drag_delta();
                     if let Some(id) = self.drag {
-                        let d = resp.drag_delta();
                         if let Some(t) = self.things.iter_mut().find(|t| t.id == id) {
+                            t.pos += d;
+                        }
+                    } else if self.connecting.is_none() {
+                        // drag on empty background → pan the whole canvas (move everything together)
+                        for t in &mut self.things {
                             t.pos += d;
                         }
                     }
