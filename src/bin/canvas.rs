@@ -81,31 +81,35 @@ enum Role {
 }
 
 /// Bunge §2.1: structure is "n directed graphs, one per kind of connection." The kind of a bond.
-#[derive(Clone, Copy, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, PartialEq, Debug, Default, serde::Serialize, serde::Deserialize)]
 enum Kind {
     #[default]
     Unspecified,
-    Mechanical,
-    Chemical,
+    Energy,
+    Matter,
+    Field,
     Informational,
-    Social,
 }
 
 impl Kind {
+    // Bunge's connection-flow taxonomy (Treatise v.4, §1.3): dynamic connections are flows of
+    // energy, matter, or fields; a flow carrying information is "informational" (and rides on an
+    // energy flow). Maps 1:1 onto Mobus substance (Material→Matter, Energy→Energy, Message→
+    // Informational). The *level* axis (physical/chemical/bio/social) is a thing-level overlay — later.
     const ALL: [Kind; 5] = [
         Kind::Unspecified,
-        Kind::Mechanical,
-        Kind::Chemical,
+        Kind::Energy,
+        Kind::Matter,
+        Kind::Field,
         Kind::Informational,
-        Kind::Social,
     ];
     fn label(self) -> &'static str {
         match self {
             Kind::Unspecified => "unspecified",
-            Kind::Mechanical => "mechanical",
-            Kind::Chemical => "chemical",
+            Kind::Energy => "energy",
+            Kind::Matter => "matter",
+            Kind::Field => "field",
             Kind::Informational => "informational",
-            Kind::Social => "social",
         }
     }
     fn next(self) -> Kind {
@@ -115,10 +119,10 @@ impl Kind {
     fn color(self) -> egui::Color32 {
         match self {
             Kind::Unspecified => theme::INK_SOFT,
-            Kind::Mechanical => egui::Color32::from_rgb(192, 138, 46),
-            Kind::Chemical => egui::Color32::from_rgb(79, 154, 85),
-            Kind::Informational => egui::Color32::from_rgb(79, 127, 192),
-            Kind::Social => egui::Color32::from_rgb(168, 95, 181),
+            Kind::Energy => egui::Color32::from_rgb(192, 138, 46),        // amber
+            Kind::Matter => egui::Color32::from_rgb(79, 154, 85),         // green
+            Kind::Field => egui::Color32::from_rgb(168, 95, 181),         // violet
+            Kind::Informational => egui::Color32::from_rgb(79, 127, 192), // blue
         }
     }
 }
@@ -184,6 +188,13 @@ struct CanvasApp {
     next_id: u64,
     focus_pending: bool,
     show_math: bool,
+    // LLM-assisted generation: the canvas calls GSR /extract (local or cloud), distills the
+    // returned spec into this bare Model in-process. GSR stays the single brain.
+    gen_desc: String,
+    gen_cloud: bool,
+    gen_busy: bool,
+    gen_error: Option<String>,
+    gen_rx: Option<std::sync::mpsc::Receiver<Result<serde_json::Value, String>>>,
 }
 
 fn arrow_head(painter: &egui::Painter, tip: egui::Pos2, dir: egui::Vec2, color: egui::Color32) {
@@ -334,9 +345,190 @@ impl CanvasApp {
     }
 }
 
+// ── L1: distill a GSR intermediate spec into the bare, lens-neutral Model ──
+
+/// Mobus substance.type → Bunge connection-flow Kind (Treatise v.4 §1.3). 1:1 by design.
+fn substance_to_kind(s: &str) -> Kind {
+    match s.trim().to_ascii_lowercase().as_str() {
+        "energy" => Kind::Energy,
+        "material" | "matter" => Kind::Matter,
+        "message" | "information" | "informational" => Kind::Informational,
+        "field" => Kind::Field,
+        _ => Kind::Unspecified,
+    }
+}
+
+fn intern(
+    name: &str,
+    role: Role,
+    things: &mut Vec<Thing>,
+    map: &mut std::collections::HashMap<String, u64>,
+    next: &mut u64,
+) -> u64 {
+    if let Some(&id) = map.get(name) {
+        return id;
+    }
+    let id = *next;
+    *next += 1;
+    things.push(Thing { id, name: name.to_string(), pos: egui::Pos2::ZERO, role });
+    map.insert(name.to_string(), id);
+    id
+}
+
+fn str_at<'a>(v: &'a serde_json::Value, key: &str) -> &'a str {
+    v.get(key).and_then(|x| x.as_str()).unwrap_or("")
+}
+fn substance_type(flow: &serde_json::Value) -> Kind {
+    substance_to_kind(flow.get("substance").and_then(|s| s.get("type")).and_then(|t| t.as_str()).unwrap_or(""))
+}
+
+/// Distill the spec: subsystems→Component, sources/sinks→Environment, internal/external flows→
+/// directed bonds (Kind from substance). External flows are routed via the routing_table. Drops the
+/// Mobus-only extras (interfaces, processors, usability) — neutrality lives in the kernel, not the spec.
+fn model_from_spec(spec: &serde_json::Value) -> (Vec<Thing>, Vec<Relation>, u64) {
+    use std::collections::HashMap;
+    let mut things: Vec<Thing> = Vec::new();
+    let mut map: HashMap<String, u64> = HashMap::new();
+    let mut next: u64 = 1;
+    let empty = vec![];
+
+    // Components first (so a name shared with a source/sink interns as Component).
+    for ss in spec.get("subsystems").and_then(|x| x.as_array()).unwrap_or(&empty) {
+        let n = str_at(ss, "name");
+        if !n.is_empty() { intern(n, Role::Component, &mut things, &mut map, &mut next); }
+    }
+    for key in ["sources", "sinks"] {
+        for e in spec.get(key).and_then(|x| x.as_array()).unwrap_or(&empty) {
+            let n = str_at(e, "name");
+            if !n.is_empty() { intern(n, Role::Environment, &mut things, &mut map, &mut next); }
+        }
+    }
+
+    // routing_table: interface -> (connected_to env, target_subsystem, type)
+    let mut routes: HashMap<String, (String, String, String)> = HashMap::new();
+    for rt in spec.get("routing_table").and_then(|x| x.as_array()).unwrap_or(&empty) {
+        routes.insert(
+            str_at(rt, "interface").to_string(),
+            (str_at(rt, "connected_to").to_string(), str_at(rt, "target_subsystem").to_string(), str_at(rt, "type").to_string()),
+        );
+    }
+
+    let mut relations: Vec<Relation> = Vec::new();
+    let mut rid: u64 = 1;
+    // internal flows: subsystem -> subsystem
+    for f in spec.get("internal_flows").and_then(|x| x.as_array()).unwrap_or(&empty) {
+        let (Some(&a), Some(&b)) = (map.get(str_at(f, "source")), map.get(str_at(f, "sink"))) else { continue; };
+        relations.push(Relation { id: rid, a, b, name: str_at(f, "name").to_string(), is_bond: true, kind: substance_type(f) });
+        rid += 1;
+    }
+    // external flows: routed env <-> subsystem, directed by Import/Export
+    for f in spec.get("external_flows").and_then(|x| x.as_array()).unwrap_or(&empty) {
+        let Some((env, sub, ty)) = routes.get(str_at(f, "interface")) else { continue; };
+        let (Some(&e), Some(&s)) = (map.get(env), map.get(sub)) else { continue; };
+        let (a, b) = if ty.eq_ignore_ascii_case("export") { (s, e) } else { (e, s) };
+        relations.push(Relation { id: rid, a, b, name: str_at(f, "name").to_string(), is_bond: true, kind: substance_type(f) });
+        rid += 1;
+    }
+
+    // Auto-layout: components on an inner ring, environment on an outer ring.
+    let center = egui::pos2(480.0, 340.0);
+    let comps: Vec<u64> = things.iter().filter(|t| t.role == Role::Component).map(|t| t.id).collect();
+    let envs: Vec<u64> = things.iter().filter(|t| t.role == Role::Environment).map(|t| t.id).collect();
+    let place = |ids: &[u64], radius: f32, things: &mut Vec<Thing>| {
+        let n = ids.len().max(1);
+        for (i, id) in ids.iter().enumerate() {
+            let a = std::f32::consts::TAU * (i as f32) / (n as f32) - std::f32::consts::FRAC_PI_2;
+            if let Some(t) = things.iter_mut().find(|t| t.id == *id) {
+                t.pos = center + radius * egui::vec2(a.cos(), a.sin());
+            }
+        }
+    };
+    place(&comps, 150.0, &mut things);
+    place(&envs, 320.0, &mut things);
+
+    (things, relations, next)
+}
+
+impl CanvasApp {
+    /// L2: fire an async POST to GSR /extract (local or cloud). Callback parses the spec and sends
+    /// it back over a channel; the UI polls it. GSR owns the prompt + model choice — the canvas only
+    /// names the system.
+    fn start_generate(&mut self, ctx: &egui::Context) {
+        let desc = self.gen_desc.trim().to_string();
+        if desc.is_empty() || self.gen_busy {
+            return;
+        }
+        self.gen_busy = true;
+        self.gen_error = None;
+        let base = if self.gen_cloud {
+            "https://reasoner.halcyonic.systems"
+        } else {
+            "http://localhost:5010"
+        };
+        let body = serde_json::to_vec(&serde_json::json!({ "description": desc })).unwrap_or_default();
+        let mut req = ehttp::Request::post(format!("{base}/extract"), body);
+        req.headers.insert("Content-Type", "application/json");
+        let (tx, rx) = std::sync::mpsc::channel();
+        self.gen_rx = Some(rx);
+        let ctx2 = ctx.clone();
+        ehttp::fetch(req, move |result| {
+            let parsed: Result<serde_json::Value, String> = match result {
+                Ok(resp) if resp.ok => match serde_json::from_slice::<serde_json::Value>(&resp.bytes) {
+                    Ok(v) => {
+                        if let Some(err) = v.get("error").and_then(|e| e.as_str()) {
+                            Err(err.to_string())
+                        } else if let Some(spec) = v.get("spec") {
+                            Ok(spec.clone())
+                        } else {
+                            Err("response had no spec".to_string())
+                        }
+                    }
+                    Err(e) => Err(format!("bad JSON from server: {e}")),
+                },
+                Ok(resp) => Err(format!("server {}", resp.status)),
+                Err(e) => Err(e),
+            };
+            let _ = tx.send(parsed);
+            ctx2.request_repaint();
+        });
+    }
+
+    fn poll_generate(&mut self) {
+        let Some(rx) = self.gen_rx.take() else { return; };
+        match rx.try_recv() {
+            Ok(result) => {
+                self.gen_busy = false;
+                match result {
+                    Ok(spec) => {
+                        let (things, relations, next_id) = model_from_spec(&spec);
+                        if things.is_empty() {
+                            self.gen_error = Some("the spec had nothing to model".to_string());
+                        } else {
+                            self.things = things;
+                            self.relations = relations;
+                            self.next_id = next_id;
+                            self.selection = Selected::None;
+                            self.editing = None;
+                            self.editing_rel = None;
+                            self.connecting = None;
+                        }
+                    }
+                    Err(e) => self.gen_error = Some(e),
+                }
+            }
+            Err(std::sync::mpsc::TryRecvError::Empty) => self.gen_rx = Some(rx),
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                self.gen_busy = false;
+                self.gen_error = Some("request was dropped".to_string());
+            }
+        }
+    }
+}
+
 impl eframe::App for CanvasApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         apply_theme(ctx);
+        self.poll_generate();
         match self.lens {
             None => self.choose_lens(ctx),
             Some(lens) => self.canvas(ctx, lens),
@@ -451,6 +643,43 @@ impl CanvasApp {
                     .clicked()
                 {
                     self.save_model(lens);
+                }
+                ui.add_space(14.0);
+                ui.separator();
+                ui.add_space(8.0);
+                // LLM-assisted generation: name a system, the canvas asks GSR and models it here.
+                ui.label(egui::RichText::new("Generate").small().color(theme::INK_FAINT));
+                let te = ui.add(
+                    egui::TextEdit::singleline(&mut self.gen_desc)
+                        .hint_text("describe a system…")
+                        .desired_width(150.0),
+                );
+                // Engine switch — two selectable labels so the active one is obviously highlighted.
+                if ui
+                    .selectable_label(!self.gen_cloud, egui::RichText::new("local").small())
+                    .on_hover_text("Local GSR server (:5010)")
+                    .clicked()
+                {
+                    self.gen_cloud = false;
+                }
+                if ui
+                    .selectable_label(self.gen_cloud, egui::RichText::new("cloud").small())
+                    .on_hover_text("Cloud GSR (reasoner.halcyonic.systems)")
+                    .clicked()
+                {
+                    self.gen_cloud = true;
+                }
+                let label = if self.gen_busy { "…" } else { "✦ Generate" };
+                let clicked = ui
+                    .add_enabled(!self.gen_busy, egui::Button::new(egui::RichText::new(label).color(theme::INK_SOFT)))
+                    .on_hover_text("Call GSR to model the described system, in this canvas")
+                    .clicked();
+                let entered = te.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                if clicked || entered {
+                    self.start_generate(ctx);
+                }
+                if let Some(err) = self.gen_error.clone() {
+                    ui.colored_label(egui::Color32::from_rgb(176, 64, 64), "⚠").on_hover_text(err);
                 }
                 ui.add_space(14.0);
                 ui.separator();
@@ -819,6 +1048,12 @@ impl CanvasApp {
                                 r.kind = r.kind.next();
                             }
                         }
+                        // R reverses direction — flip a seed-mislabeled flow without redrawing
+                        if ui.input(|i| i.key_pressed(egui::Key::R)) {
+                            if let Some(r) = self.relations.iter_mut().find(|r| r.id == rid) {
+                                std::mem::swap(&mut r.a, &mut r.b);
+                            }
+                        }
                     }
                 }
 
@@ -833,10 +1068,26 @@ impl CanvasApp {
                     }
                 }
 
-                // relations under the discs — undirected lines, no arrowhead
+                // relations under the discs. Offset parallel/antiparallel edges (same node pair) so
+                // they don't stack directly on top of each other — e.g. A→B and B→A.
+                let mut edge_groups: std::collections::HashMap<(u64, u64), Vec<u64>> =
+                    std::collections::HashMap::new();
                 for r in &self.relations {
-                    if let (Some(pa), Some(pb)) = (self.pos_of(r.a), self.pos_of(r.b)) {
-                        let dir = (pb - pa).normalized();
+                    edge_groups.entry((r.a.min(r.b), r.a.max(r.b))).or_default().push(r.id);
+                }
+                for r in &self.relations {
+                    if let (Some(pa0), Some(pb0)) = (self.pos_of(r.a), self.pos_of(r.b)) {
+                        let dir = (pb0 - pa0).normalized();
+                        let grp = &edge_groups[&(r.a.min(r.b), r.a.max(r.b))];
+                        let idx = grp.iter().position(|&id| id == r.id).unwrap_or(0) as f32;
+                        let spread = if grp.len() > 1 {
+                            (idx - (grp.len() as f32 - 1.0) / 2.0) * 16.0
+                        } else {
+                            0.0
+                        };
+                        let off = egui::vec2(-dir.y, dir.x) * spread;
+                        let pa = pa0 + off;
+                        let pb = pb0 + off;
                         let a = pa + dir * RADIUS;
                         let b = pb - dir * RADIUS;
                         let sel = matches!(self.selection, Selected::Rel(s) if s == r.id);
@@ -1178,4 +1429,53 @@ fn main() -> eframe::Result<()> {
             }))
         }),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn spec_distills_to_kernel() {
+        let spec = serde_json::json!({
+            "subsystems": [{"name": "Pump"}, {"name": "Tank"}],
+            "sources": [{"name": "Reservoir"}],
+            "sinks": [{"name": "Drain"}],
+            "routing_table": [
+                {"interface": "Intake", "type": "Import", "connected_to": "Reservoir", "target_subsystem": "Pump"},
+                {"interface": "Outlet", "type": "Export", "connected_to": "Drain", "target_subsystem": "Tank"}
+            ],
+            "internal_flows": [
+                {"name": "Pressurized Water", "source": "Pump", "sink": "Tank", "substance": {"type": "Material"}}
+            ],
+            "external_flows": [
+                {"name": "Raw Water", "interface": "Intake", "substance": {"type": "Material"}},
+                {"name": "Overflow", "interface": "Outlet", "substance": {"type": "Material"}}
+            ]
+        });
+        let (things, relations, next_id) = model_from_spec(&spec);
+        // 2 components + 2 environment things
+        assert_eq!(things.len(), 4);
+        assert_eq!(things.iter().filter(|t| t.role == Role::Component).count(), 2);
+        assert_eq!(things.iter().filter(|t| t.role == Role::Environment).count(), 2);
+        assert_eq!(next_id, 5);
+        // 1 internal + 2 external = 3 directed bonds, all Matter
+        assert_eq!(relations.len(), 3);
+        assert!(relations.iter().all(|r| r.is_bond && r.kind == Kind::Matter));
+        // Import is env->component; Export is component->env
+        let pump = things.iter().find(|t| t.name == "Pump").unwrap().id;
+        let reservoir = things.iter().find(|t| t.name == "Reservoir").unwrap().id;
+        let raw = relations.iter().find(|r| r.name == "Raw Water").unwrap();
+        assert_eq!((raw.a, raw.b), (reservoir, pump), "Import should flow env->component");
+        // positions assigned (not at origin)
+        assert!(things.iter().all(|t| t.pos != egui::Pos2::ZERO));
+    }
+
+    #[test]
+    fn substance_maps_to_bunge_flow_kinds() {
+        assert_eq!(substance_to_kind("Material"), Kind::Matter);
+        assert_eq!(substance_to_kind("Energy"), Kind::Energy);
+        assert_eq!(substance_to_kind("Message"), Kind::Informational);
+        assert_eq!(substance_to_kind("whatever"), Kind::Unspecified);
+    }
 }
