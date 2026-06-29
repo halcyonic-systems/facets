@@ -1423,6 +1423,21 @@ fn apply_theme(ctx: &egui::Context) {
 }
 
 fn main() -> eframe::Result<()> {
+    // Headless convert mode: `canvas convert <spec.json> <out.json>` runs the SAME model_from_spec
+    // the GUI uses — one source of truth for the spec→Model distillation, no parallel reimplementation.
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() >= 4 && args[1] == "convert" {
+        let raw = std::fs::read_to_string(&args[2]).expect("read spec");
+        let v: serde_json::Value = serde_json::from_str(&raw).expect("parse spec");
+        let spec = v.get("spec").cloned().unwrap_or(v); // accept a /extract response or a bare spec
+        let (things, relations, next_id) = model_from_spec(&spec);
+        let model = Model { lens: Lens::Bunge, next_id, things, relations };
+        std::fs::write(&args[3], serde_json::to_string_pretty(&model).expect("serialize"))
+            .expect("write model");
+        eprintln!("wrote {} ({} things, {} relations)", args[3], model.things.len(), model.relations.len());
+        std::process::exit(0);
+    }
+
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1100.0, 720.0])
