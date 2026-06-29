@@ -2,11 +2,11 @@
 
 A choose-a-paradigm prototype over the K≅2 kernel. Open it, pick a thinker's lens — **Klir**, **Bunge**, or **Mobus** — and read one system through that vocabulary. Switch lenses freely; the model underneath never changes.
 
-## Two binaries (current state, 2026-06-27)
-- **`bert-lenses`** (`src/main.rs`) — the **Arc-1 viewer**: the desktop app, reads bundled `WorldModel`s (thermostat + generics) through 3 lenses as structural lists, with cited `validate_mode` verdicts. **This is the one wired to `bert-core`.**
-- **`canvas`** (`src/bin/canvas.rs`, `cargo run --bin canvas`) — the **Arc-2 authoring canvas**: direct-manipulation (place/connect/type/name), live Mathematical view, save/load. The current build focus and the intended **new front door**. As-built reference: [`docs/canvas-architecture.md`](docs/canvas-architecture.md). **Standalone — not yet `bert-core`-backed.**
+## Two binaries (front-door swap, 2026-06-29)
+- **`bert-lenses`** (`src/main.rs`, `cargo run`) — the **Arc-2 authoring canvas** and the **front door**: direct-manipulation (place/connect/type/name), live Mathematical view, save/load. As-built reference: [`docs/canvas-architecture.md`](docs/canvas-architecture.md). **Standalone — not yet `bert-core`-backed.**
+- **`viewer`** (`src/bin/viewer.rs`, `cargo run --bin viewer`) — the **Arc-1 list viewer**, now a demoted REFERENCE bin: reads bundled `WorldModel`s (thermostat + generics) through 3 lenses as structural lists, with cited `validate_mode` verdicts. **This is the one wired to `bert-core`** — the canonical worked example of consuming it; mine it at canvas↔bert-core convergence.
 
-**Integration direction:** the canvas becomes the front door (→ `main.rs`), backed by `bert-core` (`WorldModel` + `validate_mode` replacing the canvas's hand-rolled checks), consuming the viewer's example models + teaching copy; the list viewer becomes an optional outline mode or is archived. Faithfulness: [`docs/fidelity-audit.md`](docs/fidelity-audit.md).
+**Integration direction:** the canvas is now the front door (`main.rs`); next it gets backed by `bert-core` (`WorldModel` + `validate_mode` replacing the canvas's hand-rolled checks), consuming the viewer's example models + teaching copy. Faithfulness: [`docs/fidelity-audit.md`](docs/fidelity-audit.md).
 
 ## What this is the seed of
 

@@ -1,7 +1,7 @@
 # bert-lenses Canvas — As-Built (v0)
 
-The direct-manipulation authoring canvas. Run: `cargo run --bin canvas` (single file
-`src/bin/canvas.rs`, ~900 lines, egui/eframe 0.31). This is the **Arc 2** surface from the
+The direct-manipulation authoring canvas. Run: `cargo run` (the front door since the
+2026-06-29 swap; single file `src/main.rs`, ~1500 lines, egui/eframe 0.31). This is the **Arc 2** surface from the
 canvas-first pivot (2026-06-26); it is *not* the lists/`generate()` design in
 `arc2-authoring-design.md` (superseded — see that file's banner).
 
