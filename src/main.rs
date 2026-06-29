@@ -207,6 +207,10 @@ struct CanvasApp {
     gen_rx: Option<std::sync::mpsc::Receiver<Result<serde_json::Value, String>>>,
     /// Provenance of the current model when it came from a spec (Import or generate). Persisted on save.
     source_spec: Option<serde_json::Value>,
+    /// The model library: a canonical home dir (`~/Documents/bert-lenses/`) and its `*.json` contents,
+    /// listed in the left panel for one-click loading. Lazy-initialised on first frame.
+    models_dir: Option<std::path::PathBuf>,
+    library: Vec<std::path::PathBuf>,
 }
 
 fn arrow_head(painter: &egui::Painter, tip: egui::Pos2, dir: egui::Vec2, color: egui::Color32) {
@@ -317,9 +321,88 @@ impl CanvasApp {
         self.relations.retain(|r| r.a != id && r.b != id);
     }
 
-    fn save_model(&self, lens: Lens) {
+    /// The canonical model library dir (`~/Documents/bert-lenses/`), created on first use.
+    fn lib_dir(&mut self) -> std::path::PathBuf {
+        if self.models_dir.is_none() {
+            let home = std::env::var("HOME").unwrap_or_default();
+            let dir = std::path::PathBuf::from(home).join("Documents").join("bert-lenses");
+            let _ = std::fs::create_dir_all(&dir);
+            self.models_dir = Some(dir);
+        }
+        self.models_dir.clone().unwrap_or_default()
+    }
+
+    /// Rescan the library dir for `*.json` (models and specs alike — `load_json` sniffs the kind).
+    fn refresh_library(&mut self) {
+        let dir = self.lib_dir();
+        let mut files: Vec<std::path::PathBuf> = std::fs::read_dir(&dir)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().map_or(false, |x| x == "json"))
+            .collect();
+        files.sort();
+        self.library = files;
+    }
+
+    fn load_path(&mut self, path: &std::path::Path) {
+        match std::fs::read_to_string(path) {
+            Ok(txt) => self.load_json(&txt),
+            Err(e) => self.gen_error = Some(format!("could not read file: {e}")),
+        }
+    }
+
+    /// Left panel: the model library — click any entry to load it (one-click, no native dialog).
+    fn library_panel(&mut self, ctx: &egui::Context) {
+        let lib = self.library.clone();
+        let mut to_load: Option<std::path::PathBuf> = None;
+        let mut do_refresh = false;
+        egui::SidePanel::left("library")
+            .resizable(true)
+            .default_width(196.0)
+            .frame(egui::Frame::default().fill(theme::SURFACE).inner_margin(egui::Margin::same(10)))
+            .show(ctx, |ui| {
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("Library").strong().color(theme::INK));
+                    if ui.small_button("⟳").on_hover_text("Rescan the folder").clicked() {
+                        do_refresh = true;
+                    }
+                });
+                ui.label(egui::RichText::new(format!("{} saved", lib.len())).small().color(theme::INK_FAINT));
+                ui.separator();
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    if lib.is_empty() {
+                        ui.label(
+                            egui::RichText::new("Empty.\nSave or Open a spec to fill it.")
+                                .color(theme::INK_FAINT),
+                        );
+                    }
+                    for p in &lib {
+                        let name = p.file_stem().and_then(|s| s.to_str()).unwrap_or("?");
+                        if ui
+                            .add(egui::Button::new(egui::RichText::new(name).color(theme::INK_SOFT)).frame(false))
+                            .clicked()
+                        {
+                            to_load = Some(p.clone());
+                        }
+                    }
+                });
+            });
+        if do_refresh {
+            self.refresh_library();
+        }
+        if let Some(p) = to_load {
+            self.load_path(&p);
+        }
+    }
+
+    fn save_model(&mut self, lens: Lens) {
+        let dir = self.lib_dir();
         if let Some(path) = rfd::FileDialog::new()
             .add_filter("bert-lenses model", &["json"])
+            .set_directory(&dir)
             .set_file_name("model.json")
             .save_file()
         {
@@ -333,6 +416,7 @@ impl CanvasApp {
             if let Ok(json) = serde_json::to_string_pretty(&model) {
                 let _ = std::fs::write(path, json);
             }
+            self.refresh_library(); // the new file shows in the panel immediately
         }
     }
 
@@ -340,8 +424,10 @@ impl CanvasApp {
     /// response `{spec:…}` or a bare spec). One loader so the obvious button never silently fails on
     /// the "wrong" kind — the two-button confusion that bit a real import (2026-06-29).
     fn open_model(&mut self) {
+        let dir = self.lib_dir();
         if let Some(path) = rfd::FileDialog::new()
             .add_filter("model or GSR spec", &["json"])
+            .set_directory(&dir)
             .pick_file()
         {
             match std::fs::read_to_string(&path) {
@@ -576,6 +662,10 @@ impl eframe::App for CanvasApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         apply_theme(ctx);
         self.poll_generate();
+        if self.models_dir.is_none() {
+            self.refresh_library(); // lazy init: resolve the home dir + scan once on first frame
+        }
+        self.library_panel(ctx); // persistent left panel, in both the lens-picker and canvas views
         match self.lens {
             None => self.choose_lens(ctx),
             Some(lens) => self.canvas(ctx, lens),
