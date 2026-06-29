@@ -192,6 +192,7 @@ struct CanvasApp {
     // returned spec into this bare Model in-process. GSR stays the single brain.
     gen_desc: String,
     gen_cloud: bool,
+    gen_model: String, // "" = Anthropic Haiku; an Ollama id (e.g. "gemma4:12b") = truly local LLM
     gen_busy: bool,
     gen_error: Option<String>,
     gen_rx: Option<std::sync::mpsc::Receiver<Result<serde_json::Value, String>>>,
@@ -465,7 +466,7 @@ impl CanvasApp {
         } else {
             "http://localhost:5010"
         };
-        let body = serde_json::to_vec(&serde_json::json!({ "description": desc })).unwrap_or_default();
+        let body = serde_json::to_vec(&serde_json::json!({ "description": desc, "model": self.gen_model })).unwrap_or_default();
         let mut req = ehttp::Request::post(format!("{base}/extract"), body);
         req.headers.insert("Content-Type", "application/json");
         let (tx, rx) = std::sync::mpsc::channel();
@@ -654,21 +655,30 @@ impl CanvasApp {
                         .hint_text("describe a system…")
                         .desired_width(150.0),
                 );
-                // Engine switch — two selectable labels so the active one is obviously highlighted.
-                if ui
-                    .selectable_label(!self.gen_cloud, egui::RichText::new("local").small())
-                    .on_hover_text("Local GSR server (:5010)")
-                    .clicked()
-                {
-                    self.gen_cloud = false;
-                }
-                if ui
-                    .selectable_label(self.gen_cloud, egui::RichText::new("cloud").small())
-                    .on_hover_text("Cloud GSR (reasoner.halcyonic.systems)")
-                    .clicked()
-                {
-                    self.gen_cloud = true;
-                }
+                // Engine: which GSR endpoint + which LLM. Cloud Haiku is fast; the local Ollama
+                // models are sovereign (slower). Non-Claude models route to Ollama server-side.
+                let presets: [(&str, bool, &str); 5] = [
+                    ("Haiku · local", false, ""),
+                    ("Haiku · cloud", true, ""),
+                    ("Gemma4 12B · local", false, "gemma4:12b"),
+                    ("Gemma4 12B-QAT · local", false, "gemma4:12b-it-qat"),
+                    ("Mistral Small · local", false, "mistral-small:latest"),
+                ];
+                let current = presets
+                    .iter()
+                    .find(|(_, c, m)| *c == self.gen_cloud && *m == self.gen_model.as_str())
+                    .map(|(l, _, _)| *l)
+                    .unwrap_or("custom");
+                egui::ComboBox::from_id_salt("engine")
+                    .selected_text(egui::RichText::new(current).small().color(theme::INK_SOFT))
+                    .show_ui(ui, |ui| {
+                        for (label, cloud, model) in presets {
+                            if ui.selectable_label(current == label, label).clicked() {
+                                self.gen_cloud = cloud;
+                                self.gen_model = model.to_string();
+                            }
+                        }
+                    });
                 let label = if self.gen_busy { "…" } else { "✦ Generate" };
                 let clicked = ui
                     .add_enabled(!self.gen_busy, egui::Button::new(egui::RichText::new(label).color(theme::INK_SOFT)))
