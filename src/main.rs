@@ -336,30 +336,49 @@ impl CanvasApp {
         }
     }
 
+    /// Open ANY supported JSON, auto-detected: a saved canvas Model, or a GSR spec (a `/extract`
+    /// response `{spec:…}` or a bare spec). One loader so the obvious button never silently fails on
+    /// the "wrong" kind — the two-button confusion that bit a real import (2026-06-29).
     fn open_model(&mut self) {
         if let Some(path) = rfd::FileDialog::new()
-            .add_filter("bert-lenses model", &["json"])
+            .add_filter("model or GSR spec", &["json"])
             .pick_file()
         {
-            if let Ok(txt) = std::fs::read_to_string(&path) {
-                if let Ok(model) = serde_json::from_str::<Model>(&txt) {
-                    self.lens = Some(model.lens);
-                    self.next_id = model.next_id;
-                    self.things = model.things;
-                    self.relations = model.relations;
-                    self.source_spec = model.source_spec;
-                    self.editing = None;
-                    self.editing_rel = None;
-                    self.drag = None;
-                    self.connecting = None;
-                    self.selection = Selected::None;
-                }
+            match std::fs::read_to_string(&path) {
+                Ok(txt) => self.load_json(&txt),
+                Err(e) => self.gen_error = Some(format!("could not read file: {e}")),
             }
         }
     }
 
+    /// Sniff and load: a saved Model deserializes strictly (lens/things/relations/next_id); anything
+    /// else is treated as a GSR spec (unwrap `.spec` if it's a `/extract` response, else use as-is).
+    fn load_json(&mut self, txt: &str) {
+        if let Ok(model) = serde_json::from_str::<Model>(txt) {
+            self.lens = Some(model.lens);
+            self.next_id = model.next_id;
+            self.things = model.things;
+            self.relations = model.relations;
+            self.source_spec = model.source_spec;
+            self.selection = Selected::None;
+            self.editing = None;
+            self.editing_rel = None;
+            self.connecting = None;
+            return;
+        }
+        match serde_json::from_str::<serde_json::Value>(txt) {
+            Ok(v) => {
+                let spec = v.get("spec").cloned().unwrap_or(v);
+                if !self.apply_spec(spec) {
+                    self.gen_error = Some("not a bert-lenses model or a non-empty GSR spec".to_string());
+                }
+            }
+            Err(e) => self.gen_error = Some(format!("not valid JSON: {e}")),
+        }
+    }
+
     /// Distill a GSR spec into the live model and record it as provenance (the single apply path,
-    /// shared by Import spec and the in-app generate — same `model_from_spec` as the headless `convert`).
+    /// shared by Open (spec branch) and the in-app generate — same `model_from_spec` as headless `convert`).
     /// Returns false if the spec had nothing to model. Lands in a lens so the result renders.
     fn apply_spec(&mut self, spec: serde_json::Value) -> bool {
         let (things, relations, next_id) = model_from_spec(&spec);
@@ -380,27 +399,6 @@ impl CanvasApp {
         true
     }
 
-    /// Import a GSR spec from disk (the push half of the Facets→canvas bridge). Accepts a `/extract`
-    /// response (`{spec:…}`) or a bare spec — same acceptance as the headless `convert`.
-    fn import_spec(&mut self) {
-        if let Some(path) = rfd::FileDialog::new()
-            .add_filter("GSR spec (json)", &["json"])
-            .pick_file()
-        {
-            match std::fs::read_to_string(&path) {
-                Ok(txt) => match serde_json::from_str::<serde_json::Value>(&txt) {
-                    Ok(v) => {
-                        let spec = v.get("spec").cloned().unwrap_or(v);
-                        if !self.apply_spec(spec) {
-                            self.gen_error = Some("the spec had nothing to model".to_string());
-                        }
-                    }
-                    Err(e) => self.gen_error = Some(format!("not valid JSON: {e}")),
-                },
-                Err(e) => self.gen_error = Some(format!("could not read file: {e}")),
-            }
-        }
-    }
 }
 
 // ── L1: distill a GSR intermediate spec into the bare, lens-neutral Model ──
@@ -681,7 +679,7 @@ impl CanvasApp {
                 }
                 if ui
                     .button(egui::RichText::new("Open").color(theme::INK_SOFT))
-                    .on_hover_text("Open a saved model (.json)")
+                    .on_hover_text("Open a saved model OR a GSR spec (from Facets \"model this\" / /extract) — auto-detected")
                     .clicked()
                 {
                     self.open_model();
@@ -692,13 +690,6 @@ impl CanvasApp {
                     .clicked()
                 {
                     self.save_model(lens);
-                }
-                if ui
-                    .button(egui::RichText::new("Import spec").color(theme::INK_SOFT))
-                    .on_hover_text("Import a GSR spec (from Facets \"model this\", or /extract) and author it")
-                    .clicked()
-                {
-                    self.import_spec();
                 }
                 ui.add_space(14.0);
                 ui.separator();
@@ -1573,6 +1564,31 @@ mod tests {
         assert_eq!(ss["external_flows"][0]["usability"], "Resource");
         assert_eq!(ss["routing_table"][0]["has_processor"], true);
         assert_eq!(ss["system"]["name"], "Widget");
+    }
+
+    #[test]
+    fn load_json_sniffs_model_vs_extract_response() {
+        // A /extract response ({spec, repairs, warnings}) loads via the spec branch.
+        let response = r#"{"repairs":[],"warnings":[],"spec":{
+            "system":{"name":"X"},"subsystems":[{"name":"A"},{"name":"B"}],"sources":[{"name":"Env"}],"sinks":[],
+            "routing_table":[{"interface":"In","type":"Import","connected_to":"Env","target_subsystem":"A"}],
+            "internal_flows":[{"name":"L","source":"A","sink":"B","substance":{"type":"Energy"}}],
+            "external_flows":[{"name":"F","interface":"In","substance":{"type":"Material"}}]}}"#;
+        let mut app = CanvasApp::default();
+        app.load_json(response);
+        assert_eq!(app.things.len(), 3);
+        assert!(app.gen_error.is_none());
+        assert!(app.source_spec.is_some());
+        // A saved canvas Model round-trips via the Model branch (and keeps its lens).
+        let model_json = serde_json::to_string(&Model {
+            lens: Lens::Mobus, next_id: 3,
+            things: vec![Thing { id: 1, name: "T".into(), pos: egui::Pos2::ZERO, role: Role::Component }],
+            relations: vec![], source_spec: None,
+        }).unwrap();
+        let mut app2 = CanvasApp::default();
+        app2.load_json(&model_json);
+        assert!(matches!(app2.lens, Some(Lens::Mobus)));
+        assert_eq!(app2.things.len(), 1);
     }
 
     #[test]
