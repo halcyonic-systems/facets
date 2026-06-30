@@ -923,7 +923,7 @@ impl CanvasApp {
         if self.show_math {
             egui::SidePanel::right("math")
                 .resizable(false)
-                .exact_width(300.0)
+                .exact_width(330.0)
                 .show(ctx, |ui| {
                     ui.add_space(12.0);
                     ui.label(
@@ -959,111 +959,81 @@ impl CanvasApp {
                         .filter(|t| self.in_environment(t.id))
                         .map(dn)
                         .collect();
-                    let set_of = |v: &[String]| {
-                        if v.is_empty() {
-                            "∅".to_string()
-                        } else {
-                            format!("{{ {} }}", v.join(", "))
-                        }
-                    };
-                    let set_t = set_of(&all);
-                    let set_c = set_of(&comp);
-                    let set_e = set_of(&env);
-                    // group pairs by relation-name → a *family of named relations*: Klir's "set of
-                    // relations", Bunge's one-graph-per-kind. Each name defines its own set of pairs;
-                    // R (or S) is the set of those relations. Standard notation, not "name: pair".
-                    let mut groups: Vec<(String, Vec<String>)> = Vec::new();
+                    // pairs grouped into a *family of named relations*: R/S/F is the set of those
+                    // relations, each itself a set of ordered pairs. Klir/Mobus group by interpretation
+                    // (name). Bunge groups by Bunge's own structure: endostructure (bonds among
+                    // components) vs exostructure (bonds linking components to the environment) vs mere
+                    // relations — NOT by matter/energy/info, which is a Mobus flow-typing, not a bond
+                    // distinction. Endpoints kept as raw names so the renderer can typeset them.
+                    let mut groups: Vec<(String, Vec<(String, String)>)> = Vec::new();
                     for r in &self.relations {
-                        // Klir groups its "set of relations" by *interpretation* (name); Bunge groups
-                        // structure by *kind of connection* — one directed graph per kind.
                         let key = match lens {
                             Lens::Bunge => {
                                 if !r.is_bond {
                                     "mere relations".to_string()
-                                } else if r.kind == Kind::Unspecified {
-                                    "bonds".to_string()
+                                } else if self.in_environment(r.a) || self.in_environment(r.b) {
+                                    "exostructure".to_string()
                                 } else {
-                                    r.kind.label().to_string()
+                                    "endostructure".to_string()
                                 }
                             }
                             _ => r.name.trim().to_string(),
                         };
-                        // Klir's relations are ordered tuples too — symmetry is a *property*, not the
-                        // primitive. The neutral *rendering* forgets direction; the math keeps (a, b).
-                        let pair = format!("({}, {})", self.name_of(r.a), self.name_of(r.b));
+                        // ordered pairs kept; a neutral rendering leaves direction undeclared.
+                        let pair = (self.name_of(r.a), self.name_of(r.b));
                         if let Some(g) = groups.iter_mut().find(|(n, _)| *n == key) {
                             g.1.push(pair);
                         } else {
                             groups.push((key, vec![pair]));
                         }
                     }
-                    let defs: Vec<String> = groups
+                    // canonical reading order for Bunge's structure: endo, exo, then mere relations.
+                    if matches!(lens, Lens::Bunge) {
+                        groups.sort_by_key(|(n, _)| match n.as_str() {
+                            "endostructure" => 0,
+                            "exostructure" => 1,
+                            _ => 2,
+                        });
+                    }
+                    let gathered_labels: Vec<String> = groups
                         .iter()
                         .filter(|(n, _)| !n.is_empty())
-                        .map(|(n, v)| format!("{} = {{ {} }}", n, v.join(", ")))
+                        .map(|(n, _)| n.clone())
                         .collect();
-                    let unnamed: Vec<String> = groups
+                    let unnamed_pairs: Vec<(String, String)> = groups
                         .iter()
                         .filter(|(n, _)| n.is_empty())
                         .flat_map(|(_, v)| v.clone())
                         .collect();
-                    let members: Vec<String> = if defs.is_empty() {
-                        unnamed
-                    } else {
-                        let mut m: Vec<String> = groups
-                            .iter()
-                            .filter(|(n, _)| !n.is_empty())
-                            .map(|(n, _)| n.clone())
-                            .collect();
-                        m.extend(unnamed);
-                        m
-                    };
-                    let r_inner = if members.is_empty() {
-                        "∅".to_string()
-                    } else {
-                        format!("{{ {} }}", members.join(", "))
-                    };
 
                     egui::ScrollArea::vertical().show(ui, |ui| {
-                        let line = |ui: &mut egui::Ui, s: String| {
-                            ui.label(
-                                egui::RichText::new(s).monospace().size(14.0).color(theme::INK),
-                            );
-                            ui.add_space(9.0);
-                        };
-                        let formula = |ui: &mut egui::Ui, s: &str| {
-                            ui.add_space(3.0);
-                            ui.label(
-                                egui::RichText::new(s)
-                                    .monospace()
-                                    .size(16.0)
-                                    .strong()
-                                    .color(lens.color()),
-                            );
-                        };
-                        let note = |ui: &mut egui::Ui, s: &str| {
-                            ui.add_space(10.0);
-                            ui.label(egui::RichText::new(s).small().color(theme::INK_FAINT));
-                        };
                         match lens {
                             Lens::Klir => {
-                                line(ui, format!("T = {}", set_t));
-                                for d in &defs {
-                                    line(ui, d.clone());
+                                math_hero(
+                                    ui,
+                                    &[("S", true), (" = ", false), ("(", false), ("T", true), (", ", false), ("R", true), (")", false)],
+                                );
+                                soft_divider(ui);
+                                math_set(ui, "T", &all, false);
+                                for (n, p) in groups.iter().filter(|(n, _)| !n.is_empty()) {
+                                    math_rel(ui, n, p);
                                 }
-                                line(ui, format!("R = {}", r_inner));
-                                formula(ui, "S = (T, R)");
-                                note(ui, "R ⊆ T × T (simplest case) — a relation, or set of relations, on T. Ordered pairs; a neutral system just leaves direction undeclared. The binary fragment of Klir's general n-ary R.");
+                                math_gathered(ui, "R", &gathered_labels, &unnamed_pairs);
+                                math_note(ui, "R ⊆ T × T (simplest case) — a relation, or set of relations, on T. Ordered pairs; a neutral system just leaves direction undeclared. The binary fragment of Klir's general n-ary R.");
                             }
                             Lens::Bunge => {
-                                line(ui, format!("C = {}", set_c));
-                                line(ui, format!("E = {}", set_e));
-                                for d in &defs {
-                                    line(ui, d.clone());
+                                math_hero(
+                                    ui,
+                                    &[("σ", true), (" = ", false), ("⟨", false), ("C", true), (", ", false), ("E", true), (", ", false), ("S", true), ("⟩", false)],
+                                );
+                                soft_divider(ui);
+                                math_set(ui, "C", &comp, false);
+                                math_set(ui, "E", &env, false);
+                                for (n, p) in groups.iter().filter(|(n, _)| !n.is_empty()) {
+                                    math_rel(ui, n, p);
                                 }
-                                line(ui, format!("S = {}", r_inner));
-                                formula(ui, "σ = ⟨C, E, S⟩");
-                                note(ui, "S = one directed graph per kind of connection (bonds) ∪ mere relations (B̄). Only bonds (solid) confer systemhood; press K on a bond to set its kind.  C ∩ E = ∅.");
+                                math_gathered(ui, "S", &gathered_labels, &unnamed_pairs);
+                                math_note(ui, "S = the bonding relation, split into endostructure (bonds among components) and exostructure (bonds linking components to the environment), ∪ mere relations (B̄). Only bonds confer systemhood.  C ∩ E = ∅.");
                                 if self.is_aggregate() {
                                     ui.add_space(10.0);
                                     ui.label(
@@ -1076,13 +1046,17 @@ impl CanvasApp {
                                 }
                             }
                             Lens::Mobus => {
-                                line(ui, format!("C = {}", set_c));
-                                for d in &defs {
-                                    line(ui, d.clone());
+                                math_hero(
+                                    ui,
+                                    &[("σ", true), (" = ", false), ("⟨ ", false), ("C", true), (", … , ", false), ("Δt", true), (" ⟩", false)],
+                                );
+                                soft_divider(ui);
+                                math_set(ui, "C", &comp, false);
+                                for (n, p) in groups.iter().filter(|(n, _)| !n.is_empty()) {
+                                    math_rel(ui, n, p);
                                 }
-                                line(ui, format!("F = {}", r_inner));
-                                formula(ui, "σ = ⟨ C, … , Δt ⟩");
-                                note(ui, "the operational 8-tuple — boundary, ports, transforms, history, timescale arrive with the Mobus layer");
+                                math_gathered(ui, "F", &gathered_labels, &unnamed_pairs);
+                                math_note(ui, "the operational 8-tuple — boundary, ports, transforms, history, timescale arrive with the Mobus layer");
                             }
                         }
                     });
@@ -1647,6 +1621,185 @@ fn apply_theme(ctx: &egui::Context) {
     ctx.set_visuals(v);
 }
 
+// STIX gives the Mathematical View real typeset glyphs. Two named families: "math" (upright) and
+// "math-it" (italic) — egui's `.italics()` only shears the upright face, so a true italic needs its
+// own font file. STIX Two Text covers letters; its operators/brackets (⟨ ⟩ ⊆ × ∅ ∩ ∪) live in STIX
+// Two Math, chained as a glyph fallback. Math is also appended to the default fonts so the prose
+// notes resolve the same symbols.
+fn install_fonts(ctx: &egui::Context) {
+    use egui::{FontData, FontDefinitions, FontFamily};
+    let mut fonts = FontDefinitions::default();
+    let fallback = fonts
+        .families
+        .get(&FontFamily::Proportional)
+        .cloned()
+        .unwrap_or_default();
+    fonts.font_data.insert(
+        "stix".to_owned(),
+        std::sync::Arc::new(FontData::from_static(include_bytes!(
+            "../assets/STIXTwoText-Regular.ttf"
+        ))),
+    );
+    fonts.font_data.insert(
+        "stix-it".to_owned(),
+        std::sync::Arc::new(FontData::from_static(include_bytes!(
+            "../assets/STIXTwoText-Italic.ttf"
+        ))),
+    );
+    fonts.font_data.insert(
+        "stix-math".to_owned(),
+        std::sync::Arc::new(FontData::from_static(include_bytes!(
+            "../assets/STIXTwoMath.ttf"
+        ))),
+    );
+    let chain = |head: &str| {
+        let mut v = vec![head.to_owned(), "stix-math".to_owned()];
+        v.extend(fallback.iter().cloned());
+        v
+    };
+    fonts
+        .families
+        .insert(FontFamily::Name("math".into()), chain("stix"));
+    fonts
+        .families
+        .insert(FontFamily::Name("math-it".into()), chain("stix-it"));
+    // give the default proportional/monospace fonts the same math fallback (notes, warnings).
+    for family in [FontFamily::Proportional, FontFamily::Monospace] {
+        fonts
+            .families
+            .entry(family)
+            .or_default()
+            .push("stix-math".to_owned());
+    }
+    ctx.set_fonts(fonts);
+}
+
+// Typeset helpers for the Mathematical View. Three registers: variable (italic serif, ink),
+// content name (upright serif, ink), scaffolding — braces/operators/pairs (upright serif, faint).
+const MATH_BODY: f32 = 15.0;
+
+fn mfont(size: f32) -> egui::FontId {
+    egui::FontId::new(size, egui::FontFamily::Name("math".into()))
+}
+fn ifont(size: f32) -> egui::FontId {
+    egui::FontId::new(size, egui::FontFamily::Name("math-it".into()))
+}
+fn mrun(job: &mut egui::text::LayoutJob, text: &str, font: egui::FontId, color: egui::Color32) {
+    job.append(
+        text,
+        0.0,
+        egui::TextFormat {
+            font_id: font,
+            color,
+            ..Default::default()
+        },
+    );
+}
+fn math_label(ui: &mut egui::Ui, mut job: egui::text::LayoutJob) {
+    job.wrap.max_width = ui.available_width();
+    ui.label(job);
+}
+
+fn soft_divider(ui: &mut egui::Ui) {
+    ui.add_space(5.0);
+    ui.separator();
+    ui.add_space(9.0);
+}
+
+fn math_hero(ui: &mut egui::Ui, segs: &[(&str, bool)]) {
+    let mut job = egui::text::LayoutJob::default();
+    for (t, is_var) in segs {
+        if *is_var {
+            mrun(&mut job, t, ifont(24.0), theme::INK);
+        } else {
+            mrun(&mut job, t, mfont(24.0), theme::INK_FAINT);
+        }
+    }
+    ui.add_space(2.0);
+    math_label(ui, job);
+}
+
+fn math_set(ui: &mut egui::Ui, var: &str, members: &[String], member_var: bool) {
+    let mut job = egui::text::LayoutJob::default();
+    mrun(&mut job, var, ifont(MATH_BODY), theme::INK);
+    mrun(&mut job, " = ", mfont(MATH_BODY), theme::INK_FAINT);
+    if members.is_empty() {
+        mrun(&mut job, "∅", mfont(MATH_BODY), theme::INK_FAINT);
+    } else {
+        mrun(&mut job, "{ ", mfont(MATH_BODY), theme::INK_FAINT);
+        for (i, m) in members.iter().enumerate() {
+            if i > 0 {
+                mrun(&mut job, ", ", mfont(MATH_BODY), theme::INK_FAINT);
+            }
+            let f = if member_var { ifont(MATH_BODY) } else { mfont(MATH_BODY) };
+            mrun(&mut job, m, f, theme::INK);
+        }
+        mrun(&mut job, " }", mfont(MATH_BODY), theme::INK_FAINT);
+    }
+    math_label(ui, job);
+    ui.add_space(7.0);
+}
+
+fn math_pair(job: &mut egui::text::LayoutJob, a: &str, b: &str) {
+    mrun(job, "(", mfont(MATH_BODY), theme::INK_FAINT);
+    mrun(job, a, mfont(MATH_BODY), theme::INK);
+    mrun(job, ", ", mfont(MATH_BODY), theme::INK_FAINT);
+    mrun(job, b, mfont(MATH_BODY), theme::INK);
+    mrun(job, ")", mfont(MATH_BODY), theme::INK_FAINT);
+}
+
+fn math_rel(ui: &mut egui::Ui, name: &str, pairs: &[(String, String)]) {
+    let mut job = egui::text::LayoutJob::default();
+    mrun(&mut job, name, ifont(MATH_BODY), theme::INK);
+    mrun(&mut job, " = ", mfont(MATH_BODY), theme::INK_FAINT);
+    mrun(&mut job, "{ ", mfont(MATH_BODY), theme::INK_FAINT);
+    for (i, (a, b)) in pairs.iter().enumerate() {
+        if i > 0 {
+            mrun(&mut job, ", ", mfont(MATH_BODY), theme::INK_FAINT);
+        }
+        math_pair(&mut job, a, b);
+    }
+    mrun(&mut job, " }", mfont(MATH_BODY), theme::INK_FAINT);
+    math_label(ui, job);
+    ui.add_space(7.0);
+}
+
+fn math_gathered(ui: &mut egui::Ui, var: &str, labels: &[String], pairs: &[(String, String)]) {
+    let mut job = egui::text::LayoutJob::default();
+    mrun(&mut job, var, ifont(MATH_BODY), theme::INK);
+    mrun(&mut job, " = ", mfont(MATH_BODY), theme::INK_FAINT);
+    if labels.is_empty() && pairs.is_empty() {
+        mrun(&mut job, "∅", mfont(MATH_BODY), theme::INK_FAINT);
+        math_label(ui, job);
+        ui.add_space(7.0);
+        return;
+    }
+    mrun(&mut job, "{ ", mfont(MATH_BODY), theme::INK_FAINT);
+    let mut first = true;
+    for l in labels {
+        if !first {
+            mrun(&mut job, ", ", mfont(MATH_BODY), theme::INK_FAINT);
+        }
+        first = false;
+        mrun(&mut job, l, ifont(MATH_BODY), theme::INK);
+    }
+    for (a, b) in pairs {
+        if !first {
+            mrun(&mut job, ", ", mfont(MATH_BODY), theme::INK_FAINT);
+        }
+        first = false;
+        math_pair(&mut job, a, b);
+    }
+    mrun(&mut job, " }", mfont(MATH_BODY), theme::INK_FAINT);
+    math_label(ui, job);
+    ui.add_space(7.0);
+}
+
+fn math_note(ui: &mut egui::Ui, s: &str) {
+    ui.add_space(10.0);
+    ui.label(egui::RichText::new(s).small().color(theme::INK_FAINT));
+}
+
 fn main() -> eframe::Result<()> {
     // Headless convert mode: `canvas convert <spec.json> <out.json>` runs the SAME model_from_spec
     // the GUI uses — one source of truth for the spec→Model distillation, no parallel reimplementation.
@@ -1672,7 +1825,8 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "bert-lenses — author",
         options,
-        Box::new(|_cc| {
+        Box::new(|cc| {
+            install_fonts(&cc.egui_ctx);
             Ok(Box::new(CanvasApp {
                 show_math: true,
                 ..Default::default()
