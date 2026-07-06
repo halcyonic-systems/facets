@@ -1,10 +1,12 @@
 # bert-lenses roadmap
 
-One kernel, three lenses. The path is **view → author → translate**, in dependency
-order. bert-lenses stays standalone: it is the seed of a model-*creation* tool
-(author in any paradigm, translate across one kernel), not a mode selector to fold
-into BERT's canvas. It folds back into BERT, if ever, on its own terms — once the
-author and translate arcs are proven.
+One kernel, three lenses. The path is **view → author → translate → run**, in
+dependency order. bert-lenses stays standalone through the author and translate
+arcs: it is the seed of a model-*creation* tool (author in any paradigm, translate
+across one kernel), not a mode selector to fold into BERT's canvas. Its declared
+destination is **convergence with bert-compose** (the dynamical face — see README
+"Convergence") as the two halves of one creation instrument, on this roadmap's
+own dependency order.
 
 ## Arc 1 — View ✓ (shipped 2026-06-16)
 
@@ -46,6 +48,40 @@ Mode transitions across lenses on the same kernel:
 
 Enabler: **§A5 mode-transition validators in bert-core** (new bert-core code).
 This is the concrete dependency that unlocks "switch paradigms without loss."
+
+## Arc 4 — Run (converge with bert-compose)
+
+Dynamics as one more mode transition: **Mobus-structural → Operational**.
+Upgrading means supplying transfer functions + Δt — exactly the slots Mobus
+leaves parametric (`bert-compose/MOBUS.md`) — with witnesses, like any §A5
+upgrade; downgrading drops dynamics and keeps structure, lossless. Compose's
+conservation engine (`circuit.rs`, UI-free) is consumed as a crate the way
+bert-core is; the recorded run is the model's H. Enabler: the same §A5
+transition validators Arc 3 needs. This closes the ladder: a user builds
+structure from concrete named things (Klir up), and dynamics arrives as the
+top rung — not as a separate abstract tool.
+
+**Phase gates (council-audited 2026-07-06 — frontier + local, convergent):**
+
+- **4.0 — the seam as a protocol, headless.** `validate_operational(world) ->
+  Result<OperationalSpec, ...>` in bert-core: stricter than
+  `validate_mode(Mobus)` (dead-end components, unspecified source/sink terms —
+  the ledger holds by construction only *given* a well-formed circuit).
+  Property tests: Klir/Bunge models always fail with cited reasons; a minimal
+  Mobus model passes and round-trips through the compose engine with the
+  ledger balanced. No UI. One session's work; everything later is measured
+  against whether it extends this predicate cleanly.
+- **4.1 — audit mode (read-only projection).** A "Check consistency" action:
+  the engine called headlessly, per-component green/red with the violating
+  bond/flow named. Validates the semantic mapping without touching the
+  authoring UX or stateful simulation.
+- **4.2 — Run.** Transfer-function supply (the **component → work-process
+  mapping** is an explicit design step, not an inference), Δt, charts, H.
+  Contract: structural edit after downgrade **invalidates H**.
+
+Open design problems the gates force: the component→primitive mapping UX
+(4.2), and keeping simulation controls out of the authoring canvas (the
+"God-tool" bloat risk — Operational data accessible, never ambient).
 
 ## bert-core follow-ups
 
