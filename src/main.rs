@@ -2,7 +2,18 @@
 //! **The front door** (`src/main.rs`, `cargo run`). The Arc-1 list viewer is the
 //! demoted reference bin at `src/bin/viewer.rs` (`cargo run --bin viewer`).
 //! v0 step 4: select & delete — click to select a thing or relation, ⌫ to remove.
+//!
+//! Systemhood verdicts are not computed here: the canvas kernel projects into a
+//! bert-core [`WorldModel`] (`to_world_model`) and every "is this a system?"
+//! answer routes through `bert_core::validate::validate_mode`, exactly as the
+//! reference viewer does. The shell holds zero formalism logic.
 
+use bert_core::validate::validate_mode;
+use bert_core::{
+    Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType, Id, IdType, Info,
+    Interaction, InteractionType, InteractionUsability, Mode, Substance, SubstanceType, System,
+    Transform2d, WorldModel, CURRENT_FILE_VERSION,
+};
 use eframe::egui;
 
 mod theme {
@@ -26,7 +37,7 @@ const RADIUS: f32 = 34.0;
 const BODY: f32 = RADIUS - 2.0;
 const CONNECT_REACH: f32 = RADIUS + 14.0;
 
-#[derive(Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 enum Lens {
     Klir,
     Bunge,
@@ -71,6 +82,17 @@ impl Lens {
             Lens::Klir => "Things and the relations among them — the bare, neutral view.",
             Lens::Bunge => "Composition, environment, and the bonds that make a system, not a heap.",
             Lens::Mobus => "Components, boundary, ports, and the typed flows across them.",
+        }
+    }
+
+    /// The bert-core mode whose precondition this lens commits to. The rung the
+    /// export stamps, and the mode `validate_mode` gates against. (Mirrors the
+    /// reference viewer's `Lens::mode`.)
+    fn mode(self) -> Mode {
+        match self {
+            Lens::Klir => Mode::Core,
+            Lens::Bunge => Mode::Structural,
+            Lens::Mobus => Mode::Operational,
         }
     }
 }
@@ -290,16 +312,13 @@ impl CanvasApp {
             })
     }
 
-    fn has_internal_bond(&self) -> bool {
-        self.relations
-            .iter()
-            .any(|r| r.is_bond && r.a != r.b && self.is_comp(r.a) && self.is_comp(r.b))
-    }
-
-    /// Bunge Def 1.1: ≥2 components but no bond between any two of them = an aggregate (a heap).
-    fn is_aggregate(&self) -> bool {
-        let comps = self.things.iter().filter(|t| t.role == Role::Component).count();
-        comps >= 2 && !self.has_internal_bond()
+    /// Is this model a heap rather than a system? The verdict is bert-core's, not
+    /// the shell's: project the canvas kernel and ask `validate_mode(Structural)`,
+    /// whose `check_bond` mirrors Bunge Def 1.1. Replaces the old hand-rolled
+    /// `is_aggregate`/`has_internal_bond` pair — no systemhood logic lives here.
+    fn is_heap(&self, lens: Lens) -> bool {
+        let wm = to_world_model(&self.things, &self.relations, lens);
+        validate_mode(&wm, Mode::Structural).has_errors()
     }
 
     fn has_relation(&self, a: u64, b: u64) -> bool {
@@ -420,6 +439,27 @@ impl CanvasApp {
                 let _ = std::fs::write(path, json);
             }
             self.refresh_library(); // the new file shows in the panel immediately
+        }
+    }
+
+    /// Export the current canvas kernel as a bert-core [`WorldModel`] JSON — the
+    /// object BERT / GSR / compose consume. Stamped with the authored rung
+    /// (`mode`), so `bert_core::operational::validate_operational` fires its
+    /// representational refusal on a Core/Structural export and clears the mode
+    /// gate on a Mobus one. Distinct from Save (which writes the canvas `Model`
+    /// for the library round-trip); this is the seam out to bert-core.
+    fn export_world_model(&mut self, lens: Lens) {
+        let dir = self.lib_dir();
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("BERT WorldModel", &["json"])
+            .set_directory(&dir)
+            .set_file_name("model.bert.json")
+            .save_file()
+        {
+            let wm = to_world_model(&self.things, &self.relations, lens);
+            if let Ok(json) = serde_json::to_string_pretty(&wm) {
+                let _ = std::fs::write(path, json);
+            }
         }
     }
 
@@ -635,6 +675,200 @@ fn model_from_spec(spec: &serde_json::Value) -> (Vec<Thing>, Vec<Relation>, u64)
     (things, relations, next)
 }
 
+// ── The bert-core seam: project the canvas kernel into a WorldModel ──
+
+/// Canvas connection kind → Mobus substance. Field has no Mobus peer (Energy/
+/// Material/Message), so it lands on Energy; Unspecified defaults the same way.
+/// Substance never changes a systemhood verdict — it is carried for a faithful
+/// export, not for `validate_mode`.
+fn kind_to_substance(k: Kind) -> SubstanceType {
+    match k {
+        Kind::Matter => SubstanceType::Material,
+        Kind::Informational => SubstanceType::Message,
+        Kind::Energy | Kind::Field | Kind::Unspecified => SubstanceType::Energy,
+    }
+}
+
+fn info(id: Id, level: i32, name: &str) -> Info {
+    Info {
+        id,
+        level,
+        name: name.to_string(),
+        description: String::new(),
+    }
+}
+
+/// Project the canvas kernel into a bert-core [`WorldModel`], stamping `mode`
+/// with the authored rung so it is the same object the viewer reads and
+/// `validate_mode` / `validate_operational` gate.
+///
+/// Mapping (per `docs/canvas-architecture.md` §convergence): each Component
+/// thing is a level-1 `Subsystem` under one root `System` (its `pos` becomes the
+/// `Transform2d`); each Environment thing referenced by a bond becomes an
+/// environment `Source` (if it originates a bond) or `Sink`; each **bond**
+/// relation becomes an `Interaction`.
+///
+/// Two canvas distinctions have no home in bert-core yet and are dropped here,
+/// by design rather than re-implemented shell-side (TODO: file a bert-core issue
+/// for a bond-vs-mere-aware model — the middle spec of `docs/canvas-architecture.md`):
+/// - **B̄ (mere relations, `is_bond == false`)** carry a relation but not
+///   systemhood; bert-core has only one edge type and counts every interaction
+///   as a bond, so emitting them would falsely license Structural. They are
+///   omitted — the Structural verdict stays faithful, at the cost of Core dep
+///   completeness (invisible: no UI verdict reads it).
+/// - **Connection kind graphs and Klir neutrality** are not encoded; the flow
+///   carries a substance type only.
+fn to_world_model(things: &[Thing], relations: &[Relation], lens: Lens) -> WorldModel {
+    use std::collections::HashMap;
+
+    let env_id = Id { ty: IdType::Environment, indices: vec![-1] };
+    let root_id = Id { ty: IdType::System, indices: vec![0] };
+
+    // Only bonds project to interactions; mere relations (B̄) are not systemhood
+    // edges and bert-core cannot represent them (see the doc comment).
+    let bonds: Vec<&Relation> = relations.iter().filter(|r| r.is_bond).collect();
+
+    // An Environment thing is included only if a bond touches it, and is a Source
+    // when it originates one (appears as `a`), else a Sink. This guarantees every
+    // projected external entity is referenced in the matching direction — no
+    // orphan-source/sink errors, so the projection is always a clean Core model.
+    let originates: std::collections::HashSet<u64> = bonds.iter().map(|r| r.a).collect();
+    let touched: std::collections::HashSet<u64> =
+        bonds.iter().flat_map(|r| [r.a, r.b]).collect();
+
+    let mut id_map: HashMap<u64, Id> = HashMap::new();
+    let mut systems: Vec<System> = Vec::new();
+    let mut sources: Vec<ExternalEntity> = Vec::new();
+    let mut sinks: Vec<ExternalEntity> = Vec::new();
+
+    // Root system of interest: the container every authored component sits inside.
+    systems.push(new_system(root_id.clone(), 0, "System", env_id.clone(), None));
+
+    let mut comp_idx: i64 = 0;
+    let mut env_idx: i64 = 0;
+    for t in things {
+        match t.role {
+            Role::Component => {
+                let id = Id { ty: IdType::Subsystem, indices: vec![0, comp_idx] };
+                comp_idx += 1;
+                systems.push(new_system(
+                    id.clone(),
+                    1,
+                    &t.name,
+                    root_id.clone(),
+                    Some(t.pos),
+                ));
+                id_map.insert(t.id, id);
+            }
+            Role::Environment => {
+                if !touched.contains(&t.id) {
+                    continue; // isolated env dot: nothing to say, and a source/sink
+                              // with no flow would be an orphan error
+                }
+                let is_source = originates.contains(&t.id);
+                let ty = if is_source { IdType::Source } else { IdType::Sink };
+                let id = Id { ty, indices: vec![-1, env_idx] };
+                env_idx += 1;
+                let ext = ExternalEntity {
+                    info: info(id.clone(), -1, &t.name),
+                    ty: if is_source {
+                        ExternalEntityType::Source
+                    } else {
+                        ExternalEntityType::Sink
+                    },
+                    transform: Some(transform_of(t.pos)),
+                    equivalence: String::new(),
+                    model: String::new(),
+                    is_same_as_id: None,
+                };
+                if is_source {
+                    sources.push(ext);
+                } else {
+                    sinks.push(ext);
+                }
+                id_map.insert(t.id, id);
+            }
+        }
+    }
+
+    let mut interactions: Vec<Interaction> = Vec::new();
+    for (k, r) in bonds.iter().enumerate() {
+        let (Some(src), Some(snk)) = (id_map.get(&r.a), id_map.get(&r.b)) else {
+            continue;
+        };
+        interactions.push(Interaction {
+            info: info(
+                Id { ty: IdType::Flow, indices: vec![k as i64] },
+                0,
+                &r.name,
+            ),
+            substance: Substance {
+                sub_type: String::new(),
+                ty: kind_to_substance(r.kind),
+            },
+            ty: InteractionType::Flow,
+            usability: InteractionUsability::Resource,
+            source: src.clone(),
+            source_interface: None,
+            sink: snk.clone(),
+            sink_interface: None,
+            amount: bert_core::rust_decimal::Decimal::ONE,
+            unit: String::new(),
+            parameters: vec![],
+            smart_parameters: vec![],
+            endpoint_offset: None,
+        });
+    }
+
+    WorldModel {
+        version: CURRENT_FILE_VERSION,
+        mode: Some(lens.mode()),
+        environment: Environment {
+            info: info(env_id, -1, "Environment"),
+            sources,
+            sinks,
+        },
+        systems,
+        interactions,
+        hidden_entities: vec![],
+    }
+}
+
+fn transform_of(pos: egui::Pos2) -> Transform2d {
+    Transform2d {
+        translation: bert_core::Vec2::new(pos.x, pos.y),
+        rotation: 0.0,
+    }
+}
+
+/// A default-populated `System`; `pos` (when a component) seeds its `Transform2d`.
+fn new_system(id: Id, level: i32, name: &str, parent: Id, pos: Option<egui::Pos2>) -> System {
+    let boundary_id = Id { ty: IdType::Boundary, indices: id.indices.clone() };
+    System {
+        info: info(id, level, name),
+        sources: vec![],
+        sinks: vec![],
+        parent,
+        complexity: Complexity::Atomic,
+        boundary: Boundary {
+            info: info(boundary_id, level, ""),
+            porosity: 0.0,
+            perceptive_fuzziness: 0.0,
+            interfaces: vec![],
+            parent_interface: None,
+        },
+        radius: RADIUS,
+        transform: pos.map(transform_of),
+        equivalence: String::new(),
+        history: String::new(),
+        transformation: String::new(),
+        member_autonomy: 1.0,
+        time_constant: String::new(),
+        archetype: None,
+        agent: None,
+    }
+}
+
 impl CanvasApp {
     /// L2: fire an async POST to GSR /extract (local or cloud). Callback parses the spec and sends
     /// it back over a channel; the UI polls it. GSR owns the prompt + model choice — the canvas only
@@ -824,6 +1058,15 @@ impl CanvasApp {
                     .clicked()
                 {
                     self.save_model(lens);
+                }
+                if ui
+                    .button(egui::RichText::new("Export BERT").color(theme::INK_SOFT))
+                    .on_hover_text(
+                        "Export as a bert-core WorldModel (.json), stamped with this lens's mode — the seam out to BERT / GSR / compose",
+                    )
+                    .clicked()
+                {
+                    self.export_world_model(lens);
                 }
                 if ui
                     .button(egui::RichText::new("Tidy").color(theme::INK_SOFT))
@@ -1034,7 +1277,11 @@ impl CanvasApp {
                                 }
                                 math_gathered(ui, "S", &gathered_labels, &unnamed_pairs);
                                 math_note(ui, "S = the bonding relation, split into endostructure (bonds among components) and exostructure (bonds linking components to the environment), ∪ mere relations (B̄). Only bonds confer systemhood.  C ∩ E = ∅.");
-                                if self.is_aggregate() {
+                                // "aggregate, not system" is bert-core's verdict (validate_mode
+                                // Structural via is_heap); ≥2 components is the presentation
+                                // trigger for the "heap" wording (Def 1.1 needs ≥2 things).
+                                let comp_count = self.things.iter().filter(|t| t.role == Role::Component).count();
+                                if comp_count >= 2 && self.is_heap(lens) {
                                     ui.add_space(10.0);
                                     ui.label(
                                         egui::RichText::new(
@@ -1550,7 +1797,10 @@ impl CanvasApp {
                     theme::INK,
                 );
                 let mut cy = oy + 56.0;
-                if lens == Lens::Bunge && self.is_aggregate() {
+                // Heap verdict from bert-core (validate_mode Structural via is_heap);
+                // ≥2 components is the presentation trigger, preserving prior UX.
+                let comp_count = self.things.iter().filter(|t| t.role == Role::Component).count();
+                if lens == Lens::Bunge && comp_count >= 2 && self.is_heap(lens) {
                     painter.text(
                         egui::pos2(ox, cy),
                         egui::Align2::LEFT_TOP,
@@ -1965,5 +2215,110 @@ mod tests {
             let env_min = ts.iter().filter(|t| t.role == Role::Environment).map(|t| t.pos.distance(center)).fold(f32::MAX, f32::min);
             assert!(comp_max < env_min, "components must sit inside the environment");
         }
+    }
+
+    // ── The bert-core seam (Gate 1) ──────────────────────────────────────
+
+    fn comp(id: u64, name: &str) -> Thing {
+        Thing { id, name: name.to_string(), pos: egui::pos2(0.0, 0.0), role: Role::Component }
+    }
+    fn env(id: u64, name: &str) -> Thing {
+        Thing { id, name: name.to_string(), pos: egui::pos2(0.0, 0.0), role: Role::Environment }
+    }
+    fn rel(id: u64, a: u64, b: u64, is_bond: bool, kind: Kind) -> Relation {
+        Relation { id, a, b, name: String::new(), is_bond, kind }
+    }
+
+    fn has_representational_refusal(errs: &[bert_core::operational::OperationalError]) -> bool {
+        errs.iter().any(|e| e.location == "mode" && e.reason.contains("representational rung"))
+    }
+
+    /// The projection is always a clean, on- Core model — no matter the lens —
+    /// so switching lenses never manufactures a validation defect.
+    #[test]
+    fn projection_is_always_a_clean_core_model() {
+        // env(1) originates a bond into component(2): classified Source, referenced.
+        let things = vec![env(1, "Well"), comp(2, "Tank"), env(3, "Drain")];
+        let rels = vec![rel(1, 1, 2, true, Kind::Matter), rel(2, 2, 3, true, Kind::Matter)];
+        for lens in [Lens::Klir, Lens::Bunge, Lens::Mobus] {
+            let wm = to_world_model(&things, &rels, lens);
+            assert!(
+                !bert_core::validate::validate(&wm).has_errors(),
+                "{lens:?} projection must validate clean: {:#?}",
+                bert_core::validate::validate(&wm).issues
+            );
+        }
+        // Directionally classified: Well originates → Source; Drain only receives → Sink.
+        let wm = to_world_model(&things, &rels, Lens::Mobus);
+        assert_eq!(wm.environment.sources.len(), 1);
+        assert_eq!(wm.environment.sinks.len(), 1);
+        assert_eq!(wm.environment.sources[0].info.name, "Well");
+        assert_eq!(wm.environment.sinks[0].info.name, "Drain");
+    }
+
+    /// The Structural verdict is bert-core's `check_bond`, and it tracks bonds
+    /// only: a bond between two components enters Structural; nothing, or a mere
+    /// relation (B̄), reads as a heap.
+    #[test]
+    fn structural_verdict_tracks_bonds_not_mere_relations() {
+        let things = vec![comp(1, "A"), comp(2, "B")];
+
+        let none = to_world_model(&things, &[], Lens::Bunge);
+        assert!(validate_mode(&none, Mode::Structural).has_errors(), "no bond ⇒ heap");
+
+        let bonded = to_world_model(&things, &[rel(1, 1, 2, true, Kind::Unspecified)], Lens::Bunge);
+        assert!(!validate_mode(&bonded, Mode::Structural).has_errors(), "a bond ⇒ system");
+
+        // B̄ carries a relation but not systemhood; it must not license Structural.
+        let mere = to_world_model(&things, &[rel(1, 1, 2, false, Kind::Unspecified)], Lens::Bunge);
+        assert!(validate_mode(&mere, Mode::Structural).has_errors(), "a mere relation stays a heap");
+        assert!(mere.interactions.is_empty(), "B̄ is not projected as an interaction");
+    }
+
+    /// The mode stamp makes `validate_operational`'s representational refusal fire
+    /// on a Core/Structural export — a canvas Klir/Bunge model is not executable.
+    #[test]
+    fn core_and_structural_exports_are_refused_at_the_representational_gate() {
+        let things = vec![comp(1, "A"), comp(2, "B")];
+        let rels = vec![rel(1, 1, 2, true, Kind::Unspecified)];
+        for lens in [Lens::Klir, Lens::Bunge] {
+            let wm = to_world_model(&things, &rels, lens);
+            assert_eq!(wm.mode(), lens.mode(), "export stamps the authored rung");
+            let errs = bert_core::operational::validate_operational(&wm)
+                .expect_err("a representational rung must be refused");
+            assert!(
+                has_representational_refusal(&errs),
+                "{lens:?} export must be refused at the representational mode gate: {errs:#?}"
+            );
+        }
+    }
+
+    /// A Mobus-authored model (source → component → sink, direct process-endpoint
+    /// flows, no B̄, no self-loop) *clears* the representational gate — the mode
+    /// stamp is Operational, so the Core/Structural refusal does not fire.
+    ///
+    /// It does not yet *fully* project: the component carries no Mobus work-process
+    /// primitive, so `validate_operational` still reports that gap. Attaching a
+    /// primitive is the component → work-process mapping deferred to a later arc
+    /// (bert#108) — the gate here is the representational refusal, which is absent.
+    #[test]
+    fn mobus_export_clears_the_representational_gate() {
+        let things = vec![env(1, "Well"), comp(2, "Tank"), env(3, "Drain")];
+        let rels = vec![rel(1, 1, 2, true, Kind::Matter), rel(2, 2, 3, true, Kind::Matter)];
+        let wm = to_world_model(&things, &rels, Lens::Mobus);
+        assert_eq!(wm.mode(), Mode::Operational);
+        // It clears the representational gate whether or not other operational
+        // requirements (agent primitives, bert#108) are met.
+        let refused_representationally = match bert_core::operational::validate_operational(&wm) {
+            Ok(_) => false,
+            Err(errs) => has_representational_refusal(&errs),
+        };
+        assert!(
+            !refused_representationally,
+            "a Mobus-authored model must clear the representational gate"
+        );
+        // The Operational rung's own structural precondition (irreflexivity, on-ness)
+        // is satisfied — the flows are direct and acyclic.
+        assert!(!validate_mode(&wm, Mode::Operational).has_errors());
     }
 }
