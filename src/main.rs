@@ -29,6 +29,13 @@ use bert_core::{
 };
 use eframe::egui;
 
+// The CSV tether (bert-lenses#7/#13): the carry layer + the mapping surface. Data
+// attaches to the model here; it compiles for every target (the projection wiring
+// and mapping are pure), while the run-comparison drill-down is cfg-gated with the
+// Run surface below.
+mod tether;
+use tether::{Assignment, ImportedData, MappingDraft, ModelParams};
+
 // The Run surface (Arc 4.3) links the executable dynamical face. Native-only:
 // bert-compose is a desktop egui crate (see Cargo.toml), so the import and the
 // whole feature are `cfg`-gated to keep the wasm build intact.
@@ -312,6 +319,12 @@ struct Model {
     /// with later edits to the kernel.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     source_spec: Option<serde_json::Value>,
+    /// The CSV tether's carry layer (#13): imported quantitative data (empirical H),
+    /// keyed to model elements and stamped with source + date. Persists with the
+    /// model (contract §2). `#[serde(default)]` keeps older saved models (no field)
+    /// loading, defaulting to no imported data.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    imported: Option<ImportedData>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -350,6 +363,16 @@ struct CanvasApp {
     gen_rx: Option<std::sync::mpsc::Receiver<Result<serde_json::Value, String>>>,
     /// Provenance of the current model when it came from a spec (Import or generate). Persisted on save.
     source_spec: Option<serde_json::Value>,
+    /// The CSV tether's carry layer (#13): imported empirical H keyed to model
+    /// elements. Persisted with the model; supplies the projection's quantitative
+    /// parameters and the run-vs-actual comparison. `None` until a CSV is imported.
+    imported: Option<ImportedData>,
+    /// The in-flight import mapping (contract §1). `Some` while the mapping window
+    /// is open — a parsed CSV plus per-column assignments. Transient, never saved.
+    import_draft: Option<MappingDraft>,
+    /// The post-import disclosure register: unmapped elements ("3 flows received no
+    /// data") and any orphaned series (T5/T3). Shown until dismissed. Transient.
+    import_notice: Option<String>,
     /// The model library: a canonical home dir (`~/Documents/bert-lenses/`) and its `*.json` contents,
     /// listed in the left panel for one-click loading. Lazy-initialised on first frame.
     models_dir: Option<std::path::PathBuf>,
@@ -668,6 +691,8 @@ impl CanvasApp {
                 things: self.things.clone(),
                 relations: self.relations.clone(),
                 source_spec: self.source_spec.clone(),
+                // Empirical H rides along in Save (contract §2), never in Export.
+                imported: self.imported.clone(),
             };
             if let Ok(json) = serde_json::to_string_pretty(&model) {
                 let _ = std::fs::write(path, json);
@@ -690,7 +715,12 @@ impl CanvasApp {
             .set_file_name("model.bert.json")
             .save_file()
         {
-            let wm = to_world_model(&self.things, &self.relations, lens);
+            // Export ships imported *scalars* (a flow's amount, a component's
+            // stock/param) as ordinary WorldModel fields — tether-as-supply makes
+            // every number traceable to real data (#13). The empirical *series*
+            // and stamps never enter the WorldModel (it has no slot for them), so
+            // empirical H does not ship in Export, exactly as contract §2 asks.
+            let wm = self.world_model(lens);
             if let Ok(json) = serde_json::to_string_pretty(&wm) {
                 let _ = std::fs::write(path, json);
             }
@@ -723,6 +753,11 @@ impl CanvasApp {
             self.things = model.things;
             self.relations = model.relations;
             self.source_spec = model.source_spec;
+            self.imported = model.imported;
+            // Disclose any imported series whose element no longer exists (T3): a
+            // loaded model may predate a deletion; the series is kept (orphaned),
+            // never silently dropped.
+            self.import_notice = self.orphan_notice();
             self.selection = Selected::None;
             self.editing = None;
             self.editing_rel = None;
@@ -763,6 +798,386 @@ impl CanvasApp {
         true
     }
 
+    /// The imported quantitative supply (#13), or empty params when no CSV is
+    /// attached — in which case the projection is byte-for-byte the old one.
+    fn params(&self) -> ModelParams {
+        self.imported
+            .as_ref()
+            .map(ImportedData::projection_params)
+            .unwrap_or_default()
+    }
+
+    /// Project the live canvas with imported parameters folded in. The runtime
+    /// paths (run, staleness key, audit, export) go through this so what runs is
+    /// the model *plus its imported reality*; the pure `to_world_model` (empty
+    /// params) stays for the structural tests.
+    fn world_model(&self, lens: Lens) -> WorldModel {
+        to_world_model_with(&self.things, &self.relations, lens, &self.params())
+    }
+
+    /// Disclosure of imported series whose mapped element no longer exists (T3):
+    /// the data is orphaned and kept, never silently dropped. `None` when nothing
+    /// is orphaned.
+    fn orphan_notice(&self) -> Option<String> {
+        let d = self.imported.as_ref()?;
+        let mut orphans: Vec<String> = Vec::new();
+        for rid in d.keyed_relation_ids() {
+            if !self.relations.iter().any(|r| r.id == rid) {
+                if let Some(s) = d.flow_series.get(&rid) {
+                    orphans.push(format!("flow \"{}\"", s.element_name));
+                }
+            }
+        }
+        let mut seen_things: std::collections::HashSet<u64> = std::collections::HashSet::new();
+        for tid in d.keyed_thing_ids() {
+            if !seen_things.insert(tid) {
+                continue;
+            }
+            if !self.things.iter().any(|t| t.id == tid) {
+                let name = d
+                    .stock_series
+                    .get(&tid)
+                    .or_else(|| d.param_series.get(&tid))
+                    .map(|s| s.element_name.clone())
+                    .unwrap_or_default();
+                orphans.push(format!("component \"{name}\""));
+            }
+        }
+        if orphans.is_empty() {
+            None
+        } else {
+            Some(format!(
+                "{} imported series orphaned by a deletion — {} — data kept, not dropped",
+                orphans.len(),
+                orphans.join(", ")
+            ))
+        }
+    }
+
+}
+
+// ── The CSV tether: import + mapping surface (contract §1) ───────────────────
+//
+// "Import data (CSV)" opens a file, parses it, and starts a mapping: the epistemic
+// ritual where each column is given a systems meaning before any number enters the
+// model. The finish is gated on the laws — every column spoken for (T1), no
+// magnitude without units (T2) — and it only ever writes an `ImportedData`, never
+// structure (T5). Unmapped model elements are disclosed at the end.
+
+impl CanvasApp {
+    /// A flow's display label: its own name, else `source → sink`.
+    fn flow_label(&self, r: &Relation) -> String {
+        if r.name.trim().is_empty() {
+            format!("{} → {}", self.name_of(r.a), self.name_of(r.b))
+        } else {
+            r.name.clone()
+        }
+    }
+
+    /// Resolve an element id (a bond relation or a thing) to a display label for
+    /// the translation sentences. Relations are checked first; on an interactively
+    /// authored model ids are globally unique, so this is exact.
+    fn tether_name_of(&self, id: u64) -> String {
+        if let Some(r) = self.relations.iter().find(|r| r.id == id) {
+            self.flow_label(r)
+        } else {
+            self.name_of(id)
+        }
+    }
+
+    /// Open a CSV and start the mapping. A parse failure surfaces in the same
+    /// error channel as other loads; it never touches the model.
+    fn import_csv(&mut self) {
+        let dir = self.lib_dir();
+        let Some(path) = rfd::FileDialog::new()
+            .add_filter("CSV data", &["csv"])
+            .set_directory(&dir)
+            .pick_file()
+        else {
+            return;
+        };
+        let text = match std::fs::read_to_string(&path) {
+            Ok(t) => t,
+            Err(e) => {
+                self.gen_error = Some(format!("could not read CSV: {e}"));
+                return;
+            }
+        };
+        let file = path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("data.csv")
+            .to_string();
+        match tether::parse_csv(&text) {
+            Ok((headers, rows)) => {
+                self.import_draft = Some(MappingDraft::new(file, headers, rows));
+                self.import_notice = None;
+            }
+            Err(_) => self.gen_error = Some("that CSV had no header row or columns".to_string()),
+        }
+    }
+
+    /// The mapping window (contract §1). Shown while a draft is in flight. Renders
+    /// a preview table, a per-column assignment surface with its live translation
+    /// sentence, the observation Δt, and a Finish gated on T1+T2.
+    fn import_mapping_window(&mut self, ctx: &egui::Context) {
+        let Some(mut draft) = self.import_draft.take() else {
+            return;
+        };
+        // Target lists + name resolver, built before rendering so the window body
+        // borrows nothing of `self`.
+        let components: Vec<(u64, String)> = self
+            .things
+            .iter()
+            .filter(|t| t.role == Role::Component)
+            .map(|t| (t.id, self.name_of(t.id)))
+            .collect();
+        let flows: Vec<(u64, String)> = self
+            .relations
+            .iter()
+            .filter(|r| r.is_bond)
+            .map(|r| (r.id, self.flow_label(r)))
+            .collect();
+        let name_of = |id: u64| self.tether_name_of(id);
+
+        let mut open = true;
+        let mut finish = false;
+        let mut cancel = false;
+        egui::Window::new(egui::RichText::new("Map CSV columns — the tether").color(theme::INK))
+            .open(&mut open)
+            .resizable(true)
+            .default_width(600.0)
+            .default_pos(egui::pos2(200.0, 90.0))
+            .show(ctx, |ui| {
+                ui.label(
+                    egui::RichText::new(format!("{} · {} columns, {} rows", draft.source_file, draft.headers.len(), draft.rows.len()))
+                        .small()
+                        .color(theme::INK_FAINT),
+                );
+                ui.label(
+                    egui::RichText::new(
+                        "Say what each column means before a single number enters the model.",
+                    )
+                    .small()
+                    .italics()
+                    .color(theme::MOBUS),
+                );
+                ui.add_space(6.0);
+
+                // Preview: the first ~10 rows, the pandas-familiar look.
+                egui::CollapsingHeader::new(egui::RichText::new("Preview").small().color(theme::INK_SOFT))
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        egui::ScrollArea::horizontal().id_salt("csv-preview").show(ui, |ui| {
+                            egui::Grid::new("csv-grid").striped(true).spacing(egui::vec2(12.0, 2.0)).show(ui, |ui| {
+                                for h in &draft.headers {
+                                    ui.label(egui::RichText::new(h).strong().small().color(theme::INK));
+                                }
+                                ui.end_row();
+                                for row in draft.preview(10) {
+                                    for i in 0..draft.headers.len() {
+                                        ui.label(egui::RichText::new(row.get(i).map(String::as_str).unwrap_or("")).small().color(theme::INK_SOFT));
+                                    }
+                                    ui.end_row();
+                                }
+                            });
+                        });
+                    });
+
+                ui.add_space(6.0);
+                ui.separator();
+                ui.add_space(4.0);
+
+                // Per-column assignment.
+                let n = draft.headers.len();
+                for i in 0..n {
+                    ui.horizontal(|ui| {
+                        ui.label(egui::RichText::new(&draft.headers[i]).strong().color(theme::INK));
+                        // Role picker.
+                        let role = draft.assignments[i].role_word();
+                        egui::ComboBox::from_id_salt(("role", i))
+                            .selected_text(egui::RichText::new(role).color(theme::INK_SOFT))
+                            .show_ui(ui, |ui| {
+                                use Assignment::*;
+                                for opt in [Unassigned, Ignore, Time, FlowMagnitude(None), StockLevel(None), Parameter(None)] {
+                                    let sel = std::mem::discriminant(&draft.assignments[i]) == std::mem::discriminant(&opt);
+                                    if ui.selectable_label(sel, opt.role_word()).clicked() {
+                                        draft.assignments[i] = opt;
+                                    }
+                                }
+                            });
+                        // Target picker for the role that needs one.
+                        let targets: Option<&[(u64, String)]> = match draft.assignments[i] {
+                            Assignment::FlowMagnitude(_) => Some(&flows),
+                            Assignment::StockLevel(_) | Assignment::Parameter(_) => Some(&components),
+                            _ => None,
+                        };
+                        if let Some(list) = targets {
+                            let current = match draft.assignments[i] {
+                                Assignment::FlowMagnitude(Some(id))
+                                | Assignment::StockLevel(Some(id))
+                                | Assignment::Parameter(Some(id)) => {
+                                    list.iter().find(|(tid, _)| *tid == id).map(|(_, l)| l.clone())
+                                }
+                                _ => None,
+                            };
+                            egui::ComboBox::from_id_salt(("target", i))
+                                .selected_text(egui::RichText::new(current.unwrap_or_else(|| "choose element…".into())).color(theme::INK_SOFT))
+                                .show_ui(ui, |ui| {
+                                    for (tid, label) in list {
+                                        if ui.selectable_label(false, label).clicked() {
+                                            draft.assignments[i] = match draft.assignments[i] {
+                                                Assignment::FlowMagnitude(_) => Assignment::FlowMagnitude(Some(*tid)),
+                                                Assignment::StockLevel(_) => Assignment::StockLevel(Some(*tid)),
+                                                Assignment::Parameter(_) => Assignment::Parameter(Some(*tid)),
+                                                ref other => other.clone(),
+                                            };
+                                        }
+                                    }
+                                });
+                        }
+                        // Units field for a flow magnitude (T2).
+                        if matches!(draft.assignments[i], Assignment::FlowMagnitude(_)) {
+                            ui.label(egui::RichText::new("units").small().color(theme::INK_FAINT));
+                            ui.add(egui::TextEdit::singleline(&mut draft.units[i]).desired_width(70.0).hint_text("$/mo"));
+                        }
+                    });
+                    // The live translation sentence.
+                    if let Some(sentence) = draft.translation(i, &name_of) {
+                        ui.horizontal(|ui| {
+                            ui.add_space(12.0);
+                            ui.label(egui::RichText::new(sentence).small().italics().color(theme::INK_SOFT));
+                        });
+                    }
+                    ui.add_space(3.0);
+                }
+
+                ui.add_space(4.0);
+                ui.separator();
+                ui.add_space(4.0);
+
+                // Observation Δt: inferred from the time column, overridable.
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("Observation Δt").color(theme::INK));
+                    ui.add(egui::TextEdit::singleline(&mut draft.dt_text).desired_width(64.0));
+                    if let Some(inferred) = draft.inferred_dt() {
+                        ui.label(egui::RichText::new(format!("inferred {inferred}")).small().color(theme::INK_FAINT));
+                        if ui.small_button("use").on_hover_text("Adopt the inferred spacing").clicked() {
+                            draft.dt_text = format!("{inferred}");
+                        }
+                    } else {
+                        ui.label(egui::RichText::new("(mark a time column to infer)").small().color(theme::INK_FAINT));
+                    }
+                });
+
+                ui.add_space(6.0);
+
+                // The finish gate, spelled out honestly.
+                match draft.units_ok() {
+                    Err(msg) => {
+                        ui.label(egui::RichText::new(format!("⚠ {msg}")).small().color(theme::WARN));
+                    }
+                    Ok(()) if !draft.is_total() => {
+                        ui.label(egui::RichText::new("Every column must be assigned or ignored before finishing.").small().color(theme::INK_FAINT));
+                    }
+                    Ok(()) => {}
+                }
+
+                ui.horizontal(|ui| {
+                    if ui.add_enabled(draft.can_finish(), egui::Button::new(egui::RichText::new("Finish import").color(theme::INK))).clicked() {
+                        finish = true;
+                    }
+                    if ui.button(egui::RichText::new("Cancel").color(theme::INK_FAINT)).clicked() {
+                        cancel = true;
+                    }
+                });
+            });
+
+        if cancel || !open {
+            self.import_draft = None;
+            return;
+        }
+        if finish {
+            self.commit_import(draft);
+            return;
+        }
+        self.import_draft = Some(draft);
+    }
+
+    /// Commit a finished draft into the carry layer (T5: only data is written) and
+    /// disclose the model elements that received no data (contract §1, "3 flows
+    /// received no data" register).
+    fn commit_import(&mut self, draft: MappingDraft) {
+        let stamp = tether::today_stamp();
+        let data = {
+            let name_of = |id: u64| self.tether_name_of(id);
+            draft.commit(stamp, &name_of)
+        };
+
+        // Unmapped disclosure: bond flows and components that got no series.
+        let flows_total = self.relations.iter().filter(|r| r.is_bond).count();
+        let flows_mapped = self
+            .relations
+            .iter()
+            .filter(|r| r.is_bond && data.flow_series.contains_key(&r.id))
+            .count();
+        let comps_total = self.things.iter().filter(|t| t.role == Role::Component).count();
+        let comps_mapped = self
+            .things
+            .iter()
+            .filter(|t| {
+                t.role == Role::Component
+                    && (data.stock_series.contains_key(&t.id) || data.param_series.contains_key(&t.id))
+            })
+            .count();
+
+        let mut parts: Vec<String> = Vec::new();
+        let unmapped_flows = flows_total - flows_mapped;
+        let unmapped_comps = comps_total - comps_mapped;
+        if unmapped_flows > 0 {
+            parts.push(format!("{unmapped_flows} flow{} received no data", if unmapped_flows == 1 { "" } else { "s" }));
+        }
+        if unmapped_comps > 0 {
+            parts.push(format!("{unmapped_comps} component{} received no data", if unmapped_comps == 1 { "" } else { "s" }));
+        }
+        let disclosure = if parts.is_empty() {
+            "every element received data".to_string()
+        } else {
+            parts.join("; ")
+        };
+        self.import_notice = Some(format!(
+            "Imported {} — {}. Import attached data only; structure is untouched.",
+            data.source_file, disclosure
+        ));
+        self.imported = Some(data);
+        self.import_draft = None;
+    }
+
+    /// The dismissible post-import / orphan disclosure banner.
+    fn import_notice_window(&mut self, ctx: &egui::Context) {
+        let Some(msg) = self.import_notice.clone() else {
+            return;
+        };
+        let mut open = true;
+        egui::Window::new(egui::RichText::new("Import").color(theme::INK))
+            .open(&mut open)
+            .resizable(false)
+            .default_pos(egui::pos2(240.0, 120.0))
+            .show(ctx, |ui| {
+                ui.label(egui::RichText::new(msg).color(theme::INK_SOFT));
+                if let Some(d) = &self.imported {
+                    ui.add_space(4.0);
+                    ui.label(
+                        egui::RichText::new(format!("source: {} · imported {}", d.source_file, d.imported_at))
+                            .small()
+                            .color(theme::INK_FAINT),
+                    );
+                }
+            });
+        if !open {
+            self.import_notice = None;
+        }
+    }
 }
 
 // ── L1: distill a GSR intermediate spec into the bare, lens-neutral Model ──
@@ -953,6 +1368,21 @@ fn info(id: Id, level: i32, name: &str) -> Info {
 /// - **Connection kind graphs and Klir neutrality** are not encoded; the flow
 ///   carries a substance type only.
 fn to_world_model(things: &[Thing], relations: &[Relation], lens: Lens) -> WorldModel {
+    to_world_model_with(things, relations, lens, &ModelParams::default())
+}
+
+/// The projection, supplied with imported quantitative parameters (the CSV tether,
+/// #13). `params` injects a flow's imported amount, a component's imported initial
+/// storage, and a component's imported transfer parameter; where a slot is absent
+/// the projection falls back to its old default (amount = `ONE`, no storage, no
+/// cognitive params) — so imported reality is a floor over the defaults, never a
+/// separate code path. `to_world_model` is exactly this with empty params.
+fn to_world_model_with(
+    things: &[Thing],
+    relations: &[Relation],
+    lens: Lens,
+    params: &ModelParams,
+) -> WorldModel {
     use std::collections::HashMap;
 
     let env_id = Id { ty: IdType::Environment, indices: vec![-1] };
@@ -976,7 +1406,16 @@ fn to_world_model(things: &[Thing], relations: &[Relation], lens: Lens) -> World
     let mut sinks: Vec<ExternalEntity> = Vec::new();
 
     // Root system of interest: the container every authored component sits inside.
-    systems.push(new_system(root_id.clone(), 0, "System", env_id.clone(), None, None));
+    systems.push(new_system(
+        root_id.clone(),
+        0,
+        "System",
+        env_id.clone(),
+        None,
+        None,
+        None,
+        None,
+    ));
 
     let mut comp_idx: i64 = 0;
     let mut env_idx: i64 = 0;
@@ -992,6 +1431,8 @@ fn to_world_model(things: &[Thing], relations: &[Relation], lens: Lens) -> World
                     root_id.clone(),
                     Some(t.pos),
                     t.primitive,
+                    params.stock_initial.get(&t.id).copied(),
+                    params.component_param.get(&t.id).cloned(),
                 ));
                 id_map.insert(t.id, id);
             }
@@ -1047,7 +1488,13 @@ fn to_world_model(things: &[Thing], relations: &[Relation], lens: Lens) -> World
             source_interface: None,
             sink: snk.clone(),
             sink_interface: None,
-            amount: bert_core::rust_decimal::Decimal::ONE,
+            // The imported flow magnitude (#13, tether-as-supply); `ONE` is the
+            // fallback when no CSV column was mapped to this flow, not a ceiling.
+            amount: params
+                .flow_amount
+                .get(&r.id)
+                .and_then(|v| bert_core::rust_decimal::Decimal::from_f64_retain(*v))
+                .unwrap_or(bert_core::rust_decimal::Decimal::ONE),
             unit: String::new(),
             parameters: vec![],
             smart_parameters: vec![],
@@ -1080,6 +1527,7 @@ fn transform_of(pos: egui::Pos2) -> Transform2d {
 /// A stamped `primitive` becomes the component's `AgentModel` (one Mobus work
 /// process) with the `Agent` archetype — the mapping the Operational rung reads
 /// (bert#108). `None` leaves `agent`/`archetype` unset, exactly as before.
+#[allow(clippy::too_many_arguments)]
 fn new_system(
     id: Id,
     level: i32,
@@ -1087,6 +1535,8 @@ fn new_system(
     parent: Id,
     pos: Option<egui::Pos2>,
     primitive: Option<ProcessPrimitive>,
+    initial_storage: Option<f64>,
+    param: Option<(String, f64)>,
 ) -> System {
     let boundary_id = Id { ty: IdType::Boundary, indices: id.indices.clone() };
     System {
@@ -1110,9 +1560,24 @@ fn new_system(
         member_autonomy: 1.0,
         time_constant: String::new(),
         archetype: primitive.map(|_| HcgsArchetype::Agent),
-        agent: primitive.map(|p| AgentModel {
-            primitives: vec![p],
-            ..Default::default()
+        // A stamped primitive becomes the component's AgentModel. Imported
+        // parameters (#13) are folded in: an initial stock seeds `initial_state`
+        // (the storage the Operational projection reads), a transfer parameter
+        // seeds a `cognitive_params` entry keyed by its source column. Both are
+        // absent for a freshly authored component, leaving the identity default —
+        // which is why the run's identity-default disclosure flips honestly the
+        // moment a component carries imported data.
+        agent: primitive.map(|p| {
+            let mut agent = AgentModel { primitives: vec![p], ..Default::default() };
+            if let Some(storage) = initial_storage {
+                agent
+                    .initial_state
+                    .insert("storage".to_string(), serde_json::json!(storage));
+            }
+            if let Some((name, value)) = param {
+                agent.cognitive_params.insert(name, value);
+            }
+            agent
         }),
     }
 }
@@ -1274,7 +1739,7 @@ impl CanvasApp {
     /// routes the verdict through `bert_core::operational::validate_operational`.
     /// No canvas state is touched — the type signature is the guarantee.
     fn audit(&self, lens: Lens) -> AuditReport {
-        let wm = to_world_model(&self.things, &self.relations, lens);
+        let wm = self.world_model(lens);
 
         // The projected level-1 work processes, in projection order — the rows the
         // panel shows green/red. (Root sits at level 0 and is not a component.)
@@ -1926,12 +2391,99 @@ fn run_sparkline(ui: &mut egui::Ui, series: &[f32]) {
         .add(egui::Shape::line(pts, egui::Stroke::new(1.4, theme::MOBUS)));
 }
 
+/// A two-series sparkline for the tether comparison (contract §3, T4): the
+/// simulated trace in the Mobus hue and the actual empirical series in the accent
+/// hue, on shared axes so divergence reads at a glance. Always visually distinct.
+#[cfg(not(target_arch = "wasm32"))]
+fn comparison_sparkline(ui: &mut egui::Ui, simulated: &[f32], actual: &[f32]) {
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(220.0, 40.0), egui::Sense::hover());
+    let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
+    for &v in simulated.iter().chain(actual.iter()) {
+        lo = lo.min(v);
+        hi = hi.max(v);
+    }
+    if !lo.is_finite() || !hi.is_finite() {
+        return;
+    }
+    let span = (hi - lo).max(1e-6);
+    let plot = |series: &[f32], color: egui::Color32, painter: &egui::Painter| {
+        if series.len() < 2 {
+            return;
+        }
+        let n = series.len();
+        let pts: Vec<egui::Pos2> = series
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| {
+                let x = rect.left() + rect.width() * (i as f32 / (n - 1) as f32);
+                let y = rect.bottom() - rect.height() * ((v - lo) / span);
+                egui::pos2(x, y)
+            })
+            .collect();
+        painter.add(egui::Shape::line(pts, egui::Stroke::new(1.6, color)));
+    };
+    let painter = ui.painter().clone();
+    plot(simulated, theme::MOBUS, &painter); // simulated
+    plot(actual, theme::ACCENT, &painter); // actual
+}
+
 impl CanvasApp {
+    /// Build the run-vs-actual comparisons for the mapped elements that carry
+    /// empirical H (contract §3). A stock level overlays the component's recorded
+    /// trajectory against the actual stock; a flow magnitude overlays the model's
+    /// constant amount (the imported mean the projection runs at) against the
+    /// actual observed magnitude — the flat line vs reality is exactly the
+    /// "you assumed this was constant" teaching moment.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn comparisons(&self, res: &RunResults) -> Vec<tether::Comparison> {
+        let Some(d) = &self.imported else {
+            return vec![];
+        };
+        let mut out = Vec::new();
+        for (tid, s) in &d.stock_series {
+            let Some(thing) = self.things.iter().find(|t| t.id == *tid) else {
+                continue;
+            };
+            let Some((_, sim)) = res.trajectories.iter().find(|(name, _)| *name == thing.name) else {
+                continue;
+            };
+            let actual: Vec<f32> = s.present().iter().map(|v| *v as f32).collect();
+            if actual.is_empty() {
+                continue;
+            }
+            out.push(tether::Comparison {
+                element_name: thing.name.clone(),
+                kind: "stock",
+                simulated: sim.clone(),
+                actual,
+            });
+        }
+        for (rid, s) in &d.flow_series {
+            let Some(r) = self.relations.iter().find(|r| r.id == *rid) else {
+                continue;
+            };
+            let actual: Vec<f32> = s.present().iter().map(|v| *v as f32).collect();
+            if actual.is_empty() {
+                continue;
+            }
+            let amount = s.mean().unwrap_or(0.0) as f32;
+            let sim = vec![amount; res.ticks.max(actual.len()).max(2)];
+            out.push(tether::Comparison {
+                element_name: self.flow_label(r),
+                kind: "flow",
+                simulated: sim,
+                actual,
+            });
+        }
+        out.sort_by(|a, b| a.element_name.cmp(&b.element_name));
+        out
+    }
+
     /// The staleness key: the current canvas's Operational content hash, or `None`
     /// if it no longer projects. A run is stale unless this equals its recorded key.
     #[cfg(not(target_arch = "wasm32"))]
     fn current_spec_key(&self, lens: Lens) -> Option<u64> {
-        let wm = to_world_model(&self.things, &self.relations, lens);
+        let wm = self.world_model(lens);
         validate_operational(&wm).ok().map(|s| s.content_hash())
     }
 
@@ -1941,7 +2493,7 @@ impl CanvasApp {
     /// fires on the prompt's explicit Run (R4).
     #[cfg(not(target_arch = "wasm32"))]
     fn begin_run(&mut self, lens: Lens) {
-        let wm = to_world_model(&self.things, &self.relations, lens);
+        let wm = self.world_model(lens);
         if validate_operational(&wm).is_err() {
             self.run_gate_msg = Some(RUN_ROUTING_MSG.to_string());
             self.run_results = None;
@@ -1997,7 +2549,7 @@ impl CanvasApp {
     /// projects (the caller routes to Check consistency).
     #[cfg(not(target_arch = "wasm32"))]
     fn run_model(&self, lens: Lens, dt: f64, t: f64) -> Option<RunResults> {
-        let wm = to_world_model(&self.things, &self.relations, lens);
+        let wm = self.world_model(lens);
         let spec = validate_operational(&wm).ok()?;
         let mut circuit = from_spec(&spec);
         if circuit.nodes.is_empty() {
@@ -2152,6 +2704,10 @@ impl CanvasApp {
                     return;
                 };
                 let stale = current_key != Some(res.key);
+                // The run-vs-actual comparisons (contract §3), built from the
+                // mapped elements that carry empirical H. Empty when nothing is
+                // imported; withheld from the UI while stale, exactly as the trace.
+                let comparisons = self.comparisons(res);
 
                 // Header: the recorded run, stamped with its Δt/T (B1 vocabulary).
                 ui.horizontal(|ui| {
@@ -2227,6 +2783,41 @@ impl CanvasApp {
                 }
                 ui.add_space(8.0);
 
+                // (2b) Model-vs-reality divergence, one line per mapped element
+                // (contract §3). Only meaningful for the current model, so it is
+                // withheld while stale exactly as the drill-down is.
+                if !comparisons.is_empty() {
+                    ui.label(egui::RichText::new("MODEL vs REALITY · divergence").small().color(theme::INK_FAINT));
+                    ui.add_space(2.0);
+                    if stale {
+                        ui.label(
+                            egui::RichText::new("withheld until re-run")
+                                .small()
+                                .italics()
+                                .color(theme::INK_FAINT),
+                        );
+                    } else {
+                        for c in &comparisons {
+                            let line = match c.divergence_pct() {
+                                Some(pct) => format!(
+                                    "{} ({}) — {:.1}% at horizon (sim {:.2} vs actual {:.2})",
+                                    c.element_name,
+                                    c.kind,
+                                    pct,
+                                    c.simulated.last().copied().unwrap_or(0.0),
+                                    c.actual.last().copied().unwrap_or(0.0),
+                                ),
+                                None => format!("{} ({}) — no overlap", c.element_name, c.kind),
+                            };
+                            ui.horizontal(|ui| {
+                                ui.add_space(10.0);
+                                ui.label(egui::RichText::new(line).small().color(ink));
+                            });
+                        }
+                    }
+                    ui.add_space(8.0);
+                }
+
                 // (3) Final levels in purpose order — "instantaneous".
                 ui.label(egui::RichText::new("FINAL STATE · instantaneous").small().color(theme::INK_FAINT));
                 ui.add_space(2.0);
@@ -2273,6 +2864,35 @@ impl CanvasApp {
                                     );
                                 }
                             });
+                    }
+
+                    // (5) Simulated vs actual overlay (contract §3, T4): for each
+                    // mapped element with empirical H, both series on one axis,
+                    // labeled — the tether's payoff, where the analyst already is.
+                    if !comparisons.is_empty() {
+                        ui.add_space(8.0);
+                        ui.label(egui::RichText::new("SIMULATED vs ACTUAL").small().color(theme::INK_FAINT));
+                        ui.horizontal(|ui| {
+                            ui.add_space(2.0);
+                            ui.label(egui::RichText::new("— simulated").small().color(theme::MOBUS));
+                            ui.add_space(6.0);
+                            ui.label(egui::RichText::new("— actual").small().color(theme::ACCENT));
+                        });
+                        ui.add_space(2.0);
+                        for c in &comparisons {
+                            let header = format!("{} · {}", c.element_name, c.kind);
+                            egui::CollapsingHeader::new(egui::RichText::new(header).color(theme::INK))
+                                .id_salt(("run-cmp", &c.element_name, c.kind))
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    comparison_sparkline(ui, &c.simulated, &c.actual);
+                                    let line = match c.divergence_pct() {
+                                        Some(pct) => format!("divergence {pct:.1}% at horizon"),
+                                        None => "no overlapping horizon".to_string(),
+                                    };
+                                    ui.label(egui::RichText::new(line).small().color(theme::INK_FAINT));
+                                });
+                        }
                     }
                 }
 
@@ -2425,6 +3045,18 @@ impl CanvasApp {
                     .clicked()
                 {
                     self.export_world_model(lens);
+                }
+                // Import data (CSV): the reality interface (#7/#13). Sited with
+                // Save/Export because data attaches to the *model*, not a lens —
+                // the reading of it happens in Mobus, but the attaching is neutral.
+                if ui
+                    .button(egui::RichText::new("Import data (CSV)").color(theme::INK_SOFT))
+                    .on_hover_text(
+                        "Attach a CSV of real observations — map columns onto flows, stocks, and parameters (the tether)",
+                    )
+                    .clicked()
+                {
+                    self.import_csv();
                 }
                 if ui
                     .button(egui::RichText::new("Check consistency").color(theme::INK_SOFT))
@@ -2717,6 +3349,12 @@ impl CanvasApp {
         }
         self.palette_panel(ctx);
 
+        // The CSV tether (contract §1): the mapping window and the post-import /
+        // orphan disclosure. Model-level, not lens-gated — data attaches to the
+        // model; only its *reading* (the run comparison) is Mobus-only.
+        self.import_mapping_window(ctx);
+        self.import_notice_window(ctx);
+
         // Arc 4.3 Run surface (Shape B): Mobus-only, transient. Leaving Mobus closes
         // both the prompt and the Results panel, so the run surface never lingers
         // where its vocabulary doesn't apply (G1/G2).
@@ -2928,6 +3566,11 @@ impl CanvasApp {
                             Selected::None => {}
                         }
                         self.selection = Selected::None;
+                        // T3: deleting a mapped element orphans its imported series
+                        // (kept, never dropped) — surface the disclosure if so.
+                        if self.imported.is_some() {
+                            self.import_notice = self.orphan_notice();
+                        }
                     }
                     // B toggles a selected relation between a bond and a mere relation
                     if let Selected::Rel(rid) = self.selection {
@@ -3549,7 +4192,7 @@ fn main() -> eframe::Result<()> {
         let v: serde_json::Value = serde_json::from_str(&raw).expect("parse spec");
         let spec = v.get("spec").cloned().unwrap_or(v); // accept a /extract response or a bare spec
         let (things, relations, next_id) = model_from_spec(&spec);
-        let model = Model { lens: Lens::Bunge, next_id, things, relations, source_spec: Some(spec) };
+        let model = Model { lens: Lens::Bunge, next_id, things, relations, source_spec: Some(spec), imported: None };
         std::fs::write(&args[3], serde_json::to_string_pretty(&model).expect("serialize"))
             .expect("write model");
         eprintln!("wrote {} ({} things, {} relations)", args[3], model.things.len(), model.relations.len());
@@ -3662,7 +4305,7 @@ mod tests {
         let model_json = serde_json::to_string(&Model {
             lens: Lens::Mobus, next_id: 3,
             things: vec![Thing { id: 1, name: "T".into(), pos: egui::Pos2::ZERO, role: Role::Component, primitive: None }],
-            relations: vec![], source_spec: None,
+            relations: vec![], source_spec: None, imported: None,
         }).unwrap();
         let mut app2 = CanvasApp::default();
         app2.load_json(&model_json);
@@ -3816,6 +4459,54 @@ mod tests {
         // The Operational rung's own structural precondition (irreflexivity, on-ness)
         // is satisfied — the flows are direct and acyclic.
         assert!(!validate_mode(&wm, Mode::Operational).has_errors());
+    }
+
+    /// The carry-layer projection (tether #13): an imported flow amount, initial
+    /// stock, and parameter reach the `OperationalSpec` — proving `amount = ONE`
+    /// is now a fallback, not a ceiling. With empty params the same model projects
+    /// the old defaults, so imported reality is a floor over them.
+    #[test]
+    fn imported_parameters_reach_the_operational_spec() {
+        use tether::ModelParams;
+        // Well(1) → Tank(2, Buffering) → Drain(3): the smallest runnable Mobus model.
+        let mut tank = comp(2, "Tank");
+        tank.primitive = Some(ProcessPrimitive::Buffering);
+        let things = vec![env(1, "Well"), tank, env(3, "Drain")];
+        let rels = vec![rel(1, 1, 2, true, Kind::Matter), rel(2, 2, 3, true, Kind::Matter)];
+
+        // Default projection: the flow rides at amount = 1, the component is bare.
+        let plain = bert_core::operational::validate_operational(&to_world_model(
+            &things,
+            &rels,
+            Lens::Mobus,
+        ))
+        .expect("projects clean");
+        assert_eq!(plain.flows[0].amount, 1.0, "the default amount is ONE");
+        assert!(plain.processes[0].initial_storage.is_none());
+        assert!(plain.processes[0].cognitive_params.is_empty());
+
+        // Supplied projection: relation 1's amount, thing 2's stock + parameter.
+        let mut params = ModelParams::default();
+        params.flow_amount.insert(1, 42.0);
+        params.stock_initial.insert(2, 500.0);
+        params.component_param.insert(2, ("k".to_string(), 0.3));
+        let supplied = bert_core::operational::validate_operational(&to_world_model_with(
+            &things,
+            &rels,
+            Lens::Mobus,
+            &params,
+        ))
+        .expect("projects clean");
+        assert_eq!(supplied.flows[0].amount, 42.0, "the imported amount reaches the spec");
+        assert_eq!(supplied.processes[0].initial_storage, Some(500.0));
+        assert_eq!(supplied.processes[0].cognitive_params.get("k"), Some(&0.3));
+        // And the identity-default disclosure flips honestly: this component is no
+        // longer bare (it carries an imported stock + param).
+        assert!(
+            !supplied.processes[0].cognitive_params.is_empty()
+                || supplied.processes[0].initial_storage.is_some(),
+            "an imported component is not at identity default"
+        );
     }
 
     // ── Arc 4.1: the read-only consistency audit ─────────────────────────
@@ -4034,6 +4725,7 @@ mod tests {
             things: app.things.clone(),
             relations: app.relations.clone(),
             source_spec: None,
+            imported: None,
         })
         .unwrap();
         let mut app2 = CanvasApp::default();
