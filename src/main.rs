@@ -425,6 +425,20 @@ fn arrow_head(painter: &egui::Painter, tip: egui::Pos2, dir: egui::Vec2, color: 
     ));
 }
 
+/// Dashed ring around a point, used to mark environment placement at the Klir lens
+/// without borrowing the Bunge/Mobus square (Klir's vocabulary has no C/E shape split —
+/// the ring stays a circle and only interrupts the stroke).
+fn dashed_ring(painter: &egui::Painter, center: egui::Pos2, radius: f32, color: egui::Color32) {
+    let segments = 40;
+    let pts: Vec<egui::Pos2> = (0..=segments)
+        .map(|i| {
+            let a = (i as f32 / segments as f32) * std::f32::consts::TAU;
+            center + egui::vec2(a.cos(), a.sin()) * radius
+        })
+        .collect();
+    painter.add(egui::Shape::dashed_line(&pts, egui::Stroke::new(1.5, color), 4.0, 4.0));
+}
+
 fn dist_to_seg(p: egui::Pos2, a: egui::Pos2, b: egui::Pos2) -> f32 {
     let ab = b - a;
     let len_sq = ab.length_sq();
@@ -3713,7 +3727,10 @@ impl CanvasApp {
                     } else {
                         egui::Stroke::new(1.5, theme::LINE2)
                     };
-                    // composition = circle; environment = square (Bunge/Mobus only — Klir has no C/E)
+                    // composition = circle; environment = square (Bunge/Mobus only — Klir has
+                    // no C/E shape split, its things are undifferentiated set elements). Klir
+                    // still needs placement-role legibility, so environment gets a dashed halo
+                    // around the same circle instead of the richer lenses' square.
                     if t.role == Role::Environment && lens != Lens::Klir {
                         let s = RADIUS * 0.82;
                         let sq = vec![
@@ -3726,6 +3743,9 @@ impl CanvasApp {
                     } else {
                         painter.circle_filled(t.pos, RADIUS, theme::SURFACE);
                         painter.circle_stroke(t.pos, RADIUS, stroke);
+                        if t.role == Role::Environment && lens == Lens::Klir {
+                            dashed_ring(&painter, t.pos, RADIUS + 5.0, theme::INK_SOFT);
+                        }
                     }
                     if connect_hover {
                         painter.circle_stroke(
