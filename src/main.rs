@@ -36,6 +36,12 @@ use eframe::egui;
 mod tether;
 use tether::{Assignment, ImportedData, MappingDraft, ModelParams};
 
+// The run ledger (bert-lenses#15): a lab notebook outside the model, for
+// cross-run comparison. Pure data + file I/O, no egui — wired into the Run
+// surface below (native-only, same as the Run surface it reports on).
+#[cfg(not(target_arch = "wasm32"))]
+mod ledger;
+
 // The Run surface (Arc 4.3) links the executable dynamical face. Native-only:
 // bert-compose is a desktop egui crate (see Cargo.toml), so the import and the
 // whole feature are `cfg`-gated to keep the wasm build intact.
@@ -417,6 +423,14 @@ struct CanvasApp {
     /// message replaces any results and no partial run happens (R2).
     #[cfg(not(target_arch = "wasm32"))]
     run_gate_msg: Option<String>,
+    /// The current model's library file stem — set on Save/Open/library-load, used
+    /// only to label ledger entries (#15). `None` (renders "untitled") for a fresh
+    /// or generated model never yet saved or loaded from a named file.
+    current_model_name: Option<String>,
+    /// Feedback from the last explicit "Save report" gesture — the written path,
+    /// or an error string. Transient, cleared on the next Run.
+    #[cfg(not(target_arch = "wasm32"))]
+    last_report_msg: Option<String>,
 }
 
 fn arrow_head(painter: &egui::Painter, tip: egui::Pos2, dir: egui::Vec2, color: egui::Color32) {
@@ -641,7 +655,10 @@ impl CanvasApp {
 
     fn load_path(&mut self, path: &std::path::Path) {
         match std::fs::read_to_string(path) {
-            Ok(txt) => self.load_json(&txt),
+            Ok(txt) => {
+                self.load_json(&txt);
+                self.current_model_name = path.file_stem().and_then(|s| s.to_str()).map(str::to_string);
+            }
             Err(e) => self.gen_error = Some(format!("could not read file: {e}")),
         }
     }
@@ -719,7 +736,8 @@ impl CanvasApp {
                 imported: self.imported.clone(),
             };
             if let Ok(json) = serde_json::to_string_pretty(&model) {
-                let _ = std::fs::write(path, json);
+                let _ = std::fs::write(&path, json);
+                self.current_model_name = path.file_stem().and_then(|s| s.to_str()).map(str::to_string);
             }
             self.refresh_library(); // the new file shows in the panel immediately
         }
@@ -762,7 +780,10 @@ impl CanvasApp {
             .pick_file()
         {
             match std::fs::read_to_string(&path) {
-                Ok(txt) => self.load_json(&txt),
+                Ok(txt) => {
+                    self.load_json(&txt);
+                    self.current_model_name = path.file_stem().and_then(|s| s.to_str()).map(str::to_string);
+                }
                 Err(e) => self.gen_error = Some(format!("could not read file: {e}")),
             }
         }
@@ -2375,6 +2396,7 @@ impl LevelCategory {
 /// it settled at (a sink's accumulated total; otherwise the circuit's level —
 /// a buffer's stock, a source's rate, a process's last-tick activity).
 #[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone)]
 struct LevelRow {
     name: String,
     category: LevelCategory,
@@ -2388,6 +2410,7 @@ struct LevelRow {
 /// content hash at run time; a later structural edit moves the model's hash and
 /// the panel goes stale (R3).
 #[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone)]
 struct RunResults {
     dt: f64,
     t: f64,
@@ -2488,6 +2511,42 @@ fn comparison_sparkline(ui: &mut egui::Ui, simulated: &[f32], actual: &[f32]) {
     plot(actual, theme::ACCENT, &painter); // actual
 }
 
+/// Build the ledger's summary line for a completed run — the shared shape between
+/// the auto-append and the explicit full report's `summary` field (#15).
+#[cfg(not(target_arch = "wasm32"))]
+fn ledger_line(res: &RunResults, comparisons: &[tether::Comparison], model_name: &str) -> ledger::LedgerLine {
+    ledger::LedgerLine {
+        timestamp: ledger::full_timestamp(),
+        model_name: model_name.to_string(),
+        spec_hash: format!("{:016x}", res.key),
+        dt: res.dt,
+        t: res.t,
+        ticks: res.ticks,
+        residual: res.residual,
+        identity_default_n: res.identity_default_n,
+        identity_default_m: res.identity_default_m,
+        divergences: comparisons
+            .iter()
+            .map(|c| ledger::DivergenceEntry {
+                element_name: c.element_name.clone(),
+                kind: c.kind.to_string(),
+                divergence_pct: c.divergence_pct(),
+            })
+            .collect(),
+    }
+}
+
+/// AUTO ledger write for every completed run (#15): appends one summary line.
+/// Never blocks or crashes a run on failure — logged to stderr and ignored,
+/// exactly as the issue asks.
+#[cfg(not(target_arch = "wasm32"))]
+fn append_run_ledger(res: &RunResults, comparisons: &[tether::Comparison], model_name: &str) {
+    let line = ledger_line(res, comparisons, model_name);
+    if let Err(e) = ledger::append_summary(&ledger::default_runs_dir(), &line) {
+        eprintln!("run ledger: could not append summary line: {e}");
+    }
+}
+
 impl CanvasApp {
     /// Build the run-vs-actual comparisons for the mapped elements that carry
     /// empirical H (contract §3). A stock level overlays the component's recorded
@@ -2584,6 +2643,13 @@ impl CanvasApp {
         }
         match self.run_model(lens, dt, t) {
             Some(res) => {
+                // Ledger (#15): AUTO summary line on every completed run — the
+                // lab notebook, distinct from Save/Export (contract §4).
+                let comparisons = self.comparisons(&res);
+                let model_name = self.current_model_name.clone().unwrap_or_else(|| "untitled".to_string());
+                append_run_ledger(&res, &comparisons, &model_name);
+                self.last_report_msg = None;
+
                 if let Some(prev) = &self.run_results {
                     self.prev_run_line = Some(prev.summary_line.clone());
                 }
@@ -2675,6 +2741,35 @@ impl CanvasApp {
         })
     }
 
+    /// Write the explicit full report (#15, contract: explicit gesture for the
+    /// full trajectory dump) for the given run, and record feedback for the panel.
+    /// Reuses the run's own structures — trajectories, levels, comparisons — and
+    /// serializes what already exists rather than computing anything new.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_run_report(&mut self, res: &RunResults, comparisons: &[tether::Comparison]) {
+        let model_name = self.current_model_name.clone().unwrap_or_else(|| "untitled".to_string());
+        let summary = ledger_line(res, comparisons, &model_name);
+        let report = ledger::FullReport {
+            summary,
+            levels: res.levels.iter().map(|r| (r.name.clone(), r.value)).collect(),
+            trajectories: res.trajectories.clone(),
+            comparisons: comparisons
+                .iter()
+                .map(|c| ledger::ComparisonSeries {
+                    element_name: c.element_name.clone(),
+                    kind: c.kind.to_string(),
+                    simulated: c.simulated.clone(),
+                    actual: c.actual.clone(),
+                    divergence_pct: c.divergence_pct(),
+                })
+                .collect(),
+        };
+        self.last_report_msg = Some(match ledger::write_full_report(&ledger::default_runs_dir(), &report) {
+            Ok(path) => format!("saved to {}", path.display()),
+            Err(e) => format!("could not write report: {e}"),
+        });
+    }
+
     /// The Δt/T prompt (contract §2): both explicit, last-used prefilled, ticks =
     /// round(T/Δt) shown. No other controls, nothing persisted (G1). Confirming
     /// runs; the window's ✕ dismisses without running.
@@ -2747,6 +2842,7 @@ impl CanvasApp {
         }
         let current_key = self.current_spec_key(lens);
         let mut open = true;
+        let mut do_save_report = false;
         egui::Window::new(egui::RichText::new("Run results").color(theme::INK))
             .open(&mut open)
             .resizable(true)
@@ -2960,6 +3056,26 @@ impl CanvasApp {
                 ui.add_space(6.0);
                 ui.separator();
                 ui.add_space(4.0);
+
+                // (6) Explicit "Save report" gesture (#15, contract: explicit for
+                // the full trajectory dump — mirrors the Run prompt's own
+                // explicit-gesture doctrine). Withheld while stale, same as the
+                // drill-down it dumps.
+                ui.horizontal(|ui| {
+                    if ui.add_enabled(!stale, egui::Button::new("Save report")).clicked() {
+                        do_save_report = true;
+                    }
+                    ui.label(
+                        egui::RichText::new("full trajectories → ~/Documents/bert-lenses/runs/")
+                            .small()
+                            .color(theme::INK_FAINT),
+                    );
+                });
+                if let Some(msg) = &self.last_report_msg {
+                    ui.label(egui::RichText::new(msg).small().color(theme::INK_FAINT));
+                }
+                ui.add_space(6.0);
+
                 ui.label(
                     egui::RichText::new(
                         "Snapshot — read-only; refreshed only by an explicit re-run, and never \
@@ -2969,6 +3085,14 @@ impl CanvasApp {
                     .color(theme::INK_FAINT),
                 );
             });
+        if do_save_report {
+            // Borrow released by the closure above; clone the run's own data
+            // rather than holding `res` across the `&mut self` call below.
+            if let Some(res) = self.run_results.clone() {
+                let comparisons = self.comparisons(&res);
+                self.save_run_report(&res, &comparisons);
+            }
+        }
         self.run_panel = open;
     }
 }
