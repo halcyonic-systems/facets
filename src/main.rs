@@ -15,7 +15,8 @@
 //!   - `L1: distill a GSR intermediate spec` — turn a generated spec into the bare kernel.
 //!   - `The bert-core seam` — `to_world_model`: project the kernel into a `WorldModel`, stamping the active lens's `mode`.
 //!   - `Arc 4.1: read-only consistency audit` — `audit`/`AuditReport`: render `validate_operational`'s verdict verbatim.
-//!   - `impl eframe::App` / `canvas` / `audit_panel` / `palette_panel` — the egui frame loop, gesture handling, lens rendering, and the two on-demand side panels.
+//!   - `Arc 4.3: the Run surface (Shape B)` — `RunResults`/`run_model`/`run_panel`: run the Operational projection and read its recorded trace (native-only).
+//!   - `impl eframe::App` / `canvas` / `audit_panel` / `palette_panel` — the egui frame loop, gesture handling, lens rendering, and the on-demand side panels.
 //!   - Math view + font helpers, then `main`.
 
 use bert_core::operational::{validate_operational, OperationalError};
@@ -27,6 +28,14 @@ use bert_core::{
     CURRENT_FILE_VERSION,
 };
 use eframe::egui;
+
+// The Run surface (Arc 4.3) links the executable dynamical face. Native-only:
+// bert-compose is a desktop egui crate (see Cargo.toml), so the import and the
+// whole feature are `cfg`-gated to keep the wasm build intact.
+#[cfg(not(target_arch = "wasm32"))]
+use bert_compose::{from_spec, run::RecordedRun, NodeKind};
+#[cfg(not(target_arch = "wasm32"))]
+use bert_core::operational::OperationalProcess;
 
 mod theme {
     use eframe::egui::Color32;
@@ -359,6 +368,28 @@ struct CanvasApp {
     /// The loaded stamp, live only while `show_palette`: click a component to apply it. `None`
     /// = no stamp loaded (clicks just select, as usual).
     stamp: Option<Stamp>,
+    // ── Arc 4.3: the Run surface (Shape B), native-only, transient ──
+    /// The Δt/T parameter prompt is open (opened by the Run action, Mobus-only).
+    #[cfg(not(target_arch = "wasm32"))]
+    run_prompt: bool,
+    /// The transient Results panel is open — its own room (Shape B), dismisses to nothing.
+    #[cfg(not(target_arch = "wasm32"))]
+    run_panel: bool,
+    /// Last-used Δt / T, prefilled into the prompt. In memory only — never a persisted control (G1).
+    #[cfg(not(target_arch = "wasm32"))]
+    run_dt: String,
+    #[cfg(not(target_arch = "wasm32"))]
+    run_t: String,
+    /// The latest recorded run, in memory only — never serialized into Save or Export (§4).
+    #[cfg(not(target_arch = "wasm32"))]
+    run_results: Option<RunResults>,
+    /// The previous run's one-line summary, retained beside the current one (B4).
+    #[cfg(not(target_arch = "wasm32"))]
+    prev_run_line: Option<String>,
+    /// Set when Run is invoked on a model that fails `validate_operational`: the routing
+    /// message replaces any results and no partial run happens (R2).
+    #[cfg(not(target_arch = "wasm32"))]
+    run_gate_msg: Option<String>,
 }
 
 fn arrow_head(painter: &egui::Painter, tip: egui::Pos2, dir: egui::Vec2, color: egui::Color32) {
@@ -1699,6 +1730,516 @@ impl CanvasApp {
     }
 }
 
+// ── Arc 4.3: the Run surface (Shape B) ───────────────────────────────────────
+//
+// Run is an on-demand executable reading of the authored model — a query at the
+// Operational rung, not a mode change and not a new authoring state (contract
+// §1). It requires `validate_operational` to pass; a model that fails routes to
+// Check consistency (R2), never a partial run. The circuit-building and the
+// recorder come from bert-compose, so this is native-only (see Cargo.toml) and
+// the whole feature is `cfg`-gated to match.
+//
+// Shape B (contract §3, ratified B7): the results live in their OWN transient
+// panel with the audit panel's semantics — read-only, snapshot (refreshed only
+// by an explicit re-run), dismisses to zero footprint. The canvas is never
+// mutated, animated, or recolored by a run (G3); authoring is never blocked (G4).
+//
+// The recorded artifact is a **trace** (the observer's downstream record), never
+// "H" or "memory": the 8-tuple's H slot is the authored `System.history`, which
+// stays in the model and is untouched by running (grounding B1/F1). The trace is
+// held in memory only and is never serialized into Save or Export (§4).
+
+/// Default step size / horizon, prefilled the first time the prompt opens. These
+/// are a prefill the user confirms, not a silent default: no run records without
+/// the explicit Run gesture in the prompt (R4).
+#[cfg(not(target_arch = "wasm32"))]
+const DEFAULT_DT: &str = "1";
+#[cfg(not(target_arch = "wasm32"))]
+const DEFAULT_T: &str = "30";
+
+/// Shown when Run is invoked on a model that fails `validate_operational`: the
+/// kernel's verdict channel is Check consistency, so Run routes there rather than
+/// half-running (R2).
+#[cfg(not(target_arch = "wasm32"))]
+const RUN_ROUTING_MSG: &str =
+    "This model isn't runnable yet. Fix the issues in Check consistency, then Run.";
+
+/// Where a thing sits in the purpose reading order (SL §3.1, grounding C3): a
+/// system exists to produce its outputs, so Products/Waste read first, then the
+/// Resources it draws, then its internal components.
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum LevelCategory {
+    Product,
+    Resource,
+    Internal,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl LevelCategory {
+    fn order(self) -> u8 {
+        match self {
+            LevelCategory::Product => 0,
+            LevelCategory::Resource => 1,
+            LevelCategory::Internal => 2,
+        }
+    }
+    fn header(self) -> &'static str {
+        match self {
+            LevelCategory::Product => "Products / waste",
+            LevelCategory::Resource => "Resources",
+            LevelCategory::Internal => "Internal components",
+        }
+    }
+}
+
+/// One thing's final-state reading: its name, its purpose category, and the level
+/// it settled at (a sink's accumulated total; otherwise the circuit's level —
+/// a buffer's stock, a source's rate, a process's last-tick activity).
+#[cfg(not(target_arch = "wasm32"))]
+struct LevelRow {
+    name: String,
+    category: LevelCategory,
+    value: f32,
+}
+
+/// The processed synthesis of one run — the terminal legibility layer (B3). The
+/// summary IS the product; the raw per-thing trajectories are drill-down only.
+/// Snapshot: every field is computed once at run time and never mutated after, so
+/// the panel's numbers only change on an explicit re-run. `key` is the spec's
+/// content hash at run time; a later structural edit moves the model's hash and
+/// the panel goes stale (R3).
+#[cfg(not(target_arch = "wasm32"))]
+struct RunResults {
+    dt: f64,
+    t: f64,
+    ticks: usize,
+    /// The conservation ledger residual at the horizon — shown, not asserted
+    /// (R5; realizes the conservation SHOULD of SL spec §3.2).
+    residual: f32,
+    /// Components running the bare primitive with no chosen transfer characteristic
+    /// (grounding C2): identity gain, no cognitive params, no seeded stock. `n of m`.
+    identity_default_n: usize,
+    identity_default_m: usize,
+    /// Final levels in purpose order (Products/waste → Resources → internals).
+    levels: Vec<LevelRow>,
+    /// Per-thing trajectory for the drill-down: `(name, series over ticks)`.
+    trajectories: Vec<(String, Vec<f32>)>,
+    /// `OperationalSpec::content_hash` at run time — the staleness key (R3;
+    /// h-element §1.4: "history is the capture of an instance of structure", so a
+    /// structural edit is a new instance and this recording no longer matches).
+    key: u64,
+    /// The one-line summary retained as the "previous run" line on the next run (B4).
+    summary_line: String,
+}
+
+/// True when a projected component carries no author-chosen transfer characteristic
+/// beyond the bare primitive (grounding C2): no cognitive params and no seeded
+/// stock. Such a component is a valid minimal work process, but one whose behavior
+/// the modeler did not shape — so the disclosure stays honest about how much of the
+/// run is uninformative-by-construction. (The lenses authoring surface stamps only
+/// the primitive KIND today, so a freshly authored model reads as fully default;
+/// chosen params arrive via import/compose. `agency_capacity` is deliberately not a
+/// discriminant here — it is never author-set on this surface, only the default.)
+#[cfg(not(target_arch = "wasm32"))]
+fn is_identity_default(p: &OperationalProcess) -> bool {
+    p.cognitive_params.is_empty() && p.initial_storage.is_none()
+}
+
+/// A minimal inline sparkline for a per-thing trajectory — the drill-down's
+/// "historical" view (h-element knowledge levels), drawn in the Mobus hue.
+#[cfg(not(target_arch = "wasm32"))]
+fn run_sparkline(ui: &mut egui::Ui, series: &[f32]) {
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(180.0, 28.0), egui::Sense::hover());
+    if series.len() < 2 {
+        return;
+    }
+    let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
+    for &v in series {
+        lo = lo.min(v);
+        hi = hi.max(v);
+    }
+    let span = (hi - lo).max(1e-6);
+    let n = series.len();
+    let pts: Vec<egui::Pos2> = series
+        .iter()
+        .enumerate()
+        .map(|(i, &v)| {
+            let x = rect.left() + rect.width() * (i as f32 / (n - 1) as f32);
+            let y = rect.bottom() - rect.height() * ((v - lo) / span);
+            egui::pos2(x, y)
+        })
+        .collect();
+    ui.painter()
+        .add(egui::Shape::line(pts, egui::Stroke::new(1.4, theme::MOBUS)));
+}
+
+impl CanvasApp {
+    /// The staleness key: the current canvas's Operational content hash, or `None`
+    /// if it no longer projects. A run is stale unless this equals its recorded key.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn current_spec_key(&self, lens: Lens) -> Option<u64> {
+        let wm = to_world_model(&self.things, &self.relations, lens);
+        validate_operational(&wm).ok().map(|s| s.content_hash())
+    }
+
+    /// Invoke Run (Mobus-only). Gate first (R2): if the model fails
+    /// `validate_operational`, show the routing message and clear any results —
+    /// never a partial run. Otherwise open the Δt/T prompt; the run itself only
+    /// fires on the prompt's explicit Run (R4).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn begin_run(&mut self, lens: Lens) {
+        let wm = to_world_model(&self.things, &self.relations, lens);
+        if validate_operational(&wm).is_err() {
+            self.run_gate_msg = Some(RUN_ROUTING_MSG.to_string());
+            self.run_results = None;
+            self.run_prompt = false;
+            self.run_panel = true;
+            return;
+        }
+        self.run_gate_msg = None;
+        if self.run_dt.is_empty() {
+            self.run_dt = DEFAULT_DT.to_string();
+        }
+        if self.run_t.is_empty() {
+            self.run_t = DEFAULT_T.to_string();
+        }
+        self.run_prompt = true;
+    }
+
+    /// Confirm the prompt: parse the supplied Δt/T, record a run, and surface the
+    /// summary. The previous run's one line is retained beside the new one (B4).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn execute_run(&mut self, lens: Lens) {
+        let (Ok(dt), Ok(t)) = (self.run_dt.parse::<f64>(), self.run_t.parse::<f64>()) else {
+            return;
+        };
+        if dt <= 0.0 || t <= 0.0 {
+            return;
+        }
+        match self.run_model(lens, dt, t) {
+            Some(res) => {
+                if let Some(prev) = &self.run_results {
+                    self.prev_run_line = Some(prev.summary_line.clone());
+                }
+                self.run_results = Some(res);
+                self.run_gate_msg = None;
+                self.run_prompt = false;
+                self.run_panel = true;
+            }
+            // The canvas was edited to an unrunnable state between opening the
+            // prompt and confirming (authoring is never blocked, G4). Route, don't
+            // half-run.
+            None => {
+                self.run_gate_msg = Some(RUN_ROUTING_MSG.to_string());
+                self.run_results = None;
+                self.run_prompt = false;
+                self.run_panel = true;
+            }
+        }
+    }
+
+    /// Build the circuit from the Operational projection, record `(T, Δt)`, and
+    /// synthesize the summary. Pure: borrows `&self`, mutates nothing on the
+    /// canvas (R1 — the signature is the guarantee). `None` if the model no longer
+    /// projects (the caller routes to Check consistency).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn run_model(&self, lens: Lens, dt: f64, t: f64) -> Option<RunResults> {
+        let wm = to_world_model(&self.things, &self.relations, lens);
+        let spec = validate_operational(&wm).ok()?;
+        let mut circuit = from_spec(&spec);
+        if circuit.nodes.is_empty() {
+            return None;
+        }
+        let run = RecordedRun::record_over(&mut circuit, &spec, dt, t);
+        let ticks = run.history.len();
+        let residual = run.final_balance;
+
+        let identity_default_m = spec.processes.len();
+        let identity_default_n = spec.processes.iter().filter(|p| is_identity_default(p)).count();
+
+        // Final levels, one row per node, then ordered by purpose (stable within
+        // category so declaration order is preserved).
+        let mut levels: Vec<LevelRow> = (0..circuit.nodes.len())
+            .map(|i| {
+                let node = &circuit.nodes[i];
+                let (category, value) = match node.kind {
+                    NodeKind::Sink => (LevelCategory::Product, node.total),
+                    NodeKind::Source => (LevelCategory::Resource, circuit.level(i)),
+                    NodeKind::Process(_) => (LevelCategory::Internal, circuit.level(i)),
+                };
+                LevelRow { name: node.name.clone(), category, value }
+            })
+            .collect();
+        levels.sort_by_key(|r| r.category.order());
+
+        // Per-thing trajectory: a sink's accumulated total, a buffer's stock, else
+        // last-tick activity — the column of the recorded rows that reads as its level.
+        let trajectories: Vec<(String, Vec<f32>)> = circuit
+            .nodes
+            .iter()
+            .enumerate()
+            .map(|(i, node)| {
+                let col = match node.kind {
+                    NodeKind::Sink => 2,
+                    NodeKind::Process(ProcessPrimitive::Buffering) => 1,
+                    _ => 0,
+                };
+                let series = run
+                    .history
+                    .iter()
+                    .map(|row| row[1 + i * 3 + col])
+                    .collect();
+                (node.name.clone(), series)
+            })
+            .collect();
+
+        let summary_line = format!("Δt {dt}, T {t} ({ticks} ticks) · residual {residual:.3}");
+
+        Some(RunResults {
+            dt,
+            t,
+            ticks,
+            residual,
+            identity_default_n,
+            identity_default_m,
+            levels,
+            trajectories,
+            key: spec.content_hash(),
+            summary_line,
+        })
+    }
+
+    /// The Δt/T prompt (contract §2): both explicit, last-used prefilled, ticks =
+    /// round(T/Δt) shown. No other controls, nothing persisted (G1). Confirming
+    /// runs; the window's ✕ dismisses without running.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn run_prompt_window(&mut self, ctx: &egui::Context, lens: Lens) {
+        if !self.run_prompt {
+            return;
+        }
+        let mut open = true;
+        let mut do_run = false;
+        egui::Window::new(egui::RichText::new("Run parameters").color(theme::INK))
+            .open(&mut open)
+            .resizable(false)
+            .default_pos(egui::pos2(660.0, 120.0))
+            .show(ctx, |ui| {
+                ui.label(
+                    egui::RichText::new("Δt is the step size, T the horizon. Ticks = round(T / Δt).")
+                        .small()
+                        .color(theme::INK_SOFT),
+                );
+                ui.add_space(6.0);
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("Δt").color(theme::INK));
+                    ui.add(egui::TextEdit::singleline(&mut self.run_dt).desired_width(64.0));
+                });
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("T ").color(theme::INK));
+                    ui.add(egui::TextEdit::singleline(&mut self.run_t).desired_width(64.0));
+                });
+                let dt = self.run_dt.parse::<f64>().ok().filter(|&d| d > 0.0);
+                let t = self.run_t.parse::<f64>().ok().filter(|&v| v > 0.0);
+                ui.add_space(4.0);
+                match (dt, t) {
+                    (Some(d), Some(v)) => ui.label(
+                        egui::RichText::new(format!("{} ticks", (v / d).round() as i64))
+                            .small()
+                            .color(theme::INK_SOFT),
+                    ),
+                    _ => ui.label(
+                        egui::RichText::new("enter a positive Δt and T")
+                            .small()
+                            .color(theme::ACCENT),
+                    ),
+                };
+                ui.add_space(8.0);
+                let valid = dt.is_some() && t.is_some();
+                if ui
+                    .add_enabled(valid, egui::Button::new(egui::RichText::new("Run").color(theme::INK_SOFT)))
+                    .clicked()
+                {
+                    do_run = true;
+                }
+            });
+        self.run_prompt = open;
+        if do_run {
+            self.execute_run(lens);
+        }
+    }
+
+    /// The transient Results panel (Shape B). Read-only, snapshot; the window's ✕
+    /// dismisses it to nothing. Renders the run summary as the terminal layer (B3):
+    /// residual headline, identity-default disclosure, purpose-ordered final levels
+    /// ("instantaneous"), then per-thing trajectories on demand ("historical"). A
+    /// structural edit since the run greys the summary and withholds the drill-down
+    /// (R3) — a stale run never renders as current.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn run_panel(&mut self, ctx: &egui::Context, lens: Lens) {
+        if !self.run_panel {
+            return;
+        }
+        let current_key = self.current_spec_key(lens);
+        let mut open = true;
+        egui::Window::new(egui::RichText::new("Run results").color(theme::INK))
+            .open(&mut open)
+            .resizable(true)
+            .default_width(360.0)
+            .default_pos(egui::pos2(680.0, 120.0))
+            .show(ctx, |ui| {
+                // R2: the gate message stands alone — no results, no partial run.
+                if let Some(msg) = &self.run_gate_msg {
+                    ui.label(egui::RichText::new("Not runnable yet").strong().color(theme::ACCENT));
+                    ui.add_space(4.0);
+                    ui.label(egui::RichText::new(msg).color(theme::INK_SOFT));
+                    return;
+                }
+                let Some(res) = &self.run_results else {
+                    ui.label(egui::RichText::new("No run yet.").color(theme::INK_FAINT));
+                    return;
+                };
+                let stale = current_key != Some(res.key);
+
+                // Header: the recorded run, stamped with its Δt/T (B1 vocabulary).
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("Recorded run").strong().color(theme::MOBUS));
+                    ui.label(
+                        egui::RichText::new(format!("Δt {}, T {} · {} ticks", res.dt, res.t, res.ticks))
+                            .small()
+                            .color(theme::INK_FAINT),
+                    );
+                });
+                // B4: the previous run's one line retained beside the current.
+                if let Some(prev) = &self.prev_run_line {
+                    ui.label(egui::RichText::new(format!("previous · {prev}")).small().color(theme::INK_FAINT));
+                }
+                ui.add_space(4.0);
+
+                // R3: staleness is loud. The summary greys and the drill-down is withheld.
+                if stale {
+                    ui.label(
+                        egui::RichText::new("⚠ model changed since this run — re-run to refresh")
+                            .strong()
+                            .color(theme::WARN),
+                    );
+                    ui.add_space(4.0);
+                }
+                ui.separator();
+                ui.add_space(6.0);
+
+                let ink = if stale { theme::INK_FAINT } else { theme::INK };
+
+                // (1) Ledger residual headline (R5, SL §3.2).
+                let conserves = res.residual.abs() < 1e-3;
+                let residual_color = if stale {
+                    theme::INK_FAINT
+                } else if conserves {
+                    theme::OK
+                } else {
+                    theme::WARN
+                };
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new(if conserves { "✓" } else { "⚠" }).color(residual_color));
+                    ui.label(
+                        egui::RichText::new(format!("Conservation residual {:.4}", res.residual))
+                            .strong()
+                            .color(residual_color),
+                    );
+                    ui.label(
+                        egui::RichText::new(if conserves { "(mass conserved)" } else { "(leak — inspect)" })
+                            .small()
+                            .color(theme::INK_FAINT),
+                    );
+                });
+                ui.add_space(6.0);
+
+                // (2) Identity-default disclosure (C2).
+                ui.label(
+                    egui::RichText::new(format!(
+                        "{} of {} components at identity default",
+                        res.identity_default_n, res.identity_default_m
+                    ))
+                    .color(ink),
+                );
+                if res.identity_default_m > 0 && res.identity_default_n == res.identity_default_m {
+                    ui.label(
+                        egui::RichText::new(
+                            "every component runs the bare primitive — the run is well-formed but \
+                             its behavior wasn't chosen",
+                        )
+                        .small()
+                        .italics()
+                        .color(theme::INK_FAINT),
+                    );
+                }
+                ui.add_space(8.0);
+
+                // (3) Final levels in purpose order — "instantaneous".
+                ui.label(egui::RichText::new("FINAL STATE · instantaneous").small().color(theme::INK_FAINT));
+                ui.add_space(2.0);
+                let mut last_cat: Option<LevelCategory> = None;
+                for row in &res.levels {
+                    if last_cat != Some(row.category) {
+                        ui.label(egui::RichText::new(row.category.header()).small().color(theme::INK_SOFT));
+                        last_cat = Some(row.category);
+                    }
+                    let name = if row.name.trim().is_empty() { "·" } else { &row.name };
+                    ui.horizontal(|ui| {
+                        ui.add_space(10.0);
+                        ui.label(egui::RichText::new(name).color(ink));
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            ui.label(egui::RichText::new(format!("{:.3}", row.value)).color(ink));
+                        });
+                    });
+                }
+                ui.add_space(8.0);
+
+                // (4) Per-thing trajectory drill-down — "historical", on demand.
+                // Withheld while stale (the trace no longer belongs to the model).
+                if stale {
+                    ui.label(
+                        egui::RichText::new("Trajectories withheld until re-run.")
+                            .small()
+                            .italics()
+                            .color(theme::INK_FAINT),
+                    );
+                } else {
+                    ui.label(egui::RichText::new("TRAJECTORIES · historical").small().color(theme::INK_FAINT));
+                    ui.add_space(2.0);
+                    for (name, series) in &res.trajectories {
+                        let label = if name.trim().is_empty() { "·" } else { name };
+                        egui::CollapsingHeader::new(egui::RichText::new(label).color(theme::INK))
+                            .id_salt(("run-traj", label))
+                            .show(ui, |ui| {
+                                run_sparkline(ui, series);
+                                if let Some(last) = series.last() {
+                                    ui.label(
+                                        egui::RichText::new(format!("final {last:.3}"))
+                                            .small()
+                                            .color(theme::INK_FAINT),
+                                    );
+                                }
+                            });
+                    }
+                }
+
+                ui.add_space(6.0);
+                ui.separator();
+                ui.add_space(4.0);
+                ui.label(
+                    egui::RichText::new(
+                        "Snapshot — read-only; refreshed only by an explicit re-run, and never \
+                         written into Save or Export.",
+                    )
+                    .small()
+                    .color(theme::INK_FAINT),
+                );
+            });
+        self.run_panel = open;
+    }
+}
+
 impl eframe::App for CanvasApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         apply_theme(ctx);
@@ -1841,6 +2382,20 @@ impl CanvasApp {
                     .clicked()
                 {
                     self.show_audit = true;
+                }
+                // Run: the executable reading of the model, sited with Check consistency but
+                // Mobus-only (Run is Mobus vocabulary, contract §2). On demand — no ambient
+                // sim affordance (G1). Native-only (bert-compose is a desktop crate).
+                #[cfg(not(target_arch = "wasm32"))]
+                if lens == Lens::Mobus
+                    && ui
+                        .button(egui::RichText::new("Run").color(theme::INK_SOFT))
+                        .on_hover_text(
+                            "Run the authored model over a horizon (Δt, T) and read its recorded trace — Mobus only, on demand",
+                        )
+                        .clicked()
+                {
+                    self.begin_run(lens);
                 }
                 // The work-process palette is Mobus vocabulary — the mapping step (bert#108).
                 // Offered only in the Mobus lens, on demand (God-tool guard: never ambient).
@@ -2109,6 +2664,19 @@ impl CanvasApp {
             self.show_palette = false;
         }
         self.palette_panel(ctx);
+
+        // Arc 4.3 Run surface (Shape B): Mobus-only, transient. Leaving Mobus closes
+        // both the prompt and the Results panel, so the run surface never lingers
+        // where its vocabulary doesn't apply (G1/G2).
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if lens != Lens::Mobus {
+                self.run_prompt = false;
+                self.run_panel = false;
+            }
+            self.run_prompt_window(ctx, lens);
+            self.run_panel(ctx, lens);
+        }
 
         egui::CentralPanel::default()
             .frame(egui::Frame::default().fill(theme::SURFACE))
@@ -3506,5 +4074,155 @@ mod tests {
             assert!(!prim_desc(p).is_empty());
             assert_eq!(prim_code(p).chars().count(), 2, "badge codes are two chars");
         }
+    }
+
+    // ── Arc 4.3: the Run surface (Shape B) law-tests (R1–R5) ──────────────
+    // Native-only, matching the feature (bert-compose is a desktop crate).
+
+    /// A stamped, runnable Mobus chain: Well → Tank(Buffering) → Pump(Propelling)
+    /// → Drain. Every component carries a work process, so `validate_operational`
+    /// clears and the projection runs.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn runnable_app() -> CanvasApp {
+        let mut app = audit_app(); // Well → Tank → Pump → Drain, unstamped
+        let tank = app.things.iter().find(|t| t.name == "Tank").unwrap().id;
+        let pump = app.things.iter().find(|t| t.name == "Pump").unwrap().id;
+        app.set_primitive(tank, Some(ProcessPrimitive::Buffering));
+        app.set_primitive(pump, Some(ProcessPrimitive::Propelling));
+        app
+    }
+
+    /// R1 run-is-pure: recording a run mutates no canvas state — the model
+    /// serializes byte-identically before and after. (`run_model` borrows `&self`;
+    /// this is the behavioral witness of that guarantee.)
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn run_is_pure_r1() {
+        let app = runnable_app();
+        let before = serde_json::to_string(&(&app.things, &app.relations)).unwrap();
+        let res = app.run_model(Lens::Mobus, 1.0, 30.0);
+        assert!(res.is_some(), "a stamped conserving chain runs");
+        let after = serde_json::to_string(&(&app.things, &app.relations)).unwrap();
+        assert_eq!(before, after, "a run leaves the canvas byte-for-byte unchanged");
+    }
+
+    /// R2 gate: Run on a model that fails `validate_operational` shows the routing
+    /// message and records nothing — never a partial run.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn run_gate_refuses_unrunnable_r2() {
+        let mut app = audit_app(); // components unstamped → operational check fails
+        app.begin_run(Lens::Mobus);
+        assert!(app.run_gate_msg.is_some(), "an unrunnable model shows the routing message");
+        assert!(app.run_results.is_none(), "and never a partial run");
+        assert!(!app.run_prompt, "no parameter prompt opens for an unrunnable model");
+        assert!(
+            app.run_model(Lens::Mobus, 1.0, 30.0).is_none(),
+            "run_model itself refuses to project an unrunnable model"
+        );
+    }
+
+    /// R3 staleness: a structural edit after a run moves the model's content hash,
+    /// so the recorded run no longer matches — the panel's staleness key diverges.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn run_goes_stale_on_structural_edit_r3() {
+        let mut app = runnable_app();
+        let res = app.run_model(Lens::Mobus, 1.0, 30.0).expect("the chain runs");
+        assert_eq!(
+            app.current_spec_key(Lens::Mobus),
+            Some(res.key),
+            "a fresh run matches the model it ran on"
+        );
+        // Structural edit: change a component's work process.
+        let pump = app.things.iter().find(|t| t.name == "Pump").unwrap().id;
+        app.set_primitive(pump, Some(ProcessPrimitive::Amplifying));
+        assert_ne!(
+            app.current_spec_key(Lens::Mobus),
+            Some(res.key),
+            "a structural edit moves the key — the run is now stale"
+        );
+    }
+
+    /// R4 explicit params: invoking Run opens the prompt but records nothing; only
+    /// the explicit confirm (over the prefilled Δt/T) records a run.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn no_run_without_explicit_params_r4() {
+        let mut app = runnable_app();
+        assert!(app.run_results.is_none(), "a fresh app has recorded nothing");
+        app.begin_run(Lens::Mobus);
+        assert!(app.run_prompt, "Run opens the parameter prompt");
+        assert!(
+            app.run_results.is_none(),
+            "opening the prompt records nothing — the run needs the explicit Run gesture"
+        );
+        app.execute_run(Lens::Mobus); // confirm over the prefilled (supplied) params
+        assert!(app.run_results.is_some(), "the explicit confirm records the run");
+    }
+
+    /// R5 conservation surfaced: the ledger residual is computed and rendered in
+    /// the summary state (headline + one-line), not silently asserted.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn residual_surfaced_in_summary_r5() {
+        let app = runnable_app();
+        let res = app.run_model(Lens::Mobus, 1.0, 30.0).expect("the chain runs");
+        assert!(res.residual.is_finite(), "the conservation residual is computed");
+        assert!(
+            res.summary_line.contains("residual"),
+            "the summary line surfaces the residual: {}",
+            res.summary_line
+        );
+        assert!(
+            res.residual.abs() < 1e-3,
+            "a source → buffer → propel → sink chain conserves: residual {}",
+            res.residual
+        );
+    }
+
+    /// B4 run-comparison-lite: a second run retains the first run's one-line summary
+    /// as the "previous run" line, in memory, same session.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn previous_run_line_retained_b4() {
+        let mut app = runnable_app();
+        app.run_dt = "1".into();
+        app.run_t = "30".into();
+        app.execute_run(Lens::Mobus);
+        let first = app.run_results.as_ref().unwrap().summary_line.clone();
+        assert!(app.prev_run_line.is_none(), "no previous line after the first run");
+        app.run_t = "20".into();
+        app.execute_run(Lens::Mobus);
+        assert_eq!(
+            app.prev_run_line.as_deref(),
+            Some(first.as_str()),
+            "the second run retains the first run's summary beside it"
+        );
+    }
+
+    /// B3 disclosure: an unparameterized stamped chain reads as fully identity-default
+    /// (every component runs the bare primitive), and the levels are purpose-ordered
+    /// (Products/waste first).
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn summary_discloses_identity_defaults_and_orders_by_purpose_b3() {
+        let app = runnable_app();
+        let res = app.run_model(Lens::Mobus, 1.0, 30.0).expect("the chain runs");
+        assert_eq!(res.identity_default_m, 2, "two components (Tank, Pump)");
+        assert_eq!(
+            res.identity_default_n, 2,
+            "both run the bare primitive — nothing was parameterized"
+        );
+        // Purpose order: the first level row is a Product/waste (the sink Drain).
+        assert_eq!(
+            res.levels.first().map(|r| r.category),
+            Some(LevelCategory::Product),
+            "products/waste read first (SL §3.1)"
+        );
+        assert!(
+            res.levels.iter().any(|r| r.name == "Drain" && r.category == LevelCategory::Product),
+            "the sink is a product-category row"
+        );
     }
 }
