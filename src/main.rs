@@ -1650,7 +1650,7 @@ fn new_system(
         // which is why the run's identity-default disclosure flips honestly the
         // moment a component carries imported data.
         agent: primitive.map(|p| {
-            let mut agent = AgentModel { primitives: vec![p], ..Default::default() };
+            let mut agent = AgentModel { primitive: Some(p), ..Default::default() };
             if let Some(storage) = initial_storage {
                 agent
                     .initial_state
@@ -4910,13 +4910,13 @@ mod tests {
         let tank = sys("Tank");
         assert_eq!(tank.archetype, Some(HcgsArchetype::Agent), "a stamped component is an Agent");
         assert_eq!(
-            tank.agent.as_ref().map(|a| a.primitives.as_slice()),
-            Some([ProcessPrimitive::Buffering].as_slice()),
+            tank.agent.as_ref().and_then(|a| a.primitive),
+            Some(ProcessPrimitive::Buffering),
             "the projected agent carries exactly the stamped primitive"
         );
         assert_eq!(
-            sys("Pump").agent.as_ref().unwrap().primitives,
-            vec![ProcessPrimitive::Propelling]
+            sys("Pump").agent.as_ref().unwrap().primitive,
+            Some(ProcessPrimitive::Propelling)
         );
 
         // The seam survives a WorldModel JSON round-trip (Export BERT → re-read).
