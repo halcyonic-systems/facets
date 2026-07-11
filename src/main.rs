@@ -373,6 +373,10 @@ struct CanvasApp {
     /// The post-import disclosure register: unmapped elements ("3 flows received no
     /// data") and any orphaned series (T5/T3). Shown until dismissed. Transient.
     import_notice: Option<String>,
+    /// Env-birth cue (#2): message + the `ctx` time it was born, so drag-to-empty's
+    /// silent Role::Environment birth gets a visible, self-dismissing toast instead
+    /// of surfacing only at audit time. `None` once expired.
+    env_birth_notice: Option<(String, f64)>,
     /// The model library: a canonical home dir (`~/Documents/bert-lenses/`) and its `*.json` contents,
     /// listed in the left panel for one-click loading. Lazy-initialised on first frame.
     models_dir: Option<std::path::PathBuf>,
@@ -1177,6 +1181,35 @@ impl CanvasApp {
         if !open {
             self.import_notice = None;
         }
+    }
+
+    /// The env-birth cue (#2): a small self-dismissing toast, distinct from a missed
+    /// double-click, so drag-to-empty's Role::Environment birth is visible at the
+    /// moment it happens rather than only at audit time. Not modal — it never blocks
+    /// the gesture, and the app keeps working underneath it.
+    fn env_birth_toast(&mut self, ctx: &egui::Context) {
+        const LIFETIME: f64 = 2.2;
+        const FADE: f64 = 0.5;
+        let Some((msg, born_at)) = self.env_birth_notice.clone() else {
+            return;
+        };
+        let age = ctx.input(|i| i.time) - born_at;
+        if age >= LIFETIME {
+            self.env_birth_notice = None;
+            return;
+        }
+        let alpha = (1.0 - (age - (LIFETIME - FADE)).max(0.0) / FADE).clamp(0.0, 1.0) as f32;
+        egui::Area::new(egui::Id::new("env_birth_toast"))
+            .anchor(egui::Align2::CENTER_BOTTOM, egui::vec2(0.0, -24.0))
+            .interactable(false)
+            .show(ctx, |ui| {
+                egui::Frame::popup(ui.style())
+                    .fill(theme::SURFACE.gamma_multiply(alpha))
+                    .show(ui, |ui| {
+                        ui.label(egui::RichText::new(msg).color(theme::INK_SOFT.gamma_multiply(alpha)));
+                    });
+            });
+        ctx.request_repaint();
     }
 }
 
@@ -3354,6 +3387,7 @@ impl CanvasApp {
         // model; only its *reading* (the run comparison) is Mobus-only.
         self.import_mapping_window(ctx);
         self.import_notice_window(ctx);
+        self.env_birth_toast(ctx);
 
         // Arc 4.3 Run surface (Shape B): Mobus-only, transient. Leaving Mobus closes
         // both the prompt and the Results panel, so the run surface never lingers
@@ -3487,6 +3521,10 @@ impl CanvasApp {
                                 self.editing = Some(env_id);
                                 self.focus_pending = true;
                                 self.selection = Selected::Thing(env_id);
+                                self.env_birth_notice = Some((
+                                    format!("Born as Environment — auto-bonded to {}", self.name_of(src)),
+                                    ctx.input(|i| i.time),
+                                ));
                             }
                         }
                     }
