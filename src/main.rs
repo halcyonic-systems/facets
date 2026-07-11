@@ -412,6 +412,54 @@ fn dist_to_seg(p: egui::Pos2, a: egui::Pos2, b: egui::Pos2) -> f32 {
     p.distance(a + ab * t)
 }
 
+/// Collect every `*.json` under `dir`, recursing into subfolders (models filed by Bunge
+/// kind live one level down). Sorted for a stable panel order.
+fn scan_json(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut out = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&d) else { continue };
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else if p.extension().is_some_and(|x| x == "json") {
+                out.push(p);
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// Group library paths by the immediate subfolder under `root`: `None` = files at the root,
+/// then each subfolder alphabetically. Within a group the paths keep their sorted order.
+/// This is what the panel renders as headers, so nothing filed in a folder goes unseen.
+fn group_by_folder(
+    root: &std::path::Path,
+    files: &[std::path::PathBuf],
+) -> Vec<(Option<String>, Vec<std::path::PathBuf>)> {
+    use std::collections::BTreeMap;
+    let mut root_files: Vec<std::path::PathBuf> = Vec::new();
+    let mut folders: BTreeMap<String, Vec<std::path::PathBuf>> = BTreeMap::new();
+    for p in files {
+        let rel = p.strip_prefix(root).unwrap_or(p);
+        match rel.parent().and_then(|par| par.components().next()) {
+            Some(c) => folders
+                .entry(c.as_os_str().to_string_lossy().into_owned())
+                .or_default()
+                .push(p.clone()),
+            None => root_files.push(p.clone()),
+        }
+    }
+    let mut groups: Vec<(Option<String>, Vec<std::path::PathBuf>)> = Vec::new();
+    if !root_files.is_empty() {
+        groups.push((None, root_files));
+    }
+    groups.extend(folders.into_iter().map(|(k, v)| (Some(k), v)));
+    groups
+}
+
 impl CanvasApp {
     fn hit(&self, p: egui::Pos2) -> Option<u64> {
         self.things
@@ -537,17 +585,11 @@ impl CanvasApp {
     }
 
     /// Rescan the library dir for `*.json` (models and specs alike — `load_json` sniffs the kind).
+    /// Recurses into subfolders so models filed by Bunge kind (`biological/`, `technical/`, …)
+    /// stay visible; the panel groups them by folder.
     fn refresh_library(&mut self) {
         let dir = self.lib_dir();
-        let mut files: Vec<std::path::PathBuf> = std::fs::read_dir(&dir)
-            .into_iter()
-            .flatten()
-            .flatten()
-            .map(|e| e.path())
-            .filter(|p| p.extension().map_or(false, |x| x == "json"))
-            .collect();
-        files.sort();
-        self.library = files;
+        self.library = scan_json(&dir);
     }
 
     fn load_path(&mut self, path: &std::path::Path) {
@@ -558,8 +600,12 @@ impl CanvasApp {
     }
 
     /// Left panel: the model library — click any entry to load it (one-click, no native dialog).
+    /// Files are grouped by their subfolder (Bunge kind), root-level models first, so nothing
+    /// filed away goes unseen.
     fn library_panel(&mut self, ctx: &egui::Context) {
         let lib = self.library.clone();
+        let root = self.lib_dir();
+        let groups = group_by_folder(&root, &lib);
         let mut to_load: Option<std::path::PathBuf> = None;
         let mut do_refresh = false;
         egui::SidePanel::left("library")
@@ -583,13 +629,19 @@ impl CanvasApp {
                                 .color(theme::INK_FAINT),
                         );
                     }
-                    for p in &lib {
-                        let name = p.file_stem().and_then(|s| s.to_str()).unwrap_or("?");
-                        if ui
-                            .add(egui::Button::new(egui::RichText::new(name).color(theme::INK_SOFT)).frame(false))
-                            .clicked()
-                        {
-                            to_load = Some(p.clone());
+                    for (folder, paths) in &groups {
+                        if let Some(name) = folder {
+                            ui.add_space(6.0);
+                            ui.label(egui::RichText::new(name).small().strong().color(theme::INK_FAINT));
+                        }
+                        for p in paths {
+                            let name = p.file_stem().and_then(|s| s.to_str()).unwrap_or("?");
+                            if ui
+                                .add(egui::Button::new(egui::RichText::new(name).color(theme::INK_SOFT)).frame(false))
+                                .clicked()
+                            {
+                                to_load = Some(p.clone());
+                            }
                         }
                     }
                 });
@@ -4243,5 +4295,77 @@ mod tests {
             res.levels.iter().any(|r| r.name == "Drain" && r.category == LevelCategory::Product),
             "the sink is a product-category row"
         );
+    }
+
+    /// Build a fixture mirroring the real library dir: root-level models plus Bunge-kind
+    /// subfolders plus a retired/ folder. Returns the unique temp root.
+    fn library_fixture() -> std::path::PathBuf {
+        let root = std::env::temp_dir().join(format!(
+            "bert-lenses-libtest-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let write = |rel: &str| {
+            let p = root.join(rel);
+            std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+            std::fs::write(&p, "{}").unwrap();
+        };
+        write("mobus3.json"); // owner's live model, stays at root
+        write("biological/cell.json");
+        write("biological/human-cell.json");
+        write("technical/thermostat.json");
+        write("social/coffee-shop-haiku.json");
+        write("teaching/klir.json");
+        write("retired/scratch.json");
+        write("not-a-model.txt"); // must be ignored
+        root
+    }
+
+    #[test]
+    fn scan_json_recurses_subfolders_and_ignores_non_json() {
+        let root = library_fixture();
+        let found = scan_json(&root);
+        let names: Vec<String> = found
+            .iter()
+            .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(found.len(), 7, "every .json across root + subfolders, .txt excluded");
+        assert!(names.contains(&"mobus3.json".to_string()), "root model visible");
+        assert!(names.contains(&"cell.json".to_string()), "subfolder model visible");
+        assert!(names.contains(&"scratch.json".to_string()), "retired model still listed");
+        assert!(!names.iter().any(|n| n.ends_with(".txt")), "non-json ignored");
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn group_by_folder_puts_root_first_then_folders_alphabetically() {
+        let root = library_fixture();
+        let found = scan_json(&root);
+        let groups = group_by_folder(&root, &found);
+        // root group first (holds mobus3.json), then folders alphabetically.
+        assert_eq!(groups[0].0, None, "root-level files lead");
+        assert!(
+            groups[0].1.iter().any(|p| p.ends_with("mobus3.json")),
+            "owner's live model sits in the root group"
+        );
+        let folder_names: Vec<Option<String>> = groups.iter().skip(1).map(|(f, _)| f.clone()).collect();
+        assert_eq!(
+            folder_names,
+            vec![
+                Some("biological".to_string()),
+                Some("retired".to_string()),
+                Some("social".to_string()),
+                Some("teaching".to_string()),
+                Some("technical".to_string()),
+            ],
+            "subfolders grouped and alphabetically ordered"
+        );
+        // every scanned file lands in exactly one group (nothing hidden).
+        let grouped: usize = groups.iter().map(|(_, v)| v.len()).sum();
+        assert_eq!(grouped, found.len(), "no file dropped from the grouped listing");
+        std::fs::remove_dir_all(&root).ok();
     }
 }
