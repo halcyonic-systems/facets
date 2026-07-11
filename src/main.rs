@@ -3562,7 +3562,11 @@ impl CanvasApp {
                                 self.focus_pending = true;
                                 self.selection = Selected::Thing(env_id);
                                 self.env_birth_notice = Some((
-                                    format!("Born as Environment — auto-bonded to {}", self.name_of(src)),
+                                    if source {
+                                        format!("Born as Environment — Source feeding {}", self.name_of(src))
+                                    } else {
+                                        format!("Born as Environment — auto-bonded to {} (Shift-drag births a Source)", self.name_of(src))
+                                    },
                                     ctx.input(|i| i.time),
                                 ));
                             }
