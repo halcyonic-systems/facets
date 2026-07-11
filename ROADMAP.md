@@ -115,6 +115,11 @@ Open design problems the gates force: the component→primitive mapping UX
   affordance distinguishes it from a missed double-click; the author discovers
   the role only at audit time. Add a visible cue at birth (cursor/ghost preview
   or a one-line toast) and reconsider whether the gesture should be silent at all.
+  **Sharper (2026-07-11 Run pass): there is no direct way to author a SOURCE.**
+  The gesture always creates component→env (a sink, since Source = originates a
+  bond); a source today takes birth + delete auto-bond + rim-drag env→component.
+  A source-feeding-A is the first thing a live run needs, so this is the top
+  item of the group.
 - **Klir env rendering gap** — main.rs:1919 gates the env square on
   `lens != Klir`, so in the Klir lens an author literally cannot tell an
   environment thing from a component (both render as circles). Worst-case
