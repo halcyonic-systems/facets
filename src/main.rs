@@ -11,9 +11,10 @@
 use bert_core::operational::{validate_operational, OperationalError};
 use bert_core::validate::validate_mode;
 use bert_core::{
-    Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType, Id, IdType, Info,
-    Interaction, InteractionType, InteractionUsability, Mode, Substance, SubstanceType, System,
-    Transform2d, WorldModel, CURRENT_FILE_VERSION,
+    AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType,
+    HcgsArchetype, Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Mode,
+    ProcessPrimitive, Substance, SubstanceType, System, Transform2d, WorldModel,
+    CURRENT_FILE_VERSION,
 };
 use eframe::egui;
 
@@ -152,6 +153,59 @@ impl Kind {
     }
 }
 
+/// The ten Mobus atomic work processes, in `bert_core::ProcessPrimitive` order.
+/// A Mobus component *is* one (or more) of these processes; supplying it is the
+/// component → work-process mapping the Operational rung demands (bert#108).
+mod work_process {
+    use bert_core::ProcessPrimitive as P;
+
+    pub const ALL: [P; 10] = [
+        P::Combining,
+        P::Splitting,
+        P::Buffering,
+        P::Impeding,
+        P::Propelling,
+        P::Copying,
+        P::Sensing,
+        P::Modulating,
+        P::Amplifying,
+        P::Inverting,
+    ];
+
+    /// The primitive's name, verbatim from the enum — never re-worded.
+    pub fn name(p: P) -> &'static str {
+        match p {
+            P::Combining => "Combining",
+            P::Splitting => "Splitting",
+            P::Buffering => "Buffering",
+            P::Impeding => "Impeding",
+            P::Propelling => "Propelling",
+            P::Copying => "Copying",
+            P::Sensing => "Sensing",
+            P::Modulating => "Modulating",
+            P::Amplifying => "Amplifying",
+            P::Inverting => "Inverting",
+        }
+    }
+
+    /// One short phrase from the Mobus work-process meaning — the process's effect
+    /// on the flows it acts on, no invented jargon.
+    pub fn gloss(p: P) -> &'static str {
+        match p {
+            P::Combining => "merges inflows into one",
+            P::Splitting => "divides an inflow into several",
+            P::Buffering => "stores and releases over time",
+            P::Impeding => "resists or slows the flow",
+            P::Propelling => "drives the flow forward",
+            P::Copying => "duplicates the flow",
+            P::Sensing => "reads the flow without consuming it",
+            P::Modulating => "adjusts the flow by a control signal",
+            P::Amplifying => "increases the flow's magnitude",
+            P::Inverting => "reverses the flow's sign",
+        }
+    }
+}
+
 /// An element of T — a placed thing with identity, a name, and a user-owned position.
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 struct Thing {
@@ -159,6 +213,12 @@ struct Thing {
     name: String,
     pos: egui::Pos2,
     role: Role,
+    /// The Mobus work-process primitive(s) this component performs — the
+    /// component → work-process mapping (bert#108). Empty until authored; only
+    /// Components carry them. Projected into the system's `AgentModel` by
+    /// `to_world_model`, which is what flips a component's audit row green.
+    #[serde(default)]
+    primitives: Vec<ProcessPrimitive>,
 }
 
 /// A pair in R. `a` is the drag source, `b` the target — the latent direction Klir
@@ -238,9 +298,17 @@ struct CanvasApp {
     /// never lands off-screen). Deferred because the rect is only known during rendering.
     relayout: bool,
     /// Arc 4.1 audit mode: the read-only "Check consistency" panel is open. On demand only —
-    /// the report is recomputed fresh from the canvas each frame it shows and dismisses to
-    /// nothing (the God-tool guard: Operational data accessible, never ambient).
+    /// dismisses to nothing (the God-tool guard: Operational data accessible, never ambient).
     show_audit: bool,
+    /// The audit's last-run snapshot — computed when the panel opens or the author
+    /// clicks Re-run, and rendered as-is in between. Snapshotting (vs recomputing
+    /// each frame) is what makes "fix, then re-run to see it flip green" an explicit
+    /// gesture, and keeps the read-only panel a stable navigator between runs.
+    audit_snapshot: Option<AuditReport>,
+    /// Arc 4.2 (this variant): the component whose work-process primitives are being
+    /// authored — the landing point the audit navigates to. `Some(thing_id)` shows
+    /// the picker; the audit never mutates the model, it only routes here.
+    primitive_editor: Option<u64>,
 }
 
 fn arrow_head(painter: &egui::Painter, tip: egui::Pos2, dir: egui::Vec2, color: egui::Color32) {
@@ -561,7 +629,7 @@ fn intern(
     }
     let id = *next;
     *next += 1;
-    things.push(Thing { id, name: name.to_string(), pos: egui::Pos2::ZERO, role });
+    things.push(Thing { id, name: name.to_string(), pos: egui::Pos2::ZERO, role, primitives: vec![] });
     map.insert(name.to_string(), id);
     id
 }
@@ -756,13 +824,21 @@ fn to_world_model(things: &[Thing], relations: &[Relation], lens: Lens) -> World
             Role::Component => {
                 let id = Id { ty: IdType::Subsystem, indices: vec![0, comp_idx] };
                 comp_idx += 1;
-                systems.push(new_system(
-                    id.clone(),
-                    1,
-                    &t.name,
-                    root_id.clone(),
-                    Some(t.pos),
-                ));
+                let mut sys = new_system(id.clone(), 1, &t.name, root_id.clone(), Some(t.pos));
+                // The component → work-process mapping (bert#108): a component that
+                // carries authored primitives projects an `AgentModel` (archetype
+                // Agent), which is exactly what `validate_operational` needs to
+                // instantiate it as a work process — the seam that flips its audit
+                // row green. A component with no primitives stays `agent: None`, so
+                // the "no agent model" gap surfaces honestly.
+                if !t.primitives.is_empty() {
+                    sys.archetype = Some(HcgsArchetype::Agent);
+                    sys.agent = Some(AgentModel {
+                        primitives: t.primitives.clone(),
+                        ..Default::default()
+                    });
+                }
+                systems.push(sys);
                 id_map.insert(t.id, id);
             }
             Role::Environment => {
@@ -958,6 +1034,10 @@ struct ComponentAudit {
     /// resolve *because* this component carries no agent model. Derivative of the
     /// component's own row, so they are demoted here instead of standing alone.
     blocked_flows: usize,
+    /// The canvas `Thing.id` this row projects from — the navigation target. A red
+    /// row routes the author here (select + open the work-process picker); the
+    /// panel itself never mutates. `None` only if the projection order desyncs.
+    thing_id: Option<u64>,
 }
 
 /// An environment terminal the projection kept: a Source or Sink a flow crosses.
@@ -1011,14 +1091,24 @@ impl CanvasApp {
 
         // The projected level-1 work processes, in projection order — the rows the
         // panel shows green/red. (Root sits at level 0 and is not a component.)
+        // `to_world_model` emits one level-1 system per Component thing, in `things`
+        // order, so zipping recovers each row's canvas id — the navigation target.
+        let comp_thing_ids: Vec<u64> = self
+            .things
+            .iter()
+            .filter(|t| t.role == Role::Component)
+            .map(|t| t.id)
+            .collect();
         let mut components: Vec<ComponentAudit> = wm
             .systems
             .iter()
             .filter(|s| s.info.level == 1)
-            .map(|s| ComponentAudit {
+            .enumerate()
+            .map(|(i, s)| ComponentAudit {
                 name: s.info.name.clone(),
                 errors: vec![],
                 blocked_flows: 0,
+                thing_id: comp_thing_ids.get(i).copied(),
             })
             .collect();
         // The location string each component answers to (`systems[i]` and the
@@ -1138,16 +1228,30 @@ impl CanvasApp {
         }
     }
 
-    /// The dismissible Arc 4.1 audit panel. Shown only while `show_audit`; the
-    /// window's own ✕ dismisses it to nothing (never ambient). Renders the report
-    /// from `audit` — mode headline, per-component green/red, flows — quoting
-    /// bert-core's reasons and hints verbatim.
+    /// The dismissible Arc 4.1 audit panel, grown in this variant into an
+    /// **audit-as-navigator**: it stays strictly read-only (it never mutates the
+    /// model) but a red "no agent model" row is *clickable* — it routes the author
+    /// to the fix, selecting that component on the canvas and opening the
+    /// work-process picker pre-focused. Shown only while `show_audit`; the window's
+    /// own ✕ dismisses it to nothing (never ambient). Renders a snapshot from
+    /// `audit`, refreshed on open and on explicit Re-run — quoting bert-core's
+    /// reasons and hints verbatim.
     fn audit_panel(&mut self, ctx: &egui::Context, lens: Lens) {
         if !self.show_audit {
             return;
         }
-        let report = self.audit(lens);
+        // Snapshot on first show; the panel renders it as-is until an explicit
+        // Re-run (or a navigation-triggered fix + Re-run) refreshes it.
+        if self.audit_snapshot.is_none() {
+            self.audit_snapshot = Some(self.audit(lens));
+        }
         let mut open = true;
+        // Read-only contract: the panel only routes. It collects a navigation
+        // target and a re-run request; the mutations happen after the render
+        // borrow ends, never inside the panel.
+        let mut navigate_to: Option<u64> = None;
+        let mut rerun = false;
+        let report = self.audit_snapshot.as_ref().expect("snapshot set above");
         egui::Window::new(egui::RichText::new("Consistency check").color(theme::INK))
             .open(&mut open)
             .resizable(true)
@@ -1184,8 +1288,9 @@ impl CanvasApp {
                     ui.add_space(2.0);
                     ui.label(
                         egui::RichText::new(
-                            "Red “no agent model” rows are the expected state until the \
-                             component → work-process mapping lands (4.2).",
+                            "Click a red component below to fix it where it lives — this \
+                             opens its work-process picker on the canvas. Re-run to confirm \
+                             the row goes green.",
                         )
                         .small()
                         .italics()
@@ -1239,12 +1344,58 @@ impl CanvasApp {
                                 ui.label(egui::RichText::new(name).color(theme::INK));
                             });
                         } else {
-                            ui.horizontal(|ui| {
-                                ui.label(egui::RichText::new("✕").color(theme::ACCENT));
-                                ui.label(egui::RichText::new(name).strong().color(theme::INK));
-                            });
+                            // The red row is the navigator: clicking it routes the
+                            // author to the fix (select the component + open its
+                            // work-process picker). The panel mutates nothing — it
+                            // only records the target in `navigate_to`. A row with no
+                            // recoverable canvas id (projection desync) is inert.
+                            let clickable = c.thing_id.is_some();
+                            let resp = ui
+                                .horizontal(|ui| {
+                                    ui.label(egui::RichText::new("✕").color(theme::ACCENT));
+                                    let label = egui::RichText::new(name).strong().color(theme::INK);
+                                    if clickable {
+                                        ui.add(egui::Label::new(label).sense(egui::Sense::click()))
+                                    } else {
+                                        ui.label(label)
+                                    }
+                                })
+                                .inner;
+                            if clickable {
+                                let resp = resp.on_hover_text(
+                                    "Fix here — select on canvas and choose its work process",
+                                );
+                                if resp.hovered() {
+                                    ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+                                }
+                                if resp.clicked() {
+                                    navigate_to = c.thing_id;
+                                }
+                            }
                             for e in &c.errors {
                                 audit_error_detail(ui, e);
+                            }
+                            // The affordance, restated as one small routing line —
+                            // makes the "click to fix" path legible under the reason.
+                            if clickable {
+                                ui.horizontal(|ui| {
+                                    ui.add_space(18.0);
+                                    let go = ui.add(
+                                        egui::Label::new(
+                                            egui::RichText::new("↳ fix this component →")
+                                                .small()
+                                                .color(theme::ACCENT),
+                                        )
+                                        .sense(egui::Sense::click()),
+                                    );
+                                    if go.hovered() {
+                                        ui.ctx()
+                                            .set_cursor_icon(egui::CursorIcon::PointingHand);
+                                    }
+                                    if go.clicked() {
+                                        navigate_to = c.thing_id;
+                                    }
+                                });
                             }
                             // Derivative flow faults folded in (see cascade dedupe):
                             // this component blocks the flows its unresolved endpoint
@@ -1334,17 +1485,124 @@ impl CanvasApp {
 
                 ui.separator();
                 ui.add_space(4.0);
-                ui.label(
-                    egui::RichText::new(
-                        "Read-only — this panel runs bert-core's operational check and \
-                         changes nothing on the canvas.",
-                    )
-                    .small()
-                    .color(theme::INK_FAINT),
-                );
+                ui.horizontal(|ui| {
+                    if ui
+                        .button(egui::RichText::new("⟳ Re-run check").color(theme::INK_SOFT))
+                        .on_hover_text("Re-project the canvas and re-run bert-core's check")
+                        .clicked()
+                    {
+                        rerun = true;
+                    }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.label(
+                            egui::RichText::new("Read-only — routes to the fix, never edits.")
+                                .small()
+                                .color(theme::INK_FAINT),
+                        );
+                    });
+                });
             });
         // The window's ✕ flipped `open`; mirror it back so the panel dismisses.
         self.show_audit = open;
+        if !open {
+            self.audit_snapshot = None; // dismiss to nothing — no stale report lingers
+        }
+        // Navigation: route to the fix. Selects the component and opens its
+        // work-process picker pre-focused. This is the only side effect a click can
+        // have — the model itself is authored in the picker, not here.
+        if let Some(id) = navigate_to {
+            self.selection = Selected::Thing(id);
+            self.primitive_editor = Some(id);
+        }
+        // Explicit re-run: re-snapshot so a just-attached primitive flips its row.
+        if rerun {
+            self.audit_snapshot = Some(self.audit(lens));
+        }
+    }
+
+    /// The work-process picker — the authoring affordance the audit navigates to
+    /// (and reachable directly with `P` on a selected Mobus component). Lean by
+    /// design: it is the landing point, not the star. Toggling a primitive here is
+    /// the component → work-process mapping (bert#108); the first one selected is
+    /// the process `validate_operational` instantiates, which is what flips the
+    /// component's audit row green on the next Re-run. Floats near the component,
+    /// dismisses to nothing.
+    fn primitive_picker(&mut self, ctx: &egui::Context) {
+        let Some(id) = self.primitive_editor else {
+            return;
+        };
+        let mut open = true;
+        let mut found = false;
+        if let Some(t) = self.things.iter_mut().find(|t| t.id == id) {
+            found = true;
+            let title = if t.name.trim().is_empty() {
+                "(unnamed)".to_string()
+            } else {
+                t.name.clone()
+            };
+            let anchor = t.pos;
+            egui::Window::new(
+                egui::RichText::new(format!("Work process — {title}")).color(theme::INK),
+            )
+            .open(&mut open)
+            .resizable(false)
+            .collapsible(false)
+            .default_width(300.0)
+            .default_pos(egui::pos2(anchor.x + RADIUS + 18.0, anchor.y - 20.0))
+            .show(ctx, |ui| {
+                ui.label(
+                    egui::RichText::new(
+                        "Which Mobus work process is this component? The first you pick \
+                         is the one the executor instantiates.",
+                    )
+                    .small()
+                    .color(theme::INK_SOFT),
+                );
+                ui.add_space(6.0);
+                for &p in work_process::ALL.iter() {
+                    let on = t.primitives.contains(&p);
+                    let primary = t.primitives.first() == Some(&p);
+                    let head = if primary {
+                        format!("● {}", work_process::name(p))
+                    } else {
+                        work_process::name(p).to_string()
+                    };
+                    let text = egui::RichText::new(format!("{head} — {}", work_process::gloss(p)))
+                        .color(if on { theme::MOBUS } else { theme::INK });
+                    if ui.selectable_label(on, text).clicked() {
+                        if on {
+                            t.primitives.retain(|x| *x != p);
+                        } else {
+                            t.primitives.push(p);
+                        }
+                    }
+                }
+                ui.add_space(6.0);
+                ui.separator();
+                if t.primitives.is_empty() {
+                    ui.label(
+                        egui::RichText::new(
+                            "No work process yet — this component's audit row stays red.",
+                        )
+                        .small()
+                        .color(theme::WARN),
+                    );
+                } else {
+                    ui.label(
+                        egui::RichText::new(format!(
+                            "Instantiates as {}. Re-run the consistency check to see it clear.",
+                            work_process::name(t.primitives[0])
+                        ))
+                        .small()
+                        .color(theme::OK),
+                    );
+                }
+            });
+        }
+        // Dismiss when closed or when the target vanished (e.g. deleted).
+        if !found || !open {
+            self.primitive_editor = None;
+        }
     }
 
     /// L2: fire an async POST to GSR /extract (local or cloud). Callback parses the spec and sends
@@ -1521,6 +1779,8 @@ impl CanvasApp {
                     self.selection = Selected::None;
                     self.editing = None;
                     self.editing_rel = None;
+                    self.primitive_editor = None;
+                    self.audit_snapshot = None;
                 }
                 if ui
                     .button(egui::RichText::new("Open").color(theme::INK_SOFT))
@@ -1552,6 +1812,8 @@ impl CanvasApp {
                     )
                     .clicked()
                 {
+                    // Fresh run on demand: snapshot now, then show the panel.
+                    self.audit_snapshot = Some(self.audit(lens));
                     self.show_audit = true;
                 }
                 if ui
@@ -1797,6 +2059,7 @@ impl CanvasApp {
         }
 
         self.audit_panel(ctx, lens); // Arc 4.1: floats on demand, dismisses to nothing
+        self.primitive_picker(ctx); // Arc 4.2: the work-process picker the audit routes to
 
         egui::CentralPanel::default()
             .frame(egui::Frame::default().fill(theme::SURFACE))
@@ -1902,6 +2165,7 @@ impl CanvasApp {
                                     name: String::new(),
                                     pos: p,
                                     role: Role::Environment,
+                                    primitives: vec![],
                                 });
                                 let rid = self.next_id;
                                 self.next_id += 1;
@@ -1947,6 +2211,7 @@ impl CanvasApp {
                                 name: String::new(),
                                 pos: p,
                                 role: Role::Component,
+                                primitives: vec![],
                             });
                             self.editing = Some(id);
                             self.focus_pending = true;
@@ -1995,6 +2260,21 @@ impl CanvasApp {
                             if let Some(r) = self.relations.iter_mut().find(|r| r.id == rid) {
                                 std::mem::swap(&mut r.a, &mut r.b);
                             }
+                        }
+                    }
+                    // P opens the work-process picker for a selected Mobus component —
+                    // the same authoring affordance the audit routes to. Mobus only:
+                    // work processes are the Operational rung's vocabulary.
+                    if let Selected::Thing(id) = self.selection {
+                        let is_component = self
+                            .things
+                            .iter()
+                            .any(|t| t.id == id && t.role == Role::Component);
+                        if lens == Lens::Mobus
+                            && is_component
+                            && ui.input(|i| i.key_pressed(egui::Key::P))
+                        {
+                            self.primitive_editor = Some(id);
                         }
                     }
                 }
@@ -2143,6 +2423,26 @@ impl CanvasApp {
                             t.name.as_str(),
                             egui::FontId::proportional(13.5),
                             theme::INK,
+                        );
+                    }
+                    // Mobus-only: a small badge under a component that carries a work
+                    // process, so an attachment (the component → work-process mapping)
+                    // is visible on the canvas, not just in the picker or the audit.
+                    if lens == Lens::Mobus
+                        && t.role == Role::Component
+                        && !t.primitives.is_empty()
+                    {
+                        let label = if t.primitives.len() == 1 {
+                            work_process::name(t.primitives[0]).to_string()
+                        } else {
+                            format!("{} +{}", work_process::name(t.primitives[0]), t.primitives.len() - 1)
+                        };
+                        painter.text(
+                            t.pos + egui::vec2(0.0, RADIUS + 9.0),
+                            egui::Align2::CENTER_CENTER,
+                            label,
+                            egui::FontId::proportional(10.5),
+                            theme::MOBUS,
                         );
                     }
                 }
@@ -2326,8 +2626,13 @@ impl CanvasApp {
                         theme::INK_FAINT,
                     );
                 }
+                let sel_is_component = matches!(self.selection, Selected::Thing(id)
+                    if self.things.iter().any(|t| t.id == id && t.role == Role::Component));
                 let hint: Option<&str> = match self.selection {
                     Selected::Rel(_) => Some("2×click: name  ·  B: bond ⇄ relation  ·  K: kind  ·  ⌫ delete"),
+                    Selected::Thing(_) if lens == Lens::Mobus && sel_is_component => {
+                        Some("double-click to rename  ·  P: work process  ·  ⌫ delete")
+                    }
                     Selected::Thing(_) => Some("double-click to rename  ·  ⌫ delete"),
                     Selected::None => {
                         if nr == 0 && nt >= 2 {
@@ -2653,7 +2958,7 @@ mod tests {
         // A saved canvas Model round-trips via the Model branch (and keeps its lens).
         let model_json = serde_json::to_string(&Model {
             lens: Lens::Mobus, next_id: 3,
-            things: vec![Thing { id: 1, name: "T".into(), pos: egui::Pos2::ZERO, role: Role::Component }],
+            things: vec![Thing { id: 1, name: "T".into(), pos: egui::Pos2::ZERO, role: Role::Component, primitives: vec![] }],
             relations: vec![], source_spec: None,
         }).unwrap();
         let mut app2 = CanvasApp::default();
@@ -2677,7 +2982,7 @@ mod tests {
     }
 
     fn thing(id: u64, role: Role) -> Thing {
-        Thing { id, name: format!("t{id}"), pos: egui::Pos2::ZERO, role }
+        Thing { id, name: format!("t{id}"), pos: egui::Pos2::ZERO, role, primitives: vec![] }
     }
 
     #[test]
@@ -2708,10 +3013,10 @@ mod tests {
     // ── The bert-core seam (Gate 1) ──────────────────────────────────────
 
     fn comp(id: u64, name: &str) -> Thing {
-        Thing { id, name: name.to_string(), pos: egui::pos2(0.0, 0.0), role: Role::Component }
+        Thing { id, name: name.to_string(), pos: egui::pos2(0.0, 0.0), role: Role::Component, primitives: vec![] }
     }
     fn env(id: u64, name: &str) -> Thing {
-        Thing { id, name: name.to_string(), pos: egui::pos2(0.0, 0.0), role: Role::Environment }
+        Thing { id, name: name.to_string(), pos: egui::pos2(0.0, 0.0), role: Role::Environment, primitives: vec![] }
     }
     fn rel(id: u64, a: u64, b: u64, is_bond: bool, kind: Kind) -> Relation {
         Relation { id, a, b, name: String::new(), is_bond, kind }
@@ -2808,6 +3113,137 @@ mod tests {
         // The Operational rung's own structural precondition (irreflexivity, on-ness)
         // is satisfied — the flows are direct and acyclic.
         assert!(!validate_mode(&wm, Mode::Operational).has_errors());
+    }
+
+    // ── Arc 4.2 (this variant): the component → work-process mapping ──────
+
+    fn comp_with(id: u64, name: &str, primitives: Vec<ProcessPrimitive>) -> Thing {
+        Thing { id, name: name.to_string(), pos: egui::pos2(0.0, 0.0), role: Role::Component, primitives }
+    }
+
+    /// A Component that carries work-process primitives projects them into its
+    /// system's `AgentModel` (archetype Agent) — the seam `validate_operational`
+    /// reads to instantiate the process. A primitive-less component stays
+    /// `agent: None`, so the "no agent model" gap is faithful, not manufactured.
+    #[test]
+    fn primitives_project_into_the_agent_model() {
+        let things = vec![
+            comp_with(1, "Tank", vec![ProcessPrimitive::Buffering, ProcessPrimitive::Impeding]),
+            comp(2, "Bare"),
+        ];
+        let wm = to_world_model(&things, &[], Lens::Mobus);
+        let tank = wm.systems.iter().find(|s| s.info.name == "Tank").unwrap();
+        let agent = tank.agent.as_ref().expect("Tank carries an AgentModel");
+        assert_eq!(agent.primitives, vec![ProcessPrimitive::Buffering, ProcessPrimitive::Impeding]);
+        assert_eq!(tank.archetype, Some(HcgsArchetype::Agent));
+        let bare = wm.systems.iter().find(|s| s.info.name == "Bare").unwrap();
+        assert!(bare.agent.is_none(), "a component with no primitive stays agent-less");
+    }
+
+    /// The full round-trip this brief demands: attaching primitives to every
+    /// component makes the projected WorldModel *carry* them, and
+    /// `validate_operational` accepts the model — the same object that read red now
+    /// projects an executable spec. This is the "flips green" contract at the
+    /// bert-core layer, lens-independent of the panel.
+    #[test]
+    fn canvas_with_primitives_round_trips_to_an_operational_worldmodel() {
+        // Well → Tank → Pump → Drain, every component given a work process.
+        let things = vec![
+            env(1, "Well"),
+            comp_with(2, "Tank", vec![ProcessPrimitive::Buffering]),
+            comp_with(3, "Pump", vec![ProcessPrimitive::Propelling]),
+            env(4, "Drain"),
+        ];
+        let rels = vec![
+            rel(1, 1, 2, true, Kind::Matter),
+            rel(2, 2, 3, true, Kind::Matter),
+            rel(3, 3, 4, true, Kind::Matter),
+        ];
+        let wm = to_world_model(&things, &rels, Lens::Mobus);
+        // The AgentModels survive the projection.
+        assert!(wm
+            .systems
+            .iter()
+            .filter(|s| s.info.level == 1)
+            .all(|s| s.agent.as_ref().is_some_and(|a| !a.primitives.is_empty())));
+        // And bert-core accepts the model as executable — no operational errors.
+        let spec = validate_operational(&wm)
+            .expect("every component now carries a primitive, so the model is operational");
+        assert_eq!(spec.processes.len(), 2, "Tank and Pump project as work processes");
+        assert!(spec.processes.iter().any(|p| p.primitive == ProcessPrimitive::Buffering));
+        assert!(spec.processes.iter().any(|p| p.primitive == ProcessPrimitive::Propelling));
+    }
+
+    /// Save/load carries the mapping: a canvas `Model` with authored primitives
+    /// serializes and deserializes with them intact (the library round-trip must
+    /// not silently drop the work-process assignment).
+    #[test]
+    fn saved_model_round_trips_primitives() {
+        let model = Model {
+            lens: Lens::Mobus,
+            next_id: 3,
+            things: vec![
+                comp_with(1, "Tank", vec![ProcessPrimitive::Buffering]),
+                comp(2, "Bare"),
+            ],
+            relations: vec![],
+            source_spec: None,
+        };
+        let json = serde_json::to_string(&model).unwrap();
+        let back: Model = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.things[0].primitives, vec![ProcessPrimitive::Buffering]);
+        assert!(back.things[1].primitives.is_empty());
+        // Back-compat: an older saved model with no `primitives` field loads clean.
+        let legacy = r#"{"lens":"Mobus","next_id":2,"things":[
+            {"id":1,"name":"Old","pos":{"x":0.0,"y":0.0},"role":"Component"}],"relations":[]}"#;
+        let loaded: Model = serde_json::from_str(legacy).unwrap();
+        assert!(loaded.things[0].primitives.is_empty(), "missing field defaults to empty");
+    }
+
+    /// The audit-flips-green path end to end: the read-only audit reads red for a
+    /// primitive-less component, attaching a primitive on the canvas, then a fresh
+    /// audit reads that component green — with no other behavior change.
+    #[test]
+    fn audit_flips_green_after_attaching_primitives() {
+        let mut app = audit_app();
+        // Before: Mobus audit is not green — Tank and Pump lack a work process.
+        let before = app.audit(Lens::Mobus);
+        assert!(!before.fully_green());
+        assert!(before.components.iter().all(|c| !c.errors.is_empty()));
+
+        // Attach a work process to each component — the mutation the picker makes,
+        // done directly here (the audit itself never mutates).
+        for t in app.things.iter_mut().filter(|t| t.role == Role::Component) {
+            t.primitives = vec![ProcessPrimitive::Buffering];
+        }
+
+        // After: a fresh audit reads fully green, every component row cleared.
+        let after = app.audit(Lens::Mobus);
+        assert!(
+            after.fully_green(),
+            "attaching primitives clears every check: components={:#?} flows={:#?}",
+            after.components, after.flow_errors
+        );
+        assert!(after.components.iter().all(|c| c.errors.is_empty()));
+        assert!(after.flow_errors.is_empty(), "resolved endpoints leave no flow errors");
+        assert_eq!(after.clear, after.total);
+    }
+
+    /// Every red component row carries the canvas id it projects from — the
+    /// navigation target the panel routes a click to. Order-preserving: row *i*
+    /// maps to the *i*-th Component thing.
+    #[test]
+    fn audit_rows_carry_their_canvas_navigation_id() {
+        let app = audit_app();
+        let report = app.audit(Lens::Mobus);
+        let comp_ids: Vec<u64> = app
+            .things
+            .iter()
+            .filter(|t| t.role == Role::Component)
+            .map(|t| t.id)
+            .collect();
+        let row_ids: Vec<u64> = report.components.iter().map(|c| c.thing_id.unwrap()).collect();
+        assert_eq!(row_ids, comp_ids, "each row's id is its canvas component, in order");
     }
 
     // ── Arc 4.1: the read-only consistency audit ─────────────────────────

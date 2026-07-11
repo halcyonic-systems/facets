@@ -7,7 +7,7 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_NAME="bert-lenses"
+APP_NAME="${APP_NAME:-bert-lenses}"   # override for named variants (e.g. bert-lenses-C)
 BIN="bert-lenses"                     # default cargo bin = the canvas (front door)
 INSTALL_DIR="${1:-/Applications}"
 APP="$INSTALL_DIR/$APP_NAME.app"
@@ -26,12 +26,12 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key><string>bert-lenses</string>
-  <key>CFBundleDisplayName</key><string>bert-lenses</string>
-  <key>CFBundleIdentifier</key><string>systems.halcyonic.bert-lenses</string>
+  <key>CFBundleName</key><string>$APP_NAME</string>
+  <key>CFBundleDisplayName</key><string>$APP_NAME</string>
+  <key>CFBundleIdentifier</key><string>systems.halcyonic.$APP_NAME</string>
   <key>CFBundleVersion</key><string>0.1.0</string>
   <key>CFBundleShortVersionString</key><string>0.1.0</string>
-  <key>CFBundleExecutable</key><string>bert-lenses</string>
+  <key>CFBundleExecutable</key><string>$APP_NAME</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>LSMinimumSystemVersion</key><string>10.15</string>
