@@ -83,6 +83,22 @@ Open design problems the gates force: the component→primitive mapping UX
 (4.2), and keeping simulation controls out of the authoring canvas (the
 "God-tool" bloat risk — Operational data accessible, never ambient).
 
+## Shell UX follow-ups (from the Gate 1–2 manual passes, 2026-07-10/11)
+
+- **Env-birth gesture legibility** — drag-from-rim-to-empty silently births a
+  Role::Environment node auto-bonded to the origin (main.rs:1694-1719). No
+  affordance distinguishes it from a missed double-click; the author discovers
+  the role only at audit time. Add a visible cue at birth (cursor/ghost preview
+  or a one-line toast) and reconsider whether the gesture should be silent at all.
+- **Klir env rendering gap** — main.rs:1919 gates the env square on
+  `lens != Klir`, so in the Klir lens an author literally cannot tell an
+  environment thing from a component (both render as circles). Worst-case
+  placement-role illegibility; give Klir its own env distinction.
+- **Export mode hint** — export flow should say "exporting as <Mode>" (toast or
+  dialog line) so the stamped rung is visible at the moment it's chosen, not
+  discovered downstream. Pairs with the Save-vs-Export distinction (Save =
+  canvas state, Export = stamped WorldModel).
+
 ## bert-core follow-ups
 
 - **`structural()` projection** — [bert#99](https://github.com/halcyonic-systems/bert/issues/99).
@@ -90,6 +106,9 @@ Open design problems the gates force: the component→primitive mapping UX
   still routes through `validate_mode`). Promote to a real projection if it proves
   load-bearing across consumers.
 - **§A5 mode-transition validators** — the Arc 3 enabler (file when Arc 3 starts).
+- **Bond-vs-mere-aware model (B̄)** — [bert#109](https://github.com/halcyonic-systems/bert/issues/109).
+  Projection silently forgets mere relations; §A5 loss witnesses should force
+  the answer (filed from Gate 1).
 
 ## North star — the resident agent (post-Arc 3; not an arc yet)
 
