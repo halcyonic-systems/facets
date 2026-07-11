@@ -11,9 +11,10 @@
 use bert_core::operational::{validate_operational, OperationalError};
 use bert_core::validate::validate_mode;
 use bert_core::{
-    Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType, Id, IdType, Info,
-    Interaction, InteractionType, InteractionUsability, Mode, Substance, SubstanceType, System,
-    Transform2d, WorldModel, CURRENT_FILE_VERSION,
+    AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType,
+    HcgsArchetype, Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Mode,
+    ProcessPrimitive, Substance, SubstanceType, System, Transform2d, WorldModel,
+    CURRENT_FILE_VERSION,
 };
 use eframe::egui;
 
@@ -152,6 +153,99 @@ impl Kind {
     }
 }
 
+// ── Mobus work-process vocabulary (the mapping palette) ──────────────────
+//
+// The 10 atomic process primitives are bert-core's `ProcessPrimitive`; the shell
+// never invents kinds. These helpers are pure presentation: a compact badge code,
+// a family colour, and a one-phrase gloss derived from each primitive's Mobus
+// work-process meaning. The palette stamps one onto a component, writing the
+// `AgentModel` the Operational rung needs (bert#108).
+
+/// All ten primitives, in bert-core declaration order — the palette's roster.
+const PRIMITIVES: [ProcessPrimitive; 10] = [
+    ProcessPrimitive::Combining,
+    ProcessPrimitive::Splitting,
+    ProcessPrimitive::Buffering,
+    ProcessPrimitive::Impeding,
+    ProcessPrimitive::Propelling,
+    ProcessPrimitive::Copying,
+    ProcessPrimitive::Sensing,
+    ProcessPrimitive::Modulating,
+    ProcessPrimitive::Amplifying,
+    ProcessPrimitive::Inverting,
+];
+
+/// The primitive's verbatim enum name — the vocabulary word, never paraphrased.
+fn prim_name(p: ProcessPrimitive) -> &'static str {
+    match p {
+        ProcessPrimitive::Combining => "Combining",
+        ProcessPrimitive::Splitting => "Splitting",
+        ProcessPrimitive::Buffering => "Buffering",
+        ProcessPrimitive::Impeding => "Impeding",
+        ProcessPrimitive::Propelling => "Propelling",
+        ProcessPrimitive::Copying => "Copying",
+        ProcessPrimitive::Sensing => "Sensing",
+        ProcessPrimitive::Modulating => "Modulating",
+        ProcessPrimitive::Amplifying => "Amplifying",
+        ProcessPrimitive::Inverting => "Inverting",
+    }
+}
+
+/// The two-letter badge code stamped on the disc — legible where a full label
+/// won't fit; the palette legend carries the code → name key on screen.
+fn prim_code(p: ProcessPrimitive) -> &'static str {
+    match p {
+        ProcessPrimitive::Combining => "Cb",
+        ProcessPrimitive::Splitting => "Sp",
+        ProcessPrimitive::Buffering => "Bf",
+        ProcessPrimitive::Impeding => "Im",
+        ProcessPrimitive::Propelling => "Pr",
+        ProcessPrimitive::Copying => "Cp",
+        ProcessPrimitive::Sensing => "Se",
+        ProcessPrimitive::Modulating => "Md",
+        ProcessPrimitive::Amplifying => "Am",
+        ProcessPrimitive::Inverting => "Iv",
+    }
+}
+
+/// One short phrase from the primitive's Mobus work-process meaning — no invented
+/// jargon, just what the process does to the flows crossing it.
+fn prim_desc(p: ProcessPrimitive) -> &'static str {
+    match p {
+        ProcessPrimitive::Combining => "merges several inflows into one",
+        ProcessPrimitive::Splitting => "divides one inflow into several",
+        ProcessPrimitive::Buffering => "stores flow, releasing it over time",
+        ProcessPrimitive::Impeding => "resists flow, reducing what passes",
+        ProcessPrimitive::Propelling => "drives flow, adding motive force",
+        ProcessPrimitive::Copying => "duplicates a flow onto another path",
+        ProcessPrimitive::Sensing => "measures a flow, emitting information",
+        ProcessPrimitive::Modulating => "adjusts a flow under a control signal",
+        ProcessPrimitive::Amplifying => "increases a flow's magnitude",
+        ProcessPrimitive::Inverting => "reverses a flow's sense",
+    }
+}
+
+/// The badge/family colour, grouping the primitives by what they do to flow:
+/// routing (green), storage/resistance (amber), motive (orange), and
+/// signal/control (blue). Colour is a readability aid, not a semantic claim.
+fn prim_color(p: ProcessPrimitive) -> egui::Color32 {
+    use ProcessPrimitive::*;
+    match p {
+        Combining | Splitting | Copying => egui::Color32::from_rgb(79, 154, 85), // routing — green
+        Buffering | Impeding => egui::Color32::from_rgb(192, 138, 46),            // hold — amber
+        Propelling | Amplifying => theme::ACCENT,                                 // motive — orange
+        Sensing | Modulating | Inverting => egui::Color32::from_rgb(79, 127, 192), // signal — blue
+    }
+}
+
+/// The loaded stamp: a primitive to apply, or the eraser that clears one. Held in
+/// `CanvasApp::stamp` only while the Mobus palette is open — never ambient.
+#[derive(Clone, Copy, PartialEq)]
+enum Stamp {
+    Prim(ProcessPrimitive),
+    Erase,
+}
+
 /// An element of T — a placed thing with identity, a name, and a user-owned position.
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 struct Thing {
@@ -159,6 +253,13 @@ struct Thing {
     name: String,
     pos: egui::Pos2,
     role: Role,
+    /// The Mobus work-process this component performs — the component → work-process
+    /// mapping the Operational rung requires (bert#108). Stamped via the Mobus palette,
+    /// projected into the component's `AgentModel` by `to_world_model`. Only meaningful
+    /// for `Role::Component`; `None` until stamped. `#[serde(default)]` keeps older
+    /// saved models (no field) loading.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    primitive: Option<ProcessPrimitive>,
 }
 
 /// A pair in R. `a` is the drag source, `b` the target — the latent direction Klir
@@ -241,6 +342,13 @@ struct CanvasApp {
     /// the report is recomputed fresh from the canvas each frame it shows and dismisses to
     /// nothing (the God-tool guard: Operational data accessible, never ambient).
     show_audit: bool,
+    /// Arc 4.2 mapping: the Mobus work-process palette is open. On demand only, and Mobus-only
+    /// (the palette is Mobus vocabulary) — closed everywhere else, never ambient. Closing it
+    /// unloads the stamp.
+    show_palette: bool,
+    /// The loaded stamp, live only while `show_palette`: click a component to apply it. `None`
+    /// = no stamp loaded (clicks just select, as usual).
+    stamp: Option<Stamp>,
 }
 
 fn arrow_head(painter: &egui::Painter, tip: egui::Pos2, dir: egui::Vec2, color: egui::Color32) {
@@ -346,6 +454,34 @@ impl CanvasApp {
     fn delete_thing(&mut self, id: u64) {
         self.things.retain(|t| t.id != id);
         self.relations.retain(|r| r.a != id && r.b != id);
+    }
+
+    /// Stamp (or with `None`, clear) a component's Mobus work-process primitive.
+    /// No-op on an environment thing — only components carry a work process. The
+    /// single apply path for both the palette click and the tests.
+    fn set_primitive(&mut self, id: u64, primitive: Option<ProcessPrimitive>) {
+        if let Some(t) = self.things.iter_mut().find(|t| t.id == id) {
+            if t.role == Role::Component {
+                t.primitive = primitive;
+            }
+        }
+    }
+
+    /// Apply the loaded `stamp` to the component at `id` (ignoring env things). A
+    /// primitive stamps that work process; the eraser clears it. Selecting the
+    /// stamped thing gives immediate feedback on what was hit.
+    fn apply_stamp(&mut self, id: u64) {
+        let Some(stamp) = self.stamp else { return };
+        if self.things.iter().any(|t| t.id == id && t.role == Role::Component) {
+            self.set_primitive(
+                id,
+                match stamp {
+                    Stamp::Prim(p) => Some(p),
+                    Stamp::Erase => None,
+                },
+            );
+            self.selection = Selected::Thing(id);
+        }
     }
 
     /// The canonical model library dir (`~/Documents/bert-lenses/`), created on first use.
@@ -561,7 +697,7 @@ fn intern(
     }
     let id = *next;
     *next += 1;
-    things.push(Thing { id, name: name.to_string(), pos: egui::Pos2::ZERO, role });
+    things.push(Thing { id, name: name.to_string(), pos: egui::Pos2::ZERO, role, primitive: None });
     map.insert(name.to_string(), id);
     id
 }
@@ -747,7 +883,7 @@ fn to_world_model(things: &[Thing], relations: &[Relation], lens: Lens) -> World
     let mut sinks: Vec<ExternalEntity> = Vec::new();
 
     // Root system of interest: the container every authored component sits inside.
-    systems.push(new_system(root_id.clone(), 0, "System", env_id.clone(), None));
+    systems.push(new_system(root_id.clone(), 0, "System", env_id.clone(), None, None));
 
     let mut comp_idx: i64 = 0;
     let mut env_idx: i64 = 0;
@@ -762,6 +898,7 @@ fn to_world_model(things: &[Thing], relations: &[Relation], lens: Lens) -> World
                     &t.name,
                     root_id.clone(),
                     Some(t.pos),
+                    t.primitive,
                 ));
                 id_map.insert(t.id, id);
             }
@@ -847,7 +984,17 @@ fn transform_of(pos: egui::Pos2) -> Transform2d {
 }
 
 /// A default-populated `System`; `pos` (when a component) seeds its `Transform2d`.
-fn new_system(id: Id, level: i32, name: &str, parent: Id, pos: Option<egui::Pos2>) -> System {
+/// A stamped `primitive` becomes the component's `AgentModel` (one Mobus work
+/// process) with the `Agent` archetype — the mapping the Operational rung reads
+/// (bert#108). `None` leaves `agent`/`archetype` unset, exactly as before.
+fn new_system(
+    id: Id,
+    level: i32,
+    name: &str,
+    parent: Id,
+    pos: Option<egui::Pos2>,
+    primitive: Option<ProcessPrimitive>,
+) -> System {
     let boundary_id = Id { ty: IdType::Boundary, indices: id.indices.clone() };
     System {
         info: info(id, level, name),
@@ -869,8 +1016,11 @@ fn new_system(id: Id, level: i32, name: &str, parent: Id, pos: Option<egui::Pos2
         transformation: String::new(),
         member_autonomy: 1.0,
         time_constant: String::new(),
-        archetype: None,
-        agent: None,
+        archetype: primitive.map(|_| HcgsArchetype::Agent),
+        agent: primitive.map(|p| AgentModel {
+            primitives: vec![p],
+            ..Default::default()
+        }),
     }
 }
 
@@ -881,6 +1031,30 @@ fn mode_label(mode: Mode) -> &'static str {
         Mode::Operational => "Operational (Mobus)",
         Mode::Full => "Full",
     }
+}
+
+/// The small two-letter primitive badge, as an inline pill. `inverted` swaps to a
+/// light fill (for a row already tinted the primitive's colour). Shared by the
+/// palette legend; the canvas draws its own with the painter.
+fn badge(ui: &mut egui::Ui, code: &str, color: egui::Color32, inverted: bool) {
+    let (fill, text) = if inverted {
+        (theme::SURFACE, color)
+    } else {
+        (color, theme::SURFACE)
+    };
+    egui::Frame::default()
+        .fill(fill)
+        .corner_radius(4)
+        .inner_margin(egui::Margin::symmetric(5, 2))
+        .show(ui, |ui| {
+            ui.label(
+                egui::RichText::new(code)
+                    .small()
+                    .strong()
+                    .monospace()
+                    .color(text),
+            );
+        });
 }
 
 /// One red row: a marker, the error's `reason`, and its `hint` beneath — all
@@ -1347,6 +1521,108 @@ impl CanvasApp {
         self.show_audit = open;
     }
 
+    /// The Mobus work-process palette (Arc 4.2 mapping). A floating, dismissible
+    /// panel — the vocabulary made a first-class surface on the canvas, on demand
+    /// and Mobus-only (the God-tool guard: it stamps mappings, it is not a control
+    /// surface). Pick a primitive to load the stamp; then click components to
+    /// apply it. Erase clears. The loaded stamp is highlighted; each row carries
+    /// its badge code, verbatim name, and one-phrase meaning so the code → name
+    /// key stays on screen while stamping.
+    fn palette_panel(&mut self, ctx: &egui::Context) {
+        if !self.show_palette {
+            self.stamp = None; // unloaded whenever the palette isn't showing
+            return;
+        }
+        let mut open = true;
+        egui::Window::new(egui::RichText::new("Work-process palette").color(theme::INK))
+            .open(&mut open)
+            .resizable(false)
+            .default_width(266.0)
+            .default_pos(egui::pos2(96.0, 132.0))
+            .show(ctx, |ui| {
+                ui.label(
+                    egui::RichText::new("Mobus atomic work processes")
+                        .small()
+                        .color(theme::MOBUS),
+                );
+                ui.label(
+                    egui::RichText::new(
+                        "Pick one, then click a component to stamp what it does.",
+                    )
+                    .small()
+                    .italics()
+                    .color(theme::INK_FAINT),
+                );
+                ui.add_space(6.0);
+                ui.separator();
+                ui.add_space(4.0);
+
+                for p in PRIMITIVES {
+                    let loaded = self.stamp == Some(Stamp::Prim(p));
+                    let (bg, fg) = if loaded {
+                        (prim_color(p), theme::SURFACE)
+                    } else {
+                        (theme::SURFACE, theme::INK)
+                    };
+                    let row = egui::Frame::default()
+                        .fill(bg)
+                        .stroke(egui::Stroke::new(1.0, if loaded { prim_color(p) } else { theme::LINE }))
+                        .inner_margin(egui::Margin::symmetric(7, 5))
+                        .corner_radius(6);
+                    let resp = row
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                badge(ui, prim_code(p), prim_color(p), loaded);
+                                ui.add_space(4.0);
+                                ui.vertical(|ui| {
+                                    ui.label(egui::RichText::new(prim_name(p)).strong().color(fg));
+                                    ui.label(
+                                        egui::RichText::new(prim_desc(p))
+                                            .small()
+                                            .color(if loaded { theme::SURFACE } else { theme::INK_SOFT }),
+                                    );
+                                });
+                            });
+                        })
+                        .response
+                        .interact(egui::Sense::click());
+                    if resp.clicked() {
+                        // Toggle: clicking the loaded primitive unloads it.
+                        self.stamp = if loaded { None } else { Some(Stamp::Prim(p)) };
+                    }
+                    ui.add_space(3.0);
+                }
+
+                ui.add_space(4.0);
+                ui.separator();
+                ui.add_space(4.0);
+                let erasing = self.stamp == Some(Stamp::Erase);
+                let erase_label = egui::RichText::new("⌫  Erase stamp")
+                    .color(if erasing { theme::ACCENT } else { theme::INK_SOFT });
+                if ui
+                    .selectable_label(erasing, erase_label)
+                    .on_hover_text("Load the eraser, then click a stamped component to clear it")
+                    .clicked()
+                {
+                    self.stamp = if erasing { None } else { Some(Stamp::Erase) };
+                }
+
+                ui.add_space(6.0);
+                let status = match self.stamp {
+                    Some(Stamp::Prim(p)) => {
+                        format!("Loaded: {} — click a component", prim_name(p))
+                    }
+                    Some(Stamp::Erase) => "Eraser loaded — click a stamped component".to_string(),
+                    None => "No stamp loaded — clicks select as usual".to_string(),
+                };
+                ui.label(egui::RichText::new(status).small().color(theme::INK_FAINT));
+            });
+        self.show_palette = open;
+        if !open {
+            self.stamp = None; // dismissing the panel unloads the stamp
+        }
+    }
+
     /// L2: fire an async POST to GSR /extract (local or cloud). Callback parses the spec and sends
     /// it back over a channel; the UI polls it. GSR owns the prompt + model choice — the canvas only
     /// names the system.
@@ -1521,6 +1797,8 @@ impl CanvasApp {
                     self.selection = Selected::None;
                     self.editing = None;
                     self.editing_rel = None;
+                    self.show_palette = false;
+                    self.stamp = None;
                 }
                 if ui
                     .button(egui::RichText::new("Open").color(theme::INK_SOFT))
@@ -1553,6 +1831,24 @@ impl CanvasApp {
                     .clicked()
                 {
                     self.show_audit = true;
+                }
+                // The work-process palette is Mobus vocabulary — the mapping step (bert#108).
+                // Offered only in the Mobus lens, on demand (God-tool guard: never ambient).
+                if lens == Lens::Mobus {
+                    let on = self.show_palette;
+                    if ui
+                        .selectable_label(
+                            on,
+                            egui::RichText::new("⚒ Work processes")
+                                .color(if on { theme::MOBUS } else { theme::INK_SOFT }),
+                        )
+                        .on_hover_text(
+                            "Open the Mobus work-process palette and stamp what each component does",
+                        )
+                        .clicked()
+                    {
+                        self.show_palette = !on;
+                    }
                 }
                 if ui
                     .button(egui::RichText::new("Tidy").color(theme::INK_SOFT))
@@ -1797,6 +2093,12 @@ impl CanvasApp {
         }
 
         self.audit_panel(ctx, lens); // Arc 4.1: floats on demand, dismisses to nothing
+        // Arc 4.2 palette: Mobus-only. Leaving the lens closes it (and unloads the stamp),
+        // so the mapping surface never lingers where its vocabulary doesn't apply.
+        if lens != Lens::Mobus {
+            self.show_palette = false;
+        }
+        self.palette_panel(ctx);
 
         egui::CentralPanel::default()
             .frame(egui::Frame::default().fill(theme::SURFACE))
@@ -1902,6 +2204,7 @@ impl CanvasApp {
                                     name: String::new(),
                                     pos: p,
                                     role: Role::Environment,
+                                    primitive: None,
                                 });
                                 let rid = self.next_id;
                                 self.next_id += 1;
@@ -1947,6 +2250,7 @@ impl CanvasApp {
                                 name: String::new(),
                                 pos: p,
                                 role: Role::Component,
+                                primitive: None,
                             });
                             self.editing = Some(id);
                             self.focus_pending = true;
@@ -1955,18 +2259,35 @@ impl CanvasApp {
                     }
                 } else if resp.clicked() {
                     if let Some(p) = resp.interact_pointer_pos() {
-                        self.selection = if let Some(id) = self.hit(p) {
-                            Selected::Thing(id)
-                        } else if let Some(rid) = self.relation_at(p) {
-                            Selected::Rel(rid)
-                        } else {
-                            Selected::None
-                        };
+                        // Stamp mode: a loaded palette stamp turns a click on a component
+                        // into a mapping application (apply_stamp ignores env things and
+                        // selects the hit). Nothing else in the gesture set changes —
+                        // drag still moves/connects, double-click still renames.
+                        match (self.stamp, self.hit(p)) {
+                            (Some(_), Some(id))
+                                if self.things.iter().any(|t| t.id == id && t.role == Role::Component) =>
+                            {
+                                self.apply_stamp(id);
+                            }
+                            _ => {
+                                self.selection = if let Some(id) = self.hit(p) {
+                                    Selected::Thing(id)
+                                } else if let Some(rid) = self.relation_at(p) {
+                                    Selected::Rel(rid)
+                                } else {
+                                    Selected::None
+                                };
+                            }
+                        }
                     }
                 }
 
                 // delete the selection (not while naming)
                 if self.editing.is_none() && self.editing_rel.is_none() {
+                    // Esc unloads a loaded stamp (leaving the palette open to reload).
+                    if self.stamp.is_some() && ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                        self.stamp = None;
+                    }
                     let del = ui.input(|i| {
                         i.key_pressed(egui::Key::Delete) || i.key_pressed(egui::Key::Backspace)
                     });
@@ -2001,8 +2322,12 @@ impl CanvasApp {
 
                 // cursor hint
                 if self.drag.is_none() && self.connecting.is_none() {
-                    if let Some((_, dist)) = hover.and_then(|h| self.nearest(h)) {
-                        if dist <= BODY {
+                    if let Some((id, dist)) = hover.and_then(|h| self.nearest(h)) {
+                        let over_comp = self.things.iter().any(|t| t.id == id && t.role == Role::Component);
+                        if self.stamp.is_some() && dist <= BODY && over_comp {
+                            // stamp mode: a click here applies the mapping
+                            ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+                        } else if dist <= BODY {
                             ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
                         } else if dist <= CONNECT_REACH {
                             ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
@@ -2144,6 +2469,39 @@ impl CanvasApp {
                             egui::FontId::proportional(13.5),
                             theme::INK,
                         );
+                    }
+                    // Persistent work-process badge (Mobus vocabulary → Mobus lens only):
+                    // a small coloured pill on the disc's upper-right rim carrying the
+                    // primitive's 2-letter code, so the mapping is readable at a glance
+                    // without opening the palette. The full name shows on hover/selection.
+                    if lens == Lens::Mobus && t.role == Role::Component {
+                        if let Some(p) = t.primitive {
+                            let center = t.pos + egui::vec2(RADIUS * 0.66, -RADIUS * 0.66);
+                            let pill = egui::Rect::from_center_size(center, egui::vec2(26.0, 17.0));
+                            painter.rect_filled(pill, egui::CornerRadius::same(5), prim_color(p));
+                            painter.rect_stroke(
+                                pill,
+                                egui::CornerRadius::same(5),
+                                egui::Stroke::new(1.0, theme::SURFACE),
+                                egui::StrokeKind::Outside,
+                            );
+                            painter.text(
+                                center,
+                                egui::Align2::CENTER_CENTER,
+                                prim_code(p),
+                                egui::FontId::monospace(11.0),
+                                theme::SURFACE,
+                            );
+                            if selected || body_hover {
+                                painter.text(
+                                    t.pos + egui::vec2(0.0, RADIUS + 11.0),
+                                    egui::Align2::CENTER_CENTER,
+                                    prim_name(p),
+                                    egui::FontId::proportional(11.5),
+                                    prim_color(p),
+                                );
+                            }
+                        }
                     }
                 }
 
@@ -2326,17 +2684,31 @@ impl CanvasApp {
                         theme::INK_FAINT,
                     );
                 }
-                let hint: Option<&str> = match self.selection {
-                    Selected::Rel(_) => Some("2×click: name  ·  B: bond ⇄ relation  ·  K: kind  ·  ⌫ delete"),
-                    Selected::Thing(_) => Some("double-click to rename  ·  ⌫ delete"),
-                    Selected::None => {
-                        if nr == 0 && nt >= 2 {
-                            Some("Drag from a thing's edge to another to relate them.")
-                        } else {
-                            None
+                // A loaded stamp takes over the hint line — the mapping gesture is the
+                // active mode. Otherwise the usual selection hints.
+                let stamp_hint: Option<String> = match self.stamp {
+                    Some(Stamp::Prim(p)) => Some(format!(
+                        "Stamp: {} — click a component to map it  ·  Esc / palette to unload",
+                        prim_name(p)
+                    )),
+                    Some(Stamp::Erase) => {
+                        Some("Erase: click a stamped component to clear its work process".to_string())
+                    }
+                    None => None,
+                };
+                let hint: Option<String> = stamp_hint.or_else(|| {
+                    match self.selection {
+                        Selected::Rel(_) => Some("2×click: name  ·  B: bond ⇄ relation  ·  K: kind  ·  ⌫ delete".to_string()),
+                        Selected::Thing(_) => Some("double-click to rename  ·  ⌫ delete".to_string()),
+                        Selected::None => {
+                            if nr == 0 && nt >= 2 {
+                                Some("Drag from a thing's edge to another to relate them.".to_string())
+                            } else {
+                                None
+                            }
                         }
                     }
-                };
+                });
                 if let Some(h) = hint {
                     painter.text(
                         egui::pos2(rect.center().x, rect.bottom() - 24.0),
@@ -2653,7 +3025,7 @@ mod tests {
         // A saved canvas Model round-trips via the Model branch (and keeps its lens).
         let model_json = serde_json::to_string(&Model {
             lens: Lens::Mobus, next_id: 3,
-            things: vec![Thing { id: 1, name: "T".into(), pos: egui::Pos2::ZERO, role: Role::Component }],
+            things: vec![Thing { id: 1, name: "T".into(), pos: egui::Pos2::ZERO, role: Role::Component, primitive: None }],
             relations: vec![], source_spec: None,
         }).unwrap();
         let mut app2 = CanvasApp::default();
@@ -2677,7 +3049,7 @@ mod tests {
     }
 
     fn thing(id: u64, role: Role) -> Thing {
-        Thing { id, name: format!("t{id}"), pos: egui::Pos2::ZERO, role }
+        Thing { id, name: format!("t{id}"), pos: egui::Pos2::ZERO, role, primitive: None }
     }
 
     #[test]
@@ -2708,10 +3080,10 @@ mod tests {
     // ── The bert-core seam (Gate 1) ──────────────────────────────────────
 
     fn comp(id: u64, name: &str) -> Thing {
-        Thing { id, name: name.to_string(), pos: egui::pos2(0.0, 0.0), role: Role::Component }
+        Thing { id, name: name.to_string(), pos: egui::pos2(0.0, 0.0), role: Role::Component, primitive: None }
     }
     fn env(id: u64, name: &str) -> Thing {
-        Thing { id, name: name.to_string(), pos: egui::pos2(0.0, 0.0), role: Role::Environment }
+        Thing { id, name: name.to_string(), pos: egui::pos2(0.0, 0.0), role: Role::Environment, primitive: None }
     }
     fn rel(id: u64, a: u64, b: u64, is_bond: bool, kind: Kind) -> Relation {
         Relation { id, a, b, name: String::new(), is_bond, kind }
@@ -2967,5 +3339,162 @@ mod tests {
             "Tank should carry folded blocked-flow counts: {:#?}",
             report.components
         );
+    }
+
+    // ── Arc 4.2: the component → work-process mapping (stamp palette) ─────
+
+    /// A stamped component projects into a `WorldModel` carrying its Mobus primitive
+    /// as an `AgentModel` under the `Agent` archetype — the mapping bert-core reads.
+    /// Unstamped components carry no agent model (the projection is unchanged for them).
+    #[test]
+    fn stamp_round_trips_canvas_to_world_model_carrying_primitive() {
+        let mut things = vec![env(1, "Well"), comp(2, "Tank"), comp(3, "Pump"), env(4, "Drain")];
+        things[1].primitive = Some(ProcessPrimitive::Buffering); // Tank buffers
+        things[2].primitive = Some(ProcessPrimitive::Propelling); // Pump propels
+        let rels = vec![
+            rel(1, 1, 2, true, Kind::Matter),
+            rel(2, 2, 3, true, Kind::Matter),
+            rel(3, 3, 4, true, Kind::Matter),
+        ];
+        let wm = to_world_model(&things, &rels, Lens::Mobus);
+
+        let sys = |name: &str| wm.systems.iter().find(|s| s.info.name == name).unwrap();
+        let tank = sys("Tank");
+        assert_eq!(tank.archetype, Some(HcgsArchetype::Agent), "a stamped component is an Agent");
+        assert_eq!(
+            tank.agent.as_ref().map(|a| a.primitives.as_slice()),
+            Some([ProcessPrimitive::Buffering].as_slice()),
+            "the projected agent carries exactly the stamped primitive"
+        );
+        assert_eq!(
+            sys("Pump").agent.as_ref().unwrap().primitives,
+            vec![ProcessPrimitive::Propelling]
+        );
+
+        // The seam survives a WorldModel JSON round-trip (Export BERT → re-read).
+        let json = serde_json::to_string(&wm).unwrap();
+        let back: WorldModel = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            back.systems.iter().find(|s| s.info.name == "Tank").unwrap().agent,
+            tank.agent,
+            "the AgentModel survives WorldModel serialization"
+        );
+    }
+
+    /// The saved canvas `Model` preserves stamps, and a pre-mapping model (no
+    /// `primitive` field) still loads — the `#[serde(default)]` backward-compat path.
+    #[test]
+    fn stamp_survives_model_save_load_and_old_models_still_load() {
+        let mut app = CanvasApp {
+            things: vec![comp(1, "A"), comp(2, "B")],
+            relations: vec![rel(1, 1, 2, true, Kind::Unspecified)],
+            next_id: 3,
+            ..Default::default()
+        };
+        app.set_primitive(1, Some(ProcessPrimitive::Sensing));
+        let saved = serde_json::to_string(&Model {
+            lens: Lens::Mobus,
+            next_id: app.next_id,
+            things: app.things.clone(),
+            relations: app.relations.clone(),
+            source_spec: None,
+        })
+        .unwrap();
+        let mut app2 = CanvasApp::default();
+        app2.load_json(&saved);
+        assert_eq!(
+            app2.things.iter().find(|t| t.name == "A").unwrap().primitive,
+            Some(ProcessPrimitive::Sensing),
+            "a stamped primitive round-trips through save/load"
+        );
+
+        // A model authored before the mapping feature has no `primitive` key at all.
+        let legacy = r#"{"lens":"Mobus","next_id":3,
+            "things":[{"id":1,"name":"A","pos":[0.0,0.0],"role":"Component"}],
+            "relations":[]}"#;
+        let mut app3 = CanvasApp::default();
+        app3.load_json(legacy);
+        assert_eq!(app3.things.len(), 1, "a pre-mapping model still loads");
+        assert_eq!(app3.things[0].primitive, None, "and defaults to no stamp");
+    }
+
+    /// Stamping every component flips the audit's "no agent model" reds to green:
+    /// the mapping is exactly what the Operational rung was missing. The full
+    /// source → Buffering → Propelling → sink chain then clears every check.
+    #[test]
+    fn stamping_flips_the_audit_from_red_to_green() {
+        let mut app = audit_app(); // Well → Tank → Pump → Drain, both components unstamped
+
+        // Before: Mobus clears the mode gate, but each component is red (no agent model).
+        let before = app.audit(Lens::Mobus);
+        assert!(before.mode_error.is_none());
+        assert!(
+            before.components.iter().all(|c| c
+                .errors
+                .iter()
+                .any(|e| e.reason.contains("no agent model"))),
+            "unstamped components read red: {:#?}",
+            before.components
+        );
+        assert!(!before.fully_green());
+
+        // Stamp both components with a Mobus work process (the palette gesture).
+        let tank = app.things.iter().find(|t| t.name == "Tank").unwrap().id;
+        let pump = app.things.iter().find(|t| t.name == "Pump").unwrap().id;
+        app.set_primitive(tank, Some(ProcessPrimitive::Buffering));
+        app.set_primitive(pump, Some(ProcessPrimitive::Propelling));
+
+        // After: no component carries the "no agent model" error, and — the chain
+        // being a well-formed circuit — the whole audit is green.
+        let after = app.audit(Lens::Mobus);
+        assert!(
+            after.components.iter().all(|c| c.errors.is_empty()),
+            "every stamped component clears its operational error: {:#?}",
+            after.components
+        );
+        assert!(
+            after.fully_green(),
+            "a fully-mapped, well-formed Mobus model passes the whole audit"
+        );
+        assert_eq!(after.clear, after.total);
+    }
+
+    /// `apply_stamp` honors the loaded stamp and refuses environment things: only
+    /// components carry a work process, and the eraser clears one.
+    #[test]
+    fn apply_stamp_targets_components_and_erases() {
+        let mut app = CanvasApp {
+            things: vec![comp(1, "A"), env(2, "Env")],
+            stamp: Some(Stamp::Prim(ProcessPrimitive::Amplifying)),
+            ..Default::default()
+        };
+        app.apply_stamp(2); // env thing — ignored
+        assert_eq!(app.things.iter().find(|t| t.name == "Env").unwrap().primitive, None);
+        app.apply_stamp(1); // component — stamped
+        assert_eq!(
+            app.things[0].primitive,
+            Some(ProcessPrimitive::Amplifying)
+        );
+        assert!(matches!(app.selection, Selected::Thing(1)), "stamping selects the hit component");
+
+        app.stamp = Some(Stamp::Erase);
+        app.apply_stamp(1);
+        assert_eq!(app.things[0].primitive, None, "the eraser clears the stamp");
+    }
+
+    /// Every primitive has a distinct badge code and a non-empty name/description —
+    /// the palette legend and canvas badges never collide or blank out.
+    #[test]
+    fn primitive_metadata_is_total_and_distinct() {
+        let mut codes: Vec<&str> = PRIMITIVES.iter().map(|&p| prim_code(p)).collect();
+        assert_eq!(codes.len(), 10);
+        codes.sort_unstable();
+        codes.dedup();
+        assert_eq!(codes.len(), 10, "badge codes must be unique");
+        for p in PRIMITIVES {
+            assert!(!prim_name(p).is_empty());
+            assert!(!prim_desc(p).is_empty());
+            assert_eq!(prim_code(p).chars().count(), 2, "badge codes are two chars");
+        }
     }
 }
