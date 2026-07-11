@@ -2,19 +2,21 @@
 
 A choose-a-paradigm prototype over the K≅2 kernel. Open it, pick a thinker's lens — **Klir**, **Bunge**, or **Mobus** — and read one system through that vocabulary. Switch lenses freely; the model underneath never changes.
 
-## Two binaries (front-door swap, 2026-06-29)
-- **`bert-lenses`** (`src/main.rs`, `cargo run`) — the **Arc-2 authoring canvas** and the **front door**: direct-manipulation (place/connect/type/name), live Mathematical view, save/load. As-built reference: [`docs/canvas-architecture.md`](docs/canvas-architecture.md). **Standalone — not yet `bert-core`-backed.**
-- **`viewer`** (`src/bin/viewer.rs`, `cargo run --bin viewer`) — the **Arc-1 list viewer**, now a demoted REFERENCE bin: reads bundled `WorldModel`s (thermostat + generics) through 3 lenses as structural lists, with cited `validate_mode` verdicts. **This is the one wired to `bert-core`** — the canonical worked example of consuming it; mine it at canvas↔bert-core convergence.
+## The seam: shell here, all formalism in bert-core
 
-**Integration direction:** the canvas is now the front door (`main.rs`); next it gets backed by `bert-core` (`WorldModel` + `validate_mode` replacing the canvas's hand-rolled checks), consuming the viewer's example models + teaching copy. Faithfulness: [`docs/fidelity-audit.md`](docs/fidelity-audit.md).
+bert-lenses is the **structural face** — the ground-up authoring canvas over the K≅2 kernel. It is a **shell**: the UX (place/connect/type/name/stamp, lens rendering, panels), nothing else. **Every systemhood verdict lives in `../bert/bert-core`**, consumed as a path dependency (`Cargo.toml`). The canvas kernel (`Thing`/`Relation`/`Model`) projects into a bert-core `WorldModel` via `to_world_model`, and every "is this a system?" answer routes through `bert_core::validate::validate_mode` and `bert_core::operational::validate_operational`. If the shell wants a rule bert-core doesn't have, that's a bert-core issue, not shell code — **zero shell-side semantics.**
+
+## Two binaries
+- **`bert-lenses`** (`src/main.rs`, `cargo run`) — the **authoring canvas** and the **front door**: direct-manipulation (place/connect/type/name), the Mobus work-process mapping palette, the read-only consistency audit, the live Mathematical view, save/export. bert-core-backed. As-built reference: [`docs/canvas-architecture.md`](docs/canvas-architecture.md).
+- **`viewer`** (`src/bin/viewer.rs`, `cargo run --bin viewer`) — the **Arc-1 list viewer**, a demoted REFERENCE bin: reads bundled `WorldModel`s (thermostat + generics) through 3 lenses as structural lists, with cited `validate_mode` verdicts. The original worked example of consuming bert-core. Faithfulness notes: [`docs/fidelity-audit.md`](docs/fidelity-audit.md).
 
 ## What this is the seed of
 
-bert-lenses is **step 1 of a model-*creation* tool, not a viewer.** The arc:
+bert-lenses is a model-*creation* tool, not a viewer. The arc:
 
-1. **View** *(this prototype)* — see one stored model through Klir / Bunge / Mobus, and learn *why* a model is or isn't a faithful system in each (cited to the tradition, e.g. "an unbonded collection is an aggregate — Bunge Def 1.1").
-2. **Author** — build a model *in* a lens's vocabulary: as Klir (things + undirected relations), as Bunge (composition + **directed, typed-by-kind** bonds), as Mobus (typed flows + boundary, with Message a peer of Energy/Material). The UI speaks that thinker's language. The faithful Klir→Bunge→Mobus accretion gradient is documented in `docs/design-system.md` §9.
-3. **Translate** — move losslessly between lenses (read-only view-switching is lossless by theorem; explicit mode transitions project down with documented loss or generate up with minimal witnesses).
+1. **View** ✓ — see one stored model through Klir / Bunge / Mobus, and learn *why* a model is or isn't a faithful system in each (cited to the tradition, e.g. "an unbonded collection is an aggregate — Bunge Def 1.1").
+2. **Author** ✓ — build a model *in* a lens's vocabulary: as Klir (things + undirected relations), as Bunge (composition + **directed, typed-by-kind** bonds), as Mobus (typed flows + boundary, with Message a peer of Energy/Material). The UI speaks that thinker's language. The faithful Klir→Bunge→Mobus accretion gradient is documented in `docs/design-system.md` §9.
+3. **Translate** — move losslessly between lenses (read-only view-switching is lossless by theorem; explicit mode transitions project down with documented loss or generate up with minimal witnesses). The §A5 mode-transition validators this needs now exist in bert-core (`transition.rs`); the app-side UX is not yet built.
 
 Eventually this folds into BERT as the lens/mode-aware authoring surface.
 
@@ -47,14 +49,20 @@ Dependency order is **view → author → translate**: authoring-in-a-lens only 
 ```sh
 cargo run                      # native window (the canvas front door)
 cargo run --bin viewer         # the demoted Arc-1 list viewer (reference)
+cargo test                     # 26 tests: 20 (canvas: projection, audit, stamp) + 6 (viewer)
 trunk serve --open             # WASM (after: rustup target add wasm32-unknown-unknown && cargo install trunk)
 ```
 
 **Self-contained macOS app:** `scripts/bundle-macos.sh` builds `/Applications/bert-lenses.app` with the
 release binary copied *inside* the bundle (`Contents/MacOS/`) — it keeps working after `cargo clean`.
 Re-run the script after code changes to refresh the app. Default install dir is `/Applications`; pass a
-path to override.
+path to override. Set `APP_NAME` to bundle a side-by-side variant (e.g. `APP_NAME=bert-lenses-B scripts/bundle-macos.sh`).
 
-## Status
+## What shipped
 
-Read-only view spine. The bundled `assets/thermostat.json` (a generated feedback-control system) enters Core/Structural/Operational; the per-lens *rendering* of structure and the §A5 mode transitions are the next steps.
+- **Arc 1 — View** ✓ — read-only lens viewing over one stored kernel (the `viewer` bin).
+- **Arc 2 — Author** ✓ — the direct-manipulation canvas, bert-core-backed: place/connect/type/name in Klir/Bunge/Mobus vocabulary, live Mathematical view, save (canvas `Model`) and export (a `WorldModel` **stamped with the authored rung's `mode`**).
+- **Arc 4.1 — Audit** ✓ — a read-only "Check consistency" panel: projects the live canvas and renders `validate_operational`'s verdict verbatim, with the **panel-honesty invariant** — every canvas node accounts for exactly once (component row, env terminal, or disclosed drop).
+- **Arc 4.2 — Mapping UX** ✓ — the Mobus work-process palette: stamp a `ProcessPrimitive` onto a component (disc badges), supplying the `AgentModel` the Operational rung needs (bert#108). The engine half shipped in `../bert` (#108 identity-default lowering + `RecordedRun` H).
+
+**Next gate:** wire Run/H into the app UI — sim data on demand, never ambient (the "God-tool" guard). See [`ROADMAP.md`](ROADMAP.md).

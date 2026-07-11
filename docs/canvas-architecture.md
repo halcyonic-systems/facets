@@ -1,28 +1,38 @@
-# bert-lenses Canvas — As-Built (v0)
+# bert-lenses Canvas — As-Built
 
 The direct-manipulation authoring canvas. Run: `cargo run` (the front door since the
-2026-06-29 swap; single file `src/main.rs`, ~1500 lines, egui/eframe 0.31). This is the **Arc 2** surface from the
-canvas-first pivot (2026-06-26); it is *not* the lists/`generate()` design in
-`arc2-authoring-design.md` (superseded — see that file's banner).
+2026-06-29 swap; single file `src/main.rs`, ~3500 lines, egui/eframe 0.31). This is the
+**Arc 2** surface from the canvas-first pivot (2026-06-26); it is *not* the lists/`generate()`
+design in `arc2-authoring-design.md` (superseded — see that file's banner).
 
-> **Important — not yet bert-core backed.** The canvas uses its **own** model (`Thing`/`Relation`
-> below) and **hand-rolls** the systemhood checks (`is_aggregate`, bond logic). It does **not**
-> import `bert-core`. The desktop app you launch (`bert-lenses`, from `src/main.rs`) is the
-> *other* binary — the Arc-1 list viewer that *is* bert-core-backed. Reconciling these is the
-> integration phase (see §Integration).
+## The seam (bert-core backing)
+
+The canvas holds **its own** editing kernel (`Thing`/`Relation`/`Model`) — the state the
+user manipulates and the shape that's saved to JSON. It holds **zero formalism**. Every
+systemhood verdict is bert-core's:
+
+- `to_world_model(things, relations, lens)` (the **bert-core seam** region) projects the
+  canvas kernel into a `bert_core::WorldModel`, **stamping `mode` with the active lens's
+  rung** (Klir→Core, Bunge→Structural, Mobus→Operational).
+- Structural systemhood ("system or heap?") comes from `bert_core::validate::validate_mode`.
+- Operational readiness ("could this run?") comes from `bert_core::operational::validate_operational`
+  — the same predicate `bert-compose` consumes.
+
+If the shell wants a rule bert-core doesn't have, that's a bert-core issue, not shell code.
 
 ## Data model
 | Type | Fields | Meaning |
 |------|--------|---------|
-| `Thing` | `id, name, pos: Pos2, role` | an element of T; position is user-owned (never reflowed) |
+| `Thing` | `id, name, pos: Pos2, role, primitive: Option<ProcessPrimitive>` | an element of T; `pos` is user-owned (never reflowed); `primitive` is the stamped Mobus work process (components only) |
 | `Relation` | `id, a, b, name, is_bond, kind` | a pair in R; `a`→`b` is the latent direction (drag source→target) |
 | `Role` | `Component \| Environment` | Bunge C/E membership; Klir ignores it |
-| `Kind` | `Unspecified \| Mechanical \| Chemical \| Informational \| Social` | Bunge connection kind (one graph per kind) |
-| `Lens` | `Klir \| Bunge \| Mobus` | the active view (a choice, not stored structure) |
-| `Model` | `lens, next_id, things, relations` | the serializable save unit (serde JSON) |
+| `Kind` | `Unspecified \| Energy \| Matter \| Field \| Informational` | Bunge connection kind (one directed graph per kind); maps to bert-core `SubstanceType` on projection |
+| `Lens` | `Klir \| Bunge \| Mobus` | the active view (a choice, not stored structure); `Lens::mode()` names the rung it commits to |
+| `Model` | `lens, next_id, things, relations, source_spec` | the serializable save unit (serde JSON); `source_spec` is GSR-spec provenance pass-through, origin not current state |
 
-Transient (not saved): `selection`, `editing`/`editing_rel`, `drag`, `connecting`, `focus_pending`,
-`show_math`.
+Transient (not saved, on `CanvasApp`): `selection`, `editing`/`editing_rel`, `drag`,
+`connecting`, `focus_pending`, `show_math`, the `gen_*` generation fields, `library`/`models_dir`,
+`show_audit`, `show_palette`, and the loaded `stamp`.
 
 ## Gesture grammar (maps to the math act)
 - **Place** (double-click empty) → add a thing to T. Names inline; drag the body to move.
@@ -33,57 +43,56 @@ Transient (not saved): `selection`, `editing`/`editing_rel`, `drag`, `connecting
 - **B** (on a selected relation) → toggle **bond ⇄ mere relation** (Bunge `B` vs `B̄`).
 - **K** (on a selected relation) → cycle **kind** (Bunge typed connection).
 
-## Lens-gating (the reread)
-The model is fixed; each lens renders/reads it differently:
+## Lens rendering (the reread)
+The kernel is fixed; each lens renders/reads it differently (in `canvas`):
 - **Klir** — undirected lines (neutral, no arrowheads); ignores role/bond/kind. Math: `S = (T,R)`,
   ordered pairs, named-relation **family** grouped by *interpretation* (name).
 - **Bunge** — directed arrowheads; circle = component, square = environment; bonds **colored by
-  kind**, mere relations **dashed**; **aggregate warning** when ≥2 components have no C↔C bond.
-  Math: `σ = ⟨C, E, S⟩`, `E` = bonded externals (derived), `S` grouped **by kind** (one graph per
-  kind) ∪ mere relations.
-- **Mobus** — directed; math `σ = ⟨ C, …, Δt ⟩` placeholder (boundary/ports/Message-peer/8-tuple
-  not built).
+  kind**, mere relations **dashed**; **aggregate warning** when the model is a heap. Math:
+  `σ = ⟨C, E, S⟩`, `E` = bonded externals (derived), `S` grouped **by kind** ∪ mere relations.
+- **Mobus** — directed; components carry their stamped work-process badge; the mapping palette is
+  reachable here. Math view extends toward the 8-tuple.
 
-Derived semantics (hand-rolled, to be replaced by `validate_mode` — see Integration):
-`in_environment` = external **and** bonded (via a bond) to a component; `has_internal_bond` =
-a bond between two distinct components; `is_aggregate` = ≥2 components ∧ no internal bond.
+The "Reading as …" headline (counts in the lens vocabulary + the invariant line) is the visible
+verdict; all of it derives from `to_world_model` + bert-core, never a hand-rolled check.
 
-## UI surfaces
-Top bar: brand · **New model** · **Open**/**Save** · **Lens** switch · **{ } Math** toggle.
-Canvas: dot grid · discs/squares · relation lines (+ name + colored kind label) · the **lens-reading
-headline** (top-left: "Reading as …" + counts in the lens vocabulary + the green invariant line) ·
-contextual hints. Right: the **Mathematical view** panel. Chooser screen: "Author as…" + an
-"Open a saved model…" link.
+## The audit panel (Arc 4.1)
+`audit_panel` renders the read-only "Check consistency" report built by `audit(&self, lens)`.
+`audit` borrows `&self` — the type signature is the read-only guarantee — projects a fresh
+`WorldModel` (active lens's mode stamp), and routes it through `validate_operational`. Each red
+row names the offending bond/flow/component and quotes bert-core's own reason and hint verbatim;
+the shell invents no copy. For Klir/Bunge the headline is the **representational refusal** (Core
+and Structural are not executable rungs, by design). **Panel-honesty invariant:** every canvas
+node accounts for exactly once — a component row, an environment terminal (Source/Sink a flow
+crosses), or a disclosed drop (`unprojected`, e.g. an unbonded env thing). Nothing vanishes
+silently. On demand only; the report recomputes fresh each frame the panel shows.
 
-## Save / load
-`rfd` native dialogs + `serde_json` pretty JSON of `Model`. `#[serde(default)]` on `kind` for
-forward-compat. Lens is restored on load; transient state reset.
+## The work-process palette (Arc 4.2 mapping UX)
+`palette_panel`, Mobus-only, is the component → work-process mapping surface. The 10 `ProcessPrimitive`s
+are bert-core's (the shell never invents kinds); the palette's helpers (`prim_name`/`prim_code`/
+`prim_desc`/`prim_color`) are pure presentation. Pick a primitive to **load the stamp** (`Stamp::Prim`
+or `Stamp::Erase`), then click a component to apply it (`apply_stamp` → `set_primitive`); the disc
+shows a two-letter badge. The stamp fills the `AgentModel` the Operational rung needs (bert#108).
+God-tool guard: the stamp is live **only while the palette is open** — never ambient — and the palette
+stamps mappings, it is not a simulation control surface.
 
-## Front door (do now) — the canvas *is* bert-lenses
-Promote the canvas to **`src/main.rs`** (default `bert-lenses` bin / the desktop app); demote the
-old viewer to **`src/bin/viewer.rs`** (kept as a bert-core-wiring reference + fallback outline view).
-> **Reference, not dust:** `src/bin/viewer.rs` carries a `REFERENCE` header banner marking it as the
-> canonical worked example of consuming bert-core (`WorldModel` / `kernel()` / `validate_mode`) +
-> the per-lens teaching copy. Keep that banner; it's the signpost for the convergence work below.
-Salvage the viewer's `Lens` teaching copy (epithet/asks/bio) into the canvas. Needs **no bert-core
-integration** — the canvas is self-contained.
+## Save / load / export
+- **Save** (`save_model`) writes the canvas `Model` as pretty JSON (`rfd` native dialogs). This is
+  editing state — kernel + lens + `source_spec` provenance. `#[serde(default)]` on `kind`/`primitive`/
+  `source_spec` keeps older saves loading.
+- **Export** (`export_world_model`) writes a bert-core `WorldModel` JSON — the projected, `mode`-stamped
+  artifact other tools consume. Distinct from Save: Save = canvas state, Export = stamped WorldModel.
+- **Open** (`open_model`/`load_json`) sniffs Model-vs-GSR-extract-response; a GSR spec distills through
+  `model_from_spec`/`apply_spec` into the bare kernel. The model **library** (`~/Documents/bert-lenses/`)
+  lists local `*.json` for one-click loading.
 
-## bert-core convergence (deferred — pulled by need, not forced)
-**Not "absorb the canvas into `WorldModel`."** The bet (Shingai 6/27): the **ideal BERT JSON spec
-sits *between*** the bare canvas model and the hyper-complex `WorldModel`, and is **discovered** as
-bert-lenses models build up and become canonical. So integration is **convergence**: both models
-inform the middle. Pursue only when a real need bites — canvas models into **TypeDB**/**GSR**,
-opening real BERT models, or thesis-integrity wanting Lean `validate_mode` as the verdict source.
-Useful when that day comes: `validate_mode(_, Mode::Structural)` (`check_bond`) **is exactly our
-`is_aggregate`**; mapping = Thing↔System (pos↔Transform2d), Relation↔Interaction,
-Environment↔sources/sinks, `kernel()`↔invariant; the middle-spec gaps not in bert-core = bond-vs-mere
-(`B̄`), connection-kind, Klir-neutral. Plan: `operations/sessions/2026-06-28/session-bert-lenses-core-integration.md`.
+## Convergence with bert-compose
+The Mobus rung is the seam to the dynamical face (`../bert/bert-compose/`): **Run is a mode transition**
+(Mobus-structural → Operational). The engine half shipped in bert (bert#108 lowering + `RecordedRun` H);
+wiring Run/H into this app — sim data on demand, never ambient — is the next gate. See `../ROADMAP.md`
+Arc 4.2 and the README "Convergence with bert-compose".
 
 ## Fidelity & design
 Faithfulness verdicts + open items: `docs/fidelity-audit.md`. Visual grammar + the canonical
 Klir→Bunge→Mobus gradient + the editorial-departure note on Klir's constructivism:
 `docs/design-system.md` §9.
-
-## Open (from the audit)
-Interaction `⋈` + self-loops (Bunge gives `a▷b`, `b▷a`, `a⋈b`); edge strength/weight and `S=∅`
-when bond-free; internal/external structure split; n-ary/hyperedges (we model the binary fragment).

@@ -16,7 +16,14 @@ flows + interfaces), the kernel invariant made visible (live re-projection vs
 baseline), and the cited `validate_mode` verdicts. Closes the bert#77 worked
 example. Commits `bf7375e`, `f0ff7e7`.
 
-## Arc 2 — Author (next)
+## Arc 2 — Author ✓ (shipped 2026-07)
+
+**Shipped as the canvas-first build (below), bert-core-backed.** The
+direct-manipulation canvas (`src/main.rs`) is the front door: place/connect/
+type/name in Klir/Bunge/Mobus vocabulary, the live Mathematical view, and
+save/export where **export stamps the WorldModel with the authored rung's
+`mode`** and routes every verdict through bert-core. The in-app `generate()`
+seeding path described below was superseded by the hand-built egui canvas.
 
 In-lens creation: author a model in a paradigm's vocabulary — Klir
 (things + relations), Bunge (composition + bonds), Mobus (components + flows).
@@ -63,21 +70,28 @@ top rung — not as a separate abstract tool.
 
 **Phase gates (council-audited 2026-07-06 — frontier + local, convergent):**
 
-- **4.0 — the seam as a protocol, headless.** `validate_operational(world) ->
-  Result<OperationalSpec, ...>` in bert-core: stricter than
-  `validate_mode(Mobus)` (dead-end components, unspecified source/sink terms —
-  the ledger holds by construction only *given* a well-formed circuit).
-  Property tests: Klir/Bunge models always fail with cited reasons; a minimal
-  Mobus model passes and round-trips through the compose engine with the
-  ledger balanced. No UI. One session's work; everything later is measured
-  against whether it extends this predicate cleanly.
-- **4.1 — audit mode (read-only projection).** A "Check consistency" action:
-  the engine called headlessly, per-component green/red with the violating
-  bond/flow named. Validates the semantic mapping without touching the
-  authoring UX or stateful simulation.
-- **4.2 — Run.** Transfer-function supply (the **component → work-process
-  mapping** is an explicit design step, not an inference), Δt, charts, H.
-  Contract: structural edit after downgrade **invalidates H**.
+- **4.0 — the seam as a protocol, headless.** ✓ shipped (bert `94ae18a0`).
+  `validate_operational(world) -> Result<OperationalSpec, ...>` in bert-core:
+  stricter than `validate_mode(Mobus)` (dead-end components, unspecified
+  source/sink terms — the ledger holds by construction only *given* a
+  well-formed circuit). Property tests: Klir/Bunge models always fail with
+  cited reasons; a minimal Mobus model passes and round-trips through the
+  compose engine with the ledger balanced. No UI.
+- **4.1 — audit mode (read-only projection).** ✓ shipped. The "Check
+  consistency" panel (`audit`/`audit_panel` in `main.rs`): the engine called
+  headlessly, per-component green/red with the violating bond/flow named, every
+  reason quoted verbatim from bert-core. **Panel-honesty invariant:** every
+  canvas node accounts for exactly once. Touches no authoring UX or stateful
+  simulation (`audit` borrows `&self`).
+- **4.2 — Run.** *Mapping UX ✓ shipped; Run/H not yet wired.* The **component →
+  work-process mapping** (an explicit design step, not an inference) shipped as
+  the Mobus work-process palette — stamp a `ProcessPrimitive` onto a component,
+  supplying the `AgentModel` the Operational rung needs. The engine half is
+  ready in bert: bert#108 identity-default lowering (`1c4d1a27`) + the
+  spec-hash-keyed `RecordedRun` H (`1ffef599`, `bert-compose/src/run.rs`).
+  **NEXT: wire Run/H into the app** — transfer-function supply, Δt, charts, and
+  H surfaced on demand (the God-tool guard: Operational data accessible, never
+  ambient). Contract: structural edit after downgrade **invalidates H**.
 
 Open design problems the gates force: the component→primitive mapping UX
 (4.2), and keeping simulation controls out of the authoring canvas (the

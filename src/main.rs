@@ -1,12 +1,22 @@
-//! bert-lenses — Arc 2 authoring canvas. Built one rung at a time.
+//! bert-lenses — the authoring canvas. Built one rung at a time.
 //! **The front door** (`src/main.rs`, `cargo run`). The Arc-1 list viewer is the
 //! demoted reference bin at `src/bin/viewer.rs` (`cargo run --bin viewer`).
-//! v0 step 4: select & delete — click to select a thing or relation, ⌫ to remove.
 //!
 //! Systemhood verdicts are not computed here: the canvas kernel projects into a
 //! bert-core [`WorldModel`] (`to_world_model`) and every "is this a system?"
-//! answer routes through `bert_core::validate::validate_mode`, exactly as the
-//! reference viewer does. The shell holds zero formalism logic.
+//! answer routes through `bert_core::validate::validate_mode` (and, for the
+//! Operational rung, `bert_core::operational::validate_operational`), exactly as
+//! the reference viewer does. The shell holds zero formalism logic.
+//!
+//! Major regions, top to bottom (grep the marker after the `//`):
+//!   - `Lens` / `Role` / `Kind` / `Thing` / `Relation` / `Model` — the canvas kernel types.
+//!   - `Mobus work-process vocabulary` — the mapping palette's `ProcessPrimitive` roster + presentation helpers.
+//!   - `impl CanvasApp` (queries, save/export) — hit-testing, `save_model` vs `export_world_model`, model library, spec loading.
+//!   - `L1: distill a GSR intermediate spec` — turn a generated spec into the bare kernel.
+//!   - `The bert-core seam` — `to_world_model`: project the kernel into a `WorldModel`, stamping the active lens's `mode`.
+//!   - `Arc 4.1: read-only consistency audit` — `audit`/`AuditReport`: render `validate_operational`'s verdict verbatim.
+//!   - `impl eframe::App` / `canvas` / `audit_panel` / `palette_panel` — the egui frame loop, gesture handling, lens rendering, and the two on-demand side panels.
+//!   - Math view + font helpers, then `main`.
 
 use bert_core::operational::{validate_operational, OperationalError};
 use bert_core::validate::validate_mode;
