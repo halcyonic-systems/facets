@@ -456,8 +456,10 @@ fn scan_json(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
 }
 
 /// Group library paths by the immediate subfolder under `root`: `None` = files at the root,
-/// then each subfolder alphabetically. Within a group the paths keep their sorted order.
-/// This is what the panel renders as headers, so nothing filed in a folder goes unseen.
+/// then each subfolder alphabetically, except `retired` which is always pinned last (archive
+/// noise, not something to browse before the live groups). Within a group the paths keep
+/// their sorted order. This is what the panel renders as headers, so nothing filed in a
+/// folder goes unseen.
 fn group_by_folder(
     root: &std::path::Path,
     files: &[std::path::PathBuf],
@@ -475,11 +477,15 @@ fn group_by_folder(
             None => root_files.push(p.clone()),
         }
     }
+    let retired = folders.remove("retired");
     let mut groups: Vec<(Option<String>, Vec<std::path::PathBuf>)> = Vec::new();
     if !root_files.is_empty() {
         groups.push((None, root_files));
     }
     groups.extend(folders.into_iter().map(|(k, v)| (Some(k), v)));
+    if let Some(v) = retired {
+        groups.push((Some("retired".to_string()), v));
+    }
     groups
 }
 
@@ -5050,7 +5056,7 @@ mod tests {
         let root = library_fixture();
         let found = scan_json(&root);
         let groups = group_by_folder(&root, &found);
-        // root group first (holds mobus3.json), then folders alphabetically.
+        // root group first (holds mobus3.json), then folders alphabetically, retired pinned last.
         assert_eq!(groups[0].0, None, "root-level files lead");
         assert!(
             groups[0].1.iter().any(|p| p.ends_with("mobus3.json")),
@@ -5061,16 +5067,45 @@ mod tests {
             folder_names,
             vec![
                 Some("biological".to_string()),
-                Some("retired".to_string()),
                 Some("social".to_string()),
                 Some("teaching".to_string()),
                 Some("technical".to_string()),
+                Some("retired".to_string()),
             ],
-            "subfolders grouped and alphabetically ordered"
+            "subfolders alphabetical, retired sunk to the bottom as archive noise"
         );
         // every scanned file lands in exactly one group (nothing hidden).
         let grouped: usize = groups.iter().map(|(_, v)| v.len()).sum();
         assert_eq!(grouped, found.len(), "no file dropped from the grouped listing");
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn group_by_folder_pins_retired_last_even_without_root_files() {
+        // Guards against a fix that only works when a root group happens to exist first.
+        let root = std::env::temp_dir().join(format!(
+            "bert-lenses-libtest-noroot-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let write = |rel: &str| {
+            let p = root.join(rel);
+            std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+            std::fs::write(&p, "{}").unwrap();
+        };
+        write("retired/scratch.json");
+        write("zzz-not-retired/late.json");
+        let found = scan_json(&root);
+        let groups = group_by_folder(&root, &found);
+        let folder_names: Vec<Option<String>> = groups.iter().map(|(f, _)| f.clone()).collect();
+        assert_eq!(
+            folder_names,
+            vec![Some("zzz-not-retired".to_string()), Some("retired".to_string())],
+            "retired sinks below a folder that alphabetically sorts after it"
+        );
         std::fs::remove_dir_all(&root).ok();
     }
 }
