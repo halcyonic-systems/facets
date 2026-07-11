@@ -5,11 +5,9 @@ GET https://openrouter.ai/api/v1/datasets/rankings-daily
 Auth: any valid OpenRouter API key (Bearer), same key used for inference.
 Dataset starts 2025-01-01. Rate limit: 30 req/min, 500 req/day per account.
 
-BLOCKER (documented, not fabricated around): no OPENROUTER_API_KEY was found
-in macOS Keychain (`security find-generic-password -s OPENROUTER_API_KEY -w`)
-or in the environment as of 2026-07-11. This script is fully wired and will
-run once a key is available — export OPENROUTER_API_KEY or add it to
-Keychain under that service name.
+Key resolution order: OPENROUTER_API_KEY env var, then macOS Keychain
+(`security find-generic-password -s OPENROUTER_API_KEY -w`). The hal LiteLLM
+proxy's .env also carries a working key if neither is set.
 
 Aggregates the daily (date, model_permaslug, total_tokens) rows to monthly
 per-author token shares. "Author" = the org prefix of model_permaslug
@@ -31,7 +29,7 @@ import os
 import sys
 import urllib.request
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 
 from common import DATA_DIR, ensure_data_dir
 
@@ -92,21 +90,22 @@ def main():
         )
         return 1
 
-    start_date = "2024-11-01"
-    end_date = date.today().isoformat()
+    # The dataset starts 2025-01-01 (the API 400s on earlier start dates) and
+    # a single request may span at most 366 days, so page in non-overlapping
+    # ≤365-day windows.
+    start = date(2025, 1, 1)
+    today = date.today()
 
     monthly_totals = defaultdict(lambda: defaultdict(int))  # month -> author -> tokens
-    # The API windows requests; page through in ~90-day chunks to stay well
-    # under the 500 req/day cap while covering the full history.
-    cursor = start_date
-    while cursor < end_date:
-        chunk_end = min(end_date, cursor[:4] + "-12-31") if cursor[:4] == end_date[:4] else end_date
-        payload = fetch_rankings(api_key, cursor, chunk_end)
+    cursor = start
+    while cursor <= today:
+        chunk_end = min(today, cursor + timedelta(days=364))
+        payload = fetch_rankings(api_key, cursor.isoformat(), chunk_end.isoformat())
         for row in payload.get("data", []):
             m = month_key(row["date"])
             a = author_of(row["model_permaslug"])
             monthly_totals[m][a] += int(row["total_tokens"])
-        cursor = chunk_end
+        cursor = chunk_end + timedelta(days=1)
 
     rows_out = []
     for month, authors in sorted(monthly_totals.items()):

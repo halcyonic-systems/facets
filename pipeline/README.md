@@ -86,10 +86,14 @@ token total, plus one `other` rollup row per day). Requires an OpenRouter
 API key (Bearer auth, same key as inference), rate-limited 30 req/min /
 500 req/day. Dataset starts 2025-01-01.
 
-**Blocked as of 2026-07-11**: no `OPENROUTER_API_KEY` found in macOS
-Keychain (`security find-generic-password -s OPENROUTER_API_KEY -w`) or in
-the environment. The script is fully wired — set the key and re-run to
-produce the CSV. It aggregates daily `(date, model_permaslug, total_tokens)`
+Key resolution: `OPENROUTER_API_KEY` env var, then macOS Keychain
+(`security find-generic-password -s OPENROUTER_API_KEY -w`); the hal LiteLLM
+proxy's `.env` also carries a working key. First successful pull 2026-07-11
+(350 rows, 2025-01→2026-07). Two API facts learned at pull time, both
+enforced server-side: history begins 2025-01-01 (the report's "Nov 2024"
+start referred to the State of AI report window, not this API), and a
+single request spans at most 366 days — the script pages in non-overlapping
+≤365-day windows. It aggregates daily `(date, model_permaslug, total_tokens)`
 rows to monthly per-author token shares (author = the org prefix of the
 permaslug, e.g. `anthropic/claude-3.5-sonnet` → `anthropic`; the reserved
 `other` row is kept as its own author).
