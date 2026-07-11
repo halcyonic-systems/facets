@@ -4144,6 +4144,25 @@ mod tests {
         );
     }
 
+    /// R3's twin invariant: cosmetic edits never stale a recorded trace. Position
+    /// is where a disc sits, not what the system is — it never reaches the
+    /// OperationalSpec (2026-07-11 manual pass: the script promised drag→stale;
+    /// the spec-keyed design was right and the script wrong).
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn run_survives_cosmetic_edit() {
+        let mut app = runnable_app();
+        let res = app.run_model(Lens::Mobus, 1.0, 30.0).expect("the chain runs");
+        for t in &mut app.things {
+            t.pos += egui::vec2(37.0, -19.0);
+        }
+        assert_eq!(
+            app.current_spec_key(Lens::Mobus),
+            Some(res.key),
+            "moving discs is not a structural edit — the run stays current"
+        );
+    }
+
     /// R4 explicit params: invoking Run opens the prompt but records nothing; only
     /// the explicit confirm (over the prefilled Δt/T) records a run.
     #[cfg(not(target_arch = "wasm32"))]
