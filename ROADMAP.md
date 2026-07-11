@@ -85,6 +85,17 @@ Open design problems the gates force: the component→primitive mapping UX
 
 ## Shell UX follow-ups (from the Gate 1–2 manual passes, 2026-07-10/11)
 
+- **Mapping UX harvest (post-blind-pick, 2026-07-11)** — the palette/stamp variant
+  (`feat/arc42-mapping-b`) won the three-way blind pick as the composing-first
+  gesture. Graft the losers' organs onto it in one follow-up: (a) the inspector's
+  "Work process" read/edit section from `feat/arc42-mapping-a` — badges are
+  readable but re-stamp-only editing is write-only UX; (b) from
+  `feat/arc42-mapping-c`: click-a-red-audit-row navigates to the component
+  (navigation only, panel stays read-only) and the audit-snapshot semantics
+  (explicit ⟳ Re-run, not per-frame recompute). Same ticket: decide
+  multi-primitive semantics — bert-core carries `Vec<ProcessPrimitive>`, B stamps
+  one, `validate_operational` instantiates `.first()`. Branches kept for reference.
+
 - **Env-birth gesture legibility** — drag-from-rim-to-empty silently births a
   Role::Environment node auto-bonded to the origin (main.rs:1694-1719). No
   affordance distinguishes it from a missed double-click; the author discovers
