@@ -1371,6 +1371,14 @@ fn to_world_model(things: &[Thing], relations: &[Relation], lens: Lens) -> World
     to_world_model_with(things, relations, lens, &ModelParams::default())
 }
 
+/// Endpoint order for a birthed environment bond: normally component→env (a
+/// Sink — the default rim-drag-to-empty gesture); `source` reverses it to
+/// env→component. Same origination convention `to_world_model` reads above
+/// to classify an environment thing as Source vs Sink.
+fn env_bond_endpoints(component: u64, env: u64, source: bool) -> (u64, u64) {
+    if source { (env, component) } else { (component, env) }
+}
+
 /// The projection, supplied with imported quantitative parameters (the CSV tether,
 /// #13). `params` injects a flow's imported amount, a component's imported initial
 /// storage, and a component's imported transfer parameter; where a slot is absent
@@ -3464,7 +3472,10 @@ impl CanvasApp {
                             } else if lens != Lens::Klir
                                 && self.pos_of(src).map_or(false, |sp| sp.distance(p) > RADIUS * 2.0)
                             {
-                                // dropped on empty in Bunge/Mobus → birth an environment entity, bonded
+                                // dropped on empty in Bunge/Mobus → birth an environment entity, bonded.
+                                // Shift held reverses the bond to env→component, birthing a Source in
+                                // one motion instead of a Sink; the arrowhead (drawn from stored a→b,
+                                // same as any bond) is the only cue needed — no separate legibility system.
                                 let env_id = self.next_id;
                                 self.next_id += 1;
                                 self.things.push(Thing {
@@ -3476,10 +3487,12 @@ impl CanvasApp {
                                 });
                                 let rid = self.next_id;
                                 self.next_id += 1;
+                                let source = ui.input(|i| i.modifiers.shift);
+                                let (a, b) = env_bond_endpoints(src, env_id, source);
                                 self.relations.push(Relation {
                                     id: rid,
-                                    a: src,
-                                    b: env_id,
+                                    a,
+                                    b,
                                     name: String::new(),
                                     is_bond: true,
                                     kind: Kind::Unspecified,
@@ -4370,6 +4383,15 @@ mod tests {
 
     fn has_representational_refusal(errs: &[bert_core::operational::OperationalError]) -> bool {
         errs.iter().any(|e| e.location == "mode" && e.reason.contains("representational rung"))
+    }
+
+    /// The source-authoring gesture (Shift held on rim-drag-to-empty): the born
+    /// bond's endpoints reverse, env→component, matching the origination
+    /// convention `to_world_model` reads to classify a Source.
+    #[test]
+    fn env_bond_endpoints_shift_births_a_source() {
+        assert_eq!(env_bond_endpoints(1, 2, false), (1, 2)); // default: Sink
+        assert_eq!(env_bond_endpoints(1, 2, true), (2, 1)); // Shift: Source
     }
 
     /// The projection is always a clean, on- Core model — no matter the lens —
