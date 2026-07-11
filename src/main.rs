@@ -3575,6 +3575,12 @@ fn main() -> eframe::Result<()> {
     )
 }
 
+/// Headless typed-ops spike (bert-lenses#9): authors models through a typed-op
+/// vocabulary with no canvas, to report whether that vocabulary is complete.
+/// Test-only — compiled solely under `cfg(test)`, no production path touched.
+#[cfg(test)]
+mod typed_ops_spike;
+
 #[cfg(test)]
 mod tests {
     use super::*;
