@@ -8,6 +8,7 @@
 //! answer routes through `bert_core::validate::validate_mode`, exactly as the
 //! reference viewer does. The shell holds zero formalism logic.
 
+use bert_core::operational::{validate_operational, OperationalError};
 use bert_core::validate::validate_mode;
 use bert_core::{
     Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType, Id, IdType, Info,
@@ -236,6 +237,10 @@ struct CanvasApp {
     /// Set by import/Tidy; the next frame lays out centered on the visible canvas rect (so content
     /// never lands off-screen). Deferred because the rect is only known during rendering.
     relayout: bool,
+    /// Arc 4.1 audit mode: the read-only "Check consistency" panel is open. On demand only —
+    /// the report is recomputed fresh from the canvas each frame it shows and dismisses to
+    /// nothing (the God-tool guard: Operational data accessible, never ambient).
+    show_audit: bool,
 }
 
 fn arrow_head(painter: &egui::Painter, tip: egui::Pos2, dir: egui::Vec2, color: egui::Color32) {
@@ -869,7 +874,279 @@ fn new_system(id: Id, level: i32, name: &str, parent: Id, pos: Option<egui::Pos2
     }
 }
 
+fn mode_label(mode: Mode) -> &'static str {
+    match mode {
+        Mode::Core => "Core (Klir)",
+        Mode::Structural => "Structural (Bunge)",
+        Mode::Operational => "Operational (Mobus)",
+        Mode::Full => "Full",
+    }
+}
+
+/// One red row: a marker, the error's `reason`, and its `hint` beneath — all
+/// verbatim from bert-core, no shell-authored copy.
+fn audit_error_row(ui: &mut egui::Ui, mark: &str, color: egui::Color32, e: &OperationalError) {
+    ui.horizontal(|ui| {
+        ui.label(egui::RichText::new(mark).color(color));
+        ui.label(egui::RichText::new(&e.reason).color(theme::INK));
+    });
+    if let Some(hint) = &e.hint {
+        ui.horizontal(|ui| {
+            ui.add_space(18.0);
+            ui.label(egui::RichText::new(format!("↳ {hint}")).small().color(theme::INK_SOFT));
+        });
+    }
+}
+
+/// A component's error, indented under its red name row: reason then hint,
+/// both quoted from bert-core.
+fn audit_error_detail(ui: &mut egui::Ui, e: &OperationalError) {
+    ui.horizontal(|ui| {
+        ui.add_space(18.0);
+        ui.label(egui::RichText::new(&e.reason).small().color(theme::INK_SOFT));
+    });
+    if let Some(hint) = &e.hint {
+        ui.horizontal(|ui| {
+            ui.add_space(30.0);
+            ui.label(egui::RichText::new(format!("↳ {hint}")).small().color(theme::INK_FAINT));
+        });
+    }
+}
+
+// ── Arc 4.1: read-only consistency audit ─────────────────────────────────
+//
+// The audit is bert-core's verdict, rendered — never the shell's. It projects
+// the live canvas via `to_world_model` with the ACTIVE lens's mode stamp and
+// asks `validate_operational` (the same predicate compose consumes). Every red
+// row names the offending bond/flow/component and quotes bert-core's own reason
+// and hint verbatim; the shell invents no copy.
+
+/// One component's line in the audit: the projected work process (a level-1
+/// system) and every operational error bert-core raised against it.
+#[derive(Debug)]
+struct ComponentAudit {
+    name: String,
+    errors: Vec<OperationalError>,
+}
+
+/// The rendered form of one `validate_operational` call: the mode-gate headline,
+/// per-component rows, flow-level errors, and a clear/total tally. Purely derived
+/// from the canvas — building one mutates nothing.
+struct AuditReport {
+    mode: Mode,
+    /// The representational refusal (`location == "mode"`), if the authored rung
+    /// is Core/Klir or Structural/Bunge. This is the headline for those lenses.
+    mode_error: Option<OperationalError>,
+    components: Vec<ComponentAudit>,
+    flow_errors: Vec<OperationalError>,
+    /// Anything not attributable to the mode gate, a component, or a flow.
+    other_errors: Vec<OperationalError>,
+    clear: usize,
+    total: usize,
+}
+
+impl AuditReport {
+    fn fully_green(&self) -> bool {
+        self.mode_error.is_none()
+            && self.components.iter().all(|c| c.errors.is_empty())
+            && self.flow_errors.is_empty()
+            && self.other_errors.is_empty()
+    }
+}
+
 impl CanvasApp {
+    /// Run the Arc 4.1 consistency audit against the live canvas, seen through
+    /// `lens`. Read-only: it borrows `&self`, projects a fresh `WorldModel`, and
+    /// routes the verdict through `bert_core::operational::validate_operational`.
+    /// No canvas state is touched — the type signature is the guarantee.
+    fn audit(&self, lens: Lens) -> AuditReport {
+        let wm = to_world_model(&self.things, &self.relations, lens);
+
+        // The projected level-1 work processes, in projection order — the rows the
+        // panel shows green/red. (Root sits at level 0 and is not a component.)
+        let mut components: Vec<ComponentAudit> = wm
+            .systems
+            .iter()
+            .filter(|s| s.info.level == 1)
+            .map(|s| ComponentAudit { name: s.info.name.clone(), errors: vec![] })
+            .collect();
+        // The location string each component answers to (`systems[i]` and the
+        // isolated-component form `process "name"`), kept parallel to `components`.
+        let comp_locs: Vec<(String, String)> = wm
+            .systems
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.info.level == 1)
+            .map(|(i, s)| (format!("systems[{i}]"), format!("process \"{}\"", s.info.name)))
+            .collect();
+
+        let mut mode_error = None;
+        let mut flow_errors = Vec::new();
+        let mut other_errors = Vec::new();
+
+        if let Err(errors) = validate_operational(&wm) {
+            for e in errors {
+                if e.location == "mode" {
+                    mode_error = Some(e);
+                } else if let Some(idx) = comp_locs
+                    .iter()
+                    .position(|(sys, proc)| e.location == *sys || e.location == *proc)
+                {
+                    components[idx].errors.push(e);
+                } else if e.location.starts_with("interactions[") {
+                    flow_errors.push(e);
+                } else {
+                    other_errors.push(e);
+                }
+            }
+        }
+
+        // Tally: one check for the mode gate, one per component, one per flow error
+        // surfaced. Honest partial progress when green is unreachable (until 4.2
+        // lands the component → work-process mapping, bert#108).
+        let flow_total = flow_errors.len();
+        let total = 1 + components.len() + flow_total;
+        let clear = usize::from(mode_error.is_none())
+            + components.iter().filter(|c| c.errors.is_empty()).count();
+
+        AuditReport {
+            mode: wm.mode(),
+            mode_error,
+            components,
+            flow_errors,
+            other_errors,
+            clear,
+            total,
+        }
+    }
+
+    /// The dismissible Arc 4.1 audit panel. Shown only while `show_audit`; the
+    /// window's own ✕ dismisses it to nothing (never ambient). Renders the report
+    /// from `audit` — mode headline, per-component green/red, flows — quoting
+    /// bert-core's reasons and hints verbatim.
+    fn audit_panel(&mut self, ctx: &egui::Context, lens: Lens) {
+        if !self.show_audit {
+            return;
+        }
+        let report = self.audit(lens);
+        let mut open = true;
+        egui::Window::new(egui::RichText::new("Consistency check").color(theme::INK))
+            .open(&mut open)
+            .resizable(true)
+            .default_width(380.0)
+            .default_pos(egui::pos2(640.0, 96.0))
+            .show(ctx, |ui| {
+                let (summary, summary_color) = if report.fully_green() {
+                    ("all checks clear".to_string(), theme::OK)
+                } else {
+                    (
+                        format!("{} of {} checks clear", report.clear, report.total),
+                        theme::WARN,
+                    )
+                };
+                ui.horizontal(|ui| {
+                    ui.label(
+                        egui::RichText::new(format!("Authored as {}", lens.name()))
+                            .small()
+                            .color(lens.color()),
+                    );
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.label(egui::RichText::new(summary).strong().color(summary_color));
+                    });
+                });
+                ui.add_space(4.0);
+                ui.separator();
+                ui.add_space(6.0);
+
+                // Headline: the mode gate. A representational rung (Klir/Bunge) is
+                // refused here — that refusal IS the result, not a defect to fix.
+                if let Some(e) = &report.mode_error {
+                    ui.label(egui::RichText::new("MODE GATE").small().color(theme::INK_FAINT));
+                    audit_error_row(ui, "✕", theme::ACCENT, e);
+                    ui.add_space(4.0);
+                    ui.label(
+                        egui::RichText::new(
+                            "A representational rung commits to no flow semantics — there \
+                             is nothing to run. Author as Mobus to reach the Operational gate.",
+                        )
+                        .small()
+                        .italics()
+                        .color(theme::INK_SOFT),
+                    );
+                } else {
+                    ui.horizontal(|ui| {
+                        ui.label(egui::RichText::new("✓").strong().color(theme::OK));
+                        ui.label(
+                            egui::RichText::new(format!(
+                                "Mode gate clear — {} rung is executable in principle",
+                                mode_label(report.mode)
+                            ))
+                            .color(theme::INK),
+                        );
+                    });
+                }
+                ui.add_space(10.0);
+
+                // Per-component rows: green when no operational error names it, red
+                // with bert-core's verbatim reason + hint otherwise.
+                if !report.components.is_empty() {
+                    ui.label(egui::RichText::new("COMPONENTS").small().color(theme::INK_FAINT));
+                    ui.add_space(2.0);
+                    for c in &report.components {
+                        let name = if c.name.trim().is_empty() { "·" } else { &c.name };
+                        if c.errors.is_empty() {
+                            ui.horizontal(|ui| {
+                                ui.label(egui::RichText::new("✓").color(theme::OK));
+                                ui.label(egui::RichText::new(name).color(theme::INK));
+                            });
+                        } else {
+                            ui.horizontal(|ui| {
+                                ui.label(egui::RichText::new("✕").color(theme::ACCENT));
+                                ui.label(egui::RichText::new(name).strong().color(theme::INK));
+                            });
+                            for e in &c.errors {
+                                audit_error_detail(ui, e);
+                            }
+                        }
+                    }
+                    ui.add_space(8.0);
+                }
+
+                // Flow-level refusals (bad boundary crossings, unresolved endpoints,
+                // missing conductance), each already naming its flow in the reason.
+                if !report.flow_errors.is_empty() {
+                    ui.label(egui::RichText::new("FLOWS").small().color(theme::INK_FAINT));
+                    ui.add_space(2.0);
+                    for e in &report.flow_errors {
+                        audit_error_row(ui, "✕", theme::ACCENT, e);
+                    }
+                    ui.add_space(8.0);
+                }
+
+                if !report.other_errors.is_empty() {
+                    ui.label(egui::RichText::new("OTHER").small().color(theme::INK_FAINT));
+                    ui.add_space(2.0);
+                    for e in &report.other_errors {
+                        audit_error_row(ui, "✕", theme::ACCENT, e);
+                    }
+                    ui.add_space(8.0);
+                }
+
+                ui.separator();
+                ui.add_space(4.0);
+                ui.label(
+                    egui::RichText::new(
+                        "Read-only — this panel runs bert-core's operational check and \
+                         changes nothing on the canvas.",
+                    )
+                    .small()
+                    .color(theme::INK_FAINT),
+                );
+            });
+        // The window's ✕ flipped `open`; mirror it back so the panel dismisses.
+        self.show_audit = open;
+    }
+
     /// L2: fire an async POST to GSR /extract (local or cloud). Callback parses the spec and sends
     /// it back over a channel; the UI polls it. GSR owns the prompt + model choice — the canvas only
     /// names the system.
@@ -1067,6 +1344,15 @@ impl CanvasApp {
                     .clicked()
                 {
                     self.export_world_model(lens);
+                }
+                if ui
+                    .button(egui::RichText::new("Check consistency").color(theme::INK_SOFT))
+                    .on_hover_text(
+                        "Project this canvas with the current lens's mode and run bert-core's operational check — read-only, on demand",
+                    )
+                    .clicked()
+                {
+                    self.show_audit = true;
                 }
                 if ui
                     .button(egui::RichText::new("Tidy").color(theme::INK_SOFT))
@@ -1309,6 +1595,8 @@ impl CanvasApp {
                     });
                 });
         }
+
+        self.audit_panel(ctx, lens); // Arc 4.1: floats on demand, dismisses to nothing
 
         egui::CentralPanel::default()
             .frame(egui::Frame::default().fill(theme::SURFACE))
@@ -2320,5 +2608,77 @@ mod tests {
         // The Operational rung's own structural precondition (irreflexivity, on-ness)
         // is satisfied — the flows are direct and acyclic.
         assert!(!validate_mode(&wm, Mode::Operational).has_errors());
+    }
+
+    // ── Arc 4.1: the read-only consistency audit ─────────────────────────
+
+    /// A canvas holding a source → component → sink chain, reusable across the
+    /// audit tests. Two components bonded to environment terminals.
+    fn audit_app() -> CanvasApp {
+        CanvasApp {
+            things: vec![env(1, "Well"), comp(2, "Tank"), comp(3, "Pump"), env(4, "Drain")],
+            relations: vec![
+                rel(1, 1, 2, true, Kind::Matter), // Well → Tank
+                rel(2, 2, 3, true, Kind::Matter), // Tank → Pump
+                rel(3, 3, 4, true, Kind::Matter), // Pump → Drain
+            ],
+            ..Default::default()
+        }
+    }
+
+    /// Klir and Bunge are representational rungs: the audit's headline is the mode
+    /// refusal, quoting bert-core's reason — not a per-component defect.
+    #[test]
+    fn audit_surfaces_representational_refusal_for_core_and_structural() {
+        let app = audit_app();
+        for lens in [Lens::Klir, Lens::Bunge] {
+            let report = app.audit(lens);
+            let mode_err = report
+                .mode_error
+                .as_ref()
+                .unwrap_or_else(|| panic!("{lens:?} must be refused at the mode gate"));
+            assert_eq!(mode_err.location, "mode");
+            assert!(
+                mode_err.reason.contains("representational rung"),
+                "{lens:?} headline must be the representational refusal: {mode_err:?}"
+            );
+            assert!(!report.fully_green(), "a refused rung is never fully green");
+        }
+    }
+
+    /// Mobus clears the mode gate but still shows operational gaps: each projected
+    /// component carries no work-process primitive (bert#108), so it reads red with
+    /// bert-core's verbatim reason. The audit stays honest about partial progress.
+    #[test]
+    fn audit_surfaces_operational_gaps_for_mobus() {
+        let report = audit_app().audit(Lens::Mobus);
+        assert!(report.mode_error.is_none(), "Mobus clears the representational gate");
+        assert_eq!(report.mode, Mode::Operational);
+        assert_eq!(report.components.len(), 2, "Tank and Pump project as components");
+        assert!(
+            report.components.iter().all(|c| c
+                .errors
+                .iter()
+                .any(|e| e.reason.contains("no agent model"))),
+            "each component lacks a work-process primitive: {:#?}",
+            report.components
+        );
+        assert!(!report.fully_green(), "operational gaps remain until 4.2");
+        assert!(report.clear < report.total, "the tally reflects partial progress");
+    }
+
+    /// The audit is read-only: running it leaves the canvas things and relations
+    /// byte-for-byte unchanged. (The `&self` signature is the compile-time proof;
+    /// this is the behavioral witness.)
+    #[test]
+    fn audit_never_mutates_canvas_state() {
+        let app = audit_app();
+        let things_before = serde_json::to_string(&app.things).unwrap();
+        let rels_before = serde_json::to_string(&app.relations).unwrap();
+        for lens in [Lens::Klir, Lens::Bunge, Lens::Mobus] {
+            let _ = app.audit(lens);
+        }
+        assert_eq!(things_before, serde_json::to_string(&app.things).unwrap());
+        assert_eq!(rels_before, serde_json::to_string(&app.relations).unwrap());
     }
 }
