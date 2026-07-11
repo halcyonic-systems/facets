@@ -11,9 +11,10 @@
 use bert_core::operational::{validate_operational, OperationalError};
 use bert_core::validate::validate_mode;
 use bert_core::{
-    Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType, Id, IdType, Info,
-    Interaction, InteractionType, InteractionUsability, Mode, Substance, SubstanceType, System,
-    Transform2d, WorldModel, CURRENT_FILE_VERSION,
+    AgentKind, AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType,
+    HcgsArchetype, Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Mode,
+    ProcessPrimitive, Substance, SubstanceType, System, Transform2d, WorldModel,
+    CURRENT_FILE_VERSION,
 };
 use eframe::egui;
 
@@ -159,6 +160,14 @@ struct Thing {
     name: String,
     pos: egui::Pos2,
     role: Role,
+    /// Mobus work-process mapping (Arc 4.2): the atomic primitives this component
+    /// performs. Authoring data, entered in the inspector alongside the component's
+    /// other properties — it projects into the exported `AgentModel` and is what
+    /// flips the component's "no agent model" audit row green. Empty on a fresh
+    /// component; only Components carry it (an Environment thing has no work
+    /// process). Round-trips through Save (canvas `Model`) via serde.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    primitives: Vec<ProcessPrimitive>,
 }
 
 /// A pair in R. `a` is the drag source, `b` the target — the latent direction Klir
@@ -561,7 +570,7 @@ fn intern(
     }
     let id = *next;
     *next += 1;
-    things.push(Thing { id, name: name.to_string(), pos: egui::Pos2::ZERO, role });
+    things.push(Thing { id, name: name.to_string(), pos: egui::Pos2::ZERO, role, primitives: vec![] });
     map.insert(name.to_string(), id);
     id
 }
@@ -680,6 +689,57 @@ fn model_from_spec(spec: &serde_json::Value) -> (Vec<Thing>, Vec<Relation>, u64)
     (things, relations, next)
 }
 
+// ── Mobus work-process primitives: the 10-way mapping vocabulary ──
+
+/// The ten Mobus atomic work processes, in enum order — the fixed menu the
+/// inspector offers and the audit expects.
+const ALL_PRIMITIVES: [ProcessPrimitive; 10] = [
+    ProcessPrimitive::Combining,
+    ProcessPrimitive::Splitting,
+    ProcessPrimitive::Buffering,
+    ProcessPrimitive::Impeding,
+    ProcessPrimitive::Propelling,
+    ProcessPrimitive::Copying,
+    ProcessPrimitive::Sensing,
+    ProcessPrimitive::Modulating,
+    ProcessPrimitive::Amplifying,
+    ProcessPrimitive::Inverting,
+];
+
+/// The primitive's name, verbatim from the `ProcessPrimitive` enum — the label
+/// the inspector and audit share.
+fn primitive_label(p: ProcessPrimitive) -> &'static str {
+    match p {
+        ProcessPrimitive::Combining => "Combining",
+        ProcessPrimitive::Splitting => "Splitting",
+        ProcessPrimitive::Buffering => "Buffering",
+        ProcessPrimitive::Impeding => "Impeding",
+        ProcessPrimitive::Propelling => "Propelling",
+        ProcessPrimitive::Copying => "Copying",
+        ProcessPrimitive::Sensing => "Sensing",
+        ProcessPrimitive::Modulating => "Modulating",
+        ProcessPrimitive::Amplifying => "Amplifying",
+        ProcessPrimitive::Inverting => "Inverting",
+    }
+}
+
+/// One short phrase for each primitive, derived from its Mobus work-process
+/// meaning (an atomic transformation on a flow) — no invented jargon.
+fn primitive_desc(p: ProcessPrimitive) -> &'static str {
+    match p {
+        ProcessPrimitive::Combining => "merges several input flows into one",
+        ProcessPrimitive::Splitting => "divides one flow into several",
+        ProcessPrimitive::Buffering => "stores a flow, releasing it later",
+        ProcessPrimitive::Impeding => "resists or throttles a flow",
+        ProcessPrimitive::Propelling => "drives a flow forward (motive force)",
+        ProcessPrimitive::Copying => "duplicates a flow onto multiple outputs",
+        ProcessPrimitive::Sensing => "reads a flow's state without consuming it",
+        ProcessPrimitive::Modulating => "varies a flow under a control signal",
+        ProcessPrimitive::Amplifying => "increases a flow's magnitude",
+        ProcessPrimitive::Inverting => "reverses a flow's sign or direction",
+    }
+}
+
 // ── The bert-core seam: project the canvas kernel into a WorldModel ──
 
 /// Canvas connection kind → Mobus substance. Field has no Mobus peer (Energy/
@@ -756,13 +816,22 @@ fn to_world_model(things: &[Thing], relations: &[Relation], lens: Lens) -> World
             Role::Component => {
                 let id = Id { ty: IdType::Subsystem, indices: vec![0, comp_idx] };
                 comp_idx += 1;
-                systems.push(new_system(
-                    id.clone(),
-                    1,
-                    &t.name,
-                    root_id.clone(),
-                    Some(t.pos),
-                ));
+                let mut sys = new_system(id.clone(), 1, &t.name, root_id.clone(), Some(t.pos));
+                // The component → work-process mapping (Arc 4.2): the inspector-
+                // authored primitives become this subsystem's AgentModel. With one
+                // present, `validate_operational` can instantiate the process and
+                // the component's "no agent model" row flips green. An Agent-kind
+                // archetype rides along per the bert-core contract (agent present ⇒
+                // archetype Agent). Empty ⇒ left as None, so the audit still reds it.
+                if !t.primitives.is_empty() {
+                    sys.archetype = Some(HcgsArchetype::Agent);
+                    sys.agent = Some(AgentModel {
+                        kind: AgentKind::Reactive,
+                        primitives: t.primitives.clone(),
+                        ..AgentModel::default()
+                    });
+                }
+                systems.push(sys);
                 id_map.insert(t.id, id);
             }
             Role::Environment => {
@@ -1136,6 +1205,151 @@ impl CanvasApp {
             clear,
             total,
         }
+    }
+
+    /// The component inspector (Arc 4.2, inspector-centric brief). A right panel
+    /// that appears whenever a **Component** thing is selected, surfacing that
+    /// component's authoring properties — its name and, under a "Work process"
+    /// section, the Mobus primitive(s) it performs. Selecting the primitives here
+    /// writes an `AgentModel` onto the component (via `to_world_model`), which is
+    /// what flips its "no agent model" audit row green. Mapping is authoring data,
+    /// entered where authoring data is entered — never a simulation control (the
+    /// God-tool guard: this panel selects work-process kinds, it never runs them).
+    fn inspector_panel(&mut self, ctx: &egui::Context, lens: Lens) {
+        let Selected::Thing(sel_id) = self.selection else {
+            return;
+        };
+        let Some(idx) = self.things.iter().position(|t| t.id == sel_id) else {
+            return;
+        };
+        // Work processes belong to components; an Environment thing has none, so it
+        // gets no inspector (its properties surface is the canvas rim gesture).
+        if self.things[idx].role != Role::Component {
+            return;
+        }
+
+        egui::SidePanel::right("inspector")
+            .resizable(false)
+            .exact_width(300.0)
+            .show(ctx, |ui| {
+                ui.add_space(12.0);
+                ui.label(egui::RichText::new("INSPECTOR").small().color(theme::INK_FAINT));
+                ui.add_space(8.0);
+
+                // Identity: the component's name, editable in place — a real
+                // properties surface, not just a label.
+                ui.horizontal(|ui| {
+                    ui.label(egui::RichText::new("●").color(lens.color()));
+                    ui.add(
+                        egui::TextEdit::singleline(&mut self.things[idx].name)
+                            .hint_text("unnamed component")
+                            .desired_width(f32::INFINITY),
+                    );
+                });
+                ui.label(egui::RichText::new(lens.noun()).small().color(theme::INK_FAINT));
+
+                ui.add_space(12.0);
+                soft_divider(ui);
+
+                // ── Work process (the component → Mobus-primitive mapping) ──
+                ui.label(egui::RichText::new("Work process").strong().color(theme::INK));
+                ui.label(
+                    egui::RichText::new(
+                        "Which Mobus primitive(s) this component performs — the mapping the \
+                         operational rung runs.",
+                    )
+                    .small()
+                    .color(theme::INK_SOFT),
+                );
+                ui.add_space(8.0);
+
+                // Attached primitives, each a removable row (editing/removing is as
+                // easy as adding). Iterate a snapshot so we can mutate on click.
+                let mut remove: Option<usize> = None;
+                if self.things[idx].primitives.is_empty() {
+                    ui.label(
+                        egui::RichText::new(
+                            "None yet — this component reads red in Check consistency.",
+                        )
+                        .small()
+                        .color(theme::WARN),
+                    );
+                } else {
+                    for (i, p) in self.things[idx].primitives.clone().into_iter().enumerate() {
+                        ui.horizontal(|ui| {
+                            if ui
+                                .small_button(egui::RichText::new("✕").color(theme::ACCENT))
+                                .on_hover_text("Remove this work process")
+                                .clicked()
+                            {
+                                remove = Some(i);
+                            }
+                            ui.label(egui::RichText::new(primitive_label(p)).color(theme::INK))
+                                .on_hover_text(primitive_desc(p));
+                            ui.label(
+                                egui::RichText::new(primitive_desc(p))
+                                    .small()
+                                    .color(theme::INK_FAINT),
+                            );
+                        });
+                    }
+                }
+                if let Some(i) = remove {
+                    self.things[idx].primitives.remove(i);
+                }
+
+                ui.add_space(8.0);
+
+                // Add: a menu of the primitives not already attached. Each entry
+                // carries its Mobus meaning on hover.
+                let present: Vec<ProcessPrimitive> = self.things[idx].primitives.clone();
+                let remaining = ALL_PRIMITIVES.len() - present.len();
+                egui::ComboBox::from_id_salt("add_primitive")
+                    .selected_text(
+                        egui::RichText::new(if remaining == 0 {
+                            "All ten attached"
+                        } else {
+                            "＋ Add work process"
+                        })
+                        .color(if remaining == 0 { theme::INK_FAINT } else { theme::ACCENT }),
+                    )
+                    .show_ui(ui, |ui| {
+                        for p in ALL_PRIMITIVES {
+                            if present.contains(&p) {
+                                continue;
+                            }
+                            let entry = ui
+                                .selectable_label(
+                                    false,
+                                    egui::RichText::new(format!(
+                                        "{}  —  {}",
+                                        primitive_label(p),
+                                        primitive_desc(p)
+                                    ))
+                                    .color(theme::INK),
+                                )
+                                .on_hover_text(primitive_desc(p));
+                            if entry.clicked() {
+                                self.things[idx].primitives.push(p);
+                                ui.close_menu();
+                            }
+                        }
+                    });
+
+                // Lens hint: the mapping is Operational data — it only flips the
+                // audit green at the Mobus rung. Non-blocking, so authoring the
+                // primitive from any lens still works (it is just data).
+                if lens != Lens::Mobus {
+                    ui.add_space(10.0);
+                    ui.label(
+                        egui::RichText::new(
+                            "Read at the Mobus rung — switch to Mobus, then Check consistency.",
+                        )
+                        .small()
+                        .color(theme::INK_FAINT),
+                    );
+                }
+            });
     }
 
     /// The dismissible Arc 4.1 audit panel. Shown only while `show_audit`; the
@@ -1796,6 +2010,7 @@ impl CanvasApp {
                 });
         }
 
+        self.inspector_panel(ctx, lens); // Arc 4.2: component properties + work-process mapping
         self.audit_panel(ctx, lens); // Arc 4.1: floats on demand, dismisses to nothing
 
         egui::CentralPanel::default()
@@ -1902,6 +2117,7 @@ impl CanvasApp {
                                     name: String::new(),
                                     pos: p,
                                     role: Role::Environment,
+                                    primitives: vec![],
                                 });
                                 let rid = self.next_id;
                                 self.next_id += 1;
@@ -1947,6 +2163,7 @@ impl CanvasApp {
                                 name: String::new(),
                                 pos: p,
                                 role: Role::Component,
+                                primitives: vec![],
                             });
                             self.editing = Some(id);
                             self.focus_pending = true;
@@ -2653,7 +2870,7 @@ mod tests {
         // A saved canvas Model round-trips via the Model branch (and keeps its lens).
         let model_json = serde_json::to_string(&Model {
             lens: Lens::Mobus, next_id: 3,
-            things: vec![Thing { id: 1, name: "T".into(), pos: egui::Pos2::ZERO, role: Role::Component }],
+            things: vec![Thing { id: 1, name: "T".into(), pos: egui::Pos2::ZERO, role: Role::Component, primitives: vec![] }],
             relations: vec![], source_spec: None,
         }).unwrap();
         let mut app2 = CanvasApp::default();
@@ -2677,7 +2894,7 @@ mod tests {
     }
 
     fn thing(id: u64, role: Role) -> Thing {
-        Thing { id, name: format!("t{id}"), pos: egui::Pos2::ZERO, role }
+        Thing { id, name: format!("t{id}"), pos: egui::Pos2::ZERO, role, primitives: vec![] }
     }
 
     #[test]
@@ -2708,10 +2925,10 @@ mod tests {
     // ── The bert-core seam (Gate 1) ──────────────────────────────────────
 
     fn comp(id: u64, name: &str) -> Thing {
-        Thing { id, name: name.to_string(), pos: egui::pos2(0.0, 0.0), role: Role::Component }
+        Thing { id, name: name.to_string(), pos: egui::pos2(0.0, 0.0), role: Role::Component, primitives: vec![] }
     }
     fn env(id: u64, name: &str) -> Thing {
-        Thing { id, name: name.to_string(), pos: egui::pos2(0.0, 0.0), role: Role::Environment }
+        Thing { id, name: name.to_string(), pos: egui::pos2(0.0, 0.0), role: Role::Environment, primitives: vec![] }
     }
     fn rel(id: u64, a: u64, b: u64, is_bond: bool, kind: Kind) -> Relation {
         Relation { id, a, b, name: String::new(), is_bond, kind }
@@ -2967,5 +3184,98 @@ mod tests {
             "Tank should carry folded blocked-flow counts: {:#?}",
             report.components
         );
+    }
+
+    // ── Arc 4.2: the component → work-process mapping ────────────────────
+
+    fn comp_with(id: u64, name: &str, primitives: Vec<ProcessPrimitive>) -> Thing {
+        Thing { id, name: name.to_string(), pos: egui::pos2(0.0, 0.0), role: Role::Component, primitives }
+    }
+
+    /// The mapping round-trips through the seam: a component carrying inspector-
+    /// authored primitives projects into a `WorldModel` whose matching subsystem
+    /// holds an `AgentModel` with exactly those primitives (and an Agent archetype).
+    /// A component with none stays `agent: None`, so the audit still reds it.
+    #[test]
+    fn primitives_project_into_the_agent_model() {
+        let things = vec![
+            env(1, "Well"),
+            comp_with(2, "Tank", vec![ProcessPrimitive::Buffering]),
+            comp(3, "Bare"),
+            env(4, "Drain"),
+        ];
+        let rels = vec![
+            rel(1, 1, 2, true, Kind::Matter),
+            rel(2, 2, 3, true, Kind::Matter),
+            rel(3, 3, 4, true, Kind::Matter),
+        ];
+        let wm = to_world_model(&things, &rels, Lens::Mobus);
+
+        let tank = wm
+            .systems
+            .iter()
+            .find(|s| s.info.name == "Tank")
+            .expect("Tank projects as a subsystem");
+        let agent = tank.agent.as_ref().expect("Tank carries an AgentModel");
+        assert_eq!(agent.primitives, vec![ProcessPrimitive::Buffering]);
+        assert_eq!(tank.archetype, Some(HcgsArchetype::Agent));
+
+        let bare = wm.systems.iter().find(|s| s.info.name == "Bare").unwrap();
+        assert!(bare.agent.is_none(), "a component with no primitive stays agent-less");
+    }
+
+    /// The canvas `Model` (Save state) carries the primitives across a serde
+    /// round-trip — reopening a saved model preserves the work-process mapping.
+    #[test]
+    fn canvas_model_round_trips_primitives() {
+        let model = Model {
+            lens: Lens::Mobus,
+            next_id: 3,
+            things: vec![comp_with(
+                1,
+                "Pump",
+                vec![ProcessPrimitive::Propelling, ProcessPrimitive::Modulating],
+            )],
+            relations: vec![],
+            source_spec: None,
+        };
+        let json = serde_json::to_string(&model).unwrap();
+        let back: Model = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            back.things[0].primitives,
+            vec![ProcessPrimitive::Propelling, ProcessPrimitive::Modulating]
+        );
+    }
+
+    /// The end-to-end contract: attaching a Mobus primitive to each red component
+    /// flips the audit's per-component rows green with no other behavior change.
+    /// Same canvas as `audit_surfaces_operational_gaps_for_mobus`, now with the
+    /// mapping supplied — the report goes fully green.
+    #[test]
+    fn attaching_primitives_flips_the_audit_green() {
+        let mut app = audit_app();
+        // Baseline: both components red for "no agent model".
+        let before = app.audit(Lens::Mobus);
+        assert!(before
+            .components
+            .iter()
+            .all(|c| c.errors.iter().any(|e| e.reason.contains("no agent model"))));
+        assert!(!before.fully_green());
+
+        // Supply the mapping every red component was missing — the inspector's job.
+        for t in app.things.iter_mut().filter(|t| t.role == Role::Component) {
+            t.primitives = vec![ProcessPrimitive::Buffering];
+        }
+
+        let after = app.audit(Lens::Mobus);
+        assert!(after.mode_error.is_none(), "still an Operational rung");
+        assert!(
+            after.components.iter().all(|c| c.errors.is_empty()),
+            "every component row is green once mapped: {:#?}",
+            after.components
+        );
+        assert!(after.flow_errors.is_empty(), "no standalone flow faults remain");
+        assert!(after.fully_green(), "the whole audit is green: {:#?}", after.components);
+        assert_eq!(after.clear, after.total, "the tally is fully cleared");
     }
 }
