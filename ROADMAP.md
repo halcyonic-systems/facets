@@ -91,6 +91,31 @@ Open design problems the gates force: the component→primitive mapping UX
   load-bearing across consumers.
 - **§A5 mode-transition validators** — the Arc 3 enabler (file when Arc 3 starts).
 
+## North star — the resident agent (post-Arc 3; not an arc yet)
+
+An agent context window embedded in the canvas: not a chat panel bolted on, but a
+**second author at the validate_mode seam**. The agent gets no special door — it
+submits the same typed operations the human does (place thing, draw relation, type
+a bond, request a mode transition), every proposal routes through the same gates,
+and the *verdict* — never the model's prose — stays authoritative. The
+no-LLM-in-the-explanation-path rule survives intact because the agent lives on the
+proposal side of the seam; the demotion doctrine made visible in one window: LLM
+proposes, kernel disposes.
+
+This is Arc 2's "optional LLM co-create seed" grown up: a resident co-author with
+a real agentic loop whose tool-results ARE validator verdicts — an agent refused by
+`validate_mode(Bunge)` must repair its proposal against the citation. The kernel
+becomes its environment. Conversation is then just another input modality over the
+one kernel, peer to direct manipulation, the way tradition lenses are peer
+vocabularies. Sovereignty path: hal/Ollama local tier ↔ Claude Agent SDK frontier
+tier, same typed-ops interface either way.
+
+**Preconditions before this becomes an arc**: the typed-op vocabulary must be the
+real API (Arc 2 complete), transitions must gate with witnesses (Arc 3 shipped —
+agent-proposed mode transitions are where this gets serious), and the God-tool
+guard holds: the agent window is on-demand, never ambient. Captured 2026-07-10,
+the night Gates 1–2 shipped.
+
 ## Teaching surface (parallel, not an arc)
 
 Per-lens teaching copy refined against the GSR-grounded Klir / Bunge / Mobus
