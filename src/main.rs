@@ -3038,10 +3038,17 @@ impl CanvasApp {
                     self.save_model(lens);
                 }
                 if ui
-                    .button(egui::RichText::new("Export BERT").color(theme::INK_SOFT))
-                    .on_hover_text(
-                        "Export as a bert-core WorldModel (.json), stamped with this lens's mode — the seam out to BERT / GSR / compose",
+                    .button(
+                        egui::RichText::new(format!(
+                            "Export BERT · {}",
+                            mode_label(lens.mode())
+                        ))
+                        .color(theme::INK_SOFT),
                     )
+                    .on_hover_text(format!(
+                        "Export as {} — a bert-core WorldModel (.json) stamped with this lens's mode — the seam out to BERT / GSR / compose",
+                        mode_label(lens.mode())
+                    ))
                     .clicked()
                 {
                     self.export_world_model(lens);
