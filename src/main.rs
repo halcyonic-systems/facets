@@ -913,6 +913,33 @@ fn audit_error_detail(ui: &mut egui::Ui, e: &OperationalError) {
     }
 }
 
+/// If `e` is an "endpoint does not resolve" flow error whose failing endpoint is
+/// a projected component, return that component's index in `comp_ids`. Used to
+/// demote the error into the component's row (it derives from that component
+/// having no agent model). Returns `None` for any other error, or when the
+/// endpoint is a terminal / not a canvas component.
+fn derivative_endpoint_component(
+    e: &OperationalError,
+    wm: &WorldModel,
+    comp_ids: &[Id],
+) -> Option<usize> {
+    let k: usize = e
+        .location
+        .strip_prefix("interactions[")?
+        .strip_suffix(']')?
+        .parse()
+        .ok()?;
+    // The reason names the failing end verbatim ("source"/"sink does not resolve").
+    let endpoint = if e.reason.contains("source does not resolve") {
+        &wm.interactions.get(k)?.source
+    } else if e.reason.contains("sink does not resolve") {
+        &wm.interactions.get(k)?.sink
+    } else {
+        return None;
+    };
+    comp_ids.iter().position(|id| id == endpoint)
+}
+
 // ── Arc 4.1: read-only consistency audit ─────────────────────────────────
 //
 // The audit is bert-core's verdict, rendered — never the shell's. It projects
@@ -927,6 +954,19 @@ fn audit_error_detail(ui: &mut egui::Ui, e: &OperationalError) {
 struct ComponentAudit {
     name: String,
     errors: Vec<OperationalError>,
+    /// Count of flow errors folded into this row: flows whose endpoint failed to
+    /// resolve *because* this component carries no agent model. Derivative of the
+    /// component's own row, so they are demoted here instead of standing alone.
+    blocked_flows: usize,
+}
+
+/// An environment terminal the projection kept: a Source or Sink a flow crosses.
+/// Informational, never an error — it exists so every bonded env node on the
+/// canvas has exactly one panel line.
+#[derive(Debug)]
+struct TerminalLine {
+    name: String,
+    is_source: bool,
 }
 
 /// The rendered form of one `validate_operational` call: the mode-gate headline,
@@ -941,6 +981,13 @@ struct AuditReport {
     flow_errors: Vec<OperationalError>,
     /// Anything not attributable to the mode gate, a component, or a flow.
     other_errors: Vec<OperationalError>,
+    /// Environment Sources/Sinks the projection kept — one line each so bonded
+    /// env nodes are represented, not silently absent. Informational.
+    terminals: Vec<TerminalLine>,
+    /// Canvas things the executable projection dropped: `(name, reason)`. Today
+    /// this is unbonded environment things, which carry no flow. Disclosure, so
+    /// no canvas node vanishes without a word.
+    unprojected: Vec<(String, String)>,
     clear: usize,
     total: usize,
 }
@@ -968,7 +1015,11 @@ impl CanvasApp {
             .systems
             .iter()
             .filter(|s| s.info.level == 1)
-            .map(|s| ComponentAudit { name: s.info.name.clone(), errors: vec![] })
+            .map(|s| ComponentAudit {
+                name: s.info.name.clone(),
+                errors: vec![],
+                blocked_flows: 0,
+            })
             .collect();
         // The location string each component answers to (`systems[i]` and the
         // isolated-component form `process "name"`), kept parallel to `components`.
@@ -978,6 +1029,14 @@ impl CanvasApp {
             .enumerate()
             .filter(|(_, s)| s.info.level == 1)
             .map(|(i, s)| (format!("systems[{i}]"), format!("process \"{}\"", s.info.name)))
+            .collect();
+        // The projected id of each component, kept parallel to `components`, so a
+        // flow's unresolved endpoint can be traced back to the row it derives from.
+        let comp_ids: Vec<Id> = wm
+            .systems
+            .iter()
+            .filter(|s| s.info.level == 1)
+            .map(|s| s.info.id.clone())
             .collect();
 
         let mut mode_error = None;
@@ -1001,11 +1060,68 @@ impl CanvasApp {
             }
         }
 
-        // Tally: one check for the mode gate, one per component, one per flow error
-        // surfaced. Honest partial progress when green is unreachable (until 4.2
-        // lands the component → work-process mapping, bert#108).
-        let flow_total = flow_errors.len();
-        let total = 1 + components.len() + flow_total;
+        // Cascade dedupe: an "endpoint does not resolve" flow error is derivative
+        // when that endpoint is a component already carrying its own error row
+        // (e.g. no agent model). Fold it into that component's row as a blocked-
+        // flow tally instead of a standalone FLOWS entry, so each root cause is
+        // counted once. Genuinely independent flow errors — endpoint not a canvas
+        // component, or a direction/interface/conductance fault — stay as-is.
+        flow_errors.retain(|e| {
+            let Some(idx) = derivative_endpoint_component(e, &wm, &comp_ids) else {
+                return true; // not an endpoint-resolution error, or endpoint isn't a component
+            };
+            if components[idx].errors.is_empty() {
+                return true; // the component is clean — the flow fault is genuine
+            }
+            components[idx].blocked_flows += 1;
+            false
+        });
+
+        // Environment terminals the projection kept: one line per bonded env node,
+        // so it is represented rather than silently absent.
+        let terminals: Vec<TerminalLine> = wm
+            .environment
+            .sources
+            .iter()
+            .map(|e| TerminalLine { name: e.info.name.clone(), is_source: true })
+            .chain(
+                wm.environment
+                    .sinks
+                    .iter()
+                    .map(|e| TerminalLine { name: e.info.name.clone(), is_source: false }),
+            )
+            .collect();
+
+        // Canvas things the projection dropped. Today: environment things no bond
+        // touches (they carry no flow, so `to_world_model` skips them). Everything
+        // else on the canvas is a component row or a terminal line above.
+        let touched: std::collections::HashSet<u64> = self
+            .relations
+            .iter()
+            .filter(|r| r.is_bond)
+            .flat_map(|r| [r.a, r.b])
+            .collect();
+        let unprojected: Vec<(String, String)> = self
+            .things
+            .iter()
+            .filter(|t| t.role == Role::Environment && !touched.contains(&t.id))
+            .map(|t| {
+                let name = if t.name.trim().is_empty() { "·" } else { &t.name };
+                (
+                    name.to_string(),
+                    format!(
+                        "{name} (environment, no bond) — carries no flow, dropped from \
+                         the executable projection"
+                    ),
+                )
+            })
+            .collect();
+
+        // Tally: one check for the mode gate, one per component, one per genuine
+        // (non-derivative) flow error. Terminals and unprojected disclosures are
+        // informational, not checks. Honest partial progress when green is
+        // unreachable (until 4.2 lands the component → work-process mapping, #108).
+        let total = 1 + components.len() + flow_errors.len();
         let clear = usize::from(mode_error.is_none())
             + components.iter().filter(|c| c.errors.is_empty()).count();
 
@@ -1015,6 +1131,8 @@ impl CanvasApp {
             components,
             flow_errors,
             other_errors,
+            terminals,
+            unprojected,
             clear,
             total,
         }
@@ -1054,6 +1172,27 @@ impl CanvasApp {
                         ui.label(egui::RichText::new(summary).strong().color(summary_color));
                     });
                 });
+
+                // Shell-side framing (not a verdict): the "no agent model" reds are
+                // the known pre-4.2 state, not authoring mistakes. bert-core's reason
+                // and hint copy stays verbatim below — this only sets expectations.
+                let expected_reds = report
+                    .components
+                    .iter()
+                    .any(|c| c.errors.iter().any(|e| e.reason.contains("no agent model")));
+                if expected_reds {
+                    ui.add_space(2.0);
+                    ui.label(
+                        egui::RichText::new(
+                            "Red “no agent model” rows are the expected state until the \
+                             component → work-process mapping lands (4.2).",
+                        )
+                        .small()
+                        .italics()
+                        .color(theme::INK_FAINT),
+                    );
+                }
+
                 ui.add_space(4.0);
                 ui.separator();
                 ui.add_space(6.0);
@@ -1107,7 +1246,49 @@ impl CanvasApp {
                             for e in &c.errors {
                                 audit_error_detail(ui, e);
                             }
+                            // Derivative flow faults folded in (see cascade dedupe):
+                            // this component blocks the flows its unresolved endpoint
+                            // sits on. Shown here, not as standalone FLOWS entries.
+                            if c.blocked_flows > 0 {
+                                ui.horizontal(|ui| {
+                                    ui.add_space(18.0);
+                                    ui.label(
+                                        egui::RichText::new(format!(
+                                            "↳ blocks {} flow{}",
+                                            c.blocked_flows,
+                                            if c.blocked_flows == 1 { "" } else { "s" }
+                                        ))
+                                        .small()
+                                        .color(theme::INK_FAINT),
+                                    );
+                                });
+                            }
                         }
+                    }
+                    ui.add_space(8.0);
+                }
+
+                // Environment terminals the projection kept — informational, neutral
+                // (never red): each bonded env node gets its line so the panel
+                // accounts for every canvas node exactly once.
+                if !report.terminals.is_empty() {
+                    ui.label(
+                        egui::RichText::new("ENVIRONMENT TERMINALS")
+                            .small()
+                            .color(theme::INK_FAINT),
+                    );
+                    ui.add_space(2.0);
+                    for t in &report.terminals {
+                        let name = if t.name.trim().is_empty() { "·" } else { &t.name };
+                        ui.horizontal(|ui| {
+                            ui.label(egui::RichText::new("◇").color(theme::INK_SOFT));
+                            ui.label(egui::RichText::new(name).color(theme::INK));
+                            ui.label(
+                                egui::RichText::new(if t.is_source { "source" } else { "sink" })
+                                    .small()
+                                    .color(theme::INK_FAINT),
+                            );
+                        });
                     }
                     ui.add_space(8.0);
                 }
@@ -1119,6 +1300,25 @@ impl CanvasApp {
                     ui.add_space(2.0);
                     for e in &report.flow_errors {
                         audit_error_row(ui, "✕", theme::ACCENT, e);
+                    }
+                    ui.add_space(8.0);
+                }
+
+                // Canvas nodes the executable projection dropped — a disclosure, not
+                // an error: neutral marker, bert-lenses' own reason (bert-core never
+                // saw these, so there is no verdict to quote).
+                if !report.unprojected.is_empty() {
+                    ui.label(
+                        egui::RichText::new("NOT IN PROJECTION")
+                            .small()
+                            .color(theme::INK_FAINT),
+                    );
+                    ui.add_space(2.0);
+                    for (_name, reason) in &report.unprojected {
+                        ui.horizontal(|ui| {
+                            ui.label(egui::RichText::new("–").color(theme::INK_FAINT));
+                            ui.label(egui::RichText::new(reason).color(theme::INK_SOFT));
+                        });
                     }
                     ui.add_space(8.0);
                 }
@@ -2680,5 +2880,92 @@ mod tests {
         }
         assert_eq!(things_before, serde_json::to_string(&app.things).unwrap());
         assert_eq!(rels_before, serde_json::to_string(&app.relations).unwrap());
+    }
+
+    /// The step-4 guard (Gate 2 diagnosis): every canvas node must land on exactly
+    /// one panel line, and a flow error that derives from a component's own row is
+    /// folded into it, not left standing alone.
+    ///
+    /// Canvas: two bonded components (Tank, Pump), one bonded env thing (Well → a
+    /// Source terminal), one unbonded env thing (Ghost → dropped), one unbonded
+    /// component (Orphan → still a projected row).
+    #[test]
+    fn audit_accounts_for_every_canvas_node_and_folds_derivative_flows() {
+        let app = CanvasApp {
+            things: vec![
+                env(1, "Well"),
+                comp(2, "Tank"),
+                comp(3, "Pump"),
+                env(5, "Ghost"),
+                comp(6, "Orphan"),
+            ],
+            relations: vec![
+                rel(1, 1, 2, true, Kind::Matter), // Well → Tank
+                rel(2, 2, 3, true, Kind::Matter), // Tank → Pump
+            ],
+            ..Default::default()
+        };
+        let report = app.audit(Lens::Mobus);
+
+        // Invariant: every canvas thing maps to exactly one panel line, across the
+        // three node-bearing sections (component rows, terminal lines, unprojected).
+        assert_eq!(
+            report.components.len() + report.terminals.len() + report.unprojected.len(),
+            app.things.len(),
+            "every canvas node must be accounted for exactly once"
+        );
+        let mut accounted: Vec<String> = report
+            .components
+            .iter()
+            .map(|c| c.name.clone())
+            .chain(report.terminals.iter().map(|t| t.name.clone()))
+            .chain(report.unprojected.iter().map(|(n, _)| n.clone()))
+            .collect();
+        accounted.sort();
+        let mut expected: Vec<String> =
+            app.things.iter().map(|t| t.name.clone()).collect();
+        expected.sort();
+        assert_eq!(accounted, expected, "the panel's nodes are exactly the canvas nodes");
+
+        // The unbonded env thing is disclosed with its reason, not silently dropped.
+        assert!(
+            report
+                .unprojected
+                .iter()
+                .any(|(n, reason)| n == "Ghost" && reason.contains("no bond")),
+            "the unbonded env thing must surface in the unprojected disclosure: {:#?}",
+            report.unprojected
+        );
+        // The bonded env thing became a terminal, not an error.
+        assert!(
+            report.terminals.iter().any(|t| t.name == "Well" && t.is_source),
+            "the bonded env thing must be an environment terminal: {:#?}",
+            report.terminals
+        );
+
+        // Cascade dedupe: no standalone flow error remains whose endpoint is a
+        // component already carrying its own row. Here every flow endpoint is a
+        // no-agent component (or a terminal), so FLOWS is empty and the faults are
+        // folded onto Tank and Pump instead.
+        let comp_ids: Vec<Id> = to_world_model(&app.things, &app.relations, Lens::Mobus)
+            .systems
+            .iter()
+            .filter(|s| s.info.level == 1)
+            .map(|s| s.info.id.clone())
+            .collect();
+        let wm = to_world_model(&app.things, &app.relations, Lens::Mobus);
+        assert!(
+            !report.flow_errors.iter().any(|e| {
+                derivative_endpoint_component(e, &wm, &comp_ids)
+                    .is_some_and(|idx| !report.components[idx].errors.is_empty())
+            }),
+            "derivative flow errors must be folded, not standalone: {:#?}",
+            report.flow_errors
+        );
+        assert!(
+            report.components.iter().any(|c| c.name == "Tank" && c.blocked_flows > 0),
+            "Tank should carry folded blocked-flow counts: {:#?}",
+            report.components
+        );
     }
 }
