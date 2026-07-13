@@ -1919,6 +1919,20 @@ fn badge(ui: &mut egui::Ui, code: &str, color: egui::Color32, inverted: bool) {
         });
 }
 
+/// A small rounded status chip — a semantic color on a faint tint of itself.
+/// The run panel's at-a-glance conservation / behavior readout.
+#[cfg(not(target_arch = "wasm32"))]
+fn chip(ui: &mut egui::Ui, text: &str, color: egui::Color32) {
+    let bg = egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 28);
+    egui::Frame::default()
+        .fill(bg)
+        .corner_radius(10)
+        .inner_margin(egui::Margin::symmetric(9, 3))
+        .show(ui, |ui| {
+            ui.label(egui::RichText::new(text).small().color(color));
+        });
+}
+
 /// One red row: a marker, the error's `reason`, and its `hint` beneath — all
 /// verbatim from bert-core, no shell-authored copy.
 fn audit_error_row(ui: &mut egui::Ui, mark: &str, color: egui::Color32, e: &OperationalError) {
@@ -2705,6 +2719,39 @@ fn is_identity_default(p: &OperationalProcess) -> bool {
     p.cognitive_params.is_empty() && p.initial_storage.is_none()
 }
 
+/// Human-readable magnitude: `70866993938432.0 → "70.9T"`, `27.55 → "27.55"`,
+/// `0.05 → "0.05"`. K/M/B/T scaling with one decimal; small values keep enough
+/// precision to read. So the run panel speaks "70.9T", not a wall of digits.
+fn humanize(v: f64) -> String {
+    let a = v.abs();
+    if a == 0.0 {
+        return "0".to_string();
+    }
+    let sign = if v < 0.0 { "-" } else { "" };
+    for (t, s) in [(1e12, "T"), (1e9, "B"), (1e6, "M"), (1e3, "K")] {
+        if a >= t {
+            return format!("{sign}{:.1}{s}", a / t);
+        }
+    }
+    if a >= 100.0 {
+        format!("{sign}{a:.0}")
+    } else if a >= 0.01 {
+        format!("{sign}{a:.2}")
+    } else {
+        format!("{sign}{a:.3}")
+    }
+}
+
+/// A magnitude with its declared unit appended, when one exists: `"70.9T tokens/month"`.
+fn humanize_unit(v: f64, unit: &str) -> String {
+    let n = humanize(v);
+    if unit.trim().is_empty() {
+        n
+    } else {
+        format!("{n} {}", unit.trim())
+    }
+}
+
 /// A minimal inline sparkline for a per-thing trajectory — the drill-down's
 /// "historical" view (h-element knowledge levels), drawn in the Mobus hue.
 #[cfg(not(target_arch = "wasm32"))]
@@ -2742,8 +2789,9 @@ fn comparison_sparkline(
     simulated: &[f32],
     actual: &[f32],
     baseline: Option<&[f32]>,
+    size: egui::Vec2,
 ) {
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(220.0, 40.0), egui::Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
     let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
     for &v in simulated
         .iter()
@@ -2757,28 +2805,33 @@ fn comparison_sparkline(
         return;
     }
     let span = (hi - lo).max(1e-6);
-    let plot = |series: &[f32], color: egui::Color32, painter: &egui::Painter| {
+    let at = |series: &[f32], i: usize| -> egui::Pos2 {
+        let n = series.len().max(2);
+        let x = rect.left() + rect.width() * (i as f32 / (n - 1) as f32);
+        let y = rect.bottom() - rect.height() * ((series[i] - lo) / span);
+        egui::pos2(x, y)
+    };
+    let painter = ui.painter().clone();
+    // faint baseline so a flat series still reads as sitting on the floor
+    painter.line_segment(
+        [rect.left_bottom(), rect.right_bottom()],
+        egui::Stroke::new(1.0, theme::LINE),
+    );
+    let plot = |series: &[f32], color: egui::Color32, dot: bool| {
         if series.len() < 2 {
             return;
         }
-        let n = series.len();
-        let pts: Vec<egui::Pos2> = series
-            .iter()
-            .enumerate()
-            .map(|(i, &v)| {
-                let x = rect.left() + rect.width() * (i as f32 / (n - 1) as f32);
-                let y = rect.bottom() - rect.height() * ((v - lo) / span);
-                egui::pos2(x, y)
-            })
-            .collect();
-        painter.add(egui::Shape::line(pts, egui::Stroke::new(1.6, color)));
+        let pts: Vec<egui::Pos2> = (0..series.len()).map(|i| at(series, i)).collect();
+        painter.add(egui::Shape::line(pts, egui::Stroke::new(1.7, color)));
+        if dot {
+            painter.circle_filled(at(series, series.len() - 1), 2.3, color); // emphasized endpoint
+        }
     };
-    let painter = ui.painter().clone();
     if let Some(b) = baseline {
-        plot(b, theme::INK_FAINT, &painter); // declared assumption, drawn under
+        plot(b, theme::INK_FAINT, false); // declared assumption, drawn under, no dot
     }
-    plot(simulated, theme::MOBUS, &painter); // executed
-    plot(actual, theme::ACCENT, &painter); // actual
+    plot(simulated, theme::MOBUS, true); // executed
+    plot(actual, theme::ACCENT, true); // actual
 }
 
 /// Build the ledger's summary line for a completed run — the shared shape between
@@ -2889,6 +2942,7 @@ impl CanvasApp {
                 simulated: sim.clone(),
                 actual,
                 baseline: None,
+                unit: s.unit.clone(),
             });
         }
         for (rid, s) in &d.flow_series {
@@ -2921,6 +2975,7 @@ impl CanvasApp {
                 simulated: sim,
                 actual,
                 baseline,
+                unit: s.unit.clone(),
             });
         }
         out.sort_by(|a, b| a.element_name.cmp(&b.element_name));
@@ -3270,219 +3325,263 @@ impl CanvasApp {
                 // imported; withheld from the UI while stale, exactly as the trace.
                 let comparisons = self.comparisons(res);
 
-                // Header: the recorded run, stamped with its Δt/T (B1 vocabulary).
-                ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new("Recorded run").strong().color(theme::MOBUS));
-                    ui.label(
-                        egui::RichText::new(format!("Δt {}, T {} · {} ticks", res.dt, res.t, res.ticks))
-                            .small()
-                            .color(theme::INK_FAINT),
-                    );
-                });
-                // #31: the receipt line — when this run fired and from which build.
-                // A retained snapshot keeps its original stamp, so "did that Run
-                // actually fire?" is answered by the clock, not by guessing.
+                // ── Compact header: model · Δt/T · build receipt (#31 kept) ──
+                let model_name = self
+                    .current_model_name
+                    .clone()
+                    .unwrap_or_else(|| "untitled".to_string());
+                ui.label(
+                    egui::RichText::new(format!(
+                        "{model_name} · Δt {}, T {} · {} ticks",
+                        res.dt, res.t, res.ticks
+                    ))
+                    .small()
+                    .color(theme::INK_FAINT),
+                );
                 ui.label(
                     egui::RichText::new(format!("recorded {} · build {}", res.recorded_at, BUILD_SHA))
                         .small()
                         .color(theme::INK_SOFT),
                 );
-                // B4: the previous run's one line retained beside the current.
                 if let Some(prev) = &self.prev_run_line {
-                    ui.label(egui::RichText::new(format!("previous · {prev}")).small().color(theme::INK_FAINT));
+                    ui.label(
+                        egui::RichText::new(format!("previous · {prev}"))
+                            .small()
+                            .color(theme::INK_FAINT),
+                    );
                 }
-                ui.add_space(4.0);
-
-                // R3: staleness is loud. The summary greys and the drill-down is withheld.
                 if stale {
+                    ui.add_space(4.0);
                     ui.label(
                         egui::RichText::new("⚠ model changed since this run — re-run to refresh")
                             .strong()
                             .color(theme::WARN),
                     );
-                    ui.add_space(4.0);
                 }
+                ui.add_space(10.0);
+
+                let conserves = res.residual.abs() < 1e-3;
+                let chosen = res.identity_default_m.saturating_sub(res.identity_default_n);
+
+                // The lead comparison (sharpest divergence) drives the verdict.
+                let lead = if stale {
+                    None
+                } else {
+                    comparisons
+                        .iter()
+                        .filter_map(|c| c.divergence_pct().map(|p| (c, p)))
+                        .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+                };
+
+                // ── VERDICT: lead with the result ──
+                match lead {
+                    Some((c, pct)) => {
+                        ui.label(
+                            egui::RichText::new(format!("{pct:.0}% off reality"))
+                                .size(28.0)
+                                .strong()
+                                .color(theme::ACCENT),
+                        );
+                        ui.label(
+                            egui::RichText::new(format!("{} · at horizon", c.element_name))
+                                .small()
+                                .color(theme::INK_SOFT),
+                        );
+                        let sim_l = c.simulated.last().copied().unwrap_or(0.0) as f64;
+                        let act_l = c.actual.last().copied().unwrap_or(0.0) as f64;
+                        ui.add_space(3.0);
+                        ui.label(
+                            egui::RichText::new(format!(
+                                "actual {} · executed {}",
+                                humanize_unit(act_l, &c.unit),
+                                humanize(sim_l),
+                            ))
+                            .color(theme::INK),
+                        );
+                    }
+                    None => {
+                        let color = if conserves { theme::MOBUS } else { theme::WARN };
+                        ui.label(
+                            egui::RichText::new(if conserves {
+                                format!("Ran clean · {} ticks", res.ticks)
+                            } else {
+                                "Ran — conservation leak".to_string()
+                            })
+                            .size(24.0)
+                            .strong()
+                            .color(color),
+                        );
+                        if comparisons.is_empty() && !stale {
+                            ui.label(
+                                egui::RichText::new(
+                                    "no imported data to compare against — import a CSV to check the model against reality",
+                                )
+                                .small()
+                                .color(theme::INK_FAINT),
+                            );
+                        }
+                    }
+                }
+
+                ui.add_space(9.0);
+
+                // ── Chips: conservation + behavior, at a glance ──
+                ui.horizontal_wrapped(|ui| {
+                    chip(
+                        ui,
+                        if conserves { "✓ conserved" } else { "⚠ leak" },
+                        if conserves { theme::OK } else { theme::WARN },
+                    );
+                    let (btxt, bcol) = if res.identity_default_m == 0 {
+                        ("no components".to_string(), theme::INK_FAINT)
+                    } else if res.identity_default_n == 0 {
+                        ("✓ behavior set".to_string(), theme::OK)
+                    } else if chosen == 0 {
+                        ("behavior not set".to_string(), theme::WARN)
+                    } else {
+                        (
+                            format!("{chosen} of {} behavior set", res.identity_default_m),
+                            theme::WARN,
+                        )
+                    };
+                    chip(ui, &btxt, bcol);
+                });
+
+                // ── Hero chart: executed vs actual for the lead element ──
+                if let Some((c, _)) = lead {
+                    ui.add_space(10.0);
+                    let w = ui.available_width().min(340.0);
+                    comparison_sparkline(
+                        ui,
+                        &c.simulated,
+                        &c.actual,
+                        c.baseline.as_deref(),
+                        egui::vec2(w, 72.0),
+                    );
+                    ui.horizontal(|ui| {
+                        ui.label(egui::RichText::new("— executed").small().color(theme::MOBUS));
+                        ui.add_space(8.0);
+                        ui.label(egui::RichText::new("— actual").small().color(theme::ACCENT));
+                        if c.baseline.is_some() {
+                            ui.add_space(8.0);
+                            ui.label(
+                                egui::RichText::new("— declared (mean)")
+                                    .small()
+                                    .color(theme::INK_FAINT),
+                            );
+                        }
+                    });
+                }
+
+                ui.add_space(10.0);
                 ui.separator();
                 ui.add_space(6.0);
 
-                let ink = if stale { theme::INK_FAINT } else { theme::INK };
-
-                // (1) Ledger residual headline (R5, SL §3.2).
-                let conserves = res.residual.abs() < 1e-3;
-                let residual_color = if stale {
-                    theme::INK_FAINT
-                } else if conserves {
-                    theme::OK
-                } else {
-                    theme::WARN
-                };
-                ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new(if conserves { "✓" } else { "⚠" }).color(residual_color));
-                    ui.label(
-                        egui::RichText::new(format!("Conservation residual {:.4}", res.residual))
-                            .strong()
-                            .color(residual_color),
-                    );
-                    ui.label(
-                        egui::RichText::new(if conserves { "(mass conserved)" } else { "(leak — inspect)" })
-                            .small()
-                            .color(theme::INK_FAINT),
-                    );
-                });
-                ui.add_space(6.0);
-
-                // (2) Identity-default disclosure (C2).
-                ui.label(
-                    egui::RichText::new(format!(
-                        "{} of {} components at identity default",
-                        res.identity_default_n, res.identity_default_m
-                    ))
-                    .color(ink),
-                );
-                if res.identity_default_m > 0 && res.identity_default_n == res.identity_default_m {
-                    ui.label(
-                        egui::RichText::new(
-                            "every component runs the bare primitive — the run is well-formed but \
-                             its behavior wasn't chosen",
-                        )
-                        .small()
-                        .italics()
-                        .color(theme::INK_FAINT),
-                    );
-                }
-                ui.add_space(8.0);
-
-                // (2b) Model-vs-reality divergence, one line per mapped element
-                // (contract §3). Only meaningful for the current model, so it is
-                // withheld while stale exactly as the drill-down is.
-                if !comparisons.is_empty() {
-                    ui.label(egui::RichText::new("MODEL vs REALITY · divergence").small().color(theme::INK_FAINT));
-                    ui.add_space(2.0);
-                    if stale {
-                        ui.label(
-                            egui::RichText::new("withheld until re-run")
-                                .small()
-                                .italics()
-                                .color(theme::INK_FAINT),
-                        );
-                    } else {
-                        for c in &comparisons {
-                            let line = match c.divergence_pct() {
-                                Some(pct) => format!(
-                                    "{} ({}) — {:.1}% at horizon (sim {:.2} vs actual {:.2})",
-                                    c.element_name,
-                                    c.kind,
-                                    pct,
-                                    c.simulated.last().copied().unwrap_or(0.0),
-                                    c.actual.last().copied().unwrap_or(0.0),
-                                ),
-                                None => format!("{} ({}) — no overlap", c.element_name, c.kind),
-                            };
+                // ── Final state (collapsible, open) — instantaneous levels ──
+                egui::CollapsingHeader::new(egui::RichText::new("Final state").color(theme::INK_SOFT))
+                    .id_salt("run-final")
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        let mut last_cat: Option<LevelCategory> = None;
+                        for row in &res.levels {
+                            if last_cat != Some(row.category) {
+                                ui.label(
+                                    egui::RichText::new(row.category.header())
+                                        .small()
+                                        .color(theme::INK_FAINT),
+                                );
+                                last_cat = Some(row.category);
+                            }
+                            let name = if row.name.trim().is_empty() { "·" } else { &row.name };
                             ui.horizontal(|ui| {
-                                ui.add_space(10.0);
-                                ui.label(egui::RichText::new(line).small().color(ink));
+                                ui.add_space(8.0);
+                                ui.label(egui::RichText::new(name).color(theme::INK));
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    ui.label(
+                                        egui::RichText::new(humanize(row.value as f64)).color(theme::INK),
+                                    );
+                                });
                             });
                         }
-                    }
-                    ui.add_space(8.0);
-                }
-
-                // (3) Final levels in purpose order — "instantaneous".
-                ui.label(egui::RichText::new("FINAL STATE · instantaneous").small().color(theme::INK_FAINT));
-                ui.add_space(2.0);
-                let mut last_cat: Option<LevelCategory> = None;
-                for row in &res.levels {
-                    if last_cat != Some(row.category) {
-                        ui.label(egui::RichText::new(row.category.header()).small().color(theme::INK_SOFT));
-                        last_cat = Some(row.category);
-                    }
-                    let name = if row.name.trim().is_empty() { "·" } else { &row.name };
-                    ui.horizontal(|ui| {
-                        ui.add_space(10.0);
-                        ui.label(egui::RichText::new(name).color(ink));
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            ui.label(egui::RichText::new(format!("{:.3}", row.value)).color(ink));
+                        ui.horizontal(|ui| {
+                            ui.add_space(8.0);
+                            ui.label(
+                                egui::RichText::new("conservation residual")
+                                    .small()
+                                    .color(theme::INK_FAINT),
+                            );
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                ui.label(
+                                    egui::RichText::new(format!("{:.4}", res.residual))
+                                        .small()
+                                        .color(if conserves { theme::OK } else { theme::WARN }),
+                                );
+                            });
                         });
                     });
-                }
-                ui.add_space(8.0);
 
-                // (4) Per-thing trajectory drill-down — "historical", on demand.
-                // Withheld while stale (the trace no longer belongs to the model).
-                if stale {
-                    ui.label(
-                        egui::RichText::new("Trajectories withheld until re-run.")
-                            .small()
-                            .italics()
-                            .color(theme::INK_FAINT),
-                    );
-                } else {
-                    ui.label(egui::RichText::new("TRAJECTORIES · historical").small().color(theme::INK_FAINT));
-                    ui.add_space(2.0);
-                    for (name, series) in &res.trajectories {
-                        let label = if name.trim().is_empty() { "·" } else { name };
-                        egui::CollapsingHeader::new(egui::RichText::new(label).color(theme::INK))
-                            .id_salt(("run-traj", label))
-                            .show(ui, |ui| {
-                                run_sparkline(ui, series);
-                                if let Some(last) = series.last() {
-                                    ui.label(
-                                        egui::RichText::new(format!("final {last:.3}"))
-                                            .small()
-                                            .color(theme::INK_FAINT),
-                                    );
-                                }
-                            });
-                    }
-
-                    // (5) Simulated vs actual overlay (contract §3, T4): for each
-                    // mapped element with empirical H, both series on one axis,
-                    // labeled — the tether's payoff, where the analyst already is.
-                    if !comparisons.is_empty() {
-                        ui.add_space(8.0);
-                        ui.label(egui::RichText::new("EXECUTED vs ACTUAL").small().color(theme::INK_FAINT));
-                        ui.horizontal(|ui| {
-                            ui.add_space(2.0);
-                            ui.label(egui::RichText::new("— executed").small().color(theme::MOBUS));
-                            ui.add_space(6.0);
-                            ui.label(egui::RichText::new("— actual").small().color(theme::ACCENT));
-                            if comparisons.iter().any(|c| c.baseline.is_some()) {
-                                ui.add_space(6.0);
+                // ── Trajectories (collapsible, closed) — the historical shape ──
+                if !stale {
+                    let lead_name = lead.map(|(c, _)| c.element_name.clone());
+                    egui::CollapsingHeader::new(
+                        egui::RichText::new("Trajectories").color(theme::INK_SOFT),
+                    )
+                    .id_salt("run-traj")
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        for (name, series) in &res.trajectories {
+                            let label = if name.trim().is_empty() { "·" } else { name };
+                            ui.label(egui::RichText::new(label).small().color(theme::INK));
+                            run_sparkline(ui, series);
+                            if let Some(last) = series.last() {
                                 ui.label(
-                                    egui::RichText::new("— declared (mean)")
+                                    egui::RichText::new(format!("final {}", humanize(*last as f64)))
                                         .small()
                                         .color(theme::INK_FAINT),
                                 );
                             }
-                        });
-                        ui.add_space(2.0);
-                        for c in &comparisons {
-                            let header = format!("{} · {}", c.element_name, c.kind);
-                            egui::CollapsingHeader::new(egui::RichText::new(header).color(theme::INK))
-                                .id_salt(("run-cmp", &c.element_name, c.kind))
-                                .default_open(true)
-                                .show(ui, |ui| {
-                                    comparison_sparkline(ui, &c.simulated, &c.actual, c.baseline.as_deref());
-                                    let line = match c.divergence_pct() {
-                                        Some(pct) => format!("divergence {pct:.1}% at horizon"),
-                                        None => "no overlapping horizon".to_string(),
-                                    };
-                                    ui.label(egui::RichText::new(line).small().color(theme::INK_FAINT));
-                                });
+                            ui.add_space(4.0);
                         }
-                    }
+                        // Any further mapped comparisons beyond the hero lead.
+                        for c in comparisons
+                            .iter()
+                            .filter(|c| Some(&c.element_name) != lead_name.as_ref())
+                        {
+                            ui.add_space(2.0);
+                            ui.label(
+                                egui::RichText::new(format!("{} · executed vs actual", c.element_name))
+                                    .small()
+                                    .color(theme::INK),
+                            );
+                            let w = ui.available_width().min(300.0);
+                            comparison_sparkline(
+                                ui,
+                                &c.simulated,
+                                &c.actual,
+                                c.baseline.as_deref(),
+                                egui::vec2(w, 40.0),
+                            );
+                            if let Some(p) = c.divergence_pct() {
+                                ui.label(
+                                    egui::RichText::new(format!("{p:.1}% off"))
+                                        .small()
+                                        .color(theme::INK_FAINT),
+                                );
+                            }
+                        }
+                    });
                 }
 
                 ui.add_space(6.0);
                 ui.separator();
                 ui.add_space(4.0);
 
-                // (6) Explicit "Save report" gesture (#15, contract: explicit for
-                // the full trajectory dump — mirrors the Run prompt's own
-                // explicit-gesture doctrine). Withheld while stale, same as the
-                // drill-down it dumps.
+                // (6) Explicit "Save report" gesture (unchanged).
                 ui.horizontal(|ui| {
-                    if ui.add_enabled(!stale, egui::Button::new("Save report")).clicked() {
+                    if ui
+                        .add_enabled(!stale, egui::Button::new("Save report"))
+                        .clicked()
+                    {
                         do_save_report = true;
                     }
                     ui.label(
@@ -3614,99 +3713,86 @@ impl CanvasApp {
             ui.horizontal(|ui| {
                 ui.label(egui::RichText::new("●  bert-lenses").strong().color(theme::INK));
                 ui.separator();
-                if ui
-                    .button(egui::RichText::new("⊕  New model").color(theme::INK_SOFT))
-                    .on_hover_text("Start over — pick a lens for a fresh, empty model.")
-                    .clicked()
-                {
-                    self.lens = None;
-                    self.things.clear();
-                    self.relations.clear();
-                    self.selection = Selected::None;
-                    self.editing = None;
-                    self.editing_rel = None;
-                    self.show_palette = false;
-                    self.stamp = None;
-                }
-                if ui
-                    .button(egui::RichText::new("Open").color(theme::INK_SOFT))
-                    .on_hover_text("Open a saved model OR a GSR spec (from Facets \"model this\" / /extract) — auto-detected")
-                    .clicked()
-                {
-                    self.open_model();
-                }
-                let save_hover = match &self.current_model_path {
-                    Some(p) => format!("Save back to {}", p.file_name().and_then(|s| s.to_str()).unwrap_or("its file")),
-                    None => "Save this model to a .json file".to_string(),
-                };
-                if ui
-                    .button(egui::RichText::new("Save").color(theme::INK_SOFT))
-                    .on_hover_text(save_hover)
-                    .clicked()
-                {
-                    self.save_model(lens);
-                }
-                if self.current_model_path.is_some()
-                    && ui
-                        .button(egui::RichText::new("Save As").color(theme::INK_SOFT))
-                        .on_hover_text("Save a copy under a new name")
+
+                // File ▾ — model lifecycle (New / Open / Save / Save As)
+                ui.menu_button(egui::RichText::new("File").color(theme::INK_SOFT), |ui| {
+                    if ui.button("⊕  New model").clicked() {
+                        self.lens = None;
+                        self.things.clear();
+                        self.relations.clear();
+                        self.selection = Selected::None;
+                        self.editing = None;
+                        self.editing_rel = None;
+                        self.show_palette = false;
+                        self.stamp = None;
+                        ui.close_menu();
+                    }
+                    if ui
+                        .button("Open…")
+                        .on_hover_text("Open a saved model OR a GSR spec (from Facets \"model this\" / /extract) — auto-detected")
                         .clicked()
-                {
-                    self.save_model_as(lens);
-                }
-                if ui
-                    .button(
-                        egui::RichText::new(format!(
-                            "Export BERT · {}",
-                            mode_label(lens.mode())
-                        ))
-                        .color(theme::INK_SOFT),
-                    )
-                    .on_hover_text(format!(
-                        "Export as {} — a bert-core WorldModel (.json) stamped with this lens's mode — the seam out to BERT / GSR / compose",
-                        mode_label(lens.mode())
-                    ))
-                    .clicked()
-                {
-                    self.export_world_model(lens);
-                }
-                // Import data (CSV): the reality interface (#7/#13). Sited with
-                // Save/Export because data attaches to the *model*, not a lens —
-                // the reading of it happens in Mobus, but the attaching is neutral.
-                if ui
-                    .button(egui::RichText::new("Import data (CSV)").color(theme::INK_SOFT))
-                    .on_hover_text(
-                        "Attach a CSV of real observations — map columns onto flows, stocks, and parameters (the tether)",
-                    )
-                    .clicked()
-                {
-                    self.import_csv();
-                }
-                if ui
-                    .button(egui::RichText::new("Check consistency").color(theme::INK_SOFT))
-                    .on_hover_text(
-                        "Project this canvas with the current lens's mode and run bert-core's operational check — read-only, on demand",
-                    )
-                    .clicked()
-                {
-                    self.show_audit = true;
-                }
-                // Run: the executable reading of the model, sited with Check consistency but
-                // Mobus-only (Run is Mobus vocabulary, contract §2). On demand — no ambient
-                // sim affordance (G1). Native-only (bert-compose is a desktop crate).
+                    {
+                        self.open_model();
+                        ui.close_menu();
+                    }
+                    let save_label = match &self.current_model_path {
+                        Some(p) => format!(
+                            "Save  ({})",
+                            p.file_name().and_then(|s| s.to_str()).unwrap_or("file")
+                        ),
+                        None => "Save…".to_string(),
+                    };
+                    if ui.button(save_label).clicked() {
+                        self.save_model(lens);
+                        ui.close_menu();
+                    }
+                    if self.current_model_path.is_some() && ui.button("Save As…").clicked() {
+                        self.save_model_as(lens);
+                        ui.close_menu();
+                    }
+                });
+
+                // Data ▾ — the reality / interop seam (Import CSV / Export BERT)
+                ui.menu_button(egui::RichText::new("Data").color(theme::INK_SOFT), |ui| {
+                    if ui
+                        .button("Import data (CSV)…")
+                        .on_hover_text("Attach a CSV of real observations — map columns onto flows, stocks, and parameters (the tether)")
+                        .clicked()
+                    {
+                        self.import_csv();
+                        ui.close_menu();
+                    }
+                    if ui
+                        .button(format!("Export BERT · {}", mode_label(lens.mode())))
+                        .on_hover_text("Export a bert-core WorldModel (.json) stamped with this lens's mode — the seam out to BERT / GSR / compose")
+                        .clicked()
+                    {
+                        self.export_world_model(lens);
+                        ui.close_menu();
+                    }
+                });
+
+                ui.add_space(10.0);
+                ui.separator();
+                ui.add_space(4.0);
+
+                // Run — the primary verb (Mobus vocabulary, Mobus-only, native-only).
                 #[cfg(not(target_arch = "wasm32"))]
                 if lens == Lens::Mobus
                     && ui
-                        .button(egui::RichText::new("Run").color(theme::INK_SOFT))
-                        .on_hover_text(
-                            "Run the authored model over a horizon (Δt, T) and read its recorded trace — Mobus only, on demand",
-                        )
+                        .button(egui::RichText::new("▶ Run").strong().color(theme::MOBUS))
+                        .on_hover_text("Run the authored model over a horizon (Δt, T) and read its recorded trace — Mobus only, on demand")
                         .clicked()
                 {
                     self.begin_run(lens);
                 }
-                // The work-process palette is Mobus vocabulary — the mapping step (bert#108).
-                // Offered only in the Mobus lens, on demand (God-tool guard: never ambient).
+                if ui
+                    .button(egui::RichText::new("Check consistency").color(theme::INK_SOFT))
+                    .on_hover_text("Project this canvas with the current lens's mode and run bert-core's operational check — read-only, on demand")
+                    .clicked()
+                {
+                    self.show_audit = true;
+                }
                 if lens == Lens::Mobus {
                     let on = self.show_palette;
                     if ui
@@ -3715,9 +3801,7 @@ impl CanvasApp {
                             egui::RichText::new("⚒ Work processes")
                                 .color(if on { theme::MOBUS } else { theme::INK_SOFT }),
                         )
-                        .on_hover_text(
-                            "Open the Mobus work-process palette and stamp what each component does",
-                        )
+                        .on_hover_text("Open the Mobus work-process palette and stamp what each component does")
                         .clicked()
                     {
                         self.show_palette = !on;
@@ -3730,90 +3814,104 @@ impl CanvasApp {
                 {
                     self.relayout = true;
                 }
-                ui.add_space(14.0);
+
+                ui.add_space(10.0);
                 ui.separator();
-                ui.add_space(8.0);
-                // LLM-assisted generation: name a system, the canvas asks GSR and models it here.
-                ui.label(egui::RichText::new("Generate").small().color(theme::INK_FAINT));
-                let te = ui.add(
-                    egui::TextEdit::singleline(&mut self.gen_desc)
-                        .hint_text("describe a system…")
-                        .desired_width(150.0),
-                );
-                // Engine: which GSR endpoint + which LLM. Cloud Haiku is fast; the local Ollama
-                // models are sovereign (slower). Non-Claude models route to Ollama server-side.
-                let presets: [(&str, bool, &str); 5] = [
-                    ("Haiku · local", false, ""),
-                    ("Haiku · cloud", true, ""),
-                    ("Gemma4 12B · local", false, "gemma4:12b"),
-                    ("Gemma4 12B-QAT · local", false, "gemma4:12b-it-qat"),
-                    ("Mistral Small · local", false, "mistral-small:latest"),
-                ];
-                let current = presets
-                    .iter()
-                    .find(|(_, c, m)| *c == self.gen_cloud && *m == self.gen_model.as_str())
-                    .map(|(l, _, _)| *l)
-                    .unwrap_or("custom");
-                egui::ComboBox::from_id_salt("engine")
-                    .selected_text(egui::RichText::new(current).small().color(theme::INK_SOFT))
-                    .show_ui(ui, |ui| {
-                        for (label, cloud, model) in presets {
-                            if ui.selectable_label(current == label, label).clicked() {
-                                self.gen_cloud = cloud;
-                                self.gen_model = model.to_string();
-                            }
+                ui.add_space(4.0);
+
+                // Generate ▾ — LLM-assisted modeling, collapsed into a popover (the widest cluster).
+                ui.menu_button(
+                    egui::RichText::new("✦ Generate").color(theme::ACCENT),
+                    |ui| {
+                        ui.set_min_width(232.0);
+                        ui.label(
+                            egui::RichText::new("Describe a system; GSR models it here.")
+                                .small()
+                                .color(theme::INK_FAINT),
+                        );
+                        let te = ui.add(
+                            egui::TextEdit::singleline(&mut self.gen_desc)
+                                .hint_text("describe a system…")
+                                .desired_width(212.0),
+                        );
+                        let presets: [(&str, bool, &str); 5] = [
+                            ("Haiku · local", false, ""),
+                            ("Haiku · cloud", true, ""),
+                            ("Gemma4 12B · local", false, "gemma4:12b"),
+                            ("Gemma4 12B-QAT · local", false, "gemma4:12b-it-qat"),
+                            ("Mistral Small · local", false, "mistral-small:latest"),
+                        ];
+                        let current = presets
+                            .iter()
+                            .find(|(_, c, m)| *c == self.gen_cloud && *m == self.gen_model.as_str())
+                            .map(|(l, _, _)| *l)
+                            .unwrap_or("custom");
+                        egui::ComboBox::from_id_salt("engine")
+                            .selected_text(
+                                egui::RichText::new(current).small().color(theme::INK_SOFT),
+                            )
+                            .show_ui(ui, |ui| {
+                                for (label, cloud, model) in presets {
+                                    if ui.selectable_label(current == label, label).clicked() {
+                                        self.gen_cloud = cloud;
+                                        self.gen_model = model.to_string();
+                                    }
+                                }
+                            });
+                        let label = if self.gen_busy { "…" } else { "✦ Generate" };
+                        let clicked = ui
+                            .add_enabled(
+                                !self.gen_busy,
+                                egui::Button::new(egui::RichText::new(label).color(theme::ACCENT)),
+                            )
+                            .clicked();
+                        let entered =
+                            te.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                        if clicked || entered {
+                            self.start_generate(ctx);
+                            ui.close_menu();
                         }
-                    });
-                let label = if self.gen_busy { "…" } else { "✦ Generate" };
-                let clicked = ui
-                    .add_enabled(!self.gen_busy, egui::Button::new(egui::RichText::new(label).color(theme::INK_SOFT)))
-                    .on_hover_text("Call GSR to model the described system, in this canvas")
-                    .clicked();
-                let entered = te.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
-                if clicked || entered {
-                    self.start_generate(ctx);
-                }
-                if let Some(err) = self.gen_error.clone() {
-                    ui.colored_label(egui::Color32::from_rgb(176, 64, 64), "⚠").on_hover_text(err);
-                }
-                ui.add_space(14.0);
-                ui.separator();
-                ui.add_space(8.0);
-                ui.label(egui::RichText::new("Lens").small().color(theme::INK_FAINT));
-                for l in [Lens::Klir, Lens::Bunge, Lens::Mobus] {
-                    let selected = lens == l;
-                    let color = if selected { l.color() } else { theme::INK_FAINT };
-                    let label = egui::RichText::new(l.name()).strong().color(color);
+                        if let Some(err) = self.gen_error.clone() {
+                            ui.colored_label(theme::WARN, format!("⚠ {err}"));
+                        }
+                    },
+                );
+
+                // Lens + Math — pinned right so they never clip off the edge.
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let on = self.show_math;
+                    let math_tip = match lens {
+                        Lens::Klir => "S = (T, R)",
+                        Lens::Bunge => "σ = ⟨C, E, S⟩",
+                        Lens::Mobus => "σ = ⟨C, …, Δt⟩",
+                    };
                     if ui
-                        .selectable_label(selected, label)
-                        .on_hover_text("Same model, seen through another lens — lossless.")
+                        .selectable_label(
+                            on,
+                            egui::RichText::new("{ }  Math")
+                                .strong()
+                                .color(if on { theme::ACCENT } else { theme::INK_FAINT }),
+                        )
+                        .on_hover_text(format!("Show the object as sets and relations — {}", math_tip))
                         .clicked()
                     {
-                        self.lens = Some(l);
+                        self.show_math = !on;
                     }
-                }
-
-                ui.add_space(14.0);
-                ui.separator();
-                ui.add_space(8.0);
-                let on = self.show_math;
-                let math_tip = match lens {
-                    Lens::Klir => "S = (T, R)",
-                    Lens::Bunge => "σ = ⟨C, E, S⟩",
-                    Lens::Mobus => "σ = ⟨C, …, Δt⟩",
-                };
-                if ui
-                    .selectable_label(
-                        on,
-                        egui::RichText::new("{ }  Math")
-                            .strong()
-                            .color(if on { theme::ACCENT } else { theme::INK_FAINT }),
-                    )
-                    .on_hover_text(format!("Show the object as sets and relations — {}", math_tip))
-                    .clicked()
-                {
-                    self.show_math = !on;
-                }
+                    ui.separator();
+                    // right_to_left: add Mobus, Bunge, Klir so they read Klir · Bunge · Mobus L→R.
+                    for l in [Lens::Mobus, Lens::Bunge, Lens::Klir] {
+                        let selected = lens == l;
+                        let color = if selected { l.color() } else { theme::INK_FAINT };
+                        if ui
+                            .selectable_label(selected, egui::RichText::new(l.name()).strong().color(color))
+                            .on_hover_text("Same model, seen through another lens — lossless.")
+                            .clicked()
+                        {
+                            self.lens = Some(l);
+                        }
+                    }
+                    ui.label(egui::RichText::new("Lens").small().color(theme::INK_FAINT));
+                });
             });
             ui.add_space(6.0);
         });
@@ -4878,6 +4976,20 @@ mod typed_ops_spike;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn humanize_scales_and_keeps_precision() {
+        assert_eq!(humanize(70_866_993_938_432.0), "70.9T");
+        assert_eq!(humanize(1_500_000_000.0), "1.5B");
+        assert_eq!(humanize(2_230_133.0), "2.2M");
+        assert_eq!(humanize(27.55), "27.55");
+        assert_eq!(humanize(1.0), "1.00");
+        assert_eq!(humanize(0.05), "0.05");
+        assert_eq!(humanize(0.0), "0");
+        assert_eq!(humanize(-3400.0), "-3.4K");
+        assert_eq!(humanize_unit(70_866_993_938_432.0, "tokens/month"), "70.9T tokens/month");
+        assert_eq!(humanize_unit(0.05, ""), "0.05");
+    }
 
     #[test]
     fn spec_distills_to_kernel() {
