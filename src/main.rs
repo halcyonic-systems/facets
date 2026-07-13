@@ -379,6 +379,10 @@ struct CanvasApp {
     /// The post-import disclosure register: unmapped elements ("3 flows received no
     /// data") and any orphaned series (T5/T3). Shown until dismissed. Transient.
     import_notice: Option<String>,
+    /// #26: a new import would REPLACE the model's single `imported` slot, so when
+    /// one already exists the file dialog waits behind an explicit confirm that
+    /// names what would be lost. `true` while that confirm window is up. Transient.
+    import_replace_pending: bool,
     /// Env-birth cue (#2): message + the `ctx` time it was born, so drag-to-empty's
     /// silent Role::Environment birth gets a visible, self-dismissing toast instead
     /// of surfacing only at audit time. `None` once expired.
@@ -933,6 +937,19 @@ impl CanvasApp {
     /// Open a CSV and start the mapping. A parse failure surfaces in the same
     /// error channel as other loads; it never touches the model.
     fn import_csv(&mut self) {
+        // #26: the model holds ONE import; a new one replaces it. Never silently —
+        // if data is already mapped, the file dialog waits behind a confirm that
+        // names what would be lost.
+        if self.imported.is_some() {
+            self.import_replace_pending = true;
+            return;
+        }
+        self.import_csv_dialog();
+    }
+
+    /// The actual file-dialog → parse → mapping-draft flow, reached directly when
+    /// no import exists, or via the #26 replace-confirm when one does.
+    fn import_csv_dialog(&mut self) {
         let dir = self.lib_dir();
         let Some(path) = rfd::FileDialog::new()
             .add_filter("CSV data", &["csv"])
@@ -1221,6 +1238,79 @@ impl CanvasApp {
             });
         if !open {
             self.import_notice = None;
+        }
+    }
+
+    /// The #26 replace-confirm: shown when Import is invoked while the model
+    /// already carries data. Names the current import (source, date, every
+    /// column→element mapping) so what "replace" destroys is visible before the
+    /// file dialog opens. Cancel keeps the existing import untouched.
+    fn import_replace_confirm_window(&mut self, ctx: &egui::Context) {
+        if !self.import_replace_pending {
+            return;
+        }
+        let Some(d) = self.imported.clone() else {
+            // Nothing to replace after all (e.g. import cleared meanwhile).
+            self.import_replace_pending = false;
+            return;
+        };
+        // Mapping sentences straight off the stored series (each carries its CSV
+        // column and mapped element's name) — no id lookups, works on every target.
+        let mut mapped: Vec<String> = d
+            .flow_series
+            .values()
+            .map(|s| format!("{} → flow magnitude of {}", s.column, s.element_name))
+            .chain(
+                d.stock_series
+                    .values()
+                    .map(|s| format!("{} → stock level of {}", s.column, s.element_name)),
+            )
+            .chain(
+                d.param_series
+                    .values()
+                    .map(|s| format!("{} → parameter of {}", s.column, s.element_name)),
+            )
+            .collect();
+        mapped.sort();
+        let mut open = true;
+        let mut proceed = false;
+        let mut cancel = false;
+        egui::Window::new(egui::RichText::new("Replace imported data?").color(theme::INK))
+            .open(&mut open)
+            .resizable(false)
+            .default_pos(egui::pos2(240.0, 120.0))
+            .show(ctx, |ui| {
+                ui.label(
+                    egui::RichText::new(format!(
+                        "This model carries data from {} (imported {}).",
+                        d.source_file, d.imported_at
+                    ))
+                    .color(theme::INK_SOFT),
+                );
+                for m in &mapped {
+                    ui.label(egui::RichText::new(format!("  {m}")).small().color(theme::INK_FAINT));
+                }
+                ui.add_space(4.0);
+                ui.label(
+                    egui::RichText::new("Importing another CSV replaces all of it — the model holds one import.")
+                        .small()
+                        .color(theme::INK_SOFT),
+                );
+                ui.add_space(6.0);
+                ui.horizontal(|ui| {
+                    if ui.button(egui::RichText::new("Replace…").color(theme::INK)).clicked() {
+                        proceed = true;
+                    }
+                    if ui.button("Cancel").clicked() {
+                        cancel = true;
+                    }
+                });
+            });
+        if proceed {
+            self.import_replace_pending = false;
+            self.import_csv_dialog();
+        } else if cancel || !open {
+            self.import_replace_pending = false;
         }
     }
 
@@ -2426,6 +2516,11 @@ struct RunResults {
     levels: Vec<LevelRow>,
     /// Per-thing trajectory for the drill-down: `(name, series over ticks)`.
     trajectories: Vec<(String, Vec<f32>)>,
+    /// Per-thing EXECUTED emission per tick (the circuit's activity column), for
+    /// every node regardless of kind. Distinct from `trajectories`, whose column
+    /// choice varies by node kind (a buffer's trajectory is its stock) — a flow
+    /// comparison needs the upstream node's emission specifically (#25).
+    activities: Vec<(String, Vec<f32>)>,
     /// `OperationalSpec::content_hash` at run time — the staleness key (R3;
     /// h-element §1.4: "history is the capture of an instance of structure", so a
     /// structural edit is a new instance and this recording no longer matches).
@@ -2479,10 +2574,19 @@ fn run_sparkline(ui: &mut egui::Ui, series: &[f32]) {
 /// simulated trace in the Mobus hue and the actual empirical series in the accent
 /// hue, on shared axes so divergence reads at a glance. Always visually distinct.
 #[cfg(not(target_arch = "wasm32"))]
-fn comparison_sparkline(ui: &mut egui::Ui, simulated: &[f32], actual: &[f32]) {
+fn comparison_sparkline(
+    ui: &mut egui::Ui,
+    simulated: &[f32],
+    actual: &[f32],
+    baseline: Option<&[f32]>,
+) {
     let (rect, _) = ui.allocate_exact_size(egui::vec2(220.0, 40.0), egui::Sense::hover());
     let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
-    for &v in simulated.iter().chain(actual.iter()) {
+    for &v in simulated
+        .iter()
+        .chain(actual.iter())
+        .chain(baseline.unwrap_or(&[]).iter())
+    {
         lo = lo.min(v);
         hi = hi.max(v);
     }
@@ -2507,14 +2611,26 @@ fn comparison_sparkline(ui: &mut egui::Ui, simulated: &[f32], actual: &[f32]) {
         painter.add(egui::Shape::line(pts, egui::Stroke::new(1.6, color)));
     };
     let painter = ui.painter().clone();
-    plot(simulated, theme::MOBUS, &painter); // simulated
+    if let Some(b) = baseline {
+        plot(b, theme::INK_FAINT, &painter); // declared assumption, drawn under
+    }
+    plot(simulated, theme::MOBUS, &painter); // executed
     plot(actual, theme::ACCENT, &painter); // actual
 }
 
 /// Build the ledger's summary line for a completed run — the shared shape between
-/// the auto-append and the explicit full report's `summary` field (#15).
+/// the auto-append and the explicit full report's `summary` field (#15). The #27
+/// additions (final levels, declared params, import provenance) ride along so a
+/// summary line reconstructs outcome + configuration without the panel;
+/// trajectories stay behind the explicit report gesture.
 #[cfg(not(target_arch = "wasm32"))]
-fn ledger_line(res: &RunResults, comparisons: &[tether::Comparison], model_name: &str) -> ledger::LedgerLine {
+fn ledger_line(
+    res: &RunResults,
+    comparisons: &[tether::Comparison],
+    model_name: &str,
+    declared_params: Option<ledger::DeclaredParams>,
+    provenance: Option<ledger::ImportProvenance>,
+) -> ledger::LedgerLine {
     ledger::LedgerLine {
         timestamp: ledger::full_timestamp(),
         model_name: model_name.to_string(),
@@ -2533,6 +2649,18 @@ fn ledger_line(res: &RunResults, comparisons: &[tether::Comparison], model_name:
                 divergence_pct: c.divergence_pct(),
             })
             .collect(),
+        levels: Some(
+            res.levels
+                .iter()
+                .map(|r| ledger::LevelEntry {
+                    name: r.name.clone(),
+                    category: r.category.header().to_string(),
+                    value: r.value,
+                })
+                .collect(),
+        ),
+        declared_params,
+        provenance,
     }
 }
 
@@ -2540,8 +2668,14 @@ fn ledger_line(res: &RunResults, comparisons: &[tether::Comparison], model_name:
 /// Never blocks or crashes a run on failure — logged to stderr and ignored,
 /// exactly as the issue asks.
 #[cfg(not(target_arch = "wasm32"))]
-fn append_run_ledger(res: &RunResults, comparisons: &[tether::Comparison], model_name: &str) {
-    let line = ledger_line(res, comparisons, model_name);
+fn append_run_ledger(
+    res: &RunResults,
+    comparisons: &[tether::Comparison],
+    model_name: &str,
+    declared_params: Option<ledger::DeclaredParams>,
+    provenance: Option<ledger::ImportProvenance>,
+) {
+    let line = ledger_line(res, comparisons, model_name, declared_params, provenance);
     if let Err(e) = ledger::append_summary(&ledger::default_runs_dir(), &line) {
         eprintln!("run ledger: could not append summary line: {e}");
     }
@@ -2550,10 +2684,18 @@ fn append_run_ledger(res: &RunResults, comparisons: &[tether::Comparison], model
 impl CanvasApp {
     /// Build the run-vs-actual comparisons for the mapped elements that carry
     /// empirical H (contract §3). A stock level overlays the component's recorded
-    /// trajectory against the actual stock; a flow magnitude overlays the model's
-    /// constant amount (the imported mean the projection runs at) against the
-    /// actual observed magnitude — the flat line vs reality is exactly the
-    /// "you assumed this was constant" teaching moment.
+    /// trajectory against the actual stock. A flow magnitude overlays what the run
+    /// EXECUTED — the upstream node's per-tick emission — against the actual
+    /// observed magnitude (#25: the declared amount must never be reported as the
+    /// run's behavior; a hoarding Buffering process was invisible to this panel
+    /// when the sim trace was `vec![amount; ticks]`). The declared mean survives
+    /// as the `baseline` trace: flat-vs-reality is still the "you assumed this was
+    /// constant" teaching moment, now labeled as an assumption rather than drawn
+    /// as the simulation.
+    ///
+    /// v1 caveat: a node's activity is its TOTAL emission per tick, so for an
+    /// upstream with several outgoing flows the executed series over-reads this
+    /// one flow's share. Single-outgoing (the common authored case) is exact.
     #[cfg(not(target_arch = "wasm32"))]
     fn comparisons(&self, res: &RunResults) -> Vec<tether::Comparison> {
         let Some(d) = &self.imported else {
@@ -2576,6 +2718,7 @@ impl CanvasApp {
                 kind: "stock",
                 simulated: sim.clone(),
                 actual,
+                baseline: None,
             });
         }
         for (rid, s) in &d.flow_series {
@@ -2587,16 +2730,89 @@ impl CanvasApp {
                 continue;
             }
             let amount = s.mean().unwrap_or(0.0) as f32;
-            let sim = vec![amount; res.ticks.max(actual.len()).max(2)];
+            let flat = vec![amount; res.ticks.max(actual.len()).max(2)];
+            // The executed series: the flow's upstream endpoint (stored a→b) read
+            // from the run's activity columns by node name. Falls back to the
+            // declared flat line (with no baseline, so nothing is double-drawn)
+            // only if the upstream can't be resolved.
+            let executed = self
+                .things
+                .iter()
+                .find(|t| t.id == r.a)
+                .and_then(|up| res.activities.iter().find(|(name, _)| *name == up.name))
+                .map(|(_, series)| series.clone());
+            let (sim, baseline) = match executed {
+                Some(series) => (series, Some(flat)),
+                None => (flat, None),
+            };
             out.push(tether::Comparison {
                 element_name: self.flow_label(r),
                 kind: "flow",
                 simulated: sim,
                 actual,
+                baseline,
             });
         }
         out.sort_by(|a, b| a.element_name.cmp(&b.element_name));
         out
+    }
+
+    /// The #27 ledger extras, read from the live import: the declared scalar
+    /// supply the projection runs at (names, not ids) and the import's provenance
+    /// (source file, date, column→element sentences). Both `None` with no import.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn ledger_extras(&self) -> (Option<ledger::DeclaredParams>, Option<ledger::ImportProvenance>) {
+        let Some(d) = &self.imported else {
+            return (None, None);
+        };
+        let mut params = ledger::DeclaredParams::default();
+        let mut mapped = Vec::new();
+        for (rid, s) in &d.flow_series {
+            let label = self
+                .relations
+                .iter()
+                .find(|r| r.id == *rid)
+                .map(|r| self.flow_label(r))
+                .unwrap_or_else(|| s.element_name.clone());
+            if let Some(m) = s.mean() {
+                params.flow_amounts.push((label.clone(), m));
+            }
+            mapped.push(format!("{} → flow magnitude of {}", s.column, label));
+        }
+        for (tid, s) in &d.stock_series {
+            let name = self
+                .things
+                .iter()
+                .find(|t| t.id == *tid)
+                .map(|t| t.name.clone())
+                .unwrap_or_else(|| s.element_name.clone());
+            if let Some(v) = s.first() {
+                params.stock_initials.push((name.clone(), v));
+            }
+            mapped.push(format!("{} → stock level of {}", s.column, name));
+        }
+        for (tid, s) in &d.param_series {
+            let name = self
+                .things
+                .iter()
+                .find(|t| t.id == *tid)
+                .map(|t| t.name.clone())
+                .unwrap_or_else(|| s.element_name.clone());
+            if let Some(m) = s.mean() {
+                params.component_params.push((name.clone(), s.column.clone(), m));
+            }
+            mapped.push(format!("{} → parameter of {}", s.column, name));
+        }
+        mapped.sort();
+        params.flow_amounts.sort_by(|a, b| a.0.cmp(&b.0));
+        params.stock_initials.sort_by(|a, b| a.0.cmp(&b.0));
+        params.component_params.sort_by(|a, b| a.0.cmp(&b.0));
+        let prov = ledger::ImportProvenance {
+            source_file: d.source_file.clone(),
+            imported_at: d.imported_at.clone(),
+            mapped,
+        };
+        (Some(params), Some(prov))
     }
 
     /// The staleness key: the current canvas's Operational content hash, or `None`
@@ -2647,7 +2863,8 @@ impl CanvasApp {
                 // lab notebook, distinct from Save/Export (contract §4).
                 let comparisons = self.comparisons(&res);
                 let model_name = self.current_model_name.clone().unwrap_or_else(|| "untitled".to_string());
-                append_run_ledger(&res, &comparisons, &model_name);
+                let (declared, prov) = self.ledger_extras();
+                append_run_ledger(&res, &comparisons, &model_name, declared, prov);
                 self.last_report_msg = None;
 
                 if let Some(prev) = &self.run_results {
@@ -2725,6 +2942,18 @@ impl CanvasApp {
             })
             .collect();
 
+        // Executed emission per tick for EVERY node (activity column, col 0) —
+        // the series a flow comparison reads for its upstream endpoint (#25).
+        let activities: Vec<(String, Vec<f32>)> = circuit
+            .nodes
+            .iter()
+            .enumerate()
+            .map(|(i, node)| {
+                let series = run.history.iter().map(|row| row[1 + i * 3]).collect();
+                (node.name.clone(), series)
+            })
+            .collect();
+
         let summary_line = format!("Δt {dt}, T {t} ({ticks} ticks) · residual {residual:.3}");
 
         Some(RunResults {
@@ -2736,6 +2965,7 @@ impl CanvasApp {
             identity_default_m,
             levels,
             trajectories,
+            activities,
             key: spec.content_hash(),
             summary_line,
         })
@@ -2748,7 +2978,8 @@ impl CanvasApp {
     #[cfg(not(target_arch = "wasm32"))]
     fn save_run_report(&mut self, res: &RunResults, comparisons: &[tether::Comparison]) {
         let model_name = self.current_model_name.clone().unwrap_or_else(|| "untitled".to_string());
-        let summary = ledger_line(res, comparisons, &model_name);
+        let (declared, prov) = self.ledger_extras();
+        let summary = ledger_line(res, comparisons, &model_name, declared, prov);
         let report = ledger::FullReport {
             summary,
             levels: res.levels.iter().map(|r| (r.name.clone(), r.value)).collect(),
@@ -2761,6 +2992,7 @@ impl CanvasApp {
                     simulated: c.simulated.clone(),
                     actual: c.actual.clone(),
                     divergence_pct: c.divergence_pct(),
+                    baseline: c.baseline.clone(),
                 })
                 .collect(),
         };
@@ -3028,12 +3260,20 @@ impl CanvasApp {
                     // labeled — the tether's payoff, where the analyst already is.
                     if !comparisons.is_empty() {
                         ui.add_space(8.0);
-                        ui.label(egui::RichText::new("SIMULATED vs ACTUAL").small().color(theme::INK_FAINT));
+                        ui.label(egui::RichText::new("EXECUTED vs ACTUAL").small().color(theme::INK_FAINT));
                         ui.horizontal(|ui| {
                             ui.add_space(2.0);
-                            ui.label(egui::RichText::new("— simulated").small().color(theme::MOBUS));
+                            ui.label(egui::RichText::new("— executed").small().color(theme::MOBUS));
                             ui.add_space(6.0);
                             ui.label(egui::RichText::new("— actual").small().color(theme::ACCENT));
+                            if comparisons.iter().any(|c| c.baseline.is_some()) {
+                                ui.add_space(6.0);
+                                ui.label(
+                                    egui::RichText::new("— declared (mean)")
+                                        .small()
+                                        .color(theme::INK_FAINT),
+                                );
+                            }
                         });
                         ui.add_space(2.0);
                         for c in &comparisons {
@@ -3042,7 +3282,7 @@ impl CanvasApp {
                                 .id_salt(("run-cmp", &c.element_name, c.kind))
                                 .default_open(true)
                                 .show(ui, |ui| {
-                                    comparison_sparkline(ui, &c.simulated, &c.actual);
+                                    comparison_sparkline(ui, &c.simulated, &c.actual, c.baseline.as_deref());
                                     let line = match c.divergence_pct() {
                                         Some(pct) => format!("divergence {pct:.1}% at horizon"),
                                         None => "no overlapping horizon".to_string(),
@@ -3546,6 +3786,7 @@ impl CanvasApp {
         // model; only its *reading* (the run comparison) is Mobus-only.
         self.import_mapping_window(ctx);
         self.import_notice_window(ctx);
+        self.import_replace_confirm_window(ctx);
         self.env_birth_toast(ctx);
 
         // Arc 4.3 Run surface (Shape B): Mobus-only, transient. Leaving Mobus closes
@@ -4727,6 +4968,98 @@ mod tests {
             !supplied.processes[0].cognitive_params.is_empty()
                 || supplied.processes[0].initial_storage.is_some(),
             "an imported component is not at identity default"
+        );
+    }
+
+    /// #25 + #27 end-to-end: a hoarding run's flow comparison reads the EXECUTED
+    /// emission (not the declared mean — the 2026-07-13 session receipt: a
+    /// Buffering market hoarded 95% of throughput and the divergence figure did
+    /// not move), the declared mean survives as the labeled baseline, and the
+    /// auto ledger line reproduces the panel's final-state numbers plus the
+    /// declared params and import provenance — so an external reader needs no
+    /// screen-scrape.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn run_comparison_and_ledger_read_the_executed_run() {
+        use std::collections::HashMap;
+        let mut tank = comp(2, "Tank");
+        tank.primitive = Some(ProcessPrimitive::Buffering);
+        let mut app = CanvasApp::default();
+        app.things = vec![env(1, "Well"), tank, env(3, "Drain")];
+        app.relations = vec![rel(1, 1, 2, true, Kind::Matter), rel(2, 2, 3, true, Kind::Matter)];
+
+        // Empirical H on the Tank→Drain flow (declared mean 20) plus a small
+        // release_rate, so the run holds stock instead of clearing: the executed
+        // emission must sit far below the declared amount.
+        let mut flow_series = HashMap::new();
+        flow_series.insert(
+            2u64,
+            tether::ColumnSeries {
+                column: "tokens".to_string(),
+                element_name: "Tank → Drain".to_string(),
+                unit: "tokens/mo".to_string(),
+                values: vec![Some(10.0), Some(20.0), Some(30.0)],
+            },
+        );
+        let mut param_series = HashMap::new();
+        param_series.insert(
+            2u64,
+            tether::ColumnSeries {
+                column: "release_rate".to_string(),
+                element_name: "Tank".to_string(),
+                unit: String::new(),
+                values: vec![Some(0.05)],
+            },
+        );
+        app.imported = Some(tether::ImportedData {
+            source_file: "market.csv".to_string(),
+            imported_at: "2026-07-13".to_string(),
+            dt: 1.0,
+            time: vec![Some(1.0), Some(2.0), Some(3.0)],
+            flow_series,
+            stock_series: HashMap::new(),
+            param_series,
+        });
+
+        let res = app.run_model(Lens::Mobus, 1.0, 10.0).expect("the model runs");
+        let comparisons = app.comparisons(&res);
+        let flow = comparisons.iter().find(|c| c.kind == "flow").expect("a flow comparison");
+
+        let declared_mean = 20.0_f32;
+        assert_eq!(
+            flow.baseline.as_ref().map(|b| b[0]),
+            Some(declared_mean),
+            "the declared mean survives as the baseline trace"
+        );
+        let executed_at_horizon = *flow.simulated.last().expect("executed series is non-empty");
+        assert!(
+            executed_at_horizon < declared_mean * 0.5,
+            "the sim trace is the executed (hoarding) flow, not the declared amount: \
+             got {executed_at_horizon} against declared {declared_mean}"
+        );
+
+        // The auto ledger line reproduces the panel's numbers and names its own data.
+        let (declared, prov) = app.ledger_extras();
+        let line = ledger_line(&res, &comparisons, "test", declared, prov);
+        let levels = line.levels.expect("the line carries final levels");
+        assert_eq!(levels.len(), res.levels.len());
+        for (le, lr) in levels.iter().zip(res.levels.iter()) {
+            assert_eq!(le.name, lr.name);
+            assert_eq!(le.value, lr.value, "ledger level for {} matches the panel", le.name);
+            assert_eq!(le.category, lr.category.header());
+        }
+        let dp = line.declared_params.expect("declared params ride the line");
+        assert_eq!(dp.flow_amounts[0].1, 20.0, "the declared flow amount is recorded");
+        assert_eq!(
+            dp.component_params[0],
+            ("Tank".to_string(), "release_rate".to_string(), 0.05)
+        );
+        let p = line.provenance.expect("provenance rides the line");
+        assert_eq!(p.source_file, "market.csv");
+        assert!(
+            p.mapped.iter().any(|m| m.contains("tokens → flow magnitude")),
+            "the mapping sentences name the columns: {:?}",
+            p.mapped
         );
     }
 

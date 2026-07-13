@@ -474,10 +474,18 @@ pub struct Comparison {
     pub element_name: String,
     /// "stock" / "flow" — what kind of element this reads.
     pub kind: &'static str,
-    /// The simulated series (recorded trace, or a constant for a flow amount).
+    /// The simulated series: what the run EXECUTED (a component's recorded
+    /// trajectory for a stock; the upstream component's per-tick emission for a
+    /// flow). Never the declared parameter — that lives in `baseline` (#25: a
+    /// declared amount must not be reported as if the run produced it).
     pub simulated: Vec<f32>,
     /// The actual series (empirical H), gaps dropped.
     pub actual: Vec<f32>,
+    /// The declared-amount flat line for a flow (the imported mean the projection
+    /// runs at) — kept as a secondary trace because flat-vs-reality is the
+    /// stationarity teaching moment. `None` for stocks, and for flows whose
+    /// executed series could not be resolved.
+    pub baseline: Option<Vec<f32>>,
 }
 
 impl Comparison {
@@ -644,8 +652,28 @@ mod tests {
             kind: "stock",
             simulated: vec![100.0, 100.0, 100.0],
             actual: vec![100.0, 120.0, 150.0],
+            baseline: None,
         };
         // |100 - 150| / 150 = 33.3%.
         assert!((c.divergence_pct().unwrap() - 33.333).abs() < 0.01);
+    }
+
+    /// #25: the divergence figure reads the EXECUTED series, never the declared
+    /// baseline. A hoarding run (executed ≈ 0 against a rising actual) must report
+    /// the hoarding gap even when the declared mean happens to sit close to the
+    /// actual — the baseline is context, not the measurement.
+    #[test]
+    fn divergence_reads_executed_not_declared() {
+        let c = Comparison {
+            element_name: "market → consumer".into(),
+            kind: "flow",
+            simulated: vec![0.05, 0.05, 0.05],       // executed: starved
+            actual: vec![100.0, 120.0, 150.0],       // reality: clearing and rising
+            baseline: Some(vec![123.3; 3]),          // declared mean, near actual
+        };
+        let pct = c.divergence_pct().unwrap();
+        // |0.05 - 150| / 150 ≈ 99.97% — the executed gap, not the ~17.8% the
+        // declared baseline would report.
+        assert!(pct > 99.0, "must report the executed divergence, got {pct}");
     }
 }
