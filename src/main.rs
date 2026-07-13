@@ -431,6 +431,10 @@ struct CanvasApp {
     /// only to label ledger entries (#15). `None` (renders "untitled") for a fresh
     /// or generated model never yet saved or loaded from a named file.
     current_model_name: Option<String>,
+    /// The loaded model's full path (#32): Save writes back here silently; only
+    /// Save As (or a fresh model) opens the name dialog. Set on Open/library-load/
+    /// Save As, cleared by nothing short of loading another model.
+    current_model_path: Option<std::path::PathBuf>,
     /// Feedback from the last explicit "Save report" gesture — the written path,
     /// or an error string. Transient, cleared on the next Run.
     #[cfg(not(target_arch = "wasm32"))]
@@ -481,7 +485,15 @@ fn scan_json(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
         for entry in entries.flatten() {
             let p = entry.path();
             if p.is_dir() {
-                stack.push(p);
+                // `retired/` is the archive (#32): archived models stay on disk
+                // but leave the panel. `runs/` and `data/` are not models at all.
+                let skip = p
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .is_some_and(|n| matches!(n, "retired" | "runs" | "data"));
+                if !skip {
+                    stack.push(p);
+                }
             } else if p.extension().is_some_and(|x| x == "json") {
                 out.push(p);
             }
@@ -662,6 +674,7 @@ impl CanvasApp {
             Ok(txt) => {
                 self.load_json(&txt);
                 self.current_model_name = path.file_stem().and_then(|s| s.to_str()).map(str::to_string);
+                self.current_model_path = Some(path.to_path_buf());
             }
             Err(e) => self.gen_error = Some(format!("could not read file: {e}")),
         }
@@ -674,7 +687,14 @@ impl CanvasApp {
         let lib = self.library.clone();
         let root = self.lib_dir();
         let groups = group_by_folder(&root, &lib);
+        // #26: the current import, named where it's always visible — source,
+        // date, and every column→element mapping. `None` renders nothing.
+        let import_block = self
+            .imported
+            .as_ref()
+            .map(|d| (format!("{} · {}", d.source_file, d.imported_at), import_mapping_sentences(d)));
         let mut to_load: Option<std::path::PathBuf> = None;
+        let mut to_retire: Option<std::path::PathBuf> = None;
         let mut do_refresh = false;
         egui::SidePanel::left("library")
             .resizable(true)
@@ -689,6 +709,20 @@ impl CanvasApp {
                     }
                 });
                 ui.label(egui::RichText::new(format!("{} saved", lib.len())).small().color(theme::INK_FAINT));
+                ui.label(
+                    egui::RichText::new(format!("build {BUILD_SHA}"))
+                        .small()
+                        .color(theme::INK_FAINT),
+                )
+                .on_hover_text("The git sha this binary was built from (#30) — if it doesn't match what you just merged, you're running a stale deploy.");
+                if let Some((src, mapped)) = &import_block {
+                    ui.add_space(6.0);
+                    ui.label(egui::RichText::new("Data").strong().color(theme::INK));
+                    ui.label(egui::RichText::new(src).small().color(theme::INK_SOFT));
+                    for m in mapped {
+                        ui.label(egui::RichText::new(m.as_str()).small().color(theme::INK_FAINT));
+                    }
+                }
                 ui.separator();
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     if lib.is_empty() {
@@ -704,12 +738,23 @@ impl CanvasApp {
                         }
                         for p in paths {
                             let name = p.file_stem().and_then(|s| s.to_str()).unwrap_or("?");
-                            if ui
-                                .add(egui::Button::new(egui::RichText::new(name).color(theme::INK_SOFT)).frame(false))
-                                .clicked()
-                            {
-                                to_load = Some(p.clone());
-                            }
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .add(egui::Button::new(egui::RichText::new(name).color(theme::INK_SOFT)).frame(false))
+                                    .clicked()
+                                {
+                                    to_load = Some(p.clone());
+                                }
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    if ui
+                                        .add(egui::Button::new(egui::RichText::new("−").small().color(theme::INK_FAINT)).frame(false))
+                                        .on_hover_text("Archive: move to retired/ (stays on disk, leaves this panel)")
+                                        .clicked()
+                                    {
+                                        to_retire = Some(p.clone());
+                                    }
+                                });
+                            });
                         }
                     }
                 });
@@ -720,9 +765,42 @@ impl CanvasApp {
         if let Some(p) = to_load {
             self.load_path(&p);
         }
+        if let Some(p) = to_retire {
+            self.retire_model(&p);
+        }
     }
 
+    /// Archive a library model (#32): move it into `retired/` — on disk but out
+    /// of the panel. Never deletes; un-archiving is a Finder move (or Open).
+    fn retire_model(&mut self, path: &std::path::Path) {
+        let retired = self.lib_dir().join("retired");
+        let _ = std::fs::create_dir_all(&retired);
+        let Some(name) = path.file_name() else { return };
+        match std::fs::rename(path, retired.join(name)) {
+            Ok(()) => {
+                // If the open model just left the library, Save must not silently
+                // write to the old (now moved) path.
+                if self.current_model_path.as_deref() == Some(path) {
+                    self.current_model_path = Some(retired.join(name));
+                }
+                self.refresh_library();
+            }
+            Err(e) => self.gen_error = Some(format!("could not archive: {e}")),
+        }
+    }
+
+    /// Save (#32): a loaded model writes back to its own file silently — no name
+    /// prompt. A fresh model falls through to Save As (the only naming moment).
     fn save_model(&mut self, lens: Lens) {
+        match self.current_model_path.clone() {
+            Some(path) => self.write_model_to(lens, &path),
+            None => self.save_model_as(lens),
+        }
+    }
+
+    /// Save As: the explicit naming dialog — for a fresh model, or to fork a
+    /// loaded one under a new name.
+    fn save_model_as(&mut self, lens: Lens) {
         let dir = self.lib_dir();
         if let Some(path) = rfd::FileDialog::new()
             .add_filter("bert-lenses model", &["json"])
@@ -730,21 +808,31 @@ impl CanvasApp {
             .set_file_name("model.json")
             .save_file()
         {
-            let model = Model {
-                lens,
-                next_id: self.next_id,
-                things: self.things.clone(),
-                relations: self.relations.clone(),
-                source_spec: self.source_spec.clone(),
-                // Empirical H rides along in Save (contract §2), never in Export.
-                imported: self.imported.clone(),
-            };
-            if let Ok(json) = serde_json::to_string_pretty(&model) {
-                let _ = std::fs::write(&path, json);
-                self.current_model_name = path.file_stem().and_then(|s| s.to_str()).map(str::to_string);
-            }
-            self.refresh_library(); // the new file shows in the panel immediately
+            self.write_model_to(lens, &path);
         }
+    }
+
+    fn write_model_to(&mut self, lens: Lens, path: &std::path::Path) {
+        let model = Model {
+            lens,
+            next_id: self.next_id,
+            things: self.things.clone(),
+            relations: self.relations.clone(),
+            source_spec: self.source_spec.clone(),
+            // Empirical H rides along in Save (contract §2), never in Export.
+            imported: self.imported.clone(),
+        };
+        if let Ok(json) = serde_json::to_string_pretty(&model) {
+            match std::fs::write(path, json) {
+                Ok(()) => {
+                    self.current_model_name =
+                        path.file_stem().and_then(|s| s.to_str()).map(str::to_string);
+                    self.current_model_path = Some(path.to_path_buf());
+                }
+                Err(e) => self.gen_error = Some(format!("could not save model: {e}")),
+            }
+        }
+        self.refresh_library(); // the new file shows in the panel immediately
     }
 
     /// Export the current canvas kernel as a bert-core [`WorldModel`] JSON — the
@@ -787,6 +875,7 @@ impl CanvasApp {
                 Ok(txt) => {
                     self.load_json(&txt);
                     self.current_model_name = path.file_stem().and_then(|s| s.to_str()).map(str::to_string);
+                    self.current_model_path = Some(path.clone());
                 }
                 Err(e) => self.gen_error = Some(format!("could not read file: {e}")),
             }
@@ -1254,24 +1343,7 @@ impl CanvasApp {
             self.import_replace_pending = false;
             return;
         };
-        // Mapping sentences straight off the stored series (each carries its CSV
-        // column and mapped element's name) — no id lookups, works on every target.
-        let mut mapped: Vec<String> = d
-            .flow_series
-            .values()
-            .map(|s| format!("{} → flow magnitude of {}", s.column, s.element_name))
-            .chain(
-                d.stock_series
-                    .values()
-                    .map(|s| format!("{} → stock level of {}", s.column, s.element_name)),
-            )
-            .chain(
-                d.param_series
-                    .values()
-                    .map(|s| format!("{} → parameter of {}", s.column, s.element_name)),
-            )
-            .collect();
-        mapped.sort();
+        let mapped = import_mapping_sentences(&d);
         let mut open = true;
         let mut proceed = false;
         let mut cancel = false;
@@ -2442,6 +2514,34 @@ impl CanvasApp {
 /// are a prefill the user confirms, not a silent default: no run records without
 /// the explicit Run gesture in the prompt (R4).
 #[cfg(not(target_arch = "wasm32"))]
+/// The build receipt (#30): short git sha stamped by build.rs, `+` if the tree
+/// was dirty. Shown in the library panel and carried on every ledger line.
+const BUILD_SHA: &str = env!("LENSES_BUILD_SHA");
+
+/// The import's column→element translation sentences (#26): built straight off
+/// the stored series (each carries its CSV column and mapped element's name), so
+/// no id lookups and it works on every target. Shared by the always-visible Data
+/// block and the replace-confirm window.
+fn import_mapping_sentences(d: &ImportedData) -> Vec<String> {
+    let mut mapped: Vec<String> = d
+        .flow_series
+        .values()
+        .map(|s| format!("{} → flow magnitude of {}", s.column, s.element_name))
+        .chain(
+            d.stock_series
+                .values()
+                .map(|s| format!("{} → stock level of {}", s.column, s.element_name)),
+        )
+        .chain(
+            d.param_series
+                .values()
+                .map(|s| format!("{} → parameter of {}", s.column, s.element_name)),
+        )
+        .collect();
+    mapped.sort();
+    mapped
+}
+
 const DEFAULT_DT: &str = "1";
 #[cfg(not(target_arch = "wasm32"))]
 const DEFAULT_T: &str = "30";
@@ -2527,6 +2627,9 @@ struct RunResults {
     key: u64,
     /// The one-line summary retained as the "previous run" line on the next run (B4).
     summary_line: String,
+    /// Wall-clock at run completion (#31): the receipt that THIS run fired, shown
+    /// on the header so a fresh run is unmistakable from a retained snapshot.
+    recorded_at: String,
 }
 
 /// True when a projected component carries no author-chosen transfer characteristic
@@ -2661,6 +2764,7 @@ fn ledger_line(
         ),
         declared_params,
         provenance,
+        build: Some(BUILD_SHA.to_string()),
     }
 }
 
@@ -2961,6 +3065,7 @@ impl CanvasApp {
             .collect();
 
         let summary_line = format!("Δt {dt}, T {t} ({ticks} ticks) · residual {residual:.3}");
+        let recorded_at = ledger::full_timestamp();
 
         Some(RunResults {
             dt,
@@ -2974,6 +3079,7 @@ impl CanvasApp {
             activities,
             key: spec.content_hash(),
             summary_line,
+            recorded_at,
         })
     }
 
@@ -3113,6 +3219,14 @@ impl CanvasApp {
                             .color(theme::INK_FAINT),
                     );
                 });
+                // #31: the receipt line — when this run fired and from which build.
+                // A retained snapshot keeps its original stamp, so "did that Run
+                // actually fire?" is answered by the clock, not by guessing.
+                ui.label(
+                    egui::RichText::new(format!("recorded {} · build {}", res.recorded_at, BUILD_SHA))
+                        .small()
+                        .color(theme::INK_SOFT),
+                );
                 // B4: the previous run's one line retained beside the current.
                 if let Some(prev) = &self.prev_run_line {
                     ui.label(egui::RichText::new(format!("previous · {prev}")).small().color(theme::INK_FAINT));
@@ -3461,12 +3575,24 @@ impl CanvasApp {
                 {
                     self.open_model();
                 }
+                let save_hover = match &self.current_model_path {
+                    Some(p) => format!("Save back to {}", p.file_name().and_then(|s| s.to_str()).unwrap_or("its file")),
+                    None => "Save this model to a .json file".to_string(),
+                };
                 if ui
                     .button(egui::RichText::new("Save").color(theme::INK_SOFT))
-                    .on_hover_text("Save this model to a .json file")
+                    .on_hover_text(save_hover)
                     .clicked()
                 {
                     self.save_model(lens);
+                }
+                if self.current_model_path.is_some()
+                    && ui
+                        .button(egui::RichText::new("Save As").color(theme::INK_SOFT))
+                        .on_hover_text("Save a copy under a new name")
+                        .clicked()
+                {
+                    self.save_model_as(lens);
                 }
                 if ui
                     .button(
@@ -5590,10 +5716,10 @@ mod tests {
             .iter()
             .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
             .collect();
-        assert_eq!(found.len(), 7, "every .json across root + subfolders, .txt excluded");
         assert!(names.contains(&"mobus3.json".to_string()), "root model visible");
         assert!(names.contains(&"cell.json".to_string()), "subfolder model visible");
-        assert!(names.contains(&"scratch.json".to_string()), "retired model still listed");
+        // #32: retired/ is the archive — on disk, out of the panel.
+        assert!(!names.contains(&"scratch.json".to_string()), "retired model hidden from the scan");
         assert!(!names.iter().any(|n| n.ends_with(".txt")), "non-json ignored");
         std::fs::remove_dir_all(&root).ok();
     }
@@ -5617,9 +5743,8 @@ mod tests {
                 Some("social".to_string()),
                 Some("teaching".to_string()),
                 Some("technical".to_string()),
-                Some("retired".to_string()),
             ],
-            "subfolders alphabetical, retired sunk to the bottom as archive noise"
+            "subfolders alphabetical; retired/ absent entirely (#32 — archived means out of the panel)"
         );
         // every scanned file lands in exactly one group (nothing hidden).
         let grouped: usize = groups.iter().map(|(_, v)| v.len()).sum();
@@ -5650,8 +5775,8 @@ mod tests {
         let folder_names: Vec<Option<String>> = groups.iter().map(|(f, _)| f.clone()).collect();
         assert_eq!(
             folder_names,
-            vec![Some("zzz-not-retired".to_string()), Some("retired".to_string())],
-            "retired sinks below a folder that alphabetically sorts after it"
+            vec![Some("zzz-not-retired".to_string())],
+            "#32 supersedes retired-pinned-last: archived models never reach the grouping at all"
         );
         std::fs::remove_dir_all(&root).ok();
     }

@@ -97,6 +97,10 @@ pub struct LedgerLine {
     /// The import behind the run's comparisons, if any (#27).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub provenance: Option<ImportProvenance>,
+    /// The build that produced this run (#30): short git sha, `+` suffix if the
+    /// working tree was dirty at compile time. A run is attributable to its code.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub build: Option<String>,
 }
 
 /// The explicit full report: the summary line plus everything the drill-down
@@ -282,6 +286,7 @@ mod tests {
                 imported_at: "2026-07-11".to_string(),
                 mapped: vec!["level → stock level of Tank".to_string()],
             }),
+            build: Some("abc1234".to_string()),
         }
     }
 
