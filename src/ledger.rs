@@ -30,7 +30,47 @@ pub struct DivergenceEntry {
     pub divergence_pct: Option<f32>,
 }
 
+/// One component's final level, carried on the summary line so an external
+/// reader (a notebook, an assistant) reconstructs the run's outcome without
+/// screen-scraping the panel (#27).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct LevelEntry {
+    pub name: String,
+    /// The panel's purpose category label ("Products / waste", "Resources",
+    /// "Internal components") — carried as text so the ledger needs no enum.
+    pub category: String,
+    pub value: f32,
+}
+
+/// The declared scalar supply the projection ran at (#27) — element NAMES, not
+/// ids, so a ledger line reads without the model file.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
+pub struct DeclaredParams {
+    /// Flow label → declared amount per Δt (the imported column mean).
+    pub flow_amounts: Vec<(String, f64)>,
+    /// Component name → seeded initial storage.
+    pub stock_initials: Vec<(String, f64)>,
+    /// Component name → (parameter name, value).
+    pub component_params: Vec<(String, String, f64)>,
+}
+
+/// Where the run's empirical H came from (#27): the import stamp plus the
+/// column→element translation sentences, so a ledger line names its own data.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ImportProvenance {
+    pub source_file: String,
+    pub imported_at: String,
+    /// Human-readable mappings, e.g. "total_tokens → flow magnitude of market → consumer".
+    pub mapped: Vec<String>,
+}
+
 /// The auto-appended summary line — one JSON object per completed run.
+///
+/// The `levels` / `declared_params` / `provenance` fields are #27 additions:
+/// optional with serde defaults, so pre-#27 ledger lines still parse (append-only
+/// discipline — fields are added, never renamed or removed). Trajectories remain
+/// in the explicit full report; these are the small payloads that let a reader
+/// reconstruct outcome + configuration from the summary alone.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct LedgerLine {
     /// Wall-clock at run completion, `YYYY-MM-DDTHH:MM:SSZ` (UTC).
@@ -48,6 +88,15 @@ pub struct LedgerLine {
     pub identity_default_n: usize,
     pub identity_default_m: usize,
     pub divergences: Vec<DivergenceEntry>,
+    /// Final level per component, purpose-ordered as the panel shows them (#27).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub levels: Option<Vec<LevelEntry>>,
+    /// The declared scalar supply the projection ran at (#27).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub declared_params: Option<DeclaredParams>,
+    /// The import behind the run's comparisons, if any (#27).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provenance: Option<ImportProvenance>,
 }
 
 /// The explicit full report: the summary line plus everything the drill-down
@@ -69,6 +118,10 @@ pub struct ComparisonSeries {
     pub simulated: Vec<f32>,
     pub actual: Vec<f32>,
     pub divergence_pct: Option<f32>,
+    /// The declared-amount flat line for a flow (#25) — optional with a serde
+    /// default so pre-#25 reports still parse.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub baseline: Option<Vec<f32>>,
 }
 
 /// The full wall-clock timestamp, `YYYY-MM-DDTHH:MM:SSZ` (UTC) — reuses
@@ -214,7 +267,34 @@ mod tests {
                 kind: "stock".to_string(),
                 divergence_pct: Some(12.5),
             }],
+            levels: Some(vec![LevelEntry {
+                name: "Tank".to_string(),
+                category: "Internal components".to_string(),
+                value: 3.5,
+            }]),
+            declared_params: Some(DeclaredParams {
+                flow_amounts: vec![("well → tank".to_string(), 2.0)],
+                stock_initials: vec![],
+                component_params: vec![("Tank".to_string(), "release_rate".to_string(), 0.05)],
+            }),
+            provenance: Some(ImportProvenance {
+                source_file: "tank.csv".to_string(),
+                imported_at: "2026-07-11".to_string(),
+                mapped: vec!["level → stock level of Tank".to_string()],
+            }),
         }
+    }
+
+    /// #27 append-only law: a pre-#27 line (no levels / declared_params /
+    /// provenance) must still parse — fields are added with defaults, never
+    /// renamed or removed.
+    #[test]
+    fn pre_27_ledger_lines_still_parse() {
+        let old = r#"{"timestamp":"2026-07-11T18:20:20Z","model_name":"untitled","spec_hash":"2bfb65fbdd0fe09a","dt":1.0,"t":30.0,"ticks":30,"residual":0.0,"identity_default_n":2,"identity_default_m":2,"divergences":[]}"#;
+        let parsed: LedgerLine = serde_json::from_str(old).expect("old line parses");
+        assert!(parsed.levels.is_none());
+        assert!(parsed.declared_params.is_none());
+        assert!(parsed.provenance.is_none());
     }
 
     #[test]
@@ -269,6 +349,7 @@ mod tests {
                 simulated: vec![0.0, 1.0, 3.5],
                 actual: vec![0.0, 1.2, 4.0],
                 divergence_pct: Some(12.5),
+                baseline: None,
             }],
         };
 
