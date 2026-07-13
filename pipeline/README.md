@@ -4,7 +4,8 @@ Builds the monthly CSV panel defined in the verified deep-research report
 (`operations/sessions/2026-07-11/references/llm-market-data-foundation.md`
 in the vault) for bert-lenses#14 target 4 (LLM market, frontier + open).
 
-Six legs, six scripts, six output CSVs. Data lives **outside this repo**, in
+Six research legs plus one derived tether leg, seven scripts, seven output
+CSVs. Data lives **outside this repo**, in
 `/Users/home/Documents/bert-lenses/data/` (override with the
 `BERT_LENSES_DATA_DIR` env var). Nothing under that path is committed.
 
@@ -102,6 +103,62 @@ Columns: `month, author, total_tokens, token_share_pct, is_estimate=false,
 channel_bias`. **Channel-bias caveat**: this is a self-selected
 routing-platform slice — it over-represents open-weights models and
 excludes direct-API enterprise traffic. See the cross-cutting note below.
+
+### 7. Target-4 tether (wide) — `target4_dev_wide.py` → `target4_dev_wide.csv`
+Derived leg — no external source, reshapes leg 4's output. The BERT import
+wizard requires a wide panel (one row per timestep, unique time values);
+leg 4's `usage_openrouter_monthly.csv` is long-format (one row per
+month × author), which the wizard refuses. This script pivots it into one
+row per month with six fixed bucket columns, so it's the actual tether
+target for the target-4 LLM competitive-market BERT model — depends on
+leg 4 having run first (`run_all.sh` orders it directly after
+`fetch_usage_openrouter.py`).
+
+Bucketing: each of the 42 raw `author` values in leg 4 is mapped to
+exactly one of `anthropic`, `openai`, `google`, `xai`, `open_weights`,
+`other` via an explicit `AUTHOR_BUCKET` dict at the top of the script (not
+inferred at runtime). The four closed frontier labs get dedicated columns;
+everything else recognized as an open-weights releaser (major labs — Meta,
+DeepSeek, Qwen/Alibaba, Mistral, Moonshot AI, Z-AI, etc. — plus community
+finetuners/mergers like NousResearch, Sao10k, TheDrummer, Gryphe,
+Anthracite, TNGTech) buckets to `open_weights`. Closed-but-small labs
+(Amazon, Cohere, Perplexity, Poolside), non-model-author rows (OpenRouter's
+own rollup, the `infermatic` hosting provider), and embedding-only authors
+(intfloat, sentence-transformers) bucket to `other` — each judgment call is
+commented inline in `AUTHOR_BUCKET`. Any author the map doesn't recognize
+at runtime falls to `other` *and* prints a `WARNING: unmapped author`
+line, so new OpenRouter authors surface on refresh instead of silently
+vanishing into an existing bucket.
+
+Columns: `month_index, month_label, anthropic_tok, openai_tok, google_tok,
+xai_tok, open_weights_tok, other_tok, total_tok`. Raw token counts
+(integers, not shares — the BERT model computes shares itself).
+`total_tok` is the row-wise sum of the six bucket columns (not copied from
+the source), so conservation across the six flows closes exactly by
+construction. Self-checks (assert, fail loudly on refresh): unique
+`month_index`; per-row bucket sum == `total_tok`; row count equals the
+number of complete months present in the source after the in-progress-month
+drop below; Jan-2025 `anthropic_tok` share within 0.5pp of 49.3%.
+
+**Drops the in-progress current month.** Any source row whose `month`
+equals the current calendar month (`datetime.now()` at run time) is
+excluded before the pivot, with a printed `NOTE: dropped in-progress
+month <label>` — a partial month understates that month's totals and
+would fabricate a cliff at the run horizon, distorting the tether's
+mean-projection. Run on 2026-07-13, this drops 2026-07 and ends the panel
+at 18 rows (2025-01→2026-06); the row count is not hardcoded, so it tracks
+whichever month is in progress on future refreshes.
+
+**Same channel-bias caveat as leg 4** — this is the DEV channel only
+(self-selected OpenRouter routing slice, over-represents open-weights,
+excludes direct-API enterprise traffic). Never average or reconcile this
+series with the Menlo enterprise series (leg 5) — they measure different
+market segments.
+
+**Supersedes `usage_openrouter_total_monthly.csv`.** That file in the data
+dir was hand-derived (not scripted) before this leg existed. It's now
+superseded by `target4_dev_wide.py`'s scripted, checked output — kept on
+disk for reference but not regenerated or read by any script.
 
 ### 5. Usage (enterprise channel) — `build_usage_enterprise.py` → `usage_enterprise_annual.csv`
 Source: Menlo Ventures 2025 State of GenAI in the Enterprise survey
