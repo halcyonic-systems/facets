@@ -2675,6 +2675,12 @@ fn append_run_ledger(
     declared_params: Option<ledger::DeclaredParams>,
     provenance: Option<ledger::ImportProvenance>,
 ) {
+    // Tests drive `execute_run` too, and they must never write the user's real
+    // ledger (#29: every line in a real ledger.jsonl turned out to be test
+    // effluent — t=30/t=20 pairs matching the execute_run tests).
+    if cfg!(test) {
+        return;
+    }
     let line = ledger_line(res, comparisons, model_name, declared_params, provenance);
     if let Err(e) = ledger::append_summary(&ledger::default_runs_dir(), &line) {
         eprintln!("run ledger: could not append summary line: {e}");
