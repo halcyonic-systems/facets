@@ -513,6 +513,10 @@ pub struct Comparison {
     /// stationarity teaching moment. `None` for stocks, and for flows whose
     /// executed series could not be resolved.
     pub baseline: Option<Vec<f32>>,
+    /// The imported column's declared unit (e.g. "tokens/month"), carried so the
+    /// panel can read the actual series in domain terms rather than bare numbers.
+    /// Describes the ACTUAL (empirical) series; empty when none was declared.
+    pub unit: String,
 }
 
 impl Comparison {
@@ -705,6 +709,7 @@ mod tests {
             simulated: vec![100.0, 100.0, 100.0],
             actual: vec![100.0, 120.0, 150.0],
             baseline: None,
+            unit: String::new(),
         };
         // |100 - 150| / 150 = 33.3%.
         assert!((c.divergence_pct().unwrap() - 33.333).abs() < 0.01);
@@ -722,6 +727,7 @@ mod tests {
             simulated: vec![0.05, 0.05, 0.05],       // executed: starved
             actual: vec![100.0, 120.0, 150.0],       // reality: clearing and rising
             baseline: Some(vec![123.3; 3]),          // declared mean, near actual
+            unit: "tokens/mo".into(),
         };
         let pct = c.divergence_pct().unwrap();
         // |0.05 - 150| / 150 ≈ 99.97% — the executed gap, not the ~17.8% the
