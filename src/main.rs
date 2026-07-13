@@ -356,6 +356,10 @@ struct CanvasApp {
     editing_rel: Option<u64>,
     drag: Option<u64>,
     connecting: Option<u64>,
+    /// #28: was Shift held at ANY point during the current rim-drag? The
+    /// source-birth gesture used to sample Shift only at release — holding it
+    /// through the drag but easing off a beat early silently birthed a Sink.
+    connect_shift: bool,
     next_id: u64,
     focus_pending: bool,
     show_math: bool,
@@ -383,6 +387,9 @@ struct CanvasApp {
     /// one already exists the file dialog waits behind an explicit confirm that
     /// names what would be lost. `true` while that confirm window is up. Transient.
     import_replace_pending: bool,
+    /// #26: a drag-dropped CSV waiting behind the replace-confirm — consumed on
+    /// Replace (parsed instead of opening the dialog), dropped on Cancel.
+    pending_drop: Option<std::path::PathBuf>,
     /// Env-birth cue (#2): message + the `ctx` time it was born, so drag-to-empty's
     /// silent Role::Environment birth gets a visible, self-dismissing toast instead
     /// of surfacing only at audit time. `None` once expired.
@@ -900,6 +907,7 @@ impl CanvasApp {
             self.editing = None;
             self.editing_rel = None;
             self.connecting = None;
+            self.connect_shift = false;
             return;
         }
         match serde_json::from_str::<serde_json::Value>(txt) {
@@ -933,6 +941,7 @@ impl CanvasApp {
         self.editing = None;
         self.editing_rel = None;
         self.connecting = None;
+        self.connect_shift = false;
         true
     }
 
@@ -1047,7 +1056,13 @@ impl CanvasApp {
         else {
             return;
         };
-        let text = match std::fs::read_to_string(&path) {
+        self.import_csv_from_path(&path);
+    }
+
+    /// Read + parse a CSV path into the mapping draft — shared by the file
+    /// dialog and window drag-drop (#26).
+    fn import_csv_from_path(&mut self, path: &std::path::Path) {
+        let text = match std::fs::read_to_string(path) {
             Ok(t) => t,
             Err(e) => {
                 self.gen_error = Some(format!("could not read CSV: {e}"));
@@ -1065,6 +1080,31 @@ impl CanvasApp {
                 self.import_notice = None;
             }
             Err(_) => self.gen_error = Some("that CSV had no header row or columns".to_string()),
+        }
+    }
+
+    /// Window drag-drop (#26): a dropped `.csv` enters the same import flow as
+    /// the button — including the replace-confirm when data already exists.
+    /// Non-CSV drops are ignored (models still load via Open/library).
+    fn handle_dropped_files(&mut self, ctx: &egui::Context) {
+        let dropped: Vec<std::path::PathBuf> = ctx.input(|i| {
+            i.raw
+                .dropped_files
+                .iter()
+                .filter_map(|f| f.path.clone())
+                .collect()
+        });
+        let Some(csv) = dropped
+            .into_iter()
+            .find(|p| p.extension().is_some_and(|x| x.eq_ignore_ascii_case("csv")))
+        else {
+            return;
+        };
+        if self.imported.is_some() {
+            self.pending_drop = Some(csv);
+            self.import_replace_pending = true;
+        } else {
+            self.import_csv_from_path(&csv);
         }
     }
 
@@ -1223,15 +1263,15 @@ impl CanvasApp {
 
                 ui.add_space(6.0);
 
-                // The finish gate, spelled out honestly.
-                match draft.units_ok() {
-                    Err(msg) => {
+                // The finish gate, spelled out honestly (T2 units, T4 long-format).
+                match (draft.units_ok(), draft.time_unique_ok()) {
+                    (Err(msg), _) | (Ok(()), Err(msg)) => {
                         ui.label(egui::RichText::new(format!("⚠ {msg}")).small().color(theme::WARN));
                     }
-                    Ok(()) if !draft.is_total() => {
+                    (Ok(()), Ok(())) if !draft.is_total() => {
                         ui.label(egui::RichText::new("Every column must be assigned or ignored before finishing.").small().color(theme::INK_FAINT));
                     }
-                    Ok(()) => {}
+                    (Ok(()), Ok(())) => {}
                 }
 
                 ui.horizontal(|ui| {
@@ -1344,6 +1384,14 @@ impl CanvasApp {
             return;
         };
         let mapped = import_mapping_sentences(&d);
+        // A drag-dropped CSV is already chosen; a button-triggered replace still
+        // needs the file dialog. The button label reflects which (#26).
+        let dropped_name = self
+            .pending_drop
+            .as_ref()
+            .and_then(|p| p.file_name())
+            .and_then(|s| s.to_str())
+            .map(str::to_string);
         let mut open = true;
         let mut proceed = false;
         let mut cancel = false;
@@ -1364,13 +1412,20 @@ impl CanvasApp {
                 }
                 ui.add_space(4.0);
                 ui.label(
-                    egui::RichText::new("Importing another CSV replaces all of it — the model holds one import.")
-                        .small()
-                        .color(theme::INK_SOFT),
+                    egui::RichText::new(match &dropped_name {
+                        Some(n) => format!("Importing {n} replaces all of it — the model holds one import."),
+                        None => "Importing another CSV replaces all of it — the model holds one import.".to_string(),
+                    })
+                    .small()
+                    .color(theme::INK_SOFT),
                 );
                 ui.add_space(6.0);
                 ui.horizontal(|ui| {
-                    if ui.button(egui::RichText::new("Replace…").color(theme::INK)).clicked() {
+                    let label = match &dropped_name {
+                        Some(n) => format!("Replace with {n}"),
+                        None => "Replace…".to_string(),
+                    };
+                    if ui.button(egui::RichText::new(label).color(theme::INK)).clicked() {
                         proceed = true;
                     }
                     if ui.button("Cancel").clicked() {
@@ -1380,9 +1435,14 @@ impl CanvasApp {
             });
         if proceed {
             self.import_replace_pending = false;
-            self.import_csv_dialog();
+            // A dropped file is parsed directly; a button-replace opens the dialog.
+            match self.pending_drop.take() {
+                Some(path) => self.import_csv_from_path(&path),
+                None => self.import_csv_dialog(),
+            }
         } else if cancel || !open {
             self.import_replace_pending = false;
+            self.pending_drop = None;
         }
     }
 
@@ -3920,6 +3980,7 @@ impl CanvasApp {
         self.import_notice_window(ctx);
         self.import_replace_confirm_window(ctx);
         self.env_birth_toast(ctx);
+        self.handle_dropped_files(ctx); // #26: a dropped .csv enters the import flow
 
         // Arc 4.3 Run surface (Shape B): Mobus-only, transient. Leaving Mobus closes
         // both the prompt and the Results panel, so the run surface never lingers
@@ -4011,6 +4072,10 @@ impl CanvasApp {
                         }
                     }
                 }
+                // #28: latch Shift across the whole drag, not just the release frame.
+                if self.connecting.is_some() && ui.input(|i| i.modifiers.shift) {
+                    self.connect_shift = true;
+                }
                 if resp.drag_stopped() {
                     if let Some(src) = self.connecting {
                         if let Some(p) = resp.interact_pointer_pos() {
@@ -4045,7 +4110,7 @@ impl CanvasApp {
                                 });
                                 let rid = self.next_id;
                                 self.next_id += 1;
-                                let source = ui.input(|i| i.modifiers.shift);
+                                let source = self.connect_shift || ui.input(|i| i.modifiers.shift);
                                 let (a, b) = env_bond_endpoints(src, env_id, source);
                                 self.relations.push(Relation {
                                     id: rid,
@@ -4060,9 +4125,9 @@ impl CanvasApp {
                                 self.selection = Selected::Thing(env_id);
                                 self.env_birth_notice = Some((
                                     if source {
-                                        format!("Born as Environment — Source feeding {}", self.name_of(src))
+                                        format!("SOURCE born → feeds {}", self.name_of(src))
                                     } else {
-                                        format!("Born as Environment — auto-bonded to {} (Shift-drag births a Source)", self.name_of(src))
+                                        format!("SINK born ← receives from {} (hold Shift while dragging for a Source)", self.name_of(src))
                                     },
                                     ctx.input(|i| i.time),
                                 ));
@@ -4071,6 +4136,7 @@ impl CanvasApp {
                     }
                     self.drag = None;
                     self.connecting = None;
+                    self.connect_shift = false;
                 }
 
                 // single click selects; double-click renames a thing or places a new one

@@ -345,10 +345,37 @@ impl MappingDraft {
         Ok(())
     }
 
-    /// The finish is permitted iff the mapping is total (T1) and every magnitude
-    /// has units (T2).
+    // ── T4: no long-format panel ──────────────────────────────────────────────
+
+    /// A mapped Time column with duplicate values means the CSV is long-format
+    /// (many rows per timestep — e.g. a month × entity panel). The projection
+    /// reads a magnitude column as its mean, which would silently average across
+    /// the duplicated entities; refuse instead, naming the collision (#26). `Ok`
+    /// when the time column's present values are strictly unique, or none is
+    /// mapped yet.
+    pub fn time_unique_ok(&self) -> Result<(), String> {
+        let Some(col) = self.time_col() else {
+            return Ok(());
+        };
+        let times: Vec<f64> = self.column_values(col).into_iter().flatten().collect();
+        for (i, a) in times.iter().enumerate() {
+            if times[..i].iter().any(|b| (a - b).abs() < 1e-9) {
+                return Err(format!(
+                    "the time column \"{}\" repeats {} — this looks like a long-format \
+                     panel (several rows per timestep). Aggregate to one row per timestep \
+                     before importing, or a magnitude would be averaged across the \
+                     duplicated rows.",
+                    self.headers[col], a
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// The finish is permitted iff the mapping is total (T1), every magnitude has
+    /// units (T2), and the time column has no duplicate values (T4).
     pub fn can_finish(&self) -> bool {
-        self.is_total() && self.units_ok().is_ok()
+        self.is_total() && self.units_ok().is_ok() && self.time_unique_ok().is_ok()
     }
 
     /// The live translation sentence for column `col`, in the contract's style, or
@@ -607,6 +634,31 @@ mod tests {
         let mut d = draft();
         d.assignments[0] = Assignment::Time;
         assert_eq!(d.inferred_dt(), Some(1.0), "months spaced by 1");
+    }
+
+    /// T4 (#26): a long-format panel — duplicate time values — is refused before
+    /// finish, so a magnitude column is never silently averaged across the
+    /// duplicated entity rows.
+    #[test]
+    fn long_format_time_column_is_refused() {
+        // month × author panel: month 1 appears twice (two authors).
+        let (h, r) = parse_csv("month,author,tokens\n1,a,10\n1,b,20\n2,a,30\n").unwrap();
+        let mut d = MappingDraft::new("panel.csv".into(), h, r);
+        d.assignments[0] = Assignment::Time;
+        d.assignments[1] = Assignment::Ignore;
+        d.assignments[2] = Assignment::FlowMagnitude(Some(9));
+        d.units[2] = "tokens".into();
+        assert!(d.time_unique_ok().is_err(), "duplicate month is a long-format panel");
+        assert!(!d.can_finish(), "T4 blocks the finish even when T1+T2 pass");
+
+        // Aggregated to one row per month → T4 clears.
+        let (h2, r2) = parse_csv("month,tokens\n1,30\n2,30\n").unwrap();
+        let mut agg = MappingDraft::new("totals.csv".into(), h2, r2);
+        agg.assignments[0] = Assignment::Time;
+        agg.assignments[1] = Assignment::FlowMagnitude(Some(9));
+        agg.units[1] = "tokens".into();
+        assert!(agg.time_unique_ok().is_ok(), "unique months clear T4");
+        assert!(agg.can_finish());
     }
 
     #[test]
