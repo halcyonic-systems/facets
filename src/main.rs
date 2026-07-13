@@ -3381,6 +3381,11 @@ impl CanvasApp {
                                 .size(28.0)
                                 .strong()
                                 .color(theme::ACCENT),
+                        )
+                        .on_hover_text(
+                            "How far the executed flow lands from your imported data at the last \
+                             step both cover. Only the overlapping (in-sample) window is compared; \
+                             ticks past your data are projection, not error.",
                         );
                         ui.label(
                             egui::RichText::new(format!("{} · at horizon", c.element_name))
@@ -3459,15 +3464,21 @@ impl CanvasApp {
                         egui::vec2(w, 72.0),
                     );
                     ui.horizontal(|ui| {
-                        ui.label(egui::RichText::new("— executed").small().color(theme::MOBUS));
+                        ui.label(egui::RichText::new("— executed").small().color(theme::MOBUS))
+                            .on_hover_text("What the run actually produced for this flow, tick by tick.");
                         ui.add_space(8.0);
-                        ui.label(egui::RichText::new("— actual").small().color(theme::ACCENT));
+                        ui.label(egui::RichText::new("— actual").small().color(theme::ACCENT))
+                            .on_hover_text("Your imported data — the real observed series it's checked against.");
                         if c.baseline.is_some() {
                             ui.add_space(8.0);
                             ui.label(
                                 egui::RichText::new("— declared (mean)")
                                     .small()
                                     .color(theme::INK_FAINT),
+                            )
+                            .on_hover_text(
+                                "The flat average the model ran at: the tether reads the CSV column's mean \
+                                 as a constant. Distance from 'actual' is the assume-it's-constant error.",
                             );
                         }
                     });
@@ -3509,6 +3520,11 @@ impl CanvasApp {
                                 egui::RichText::new("conservation residual")
                                     .small()
                                     .color(theme::INK_FAINT),
+                            )
+                            .on_hover_text(
+                                "How much substance the run created or destroyed overall. \
+                                 ~0 means nothing leaked — the model balances; a large value means \
+                                 flow is appearing or vanishing where it shouldn't.",
                             );
                             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                                 ui.label(
