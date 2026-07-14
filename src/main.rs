@@ -1877,7 +1877,26 @@ fn to_world_model_with(
                 .and_then(|v| bert_core::rust_decimal::Decimal::from_f64_retain(*v))
                 .unwrap_or(bert_core::rust_decimal::Decimal::ONE),
             unit: String::new(),
-            parameters: vec![],
+            // Series forcing (#16): a forced flow carries its observed series as
+            // a `series` parameter (comma-joined), read at the seam exactly as
+            // `conductance` is. The scalar `amount` above stays as the horizon
+            // fallback. Unforced flows carry no parameters — byte-for-byte the
+            // old projection.
+            parameters: params
+                .flow_series
+                .get(&r.id)
+                .map(|series| {
+                    vec![bert_core::Parameter {
+                        name: "series".to_string(),
+                        value: series
+                            .iter()
+                            .map(|v| v.to_string())
+                            .collect::<Vec<_>>()
+                            .join(","),
+                        ..Default::default()
+                    }]
+                })
+                .unwrap_or_default(),
             smart_parameters: vec![],
             endpoint_offset: None,
         });
@@ -5140,15 +5159,49 @@ fn headless_run(manifest_path: &std::path::Path) -> Result<String, String> {
     if let Err(e) = draft.time_unique_ok() {
         refusals.push(e);
     }
+    // Series forcing (#16) binds only to flow columns — a force on a stock/param
+    // would silently find no flow id, so refuse it loudly (no silent misbind).
+    for m in &mf.mapping {
+        if m.force && m.role != manifest::Role::Flow {
+            refusals.push(format!(
+                "column \"{}\" is marked force but is not a flow — only a flow's \
+                 series can be emitted tick by tick",
+                m.column
+            ));
+        }
+    }
     if !refusals.is_empty() {
         return Err(format!("import refused:\n  {}", refusals.join("\n  ")));
     }
 
     let stamp = tether::today_stamp();
-    let data = {
+    let mut data = {
         let name_of = |id: u64| app.tether_name_of(id);
         draft.commit(stamp, &name_of)
     };
+    // The flagged flows emit their series (#16). Names were already validated as
+    // flows by `apply_to_draft`, so this resolution against the same table cannot
+    // misbind.
+    data.forced = mf
+        .mapping
+        .iter()
+        .filter(|m| m.force)
+        .filter_map(|m| m.element.as_deref())
+        .filter_map(|name| {
+            flows
+                .iter()
+                .find(|(_, n)| n.trim() == name.trim())
+                .map(|(id, _)| *id)
+        })
+        .collect();
+    // Longest forced series = the data horizon; ticks past it are projection (#34).
+    let data_horizon = data
+        .forced
+        .iter()
+        .filter_map(|rid| data.flow_series.get(rid))
+        .map(|s| s.present().len())
+        .max()
+        .unwrap_or(0);
     app.imported = Some(data);
 
     let dt = draft.dt_text.trim().parse::<f64>().unwrap_or(1.0);
@@ -5204,6 +5257,16 @@ fn headless_run(manifest_path: &std::path::Path) -> Result<String, String> {
         for (pct, name, _unit) in &divs {
             out.push_str(&format!("  {:>8.1}% off reality at horizon · {name}\n", pct));
         }
+    }
+    // Data-horizon marker (#34): once the run outlasts the forced series, the
+    // last observation is held — that tail is projection, not error.
+    if data_horizon > 0 && (res.ticks as usize) > data_horizon {
+        out.push_str(&format!(
+            "  ⓘ ticks {}–{} are past the data horizon ({} observed) — projection, last value held\n",
+            data_horizon + 1,
+            res.ticks,
+            data_horizon,
+        ));
     }
     out.push_str(&format!(
         "ledger: {} (manifest {mf_hash})",
@@ -5623,6 +5686,7 @@ mod tests {
             flow_series,
             stock_series: HashMap::new(),
             param_series,
+            forced: Default::default(),
         });
 
         let res = app.run_model(Lens::Mobus, 1.0, 10.0).expect("the model runs");

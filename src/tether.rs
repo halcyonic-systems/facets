@@ -24,7 +24,7 @@
 //! gap, documented on [`ModelParams`].
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// One imported column, retained whole: its source header, declared unit, and the
 /// parsed observations in row order. Non-numeric or blank cells parse to `None`
@@ -94,6 +94,14 @@ pub struct ImportedData {
     /// its mean supplies the transfer characteristic.
     #[serde(default)]
     pub param_series: HashMap<u64, ColumnSeries>,
+    /// Series forcing (bert-lenses#16): the relation ids whose flow series should
+    /// be EMITTED tick by tick rather than collapsed to a mean — a source that
+    /// answers to its observed output function `o_Src(t)` instead of an average
+    /// (Mobus ch6 §6.6.2.3). A forced flow's whole series projects into the spec
+    /// (the one exception to "H supplies scalars, not a series" above). Empty =
+    /// every flow collapses to its mean, exactly as before.
+    #[serde(default)]
+    pub forced: HashSet<u64>,
 }
 
 impl ImportedData {
@@ -107,8 +115,18 @@ impl ImportedData {
     pub fn projection_params(&self) -> ModelParams {
         let mut params = ModelParams::default();
         for (rid, s) in &self.flow_series {
+            // The mean is always supplied — the unforced amount, and the fallback
+            // a forced flow holds to once its series runs out (data horizon, #34).
             if let Some(m) = s.mean() {
                 params.flow_amount.insert(*rid, m);
+            }
+            // A forced flow ALSO carries its whole observed series, projected as
+            // the source's per-tick emission (#16).
+            if self.forced.contains(rid) {
+                let series = s.present();
+                if !series.is_empty() {
+                    params.flow_series.insert(*rid, series);
+                }
             }
         }
         for (tid, s) in &self.stock_series {
@@ -149,6 +167,10 @@ impl ImportedData {
 pub struct ModelParams {
     /// Relation id → flow amount (per Δt).
     pub flow_amount: HashMap<u64, f64>,
+    /// Relation id → forced emission series (#16): present when a flow is forced,
+    /// projected as a `series` parameter on its Flow interaction so the source
+    /// emits it tick by tick. Absent = the flow uses its scalar `flow_amount`.
+    pub flow_series: HashMap<u64, Vec<f64>>,
     /// Component thing id → initial storage.
     pub stock_initial: HashMap<u64, f64>,
     /// Component thing id → (parameter name, value).

@@ -55,6 +55,13 @@ pub struct ColumnMapping {
     /// Declared unit. T2 requires one for every `flow` column.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unit: Option<String>,
+    /// Series forcing (bert-lenses#16): a `flow` column with `"force": true`
+    /// EMITS its observed series tick by tick instead of being collapsed to a
+    /// mean — the boundary answers to `o_Src(t)` (Mobus ch6 §6.6.2.3). Only
+    /// meaningful on a `flow` role; ignored elsewhere. Omitted = false, so
+    /// every existing manifest keeps its mean-collapse behavior unchanged.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub force: bool,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
@@ -235,6 +242,9 @@ impl RunManifest {
                     role,
                     element,
                     unit: (!unit.is_empty()).then(|| unit.to_string()),
+                    // The wizard doesn't yet express forcing (#16 is headless-first);
+                    // a saved manifest is unforced until the wizard UI lands.
+                    force: false,
                 }
             })
             .collect();
@@ -288,18 +298,21 @@ mod tests {
                     role: Role::Time,
                     element: None,
                     unit: None,
+                    force: false,
                 },
                 ColumnMapping {
                     column: "anthropic_tok".into(),
                     role: Role::Flow,
                     element: Some("Anthropic tokens routed".into()),
                     unit: Some("tok/mo".into()),
+                    force: false,
                 },
                 ColumnMapping {
                     column: "label".into(),
                     role: Role::Ignore,
                     element: None,
                     unit: None,
+                    force: false,
                 },
             ],
             dt: None,
