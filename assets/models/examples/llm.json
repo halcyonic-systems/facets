@@ -1,0 +1,486 @@
+{
+  "version": 1,
+  "environment": {
+    "info": {
+      "id": "E-1",
+      "level": -1,
+      "name": "Language Environment",
+      "description": "Natural language producers and consumers: humans, APIs, and upstream systems that supply prompts and receive generated text"
+    },
+    "sources": [
+      {
+        "info": {
+          "id": "Src-1.0",
+          "level": -1,
+          "name": "Prompt Input",
+          "description": "Natural language text from users or API calls \u2014 the conditioning context for generation"
+        },
+        "type": "Source",
+        "transform": {
+          "translation": [
+            -520.0,
+            0.0
+          ],
+          "rotation": -3.141592653589793
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null
+      }
+    ],
+    "sinks": [
+      {
+        "info": {
+          "id": "Snk-1.0",
+          "level": -1,
+          "name": "Generated Text",
+          "description": "Coherent natural language output \u2014 token sequences decoded from learned probability distributions"
+        },
+        "type": "Sink",
+        "transform": {
+          "translation": [
+            520.0,
+            0.0
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null
+      }
+    ]
+  },
+  "systems": [
+    {
+      "info": {
+        "id": "S0",
+        "level": 0,
+        "name": "Language Transformer",
+        "description": "Generation instrument (\u00a703): produces next-token probability distributions conditioned on input context. Models the epistemic capability \u2014 what the system computes and where it reaches its ceiling \u2014 not the physical substrate. Energy, thermal, and infrastructure flows are real but out of scope: they describe deployment, not computation. Ceiling: synthesizes what has been said, not formal specifications of system structure."
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "E-1",
+      "complexity": {
+        "Complex": {
+          "adaptable": true,
+          "evolveable": true
+        }
+      },
+      "boundary": {
+        "info": {
+          "id": "B0",
+          "level": 0,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [
+          {
+            "info": {
+              "id": "I0.50",
+              "level": 1,
+              "name": "Tokenization Interface",
+              "description": "Receives raw text and segments into token sequences for embedding"
+            },
+            "protocol": "",
+            "type": "Import",
+            "exports_to": [],
+            "receives_from": [
+              "Src-1.0"
+            ],
+            "angle": 3.141592653589793
+          },
+          {
+            "info": {
+              "id": "I0.51",
+              "level": 1,
+              "name": "Generation Interface",
+              "description": "Emits decoded token sequences as natural language output"
+            },
+            "protocol": "",
+            "type": "Export",
+            "exports_to": [
+              "Snk-1.0"
+            ],
+            "receives_from": [],
+            "angle": 0.0
+          }
+        ],
+        "parent_interface": null
+      },
+      "radius": 300.0,
+      "transform": {
+        "translation": [
+          0.0,
+          0.0
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "Second"
+    },
+    {
+      "info": {
+        "id": "C0.0",
+        "level": 1,
+        "name": "Encoding",
+        "description": "Tokenization and embedding: converts raw text to dense vector sequences in a learned representation space"
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": {
+        "Complex": {
+          "adaptable": true,
+          "evolveable": false
+        }
+      },
+      "boundary": {
+        "info": {
+          "id": "B0.0",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": null
+      },
+      "radius": 42.0,
+      "transform": {
+        "translation": [
+          -125.0,
+          -95.0
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "Second",
+      "archetype": "Economy"
+    },
+    {
+      "info": {
+        "id": "C0.1",
+        "level": 1,
+        "name": "Transformer Core",
+        "description": "Stacked self-attention and feed-forward layers: builds contextualized representations from token sequences through iterative refinement"
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": {
+        "Complex": {
+          "adaptable": true,
+          "evolveable": false
+        }
+      },
+      "boundary": {
+        "info": {
+          "id": "B0.1",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": null
+      },
+      "radius": 42.0,
+      "transform": {
+        "translation": [
+          125.0,
+          -95.0
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "Second",
+      "archetype": "Economy"
+    },
+    {
+      "info": {
+        "id": "C0.2",
+        "level": 1,
+        "name": "Decoding",
+        "description": "Logit projection and sampling: converts contextualized representations to probability distributions over vocabulary and selects next tokens"
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": {
+        "Complex": {
+          "adaptable": true,
+          "evolveable": false
+        }
+      },
+      "boundary": {
+        "info": {
+          "id": "B0.2",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": null
+      },
+      "radius": 42.0,
+      "transform": {
+        "translation": [
+          0.0,
+          160.0
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "Second",
+      "archetype": "Economy"
+    },
+    {
+      "info": {
+        "id": "C0.50",
+        "level": 1,
+        "name": "Tokenization Interface",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": {
+        "Complex": {
+          "adaptable": false,
+          "evolveable": false
+        }
+      },
+      "boundary": {
+        "info": {
+          "id": "B0.50",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.50"
+      },
+      "radius": 12.0,
+      "transform": {
+        "translation": [
+          -1.72,
+          0.0
+        ],
+        "rotation": -3.1415925
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "Second"
+    },
+    {
+      "info": {
+        "id": "C0.51",
+        "level": 1,
+        "name": "Generation Interface",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": {
+        "Complex": {
+          "adaptable": false,
+          "evolveable": false
+        }
+      },
+      "boundary": {
+        "info": {
+          "id": "B0.51",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.51"
+      },
+      "radius": 12.0,
+      "transform": {
+        "translation": [
+          -1.72,
+          0.0
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "Second"
+    }
+  ],
+  "interactions": [
+    {
+      "info": {
+        "id": "F-1.0",
+        "level": -1,
+        "name": "Raw Text",
+        "description": "Natural language input segmented into token IDs"
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.0",
+      "source_interface": null,
+      "sink": "S0",
+      "sink_interface": "I0.50",
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F-1.1",
+        "level": -1,
+        "name": "Generated Language",
+        "description": "Decoded token sequence as coherent text"
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Product",
+      "source": "S0",
+      "source_interface": "I0.51",
+      "sink": "Snk-1.0",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F0.0",
+        "level": 1,
+        "name": "Tokenization Interface routing",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.50",
+      "source_interface": null,
+      "sink": "C0.0",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": [],
+      "endpoint_offset": {
+        "start_angle": -0.49734271634682264,
+        "end_angle": 2.6442499372429706
+      }
+    },
+    {
+      "info": {
+        "id": "F0.1",
+        "level": 1,
+        "name": "Generation Interface routing",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.2",
+      "source_interface": null,
+      "sink": "C0.51",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": [],
+      "endpoint_offset": {
+        "start_angle": -0.4899573262537283,
+        "end_angle": 2.651635327336065
+      }
+    },
+    {
+      "info": {
+        "id": "F0.2",
+        "level": 1,
+        "name": "Token Embeddings",
+        "description": "Dense vector representations of input tokens"
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.1",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": [],
+      "endpoint_offset": {
+        "start_angle": 0.0,
+        "end_angle": 3.141592653589793
+      }
+    },
+    {
+      "info": {
+        "id": "F0.3",
+        "level": 1,
+        "name": "Contextualized Representations",
+        "description": "Final hidden states enriched by self-attention"
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.2",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": [],
+      "endpoint_offset": {
+        "start_angle": 2.026570082771602,
+        "end_angle": -1.1150225708181911
+      }
+    }
+  ],
+  "hidden_entities": []
+}

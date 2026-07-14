@@ -1,24 +1,13 @@
-[package]
-name = "bert-lenses"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-eframe = "0.31"
-egui = { version = "0.31", features = ["serde"] }
-bert-core = { path = "../bert/bert-core" }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-rfd = "0.14"
-ehttp = "0.5"
-
-# The executable dynamical face — the Run surface builds a circuit from the
-# Operational projection and records a trace. Native-only: bert-compose is a
-# desktop egui app crate (windowing, native http), so it is excluded from the
-# wasm build, and the Run feature is `cfg`-gated to match.
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-bert-compose = { path = "../bert/bert-compose" }
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen-futures = "0.4"
-web-sys = "0.3"
+# bert-lenses — web-first systems-modeling instrument.
+#
+# THE LOAD-BEARING INVARIANT: Rust is the brain, running as WASM in the browser;
+# React/Tailwind is the face. Everything under crates/ is TRUTH (the kernel that
+# owns every systemhood verdict, all validation, the whole simulation). The web/
+# layer is the FACE and holds zero formalism logic. Systems logic in JS is a bug.
+#
+# The crates are vendored, self-contained (no cross-repo path deps), and compile
+# to wasm32-unknown-unknown to run in the page — the same code an optional Tauri
+# wrapper would run natively.
+[workspace]
+resolver = "2"
+members = ["crates/*"]

@@ -1,68 +1,68 @@
-# BERT Lenses
+# bert-lenses
 
-A choose-a-paradigm prototype over the K≅2 kernel. Open it, pick a thinker's lens — **Klir**, **Bunge**, or **Mobus** — and read one system through that vocabulary. Switch lenses freely; the model underneath never changes.
+**Rust is the brain, running as WASM in the browser. React/Tailwind is the face.**
 
-## The seam: shell here, all formalism in bert-core
+bert-lenses is a web-first systems-modeling instrument. The Rust kernel
+(`bert-core` + the `bert-compose` engine, compiled to WebAssembly) owns *all*
+truth — every systemhood verdict, all validation, the entire conservation-faithful
+simulation. It is the same Rust that runs native/mobile, compiled to wasm and
+executing in the page. The web layer holds **zero formalism logic**: it renders
+what the kernel decides and owns only presentation + ephemeral interaction state.
+JS *asks* the wasm kernel for every verdict; it never decides anything about
+systems itself. **`crates/` = truth · `web/` = face. Any systems logic in JS is a bug.**
 
-bert-lenses is the **structural face** — the ground-up authoring canvas over the K≅2 kernel. It is a **shell**: the UX (place/connect/type/name/stamp, lens rendering, panels), nothing else. **Every systemhood verdict lives in `../bert/bert-core`**, consumed as a path dependency (`Cargo.toml`). The canvas kernel (`Thing`/`Relation`/`Model`) projects into a bert-core `WorldModel` via `to_world_model`, and every "is this a system?" answer routes through `bert_core::validate::validate_mode` and `bert_core::operational::validate_operational`. If the shell wants a rule bert-core doesn't have, that's a bert-core issue, not shell code — **zero shell-side semantics.**
+There is no IPC and no back end: the kernel runs in the tab (wasm-bindgen,
+synchronous), so bert-lenses runs in a browser, on mobile, and inside
+Claude-in-Chrome. An optional Tauri wrapper can later host the *same* web app
+natively.
 
-## Two binaries
-- **`bert-lenses`** (`src/main.rs`, `cargo run`) — the **authoring canvas** and the **front door**: direct-manipulation (place/connect/type/name), the Mobus work-process mapping palette, the read-only consistency audit, the live Mathematical view, save/export. bert-core-backed. As-built reference: [`docs/canvas-architecture.md`](docs/canvas-architecture.md).
-- **`viewer`** (`src/bin/viewer.rs`, `cargo run --bin viewer`) — the **Arc-1 list viewer**, a demoted REFERENCE bin: reads bundled `WorldModel`s (thermostat + generics) through 3 lenses as structural lists, with cited `validate_mode` verdicts. The original worked example of consuming bert-core. Faithfulness notes: [`docs/fidelity-audit.md`](docs/fidelity-audit.md).
+## Structure
 
-## What this is the seed of
-
-bert-lenses is a model-*creation* tool, not a viewer. The arc:
-
-1. **View** ✓ — see one stored model through Klir / Bunge / Mobus, and learn *why* a model is or isn't a faithful system in each (cited to the tradition, e.g. "an unbonded collection is an aggregate — Bunge Def 1.1").
-2. **Author** ✓ — build a model *in* a lens's vocabulary: as Klir (things + undirected relations), as Bunge (composition + **directed, typed-by-kind** bonds), as Mobus (typed flows + boundary, with Message a peer of Energy/Material). The UI speaks that thinker's language. The faithful Klir→Bunge→Mobus accretion gradient is documented in `docs/design-system.md` §9.
-3. **Translate** — move losslessly between lenses (read-only view-switching is lossless by theorem; explicit mode transitions project down with documented loss or generate up with minimal witnesses). The §A5 mode-transition validators this needs now exist in bert-core (`transition.rs`); the app-side UX is not yet built.
-
-Eventually this folds into BERT as the lens/mode-aware authoring surface.
-
-## Convergence with bert-compose (the dynamical face)
-
-bert-lenses and [`bert/bert-compose`](../bert/bert-compose/) are the two halves of one creation instrument, split along the Mobus 8-tuple ⟨C,N,E,G,B,T,H,Δt⟩: lenses accretes **structure** from the ground up (C things → N relations/bonds → E/B/G environment, boundary, typed flows — the Klir → Bunge → Mobus ladder), compose supplies **dynamics** (T transfer functions, Δt the tick) and produces H (the conserved, recorded run). The Mobus rung is the seam — the last structural rung and the first runnable shape — so **Run is a mode transition** (Mobus-structural → Operational), gated by `validate_mode` like every other rung; downgrade = forget the dynamics, keep the structure. The parameters the transition demands are exactly the slots Mobus leaves parametric by intent (`bert-compose/MOBUS.md`).
-
-The two "lens" vocabularies are orthogonal axes over one kernel: **tradition lenses** here (Klir/Bunge/Mobus — how much structure the vocabulary commits to) × **domain lenses** in compose (Political Economy / Neuromorphics / Protocol Science / Ecology — what the slots are called). Different operations — mode transitions gate and emit loss witnesses; domain skins relabel — so they stay **distinct types in code**, never one `Lens` abstraction.
-
-Honesty clauses (council-audited, 2026-07-06): the Operational gate is **stricter than `validate_mode(Mobus)`** — a valid Mobus structure is not yet a well-formed circuit (dead-end components, unspecified source/sink terms; compose's ledger holds by construction only *given* well-formedness) — so the rung gets its own predicate, **`validate_operational`**, and Klir/Bunge models fail it loudly by design (representational, not executable — never a silent partial projection). Upgrading also requires a **component → work-process mapping** (which Mobus primitive is this authored thing?), an explicit design problem ([bert#108](https://github.com/halcyonic-systems/bert/issues/108)). H invalidates on structural edit after downgrade. Path, phase-gated: compose's engine (`circuit.rs`, UI-free by design) is consumed as a crate like bert-core; (0) headless predicate + round-trip tests — **✓ shipped 2026-07-09** (`bert_core::operational::validate_operational`, bert `94ae18a0`: typed `Result<OperationalSpec, Vec<OperationalError>>`, proto-gate agreement and 30-tick conservation proven from compose's tests), (1) read-only "check consistency" audit mode, (2) Run — landing as **Arc 4** ([ROADMAP.md](ROADMAP.md)). The seam is a protocol before it is a feature; engine integration never jumps ahead of the authoring arc. Obligation this creates for Arc 2: the WorldModel export must **stamp `mode` with the authored rung** — the representational refusal only fires on models that declare Core/Structural.
-
-The layering converged with the formal side on the day it shipped: SSF's Willems verdict (`ShapeWillems.lean`, 2026-07-09) proved convergence entries are **claims-at-a-layer** — Willems embeds at kernel, collapses at shape, is independent only at composition — and `validate_operational` is the same split in Rust: Core/Bunge are representational-layer claims and refuse execution, because executability is a composition/dynamics-layer capability. Two artifacts, one finding, specced independently.
-
-**The one precision that makes it cohere: there is one kernel underneath, always.** "Build in Core or in a lens" is not three model formats — it is one stored kernel you populate through whichever vocabulary you prefer. That is *why* "translate my Klir model to Bunge" is a faithful, well-defined operation rather than a lossy reinterpretation: both are views of the same object. This is the payoff of founding BERT on the kernel — before it, lens-translation was hand-wavy; after it, it is a theorem (`systems-science-foundations/Systems/Klir/ViewGeneration.lean`).
-
-Dependency order is **view → author → translate**: authoring-in-a-lens only makes sense once the lens is a verified-faithful window on the kernel, so we prove the view first.
-
-## Framing discipline
-
-"One kernel, lenses as faithful **derived views**" — never "derived core." The kernel was *discovered* by comparing seven traditions but is *logically prior*; the views are the derived layer. Discovery order ≠ dependency order.
-
-## Architecture
-
-- **bert-core is the engine.** All formalism — the kernel projection, the `Mode` ladder, the `validate_mode` precondition gate — lives in `bert-core` (consumed as a path dependency). This shell holds **zero formalism logic**: if it wants a rule bert-core doesn't have, that's a bert-core issue, not shell code.
-- **Deterministic, traceable verdicts.** Every "you can / can't view this as Bunge" answer is a derivation from `validate_mode`, cited — no LLM in the explanation path.
-- **Sovereign.** The thermostat model is generated offline via GSR `generate()` and bundled; the app runs as a static WASM page with no server dependency.
-
-## Run
-
-```sh
-cargo run                      # native window (the canvas front door)
-cargo run --bin viewer         # the demoted Arc-1 list viewer (reference)
-cargo test                     # 26 tests: 20 (canvas: projection, audit, stamp) + 6 (viewer)
-trunk serve --open             # WASM (after: rustup target add wasm32-unknown-unknown && cargo install trunk)
+```
+crates/                     # TRUTH — the kernel, self-contained + wasm-ready
+  bert-core/                #   the semantic authority (WorldModel, validators, projection)
+  bert-compose/             #   the executable dynamical engine (circuit / export / run)
+  bert-lenses-kernel/       #   the JS-facing wasm-bindgen boundary (+ the pure CSV tether)
+web/                        # FACE — React 19 + TS + Vite + Tailwind 4 (Halcyonic Frost)
+assets/                     # sample BERT models (validation fixtures + demo samples)
+pipeline/                   # Python data-prep (LLM-market panel for the demos)
 ```
 
-**Self-contained macOS app:** `scripts/bundle-macos.sh` builds `/Applications/bert-lenses.app` with the
-release binary copied *inside* the bundle (`Contents/MacOS/`) — it keeps working after `cargo clean`.
-Re-run the script after code changes to refresh the app. Default install dir is `/Applications`; pass a
-path to override. Set `APP_NAME` to bundle a side-by-side variant (e.g. `APP_NAME=bert-lenses-B scripts/bundle-macos.sh`).
+`bert-core` and `bert-compose` are **vendored** (self-contained, no cross-repo
+path deps). The `bert-compose` copy is engine-only — the native egui shell it
+had upstream is dropped, so it carries no native dependency and compiles clean
+to `wasm32-unknown-unknown`. Node geometry uses `glam::Vec2` in place of
+`egui::Pos2`, so the engine pulls in no UI crate at all.
 
-## What shipped
+## Develop
 
-- **Arc 1 — View** ✓ — read-only lens viewing over one stored kernel (the `viewer` bin).
-- **Arc 2 — Author** ✓ — the direct-manipulation canvas, bert-core-backed: place/connect/type/name in Klir/Bunge/Mobus vocabulary, live Mathematical view, save (canvas `Model`) and export (a `WorldModel` **stamped with the authored rung's `mode`**).
-- **Arc 4.1 — Audit** ✓ — a read-only "Check consistency" panel: projects the live canvas and renders `validate_operational`'s verdict verbatim, with the **panel-honesty invariant** — every canvas node accounts for exactly once (component row, env terminal, or disclosed drop).
-- **Arc 4.2 — Mapping UX** ✓ — the Mobus work-process palette: stamp a `ProcessPrimitive` onto a component (disc badges), supplying the `AgentModel` the Operational rung needs (bert#108). The engine half shipped in `../bert` (#108 identity-default lowering + `RecordedRun` H).
+```bash
+# 1. build the kernel to a browser wasm package (regenerate after any crate change)
+cd crates/bert-lenses-kernel
+wasm-pack build --target web --out-dir pkg --dev     # --release for the shipped bundle
 
-**Next gate:** wire Run/H into the app UI — sim data on demand, never ambient (the "God-tool" guard). See [`ROADMAP.md`](ROADMAP.md).
+# 2. run the web app
+cd ../../web
+npm install                                          # first time (symlinks the wasm pkg)
+npm run dev                                           # http://localhost:5173
+
+# kernel checks
+cargo test --workspace                                # native tests
+cargo build --workspace --target wasm32-unknown-unknown
+```
+
+The frozen JS↔wasm API is documented in
+[`crates/bert-lenses-kernel/API.md`](crates/bert-lenses-kernel/API.md). Design
+tokens + the invariant are in [`web/DESIGN.md`](web/DESIGN.md).
+
+## Status
+
+Rebuilt web-first (egui → React) in phases; the kernel + engine were consolidated
+here and made wasm-ready. **Phase 0 (self-contained wasm kernel + frozen API +
+smoke slice) is complete.** Next: the CSV mapping wizard + run/results panel
+(Phase 1), then an adversarial canvas spike (Phase 2). The prior egui app lives
+on the `pre-web-rebuild` tag / `archive/egui-app` branch for reference.
+
+The instrument is one of the two faces of the K≅2 kernel: the *structural* face
+(author/validate) and the *dynamical* face (`bert-compose`, run) — here united in
+one self-contained tool.

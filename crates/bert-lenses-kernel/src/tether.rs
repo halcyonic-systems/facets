@@ -68,7 +68,7 @@ impl ColumnSeries {
 }
 
 /// The carry layer: everything a CSV brought, keyed to the model elements it was
-/// mapped onto. Persisted with the canvas [`crate::Model`] (empirical H, contract
+/// mapped onto. Persisted with the canvas model (empirical H, contract
 /// §2), and the sole quantitative supply path in v1 (#13, tether-as-supply).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ImportedData {
@@ -525,6 +525,10 @@ impl MappingDraft {
 /// Today as `YYYY-MM-DD` (UTC), computed from the wall clock with no date
 /// dependency (Howard Hinnant's days-from-civil, inverted). Falls back to
 /// `"unknown"` if the clock is before the epoch.
+/// Native-only: `SystemTime::now()` panics on wasm32. The web face supplies the
+/// import date from JS (`Date`) into [`MappingDraft::commit`], so this is never
+/// called in the browser.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn today_stamp() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let Ok(dur) = SystemTime::now().duration_since(UNIX_EPOCH) else {
@@ -535,9 +539,10 @@ pub fn today_stamp() -> String {
     format!("{y:04}-{m:02}-{d:02}")
 }
 
-/// Days since 1970-01-01 → (year, month, day). Hinnant's algorithm. `pub(crate)`
-/// so the run ledger (#15) can stamp full wall-clock timestamps without a second
-/// copy of the date math.
+/// Days since 1970-01-01 → (year, month, day). Hinnant's algorithm. Native-only:
+/// its sole caller is [`today_stamp`], which panics on wasm and is gated out
+/// there (the web face supplies dates from JS).
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn civil_from_days(z: i64) -> (i64, u32, u32) {
     let z = z + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
@@ -728,7 +733,7 @@ mod tests {
     fn demo_csv_maps_and_supplies_the_acceptance_path() {
         // The shipped acceptance file parses, maps total, and supplies the numbers
         // the projection reads — end to end, minus the GUI gestures.
-        let (headers, rows) = parse_csv(include_str!("../examples/llm-market-demo.csv")).unwrap();
+        let (headers, rows) = parse_csv(include_str!("../../../examples/llm-market-demo.csv")).unwrap();
         assert_eq!(
             headers,
             [
