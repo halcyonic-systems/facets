@@ -1190,6 +1190,7 @@ impl CanvasApp {
         let mut open = true;
         let mut finish = false;
         let mut cancel = false;
+        let mut prefill = false;
         egui::Window::new(egui::RichText::new("Map CSV columns — the tether").color(theme::INK))
             .open(&mut open)
             .resizable(true)
@@ -1346,11 +1347,47 @@ impl CanvasApp {
                     if ui.button(egui::RichText::new("Cancel").color(theme::INK_FAINT)).clicked() {
                         cancel = true;
                     }
+                    ui.separator();
+                    if ui
+                        .button(egui::RichText::new("Prefill from manifest…").color(theme::INK_SOFT))
+                        .on_hover_text(
+                            "Fill every column's role, unit, and force flag from a saved run \
+                             manifest — the whole mapping in one step, instead of by hand.",
+                        )
+                        .clicked()
+                    {
+                        prefill = true;
+                    }
                 });
             });
 
         if cancel || !open {
             self.import_draft = None;
+            return;
+        }
+        if prefill {
+            // Apply a saved manifest's mapping (roles, units, force flags) onto the
+            // in-flight draft — the same `apply_to_draft` the headless runner uses,
+            // so the wizard and the CLI fill a draft identically (no hand-mapping).
+            if let Some(path) = rfd::FileDialog::new()
+                .add_filter("run manifest", &["json"])
+                .pick_file()
+            {
+                match std::fs::read_to_string(&path)
+                    .ok()
+                    .and_then(|s| serde_json::from_str::<manifest::RunManifest>(&s).ok())
+                {
+                    Some(mf) => {
+                        let rctx = manifest::ResolveCtx { flows: &flows, components: &components };
+                        if let Err(errs) = mf.apply_to_draft(&mut draft, &rctx) {
+                            self.gen_error =
+                                Some(format!("manifest does not fit this model/CSV:\n{}", errs.join("\n")));
+                        }
+                    }
+                    None => self.gen_error = Some("that file is not a run manifest".to_string()),
+                }
+            }
+            self.import_draft = Some(draft);
             return;
         }
         if finish {
