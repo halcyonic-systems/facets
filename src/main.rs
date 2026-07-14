@@ -36,6 +36,12 @@ use eframe::egui;
 mod tether;
 use tether::{Assignment, ImportedData, MappingDraft, ModelParams};
 
+// The run manifest (bert-lenses#38): the declarative form of a run — model,
+// data, mapping, Δt/T — so meaning is assigned by hand once and mechanics are
+// machine work. Pure (no egui, no I/O); the headless runner in `main` and the
+// wizard's manifest-save both compile through it onto the SAME MappingDraft.
+mod manifest;
+
 // The run ledger (bert-lenses#15): a lab notebook outside the model, for
 // cross-run comparison. Pure data + file I/O, no egui — wired into the Run
 // surface below (native-only, same as the Run surface it reports on).
@@ -412,6 +418,13 @@ struct CanvasApp {
     /// The loaded stamp, live only while `show_palette`: click a component to apply it. `None`
     /// = no stamp loaded (clicks just select, as usual).
     stamp: Option<Stamp>,
+    /// The full path the current import's CSV was read from (#38): the wizard's
+    /// filename-only stamp can't rebuild a runnable manifest, this can.
+    import_source_path: Option<std::path::PathBuf>,
+    /// The finished mapping, re-serialized as a run manifest at commit (#38):
+    /// the wizard's one deliberate ritual, kept so "Save run manifest…" can
+    /// write it without re-asking. Replaced on each new import.
+    last_mapping_manifest: Option<manifest::RunManifest>,
     // ── Arc 4.3: the Run surface (Shape B), native-only, transient ──
     /// The Δt/T parameter prompt is open (opened by the Run action, Mobus-only).
     #[cfg(not(target_arch = "wasm32"))]
@@ -1077,10 +1090,53 @@ impl CanvasApp {
         match tether::parse_csv(&text) {
             Ok((headers, rows)) => {
                 self.import_draft = Some(MappingDraft::new(file, headers, rows));
+                self.import_source_path = Some(path.to_path_buf());
                 self.import_notice = None;
             }
             Err(_) => self.gen_error = Some("that CSV had no header row or columns".to_string()),
         }
+    }
+
+    /// Write the retained mapping manifest (#38) via a save dialog, defaulting
+    /// beside the model in the library. T rides at its default; edit the saved
+    /// file to change it — the manifest is the artifact, not a hidden setting.
+    fn save_run_manifest(&mut self) {
+        let Some(m) = self.last_mapping_manifest.clone() else {
+            return;
+        };
+        let dir = self.lib_dir();
+        let default_name = format!(
+            "{}-run.json",
+            self.current_model_name.as_deref().unwrap_or("model")
+        );
+        let Some(path) = rfd::FileDialog::new()
+            .add_filter("run manifest", &["json"])
+            .set_directory(&dir)
+            .set_file_name(&default_name)
+            .save_file()
+        else {
+            return;
+        };
+        match serde_json::to_string_pretty(&m) {
+            Ok(json) => {
+                if let Err(e) = std::fs::write(&path, json) {
+                    self.gen_error = Some(format!("could not save manifest: {e}"));
+                } else {
+                    self.import_notice =
+                        Some(format!("run manifest saved — bert-lenses run {}", path.display()));
+                }
+            }
+            Err(e) => self.gen_error = Some(format!("could not serialize manifest: {e}")),
+        }
+    }
+
+    /// A path for the manifest: library-relative when the file lives under the
+    /// library (portable manifests), absolute otherwise.
+    fn manifest_path_str(&mut self, path: &std::path::Path) -> String {
+        let lib = self.lib_dir();
+        path.strip_prefix(&lib)
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_else(|_| path.to_string_lossy().into_owned())
     }
 
     /// Window drag-drop (#26): a dropped `.csv` enters the same import flow as
@@ -1304,6 +1360,27 @@ impl CanvasApp {
             let name_of = |id: u64| self.tether_name_of(id);
             draft.commit(stamp, &name_of)
         };
+
+        // #38: the finished ritual, serialized. Model + data paths resolve
+        // library-relative where possible so the manifest travels; T defaults
+        // and is edited in the saved file, not re-asked here.
+        let model_ref = self
+            .current_model_path
+            .clone()
+            .map(|p| self.manifest_path_str(&p))
+            .or_else(|| self.current_model_name.clone().map(|n| format!("{n}.json")));
+        let data_ref = self
+            .import_source_path
+            .clone()
+            .map(|p| self.manifest_path_str(&p))
+            .unwrap_or_else(|| draft.source_file.clone());
+        if let Some(model_ref) = model_ref {
+            let t = DEFAULT_T.parse::<f64>().unwrap_or(30.0);
+            let label_of = |id: u64| self.tether_name_of(id);
+            self.last_mapping_manifest = Some(manifest::RunManifest::from_draft(
+                &draft, model_ref, data_ref, t, &label_of,
+            ));
+        }
 
         // Unmapped disclosure: bond flows and components that got no series.
         let flows_total = self.relations.iter().filter(|r| r.is_bond).count();
@@ -3036,6 +3113,7 @@ impl CanvasApp {
             source_file: d.source_file.clone(),
             imported_at: d.imported_at.clone(),
             mapped,
+            manifest_hash: None,
         };
         (Some(params), Some(prov))
     }
@@ -3784,6 +3862,23 @@ impl CanvasApp {
                         .clicked()
                     {
                         self.export_world_model(lens);
+                        ui.close_menu();
+                    }
+                    // #38: the mapping ritual, saved. Meaning was assigned by
+                    // hand once in the wizard; the manifest replays it headless
+                    // (`bert-lenses run <manifest>`), no re-clicking.
+                    if ui
+                        .add_enabled(
+                            self.last_mapping_manifest.is_some(),
+                            egui::Button::new("Save run manifest…"),
+                        )
+                        .on_hover_text(
+                            "Save this import's column mapping + run config as a manifest — \
+                             replay it headless with `bert-lenses run <manifest.json>`",
+                        )
+                        .clicked()
+                    {
+                        self.save_run_manifest();
                         ui.close_menu();
                     }
                 });
@@ -4948,10 +5043,193 @@ fn math_note(ui: &mut egui::Ui, s: &str) {
     ui.label(egui::RichText::new(s).small().color(theme::INK_FAINT));
 }
 
+/// Headless run mode (bert-lenses#38): `bert-lenses run <manifest.json>` executes
+/// a declared run with no GUI — the SAME load path, the SAME mapping gates
+/// (T1/T2/T4 refuse with the wizard's own messages), the SAME projection and
+/// ledger. The manifest is the wizard's one deliberate mapping ritual,
+/// serialized; nothing here is a second path that could drift. The appended
+/// ledger line carries the manifest's file hash, so `ledger line → manifest →
+/// rerun` closes the reproducibility loop.
+#[cfg(not(target_arch = "wasm32"))]
+fn headless_run(manifest_path: &std::path::Path) -> Result<String, String> {
+    let raw = std::fs::read_to_string(manifest_path)
+        .map_err(|e| format!("could not read manifest {}: {e}", manifest_path.display()))?;
+    let mf: manifest::RunManifest =
+        serde_json::from_str(&raw).map_err(|e| format!("not a run manifest: {e}"))?;
+    let mf_hash = manifest::manifest_hash(&raw);
+
+    let mut app = CanvasApp::default();
+    let base = manifest_path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
+    let lib = app.lib_dir();
+    // Paths resolve absolute → manifest-relative → library-relative, loudly.
+    let resolve = |rel: &str| -> Result<std::path::PathBuf, String> {
+        let p = std::path::Path::new(rel);
+        if p.is_absolute() {
+            return if p.exists() {
+                Ok(p.to_path_buf())
+            } else {
+                Err(format!("\"{rel}\" does not exist"))
+            };
+        }
+        for cand in [base.join(rel), lib.join(rel)] {
+            if cand.exists() {
+                return Ok(cand);
+            }
+        }
+        Err(format!(
+            "\"{rel}\" not found beside the manifest ({}) or in the library ({})",
+            base.display(),
+            lib.display()
+        ))
+    };
+
+    let model_path = resolve(&mf.model)?;
+    app.load_path(&model_path);
+    if let Some(e) = app.gen_error.take() {
+        return Err(format!("model did not load: {e}"));
+    }
+    if app.things.is_empty() {
+        return Err(format!("{} loaded but holds no model elements", model_path.display()));
+    }
+
+    let data_path = resolve(&mf.data)?;
+    let csv = std::fs::read_to_string(&data_path)
+        .map_err(|e| format!("could not read CSV {}: {e}", data_path.display()))?;
+    let (headers, rows) =
+        tether::parse_csv(&csv).map_err(|e| format!("CSV did not parse: {e:?}"))?;
+    let file_name = data_path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("data.csv")
+        .to_string();
+    let mut draft = MappingDraft::new(file_name, headers, rows);
+
+    // Name→id tables from the live model, using the SAME labels the app shows —
+    // manifests speak domain names, resolution is strict (no silent misbind).
+    let flows: Vec<(u64, String)> = app
+        .relations
+        .iter()
+        .filter(|r| r.is_bond)
+        .map(|r| (r.id, app.flow_label(r)))
+        .collect();
+    let comps: Vec<(u64, String)> = app
+        .things
+        .iter()
+        .filter(|t| t.role == Role::Component)
+        .map(|t| (t.id, t.name.clone()))
+        .collect();
+    mf.apply_to_draft(&mut draft, &manifest::ResolveCtx { flows: &flows, components: &comps })
+        .map_err(|errs| format!("manifest does not bind to the model:\n  {}", errs.join("\n  ")))?;
+
+    // The gates — exactly the three the wizard's Finish button is disabled by.
+    let mut refusals: Vec<String> = Vec::new();
+    if !draft.is_total() {
+        for (i, a) in draft.assignments.iter().enumerate() {
+            if !a.resolved() {
+                refusals.push(format!(
+                    "column \"{}\" is {} — every column must be spoken for",
+                    draft.headers[i],
+                    a.role_word()
+                ));
+            }
+        }
+    }
+    if let Err(e) = draft.units_ok() {
+        refusals.push(e);
+    }
+    if let Err(e) = draft.time_unique_ok() {
+        refusals.push(e);
+    }
+    if !refusals.is_empty() {
+        return Err(format!("import refused:\n  {}", refusals.join("\n  ")));
+    }
+
+    let stamp = tether::today_stamp();
+    let data = {
+        let name_of = |id: u64| app.tether_name_of(id);
+        draft.commit(stamp, &name_of)
+    };
+    app.imported = Some(data);
+
+    let dt = draft.dt_text.trim().parse::<f64>().unwrap_or(1.0);
+    if dt <= 0.0 || mf.t <= 0.0 {
+        return Err(format!("Δt ({dt}) and T ({}) must be positive", mf.t));
+    }
+
+    // Surface projection refusals with their reasons (run_model swallows them).
+    let wm = app.world_model(Lens::Mobus);
+    if let Err(errs) = validate_operational(&wm) {
+        return Err(format!(
+            "model does not project to a runnable spec:\n  {}",
+            errs.iter()
+                .map(|e| format!("{}: {}", e.location, e.reason))
+                .collect::<Vec<_>>()
+                .join("\n  ")
+        ));
+    }
+
+    let res = app
+        .run_model(Lens::Mobus, dt, mf.t)
+        .ok_or_else(|| "the run failed to record".to_string())?;
+    let comparisons = app.comparisons(&res);
+    let model_name = app
+        .current_model_name
+        .clone()
+        .unwrap_or_else(|| "untitled".to_string());
+    let (declared, mut prov) = app.ledger_extras();
+    if let Some(p) = prov.as_mut() {
+        p.manifest_hash = Some(mf_hash.clone());
+    }
+    let line = ledger_line(&res, &comparisons, &model_name, declared, prov);
+    ledger::append_summary(&ledger::default_runs_dir(), &line)
+        .map_err(|e| format!("the run completed but the ledger append failed: {e}"))?;
+
+    // The verdict, in the run panel's own voice.
+    let mut out = format!(
+        "{model_name} · Δt {dt}, T {} ({} ticks) · residual {:.4} · behavior set {} of {}\n",
+        mf.t,
+        res.ticks,
+        res.residual,
+        res.identity_default_m - res.identity_default_n,
+        res.identity_default_m,
+    );
+    let mut divs: Vec<(f32, String, String)> = comparisons
+        .iter()
+        .filter_map(|c| c.divergence_pct().map(|p| (p, c.element_name.clone(), c.unit.clone())))
+        .collect();
+    divs.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+    if divs.is_empty() {
+        out.push_str("no tethered elements to compare — ran clean, nothing measured\n");
+    } else {
+        for (pct, name, _unit) in &divs {
+            out.push_str(&format!("  {:>8.1}% off reality at horizon · {name}\n", pct));
+        }
+    }
+    out.push_str(&format!(
+        "ledger: {} (manifest {mf_hash})",
+        ledger::default_runs_dir().join("ledger.jsonl").display()
+    ));
+    Ok(out)
+}
+
 fn main() -> eframe::Result<()> {
     // Headless convert mode: `canvas convert <spec.json> <out.json>` runs the SAME model_from_spec
     // the GUI uses — one source of truth for the spec→Model distillation, no parallel reimplementation.
     let args: Vec<String> = std::env::args().collect();
+    // Headless run mode (bert-lenses#38): `bert-lenses run <manifest.json>` — see `headless_run`.
+    #[cfg(not(target_arch = "wasm32"))]
+    if args.len() >= 3 && args[1] == "run" {
+        match headless_run(std::path::Path::new(&args[2])) {
+            Ok(summary) => {
+                println!("{summary}");
+                std::process::exit(0);
+            }
+            Err(e) => {
+                eprintln!("run refused: {e}");
+                std::process::exit(1);
+            }
+        }
+    }
     if args.len() >= 4 && args[1] == "convert" {
         let raw = std::fs::read_to_string(&args[2]).expect("read spec");
         let v: serde_json::Value = serde_json::from_str(&raw).expect("parse spec");

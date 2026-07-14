@@ -62,6 +62,11 @@ pub struct ImportProvenance {
     pub imported_at: String,
     /// Human-readable mappings, e.g. "total_tokens → flow magnitude of market → consumer".
     pub mapped: Vec<String>,
+    /// The run manifest's file hash when the run was manifest-driven (#38) —
+    /// the key that makes a ledger line re-executable (`ledger → manifest →
+    /// rerun`). `None` for interactive runs; default so older lines parse.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manifest_hash: Option<String>,
 }
 
 /// The auto-appended summary line — one JSON object per completed run.
@@ -284,6 +289,7 @@ mod tests {
             provenance: Some(ImportProvenance {
                 source_file: "tank.csv".to_string(),
                 imported_at: "2026-07-11".to_string(),
+                manifest_hash: None,
                 mapped: vec!["level → stock level of Tank".to_string()],
             }),
             build: Some("abc1234".to_string()),
