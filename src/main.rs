@@ -2863,6 +2863,26 @@ struct RunResults {
     recorded_at: String,
 }
 
+impl RunResults {
+    /// Total accumulated mass — the scale the residual is only meaningful
+    /// against. A residual is alarming only relative to what flowed: at
+    /// 10¹⁴-token magnitudes an absolute 6.7e7 is f32 rounding, not a leak.
+    fn throughput(&self) -> f32 {
+        self.levels.iter().map(|l| l.value.abs()).sum::<f32>().max(1.0)
+    }
+
+    /// The residual as a fraction of throughput — the honest, scale-free figure.
+    fn residual_relative(&self) -> f32 {
+        self.residual.abs() / self.throughput()
+    }
+
+    /// Conserves when the relative residual is at floating-point-noise level —
+    /// a scale-free test, so a big model doesn't read as "leaking" over rounding.
+    fn conserves(&self) -> bool {
+        self.residual_relative() < 1e-4
+    }
+}
+
 /// True when a projected component carries no author-chosen transfer characteristic
 /// beyond the bare primitive (grounding C2): no cognitive params and no seeded
 /// stock. Such a component is a valid minimal work process, but one whose behavior
@@ -3526,7 +3546,7 @@ impl CanvasApp {
                 }
                 ui.add_space(10.0);
 
-                let conserves = res.residual.abs() < 1e-3;
+                let conserves = res.conserves();
                 let chosen = res.identity_default_m.saturating_sub(res.identity_default_n);
 
                 // The lead comparison (sharpest divergence) drives the verdict.
@@ -3688,16 +3708,25 @@ impl CanvasApp {
                                     .color(theme::INK_FAINT),
                             )
                             .on_hover_text(
-                                "How much substance the run created or destroyed overall. \
-                                 ~0 means nothing leaked — the model balances; a large value means \
-                                 flow is appearing or vanishing where it shouldn't.",
+                                "How much substance the run created or destroyed, as a fraction \
+                                 of everything that flowed. ~0 means nothing leaked — the model \
+                                 balances; a large fraction means flow is appearing or vanishing \
+                                 where it shouldn't. (Shown relative so a big model doesn't read \
+                                 as leaking over floating-point rounding.)",
                             );
                             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                let rel = res.residual_relative();
+                                let text = if rel < 1e-9 {
+                                    "0 — balanced".to_string()
+                                } else {
+                                    format!("{rel:.1e} of throughput")
+                                };
                                 ui.label(
-                                    egui::RichText::new(format!("{:.4}", res.residual))
+                                    egui::RichText::new(text)
                                         .small()
                                         .color(if conserves { theme::OK } else { theme::WARN }),
-                                );
+                                )
+                                .on_hover_text(format!("absolute residual {:.0}", res.residual));
                             });
                         });
                     });
@@ -5294,11 +5323,15 @@ fn headless_run(manifest_path: &std::path::Path) -> Result<String, String> {
         .map_err(|e| format!("the run completed but the ledger append failed: {e}"))?;
 
     // The verdict, in the run panel's own voice.
+    let residual_note = if res.residual_relative() < 1e-9 {
+        "residual 0 (balanced)".to_string()
+    } else {
+        format!("residual {:.1e} of throughput", res.residual_relative())
+    };
     let mut out = format!(
-        "{model_name} · Δt {dt}, T {} ({} ticks) · residual {:.4} · behavior set {} of {}\n",
+        "{model_name} · Δt {dt}, T {} ({} ticks) · {residual_note} · behavior set {} of {}\n",
         mf.t,
         res.ticks,
-        res.residual,
         res.identity_default_m - res.identity_default_n,
         res.identity_default_m,
     );
