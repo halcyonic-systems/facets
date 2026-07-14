@@ -5285,11 +5285,17 @@ fn headless_run(manifest_path: &std::path::Path) -> Result<String, String> {
         draft.commit(stamp, &name_of)
     };
     // Longest forced series = the data horizon; ticks past it are projection (#34).
+    // The horizon of a forced flow is its sample count TIMES its stride — a slow
+    // channel's data covers `len × stride` fast ticks before it runs out (rung 3).
     let data_horizon = data
         .forced
         .iter()
-        .filter_map(|rid| data.flow_series.get(rid))
-        .map(|s| s.present().len())
+        .filter_map(|rid| {
+            data.flow_series.get(rid).map(|s| {
+                let stride = data.stride.get(rid).copied().unwrap_or(1).max(1) as usize;
+                s.present().len() * stride
+            })
+        })
         .max()
         .unwrap_or(0);
     app.imported = Some(data);
