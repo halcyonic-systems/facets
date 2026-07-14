@@ -1943,21 +1943,26 @@ fn to_world_model_with(
             // `conductance` is. The scalar `amount` above stays as the horizon
             // fallback. Unforced flows carry no parameters — byte-for-byte the
             // old projection.
-            parameters: params
-                .flow_series
-                .get(&r.id)
-                .map(|series| {
-                    vec![bert_core::Parameter {
+            parameters: {
+                let mut ps = Vec::new();
+                if let Some(series) = params.flow_series.get(&r.id) {
+                    ps.push(bert_core::Parameter {
                         name: "series".to_string(),
-                        value: series
-                            .iter()
-                            .map(|v| v.to_string())
-                            .collect::<Vec<_>>()
-                            .join(","),
+                        value: series.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(","),
                         ..Default::default()
-                    }]
-                })
-                .unwrap_or_default(),
+                    });
+                }
+                // Multi-timescale (rung 3): a slow channel's Δt stride rides as a
+                // `dt_stride` parameter, read at the seam like `series`.
+                if let Some(&n) = params.flow_stride.get(&r.id) {
+                    ps.push(bert_core::Parameter {
+                        name: "dt_stride".to_string(),
+                        value: n.to_string(),
+                        ..Default::default()
+                    });
+                }
+                ps
+            },
             smart_parameters: vec![],
             endpoint_offset: None,
         });
@@ -5776,6 +5781,7 @@ mod tests {
             stock_series: HashMap::new(),
             param_series,
             forced: Default::default(),
+            stride: Default::default(),
         });
 
         let res = app.run_model(Lens::Mobus, 1.0, 10.0).expect("the model runs");

@@ -102,6 +102,12 @@ pub struct ImportedData {
     /// every flow collapses to its mean, exactly as before.
     #[serde(default)]
     pub forced: HashSet<u64>,
+    /// Multi-timescale (rung 3): relation id → the channel's Δt as an integer
+    /// multiple of the base tick. A flow with stride `n>1` is sampled once every
+    /// `n` ticks and zero-order-held between — a slower channel (e.g. annual over
+    /// a monthly tick). Absent/1 = the base clock. Only meaningful with `forced`.
+    #[serde(default)]
+    pub stride: HashMap<u64, u32>,
 }
 
 impl ImportedData {
@@ -126,6 +132,12 @@ impl ImportedData {
                 let series = s.present();
                 if !series.is_empty() {
                     params.flow_series.insert(*rid, series);
+                }
+                // A forced flow on a slower clock carries its stride (rung 3).
+                if let Some(&n) = self.stride.get(rid) {
+                    if n > 1 {
+                        params.flow_stride.insert(*rid, n);
+                    }
                 }
             }
         }
@@ -171,6 +183,9 @@ pub struct ModelParams {
     /// projected as a `series` parameter on its Flow interaction so the source
     /// emits it tick by tick. Absent = the flow uses its scalar `flow_amount`.
     pub flow_series: HashMap<u64, Vec<f64>>,
+    /// Relation id → the channel's Δt stride (rung 3): projected as a `dt_stride`
+    /// parameter so a slow channel zero-order-holds between samples. Absent = 1.
+    pub flow_stride: HashMap<u64, u32>,
     /// Component thing id → initial storage.
     pub stock_initial: HashMap<u64, f64>,
     /// Component thing id → (parameter name, value).
@@ -243,6 +258,10 @@ pub struct MappingDraft {
     /// meaningful for a flow magnitude. The wizard's checkbox writes here; commit
     /// turns it into `ImportedData.forced`.
     pub forced: Vec<bool>,
+    /// Per-column channel stride, parallel to `headers` (rung 3): `n>1` means
+    /// this forced flow is sampled once every `n` base ticks (a slower channel).
+    /// 0/1 = the base clock. Only meaningful on a forced flow magnitude.
+    pub stride: Vec<u32>,
     /// The observation Δt: inferred from the time column, editable as text.
     pub dt_text: String,
 }
@@ -309,6 +328,7 @@ impl MappingDraft {
             assignments: vec![Assignment::Unassigned; n],
             units: vec![String::new(); n],
             forced: vec![false; n],
+            stride: vec![1; n],
             dt_text: "1".to_string(),
         }
     }
@@ -482,6 +502,11 @@ impl MappingDraft {
                     // force checkbox, now first-class alongside the headless path.
                     if self.forced.get(col).copied().unwrap_or(false) {
                         data.forced.insert(*id);
+                        // A forced flow on a slower clock carries its stride (rung 3).
+                        let n = self.stride.get(col).copied().unwrap_or(1);
+                        if n > 1 {
+                            data.stride.insert(*id, n);
+                        }
                     }
                 }
                 Assignment::StockLevel(Some(id)) => {

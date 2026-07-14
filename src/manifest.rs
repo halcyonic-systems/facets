@@ -62,6 +62,12 @@ pub struct ColumnMapping {
     /// every existing manifest keeps its mean-collapse behavior unchanged.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub force: bool,
+    /// Multi-timescale (rung 3): the channel's Δt as an integer multiple of the
+    /// base tick — `"every": 12` samples this forced flow once every 12 ticks
+    /// (annual over a monthly tick), zero-order-held between. Only meaningful on
+    /// a forced `flow`. Omitted/1 = the base clock, every existing manifest.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub every: Option<u32>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
@@ -197,6 +203,10 @@ impl RunManifest {
                     if col < draft.forced.len() {
                         draft.forced[col] = m.force && m.role == Role::Flow;
                     }
+                    // Restore the channel stride (rung 3).
+                    if col < draft.stride.len() {
+                        draft.stride[col] = m.every.filter(|_| m.role == Role::Flow).unwrap_or(1);
+                    }
                 }
                 Err(e) => errors.push(e),
             }
@@ -250,6 +260,12 @@ impl RunManifest {
                     // Carry the wizard's force choice, so a saved manifest re-runs
                     // exactly what was authored (#16, wizard force toggle).
                     force: matches!(role, Role::Flow) && draft.forced.get(i).copied().unwrap_or(false),
+                    // Carry the channel stride (rung 3), only when slower than base.
+                    every: draft
+                        .stride
+                        .get(i)
+                        .copied()
+                        .filter(|&n| n > 1 && matches!(role, Role::Flow)),
                 }
             })
             .collect();
@@ -304,6 +320,7 @@ mod tests {
                     element: None,
                     unit: None,
                     force: false,
+                    every: None,
                 },
                 ColumnMapping {
                     column: "anthropic_tok".into(),
@@ -311,6 +328,7 @@ mod tests {
                     element: Some("Anthropic tokens routed".into()),
                     unit: Some("tok/mo".into()),
                     force: false,
+                    every: None,
                 },
                 ColumnMapping {
                     column: "label".into(),
@@ -318,6 +336,7 @@ mod tests {
                     element: None,
                     unit: None,
                     force: false,
+                    every: None,
                 },
             ],
             dt: None,
