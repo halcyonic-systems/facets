@@ -1287,6 +1287,15 @@ impl CanvasApp {
                         if matches!(draft.assignments[i], Assignment::FlowMagnitude(_)) {
                             ui.label(egui::RichText::new("units").small().color(theme::INK_FAINT));
                             ui.add(egui::TextEdit::singleline(&mut draft.units[i]).desired_width(70.0).hint_text("$/mo"));
+                            // Force (#16): emit the series tick by tick instead of a
+                            // mean — a source's observed output, or a splitter's
+                            // per-tick allocation weight (rung 2).
+                            ui.add(egui::Checkbox::new(&mut draft.forced[i], "force"))
+                                .on_hover_text(
+                                    "Emit this column's series tick by tick instead of its \
+                                     average — a forced source rate, or a splitter's per-tick \
+                                     allocation weight. Leave off to supply the mean.",
+                                );
                         }
                     });
                     // The live translation sentence.
@@ -5198,25 +5207,12 @@ fn headless_run(manifest_path: &std::path::Path) -> Result<String, String> {
     }
 
     let stamp = tether::today_stamp();
-    let mut data = {
+    // `apply_to_draft` set the draft's force flags from the manifest, so commit
+    // populates `data.forced` — one path shared with the wizard (#16).
+    let data = {
         let name_of = |id: u64| app.tether_name_of(id);
         draft.commit(stamp, &name_of)
     };
-    // The flagged flows emit their series (#16). Names were already validated as
-    // flows by `apply_to_draft`, so this resolution against the same table cannot
-    // misbind.
-    data.forced = mf
-        .mapping
-        .iter()
-        .filter(|m| m.force)
-        .filter_map(|m| m.element.as_deref())
-        .filter_map(|name| {
-            flows
-                .iter()
-                .find(|(_, n)| n.trim() == name.trim())
-                .map(|(id, _)| *id)
-        })
-        .collect();
     // Longest forced series = the data horizon; ticks past it are projection (#34).
     let data_horizon = data
         .forced

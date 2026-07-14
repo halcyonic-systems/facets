@@ -237,6 +237,12 @@ pub struct MappingDraft {
     /// Per-column declared unit, parallel to `headers` (only meaningful for a flow
     /// magnitude; T2 refuses an empty one).
     pub units: Vec<String>,
+    /// Per-column force flag, parallel to `headers` (#16): a forced flow column
+    /// EMITS its series tick by tick (a source's observed output, or a splitter's
+    /// per-tick allocation weight) instead of being collapsed to a mean. Only
+    /// meaningful for a flow magnitude. The wizard's checkbox writes here; commit
+    /// turns it into `ImportedData.forced`.
+    pub forced: Vec<bool>,
     /// The observation Δt: inferred from the time column, editable as text.
     pub dt_text: String,
 }
@@ -302,6 +308,7 @@ impl MappingDraft {
             rows,
             assignments: vec![Assignment::Unassigned; n],
             units: vec![String::new(); n],
+            forced: vec![false; n],
             dt_text: "1".to_string(),
         }
     }
@@ -471,6 +478,11 @@ impl MappingDraft {
                 Assignment::Time => data.time = self.column_values(col),
                 Assignment::FlowMagnitude(Some(id)) => {
                     data.flow_series.insert(*id, series(*id));
+                    // A forced flow column emits its series (#16) — the wizard's
+                    // force checkbox, now first-class alongside the headless path.
+                    if self.forced.get(col).copied().unwrap_or(false) {
+                        data.forced.insert(*id);
+                    }
                 }
                 Assignment::StockLevel(Some(id)) => {
                     data.stock_series.insert(*id, series(*id));

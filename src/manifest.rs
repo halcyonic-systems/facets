@@ -192,6 +192,11 @@ impl RunManifest {
                     if let Some(u) = &m.unit {
                         draft.units[col] = u.clone();
                     }
+                    // Restore the force flag so commit() reproduces the forced set —
+                    // one path for both the wizard and a loaded manifest (#16).
+                    if col < draft.forced.len() {
+                        draft.forced[col] = m.force && m.role == Role::Flow;
+                    }
                 }
                 Err(e) => errors.push(e),
             }
@@ -242,9 +247,9 @@ impl RunManifest {
                     role,
                     element,
                     unit: (!unit.is_empty()).then(|| unit.to_string()),
-                    // The wizard doesn't yet express forcing (#16 is headless-first);
-                    // a saved manifest is unforced until the wizard UI lands.
-                    force: false,
+                    // Carry the wizard's force choice, so a saved manifest re-runs
+                    // exactly what was authored (#16, wizard force toggle).
+                    force: matches!(role, Role::Flow) && draft.forced.get(i).copied().unwrap_or(false),
                 }
             })
             .collect();
@@ -453,10 +458,14 @@ mod tests {
         wizard.assignments[0] = Assignment::Time;
         wizard.assignments[1] = Assignment::FlowMagnitude(Some(10));
         wizard.units[1] = "tok/mo".into();
+        wizard.forced[1] = true; // the wizard's force toggle (#16)
         wizard.assignments[2] = Assignment::Ignore;
         let saved =
             RunManifest::from_draft(&wizard, "m.json".into(), "d.csv".into(), 3.0, &label_of);
-        assert_eq!(saved, manifest_with_dt(&saved), "shape is stable");
+        assert!(
+            saved.mapping[1].force,
+            "the wizard's force choice is saved into the manifest"
+        );
 
         let (h, r) = parse_csv(CSV).unwrap();
         let mut replay = MappingDraft::new("d.csv".into(), h, r);
@@ -471,14 +480,7 @@ mod tests {
             .expect("saved manifest re-applies");
         assert_eq!(replay.assignments, wizard.assignments);
         assert_eq!(replay.units, wizard.units);
-    }
-
-    // from_draft carries the draft's dt; the fixture builder mirrors it so the
-    // shape assertion above stays exact.
-    fn manifest_with_dt(saved: &RunManifest) -> RunManifest {
-        let mut m = manifest();
-        m.dt = saved.dt;
-        m
+        assert_eq!(replay.forced, wizard.forced, "force round-trips: wizard → manifest → draft");
     }
 
     #[test]
