@@ -1654,9 +1654,24 @@ fn model_from_spec(spec: &serde_json::Value) -> (Vec<Thing>, Vec<Relation>, u64)
     let empty = vec![];
 
     // Components first (so a name shared with a source/sink interns as Component).
+    // A subsystem may declare its Mobus `primitive` (e.g. "Splitting") — the
+    // generator stamps it so a generated model can be RUN without a manual
+    // palette pass (needed for any computed-dynamics model, e.g. rung-2
+    // allocation). Absent = None, exactly as before.
     for ss in spec.get("subsystems").and_then(|x| x.as_array()).unwrap_or(&empty) {
         let n = str_at(ss, "name");
-        if !n.is_empty() { intern(n, Role::Component, &mut things, &mut map, &mut next); }
+        if !n.is_empty() {
+            let id = intern(n, Role::Component, &mut things, &mut map, &mut next);
+            if let Some(prim) = ss
+                .get("primitive")
+                .and_then(|v| v.as_str())
+                .and_then(|s| serde_json::from_value::<ProcessPrimitive>(serde_json::Value::String(s.to_string())).ok())
+            {
+                if let Some(t) = things.iter_mut().find(|t| t.id == id) {
+                    t.primitive = Some(prim);
+                }
+            }
+        }
     }
     for key in ["sources", "sinks"] {
         for e in spec.get(key).and_then(|x| x.as_array()).unwrap_or(&empty) {
@@ -3042,6 +3057,14 @@ impl CanvasApp {
             });
         }
         for (rid, s) in &d.flow_series {
+            // A series carried as a WEIGHT (rung 2) is a control input that drives
+            // a computed split — not an observable to score against reality. Its
+            // units are incommensurate with the flow it governs, so comparing them
+            // is meaningless; skip it (the split still runs, and conservation
+            // remains the honest check).
+            if s.unit.eq_ignore_ascii_case("weight") {
+                continue;
+            }
             let Some(r) = self.relations.iter().find(|r| r.id == *rid) else {
                 continue;
             };
