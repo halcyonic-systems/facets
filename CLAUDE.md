@@ -37,10 +37,14 @@ exists to keep it true.
   tether (`tether.rs`, `manifest.rs`). Built to `pkg/` via wasm-pack (gitignored).
 - `web/` — React 19 + TS + Vite 6 + Tailwind 4. `src/kernel/` is the only place the
   face touches the wasm; `src/kernel/types.ts` mirrors the API.md shapes.
-- `assets/` — sample models. `models/examples/*.json` are MIXED-VERSION fixtures
-  (older blockchain models from different BERT eras — all still validate). Prefer
-  the RECENT canonical models (`thermostat.json`, `*-generic.json`) as demo samples;
-  `models/runnable-sample.json` is minted (executable) for run() demos.
+- `assets/` — sample models. `models/examples/*.json` (blockchain models) are the
+  **canonical epitome of old-bert's STRUCTURAL/diagramming peak** — kept for
+  reference and future revamp (old bert peaked as a structure visual tool; its
+  sim bolt-ons never landed — that executable frontier is what this rebuild cracks
+  via the in-browser compose engine). They are structural, not executable. No
+  model here is precious; all bert-lenses models to date were toy demos. Phase 1
+  builds purpose-built bert-lenses-native samples (executable where run() needs
+  them). `models/runnable-sample.json` is a throwaway minted from the engine.
 
 ## Working rules
 
