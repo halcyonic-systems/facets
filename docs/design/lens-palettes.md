@@ -1,5 +1,14 @@
 # Three faithful palettes — Klir · Bunge · Mobus
 
+> **Status (2026-07-15): implemented — Phase 3 (#44).** The two kernel
+> primitives are `bert-core::{boundary_components, edge_locus}` surfaced
+> canvas-keyed via `bert-lenses-kernel/src/lenses.rs` (`lens_facts`,
+> `describe`); the renderings live in `web/src/canvas/Canvas.tsx` and the
+> formal face in `web/src/FormalPanel.tsx`. Still open from this doc: boundary
+> property *authoring* (porosity/fuzziness are rendered but always 0.0 until
+> the canvas can set them), work-process badges beyond the primitive dot, Δt/H
+> dynamical markers, and the per-lens authoring palette (§ Interaction).
+
 *Design reference for the canvas lens rendering. Grounded in the primary sources
 in the vault (not priors): Klir, *Facets of Systems Science*; Bunge, *Treatise on
 Basic Philosophy* Vol. 4, *A World of Systems* (1979); Mobus, *Systems Science:

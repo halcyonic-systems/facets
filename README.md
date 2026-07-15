@@ -58,9 +58,23 @@ tokens + the invariant are in [`web/DESIGN.md`](web/DESIGN.md).
 ## Status
 
 Rebuilt web-first (egui → React) in phases; the kernel + engine were consolidated
-here and made wasm-ready. **Phase 0 (self-contained wasm kernel + frozen API +
-smoke slice) is complete.** Next: the CSV mapping wizard + run/results panel
-(Phase 1), then an adversarial canvas spike (Phase 2). The prior egui app lives
+here and made wasm-ready. **Phases 0–3 are complete:**
+
+- **Phase 0** — self-contained wasm kernel + frozen API + smoke slice.
+- **Phase 1** — CSV tether wizard + domain-legible forced run/results panel.
+- **Phase 2/2b** — hand-rolled React+SVG canvas (ADR 0001) + drive-a-flow + run
+  + SimScrubber (the sim animates on the structure).
+- **Phase 3** (#44) — the lens toggle switches *ontologies*: two kernel
+  primitives (`boundary_components`, `edges` — the boundary identity and the
+  flow→bond→relation ladder) feed three faithful renderings (Mobus membrane +
+  interface ports + first-class environment; Bunge marked boundary set + the
+  aggregate-vs-system verdict; Klir relation-primary neutral lines), per-lens
+  edge editing, and a KaTeX formal face (`describe(model, lens)`). Grounding:
+  `docs/design/lens-palettes.md`.
+
+Next: the per-lens authoring palette (how each lens adds its own kinds of
+things — sources/sinks/interfaces at Mobus, the stripped Bunge set), grounded in
+the same design doc + Bunge chs. 1–2 / Mobus ch. 4. The prior egui app lives
 on the `pre-web-rebuild` tag / `archive/egui-app` branch for reference.
 
 The instrument is one of the two faces of the K≅2 kernel: the *structural* face

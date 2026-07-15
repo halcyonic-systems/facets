@@ -42,7 +42,11 @@ exists to keep it true.
   both ways), `run` (recorder), plus `examples`/`ladder`/`lens` vocabulary. Uses
   `glam::Vec2` for node geometry (was `egui::Pos2`).
 - `crates/bert-lenses-kernel` — the wasm-bindgen boundary (`api.rs`) + the pure CSV
-  tether (`tether.rs`, `manifest.rs`). Built to `pkg/` via wasm-pack (gitignored).
+  tether (`tether.rs`, `manifest.rs`) + the canvas seam (`canvas.rs`: project /
+  to_canvas / validate_connection) + the lens primitives (`lenses.rs`:
+  `lens_facts` — boundary identity set, edge ladder, ports, aggregate verdict,
+  all canvas-keyed — and `describe`, the formal face). Built to `pkg/` via
+  wasm-pack (gitignored).
 - `web/` — React 19 + TS + Vite 6 + Tailwind 4. `src/kernel/` is the only place the
   face touches the wasm; `src/kernel/types.ts` mirrors the API.md shapes.
 - `assets/` — sample models. `models/examples/*.json` (blockchain models) are the
@@ -64,4 +68,8 @@ exists to keep it true.
   Don't "fix" a structural model to make run() work; that's expected.
 - The prior egui app is on tag `pre-web-rebuild` / branch `archive/egui-app`.
 - Full phase plan: `~/.claude/plans/cold-start-prompt-scalable-galaxy.md`;
-  GitHub issues #11 (plan) + #41/#42/#43 (phases).
+  GitHub issues #11 (plan) + #41/#42/#43/#44 (phases 0–3, all implemented).
+- Phase 3 rule of thumb: every ontology-bearing visual reads a `lens_facts` /
+  `describe` field (kernel verdicts, canvas-keyed). If a rendering branch needs
+  a systems fact the kernel doesn't expose yet, extend `lenses.rs` — don't
+  derive it in TS. Faithfulness cites live in code comments next to each rule.
