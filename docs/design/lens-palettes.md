@@ -53,11 +53,13 @@ relation + observer       + real bonds,          + first-class Environment,
   boundaries).** Bunge and Mobus deeply agree: the boundary is **relational, not
   geometric** (Bunge's hydrogen-atom/TV-network ≈ Mobus's "implied by relative
   interaction strength"), **environment-coupling-based**, and **computable, not
-  drawn**. The only difference is reification: **Bunge leaves it a *derived
-  component-subset*** (a predicate over C — which components couple to E); **Mobus
-  *reifies* it** as a first-class element `B=⟨P,I⟩` with its own properties
-  (porosity, fuzziness) + interface-subsystems-with-protocols. Mobus's boundary
-  *is* Bunge's, promoted to an object and equipped with a crossing mechanism —
+  drawn**. The difference is reification (not merely cosmetic): **Bunge leaves it a
+  *derived component-subset*** (a predicate over C — which components couple to E);
+  **Mobus *reifies* it** as a first-class element `B=⟨P,I⟩` whose interfaces are
+  **protocol-bearing subsystems** `r=(S_{i,l+1}, φ)` with gating semantics (not just
+  marked components), with boundary properties (porosity, fuzziness). Mobus's
+  boundary *is* Bunge's boundary-component set, promoted to an object and equipped
+  with a crossing mechanism —
   Bunge's "input/output terminals" and Mobus's "interfaces in the boundary" are
   **the same nodes**. So: Klir doesn't foreground it → Bunge *identifies* it →
   Mobus *reifies + equips* it. (Nuance: Mobus's binding-force asymmetry — internal
@@ -68,27 +70,74 @@ relation + observer       + real bonds,          + first-class Environment,
   Mobus Lean (`Interface.lean:7`, `Boundary.lean:39`) — *"interface components
   **I ⊆ C**, the subset of components that transport flows across the boundary."*
   Both call the interior **"shielded"** (Bunge 1992 verbatim; `Boundary.lean:51`
-  *"non-interface components are 'shielded' from the environment"*). Mobus's
-  **Boundary Completeness** theorem (Showcase #3: every external flow passes through
-  an interface) is the formal capstone of Bunge's "I/O terminals are boundary
-  members." So:
+  *"non-interface components are 'shielded' from the environment"*). "Every external
+  flow passes through an interface" is `IsBipartiteFlow` (forces one endpoint to
+  env-objects, the other to interfaces) **together with** `BoundaryComplete`
+  (Showcase #3) — the connector is `bipartite_implies_boundary_complete`; cite both,
+  not `BoundaryComplete` alone. This is the formal capstone of Bunge's "I/O terminals
+  are boundary members." So:
   > **boundary (Bunge) = interfaces (Mobus) = { c ∈ C : coupled to the environment }**
-  — the SAME set, machine-checked; reification (properties + protocols) is the only
-  difference.
+  — the SAME set, machine-checked; reification (Mobus's interfaces carry properties +
+  protocols) is the difference.
 - **Design consequence:** ONE kernel primitive `boundary_components(model)` =
   `{c ∈ C : has an external flow}` feeds both lenses — the **Bunge** lens *marks*
   those nodes; the **Mobus** lens reifies them into a membrane + ports *on the same
   nodes*. Toggling Bunge→Mobus reifies the same set in place — a continuous,
   formally-grounded accretion, not a swap.
-- **Bunge = Mobus with B (as membrane), T, H, Δt stripped** — keep C + N + E
-  (composition + structure/bonds + environment), add the ontological bond/aggregate
-  cut and the boundary-component set. Bunge's M (mechanism) ↔ Mobus's T.
+- **The gradient is a forgetful projection (Lean), rendered as enrichment (UI).**
+  Not "tuple subsetting" — `MobusSystem.toBunge` (Showcase #1) *keeps* C→composition,
+  O→environment, `N∪G → S` via `totalRelation`, and leaves `I⊆C` derived; it
+  *discards* `{π, τ, η, δ, μ}` (boundary properties, transforms, history, time,
+  milieu) AND collapses/de-capacitates N,G into one undifferentiated relation. Bunge
+  then *adds* its own semantic predicates the 8-tuple doesn't carry (bond-vs-mere-
+  relation, connection-kinds, the aggregate verdict). So the Lean arrows point
+  Mobus→Bunge→Klir (forgetting); the UI toggle runs them backward (enriching).
 - **Klir = foreground the relational/behavioral skeleton** — abstract away
   substance-typing and boundary; direction optional; the *observer* stands behind.
 
 Each lens maps to a kernel `Mode` the kernel already validates (Klir→Core,
 Bunge→Structural, Mobus→Operational), so the palette **surfaces the kernel's
 verdict**, it never invents one.
+
+## The formal skeleton — two machine-checked convergences (K≅2 made concrete)
+
+The lens toggle rests on two structural identities in the Lean. **Nodes converge on
+the boundary theorem; edges converge on a flow→bond→relation ladder.** Together they
+are the spine of "one kernel, three faithful views."
+
+**1. The boundary identity (nodes)** — `boundary(Bunge) = interfaces(Mobus) =
+{c∈C : coupled to E}`, above.
+
+**2. The edge ladder (edges)** — the edge-side twin, equally machine-witnessed:
+> **flow** (Mobus `FlowEdge` with capacity κ + substance type) —*forget κ*→
+> **bond-candidate** (Bunge: directed pair + action test) —*forget direction*→
+> **relation** (Klir: neutral pair, orientation a toggle).
+Witnesses: `FlowNetwork.toRelation` forgets κ; **`FlowInducesAction` (`Bridge.lean`)
+IS Bunge's bond criterion** — a flow that modifies history is a bond (a▷b);
+`toRelation_irrefl` gives Klir's irreflexive `R ⊆ T×T`; dropping direction yields the
+neutral relation (grounding Klir's "neutral lines by default" *formally*, not by
+assertion). **Design:** one kernel primitive `edges(model)` feeds all three — Mobus
+paints κ + substance, Bunge paints connection-kind + bond-vs-mere, Klir paints
+arity/signature ± direction. And **endo/exo = N/G** (Bunge's split = `edge∈N` vs
+`edge∈G`, above) is the same kernel-computed classification.
+
+**3. Enrichment is real, and enumerable** — `toBunge_eq_of_structural_eq`: two Mobus
+systems that agree on `(C, O, totalRelation)` are Bunge-indistinguishable. So the
+Bunge lens is **provably blind** to `{π (boundary properties/porosity), τ
+(transforms), η (history), δ (time scale), μ (milieu)}`; the Mobus lens makes them
+visible. This is the machine-checked answer to "what does switching lenses *do*."
+
+**4. The milieu `μ` is the one element with NO cross-lens preimage.** `Environment.
+lean` keeps `milieu : μ` parametric/opaque; `MobusEnvironment.toBungeEnvironment`
+discards it; `milieuOnly_bunge_empty` proves a milieu-only environment has empty
+Bunge image. Klir has no environment primitive; Bunge's E = a flat set of things
+(= Mobus's O); **only Mobus has M.** This is the strongest formal argument that
+Mobus is *strictly* richer, not relabeled.
+
+**The commuting triangle** `Mobus → Bunge → Klir` (with a direct `Mobus → Klir`
+edge) is stated in `Bridge.lean:20` — the formal backbone of "one kernel, three
+views." Each edge is a forgetful map; the Klir edge additionally strips the
+ontological warrant (realist → observer-constituted).
 
 ---
 
@@ -102,10 +151,12 @@ observer**: "a system is what is distinguished as a system by the investigator"
 
 **Distinctives (vs Bunge/Mobus).** Epistemic not ontological. **Direction is
 optional** — "neutral systems" are undirected by default; "directed systems"
-merely add an input/output partition (Ch. 4). **No boundary** as a primitive (it
-appears only in Ch. 10 as an emergent *goal* of autopoietic systems). No
-ontological composition — only shared-variable coupling. Whole/part is a
-**reversible role** (holon), not fixed containment.
+merely add an input/output partition (Ch. 4). **No boundary** as a primitive — the
+system/environment distinction is the *observer's* methodological act (boundary is
+observer-constituted, not a property the system earns; a topological "boundary as
+goal" surfaces only in the self-organization chapter). No ontological composition —
+only shared-variable coupling. Whole/part is a **reversible role** (holon), not
+fixed containment.
 
 **Palette (the "bare relational algebra with an observer behind it" feel):**
 - The **relation/line is the salient, designed element**; nodes are minimal,
@@ -139,7 +190,12 @@ already enforces it (`validate_mode(Structural)` → the Bunge Def 1.1 error).
 **Distinctives.** Directed, **typed-by-kind** bonds: *n directed graphs, one per
 connection-kind* (mechanical / chemical / informational / social — §2.1). Structure
 splits into **endostructure** (bonds within C) and **exostructure** (C↔E). Self-
-loops are native (feedback, diagonal `M_pp`).
+loops are native to Bunge (feedback, diagonal `M_pp`) — **but this is a real
+cross-lens INCOMPATIBILITY, not a reification difference:** the Mobus Lean enforces
+`no_self_loops` (`FlowNetwork.lean:68`, Mobus §4.3 `k ≠ o`) → `toRelation_irrefl`,
+so a Bunge diagonal bond has **no Mobus preimage**. Mobus represents feedback as a
+2-cycle or via internal H/T dynamics, not a self-loop. The tool must state this
+asymmetry, not silently support self-loops in one lens and forbid them in another.
 
 **Boundary — Bunge DOES have one (1992), but it is RELATIONAL, not a ring.** The
 1979 Treatise rejects *geometric* boundary as definitory; Bunge 1992 (*System
@@ -163,11 +219,15 @@ in a concrete system that makes it what it is, that makes it behave the way it
 does"** (its "peculiar functioning or activity") — Bunge 2004, *How Does It Work?
 The Search for Explanatory Mechanisms* (Zotero `HLSEVZIT`); Bunge 1997, *Mechanism
 and Explanation* (`99SYJ2HP`). M is a **dynamical/behavioral** element, not
-structural — it maps onto **Mobus's T** (transformation), extending the `Bridge.lean`
-Mobus↔Bunge recapitulation. **Therefore M's visual home is the dynamical/formal
-layer (the math panel + the run), NOT the structural palette.** Document now,
-implement with the dynamical face. (Also revisit: Bunge 1992 *System Boundary*
-`RY7Z24Q7` — may nuance the "no boundary" rule beyond the 1979 Treatise.)
+structural. It is **conceptually parallel to Mobus's T** (both are the process/
+mechanism layer) — but **formally UNbridged in the current Lean**: `Bridge.lean`'s
+information-loss section lists T among what the Mobus→Bunge projection *discards*
+("away: milieu M, boundary properties π, transforms T, history H, time…"). The
+current bridge is CES, not CESM; there is no `toBunge_transforms`. So M↔T is a
+**candidate for a future dynamical bridge, not an extension of the existing one** —
+the math panel may display both, but must not claim formal backing the Lean
+contradicts. M's visual home is the dynamical/formal layer (math panel + run), NOT
+the structural palette. Document now, implement with the dynamical face.
 
 **Palette (structural):**
 - **Composition vs Environment as a set partition** — a soft color *wash* /
@@ -185,7 +245,14 @@ implement with the dynamical face. (Also revisit: Bunge 1992 *System Boundary*
   single most Bunge-specific visual rule.
 - **Endo/exo as an edge split** — internal bonds vs C↔E relations stroked
   differently.
-- Self-loops supported. **No ports, no flow-rates, no capacity** (Mobus additions).
+- Self-loops shown in Bunge (with the Mobus-incompatibility caveat above). **No
+  ports, no flow-rates, no capacity** (Mobus additions).
+- **Endo/exo = N/G, computed not stylistic.** The Lean makes the endo/exo split an
+  *equality*: endostructure = `internalNetwork.toRelation` (edges within C),
+  exostructure = `externalFlows.toRelation` (the bipartite C↔E), and
+  `totalRelation = toRelation(N) ∪ toRelation(G)`. So the stroke split is a
+  kernel-computed classification (`edge ∈ N` vs `edge ∈ G`), same kind as
+  `boundary_components` — not a hand-drawn choice.
 
 ---
 
@@ -242,8 +309,9 @@ Message promoted to co-equal (Principle 7, §3.5.2.2.5.4). N = internal network,
 environment bipartite graph; both directed, capacity-typed.
 
 **The dynamical face.** T (per-component transforms), H (history/memory), Δt
-(**per-node time constant** — higher levels have larger Δt, multi-timescale by
-construction). These mark the "empowered / executable" end.
+(time scale — multi-timescale by *design intent*: "higher levels have larger Δt" is
+Mobus's stated intent, but in the Lean `Δt` is a single parametric field on the
+system, not a formalized per-node map). These mark the "empowered / executable" end.
 
 **Palette:**
 - **The boundary ring is the star** — a real membrane around the system's
@@ -283,8 +351,12 @@ structural palette.
   content; `B = ⟨P, I⟩`; `E = ⟨O, M⟩`; flows typed (Material / Energy / Message).
 
 **Architecture (keeps the invariant):** the formal reading is **computed by the
-kernel** — a `describe(model, lens) → FormalDescription` function in Rust — and the
-face only *typesets* it (KaTeX). The math is never assembled in JS. Live-updating
+kernel** — `describe(model, lens)` **typesets exactly what the named bridge maps
+return**, it does not assemble the math independently: Mobus = the 8-tuple with each
+element's content; Bunge = the `toBunge` image + the bondage/aggregate verdict + the
+derived boundary-component set; Klir = `(T,R)` via `totalRelation` (+ the observer's
+epistemological level). The face only renders it (KaTeX). The math is never
+assembled in JS. Live-updating
 as the model changes; rendered as a first-class, beautiful artifact in the lens's
 own notation/color, not an afterthought panel. (The egui version's Math tab is the
 precedent — "did a decent job"; the SVG/React frontend can make the formal object
