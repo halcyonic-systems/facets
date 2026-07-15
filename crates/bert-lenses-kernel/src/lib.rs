@@ -20,5 +20,6 @@
 pub mod api;
 pub mod canvas;
 pub mod forcing;
+pub mod lenses;
 pub mod manifest;
 pub mod tether;

@@ -94,6 +94,12 @@ pub struct Relation {
     pub is_bond: bool,
     #[serde(default)]
     pub kind: Kind,
+    /// Klir's observer toggle: neutral ⇄ directed (Facets Ch. 4 — "directed
+    /// systems" merely add an orientation the observer commits to). Pure view
+    /// state, canvas-resident; never projects (the kernel `dep` is ordered
+    /// regardless, so this changes what the Klir lens *shows*, not the model).
+    #[serde(default)]
+    pub klir_directed: bool,
 }
 
 fn default_true() -> bool {
@@ -166,11 +172,27 @@ fn new_system(
     }
 }
 
+/// A projection plus the id bridges the canvas needs to read kernel verdicts
+/// back onto its own nodes/edges. `project` built (and discarded) both maps
+/// already; `lens_facts` needs them, so they are surfaced here.
+pub struct Projection {
+    pub world: WorldModel,
+    /// canvas thing id → projected kernel `Id` (components and touched env things).
+    pub thing_ids: std::collections::HashMap<u64, Id>,
+    /// Parallel to `world.interactions`: the canvas relation id each projected from.
+    pub relation_ids: Vec<u64>,
+}
+
 /// Project the canvas model into a bert-core `WorldModel`, mode-stamped by the
 /// lens. Only bonds project to interactions; an environment thing projects only
 /// if a bond touches it (originates one → Source, else Sink). Port of the old
 /// `to_world_model_with` (structure only; CSV params are the tether's job).
 pub fn project(model: &CanvasModel) -> WorldModel {
+    project_with_map(model).world
+}
+
+/// [`project`], keeping the canvas↔kernel id maps. Behavior-identical.
+pub fn project_with_map(model: &CanvasModel) -> Projection {
     use std::collections::{HashMap, HashSet};
 
     let env_id = Id {
@@ -246,10 +268,12 @@ pub fn project(model: &CanvasModel) -> WorldModel {
     }
 
     let mut interactions: Vec<Interaction> = Vec::new();
+    let mut relation_ids: Vec<u64> = Vec::new();
     for (k, r) in bonds.iter().enumerate() {
         let (Some(src), Some(snk)) = (id_map.get(&r.a), id_map.get(&r.b)) else {
             continue;
         };
+        relation_ids.push(r.id);
         interactions.push(Interaction {
             info: info(
                 Id {
@@ -277,7 +301,7 @@ pub fn project(model: &CanvasModel) -> WorldModel {
         });
     }
 
-    WorldModel {
+    let world = WorldModel {
         version: 1,
         mode: Some(model.lens.mode()),
         environment: Environment {
@@ -288,6 +312,12 @@ pub fn project(model: &CanvasModel) -> WorldModel {
         systems,
         interactions,
         hidden_entities: vec![],
+    };
+
+    Projection {
+        world,
+        thing_ids: id_map,
+        relation_ids,
     }
 }
 
@@ -377,6 +407,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             name: ix.info.name.clone(),
             is_bond: true,
             kind: substance_to_kind(ix.substance.ty),
+            klir_directed: false,
         });
     }
 
@@ -434,6 +465,7 @@ mod tests {
             name: String::new(),
             is_bond: true,
             kind: Kind::Unspecified,
+            klir_directed: false,
         }
     }
 
