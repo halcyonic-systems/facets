@@ -8,4 +8,10 @@ crates/*/pkg/
 web/node_modules/
 web/dist/
 
+# Python (pipeline data-prep)
+__pycache__/
+.venv/
+
+# macOS
 .DS_Store
+**/.DS_Store
