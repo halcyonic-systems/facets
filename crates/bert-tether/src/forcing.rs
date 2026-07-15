@@ -212,6 +212,22 @@ pub fn force_and_run(
     t: f64,
     today: &str,
 ) -> Result<RunReadout, String> {
+    // Guard the run horizon before anything else: `record_over` derives the tick
+    // count as `round(t / dt)`, so a zero/negative/non-finite dt or a non-finite
+    // t yields `inf` (→ `usize::MAX` ticks) and the run would spin the browser
+    // tab forever — a session failure as bad as a white screen. The wizard can
+    // produce dt=0 (an empty/degenerate Δt field), so refuse it with a legible
+    // reason instead. A non-finite/negative t collapses to 0 ticks except when
+    // it is `inf`, which also runs away; require both finite.
+    if !dt.is_finite() || dt <= 0.0 {
+        return Err(format!(
+            "run refused: Δt must be a positive, finite number (got {dt})"
+        ));
+    }
+    if !t.is_finite() {
+        return Err(format!("run refused: the horizon t must be finite (got {t})"));
+    }
+
     let (headers, rows) = crate::tether::parse_csv(csv_text).map_err(|e| format!("{e:?}"))?;
 
     let flows: Vec<(u64, String)> = flow_targets(&model)

@@ -251,6 +251,56 @@ Every serde type that crosses this wasm edge ships a committed JSON fixture in
 add the Rust `check_fixture` call, bless the fixture, and extend the vitest
 parser. A boundary type with no fixture is an incomplete change.
 
+## Error contract (append-only; issue #47)
+
+This section documents the failure behavior of every function above. It adds no
+signatures and changes none — it names a guarantee the existing functions
+already have to keep, and tightens it. Two failure modes exist at this boundary,
+and exactly one of them is allowed:
+
+1. **`JsError` throw — allowed, contractual.** Each function returns its
+   documented success shape, OR throws a `JsError` whose message states the
+   fault. The already-documented "throws only on unparseable input" cases are
+   the canonical instance; `run` / `run_forced` additionally throw when the
+   model is not executable / the mapping is incomplete (as documented on those
+   functions). A throw is a normal, recoverable outcome: the JS caller catches
+   it (`web/src/kernel/index.ts` normalizes every throw into a typed
+   `KernelError` carrying the kernel's message), and the React error boundary
+   renders it as a verdict panel. No boundary call may leak `undefined` into the
+   face in place of either a result or a throw.
+
+2. **Panic — a bug, never allowed.** A Rust `panic!` (including `unwrap` /
+   `expect` / out-of-bounds indexing / integer divide-by-zero / `unreachable!`)
+   compiles, on the wasm target, to an `abort`: the module traps and the whole
+   page is dead — strictly worse than a `JsError`, and unrecoverable. Therefore
+   **no boundary function may panic on any input it can parse.** Malformed input
+   is rejected by the parse step (mode 1); malformed-but-*parseable* input —
+   empty models, self-loops, dangling relation endpoints, duplicate ids,
+   non-finite / extreme coordinates, empty strings, all-environment models,
+   degenerate CSV time columns — must flow through to a documented result or a
+   `JsError`, never an abort.
+
+**Where the guarantee is enforced.** The domain crates reachable from `api.rs`
+(`bert-canvas`, `bert-tether`) are audited to contain no panic sites on
+parseable input, and the property is locked by adversarial tests that push
+weird-but-parseable models through *every* boundary function:
+`crates/bert-canvas/tests/adversarial.rs` (the canvas family: `project`,
+`to_canvas`, `validate_connection`, `lens_facts`, `describe`, `analyze_canvas`)
+and `crates/bert-tether/tests/adversarial.rs` (the run family: `parse_csv`,
+`mapping_status`, `force_and_run`, target enumeration, Δt inference). A panic in
+any of them fails the test binary. These functions are total or `Result`-typed
+already, so "returns a value or a structured error" is the whole contract — this
+section adds no new enveloped variant; it forbids the abort path.
+
+**Runaway loops count too.** A wasm module that never returns is as dead as one
+that aborts. `run_forced` derives its tick count as `round(t / Δt)`, so a
+degenerate `Δt` (0, negative, or non-finite) or a non-finite `t` — both of which
+the wizard can produce from an empty field — would spin `usize::MAX` iterations
+and freeze the tab. `bert_tether::forcing::force_and_run` now refuses those up
+front with a `JsError` (a legible "Δt must be a positive, finite number"),
+folding the runaway case into the same throw-don't-hang contract. (`run`'s
+Phase-0 `ticks: usize` is a direct, caller-chosen count and is left as-is.)
+
 ## Notes
 - The wasm is built with `wasm-pack build --target web` into `pkg/` (a build
   artifact, gitignored). `--release` for the shipped bundle; `--dev` while iterating.
