@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { ready, runForced, toCanvas, validateMode, parseCsv } from "./kernel";
-import type { CanvasModel, Manifest, RunResultRich, ValidationResult } from "./kernel/types";
+import { ready, runForced, toCanvas, validateMode, parseCsv, lensFacts } from "./kernel";
+import type { CanvasModel, LensFacts, Manifest, RunResultRich, ValidationResult } from "./kernel/types";
 import { DEMOS, type Demo } from "./demos";
 import Canvas, { edgeGeometry } from "./canvas/Canvas";
 import { DrivePopover } from "./canvas/DrivePopover";
@@ -59,6 +59,7 @@ function Workspace() {
   const [canvasPan, setCanvasPan] = useState<Pt>({ x: 0, y: 0 });
   const [toast, setToast] = useState<string | null>(null);
   const [verdict, setVerdict] = useState<ValidationResult | null>(null);
+  const [facts, setFacts] = useState<LensFacts | null>(null);
 
   const runWith = (modelJson: string, csv: string, m: Manifest, dtv: number, tv: number) => {
     try {
@@ -82,10 +83,12 @@ function Workspace() {
     runWith(d.modelJson, d.csv, d.manifest, d.manifest.dt ?? 1, d.t); // one click → runs
   };
 
-  // The author-view verdict: the lens toggle re-projects + re-validates in Rust.
+  // The author-view verdict + lens facts: every model or lens change re-projects
+  // and re-judges in Rust. The canvas renders these — it derives nothing.
   useEffect(() => {
     if (!canvasModel) return;
     setVerdict(validateMode(canvasModel, LENS_TO_MODE[canvasModel.lens]));
+    setFacts(lensFacts(canvasModel));
   }, [canvasModel]);
 
   useEffect(() => {
@@ -201,6 +204,7 @@ function Workspace() {
               <Canvas
                 model={canvasModel}
                 lens={canvasModel.lens}
+                facts={facts}
                 onModelChange={setCanvasModel}
                 onReject={setToast}
                 selectedRelationId={selectedRelationId}
@@ -218,6 +222,23 @@ function Workspace() {
                   onApply={applyDrive}
                   onClose={() => setSelectedRelationId(null)}
                 />
+              )}
+              {/* Bunge's single most lens-specific rule: systemhood is EARNED.
+                  The verdict is the kernel's (validate_mode(Structural) via
+                  lens_facts.aggregate) — the face only announces it. */}
+              {canvasModel.lens === "Bunge" && facts && (
+                <div
+                  className="pointer-events-none absolute left-3 top-3 rounded-md px-3 py-1.5 text-xs font-body"
+                  style={{
+                    background: facts.aggregate ? "var(--verdict-error)" : "var(--accent-soft)",
+                    color: facts.aggregate ? "#fff" : "var(--accent-strong)",
+                    border: facts.aggregate ? "none" : "1px solid var(--border)",
+                  }}
+                >
+                  {facts.aggregate
+                    ? "⚠ aggregate (heap) — no bond among distinct components (Bunge Def 1.1)"
+                    : "✓ system — ≥1 bond among distinct components (Bunge Def 1.1)"}
+                </div>
               )}
               <div
                 className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-mono"

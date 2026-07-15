@@ -143,6 +143,51 @@ Validate a proposed `Relation` at the model's current lens; returns the issues
 the candidate INTRODUCED (empty = legal). E.g. a self-loop is rejected at Mobus
 (irreflexivity) but legal at Klir. The per-drag "React asks Rust" call.
 
+## Phase 3 surface (built — faithful lens palettes)
+
+Both functions take **canvas JSON**, not model JSON — a deliberate deviation:
+mere relations (Bunge's B̄) exist only in the editing model, never in a
+`WorldModel`. Internally each projects (`project_with_map`) and reads bert-core
+verdicts (`boundary_components`, `edge_locus`, the Structural gate), so the
+math is still the kernel's; the canvas keys are translated at the seam.
+
+`Relation` gains one optional field (serde-defaulted, wire-compatible):
+```ts
+type Relation = { ..., klir_directed?: boolean }  // Klir's neutral ⇄ directed view toggle
+```
+
+### `lens_facts(canvas_json: string) → LensFacts`
+The two lens primitives, canvas-keyed — everything the three lens renderings
+read. Delegates to `bert_core` via `lenses::lens_facts`.
+```ts
+type EdgeLocus = "Endo" | "Exo"          // Bunge endo/exostructure = Mobus N/G, computed
+type PortDirection = "Receives" | "Exports" | "Hybrid"
+type EdgeFact = {
+  id: number, a: number, b: number,      // canvas relation + endpoint ids
+  bond: boolean,                          // Bunge bond vs mere relation
+  kind: Kind,
+  locus: EdgeLocus,
+  self_loop: boolean,
+  mobus_ok: boolean,                      // false iff self-loop (no_self_loops: no Mobus preimage)
+}
+type PortFact = {                         // one Mobus interface r=(S,φ) per (component, env) pair
+  component: number,                      // ALWAYS ∈ boundary_thing_ids (the boundary identity)
+  env: number,
+  relation_ids: number[],                 // the exo flows this port gates
+  direction: PortDirection,
+  protocol: string,                       // φ — joined flow names, else the kind
+}
+type LensFacts = {
+  boundary_thing_ids: number[],           // {c ∈ C : coupled to E} — Bunge marks, Mobus reifies
+  environment_thing_ids: number[],        // O — the environment objects
+  boundary_props: { porosity: number, perceptive_fuzziness: number },
+  aggregate: boolean,                     // Bunge Def 1.1 verdict from validate_mode(Structural)
+  edges: EdgeFact[],                      // EVERY canvas relation, incl. mere relations
+  ports: PortFact[],
+}
+```
+Throws only on unparseable canvas JSON.
+
 ## Notes
 - The wasm is built with `wasm-pack build --target web` into `pkg/` (a build
   artifact, gitignored). `--release` for the shipped bundle; `--dev` while iterating.

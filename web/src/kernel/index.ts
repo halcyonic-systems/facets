@@ -18,6 +18,7 @@ import init, {
   project as wasmProject,
   validate_mode as wasmValidateMode,
   validate_connection as wasmValidateConnection,
+  lens_facts as wasmLensFacts,
 } from "bert-lenses-kernel";
 import wasmUrl from "bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url";
 
@@ -32,6 +33,7 @@ import type {
   RunResultRich,
   CanvasModel,
   Relation,
+  LensFacts,
 } from "./types";
 
 let readyPromise: Promise<void> | null = null;
@@ -117,4 +119,13 @@ export function validateMode(
 /** Ask the kernel whether a candidate relation is legal to add. Empty issues = legal. */
 export function validateConnection(model: CanvasModel, candidate: Relation): ValidationResult {
   return wasmValidateConnection(JSON.stringify(model), JSON.stringify(candidate)) as ValidationResult;
+}
+
+// ---- Phase 3: the lens primitives ----------------------------------------------
+
+/** The two lens primitives, canvas-keyed: boundary identity set + edge ladder,
+ *  plus Mobus ports and the Bunge aggregate verdict — everything the three lens
+ *  renderings read. Computed in Rust from the projected model. */
+export function lensFacts(model: CanvasModel): LensFacts {
+  return wasmLensFacts(JSON.stringify(model)) as LensFacts;
 }

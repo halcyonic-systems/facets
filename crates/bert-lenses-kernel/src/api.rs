@@ -221,6 +221,20 @@ pub fn validate_connection(canvas_json: &str, candidate_json: &str) -> Result<Js
     })
 }
 
+// ---- Phase 3: faithful lens palettes ----------------------------------------
+
+/// The two lens primitives, canvas-keyed: the boundary identity set
+/// (boundary(Bunge) = interfaces(Mobus)) and the edge ladder (endo/exo, bond vs
+/// mere, self-loop/Mobus-preimage), plus Mobus ports and the Bunge aggregate
+/// verdict. Takes CANVAS json (mere relations exist only in the editing model);
+/// internally projects, so every fact is still a kernel verdict.
+#[wasm_bindgen]
+pub fn lens_facts(canvas_json: &str) -> Result<JsValue, JsError> {
+    let model: crate::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    to_js(&crate::lenses::lens_facts(&model))
+}
+
 // ---- Boundary DTOs (data-transfer shapes only, no logic) --------------------
 
 #[derive(Serialize)]
