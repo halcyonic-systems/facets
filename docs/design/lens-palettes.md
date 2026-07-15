@@ -109,7 +109,19 @@ loops are native (feedback, diagonal `M_pp`). **No boundary** — Bunge explicit
 rejects "has a boundary" as definitory (§1.2); membership is set-classification,
 not topology.
 
-**Palette:**
+**Mechanism (M) — mature Bunge is CESM, not just CES.** Bunge's later model adds a
+fourth element: `σ = ⟨C, E, S, M⟩`, where **M = mechanism = "one of the processes
+in a concrete system that makes it what it is, that makes it behave the way it
+does"** (its "peculiar functioning or activity") — Bunge 2004, *How Does It Work?
+The Search for Explanatory Mechanisms* (Zotero `HLSEVZIT`); Bunge 1997, *Mechanism
+and Explanation* (`99SYJ2HP`). M is a **dynamical/behavioral** element, not
+structural — it maps onto **Mobus's T** (transformation), extending the `Bridge.lean`
+Mobus↔Bunge recapitulation. **Therefore M's visual home is the dynamical/formal
+layer (the math panel + the run), NOT the structural palette.** Document now,
+implement with the dynamical face. (Also revisit: Bunge 1992 *System Boundary*
+`RY7Z24Q7` — may nuance the "no boundary" rule beyond the 1979 Treatise.)
+
+**Palette (structural):**
 - **Composition vs Environment as a set partition** — a soft color *wash* /
   grouping (inside-C vs outside-E), **NOT a boundary ring** (that would smuggle in
   Mobus). Environment things a distinct fill.
@@ -199,6 +211,32 @@ construction). These mark the "empowered / executable" end.
 - Hierarchy as nested containment with dotted indices; tree ⇄ nested-ovals views.
 
 ---
+
+## The formal face — the math panel (the K≅2 thesis, made legible)
+
+Beside the diagram, a **formal panel** renders the current model as its **formal
+object in the active lens's own notation** — the same model read three ways. This
+is not decoration: it is where "one kernel, many faithful views" (K≅2) becomes
+*visible* — the counts hold, the words change — and it is the natural home for the
+**dynamical elements** (Bunge's M, Mobus's T / H / Δt) that don't belong in a
+structural palette.
+
+- **Klir:** `S = (T, R)` — the relation as a subset of a Cartesian product; the
+  epistemological level (source / data / generative / structure); `|T|` things,
+  `|R|` relations.
+- **Bunge:** `σ = ⟨C, E, S, M⟩` — `|C|` components, `|E|` environment; endostructure
+  vs exostructure; the bondage `𝔹` and the **aggregate-vs-system verdict**; M the
+  mechanism (the processes).
+- **Mobus:** `S = ⟨C, N, E, G, B, T, H, Δt⟩` — the 8-tuple with each element's
+  content; `B = ⟨P, I⟩`; `E = ⟨O, M⟩`; flows typed (Material / Energy / Message).
+
+**Architecture (keeps the invariant):** the formal reading is **computed by the
+kernel** — a `describe(model, lens) → FormalDescription` function in Rust — and the
+face only *typesets* it (KaTeX). The math is never assembled in JS. Live-updating
+as the model changes; rendered as a first-class, beautiful artifact in the lens's
+own notation/color, not an afterthought panel. (The egui version's Math tab is the
+precedent — "did a decent job"; the SVG/React frontend can make the formal object
+genuinely elegant.)
 
 ## Interaction per lens (click a flow / element → do things)
 
