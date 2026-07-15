@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { ready, runForced, toCanvas, validateMode, parseCsv, lensFacts } from "./kernel";
-import type { CanvasModel, LensFacts, Manifest, RunResultRich, ValidationResult } from "./kernel/types";
+import { ready, runForced, toCanvas, validateMode, parseCsv, lensFacts, describeLens } from "./kernel";
+import type { CanvasModel, LensDescription, LensFacts, Manifest, RunResultRich, ValidationResult } from "./kernel/types";
 import { DEMOS, type Demo } from "./demos";
 import Canvas, { edgeGeometry } from "./canvas/Canvas";
 import { EdgePopover } from "./canvas/EdgePopover";
@@ -8,6 +8,7 @@ import { SimScrubber } from "./canvas/SimScrubber";
 import { LENS_TO_MODE, type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
 import { RunPanel } from "./RunPanel";
+import { FormalPanel } from "./FormalPanel";
 import { Card, Pill } from "./ui";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -60,6 +61,7 @@ function Workspace() {
   const [toast, setToast] = useState<string | null>(null);
   const [verdict, setVerdict] = useState<ValidationResult | null>(null);
   const [facts, setFacts] = useState<LensFacts | null>(null);
+  const [desc, setDesc] = useState<LensDescription | null>(null);
 
   const runWith = (modelJson: string, csv: string, m: Manifest, dtv: number, tv: number) => {
     try {
@@ -89,6 +91,7 @@ function Workspace() {
     if (!canvasModel) return;
     setVerdict(validateMode(canvasModel, LENS_TO_MODE[canvasModel.lens]));
     setFacts(lensFacts(canvasModel));
+    setDesc(describeLens(canvasModel, canvasModel.lens));
   }, [canvasModel]);
 
   useEffect(() => {
@@ -293,6 +296,8 @@ function Workspace() {
               </div>
             )}
           </Card>
+
+          {desc && <FormalPanel desc={desc} />}
 
           {runError && (
             <Card title="Result" source="bert-compose · wasm">

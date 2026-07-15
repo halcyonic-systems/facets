@@ -26,7 +26,7 @@ use std::collections::HashMap;
 use bert_core::validate::{validate_mode, Severity};
 use bert_core::{EdgeLocus, Mode};
 
-use crate::canvas::{project_with_map, CanvasModel, Kind, Role};
+use crate::canvas::{project_with_map, CanvasModel, Kind, Lens, Role};
 
 /// One canvas relation, read through the edge ladder.
 #[derive(Serialize, Clone, Debug)]
@@ -245,6 +245,171 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
     }
 }
 
+// ---- The formal face: describe(model, lens) ---------------------------------
+//
+// The same model read as its formal object in each lens's own notation — where
+// "one kernel, three faithful views" (K≅2) becomes visible: the counts hold,
+// the words change. Everything below is read off the SAME projection
+// `lens_facts` uses; the face only typesets it (the math is never assembled in
+// JS). The Mobus→Bunge→Klir arrows are the Lean's forgetful maps (Bridge.lean)
+// run backward as enrichment.
+
+/// The fixed M↔T caveat. Bunge's mature model is CESM (M = mechanism, Bunge
+/// 2004), conceptually parallel to Mobus's T — but the Lean bridge is CES, not
+/// CESM: `Bridge.lean`'s information-loss section lists T among what the
+/// projection DISCARDS. Pinned as a constant (and by a test) so the panel can
+/// never drift into claiming a formal bridge the Lean contradicts.
+pub const MECHANISM_NOTE: &str = "M (mechanism — Bunge 2004, CESM) is documented but formally \
+UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T).";
+
+/// One model, typeset in the active lens's own formal notation.
+#[derive(Serialize, Clone, Debug)]
+#[serde(tag = "lens")]
+pub enum LensDescription {
+    /// Klir `S = (T, R)` — thinghood + systemhood; observer-constituted.
+    Klir {
+        things: usize,
+        relations: usize,
+        directed: usize,
+        neutral: usize,
+        note: String,
+    },
+    /// Bunge `σ = ⟨C, E, S, M⟩` — the CESM model; systemhood is earned (Def 1.1).
+    Bunge {
+        composition: Vec<String>,
+        environment: Vec<String>,
+        endostructure: usize,
+        exostructure: usize,
+        bondage: usize,
+        mere_relations: usize,
+        boundary_components: Vec<String>,
+        verdict: String,
+        mechanism_note: String,
+    },
+    /// Mobus `S = ⟨C, N, E, G, B, T, H, Δt⟩` — the 8-tuple (post-2022 revision;
+    /// Tuple.lean is the authority, NOT the book's 7-tuple).
+    Mobus {
+        c: Vec<String>,
+        n: usize,
+        e_objects: Vec<String>,
+        milieu_note: String,
+        g: usize,
+        b_interfaces: Vec<String>,
+        porosity: f32,
+        perceptive_fuzziness: f32,
+        t_note: String,
+        h_note: String,
+        dt_note: String,
+        self_loop_conflicts: Vec<String>,
+    },
+}
+
+/// Typeset the model as the active lens's formal object. Counts are read off
+/// the same kernel facts the canvas renders — never re-derived.
+pub fn describe(model: &CanvasModel, lens: Lens) -> LensDescription {
+    let facts = lens_facts(model);
+    let name_of = |id: u64| -> String {
+        model
+            .things
+            .iter()
+            .find(|t| t.id == id)
+            .map(|t| t.name.clone())
+            .unwrap_or_else(|| format!("#{id}"))
+    };
+
+    match lens {
+        Lens::Klir => {
+            // (T, R): every thing is just a thing; every drawn relation counts
+            // (Klir has no bond concept — that predicate is Bunge's).
+            let directed = model.relations.iter().filter(|r| r.klir_directed).count();
+            LensDescription::Klir {
+                things: model.things.len(),
+                relations: model.relations.len(),
+                directed,
+                neutral: model.relations.len() - directed,
+                note: "a system is what is distinguished as a system by the investigator; \
+                       the distinction frame is the observer's act, not a boundary"
+                    .to_string(),
+            }
+        }
+        Lens::Bunge => {
+            let composition: Vec<String> = model
+                .things
+                .iter()
+                .filter(|t| t.role == Role::Component)
+                .map(|t| t.name.clone())
+                .collect();
+            let environment: Vec<String> = facts.environment_thing_ids.iter().map(|&id| name_of(id)).collect();
+            let bondage = facts.edges.iter().filter(|e| e.bond).count();
+            LensDescription::Bunge {
+                composition,
+                environment,
+                endostructure: facts
+                    .edges
+                    .iter()
+                    .filter(|e| e.bond && e.locus == EdgeLocus::Endo)
+                    .count(),
+                exostructure: facts
+                    .edges
+                    .iter()
+                    .filter(|e| e.bond && e.locus == EdgeLocus::Exo)
+                    .count(),
+                bondage,
+                mere_relations: facts.edges.len() - bondage,
+                boundary_components: facts.boundary_thing_ids.iter().map(|&id| name_of(id)).collect(),
+                verdict: if facts.aggregate { "aggregate" } else { "system" }.to_string(),
+                mechanism_note: MECHANISM_NOTE.to_string(),
+            }
+        }
+        Lens::Mobus => LensDescription::Mobus {
+            c: model
+                .things
+                .iter()
+                .filter(|t| t.role == Role::Component)
+                .map(|t| t.name.clone())
+                .collect(),
+            n: facts
+                .edges
+                .iter()
+                .filter(|e| e.bond && e.locus == EdgeLocus::Endo)
+                .count(),
+            e_objects: facts.environment_thing_ids.iter().map(|&id| name_of(id)).collect(),
+            milieu_note: "μ (milieu) is parametric/opaque — the one element with no \
+                          cross-lens preimage (milieuOnly_bunge_empty)"
+                .to_string(),
+            g: facts
+                .edges
+                .iter()
+                .filter(|e| e.bond && e.locus == EdgeLocus::Exo)
+                .count(),
+            b_interfaces: facts.ports.iter().map(|p| name_of(p.component)).collect(),
+            porosity: facts.boundary_props.porosity,
+            perceptive_fuzziness: facts.boundary_props.perceptive_fuzziness,
+            t_note: "T: transforms — parametric by intent; bert-compose fills the slot".to_string(),
+            h_note: "H: history (accumulated state conditioning T) — NOT hierarchy".to_string(),
+            dt_note: "Δt: time scale — a parametric field on the system".to_string(),
+            self_loop_conflicts: facts
+                .edges
+                .iter()
+                .filter(|e| !e.mobus_ok)
+                .map(|e| {
+                    let named = model
+                        .relations
+                        .iter()
+                        .find(|r| r.id == e.id)
+                        .map(|r| r.name.trim().to_string())
+                        .unwrap_or_default();
+                    if named.is_empty() {
+                        format!("{} → {}", name_of(e.a), name_of(e.b))
+                    } else {
+                        named
+                    }
+                })
+                .collect(),
+        },
+    }
+}
+
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
@@ -359,6 +524,82 @@ mod tests {
         assert_eq!(f.ports.len(), 1);
         assert_eq!(f.ports[0].direction, PortDirection::Hybrid);
         assert_eq!(f.ports[0].relation_ids, vec![11, 12]);
+    }
+
+    /// A: component, B: component, Src: env; endo bond A→B, exo bond Src→A,
+    /// mere relation A–B, self-loop A→A.
+    fn rich_model() -> CanvasModel {
+        model(
+            vec![
+                thing(1, "A", Role::Component),
+                thing(2, "B", Role::Component),
+                thing(3, "Src", Role::Environment),
+            ],
+            vec![
+                relation(10, 1, 2, true),
+                relation(11, 3, 1, true),
+                relation(12, 1, 2, false),
+                relation(13, 1, 1, true),
+            ],
+        )
+    }
+
+    #[test]
+    fn describe_counts_hold_across_lenses() {
+        // K≅2 made visible: the counts agree, only the vocabulary changes.
+        let m = rich_model();
+        let (LensDescription::Klir { things, relations, .. },
+             LensDescription::Bunge { composition, environment, bondage, mere_relations, endostructure, exostructure, .. },
+             LensDescription::Mobus { c, e_objects, n, g, .. }) =
+            (describe(&m, Lens::Klir), describe(&m, Lens::Bunge), describe(&m, Lens::Mobus))
+        else {
+            panic!("lens tags must match the lens asked for");
+        };
+        assert_eq!(things, composition.len() + environment.len());
+        assert_eq!(things, c.len() + e_objects.len());
+        assert_eq!(relations, bondage + mere_relations);
+        // The endo/exo split partitions the bondage; N and G are the same
+        // counts read in Mobus vocabulary (endo/exo = N/G).
+        assert_eq!(bondage, endostructure + exostructure);
+        assert_eq!(n, endostructure);
+        assert_eq!(g, exostructure);
+    }
+
+    #[test]
+    fn describe_bunge_verdict_matches_kernel() {
+        let m = rich_model();
+        let LensDescription::Bunge { verdict, boundary_components, .. } = describe(&m, Lens::Bunge) else {
+            panic!("expected Bunge");
+        };
+        assert_eq!(verdict, "system", "A→B is a bond between distinct components");
+        assert_eq!(boundary_components, vec!["A"]);
+        let mut heap = m.clone();
+        heap.relations.retain(|r| !r.is_bond);
+        let LensDescription::Bunge { verdict, .. } = describe(&heap, Lens::Bunge) else {
+            panic!("expected Bunge");
+        };
+        assert_eq!(verdict, "aggregate");
+    }
+
+    #[test]
+    fn describe_mobus_lists_self_loop_conflicts() {
+        let m = rich_model();
+        let LensDescription::Mobus { self_loop_conflicts, b_interfaces, .. } = describe(&m, Lens::Mobus) else {
+            panic!("expected Mobus");
+        };
+        assert_eq!(self_loop_conflicts, vec!["A → A"]);
+        assert_eq!(b_interfaces, vec!["A"], "B's interfaces are the boundary components, reified");
+    }
+
+    #[test]
+    fn mechanism_note_never_claims_bridge() {
+        // Pin the wording: M↔T is conceptually parallel but formally UNbridged
+        // (Bridge.lean is CES, not CESM). The panel must never drift.
+        let LensDescription::Bunge { mechanism_note, .. } = describe(&rich_model(), Lens::Bunge) else {
+            panic!("expected Bunge");
+        };
+        assert!(mechanism_note.contains("formally UNbridged"));
+        assert!(mechanism_note.contains("CES, not CESM"));
     }
 
     #[test]

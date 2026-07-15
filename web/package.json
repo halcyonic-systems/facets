@@ -10,12 +10,14 @@
   },
   "dependencies": {
     "bert-lenses-kernel": "file:../crates/bert-lenses-kernel/pkg",
+    "katex": "^0.17.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.15.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
+    "@types/katex": "^0.16.8",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",

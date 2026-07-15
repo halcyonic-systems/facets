@@ -215,3 +215,43 @@ export interface LensFacts {
   edges: EdgeFact[];
   ports: PortFact[];
 }
+
+/** describe(model, lens): the model typeset as the active lens's own formal
+ *  object — computed by the kernel; the FormalPanel only renders it. */
+export type LensDescription =
+  | {
+      lens: "Klir";
+      things: number;
+      relations: number;
+      directed: number;
+      neutral: number;
+      note: string;
+    }
+  | {
+      lens: "Bunge";
+      composition: string[];
+      environment: string[];
+      endostructure: number;
+      exostructure: number;
+      bondage: number;
+      mere_relations: number;
+      boundary_components: string[];
+      verdict: string;
+      /** Fixed kernel text: M is documented but formally UNbridged (CES, not CESM). */
+      mechanism_note: string;
+    }
+  | {
+      lens: "Mobus";
+      c: string[];
+      n: number;
+      e_objects: string[];
+      milieu_note: string;
+      g: number;
+      b_interfaces: string[];
+      porosity: number;
+      perceptive_fuzziness: number;
+      t_note: string;
+      h_note: string;
+      dt_note: string;
+      self_loop_conflicts: string[];
+    };

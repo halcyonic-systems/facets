@@ -19,6 +19,7 @@ import init, {
   validate_mode as wasmValidateMode,
   validate_connection as wasmValidateConnection,
   lens_facts as wasmLensFacts,
+  describe as wasmDescribe,
 } from "bert-lenses-kernel";
 import wasmUrl from "bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url";
 
@@ -34,7 +35,9 @@ import type {
   CanvasModel,
   Relation,
   LensFacts,
+  LensDescription,
 } from "./types";
+import type { Lens } from "./types";
 
 let readyPromise: Promise<void> | null = null;
 
@@ -128,4 +131,11 @@ export function validateConnection(model: CanvasModel, candidate: Relation): Val
  *  renderings read. Computed in Rust from the projected model. */
 export function lensFacts(model: CanvasModel): LensFacts {
   return wasmLensFacts(JSON.stringify(model)) as LensFacts;
+}
+
+/** The formal face: the model typeset as the lens's own formal object (Klir
+ *  (T,R) / Bunge ⟨C,E,S,M⟩ + verdict / Mobus 8-tuple), computed by the kernel.
+ *  The FormalPanel renders this — the math is never assembled in JS. */
+export function describeLens(model: CanvasModel, lens: Lens): LensDescription {
+  return wasmDescribe(JSON.stringify(model), lens) as LensDescription;
 }
