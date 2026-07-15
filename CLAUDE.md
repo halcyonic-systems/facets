@@ -85,3 +85,32 @@ exists to keep it true.
   `describe` field (kernel verdicts, canvas-keyed). If a rendering branch needs
   a systems fact the kernel doesn't expose yet, extend `lenses.rs` — don't
   derive it in TS. Faithfulness cites live in code comments next to each rule.
+
+## Extending the palette (new node / port type)
+
+Adding a node or port type touches the kernel first and the face last — the
+verdict is born in Rust and only rendered in TS. Do the eight steps in order; the
+type is not "real" until every layer knows it. Skipping a step (e.g. rendering a
+type the kernel never validates) reintroduces systems logic in JS — invariant #1.
+
+1. **bert-core type** — add the variant to the domain type in `crates/bert-core`
+   (`src/lib.rs`). This is the semantic authority; the type exists here or nowhere.
+2. **`validate_mode` case** — teach `crates/bert-core/src/validate.rs`
+   (`validate` / `validate_mode`) what makes the new type well-formed per mode.
+   No verdict lives outside this crate.
+3. **bert-canvas projection** — map it across the canvas↔model seam in
+   `crates/bert-canvas/src/canvas.rs` (`project` / `to_canvas`), so the authoring
+   shape and the formal `WorldModel` stay in sync.
+4. **`lens_facts` field** — expose whatever the face needs to render as a
+   canvas-keyed fact in `crates/bert-canvas/src/lenses.rs` (`lens_facts`). The
+   face reads facts; it never recomputes them.
+5. **`describe` branch** — add the formal-object text to `describe` in the same
+   `lenses.rs`, per lens (`Lens::Klir | Bunge | Mobus`).
+6. **`LensRegistry` entry** — wire the render in `web/src/canvas/lenses/registry.ts`
+   (`LensRegistry`), the one place the face binds a lens to its views.
+7. **contract fixture** — add/extend a golden in `fixtures/contract/` and its
+   parser in `web/src/kernel/contract.test.ts` (regenerate with `BLESS_FIXTURES=1`
+   after a crate change, then rebuild the wasm pkg — see Working rules).
+8. **view module** — render it in the per-lens view module under
+   `web/src/canvas/lenses/{klir,bunge,mobus}.tsx` (shared bits in `common.tsx`),
+   reading only the `lens_facts` / `describe` fields from steps 4–5.

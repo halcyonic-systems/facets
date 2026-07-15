@@ -28,6 +28,15 @@ function names(xs: string[]): string {
   return xs.length ? `{ ${xs.join(", ")} }` : "∅";
 }
 
+// UI feature-gate, NOT an ontology verdict: the palette has no authoring for the
+// boundary's P = ⟨porosity, perceptive_fuzziness⟩ yet, so every model reports the
+// default 0.0. Printing "porosity 0.00 · fuzziness 0.00" is phantom formalism — a
+// formal claim of a value nobody set (a sealed boundary is a real state, but this
+// isn't that, it's an unauthored one). Whether authoring exists is a fact about
+// the web app's surface, not about systemhood, so gating it here does not put a
+// systems verdict in JS. Flip to true when the palette can author P.
+const BOUNDARY_PROPS_AUTHORING = false;
+
 export function FormalPanel({ desc }: { desc: LensDescription }) {
   return (
     <Card title="The formal object" source="bert-lenses-kernel · describe(model, lens) · wasm">
@@ -105,8 +114,13 @@ function MobusFace({ d }: { d: Extract<LensDescription, { lens: "Mobus" }> }) {
         {d.g} external flow{d.g === 1 ? "" : "s"} — bipartite: environment object ↔ interface
       </Line>
       <Line label={<Tex tex="B = \langle P, I \rangle" />}>
-        I = {names(d.b_interfaces)} · porosity {d.porosity.toFixed(2)} · fuzziness{" "}
-        {d.perceptive_fuzziness.toFixed(2)}
+        I = {names(d.b_interfaces)}
+        {BOUNDARY_PROPS_AUTHORING && (
+          <>
+            {" "}· porosity {d.porosity.toFixed(2)} · fuzziness{" "}
+            {d.perceptive_fuzziness.toFixed(2)}
+          </>
+        )}
       </Line>
       <Line label={<Tex tex="T" />}>{d.t_note}</Line>
       <Line label={<Tex tex="H" />}>{d.h_note}</Line>
