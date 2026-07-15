@@ -160,11 +160,18 @@ export default function Canvas({
           is_bond: true,
           kind: "Unspecified",
         };
-        const verdict = validateConnection(model, candidate);
-        if (verdict.issues.length === 0) {
-          onModelChange({ ...model, relations: [...model.relations, candidate] });
-        } else {
-          onReject(verdict.issues[0].message);
+        // Event handlers are outside React's render, so a kernel throw here
+        // won't reach the error boundary — surface it as a reject toast instead
+        // of an uncaught exception (the edge is simply not added).
+        try {
+          const verdict = validateConnection(model, candidate);
+          if (verdict.issues.length === 0) {
+            onModelChange({ ...model, relations: [...model.relations, candidate] });
+          } else {
+            onReject(verdict.issues[0].message);
+          }
+        } catch (err) {
+          onReject(err instanceof Error ? err.message : String(err));
         }
       }
       setConnectFrom(null);

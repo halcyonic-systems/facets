@@ -10,6 +10,7 @@ import type { Pt } from "./canvas/geometry";
 import { RunPanel } from "./RunPanel";
 import { FormalPanel } from "./FormalPanel";
 import { Card, Pill } from "./ui";
+import { KernelErrorBoundary } from "./KernelErrorBoundary";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const LENSES: CanvasModel["lens"][] = ["Klir", "Bunge", "Mobus"];
@@ -86,13 +87,26 @@ function Workspace() {
   // change re-projects and re-judges in Rust — one atomic analyze_canvas call
   // (one deserialization, one projection), memoized on the canvas model. The
   // canvas renders these; it derives nothing.
-  const analysis = useMemo(
-    () => (canvasModel ? analyzeCanvas(canvasModel) : null),
-    [canvasModel],
-  );
-  const verdict = analysis?.validation ?? null;
-  const facts = analysis?.facts ?? null;
-  const desc = analysis?.description ?? null;
+  //
+  // This call runs during render, so a kernel rejection on a partially-valid
+  // editing state (which palette authoring routinely produces) would throw
+  // straight through render and unmount the tree. Catch it here: the canvas
+  // still draws its structure, and the verdict/formal panels show the kernel's
+  // reason instead of white-screening. Recovery is automatic — a new canvas
+  // model recomputes this memo. The KernelErrorBoundary below is the belt to
+  // this suspenders, catching the same class of throw from child renders.
+  const analysis = useMemo(() => {
+    if (!canvasModel) return { ok: null, error: null as string | null };
+    try {
+      return { ok: analyzeCanvas(canvasModel), error: null };
+    } catch (e) {
+      return { ok: null, error: e instanceof Error ? e.message : String(e) };
+    }
+  }, [canvasModel]);
+  const verdict = analysis.ok?.validation ?? null;
+  const facts = analysis.ok?.facts ?? null;
+  const desc = analysis.ok?.description ?? null;
+  const analysisError = analysis.error;
 
   useEffect(() => {
     if (!toast) return;
@@ -172,7 +186,19 @@ function Workspace() {
     <>
       <DemoGallery selected={demo} onPick={pick} />
       {demo && canvasModel && (
+        <KernelErrorBoundary resetKeys={[canvasModel, demo.key]}>
         <div className="mt-6 grid gap-5">
+          {analysisError && (
+            <Card title="Kernel rejected this state" source="bert-core · wasm">
+              <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
+                {analysisError}
+              </p>
+              <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
+                The canvas still shows the structure below. Switch lens, undo the
+                last edit, or load another demo to clear this.
+              </p>
+            </Card>
+          )}
           <Card title={demo.title} source="bert-core + bert-compose · wasm">
             <p className="mb-4 text-sm" style={{ color: "var(--text-secondary)" }}>
               {demo.blurb}
@@ -308,6 +334,7 @@ function Workspace() {
           )}
           {result && <RunPanel result={result} />}
         </div>
+        </KernelErrorBoundary>
       )}
     </>
   );
