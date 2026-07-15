@@ -594,6 +594,48 @@ without conflating them with what it stamps today:
   lives on `AgentModel`, so a component's several work processes arrive when
   its agent-hood does, not before.
 
+### Process-type taxonomy (PROVISIONAL — verify before building on it)
+
+Raised at slice-2 review (Shingai, 2026-07-15): is work-process stamping
+theoretically justified, can primitives function without managing agents, and
+does it differ by type? The working answers, with status flags:
+
+**Grounded (chs. 10–11, verified 2026-07-15):**
+- Stamping = Economy-side transformation authoring (the "simplest process
+  rule"); it claims what the component DOES, never that it is managed.
+- Primitives function agent-free, open-loop (a tank buffers, a pipe impedes);
+  agents enter where regulation against disturbance is needed. In a CAS/CAES
+  every process oval acquires internal managing agents (ch. 10) — so
+  stamped-but-unmanaged is **valid for simple systems, incomplete for
+  adaptive ones** (not ill-formed at Operational mode).
+- Agents are BUILT FROM primitives ("the work processor of an agent is the
+  computational engine," ch. 11 — the 2025-08-29 agents-from-primitives
+  principle); Mobus's minimal reactive agent is the thermostat.
+
+**Inferred (UNVERIFIED — do not build on without a source pass):**
+1. **The two-family split**: matter/energy primitives (combining, splitting,
+   buffering, impeding, propelling) run agent-free most naturally; information
+   primitives (sensing, copying, modulating, amplifying, inverting) are what
+   agents are composed of. Plausible from ch. 11's computational-engine
+   framing; NOT yet checked against Mobus's own primitive taxonomy (ch. 3 /
+   the process-vocabulary source the badges came from).
+2. **Reactive agent-hood as a kernel VERDICT**: a sensing → decision →
+   actuation loop closing on system state matches ch. 10's agent definition
+   ("any decision-making mechanism that affects the state of the system"),
+   so the reactive kind may be structurally DETECTABLE (computed like the
+   boundary) with designation reserved for anticipatory/intentional kinds.
+   Attractive ("computed, not drawn") — but needs verification that Mobus
+   licenses structural sufficiency, and a Lean-side statement before it
+   becomes a validate tier.
+3. **A future adaptive-mode gate**: "process without a management loop"
+   warning, one rung above the Structural aggregate verdict. Follows from
+   the ch. 10 archetype claim; scope and severity unvetted.
+
+Verification pass (when agent work begins): read Mobus's primitive-vocabulary
+chapter directly for the family split; check chs. 10–12 for whether reactive
+agency is structurally sufficient; only then promote any of the three into
+kernel semantics via the 8-step checklist.
+
 ### Source citations for this section
 
 Klir: *Facets of Systems Science* (2001), Eq. 1.1 + §2.1 (S=(T,R)), §2.3–2.4,
