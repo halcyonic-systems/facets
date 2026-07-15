@@ -49,10 +49,25 @@ relation + observer       + real bonds,          + first-class Environment,
                             set, aggregate cut,        dynamical face (8-tuple)
                             mechanism (CESM)
 ```
-- **The boundary concept accretes:** Klir *none* → Bunge *set of boundary-
-  components* (relational, computed, no ring) → Mobus *first-class membrane*
-  `B=⟨P,I⟩` with interface ports. Mobus promotes Bunge's boundary-components (his
-  input/output terminals) into typed interfaces.
+- **The boundary is ONE concept, progressively REIFIED (not three different
+  boundaries).** Bunge and Mobus deeply agree: the boundary is **relational, not
+  geometric** (Bunge's hydrogen-atom/TV-network ≈ Mobus's "implied by relative
+  interaction strength"), **environment-coupling-based**, and **computable, not
+  drawn**. The only difference is reification: **Bunge leaves it a *derived
+  component-subset*** (a predicate over C — which components couple to E); **Mobus
+  *reifies* it** as a first-class element `B=⟨P,I⟩` with its own properties
+  (porosity, fuzziness) + interface-subsystems-with-protocols. Mobus's boundary
+  *is* Bunge's, promoted to an object and equipped with a crossing mechanism —
+  Bunge's "input/output terminals" and Mobus's "interfaces in the boundary" are
+  **the same nodes**. So: Klir doesn't foreground it → Bunge *identifies* it →
+  Mobus *reifies + equips* it. (Nuance: Mobus's binding-force asymmetry — internal
+  links denser than external — is a cohesion-gradient framing, compatible with but
+  not identical to Bunge's per-component "touches outside.")
+- **Design consequence:** ONE kernel primitive `boundary_components(model)` feeds
+  both lenses — the **Bunge** lens *marks* those nodes; the **Mobus** lens draws
+  the membrane + ports *on the same nodes*. Toggling Bunge→Mobus reifies the same
+  boundary in place (marked components grow a ring + interfaces) — a continuous,
+  faithful accretion, not a swap.
 - **Bunge = Mobus with B (as membrane), T, H, Δt stripped** — keep C + N + E
   (composition + structure/bonds + environment), add the ontological bond/aggregate
   cut and the boundary-component set. Bunge's M (mechanism) ↔ Mobus's T.
