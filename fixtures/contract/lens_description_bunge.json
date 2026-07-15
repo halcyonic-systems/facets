@@ -1,0 +1,19 @@
+{
+  "lens": "Bunge",
+  "composition": [
+    "Pump",
+    "Tank"
+  ],
+  "environment": [
+    "Grid"
+  ],
+  "endostructure": 2,
+  "exostructure": 1,
+  "bondage": 3,
+  "mere_relations": 1,
+  "boundary_components": [
+    "Pump"
+  ],
+  "verdict": "system",
+  "mechanism_note": "M (mechanism — Bunge 2004, CESM) is documented but formally UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T)."
+}

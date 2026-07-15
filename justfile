@@ -24,4 +24,5 @@ check:
     cargo build --workspace --target wasm32-unknown-unknown
     cd {{kernel}} && wasm-pack build --target web --out-dir pkg
     cd web && npx tsc --noEmit
+    cd web && npx vitest run
     cd web && npx vite build

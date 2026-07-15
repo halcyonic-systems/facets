@@ -1,0 +1,10 @@
+{
+  "issues": [
+    {
+      "severity": "Error",
+      "location": "interactions[2]",
+      "message": "Mobus §4.3: flow edges require k ≠ o; 'recycle' has the same endpoint as source and sink, and self-dependency is not representable in the 8-tuple",
+      "suggestion": "Remove the self-loop; feedback as a first-class cycle is Cybernetic mode (not yet available)"
+    }
+  ]
+}

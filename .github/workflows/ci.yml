@@ -65,6 +65,12 @@ jobs:
         run: npx tsc --noEmit
         working-directory: web
 
+      # serde↔TS contract fixtures: validate the committed fixtures the Rust
+      # tests write against the TS boundary mirrors (drift fails the build).
+      - name: vitest (contract fixtures)
+        run: npx vitest run
+        working-directory: web
+
       - name: vite build
         run: npx vite build
         working-directory: web

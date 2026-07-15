@@ -1,0 +1,66 @@
+{
+  "boundary_thing_ids": [
+    1
+  ],
+  "environment_thing_ids": [
+    3
+  ],
+  "boundary_props": {
+    "porosity": 0.0,
+    "perceptive_fuzziness": 0.0
+  },
+  "aggregate": false,
+  "edges": [
+    {
+      "id": 10,
+      "a": 1,
+      "b": 2,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "self_loop": false,
+      "mobus_ok": true
+    },
+    {
+      "id": 11,
+      "a": 3,
+      "b": 1,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "self_loop": false,
+      "mobus_ok": true
+    },
+    {
+      "id": 12,
+      "a": 2,
+      "b": 2,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "self_loop": true,
+      "mobus_ok": false
+    },
+    {
+      "id": 13,
+      "a": 1,
+      "b": 2,
+      "bond": false,
+      "kind": "Unspecified",
+      "locus": "Endo",
+      "self_loop": false,
+      "mobus_ok": true
+    }
+  ],
+  "ports": [
+    {
+      "component": 1,
+      "env": 3,
+      "relation_ids": [
+        11
+      ],
+      "direction": "Receives",
+      "protocol": "supply"
+    }
+  ]
+}

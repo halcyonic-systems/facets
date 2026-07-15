@@ -1,0 +1,24 @@
+{
+  "lens": "Mobus",
+  "c": [
+    "Pump",
+    "Tank"
+  ],
+  "n": 2,
+  "e_objects": [
+    "Grid"
+  ],
+  "milieu_note": "μ (milieu) is parametric/opaque — the one element with no cross-lens preimage (milieuOnly_bunge_empty)",
+  "g": 1,
+  "b_interfaces": [
+    "Pump"
+  ],
+  "porosity": 0.0,
+  "perceptive_fuzziness": 0.0,
+  "t_note": "T: transforms — parametric by intent; bert-compose fills the slot",
+  "h_note": "H: history (accumulated state conditioning T) — NOT hierarchy",
+  "dt_note": "Δt: time scale — a parametric field on the system",
+  "self_loop_conflicts": [
+    "recycle"
+  ]
+}

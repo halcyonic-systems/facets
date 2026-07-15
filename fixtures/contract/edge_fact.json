@@ -1,0 +1,10 @@
+{
+  "id": 10,
+  "a": 1,
+  "b": 2,
+  "bond": true,
+  "kind": "Energy",
+  "locus": "Endo",
+  "self_loop": false,
+  "mobus_ok": true
+}
