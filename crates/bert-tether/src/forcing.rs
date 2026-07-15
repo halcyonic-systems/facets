@@ -180,10 +180,7 @@ pub fn apply_params(model: &mut WorldModel, params: &ModelParams) {
     }
 
     let offset = model.interactions.len() as u64;
-    let mut ci: u64 = offset;
-    for s in model.systems.iter_mut().filter(|s| s.info.level == 1) {
-        let id = ci;
-        ci += 1;
+    for (id, s) in (offset..).zip(model.systems.iter_mut().filter(|s| s.info.level == 1)) {
         if let Some(v) = params.stock_initial.get(&id) {
             s.agent
                 .get_or_insert_with(Default::default)
