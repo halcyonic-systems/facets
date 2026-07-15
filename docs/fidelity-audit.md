@@ -1,5 +1,12 @@
 # Fidelity Audit — Klir & Bunge (2026-06-27)
 
+> **Status: completed egui-era audit; code pointers stale, findings live.** This
+> was a one-shot source-fidelity audit of the egui canvas (`src/bin/canvas.rs`),
+> resolved in the 2026-06-27 A-block + B8 pass. The code references predate the
+> web rebuild, but the "Still open" faithfulness items (interaction `⋈` +
+> self-loops, edge strength, internal/external split, n-ary relations) remain
+> open reference for lens work and are tracked against `docs/design/lens-palettes.md`.
+
 Two source-grounded auditors checked the canvas (`src/bin/canvas.rs`), the math view, and the
 design grammar against the primary texts (`klir-facets.md`, Bunge *Treatise* Vol. 4). Headline:
 **the code is a faithful, minimal rendering of each tradition's core; most fidelity debt is in
@@ -34,13 +41,13 @@ code hasn't built.**
 
 ## Resolved (2026-06-27)
 - **A-block**: K4 (Klir pairs now ordered `(a,b)`; undirected line = neutral case), B6 (Def 1.1 citation: "≥2 *different connected* things"; heap = §1.1), Extra-7 (lens-aware Math tooltip), K8/K1 (binary-fragment + simplest-case disclosures in the Klir note).
-- **K9 / K7** (honesty): "among variables" deleted from the gradient (relata = *things*, common-sense `S=(T,R)`); the realist-kernel demotion relabeled as our **editorial departure** from Klir's constructivism. Propagated to design-system.md §9 + memory.
+- **K9 / K7** (honesty): "among variables" deleted from the gradient (relata = *things*, common-sense `S=(T,R)`); the realist-kernel demotion relabeled as our **editorial departure** from Klir's constructivism. Propagated to archive/design-system.md §9 + memory.
 - **B8** (typed-by-kind): `Kind` enum on relations (mechanical/chemical/informational/social); `K` cycles the kind of a selected bond; Bunge colors bonds by kind and groups `S` into one relation-set per kind (`mechanical = {…}`, `chemical = {…}`, …). Bunge's typed directed multigraph, implemented.
 
 Still open: B7/Extra-2 (interaction `⋈` + self-loops), B9/Extra-1 (edge strength; `S=∅` when bond-free), Extra-6 (internal/external structure split), K8-full (n-ary/hyperedges).
 
 ## Recommended order
-1. **A-block honesty/accuracy fixes** (prose in design-system.md + the propagated docs; small code for K4 ordered pairs, Extra-7 tooltip). Restores accuracy of what we already shipped.
+1. **A-block honesty/accuracy fixes** (prose in archive/design-system.md + the propagated docs; small code for K4 ordered pairs, Extra-7 tooltip). Restores accuracy of what we already shipped.
 2. **B8 typed-by-kind** — the one real missing Bunge primitive; code catches up to the doc.
 3. **B7/Extra-2 interaction + self-loops**, then the rest (weights, internal/external split, n-ary) as warranted.
 

@@ -1,5 +1,12 @@
 # bert-lenses roadmap
 
+> **Status (2026-07-15): history, not current truth.** The arcs and paths below
+> (the egui canvas, `src/main.rs`, in-process `generate()`, the `docs/archive/`
+> design docs) predate the web-first rebuild. For where the project actually
+> stands, read the README **Status** section and **CLAUDE.md**: Phases 0–3 are
+> shipped, and Phase 4 (the per-lens authoring palette, #50) is next. This file
+> is kept as the pre-web-rebuild plan of record.
+
 One kernel, three lenses. The path is **view → author → translate → run**, in
 dependency order. bert-lenses stays standalone through the author and translate
 arcs: it is the seed of a model-*creation* tool (author in any paradigm, translate
@@ -33,18 +40,18 @@ which drops L2 flows, never direct-to-Ollama), validated by the mode validators 
 it lands. An optional LLM "co-create" seed drafts the initial lists; the compile path
 stays deterministic. This is what turns the viewer into a creation tool.
 
-**Full design: [`docs/arc2-authoring-design.md`](docs/arc2-authoring-design.md)** — the
+**Full design: [`docs/archive/arc2-authoring-design.md`](docs/archive/arc2-authoring-design.md)** — the
 build-ready spec (deterministic spine, per-lens editable UI, live convergence, persistence,
 and the forward-design for the spatial canvas).
 
 **Build approach (2026-06-26): canvas-first, hand-built in egui.** We build the
 direct-manipulation canvas (drag thing → spawn relation → type → attach) here in the standalone
 egui shell, growing it layer by layer **Klir → Bunge → Mobus**. Visual foundation:
-[`docs/design-system.md`](docs/design-system.md) (palette + accreting shape grammar; visual sheet
-in `docs/mockups/`). v0 = a Klir canvas: draggable discs + **undirected** relation lines + the
+[`docs/archive/design-system.md`](docs/archive/design-system.md) (palette + accreting shape grammar; visual sheet
+in `docs/archive/mockups/`). v0 = a Klir canvas: draggable discs + **undirected** relation lines + the
 kernel-invariant chip; **Bunge** (composition/environment + **directed, typed-by-kind** bonds) and
 **Mobus** (boundary, ports, Message-as-peer flow, operational) layer on after. Faithful gradient +
-source evidence: `docs/design-system.md` §9 (boundary is **Mobus-only**, not Bunge; Bunge already
+source evidence: `docs/archive/design-system.md` §9 (boundary is **Mobus-only**, not Bunge; Bunge already
 directs and types — Bunge *Treatise* Ch. 1 §2.1/§1.3).
 
 ## Arc 3 — Translate
