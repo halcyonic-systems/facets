@@ -670,7 +670,10 @@ function EdgeView({
           {`r${sigIndex + 1} ⊆ T×T${relation.klir_directed ? " (directed)" : ""}`}
         </text>
       ) : (
-        relation.name && (
+        // At Mobus an exo flow's name already labels its port (φ) — repeating
+        // it on the edge doubles the text right at the membrane.
+        relation.name &&
+        !(lens === "Mobus" && interior !== null) && (
           <text
             x={labelAt.x + (driven ? 9 : 0)}
             y={labelAt.y - 6}

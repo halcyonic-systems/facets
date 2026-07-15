@@ -3,7 +3,7 @@ import { ready, runForced, toCanvas, validateMode, parseCsv, lensFacts } from ".
 import type { CanvasModel, LensFacts, Manifest, RunResultRich, ValidationResult } from "./kernel/types";
 import { DEMOS, type Demo } from "./demos";
 import Canvas, { edgeGeometry } from "./canvas/Canvas";
-import { DrivePopover } from "./canvas/DrivePopover";
+import { EdgePopover } from "./canvas/EdgePopover";
 import { SimScrubber } from "./canvas/SimScrubber";
 import { LENS_TO_MODE, type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
@@ -155,6 +155,14 @@ function Workspace() {
     if (demo) runWith(demo.modelJson, demo.csv, next, dt, t);
   }
 
+  // A per-lens edge edit (kind / bond⇄mere / direction / klir toggle): update
+  // the editing model; the effect above re-projects + re-judges in Rust.
+  function updateRelation(next: import("./kernel/types").Relation) {
+    setCanvasModel((m) =>
+      m ? { ...m, relations: m.relations.map((r) => (r.id === next.id ? next : r)) } : m,
+    );
+  }
+
   const clean = verdict !== null && verdict.issues.length === 0;
 
   return (
@@ -214,12 +222,15 @@ function Workspace() {
                 onPanChange={setCanvasPan}
               />
               {selectedRelation && popoverAnchor && (
-                <DrivePopover
+                <EdgePopover
                   relation={selectedRelation}
+                  lens={canvasModel.lens}
+                  sigIndex={canvasModel.relations.findIndex((r) => r.id === selectedRelation.id)}
                   headers={csvHeaders}
                   manifest={manifest}
                   anchor={{ x: canvasPan.x + popoverAnchor.x, y: canvasPan.y + popoverAnchor.y }}
-                  onApply={applyDrive}
+                  onApplyManifest={applyDrive}
+                  onUpdateRelation={updateRelation}
                   onClose={() => setSelectedRelationId(null)}
                 />
               )}
