@@ -43,12 +43,19 @@ claim, §4.3.3.1), so "constrained → empowered" is grounded in the mathematics
 
 ```
 Klir  (constrained)   →   Bunge  (middle)   →   Mobus  (empowered)
-relation + observer       + real bonds,          + boundary, interfaces,
-(epistemic skeleton)        composition,            typed flows, dynamical face
-                            aggregate-vs-system      (the full 7-tuple)
+relation + observer       + real bonds,          + first-class Environment,
+(epistemic skeleton)        composition/env,        membrane boundary B=⟨P,I⟩,
+                            boundary-as-COMPONENT-   interfaces, typed flows,
+                            set, aggregate cut,        dynamical face (8-tuple)
+                            mechanism (CESM)
 ```
-- **Bunge = Mobus with B, T, H, Δt stripped** — keep C + N (composition +
-  structure/bonds), add the ontological bond/aggregate cut.
+- **The boundary concept accretes:** Klir *none* → Bunge *set of boundary-
+  components* (relational, computed, no ring) → Mobus *first-class membrane*
+  `B=⟨P,I⟩` with interface ports. Mobus promotes Bunge's boundary-components (his
+  input/output terminals) into typed interfaces.
+- **Bunge = Mobus with B (as membrane), T, H, Δt stripped** — keep C + N + E
+  (composition + structure/bonds + environment), add the ontological bond/aggregate
+  cut and the boundary-component set. Bunge's M (mechanism) ↔ Mobus's T.
 - **Klir = foreground the relational/behavioral skeleton** — abstract away
   substance-typing and boundary; direction optional; the *observer* stands behind.
 
@@ -105,9 +112,23 @@ already enforces it (`validate_mode(Structural)` → the Bunge Def 1.1 error).
 **Distinctives.** Directed, **typed-by-kind** bonds: *n directed graphs, one per
 connection-kind* (mechanical / chemical / informational / social — §2.1). Structure
 splits into **endostructure** (bonds within C) and **exostructure** (C↔E). Self-
-loops are native (feedback, diagonal `M_pp`). **No boundary** — Bunge explicitly
-rejects "has a boundary" as definitory (§1.2); membership is set-classification,
-not topology.
+loops are native (feedback, diagonal `M_pp`).
+
+**Boundary — Bunge DOES have one (1992), but it is RELATIONAL, not a ring.** The
+1979 Treatise rejects *geometric* boundary as definitory; Bunge 1992 (*System
+Boundary*, `RY7Z24Q7`) then settles it: *"every concrete system, except the
+universe as a whole, has at least one boundary"* — but a **topological** one.
+A **boundary component** is a component directly coupled to the environment (its
+neighborhood contains both a system component and an environment thing); the
+**boundary is the *set of boundary components*** — *"a certain set of components;
+there is no suggestion of shape or surface."* Interior components are shielded from
+E. *"Drawing the boundary is not a matter of drawing — it consists in identifying
+the components directly coupled to environmental items"* → **it is computed, not
+drawn** (a kernel verdict). Input/output terminals are boundary members — exactly
+what **Mobus promotes into first-class interfaces on his membrane** (the boundary
+concept *accretes*: Klir none → Bunge boundary-component-*set* → Mobus first-class
+membrane `B=⟨P,I⟩` with ports). So the Bunge lens marks **which components are on
+the boundary**, but draws **no ring** (the ring is Mobus's).
 
 **Mechanism (M) — mature Bunge is CESM, not just CES.** Bunge's later model adds a
 fourth element: `σ = ⟨C, E, S, M⟩`, where **M = mechanism = "one of the processes
@@ -125,6 +146,10 @@ implement with the dynamical face. (Also revisit: Bunge 1992 *System Boundary*
 - **Composition vs Environment as a set partition** — a soft color *wash* /
   grouping (inside-C vs outside-E), **NOT a boundary ring** (that would smuggle in
   Mobus). Environment things a distinct fill.
+- **Boundary components highlighted (1992), no ring** — mark the components
+  directly coupled to E (the kernel-computed boundary-component set) distinctly from
+  interior components (e.g. a subtle rim accent on boundary nodes). The boundary is
+  *which nodes touch outside*, a marked subset — never a drawn perimeter.
 - **Directed, kind-colored bonds** (arrowheads always; color by connection-kind).
   Mere relations (non-bonds) rendered distinctly (dashed, muted).
 - **The aggregate warning is first-class** — if the selection/model has zero bonds
