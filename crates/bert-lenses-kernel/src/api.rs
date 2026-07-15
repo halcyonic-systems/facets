@@ -221,6 +221,20 @@ pub fn describe(canvas_json: &str, lens: &str) -> Result<JsValue, JsError> {
     to_js(&bert_canvas::lenses::describe(&model, l))
 }
 
+/// The atomic author-view verdict: the lens gate, the lens facts, and the
+/// formal object, from ONE deserialization of the canvas. The lens is the
+/// canvas model's own `lens` field (Klir→Core, Bunge→Structural,
+/// Mobus→Operational for the gate). Composes `validate_mode` + `lens_facts` +
+/// `describe` in `bert_canvas`; this boundary only marshals. Replaces the face's
+/// three-call waterfall (each of which re-serialized and re-projected the model).
+#[wasm_bindgen]
+pub fn analyze_canvas(canvas_json: &str) -> Result<JsValue, JsError> {
+    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    let lens = model.lens;
+    to_js(&bert_canvas::lenses::analyze(&model, lens))
+}
+
 // ---- Boundary DTOs (data-transfer shapes only, no logic) --------------------
 
 #[derive(Serialize)]
@@ -432,6 +446,139 @@ mod tests {
                 serde_json::from_str(json).unwrap_or_else(|e| panic!("{label}: parse: {e}"));
             let _report = bert_core::validate::validate(&model);
         }
+    }
+
+    // ---- serde↔TS contract fixtures (run-family boundary DTOs) --------------
+    //
+    // The canvas-family shapes are fixtured from bert-canvas (tests/contract.rs).
+    // These cover the DTOs that live HERE — the ones api.rs assembles as it
+    // marshals a run back to JS. Each is built from a REAL kernel path (a forced
+    // reservoir run, the runnable sample, a CSV parse), serialized to the
+    // committed fixture, and asserted equal so any drift fails. The web side
+    // (web/src/kernel/contract.test.ts) validates the SAME files against types.ts.
+    //
+    // Regenerate after an intentional shape change:
+    //   BLESS_FIXTURES=1 cargo test -p bert-lenses-kernel --lib
+
+    /// Write-or-assert a committed contract fixture (shared with bert-canvas's
+    /// tests/contract.rs). `BLESS_FIXTURES=1` rewrites; otherwise drift fails.
+    fn check_fixture<T: Serialize>(name: &str, value: &T) {
+        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../fixtures/contract");
+        let path = format!("{dir}/{name}.json");
+        let actual = serde_json::to_string_pretty(value).expect("serialize fixture");
+        if std::env::var_os("BLESS_FIXTURES").is_some() {
+            std::fs::create_dir_all(dir).expect("create fixture dir");
+            std::fs::write(&path, format!("{actual}\n")).expect("write fixture");
+            return;
+        }
+        let expected = std::fs::read_to_string(&path).unwrap_or_else(|_| {
+            panic!("missing fixture {path}; run with BLESS_FIXTURES=1 to create")
+        });
+        assert_eq!(
+            actual,
+            expected.trim_end_matches('\n'),
+            "serde↔fixture drift for {name}: the wasm boundary DTO changed. If intended, \
+             regenerate with BLESS_FIXTURES=1 and update web/src/kernel/types.ts to match."
+        );
+    }
+
+    /// The reservoir demo, reconstructed in Rust (model + CSV + manifest) so the
+    /// forced-run DTOs are fixtured from a real `force_and_run`, not hand-typed.
+    fn reservoir_manifest() -> bert_tether::manifest::RunManifest {
+        use bert_tether::manifest::{ColumnMapping, Role, RunManifest};
+        RunManifest {
+            model: String::new(),
+            data: String::new(),
+            dt: None,
+            t: 12.0,
+            mapping: vec![
+                ColumnMapping {
+                    column: "month".into(),
+                    role: Role::Time,
+                    element: None,
+                    unit: None,
+                    force: false,
+                    every: None,
+                },
+                ColumnMapping {
+                    column: "inflow".into(),
+                    role: Role::Flow,
+                    element: Some("Watershed → Reservoir".into()),
+                    unit: Some("ML/mo".into()),
+                    force: true,
+                    every: None,
+                },
+            ],
+        }
+    }
+
+    const RESERVOIR_CSV: &str =
+        "month,inflow\n1,20\n2,35\n3,60\n4,45\n5,25\n6,15\n7,10\n8,12\n9,22\n10,40\n11,55\n12,30\n";
+
+    #[test]
+    fn csv_parse_fixture() {
+        let (headers, rows) = bert_tether::tether::parse_csv(RESERVOIR_CSV).expect("csv parses");
+        check_fixture("csv_parse", &CsvParse { headers, rows });
+    }
+
+    #[test]
+    fn targets_fixture() {
+        let json = include_str!("../../../assets/models/demos/reservoir.json");
+        let model: WorldModel = serde_json::from_str(json).expect("reservoir parses");
+        let flows: Vec<FlowTarget> = bert_tether::forcing::flow_targets(&model)
+            .into_iter()
+            .map(|(id, name, unit)| FlowTarget { id, name, unit })
+            .collect();
+        let components: Vec<ComponentTarget> = bert_tether::forcing::component_targets(&model)
+            .into_iter()
+            .map(|(id, name)| ComponentTarget { id, name })
+            .collect();
+        assert!(!flows.is_empty(), "reservoir must expose flow targets");
+        check_fixture("targets", &Targets { flows, components });
+    }
+
+    #[test]
+    fn mapping_status_fixture() {
+        let json = include_str!("../../../assets/models/demos/reservoir.json");
+        let model: WorldModel = serde_json::from_str(json).expect("reservoir parses");
+        let status =
+            bert_tether::forcing::mapping_status(&model, RESERVOIR_CSV, &reservoir_manifest())
+                .expect("mapping status");
+        check_fixture("mapping_status", &status);
+    }
+
+    #[test]
+    fn run_result_fixture() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let model: WorldModel = serde_json::from_str(json).expect("sample parses");
+        let spec = core_validate_operational(&model).expect("sample is executable");
+        let mut circuit = bert_compose::from_spec(&spec);
+        let recorded = bert_compose::RecordedRun::record(&mut circuit, &spec, 1.0, 4);
+        check_fixture(
+            "run_result",
+            &RunResult {
+                dt: recorded.dt,
+                history: recorded.history,
+                ledger_history: recorded.ledger_history,
+                final_balance: recorded.final_balance,
+            },
+        );
+    }
+
+    #[test]
+    fn run_result_rich_fixture() {
+        let json = include_str!("../../../assets/models/demos/reservoir.json");
+        let model: WorldModel = serde_json::from_str(json).expect("reservoir parses");
+        let readout = bert_tether::forcing::force_and_run(
+            model,
+            RESERVOIR_CSV,
+            &reservoir_manifest(),
+            1.0,
+            12.0,
+            "2026-01-01",
+        )
+        .expect("forced run succeeds");
+        check_fixture("run_result_rich", &RunResultRich::from(readout));
     }
 
     /// The full `run()` spine on the bundled executable sample: parse → project →

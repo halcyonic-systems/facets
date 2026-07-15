@@ -20,6 +20,7 @@ import init, {
   validate_connection as wasmValidateConnection,
   lens_facts as wasmLensFacts,
   describe as wasmDescribe,
+  analyze_canvas as wasmAnalyzeCanvas,
 } from "bert-lenses-kernel";
 import wasmUrl from "bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url";
 
@@ -36,6 +37,7 @@ import type {
   Relation,
   LensFacts,
   LensDescription,
+  CanvasAnalysis,
 } from "./types";
 import type { Lens } from "./types";
 
@@ -138,4 +140,12 @@ export function lensFacts(model: CanvasModel): LensFacts {
  *  The FormalPanel renders this — the math is never assembled in JS. */
 export function describeLens(model: CanvasModel, lens: Lens): LensDescription {
   return wasmDescribe(JSON.stringify(model), lens) as LensDescription;
+}
+
+/** The atomic author-view verdict: the lens gate, lens facts, and formal object
+ *  from ONE kernel call (one deserialization, one projection). Uses the canvas
+ *  model's own lens. Supersedes the validateMode → lensFacts → describeLens
+ *  waterfall — memoize on the canvas model. */
+export function analyzeCanvas(model: CanvasModel): CanvasAnalysis {
+  return wasmAnalyzeCanvas(JSON.stringify(model)) as CanvasAnalysis;
 }

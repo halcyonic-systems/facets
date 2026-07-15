@@ -23,10 +23,10 @@
 use serde::Serialize;
 use std::collections::HashMap;
 
-use bert_core::validate::{validate_mode, Severity};
+use bert_core::validate::{validate_mode, Severity, ValidationResult};
 use bert_core::{EdgeLocus, Id, Interaction, Mode};
 
-use crate::canvas::{project_with_map, CanvasModel, Kind, Lens, Role};
+use crate::canvas::{project, project_with_map, CanvasModel, Kind, Lens, Role};
 
 /// One canvas relation, read through the edge ladder.
 #[derive(Serialize, Clone, Debug)]
@@ -311,7 +311,40 @@ pub enum LensDescription {
 /// Typeset the model as the active lens's formal object. Counts are read off
 /// the same kernel facts the canvas renders — never re-derived.
 pub fn describe(model: &CanvasModel, lens: Lens) -> LensDescription {
+    describe_from_facts(model, lens, &lens_facts(model))
+}
+
+/// The atomic canvas verdict: the lens gate, the lens facts, and the formal
+/// object, computed from ONE projection. Everything the author view reads in a
+/// single call — `validate_mode` at the lens's rung, `lens_facts`, and
+/// `describe` — so the face makes one round trip, not a three-call waterfall
+/// that re-projects the same model each time.
+#[derive(Serialize, Clone, Debug)]
+pub struct CanvasAnalysis {
+    /// The lens gate at the active lens's mode (Klir→Core, Bunge→Structural,
+    /// Mobus→Operational) — the same verdict `validate_mode` returns.
+    pub validation: ValidationResult,
+    pub facts: LensFacts,
+    pub description: LensDescription,
+}
+
+/// Compute the lens gate, facts, and formal object together. The facts are
+/// computed once and shared between the aggregate verdict and the description,
+/// so `analyze` never projects the model more than the individual calls would.
+pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
     let facts = lens_facts(model);
+    let validation = validate_mode(&project(model), lens.mode());
+    let description = describe_from_facts(model, lens, &facts);
+    CanvasAnalysis {
+        validation,
+        facts,
+        description,
+    }
+}
+
+/// Typeset the model given already-computed lens facts — the shared body behind
+/// [`describe`] and [`analyze`], so the facts are read once, never twice.
+fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensDescription {
     let name_of = |id: u64| -> String {
         model
             .things

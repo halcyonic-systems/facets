@@ -1,0 +1,20 @@
+{
+  "flows": [
+    {
+      "id": 0,
+      "name": "Watershed → Reservoir",
+      "unit": "ML/mo"
+    },
+    {
+      "id": 1,
+      "name": "Reservoir → Release",
+      "unit": "ML/mo"
+    }
+  ],
+  "components": [
+    {
+      "id": 2,
+      "name": "Reservoir"
+    }
+  ]
+}

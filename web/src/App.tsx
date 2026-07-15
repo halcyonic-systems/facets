@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { ready, runForced, toCanvas, validateMode, parseCsv, lensFacts, describeLens } from "./kernel";
-import type { CanvasModel, LensDescription, LensFacts, Manifest, RunResultRich, ValidationResult } from "./kernel/types";
+import { ready, runForced, toCanvas, parseCsv, analyzeCanvas } from "./kernel";
+import type { CanvasModel, Manifest, RunResultRich } from "./kernel/types";
 import { DEMOS, type Demo } from "./demos";
 import Canvas, { edgeGeometry } from "./canvas/Canvas";
 import { EdgePopover } from "./canvas/EdgePopover";
 import { SimScrubber } from "./canvas/SimScrubber";
-import { LENS_TO_MODE, type SimFrame } from "./canvas/types";
+import { type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
 import { RunPanel } from "./RunPanel";
 import { FormalPanel } from "./FormalPanel";
@@ -59,9 +59,6 @@ function Workspace() {
   const [selectedRelationId, setSelectedRelationId] = useState<number | null>(null);
   const [canvasPan, setCanvasPan] = useState<Pt>({ x: 0, y: 0 });
   const [toast, setToast] = useState<string | null>(null);
-  const [verdict, setVerdict] = useState<ValidationResult | null>(null);
-  const [facts, setFacts] = useState<LensFacts | null>(null);
-  const [desc, setDesc] = useState<LensDescription | null>(null);
 
   const runWith = (modelJson: string, csv: string, m: Manifest, dtv: number, tv: number) => {
     try {
@@ -85,14 +82,17 @@ function Workspace() {
     runWith(d.modelJson, d.csv, d.manifest, d.manifest.dt ?? 1, d.t); // one click → runs
   };
 
-  // The author-view verdict + lens facts: every model or lens change re-projects
-  // and re-judges in Rust. The canvas renders these — it derives nothing.
-  useEffect(() => {
-    if (!canvasModel) return;
-    setVerdict(validateMode(canvasModel, LENS_TO_MODE[canvasModel.lens]));
-    setFacts(lensFacts(canvasModel));
-    setDesc(describeLens(canvasModel, canvasModel.lens));
-  }, [canvasModel]);
+  // The author-view verdict, lens facts, and formal object: every model or lens
+  // change re-projects and re-judges in Rust — one atomic analyze_canvas call
+  // (one deserialization, one projection), memoized on the canvas model. The
+  // canvas renders these; it derives nothing.
+  const analysis = useMemo(
+    () => (canvasModel ? analyzeCanvas(canvasModel) : null),
+    [canvasModel],
+  );
+  const verdict = analysis?.validation ?? null;
+  const facts = analysis?.facts ?? null;
+  const desc = analysis?.description ?? null;
 
   useEffect(() => {
     if (!toast) return;
