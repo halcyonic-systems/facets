@@ -198,6 +198,15 @@ pub fn project(canvas_json: &str) -> Result<JsValue, JsError> {
     to_js(&crate::canvas::project(&model))
 }
 
+/// Load an existing `WorldModel` onto the canvas as an editing model — the
+/// display-faithful inverse of `project`. Lets the canvas show an executable
+/// demo as a diagram to drive + run.
+#[wasm_bindgen]
+pub fn to_canvas(model_json: &str) -> Result<JsValue, JsError> {
+    let model = parse_model(model_json)?;
+    to_js(&crate::canvas::to_canvas(&model))
+}
+
 /// Validate a proposed connection at the model's current lens. Returns the issues
 /// the candidate edge INTRODUCED (empty = legal). The per-drag "React asks Rust"
 /// call — the canvas rejects an edge iff the kernel says so.

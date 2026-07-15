@@ -291,6 +291,102 @@ pub fn project(model: &CanvasModel) -> WorldModel {
     }
 }
 
+fn substance_to_kind(s: SubstanceType) -> Kind {
+    match s {
+        SubstanceType::Material => Kind::Matter,
+        SubstanceType::Message => Kind::Informational,
+        SubstanceType::Energy => Kind::Energy,
+    }
+}
+
+/// Load an existing `WorldModel` back onto the canvas as an editing model — the
+/// display-faithful inverse of [`project`]. Level-1 systems become component
+/// things (carrying their primitive + position), environment source/sink
+/// entities become environment things, interactions become relations (typed by
+/// substance), and the lens is read from the model's mode. Fidelity of dynamics
+/// params (storage, cognitive params) is NOT round-tripped here: in Phase 2b the
+/// canvas is a VIEW + drive-target picker, and the run uses the original model —
+/// so this only needs to draw the structure faithfully.
+pub fn to_canvas(model: &WorldModel) -> CanvasModel {
+    use std::collections::HashMap;
+
+    let lens = match model.mode() {
+        Mode::Core => Lens::Klir,
+        Mode::Structural => Lens::Bunge,
+        Mode::Operational | Mode::Full => Lens::Mobus,
+    };
+
+    let mut things: Vec<Thing> = Vec::new();
+    let mut id_of: HashMap<Id, u64> = HashMap::new();
+    let mut next: u64 = 1;
+
+    for s in model.systems.iter().filter(|s| s.info.level == 1) {
+        let (x, y) = s
+            .transform
+            .as_ref()
+            .map(|t| (t.translation.x, t.translation.y))
+            .unwrap_or((0.0, 0.0));
+        let id = next;
+        next += 1;
+        id_of.insert(s.info.id.clone(), id);
+        things.push(Thing {
+            id,
+            name: s.info.name.clone(),
+            x,
+            y,
+            role: Role::Component,
+            primitive: s.agent.as_ref().and_then(|a| a.primitive),
+        });
+    }
+
+    for e in model
+        .environment
+        .sources
+        .iter()
+        .chain(model.environment.sinks.iter())
+    {
+        let (x, y) = e
+            .transform
+            .as_ref()
+            .map(|t| (t.translation.x, t.translation.y))
+            .unwrap_or((0.0, 0.0));
+        let id = next;
+        next += 1;
+        id_of.insert(e.info.id.clone(), id);
+        things.push(Thing {
+            id,
+            name: e.info.name.clone(),
+            x,
+            y,
+            role: Role::Environment,
+            primitive: None,
+        });
+    }
+
+    let mut relations: Vec<Relation> = Vec::new();
+    for ix in &model.interactions {
+        let (Some(&a), Some(&b)) = (id_of.get(&ix.source), id_of.get(&ix.sink)) else {
+            continue;
+        };
+        let id = next;
+        next += 1;
+        relations.push(Relation {
+            id,
+            a,
+            b,
+            name: ix.info.name.clone(),
+            is_bond: true,
+            kind: substance_to_kind(ix.substance.ty),
+        });
+    }
+
+    CanvasModel {
+        lens,
+        things,
+        relations,
+    }
+}
+
 /// Validate a proposed connection against the current lens: project the model
 /// WITH the candidate, run `validate_mode(lens.mode())`, and return the issues
 /// the candidate INTRODUCED (a self-loop at Mobus, an unbonded aggregate at
@@ -382,6 +478,38 @@ mod tests {
         // The same edge is legal at Klir (Core has no irreflexivity gate).
         let klir = CanvasModel { lens: Lens::Klir, ..model.clone() };
         assert!(validate_connection(&klir, &loop_edge).is_empty());
+    }
+
+    #[test]
+    fn to_canvas_loads_a_demo_faithfully() {
+        // The reservoir demo: Watershed(Source) → Reservoir(Buffering) → Release(Sink).
+        let json = include_str!("../../../assets/models/demos/reservoir.json");
+        let model: WorldModel = serde_json::from_str(json).unwrap();
+        let cm = to_canvas(&model);
+
+        assert_eq!(cm.lens, Lens::Mobus); // demos are Operational
+        // one component (Reservoir) + two environment things (Watershed, Release)
+        let reservoir = cm
+            .things
+            .iter()
+            .find(|t| t.name == "Reservoir")
+            .expect("Reservoir component");
+        assert_eq!(reservoir.role, Role::Component);
+        assert_eq!(reservoir.primitive, Some(ProcessPrimitive::Buffering));
+        assert!(cm.things.iter().any(|t| t.name == "Watershed" && t.role == Role::Environment));
+        assert!(cm.things.iter().any(|t| t.name == "Release" && t.role == Role::Environment));
+        // positions came through (not all at origin)
+        assert!(cm.things.iter().any(|t| t.x != 0.0 || t.y != 0.0));
+        // two relations, named, connecting real things
+        assert_eq!(cm.relations.len(), 2);
+        assert!(cm.relations.iter().all(|r| !r.name.is_empty()));
+
+        // And it re-projects to a still-executable model (display-faithful round-trip).
+        let back = project(&cm);
+        assert!(
+            bert_core::operational::validate_operational(&back).is_ok(),
+            "reloaded demo should still project to an executable model"
+        );
     }
 
     #[test]
