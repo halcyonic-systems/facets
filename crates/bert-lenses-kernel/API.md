@@ -56,19 +56,57 @@ First step of the tether: headers + string rows (gaps disclosed, never filled).
 type CsvParse = { headers: string[], rows: string[][] }
 ```
 
-## Phase 1 extension (reserved — the wizard surface)
+## Phase 1 surface (built — the tether wizard + forced run)
 
-These attach in Phase 1 (CSV mapping wizard + run panel), building on the same
-pure `tether`/`manifest` modules already vendored here. Reserved so Phase 1
-extends the surface without churning Phase 0:
+The wizard holds manifest-shaped UI state (`{ model:"", data:"", t, dt?, mapping:
+[{column, as, element, unit, force, every?}] }` — the pipeline's `RunManifest`
+shape; `model`/`data` paths are unused in the browser). All gates, commit,
+forcing, and comparison maths stay in Rust.
 
-- `mapping_gates(draft_json) → { can_finish, units_ok, time_unique_ok }` — the
-  T1/T2/T5 gates over a `MappingDraft`.
-- `resolve_manifest(manifest_json, csv_text) → MappingDraft` — the declarative
-  manifest path onto the same mapping the wizard drives.
-- `run` gains an optional `mapping_json` arg so imported series force flows
-  (the rung-1/2/3 forced-boundary path), and `to_world_model` / `from_world_model`
-  are exposed for the round-trip.
+### `model_targets(model_json) → { flows, components }`
+The mapping-target menus, read from the model.
+```ts
+type Targets = {
+  flows: { id: number, name: string, unit: string }[],       // interactions
+  components: { id: number, name: string }[],                // level-1 systems
+}
+```
+`id` is an opaque handle (flows first, components offset past them) the manifest's
+`element` names resolve to; the wizard shows `name`.
+
+### `mapping_status(model_json, csv_text, manifest_json) → MappingStatus`
+Live wizard status — reconstructs the `MappingDraft`, runs the gates, no effects.
+```ts
+type MappingStatus = {
+  t1_ok: boolean,                       // every column spoken for
+  t2_ok: boolean, t2_msg: string|null,  // flow magnitudes declare units
+  t4_ok: boolean, t4_msg: string|null,  // time column is unique (no long panel)
+  can_finish: boolean,
+  translations: string[],               // one per assigned column, plain-language
+  inferred_dt: number|null,             // median gap of the time column
+  apply_error: string|null,             // manifest resolution problem, if any
+}
+```
+
+### `run_forced(model_json, csv_text, manifest_json, dt, t, today) → RunResultRich`
+Force the model with the imported CSV over `(dt, t)`, read back in domain terms.
+Throws (with a legible reason) if the mapping is incomplete or the model is not
+executable. `today` = `YYYY-MM-DD` from JS (the wasm path never reads system time).
+```ts
+type RunResultRich = {
+  ticks: number, dt: number,
+  residual: number, conserved: boolean,
+  levels: { name, unit, value, category: "product"|"resource"|"internal" }[],
+  comparisons: {                        // simulated vs actual, BY DOMAIN NAME
+    element, kind: "stock"|"flow", unit,
+    simulated: number[], actual: number[],
+    declared: number[]|null,            // the flat declared-mean baseline (flows)
+    divergence_pct: number|null,
+  }[],
+  trajectories: { name, unit, series: number[] }[],
+}
+```
+Everything is labeled by the model's own names + units — no engine columns leak.
 
 ## Notes
 - The wasm is built with `wasm-pack build --target web` into `pkg/` (a build

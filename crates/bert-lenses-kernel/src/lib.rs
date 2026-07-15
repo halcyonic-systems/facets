@@ -18,5 +18,6 @@
 //! wrapper; it only marshals.
 
 pub mod api;
+pub mod forcing;
 pub mod manifest;
 pub mod tether;

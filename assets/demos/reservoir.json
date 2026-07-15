@@ -1,0 +1,16 @@
+{
+  "title": "Reservoir",
+  "blurb": "A watershed fills a reservoir; a release drains it. Force the inflow with a year of monthly rainfall and watch the level respond — and conserve.",
+  "model": "reservoir",
+  "t": 12,
+  "csv": "month,inflow\n1,20\n2,35\n3,60\n4,45\n5,25\n6,15\n7,10\n8,12\n9,22\n10,40\n11,55\n12,30\n",
+  "mapping": {
+    "model": "",
+    "data": "",
+    "t": 12,
+    "mapping": [
+      { "column": "month", "as": "time" },
+      { "column": "inflow", "as": "flow", "element": "Watershed → Reservoir", "unit": "ML/mo", "force": true }
+    ]
+  }
+}

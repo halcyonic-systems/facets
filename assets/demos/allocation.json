@@ -1,0 +1,19 @@
+{
+  "title": "Allocation",
+  "blurb": "Total token demand is split across three model providers by per-provider weights. Force the total and the weights; the allocator divides the flow, conserving every month.",
+  "model": "allocation",
+  "t": 12,
+  "csv": "month,total,w_anthropic,w_openai,w_google\n1,100,20,50,30\n2,130,24,48,28\n3,165,28,46,26\n4,205,33,44,23\n5,250,38,41,21\n6,300,42,40,18\n7,340,46,38,16\n8,375,49,36,15\n9,400,52,34,14\n10,420,54,33,13\n11,435,56,32,12\n12,445,58,31,11\n",
+  "mapping": {
+    "model": "",
+    "data": "",
+    "t": 12,
+    "mapping": [
+      { "column": "month", "as": "time" },
+      { "column": "total", "as": "flow", "element": "Total demand → Allocator", "unit": "Mtok/mo", "force": true },
+      { "column": "w_anthropic", "as": "flow", "element": "Allocator → Anthropic", "unit": "weight", "force": true },
+      { "column": "w_openai", "as": "flow", "element": "Allocator → OpenAI", "unit": "weight", "force": true },
+      { "column": "w_google", "as": "flow", "element": "Allocator → Google", "unit": "weight", "force": true }
+    ]
+  }
+}
