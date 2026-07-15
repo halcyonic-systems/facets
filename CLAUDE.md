@@ -25,6 +25,14 @@ exists to keep it true.
    sockets on the wasm path — the browser supplies dates, fetch, storage).
 6. **Fun to use is the north star.** Build simple, build beautiful, one honest
    step at a time. Design system: Halcyonic Frost (`web/DESIGN.md`).
+7. **Mobus semantic authority = the Lean, not the book or memory.** Mobus's
+   knowledge is scattered; the canonical, machine-checked source is
+   `systems-science-foundations/Systems/Mobus/Tuple.lean` — the **8-tuple**
+   `⟨C, N, E, G, B, T, H, Δt⟩`. CITE it, don't reconstruct. Essential facts that
+   get forgotten: **E (environment) is first-class** (objects + milieu, `C∩E=∅`);
+   **H is History**, not hierarchy; **Messages are copyable / not conserved**
+   (Material + Energy are conserved). The lens palettes encode this:
+   `docs/design/lens-palettes.md`.
 
 ## Layout
 
