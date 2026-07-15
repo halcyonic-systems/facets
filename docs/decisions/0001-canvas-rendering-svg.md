@@ -88,3 +88,17 @@ The bet is contained to `web/`'s rendering layer, not the kernel.
 From the xyflow arm (`spike/xyflow-canvas`): **the flowier bezier flow curves** —
 port the control-point geometry into the SVG canvas's edge rendering so Phase 3
 gets the flow feel the blind read preferred. (Everything else is xyflow-specific.)
+
+## Note — SVG is text-native (a reinforcing bonus, not the reason)
+
+The whole stack is text all the way down: `CanvasModel` JSON (the model) → Rust
+kernel (the gate) → SVG (the rendered face). SVG being XML means the *rendered
+output itself* is legible text — unlike xyflow's library-managed DOM or an opaque
+bitmap `<canvas>`. That buys: readable/exportable diagrams (an LLM or a static
+export can read the render, not just a screenshot); agent-inspectable output
+(`read_page` gave clean semantics for the SVG spike vs library chrome for xyflow);
+and no opaque layer anywhere — the shape a bounded-reasoner-in-the-loop wants.
+**Guardrail:** the LLM authors the *model* (kernel-validated), never raw SVG (which
+has no systemhood constraints). SVG's text-friendliness is for reading/export/
+inspection, not for the LLM to draw systems. Wasn't load-bearing (gesture-fit +
+control was), but it aligns with the guarded-LLM north star.
