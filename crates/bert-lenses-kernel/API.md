@@ -130,6 +130,14 @@ Project the canvas editing model into a bert-core `WorldModel` (mode-stamped by
 the lens; only bonds project; touched environment things → Source/Sink by
 direction). The canvas never builds a WorldModel itself.
 
+### `to_canvas(model_json) → CanvasModel`
+The display-faithful inverse of `project`: load an existing `WorldModel` onto the
+canvas as an editing model (level-1 systems → component things with primitive +
+position; env source/sink → environment things; interactions → relations typed by
+substance; lens from mode). For Phase 2b (load a demo → drive → run), the canvas is
+a VIEW + drive-target picker and the run uses the original model, so dynamics
+params are not round-tripped here.
+
 ### `validate_connection(canvas_json, candidate_json) → { issues: ValidationIssue[] }`
 Validate a proposed `Relation` at the model's current lens; returns the issues
 the candidate INTRODUCED (empty = legal). E.g. a self-loop is rejected at Mobus
