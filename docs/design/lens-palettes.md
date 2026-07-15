@@ -63,11 +63,23 @@ relation + observer       + real bonds,          + first-class Environment,
   Mobus *reifies + equips* it. (Nuance: Mobus's binding-force asymmetry — internal
   links denser than external — is a cohesion-gradient framing, compatible with but
   not identical to Bunge's per-component "touches outside.")
-- **Design consequence:** ONE kernel primitive `boundary_components(model)` feeds
-  both lenses — the **Bunge** lens *marks* those nodes; the **Mobus** lens draws
-  the membrane + ports *on the same nodes*. Toggling Bunge→Mobus reifies the same
-  boundary in place (marked components grow a ring + interfaces) — a continuous,
-  faithful accretion, not a swap.
+- **The convergence is FORMAL, not loose (machine-checked).** Both define the
+  boundary as a **subset of the components**: Bunge — boundary ⊆ C (a reading of C);
+  Mobus Lean (`Interface.lean:7`, `Boundary.lean:39`) — *"interface components
+  **I ⊆ C**, the subset of components that transport flows across the boundary."*
+  Both call the interior **"shielded"** (Bunge 1992 verbatim; `Boundary.lean:51`
+  *"non-interface components are 'shielded' from the environment"*). Mobus's
+  **Boundary Completeness** theorem (Showcase #3: every external flow passes through
+  an interface) is the formal capstone of Bunge's "I/O terminals are boundary
+  members." So:
+  > **boundary (Bunge) = interfaces (Mobus) = { c ∈ C : coupled to the environment }**
+  — the SAME set, machine-checked; reification (properties + protocols) is the only
+  difference.
+- **Design consequence:** ONE kernel primitive `boundary_components(model)` =
+  `{c ∈ C : has an external flow}` feeds both lenses — the **Bunge** lens *marks*
+  those nodes; the **Mobus** lens reifies them into a membrane + ports *on the same
+  nodes*. Toggling Bunge→Mobus reifies the same set in place — a continuous,
+  formally-grounded accretion, not a swap.
 - **Bunge = Mobus with B (as membrane), T, H, Δt stripped** — keep C + N + E
   (composition + structure/bonds + environment), add the ontological bond/aggregate
   cut and the boundary-component set. Bunge's M (mechanism) ↔ Mobus's T.
