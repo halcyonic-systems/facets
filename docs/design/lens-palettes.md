@@ -6,8 +6,9 @@
 > `describe`); the renderings live in `web/src/canvas/Canvas.tsx` and the
 > formal face in `web/src/FormalPanel.tsx`. Still open from this doc: boundary
 > property *authoring* (porosity/fuzziness are rendered but always 0.0 until
-> the canvas can set them), work-process badges beyond the primitive dot, Δt/H
-> dynamical markers, and the per-lens authoring palette (§ Interaction).
+> the canvas can set them), work-process badges beyond the primitive dot, and Δt/H
+> dynamical markers. **The per-lens authoring palette is now DESIGNED
+> (§ The authoring palette, 2026-07-15, #50)** — implementation tracked in #51.
 
 *Design reference for the canvas lens rendering. Grounded in the primary sources
 in the vault (not priors): Klir, *Facets of Systems Science*; Bunge, *Treatise on
@@ -380,6 +381,196 @@ genuinely elegant.)
 - **Mobus:** click a flow → set **substance type** + **drive with data** (the
   existing tether); click the boundary/interface → set **protocol + direction**.
 
+## The authoring palette — how each lens ADDS its kinds (#50, designed 2026-07-15)
+
+Decisions of record (`design-system-draft.md` §Decisions): dock = **left rail**;
+rail chrome tints via the `--lens-accent` seam (slate/indigo/teal) bound to kernel
+`Mode`; the KIND channel stays reserved. This section settles the rest of #50.
+Ground rule throughout: **the rail offers, the kernel decides** — legality is the
+before/after issue-delta of `validate_connection` (`bert-canvas/src/canvas.rs:425`)
+at the active Mode, never a UI list (design-system rule 8).
+
+### Birth modes are the grammar
+
+Carried forward from the archived creation model (`docs/archive/design-system.md`
+§9): every addable kind has one of three birth modes, mirroring the arity of the
+mathematical act — **PLACE** (nullary: add to T / C), **CONNECT** (binary: add to
+R / S / N∪G), **DERIVE** (a consequence the kernel computes, never authored).
+"Lenses accrete meaning, not placeable types" survives as the accretion rule for
+the rail: toggling a lens adds/removes *rows*, it never resets the canvas. What
+the left-rail decision supersedes is only §9's "no toolbox needed" conclusion —
+and §9's parked fallbacks (drag-out token, contextual radial) stay parked.
+
+**One correction to §9, forced by the sources (below): Mobus interfaces move OUT
+of the DERIVE row.** A fourth verb joins the grammar: **DESIGNATE** (unary on an
+existing element: mark a component as carrying a status the tuple declares —
+interface membership, work-process primitive). Gesture: arm the tool, click a
+*component* (not empty canvas).
+
+### Variant sketch and pick (fun gate, Q1)
+
+- **A. Flat stamp rail** — armable ToolButtons per kind; click to arm, click
+  canvas to place; Esc / second click disarms; double-click stays the un-armed
+  shortcut for the lens default.
+- **B. Grouped verb rail** — the same armable ToolButtons, sectioned by birth
+  mode: **Place** (armable stamps) · **Designate** (arm, then click a component) ·
+  **Connect** (the drag gestures, listed as gesture hints) · **Derived** (greyed,
+  non-armable, tooltip text from `describe` — "computed by the kernel").
+- **C. Drag-out** — drag a kind chip from the rail onto the canvas.
+
+**Pick: B, without a blind pick — this is not a genuine fork.** B strictly
+subsumes A's gesture (its Place entries *are* A's stamps) and adds exactly what
+Q2/Q3 need made visible: derived kinds shown-not-armable, and per-lens absence
+legible as rows that appear/disappear with the toggle. C collides with the
+connect-drag gesture space and was already parked in §9. The rail is therefore
+not a Gaphor type-toolbox; it is the lens's **verb list**.
+
+### Addable kinds per lens (the table)
+
+Columns: birth mode · gesture · where the kernel rules. Double-click on empty
+stage remains the shortcut for the lens's **default PLACE kind** (bolded row) —
+the existing `useCanvasGestures.ts` path, unchanged.
+
+#### Klir (Core) — `--accent-slate`
+
+| kind | birth | gesture | kernel verdict path |
+|---|---|---|---|
+| **thing** | PLACE | stamp / double-click | member of T (`project()`) |
+| relation (neutral) | CONNECT | drag node→node | `check_interaction_references`; neutral⇄directed, arity/mask are EDITs (§ Interaction) |
+
+**Absent at Klir (by ontology, not omission):** environment things, bond-vs-mere,
+connection kinds, substance types, boundary, interfaces, sources/sinks, work
+processes. A system is `S = (T, R)` — "a set of some things and a relation (or,
+possibly, a set of relations) defined on T" (*Facets*, Eq. 1.1; thinghood in T,
+systemhood in R). Everything richer is the investigator's construction: "a system
+is what is distinguished as a system by the investigator" (Gaines, in *Facets*
+ch. 4, the epistemological hierarchy; §2.4 — richer classes "must be introduced").
+Note Klir licenses **multiple named relations** on T ("or, possibly, a set of
+relations") — the rail's single CONNECT verb may spawn distinct named relations,
+which is faithful, not an extension.
+
+#### Bunge (Structural) — `--accent-indigo`
+
+| kind | birth | gesture | kernel verdict path |
+|---|---|---|---|
+| **component** | PLACE | stamp / double-click | member of 𝒞 (Def 1.2 i) |
+| environment thing | PLACE | stamp | in ℰ **only once bonded** — Def 1.2(ii) defines ℰ as the things that act on / are acted on by components, so `project()` dropping orphan terminals (`canvas.rs:241`) is Bunge-faithful; an unbonded env dot renders as *pending* (muted), not silently discarded |
+| bond (kind-typed) | CONNECT | drag node→node (also node→empty: births the env thing + bond in one act) | `check_bond` — the aggregate/heap verdict (Def 1.1); kind, bond⇄mere, direction are EDITs |
+| mere relation | CONNECT | drag, then toggle bond⇄mere | contributes nothing to systemhood (𝔹̄, the nonbonding set) |
+
+**Absent at Bunge:** ports/interfaces, typed sources/sinks, capacities, boundary
+*authoring*. ℰ is a flat **set of things** (Def 1.2 ii) — no interface object
+exists anywhere in the CES model. The boundary is **computed, never placed**:
+"the boundary of s is the set ∂C(s) of all the boundary components of s … a
+certain set of components … there is no suggestion of shape or surface" (Bunge
+1992, Def 3) — a Derived row, greyed. Bonding is the only edge distinction:
+structure decomposes into the bondage 𝔹 and the nonbonding relations 𝔹̄ (§1.2;
+1992 Def 1 makes it state-trajectory action). *Fidelity note:* Bunge's 𝒮 is a
+**set of relations** {Rᵢ}, not one flat relation — the kernel's single-relation
+form is the SSF formalizers' flagged simplification
+(`Systems/Bunge/StructureFamily.lean:8–24`), not Bunge's text.
+
+#### Mobus (Operational) — `--accent` (teal)
+
+| kind | birth | gesture | kernel verdict path |
+|---|---|---|---|
+| **component / subsystem** | PLACE | stamp / double-click | member of C |
+| environment object | PLACE | stamp | member of E.O; **Source vs Sink is DERIVED from flow direction** (`project()` originates-test) — one tool, not two; unbonded = pending, as at Bunge |
+| interface | **DESIGNATE** | arm, click a component | I ⊆ C (`Tuple.lean:97` `interfaces_sub`); flowless interfaces are **well-formed** (see below) |
+| typed flow | CONNECT | drag node→node / node→empty (births env object + flow) | `check_self_loops` (k ≠ o, §4.3, `FlowNetwork.lean:68`); crossing flows must land on interfaces — bipartite G (`Tuple.lean:103`) |
+| work-process primitive | **DESIGNATE** | arm a primitive, click a leaf component | `bert-core` `Vec<ProcessPrimitive>`; `validate_operational` instantiates `.first()` |
+
+**Derived rows (shown greyed, never armable):** boundary ring + P rendering,
+Source/Sink identity, endo/exo edge classification, the aggregate verdict.
+
+### The interface correction (Q2) — sources overturned the Phase-3 assumption
+
+Phase 3 (and archive §9) treated interface ports as DERIVE-only — "arising from
+flows, never placed." **The authority says otherwise, in both the Lean and the
+prose:**
+
+- `B = ⟨P, I⟩` with `interfaces : Set α` an **author-supplied field** of the
+  boundary structure (`Boundary.lean:35–42`) — not a computed value. The 8-tuple's
+  coherence constraints (`Tuple.lean:86–107`) require `I ⊆ C` (`:97`) and
+  bipartite external flows (`:103`, `Interface.lean:33–36`), but contain **no
+  coverage constraint from flows onto interfaces: a flowless interface is
+  well-formed.**
+- Mobus §4.3, Eq. 4.6: "B = ⟨P, I⟩ … the second set, I, is the set of interfaces"
+  — I is a primitive element of the boundary tuple. (Quoted via the SSF
+  transcription `systems-science-foundations/docs/reference/mobus-bunge-system-definitions-reference.md:165–177`;
+  the primary 2022 PDF is not on disk — the Lean is this project's declared
+  authority regardless, CLAUDE.md invariant #7.)
+- BERT's applied doc is already interface-first: "Subsystems MUST attach to
+  existing interfaces" (`bert/docs/mobus-reference.md:82`).
+
+**The true asymmetry runs the other way: flow ⇒ interface** (every crossing flow
+passes through one — `bipartite_implies_boundary_complete`,
+`Interface.lean:47–63`), never interface ⇒ flow. Design consequences:
+
+1. **The Mobus rail offers interface DESIGNATION** (arm → click a component →
+   it joins I). Placing a new component pre-designated is the same verb composed
+   with PLACE.
+2. **Auto-designation on flow-crossing survives as ergonomics of flow ⇒
+   interface**: drawing a crossing flow onto a non-designated component
+   designates it rather than erroring. Effective I = authored ∪ flow-crossing —
+   the union keeps bipartite G satisfied while honoring authored flowless
+   interfaces.
+3. **Flowless interfaces are a lens-enrichment fact**: an authored interface with
+   no flow is in Mobus's I but not in Bunge's derived ∂C (no environmental
+   coupling) — so the § boundary-identity equation above holds exactly on the
+   *flow-crossing* interfaces; authored-flowless ones are part of what the Bunge
+   lens is provably blind to (`toBunge` discards them with π).
+4. This is **kernel-first work**: today `PortFact` is derived solely from exo
+   bonds (`bert-canvas/src/lenses.rs`); authored designation needs the 8-step
+   checklist from step 1 (bert-core carries authored I; `PortFact` gains
+   provenance authored|derived).
+
+### Boundary-property authoring (Q4)
+
+Porosity and perceptive fuzziness live in the **inspector, Mobus-only**, as
+labelled range rows shown when a boundary/interface is selected — an *edit* on an
+existing element, never a rail verb (the boundary itself stays a Derived row).
+Writes go to the kernel's `B.P`; the face flips `BOUNDARY_PROPS_AUTHORING`
+(`web/src/FormalPanel.tsx:38`) only when the write path exists, per its comment.
+
+### Gesture spec
+
+- **Rail anatomy:** Card chrome on the left rail; `data-lens` on the canvas root
+  drives `--lens-accent`; sections Place / Designate / Connect / Derived;
+  ToolButton rows (icon + label + tooltip), one armed at a time, armed = accent
+  fill (interaction vocabulary, `design-system-draft.md`).
+- **Arm → place:** crosshair cursor; click empty canvas places at point and
+  *stays armed* for repeat-stamping; Esc or second click on the tool disarms.
+  Double-click on empty stage = the lens default kind, unchanged.
+- **Arm → designate:** click a component applies (interface membership /
+  work-process primitive); clicking empty canvas does nothing but keeps the tool
+  armed; Esc disarms.
+- **Connect:** unchanged drag-handle gesture; node→empty births the environment
+  thing/object plus its bond/flow in one act (§9's relational birth, retained).
+- **Illegal adds:** rows a lens's ontology lacks simply don't render (absence is
+  ontology, Q3). A gesture the kernel rejects surfaces the `validate_connection`
+  delta message via the shared Banner — the same voice as the aggregate banner.
+- **Lens toggle:** the rail re-renders its rows and re-tints; the canvas never
+  resets (accretion pattern).
+- **Inspector (harvest #5):** a persistent read/edit surface sharing the
+  EdgePopover row vocabulary. Work-process section: the stamp DESIGNATE appends
+  to `Vec<ProcessPrimitive>`; the inspector lists all, marks `.first()` as
+  *instantiated*, and reorders/removes — fixing the "re-stamp-only editing is
+  write-only UX" finding. Audit navigation: clicking a red audit row centers +
+  selects the offending element; the panel stays read-only.
+- **Registration:** each rail row is a per-lens descriptor in the LensRegistry
+  (`web/src/canvas/lenses/registry.ts`) alongside the views — never a
+  `lens ===` conditional.
+
+### Source citations for this section
+
+Klir: *Facets of Systems Science* (2001), Eq. 1.1 + §2.1 (S=(T,R)), §2.3–2.4,
+ch. 4 epistemological hierarchy (Gaines quote). Bunge: *A World of Systems*
+(1979) Defs 1.1–1.2 + §1.2 (bondage 𝔹/𝔹̄); Bunge 1992 *System Boundary* Defs 1, 3.
+Mobus: §4.3 Eq. 4.6 via the SSF transcription (primary PDF not on disk);
+authority = `Systems/Mobus/{Tuple,Boundary,Interface,FlowNetwork}.lean` at the
+lines cited inline. Verified 2026-07-15 (two independent source-check passes).
+
 ## Implementation order (highest faithful leverage first)
 
 1. **Mobus boundary ring + interface ports** — the headline; the accretion egui
@@ -391,6 +582,9 @@ genuinely elegant.)
    observer distinction-frame, relation-signature labels, direction toggle.
 4. Typed-flow strokes (M/E/Msg), work-process badges, Δt/H markers — the Mobus
    dynamical/typed enrichments.
+5. **The authoring palette** (§ above) — shared primitives + seam first, then the
+   face-only rail rows, then the kernel-first interface designation + boundary-P
+   authoring. Tracked in #51 (slicing there).
 
 Each step is gated on faithfulness (cite the source in the code comment) and on the
 invariant (verdicts from the kernel, never JS). egui "did a decent job"; with SVG +
