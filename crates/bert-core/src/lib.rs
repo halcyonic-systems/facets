@@ -666,6 +666,34 @@ pub struct Kernel {
     pub dep: Vec<(Id, Id)>,
 }
 
+/// A relatum that is a system component (root or nested) — not an external
+/// entity, interface, or the environment node. Exhaustive on purpose: a new
+/// [`IdType`] variant becomes a compile error here, not a silent misclassification.
+pub fn is_system_relatum(id: &Id) -> bool {
+    match id.ty {
+        IdType::System | IdType::Subsystem => true,
+        IdType::Interface
+        | IdType::Source
+        | IdType::Sink
+        | IdType::Environment
+        | IdType::Flow
+        | IdType::Boundary => false,
+    }
+}
+
+/// Where an interaction sits relative to the composition/environment split:
+/// Bunge's endostructure vs exostructure, which the Lean shows is *the same
+/// classification* as Mobus's N vs G (`totalRelation = toRelation(N) ∪ toRelation(G)`).
+/// Kernel-computed, never stylistic.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EdgeLocus {
+    /// Both endpoints are system components — an internal-network edge (Mobus N, Bunge endostructure).
+    Endo,
+    /// Couples a component to the environment (source/sink endpoint) — a
+    /// boundary-crossing edge (Mobus G, Bunge exostructure).
+    Exo,
+}
+
 impl WorldModel {
     /// The committed authoring mode, resolving an absent field to [`Mode::Full`].
     pub fn mode(&self) -> Mode {
@@ -709,6 +737,54 @@ impl WorldModel {
             .collect();
 
         Kernel { things, dep }
+    }
+
+    /// The boundary as both Bunge and Mobus define it — the SAME set, machine-checked:
+    /// `{ c ∈ C : some interaction couples c to a Source/Sink }`.
+    ///
+    /// Bunge 1992 (*System Boundary*): the boundary is the *set of components*
+    /// directly coupled to environmental items — computed, not drawn; interior
+    /// components are "shielded". Mobus (Lean `Interface.lean:7`, `Boundary.lean:39`):
+    /// interface components `I ⊆ C`, the subset that transports flows across the
+    /// boundary. The Bunge lens *marks* these nodes; the Mobus lens *reifies* them
+    /// into a membrane + ports on the same nodes.
+    ///
+    /// Deduplicated, in stable model order (`systems` order first, then any
+    /// system endpoint not enumerated there).
+    pub fn boundary_components(&self) -> Vec<Id> {
+        let mut set = std::collections::HashSet::new();
+        for ix in &self.interactions {
+            for (this, other) in [(&ix.source, &ix.sink), (&ix.sink, &ix.source)] {
+                let other_is_env =
+                    matches!(other.ty, IdType::Source | IdType::Sink | IdType::Environment);
+                if is_system_relatum(this) && other_is_env {
+                    set.insert(this.clone());
+                }
+            }
+        }
+        let mut out: Vec<Id> = self
+            .systems
+            .iter()
+            .map(|s| s.info.id.clone())
+            .filter(|id| set.remove(id))
+            .collect();
+        // Endpoints typed System/Subsystem but not enumerated in `systems`
+        // (tolerated by on-ness only if declared elsewhere) — keep them, deterministically.
+        let mut rest: Vec<Id> = set.into_iter().collect();
+        rest.sort_by(|a, b| a.indices.cmp(&b.indices));
+        out.extend(rest);
+        out
+    }
+
+    /// Classify one interaction on the endo/exo split (Bunge) = N/G (Mobus).
+    /// `Endo` iff both endpoints are system components; anything that touches a
+    /// non-component relatum (source/sink/environment) crosses the boundary → `Exo`.
+    pub fn edge_locus(&self, ix: &Interaction) -> EdgeLocus {
+        if is_system_relatum(&ix.source) && is_system_relatum(&ix.sink) {
+            EdgeLocus::Endo
+        } else {
+            EdgeLocus::Exo
+        }
     }
 }
 

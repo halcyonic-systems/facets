@@ -125,28 +125,12 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
     result
 }
 
-/// A relatum that is a system component (root or nested) — not an external
-/// entity, interface, or the environment node. Exhaustive on purpose: a new
-/// [`IdType`] variant becomes a compile error here, not a silent misclassification.
-fn is_system(id: &Id) -> bool {
-    match id.ty {
-        IdType::System | IdType::Subsystem => true,
-        IdType::Interface
-        | IdType::Source
-        | IdType::Sink
-        | IdType::Environment
-        | IdType::Flow
-        | IdType::Boundary => false,
-    }
-}
-
 /// Structural precondition: at least one bond between two distinct system components.
 /// Mirrors Lean `Kernel.HasBond`.
 fn check_bond(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
-    let bonded = model
-        .interactions
-        .iter()
-        .any(|ix| is_system(&ix.source) && is_system(&ix.sink) && ix.source != ix.sink);
+    let bonded = model.interactions.iter().any(|ix| {
+        is_system_relatum(&ix.source) && is_system_relatum(&ix.sink) && ix.source != ix.sink
+    });
     if !bonded {
         issues.push(ValidationIssue::error(
             "mode/Structural",
@@ -1748,5 +1732,43 @@ mod tests {
         }
         let after = m.kernel();
         assert_eq!(before, after, "mode views must not mutate the kernel");
+    }
+
+    fn env_source_id(idx: i64) -> Id {
+        Id {
+            ty: IdType::Source,
+            indices: vec![-1, idx],
+        }
+    }
+
+    #[test]
+    fn boundary_components_marks_only_env_coupled() {
+        // Bunge 1992: the boundary is the set of components directly coupled to
+        // environmental items; interior components are "shielded". A is coupled
+        // to an env source, B only to A — so boundary = {A}.
+        let mut m = two_component_model();
+        m.interactions
+            .push(flow(0, "inflow", env_source_id(0), sys_id(vec![0, 0])));
+        m.interactions
+            .push(flow(1, "bond", sys_id(vec![0, 0]), sys_id(vec![0, 1])));
+        assert_eq!(m.boundary_components(), vec![sys_id(vec![0, 0])]);
+    }
+
+    #[test]
+    fn edge_locus_splits_n_from_g() {
+        // Endo/exo = N/G: kernel-computed, never stylistic.
+        let m = two_component_model();
+        let endo = flow(0, "bond", sys_id(vec![0, 0]), sys_id(vec![0, 1]));
+        let exo = flow(1, "inflow", env_source_id(0), sys_id(vec![0, 0]));
+        assert_eq!(m.edge_locus(&endo), EdgeLocus::Endo);
+        assert_eq!(m.edge_locus(&exo), EdgeLocus::Exo);
+    }
+
+    #[test]
+    fn boundary_empty_for_closed_model() {
+        let mut m = two_component_model();
+        m.interactions
+            .push(flow(0, "bond", sys_id(vec![0, 0]), sys_id(vec![0, 1])));
+        assert!(m.boundary_components().is_empty());
     }
 }

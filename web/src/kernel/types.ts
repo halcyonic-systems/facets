@@ -154,6 +154,8 @@ export interface Relation {
   name: string;
   is_bond: boolean;
   kind: Kind;
+  /** Klir's observer toggle: neutral ⇄ directed. View state; never projects. */
+  klir_directed?: boolean;
 }
 
 export interface CanvasModel {
@@ -161,3 +163,95 @@ export interface CanvasModel {
   things: Thing[];
   relations: Relation[];
 }
+
+// ---- Phase 3: the lens primitives --------------------------------------------
+// Mirrors crates/bert-lenses-kernel/src/lenses.rs. Every field is a kernel
+// verdict translated to canvas ids — the three lens renderings READ these,
+// they never re-derive them.
+
+/** Bunge endo/exostructure = Mobus N/G — kernel-computed, never stylistic. */
+export type EdgeLocus = "Endo" | "Exo";
+
+/** One canvas relation read through the flow→bond→relation ladder. */
+export interface EdgeFact {
+  id: number;
+  a: number;
+  b: number;
+  /** Bunge's bond vs mere-relation predicate. */
+  bond: boolean;
+  kind: Kind;
+  locus: EdgeLocus;
+  self_loop: boolean;
+  /** false iff self-loop: no Mobus preimage (FlowNetwork.lean no_self_loops). */
+  mobus_ok: boolean;
+}
+
+export type PortDirection = "Receives" | "Exports" | "Hybrid";
+
+/** One Mobus interface r=(S,φ) per (boundary component, environment object). */
+export interface PortFact {
+  /** Always a member of boundary_thing_ids — the boundary identity, per-port. */
+  component: number;
+  env: number;
+  relation_ids: number[];
+  direction: PortDirection;
+  protocol: string;
+}
+
+export interface BoundaryProps {
+  porosity: number;
+  perceptive_fuzziness: number;
+}
+
+export interface LensFacts {
+  /** {c ∈ C : coupled to E} — Bunge marks these nodes, Mobus reifies them. */
+  boundary_thing_ids: number[];
+  /** O — the environment objects. */
+  environment_thing_ids: number[];
+  boundary_props: BoundaryProps;
+  /** Bunge Def 1.1 verdict, surfaced from validate_mode(Structural). */
+  aggregate: boolean;
+  /** Every canvas relation, including mere relations. */
+  edges: EdgeFact[];
+  ports: PortFact[];
+}
+
+/** describe(model, lens): the model typeset as the active lens's own formal
+ *  object — computed by the kernel; the FormalPanel only renders it. */
+export type LensDescription =
+  | {
+      lens: "Klir";
+      things: number;
+      relations: number;
+      directed: number;
+      neutral: number;
+      note: string;
+    }
+  | {
+      lens: "Bunge";
+      composition: string[];
+      environment: string[];
+      endostructure: number;
+      exostructure: number;
+      bondage: number;
+      mere_relations: number;
+      boundary_components: string[];
+      verdict: string;
+      /** Fixed kernel text: M is documented but formally UNbridged (CES, not CESM). */
+      mechanism_note: string;
+    }
+  | {
+      lens: "Mobus";
+      c: string[];
+      n: number;
+      e_objects: string[];
+      milieu_note: string;
+      g: number;
+      b_interfaces: string[];
+      porosity: number;
+      perceptive_fuzziness: number;
+      t_note: string;
+      h_note: string;
+      dt_note: string;
+      self_loop_conflicts: string[];
+    };

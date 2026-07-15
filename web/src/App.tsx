@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { ready, runForced, toCanvas, validateMode, parseCsv } from "./kernel";
-import type { CanvasModel, Manifest, RunResultRich, ValidationResult } from "./kernel/types";
+import { ready, runForced, toCanvas, validateMode, parseCsv, lensFacts, describeLens } from "./kernel";
+import type { CanvasModel, LensDescription, LensFacts, Manifest, RunResultRich, ValidationResult } from "./kernel/types";
 import { DEMOS, type Demo } from "./demos";
 import Canvas, { edgeGeometry } from "./canvas/Canvas";
-import { DrivePopover } from "./canvas/DrivePopover";
+import { EdgePopover } from "./canvas/EdgePopover";
 import { SimScrubber } from "./canvas/SimScrubber";
 import { LENS_TO_MODE, type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
 import { RunPanel } from "./RunPanel";
+import { FormalPanel } from "./FormalPanel";
 import { Card, Pill } from "./ui";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -59,6 +60,8 @@ function Workspace() {
   const [canvasPan, setCanvasPan] = useState<Pt>({ x: 0, y: 0 });
   const [toast, setToast] = useState<string | null>(null);
   const [verdict, setVerdict] = useState<ValidationResult | null>(null);
+  const [facts, setFacts] = useState<LensFacts | null>(null);
+  const [desc, setDesc] = useState<LensDescription | null>(null);
 
   const runWith = (modelJson: string, csv: string, m: Manifest, dtv: number, tv: number) => {
     try {
@@ -82,10 +85,13 @@ function Workspace() {
     runWith(d.modelJson, d.csv, d.manifest, d.manifest.dt ?? 1, d.t); // one click → runs
   };
 
-  // The author-view verdict: the lens toggle re-projects + re-validates in Rust.
+  // The author-view verdict + lens facts: every model or lens change re-projects
+  // and re-judges in Rust. The canvas renders these — it derives nothing.
   useEffect(() => {
     if (!canvasModel) return;
     setVerdict(validateMode(canvasModel, LENS_TO_MODE[canvasModel.lens]));
+    setFacts(lensFacts(canvasModel));
+    setDesc(describeLens(canvasModel, canvasModel.lens));
   }, [canvasModel]);
 
   useEffect(() => {
@@ -152,6 +158,14 @@ function Workspace() {
     if (demo) runWith(demo.modelJson, demo.csv, next, dt, t);
   }
 
+  // A per-lens edge edit (kind / bond⇄mere / direction / klir toggle): update
+  // the editing model; the effect above re-projects + re-judges in Rust.
+  function updateRelation(next: import("./kernel/types").Relation) {
+    setCanvasModel((m) =>
+      m ? { ...m, relations: m.relations.map((r) => (r.id === next.id ? next : r)) } : m,
+    );
+  }
+
   const clean = verdict !== null && verdict.issues.length === 0;
 
   return (
@@ -201,6 +215,7 @@ function Workspace() {
               <Canvas
                 model={canvasModel}
                 lens={canvasModel.lens}
+                facts={facts}
                 onModelChange={setCanvasModel}
                 onReject={setToast}
                 selectedRelationId={selectedRelationId}
@@ -210,14 +225,34 @@ function Workspace() {
                 onPanChange={setCanvasPan}
               />
               {selectedRelation && popoverAnchor && (
-                <DrivePopover
+                <EdgePopover
                   relation={selectedRelation}
+                  lens={canvasModel.lens}
+                  sigIndex={canvasModel.relations.findIndex((r) => r.id === selectedRelation.id)}
                   headers={csvHeaders}
                   manifest={manifest}
                   anchor={{ x: canvasPan.x + popoverAnchor.x, y: canvasPan.y + popoverAnchor.y }}
-                  onApply={applyDrive}
+                  onApplyManifest={applyDrive}
+                  onUpdateRelation={updateRelation}
                   onClose={() => setSelectedRelationId(null)}
                 />
+              )}
+              {/* Bunge's single most lens-specific rule: systemhood is EARNED.
+                  The verdict is the kernel's (validate_mode(Structural) via
+                  lens_facts.aggregate) — the face only announces it. */}
+              {canvasModel.lens === "Bunge" && facts && (
+                <div
+                  className="pointer-events-none absolute left-3 top-3 rounded-md px-3 py-1.5 text-xs font-body"
+                  style={{
+                    background: facts.aggregate ? "var(--verdict-error)" : "var(--accent-soft)",
+                    color: facts.aggregate ? "#fff" : "var(--accent-strong)",
+                    border: facts.aggregate ? "none" : "1px solid var(--border)",
+                  }}
+                >
+                  {facts.aggregate
+                    ? "⚠ aggregate (heap) — no bond among distinct components (Bunge Def 1.1)"
+                    : "✓ system — ≥1 bond among distinct components (Bunge Def 1.1)"}
+                </div>
               )}
               <div
                 className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-mono"
@@ -261,6 +296,8 @@ function Workspace() {
               </div>
             )}
           </Card>
+
+          {desc && <FormalPanel desc={desc} />}
 
           {runError && (
             <Card title="Result" source="bert-compose · wasm">

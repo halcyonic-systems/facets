@@ -52,3 +52,41 @@ export function selfLoopPath(center: Pt, r: number): { d: string; labelAt: Pt } 
 export function midpoint(a: Pt, b: Pt): Pt {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }
+
+// ---- The Mobus membrane (Phase 3) -------------------------------------------
+// Pure pixel math: WHERE the ring is drawn is layout; THAT there is a boundary,
+// which nodes are on it, and where the ports are all come from the kernel's
+// lens_facts. An ellipse (not a convex hull) because it stays sane at 1–2 nodes.
+
+export interface Ring {
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+}
+
+const RING_PAD = NODE_R + 36;
+
+/** Ellipse around the COMPONENT things only — env objects live outside it. */
+export function componentRing(components: Pt[]): Ring | null {
+  if (components.length === 0) return null;
+  const xs = components.map((p) => p.x);
+  const ys = components.map((p) => p.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  return {
+    cx: (minX + maxX) / 2,
+    cy: (minY + maxY) / 2,
+    rx: (maxX - minX) / 2 + RING_PAD,
+    ry: (maxY - minY) / 2 + RING_PAD,
+  };
+}
+
+/** The point ON the ring at the parametric angle of `toward` from its center —
+ *  port placement that tracks an env object as it drags. */
+export function ringPoint(ring: Ring, toward: Pt): Pt {
+  const theta = Math.atan2((toward.y - ring.cy) / ring.ry, (toward.x - ring.cx) / ring.rx);
+  return { x: ring.cx + ring.rx * Math.cos(theta), y: ring.cy + ring.ry * Math.sin(theta) };
+}

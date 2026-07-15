@@ -5,15 +5,19 @@
 // canvas draws what it's given, it computes no dynamics and decides no
 // legality. `validateConnection` still asks Rust before accepting a drawn edge.
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
-import type { CanvasModel, Lens, Relation, Thing } from "../kernel/types";
+import type { CanvasModel, EdgeFact, Lens, LensFacts, PortFact, Relation, Thing } from "../kernel/types";
 import { validateConnection } from "../kernel";
 import { KIND_COLOR, PRIMITIVE_BADGE, type SimFrame } from "./types";
-import { bezierPath, midpoint, NODE_R, rimPoint, selfLoopPath, straightPath, type Pt } from "./geometry";
+import { bezierPath, componentRing, midpoint, NODE_R, rimPoint, ringPoint, selfLoopPath, straightPath, type Pt, type Ring } from "./geometry";
 import { humanize } from "../ui";
 
 interface Props {
   model: CanvasModel;
   lens: Lens;
+  /** Kernel-computed lens facts (boundary identity set, edge ladder, ports,
+   *  aggregate verdict). Every ontology-bearing visual below READS these —
+   *  the canvas derives no systems fact itself. */
+  facts?: LensFacts | null;
   onModelChange: (m: CanvasModel) => void;
   onReject: (message: string) => void;
   selectedRelationId?: number | null;
@@ -54,6 +58,7 @@ export function edgeGeometry(
 export default function Canvas({
   model,
   lens,
+  facts = null,
   onModelChange,
   onReject,
   selectedRelationId = null,
@@ -188,6 +193,25 @@ export default function Canvas({
 
   const containerBox = boundingBox(model.things);
 
+  // Kernel facts, indexed for the render loop. WHICH nodes are boundary, WHICH
+  // edges are endo/exo/bond/self-loop, and WHICH ports exist are all Rust
+  // verdicts; only their pixel placement is computed here.
+  const boundarySet = new Set(facts?.boundary_thing_ids ?? []);
+  const edgeFactById = new Map<number, EdgeFact>((facts?.edges ?? []).map((e) => [e.id, e]));
+
+  // Mobus: B = ⟨P, I⟩ reified — the membrane around the components (env objects
+  // stay outside; an env thing dragged inside the ellipse is a layout artifact,
+  // not a semantic error: C ∩ E = ∅ is enforced by the kernel's roles).
+  const ring: Ring | null =
+    lens === "Mobus" ? componentRing(model.things.filter((t) => t.role === "Component")) : null;
+  const portsAt: { port: PortFact; at: Pt }[] =
+    ring && facts
+      ? facts.ports.flatMap((port) => {
+          const env = thingById(model, port.env);
+          return env ? [{ port, at: ringPoint(ring, env) }] : [];
+        })
+      : [];
+
   return (
     <svg
       ref={svgRef}
@@ -201,10 +225,20 @@ export default function Canvas({
         <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-slate)" />
         </marker>
+        {/* perceptive fuzziness → membrane edge blur (Mobus B properties) */}
+        <filter id="ring-blur" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation={facts ? facts.boundary_props.perceptive_fuzziness * 6 : 0} />
+        </filter>
+        {/* energy flows glow (Mobus typed strokes) */}
+        <filter id="energy-glow" x="-40%" y="-40%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="0" stdDeviation="2.2" floodColor="var(--accent)" floodOpacity="0.55" />
+        </filter>
       </defs>
       <g transform={`translate(${pan.x}, ${pan.y})`}>
         {lens === "Klir" && containerBox && (
           <g>
+            {/* the observer's distinction frame — a drawn distinction, NOT a
+                system boundary (Klir: boundary is the investigator's act) */}
             <rect
               x={containerBox.x - 40}
               y={containerBox.y - 40}
@@ -222,12 +256,38 @@ export default function Canvas({
           </g>
         )}
 
+        {/* Mobus: the boundary ring is the star — a real membrane, drawn behind
+            the flows. Porosity → dash density; fuzziness → edge blur. Bunge gets
+            NO ring: its boundary is a marked component-subset, never a perimeter. */}
+        {ring && (
+          <ellipse
+            cx={ring.cx}
+            cy={ring.cy}
+            rx={ring.rx}
+            ry={ring.ry}
+            fill="var(--accent-soft)"
+            fillOpacity={0.18}
+            stroke="var(--accent-slate)"
+            strokeWidth={2.5}
+            strokeDasharray={
+              facts && facts.boundary_props.porosity > 0
+                ? `${Math.max(2, 14 - facts.boundary_props.porosity * 12)} ${2 + facts.boundary_props.porosity * 8}`
+                : undefined
+            }
+            filter={facts && facts.boundary_props.perceptive_fuzziness > 0 ? "url(#ring-blur)" : undefined}
+            pointerEvents="none"
+          />
+        )}
+
         {model.relations.map((r) => (
           <EdgeView
             key={r.id}
             model={model}
             relation={r}
             lens={lens}
+            fact={edgeFactById.get(r.id)}
+            ring={ring}
+            sigIndex={model.relations.indexOf(r)}
             selected={selectedRelationId === r.id}
             driven={driven?.has(r.name) ?? false}
             sim={sim?.edges[r.name]}
@@ -253,11 +313,19 @@ export default function Canvas({
             key={t.id}
             thing={t}
             lens={lens}
+            isBoundary={boundarySet.has(t.id)}
             hovered={hoverTarget === t.id}
             sim={sim?.nodes[t.name]}
             onPointerDown={(e) => onNodePointerDown(e, t)}
             onHandlePointerDown={(e) => onHandlePointerDown(e, t)}
           />
+        ))}
+
+        {/* Mobus interface ports — pill notches in the membrane, one per kernel
+            PortFact (r = (S, φ): existence, direction, and protocol are kernel
+            facts; only the pixel position is computed here). */}
+        {portsAt.map(({ port, at }) => (
+          <PortView key={`${port.component}-${port.env}`} port={port} at={at} />
         ))}
 
         {draft && (
@@ -296,6 +364,7 @@ function boundingBox(things: Thing[]): { x: number; y: number; w: number; h: num
 function NodeView({
   thing,
   lens,
+  isBoundary,
   hovered,
   sim,
   onPointerDown,
@@ -303,16 +372,26 @@ function NodeView({
 }: {
   thing: Thing;
   lens: Lens;
+  /** Kernel verdict: this component has an external flow (∈ boundary_thing_ids). */
+  isBoundary: boolean;
   hovered: boolean;
   sim?: { value: number; unit: string; frac: number };
   onPointerDown: (e: ReactPointerEvent) => void;
   onHandlePointerDown: (e: ReactPointerEvent) => void;
 }) {
   const isSquare = lens !== "Klir" && thing.role === "Environment";
+  // Bunge's C/E wash: composition gets the soft halo, environment stays plain —
+  // a set partition, deliberately NOT a boundary ring.
   const showHalo = lens !== "Klir" && thing.role === "Component";
   const badge = lens === "Mobus" ? thing.primitive : undefined;
   const stroke = lens === "Klir" ? "var(--text-secondary)" : "var(--accent-slate)";
-  const strokeOpacity = lens === "Klir" ? 0.55 : 1;
+  // Klir: nodes are recessed placeholders — thinghood is taken for granted,
+  // the relation is the salient element (Facets Ch. 2).
+  const strokeOpacity = lens === "Klir" ? 0.4 : 1;
+  const strokeWidth = lens === "Klir" ? 1.25 : 1.75;
+  // Mobus: env sources/sinks are open, unfilled shapes — their internals are
+  // epistemically unknowable (§4.3.3.2.2).
+  const envOpen = lens === "Mobus" && thing.role === "Environment";
   const frac = sim ? Math.max(0, Math.min(1, sim.frac)) : null;
   const clipId = `fill-clip-${thing.id}`;
 
@@ -322,6 +401,13 @@ function NodeView({
         <circle r={NODE_R + 10} fill="var(--accent-soft)" opacity={0.5} />
       )}
       {hovered && <circle r={NODE_R + 6} fill="none" stroke="var(--accent)" strokeWidth={2} />}
+
+      {/* Bunge 1992: boundary components are MARKED (a rim accent on the nodes
+          directly coupled to E), never a drawn perimeter. The same set Mobus
+          reifies into ports — toggle the lens and watch it accrete. */}
+      {lens === "Bunge" && isBoundary && (
+        <circle r={NODE_R + 4} fill="none" stroke="var(--accent)" strokeWidth={2.25} strokeOpacity={0.9} />
+      )}
 
       {/* the sim payoff: a stock's disc fills/drains as the scrubber indexes ticks */}
       {frac !== null && (
@@ -353,10 +439,10 @@ function NodeView({
           width={NODE_R * 2}
           height={NODE_R * 2}
           rx={6}
-          fill="var(--bg-secondary)"
+          fill={envOpen ? "none" : "var(--bg-secondary)"}
           stroke={stroke}
           strokeOpacity={strokeOpacity}
-          strokeWidth={1.75}
+          strokeWidth={strokeWidth}
           fillOpacity={frac !== null ? 0 : 1}
         />
       ) : (
@@ -365,7 +451,7 @@ function NodeView({
           fill="var(--bg-secondary)"
           stroke={stroke}
           strokeOpacity={strokeOpacity}
-          strokeWidth={1.75}
+          strokeWidth={strokeWidth}
           fillOpacity={frac !== null ? 0 : 1}
         />
       )}
@@ -394,8 +480,8 @@ function NodeView({
       <text
         y={NODE_R + 16}
         textAnchor="middle"
-        fontSize={12}
-        fill="var(--text-primary)"
+        fontSize={lens === "Klir" ? 10 : 12}
+        fill={lens === "Klir" ? "var(--text-muted)" : "var(--text-primary)"}
         className="font-body pointer-events-none"
       >
         {thing.name}
@@ -415,10 +501,54 @@ function NodeView({
   );
 }
 
+/** Per-lens stroke styling for the visible path — every branch below reads a
+ *  kernel fact (locus, bond, kind), never re-derives one. */
+function edgeStyle(
+  lens: Lens,
+  relation: Relation,
+  fact: EdgeFact | undefined,
+): { color: string; width: number; dash?: string; opacity: number; filter?: string } {
+  if (lens === "Klir") {
+    // The relation is the salient, designed element — neutral, substance-blind
+    // (material/energy/message vocabulary is Mobus's, not Klir's).
+    return { color: "var(--text-secondary)", width: 2.5, opacity: 0.9 };
+  }
+  if (lens === "Bunge") {
+    // Mere relations ("older than") make no difference and do not bond.
+    if (!relation.is_bond) {
+      return { color: "var(--text-muted)", width: 1.5, dash: "3 4", opacity: 0.7 };
+    }
+    // Endo/exo as an edge split — kernel-computed (edge ∈ N vs edge ∈ G),
+    // kind-colored (Bunge §2.1: one directed graph per connection-kind).
+    const exo = fact?.locus === "Exo";
+    return {
+      color: KIND_COLOR[relation.kind],
+      width: exo ? 1.75 : 2.5,
+      dash: exo ? "10 3" : undefined,
+      opacity: 0.85,
+    };
+  }
+  // Mobus: typed flow strokes — material solid heavy, energy glowing, message
+  // thin and dashed (Message is a peer substance, copyable, not conserved).
+  switch (relation.kind) {
+    case "Matter":
+      return { color: KIND_COLOR[relation.kind], width: 3, opacity: 0.9 };
+    case "Energy":
+      return { color: KIND_COLOR[relation.kind], width: 2, opacity: 0.9, filter: "url(#energy-glow)" };
+    case "Informational":
+      return { color: KIND_COLOR[relation.kind], width: 1.25, dash: "1 4", opacity: 0.95 };
+    default:
+      return { color: KIND_COLOR[relation.kind], width: 2, opacity: 0.85 };
+  }
+}
+
 function EdgeView({
   model,
   relation,
   lens,
+  fact,
+  ring,
+  sigIndex,
   selected,
   driven,
   sim,
@@ -427,6 +557,10 @@ function EdgeView({
   model: CanvasModel;
   relation: Relation;
   lens: Lens;
+  /** The kernel's reading of this relation through the edge ladder. */
+  fact?: EdgeFact;
+  ring: Ring | null;
+  sigIndex: number;
   selected: boolean;
   driven: boolean;
   sim?: { value: number; unit: string };
@@ -437,9 +571,33 @@ function EdgeView({
   if (!geo) return null;
   const { d, labelAt } = geo;
 
-  const color = lens === "Klir" ? "var(--text-secondary)" : KIND_COLOR[relation.kind];
-  const dashed = lens !== "Klir" && !relation.is_bond;
-  const marker = lens !== "Klir";
+  const style = edgeStyle(lens, relation, fact);
+  // Klir: undirected neutral lines by default; direction is the observer's
+  // explicit per-relation toggle. Bunge/Mobus: always directed.
+  const marker = lens === "Klir" ? relation.klir_directed === true : true;
+
+  // Mobus exo flows render as TWO segments — G is bipartite (Tuple.lean): the
+  // crossing happens env-object ↔ port, never straight to an interior
+  // component. The interior routing stays visible but muted so which component
+  // the port serves is not lost.
+  let visible: { d: string; markered: boolean }[] = [{ d, markered: marker }];
+  let interior: string | null = null;
+  if (lens === "Mobus" && ring && fact?.locus === "Exo" && relation.a !== relation.b) {
+    const from = thingById(model, relation.a);
+    const to = thingById(model, relation.b);
+    if (from && to) {
+      const [env, comp] = from.role === "Environment" ? [from, to] : [to, from];
+      const portPt = ringPoint(ring, env);
+      const envRim = rimPoint(env, portPt, NODE_R);
+      const compRim = rimPoint(comp, portPt, NODE_R);
+      const crossing =
+        from.role === "Environment"
+          ? straightPath(envRim, portPt) // env → port (flow enters at the interface)
+          : straightPath(portPt, envRim); // port → env (flow exits at the interface)
+      visible = [{ d: crossing, markered: true }];
+      interior = straightPath(compRim, portPt);
+    }
+  }
 
   return (
     <g>
@@ -458,30 +616,75 @@ function EdgeView({
       {selected && (
         <path d={d} fill="none" stroke="var(--accent)" strokeWidth={6} strokeOpacity={0.22} pointerEvents="none" />
       )}
-      <path
-        d={d}
-        fill="none"
-        stroke={color}
-        strokeOpacity={lens === "Klir" ? 0.55 : 0.85}
-        strokeWidth={2}
-        strokeDasharray={dashed ? "6 4" : undefined}
-        markerEnd={marker ? "url(#arrow)" : undefined}
-        pointerEvents="none"
-      />
+      {interior && (
+        <path
+          d={interior}
+          fill="none"
+          stroke={style.color}
+          strokeOpacity={0.3}
+          strokeWidth={1.25}
+          strokeDasharray="4 4"
+          pointerEvents="none"
+        />
+      )}
+      {visible.map((seg, i) => (
+        <path
+          key={i}
+          d={seg.d}
+          fill="none"
+          stroke={style.color}
+          strokeOpacity={style.opacity}
+          strokeWidth={style.width}
+          strokeDasharray={style.dash}
+          filter={style.filter}
+          markerEnd={seg.markered ? "url(#arrow)" : undefined}
+          pointerEvents="none"
+        />
+      ))}
       {driven && (
         <circle cx={labelAt.x} cy={labelAt.y - 6} r={4} fill="var(--accent)" pointerEvents="none" />
       )}
-      {lens !== "Klir" && relation.name && (
+      {/* Bunge shows self-loops (feedback, the diagonal M_pp) — but a diagonal
+          bond has NO Mobus preimage (FlowNetwork.lean no_self_loops). State the
+          incompatibility, don't hide it. */}
+      {lens === "Bunge" && fact && fact.self_loop && !fact.mobus_ok && (
+        <g transform={`translate(${labelAt.x + 16}, ${labelAt.y - 6})`} pointerEvents="all">
+          <title>Bunge diagonal bond — no Mobus preimage (FlowNetwork.lean no_self_loops, §4.3 k ≠ o)</title>
+          <circle r={9} fill="var(--bg-secondary)" stroke="var(--verdict-error)" strokeWidth={1.25} />
+          <text textAnchor="middle" dominantBaseline="central" fontSize={8} fill="var(--verdict-error)" className="font-mono">
+            ⊘M
+          </text>
+        </g>
+      )}
+      {lens === "Klir" ? (
+        // Relation-by-signature: arity / Cartesian form — the observer's
+        // vocabulary, never substance types.
         <text
-          x={labelAt.x + (driven ? 9 : 0)}
-          y={labelAt.y - 6}
-          textAnchor={driven ? "start" : "middle"}
+          x={labelAt.x}
+          y={labelAt.y - 8}
+          textAnchor="middle"
           fontSize={10}
-          fill="var(--text-muted)"
+          fill="var(--text-secondary)"
           className="font-mono pointer-events-none"
         >
-          {relation.name}
+          {`r${sigIndex + 1} ⊆ T×T${relation.klir_directed ? " (directed)" : ""}`}
         </text>
+      ) : (
+        // At Mobus an exo flow's name already labels its port (φ) — repeating
+        // it on the edge doubles the text right at the membrane.
+        relation.name &&
+        !(lens === "Mobus" && interior !== null) && (
+          <text
+            x={labelAt.x + (driven ? 9 : 0)}
+            y={labelAt.y - 6}
+            textAnchor={driven ? "start" : "middle"}
+            fontSize={10}
+            fill="var(--text-muted)"
+            className="font-mono pointer-events-none"
+          >
+            {relation.name}
+          </text>
+        )
       )}
       {sim && (
         <text
@@ -495,6 +698,35 @@ function EdgeView({
           {humanize(sim.value)} {sim.unit}
         </text>
       )}
+    </g>
+  );
+}
+
+/** A Mobus interface — a pill notch breaking the membrane stroke (Fig. 4.9:
+ *  "round-edged rectangles that penetrate the boundary"). Direction glyph:
+ *  ▸ receives / ◂ exports / ⇄ hybrid. Interfaces gate, they don't transform. */
+function PortView({ port, at }: { port: PortFact; at: Pt }) {
+  const glyph = port.direction === "Receives" ? "▸" : port.direction === "Exports" ? "◂" : "⇄";
+  const label = port.protocol.length > 22 ? `${port.protocol.slice(0, 21)}…` : port.protocol;
+  return (
+    <g transform={`translate(${at.x}, ${at.y})`}>
+      <title>{`interface — ${port.direction.toLowerCase()} · φ: ${port.protocol}`}</title>
+      <rect
+        x={-16}
+        y={-9}
+        width={32}
+        height={18}
+        rx={9}
+        fill="var(--bg-primary)"
+        stroke="var(--accent-strong)"
+        strokeWidth={1.75}
+      />
+      <text textAnchor="middle" dominantBaseline="central" fontSize={10} fill="var(--accent-strong)" className="pointer-events-none">
+        {glyph}
+      </text>
+      <text y={-15} textAnchor="middle" fontSize={9} fill="var(--text-muted)" className="font-mono pointer-events-none">
+        {label}
+      </text>
     </g>
   );
 }
