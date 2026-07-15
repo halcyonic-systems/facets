@@ -3,7 +3,7 @@
 The direct-manipulation authoring canvas. Run: `cargo run` (the front door since the
 2026-06-29 swap; single file `src/main.rs`, ~3500 lines, egui/eframe 0.31). This is the
 **Arc 2** surface from the canvas-first pivot (2026-06-26); it is *not* the lists/`generate()`
-design in `arc2-authoring-design.md` (superseded — see that file's banner).
+design in `archive/arc2-authoring-design.md` (superseded — see that file's banner).
 
 ## The seam (bert-core backing)
 
@@ -95,4 +95,4 @@ Arc 4.2 and the README "Convergence with bert-compose".
 ## Fidelity & design
 Faithfulness verdicts + open items: `docs/fidelity-audit.md`. Visual grammar + the canonical
 Klir→Bunge→Mobus gradient + the editorial-departure note on Klir's constructivism:
-`docs/design-system.md` §9.
+`docs/archive/design-system.md` §9.

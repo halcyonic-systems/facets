@@ -2,7 +2,7 @@
 
 > **⚠ SUPERSEDED (2026-06-26 pivot).** This spec describes a *lists + GSR `generate()` +
 > deterministic-spine* approach. We pivoted to a **direct-manipulation canvas** — see
-> [`docs/canvas-architecture.md`](canvas-architecture.md) for what was actually built. Kept for
+> [`docs/canvas-architecture.md`](../canvas-architecture.md) for what was actually built. Kept for
 > the still-useful ideas (deterministic spine, persistence/share, the Facets→bert-lenses
 > reader→maker handoff) that inform the integration phase. The **faithful gradient** in §4 is
 > current; the **UI/generation mechanism** sections are not what shipped.
@@ -137,8 +137,8 @@ connection **means** and what overlay it carries:
 So "reason directly in terms of things and how they connect" is not a Klir-only fix; it is the
 unifying authoring model — one primitive, three overlays. The faithful accretion gradient
 (Klir neutral → Bunge directed+typed → Mobus +boundary/ports/Message-peer/operational) and its
-source evidence live canonically in `docs/design-system.md` §9 Fidelity note. (Visualized in
-`docs/mockups/arc2-authoring.html`.)
+source evidence live canonically in `docs/archive/design-system.md` §9 Fidelity note. (Visualized in
+`docs/archive/mockups/arc2-authoring.html`.)
 
 **UX mandate.** The current Arc 1 lists are not pleasant to read — raw bullet dumps. Arc 2's
 authoring views must be a *real surface*: grouped, well-spaced, visually styled, scannable, with

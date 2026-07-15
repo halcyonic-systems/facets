@@ -10,3 +10,15 @@ export const color = {
   textPrimary: "var(--text-primary)",
   textMuted: "var(--text-muted)",
 } as const;
+
+// The reserved KIND channel: substance identity (Matter / Energy / Informational
+// / Field). Contractual — means substance type, never decorative, and constant
+// across lenses and themes. The hex mirrors --kind-* in index.css (kept in sync by
+// check-tokens.mjs); literal here because these feed SVG stroke/fill style objects.
+export const kind = {
+  Matter: "#5a7a4f",
+  Energy: "#b06a1f",
+  Informational: "#8a5a9c",
+  Field: "#3f6f8f",
+  Unspecified: "var(--text-muted)",
+} as const;

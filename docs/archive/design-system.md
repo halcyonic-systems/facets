@@ -1,8 +1,13 @@
 # bert-lenses — Design System
 
+> **⚠ ARCHIVED (egui-era).** This is the egui/Arc-2 visual grammar, superseded by
+> the web rebuild. The live face design entrypoint is [`web/DESIGN.md`](../../web/DESIGN.md)
+> (Halcyonic Frost) with the lens grounding in [`docs/design/lens-palettes.md`](../design/lens-palettes.md).
+> Kept for history.
+
 Status: **v0 foundation** · 2026-06-26 · the visual language for the direct-manipulation
 authoring canvas. Built once, here, and scaled deliberately **Klir → Bunge → Mobus**. Visual
-reference sheet: `docs/mockups/design-system.html`. Maps directly to egui (`Color32`, `Painter`).
+reference sheet: `docs/archive/mockups/design-system.html`. Maps directly to egui (`Color32`, `Painter`).
 
 The governing idea: **one element, read with more structure as the lens deepens.** A thing on
 the canvas *accretes* visual structure across lenses — a bare disc in Klir, a bounded system in
