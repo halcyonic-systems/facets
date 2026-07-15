@@ -103,18 +103,18 @@
    and dark both come free and check:tokens has no new hex to police */
 [data-lens="Klir"] {
   --lens-accent: var(--accent-slate);
-  --lens-accent-soft: color-mix(in srgb, var(--accent-slate) 14%, var(--bg-secondary));
+  --lens-accent-soft: color-mix(in srgb, var(--accent-slate) 24%, var(--bg-secondary));
   --lens-node-stroke: var(--text-secondary);
 }
 [data-lens="Bunge"] {
   --lens-accent: var(--accent-indigo);
-  --lens-accent-soft: color-mix(in srgb, var(--accent-indigo) 14%, var(--bg-secondary));
-  --lens-node-stroke: var(--accent-slate);
+  --lens-accent-soft: color-mix(in srgb, var(--accent-indigo) 24%, var(--bg-secondary));
+  --lens-node-stroke: color-mix(in srgb, var(--accent-indigo) 50%, var(--accent-slate));
 }
 [data-lens="Mobus"] {
   --lens-accent: var(--accent);
   --lens-accent-soft: var(--accent-soft);
-  --lens-node-stroke: var(--accent-slate);
+  --lens-node-stroke: color-mix(in srgb, var(--accent) 40%, var(--accent-slate));
 }
 
 * {
@@ -144,8 +144,15 @@ body {
   font-family: var(--font-mono);
 }
 
-/* the canvas surface — a faint dot grid, no library, hand-rolled */
+/* the canvas surface — a faint dot grid, no library, hand-rolled. The stage
+   itself breathes the lens: dots and a whisper of ground take --lens-accent,
+   so the whole field (not just chrome details) announces which ontology is
+   active. */
 .canvas-stage {
-  background-image: radial-gradient(var(--border) 1px, transparent 1px);
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--lens-accent) 38%, var(--border)) 1px,
+    transparent 1px
+  );
   background-size: 24px 24px;
+  background-color: color-mix(in srgb, var(--lens-accent) 4%, transparent);
 }

@@ -240,7 +240,10 @@ function Workspace() {
 
             <div
               className="relative overflow-hidden rounded-xl"
-              style={{ height: 440, border: "1px solid var(--hairline)" }}
+              style={{
+                height: 440,
+                border: "1px solid color-mix(in srgb, var(--lens-accent) 30%, var(--hairline))",
+              }}
             >
               <Canvas
                 model={canvasModel}
