@@ -51,6 +51,8 @@ export interface LensEdgeProps {
 export interface LensPortProps {
   port: PortFact;
   at: Pt;
+  /** Ports belong to B — clicking one opens the boundary inspector. */
+  onSelect?: () => void;
 }
 
 export interface LensViews {

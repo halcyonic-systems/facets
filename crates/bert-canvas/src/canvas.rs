@@ -106,6 +106,18 @@ fn default_true() -> bool {
     true
 }
 
+/// Authored boundary properties — B's P = ⟨porosity, perceptive_fuzziness⟩ for
+/// the ROOT system's membrane (the canvas is single-root). 0.0 = unauthored,
+/// matching bert-core's defaults; the palette's boundary inspector writes these
+/// and `project` carries them into the root boundary instead of hardcoding 0.0.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq)]
+pub struct CanvasBoundaryProps {
+    #[serde(default)]
+    pub porosity: f32,
+    #[serde(default)]
+    pub perceptive_fuzziness: f32,
+}
+
 /// The canvas editing model — the JSON the React canvas holds and sends.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CanvasModel {
@@ -114,6 +126,8 @@ pub struct CanvasModel {
     pub things: Vec<Thing>,
     #[serde(default)]
     pub relations: Vec<Relation>,
+    #[serde(default)]
+    pub boundary: CanvasBoundaryProps,
 }
 
 fn info(id: Id, level: i32, name: &str) -> Info {
@@ -215,7 +229,11 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
     let mut sources: Vec<ExternalEntity> = Vec::new();
     let mut sinks: Vec<ExternalEntity> = Vec::new();
 
-    systems.push(new_system(root_id.clone(), 0, "System", env_id.clone(), None, None));
+    let mut root = new_system(root_id.clone(), 0, "System", env_id.clone(), None, None);
+    // Authored P lands on the root membrane — the projection stops erasing it.
+    root.boundary.porosity = model.boundary.porosity;
+    root.boundary.perceptive_fuzziness = model.boundary.perceptive_fuzziness;
+    systems.push(root);
 
     let mut comp_idx: i64 = 0;
     let mut env_idx: i64 = 0;
@@ -410,10 +428,21 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         });
     }
 
+    let boundary = model
+        .systems
+        .iter()
+        .find(|s| s.info.level == 0)
+        .map(|s| CanvasBoundaryProps {
+            porosity: s.boundary.porosity,
+            perceptive_fuzziness: s.boundary.perceptive_fuzziness,
+        })
+        .unwrap_or_default();
+
     CanvasModel {
         lens,
         things,
         relations,
+        boundary,
     }
 }
 
@@ -478,6 +507,7 @@ mod tests {
                     thing(2, "B", Role::Component),
                 ],
                 relations: vec![bond(10, 1, 2)],
+                boundary: Default::default(),
             };
             let wm = project(&model);
             assert_eq!(wm.mode, Some(lens.mode()));
@@ -499,6 +529,7 @@ mod tests {
             lens: Lens::Mobus,
             things: vec![thing(1, "A", Role::Component), thing(2, "B", Role::Component)],
             relations: vec![bond(10, 1, 2)],
+            boundary: Default::default(),
         };
         let loop_edge = bond(11, 1, 1); // A → A
         let issues = validate_connection(&model, &loop_edge);
@@ -553,6 +584,7 @@ mod tests {
                 thing(2, "Comp", Role::Component),
             ],
             relations: vec![bond(10, 1, 2)], // Env → Comp
+            boundary: Default::default(),
         };
         let wm = project(&model);
         assert_eq!(wm.environment.sources.len(), 1);

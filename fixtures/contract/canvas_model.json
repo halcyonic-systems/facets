@@ -60,5 +60,9 @@
       "kind": "Unspecified",
       "klir_directed": false
     }
-  ]
+  ],
+  "boundary": {
+    "porosity": 0.35,
+    "perceptive_fuzziness": 0.2
+  }
 }

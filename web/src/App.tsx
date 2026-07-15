@@ -6,6 +6,7 @@ import Canvas from "./canvas/Canvas";
 import { edgeGeometry, thingById } from "./canvas/geometry";
 import { EdgePopover } from "./canvas/EdgePopover";
 import { NodePopover } from "./canvas/NodePopover";
+import { BoundaryPopover } from "./canvas/BoundaryPopover";
 import { PaletteRail } from "./canvas/PaletteRail";
 import type { PaletteTool } from "./canvas/lenses/registry";
 import { SimScrubber } from "./canvas/SimScrubber";
@@ -63,6 +64,7 @@ function Workspace() {
   const [tick, setTick] = useState(0);
   const [selectedRelationId, setSelectedRelationId] = useState<number | null>(null);
   const [selectedThingId, setSelectedThingId] = useState<number | null>(null);
+  const [boundaryAnchor, setBoundaryAnchor] = useState<Pt | null>(null);
   const [armed, setArmed] = useState<PaletteTool | null>(null);
   const [canvasPan, setCanvasPan] = useState<Pt>({ x: 0, y: 0 });
   const [toast, setToast] = useState<string | null>(null);
@@ -75,6 +77,7 @@ function Workspace() {
         if (a) return null;
         setSelectedThingId(null);
         setSelectedRelationId(null);
+        setBoundaryAnchor(null);
         return a;
       });
     }
@@ -217,6 +220,10 @@ function Workspace() {
   const selectedThing =
     canvasModel && selectedThingId !== null ? (thingById(canvasModel, selectedThingId) ?? null) : null;
 
+  function updateBoundary(next: import("./kernel/types").CanvasBoundaryProps) {
+    setCanvasModel((m) => (m ? { ...m, boundary: next } : m));
+  }
+
   const clean = verdict !== null && verdict.issues.length === 0;
 
   return (
@@ -290,12 +297,28 @@ function Workspace() {
                 selectedRelationId={selectedRelationId}
                 onSelectRelation={setSelectedRelationId}
                 armed={armed}
-                onSelectThing={setSelectedThingId}
+                onSelectThing={(id) => {
+                  setSelectedThingId(id);
+                  if (id !== null) setBoundaryAnchor(null);
+                }}
+                onSelectBoundary={(at) => {
+                  setBoundaryAnchor(at);
+                  setSelectedThingId(null);
+                  setSelectedRelationId(null);
+                }}
                 driven={drivenNames}
                 sim={simFrame}
                 onPanChange={setCanvasPan}
               />
               <PaletteRail lens={canvasModel.lens} armed={armed} onArm={setArmed} />
+              {boundaryAnchor && (
+                <BoundaryPopover
+                  boundary={canvasModel.boundary}
+                  anchor={{ x: canvasPan.x + boundaryAnchor.x, y: canvasPan.y + boundaryAnchor.y }}
+                  onUpdateBoundary={updateBoundary}
+                  onClose={() => setBoundaryAnchor(null)}
+                />
+              )}
               {selectedThing && (
                 <NodePopover
                   thing={selectedThing}

@@ -28,14 +28,15 @@ function names(xs: string[]): string {
   return xs.length ? `{ ${xs.join(", ")} }` : "∅";
 }
 
-// UI feature-gate, NOT an ontology verdict: the palette has no authoring for the
-// boundary's P = ⟨porosity, perceptive_fuzziness⟩ yet, so every model reports the
-// default 0.0. Printing "porosity 0.00 · fuzziness 0.00" is phantom formalism — a
-// formal claim of a value nobody set (a sealed boundary is a real state, but this
-// isn't that, it's an unauthored one). Whether authoring exists is a fact about
-// the web app's surface, not about systemhood, so gating it here does not put a
-// systems verdict in JS. Flip to true when the palette can author P.
-const BOUNDARY_PROPS_AUTHORING = false;
+// UI feature-gate, NOT an ontology verdict. Was false while the palette could
+// not author the boundary's P = ⟨porosity, perceptive_fuzziness⟩ — printing
+// "porosity 0.00" for a value nobody set would have been phantom formalism.
+// The gate's own condition is now met (#51 slice 3): the BoundaryPopover
+// writes P onto CanvasModel.boundary and project() carries it to the root
+// membrane, so the displayed values are authored facts. Kept as a named flag
+// (rather than deleted) so the authoring surface can be gated off again
+// without re-deriving the phantom-formalism argument.
+const BOUNDARY_PROPS_AUTHORING = true;
 
 export function FormalPanel({ desc }: { desc: LensDescription }) {
   return (

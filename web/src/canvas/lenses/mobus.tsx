@@ -110,11 +110,21 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
 /** A Mobus interface — a pill notch breaking the membrane stroke (Fig. 4.9:
  *  "round-edged rectangles that penetrate the boundary"). Direction glyph:
  *  ▸ receives / ◂ exports / ⇄ hybrid. Interfaces gate, they don't transform. */
-function PortView({ port, at }: { port: PortFact; at: Pt }) {
+function PortView({ port, at, onSelect }: { port: PortFact; at: Pt; onSelect?: () => void }) {
   const glyph = port.direction === "Receives" ? "▸" : port.direction === "Exports" ? "◂" : "⇄";
   const label = port.protocol.length > 22 ? `${port.protocol.slice(0, 21)}…` : port.protocol;
   return (
-    <g transform={`translate(${at.x}, ${at.y})`}>
+    <g
+      transform={`translate(${at.x}, ${at.y})`}
+      className={onSelect ? "cursor-pointer" : undefined}
+      onClick={
+        onSelect &&
+        ((e) => {
+          e.stopPropagation();
+          onSelect();
+        })
+      }
+    >
       <title>{`interface — ${port.direction.toLowerCase()} · φ: ${port.protocol}`}</title>
       <rect x={-16} y={-9} width={32} height={18} rx={9} fill="var(--bg-primary)" stroke="var(--lens-accent)" strokeWidth={1.75} />
       <text textAnchor="middle" dominantBaseline="central" fontSize={10} fill="var(--lens-accent)" className="pointer-events-none">

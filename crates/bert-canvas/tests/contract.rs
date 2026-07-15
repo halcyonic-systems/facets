@@ -11,7 +11,7 @@
 //! Regenerate after an intentional shape change:
 //!   BLESS_FIXTURES=1 cargo test -p bert-canvas --test contract
 
-use bert_canvas::canvas::{CanvasModel, Kind, Lens, Relation, Role, Thing};
+use bert_canvas::canvas::{CanvasBoundaryProps, CanvasModel, Kind, Lens, Relation, Role, Thing};
 use bert_canvas::lenses::{analyze, describe, lens_facts};
 
 /// Write-or-assert a fixture. With `BLESS_FIXTURES=1` it (re)writes the file;
@@ -77,6 +77,11 @@ fn sample() -> CanvasModel {
             relation(12, 2, 2, "recycle", true, Kind::Matter),
             relation(13, 1, 2, "adjacent", false, Kind::Unspecified),
         ],
+        // Non-zero so the golden PROVES authored P crosses the boundary.
+        boundary: CanvasBoundaryProps {
+            porosity: 0.35,
+            perceptive_fuzziness: 0.2,
+        },
     }
 }
 

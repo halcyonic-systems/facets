@@ -156,6 +156,14 @@ math is still the kernel's; the canvas keys are translated at the seam.
 type Relation = { ..., klir_directed?: boolean }  // Klir's neutral ⇄ directed view toggle
 ```
 
+`CanvasModel` gains one serde-defaulted field (#51 slice 3, wire-compatible —
+absent on old payloads deserializes to 0.0/0.0 = unauthored):
+```ts
+type CanvasModel = { ..., boundary: { porosity: number, perceptive_fuzziness: number } }
+```
+Authored B properties for the root membrane; `project` carries them onto the
+root system's boundary (previously hardcoded 0.0) and `to_canvas` restores them.
+
 ### `lens_facts(canvas_json: string) → LensFacts`
 The two lens primitives, canvas-keyed — everything the three lens renderings
 read. Delegates to `bert_core` via `lenses::lens_facts`.

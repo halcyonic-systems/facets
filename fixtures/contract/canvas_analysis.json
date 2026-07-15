@@ -18,8 +18,8 @@
     ],
     "orphan_env_thing_ids": [],
     "boundary_props": {
-      "porosity": 0.0,
-      "perceptive_fuzziness": 0.0
+      "porosity": 0.35,
+      "perceptive_fuzziness": 0.2
     },
     "aggregate": false,
     "edges": [
@@ -91,8 +91,8 @@
     "b_interfaces": [
       "Pump"
     ],
-    "porosity": 0.0,
-    "perceptive_fuzziness": 0.0,
+    "porosity": 0.35,
+    "perceptive_fuzziness": 0.2,
     "t_note": "T: transforms — parametric by intent; bert-compose fills the slot",
     "h_note": "H: history (accumulated state conditioning T) — NOT hierarchy",
     "dt_note": "Δt: time scale — a parametric field on the system",

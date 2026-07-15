@@ -130,11 +130,16 @@ function parseRelation(v: unknown, where: string): Relation {
 }
 
 function parseCanvasModel(v: unknown): CanvasModel {
-  const o = shape(v, "CanvasModel", ["lens", "things", "relations"]);
+  const o = shape(v, "CanvasModel", ["lens", "things", "relations", "boundary"]);
+  const b = shape(o.boundary, "CanvasModel.boundary", ["porosity", "perceptive_fuzziness"]);
   return {
     lens: oneOf(o.lens, "CanvasModel.lens", LENSES),
     things: arr(o.things, "CanvasModel.things").map((t, i) => parseThing(t, `Thing[${i}]`)),
     relations: arr(o.relations, "CanvasModel.relations").map((r, i) => parseRelation(r, `Relation[${i}]`)),
+    boundary: {
+      porosity: num(b.porosity, "boundary.porosity"),
+      perceptive_fuzziness: num(b.perceptive_fuzziness, "boundary.perceptive_fuzziness"),
+    },
   };
 }
 

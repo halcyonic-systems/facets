@@ -26,6 +26,9 @@ interface Props {
   /** The rail's armed tool — place stamps on stage click, designate on node click. */
   armed?: PaletteTool | null;
   onSelectThing?: (id: number | null) => void;
+  /** Click the Mobus membrane (or a port — interfaces belong to B) to open the
+   *  boundary inspector; the anchor is a world-space point on the ring. */
+  onSelectBoundary?: (at: Pt) => void;
   driven?: Set<string>;
   sim?: SimFrame | null;
   onPanChange?: (pan: Pt) => void;
@@ -41,6 +44,7 @@ export default function Canvas({
   onSelectRelation,
   armed = null,
   onSelectThing,
+  onSelectBoundary,
   driven,
   sim,
   onPanChange,
@@ -139,7 +143,12 @@ export default function Canvas({
                 : undefined
             }
             filter={facts && facts.boundary_props.perceptive_fuzziness > 0 ? "url(#ring-blur)" : undefined}
-            pointerEvents="none"
+            pointerEvents={onSelectBoundary ? "stroke" : "none"}
+            className={onSelectBoundary ? "cursor-pointer" : undefined}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectBoundary?.({ x: ring.cx, y: ring.cy - ring.ry });
+            }}
           />
         )}
 
@@ -188,7 +197,12 @@ export default function Canvas({
             PortFact (r = (S, φ): existence, direction, and protocol are kernel
             facts; only the pixel position is computed here). */}
         {portsAt.map(({ port, at }) => (
-          <views.PortView key={`${port.component}-${port.env}`} port={port} at={at} />
+          <views.PortView
+            key={`${port.component}-${port.env}`}
+            port={port}
+            at={at}
+            onSelect={onSelectBoundary ? () => onSelectBoundary(at) : undefined}
+          />
         ))}
 
         {draft && (

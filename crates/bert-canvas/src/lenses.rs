@@ -498,6 +498,7 @@ mod tests {
             lens: Lens::Mobus,
             things,
             relations,
+            boundary: Default::default(),
         }
     }
 

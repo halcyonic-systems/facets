@@ -158,10 +158,19 @@ export interface Relation {
   klir_directed?: boolean;
 }
 
+/** Authored B properties for the root membrane — P = ⟨porosity, fuzziness⟩.
+ *  0.0 = unauthored; the boundary inspector writes these, project() carries
+ *  them onto the root boundary. */
+export interface CanvasBoundaryProps {
+  porosity: number;
+  perceptive_fuzziness: number;
+}
+
 export interface CanvasModel {
   lens: Lens;
   things: Thing[];
   relations: Relation[];
+  boundary: CanvasBoundaryProps;
 }
 
 // ---- Phase 3: the lens primitives --------------------------------------------
