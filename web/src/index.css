@@ -105,3 +105,9 @@ body {
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono);
 }
+
+/* the canvas surface — a faint dot grid, no library, hand-rolled */
+.canvas-stage {
+  background-image: radial-gradient(var(--border) 1px, transparent 1px);
+  background-size: 24px 24px;
+}

@@ -14,6 +14,10 @@ import init, {
   model_targets as wasmModelTargets,
   mapping_status as wasmMappingStatus,
   run_forced as wasmRunForced,
+  to_canvas as wasmToCanvas,
+  project as wasmProject,
+  validate_mode as wasmValidateMode,
+  validate_connection as wasmValidateConnection,
 } from "bert-lenses-kernel";
 import wasmUrl from "bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url";
 
@@ -26,6 +30,8 @@ import type {
   Manifest,
   MappingStatus,
   RunResultRich,
+  CanvasModel,
+  Relation,
 } from "./types";
 
 let readyPromise: Promise<void> | null = null;
@@ -83,4 +89,32 @@ export function runForced(
   today: string,
 ): RunResultRich {
   return wasmRunForced(modelJson, csvText, JSON.stringify(manifest), dt, t, today) as RunResultRich;
+}
+
+// ---- Phase 2: the canvas seam ------------------------------------------------
+
+/** Load an executable WorldModel onto the canvas as an editing model — the
+ *  display-faithful inverse of `project`. Structure only; the run always uses
+ *  the original model + CSV + manifest, never a re-projection of the canvas. */
+export function toCanvas(modelJson: string): CanvasModel {
+  return wasmToCanvas(modelJson) as CanvasModel;
+}
+
+/** Project the canvas editing model into a bert-core WorldModel (JSON). */
+export function project(model: CanvasModel): unknown {
+  return wasmProject(JSON.stringify(model));
+}
+
+/** The lens gate: validate a projected model against its mode, in Rust. */
+export function validateMode(
+  model: CanvasModel,
+  mode: "Core" | "Structural" | "Operational" | "Full",
+): ValidationResult {
+  const worldModel = project(model);
+  return wasmValidateMode(JSON.stringify(worldModel), mode) as ValidationResult;
+}
+
+/** Ask the kernel whether a candidate relation is legal to add. Empty issues = legal. */
+export function validateConnection(model: CanvasModel, candidate: Relation): ValidationResult {
+  return wasmValidateConnection(JSON.stringify(model), JSON.stringify(candidate)) as ValidationResult;
 }

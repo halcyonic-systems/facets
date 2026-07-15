@@ -117,3 +117,47 @@ export interface RunResultRich {
   comparisons: Comparison[];
   trajectories: Trajectory[];
 }
+
+// ---- Phase 2: the canvas editing model --------------------------------------
+// Mirrors crates/bert-lenses-kernel/src/canvas.rs — the JSON shape that crosses
+// the wasm boundary via `project` / `to_canvas` / `validate_connection`.
+
+export type Lens = "Klir" | "Bunge" | "Mobus";
+export type CanvasRole = "Component" | "Environment";
+export type Kind = "Unspecified" | "Energy" | "Matter" | "Field" | "Informational";
+
+export type ProcessPrimitive =
+  | "Combining"
+  | "Splitting"
+  | "Buffering"
+  | "Impeding"
+  | "Propelling"
+  | "Copying"
+  | "Sensing"
+  | "Modulating"
+  | "Amplifying"
+  | "Inverting";
+
+export interface Thing {
+  id: number;
+  name: string;
+  x: number;
+  y: number;
+  role: CanvasRole;
+  primitive?: ProcessPrimitive;
+}
+
+export interface Relation {
+  id: number;
+  a: number;
+  b: number;
+  name: string;
+  is_bond: boolean;
+  kind: Kind;
+}
+
+export interface CanvasModel {
+  lens: Lens;
+  things: Thing[];
+  relations: Relation[];
+}
