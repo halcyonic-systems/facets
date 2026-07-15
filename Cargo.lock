@@ -26,6 +26,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
+name = "bert-canvas"
+version = "0.1.0"
+dependencies = [
+ "bert-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "bert-compose"
 version = "0.1.0"
 dependencies = [
@@ -51,12 +60,24 @@ dependencies = [
 name = "bert-lenses-kernel"
 version = "0.1.0"
 dependencies = [
+ "bert-canvas",
  "bert-compose",
  "bert-core",
+ "bert-tether",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "bert-tether"
+version = "0.1.0"
+dependencies = [
+ "bert-compose",
+ "bert-core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

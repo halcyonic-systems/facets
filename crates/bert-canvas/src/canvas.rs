@@ -179,8 +179,10 @@ pub struct Projection {
     pub world: WorldModel,
     /// canvas thing id → projected kernel `Id` (components and touched env things).
     pub thing_ids: std::collections::HashMap<u64, Id>,
-    /// Parallel to `world.interactions`: the canvas relation id each projected from.
-    pub relation_ids: Vec<u64>,
+    /// canvas relation id → the projected interaction's kernel `Id`. An explicit
+    /// map, not positional parallelism with `world.interactions`: only bonds with
+    /// both endpoints projected appear (skipped bonds have no entry).
+    pub interaction_of: std::collections::HashMap<u64, Id>,
 }
 
 /// Project the canvas model into a bert-core `WorldModel`, mode-stamped by the
@@ -268,21 +270,18 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
     }
 
     let mut interactions: Vec<Interaction> = Vec::new();
-    let mut relation_ids: Vec<u64> = Vec::new();
+    let mut interaction_of: HashMap<u64, Id> = HashMap::new();
     for (k, r) in bonds.iter().enumerate() {
         let (Some(src), Some(snk)) = (id_map.get(&r.a), id_map.get(&r.b)) else {
             continue;
         };
-        relation_ids.push(r.id);
+        let flow_id = Id {
+            ty: IdType::Flow,
+            indices: vec![k as i64],
+        };
+        interaction_of.insert(r.id, flow_id.clone());
         interactions.push(Interaction {
-            info: info(
-                Id {
-                    ty: IdType::Flow,
-                    indices: vec![k as i64],
-                },
-                0,
-                &r.name,
-            ),
+            info: info(flow_id, 0, &r.name),
             substance: Substance {
                 sub_type: String::new(),
                 ty: kind_to_substance(r.kind),
@@ -317,7 +316,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
     Projection {
         world,
         thing_ids: id_map,
-        relation_ids,
+        interaction_of,
     }
 }
 

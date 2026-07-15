@@ -26,6 +26,8 @@
 
 use std::collections::HashMap;
 
+use serde::Serialize;
+
 use bert_core::rust_decimal::Decimal;
 use bert_core::{Id, Parameter, System, WorldModel};
 use bert_compose::circuit::NodeKind;
@@ -78,6 +80,68 @@ pub fn name_of(model: &WorldModel, handle: u64) -> String {
             .map(|s| s.info.name.clone())
             .unwrap_or_default()
     }
+}
+
+/// Live wizard status for a mapping: the T1/T2/T4 gates, the plain-language
+/// translations, and the inferred Δt. Serialized verbatim at the wasm boundary
+/// (`mapping_status`); the field names are the frozen API.md shape.
+#[derive(Serialize)]
+pub struct MappingStatus {
+    pub t1_ok: bool,
+    pub t2_ok: bool,
+    pub t2_msg: Option<String>,
+    pub t4_ok: bool,
+    pub t4_msg: Option<String>,
+    pub can_finish: bool,
+    pub translations: Vec<String>,
+    pub inferred_dt: Option<f64>,
+    pub apply_error: Option<String>,
+}
+
+/// Reconstruct the `MappingDraft` from the manifest and read the finish gates —
+/// no side effects. Errors only if the CSV text does not parse (the fault the
+/// boundary surfaces); a manifest that fails to resolve is reported in
+/// `apply_error`, not as an error. The boundary just parses inputs, calls this,
+/// and serializes the result.
+pub fn mapping_status(
+    model: &WorldModel,
+    csv_text: &str,
+    manifest: &crate::manifest::RunManifest,
+) -> Result<MappingStatus, String> {
+    let (headers, rows) = crate::tether::parse_csv(csv_text).map_err(|e| format!("{e:?}"))?;
+
+    let flows: Vec<(u64, String)> = flow_targets(model)
+        .into_iter()
+        .map(|(id, name, _)| (id, name))
+        .collect();
+    let components = component_targets(model);
+    let ctx = crate::manifest::ResolveCtx {
+        flows: &flows,
+        components: &components,
+    };
+
+    let mut draft =
+        crate::tether::MappingDraft::new("import.csv".to_string(), headers.clone(), rows);
+    let apply_error = manifest.apply_to_draft(&mut draft, &ctx).err();
+
+    let name_at = |h: u64| name_of(model, h);
+    let translations: Vec<String> = (0..headers.len())
+        .filter_map(|i| draft.translation(i, &name_at))
+        .collect();
+    let units = draft.units_ok();
+    let time = draft.time_unique_ok();
+
+    Ok(MappingStatus {
+        t1_ok: draft.is_total(),
+        t2_ok: units.is_ok(),
+        t2_msg: units.err(),
+        t4_ok: time.is_ok(),
+        t4_msg: time.err(),
+        can_finish: draft.can_finish(),
+        translations,
+        inferred_dt: draft.inferred_dt(),
+        apply_error: apply_error.map(|es| es.join("; ")),
+    })
 }
 
 /// Inject the distilled import (`ModelParams`) onto an existing model: forced

@@ -24,7 +24,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 
 use bert_core::validate::{validate_mode, Severity};
-use bert_core::{EdgeLocus, Mode};
+use bert_core::{EdgeLocus, Id, Interaction, Mode};
 
 use crate::canvas::{project_with_map, CanvasModel, Kind, Lens, Role};
 
@@ -105,6 +105,10 @@ fn kind_name(k: Kind) -> &'static str {
     }
 }
 
+/// What a (component, env) port pair accumulates while grouping exo bonds:
+/// (gated relation ids, receives?, exports?, protocol labels).
+type PortAccum = (Vec<u64>, bool, bool, Vec<String>);
+
 /// Compute the lens facts for a canvas model: project, ask bert-core, translate
 /// the verdicts back to canvas ids.
 pub fn lens_facts(model: &CanvasModel) -> LensFacts {
@@ -150,12 +154,8 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
 
     // Edges: projected bonds classify via the kernel; mere relations (never
     // projected — B̄) classify from the same C/E role split, here in Rust.
-    let ix_of: HashMap<u64, usize> = p
-        .relation_ids
-        .iter()
-        .enumerate()
-        .map(|(ix, rid)| (*rid, ix))
-        .collect();
+    let interaction_by_id: HashMap<&Id, &Interaction> =
+        p.world.interactions.iter().map(|i| (&i.info.id, i)).collect();
     let locus_from_roles = |a: u64, b: u64| {
         let is_comp = |id: u64| roles.get(&id).copied().unwrap_or_default() == Role::Component;
         if is_comp(a) && is_comp(b) {
@@ -168,8 +168,12 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
         .relations
         .iter()
         .map(|r| {
-            let locus = match ix_of.get(&r.id) {
-                Some(&ix) => p.world.edge_locus(&p.world.interactions[ix]),
+            let locus = match p
+                .interaction_of
+                .get(&r.id)
+                .and_then(|id| interaction_by_id.get(id))
+            {
+                Some(ix) => p.world.edge_locus(ix),
                 None => locus_from_roles(r.a, r.b),
             };
             let self_loop = r.a == r.b;
@@ -190,7 +194,7 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
     // one interface per coupling, gating all its flows. G is bipartite by
     // construction (env-object ↔ interface; Tuple.lean), which is exactly this
     // grouping: no port ever pairs two components or two env objects.
-    let mut port_map: HashMap<(u64, u64), (Vec<u64>, bool, bool, Vec<String>)> = HashMap::new();
+    let mut port_map: HashMap<(u64, u64), PortAccum> = HashMap::new();
     for r in &model.relations {
         if !r.is_bond || r.a == r.b {
             continue;

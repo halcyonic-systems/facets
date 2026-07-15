@@ -1,11 +1,11 @@
 //! The JS-facing wasm boundary — thin, marshaling-only.
 //!
-//! Every function here follows one shape: deserialize JS input → hand it to
-//! [`bert_core`] / [`bert_compose`] / [`crate::tether`] (the truth) → serialize
-//! the result back. There is NO systems logic in this module. It parses JSON,
-//! calls the kernel, and hands the answer to the face. If a verdict were ever
-//! computed here instead of delegated, that would violate the load-bearing
-//! invariant.
+//! Every function here follows one shape: deserialize JS input → hand it to the
+//! truth ([`bert_core`] / [`bert_compose`] / [`bert_canvas`] / [`bert_tether`])
+//! → serialize the result back. There is NO systems logic in this module. It
+//! parses JSON, calls the domain, and hands the answer to the face. If a verdict
+//! were ever computed here instead of delegated, that would violate the
+//! load-bearing invariant.
 //!
 //! The exact JSON shapes returned are documented in `API.md` (the frozen
 //! surface). Result types are serialized structurally via serde; the web layer
@@ -78,7 +78,7 @@ pub fn run(model_json: &str, dt: f64, ticks: usize) -> Result<JsValue, JsError> 
 #[wasm_bindgen]
 pub fn parse_csv(text: &str) -> Result<JsValue, JsError> {
     let (headers, rows) =
-        crate::tether::parse_csv(text).map_err(|e| JsError::new(&format!("{e:?}")))?;
+        bert_tether::tether::parse_csv(text).map_err(|e| JsError::new(&format!("{e:?}")))?;
     to_js(&CsvParse { headers, rows })
 }
 
@@ -89,11 +89,11 @@ pub fn parse_csv(text: &str) -> Result<JsValue, JsError> {
 #[wasm_bindgen]
 pub fn model_targets(model_json: &str) -> Result<JsValue, JsError> {
     let model = parse_model(model_json)?;
-    let flows: Vec<FlowTarget> = crate::forcing::flow_targets(&model)
+    let flows: Vec<FlowTarget> = bert_tether::forcing::flow_targets(&model)
         .into_iter()
         .map(|(id, name, unit)| FlowTarget { id, name, unit })
         .collect();
-    let components: Vec<ComponentTarget> = crate::forcing::component_targets(&model)
+    let components: Vec<ComponentTarget> = bert_tether::forcing::component_targets(&model)
         .into_iter()
         .map(|(id, name)| ComponentTarget { id, name })
         .collect();
@@ -111,42 +111,11 @@ pub fn mapping_status(
     manifest_json: &str,
 ) -> Result<JsValue, JsError> {
     let model = parse_model(model_json)?;
-    let (headers, rows) =
-        crate::tether::parse_csv(csv_text).map_err(|e| JsError::new(&format!("{e:?}")))?;
-    let manifest: crate::manifest::RunManifest = serde_json::from_str(manifest_json)
+    let manifest: bert_tether::manifest::RunManifest = serde_json::from_str(manifest_json)
         .map_err(|e| JsError::new(&format!("invalid manifest: {e}")))?;
-
-    let flows: Vec<(u64, String)> = crate::forcing::flow_targets(&model)
-        .into_iter()
-        .map(|(id, name, _)| (id, name))
-        .collect();
-    let components = crate::forcing::component_targets(&model);
-    let ctx = crate::manifest::ResolveCtx {
-        flows: &flows,
-        components: &components,
-    };
-
-    let mut draft = crate::tether::MappingDraft::new("import.csv".to_string(), headers.clone(), rows);
-    let apply_error = manifest.apply_to_draft(&mut draft, &ctx).err();
-
-    let name_of = |h: u64| crate::forcing::name_of(&model, h);
-    let translations: Vec<String> = (0..headers.len())
-        .filter_map(|i| draft.translation(i, &name_of))
-        .collect();
-    let units = draft.units_ok();
-    let time = draft.time_unique_ok();
-
-    to_js(&MappingStatus {
-        t1_ok: draft.is_total(),
-        t2_ok: units.is_ok(),
-        t2_msg: units.err(),
-        t4_ok: time.is_ok(),
-        t4_msg: time.err(),
-        can_finish: draft.can_finish(),
-        translations,
-        inferred_dt: draft.inferred_dt(),
-        apply_error: apply_error.map(|es| es.join("; ")),
-    })
+    let status = bert_tether::forcing::mapping_status(&model, csv_text, &manifest)
+        .map_err(|e| JsError::new(&e))?;
+    to_js(&status)
 }
 
 /// Run the model FORCED by the imported CSV, over `(dt, t)`, and read the run
@@ -163,9 +132,9 @@ pub fn run_forced(
     today: &str,
 ) -> Result<JsValue, JsError> {
     let model = parse_model(model_json)?;
-    let manifest: crate::manifest::RunManifest = serde_json::from_str(manifest_json)
+    let manifest: bert_tether::manifest::RunManifest = serde_json::from_str(manifest_json)
         .map_err(|e| JsError::new(&format!("invalid manifest: {e}")))?;
-    let readout = crate::forcing::force_and_run(model, csv_text, &manifest, dt, t, today)
+    let readout = bert_tether::forcing::force_and_run(model, csv_text, &manifest, dt, t, today)
         .map_err(|e| JsError::new(&e))?;
     to_js(&RunResultRich::from(readout))
 }
@@ -193,9 +162,9 @@ pub fn validate_mode(model_json: &str, mode: &str) -> Result<JsValue, JsError> {
 /// editing model and the kernel constructs the projection.
 #[wasm_bindgen]
 pub fn project(canvas_json: &str) -> Result<JsValue, JsError> {
-    let model: crate::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
-    to_js(&crate::canvas::project(&model))
+    to_js(&bert_canvas::canvas::project(&model))
 }
 
 /// Load an existing `WorldModel` onto the canvas as an editing model — the
@@ -204,7 +173,7 @@ pub fn project(canvas_json: &str) -> Result<JsValue, JsError> {
 #[wasm_bindgen]
 pub fn to_canvas(model_json: &str) -> Result<JsValue, JsError> {
     let model = parse_model(model_json)?;
-    to_js(&crate::canvas::to_canvas(&model))
+    to_js(&bert_canvas::canvas::to_canvas(&model))
 }
 
 /// Validate a proposed connection at the model's current lens. Returns the issues
@@ -212,12 +181,12 @@ pub fn to_canvas(model_json: &str) -> Result<JsValue, JsError> {
 /// call — the canvas rejects an edge iff the kernel says so.
 #[wasm_bindgen]
 pub fn validate_connection(canvas_json: &str, candidate_json: &str) -> Result<JsValue, JsError> {
-    let model: crate::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
-    let candidate: crate::canvas::Relation = serde_json::from_str(candidate_json)
+    let candidate: bert_canvas::canvas::Relation = serde_json::from_str(candidate_json)
         .map_err(|e| JsError::new(&format!("invalid candidate relation: {e}")))?;
     to_js(&ConnectionVerdict {
-        issues: crate::canvas::validate_connection(&model, &candidate),
+        issues: bert_canvas::canvas::validate_connection(&model, &candidate),
     })
 }
 
@@ -230,9 +199,9 @@ pub fn validate_connection(canvas_json: &str, candidate_json: &str) -> Result<Js
 /// internally projects, so every fact is still a kernel verdict.
 #[wasm_bindgen]
 pub fn lens_facts(canvas_json: &str) -> Result<JsValue, JsError> {
-    let model: crate::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
-    to_js(&crate::lenses::lens_facts(&model))
+    to_js(&bert_canvas::lenses::lens_facts(&model))
 }
 
 /// The formal face: the model typeset as the active lens's own formal object
@@ -241,15 +210,15 @@ pub fn lens_facts(canvas_json: &str) -> Result<JsValue, JsError> {
 /// it; the math is never assembled in JS. `lens` = "Klir" | "Bunge" | "Mobus".
 #[wasm_bindgen]
 pub fn describe(canvas_json: &str, lens: &str) -> Result<JsValue, JsError> {
-    let model: crate::canvas::CanvasModel = serde_json::from_str(canvas_json)
+    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
     let l = match lens {
-        "Klir" => crate::canvas::Lens::Klir,
-        "Bunge" => crate::canvas::Lens::Bunge,
-        "Mobus" => crate::canvas::Lens::Mobus,
+        "Klir" => bert_canvas::canvas::Lens::Klir,
+        "Bunge" => bert_canvas::canvas::Lens::Bunge,
+        "Mobus" => bert_canvas::canvas::Lens::Mobus,
         other => return Err(JsError::new(&format!("unknown lens: {other}"))),
     };
-    to_js(&crate::lenses::describe(&model, l))
+    to_js(&bert_canvas::lenses::describe(&model, l))
 }
 
 // ---- Boundary DTOs (data-transfer shapes only, no logic) --------------------
@@ -274,19 +243,6 @@ struct FlowTarget {
 struct ComponentTarget {
     id: u64,
     name: String,
-}
-
-#[derive(Serialize)]
-struct MappingStatus {
-    t1_ok: bool,
-    t2_ok: bool,
-    t2_msg: Option<String>,
-    t4_ok: bool,
-    t4_msg: Option<String>,
-    can_finish: bool,
-    translations: Vec<String>,
-    inferred_dt: Option<f64>,
-    apply_error: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -323,8 +279,8 @@ struct TrajDto {
     series: Vec<f32>,
 }
 
-impl From<crate::forcing::RunReadout> for RunResultRich {
-    fn from(r: crate::forcing::RunReadout) -> Self {
+impl From<bert_tether::forcing::RunReadout> for RunResultRich {
+    fn from(r: bert_tether::forcing::RunReadout) -> Self {
         RunResultRich {
             ticks: r.ticks,
             dt: r.dt,
