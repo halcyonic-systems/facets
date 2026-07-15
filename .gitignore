@@ -8,4 +8,8 @@ crates/*/pkg/
 web/node_modules/
 web/dist/
 
+# spikes (Phase 2 canvas throwaways)
+spikes/*/node_modules/
+spikes/*/dist/
+
 .DS_Store
