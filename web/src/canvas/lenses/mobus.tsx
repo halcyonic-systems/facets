@@ -10,9 +10,10 @@ import { edgeGeometry, rimPoint, ringPoint, straightPath, thingById, NODE_R, typ
 import { EdgeScaffold, NodeBody, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
 
-function NodeView({ thing, hovered, sim, onPointerDown, onHandlePointerDown }: LensNodeProps) {
+function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointerDown }: LensNodeProps) {
   return (
     <NodeBody
+      pending={isOrphan}
       thing={thing}
       hovered={hovered}
       sim={sim}

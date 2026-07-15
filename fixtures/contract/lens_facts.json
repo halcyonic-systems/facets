@@ -5,6 +5,7 @@
   "environment_thing_ids": [
     3
   ],
+  "orphan_env_thing_ids": [],
   "boundary_props": {
     "porosity": 0.0,
     "perceptive_fuzziness": 0.0

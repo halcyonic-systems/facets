@@ -562,6 +562,38 @@ Writes go to the kernel's `B.P`; the face flips `BOUNDARY_PROPS_AUTHORING`
   (`web/src/canvas/lenses/registry.ts`) alongside the views — never a
   `lens ===` conditional.
 
+### Agents and the palette (chs. 10–11) — accounted for, deliberately deferred
+
+Mobus's paradigm is agent-centric, and the palette must build TOWARD agents
+without conflating them with what it stamps today:
+
+- **An agent is an archetype WITHIN C, not a tuple slot.** "Agents are
+  specialized decision-making information processes the outputs of which
+  generate control activities… Any decision-making mechanism that affects the
+  state of the system and/or its environment is an agent" (ch. 10; vault
+  `operations/systems-science/mobus/10-model-archetypes.md`). Mobus offers and
+  rejects `C₀ = {economy, governance, agents}` as "too abstract" — agents are
+  the orange ovals INSIDE process ovals. Operationally: agent = computational
+  engine + decision model + experiential memory (ch. 11), kinds
+  Reactive / Anticipatory / Intentional, autonomy graded.
+- **Agency ≠ work process.** Work processes are Economy-side; agents MANAGE
+  them (Agency archetype). bert-compose already corrected one category error
+  here ("agency on a primitive" — `bert-compose/src/circuit.rs`); the rail's
+  stamp section therefore says **work process**, never agent. The standing
+  tension that `bert-core::AgentModel.primitives` carries Economy content
+  under an Agency name is documented (run-surface-grounding.md, 2026-07-11)
+  and stays deferred: document now, restructure on demand.
+- **The kernel is already agent-ready**: `bert-core` carries
+  `HcgsArchetype::Agent` + `AgentModel { kind, agency_capacity, primitives:
+  Vec<ProcessPrimitive>, … }`; only the canvas seam lacks archetype exposure.
+- **How agents will enter the palette**: as a **DESIGNATE verb** on components
+  (arm "agent", click a component — same gesture as the work-process stamp),
+  kernel-first via the 8-step checklist (Thing gains archetype exposure;
+  `Designation` union in `registry.ts` gains an archetype member). The
+  multi-primitive question (#5) resolves WITH agent designation — the Vec
+  lives on `AgentModel`, so a component's several work processes arrive when
+  its agent-hood does, not before.
+
 ### Source citations for this section
 
 Klir: *Facets of Systems Science* (2001), Eq. 1.1 + §2.1 (S=(T,R)), §2.3–2.4,

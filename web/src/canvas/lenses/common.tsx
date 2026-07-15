@@ -39,6 +39,9 @@ interface NodeBodyProps {
   labelSmall: boolean;
   /** Bunge marks boundary components with a rim accent (kernel `isBoundary`). */
   boundaryRim: boolean;
+  /** Kernel `orphan_env_thing_ids`: an env thing no bond touches — not yet in ℰ
+   *  (Bunge Def 1.2 ii), dropped by project(). Rendered muted, never hidden. */
+  pending?: boolean;
 }
 
 /** The node chrome common to every lens — the per-lens views resolve the style
@@ -58,12 +61,19 @@ export function NodeBody({
   badge,
   labelSmall,
   boundaryRim,
+  pending = false,
 }: NodeBodyProps) {
   const frac = sim ? Math.max(0, Math.min(1, sim.frac)) : null;
   const clipId = `fill-clip-${thing.id}`;
 
   return (
-    <g transform={`translate(${thing.x}, ${thing.y})`} onPointerDown={onPointerDown} className="cursor-grab">
+    <g
+      transform={`translate(${thing.x}, ${thing.y})`}
+      onPointerDown={onPointerDown}
+      className="cursor-grab"
+      opacity={pending ? 0.5 : 1}
+    >
+      {pending && <title>not yet in ℰ — no bond touches this thing (Bunge Def 1.2 ii); connect a flow to admit it</title>}
       {showHalo && <circle r={NODE_R + 10} fill="var(--lens-accent-soft)" opacity={0.5} />}
       {hovered && <circle r={NODE_R + 6} fill="none" stroke="var(--lens-accent)" strokeWidth={2} />}
 

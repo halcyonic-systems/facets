@@ -11,6 +11,7 @@ import {
   type RefObject,
 } from "react";
 import type { CanvasModel, Relation, Thing } from "../kernel/types";
+import type { PaletteTool } from "./lenses/registry";
 import { validateConnection } from "../kernel";
 import { NODE_R, thingById, type Pt } from "./geometry";
 
@@ -26,6 +27,10 @@ export interface GestureState {
   panStart: { startClient: Pt; startPan: Pt } | null;
   dragThing: number | null;
   dragOffset: Pt;
+  /** Where the node grab started (client coords) — a pointer-up inside the
+   *  click threshold is a SELECT, not a drag. */
+  dragStartClient: Pt | null;
+  dragMoved: boolean;
   connectFrom: number | null;
   connectPos: Pt | null;
   hoverTarget: number | null;
@@ -36,7 +41,8 @@ type GestureAction =
   | { type: "panStart"; startClient: Pt }
   | { type: "panMove"; client: Pt }
   | { type: "panEnd" }
-  | { type: "dragStart"; thingId: number; offset: Pt }
+  | { type: "dragStart"; thingId: number; offset: Pt; startClient: Pt }
+  | { type: "dragMoved" }
   | { type: "dragEnd" }
   | { type: "connectStart"; thingId: number; pos: Pt }
   | { type: "connectMove"; pos: Pt; hoverTarget: number | null }
@@ -50,6 +56,8 @@ const INITIAL: GestureState = {
   panStart: null,
   dragThing: null,
   dragOffset: { x: 0, y: 0 },
+  dragStartClient: null,
+  dragMoved: false,
   connectFrom: null,
   connectPos: null,
   hoverTarget: null,
@@ -69,9 +77,17 @@ function reducer(state: GestureState, action: GestureAction): GestureState {
     case "panEnd":
       return { ...state, panStart: null };
     case "dragStart":
-      return { ...state, dragThing: action.thingId, dragOffset: action.offset };
+      return {
+        ...state,
+        dragThing: action.thingId,
+        dragOffset: action.offset,
+        dragStartClient: action.startClient,
+        dragMoved: false,
+      };
+    case "dragMoved":
+      return { ...state, dragMoved: true };
     case "dragEnd":
-      return { ...state, dragThing: null };
+      return { ...state, dragThing: null, dragStartClient: null, dragMoved: false };
     case "connectStart":
       return { ...state, connectFrom: action.thingId, connectPos: action.pos };
     case "connectMove":
@@ -93,14 +109,28 @@ function nextId(ids: number[]): number {
   return (ids.length ? Math.max(...ids) : 0) + 1;
 }
 
+/** Pointer jitter under this many client px reads as a click, not a drag. */
+const CLICK_SLOP = 4;
+
 interface GestureDeps {
   model: CanvasModel;
   svgRef: RefObject<SVGSVGElement | null>;
   onModelChange: (m: CanvasModel) => void;
   onReject: (message: string) => void;
+  /** The rail's armed tool (null = no tool armed; gestures behave as before). */
+  armed?: PaletteTool | null;
+  /** Click-select a node (null clears). Selection is view state, never projected. */
+  onSelectThing?: (id: number | null) => void;
 }
 
-export function useCanvasGestures({ model, svgRef, onModelChange, onReject }: GestureDeps) {
+export function useCanvasGestures({
+  model,
+  svgRef,
+  onModelChange,
+  onReject,
+  armed = null,
+  onSelectThing,
+}: GestureDeps) {
   const [state, dispatch] = useReducer(reducer, INITIAL);
 
   function toWorld(e: { clientX: number; clientY: number }): Pt {
@@ -118,9 +148,34 @@ export function useCanvasGestures({ model, svgRef, onModelChange, onReject }: Ge
 
   function onNodePointerDown(e: ReactPointerEvent, thing: Thing) {
     e.stopPropagation();
+    if (armed?.verb === "designate") {
+      // Designations land on components only: project() carries `primitive`
+      // into subsystems and ignores it on env objects (their internals are
+      // epistemically opaque, Mobus §4.3.3.2.2) — offering the stamp there
+      // would author dead state.
+      if (thing.role !== "Component") {
+        onReject("work processes stamp onto components — environment objects are opaque (Mobus §4.3.3.2.2)");
+        return;
+      }
+      switch (armed.designation.type) {
+        case "primitive": {
+          const primitive = armed.designation.primitive;
+          onModelChange({
+            ...model,
+            things: model.things.map((t) => (t.id === thing.id ? { ...t, primitive } : t)),
+          });
+        }
+      }
+      return; // stays armed for repeat stamping
+    }
     (e.target as Element).setPointerCapture(e.pointerId);
     const p = toWorld(e);
-    dispatch({ type: "dragStart", thingId: thing.id, offset: { x: p.x - thing.x, y: p.y - thing.y } });
+    dispatch({
+      type: "dragStart",
+      thingId: thing.id,
+      offset: { x: p.x - thing.x, y: p.y - thing.y },
+      startClient: { x: e.clientX, y: e.clientY },
+    });
   }
 
   function onHandlePointerDown(e: ReactPointerEvent, thing: Thing) {
@@ -131,12 +186,33 @@ export function useCanvasGestures({ model, svgRef, onModelChange, onReject }: Ge
 
   function onStagePointerDown(e: ReactPointerEvent) {
     if (e.target !== e.currentTarget) return;
+    if (armed?.verb === "place") {
+      // Stamp at the point and STAY armed (repeat-stamp; Esc or a second
+      // tool-click disarms). Same nullary act as the double-click draft, with
+      // the kind the armed tool carries instead of the lens default.
+      const p = toWorld(e);
+      const id = nextId(model.things.map((t) => t.id));
+      const name = armed.role === "Environment" ? `E${id}` : `T${id}`;
+      onModelChange({
+        ...model,
+        things: [...model.things, { id, name, x: p.x, y: p.y, role: armed.role }],
+      });
+      return;
+    }
+    onSelectThing?.(null);
     (e.target as Element).setPointerCapture(e.pointerId);
     dispatch({ type: "panStart", startClient: { x: e.clientX, y: e.clientY } });
   }
 
   function onStagePointerMove(e: ReactPointerEvent) {
     if (state.dragThing !== null) {
+      // Inside the click slop nothing moves — so a plain click never nudges
+      // the node it is selecting.
+      if (!state.dragMoved && state.dragStartClient) {
+        const d = Math.hypot(e.clientX - state.dragStartClient.x, e.clientY - state.dragStartClient.y);
+        if (d < CLICK_SLOP) return;
+        dispatch({ type: "dragMoved" });
+      }
       const p = toWorld(e);
       const x = p.x - state.dragOffset.x;
       const y = p.y - state.dragOffset.y;
@@ -159,6 +235,7 @@ export function useCanvasGestures({ model, svgRef, onModelChange, onReject }: Ge
 
   function onStagePointerUp(e: ReactPointerEvent) {
     if (state.dragThing !== null) {
+      if (!state.dragMoved) onSelectThing?.(state.dragThing);
       dispatch({ type: "dragEnd" });
       return;
     }

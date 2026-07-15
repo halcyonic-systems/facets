@@ -3,8 +3,11 @@ import { ready, runForced, toCanvas, parseCsv, analyzeCanvas } from "./kernel";
 import type { CanvasModel, Manifest, RunResultRich } from "./kernel/types";
 import { DEMOS, type Demo } from "./demos";
 import Canvas from "./canvas/Canvas";
-import { edgeGeometry } from "./canvas/geometry";
+import { edgeGeometry, thingById } from "./canvas/geometry";
 import { EdgePopover } from "./canvas/EdgePopover";
+import { NodePopover } from "./canvas/NodePopover";
+import { PaletteRail } from "./canvas/PaletteRail";
+import type { PaletteTool } from "./canvas/lenses/registry";
 import { SimScrubber } from "./canvas/SimScrubber";
 import { type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
@@ -59,8 +62,25 @@ function Workspace() {
   const [runError, setRunError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const [selectedRelationId, setSelectedRelationId] = useState<number | null>(null);
+  const [selectedThingId, setSelectedThingId] = useState<number | null>(null);
+  const [armed, setArmed] = useState<PaletteTool | null>(null);
   const [canvasPan, setCanvasPan] = useState<Pt>({ x: 0, y: 0 });
   const [toast, setToast] = useState<string | null>(null);
+
+  // Esc = disarm the rail tool, else clear selection — the only global key.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      setArmed((a) => {
+        if (a) return null;
+        setSelectedThingId(null);
+        setSelectedRelationId(null);
+        return a;
+      });
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const runWith = (modelJson: string, csv: string, m: Manifest, dtv: number, tv: number) => {
     try {
@@ -81,6 +101,8 @@ function Workspace() {
     setDt(d.manifest.dt ?? 1);
     setT(d.t);
     setSelectedRelationId(null);
+    setSelectedThingId(null);
+    setArmed(null);
     runWith(d.modelJson, d.csv, d.manifest, d.manifest.dt ?? 1, d.t); // one click → runs
   };
 
@@ -164,6 +186,9 @@ function Workspace() {
   }, [canvasModel, selectedRelation]);
 
   function setLens(lens: CanvasModel["lens"]) {
+    // The armed tool belongs to the outgoing lens's verb list — disarm. The
+    // canvas itself never resets (accretion pattern).
+    setArmed(null);
     setCanvasModel((m) => (m ? { ...m, lens } : m));
   }
 
@@ -180,6 +205,17 @@ function Workspace() {
       m ? { ...m, relations: m.relations.map((r) => (r.id === next.id ? next : r)) } : m,
     );
   }
+
+  // A node edit from the popover (rename, work-process set/clear): same shape
+  // as updateRelation — the kernel re-projects + re-judges on every change.
+  function updateThing(next: import("./kernel/types").Thing) {
+    setCanvasModel((m) =>
+      m ? { ...m, things: m.things.map((t) => (t.id === next.id ? next : t)) } : m,
+    );
+  }
+
+  const selectedThing =
+    canvasModel && selectedThingId !== null ? (thingById(canvasModel, selectedThingId) ?? null) : null;
 
   const clean = verdict !== null && verdict.issues.length === 0;
 
@@ -253,10 +289,22 @@ function Workspace() {
                 onReject={setToast}
                 selectedRelationId={selectedRelationId}
                 onSelectRelation={setSelectedRelationId}
+                armed={armed}
+                onSelectThing={setSelectedThingId}
                 driven={drivenNames}
                 sim={simFrame}
                 onPanChange={setCanvasPan}
               />
+              <PaletteRail lens={canvasModel.lens} armed={armed} onArm={setArmed} />
+              {selectedThing && (
+                <NodePopover
+                  thing={selectedThing}
+                  lens={canvasModel.lens}
+                  anchor={{ x: canvasPan.x + selectedThing.x, y: canvasPan.y + selectedThing.y }}
+                  onUpdateThing={updateThing}
+                  onClose={() => setSelectedThingId(null)}
+                />
+              )}
               {selectedRelation && popoverAnchor && (
                 <EdgePopover
                   relation={selectedRelation}
@@ -276,7 +324,7 @@ function Workspace() {
               {canvasModel.lens === "Bunge" && facts && (
                 <Banner
                   tone={facts.aggregate ? "error" : "soft"}
-                  className="pointer-events-none absolute left-3 top-3"
+                  className="pointer-events-none absolute left-48 top-3"
                 >
                   {facts.aggregate
                     ? "⚠ aggregate (heap) — no bond among distinct components (Bunge Def 1.1)"
@@ -287,7 +335,7 @@ function Workspace() {
                 className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-mono"
                 style={{ color: "var(--text-muted)" }}
               >
-                click a flow to drive it · drag a node to move · drag the teal dot to connect
+                arm a tool to stamp (Esc disarms) · click a node to edit · drag the handle dot to connect · click a flow to drive it
               </div>
               {toast && (
                 <Banner tone="error" className="absolute bottom-3 left-3">

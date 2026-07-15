@@ -21,7 +21,7 @@
 //! still in Rust, from the same C/E role split. Zero systems logic in JS.
 
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use bert_core::validate::{validate_mode, Severity, ValidationResult};
 use bert_core::{EdgeLocus, Id, Interaction, Mode};
@@ -85,6 +85,11 @@ pub struct LensFacts {
     pub boundary_thing_ids: Vec<u64>,
     /// O — the environment objects (role = Environment things).
     pub environment_thing_ids: Vec<u64>,
+    /// Environment things no bond touches — the set `project()` drops as orphan
+    /// terminals (canvas.rs). Not yet in ℰ: Bunge Def 1.2(ii) admits only things
+    /// that act on / are acted on by a component, and mere relations don't act.
+    /// The face renders these as pending; it never re-derives the set.
+    pub orphan_env_thing_ids: Vec<u64>,
     pub boundary_props: BoundaryProps,
     /// Bunge Def 1.1 verdict, surfaced verbatim from `validate_mode(Structural)`:
     /// `true` = no bond between distinct components = an aggregate/heap.
@@ -130,6 +135,20 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
         .iter()
         .filter(|t| t.role == Role::Environment)
         .map(|t| t.id)
+        .collect();
+
+    // Same membership test as project()'s orphan-terminal drop: touched by a
+    // bond or not in ℰ at all (Def 1.2 ii — mere relations don't act).
+    let bond_touched: HashSet<u64> = model
+        .relations
+        .iter()
+        .filter(|r| r.is_bond)
+        .flat_map(|r| [r.a, r.b])
+        .collect();
+    let orphan_env_thing_ids: Vec<u64> = environment_thing_ids
+        .iter()
+        .copied()
+        .filter(|id| !bond_touched.contains(id))
         .collect();
 
     // The root system's boundary carries P (porosity, fuzziness).
@@ -242,6 +261,7 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
     LensFacts {
         boundary_thing_ids,
         environment_thing_ids,
+        orphan_env_thing_ids,
         boundary_props,
         aggregate,
         edges,

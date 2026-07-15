@@ -167,6 +167,7 @@ function parseLensFacts(v: unknown): LensFacts {
   const o = shape(v, "LensFacts", [
     "boundary_thing_ids",
     "environment_thing_ids",
+    "orphan_env_thing_ids",
     "boundary_props",
     "aggregate",
     "edges",
@@ -179,6 +180,9 @@ function parseLensFacts(v: unknown): LensFacts {
     ),
     environment_thing_ids: arr(o.environment_thing_ids, "LensFacts.environment_thing_ids").map((x, i) =>
       num(x, `environment_thing_ids[${i}]`),
+    ),
+    orphan_env_thing_ids: arr(o.orphan_env_thing_ids, "LensFacts.orphan_env_thing_ids").map((x, i) =>
+      num(x, `orphan_env_thing_ids[${i}]`),
     ),
     boundary_props: {
       porosity: num(props.porosity, "boundary_props.porosity"),

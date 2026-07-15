@@ -10,7 +10,7 @@ import type { CanvasModel, EdgeFact, Lens, LensFacts, PortFact, Thing } from "..
 import type { SimFrame } from "./types";
 import { componentRing, ringPoint, thingById, NODE_R, type Pt, type Ring } from "./geometry";
 import { useCanvasGestures } from "./useCanvasGestures";
-import { LensRegistry } from "./lenses/registry";
+import { LensRegistry, type PaletteTool } from "./lenses/registry";
 
 interface Props {
   model: CanvasModel;
@@ -23,6 +23,9 @@ interface Props {
   onReject: (message: string) => void;
   selectedRelationId?: number | null;
   onSelectRelation?: (id: number) => void;
+  /** The rail's armed tool — place stamps on stage click, designate on node click. */
+  armed?: PaletteTool | null;
+  onSelectThing?: (id: number | null) => void;
   driven?: Set<string>;
   sim?: SimFrame | null;
   onPanChange?: (pan: Pt) => void;
@@ -36,12 +39,14 @@ export default function Canvas({
   onReject,
   selectedRelationId = null,
   onSelectRelation,
+  armed = null,
+  onSelectThing,
   driven,
   sim,
   onPanChange,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const gestures = useCanvasGestures({ model, svgRef, onModelChange, onReject });
+  const gestures = useCanvasGestures({ model, svgRef, onModelChange, onReject, armed, onSelectThing });
   const { pan, connectFrom, connectPos, hoverTarget, draft } = gestures.state;
 
   useEffect(() => {
@@ -55,6 +60,7 @@ export default function Canvas({
   // edges are endo/exo/bond/self-loop, and WHICH ports exist are all Rust
   // verdicts; only their pixel placement is computed here.
   const boundarySet = new Set(facts?.boundary_thing_ids ?? []);
+  const orphanSet = new Set(facts?.orphan_env_thing_ids ?? []);
   const edgeFactById = new Map<number, EdgeFact>((facts?.edges ?? []).map((e) => [e.id, e]));
 
   // Mobus: B = ⟨P, I⟩ reified — the membrane around the components (env objects
@@ -73,7 +79,7 @@ export default function Canvas({
   return (
     <svg
       ref={svgRef}
-      className="canvas-stage w-full h-full touch-none select-none"
+      className={`canvas-stage w-full h-full touch-none select-none${armed ? " cursor-crosshair" : ""}`}
       onPointerDown={gestures.onStagePointerDown}
       onPointerMove={gestures.onStagePointerMove}
       onPointerUp={gestures.onStagePointerUp}
@@ -170,6 +176,7 @@ export default function Canvas({
             key={t.id}
             thing={t}
             isBoundary={boundarySet.has(t.id)}
+            isOrphan={orphanSet.has(t.id)}
             hovered={hoverTarget === t.id}
             sim={sim?.nodes[t.name]}
             onPointerDown={(e) => gestures.onNodePointerDown(e, t)}

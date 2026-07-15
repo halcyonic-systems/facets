@@ -208,6 +208,9 @@ export interface LensFacts {
   boundary_thing_ids: number[];
   /** O — the environment objects. */
   environment_thing_ids: number[];
+  /** Env things no bond touches — project() drops these as orphan terminals;
+   *  not yet in ℰ (Bunge Def 1.2 ii). Rendered pending, never re-derived. */
+  orphan_env_thing_ids: number[];
   boundary_props: BoundaryProps;
   /** Bunge Def 1.1 verdict, surfaced from validate_mode(Structural). */
   aggregate: boolean;
