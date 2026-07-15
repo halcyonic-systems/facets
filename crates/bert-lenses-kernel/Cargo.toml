@@ -11,6 +11,8 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 bert-core = { path = "../bert-core" }
 bert-compose = { path = "../bert-compose" }
+bert-canvas = { path = "../bert-canvas" }
+bert-tether = { path = "../bert-tether" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 wasm-bindgen = "0.2"

@@ -211,6 +211,96 @@ type LensDescription =
 ```
 Throws on unparseable canvas JSON or an unknown lens string.
 
+## Phase 4 surface (built — the atomic author-view call)
+
+### `analyze_canvas(canvas_json: string) → CanvasAnalysis`
+The lens gate, the lens facts, and the formal object in ONE call — one
+deserialization, one projection. The composite replacement for the
+`validate_mode` → `lens_facts` → `describe` waterfall the canvas ran on every
+model change (each of which re-serialized and re-projected the same model). The
+lens is the canvas model's own `lens` field; the gate runs at that lens's mode
+(Klir→Core, Bunge→Structural, Mobus→Operational). The composition lives in
+`bert_canvas::lenses::analyze` (facts computed once, shared with `describe`);
+this boundary only marshals. The three original calls REMAIN — this adds a
+memoizable fast path, it does not replace them.
+```ts
+type CanvasAnalysis = {
+  validation: ValidationResult,   // validate_mode at the lens's mode
+  facts: LensFacts,
+  description: LensDescription,
+}
+```
+Throws only on unparseable canvas JSON.
+
+## Contract fixtures (definition-of-done for boundary shapes)
+
+Every serde type that crosses this wasm edge ships a committed JSON fixture in
+`fixtures/contract/`, generated from REAL kernel output — never hand-typed:
+- Rust writes/asserts them: `crates/bert-canvas/tests/contract.rs` (the
+  canvas-family shapes: `CanvasModel`, `LensFacts` + `EdgeFact`/`PortFact`,
+  `LensDescription` ×3, `ValidationResult`, `CanvasAnalysis`) and the
+  `bert-lenses-kernel` api.rs test module (the run-family DTOs: `CsvParse`,
+  `Targets`, `MappingStatus`, `RunResult`, `RunResultRich`). Drift fails the
+  test; regenerate an intentional change with `BLESS_FIXTURES=1`.
+- The web validates the SAME files against `web/src/kernel/types.ts`:
+  `web/src/kernel/contract.test.ts` (vitest) parses every field and rejects any
+  unexpected key, so a Rust field the TS mirror misses fails the build. Wired
+  into `just check` and CI.
+
+**When you add or change a boundary type, its fixture is part of the change** —
+add the Rust `check_fixture` call, bless the fixture, and extend the vitest
+parser. A boundary type with no fixture is an incomplete change.
+
+## Error contract (append-only; issue #47)
+
+This section documents the failure behavior of every function above. It adds no
+signatures and changes none — it names a guarantee the existing functions
+already have to keep, and tightens it. Two failure modes exist at this boundary,
+and exactly one of them is allowed:
+
+1. **`JsError` throw — allowed, contractual.** Each function returns its
+   documented success shape, OR throws a `JsError` whose message states the
+   fault. The already-documented "throws only on unparseable input" cases are
+   the canonical instance; `run` / `run_forced` additionally throw when the
+   model is not executable / the mapping is incomplete (as documented on those
+   functions). A throw is a normal, recoverable outcome: the JS caller catches
+   it (`web/src/kernel/index.ts` normalizes every throw into a typed
+   `KernelError` carrying the kernel's message), and the React error boundary
+   renders it as a verdict panel. No boundary call may leak `undefined` into the
+   face in place of either a result or a throw.
+
+2. **Panic — a bug, never allowed.** A Rust `panic!` (including `unwrap` /
+   `expect` / out-of-bounds indexing / integer divide-by-zero / `unreachable!`)
+   compiles, on the wasm target, to an `abort`: the module traps and the whole
+   page is dead — strictly worse than a `JsError`, and unrecoverable. Therefore
+   **no boundary function may panic on any input it can parse.** Malformed input
+   is rejected by the parse step (mode 1); malformed-but-*parseable* input —
+   empty models, self-loops, dangling relation endpoints, duplicate ids,
+   non-finite / extreme coordinates, empty strings, all-environment models,
+   degenerate CSV time columns — must flow through to a documented result or a
+   `JsError`, never an abort.
+
+**Where the guarantee is enforced.** The domain crates reachable from `api.rs`
+(`bert-canvas`, `bert-tether`) are audited to contain no panic sites on
+parseable input, and the property is locked by adversarial tests that push
+weird-but-parseable models through *every* boundary function:
+`crates/bert-canvas/tests/adversarial.rs` (the canvas family: `project`,
+`to_canvas`, `validate_connection`, `lens_facts`, `describe`, `analyze_canvas`)
+and `crates/bert-tether/tests/adversarial.rs` (the run family: `parse_csv`,
+`mapping_status`, `force_and_run`, target enumeration, Δt inference). A panic in
+any of them fails the test binary. These functions are total or `Result`-typed
+already, so "returns a value or a structured error" is the whole contract — this
+section adds no new enveloped variant; it forbids the abort path.
+
+**Runaway loops count too.** A wasm module that never returns is as dead as one
+that aborts. `run_forced` derives its tick count as `round(t / Δt)`, so a
+degenerate `Δt` (0, negative, or non-finite) or a non-finite `t` — both of which
+the wizard can produce from an empty field — would spin `usize::MAX` iterations
+and freeze the tab. `bert_tether::forcing::force_and_run` now refuses those up
+front with a `JsError` (a legible "Δt must be a positive, finite number"),
+folding the runaway case into the same throw-don't-hang contract. (`run`'s
+Phase-0 `ticks: usize` is a direct, caller-chosen count and is left as-is.)
+
 ## Notes
 - The wasm is built with `wasm-pack build --target web` into `pkg/` (a build
   artifact, gitignored). `--release` for the shipped bundle; `--dev` while iterating.

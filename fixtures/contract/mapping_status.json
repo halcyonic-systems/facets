@@ -1,0 +1,14 @@
+{
+  "t1_ok": true,
+  "t2_ok": true,
+  "t2_msg": null,
+  "t4_ok": true,
+  "t4_msg": null,
+  "can_finish": true,
+  "translations": [
+    "column \"month\" supplies time — Δt = 1 per row",
+    "column \"inflow\" will supply the flow magnitude for Watershed → Reservoir in ML/mo per Δt=1"
+  ],
+  "inferred_dt": 1.0,
+  "apply_error": null
+}

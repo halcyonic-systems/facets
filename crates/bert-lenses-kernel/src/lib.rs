@@ -1,25 +1,16 @@
-//! bert-lenses-kernel — the JS-facing wasm boundary.
+//! bert-lenses-kernel — the JS-facing wasm boundary. Marshaling only.
 //!
-//! THE LOAD-BEARING INVARIANT: this crate is the *brain*. It owns every
-//! systemhood verdict, all validation, the CSV-tether ritual, and the whole
-//! simulation, delegating to [`bert_core`] (the semantic authority) and
-//! [`bert_compose`] (the executable engine). The web layer is the *face*: it
-//! calls the `#[wasm_bindgen]` functions in [`api`] and renders results. It
-//! decides nothing about systems itself. Any systems logic in JS is a bug.
+//! THE LOAD-BEARING INVARIANT: this crate is the *seam*, not the brain. Every
+//! `#[wasm_bindgen]` function in [`api`] follows one shape — deserialize JS input
+//! → call the truth ([`bert_core`] semantic authority, [`bert_compose`] engine,
+//! [`bert_canvas`] canvas/lens domain, [`bert_tether`] import ritual) → serialize
+//! the result. No systemhood verdict, validation, projection, or simulation is
+//! ever computed here. Any systems logic in this crate — or in JS — is a bug.
 //!
-//! Two pure modules are vendored here because they are truth, not UI:
-//! - [`tether`]: the CSV import ritual — column-meaning assignment with gates
-//!   T1/T2/T5 (`MappingDraft`), and the carried empirical H (`ImportedData`).
-//! - [`manifest`]: the declarative run manifest that resolves onto the same
-//!   `MappingDraft` the wizard drives.
+//! The domain lives in sibling pure-Rust crates (no wasm-bindgen):
+//! - [`bert_canvas`]: `CanvasModel`, `project`, `lens_facts`, `describe`.
+//! - [`bert_tether`]: the CSV tether, the run manifest, the forced-run pipeline.
 //!
-//! The boundary (`api`) is thin: deserialize JS input → call bert-core /
-//! bert-compose / tether → serialize the result. No formalism lives in the
-//! wrapper; it only marshals.
+//! The exact JSON shapes this boundary returns are frozen in `API.md`.
 
 pub mod api;
-pub mod canvas;
-pub mod forcing;
-pub mod lenses;
-pub mod manifest;
-pub mod tether;

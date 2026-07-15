@@ -1,0 +1,64 @@
+{
+  "lens": "Mobus",
+  "things": [
+    {
+      "id": 1,
+      "name": "Pump",
+      "x": 120.0,
+      "y": 40.0,
+      "role": "Component"
+    },
+    {
+      "id": 2,
+      "name": "Tank",
+      "x": 240.0,
+      "y": 40.0,
+      "role": "Component"
+    },
+    {
+      "id": 3,
+      "name": "Grid",
+      "x": 360.0,
+      "y": 40.0,
+      "role": "Environment"
+    }
+  ],
+  "relations": [
+    {
+      "id": 10,
+      "a": 1,
+      "b": 2,
+      "name": "drive",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 11,
+      "a": 3,
+      "b": 1,
+      "name": "supply",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 12,
+      "a": 2,
+      "b": 2,
+      "name": "recycle",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false
+    },
+    {
+      "id": 13,
+      "a": 1,
+      "b": 2,
+      "name": "adjacent",
+      "is_bond": false,
+      "kind": "Unspecified",
+      "klir_directed": false
+    }
+  ]
+}

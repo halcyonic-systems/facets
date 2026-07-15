@@ -365,7 +365,11 @@ impl MappingDraft {
         if gaps.is_empty() {
             return None;
         }
-        gaps.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        // `total_cmp` is a total order over all f64 (incl. any NaN/inf that a
+        // pathological CSV cell parsed to) — `partial_cmp().unwrap()` would panic
+        // on a NaN, and a wasm panic is an unrecoverable abort. The retain above
+        // already drops NaN/≤0 gaps; this keeps the sort panic-proof regardless.
+        gaps.sort_by(f64::total_cmp);
         Some(gaps[gaps.len() / 2])
     }
 

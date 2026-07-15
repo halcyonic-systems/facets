@@ -41,12 +41,20 @@ exists to keep it true.
 - `crates/bert-compose` — vendored engine. `circuit` (physics), `export` (JSON seam
   both ways), `run` (recorder), plus `examples`/`ladder`/`lens` vocabulary. Uses
   `glam::Vec2` for node geometry (was `egui::Pos2`).
-- `crates/bert-lenses-kernel` — the wasm-bindgen boundary (`api.rs`) + the pure CSV
-  tether (`tether.rs`, `manifest.rs`) + the canvas seam (`canvas.rs`: project /
-  to_canvas / validate_connection) + the lens primitives (`lenses.rs`:
-  `lens_facts` — boundary identity set, edge ladder, ports, aggregate verdict,
-  all canvas-keyed — and `describe`, the formal face). Built to `pkg/` via
-  wasm-pack (gitignored).
+- `crates/bert-canvas` — the canvas/lens domain, pure Rust (NO wasm-bindgen).
+  `canvas` (the serializable `CanvasModel`, `project` / `to_canvas` /
+  `validate_connection`) + `lenses` (`lens_facts` — boundary identity set, edge
+  ladder, ports, aggregate verdict, all canvas-keyed — and `describe`, the formal
+  face). Depends on bert-core.
+- `crates/bert-tether` — the boundary-interface subsystem, pure Rust (NO
+  wasm-bindgen). The CSV import ritual (`tether`), the declarative run manifest
+  (`manifest`), and the forced-run pipeline + `mapping_status` (`forcing`).
+  Neither engine physics nor marshaling — the interface where empirical data
+  becomes forcing on a model. Depends on bert-core + bert-compose.
+- `crates/bert-lenses-kernel` — the wasm-bindgen boundary, MARSHALING ONLY
+  (`api.rs`): deserialize JS input → call bert-core / bert-compose / bert-canvas /
+  bert-tether (the truth) → serialize. Zero domain logic. Built to `pkg/` via
+  wasm-pack (gitignored). Frozen surface: `API.md` (append-only).
 - `web/` — React 19 + TS + Vite 6 + Tailwind 4. `src/kernel/` is the only place the
   face touches the wasm; `src/kernel/types.ts` mirrors the API.md shapes.
 - `assets/` — sample models. `models/examples/*.json` (blockchain models) are the
@@ -60,9 +68,13 @@ exists to keep it true.
 
 ## Working rules
 
-- After changing any crate, rebuild the wasm pkg (`wasm-pack build --target web
-  --out-dir pkg` in `crates/bert-lenses-kernel`) before the web app will see it.
-- Gate: `cargo build --workspace --target wasm32-unknown-unknown` must stay green.
+- After changing any crate, rebuild the wasm pkg (`just wasm`, or `wasm-pack build
+  --target web --out-dir pkg` in `crates/bert-lenses-kernel`) before the web app
+  will see it. A crate change must never silently serve stale wasm to `web/`.
+- Gate: `just check` runs the full suite (cargo test + clippy `-D warnings` +
+  wasm32 build + wasm pkg build + `tsc --noEmit` + `vite build`) — the same gates
+  CI enforces (`.github/workflows/ci.yml`). `cargo build --workspace --target
+  wasm32-unknown-unknown` must stay green.
 - Most asset models are STRUCTURAL (mode=Full but not executable) — they validate
   but do not project to a runnable spec. Only genuinely parameterized models run.
   Don't "fix" a structural model to make run() work; that's expected.
@@ -73,3 +85,32 @@ exists to keep it true.
   `describe` field (kernel verdicts, canvas-keyed). If a rendering branch needs
   a systems fact the kernel doesn't expose yet, extend `lenses.rs` — don't
   derive it in TS. Faithfulness cites live in code comments next to each rule.
+
+## Extending the palette (new node / port type)
+
+Adding a node or port type touches the kernel first and the face last — the
+verdict is born in Rust and only rendered in TS. Do the eight steps in order; the
+type is not "real" until every layer knows it. Skipping a step (e.g. rendering a
+type the kernel never validates) reintroduces systems logic in JS — invariant #1.
+
+1. **bert-core type** — add the variant to the domain type in `crates/bert-core`
+   (`src/lib.rs`). This is the semantic authority; the type exists here or nowhere.
+2. **`validate_mode` case** — teach `crates/bert-core/src/validate.rs`
+   (`validate` / `validate_mode`) what makes the new type well-formed per mode.
+   No verdict lives outside this crate.
+3. **bert-canvas projection** — map it across the canvas↔model seam in
+   `crates/bert-canvas/src/canvas.rs` (`project` / `to_canvas`), so the authoring
+   shape and the formal `WorldModel` stay in sync.
+4. **`lens_facts` field** — expose whatever the face needs to render as a
+   canvas-keyed fact in `crates/bert-canvas/src/lenses.rs` (`lens_facts`). The
+   face reads facts; it never recomputes them.
+5. **`describe` branch** — add the formal-object text to `describe` in the same
+   `lenses.rs`, per lens (`Lens::Klir | Bunge | Mobus`).
+6. **`LensRegistry` entry** — wire the render in `web/src/canvas/lenses/registry.ts`
+   (`LensRegistry`), the one place the face binds a lens to its views.
+7. **contract fixture** — add/extend a golden in `fixtures/contract/` and its
+   parser in `web/src/kernel/contract.test.ts` (regenerate with `BLESS_FIXTURES=1`
+   after a crate change, then rebuild the wasm pkg — see Working rules).
+8. **view module** — render it in the per-lens view module under
+   `web/src/canvas/lenses/{klir,bunge,mobus}.tsx` (shared bits in `common.tsx`),
+   reading only the `lens_facts` / `describe` fields from steps 4–5.

@@ -1,0 +1,9 @@
+{
+  "component": 1,
+  "env": 3,
+  "relation_ids": [
+    11
+  ],
+  "direction": "Receives",
+  "protocol": "supply"
+}

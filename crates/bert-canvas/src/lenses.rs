@@ -23,10 +23,10 @@
 use serde::Serialize;
 use std::collections::HashMap;
 
-use bert_core::validate::{validate_mode, Severity};
-use bert_core::{EdgeLocus, Mode};
+use bert_core::validate::{validate_mode, Severity, ValidationResult};
+use bert_core::{EdgeLocus, Id, Interaction, Mode};
 
-use crate::canvas::{project_with_map, CanvasModel, Kind, Lens, Role};
+use crate::canvas::{project, project_with_map, CanvasModel, Kind, Lens, Role};
 
 /// One canvas relation, read through the edge ladder.
 #[derive(Serialize, Clone, Debug)]
@@ -105,6 +105,10 @@ fn kind_name(k: Kind) -> &'static str {
     }
 }
 
+/// What a (component, env) port pair accumulates while grouping exo bonds:
+/// (gated relation ids, receives?, exports?, protocol labels).
+type PortAccum = (Vec<u64>, bool, bool, Vec<String>);
+
 /// Compute the lens facts for a canvas model: project, ask bert-core, translate
 /// the verdicts back to canvas ids.
 pub fn lens_facts(model: &CanvasModel) -> LensFacts {
@@ -150,12 +154,8 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
 
     // Edges: projected bonds classify via the kernel; mere relations (never
     // projected — B̄) classify from the same C/E role split, here in Rust.
-    let ix_of: HashMap<u64, usize> = p
-        .relation_ids
-        .iter()
-        .enumerate()
-        .map(|(ix, rid)| (*rid, ix))
-        .collect();
+    let interaction_by_id: HashMap<&Id, &Interaction> =
+        p.world.interactions.iter().map(|i| (&i.info.id, i)).collect();
     let locus_from_roles = |a: u64, b: u64| {
         let is_comp = |id: u64| roles.get(&id).copied().unwrap_or_default() == Role::Component;
         if is_comp(a) && is_comp(b) {
@@ -168,8 +168,12 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
         .relations
         .iter()
         .map(|r| {
-            let locus = match ix_of.get(&r.id) {
-                Some(&ix) => p.world.edge_locus(&p.world.interactions[ix]),
+            let locus = match p
+                .interaction_of
+                .get(&r.id)
+                .and_then(|id| interaction_by_id.get(id))
+            {
+                Some(ix) => p.world.edge_locus(ix),
                 None => locus_from_roles(r.a, r.b),
             };
             let self_loop = r.a == r.b;
@@ -190,7 +194,7 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
     // one interface per coupling, gating all its flows. G is bipartite by
     // construction (env-object ↔ interface; Tuple.lean), which is exactly this
     // grouping: no port ever pairs two components or two env objects.
-    let mut port_map: HashMap<(u64, u64), (Vec<u64>, bool, bool, Vec<String>)> = HashMap::new();
+    let mut port_map: HashMap<(u64, u64), PortAccum> = HashMap::new();
     for r in &model.relations {
         if !r.is_bond || r.a == r.b {
             continue;
@@ -307,7 +311,40 @@ pub enum LensDescription {
 /// Typeset the model as the active lens's formal object. Counts are read off
 /// the same kernel facts the canvas renders — never re-derived.
 pub fn describe(model: &CanvasModel, lens: Lens) -> LensDescription {
+    describe_from_facts(model, lens, &lens_facts(model))
+}
+
+/// The atomic canvas verdict: the lens gate, the lens facts, and the formal
+/// object, computed from ONE projection. Everything the author view reads in a
+/// single call — `validate_mode` at the lens's rung, `lens_facts`, and
+/// `describe` — so the face makes one round trip, not a three-call waterfall
+/// that re-projects the same model each time.
+#[derive(Serialize, Clone, Debug)]
+pub struct CanvasAnalysis {
+    /// The lens gate at the active lens's mode (Klir→Core, Bunge→Structural,
+    /// Mobus→Operational) — the same verdict `validate_mode` returns.
+    pub validation: ValidationResult,
+    pub facts: LensFacts,
+    pub description: LensDescription,
+}
+
+/// Compute the lens gate, facts, and formal object together. The facts are
+/// computed once and shared between the aggregate verdict and the description,
+/// so `analyze` never projects the model more than the individual calls would.
+pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
     let facts = lens_facts(model);
+    let validation = validate_mode(&project(model), lens.mode());
+    let description = describe_from_facts(model, lens, &facts);
+    CanvasAnalysis {
+        validation,
+        facts,
+        description,
+    }
+}
+
+/// Typeset the model given already-computed lens facts — the shared body behind
+/// [`describe`] and [`analyze`], so the facts are read once, never twice.
+fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensDescription {
     let name_of = |id: u64| -> String {
         model
             .things

@@ -255,3 +255,14 @@ export type LensDescription =
       dt_note: string;
       self_loop_conflicts: string[];
     };
+
+/** analyze_canvas: the lens gate + facts + formal object, one deserialization.
+ *  The atomic replacement for the validate_mode → lens_facts → describe waterfall
+ *  the canvas ran on every model change; the kernel projects the model ONCE. */
+export interface CanvasAnalysis {
+  /** validate_mode at the canvas lens's mode (Klir→Core / Bunge→Structural /
+   *  Mobus→Operational). */
+  validation: ValidationResult;
+  facts: LensFacts;
+  description: LensDescription;
+}

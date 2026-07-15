@@ -8,6 +8,12 @@
 //! optional `reflect` feature (bevy_reflect derives for the Bevy app) is
 //! dropped, since this copy compiles to wasm and carries no UI dependency.
 
+// Vendored code: a few `Display` impls sit after the `#[cfg(test)] mod tests` in
+// this file. Pre-existing (not introduced by the lenses workspace); allowed here
+// so the workspace `clippy -D warnings` gate stays green without restructuring
+// the semantic authority. Remove if bert-core is re-vendored lint-clean upstream.
+#![allow(clippy::items_after_test_module)]
+
 pub mod operational;
 pub mod transition;
 pub mod validate;

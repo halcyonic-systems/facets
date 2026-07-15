@@ -2,6 +2,7 @@
 // stage. Node hit-radius is kept close to the kernel's own RADIUS (34) so the
 // canvas and the projected WorldModel agree on "where a thing sits."
 // Lifted verbatim from the bert-lenses-spike-svg canvas spike.
+import type { CanvasModel, Relation, Thing } from "../kernel/types";
 
 export const NODE_R = 34;
 export const CURVE_BOW = 32;
@@ -51,6 +52,31 @@ export function selfLoopPath(center: Pt, r: number): { d: string; labelAt: Pt } 
 
 export function midpoint(a: Pt, b: Pt): Pt {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+/** A model thing by id — a trivial array lookup, no systems meaning. */
+export function thingById(model: CanvasModel, id: number): Thing | undefined {
+  return model.things.find((t) => t.id === id);
+}
+
+/** The `d` + label anchor for a drawn relation, shared by every lens's EdgeView
+ *  and the DrivePopover anchor (App reads it to place the popover at the same
+ *  point the edge renders its name) — pure pixel math, no systems meaning. */
+export function edgeGeometry(
+  model: CanvasModel,
+  relation: Relation,
+  curved: boolean,
+): { d: string; labelAt: Pt } | null {
+  const from = thingById(model, relation.a);
+  const to = thingById(model, relation.b);
+  if (!from || !to) return null;
+  if (relation.a === relation.b) {
+    const loop = selfLoopPath(from, NODE_R);
+    return { d: loop.d, labelAt: loop.labelAt };
+  }
+  const a = rimPoint(from, to, NODE_R);
+  const b = rimPoint(to, from, NODE_R);
+  return { d: curved ? bezierPath(a, b) : straightPath(a, b), labelAt: midpoint(a, b) };
 }
 
 // ---- The Mobus membrane (Phase 3) -------------------------------------------
