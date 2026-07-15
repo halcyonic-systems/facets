@@ -108,6 +108,33 @@ type RunResultRich = {
 ```
 Everything is labeled by the model's own names + units — no engine columns leak.
 
+## Phase 2 surface (built — the canvas seam)
+
+The canvas holds its own editing model and asks Rust for legality. Shapes:
+```ts
+type Lens = "Klir" | "Bunge" | "Mobus"            // → Core | Structural | Operational
+type Role = "Component" | "Environment"
+type Kind = "Unspecified" | "Energy" | "Matter" | "Field" | "Informational"
+type Thing = { id: number, name: string, x: number, y: number, role?: Role, primitive?: string }
+type Relation = { id: number, a: number, b: number, name?: string, is_bond?: boolean, kind?: Kind }
+type CanvasModel = { lens: Lens, things: Thing[], relations: Relation[] }
+```
+
+### `validate_mode(model_json, mode) → ValidationResult`
+`mode` = "Core" | "Structural" | "Operational" | "Full". The kernel-side lens
+gate (the Structural bond rule / Operational irreflexivity come for free). Same
+`ValidationResult` shape as `validate`.
+
+### `project(canvas_json) → WorldModel`
+Project the canvas editing model into a bert-core `WorldModel` (mode-stamped by
+the lens; only bonds project; touched environment things → Source/Sink by
+direction). The canvas never builds a WorldModel itself.
+
+### `validate_connection(canvas_json, candidate_json) → { issues: ValidationIssue[] }`
+Validate a proposed `Relation` at the model's current lens; returns the issues
+the candidate INTRODUCED (empty = legal). E.g. a self-loop is rejected at Mobus
+(irreflexivity) but legal at Klir. The per-drag "React asks Rust" call.
+
 ## Notes
 - The wasm is built with `wasm-pack build --target web` into `pkg/` (a build
   artifact, gitignored). `--release` for the shipped bundle; `--dev` while iterating.

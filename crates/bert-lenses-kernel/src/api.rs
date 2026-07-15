@@ -170,7 +170,54 @@ pub fn run_forced(
     to_js(&RunResultRich::from(readout))
 }
 
+// ---- Phase 2: the canvas seam ----------------------------------------------
+
+/// Validate a model at a given lens rung: "Core" | "Structural" | "Operational"
+/// | "Full". The kernel-side hook for the canvas lens toggle. Delegates to
+/// `bert_core::validate::validate_mode`.
+#[wasm_bindgen]
+pub fn validate_mode(model_json: &str, mode: &str) -> Result<JsValue, JsError> {
+    let model = parse_model(model_json)?;
+    let m = match mode {
+        "Core" => bert_core::Mode::Core,
+        "Structural" => bert_core::Mode::Structural,
+        "Operational" => bert_core::Mode::Operational,
+        "Full" => bert_core::Mode::Full,
+        other => return Err(JsError::new(&format!("unknown mode: {other}"))),
+    };
+    to_js(&bert_core::validate::validate_mode(&model, m))
+}
+
+/// Project the canvas editing model (lens/things/relations) into a bert-core
+/// `WorldModel`. The canvas never builds a WorldModel itself — it sends its
+/// editing model and the kernel constructs the projection.
+#[wasm_bindgen]
+pub fn project(canvas_json: &str) -> Result<JsValue, JsError> {
+    let model: crate::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    to_js(&crate::canvas::project(&model))
+}
+
+/// Validate a proposed connection at the model's current lens. Returns the issues
+/// the candidate edge INTRODUCED (empty = legal). The per-drag "React asks Rust"
+/// call — the canvas rejects an edge iff the kernel says so.
+#[wasm_bindgen]
+pub fn validate_connection(canvas_json: &str, candidate_json: &str) -> Result<JsValue, JsError> {
+    let model: crate::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    let candidate: crate::canvas::Relation = serde_json::from_str(candidate_json)
+        .map_err(|e| JsError::new(&format!("invalid candidate relation: {e}")))?;
+    to_js(&ConnectionVerdict {
+        issues: crate::canvas::validate_connection(&model, &candidate),
+    })
+}
+
 // ---- Boundary DTOs (data-transfer shapes only, no logic) --------------------
+
+#[derive(Serialize)]
+struct ConnectionVerdict {
+    issues: Vec<bert_core::validate::ValidationIssue>,
+}
 
 #[derive(Serialize)]
 struct Targets {
