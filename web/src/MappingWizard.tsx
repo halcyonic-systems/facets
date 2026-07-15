@@ -130,13 +130,22 @@ export function MappingWizard({
                     className="w-24 rounded-md px-2 py-1 text-sm"
                     style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
                   />
-                  <label className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-secondary)" }}>
+                  {/* "drive" = the forcing-function sense: emit this column's series
+                      tick-by-tick as an exogenous input, instead of its mean. This
+                      is DISTINCT from Mobus's Force interaction (a gradient-driven
+                      flow) — the field stays `force` internally (the #16 feature +
+                      the manifest contract), but the human word is "drive". */}
+                  <label
+                    className="flex items-center gap-1.5 text-xs"
+                    style={{ color: "var(--text-secondary)" }}
+                    title="Drive this flow with the column's series, tick by tick (an exogenous input). Off = supply its mean as a constant."
+                  >
                     <input
                       type="checkbox"
                       checked={e?.force ?? false}
                       onChange={(ev) => setEntry(col, { force: ev.target.checked })}
                     />
-                    force
+                    drive
                   </label>
                 </>
               )}

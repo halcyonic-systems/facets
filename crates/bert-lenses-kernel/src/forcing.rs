@@ -13,6 +13,16 @@
 //!
 //! LEGIBILITY (load-bearing): every value read back carries the model's own name
 //! and declared unit. No engine columns ("node 3") ever reach the face.
+//!
+//! TWO SENSES OF "FORCE" — do not conflate:
+//! - **Forcing-function** (this module, the `force`/`forced` fields, the #16
+//!   feature): driving an edge with an *exogenous data series* `u(t)` instead of
+//!   its computed/mean rate — a boundary condition, `F(t)` on the RHS. The
+//!   human-facing word for this is **"drive"** (the wizard checkbox, the blurbs);
+//!   the field stays `force` internally + in the manifest contract.
+//! - **Mobus `InteractionType::Force`** (bert-core): an *ontological* flow type —
+//!   a flow whose rate is a potential gradient (`rate = k·Δ`, needs a
+//!   `conductance`). Nothing to do with the above. Never relabel this one.
 
 use std::collections::HashMap;
 

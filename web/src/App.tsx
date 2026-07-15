@@ -99,7 +99,7 @@ function Workspace() {
                   cursor: canFinish ? "pointer" : "not-allowed",
                 }}
               >
-                ▶ Run forced
+                ▶ Run
               </button>
               <label
                 className="cursor-pointer text-xs underline"
@@ -201,7 +201,7 @@ function Header({ loaded }: { loaded: boolean }) {
         bert&#8202;·&#8202;lenses
       </h1>
       <p className="mt-3 text-[15px] leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-        Force a model with real data and watch it run — and conserve. The Rust kernel
+        Drive a model with real data and watch it run — and conserve. The Rust kernel
         (bert-core + bert-compose) does every bit of it in WebAssembly, right here in
         the page. React only draws the result.
       </p>
