@@ -21,7 +21,7 @@ function NodeView({ thing, hovered, sim, onPointerDown, onHandlePointerDown }: L
       isSquare={thing.role === "Environment"}
       showHalo={thing.role === "Component"}
       envOpen={thing.role === "Environment"}
-      stroke="var(--accent-slate)"
+      stroke="var(--lens-node-stroke)"
       strokeOpacity={1}
       strokeWidth={1.75}
       badge={thing.primitive}
@@ -115,8 +115,8 @@ function PortView({ port, at }: { port: PortFact; at: Pt }) {
   return (
     <g transform={`translate(${at.x}, ${at.y})`}>
       <title>{`interface — ${port.direction.toLowerCase()} · φ: ${port.protocol}`}</title>
-      <rect x={-16} y={-9} width={32} height={18} rx={9} fill="var(--bg-primary)" stroke="var(--accent-strong)" strokeWidth={1.75} />
-      <text textAnchor="middle" dominantBaseline="central" fontSize={10} fill="var(--accent-strong)" className="pointer-events-none">
+      <rect x={-16} y={-9} width={32} height={18} rx={9} fill="var(--bg-primary)" stroke="var(--lens-accent)" strokeWidth={1.75} />
+      <text textAnchor="middle" dominantBaseline="central" fontSize={10} fill="var(--lens-accent)" className="pointer-events-none">
         {glyph}
       </text>
       <text y={-15} textAnchor="middle" fontSize={9} fill="var(--text-muted)" className="font-mono pointer-events-none">

@@ -41,6 +41,17 @@
   --kind-informational: #8a5a9c;
   --kind-field: #3f6f8f;
 
+  /* per-lens seam — the semantic names the ACTIVE lens redefines (design-
+     system-draft §2, lemonaid's data-theme pattern). Set by data-lens on the
+     workspace root, bound to the kernel Mode: Klir/Core→slate, Bunge/
+     Structural→indigo, Mobus/Operational→teal — saturation rises with the
+     enrichment gradient, no new hex. Chrome only: rims, halos, handles, the
+     toggle, armed tools. Never a flow (the KIND channel) and never the Frost
+     base. Defaults = the instrument's home accent. */
+  --lens-accent: var(--accent);
+  --lens-accent-soft: var(--accent-soft);
+  --lens-node-stroke: var(--accent-slate);
+
   --border: #e4e1ec;
   --hairline: #eeecf3;
 
@@ -86,6 +97,24 @@
     --shadow-card: 0 4px 18px rgba(0, 0, 0, 0.35);
     --shadow-card-hover: 0 8px 28px rgba(0, 0, 0, 0.45);
   }
+}
+
+/* the seam bindings — pure indirection over existing Frost tokens, so light
+   and dark both come free and check:tokens has no new hex to police */
+[data-lens="Klir"] {
+  --lens-accent: var(--accent-slate);
+  --lens-accent-soft: color-mix(in srgb, var(--accent-slate) 14%, var(--bg-secondary));
+  --lens-node-stroke: var(--text-secondary);
+}
+[data-lens="Bunge"] {
+  --lens-accent: var(--accent-indigo);
+  --lens-accent-soft: color-mix(in srgb, var(--accent-indigo) 14%, var(--bg-secondary));
+  --lens-node-stroke: var(--accent-slate);
+}
+[data-lens="Mobus"] {
+  --lens-accent: var(--accent);
+  --lens-accent-soft: var(--accent-soft);
+  --lens-node-stroke: var(--accent-slate);
 }
 
 * {

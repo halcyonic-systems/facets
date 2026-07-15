@@ -17,7 +17,7 @@ function NodeView({ thing, hovered, sim, onPointerDown, onHandlePointerDown }: L
       isSquare={false}
       showHalo={false}
       envOpen={false}
-      stroke="var(--text-secondary)"
+      stroke="var(--lens-node-stroke)"
       strokeOpacity={0.4}
       strokeWidth={1.25}
       labelSmall={true}

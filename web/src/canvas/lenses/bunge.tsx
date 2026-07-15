@@ -20,7 +20,7 @@ function NodeView({ thing, isBoundary, hovered, sim, onPointerDown, onHandlePoin
       isSquare={thing.role === "Environment"}
       showHalo={thing.role === "Component"}
       envOpen={false}
-      stroke="var(--accent-slate)"
+      stroke="var(--lens-node-stroke)"
       strokeOpacity={1}
       strokeWidth={1.75}
       labelSmall={false}

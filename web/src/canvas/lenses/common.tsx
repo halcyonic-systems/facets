@@ -64,14 +64,14 @@ export function NodeBody({
 
   return (
     <g transform={`translate(${thing.x}, ${thing.y})`} onPointerDown={onPointerDown} className="cursor-grab">
-      {showHalo && <circle r={NODE_R + 10} fill="var(--accent-soft)" opacity={0.5} />}
-      {hovered && <circle r={NODE_R + 6} fill="none" stroke="var(--accent)" strokeWidth={2} />}
+      {showHalo && <circle r={NODE_R + 10} fill="var(--lens-accent-soft)" opacity={0.5} />}
+      {hovered && <circle r={NODE_R + 6} fill="none" stroke="var(--lens-accent)" strokeWidth={2} />}
 
       {/* Bunge 1992: boundary components are MARKED (a rim accent on the nodes
           directly coupled to E), never a drawn perimeter. The same set Mobus
           reifies into ports — toggle the lens and watch it accrete. */}
       {boundaryRim && (
-        <circle r={NODE_R + 4} fill="none" stroke="var(--accent)" strokeWidth={2.25} strokeOpacity={0.9} />
+        <circle r={NODE_R + 4} fill="none" stroke="var(--lens-accent)" strokeWidth={2.25} strokeOpacity={0.9} />
       )}
 
       {/* the sim payoff: a stock's disc fills/drains as the scrubber indexes ticks */}
@@ -123,7 +123,7 @@ export function NodeBody({
 
       {badge && (
         <g transform={`translate(${NODE_R * 0.72}, ${-NODE_R * 0.72})`}>
-          <circle r={10} fill="var(--accent)" />
+          <circle r={10} fill="var(--lens-accent)" />
           <text textAnchor="middle" dominantBaseline="central" fontSize={9} fill="white" className="font-mono">
             {PRIMITIVE_BADGE[badge]}
           </text>
@@ -157,7 +157,7 @@ export function NodeBody({
         cy={NODE_R * 0.75}
         r={7}
         fill="var(--bg-primary)"
-        stroke="var(--accent)"
+        stroke="var(--lens-accent)"
         strokeWidth={1.5}
         className="cursor-crosshair"
         onPointerDown={onHandlePointerDown}
@@ -218,7 +218,7 @@ export function EdgeScaffold({
         }}
       />
       {selected && (
-        <path d={d} fill="none" stroke="var(--accent)" strokeWidth={6} strokeOpacity={0.22} pointerEvents="none" />
+        <path d={d} fill="none" stroke="var(--lens-accent)" strokeWidth={6} strokeOpacity={0.22} pointerEvents="none" />
       )}
       {interior && (
         <path

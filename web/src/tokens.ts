@@ -9,6 +9,10 @@ export const color = {
   verdictError: "var(--verdict-error)",
   textPrimary: "var(--text-primary)",
   textMuted: "var(--text-muted)",
+  // the per-lens seam — redefined by data-lens on the workspace root
+  lensAccent: "var(--lens-accent)",
+  lensAccentSoft: "var(--lens-accent-soft)",
+  lensNodeStroke: "var(--lens-node-stroke)",
 } as const;
 
 // The reserved KIND channel: substance identity (Matter / Energy / Informational

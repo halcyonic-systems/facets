@@ -20,6 +20,12 @@ Frost family (slate / teal / indigo).
   Mono (the kernel's numbers, `.tabular`).
 - **Accent:** teal (`--accent`), with indigo + slate support. Verdicts use
   ok/warning/error tokens, never raw green/amber/red.
+- **The per-lens seam:** `--lens-accent` / `--lens-accent-soft` /
+  `--lens-node-stroke`, redefined by `data-lens` on the workspace root (Klir →
+  slate, Bunge → indigo, Mobus → teal — saturation tracks the enrichment
+  gradient; pure indirection over existing tokens, no new hex). Chrome only:
+  rims, halos, handles, the lens toggle, armed tools. Never a flow — substance
+  color is the reserved `--kind-*` channel, constant across lenses and themes.
 - **Surfaces:** soft cards (`--radius-card`, `--shadow-card`) on a radial-tinted
   stage. Generous whitespace; legibility over decoration.
 - Light + dark are both first-class (the smoke slice renders in either).

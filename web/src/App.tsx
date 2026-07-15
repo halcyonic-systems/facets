@@ -10,7 +10,7 @@ import { type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
 import { RunPanel } from "./RunPanel";
 import { FormalPanel } from "./FormalPanel";
-import { Card, Pill } from "./ui";
+import { Banner, Card, Pill } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -188,7 +188,10 @@ function Workspace() {
       <DemoGallery selected={demo} onPick={pick} />
       {demo && canvasModel && (
         <KernelErrorBoundary resetKeys={[canvasModel, demo.key]}>
-        <div className="mt-6 grid gap-5">
+        {/* data-lens drives the --lens-* seam: every descendant's chrome
+            re-tints to the active lens (slate/indigo/teal), bound to the
+            kernel Mode via LENS_TO_MODE — a reskin keyed on a kernel fact. */}
+        <div className="mt-6 grid gap-5" data-lens={canvasModel.lens}>
           {analysisError && (
             <Card title="Kernel rejected this state" source="bert-core · wasm">
               <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
@@ -217,7 +220,7 @@ function Workspace() {
                     className="rounded-pill px-3 py-1.5 text-sm font-body transition-colors"
                     style={{
                       borderRadius: "var(--radius-pill)",
-                      background: canvasModel.lens === l ? "var(--accent)" : "transparent",
+                      background: canvasModel.lens === l ? "var(--lens-accent)" : "transparent",
                       color: canvasModel.lens === l ? "#fff" : "var(--text-secondary)",
                       transition: "var(--transition-base)",
                     }}
@@ -268,18 +271,14 @@ function Workspace() {
                   The verdict is the kernel's (validate_mode(Structural) via
                   lens_facts.aggregate) — the face only announces it. */}
               {canvasModel.lens === "Bunge" && facts && (
-                <div
-                  className="pointer-events-none absolute left-3 top-3 rounded-md px-3 py-1.5 text-xs font-body"
-                  style={{
-                    background: facts.aggregate ? "var(--verdict-error)" : "var(--accent-soft)",
-                    color: facts.aggregate ? "#fff" : "var(--accent-strong)",
-                    border: facts.aggregate ? "none" : "1px solid var(--border)",
-                  }}
+                <Banner
+                  tone={facts.aggregate ? "error" : "soft"}
+                  className="pointer-events-none absolute left-3 top-3"
                 >
                   {facts.aggregate
                     ? "⚠ aggregate (heap) — no bond among distinct components (Bunge Def 1.1)"
                     : "✓ system — ≥1 bond among distinct components (Bunge Def 1.1)"}
-                </div>
+                </Banner>
               )}
               <div
                 className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-mono"
@@ -288,12 +287,9 @@ function Workspace() {
                 click a flow to drive it · drag a node to move · drag the teal dot to connect
               </div>
               {toast && (
-                <div
-                  className="absolute bottom-3 left-3 rounded-md px-3 py-1.5 text-xs font-body"
-                  style={{ background: "var(--verdict-error)", color: "#fff" }}
-                >
+                <Banner tone="error" className="absolute bottom-3 left-3">
                   rejected — {toast}
-                </div>
+                </Banner>
               )}
             </div>
 

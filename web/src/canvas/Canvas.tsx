@@ -158,7 +158,7 @@ export default function Canvas({
             y1={thingById(model, connectFrom)?.y}
             x2={connectPos.x}
             y2={connectPos.y}
-            stroke="var(--accent)"
+            stroke="var(--lens-accent)"
             strokeWidth={2}
             strokeDasharray="4 4"
             pointerEvents="none"
@@ -189,7 +189,7 @@ export default function Canvas({
             <input
               autoFocus
               className="w-full rounded-md border px-2 py-1 text-xs font-body"
-              style={{ borderColor: "var(--accent)", background: "var(--bg-secondary)", color: "var(--text-primary)" }}
+              style={{ borderColor: "var(--lens-accent)", background: "var(--bg-secondary)", color: "var(--text-primary)" }}
               value={draft.name}
               placeholder="name…"
               onChange={(e) => gestures.setDraftName(e.target.value)}

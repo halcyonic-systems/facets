@@ -8,6 +8,7 @@
 import { useState } from "react";
 import type { ColumnMapping, Kind, Lens, Manifest, Relation } from "../kernel/types";
 import type { Pt } from "./geometry";
+import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 
 const KINDS: Kind[] = ["Unspecified", "Energy", "Matter", "Field", "Informational"];
 
@@ -40,7 +41,7 @@ export function EdgePopover({
         top: anchor.y + 20,
         width: 230,
         background: "var(--bg-secondary)",
-        border: "1px solid var(--accent)",
+        border: "1px solid var(--lens-accent)",
         boxShadow: "var(--shadow-card-hover)",
         borderRadius: "var(--radius-lg)",
       }}
@@ -60,42 +61,6 @@ export function EdgePopover({
         />
       )}
     </div>
-  );
-}
-
-function Title({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mb-2 text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
-      {children}
-    </div>
-  );
-}
-
-function Row({ children }: { children: React.ReactNode }) {
-  return <div className="mb-2 flex items-center justify-between gap-2 text-xs">{children}</div>;
-}
-
-function SmallButton({
-  onClick,
-  active = false,
-  children,
-}: {
-  onClick: () => void;
-  active?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="rounded-full px-2.5 py-1 text-xs"
-      style={{
-        background: active ? "var(--accent)" : "var(--bg-surface)",
-        color: active ? "#fff" : "var(--text-secondary)",
-        border: "1px solid var(--border)",
-      }}
-    >
-      {children}
-    </button>
   );
 }
 
