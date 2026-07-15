@@ -32,6 +32,15 @@
   --verdict-warning: #c07b1e;
   --verdict-ok: #128a5a;
 
+  /* reserved KIND channel — substance identity (Matter / Energy / Informational
+     / Field). Contractual: means substance type, never decorative, and constant
+     across lenses AND themes (so no dark override — substance color must not
+     shift with the theme). Consumed via tokens.ts `kind` → canvas KIND_COLOR. */
+  --kind-matter: #5a7a4f;
+  --kind-energy: #b06a1f;
+  --kind-informational: #8a5a9c;
+  --kind-field: #3f6f8f;
+
   --border: #e4e1ec;
   --hairline: #eeecf3;
 

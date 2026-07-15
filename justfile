@@ -23,6 +23,7 @@ check:
     cargo clippy --workspace --all-targets -- -D warnings
     cargo build --workspace --target wasm32-unknown-unknown
     cd {{kernel}} && wasm-pack build --target web --out-dir pkg
+    cd web && npm run check:tokens
     cd web && npx tsc --noEmit
     cd web && npx vitest run
     cd web && npx vite build

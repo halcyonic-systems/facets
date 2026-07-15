@@ -3,6 +3,7 @@
 // live once in ../kernel/types.ts (the wasm boundary contract); this file only
 // adds presentation, so nothing is defined twice.
 import type { Kind, Lens, ProcessPrimitive } from "../kernel/types";
+import { kind } from "../tokens";
 
 export const PRIMITIVE_BADGE: Record<ProcessPrimitive, string> = {
   Buffering: "Bu",
@@ -17,13 +18,11 @@ export const PRIMITIVE_BADGE: Record<ProcessPrimitive, string> = {
   Inverting: "In",
 };
 
-export const KIND_COLOR: Record<Kind, string> = {
-  Matter: "#5a7a4f",
-  Energy: "#b06a1f",
-  Informational: "#8a5a9c",
-  Field: "#3f6f8f",
-  Unspecified: "var(--text-muted)",
-};
+// KIND colors are the reserved substance-identity channel: they mean substance
+// type, are never decorative, and stay constant across lenses. The values live in
+// the token system (--kind-* in index.css, mirrored in tokens.ts `kind`); this is
+// just the canvas-facing alias, so no raw hex lives here.
+export const KIND_COLOR: Record<Kind, string> = kind;
 
 export const LENS_TO_MODE: Record<Lens, "Core" | "Structural" | "Operational"> = {
   Klir: "Core",
