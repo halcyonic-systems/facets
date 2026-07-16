@@ -716,7 +716,7 @@ function OpenDialog({
       onClick={() => closable && onClose()}
     >
       <div
-        className="w-full max-w-3xl rounded-2xl p-6"
+        className="w-full max-w-3xl p-6"
         style={{
           background: "var(--bg-secondary)",
           border: "1px solid var(--border)",
@@ -750,7 +750,7 @@ function DemoGallery({ selected, onPick }: { selected: Demo | null; onPick: (d: 
           <button
             key={d.key}
             onClick={() => onPick(d)}
-            className="rounded-2xl p-4 text-left transition-shadow"
+            className="p-4 text-left transition-shadow"
             style={{
               background: "var(--bg-secondary)",
               border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
