@@ -23,6 +23,7 @@ import {
   readModelFile,
   type DirHandleLike,
 } from "./fsAccess";
+import { saveModel, listModels, loadModel, deleteModel } from "./modelStore";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const LENSES: CanvasModel["lens"][] = ["Klir", "Bunge", "Mobus"];
@@ -39,6 +40,19 @@ function spaceOut(model: CanvasModel): CanvasModel {
 // Offer a JSON string to the browser as a file download — the save/export
 // mechanism for a pure-wasm page with no native file bridge (anchor + Blob URL,
 // no File System Access dependency, no server).
+// A coarse "saved N ago" hint for the library rows — good enough for a listing,
+// no dependency. Reads off Date.now() at render.
+function relTime(ts: number): string {
+  const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  if (s < 60) return "just now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
 function downloadJson(filename: string, json: string) {
   const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
   const a = document.createElement("a");
@@ -66,7 +80,7 @@ export default function App() {
         <Workspace />
       ) : (
         <>
-          <MenuBar loaded={false} onNew={() => {}} onOpen={() => {}} onImport={() => {}} onSave={() => {}} onExport={() => {}} onSaveToFolder={() => {}} canExport={false} />
+          <MenuBar loaded={false} onNew={() => {}} onOpen={() => {}} onImport={() => {}} onSave={() => {}} onExport={() => {}} onSaveToFolder={() => {}} onSaveToLibrary={() => {}} canExport={false} />
           <div className="flex flex-1 items-center justify-center">
             <p className="text-sm" style={{ color: loadError ? "var(--verdict-error)" : "var(--text-muted)" }}>
               {loadError ? `Failed to load the wasm kernel: ${loadError}` : "loading kernel…"}
@@ -106,6 +120,11 @@ function Workspace() {
   const [currentName, setCurrentName] = useState<string | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [folderFiles, setFolderFiles] = useState<string[] | null>(null);
+  // The browser-local model library (IndexedDB, fsAccess.ts's flag-free sibling):
+  // whether the pending SaveDialog writes to the folder or the library, and the
+  // library's current listing (shown in OpenDialog, refreshed when it opens).
+  const [saveTarget, setSaveTarget] = useState<"folder" | "library">("folder");
+  const [libraryModels, setLibraryModels] = useState<{ name: string; savedAt: number }[]>([]);
   // A soft, informational message channel, distinct from `toast` (which the
   // canvas reserves for kernel rejections, rendered "rejected — …").
   const [notice, setNotice] = useState<string | null>(null);
@@ -254,20 +273,41 @@ function Workspace() {
         if (!dir) return; // cancelled the picker
         setDirHandle(dir);
       }
+      setSaveTarget("folder");
       setSaveDialogOpen(true);
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
   }
 
-  // SaveDialog confirm: project the canvas model and write it into the picked
-  // folder under the chosen name. The stem becomes `currentName`, so the next
-  // save defaults to overwriting the same file.
+  // File → Save to library…: the flag-free counterpart to Save to folder. No
+  // picker, no feature gate — IndexedDB is everywhere. Just name the model, then
+  // confirmSave routes to saveModel below.
+  function saveToLibrary() {
+    if (!canvasModel) return;
+    setSaveTarget("library");
+    setSaveDialogOpen(true);
+  }
+
+  // SaveDialog confirm: project the canvas model to JSON, then write it either to
+  // the picked folder (File System Access) or the browser-local library
+  // (IndexedDB), per saveTarget. The name becomes `currentName` so a re-save
+  // defaults to overwriting the same slot.
   async function confirmSave(name: string) {
-    if (!dirHandle || !canvasModel) return;
+    if (!canvasModel) return;
     const stem = name.trim().replace(/\.json$/i, "") || "untitled";
+    const json = JSON.stringify(project(canvasModel), null, 2);
     try {
-      await writeModel(dirHandle, stem, JSON.stringify(project(canvasModel), null, 2));
+      if (saveTarget === "library") {
+        await saveModel(stem, json);
+        setLibraryModels(await listModels());
+        setCurrentName(stem);
+        setSaveDialogOpen(false);
+        setNotice(`saved to library → ${stem}`);
+        return;
+      }
+      if (!dirHandle) return;
+      await writeModel(dirHandle, stem, json);
       setCurrentName(stem);
       setSaveDialogOpen(false);
       setNotice(`saved → ${stem}.json`);
@@ -316,6 +356,38 @@ function Workspace() {
     }
   }
 
+  // OpenDialog → Saved in this browser: load one model out of the IndexedDB
+  // library onto the canvas — same seam as import (toCanvas + reset), and it
+  // remembers the name so a re-save overwrites the same library slot.
+  async function loadFromLibrary(name: string) {
+    try {
+      const cm = toCanvas(await loadModel(name));
+      setDemo(null);
+      setCanvasModel(cm);
+      setManifest({ model: "", data: "", t: 12, mapping: [] });
+      setResult(null);
+      setRunError(null);
+      setSelectedRelationId(null);
+      setSelectedThingId(null);
+      setBoundaryAnchor(null);
+      setArmed(null);
+      setCurrentName(name);
+      setGalleryOpen(false);
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // Drop one model from the library and refresh the listing in place.
+  async function removeFromLibrary(name: string) {
+    try {
+      await deleteModel(name);
+      setLibraryModels(await listModels());
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   // The author-view verdict, lens facts, and formal object: every model or lens
   // change re-projects and re-judges in Rust — one atomic analyze_canvas call
   // (one deserialization, one projection), memoized on the canvas model. The
@@ -353,6 +425,15 @@ function Workspace() {
     const id = setTimeout(() => setNotice(null), 2800);
     return () => clearTimeout(id);
   }, [notice]);
+
+  // Refresh the library listing whenever the Open dialog opens, so the "Saved in
+  // this browser" section reflects the current IndexedDB contents.
+  useEffect(() => {
+    if (!galleryOpen) return;
+    listModels()
+      .then(setLibraryModels)
+      .catch((e) => setToast(e instanceof Error ? e.message : String(e)));
+  }, [galleryOpen]);
 
   const csvHeaders = useMemo(() => {
     if (!demo) return [];
@@ -470,6 +551,7 @@ function Workspace() {
         onSave={() => exportModel(".model")}
         onExport={() => exportModel(".world")}
         onSaveToFolder={saveToFolder}
+        onSaveToLibrary={saveToLibrary}
         canExport={canvasModel !== null}
       />
       <input
@@ -715,11 +797,15 @@ function Workspace() {
           folderFiles={folderFiles}
           onOpenFolder={openFolder}
           onOpenFromFolder={openFromFolder}
+          libraryModels={libraryModels}
+          onLoadFromLibrary={loadFromLibrary}
+          onDeleteFromLibrary={removeFromLibrary}
         />
       )}
 
       {saveDialogOpen && (
         <SaveDialog
+          target={saveTarget}
           defaultName={currentName ?? "untitled"}
           onSave={confirmSave}
           onClose={() => setSaveDialogOpen(false)}
@@ -739,6 +825,7 @@ function MenuBar({
   onSave,
   onExport,
   onSaveToFolder,
+  onSaveToLibrary,
   canExport,
 }: {
   loaded: boolean;
@@ -748,6 +835,7 @@ function MenuBar({
   onSave: () => void;
   onExport: () => void;
   onSaveToFolder: () => void;
+  onSaveToLibrary: () => void;
   canExport: boolean;
 }) {
   const [fileOpen, setFileOpen] = useState(false);
@@ -811,6 +899,7 @@ function MenuBar({
               <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
               {item("Save", onSave, !canExport)}
               {item("Save to folder…", onSaveToFolder, !canExport)}
+              {item("Save to library…", onSaveToLibrary, !canExport)}
               {item("Export", onExport, !canExport)}
             </div>
           </>
@@ -893,6 +982,9 @@ function OpenDialog({
   folderFiles,
   onOpenFolder,
   onOpenFromFolder,
+  libraryModels,
+  onLoadFromLibrary,
+  onDeleteFromLibrary,
 }: {
   selected: Demo | null;
   onPick: (d: Demo) => void;
@@ -903,6 +995,9 @@ function OpenDialog({
   folderFiles: string[] | null;
   onOpenFolder: () => void;
   onOpenFromFolder: (name: string) => void;
+  libraryModels: { name: string; savedAt: number }[];
+  onLoadFromLibrary: (name: string) => void;
+  onDeleteFromLibrary: (name: string) => void;
 }) {
   return (
     <div
@@ -998,18 +1093,74 @@ function OpenDialog({
             )}
           </div>
         )}
+
+        {/* Saved in this browser: the IndexedDB library. Always shown (flag-free,
+            works in every browser) — click a row to load, × to delete. */}
+        <div className="mt-4">
+          <div
+            className="mb-2 text-[10px] font-semibold uppercase tracking-wide"
+            style={{ color: "var(--text-muted)" }}
+          >
+            Saved in this browser
+          </div>
+          {libraryModels.length === 0 ? (
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              no saved models yet
+            </p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {libraryModels.map((m) => (
+                <div
+                  key={m.name}
+                  className="flex items-center gap-2 p-3"
+                  style={{
+                    background: "var(--bg-secondary)",
+                    border: "1px solid var(--border)",
+                    boxShadow: "var(--shadow-card)",
+                    borderRadius: "var(--radius-card)",
+                  }}
+                >
+                  <button
+                    onClick={() => onLoadFromLibrary(m.name)}
+                    className="min-w-0 flex-1 text-left"
+                    title={m.name}
+                  >
+                    <div className="truncate text-sm" style={{ color: "var(--text-primary)" }}>
+                      {m.name}
+                    </div>
+                    <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                      saved {relTime(m.savedAt)}
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => onDeleteFromLibrary(m.name)}
+                    title={`Delete ${m.name}`}
+                    className="shrink-0 rounded px-1.5 text-sm"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-// A small name-this-file modal reusing the OpenDialog overlay/card chrome. The
-// only decision the folder save needs from the user: the filename stem.
+// A small name-this modal reusing the OpenDialog overlay/card chrome. The only
+// decision a save needs from the user: the name. Shared by both save targets —
+// `target` only tunes the heading and the ".json" hint (a library slot has no
+// extension).
 function SaveDialog({
+  target,
   defaultName,
   onSave,
   onClose,
 }: {
+  target: "folder" | "library";
   defaultName: string;
   onSave: (name: string) => void;
   onClose: () => void;
@@ -1039,7 +1190,7 @@ function SaveDialog({
           className="mb-4 text-lg font-semibold"
           style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}
         >
-          Save to folder
+          {target === "library" ? "Save to library" : "Save to folder"}
         </h2>
         <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
           <input
@@ -1053,7 +1204,7 @@ function SaveDialog({
             className="flex-1 rounded-md px-2 py-1 text-sm"
             style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
           />
-          <span style={{ color: "var(--text-muted)" }}>.json</span>
+          {target === "folder" && <span style={{ color: "var(--text-muted)" }}>.json</span>}
         </label>
         <div className="mt-4 flex justify-end gap-2">
           <button
