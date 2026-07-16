@@ -12,10 +12,8 @@ import type { PaletteTool } from "./canvas/lenses/registry";
 import { SimScrubber } from "./canvas/SimScrubber";
 import { type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
-import { RunPanel } from "./RunPanel";
-import { FormalPanel } from "./FormalPanel";
-import { AuditPanel } from "./AuditPanel";
-import { Banner, Card, Pill } from "./ui";
+import { InspectorDock } from "./InspectorDock";
+import { Banner, Pill } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -503,43 +501,9 @@ function Workspace() {
                     </div>
                   )}
 
-                  {/* PANEL-DOCK: arrangement TBD by blind pick — do not dock.
-                      Run / Formal / Audit stay a plain neutral stacked column
-                      here (not tabbed, not right-docked, not bottom-docked).
-                      The downstream blind pick decides their final home. */}
-                  <div className="mt-4 grid gap-5">
-                    {analysisError && (
-                      <Card title="Kernel rejected this state" source="bert-core · wasm">
-                        <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
-                          {analysisError}
-                        </p>
-                        <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
-                          The canvas still shows the structure below. Switch lens, undo the
-                          last edit, or load another demo to clear this.
-                        </p>
-                      </Card>
-                    )}
-                    {verdict && (
-                      <AuditPanel
-                        validation={verdict}
-                        targets={issueTargets}
-                        onNavigate={(t) => {
-                          setBoundaryAnchor(null);
-                          setSelectedThingId(t.thing);
-                          setSelectedRelationId(t.relation);
-                        }}
-                      />
-                    )}
-                    {desc && <FormalPanel desc={desc} />}
-                    {runError && (
-                      <Card title="Result" source="bert-compose · wasm">
-                        <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
-                          {runError}
-                        </p>
-                      </Card>
-                    )}
-                    {result && <RunPanel result={result} />}
-                  </div>
+                  {/* The Run / Formal / Audit panels no longer stack here — they
+                      live in the right-docked InspectorDock (a sibling of this
+                      <main>, below), so the canvas keeps the full viewport. */}
                 </div>
               </KernelErrorBoundary>
             ) : (
@@ -550,6 +514,27 @@ function Workspace() {
               </div>
             )}
           </main>
+
+          {/* Right-edge instrument dock: Run / Formal / Audit as tabs, one
+              visible at a time, full height of the work region. Only mounts once
+              a model is loaded — before that the canvas empty-state holds the
+              main region alone. */}
+          {canvasModel && (
+            <InspectorDock
+              result={result}
+              runError={runError}
+              desc={desc}
+              verdict={verdict}
+              issueTargets={issueTargets}
+              analysisError={analysisError}
+              onNavigate={(t) => {
+                setBoundaryAnchor(null);
+                setSelectedThingId(t.thing);
+                setSelectedRelationId(t.relation);
+              }}
+              resetKeys={[canvasModel, demo?.key ?? "import"]}
+            />
+          )}
         </div>
       </div>
 
