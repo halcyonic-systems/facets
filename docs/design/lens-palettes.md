@@ -4,11 +4,15 @@
 > primitives are `bert-core::{boundary_components, edge_locus}` surfaced
 > canvas-keyed via `bert-lenses-kernel/src/lenses.rs` (`lens_facts`,
 > `describe`); the renderings live in `web/src/canvas/Canvas.tsx` and the
-> formal face in `web/src/FormalPanel.tsx`. Still open from this doc: boundary
-> property *authoring* (porosity/fuzziness are rendered but always 0.0 until
-> the canvas can set them), work-process badges beyond the primitive dot, and Δt/H
-> dynamical markers. **The per-lens authoring palette is now DESIGNED
-> (§ The authoring palette, 2026-07-15, #50)** — implementation tracked in #51.
+> formal face in `web/src/FormalPanel.tsx`. **The per-lens authoring palette is
+> DESIGNED AND SHIPPED (§ The authoring palette, 2026-07-15: #50 design → #51
+> implementation, both closed)** — including boundary-property authoring
+> (porosity/fuzziness author via the boundary inspector) and interface
+> designation (authored I, flowless legal). Still open from this doc: Δt/H
+> dynamical markers, work-process badges beyond the primitive dot, agent
+> designation (§ Agents — gated on the § Process-type taxonomy source pass),
+> and **P's dynamical semantics** (porosity is authored + rendered but does
+> not yet modulate crossing flows in bert-compose — structural-only today).
 
 *Design reference for the canvas lens rendering. Grounded in the primary sources
 in the vault (not priors): Klir, *Facets of Systems Science*; Bunge, *Treatise on
