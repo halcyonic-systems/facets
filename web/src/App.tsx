@@ -15,6 +15,14 @@ import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
 import { Banner, Pill } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
+import {
+  isFolderSupported,
+  pickDirectory,
+  writeModel,
+  listModelFiles,
+  readModelFile,
+  type DirHandleLike,
+} from "./fsAccess";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const LENSES: CanvasModel["lens"][] = ["Klir", "Bunge", "Mobus"];
@@ -58,7 +66,7 @@ export default function App() {
         <Workspace />
       ) : (
         <>
-          <MenuBar loaded={false} onNew={() => {}} onOpen={() => {}} onImport={() => {}} onSave={() => {}} onExport={() => {}} canExport={false} />
+          <MenuBar loaded={false} onNew={() => {}} onOpen={() => {}} onImport={() => {}} onSave={() => {}} onExport={() => {}} onSaveToFolder={() => {}} canExport={false} />
           <div className="flex flex-1 items-center justify-center">
             <p className="text-sm" style={{ color: loadError ? "var(--verdict-error)" : "var(--text-muted)" }}>
               {loadError ? `Failed to load the wasm kernel: ${loadError}` : "loading kernel…"}
@@ -89,6 +97,18 @@ function Workspace() {
   // start screen before anything is loaded), the docked palette's collapse.
   const [galleryOpen, setGalleryOpen] = useState(true);
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
+  // Folder save/load (File System Access): the picked working folder, the
+  // current model's filename stem (so re-saving is one gesture into the same
+  // file), the SaveDialog toggle, and the folder listing shown in OpenDialog
+  // (null = folder not picked this session yet). Explicit-save only — nothing
+  // here fires without a menu/button gesture.
+  const [dirHandle, setDirHandle] = useState<DirHandleLike | null>(null);
+  const [currentName, setCurrentName] = useState<string | null>(null);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [folderFiles, setFolderFiles] = useState<string[] | null>(null);
+  // A soft, informational message channel, distinct from `toast` (which the
+  // canvas reserves for kernel rejections, rendered "rejected — …").
+  const [notice, setNotice] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   // World → screen inside the canvas container (popover anchoring under zoom).
   const toScreen = (p: Pt): Pt => ({
@@ -215,6 +235,83 @@ function Workspace() {
     }
   }
 
+  // File → Save to folder…: the native-file counterpart to the download-based
+  // Save/Export. Pick a working folder once (reused thereafter), then a small
+  // SaveDialog names the file — writing is still explicit (menu → dialog → Save),
+  // never automatic. On unsupported browsers the download Save/Export remain.
+  async function saveToFolder() {
+    if (!canvasModel) return;
+    if (!isFolderSupported()) {
+      setNotice("Folder save needs a Chromium browser (Chrome/Edge).");
+      return;
+    }
+    try {
+      let dir = dirHandle;
+      if (!dir) {
+        dir = await pickDirectory();
+        if (!dir) return; // cancelled the picker
+        setDirHandle(dir);
+      }
+      setSaveDialogOpen(true);
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // SaveDialog confirm: project the canvas model and write it into the picked
+  // folder under the chosen name. The stem becomes `currentName`, so the next
+  // save defaults to overwriting the same file.
+  async function confirmSave(name: string) {
+    if (!dirHandle || !canvasModel) return;
+    const stem = name.trim().replace(/\.json$/i, "") || "untitled";
+    try {
+      await writeModel(dirHandle, stem, JSON.stringify(project(canvasModel), null, 2));
+      setCurrentName(stem);
+      setSaveDialogOpen(false);
+      setNotice(`saved → ${stem}.json`);
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // OpenDialog → Open from folder…: pick a folder and list its .json models.
+  async function openFolder() {
+    if (!isFolderSupported()) {
+      setNotice("Folder open needs a Chromium browser (Chrome/Edge).");
+      return;
+    }
+    try {
+      const dir = await pickDirectory();
+      if (!dir) return; // cancelled
+      setDirHandle(dir);
+      setFolderFiles(await listModelFiles(dir));
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // Load one file from the picked folder onto the canvas — same seam as import
+  // (toCanvas + reset), plus it remembers the folder + filename stem for saving.
+  async function openFromFolder(name: string) {
+    if (!dirHandle) return;
+    try {
+      const cm = toCanvas(await readModelFile(dirHandle, name));
+      setDemo(null);
+      setCanvasModel(cm);
+      setManifest({ model: "", data: "", t: 12, mapping: [] });
+      setResult(null);
+      setRunError(null);
+      setSelectedRelationId(null);
+      setSelectedThingId(null);
+      setBoundaryAnchor(null);
+      setArmed(null);
+      setCurrentName(name.replace(/\.json$/i, ""));
+      setGalleryOpen(false);
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   // The author-view verdict, lens facts, and formal object: every model or lens
   // change re-projects and re-judges in Rust — one atomic analyze_canvas call
   // (one deserialization, one projection), memoized on the canvas model. The
@@ -246,6 +343,12 @@ function Workspace() {
     const id = setTimeout(() => setToast(null), 2800);
     return () => clearTimeout(id);
   }, [toast]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const id = setTimeout(() => setNotice(null), 2800);
+    return () => clearTimeout(id);
+  }, [notice]);
 
   const csvHeaders = useMemo(() => {
     if (!demo) return [];
@@ -362,6 +465,7 @@ function Workspace() {
         onImport={() => importInputRef.current?.click()}
         onSave={() => exportModel(".model")}
         onExport={() => exportModel(".world")}
+        onSaveToFolder={saveToFolder}
         canExport={canvasModel !== null}
       />
       <input
@@ -535,6 +639,11 @@ function Workspace() {
                         rejected — {toast}
                       </Banner>
                     )}
+                    {notice && (
+                      <Banner tone="soft" className="absolute bottom-3 left-3">
+                        {notice}
+                      </Banner>
+                    )}
                   </div>
 
                   {/* Canvas-adjacent sim controls: the scrubber animates the
@@ -598,6 +707,18 @@ function Workspace() {
           onNew={newModel}
           onClose={() => setGalleryOpen(false)}
           closable={canvasModel !== null}
+          folderSupported={isFolderSupported()}
+          folderFiles={folderFiles}
+          onOpenFolder={openFolder}
+          onOpenFromFolder={openFromFolder}
+        />
+      )}
+
+      {saveDialogOpen && (
+        <SaveDialog
+          defaultName={currentName ?? "untitled"}
+          onSave={confirmSave}
+          onClose={() => setSaveDialogOpen(false)}
         />
       )}
     </>
@@ -613,6 +734,7 @@ function MenuBar({
   onImport,
   onSave,
   onExport,
+  onSaveToFolder,
   canExport,
 }: {
   loaded: boolean;
@@ -621,6 +743,7 @@ function MenuBar({
   onImport: () => void;
   onSave: () => void;
   onExport: () => void;
+  onSaveToFolder: () => void;
   canExport: boolean;
 }) {
   const [fileOpen, setFileOpen] = useState(false);
@@ -683,6 +806,7 @@ function MenuBar({
               {item("Import…", onImport)}
               <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
               {item("Save", onSave, !canExport)}
+              {item("Save to folder…", onSaveToFolder, !canExport)}
               {item("Export", onExport, !canExport)}
             </div>
           </>
@@ -761,12 +885,20 @@ function OpenDialog({
   onNew,
   onClose,
   closable,
+  folderSupported,
+  folderFiles,
+  onOpenFolder,
+  onOpenFromFolder,
 }: {
   selected: Demo | null;
   onPick: (d: Demo) => void;
   onNew: () => void;
   onClose: () => void;
   closable: boolean;
+  folderSupported: boolean;
+  folderFiles: string[] | null;
+  onOpenFolder: () => void;
+  onOpenFromFolder: (name: string) => void;
 }) {
   return (
     <div
@@ -807,6 +939,134 @@ function OpenDialog({
           <span style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>Start blank</span>
           <span className="ml-2" style={{ color: "var(--text-muted)" }}>— author a new model from scratch</span>
         </button>
+
+        {/* From this folder: pick a working folder (Chromium only) and reopen a
+            saved model from it — the native counterpart to File → Import. */}
+        <button
+          onClick={onOpenFolder}
+          disabled={!folderSupported}
+          title={folderSupported ? undefined : "Folder open needs a Chromium browser (Chrome/Edge)"}
+          className="mt-3 w-full p-3 text-left text-sm transition-colors"
+          style={{
+            background: "transparent",
+            border: "1px dashed var(--border)",
+            borderRadius: "var(--radius-card)",
+            opacity: folderSupported ? 1 : 0.5,
+            cursor: folderSupported ? "pointer" : "not-allowed",
+          }}
+        >
+          <span style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>Open from folder…</span>
+          <span className="ml-2" style={{ color: "var(--text-muted)" }}>— pick a working folder of saved models</span>
+        </button>
+
+        {folderFiles !== null && (
+          <div className="mt-3">
+            <div
+              className="mb-2 text-[10px] font-semibold uppercase tracking-wide"
+              style={{ color: "var(--text-muted)" }}
+            >
+              From this folder
+            </div>
+            {folderFiles.length === 0 ? (
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                no models in this folder yet
+              </p>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-3">
+                {folderFiles.map((name) => (
+                  <button
+                    key={name}
+                    onClick={() => onOpenFromFolder(name)}
+                    className="truncate p-3 text-left text-sm transition-shadow"
+                    style={{
+                      background: "var(--bg-secondary)",
+                      border: "1px solid var(--border)",
+                      boxShadow: "var(--shadow-card)",
+                      borderRadius: "var(--radius-card)",
+                      color: "var(--text-primary)",
+                    }}
+                    title={name}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// A small name-this-file modal reusing the OpenDialog overlay/card chrome. The
+// only decision the folder save needs from the user: the filename stem.
+function SaveDialog({
+  defaultName,
+  onSave,
+  onClose,
+}: {
+  defaultName: string;
+  onSave: (name: string) => void;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(defaultName);
+  const commit = () => {
+    const trimmed = name.trim();
+    if (trimmed) onSave(trimmed);
+  };
+  return (
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center p-6"
+      style={{ background: "color-mix(in srgb, var(--bg-primary) 70%, transparent)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm p-6"
+        style={{
+          background: "var(--bg-secondary)",
+          border: "1px solid var(--border)",
+          boxShadow: "var(--shadow-card-hover)",
+          borderRadius: "var(--radius-card)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2
+          className="mb-4 text-lg font-semibold"
+          style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}
+        >
+          Save to folder
+        </h2>
+        <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit();
+              if (e.key === "Escape") onClose();
+            }}
+            className="flex-1 rounded-md px-2 py-1 text-sm"
+            style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+          />
+          <span style={{ color: "var(--text-muted)" }}>.json</span>
+        </label>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-md px-3 py-1.5 text-xs"
+            style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={commit}
+            className="rounded-md px-4 py-1.5 text-xs font-semibold"
+            style={{ background: "var(--accent)", color: "#fff" }}
+          >
+            Save
+          </button>
+        </div>
       </div>
     </div>
   );
