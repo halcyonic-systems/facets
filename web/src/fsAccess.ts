@@ -1,0 +1,60 @@
+// Folder-based save/load over the File System Access API — the native-file
+// bridge the download/import fallbacks stand in for on unsupported browsers.
+// The API isn't in this project's TS lib, so the handles are typed structurally
+// here (minimal shapes, no dependency) rather than pulling `any` through App.
+//
+// Every call needs a live user gesture + a permission grant, so this can only
+// run interactively (no headless drive).
+
+interface FileHandleLike {
+  createWritable(): Promise<{ write(data: string): Promise<void>; close(): Promise<void> }>;
+  getFile(): Promise<{ text(): Promise<string> }>;
+}
+export interface DirHandleLike {
+  getFileHandle(name: string, opts?: { create?: boolean }): Promise<FileHandleLike>;
+  values(): AsyncIterable<{ kind: string; name: string }>;
+}
+
+/** A picker is only available on Chromium browsers (Chrome/Edge). */
+export function isFolderSupported(): boolean {
+  return typeof window !== "undefined" && "showDirectoryPicker" in window;
+}
+
+const ext = (name: string): string => (name.endsWith(".json") ? name : `${name}.json`);
+
+/** Prompt for a working folder. Returns null when the user cancels the picker
+ *  (AbortError); any other failure rethrows. */
+export async function pickDirectory(): Promise<DirHandleLike | null> {
+  try {
+    return await (window as unknown as {
+      showDirectoryPicker(): Promise<DirHandleLike>;
+    }).showDirectoryPicker();
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") return null;
+    throw e;
+  }
+}
+
+/** Write `text` to `<filename>.json` in the folder, creating/truncating it. */
+export async function writeModel(dir: DirHandleLike, filename: string, text: string): Promise<void> {
+  const handle = await dir.getFileHandle(ext(filename), { create: true });
+  const w = await handle.createWritable();
+  await w.write(text);
+  await w.close();
+}
+
+/** The folder's `.json` entries, sorted — the reopen panel's contents. */
+export async function listModelFiles(dir: DirHandleLike): Promise<string[]> {
+  const names: string[] = [];
+  for await (const entry of dir.values()) {
+    if (entry.kind === "file" && entry.name.endsWith(".json")) names.push(entry.name);
+  }
+  return names.sort();
+}
+
+/** Read one model file's text back for `toCanvas`. */
+export async function readModelFile(dir: DirHandleLike, name: string): Promise<string> {
+  const handle = await dir.getFileHandle(name);
+  const file = await handle.getFile();
+  return file.text();
+}
