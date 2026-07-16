@@ -21,6 +21,18 @@ import { KernelErrorBoundary } from "./KernelErrorBoundary";
 const today = () => new Date().toISOString().slice(0, 10);
 const LENSES: CanvasModel["lens"][] = ["Klir", "Bunge", "Mobus"];
 
+// The workbench is a set of switchable full-width workspaces ("pages"): Canvas
+// is the authoring surface (palette + canvas + scrubber); Run / Formal / Audit
+// each take over the whole work region so a panel reads as its own screen. Only
+// one is mounted at a time. Canvas is the default.
+type WorkView = "canvas" | "run" | "formal" | "audit";
+const WORK_VIEWS: { id: WorkView; label: string }[] = [
+  { id: "canvas", label: "Canvas" },
+  { id: "run", label: "Run" },
+  { id: "formal", label: "Formal" },
+  { id: "audit", label: "Audit" },
+];
+
 // The minted demos carry the compose ladder's original tight spacing (~120px),
 // too cramped for their domain-named flow labels ("Watershed → Reservoir").
 // Purely a display scale-up of the loaded positions — no systems meaning here,
@@ -91,6 +103,8 @@ function Workspace() {
   // start screen before anything is loaded), the docked palette's collapse.
   const [galleryOpen, setGalleryOpen] = useState(true);
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
+  // Which full-width workspace fills the work region. Canvas is home.
+  const [view, setView] = useState<WorkView>("canvas");
   const importInputRef = useRef<HTMLInputElement>(null);
   // World → screen inside the canvas container (popover anchoring under zoom).
   const toScreen = (p: Pt): Pt => ({
@@ -384,9 +398,23 @@ function Workspace() {
           </div>
         )}
 
-        {/* Body: docked-left palette + the canvas viewport it authors onto. */}
+        {/* The mode selector — top-level navigation between the workbench's
+            full-width workspaces. Quiet Frost chrome; the active view reads
+            from both the filled pill and the label at the right. */}
+        {canvasModel && (
+          <ViewSwitcher
+            view={view}
+            onView={setView}
+            auditBadge={analysisError ? "!" : verdict && verdict.issues.length > 0 ? String(verdict.issues.length) : null}
+            runReady={result !== null}
+          />
+        )}
+
+        {/* Body: exactly one workspace fills this region at a time. Only Canvas
+            keeps the docked palette — it is the authoring surface; Run / Formal
+            / Audit are read screens that get the whole region to breathe. */}
         <div className="flex min-h-0 flex-1">
-          {canvasModel && (
+          {canvasModel && view === "canvas" && (
             <PaletteDock collapsed={paletteCollapsed} onToggle={() => setPaletteCollapsed((c) => !c)}>
               <PaletteRail lens={canvasModel.lens} armed={armed} onArm={setArmed} />
             </PaletteDock>
@@ -394,7 +422,8 @@ function Workspace() {
 
           <main className="min-h-0 flex-1 overflow-y-auto">
             {canvasModel ? (
-              <KernelErrorBoundary resetKeys={[canvasModel, demo?.key ?? "import"]}>
+              <KernelErrorBoundary resetKeys={[canvasModel, demo?.key ?? "import", view]}>
+                {view === "canvas" && (
                 <div className="flex min-h-full flex-col p-4">
                   {/* Canvas owns the viewport — fills the region (no more
                       height:440 cap), and its popovers/banners still anchor to
@@ -503,23 +532,59 @@ function Workspace() {
                     </div>
                   )}
 
-                  {/* PANEL-DOCK: arrangement TBD by blind pick — do not dock.
-                      Run / Formal / Audit stay a plain neutral stacked column
-                      here (not tabbed, not right-docked, not bottom-docked).
-                      The downstream blind pick decides their final home. */}
-                  <div className="mt-4 grid gap-5">
+                  {/* The forked panels no longer dock here — Run / Formal /
+                      Audit each own a full-width workspace, reached from the
+                      view switcher above. Only the canvas + its scrubber live
+                      on this authoring surface. */}
+                </div>
+                )}
+
+                {view === "run" && (
+                  <PanelScreen>
+                    {result ? (
+                      <RunPanel result={result} />
+                    ) : runError ? (
+                      <Card title="Result" source="bert-compose · wasm">
+                        <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
+                          {runError}
+                        </p>
+                      </Card>
+                    ) : (
+                      <EmptyScreen>
+                        No run yet. This model imported without a data bundle, or hasn't
+                        been run — open a demo, or hit ▶ Run on the Canvas view.
+                      </EmptyScreen>
+                    )}
+                  </PanelScreen>
+                )}
+
+                {view === "formal" && (
+                  <PanelScreen>
+                    {desc ? (
+                      <FormalPanel desc={desc} />
+                    ) : (
+                      <EmptyScreen>
+                        No formal object — the kernel could not derive one from the
+                        current state. See the Audit view for the reason.
+                      </EmptyScreen>
+                    )}
+                  </PanelScreen>
+                )}
+
+                {view === "audit" && (
+                  <PanelScreen>
                     {analysisError && (
                       <Card title="Kernel rejected this state" source="bert-core · wasm">
                         <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
                           {analysisError}
                         </p>
                         <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
-                          The canvas still shows the structure below. Switch lens, undo the
+                          The Canvas view still shows the structure. Switch lens, undo the
                           last edit, or load another demo to clear this.
                         </p>
                       </Card>
                     )}
-                    {verdict && (
+                    {verdict && verdict.issues.length > 0 ? (
                       <AuditPanel
                         validation={verdict}
                         targets={issueTargets}
@@ -527,20 +592,20 @@ function Workspace() {
                           setBoundaryAnchor(null);
                           setSelectedThingId(t.thing);
                           setSelectedRelationId(t.relation);
+                          setView("canvas"); // navigating an issue jumps to the canvas that shows it
                         }}
                       />
+                    ) : verdict ? (
+                      <EmptyScreen>
+                        ✓ Clean — the kernel found no issues in this model under the current lens.
+                      </EmptyScreen>
+                    ) : (
+                      !analysisError && (
+                        <EmptyScreen>No audit — load a model to judge it.</EmptyScreen>
+                      )
                     )}
-                    {desc && <FormalPanel desc={desc} />}
-                    {runError && (
-                      <Card title="Result" source="bert-compose · wasm">
-                        <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
-                          {runError}
-                        </p>
-                      </Card>
-                    )}
-                    {result && <RunPanel result={result} />}
-                  </div>
-                </div>
+                  </PanelScreen>
+                )}
               </KernelErrorBoundary>
             ) : (
               <div className="flex h-full items-center justify-center p-6">
@@ -788,6 +853,98 @@ function DemoGallery({ selected, onPick }: { selected: Demo | null; onPick: (d: 
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// The workbench's mode selector: a segmented control that swaps which
+// full-width workspace fills the work region. Quiet Frost chrome, uses the
+// global --accent for the active pill (distinct from the lens pills' per-lens
+// --lens-accent) so "which app mode" reads apart from "which lens". Audit
+// carries a small badge (issue count, or "!" on a kernel rejection); Run shows
+// a ready dot when results are waiting on another view.
+function ViewSwitcher({
+  view,
+  onView,
+  auditBadge,
+  runReady,
+}: {
+  view: WorkView;
+  onView: (v: WorkView) => void;
+  auditBadge: string | null;
+  runReady: boolean;
+}) {
+  return (
+    <div
+      className="flex items-center gap-2 border-b px-4 py-2"
+      style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
+    >
+      <div
+        className="flex items-center gap-1 p-1"
+        style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
+      >
+        {WORK_VIEWS.map((v) => {
+          const active = view === v.id;
+          return (
+            <button
+              key={v.id}
+              onClick={() => onView(v.id)}
+              aria-current={active ? "page" : undefined}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-body"
+              style={{
+                borderRadius: "var(--radius-pill)",
+                background: active ? "var(--accent)" : "transparent",
+                color: active ? "#fff" : "var(--text-secondary)",
+                transition: "var(--transition-base)",
+              }}
+            >
+              {v.label}
+              {v.id === "audit" && auditBadge && (
+                <span
+                  className="inline-flex min-w-[16px] justify-center rounded-full px-1 text-[10px] font-semibold tabular"
+                  style={{
+                    background: active ? "rgba(255,255,255,0.28)" : "var(--verdict-error)",
+                    color: "#fff",
+                  }}
+                >
+                  {auditBadge}
+                </span>
+              )}
+              {v.id === "run" && runReady && !active && (
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--accent)" }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <span
+        className="ml-auto text-[11px] uppercase tracking-wide"
+        style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+      >
+        {WORK_VIEWS.find((v) => v.id === view)?.label} view
+      </span>
+    </div>
+  );
+}
+
+// A read-screen shell for the Run / Formal / Audit workspaces: scrolls, pads,
+// and centers its panel in a comfortable measure so a full-region panel reads
+// as a designed screen rather than a stretched dock.
+function PanelScreen({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-full p-4 sm:p-6">
+      <div className="mx-auto w-full max-w-4xl">{children}</div>
+    </div>
+  );
+}
+
+// Quiet placeholder for a workspace with nothing to show yet.
+function EmptyScreen({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center px-6 text-center">
+      <p className="max-w-md text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
+        {children}
+      </p>
     </div>
   );
 }
