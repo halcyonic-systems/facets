@@ -60,6 +60,10 @@ export function thingById(model: CanvasModel, id: number): Thing | undefined {
   return model.things.find((t) => t.id === id);
 }
 
+/** Perpendicular bow (px) per step between parallel edges — the visual peak
+ *  offset so two flows on the same pair fan apart instead of overlapping. */
+const PARALLEL_BOW = 30;
+
 /** The `d` + label anchor for a drawn relation, shared by every lens's EdgeView
  *  and the DrivePopover anchor (App reads it to place the popover at the same
  *  point the edge renders its name) — pure pixel math, no systems meaning. */
@@ -77,6 +81,35 @@ export function edgeGeometry(
   }
   const a = rimPoint(from, to, NODE_R);
   const b = rimPoint(to, from, NODE_R);
+
+  // Parallel edges between the same pair of nodes would draw the identical path
+  // and stack into one indistinguishable, unclickable line. Rank this relation
+  // among its siblings on the same unordered pair (stable, by id) and bow it by a
+  // symmetric perpendicular offset so they fan apart.
+  const siblings = model.relations
+    .filter(
+      (r) =>
+        (r.a === relation.a && r.b === relation.b) || (r.a === relation.b && r.b === relation.a),
+    )
+    .sort((r1, r2) => r1.id - r2.id);
+  const step = siblings.findIndex((r) => r.id === relation.id) - (siblings.length - 1) / 2;
+
+  if (step !== 0) {
+    const mid = midpoint(a, b);
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const px = -dy / len;
+    const py = dx / len;
+    const peak = step * PARALLEL_BOW;
+    const cx = mid.x + px * peak * 2;
+    const cy = mid.y + py * peak * 2;
+    return {
+      d: `M ${a.x} ${a.y} Q ${cx} ${cy}, ${b.x} ${b.y}`,
+      labelAt: { x: mid.x + px * peak, y: mid.y + py * peak },
+    };
+  }
+
   return { d: curved ? bezierPath(a, b) : straightPath(a, b), labelAt: midpoint(a, b) };
 }
 
