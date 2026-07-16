@@ -15,7 +15,9 @@ export interface DirHandleLike {
   values(): AsyncIterable<{ kind: string; name: string }>;
 }
 
-/** A picker is only available on Chromium browsers (Chrome/Edge). */
+/** The directory picker needs the File System Access API — present in Chrome/Edge,
+ *  but Brave disables it by default (fingerprinting surface), so Chromium-ness
+ *  alone isn't enough; feature-detect the actual method. */
 export function isFolderSupported(): boolean {
   return typeof window !== "undefined" && "showDirectoryPicker" in window;
 }

@@ -242,7 +242,9 @@ function Workspace() {
   async function saveToFolder() {
     if (!canvasModel) return;
     if (!isFolderSupported()) {
-      setNotice("Folder save needs a Chromium browser (Chrome/Edge).");
+      setNotice(
+        "Folder access is off in this browser. Brave disables the File System Access API by default — enable brave://flags/#file-system-access-api and relaunch, or use Chrome/Edge.",
+      );
       return;
     }
     try {
@@ -277,7 +279,9 @@ function Workspace() {
   // OpenDialog → Open from folder…: pick a folder and list its .json models.
   async function openFolder() {
     if (!isFolderSupported()) {
-      setNotice("Folder open needs a Chromium browser (Chrome/Edge).");
+      setNotice(
+        "Folder access is off in this browser. Brave disables the File System Access API by default — enable brave://flags/#file-system-access-api and relaunch, or use Chrome/Edge.",
+      );
       return;
     }
     try {
