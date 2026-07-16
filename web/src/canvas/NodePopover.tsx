@@ -28,12 +28,14 @@ export function NodePopover({
   lens,
   anchor,
   onUpdateThing,
+  onDelete,
   onClose,
 }: {
   thing: Thing;
   lens: Lens;
   anchor: Pt;
   onUpdateThing: (t: Thing) => void;
+  onDelete: () => void;
   onClose: () => void;
 }) {
   const isComponent = thing.role === "Component";
@@ -87,7 +89,10 @@ export function NodePopover({
           </select>
         </Row>
       )}
-      <div className="flex justify-end">
+      <div className="flex justify-between">
+        <button onClick={onDelete} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--verdict-error)" }}>
+          delete
+        </button>
         <button onClick={onClose} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--text-muted)" }}>
           close
         </button>

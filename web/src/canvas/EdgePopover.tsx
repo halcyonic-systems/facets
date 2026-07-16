@@ -21,6 +21,7 @@ export function EdgePopover({
   anchor,
   onApplyManifest,
   onUpdateRelation,
+  onDelete,
   onClose,
 }: {
   relation: Relation;
@@ -31,6 +32,7 @@ export function EdgePopover({
   anchor: Pt;
   onApplyManifest: (m: Manifest) => void;
   onUpdateRelation: (r: Relation) => void;
+  onDelete: () => void;
   onClose: () => void;
 }) {
   return (
@@ -60,6 +62,11 @@ export function EdgePopover({
           onClose={onClose}
         />
       )}
+      <div className="mt-1 flex justify-start border-t pt-1" style={{ borderColor: "var(--hairline)" }}>
+        <button onClick={onDelete} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--verdict-error)" }}>
+          delete flow
+        </button>
+      </div>
     </div>
   );
 }
