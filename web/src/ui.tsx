@@ -13,7 +13,7 @@ export function Card({
 }) {
   return (
     <section
-      className="rounded-2xl p-6"
+      className="p-5"
       style={{
         background: "var(--bg-secondary)",
         border: "1px solid var(--border)",
