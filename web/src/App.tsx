@@ -97,21 +97,35 @@ function Workspace() {
   });
   const [toast, setToast] = useState<string | null>(null);
 
-  // Esc = disarm the rail tool, else clear selection — the only global key.
+  // Esc = disarm the rail tool, else clear selection. Delete/Backspace removes the
+  // selected node or flow (guarded so it never fires while typing in a field).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key !== "Escape") return;
-      setArmed((a) => {
-        if (a) return null;
-        setSelectedThingId(null);
-        setSelectedRelationId(null);
-        setBoundaryAnchor(null);
-        return a;
-      });
+      if (e.key === "Escape") {
+        setArmed((a) => {
+          if (a) return null;
+          setSelectedThingId(null);
+          setSelectedRelationId(null);
+          setBoundaryAnchor(null);
+          return a;
+        });
+        return;
+      }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const el = document.activeElement as HTMLElement | null;
+        if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+        if (selectedThingId !== null) {
+          e.preventDefault();
+          deleteThing(selectedThingId);
+        } else if (selectedRelationId !== null) {
+          e.preventDefault();
+          deleteRelation(selectedRelationId);
+        }
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [selectedThingId, selectedRelationId]);
 
   const runWith = (modelJson: string, csv: string, m: Manifest, dtv: number, tv: number) => {
     try {
@@ -302,6 +316,26 @@ function Workspace() {
     );
   }
 
+  // Delete removes the selected element. Deleting a component cascades to its
+  // flows — a relation can't dangle to a thing that no longer exists.
+  function deleteThing(id: number) {
+    setCanvasModel((m) =>
+      m
+        ? {
+            ...m,
+            things: m.things.filter((t) => t.id !== id),
+            relations: m.relations.filter((r) => r.a !== id && r.b !== id),
+          }
+        : m,
+    );
+    setSelectedThingId(null);
+  }
+
+  function deleteRelation(id: number) {
+    setCanvasModel((m) => (m ? { ...m, relations: m.relations.filter((r) => r.id !== id) } : m));
+    setSelectedRelationId(null);
+  }
+
   // A node edit from the popover (rename, work-process set/clear): same shape
   // as updateRelation — the kernel re-projects + re-judges on every change.
   function updateThing(next: import("./kernel/types").Thing) {
@@ -458,6 +492,7 @@ function Workspace() {
                         lens={canvasModel.lens}
                         anchor={toScreen({ x: selectedThing.x, y: selectedThing.y })}
                         onUpdateThing={updateThing}
+                        onDelete={() => deleteThing(selectedThing.id)}
                         onClose={() => setSelectedThingId(null)}
                       />
                     )}
@@ -471,6 +506,7 @@ function Workspace() {
                         anchor={toScreen(popoverAnchor)}
                         onApplyManifest={applyDrive}
                         onUpdateRelation={updateRelation}
+                        onDelete={() => deleteRelation(selectedRelation.id)}
                         onClose={() => setSelectedRelationId(null)}
                       />
                     )}
