@@ -6,6 +6,7 @@
 import { KIND_COLOR } from "../types";
 import type { EdgeFact, Relation } from "../../kernel/types";
 import { edgeGeometry } from "../geometry";
+import { STYLE } from "../style";
 import { EdgeScaffold, NodeBody, NullPortView, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
 
@@ -23,7 +24,7 @@ function NodeView({ thing, isBoundary, isOrphan, hovered, sim, onPointerDown, on
       envOpen={false}
       stroke="var(--lens-node-stroke)"
       strokeOpacity={1}
-      strokeWidth={1.75}
+      strokeWidth={STYLE.nodeStrokeWidth}
       labelSmall={false}
       boundaryRim={isBoundary}
     />
@@ -33,13 +34,13 @@ function NodeView({ thing, isBoundary, isOrphan, hovered, sim, onPointerDown, on
 function edgeStyle(relation: Relation, fact: EdgeFact | undefined): EdgeStyle {
   // Mere relations ("older than") make no difference and do not bond.
   if (!relation.is_bond) {
-    return { color: "var(--text-muted)", width: 1.5, dash: "3 4", opacity: 0.7 };
+    return { color: "var(--text-muted)", width: STYLE.edge.mere, dash: "3 4", opacity: 0.7 };
   }
   // Endo/exo as an edge split — kernel-computed (edge ∈ N vs edge ∈ G), kind-colored.
   const exo = fact?.locus === "Exo";
   return {
     color: KIND_COLOR[relation.kind],
-    width: exo ? 1.75 : 2.5,
+    width: exo ? STYLE.edge.exo : STYLE.edge.bond,
     dash: exo ? "10 3" : undefined,
     opacity: 0.85,
   };

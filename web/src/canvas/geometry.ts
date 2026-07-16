@@ -3,9 +3,10 @@
 // canvas and the projected WorldModel agree on "where a thing sits."
 // Lifted verbatim from the bert-lenses-spike-svg canvas spike.
 import type { CanvasModel, Relation, Thing } from "../kernel/types";
+import { STYLE } from "./style";
 
-export const NODE_R = 34;
-export const CURVE_BOW = 32;
+export const NODE_R = STYLE.nodeR;
+export const CURVE_BOW = STYLE.curveBow;
 
 export interface Pt {
   x: number;

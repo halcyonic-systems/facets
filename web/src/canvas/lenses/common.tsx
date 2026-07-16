@@ -7,6 +7,7 @@ import type { ProcessPrimitive } from "../../kernel/types";
 import { PRIMITIVE_BADGE } from "../types";
 import { humanize } from "../../ui";
 import { NODE_R, type Pt } from "../geometry";
+import { STYLE } from "../style";
 import type { ReactNode, PointerEvent as ReactPointerEvent } from "react";
 
 /** Resolved per-lens stroke styling for a visible edge path. */
@@ -74,14 +75,29 @@ export function NodeBody({
       opacity={pending ? 0.5 : 1}
     >
       {pending && <title>not yet in ℰ — no bond touches this thing (Bunge Def 1.2 ii); connect a flow to admit it</title>}
-      {showHalo && <circle r={NODE_R + 10} fill="var(--lens-accent-soft)" opacity={0.5} />}
-      {hovered && <circle r={NODE_R + 6} fill="none" stroke="var(--lens-accent)" strokeWidth={2} />}
+      {showHalo && (
+        <circle r={NODE_R + STYLE.compHalo.pad} fill="var(--lens-accent-soft)" opacity={STYLE.compHalo.opacity} />
+      )}
+      {hovered && (
+        <circle
+          r={NODE_R + STYLE.hoverHalo.pad}
+          fill="none"
+          stroke="var(--lens-accent)"
+          strokeWidth={STYLE.hoverHalo.width}
+        />
+      )}
 
       {/* Bunge 1992: boundary components are MARKED (a rim accent on the nodes
           directly coupled to E), never a drawn perimeter. The same set Mobus
           reifies into ports — toggle the lens and watch it accrete. */}
       {boundaryRim && (
-        <circle r={NODE_R + 4} fill="none" stroke="var(--lens-accent)" strokeWidth={2.25} strokeOpacity={0.9} />
+        <circle
+          r={NODE_R + STYLE.boundaryRim.pad}
+          fill="none"
+          stroke="var(--lens-accent)"
+          strokeWidth={STYLE.boundaryRim.width}
+          strokeOpacity={STYLE.boundaryRim.opacity}
+        />
       )}
 
       {/* the sim payoff: a stock's disc fills/drains as the scrubber indexes ticks */}
@@ -96,13 +112,13 @@ export function NodeBody({
               y={-NODE_R}
               width={NODE_R * 2}
               height={NODE_R * 2}
-              rx={6}
+              rx={STYLE.squareRx}
               fill="var(--accent)"
-              opacity={0.32}
+              opacity={STYLE.simFillOpacity}
               clipPath={`url(#${clipId})`}
             />
           ) : (
-            <circle r={NODE_R} fill="var(--accent)" opacity={0.32} clipPath={`url(#${clipId})`} />
+            <circle r={NODE_R} fill="var(--accent)" opacity={STYLE.simFillOpacity} clipPath={`url(#${clipId})`} />
           )}
         </>
       )}
@@ -113,8 +129,8 @@ export function NodeBody({
           y={-NODE_R}
           width={NODE_R * 2}
           height={NODE_R * 2}
-          rx={6}
-          fill={envOpen ? "none" : "var(--bg-secondary)"}
+          rx={STYLE.squareRx}
+          fill={envOpen ? "none" : STYLE.nodeFill}
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
@@ -123,7 +139,7 @@ export function NodeBody({
       ) : (
         <circle
           r={NODE_R}
-          fill="var(--bg-secondary)"
+          fill={STYLE.nodeFill}
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
@@ -133,8 +149,34 @@ export function NodeBody({
 
       {badge && (
         <g transform={`translate(${NODE_R * 0.72}, ${-NODE_R * 0.72})`}>
-          <circle r={10} fill="var(--lens-accent)" />
-          <text textAnchor="middle" dominantBaseline="central" fontSize={9} fill="white" className="font-mono">
+          {STYLE.badge.form === "filled" && <circle r={STYLE.badge.r} fill="var(--lens-accent)" />}
+          {STYLE.badge.form === "outline" && (
+            <circle
+              r={STYLE.badge.r}
+              fill={STYLE.nodeFill}
+              stroke="var(--lens-accent)"
+              strokeWidth={STYLE.badge.strokeWidth}
+            />
+          )}
+          {STYLE.badge.form === "corner" && (
+            <rect
+              x={-STYLE.badge.r}
+              y={-STYLE.badge.r}
+              width={STYLE.badge.r * 2}
+              height={STYLE.badge.r * 2}
+              rx={1}
+              fill={STYLE.nodeFill}
+              stroke="var(--lens-accent)"
+              strokeWidth={STYLE.badge.strokeWidth}
+            />
+          )}
+          <text
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={9}
+            fill={STYLE.badge.form === "filled" ? "white" : "var(--lens-accent)"}
+            className="font-mono"
+          >
             {PRIMITIVE_BADGE[badge]}
           </text>
         </g>
@@ -144,7 +186,7 @@ export function NodeBody({
         <text
           y={-NODE_R - 10}
           textAnchor="middle"
-          fontSize={10}
+          fontSize={STYLE.simReadoutSize}
           fill="var(--accent-strong)"
           className="font-mono tabular pointer-events-none"
         >
@@ -155,20 +197,21 @@ export function NodeBody({
       <text
         y={NODE_R + 16}
         textAnchor="middle"
-        fontSize={labelSmall ? 10 : 12}
-        fill={labelSmall ? "var(--text-muted)" : "var(--text-primary)"}
-        className="font-body pointer-events-none"
+        fontSize={labelSmall ? STYLE.label.smallSize : STYLE.label.size}
+        fill={labelSmall ? "var(--text-muted)" : STYLE.label.fill}
+        letterSpacing={STYLE.label.tracking}
+        className={`${STYLE.label.mono ? "font-mono" : "font-body"} pointer-events-none`}
       >
-        {thing.name}
+        {STYLE.label.uppercase ? thing.name.toUpperCase() : thing.name}
       </text>
 
       <circle
         cx={NODE_R * 0.75}
         cy={NODE_R * 0.75}
-        r={7}
+        r={STYLE.handle.r}
         fill="var(--bg-primary)"
         stroke="var(--lens-accent)"
-        strokeWidth={1.5}
+        strokeWidth={STYLE.handle.width}
         className="cursor-crosshair"
         onPointerDown={onHandlePointerDown}
       />
@@ -228,7 +271,14 @@ export function EdgeScaffold({
         }}
       />
       {selected && (
-        <path d={d} fill="none" stroke="var(--lens-accent)" strokeWidth={6} strokeOpacity={0.22} pointerEvents="none" />
+        <path
+          d={d}
+          fill="none"
+          stroke="var(--lens-accent)"
+          strokeWidth={STYLE.selection.width}
+          strokeOpacity={STYLE.selection.opacity}
+          pointerEvents="none"
+        />
       )}
       {interior && (
         <path

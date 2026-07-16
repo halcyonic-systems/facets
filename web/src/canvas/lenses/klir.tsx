@@ -3,6 +3,7 @@
 // relation is the salient, designed element — labelled by signature (arity /
 // Cartesian form), never by substance type (that vocabulary is Mobus's).
 import { edgeGeometry } from "../geometry";
+import { STYLE } from "../style";
 import { EdgeScaffold, NodeBody, NullPortView, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
 
@@ -18,8 +19,8 @@ function NodeView({ thing, hovered, sim, onPointerDown, onHandlePointerDown }: L
       showHalo={false}
       envOpen={false}
       stroke="var(--lens-node-stroke)"
-      strokeOpacity={0.4}
-      strokeWidth={1.25}
+      strokeOpacity={STYLE.klirNode.opacity}
+      strokeWidth={STYLE.klirNode.width}
       labelSmall={true}
       boundaryRim={false}
     />
@@ -27,7 +28,7 @@ function NodeView({ thing, hovered, sim, onPointerDown, onHandlePointerDown }: L
 }
 
 // The relation is neutral, substance-blind: no material/energy/message coloring.
-const KLIR_STYLE: EdgeStyle = { color: "var(--text-secondary)", width: 2.5, opacity: 0.9 };
+const KLIR_STYLE: EdgeStyle = { color: "var(--text-secondary)", width: STYLE.edge.klir, opacity: 0.9 };
 
 function EdgeView({ model, relation, sigIndex, selected, driven, sim, onSelect }: LensEdgeProps) {
   const geo = edgeGeometry(model, relation, false);

@@ -10,6 +10,7 @@ import type { CanvasModel, EdgeFact, Lens, LensFacts, PortFact, Thing } from "..
 import type { SimFrame } from "./types";
 import { componentRing, ringPoint, thingById, NODE_R, type Pt, type Ring } from "./geometry";
 import { useCanvasGestures } from "./useCanvasGestures";
+import { STYLE } from "./style";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
 
 interface Props {
@@ -127,13 +128,29 @@ export default function Canvas({
     <svg
       ref={svgRef}
       className={`canvas-stage w-full h-full touch-none select-none${armed ? " cursor-crosshair" : ""}`}
+      data-grid={STYLE.grid.mode}
+      style={
+        {
+          "--grid-gap": `${STYLE.grid.gap}px`,
+          "--grid-ink": STYLE.grid.ink,
+          backgroundColor: STYLE.grid.wash ? "color-mix(in srgb, var(--lens-accent) 4%, transparent)" : undefined,
+        } as React.CSSProperties
+      }
       onPointerDown={gestures.onStagePointerDown}
       onPointerMove={gestures.onStagePointerMove}
       onPointerUp={gestures.onStagePointerUp}
       onDoubleClick={gestures.onStageDoubleClick}
     >
       <defs>
-        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <marker
+          id="arrow"
+          viewBox="0 0 10 10"
+          refX="8"
+          refY="5"
+          markerWidth={STYLE.arrowSize}
+          markerHeight={STYLE.arrowSize}
+          orient="auto-start-reverse"
+        >
           <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-slate)" />
         </marker>
         {/* perceptive fuzziness → membrane edge blur (Mobus B properties) */}
@@ -142,7 +159,13 @@ export default function Canvas({
         </filter>
         {/* energy flows glow (Mobus typed strokes) */}
         <filter id="energy-glow" x="-40%" y="-40%" width="180%" height="180%">
-          <feDropShadow dx="0" dy="0" stdDeviation="2.2" floodColor="var(--accent)" floodOpacity="0.55" />
+          <feDropShadow
+            dx="0"
+            dy="0"
+            stdDeviation={STYLE.energyGlow.dev}
+            floodColor="var(--accent)"
+            floodOpacity={STYLE.energyGlow.opacity}
+          />
         </filter>
       </defs>
       <g transform={`translate(${pan.x}, ${pan.y}) scale(${scale})`}>
@@ -177,9 +200,9 @@ export default function Canvas({
             rx={ring.rx}
             ry={ring.ry}
             fill="var(--accent-soft)"
-            fillOpacity={0.18}
+            fillOpacity={STYLE.ring.fillOpacity}
             stroke="var(--accent-slate)"
-            strokeWidth={2.5}
+            strokeWidth={STYLE.ring.strokeWidth}
             strokeDasharray={
               facts && facts.boundary_props.porosity > 0
                 ? `${Math.max(2, 14 - facts.boundary_props.porosity * 12)} ${2 + facts.boundary_props.porosity * 8}`

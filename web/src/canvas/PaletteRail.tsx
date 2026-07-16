@@ -5,6 +5,7 @@
 // the kernel decides — no legality is computed here.
 import type { Lens } from "../kernel/types";
 import { LensPalette, type PaletteHint, type PaletteTool } from "./lenses/registry";
+import { STYLE } from "./style";
 import { ToolButton } from "../ui";
 
 export function PaletteRail({
@@ -34,8 +35,8 @@ export function PaletteRail({
     <div
       key={h.id}
       title={h.tip}
-      className="rounded-full px-2.5 py-1 text-xs"
-      style={{ color: "var(--text-muted)", border: "1px dashed var(--border)" }}
+      className="px-2.5 py-1 text-xs"
+      style={{ color: "var(--text-muted)", border: "1px dashed var(--border)", borderRadius: STYLE.chipRx }}
     >
       {h.label}
     </div>
@@ -43,12 +44,12 @@ export function PaletteRail({
 
   return (
     <div
-      className="absolute left-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-40 flex-col gap-3 overflow-y-auto rounded-xl p-3"
+      className="absolute left-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-40 flex-col gap-3 overflow-y-auto p-3"
       style={{
         background: "var(--bg-secondary)",
         border: "1px solid var(--border)",
         boxShadow: "var(--shadow-card)",
-        borderRadius: "var(--radius-lg)",
+        borderRadius: STYLE.dockRadius,
       }}
     >
       {spec.place.length > 0 && (

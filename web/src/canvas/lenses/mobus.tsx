@@ -7,6 +7,7 @@
 import type { PortFact, Relation } from "../../kernel/types";
 import { KIND_COLOR } from "../types";
 import { edgeGeometry, rimPoint, ringPoint, straightPath, thingById, NODE_R, type Pt } from "../geometry";
+import { STYLE } from "../style";
 import { EdgeScaffold, NodeBody, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
 
@@ -24,7 +25,7 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
       envOpen={thing.role === "Environment"}
       stroke="var(--lens-node-stroke)"
       strokeOpacity={1}
-      strokeWidth={1.75}
+      strokeWidth={STYLE.nodeStrokeWidth}
       badge={thing.primitive}
       labelSmall={false}
       boundaryRim={false}
@@ -35,13 +36,18 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
 function edgeStyle(relation: Relation): EdgeStyle {
   switch (relation.kind) {
     case "Matter":
-      return { color: KIND_COLOR[relation.kind], width: 3, opacity: 0.9 };
+      return { color: KIND_COLOR[relation.kind], width: STYLE.edge.matter, opacity: 0.9 };
     case "Energy":
-      return { color: KIND_COLOR[relation.kind], width: 2, opacity: 0.9, filter: "url(#energy-glow)" };
+      return {
+        color: KIND_COLOR[relation.kind],
+        width: STYLE.edge.energy,
+        opacity: 0.9,
+        filter: STYLE.energyGlow.enabled ? "url(#energy-glow)" : undefined,
+      };
     case "Informational":
-      return { color: KIND_COLOR[relation.kind], width: 1.25, dash: "1 4", opacity: 0.95 };
+      return { color: KIND_COLOR[relation.kind], width: STYLE.edge.info, dash: "1 4", opacity: 0.95 };
     default:
-      return { color: KIND_COLOR[relation.kind], width: 2, opacity: 0.85 };
+      return { color: KIND_COLOR[relation.kind], width: STYLE.edge.energy, opacity: 0.85 };
   }
 }
 
@@ -126,7 +132,16 @@ function PortView({ port, at, onSelect }: { port: PortFact; at: Pt; onSelect?: (
       }
     >
       <title>{`interface — ${port.direction.toLowerCase()} · φ: ${port.protocol}`}</title>
-      <rect x={-16} y={-9} width={32} height={18} rx={9} fill="var(--bg-primary)" stroke="var(--lens-accent)" strokeWidth={1.75} />
+      <rect
+        x={-16}
+        y={-9}
+        width={32}
+        height={18}
+        rx={STYLE.portRx}
+        fill="var(--bg-primary)"
+        stroke="var(--lens-accent)"
+        strokeWidth={STYLE.portStrokeWidth}
+      />
       <text textAnchor="middle" dominantBaseline="central" fontSize={10} fill="var(--lens-accent)" className="pointer-events-none">
         {glyph}
       </text>

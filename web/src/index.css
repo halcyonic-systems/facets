@@ -144,15 +144,18 @@ body {
   font-family: var(--font-mono);
 }
 
-/* the canvas surface — a faint dot grid, no library, hand-rolled. The stage
-   itself breathes the lens: dots and a whisper of ground take --lens-accent,
-   so the whole field (not just chrome details) announces which ontology is
-   active. */
+/* the canvas surface — a faint grid, no library, hand-rolled. Ink, gap, wash,
+   and dots-vs-lines all come from the style spec (canvas/style.ts) via
+   --grid-* vars + data-grid, so the field's register swaps with the rest of
+   the canvas style. */
 .canvas-stage {
-  background-image: radial-gradient(
-    color-mix(in srgb, var(--lens-accent) 38%, var(--border)) 1px,
-    transparent 1px
-  );
-  background-size: 24px 24px;
-  background-color: color-mix(in srgb, var(--lens-accent) 4%, transparent);
+  --grid-gap: 24px;
+  --grid-ink: color-mix(in srgb, var(--lens-accent) 38%, var(--border));
+  background-image: radial-gradient(var(--grid-ink) 1px, transparent 1px);
+  background-size: var(--grid-gap) var(--grid-gap);
+}
+.canvas-stage[data-grid="lines"] {
+  background-image:
+    linear-gradient(to right, var(--grid-ink) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-ink) 1px, transparent 1px);
 }
