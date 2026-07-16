@@ -103,11 +103,15 @@ export function componentRing(components: Pt[]): Ring | null {
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
   const maxY = Math.max(...ys);
+  // √2 so the ellipse CIRCUMSCRIBES the node bounding box (passes through its
+  // corners) instead of being inscribed in it — otherwise corner nodes drift
+  // outside the membrane as the layout spreads. RING_PAD (> NODE_R) then keeps
+  // the node bodies, not just their centers, inside.
   return {
     cx: (minX + maxX) / 2,
     cy: (minY + maxY) / 2,
-    rx: (maxX - minX) / 2 + RING_PAD,
-    ry: (maxY - minY) / 2 + RING_PAD,
+    rx: ((maxX - minX) / 2) * Math.SQRT2 + RING_PAD,
+    ry: ((maxY - minY) / 2) * Math.SQRT2 + RING_PAD,
   };
 }
 
