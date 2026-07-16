@@ -127,7 +127,7 @@ export default function Canvas({
   return (
     <svg
       ref={svgRef}
-      className={`canvas-stage w-full h-full touch-none select-none${armed ? " cursor-crosshair" : ""}`}
+      className={`canvas-stage absolute inset-0 h-full w-full touch-none select-none${armed ? " cursor-crosshair" : ""}`}
       data-grid={STYLE.grid.mode}
       style={
         {
