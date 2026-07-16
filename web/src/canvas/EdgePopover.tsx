@@ -48,6 +48,18 @@ export function EdgePopover({
         borderRadius: "var(--radius-lg)",
       }}
     >
+      {/* Flow name — shared across lenses. A flow's name is its identity (and the
+          manifest key when tethered); an FSA transition IS a named trigger. */}
+      <div className="mb-2 flex items-center justify-between gap-2 text-xs">
+        <span style={{ color: "var(--text-secondary)" }}>name</span>
+        <input
+          value={relation.name}
+          onChange={(e) => onUpdateRelation({ ...relation, name: e.target.value })}
+          placeholder="e.g. referral"
+          className="w-32 rounded-md px-1.5 py-0.5 text-xs"
+          style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+        />
+      </div>
       {lens === "Klir" && (
         <KlirBody relation={relation} sigIndex={sigIndex} onUpdate={onUpdateRelation} onClose={onClose} />
       )}
