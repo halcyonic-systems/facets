@@ -278,9 +278,21 @@ function parseLensDescription(v: unknown): LensDescription {
 }
 
 function parseCanvasAnalysis(v: unknown): CanvasAnalysis {
-  const o = shape(v, "CanvasAnalysis", ["validation", "facts", "description"]);
+  const o = shape(v, "CanvasAnalysis", ["validation", "issue_targets", "facts", "description"]);
+  const validation = parseValidationResult(o.validation);
+  const issue_targets = arr(o.issue_targets, "CanvasAnalysis.issue_targets").map((t, i) => {
+    const tt = shape(t, `issue_targets[${i}]`, ["thing", "relation"]);
+    return {
+      thing: nullableNum(tt.thing, `issue_targets[${i}].thing`),
+      relation: nullableNum(tt.relation, `issue_targets[${i}].relation`),
+    };
+  });
+  if (issue_targets.length !== validation.issues.length) {
+    throw new Error("CanvasAnalysis: issue_targets must be index-parallel with validation.issues");
+  }
   return {
-    validation: parseValidationResult(o.validation),
+    validation,
+    issue_targets,
     facts: parseLensFacts(o.facts),
     description: parseLensDescription(o.description),
   };

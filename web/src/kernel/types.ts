@@ -276,10 +276,19 @@ export type LensDescription =
 /** analyze_canvas: the lens gate + facts + formal object, one deserialization.
  *  The atomic replacement for the validate_mode → lens_facts → describe waterfall
  *  the canvas ran on every model change; the kernel projects the model ONCE. */
+/** The canvas element a validation issue points at (both null = no subject). */
+export interface IssueTarget {
+  thing: number | null;
+  relation: number | null;
+}
+
 export interface CanvasAnalysis {
   /** validate_mode at the canvas lens's mode (Klir→Core / Bunge→Structural /
    *  Mobus→Operational). */
   validation: ValidationResult;
+  /** Index-parallel with validation.issues — kernel-resolved navigation
+   *  targets for the audit panel; never derived from location strings. */
+  issue_targets: IssueTarget[];
   facts: LensFacts;
   description: LensDescription;
 }

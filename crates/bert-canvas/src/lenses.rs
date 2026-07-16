@@ -26,7 +26,7 @@ use std::collections::{HashMap, HashSet};
 use bert_core::validate::{validate_mode, Severity, ValidationResult};
 use bert_core::{EdgeLocus, Id, Interaction, Mode};
 
-use crate::canvas::{project, project_with_map, CanvasModel, Kind, Lens, Role};
+use crate::canvas::{project_with_map, CanvasModel, Kind, Lens, Role};
 
 /// One canvas relation, read through the edge ladder.
 #[derive(Serialize, Clone, Debug)]
@@ -357,8 +357,21 @@ pub struct CanvasAnalysis {
     /// The lens gate at the active lens's mode (Klir→Core, Bunge→Structural,
     /// Mobus→Operational) — the same verdict `validate_mode` returns.
     pub validation: ValidationResult,
+    /// Canvas targets for `validation.issues`, index-parallel: issue `i` is
+    /// about `issue_targets[i]` (both fields None when the issue has no canvas
+    /// subject — e.g. the mode-level aggregate verdict). Resolved here from the
+    /// kernel's in-process `subject` via the projection's id maps, so the audit
+    /// panel navigates on a kernel fact, never a parsed location string.
+    pub issue_targets: Vec<IssueTarget>,
     pub facts: LensFacts,
     pub description: LensDescription,
+}
+
+/// The canvas element a validation issue points at, if any.
+#[derive(Serialize, Clone, Copy, Debug, Default)]
+pub struct IssueTarget {
+    pub thing: Option<u64>,
+    pub relation: Option<u64>,
 }
 
 /// Compute the lens gate, facts, and formal object together. The facts are
@@ -366,10 +379,28 @@ pub struct CanvasAnalysis {
 /// so `analyze` never projects the model more than the individual calls would.
 pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
     let facts = lens_facts(model);
-    let validation = validate_mode(&project(model), lens.mode());
+    let p = project_with_map(model);
+    let validation = validate_mode(&p.world, lens.mode());
+
+    // Kernel subject → canvas element, via the projection's id maps reversed.
+    let thing_of: HashMap<&Id, u64> = p.thing_ids.iter().map(|(k, v)| (v, *k)).collect();
+    let relation_of: HashMap<&Id, u64> = p.interaction_of.iter().map(|(k, v)| (v, *k)).collect();
+    let issue_targets: Vec<IssueTarget> = validation
+        .issues
+        .iter()
+        .map(|issue| match &issue.subject {
+            Some(id) => IssueTarget {
+                thing: thing_of.get(id).copied(),
+                relation: relation_of.get(id).copied(),
+            },
+            None => IssueTarget::default(),
+        })
+        .collect();
+
     let description = describe_from_facts(model, lens, &facts);
     CanvasAnalysis {
         validation,
+        issue_targets,
         facts,
         description,
     }

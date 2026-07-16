@@ -176,6 +176,16 @@ components carry `source_interface`/`sink_interface`. Effective I =
 `boundary_thing_ids ∪ authored_interface_thing_ids`; `describe`'s Mobus
 `b_interfaces` reports authored-flowless members with a "(flowless)" suffix.
 
+`CanvasAnalysis` gains one additive field (#51 slice 3, wire-compatible):
+```ts
+type CanvasAnalysis = { ..., issue_targets: { thing: number|null, relation: number|null }[] }
+```
+Index-parallel with `validation.issues`: kernel-resolved canvas navigation
+targets for the audit panel (from `ValidationIssue`'s in-process `subject`
+handle — `serde(skip)`, so `ValidationIssue`'s own wire shape is unchanged —
+mapped through the projection's id bridges). Both fields null when an issue
+has no canvas subject (e.g. the mode-level aggregate verdict).
+
 ### `lens_facts(canvas_json: string) → LensFacts`
 The two lens primitives, canvas-keyed — everything the three lens renderings
 read. Delegates to `bert_core` via `lenses::lens_facts`.

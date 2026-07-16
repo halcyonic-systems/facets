@@ -9,6 +9,12 @@
       }
     ]
   },
+  "issue_targets": [
+    {
+      "thing": null,
+      "relation": 12
+    }
+  ],
   "facts": {
     "boundary_thing_ids": [
       1

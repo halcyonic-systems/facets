@@ -18,9 +18,20 @@ pub struct ValidationIssue {
     pub location: String,
     pub message: String,
     pub suggestion: Option<String>,
+    /// The kernel entity this issue is about, when a check knows one — an
+    /// IN-PROCESS handle for callers holding id maps (bert-canvas resolves it
+    /// to canvas ids for click-to-navigate). `serde(skip)`: the wire shape is
+    /// unchanged; `location` remains the serialized coordinate.
+    #[serde(skip)]
+    pub subject: Option<Id>,
 }
 
 impl ValidationIssue {
+    fn with_subject(mut self, id: &Id) -> Self {
+        self.subject = Some(id.clone());
+        self
+    }
+
     fn error(
         location: impl Into<String>,
         message: impl Into<String>,
@@ -31,6 +42,7 @@ impl ValidationIssue {
             location: location.into(),
             message: message.into(),
             suggestion: suggestion.map(|s| s.to_string()),
+            subject: None,
         }
     }
 
@@ -44,6 +56,7 @@ impl ValidationIssue {
             location: location.into(),
             message: message.into(),
             suggestion: suggestion.map(|s| s.to_string()),
+            subject: None,
         }
     }
 }
@@ -153,7 +166,7 @@ fn check_self_loops(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
                     ix.info.name
                 ),
                 Some("Remove the self-loop; feedback as a first-class cycle is Cybernetic mode (not yet available)"),
-            ));
+            ).with_subject(&ix.info.id));
         }
     }
 }
@@ -335,7 +348,7 @@ fn check_interaction_references(
                 format!("interactions[{i}].source"),
                 format!("source '{src}' does not resolve to any known entity"),
                 Some("Check the source ID matches an existing system, source, or sink"),
-            ));
+            ).with_subject(&ix.info.id));
         }
         let snk = serialize_id(&ix.sink);
         if !known.contains(&snk) {
@@ -343,7 +356,7 @@ fn check_interaction_references(
                 format!("interactions[{i}].sink"),
                 format!("sink '{snk}' does not resolve to any known entity"),
                 Some("Check the sink ID matches an existing system, source, or sink"),
-            ));
+            ).with_subject(&ix.info.id));
         }
     }
 }

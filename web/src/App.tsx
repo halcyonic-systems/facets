@@ -14,6 +14,7 @@ import { type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
 import { RunPanel } from "./RunPanel";
 import { FormalPanel } from "./FormalPanel";
+import { AuditPanel } from "./AuditPanel";
 import { Banner, Card, Pill } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 
@@ -130,6 +131,7 @@ function Workspace() {
     }
   }, [canvasModel]);
   const verdict = analysis.ok?.validation ?? null;
+  const issueTargets = analysis.ok?.issue_targets ?? [];
   const facts = analysis.ok?.facts ?? null;
   const desc = analysis.ok?.description ?? null;
   const analysisError = analysis.error;
@@ -393,6 +395,18 @@ function Workspace() {
               </div>
             )}
           </Card>
+
+          {verdict && (
+            <AuditPanel
+              validation={verdict}
+              targets={issueTargets}
+              onNavigate={(t) => {
+                setBoundaryAnchor(null);
+                setSelectedThingId(t.thing);
+                setSelectedRelationId(t.relation);
+              }}
+            />
+          )}
 
           {desc && <FormalPanel desc={desc} />}
 
