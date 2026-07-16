@@ -105,7 +105,7 @@ const PORT_DIRS = ["Receives", "Exports", "Hybrid"] as const;
 const SEVERITIES = ["Error", "Warning"] as const;
 
 function parseThing(v: unknown, where: string): Thing {
-  const o = shape(v, where, ["id", "name", "x", "y", "role"], ["primitive"]);
+  const o = shape(v, where, ["id", "name", "x", "y", "role"], ["primitive", "interface"]);
   return {
     id: num(o.id, `${where}.id`),
     name: str(o.name, `${where}.name`),
@@ -113,6 +113,7 @@ function parseThing(v: unknown, where: string): Thing {
     y: num(o.y, `${where}.y`),
     role: oneOf(o.role, `${where}.role`, ROLES),
     ...(o.primitive === undefined ? {} : { primitive: str(o.primitive, `${where}.primitive`) as Thing["primitive"] }),
+    ...(o.interface === undefined ? {} : { interface: bool(o.interface, `${where}.interface`) }),
   };
 }
 
@@ -173,6 +174,7 @@ function parseLensFacts(v: unknown): LensFacts {
     "boundary_thing_ids",
     "environment_thing_ids",
     "orphan_env_thing_ids",
+    "authored_interface_thing_ids",
     "boundary_props",
     "aggregate",
     "edges",
@@ -188,6 +190,9 @@ function parseLensFacts(v: unknown): LensFacts {
     ),
     orphan_env_thing_ids: arr(o.orphan_env_thing_ids, "LensFacts.orphan_env_thing_ids").map((x, i) =>
       num(x, `orphan_env_thing_ids[${i}]`),
+    ),
+    authored_interface_thing_ids: arr(o.authored_interface_thing_ids, "LensFacts.authored_interface_thing_ids").map(
+      (x, i) => num(x, `authored_interface_thing_ids[${i}]`),
     ),
     boundary_props: {
       porosity: num(props.porosity, "boundary_props.porosity"),

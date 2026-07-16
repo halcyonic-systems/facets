@@ -44,6 +44,7 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
         y: 40.0,
         role,
         primitive: None,
+        interface: false,
     }
 }
 
@@ -68,7 +69,9 @@ fn sample() -> CanvasModel {
         lens: Lens::Mobus,
         things: vec![
             thing(1, "Pump", Role::Component),
-            thing(2, "Tank", Role::Component),
+            // Tank is interface-DESIGNATED with no exo flow: the golden proves
+            // the authored-flowless case (well-formed; Mobus-visible, Bunge-blind).
+            Thing { interface: true, ..thing(2, "Tank", Role::Component) },
             thing(3, "Grid", Role::Environment),
         ],
         relations: vec![

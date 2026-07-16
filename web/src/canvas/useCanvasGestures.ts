@@ -164,6 +164,18 @@ export function useCanvasGestures({
             ...model,
             things: model.things.map((t) => (t.id === thing.id ? { ...t, primitive } : t)),
           });
+          break;
+        }
+        case "interface": {
+          // Toggle membership in I — designation is a status, so a second
+          // stamp undoes it (unlike the primitive stamp, which replaces).
+          onModelChange({
+            ...model,
+            things: model.things.map((t) =>
+              t.id === thing.id ? { ...t, interface: !t.interface } : t,
+            ),
+          });
+          break;
         }
       }
       return; // stays armed for repeat stamping

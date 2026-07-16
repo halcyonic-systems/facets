@@ -90,6 +90,11 @@ pub struct LensFacts {
     /// that act on / are acted on by a component, and mere relations don't act.
     /// The face renders these as pending; it never re-derives the set.
     pub orphan_env_thing_ids: Vec<u64>,
+    /// Authored members of I (interface-designated components). Effective I =
+    /// boundary_thing_ids ∪ this set: the flow-crossing set stays kernel-derived;
+    /// authored-flowless members are Mobus-visible and Bunge-blind (no exo
+    /// coupling → outside derived ∂C — the documented enrichment fact).
+    pub authored_interface_thing_ids: Vec<u64>,
     pub boundary_props: BoundaryProps,
     /// Bunge Def 1.1 verdict, surfaced verbatim from `validate_mode(Structural)`:
     /// `true` = no bond between distinct components = an aggregate/heap.
@@ -149,6 +154,13 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
         .iter()
         .copied()
         .filter(|id| !bond_touched.contains(id))
+        .collect();
+
+    let authored_interface_thing_ids: Vec<u64> = model
+        .things
+        .iter()
+        .filter(|t| t.interface && t.role == Role::Component)
+        .map(|t| t.id)
         .collect();
 
     // The root system's boundary carries P (porosity, fuzziness).
@@ -262,6 +274,7 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
         boundary_thing_ids,
         environment_thing_ids,
         orphan_env_thing_ids,
+        authored_interface_thing_ids,
         boundary_props,
         aggregate,
         edges,
@@ -439,7 +452,19 @@ fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> Le
                 .iter()
                 .filter(|e| e.bond && e.locus == EdgeLocus::Exo)
                 .count(),
-            b_interfaces: facts.ports.iter().map(|p| name_of(p.component)).collect(),
+            // Effective I = flow-crossing ports ∪ authored designations
+            // (authored-flowless members get "(flowless)" — a real state, not
+            // an omission: no coverage constraint, Tuple.lean).
+            b_interfaces: {
+                let mut names: Vec<String> =
+                    facts.ports.iter().map(|p| name_of(p.component)).collect();
+                for id in &facts.authored_interface_thing_ids {
+                    if !facts.ports.iter().any(|p| p.component == *id) {
+                        names.push(format!("{} (flowless)", name_of(*id)));
+                    }
+                }
+                names
+            },
             porosity: facts.boundary_props.porosity,
             perceptive_fuzziness: facts.boundary_props.perceptive_fuzziness,
             t_note: "T: transforms — parametric by intent; bert-compose fills the slot".to_string(),
@@ -480,6 +505,7 @@ mod tests {
             y: 0.0,
             role,
             primitive: None,
+            interface: false,
         }
     }
     fn relation(id: u64, a: u64, b: u64, is_bond: bool) -> Relation {

@@ -6,21 +6,24 @@
       "name": "Pump",
       "x": 120.0,
       "y": 40.0,
-      "role": "Component"
+      "role": "Component",
+      "interface": false
     },
     {
       "id": 2,
       "name": "Tank",
       "x": 240.0,
       "y": 40.0,
-      "role": "Component"
+      "role": "Component",
+      "interface": true
     },
     {
       "id": 3,
       "name": "Grid",
       "x": 360.0,
       "y": 40.0,
-      "role": "Environment"
+      "role": "Environment",
+      "interface": false
     }
   ],
   "relations": [

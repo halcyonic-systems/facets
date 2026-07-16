@@ -26,6 +26,7 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
         y: 0.0,
         role,
         primitive: None,
+        interface: false,
     }
 }
 

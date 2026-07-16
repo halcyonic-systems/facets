@@ -17,6 +17,9 @@
       3
     ],
     "orphan_env_thing_ids": [],
+    "authored_interface_thing_ids": [
+      2
+    ],
     "boundary_props": {
       "porosity": 0.35,
       "perceptive_fuzziness": 0.2
@@ -89,7 +92,8 @@
     "milieu_note": "μ (milieu) is parametric/opaque — the one element with no cross-lens preimage (milieuOnly_bunge_empty)",
     "g": 1,
     "b_interfaces": [
-      "Pump"
+      "Pump",
+      "Tank (flowless)"
     ],
     "porosity": 0.35,
     "perceptive_fuzziness": 0.2,

@@ -11,7 +11,8 @@
   "milieu_note": "μ (milieu) is parametric/opaque — the one element with no cross-lens preimage (milieuOnly_bunge_empty)",
   "g": 1,
   "b_interfaces": [
-    "Pump"
+    "Pump",
+    "Tank (flowless)"
   ],
   "porosity": 0.35,
   "perceptive_fuzziness": 0.2,

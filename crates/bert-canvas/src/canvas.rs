@@ -17,8 +17,8 @@ use serde::{Deserialize, Serialize};
 use bert_core::validate::{validate_mode, ValidationIssue};
 use bert_core::{
     AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType, HcgsArchetype,
-    Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Mode, ProcessPrimitive,
-    Substance, SubstanceType, System, Transform2d, Vec2, WorldModel,
+    Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Interface, InterfaceType,
+    Mode, ProcessPrimitive, Substance, SubstanceType, System, Transform2d, Vec2, WorldModel,
 };
 
 const RADIUS: f32 = 34.0;
@@ -80,6 +80,12 @@ pub struct Thing {
     pub role: Role,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub primitive: Option<ProcessPrimitive>,
+    /// Authored interface designation — this component is a member of the root
+    /// membrane's I (I ⊆ C; a flowless interface is well-formed, Boundary.lean /
+    /// Tuple.lean: no coverage constraint from flows onto interfaces). Ignored
+    /// on env things (their internals are opaque, §4.3.3.2.2).
+    #[serde(default)]
+    pub interface: bool,
 }
 
 /// A drawn connection: `a → b`, a bond (or a mere relation), optionally typed.
@@ -237,6 +243,8 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
 
     let mut comp_idx: i64 = 0;
     let mut env_idx: i64 = 0;
+    // (systems index, thing id, name) per interface-designated component.
+    let mut designated: Vec<(usize, u64, &str)> = Vec::new();
     for t in &model.things {
         match t.role {
             Role::Component => {
@@ -253,6 +261,9 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     Some((t.x, t.y)),
                     t.primitive,
                 ));
+                if t.interface {
+                    designated.push((systems.len() - 1, t.id, &t.name));
+                }
                 id_map.insert(t.id, id);
             }
             Role::Environment => {
@@ -287,6 +298,65 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
         }
     }
 
+    // Authored interface designation (I ⊆ C): each designated component adds an
+    // Interface entry to the ROOT membrane and attaches to it via its own
+    // boundary.parent_interface (Mobus: an interface IS a subsystem r = (S, φ)).
+    // Flowless entries are well-formed — Tuple.lean carries no coverage
+    // constraint from flows onto interfaces; validate's orphan-interface check
+    // stays a Warning ("nothing flows"), never an Error.
+    let env_things: HashSet<u64> = model
+        .things
+        .iter()
+        .filter(|t| t.role == Role::Environment)
+        .map(|t| t.id)
+        .collect();
+    let mut iface_of: HashMap<u64, Id> = HashMap::new();
+    for (seq, (sys_idx, thing_id, name)) in designated.into_iter().enumerate() {
+        let iface_id = Id {
+            ty: IdType::Interface,
+            indices: vec![0, seq as i64],
+        };
+        let mut receives_from: Vec<Id> = Vec::new();
+        let mut exports_to: Vec<Id> = Vec::new();
+        let mut labels: Vec<String> = Vec::new();
+        for r in &bonds {
+            let (env, incoming) = if r.b == thing_id && env_things.contains(&r.a) {
+                (r.a, true)
+            } else if r.a == thing_id && env_things.contains(&r.b) {
+                (r.b, false)
+            } else {
+                continue;
+            };
+            let Some(env_kernel) = id_map.get(&env) else { continue };
+            if incoming {
+                receives_from.push(env_kernel.clone());
+            } else {
+                exports_to.push(env_kernel.clone());
+            }
+            let label = if r.name.trim().is_empty() { None } else { Some(r.name.trim().to_string()) };
+            if let Some(l) = label {
+                if !labels.contains(&l) {
+                    labels.push(l);
+                }
+            }
+        }
+        let ty = match (!receives_from.is_empty(), !exports_to.is_empty()) {
+            (true, false) => InterfaceType::Import,
+            (false, true) => InterfaceType::Export,
+            _ => InterfaceType::Hybrid, // both, or flowless (direction unbound)
+        };
+        systems[0].boundary.interfaces.push(Interface {
+            info: info(iface_id.clone(), 0, name),
+            protocol: labels.join(" · "),
+            ty,
+            exports_to,
+            receives_from,
+            angle: None,
+        });
+        systems[sys_idx].boundary.parent_interface = Some(iface_id.clone());
+        iface_of.insert(thing_id, iface_id);
+    }
+
     let mut interactions: Vec<Interaction> = Vec::new();
     let mut interaction_of: HashMap<u64, Id> = HashMap::new();
     for (k, r) in bonds.iter().enumerate() {
@@ -306,10 +376,16 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             },
             ty: InteractionType::Flow,
             usability: InteractionUsability::Resource,
+            // Crossing flows route through the designated component's interface
+            // (flow ⇒ interface — bipartite_implies_boundary_complete).
             source: src.clone(),
-            source_interface: None,
+            source_interface: (env_things.contains(&r.b))
+                .then(|| iface_of.get(&r.a).cloned())
+                .flatten(),
             sink: snk.clone(),
-            sink_interface: None,
+            sink_interface: (env_things.contains(&r.a))
+                .then(|| iface_of.get(&r.b).cloned())
+                .flatten(),
             amount: bert_core::rust_decimal::Decimal::ONE,
             unit: String::new(),
             parameters: vec![],
@@ -383,6 +459,9 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             y,
             role: Role::Component,
             primitive: s.agent.as_ref().and_then(|a| a.primitive),
+            // parent_interface is the designation's inverse: a level-1 system
+            // attached to a root-membrane interface IS a designated member of I.
+            interface: s.boundary.parent_interface.is_some(),
         });
     }
 
@@ -407,6 +486,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             y,
             role: Role::Environment,
             primitive: None,
+            interface: false,
         });
     }
 
@@ -483,6 +563,7 @@ mod tests {
             y: 0.0,
             role,
             primitive: None,
+            interface: false,
         }
     }
     fn bond(id: u64, a: u64, b: u64) -> Relation {

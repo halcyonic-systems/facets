@@ -80,7 +80,9 @@ export const LensRegistry: Record<Lens, LensViews> = {
  *  agent-hood (archetype designation, Mobus ch. 10–11 — agents are decision
  *  processes WITHIN C) is a future member. New designations are new registry
  *  entries, not new mechanisms. */
-export type Designation = { type: "primitive"; primitive: ProcessPrimitive };
+export type Designation =
+  | { type: "primitive"; primitive: ProcessPrimitive }
+  | { type: "interface" };
 
 export type PaletteTool =
   | { verb: "place"; id: string; label: string; tip: string; role: CanvasRole }
@@ -181,13 +183,22 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
     // Work processes are Economy-side content (ch. 10: agents are the decision
     // ovals INSIDE process ovals; agency on a primitive was a category error,
     // bert-compose circuit.rs). Agent designation is a future entry here.
-    designate: PRIMITIVES.map((p) => ({
+    designate: [
+      {
+        verb: "designate" as const,
+        id: "interface",
+        label: "interface",
+        tip: "designate a component into I (I ⊆ C, Tuple.lean; flowless is well-formed — no coverage constraint). Stamp again to undo.",
+        designation: { type: "interface" as const },
+      },
+      ...PRIMITIVES.map((p) => ({
       verb: "designate" as const,
       id: `primitive-${p}`,
       label: PRIMITIVE_BADGE[p],
       tip: `work process: ${p.toLowerCase()} — stamp onto a leaf component (Mobus's atomic process vocabulary)`,
       designation: { type: "primitive" as const, primitive: p },
-    })),
+      })),
+    ],
     connect: [
       {
         id: "flow",

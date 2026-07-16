@@ -80,6 +80,33 @@ export default function Canvas({
         })
       : [];
 
+  // Authored-flowless interfaces (kernel fact: authored ∖ flow-crossing) get a
+  // notch too — placed at the ring point toward the designated component itself
+  // (the membrane meets the component; no env object exists to aim at). The
+  // display attrs are presentation; membership in I is the kernel's.
+  const flowlessAt: { port: PortFact; at: Pt }[] =
+    ring && facts
+      ? facts.authored_interface_thing_ids
+          .filter((id) => !facts.ports.some((p) => p.component === id))
+          .flatMap((id) => {
+            const comp = thingById(model, id);
+            return comp
+              ? [
+                  {
+                    port: {
+                      component: id,
+                      env: -1,
+                      relation_ids: [],
+                      direction: "Hybrid" as const,
+                      protocol: "(flowless)",
+                    },
+                    at: ringPoint(ring, comp),
+                  },
+                ]
+              : [];
+          })
+      : [];
+
   return (
     <svg
       ref={svgRef}
@@ -203,6 +230,15 @@ export default function Canvas({
             at={at}
             onSelect={onSelectBoundary ? () => onSelectBoundary(at) : undefined}
           />
+        ))}
+        {flowlessAt.map(({ port, at }) => (
+          <g key={`authored-${port.component}`} opacity={0.6}>
+            <views.PortView
+              port={port}
+              at={at}
+              onSelect={onSelectBoundary ? () => onSelectBoundary(at) : undefined}
+            />
+          </g>
         ))}
 
         {draft && (

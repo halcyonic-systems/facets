@@ -164,6 +164,18 @@ type CanvasModel = { ..., boundary: { porosity: number, perceptive_fuzziness: nu
 Authored B properties for the root membrane; `project` carries them onto the
 root system's boundary (previously hardcoded 0.0) and `to_canvas` restores them.
 
+`Thing` gains one serde-defaulted field and `LensFacts` one additive list
+(#51 slice 3, wire-compatible):
+```ts
+type Thing = { ..., interface?: boolean }  // authored member of I (I ⊆ C; flowless well-formed)
+type LensFacts = { ..., authored_interface_thing_ids: number[] }
+```
+A designated component projects as an `Interface` entry on the ROOT membrane,
+attached via its own `boundary.parent_interface`; crossing flows at designated
+components carry `source_interface`/`sink_interface`. Effective I =
+`boundary_thing_ids ∪ authored_interface_thing_ids`; `describe`'s Mobus
+`b_interfaces` reports authored-flowless members with a "(flowless)" suffix.
+
 ### `lens_facts(canvas_json: string) → LensFacts`
 The two lens primitives, canvas-keyed — everything the three lens renderings
 read. Delegates to `bert_core` via `lenses::lens_facts`.

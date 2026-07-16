@@ -145,6 +145,8 @@ export interface Thing {
   y: number;
   role: CanvasRole;
   primitive?: ProcessPrimitive;
+  /** Authored interface designation (I ⊆ C; flowless well-formed). */
+  interface?: boolean;
 }
 
 export interface Relation {
@@ -220,6 +222,9 @@ export interface LensFacts {
   /** Env things no bond touches — project() drops these as orphan terminals;
    *  not yet in ℰ (Bunge Def 1.2 ii). Rendered pending, never re-derived. */
   orphan_env_thing_ids: number[];
+  /** Authored members of I. Effective I = boundary_thing_ids ∪ this set;
+   *  authored-flowless members are Mobus-visible and Bunge-blind. */
+  authored_interface_thing_ids: number[];
   boundary_props: BoundaryProps;
   /** Bunge Def 1.1 verdict, surfaced from validate_mode(Structural). */
   aggregate: boolean;
