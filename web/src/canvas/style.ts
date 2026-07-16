@@ -160,9 +160,12 @@ const S3: StyleSpec = {
   chipRx: 2,
 };
 
+// Blind pick 2026-07-15 (#53): Drafting Table won (ranked 1>2>3; rationale =
+// field recession — neutral grid, quiet dots). It is now the default register;
+// the others stay reachable for reference (?s=0 = the pre-#53 incumbent).
 function pick(): StyleSpec {
   const s = new URLSearchParams(window.location.search).get("s");
-  return s === "1" ? S1 : s === "2" ? S2 : s === "3" ? S3 : CURRENT;
+  return s === "0" ? CURRENT : s === "2" ? S2 : s === "3" ? S3 : S1;
 }
 
 export const STYLE: StyleSpec = pick();
