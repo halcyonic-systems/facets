@@ -68,6 +68,12 @@ function Workspace() {
   const [boundaryAnchor, setBoundaryAnchor] = useState<Pt | null>(null);
   const [armed, setArmed] = useState<PaletteTool | null>(null);
   const [canvasPan, setCanvasPan] = useState<Pt>({ x: 0, y: 0 });
+  const [canvasScale, setCanvasScale] = useState(1);
+  // World → screen inside the canvas container (popover anchoring under zoom).
+  const toScreen = (p: Pt): Pt => ({
+    x: canvasPan.x + p.x * canvasScale,
+    y: canvasPan.y + p.y * canvasScale,
+  });
   const [toast, setToast] = useState<string | null>(null);
 
   // Esc = disarm the rail tool, else clear selection — the only global key.
@@ -311,12 +317,13 @@ function Workspace() {
                 driven={drivenNames}
                 sim={simFrame}
                 onPanChange={setCanvasPan}
+                onScaleChange={setCanvasScale}
               />
               <PaletteRail lens={canvasModel.lens} armed={armed} onArm={setArmed} />
               {boundaryAnchor && (
                 <BoundaryPopover
                   boundary={canvasModel.boundary}
-                  anchor={{ x: canvasPan.x + boundaryAnchor.x, y: canvasPan.y + boundaryAnchor.y }}
+                  anchor={toScreen(boundaryAnchor)}
                   onUpdateBoundary={updateBoundary}
                   onClose={() => setBoundaryAnchor(null)}
                 />
@@ -325,7 +332,7 @@ function Workspace() {
                 <NodePopover
                   thing={selectedThing}
                   lens={canvasModel.lens}
-                  anchor={{ x: canvasPan.x + selectedThing.x, y: canvasPan.y + selectedThing.y }}
+                  anchor={toScreen({ x: selectedThing.x, y: selectedThing.y })}
                   onUpdateThing={updateThing}
                   onClose={() => setSelectedThingId(null)}
                 />
@@ -337,7 +344,7 @@ function Workspace() {
                   sigIndex={canvasModel.relations.findIndex((r) => r.id === selectedRelation.id)}
                   headers={csvHeaders}
                   manifest={manifest}
-                  anchor={{ x: canvasPan.x + popoverAnchor.x, y: canvasPan.y + popoverAnchor.y }}
+                  anchor={toScreen(popoverAnchor)}
                   onApplyManifest={applyDrive}
                   onUpdateRelation={updateRelation}
                   onClose={() => setSelectedRelationId(null)}

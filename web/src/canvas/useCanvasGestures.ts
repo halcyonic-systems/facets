@@ -24,6 +24,8 @@ interface DraftNode {
 
 export interface GestureState {
   pan: Pt;
+  /** View zoom — pure view state like pan; no verdict ever reads it. */
+  scale: number;
   panStart: { startClient: Pt; startPan: Pt } | null;
   dragThing: number | null;
   dragOffset: Pt;
@@ -41,6 +43,7 @@ type GestureAction =
   | { type: "panStart"; startClient: Pt }
   | { type: "panMove"; client: Pt }
   | { type: "panEnd" }
+  | { type: "zoom"; scale: number; pan: Pt }
   | { type: "dragStart"; thingId: number; offset: Pt; startClient: Pt }
   | { type: "dragMoved" }
   | { type: "dragEnd" }
@@ -53,6 +56,7 @@ type GestureAction =
 
 const INITIAL: GestureState = {
   pan: { x: 0, y: 0 },
+  scale: 1,
   panStart: null,
   dragThing: null,
   dragOffset: { x: 0, y: 0 },
@@ -76,6 +80,8 @@ function reducer(state: GestureState, action: GestureAction): GestureState {
     }
     case "panEnd":
       return { ...state, panStart: null };
+    case "zoom":
+      return { ...state, scale: action.scale, pan: action.pan };
     case "dragStart":
       return {
         ...state,
@@ -135,7 +141,30 @@ export function useCanvasGestures({
 
   function toWorld(e: { clientX: number; clientY: number }): Pt {
     const rect = svgRef.current!.getBoundingClientRect();
-    return { x: e.clientX - rect.left - state.pan.x, y: e.clientY - rect.top - state.pan.y };
+    return {
+      x: (e.clientX - rect.left - state.pan.x) / state.scale,
+      y: (e.clientY - rect.top - state.pan.y) / state.scale,
+    };
+  }
+
+  /** Wheel / trackpad-pinch zoom around the cursor: the world point under the
+   *  pointer stays fixed while the scale changes. Pure view state, like pan. */
+  function onStageWheel(e: WheelEvent) {
+    e.preventDefault();
+    const rect = svgRef.current!.getBoundingClientRect();
+    // Trackpad pinch arrives as ctrl+wheel with fine deltas; plain wheel zooms too.
+    const factor = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.002));
+    const next = Math.min(4, Math.max(0.25, state.scale * factor));
+    if (next === state.scale) return;
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    // Keep the cursor's world point stationary: pan' = c - (c - pan) * k'/k.
+    const k = next / state.scale;
+    dispatch({
+      type: "zoom",
+      scale: next,
+      pan: { x: cx - (cx - state.pan.x) * k, y: cy - (cy - state.pan.y) * k },
+    });
   }
 
   function hitTest(p: Pt, exclude?: number): Thing | undefined {
@@ -309,6 +338,7 @@ export function useCanvasGestures({
 
   return {
     state,
+    onStageWheel,
     onNodePointerDown,
     onHandlePointerDown,
     onStagePointerDown,

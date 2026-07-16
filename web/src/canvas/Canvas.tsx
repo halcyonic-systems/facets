@@ -32,6 +32,7 @@ interface Props {
   driven?: Set<string>;
   sim?: SimFrame | null;
   onPanChange?: (pan: Pt) => void;
+  onScaleChange?: (scale: number) => void;
 }
 
 export default function Canvas({
@@ -48,14 +49,29 @@ export default function Canvas({
   driven,
   sim,
   onPanChange,
+  onScaleChange,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const gestures = useCanvasGestures({ model, svgRef, onModelChange, onReject, armed, onSelectThing });
-  const { pan, connectFrom, connectPos, hoverTarget, draft } = gestures.state;
+  const { pan, scale, connectFrom, connectPos, hoverTarget, draft } = gestures.state;
 
   useEffect(() => {
     onPanChange?.(pan);
   }, [pan, onPanChange]);
+
+  useEffect(() => {
+    onScaleChange?.(scale);
+  }, [scale, onScaleChange]);
+
+  // Wheel zoom needs a NON-passive native listener (browsers default wheel to
+  // passive, which would ignore preventDefault and scroll the page instead).
+  const { onStageWheel } = gestures;
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    svg.addEventListener("wheel", onStageWheel, { passive: false });
+    return () => svg.removeEventListener("wheel", onStageWheel);
+  }, [onStageWheel]);
 
   const views = LensRegistry[lens];
   const containerBox = boundingBox(model.things);
@@ -129,7 +145,7 @@ export default function Canvas({
           <feDropShadow dx="0" dy="0" stdDeviation="2.2" floodColor="var(--accent)" floodOpacity="0.55" />
         </filter>
       </defs>
-      <g transform={`translate(${pan.x}, ${pan.y})`}>
+      <g transform={`translate(${pan.x}, ${pan.y}) scale(${scale})`}>
         {lens === "Klir" && containerBox && (
           <g>
             {/* the observer's distinction frame — a drawn distinction, NOT a
