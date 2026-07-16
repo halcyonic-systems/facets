@@ -58,7 +58,7 @@ export default function App() {
         <Workspace />
       ) : (
         <>
-          <MenuBar loaded={false} onOpen={() => {}} onImport={() => {}} onSave={() => {}} onExport={() => {}} canExport={false} />
+          <MenuBar loaded={false} onNew={() => {}} onOpen={() => {}} onImport={() => {}} onSave={() => {}} onExport={() => {}} canExport={false} />
           <div className="flex flex-1 items-center justify-center">
             <p className="text-sm" style={{ color: loadError ? "var(--verdict-error)" : "var(--text-muted)" }}>
               {loadError ? `Failed to load the wasm kernel: ${loadError}` : "loading kernel…"}
@@ -158,6 +158,22 @@ function Workspace() {
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
+  }
+
+  // File → New: a blank canvas to author a model from scratch (the #14 path — no
+  // demo bundle, so the run stays dark until tethered; structure/lens/formal/audit
+  // read the empty model). Boundary defaults are neutral, editable via the popover.
+  function newModel() {
+    setDemo(null);
+    setCanvasModel({ lens: "Mobus", things: [], relations: [], boundary: { porosity: 0, perceptive_fuzziness: 0 } });
+    setManifest({ model: "", data: "", t: 12, mapping: [] });
+    setResult(null);
+    setRunError(null);
+    setSelectedRelationId(null);
+    setSelectedThingId(null);
+    setBoundaryAnchor(null);
+    setArmed(null);
+    setGalleryOpen(false);
   }
 
   function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -307,6 +323,7 @@ function Workspace() {
     <>
       <MenuBar
         loaded={true}
+        onNew={newModel}
         onOpen={() => setGalleryOpen(true)}
         onImport={() => importInputRef.current?.click()}
         onSave={() => exportModel(".model")}
@@ -542,6 +559,7 @@ function Workspace() {
         <OpenDialog
           selected={demo}
           onPick={pick}
+          onNew={newModel}
           onClose={() => setGalleryOpen(false)}
           closable={canvasModel !== null}
         />
@@ -554,6 +572,7 @@ function Workspace() {
 // carries the working Open / Import / Save / Export seams.
 function MenuBar({
   loaded,
+  onNew,
   onOpen,
   onImport,
   onSave,
@@ -561,6 +580,7 @@ function MenuBar({
   canExport,
 }: {
   loaded: boolean;
+  onNew: () => void;
   onOpen: () => void;
   onImport: () => void;
   onSave: () => void;
@@ -622,6 +642,7 @@ function MenuBar({
                 borderRadius: "var(--radius-md)",
               }}
             >
+              {item("New", onNew)}
               {item("Open…", onOpen)}
               {item("Import…", onImport)}
               <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
@@ -701,11 +722,13 @@ function PaletteDock({
 function OpenDialog({
   selected,
   onPick,
+  onNew,
   onClose,
   closable,
 }: {
   selected: Demo | null;
   onPick: (d: Demo) => void;
+  onNew: () => void;
   onClose: () => void;
   closable: boolean;
 }) {
@@ -736,6 +759,18 @@ function OpenDialog({
           )}
         </div>
         <DemoGallery selected={selected} onPick={onPick} />
+        <button
+          onClick={onNew}
+          className="mt-3 w-full p-3 text-left text-sm transition-colors"
+          style={{
+            background: "transparent",
+            border: "1px dashed var(--border)",
+            borderRadius: "var(--radius-card)",
+          }}
+        >
+          <span style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>Start blank</span>
+          <span className="ml-2" style={{ color: "var(--text-muted)" }}>— author a new model from scratch</span>
+        </button>
       </div>
     </div>
   );
