@@ -1,0 +1,217 @@
+// The inspector dock — the workbench's right-edge instrument panel. The three
+// analysis faces (Run / Formal / Audit) share one docked column and show one at
+// a time behind a tab strip, so the canvas keeps the viewport while the active
+// reading sits beside it. Placement only: each tab hosts the existing panel
+// unchanged (same props, same kernel-fed data). The dock decides nothing — it
+// arranges. Frost chrome, lens-tinted active tab (rides the --lens-* seam).
+import { useState } from "react";
+import type { IssueTarget, LensDescription, RunResultRich, ValidationResult } from "./kernel/types";
+import { RunPanel } from "./RunPanel";
+import { FormalPanel } from "./FormalPanel";
+import { AuditPanel } from "./AuditPanel";
+import { KernelErrorBoundary } from "./KernelErrorBoundary";
+import { Card } from "./ui";
+
+type Tab = "run" | "formal" | "audit";
+
+export function InspectorDock({
+  result,
+  runError,
+  desc,
+  verdict,
+  issueTargets,
+  analysisError,
+  onNavigate,
+  resetKeys,
+}: {
+  result: RunResultRich | null;
+  runError: string | null;
+  desc: LensDescription | null;
+  verdict: ValidationResult | null;
+  issueTargets: IssueTarget[];
+  analysisError: string | null;
+  onNavigate: (target: IssueTarget) => void;
+  resetKeys: unknown[];
+}) {
+  const [tab, setTab] = useState<Tab>("run");
+  const [collapsed, setCollapsed] = useState(false);
+  const issueCount = verdict?.issues.length ?? 0;
+
+  if (collapsed) {
+    return (
+      <div
+        className="flex w-8 flex-col items-center gap-3 border-l py-2"
+        style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
+      >
+        <button
+          onClick={() => setCollapsed(false)}
+          title="Show inspector"
+          className="text-xs"
+          style={{ color: "var(--text-muted)" }}
+        >
+          ◂
+        </button>
+        <span
+          className="text-[10px] font-semibold uppercase tracking-wide"
+          style={{ color: "var(--text-muted)", writingMode: "vertical-rl" }}
+        >
+          inspector
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="flex w-96 shrink-0 flex-col border-l"
+      style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
+    >
+      {/* Tab strip — the instrument's face selector. The active tab carries the
+          lens accent (underline + text), the rest stay quiet. */}
+      <div
+        className="flex items-stretch border-b"
+        style={{ borderColor: "var(--hairline)" }}
+      >
+        <TabButton label="Run" active={tab === "run"} onClick={() => setTab("run")} />
+        <TabButton label="Formal" active={tab === "formal"} onClick={() => setTab("formal")} />
+        <TabButton
+          label="Audit"
+          active={tab === "audit"}
+          onClick={() => setTab("audit")}
+          badge={issueCount > 0 ? issueCount : undefined}
+        />
+        <button
+          onClick={() => setCollapsed(true)}
+          title="Collapse inspector"
+          className="ml-auto px-3 text-xs"
+          style={{ color: "var(--text-muted)" }}
+        >
+          ▸
+        </button>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        <KernelErrorBoundary resetKeys={resetKeys}>
+          {tab === "run" && <RunTab result={result} runError={runError} />}
+          {tab === "formal" && <FormalTab desc={desc} analysisError={analysisError} />}
+          {tab === "audit" && (
+            <AuditTab
+              verdict={verdict}
+              issueTargets={issueTargets}
+              analysisError={analysisError}
+              onNavigate={onNavigate}
+            />
+          )}
+        </KernelErrorBoundary>
+      </div>
+    </div>
+  );
+}
+
+function TabButton({
+  label,
+  active,
+  onClick,
+  badge,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  badge?: number;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide transition-colors"
+      style={{
+        color: active ? "var(--text-primary)" : "var(--text-muted)",
+        borderBottom: `2px solid ${active ? "var(--lens-accent)" : "transparent"}`,
+        marginBottom: "-1px",
+        transition: "var(--transition-base)",
+      }}
+    >
+      {label}
+      {badge !== undefined && (
+        <span
+          className="inline-flex min-w-[1.1rem] items-center justify-center rounded-full px-1 text-[10px] font-medium tabular"
+          style={{ background: "var(--verdict-warning)", color: "#fff" }}
+        >
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// The empty / waiting state for a tab whose kernel output isn't there yet.
+function Placeholder({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="px-1 py-6 text-sm" style={{ color: "var(--text-muted)" }}>
+      {children}
+    </p>
+  );
+}
+
+function RunTab({ result, runError }: { result: RunResultRich | null; runError: string | null }) {
+  if (runError) {
+    return (
+      <Card title="Result" source="bert-compose · wasm">
+        <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
+          {runError}
+        </p>
+      </Card>
+    );
+  }
+  if (result) return <RunPanel result={result} />;
+  return (
+    <Placeholder>
+      Run a demo bundle (model + CSV + mapping) to see the forced simulation here.
+    </Placeholder>
+  );
+}
+
+function FormalTab({ desc, analysisError }: { desc: LensDescription | null; analysisError: string | null }) {
+  if (analysisError) return <RejectedCard message={analysisError} />;
+  if (desc) return <FormalPanel desc={desc} />;
+  return <Placeholder>Open or import a model to see its formal object in the active lens.</Placeholder>;
+}
+
+function AuditTab({
+  verdict,
+  issueTargets,
+  analysisError,
+  onNavigate,
+}: {
+  verdict: ValidationResult | null;
+  issueTargets: IssueTarget[];
+  analysisError: string | null;
+  onNavigate: (target: IssueTarget) => void;
+}) {
+  if (analysisError) return <RejectedCard message={analysisError} />;
+  if (!verdict) return <Placeholder>Open or import a model to audit it against the kernel.</Placeholder>;
+  if (verdict.issues.length === 0) {
+    return (
+      <Card title="Audit" source="bert-core · wasm">
+        <p className="text-sm" style={{ color: "var(--verdict-ok)" }}>
+          ✓ No issues — the kernel validates this model.
+        </p>
+      </Card>
+    );
+  }
+  return <AuditPanel validation={verdict} targets={issueTargets} onNavigate={onNavigate} />;
+}
+
+// The kernel-rejected notice, shared by the Formal and Audit tabs (both read the
+// same projection, so a rejection blanks both).
+function RejectedCard({ message }: { message: string }) {
+  return (
+    <Card title="Kernel rejected this state" source="bert-core · wasm">
+      <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
+        {message}
+      </p>
+      <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
+        The canvas still shows the structure. Switch lens, undo the last edit, or load another demo to clear this.
+      </p>
+    </Card>
+  );
+}
