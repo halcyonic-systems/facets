@@ -103,6 +103,8 @@ So the design principle to bank: **good analysis = kernel facts + domain model +
 
 ## 7. What already exists (asset inventory)
 
+> **Amended 2026-07-17 (analysis rung shipped; see `operations/sessions/2026-07-17/references/{llm-analysis-rung-plan,wp4-proof-case-results}.md`).** Four claims below/above are now stale: (1) the **`Kind`↔`SubstanceType` translation is NOT missing** — both directions exist (`canvas.rs:64` `kind_to_substance`, `:417` `substance_to_kind`); the "MISSING" row is wrong. (2) **`~/Desktop/bill.json` is the CORRECTED model** (no duplicate edge; dead-ends legitimate) — the four hand-caught errors are already fixed on disk, so §6/§12's framing of it as broken is stale; fixtures reconstruct the broken variant. (3) The **"GSR/LLM call inside bert-lenses web = MISSING" row is now satisfied** — read-only analysis shipped via `web/src/gsr.ts` → GSR `/analyze`. (4) **#66 landed** (dead-end / duplicate-edge / reachability checks, Warning-severity).
+
 | Asset | Path | Status |
 |---|---|---|
 | GSR `/extract`, `/generate`, `/generate-from-description` | `general-systems-reasoner/serve.py` | **LIVE**, deployed (`reasoner.halcyonic.systems`); routing centralized in `run_extraction_llm` (Anthropic Haiku ↔ local Ollama gemma4) |

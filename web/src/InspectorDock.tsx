@@ -5,14 +5,15 @@
 // unchanged (same props, same kernel-fed data). The dock decides nothing — it
 // arranges. Frost chrome, lens-tinted active tab (rides the --lens-* seam).
 import { useState } from "react";
-import type { IssueTarget, LensDescription, RunResultRich, ValidationResult } from "./kernel/types";
+import type { CanvasModel, IssueTarget, LensDescription, RunResultRich, ValidationResult } from "./kernel/types";
 import { RunPanel } from "./RunPanel";
 import { FormalPanel } from "./FormalPanel";
 import { AuditPanel } from "./AuditPanel";
+import { AnalystPanel } from "./AnalystPanel";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 import { Card } from "./ui";
 
-type Tab = "run" | "formal" | "audit";
+type Tab = "run" | "formal" | "audit" | "analyst";
 
 export function InspectorDock({
   result,
@@ -21,6 +22,7 @@ export function InspectorDock({
   verdict,
   issueTargets,
   analysisError,
+  canvasModel,
   onNavigate,
   resetKeys,
 }: {
@@ -30,6 +32,7 @@ export function InspectorDock({
   verdict: ValidationResult | null;
   issueTargets: IssueTarget[];
   analysisError: string | null;
+  canvasModel: CanvasModel | null;
   onNavigate: (target: IssueTarget) => void;
   resetKeys: unknown[];
 }) {
@@ -80,6 +83,7 @@ export function InspectorDock({
           onClick={() => setTab("audit")}
           badge={issueCount > 0 ? issueCount : undefined}
         />
+        <TabButton label="Analyst" active={tab === "analyst"} onClick={() => setTab("analyst")} />
         <button
           onClick={() => setCollapsed(true)}
           title="Collapse inspector"
@@ -102,6 +106,12 @@ export function InspectorDock({
               onNavigate={onNavigate}
             />
           )}
+          {tab === "analyst" &&
+            (canvasModel ? (
+              <AnalystPanel canvasModel={canvasModel} onNavigate={onNavigate} />
+            ) : (
+              <Placeholder>Open or import a model to analyze it.</Placeholder>
+            ))}
         </KernelErrorBoundary>
       </div>
     </div>

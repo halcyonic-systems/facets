@@ -1,0 +1,57 @@
+## Lens
+Mobus — 8-tuple system ⟨C,N,E,G,B,T,H,Δt⟩
+
+## Formal object (kernel: describe)
+8-tuple ⟨C,N,E,G,B,T,H,Δt⟩:
+C=[Introduced, In Committee, Reported, On Floor, Passed origin chamber, Passed second chamber, Conference committee, Enrolled/presented to President, Vetoed, Law, died in committee, fail, dead, pocket-vetoed] (n=15)
+E objects=[]
+μ (milieu) is parametric/opaque — the one element with no cross-lens preimage (milieuOnly_bunge_empty)
+G=0
+B interfaces=[], porosity=0, perceptive_fuzziness=0
+T: transforms — parametric by intent; bert-compose fills the slot
+H: history (accumulated state conditioning T) — NOT hierarchy
+Δt: time scale — a parametric field on the system
+self_loop_conflicts=[]
+
+## Elements
+Things:
+- [thing:1] "Introduced" (Component, boundary=n, interface=n)
+- [thing:2] "In Committee" (Component, boundary=n, interface=n)
+- [thing:3] "Reported" (Component, boundary=n, interface=n)
+- [thing:4] "On Floor" (Component, boundary=n, interface=n)
+- [thing:5] "Passed origin chamber" (Component, boundary=n, interface=n)
+- [thing:6] "Passed second chamber" (Component, boundary=n, interface=n)
+- [thing:7] "Conference committee" (Component, boundary=n, interface=n)
+- [thing:8] "Enrolled/presented to President" (Component, boundary=n, interface=n)
+- [thing:9] "Vetoed" (Component, boundary=n, interface=n)
+- [thing:10] "Law" (Component, boundary=n, interface=n)
+- [thing:11] "died in committee" (Component, boundary=n, interface=n)
+- [thing:12] "fail" (Component, boundary=n, interface=n)
+- [thing:13] "dead" (Component, boundary=n, interface=n)
+- [thing:14] "pocket-vetoed" (Component, boundary=n, interface=n)
+Relations:
+- [relation:15] "referral": [thing:1] -> [thing:2] (bond=y, kind=Energy, locus=Endo, self_loop=n)
+- [relation:16] "report out": [thing:2] -> [thing:3] (bond=y, kind=Energy, locus=Endo, self_loop=n)
+- [relation:17] "discharge petition": [thing:2] -> [thing:4] (bond=y, kind=Energy, locus=Endo, self_loop=n)
+- [relation:18] "scheduled": [thing:3] -> [thing:4] (bond=y, kind=Energy, locus=Endo, self_loop=n)
+- [relation:19] "passage vote": [thing:4] -> [thing:5] (bond=y, kind=Energy, locus=Endo, self_loop=n)
+- [relation:20] "cross-referral": [thing:5] -> [thing:6] (bond=y, kind=Energy, locus=Endo, self_loop=n)
+- [relation:21] "if amended": [thing:6] -> [thing:7] (bond=y, kind=Energy, locus=Endo, self_loop=n)
+- [relation:22] "enrolled": [thing:7] -> [thing:8] (bond=y, kind=Energy, locus=Endo, self_loop=n)
+- [relation:23] "veto": [thing:8] -> [thing:10] (bond=y, kind=Energy, locus=Endo, self_loop=n)
+- [relation:24] "signature": [thing:8] -> [thing:9] (bond=y, kind=Energy, locus=Endo, self_loop=n)
+- [relation:25] "": [thing:4] -> [thing:12] (bond=y, kind=Energy, locus=Endo, self_loop=n)
+- [relation:26] "no action": [thing:2] -> [thing:11] (bond=y, kind=Energy, locus=Endo, self_loop=n)
+- [relation:27] "pocket": [thing:8] -> [thing:14] (bond=y, kind=Energy, locus=Endo, self_loop=n)
+- [relation:28] "fail": [thing:7] -> [thing:13] (bond=y, kind=Energy, locus=Endo, self_loop=n)
+- [relation:29] "scheduled (dup)": [thing:3] -> [thing:4] (bond=y, kind=Energy, locus=Endo, self_loop=n)
+Ports (Mobus lens only):
+
+## Kernel verdicts (analysis.validation)
+- [issue:0] Warning at interactions[14]: duplicate edge C0.2→C0.3 (same type as interactions[3]) — Suggestion: Remove the duplicate, or distinguish it by substance or usability (target: [relation:29])
+- [issue:1] Warning at systems[9]: 'Vetoed' has no outgoing transitions — intended as a terminal/absorbing state? — Suggestion: If it should continue, add an outgoing flow; if it is an endpoint, this is fine (target: [thing:9])
+- [issue:2] Warning at systems[10]: 'Law' has no outgoing transitions — intended as a terminal/absorbing state? — Suggestion: If it should continue, add an outgoing flow; if it is an endpoint, this is fine (target: [thing:10])
+- [issue:3] Warning at systems[11]: 'died in committee' has no outgoing transitions — intended as a terminal/absorbing state? — Suggestion: If it should continue, add an outgoing flow; if it is an endpoint, this is fine (target: [thing:11])
+- [issue:4] Warning at systems[12]: 'fail' has no outgoing transitions — intended as a terminal/absorbing state? — Suggestion: If it should continue, add an outgoing flow; if it is an endpoint, this is fine (target: [thing:12])
+- [issue:5] Warning at systems[13]: 'dead' has no outgoing transitions — intended as a terminal/absorbing state? — Suggestion: If it should continue, add an outgoing flow; if it is an endpoint, this is fine (target: [thing:13])
+- [issue:6] Warning at systems[14]: 'pocket-vetoed' has no outgoing transitions — intended as a terminal/absorbing state? — Suggestion: If it should continue, add an outgoing flow; if it is an endpoint, this is fine (target: [thing:14])

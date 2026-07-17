@@ -93,6 +93,7 @@ pub fn validate(model: &WorldModel) -> ValidationResult {
     check_orphan_interfaces(model, &mut issues);
     check_parent_references(model, &known_ids, &mut issues);
     check_duplicate_ids(model, &mut issues);
+    check_duplicate_edges(model, &mut issues);
 
     check_environment_id(model, &mut issues);
     check_source_sink_type_consistency(model, &mut issues);
@@ -128,9 +129,15 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
     match target {
         Mode::Core => {}
         Mode::Structural => check_bond(model, issues),
-        Mode::Operational => check_self_loops(model, issues),
+        Mode::Operational => {
+            check_self_loops(model, issues);
+            check_dead_ends(model, issues);
+            check_reachability(model, issues);
+        }
         Mode::Full => {
             check_self_loops(model, issues);
+            check_dead_ends(model, issues);
+            check_reachability(model, issues);
             check_dynamical_face(model, issues);
         }
     }
@@ -192,6 +199,142 @@ fn check_dynamical_face(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
              history, or time constant",
             Some("Populate the dynamical slots, or view this model in Operational mode"),
         ));
+    }
+}
+
+/// Name a system relatum for a message, falling back to its id when unnamed.
+fn system_name(model: &WorldModel, id_str: &str) -> String {
+    model
+        .systems
+        .iter()
+        .find(|s| serialize_id(&s.info.id) == id_str)
+        .map(|s| s.info.name.clone())
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| id_str.to_string())
+}
+
+/// Universal Warning: two interactions with the same source, sink, and type are
+/// parallel duplicates. Distinct from `check_duplicate_ids` (repeated *ids*) — a
+/// genuine second channel differs in substance or usability, so identical edges
+/// are almost always an accidental double-draw. Warned, never blocked.
+fn check_duplicate_edges(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
+    let mut seen: HashMap<(String, String, InteractionType), String> = HashMap::new();
+    for (i, ix) in model.interactions.iter().enumerate() {
+        let key = (serialize_id(&ix.source), serialize_id(&ix.sink), ix.ty);
+        let loc = format!("interactions[{i}]");
+        match seen.get(&key) {
+            Some(prior) => issues.push(
+                ValidationIssue::warning(
+                    &loc,
+                    format!(
+                        "duplicate edge {}→{} (same type as {prior})",
+                        key.0, key.1
+                    ),
+                    Some("Remove the duplicate, or distinguish it by substance or usability"),
+                )
+                .with_subject(&ix.info.id),
+            ),
+            None => {
+                seen.insert(key, loc);
+            }
+        }
+    }
+}
+
+/// Operational/Full observation: a node with incoming flows but none outgoing.
+/// As often a legitimate terminal/absorbing state as a modeling gap, so it is a
+/// Warning phrased as a question — the kernel names it and leaves intent to a
+/// human (or an LLM critic); it never rejects an absorbing state.
+fn check_dead_ends(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
+    let mut has_out: HashSet<String> = HashSet::new();
+    let mut has_in: HashSet<String> = HashSet::new();
+    for ix in &model.interactions {
+        if is_system_relatum(&ix.source) {
+            has_out.insert(serialize_id(&ix.source));
+        }
+        if is_system_relatum(&ix.sink) {
+            has_in.insert(serialize_id(&ix.sink));
+        }
+    }
+    for (i, system) in model.systems.iter().enumerate() {
+        let id_str = serialize_id(&system.info.id);
+        if has_in.contains(&id_str) && !has_out.contains(&id_str) {
+            issues.push(
+                ValidationIssue::warning(
+                    format!("systems[{i}]"),
+                    format!(
+                        "'{}' has no outgoing transitions — intended as a terminal/absorbing state?",
+                        system_name(model, &id_str)
+                    ),
+                    Some("If it should continue, add an outgoing flow; if it is an endpoint, this is fine"),
+                )
+                .with_subject(&system.info.id),
+            );
+        }
+    }
+}
+
+/// Operational/Full observation: nodes not reachable from any entry. An entry is
+/// a graph node with no incoming flow (a natural start) or one fed by an external
+/// Source; anything reachable only through a cycle with no entry is flagged. A
+/// Warning — an unreachable island is usually a wiring gap, but the kernel
+/// surfaces it for judgment rather than rejecting the model.
+fn check_reachability(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
+    let mut adj: HashMap<String, Vec<String>> = HashMap::new();
+    let mut nodes: HashSet<String> = HashSet::new();
+    let mut has_in: HashSet<String> = HashSet::new();
+    let mut source_fed: HashSet<String> = HashSet::new();
+    for ix in &model.interactions {
+        let src = serialize_id(&ix.source);
+        let snk = serialize_id(&ix.sink);
+        let src_node = is_system_relatum(&ix.source);
+        let snk_node = is_system_relatum(&ix.sink);
+        if src_node {
+            nodes.insert(src.clone());
+        }
+        if snk_node {
+            nodes.insert(snk.clone());
+            has_in.insert(snk.clone());
+            if ix.source.ty == IdType::Source {
+                source_fed.insert(snk.clone());
+            }
+        }
+        if src_node && snk_node {
+            adj.entry(src).or_default().push(snk);
+        }
+    }
+
+    let mut stack: Vec<String> = nodes
+        .iter()
+        .filter(|n| !has_in.contains(*n) || source_fed.contains(*n))
+        .cloned()
+        .collect();
+    let mut seen: HashSet<String> = stack.iter().cloned().collect();
+    while let Some(n) = stack.pop() {
+        if let Some(next) = adj.get(&n) {
+            for m in next {
+                if seen.insert(m.clone()) {
+                    stack.push(m.clone());
+                }
+            }
+        }
+    }
+
+    for (i, system) in model.systems.iter().enumerate() {
+        let id_str = serialize_id(&system.info.id);
+        if nodes.contains(&id_str) && !seen.contains(&id_str) {
+            issues.push(
+                ValidationIssue::warning(
+                    format!("systems[{i}]"),
+                    format!(
+                        "'{}' is not reachable from any entry node",
+                        system_name(model, &id_str)
+                    ),
+                    Some("Connect it to the flow graph, or check whether it sits in a disconnected cycle"),
+                )
+                .with_subject(&system.info.id),
+            );
+        }
     }
 }
 
@@ -1783,5 +1926,207 @@ mod tests {
         m.interactions
             .push(flow(0, "bond", sys_id(vec![0, 0]), sys_id(vec![0, 1])));
         assert!(m.boundary_components().is_empty());
+    }
+
+    // ---- Graph checks: duplicate-edge, dead-end, reachability (#66) -------
+
+    /// An FSA-shaped model: S0 root with one atomic subsystem C0.i per state and
+    /// one directed flow per `(src, sink)` index pair. Mirrors the bill.json shape.
+    fn fsa_model(states: &[&str], edges: &[(i64, i64)]) -> WorldModel {
+        let mut m = minimal_model();
+        let s0 = m.systems[0].info.id.clone();
+        for (i, name) in states.iter().enumerate() {
+            m.systems.push(component(vec![0, i as i64], name, s0.clone()));
+        }
+        for (k, &(src, sink)) in edges.iter().enumerate() {
+            m.interactions
+                .push(flow(k as i64, "", sys_id(vec![0, src]), sys_id(vec![0, sink])));
+        }
+        m
+    }
+
+    /// The corrected "how a bill becomes law" FSA (the graph of ~/Desktop/bill.json):
+    /// 14 states, 17 transitions, 5 legitimate absorbing states (Law, died in
+    /// committee, fail, dead, pocket-vetoed).
+    fn bill_corrected() -> WorldModel {
+        fsa_model(
+            &[
+                "Introduced",                    // 0
+                "In Committee",                  // 1
+                "Reported",                      // 2
+                "On Floor",                      // 3
+                "Passed origin chamber",         // 4
+                "Passed second chamber",         // 5
+                "Conference committee",          // 6
+                "Enrolled/presented to President", // 7
+                "Vetoed",                        // 8
+                "Law",                           // 9
+                "died in committee",             // 10
+                "fail",                          // 11
+                "dead",                          // 12
+                "pocket-vetoed",                 // 13
+            ],
+            &[
+                (0, 1),
+                (1, 2),
+                (1, 3),
+                (2, 3),
+                (3, 4),
+                (4, 5),
+                (5, 6),
+                (6, 7),
+                (7, 9),
+                (7, 8),
+                (3, 11),
+                (1, 10),
+                (7, 13),
+                (6, 12),
+                (8, 9),
+                (8, 12),
+                (5, 7),
+            ],
+        )
+    }
+
+    fn dead_end_msgs(r: &ValidationResult) -> Vec<&str> {
+        r.issues
+            .iter()
+            .filter(|i| i.message.contains("terminal/absorbing"))
+            .map(|i| i.message.as_str())
+            .collect()
+    }
+
+    #[test]
+    fn corrected_bill_surfaces_five_absorbing_states_as_warnings() {
+        let m = bill_corrected();
+        let r = validate_mode(&m, Mode::Operational);
+        assert!(!r.has_errors(), "the corrected FSA is legal: {:#?}", r.issues);
+        assert!(
+            !r.issues.iter().any(|i| i.message.contains("duplicate edge")),
+            "no parallel edges in the corrected FSA"
+        );
+        let dead = dead_end_msgs(&r);
+        assert_eq!(dead.len(), 5, "five absorbing states are surfaced: {dead:#?}");
+        for name in ["Law", "died in committee", "fail", "dead", "pocket-vetoed"] {
+            assert!(
+                dead.iter().any(|m| m.contains(name)),
+                "'{name}' should surface as a dead-end question"
+            );
+        }
+        // The container S0 (no incoming, no outgoing) is not a dead-end.
+        assert!(
+            !dead.iter().any(|m| m.contains("System")),
+            "the root container is not an absorbing state"
+        );
+    }
+
+    #[test]
+    fn broken_bill_fires_duplicate_edge_and_vetoed_dead_end() {
+        // Break the corrected FSA two ways: strip Vetoed's outgoing transitions
+        // (8→9, 8→12) so it dead-ends, and double the referral edge (0→1).
+        let mut m = bill_corrected();
+        m.interactions
+            .retain(|ix| ix.source != sys_id(vec![0, 8]));
+        m.interactions
+            .push(flow(99, "", sys_id(vec![0, 0]), sys_id(vec![0, 1])));
+
+        let r = validate_mode(&m, Mode::Operational);
+        assert!(
+            r.issues.iter().any(|i| i.message.contains("duplicate edge")),
+            "the doubled referral edge is flagged: {:#?}",
+            r.issues
+        );
+        assert!(
+            dead_end_msgs(&r).iter().any(|msg| msg.contains("Vetoed")),
+            "Vetoed with no outgoing transitions is a dead-end: {:#?}",
+            r.issues
+        );
+    }
+
+    #[test]
+    fn duplicate_edge_is_universal_warning() {
+        // Two identical Material flows A→B; a Force edge A→B is a distinct type.
+        let mut m = two_component_model();
+        m.interactions
+            .push(flow(0, "a", sys_id(vec![0, 0]), sys_id(vec![0, 1])));
+        m.interactions
+            .push(flow(1, "b", sys_id(vec![0, 0]), sys_id(vec![0, 1])));
+        let r = validate(&m);
+        assert!(!r.has_errors());
+        assert_eq!(
+            r.issues
+                .iter()
+                .filter(|i| i.message.contains("duplicate edge"))
+                .count(),
+            1,
+            "one duplicate reported for the second identical edge: {:#?}",
+            r.issues
+        );
+    }
+
+    #[test]
+    fn distinct_edge_type_is_not_a_duplicate() {
+        let mut m = two_component_model();
+        m.interactions
+            .push(flow(0, "a", sys_id(vec![0, 0]), sys_id(vec![0, 1])));
+        let mut force = flow(1, "b", sys_id(vec![0, 0]), sys_id(vec![0, 1]));
+        force.ty = InteractionType::Force;
+        m.interactions.push(force);
+        assert!(
+            !validate(&m)
+                .issues
+                .iter()
+                .any(|i| i.message.contains("duplicate edge")),
+            "same endpoints but different type is not a duplicate edge"
+        );
+    }
+
+    #[test]
+    fn unreachable_cycle_warns() {
+        // Entry A→B, plus a disconnected 2-cycle C↔D reachable from no entry.
+        let mut m = minimal_model();
+        let s0 = m.systems[0].info.id.clone();
+        for (i, name) in ["A", "B", "C", "D"].iter().enumerate() {
+            m.systems.push(component(vec![0, i as i64], name, s0.clone()));
+        }
+        m.interactions
+            .push(flow(0, "", sys_id(vec![0, 0]), sys_id(vec![0, 1])));
+        m.interactions
+            .push(flow(1, "", sys_id(vec![0, 2]), sys_id(vec![0, 3])));
+        m.interactions
+            .push(flow(2, "", sys_id(vec![0, 3]), sys_id(vec![0, 2])));
+
+        let r = validate_mode(&m, Mode::Operational);
+        let unreachable: Vec<&str> = r
+            .issues
+            .iter()
+            .filter(|i| i.message.contains("not reachable"))
+            .map(|i| i.message.as_str())
+            .collect();
+        assert!(
+            unreachable.iter().any(|m| m.contains("'C'"))
+                && unreachable.iter().any(|m| m.contains("'D'")),
+            "the disconnected cycle is unreachable: {unreachable:#?}"
+        );
+        assert!(
+            !unreachable.iter().any(|m| m.contains("'A'") || m.contains("'B'")),
+            "the entry path stays reachable: {unreachable:#?}"
+        );
+    }
+
+    #[test]
+    fn dead_end_and_reachability_only_in_dynamic_modes() {
+        // The container-plus-cycle model has both a dead-end and unreachable
+        // nodes, but neither check runs below the Operational rung.
+        let m = bill_corrected();
+        for mode in [Mode::Core, Mode::Structural] {
+            let r = validate_mode(&m, mode);
+            assert!(
+                !r.issues.iter().any(|i| i.message.contains("terminal/absorbing")
+                    || i.message.contains("not reachable")),
+                "graph-flow checks are Operational/Full only; fired in {mode:?}: {:#?}",
+                r.issues
+            );
+        }
     }
 }

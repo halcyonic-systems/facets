@@ -1,0 +1,258 @@
+{
+  "lens": "Mobus",
+  "things": [
+    {
+      "id": 1,
+      "name": "Introduced",
+      "x": -9.7224,
+      "y": 289.0316,
+      "role": "Component",
+      "interface": false
+    },
+    {
+      "id": 2,
+      "name": "In Committee",
+      "x": 241.5155,
+      "y": 377.67783,
+      "role": "Component",
+      "interface": false
+    },
+    {
+      "id": 3,
+      "name": "Reported",
+      "x": 593.0996,
+      "y": 328.0423,
+      "role": "Component",
+      "interface": false
+    },
+    {
+      "id": 4,
+      "name": "On Floor",
+      "x": 455.80127,
+      "y": 601.50287,
+      "role": "Component",
+      "interface": false
+    },
+    {
+      "id": 5,
+      "name": "Passed origin chamber",
+      "x": 877.45264,
+      "y": 624.20074,
+      "role": "Component",
+      "interface": false
+    },
+    {
+      "id": 6,
+      "name": "Passed second chamber",
+      "x": 1295.0148,
+      "y": 240.49193,
+      "role": "Component",
+      "interface": false
+    },
+    {
+      "id": 7,
+      "name": "Conference committee",
+      "x": 984.67834,
+      "y": 28.785847,
+      "role": "Component",
+      "interface": false
+    },
+    {
+      "id": 8,
+      "name": "Enrolled/presented to President",
+      "x": 646.2735,
+      "y": 111.723495,
+      "role": "Component",
+      "interface": false
+    },
+    {
+      "id": 9,
+      "name": "Vetoed",
+      "x": 153.30983,
+      "y": -45.440754,
+      "role": "Component",
+      "interface": false
+    },
+    {
+      "id": 10,
+      "name": "Law",
+      "x": 693.1174,
+      "y": 289.91678,
+      "role": "Component",
+      "interface": false
+    },
+    {
+      "id": 11,
+      "name": "died in committee",
+      "x": 155.19478,
+      "y": 668.7736,
+      "role": "Component",
+      "interface": false
+    },
+    {
+      "id": 12,
+      "name": "fail",
+      "x": 652.65045,
+      "y": 720.10187,
+      "role": "Component",
+      "interface": false
+    },
+    {
+      "id": 13,
+      "name": "dead",
+      "x": 741.5191,
+      "y": -483.98294,
+      "role": "Component",
+      "interface": false
+    },
+    {
+      "id": 14,
+      "name": "pocket-vetoed",
+      "x": 657.6695,
+      "y": -98.04804,
+      "role": "Component",
+      "interface": false
+    }
+  ],
+  "relations": [
+    {
+      "id": 15,
+      "a": 1,
+      "b": 2,
+      "name": "referral",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 16,
+      "a": 2,
+      "b": 3,
+      "name": "report out",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 17,
+      "a": 2,
+      "b": 4,
+      "name": "discharge petition",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 18,
+      "a": 3,
+      "b": 4,
+      "name": "scheduled",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 19,
+      "a": 4,
+      "b": 5,
+      "name": "passage vote",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 20,
+      "a": 5,
+      "b": 6,
+      "name": "cross-referral",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 21,
+      "a": 6,
+      "b": 7,
+      "name": "if amended",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 22,
+      "a": 7,
+      "b": 8,
+      "name": "enrolled",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 23,
+      "a": 8,
+      "b": 10,
+      "name": "veto",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 24,
+      "a": 8,
+      "b": 9,
+      "name": "signature",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 25,
+      "a": 4,
+      "b": 12,
+      "name": "",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 26,
+      "a": 2,
+      "b": 11,
+      "name": "no action",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 27,
+      "a": 8,
+      "b": 14,
+      "name": "pocket",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 28,
+      "a": 7,
+      "b": 13,
+      "name": "fail",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 29,
+      "a": 3,
+      "b": 4,
+      "name": "scheduled (dup)",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    }
+  ],
+  "boundary": {
+    "porosity": 0.0,
+    "perceptive_fuzziness": 0.0
+  }
+}

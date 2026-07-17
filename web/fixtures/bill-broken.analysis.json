@@ -1,0 +1,272 @@
+{
+  "validation": {
+    "issues": [
+      {
+        "severity": "Warning",
+        "location": "interactions[14]",
+        "message": "duplicate edge C0.2→C0.3 (same type as interactions[3])",
+        "suggestion": "Remove the duplicate, or distinguish it by substance or usability"
+      },
+      {
+        "severity": "Warning",
+        "location": "systems[9]",
+        "message": "'Vetoed' has no outgoing transitions — intended as a terminal/absorbing state?",
+        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine"
+      },
+      {
+        "severity": "Warning",
+        "location": "systems[10]",
+        "message": "'Law' has no outgoing transitions — intended as a terminal/absorbing state?",
+        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine"
+      },
+      {
+        "severity": "Warning",
+        "location": "systems[11]",
+        "message": "'died in committee' has no outgoing transitions — intended as a terminal/absorbing state?",
+        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine"
+      },
+      {
+        "severity": "Warning",
+        "location": "systems[12]",
+        "message": "'fail' has no outgoing transitions — intended as a terminal/absorbing state?",
+        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine"
+      },
+      {
+        "severity": "Warning",
+        "location": "systems[13]",
+        "message": "'dead' has no outgoing transitions — intended as a terminal/absorbing state?",
+        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine"
+      },
+      {
+        "severity": "Warning",
+        "location": "systems[14]",
+        "message": "'pocket-vetoed' has no outgoing transitions — intended as a terminal/absorbing state?",
+        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine"
+      }
+    ]
+  },
+  "issue_targets": [
+    {
+      "thing": null,
+      "relation": 29
+    },
+    {
+      "thing": 9,
+      "relation": null
+    },
+    {
+      "thing": 10,
+      "relation": null
+    },
+    {
+      "thing": 11,
+      "relation": null
+    },
+    {
+      "thing": 12,
+      "relation": null
+    },
+    {
+      "thing": 13,
+      "relation": null
+    },
+    {
+      "thing": 14,
+      "relation": null
+    }
+  ],
+  "facts": {
+    "boundary_thing_ids": [],
+    "environment_thing_ids": [],
+    "orphan_env_thing_ids": [],
+    "authored_interface_thing_ids": [],
+    "boundary_props": {
+      "porosity": 0.0,
+      "perceptive_fuzziness": 0.0
+    },
+    "aggregate": false,
+    "edges": [
+      {
+        "id": 15,
+        "a": 1,
+        "b": 2,
+        "bond": true,
+        "kind": "Energy",
+        "locus": "Endo",
+        "self_loop": false,
+        "mobus_ok": true
+      },
+      {
+        "id": 16,
+        "a": 2,
+        "b": 3,
+        "bond": true,
+        "kind": "Energy",
+        "locus": "Endo",
+        "self_loop": false,
+        "mobus_ok": true
+      },
+      {
+        "id": 17,
+        "a": 2,
+        "b": 4,
+        "bond": true,
+        "kind": "Energy",
+        "locus": "Endo",
+        "self_loop": false,
+        "mobus_ok": true
+      },
+      {
+        "id": 18,
+        "a": 3,
+        "b": 4,
+        "bond": true,
+        "kind": "Energy",
+        "locus": "Endo",
+        "self_loop": false,
+        "mobus_ok": true
+      },
+      {
+        "id": 19,
+        "a": 4,
+        "b": 5,
+        "bond": true,
+        "kind": "Energy",
+        "locus": "Endo",
+        "self_loop": false,
+        "mobus_ok": true
+      },
+      {
+        "id": 20,
+        "a": 5,
+        "b": 6,
+        "bond": true,
+        "kind": "Energy",
+        "locus": "Endo",
+        "self_loop": false,
+        "mobus_ok": true
+      },
+      {
+        "id": 21,
+        "a": 6,
+        "b": 7,
+        "bond": true,
+        "kind": "Energy",
+        "locus": "Endo",
+        "self_loop": false,
+        "mobus_ok": true
+      },
+      {
+        "id": 22,
+        "a": 7,
+        "b": 8,
+        "bond": true,
+        "kind": "Energy",
+        "locus": "Endo",
+        "self_loop": false,
+        "mobus_ok": true
+      },
+      {
+        "id": 23,
+        "a": 8,
+        "b": 10,
+        "bond": true,
+        "kind": "Energy",
+        "locus": "Endo",
+        "self_loop": false,
+        "mobus_ok": true
+      },
+      {
+        "id": 24,
+        "a": 8,
+        "b": 9,
+        "bond": true,
+        "kind": "Energy",
+        "locus": "Endo",
+        "self_loop": false,
+        "mobus_ok": true
+      },
+      {
+        "id": 25,
+        "a": 4,
+        "b": 12,
+        "bond": true,
+        "kind": "Energy",
+        "locus": "Endo",
+        "self_loop": false,
+        "mobus_ok": true
+      },
+      {
+        "id": 26,
+        "a": 2,
+        "b": 11,
+        "bond": true,
+        "kind": "Energy",
+        "locus": "Endo",
+        "self_loop": false,
+        "mobus_ok": true
+      },
+      {
+        "id": 27,
+        "a": 8,
+        "b": 14,
+        "bond": true,
+        "kind": "Energy",
+        "locus": "Endo",
+        "self_loop": false,
+        "mobus_ok": true
+      },
+      {
+        "id": 28,
+        "a": 7,
+        "b": 13,
+        "bond": true,
+        "kind": "Energy",
+        "locus": "Endo",
+        "self_loop": false,
+        "mobus_ok": true
+      },
+      {
+        "id": 29,
+        "a": 3,
+        "b": 4,
+        "bond": true,
+        "kind": "Energy",
+        "locus": "Endo",
+        "self_loop": false,
+        "mobus_ok": true
+      }
+    ],
+    "ports": []
+  },
+  "description": {
+    "lens": "Mobus",
+    "c": [
+      "Introduced",
+      "In Committee",
+      "Reported",
+      "On Floor",
+      "Passed origin chamber",
+      "Passed second chamber",
+      "Conference committee",
+      "Enrolled/presented to President",
+      "Vetoed",
+      "Law",
+      "died in committee",
+      "fail",
+      "dead",
+      "pocket-vetoed"
+    ],
+    "n": 15,
+    "e_objects": [],
+    "milieu_note": "μ (milieu) is parametric/opaque — the one element with no cross-lens preimage (milieuOnly_bunge_empty)",
+    "g": 0,
+    "b_interfaces": [],
+    "porosity": 0.0,
+    "perceptive_fuzziness": 0.0,
+    "t_note": "T: transforms — parametric by intent; bert-compose fills the slot",
+    "h_note": "H: history (accumulated state conditioning T) — NOT hierarchy",
+    "dt_note": "Δt: time scale — a parametric field on the system",
+    "self_loop_conflicts": []
+  }
+}
