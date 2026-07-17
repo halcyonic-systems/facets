@@ -29,13 +29,11 @@ things-in-relation. Bunge demands a bond between distinct components, or refuses
 the model as an aggregate. Mobus demands no self-dependency. The three are
 independent — a lattice, not a ladder.
 
-**Save ≠ Export.** *Save* keeps your working canvas state (what you're
-mid-authoring); *Export* writes a mode-stamped `WorldModel` (what you're
-asserting is true, as of this lens — the artifact other tools consume).
-`[Shingai: a third tier — a run Ledger of a simulation's conservation history
-(RecordedRun/H, bert#108) — is on the roadmap (ROADMAP.md Arc 4.2); I couldn't
-confirm from the code whether it's wired into the web app yet. Confirm and I'll
-fold it in, or cut this if it's Save/Export only today.]`
+**Save ≠ Export.** *Save* keeps your working canvas state, the shape you're
+mid-authoring. *Export* writes a mode-stamped `WorldModel`: what you're
+asserting is true as of this lens, and the artifact other tools consume. (A run
+also computes a conservation ledger, but that's a result shown in the run panel,
+not a saved tier.)
 
 **Refusals cite a precondition, not a shrug.** The kernel errors loudly rather
 than silently dropping or guessing at authored structure — every refusal points
@@ -51,6 +49,30 @@ The full, cited version of everything above is
 indexes the rest.
 
 ## Structure
+
+```mermaid
+flowchart TB
+    subgraph FACE["web/ · the face (React + Vite · zero formalism logic)"]
+        UI["canvas · audit · run · Analyst panels"]
+    end
+    subgraph TRUTH["crates/ · the truth (Rust, compiled to WASM)"]
+        KERNEL["bert-lenses-kernel<br/>JS ↔ wasm boundary"]
+        CANVAS["bert-canvas<br/>lenses: describe · lens_facts · analyze"]
+        COMPOSE["bert-compose<br/>dynamical engine: conservation-faithful run"]
+        TETHER["bert-tether<br/>boundary: CSV import · forcing"]
+        CORE["bert-core<br/>semantic authority: WorldModel · validators · projection"]
+    end
+    GSR["GSR /analyze<br/>read-only LLM narration"]
+    UI -->|asks for every verdict| KERNEL
+    KERNEL --> CANVAS & COMPOSE & TETHER & CORE
+    CANVAS --> CORE
+    COMPOSE --> CORE
+    TETHER --> COMPOSE & CORE
+    UI -.->|analysis rung: narrate, never author| GSR
+    GSR -.-> UI
+```
+
+The crate layout on disk:
 
 ```
 crates/                     # TRUTH — the kernel, self-contained + wasm-ready
