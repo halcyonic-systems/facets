@@ -29,6 +29,7 @@ import type {
   Relation,
   RunResult,
   RunResultRich,
+  SystemType,
   Targets,
   Thing,
   ValidationIssue,
@@ -103,6 +104,8 @@ const ROLES = ["Component", "Environment"] as const;
 const LOCI = ["Endo", "Exo"] as const;
 const PORT_DIRS = ["Receives", "Exports", "Hybrid"] as const;
 const SEVERITIES = ["Error", "Warning"] as const;
+const KINGDOMS = ["Conceptual", "Concrete"] as const;
+const GENERA = ["Physical", "Chemical", "Biological", "Social", "Technical"] as const;
 
 function parseThing(v: unknown, where: string): Thing {
   const o = shape(v, where, ["id", "name", "x", "y", "role"], ["primitive", "interface"]);
@@ -130,8 +133,17 @@ function parseRelation(v: unknown, where: string): Relation {
   };
 }
 
+function parseSystemType(v: unknown, where: string): SystemType {
+  const o = shape(v, where, [], ["kingdom", "genus", "domain"]);
+  return {
+    ...(o.kingdom === undefined ? {} : { kingdom: oneOf(o.kingdom, `${where}.kingdom`, KINGDOMS) }),
+    ...(o.genus === undefined ? {} : { genus: oneOf(o.genus, `${where}.genus`, GENERA) }),
+    ...(o.domain === undefined ? {} : { domain: str(o.domain, `${where}.domain`) }),
+  };
+}
+
 function parseCanvasModel(v: unknown): CanvasModel {
-  const o = shape(v, "CanvasModel", ["lens", "things", "relations", "boundary"]);
+  const o = shape(v, "CanvasModel", ["lens", "things", "relations", "boundary"], ["system_type"]);
   const b = shape(o.boundary, "CanvasModel.boundary", ["porosity", "perceptive_fuzziness"]);
   return {
     lens: oneOf(o.lens, "CanvasModel.lens", LENSES),
@@ -141,6 +153,7 @@ function parseCanvasModel(v: unknown): CanvasModel {
       porosity: num(b.porosity, "boundary.porosity"),
       perceptive_fuzziness: num(b.perceptive_fuzziness, "boundary.perceptive_fuzziness"),
     },
+    ...(o.system_type === undefined ? {} : { system_type: parseSystemType(o.system_type, "CanvasModel.system_type") }),
   };
 }
 
@@ -396,6 +409,22 @@ describe("serde↔TS boundary fixtures", () => {
     const m = parseCanvasModel(fixture("canvas_model"));
     expect(m.things).toHaveLength(3);
     expect(m.relations.map((r) => r.is_bond)).toContain(false); // a mere relation is present
+  });
+
+  it("CanvasModel carries an asserted system_type when present", () => {
+    const m = parseCanvasModel(fixture("canvas_model"));
+    expect(m.system_type).toEqual({
+      kingdom: "Concrete",
+      genus: "Social",
+      domain: "U.S. legislative process",
+    });
+  });
+
+  it("CanvasModel omits system_type on a pre-existing model (serde default)", () => {
+    const legacy = { ...(fixture("canvas_model") as Record<string, unknown>) };
+    delete legacy.system_type;
+    const m = parseCanvasModel(legacy);
+    expect(m.system_type).toBeUndefined();
   });
 
   it("LensFacts + its EdgeFact/PortFact elements validate", () => {

@@ -783,6 +783,7 @@ function Workspace() {
                 setSelectedThingId(t.thing);
                 setSelectedRelationId(t.relation);
               }}
+              onSystemTypeChange={(st) => setCanvasModel((m) => (m ? { ...m, system_type: st } : m))}
               resetKeys={[canvasModel, demo?.key ?? "import"]}
             />
           )}

@@ -74,12 +74,12 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
         // Empty model — no things, no relations.
         (
             "empty",
-            CanvasModel { lens: Lens::Mobus, things: vec![], relations: vec![], boundary: Default::default() },
+            CanvasModel { lens: Lens::Mobus, things: vec![], relations: vec![], boundary: Default::default(), system_type: Default::default() },
         ),
         // A relation but NO things — every endpoint dangles.
         (
             "relation-without-things",
-            CanvasModel { lens: Lens::Bunge, things: vec![], relations: vec![rel(1, 1, 2)], boundary: Default::default() },
+            CanvasModel { lens: Lens::Bunge, things: vec![], relations: vec![rel(1, 1, 2)], boundary: Default::default(), system_type: Default::default() },
         ),
         // Self-loop only.
         (
@@ -89,6 +89,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 things: vec![thing(1, "A", Role::Component)],
                 relations: vec![rel(1, 1, 1)],
                 boundary: Default::default(),
+                system_type: Default::default(),
             },
         ),
         // Dangling relation endpoints (reference ids that no thing has).
@@ -99,6 +100,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 things: vec![thing(1, "A", Role::Component)],
                 relations: vec![rel(1, 1, 77), rel(2, 88, 99)],
                 boundary: Default::default(),
+                system_type: Default::default(),
             },
         ),
         // Duplicate thing ids and duplicate relation ids.
@@ -113,6 +115,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 ],
                 relations: vec![rel(5, 1, 1), rel(5, 1, 1)],
                 boundary: Default::default(),
+                system_type: Default::default(),
             },
         ),
         // Huge and negative coordinates + non-finite ones.
@@ -127,6 +130,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 ],
                 relations: vec![rel(10, 1, 2), rel(11, 3, 1)],
                 boundary: Default::default(),
+                system_type: Default::default(),
             },
         ),
         // Empty strings everywhere (names) + a mere relation (is_bond=false).
@@ -140,6 +144,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                     Relation { is_bond: false, name: "   ".into(), ..rel(2, 2, 1) },
                 ],
                 boundary: Default::default(),
+                system_type: Default::default(),
             },
         ),
         // All-environment things (no components at all) with bonds among them.
@@ -153,6 +158,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 ],
                 relations: vec![rel(1, 1, 2), rel(2, 2, 1)],
                 boundary: Default::default(),
+                system_type: Default::default(),
             },
         ),
         // Every kind represented, mixed bond/mere, plus a self-loop, at Mobus.
@@ -173,6 +179,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                     Relation { kind: Kind::Unspecified, ..rel(5, 2, 2) }, // self-loop bond
                 ],
                 boundary: Default::default(),
+                system_type: Default::default(),
             },
         ),
     ]

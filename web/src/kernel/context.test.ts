@@ -233,6 +233,23 @@ describe("renderContextForPrompt", () => {
     });
   });
 
+  it("renders a ## System type section when the model asserts one (omitting blanks)", () => {
+    const typed = renderContextForPrompt({
+      ...mobusCtx,
+      system_type: { kingdom: "Concrete", genus: "Social", domain: "U.S. legislative process" },
+    });
+    expect(typed).toContain("## System type\nKingdom: Concrete · Genus: Social · Domain: U.S. legislative process");
+
+    // A partial assertion omits the unspecified fields.
+    const partial = renderContextForPrompt({ ...mobusCtx, system_type: { kingdom: "Conceptual" } });
+    expect(partial).toContain("## System type\nKingdom: Conceptual");
+    expect(partial).not.toContain("Genus:");
+  });
+
+  it("omits the System type section entirely when nothing is asserted", () => {
+    expect(renderContextForPrompt(mobusCtx)).not.toContain("## System type");
+  });
+
   it("is deterministic: two calls (differing provenance) yield identical bodies", () => {
     const a = renderContextForPrompt(mobusCtx);
     const b = renderContextForPrompt({

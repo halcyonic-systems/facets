@@ -65,8 +65,13 @@ GitHub issue #5 (bert-lenses) decided how a component carries a Mobus work-proce
 | Noted / thin | The dynamical face T/H/Δt is stringly-typed notes in v2.0 (typing deferred); `check_dynamical_face` only warns. The structural tuple (C·N·E·G·B) is real; the dynamical slots are not yet typed structure. | Thin — do not over-trust the dynamical face as machine-checked. |
 | Reachability / dead-end / duplicate-edge checks | `check_dead_ends`, `check_reachability`, `check_duplicate_edges` in `validate.rs` (`:134-135,141`), all Warning-severity (legitimate absorbing states stay legal), surfaced through `analyze` → `issue_targets`. | **Landed 2026-07-17 (#66).** |
 
+## Asserted system type (metadata, not a gate)
+
+The model carries an author-asserted `system_type` (`CanvasModel.system_type` in `bert-canvas`): a **kingdom** (Conceptual | Concrete) + optional **genus** (Physical | Chemical | Biological | Social | Technical) + free-text **domain**. This is the modeler *asserting* the model's ontological kind — semantic metadata that travels with Save/Export and frames the analyst's narration. It is **not** a systemhood verdict and **no `check_*` gates it**; unlike the bond/irreflexivity checks above, nothing in the kernel validates or derives it. The genus vocabulary is Bunge's five genera (Postulate 6.4), chosen because it is a closed postulated list that Klir's §2.4 type-(a) classification independently corroborates — a K≅2 convergence on the thinghood axis. Full author grounding (Bunge kingdoms + genera, Mobus concrete/abstract + texture axes, Klir §2.4 + the convergence note): `systems-science-foundations/docs/reference/system-type-typologies.md`.
+
 ## Cross-refs
 
+- `systems-science-foundations/docs/reference/system-type-typologies.md` — author-grounded typology behind the asserted `system_type` property (Bunge / Mobus / Klir).
 - `docs/kernel-architecture.md` — the fuller verification pass this doc's claims are drawn from (file:line audit of `describe`/`lens_facts`/`validate_mode`/`analyze`).
 - `docs/on-the-word-ladder.md` — the three distinct senses of "ladder/rung" in this repo's docs and code, and which one is the actual vocabulary debt.
 - `docs/design/llm-integration-research.md` §11 — how lens-fidelity is enforced for LLM-generated reasoning (`describe()` as injected, kernel-translated vocabulary).
