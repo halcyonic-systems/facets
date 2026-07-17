@@ -12,14 +12,17 @@ const ISSUE_TOKEN_RE = /\[issue:\d+\]/;
 
 export type CitationSegment =
   | { kind: "text"; text: string }
-  | { kind: "cite"; text: string; target: IssueTarget };
+  | { kind: "cite"; text: string; label: string; target: IssueTarget };
 
-// The ids the tokens are allowed to resolve to, lifted off the same context the
-// LLM was handed. issueTargets is index-parallel with the kernel's issues.
+// The ids the tokens are allowed to resolve to, plus their names, lifted off the
+// same context the LLM was handed. issueTargets is index-parallel with the
+// kernel's issues.
 export interface CitationResolver {
   thingIds: Set<number>;
   relationIds: Set<number>;
   issueTargets: IssueTarget[];
+  thingNames: Map<number, string>;
+  relationNames: Map<number, string>;
 }
 
 export function makeResolver(model: CanvasModel, analysis: CanvasAnalysis): CitationResolver {
@@ -27,6 +30,8 @@ export function makeResolver(model: CanvasModel, analysis: CanvasAnalysis): Cita
     thingIds: new Set(model.things.map((t) => t.id)),
     relationIds: new Set(model.relations.map((r) => r.id)),
     issueTargets: analysis.issue_targets,
+    thingNames: new Map(model.things.map((t) => [t.id, t.name])),
+    relationNames: new Map(model.relations.map((r) => [r.id, r.name])),
   };
 }
 
@@ -40,6 +45,22 @@ function resolveToken(kind: string, n: number, r: CitationResolver): IssueTarget
   return null;
 }
 
+// A chip shows the element's name, not the raw token — so narration reads as
+// "'Law' is a terminal state" rather than a token dump. A relation can carry an
+// empty name, so fall back to a "kind N" form; a chip never renders a bare token.
+function nameOr(name: string | undefined, kind: string, n: number): string {
+  return name && name.trim() ? name : `${kind} ${n}`;
+}
+
+function labelFor(kind: string, n: number, target: IssueTarget, r: CitationResolver): string {
+  if (kind === "thing") return nameOr(r.thingNames.get(n), "thing", n);
+  if (kind === "relation") return nameOr(r.relationNames.get(n), "relation", n);
+  // issue:N — label by the element the warning points at.
+  if (target.thing !== null) return nameOr(r.thingNames.get(target.thing), "thing", target.thing);
+  if (target.relation !== null) return nameOr(r.relationNames.get(target.relation), "relation", target.relation);
+  return `issue ${n}`;
+}
+
 // Split a narration string into text runs and resolved-citation chips. An
 // unresolved token is folded back into the surrounding text (never emitted as a
 // chip), so it renders as plain, visibly-uncited text.
@@ -49,10 +70,11 @@ export function parseCitations(text: string, r: CitationResolver): CitationSegme
   for (const m of text.matchAll(CITATION_RE)) {
     const [tok, kind, nStr] = m;
     const idx = m.index ?? 0;
-    const target = resolveToken(kind, Number(nStr), r);
+    const n = Number(nStr);
+    const target = resolveToken(kind, n, r);
     if (!target) continue; // unresolved → left in place, becomes plain text
     if (idx > last) out.push({ kind: "text", text: text.slice(last, idx) });
-    out.push({ kind: "cite", text: tok, target });
+    out.push({ kind: "cite", text: tok, label: labelFor(kind, n, target, r), target });
     last = idx + tok.length;
   }
   if (last < text.length) out.push({ kind: "text", text: text.slice(last) });

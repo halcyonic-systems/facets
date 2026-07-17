@@ -268,15 +268,15 @@ function Cited({
           <button
             key={i}
             onClick={() => onNavigate(seg.target)}
-            title="click to select the element on the canvas"
-            className="mx-0.5 rounded px-1 text-xs font-mono"
+            title={`${seg.text}: click to select on the canvas`}
+            className="mx-0.5 rounded px-1 text-xs"
             style={{
               color: "var(--lens-accent)",
               border: "1px solid var(--lens-accent)",
               background: "var(--lens-accent-soft)",
             }}
           >
-            {seg.text}
+            {seg.label}
           </button>
         ),
       )}
