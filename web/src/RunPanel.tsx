@@ -3,6 +3,8 @@
 import {
   Line,
   LineChart,
+  ReferenceArea,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -11,7 +13,7 @@ import {
 } from "recharts";
 import type { Comparison, Level, RunResultRich } from "./kernel/types";
 import { Card, Pill, Stat, Verdict, humanize } from "./ui";
-import { unitLabel } from "./runViz";
+import { horizonOf, inSampleDivergencePct, unitLabel } from "./runViz";
 
 // Label + subtitle per category. The subtitle states what the value IS —
 // grounded in forcing.rs: a sink's value is the total delivered across the run,
@@ -32,16 +34,19 @@ const WORDING = {
   conservedPill: "✓ nothing lost or created",
   leakPill: "⚠ quantity leaked",
   residualLabel: "balance residual",
-  headlineSub: "simulated vs actual at the last observed point",
 };
 
 export function RunPanel({ result }: { result: RunResultRich }) {
   // Lead with the sharpest MEANINGFUL divergence. A forced flow trivially
   // matches its own data (~0% off) — that's a tautology, not a finding, so it
   // never headlines; only a real gap (a responding stock, an unforced flow) does.
+  // Divergence is scored in-sample: the fit is only meaningful where data exists,
+  // never against a forecast tick past the horizon.
   const lead = result.comparisons
-    .filter((c) => c.divergence_pct != null && (c.divergence_pct ?? 0) > 0.5)
-    .sort((a, b) => (b.divergence_pct ?? 0) - (a.divergence_pct ?? 0))[0];
+    .map((c) => ({ c, pct: inSampleDivergencePct(c) }))
+    .filter((r) => r.pct != null && r.pct > 0.5)
+    .sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0))[0];
+  const forecastTicks = lead ? lead.c.simulated.length - lead.c.actual.length : 0;
 
   return (
     <div className="grid gap-5">
@@ -53,10 +58,12 @@ export function RunPanel({ result }: { result: RunResultRich }) {
                 className="text-3xl font-semibold tabular"
                 style={{ color: "var(--accent-strong)" }}
               >
-                {Math.round(lead.divergence_pct ?? 0)}% off the data
+                {Math.round(lead.pct ?? 0)}% off the data
               </div>
               <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-                {lead.element} · {WORDING.headlineSub}
+                {lead.c.element} · validated against {lead.c.actual.length} observations
+                {forecastTicks > 0 &&
+                  ` · projecting ${forecastTicks} ticks beyond the data`}
               </p>
             </>
           ) : (
@@ -104,6 +111,11 @@ function ComparisonChart({ c }: { c: Comparison }) {
     actual: c.actual[i] ?? null,
     declared: c.declared ? (c.declared[i] ?? null) : null,
   }));
+  // The horizon is where the data ends; past it the executed line is a forecast
+  // with nothing to check against. Fit is scored in-sample only.
+  const h = horizonOf(c);
+  const forecastTicks = c.simulated.length - c.actual.length;
+  const pct = inSampleDivergencePct(c);
   return (
     <div>
       <div className="mb-1 flex items-baseline justify-between">
@@ -113,15 +125,27 @@ function ComparisonChart({ c }: { c: Comparison }) {
             {c.unit}
           </span>
         </div>
-        {c.divergence_pct != null && (
+        {pct != null && (
           <span className="text-xs tabular" style={{ color: "var(--accent-strong)" }}>
-            {Math.round(c.divergence_pct)}% off
+            {Math.round(pct)}% off (in-sample)
           </span>
         )}
       </div>
       <ResponsiveContainer width="100%" height={150}>
         <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: -12 }}>
           <CartesianGrid stroke="var(--hairline)" vertical={false} />
+          {forecastTicks > 0 && h != null && (
+            <ReferenceArea
+              x1={h}
+              x2={n - 1}
+              fill="var(--text-muted)"
+              fillOpacity={0.06}
+              ifOverflow="extendDomain"
+            />
+          )}
+          {forecastTicks > 0 && h != null && (
+            <ReferenceLine x={h} stroke="var(--text-muted)" strokeDasharray="4 4" />
+          )}
           <XAxis dataKey="t" tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" />
           <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" width={44} />
           <Tooltip
@@ -172,6 +196,11 @@ function ComparisonChart({ c }: { c: Comparison }) {
         />
         {c.declared && <LegendDot color="var(--text-muted)" label="declared mean" />}
       </div>
+      {forecastTicks > 0 && h != null && (
+        <p className="mt-0.5 text-[11px] italic" style={{ color: "var(--text-muted)" }}>
+          data ends at tick {h} — beyond it the model is forecasting, nothing to check against
+        </p>
+      )}
     </div>
   );
 }
