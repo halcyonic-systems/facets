@@ -23,6 +23,18 @@ const CATEGORY_HEADER: Record<Level["category"], { label: string; sub: (ticks: n
   internal: { label: "Inside", sub: () => "level at run end" },
 };
 
+// Provisional domain wording for the kernel checks (#33) — Mobus purpose-category
+// renames, grouped here for easy tweaking. Rigor stays in the numbers (the
+// residual is still shown in exponential form); only the labels soften.
+const WORDING = {
+  ranClean: "Ran clean",
+  ranLeak: "Ran — some quantity went missing",
+  conservedPill: "✓ nothing lost or created",
+  leakPill: "⚠ quantity leaked",
+  residualLabel: "balance residual",
+  headlineSub: "simulated vs actual at the last observed point",
+};
+
 export function RunPanel({ result }: { result: RunResultRich }) {
   // Lead with the sharpest MEANINGFUL divergence. A forced flow trivially
   // matches its own data (~0% off) — that's a tautology, not a finding, so it
@@ -41,24 +53,24 @@ export function RunPanel({ result }: { result: RunResultRich }) {
                 className="text-3xl font-semibold tabular"
                 style={{ color: "var(--accent-strong)" }}
               >
-                {Math.round(lead.divergence_pct ?? 0)}% off reality
+                {Math.round(lead.divergence_pct ?? 0)}% off the data
               </div>
               <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-                {lead.element} · simulated vs actual at the horizon
+                {lead.element} · {WORDING.headlineSub}
               </p>
             </>
           ) : (
             <Verdict tone={result.conserved ? "ok" : "warning"}>
-              {result.conserved ? "Ran clean" : "Ran — conservation leak"} · {result.ticks} ticks
+              {result.conserved ? WORDING.ranClean : WORDING.ranLeak} · {result.ticks} ticks
             </Verdict>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <Pill tone={result.conserved ? "ok" : "error"}>
-            {result.conserved ? "✓ conserved" : "⚠ leak"}
+            {result.conserved ? WORDING.conservedPill : WORDING.leakPill}
           </Pill>
           <Stat
-            label="conservation residual"
+            label={WORDING.residualLabel}
             value={result.residual.toExponential(1)}
             tone={result.conserved ? "ok" : "error"}
           />
@@ -153,8 +165,11 @@ function ComparisonChart({ c }: { c: Comparison }) {
         </LineChart>
       </ResponsiveContainer>
       <div className="mt-1 flex gap-4 text-[11px]" style={{ color: "var(--text-muted)" }}>
-        <LegendDot color="var(--accent)" label="executed (the run)" />
-        <LegendDot color="var(--accent-indigo)" label="actual (your data)" />
+        <LegendDot color="var(--accent)" label="executed (the run, model units)" />
+        <LegendDot
+          color="var(--accent-indigo)"
+          label={`actual (your data${c.unit ? `, ${c.unit}` : ""})`}
+        />
         {c.declared && <LegendDot color="var(--text-muted)" label="declared mean" />}
       </div>
     </div>
