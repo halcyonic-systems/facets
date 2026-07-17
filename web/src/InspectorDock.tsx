@@ -107,7 +107,7 @@ export function InspectorDock({
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         <KernelErrorBoundary resetKeys={resetKeys}>
-          {tab === "run" && <RunTab result={result} runError={runError} />}
+          {tab === "run" && <RunTab result={result} runError={runError} lens={canvasModel?.lens ?? "Klir"} />}
           {tab === "formal" && <FormalTab desc={desc} analysisError={analysisError} />}
           {tab === "audit" && (
             <AuditTab
@@ -179,7 +179,7 @@ function Placeholder({ children }: { children: React.ReactNode }) {
   );
 }
 
-function RunTab({ result, runError }: { result: RunResultRich | null; runError: string | null }) {
+function RunTab({ result, runError, lens }: { result: RunResultRich | null; runError: string | null; lens: CanvasModel["lens"] }) {
   if (runError) {
     return (
       <Card title="Result" source="bert-compose · wasm">
@@ -189,7 +189,7 @@ function RunTab({ result, runError }: { result: RunResultRich | null; runError: 
       </Card>
     );
   }
-  if (result) return <RunPanel result={result} />;
+  if (result) return <RunPanel result={result} lens={lens} />;
   return (
     <Placeholder>
       Run a demo bundle (model + CSV + mapping) to see the forced simulation here.

@@ -11,19 +11,28 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import type { Comparison, Level, RunResultRich } from "./kernel/types";
+import type { CanvasModel, Comparison, Level, RunResultRich } from "./kernel/types";
 import { Card, Pill, Stat, Verdict, humanize } from "./ui";
 import { horizonOf, inSampleDivergencePct, unitLabel } from "./runViz";
 
-// Label + subtitle per category. The subtitle states what the value IS —
-// grounded in forcing.rs: a sink's value is the total delivered across the run,
-// a source/process value is the level at run end. Not a new claim, a reading of
-// what the kernel computed. Provisional wording (Mobus purpose categories).
-const CATEGORY_HEADER: Record<Level["category"], { label: string; sub: (ticks: number) => string }> = {
-  product: { label: "Outputs", sub: (t) => `total delivered over ${t} ticks` },
-  resource: { label: "Inputs", sub: () => "level at run end" },
-  internal: { label: "Inside", sub: () => "level at run end" },
+// Category labels are lens-faithful (K≅2 on the run panel): Klir and Bunge share
+// input/output/internal (both authors' own words — Klir ch.2 "input, output, and
+// internal states"; Bunge Vol.4 ch.1 input=receiver/output=donor vs environment);
+// only Mobus adds purpose (products/waste, resources). The subtitle states what
+// the value IS — a sink's total delivered vs a source/process level at run end.
+const CATEGORY_SUB: Record<Level["category"], (ticks: number) => string> = {
+  product: (t) => `total delivered over ${t} ticks`,
+  resource: () => "level at run end",
+  internal: () => "level at run end",
 };
+const CATEGORY_LABEL: Record<CanvasModel["lens"], Record<Level["category"], string>> = {
+  Klir: { product: "Outputs", resource: "Inputs", internal: "Internal" },
+  Bunge: { product: "Outputs", resource: "Inputs", internal: "Internal" },
+  Mobus: { product: "Products & waste", resource: "Resources", internal: "Internal" },
+};
+function categoryHeader(cat: Level["category"], lens: CanvasModel["lens"]) {
+  return { label: CATEGORY_LABEL[lens][cat], sub: CATEGORY_SUB[cat] };
+}
 
 // Provisional domain wording for the kernel checks (#33) — Mobus purpose-category
 // renames, grouped here for easy tweaking. Rigor stays in the numbers (the
@@ -36,7 +45,7 @@ const WORDING = {
   residualLabel: "balance residual",
 };
 
-export function RunPanel({ result }: { result: RunResultRich }) {
+export function RunPanel({ result, lens }: { result: RunResultRich; lens: CanvasModel["lens"] }) {
   // Lead with the sharpest MEANINGFUL divergence. A forced flow trivially
   // matches its own data (~0% off) — that's a tautology, not a finding, so it
   // never headlines; only a real gap (a responding stock, an unforced flow) does.
@@ -97,7 +106,7 @@ export function RunPanel({ result }: { result: RunResultRich }) {
       )}
 
       <Card title="Final levels" source="bert-core · wasm">
-        <Levels levels={result.levels} ticks={result.ticks} />
+        <Levels levels={result.levels} ticks={result.ticks} lens={lens} />
       </Card>
     </div>
   );
@@ -214,14 +223,14 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   );
 }
 
-function Levels({ levels, ticks }: { levels: Level[]; ticks: number }) {
+function Levels({ levels, ticks, lens }: { levels: Level[]; ticks: number; lens: CanvasModel["lens"] }) {
   const groups: Level["category"][] = ["product", "resource", "internal"];
   return (
     <div className="grid gap-4">
       {groups.map((cat) => {
         const rows = levels.filter((l) => l.category === cat);
         if (rows.length === 0) return null;
-        const header = CATEGORY_HEADER[cat];
+        const header = categoryHeader(cat, lens);
         return (
           <div key={cat}>
             <div
