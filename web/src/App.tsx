@@ -80,7 +80,10 @@ export default function App() {
         <Workspace />
       ) : (
         <>
-          <MenuBar loaded={false} onNew={() => {}} onOpen={() => {}} onImport={() => {}} onSave={() => {}} onExport={() => {}} onSaveToFolder={() => {}} onSaveToLibrary={() => {}} canExport={false} />
+          {/* During kernel load the File button is disabled (loaded={false}),
+              so its menu never opens — the items are visibly greyed, not silent
+              no-ops behind a live-looking menu. */}
+          <MenuBar loaded={false} onNew={() => {}} onOpen={() => {}} onSave={() => {}} onExport={() => {}} onSaveToFolder={() => {}} onSaveToLibrary={() => {}} canExport={false} />
           <div className="flex flex-1 items-center justify-center">
             <p className="text-sm" style={{ color: loadError ? "var(--verdict-error)" : "var(--text-muted)" }}>
               {loadError ? `Failed to load the wasm kernel: ${loadError}` : "loading kernel…"}
@@ -547,7 +550,6 @@ function Workspace() {
         loaded={true}
         onNew={newModel}
         onOpen={() => setGalleryOpen(true)}
-        onImport={() => importInputRef.current?.click()}
         onSave={() => exportModel(".model")}
         onExport={() => exportModel(".world")}
         onSaveToFolder={saveToFolder}
@@ -757,7 +759,7 @@ function Workspace() {
             ) : (
               <div className="flex h-full items-center justify-center p-6">
                 <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                  Open a demo (File → Open) or import a model (File → Import) to begin.
+                  Open a demo or a model file (File → Open…) to begin.
                 </p>
               </div>
             )}
@@ -794,6 +796,7 @@ function Workspace() {
           onNew={newModel}
           onClose={() => setGalleryOpen(false)}
           closable={canvasModel !== null}
+          onOpenFile={() => importInputRef.current?.click()}
           folderSupported={isFolderSupported()}
           folderFiles={folderFiles}
           onOpenFolder={openFolder}
@@ -817,12 +820,12 @@ function Workspace() {
 }
 
 // The thin top menu bar — Frost chrome, quiet, mono/small-caps. The File menu
-// carries the working Open / Import / Save / Export seams.
+// carries the working Open / Save / Export seams. Opening a disk file folds into
+// Open…'s "From a file" section rather than a separate Import item.
 function MenuBar({
   loaded,
   onNew,
   onOpen,
-  onImport,
   onSave,
   onExport,
   onSaveToFolder,
@@ -832,7 +835,6 @@ function MenuBar({
   loaded: boolean;
   onNew: () => void;
   onOpen: () => void;
-  onImport: () => void;
   onSave: () => void;
   onExport: () => void;
   onSaveToFolder: () => void;
@@ -896,7 +898,6 @@ function MenuBar({
             >
               {item("New", onNew)}
               {item("Open…", onOpen)}
-              {item("Import…", onImport)}
               <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
               {item("Save", onSave, !canExport)}
               {item("Save to folder…", onSaveToFolder, !canExport)}
@@ -979,6 +980,7 @@ function OpenDialog({
   onNew,
   onClose,
   closable,
+  onOpenFile,
   folderSupported,
   folderFiles,
   onOpenFolder,
@@ -992,6 +994,7 @@ function OpenDialog({
   onNew: () => void;
   onClose: () => void;
   closable: boolean;
+  onOpenFile: () => void;
   folderSupported: boolean;
   folderFiles: string[] | null;
   onOpenFolder: () => void;
@@ -1040,60 +1043,85 @@ function OpenDialog({
           <span className="ml-2" style={{ color: "var(--text-muted)" }}>— author a new model from scratch</span>
         </button>
 
-        {/* From this folder: pick a working folder (Chromium only) and reopen a
-            saved model from it — the native counterpart to File → Import. */}
-        <button
-          onClick={onOpenFolder}
-          disabled={!folderSupported}
-          title={folderSupported ? undefined : "Folder open needs a Chromium browser (Chrome/Edge)"}
-          className="mt-3 w-full p-3 text-left text-sm transition-colors"
-          style={{
-            background: "transparent",
-            border: "1px dashed var(--border)",
-            borderRadius: "var(--radius-card)",
-            opacity: folderSupported ? 1 : 0.5,
-            cursor: folderSupported ? "pointer" : "not-allowed",
-          }}
-        >
-          <span style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>Open from folder…</span>
-          <span className="ml-2" style={{ color: "var(--text-muted)" }}>— pick a working folder of saved models</span>
-        </button>
-
-        {folderFiles !== null && (
-          <div className="mt-3">
-            <div
-              className="mb-2 text-[10px] font-semibold uppercase tracking-wide"
-              style={{ color: "var(--text-muted)" }}
-            >
-              From this folder
-            </div>
-            {folderFiles.length === 0 ? (
-              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                no models in this folder yet
-              </p>
-            ) : (
-              <div className="grid gap-2 sm:grid-cols-3">
-                {folderFiles.map((name) => (
-                  <button
-                    key={name}
-                    onClick={() => onOpenFromFolder(name)}
-                    className="truncate p-3 text-left text-sm transition-shadow"
-                    style={{
-                      background: "var(--bg-secondary)",
-                      border: "1px solid var(--border)",
-                      boxShadow: "var(--shadow-card)",
-                      borderRadius: "var(--radius-card)",
-                      color: "var(--text-primary)",
-                    }}
-                    title={name}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
-            )}
+        {/* From a file: open a model JSON off disk via the OS file picker (the
+            folded-in Import path, works everywhere), plus an optional folder
+            picker for reopening a working folder of saved models (File System
+            Access — Chrome/Edge only, disabled + labelled elsewhere). */}
+        <div className="mt-4">
+          <div
+            className="mb-2 text-[10px] font-semibold uppercase tracking-wide"
+            style={{ color: "var(--text-muted)" }}
+          >
+            From a file
           </div>
-        )}
+          <button
+            onClick={onOpenFile}
+            className="w-full p-3 text-left text-sm transition-colors"
+            style={{
+              background: "transparent",
+              border: "1px dashed var(--border)",
+              borderRadius: "var(--radius-card)",
+            }}
+          >
+            <span style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>Choose a file…</span>
+            <span className="ml-2" style={{ color: "var(--text-muted)" }}>— open a model .json from your computer</span>
+          </button>
+
+          <button
+            onClick={onOpenFolder}
+            disabled={!folderSupported}
+            title={folderSupported ? undefined : "Opening a folder needs Chrome or Edge (File System Access API)"}
+            className="mt-2 w-full p-3 text-left text-sm transition-colors"
+            style={{
+              background: "transparent",
+              border: "1px dashed var(--border)",
+              borderRadius: "var(--radius-card)",
+              opacity: folderSupported ? 1 : 0.5,
+              cursor: folderSupported ? "pointer" : "not-allowed",
+            }}
+          >
+            <span style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>Open a folder…</span>
+            <span className="ml-2" style={{ color: "var(--text-muted)" }}>
+              — a working folder of saved models {folderSupported ? "" : "(Chrome only)"}
+            </span>
+          </button>
+
+          {folderFiles !== null && (
+            <div className="mt-3">
+              <div
+                className="mb-2 text-[10px] font-semibold uppercase tracking-wide"
+                style={{ color: "var(--text-muted)" }}
+              >
+                In this folder
+              </div>
+              {folderFiles.length === 0 ? (
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  no models in this folder yet
+                </p>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {folderFiles.map((name) => (
+                    <button
+                      key={name}
+                      onClick={() => onOpenFromFolder(name)}
+                      className="truncate p-3 text-left text-sm transition-shadow"
+                      style={{
+                        background: "var(--bg-secondary)",
+                        border: "1px solid var(--border)",
+                        boxShadow: "var(--shadow-card)",
+                        borderRadius: "var(--radius-card)",
+                        color: "var(--text-primary)",
+                      }}
+                      title={name}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Saved in this browser: the IndexedDB library. Always shown (flag-free,
             works in every browser) — click a row to load, × to delete. */}
