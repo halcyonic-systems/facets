@@ -1,4 +1,17 @@
-# bert-lenses Canvas — As-Built
+# bert-lenses Canvas — As-Built (egui era, pre-web-rebuild)
+
+> **Status (2026-07-17): history, not current truth.** This doc describes the
+> standalone egui canvas (`src/main.rs`) that was the front door before the
+> web-first rebuild (React + wasm kernel; see the main README **Status**
+> section). The egui app lives on the `pre-web-rebuild` tag /
+> `archive/egui-app` branch. The web canvas's rendering choice is
+> `docs/decisions/0001-canvas-rendering-svg.md` (hand-rolled React+SVG); the
+> kernel semantics below — the bert-core seam, mode stamping, the audit
+> panel's verdict-quoting discipline — carried over unchanged to the web
+> rebuild and are current. For what the kernel actually computes today, read
+> `docs/kernel-architecture.md`; for theory fidelity, `docs/theory-fidelity.md`.
+> No dedicated "as-built" doc for the React canvas exists yet — this file's
+> semantic content (not its UI mechanics) is the closest current reference.
 
 The direct-manipulation authoring canvas. Run: `cargo run` (the front door since the
 2026-06-29 swap; single file `src/main.rs`, ~3500 lines, egui/eframe 0.31). This is the

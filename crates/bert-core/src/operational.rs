@@ -185,14 +185,14 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
         Mode::Core => errors.push(OperationalError::new(
             "mode",
             "Core (Klir) commits to things and dependency only — a representational \
-             rung with no flow semantics to execute",
-            Some("Author the model at the Operational rung, or export from compose"),
+             mode with no flow semantics to execute",
+            Some("Author the model in the Operational mode, or export from compose"),
         )),
         Mode::Structural => errors.push(OperationalError::new(
             "mode",
             "Structural (Bunge) commits to bonded composition, not typed flows — \
-             a representational rung with no flow semantics to execute",
-            Some("Author the model at the Operational rung, or export from compose"),
+             a representational mode with no flow semantics to execute",
+            Some("Author the model in the Operational mode, or export from compose"),
         )),
         Mode::Operational | Mode::Full => {}
     }

@@ -1,11 +1,14 @@
 # bert-lenses roadmap
 
-> **Status (2026-07-15): history, not current truth.** The arcs and paths below
+> **Status (2026-07-17): history, not current truth.** The arcs and paths below
 > (the egui canvas, `src/main.rs`, in-process `generate()`, the `docs/archive/`
 > design docs) predate the web-first rebuild. For where the project actually
 > stands, read the README **Status** section and **CLAUDE.md**: Phases 0–3 are
-> shipped, and Phase 4 (the per-lens authoring palette, #50) is next. This file
-> is kept as the pre-web-rebuild plan of record.
+> shipped, Phase 4 (the per-lens authoring palette, #50) is next, and — outside
+> this roadmap's own arc numbering — the read-only LLM analysis rung shipped
+> 2026-07-17 (#66 kernel checks, GSR `/analyze`, the Analyst panel; see
+> `docs/kernel-architecture.md` and `docs/theory-fidelity.md`). This file is
+> kept as the pre-web-rebuild plan of record.
 
 One kernel, three lenses. The path is **view → author → translate → run**, in
 dependency order. bert-lenses stays standalone through the author and translate
@@ -71,9 +74,12 @@ leaves parametric (`bert-compose/MOBUS.md`) — with witnesses, like any §A5
 upgrade; downgrading drops dynamics and keeps structure, lossless. Compose's
 conservation engine (`circuit.rs`, UI-free) is consumed as a crate the way
 bert-core is; the recorded run is the model's H. Enabler: the same §A5
-transition validators Arc 3 needs. This closes the ladder: a user builds
-structure from concrete named things (Klir up), and dynamics arrives as the
-top rung — not as a separate abstract tool.
+transition validators Arc 3 needs. This closes the loop: a user builds
+structure in whichever lens fits (Klir, Bunge, or Mobus — the modes are
+parallel lenses over one kernel, not a cumulative tower; see
+`transition.rs:6-9` and `docs/theory-fidelity.md`), and dynamics arrives as
+an Operational-mode upgrade — a mode transition, not a separate abstract
+tool.
 
 **Phase gates (council-audited 2026-07-06 — frontier + local, convergent):**
 
@@ -113,9 +119,12 @@ Open design problems the gates force: the component→primitive mapping UX
   readable but re-stamp-only editing is write-only UX; (b) from
   `feat/arc42-mapping-c`: click-a-red-audit-row navigates to the component
   (navigation only, panel stays read-only) and the audit-snapshot semantics
-  (explicit ⟳ Re-run, not per-frame recompute). Same ticket: decide
-  multi-primitive semantics — bert-core carries `Vec<ProcessPrimitive>`, B stamps
-  one, `validate_operational` instantiates `.first()`. Branches kept for reference.
+  (explicit ⟳ Re-run, not per-frame recompute). Multi-primitive semantics was
+  decided and shipped 2026-07-11 (**#5 collapse**): `bert-core` carries
+  `Option<ProcessPrimitive>`, not `Vec` — one component, one process; a legacy
+  multi-entry `primitives` array is refused at deserialization with a
+  decompose-further message, not silently reduced via `.first()`. See
+  `docs/theory-fidelity.md`. Branches kept for reference.
 
 - **Env-birth gesture legibility** — drag-from-rim-to-empty silently births a
   Role::Environment node auto-bonded to the origin (main.rs:1694-1719). No

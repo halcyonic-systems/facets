@@ -15,6 +15,70 @@ synchronous), so bert-lenses runs in a browser, on mobile, and inside
 Claude-in-Chrome. An optional Tauri wrapper can later host the *same* web app
 natively.
 
+## What this tool believes
+
+*Draft (2026-07-17, part of #23), awaiting Shingai's voice pass. Content is
+grounded and cited; register/voice is not yet final — treat every `[Shingai: ...]`
+marker as an open call, not a placeholder to ignore.*
+
+**The kernel claim.** `bert-core`'s three lenses — Klir, Bunge, Mobus — are not
+three opinions about a model; they are three faithful views the K ≅ **2**
+kernel *generates*, each licensed by its own machine-checked precondition, and
+the generation is proven, not asserted:
+`systems-science-foundations/Systems/Klir/ViewGeneration.lean`. `describe(model,
+lens)` hands you the model back in each lens's own named vocabulary (Klir
+`(T,R)`, Bunge `⟨C,E,S,M⟩`, Mobus `⟨C,N,E,G,B,T,H,Δt⟩`) — counts hold, words
+change, and that invariant is itself machine-tested
+(`describe_counts_hold_across_lenses`). Full grounding, per-tradition, with
+file:line: [`docs/theory-fidelity.md`](docs/theory-fidelity.md).
+
+**What a lens commits you to.** Choosing a lens isn't cosmetic — it's a claim
+the kernel checks. Klir commits you to nothing beyond things-in-relation (every
+model is a valid Klir system). Bunge commits you to at least one bond between
+distinct components, or the model is refused as an aggregate. Mobus commits
+you to no self-dependency (`k ≠ o`). The three preconditions are independent —
+satisfying one says nothing about the others — which is a lattice, not a
+ladder. See [`docs/on-the-word-ladder.md`](docs/on-the-word-ladder.md) if
+"lens"/"rung"/"mode" language elsewhere in this repo reads like a linear
+ordering; it isn't one, and that doc says exactly where the word choice still
+needs cleanup.
+
+**Save vs Export.** These are deliberately two different artifacts, not two
+names for one save button. **Save** writes the canvas's own editing state —
+things, relations, the active lens, GSR-spec provenance — the shape you keep
+working on. **Export** writes a `bert-core::WorldModel`, projected and
+`mode`-stamped, the artifact other tools (and other lenses) consume. Save is
+"what I'm mid-authoring"; Export is "what I'm asserting is true, as of this
+lens." `[Shingai: a third tier — a run Ledger recording a simulation's
+conservation history (RecordedRun/H, bert#108) — is on the roadmap
+(ROADMAP.md Arc 4.2) but I couldn't confirm from the code whether it's wired
+into the web app yet as of this pass; please confirm current status and I'll
+fold it in, or cut this sentence if it's still Save/Export only today.]`
+
+**The refuse policy.** The kernel would rather error loudly than silently drop
+or guess at authored structure. Two examples: a legacy model file with a
+multi-primitive component array does not silently keep the first entry — it
+refuses to load, naming the fix (`docs/theory-fidelity.md`'s "#5 collapse"
+section); mode transitions never invent structure to satisfy a target mode —
+upgrade "checks the target edge's named hypothesis... and refuses with that
+name, leaving the required edits to the author"
+(`crates/bert-core/src/transition.rs:20-22`). If you see a refusal, it's
+citing a specific formal precondition you can look up, not a generic "invalid
+model" message.
+
+**Who this is for.** `[Shingai: voice call — my draft: an engineer, scientist,
+or mathematician who's already convinced the tool is worth using and wants to
+dig into and assess the quality of the theory underneath it, independently or
+with LLM/expert help. Everything in docs/theory-fidelity.md is written for
+that reader — cited, checkable, honest about what's thin. A secondary,
+harder-nosed reading (a scholar looking for the weak points) is answered by
+the same doc's perspectival-realist scope section. Adjust freely — this is
+your call, not a fact I derived.]`
+
+**Map.** [`docs/README.md`](docs/README.md) indexes the deeper docs;
+[`docs/theory-fidelity.md`](docs/theory-fidelity.md) is the one-pager this
+section summarizes.
+
 ## Structure
 
 ```
@@ -79,8 +143,17 @@ cargo build --workspace --target wasm32-unknown-unknown
   *is* as a system: what `describe`/`lens_facts`/`validate_mode`/`analyze` actually
   compute, verified against source with confidence ratings. Read before trusting
   the substrate.
+- [`docs/theory-fidelity.md`](docs/theory-fidelity.md) — per-tradition
+  (Klir/Bunge/Mobus) take/drop/where/why, mode-stamp semantics, and the
+  perspectival-realist scope statement. Start here if you're assessing the
+  theory, not just the tool.
+- [`docs/on-the-word-ladder.md`](docs/on-the-word-ladder.md) — the three
+  distinct senses of "ladder/rung" in this repo's docs and code, and which one
+  is the actual vocabulary debt.
+- [`docs/README.md`](docs/README.md) — index of the full docs/ folder.
 - [`docs/design/llm-integration-research.md`](docs/design/llm-integration-research.md)
-  — research foundation for LLM context/authoring/analysis (rests on the kernel above).
+  — research foundation for LLM context/authoring/analysis (rests on the kernel
+  above); the read-only analysis rung it specified shipped 2026-07-17.
 - [`docs/design/lens-palettes.md`](docs/design/lens-palettes.md) — the lens
   grounding for Phase 3/4 (Klir / Bunge / Mobus).
 - [`web/DESIGN.md`](web/DESIGN.md) — Halcyonic Frost design tokens for the face.
@@ -108,6 +181,15 @@ Next: **Phase 4** — the per-lens authoring palette (#50): how each lens adds i
 own kinds of things (sources/sinks/interfaces at Mobus, the stripped Bunge set),
 grounded in the same design doc + Bunge chs. 1–2 / Mobus ch. 4. The prior egui app
 lives on the `pre-web-rebuild` tag / `archive/egui-app` branch for reference.
+
+**LLM integration, read-only rung** (2026-07-17, outside the phase numbering
+above): deterministic graph checks (#66 — dead-end, duplicate-edge,
+reachability) landed in `validate.rs`, and the Analyst panel
+(`web/src/AnalystPanel.tsx`) narrates kernel-computed facts through GSR's
+`/analyze` endpoint, citing canvas elements, local-first with a frontier
+opt-in. It proposes no structure and has no write path. See
+`docs/design/llm-integration-research.md` for the research foundation and
+`docs/kernel-architecture.md` for what closed with #66.
 
 The instrument is one of the two faces of the K≅2 kernel: the *structural* face
 (author/validate) and the *dynamical* face (`bert-compose`, run) — here united in

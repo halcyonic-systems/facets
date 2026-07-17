@@ -71,12 +71,12 @@ Counts are "read off the same kernel facts the canvas renders — never re-deriv
 
 **What the kernel CAN reliably feed an LLM, today, from one `analyze` call:** the model as each lens's *named formal object* (`describe`), the faithful per-element facts (`lens_facts`), and a Lean-grounded legality verdict (`validate_mode`), all keyed to canvas elements. That is real, deterministic, rich grounding — the LLM reasons over kernel-*translated* structure, not a raw graph it has to interpret. The lens-vocabulary guarantee (research doc §11) is **as solid as claimed**: the kernel does speak each lens, by name.
 
-**What it CANNOT do yet, and where the LLM story is therefore thinner than the confident prose suggested:**
+**What it still cannot do, and where the LLM story is therefore thinner than the confident prose suggested:**
 - It cannot derive bondhood from behavior — bonds are declared + checked, so LLM reasoning about "is this really a bond" is reasoning about a *declaration's plausibility*, not reading a kernel-derived fact.
 - It cannot ground reasoning about the dynamical face — T/H/Δt are notes. LLM analysis of *dynamics* has thin kernel support until those slots are typed.
-- It cannot yet catch dead-ends / unreachable states / duplicate edges — so a structural critic depends on **#66** landing first (which is exactly why the research doc puts the kernel checks *before* the LLM leg).
+- Dead-ends, unreachable states, and duplicate edges are now caught (**#66 landed 2026-07-17** — see the layered-guarantee table above); the read-only analysis rung (Analyst panel, `web/src/AnalystPanel.tsx`) ships on top of this, live.
 
-**Honest bottom line:** the substrate is real and *richer* than the research doc claimed for the two things that matter most — lens vocabulary and per-element structural facts. The caveats are narrow and specific: the dynamical face is thin, bondhood is declared-not-derived, and three graph checks are missing (#66). None of these undermine the analysis-first / lens-faithful plan; they scope it. Trust the structural + lens-vocabulary grounding; treat the dynamical face as aspirational; land #66 before leaning on structural critique.
+**Honest bottom line:** the substrate is real and *richer* than the research doc claimed for the two things that matter most — lens vocabulary and per-element structural facts. The remaining caveats are narrow and specific: the dynamical face is thin and bondhood is declared-not-derived. None of these undermine the analysis-first / lens-faithful plan; they scope it. Trust the structural + lens-vocabulary grounding; treat the dynamical face as aspirational.
 
 ---
 
