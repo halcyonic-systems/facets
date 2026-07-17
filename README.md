@@ -13,10 +13,6 @@ systems logic in JS is a bug.
 
 ## What this tool believes
 
-*Draft (2026-07-17, part of #23), awaiting Shingai's voice pass. Content is
-grounded and cited; register/voice is not yet final — treat every `[Shingai: ...]`
-marker as an open call, not a placeholder to ignore.*
-
 **The three lenses are generated, not opinions.** Klir, Bunge, and Mobus are
 three faithful views the K ≅ **2** kernel *generates* from one model, each
 licensed by its own machine-checked precondition (proven in
@@ -39,10 +35,11 @@ not a saved tier.)
 than silently dropping or guessing at authored structure — every refusal points
 at a specific formal precondition you can look up.
 
-**Who this is for.** `[Shingai: voice call — my draft: an engineer, scientist,
-or mathematician already convinced the tool is worth using, who wants to assess
-the quality of the theory underneath it, independently or with LLM/expert help.
-Adjust freely — your call.]`
+**Who this is for.** Someone already convinced the tool is worth using, who now
+wants to assess the quality of the theory underneath it, on their own or with
+help from an LLM or another expert. Likely an engineer, scientist, or
+mathematician, and often someone with a systems or complexity background, though
+neither is required.
 
 The full, cited version of everything above is
 [`docs/theory-fidelity.md`](docs/theory-fidelity.md); [`docs/README.md`](docs/README.md)
