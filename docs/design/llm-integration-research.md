@@ -158,6 +158,8 @@ Layered guarantee (defense in depth):
 
 **The honest boundary:** *structural* lens-fidelity is **hard-guaranteed** (kernel validation + constrained decoding — the kernel will not accept out-of-lens structure). *Free-prose* terminology is **strongly enforced but not literally guaranteed per sentence** (natural language is unconstrained) — but handing the model the already-translated `describe()` object plus a per-lens whitelist and lint gets you reliably close, because the model is echoing lens-native input rather than translating into a vocabulary it might not know. And all of this **transfers to local models unchanged**, because the lens vocabulary lives in `describe()`, not in the weights.
 
+**Consequence — the lenses become a cross-check on the LLM, not just a constraint on it.** Because K≅2 requires the counts to agree across Klir/Bunge/Mobus ("counts hold, words change"), a claim the LLM asserts in one lens's description that contradicts the same model's other-lens descriptions is a **caught drift** — the three faithful views triangulate the LLM's own reasoning for free. This turns lens-fidelity from a cost (extra vocabulary to enforce) into a diagnostic: disagreement across lenses flags either an LLM error or a genuinely interesting modeling tension worth surfacing to the author.
+
 ## 12. Recommended first rung + open questions
 
 **First rung (smallest coherent slice, all read-only or deterministic — no write-path risk):**
