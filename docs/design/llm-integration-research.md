@@ -128,7 +128,37 @@ Every surveyed category independently converged on bert-lenses' shape — *LLM p
 - **Research-tool specific:** over-reliance erodes independent problem formulation and weakens the modeler's mental model of the system — distinct from bug-injection risk (Nature Computational Science, 2025).
 - **Oracle-vision (internal):** the over-reliance literature redirected inward — the builder can automation-bias *themselves* into shipping the authoring layer before the checker is trustworthy enough to bear it. The discipline is the same as the rest of this doc: analysis-first, read-only, prove the substrate before anything writes through it.
 
-## 10. Recommended first rung + open questions
+## 10. Routing — local-first through GSR
+
+The goal: route through GSR so it's (1) efficient, (2) local-first by default with cloud optional, (3) architected so local models get the benefits of the knowledge-base constraints. All three hold together because of one triangle: **GSR = the single constraint brain · the kernel = the sole checker · the model = a swappable, weak-tolerant proposer.**
+
+**Local models inherit the KB — because the constraints live in the harness, not the weights.** GSR already applies the ontology/vocabulary constraints at its own layer ("GSR stays the single brain; the canvas never owns the prompt"), so a small local gemma gets the identical grounding a frontier model gets. Split by transfer behavior:
+- **Hard constraints (schema / enum / spec shape):** fully enforceable regardless of model strength, via (a) **constrained/grammar decoding** (Ollama `format` + JSON-Schema masks invalid tokens at decode time — the model *cannot* emit an out-of-vocabulary enum) and (b) the deterministic `repair_spec` + kernel validator. A weak model can't violate a decode-masked constraint.
+- **Soft constraints (ontology reasoning, lens semantics):** degrade with model size; mitigate by **RAG-narrowing** (retrieve the few relevant passages, don't dump the corpus) and **keeping the LLM's job small** (fill a known schema / narrate facts, don't invent structure). The kernel owns correctness, so the local model only has to be *plausible*.
+- **Analysis-first is the most local-friendly rung**: the kernel already did the reasoning (`analyze_canvas` facts); the model just narrates pre-computed truth, needing almost no KB of its own.
+
+**Local-first default** is a policy flip, not surgery: make local Ollama the default even when `ANTHROPIC_API_KEY` is present; cloud becomes explicit per-request opt-in (`tier: "frontier"`); and **escalate-on-failure** (the `extract → validate → retry_extraction_with_feedback` loop already exists — N local validation failures escalate to cloud). Safe because the checker sits *outside* the model boundary: a weak local proposal that's wrong is **rejected with a legible reason, not silently absorbed**. The sound-checker design is what *licenses* local-first — it only costs usefulness (more retries), never soundness.
+
+**Efficient:** context computed once (`analyze_canvas`, not re-serialized per capability) · RAG-narrow the prompt · constrained decoding cuts retries (the biggest local lever) · validation is fast local WASM · cloud tokens spent only on the hard cases. Optional unification: route GSR's *model calls* through hal's **LiteLLM proxy (:4000)** underneath, keeping GSR as the prompt/RAG/constraint brain — one provider-switch + fallback + cost layer instead of GSR growing its own clients; local/cloud policy becomes a LiteLLM routing rule.
+
+**Caveats:** the "constraint tax" (constrained decoding can suppress capability on some open-weight models — test empirically); frontier still wins for hard *authoring* (the #10 "frontier tier only" receipt holds), but *analysis* is genuinely local-viable — another reason it's the right first rung.
+
+## 11. Lens-faithful reasoning — guaranteeing the LLM speaks each lens
+
+Requirement: the LLM must reliably reason in the *active lens's* terminology (Klir relation-primary; Bunge components/bonds/endo-exo/aggregate-verdict; Mobus C·N·E·G·B·T·H·Δt / flows / interfaces / membrane) and never leak another lens's vocabulary.
+
+**The reframe that makes this near-guaranteed: don't rely on the model *knowing* each lens — the kernel already speaks each lens.** `describe(model, lens)` returns a `LensDescription` — a Klir | Bunge | Mobus discriminated union that IS the model expressed in that lens's formal vocabulary, and the K≅2 property "counts hold, words change" is machine-tested (`describe_counts_hold_across_lenses`). So the lens vocabulary is a **kernel-computed fact, injected**, not model knowledge to be trusted. This inverts the reliability problem: you don't hope the LLM learned Bunge; you feed it Bunge-labeled structure.
+
+Layered guarantee (defense in depth):
+1. **Inject the translated object.** Feed `describe(model, lens)` as the context, not the raw graph. The LLM reasons *over already-lens-labeled structure*, so in-lens output is the path of least resistance. Injection >> instruction. (The substrate is lens-aware by construction — §4 — so switching the active lens switches the LLM's vocabulary with zero LLM-side logic.)
+2. **Constrain the output.** For structured/authoring output, grammar/JSON-Schema-constrained decoding against the *active lens's* spec vocabulary — the model literally cannot emit a wrong-lens primitive (e.g. propose a Mobus "flow" while in the Klir lens whose primitive is a neutral relation).
+3. **Per-lens system prompt + term whitelist + in-lens few-shot.** Shapes the reasoning; soft (prompt-following is probabilistic, weaker on small models), which is why it's backed by 1, 2, 4.
+4. **Kernel validation rejects cross-lens structure.** `validate_mode(model, lens.mode())` already enforces lens-legality (a self-loop is fine in Klir, rejected at Mobus/Operational; an aggregate fails Bunge's bond requirement). This is the **hard guarantee for structure** — regardless of what the LLM "intended."
+5. **Optional lint / cross-lens check.** A post-hoc pass flagging out-of-lens vocabulary in prose; and, via K≅2, verifying an LLM's lens-specific claim survives translation to the model's other-lens descriptions.
+
+**The honest boundary:** *structural* lens-fidelity is **hard-guaranteed** (kernel validation + constrained decoding — the kernel will not accept out-of-lens structure). *Free-prose* terminology is **strongly enforced but not literally guaranteed per sentence** (natural language is unconstrained) — but handing the model the already-translated `describe()` object plus a per-lens whitelist and lint gets you reliably close, because the model is echoing lens-native input rather than translating into a vocabulary it might not know. And all of this **transfers to local models unchanged**, because the lens vocabulary lives in `describe()`, not in the weights.
+
+## 12. Recommended first rung + open questions
 
 **First rung (smallest coherent slice, all read-only or deterministic — no write-path risk):**
 1. **Kernel:** add deterministic **dead-end**, **duplicate-edge**, and **reachability** checks to `validate.rs`/`analyze` (next to `check_bond`/`check_self_loops`). This is pure kernel work, needs no LLM, and mechanically catches the class of error today's review caught by hand.
