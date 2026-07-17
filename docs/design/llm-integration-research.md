@@ -52,6 +52,8 @@ This is **generate-and-check** — the same pattern that makes AlphaProof-style 
 
 All three capabilities need the same question answered: *"what, truthfully, is this model right now, in a form an LLM can read?"* If each serializes its own view, they drift — three renderings that can go stale, three places systems-logic can leak into TS (the one thing the codebase forbids). So: **one model-context provider**; every capability consumes it, none re-derives kernel facts.
 
+*(These claims are verified against source, with confidence ratings, in [`docs/kernel-architecture.md`](../kernel-architecture.md) — read that if you're skeptical the kernel really holds this. Short version: the substrate is real and richer than described here for lens vocabulary + structural facts; the dynamical face is thin and three graph checks are missing (#66).)*
+
 The kernel already exposes exactly this shape:
 
 ```

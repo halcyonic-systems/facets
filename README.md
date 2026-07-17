@@ -75,6 +75,12 @@ cargo build --workspace --target wasm32-unknown-unknown
   working rules, and the 8-step palette-extension procedure. Start here.
 - [`crates/bert-lenses-kernel/API.md`](crates/bert-lenses-kernel/API.md) — the
   frozen JS↔wasm surface (append-only).
+- [`docs/kernel-architecture.md`](docs/kernel-architecture.md) — what the kernel
+  *is* as a system: what `describe`/`lens_facts`/`validate_mode`/`analyze` actually
+  compute, verified against source with confidence ratings. Read before trusting
+  the substrate.
+- [`docs/design/llm-integration-research.md`](docs/design/llm-integration-research.md)
+  — research foundation for LLM context/authoring/analysis (rests on the kernel above).
 - [`docs/design/lens-palettes.md`](docs/design/lens-palettes.md) — the lens
   grounding for Phase 3/4 (Klir / Bunge / Mobus).
 - [`web/DESIGN.md`](web/DESIGN.md) — Halcyonic Frost design tokens for the face.
