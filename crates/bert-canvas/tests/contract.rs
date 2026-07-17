@@ -11,7 +11,9 @@
 //! Regenerate after an intentional shape change:
 //!   BLESS_FIXTURES=1 cargo test -p bert-canvas --test contract
 
-use bert_canvas::canvas::{CanvasBoundaryProps, CanvasModel, Kind, Lens, Relation, Role, Thing};
+use bert_canvas::canvas::{
+    CanvasBoundaryProps, CanvasModel, Genus, Kind, Kingdom, Lens, Relation, Role, SystemType, Thing,
+};
 use bert_canvas::lenses::{analyze, describe, lens_facts};
 
 /// Write-or-assert a fixture. With `BLESS_FIXTURES=1` it (re)writes the file;
@@ -84,6 +86,12 @@ fn sample() -> CanvasModel {
         boundary: CanvasBoundaryProps {
             porosity: 0.35,
             perceptive_fuzziness: 0.2,
+        },
+        // Fully-asserted so the golden proves the present-system_type case.
+        system_type: SystemType {
+            kingdom: Some(Kingdom::Concrete),
+            genus: Some(Genus::Social),
+            domain: Some("U.S. legislative process".to_string()),
         },
     }
 }

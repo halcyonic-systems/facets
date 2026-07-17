@@ -124,6 +124,42 @@ pub struct CanvasBoundaryProps {
     pub perceptive_fuzziness: f32,
 }
 
+/// Bunge's two kingdoms of systems (Treatise Vol. 4, Postulate 6.4): every
+/// system is either Conceptual or Concrete. Aligns with Mobus's abstract vs
+/// concrete split. See systems-science-foundations/docs/reference/
+/// system-type-typologies.md for the author-grounded vocabulary.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Kingdom {
+    Conceptual,
+    Concrete,
+}
+
+/// Bunge's five genera of concrete systems (Postulate 6.4). Meaningful only when
+/// the kingdom is Concrete; Klir's §2.4 type-(a) axis lands on nearly the same
+/// list (an independent K≅2 corroboration — see the reference doc).
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Genus {
+    Physical,
+    Chemical,
+    Biological,
+    Social,
+    Technical,
+}
+
+/// The modeler's asserted ontological kind of the whole model — semantic
+/// metadata, NOT a systemhood verdict (no validator gates it). Genus is
+/// meaningful when kingdom = Concrete; no cross-field validation in v1. Domain
+/// is the free-text subject area that frames the narration for the analyst.
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
+pub struct SystemType {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kingdom: Option<Kingdom>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub genus: Option<Genus>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub domain: Option<String>,
+}
+
 /// The canvas editing model — the JSON the React canvas holds and sends.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CanvasModel {
@@ -134,6 +170,10 @@ pub struct CanvasModel {
     pub relations: Vec<Relation>,
     #[serde(default)]
     pub boundary: CanvasBoundaryProps,
+    /// Author-asserted system type (genus + optional domain). serde `default` so
+    /// pre-existing models deserialize unchanged; not gated by any validator.
+    #[serde(default)]
+    pub system_type: SystemType,
 }
 
 fn info(id: Id, level: i32, name: &str) -> Info {
@@ -523,6 +563,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         things,
         relations,
         boundary,
+        system_type: SystemType::default(),
     }
 }
 
@@ -589,6 +630,7 @@ mod tests {
                 ],
                 relations: vec![bond(10, 1, 2)],
                 boundary: Default::default(),
+                system_type: Default::default(),
             };
             let wm = project(&model);
             assert_eq!(wm.mode, Some(lens.mode()));
@@ -611,6 +653,7 @@ mod tests {
             things: vec![thing(1, "A", Role::Component), thing(2, "B", Role::Component)],
             relations: vec![bond(10, 1, 2)],
             boundary: Default::default(),
+            system_type: Default::default(),
         };
         let loop_edge = bond(11, 1, 1); // A → A
         let issues = validate_connection(&model, &loop_edge);
@@ -666,6 +709,7 @@ mod tests {
             ],
             relations: vec![bond(10, 1, 2)], // Env → Comp
             boundary: Default::default(),
+            system_type: Default::default(),
         };
         let wm = project(&model);
         assert_eq!(wm.environment.sources.len(), 1);

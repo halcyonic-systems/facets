@@ -556,6 +556,7 @@ mod tests {
             things,
             relations,
             boundary: Default::default(),
+            system_type: Default::default(),
         }
     }
 

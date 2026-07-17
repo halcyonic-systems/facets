@@ -67,5 +67,10 @@
   "boundary": {
     "porosity": 0.35,
     "perceptive_fuzziness": 0.2
+  },
+  "system_type": {
+    "kingdom": "Concrete",
+    "genus": "Social",
+    "domain": "U.S. legislative process"
   }
 }

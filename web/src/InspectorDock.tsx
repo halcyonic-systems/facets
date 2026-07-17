@@ -5,15 +5,23 @@
 // unchanged (same props, same kernel-fed data). The dock decides nothing — it
 // arranges. Frost chrome, lens-tinted active tab (rides the --lens-* seam).
 import { useState } from "react";
-import type { CanvasModel, IssueTarget, LensDescription, RunResultRich, ValidationResult } from "./kernel/types";
+import type {
+  CanvasModel,
+  IssueTarget,
+  LensDescription,
+  RunResultRich,
+  SystemType,
+  ValidationResult,
+} from "./kernel/types";
 import { RunPanel } from "./RunPanel";
 import { FormalPanel } from "./FormalPanel";
 import { AuditPanel } from "./AuditPanel";
 import { AnalystPanel } from "./AnalystPanel";
+import { SystemTypeEditor } from "./SystemTypeEditor";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 import { Card } from "./ui";
 
-type Tab = "run" | "formal" | "audit" | "analyst";
+type Tab = "run" | "formal" | "audit" | "analyst" | "type";
 
 export function InspectorDock({
   result,
@@ -24,6 +32,7 @@ export function InspectorDock({
   analysisError,
   canvasModel,
   onNavigate,
+  onSystemTypeChange,
   resetKeys,
 }: {
   result: RunResultRich | null;
@@ -34,6 +43,7 @@ export function InspectorDock({
   analysisError: string | null;
   canvasModel: CanvasModel | null;
   onNavigate: (target: IssueTarget) => void;
+  onSystemTypeChange: (next: SystemType) => void;
   resetKeys: unknown[];
 }) {
   const [tab, setTab] = useState<Tab>("run");
@@ -84,6 +94,7 @@ export function InspectorDock({
           badge={issueCount > 0 ? issueCount : undefined}
         />
         <TabButton label="Analyst" active={tab === "analyst"} onClick={() => setTab("analyst")} />
+        <TabButton label="Type" active={tab === "type"} onClick={() => setTab("type")} />
         <button
           onClick={() => setCollapsed(true)}
           title="Collapse inspector"
@@ -111,6 +122,12 @@ export function InspectorDock({
               <AnalystPanel canvasModel={canvasModel} onNavigate={onNavigate} />
             ) : (
               <Placeholder>Open or import a model to analyze it.</Placeholder>
+            ))}
+          {tab === "type" &&
+            (canvasModel ? (
+              <SystemTypeEditor value={canvasModel.system_type} onChange={onSystemTypeChange} />
+            ) : (
+              <Placeholder>Open or import a model to assert its system type.</Placeholder>
             ))}
         </KernelErrorBoundary>
       </div>

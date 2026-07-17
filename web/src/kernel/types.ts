@@ -168,11 +168,27 @@ export interface CanvasBoundaryProps {
   perceptive_fuzziness: number;
 }
 
+/** Bunge's two kingdoms (Postulate 6.4) + five concrete genera. The modeler's
+ *  asserted ontological kind — semantic metadata, not a systemhood verdict.
+ *  See systems-science-foundations/docs/reference/system-type-typologies.md. */
+export type Kingdom = "Conceptual" | "Concrete";
+export type Genus = "Physical" | "Chemical" | "Biological" | "Social" | "Technical";
+
+/** Author-asserted system type. genus is meaningful when kingdom = Concrete;
+ *  domain is the free-text subject area that frames the analyst's narration. */
+export interface SystemType {
+  kingdom?: Kingdom;
+  genus?: Genus;
+  domain?: string;
+}
+
 export interface CanvasModel {
   lens: Lens;
   things: Thing[];
   relations: Relation[];
   boundary: CanvasBoundaryProps;
+  /** serde `default` on the Rust side — absent on pre-existing models. */
+  system_type?: SystemType;
 }
 
 // ---- Phase 3: the lens primitives --------------------------------------------

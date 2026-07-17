@@ -5,12 +5,14 @@
 // you find a re-count, re-derivation, or re-interpretation of a kernel fact
 // below, it is a bug — the kernel's verdict IS the context.
 
-import type { CanvasModel, CanvasAnalysis, LensDescription, Lens } from "./types";
+import type { CanvasModel, CanvasAnalysis, LensDescription, Lens, SystemType } from "./types";
 import { analyzeCanvas, project } from "./index";
 
 export type ModelContext = {
   lens: Lens;
   canvas: CanvasModel;
+  /** The author-asserted system type, verbatim from the model (may be absent). */
+  system_type?: SystemType;
   /** project(canvas) when the projection succeeds; null when it throws.
    *  Carried for provenance/debug — renderContextForPrompt does NOT dump it. */
   world: unknown | null;
@@ -31,6 +33,7 @@ export function buildModelContext(model: CanvasModel): ModelContext {
   return {
     lens: model.lens,
     canvas: model,
+    system_type: model.system_type,
     world,
     analysis,
     provenance: { generated_at: new Date().toISOString(), source: "bert-lenses" },
@@ -142,13 +145,27 @@ function renderVerdicts(ctx: ModelContext): string {
     .join("\n");
 }
 
+// The author's asserted type, one line — omitting any unspecified field. Returns
+// null when nothing is asserted, so the section drops out entirely (matching
+// pre-existing models, whose system_type is absent).
+function renderSystemType(st: SystemType | undefined): string | null {
+  if (!st) return null;
+  const parts: string[] = [];
+  if (st.kingdom) parts.push(`Kingdom: ${st.kingdom}`);
+  if (st.genus) parts.push(`Genus: ${st.genus}`);
+  if (st.domain && st.domain.trim()) parts.push(`Domain: ${st.domain.trim()}`);
+  return parts.length === 0 ? null : parts.join(" · ");
+}
+
 /** Deterministic text the LLM sees. Same input → same string (the provenance
  *  timestamp is carried on the context but never rendered into the body). */
 export function renderContextForPrompt(ctx: ModelContext): string {
   const lens = ctx.analysis.description.lens;
+  const systemType = renderSystemType(ctx.system_type);
   return [
     `## Lens`,
     `${lens} — ${LENS_FRAMING[lens]}`,
+    ...(systemType === null ? [] : [``, `## System type`, systemType]),
     ``,
     `## Formal object (kernel: describe)`,
     renderFormalObject(ctx.analysis.description),

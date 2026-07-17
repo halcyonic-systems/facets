@@ -4,7 +4,7 @@
 // verdicts and judges domain plausibility, then lets each cited element click
 // through to the canvas via the SAME onNavigate seam the Audit panel rides.
 import { useState } from "react";
-import type { CanvasModel, IssueTarget } from "./kernel/types";
+import type { CanvasModel, IssueTarget, SystemType } from "./kernel/types";
 import type { AnalysisResponse } from "./analysis/types";
 import { buildModelContext, renderContextForPrompt } from "./kernel/context";
 import { analyzeModel } from "./gsr";
@@ -71,7 +71,6 @@ export function AnalystPanel({
   onNavigate: (target: IssueTarget) => void;
 }) {
   const [question, setQuestion] = useState("");
-  const [domain, setDomain] = useState("");
   const [model, setModel] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +88,7 @@ export function AnalystPanel({
         question: question.trim() || undefined,
         lens: ctx.lens,
         model,
-        domain: domain.trim() || undefined,
+        domain: canvasModel.system_type?.domain?.trim() || undefined,
       });
       setRun({
         response,
@@ -124,16 +123,7 @@ export function AnalystPanel({
             style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
           />
         </label>
-        <label className="grid gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
-          Domain (optional)
-          <input
-            value={domain}
-            onChange={(e) => setDomain(e.target.value)}
-            placeholder="e.g. US federal lawmaking"
-            className="rounded-md px-2 py-1 text-sm"
-            style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
-          />
-        </label>
+        <AssertedType systemType={canvasModel.system_type} />
         <div className="flex items-center gap-2">
           <select
             value={model}
@@ -232,6 +222,26 @@ export function AnalystPanel({
         </div>
       </div>
     </Card>
+  );
+}
+
+// The model's asserted type, read-only — authored in the inspector's Type tab.
+// The domain here is the `domain` arg passed to analyzeModel; kingdom/genus reach
+// the LLM through the rendered context, not this line.
+function AssertedType({ systemType }: { systemType: SystemType | undefined }) {
+  const parts = [systemType?.kingdom, systemType?.genus, systemType?.domain?.trim()].filter(
+    (p): p is string => !!p,
+  );
+  return (
+    <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
+      {parts.length > 0 ? (
+        <>
+          Asserted as: <span style={{ color: "var(--text-primary)" }}>{parts.join(" · ")}</span>
+        </>
+      ) : (
+        <span style={{ color: "var(--text-muted)" }}>No system type asserted — set one in the Type tab.</span>
+      )}
+    </div>
   );
 }
 
