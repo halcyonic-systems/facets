@@ -11,11 +11,16 @@ import {
 } from "recharts";
 import type { Comparison, Level, RunResultRich } from "./kernel/types";
 import { Card, Pill, Stat, Verdict, humanize } from "./ui";
+import { unitLabel } from "./runViz";
 
-const CATEGORY_LABEL: Record<Level["category"], string> = {
-  product: "Products",
-  resource: "Resources",
-  internal: "Interior",
+// Label + subtitle per category. The subtitle states what the value IS —
+// grounded in forcing.rs: a sink's value is the total delivered across the run,
+// a source/process value is the level at run end. Not a new claim, a reading of
+// what the kernel computed. Provisional wording (Mobus purpose categories).
+const CATEGORY_HEADER: Record<Level["category"], { label: string; sub: (ticks: number) => string }> = {
+  product: { label: "Outputs", sub: (t) => `total delivered over ${t} ticks` },
+  resource: { label: "Inputs", sub: () => "level at run end" },
+  internal: { label: "Inside", sub: () => "level at run end" },
 };
 
 export function RunPanel({ result }: { result: RunResultRich }) {
@@ -73,7 +78,7 @@ export function RunPanel({ result }: { result: RunResultRich }) {
       )}
 
       <Card title="Final levels" source="bert-core · wasm">
-        <Levels levels={result.levels} />
+        <Levels levels={result.levels} ticks={result.ticks} />
       </Card>
     </div>
   );
@@ -165,35 +170,56 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   );
 }
 
-function Levels({ levels }: { levels: Level[] }) {
+function Levels({ levels, ticks }: { levels: Level[]; ticks: number }) {
   const groups: Level["category"][] = ["product", "resource", "internal"];
   return (
     <div className="grid gap-4">
       {groups.map((cat) => {
         const rows = levels.filter((l) => l.category === cat);
         if (rows.length === 0) return null;
+        const header = CATEGORY_HEADER[cat];
         return (
           <div key={cat}>
             <div
               className="mb-1 text-[11px] font-semibold uppercase tracking-wide"
               style={{ color: "var(--text-muted)" }}
             >
-              {CATEGORY_LABEL[cat]}
+              {header.label}
+              <span className="ml-1.5 font-normal normal-case tracking-normal">
+                · {header.sub(ticks)}
+              </span>
             </div>
             <div className="grid gap-1">
               {rows.map((l) => (
-                <div key={l.name} className="flex items-baseline justify-between text-sm">
-                  <span style={{ color: "var(--text-primary)" }}>{l.name}</span>
-                  <span className="tabular" style={{ color: "var(--text-secondary)" }}>
-                    {humanize(l.value)}
-                    {l.unit && <span style={{ color: "var(--text-muted)" }}> {l.unit}</span>}
-                  </span>
-                </div>
+                <LevelRow key={l.name} level={l} />
               ))}
             </div>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function LevelRow({ level: l }: { level: Level }) {
+  // A whole-number source/process level renders as e.g. "3.0" — a magnitude cue
+  // that reads it as a stock height, not a count of parts. Sinks keep humanize
+  // (they're accumulated totals that can run large). Every row states its unit.
+  const unit = unitLabel(l.unit);
+  const showsMagnitude = l.category !== "product" && Number.isInteger(l.value);
+  return (
+    <div className="flex items-baseline justify-between text-sm">
+      <span style={{ color: "var(--text-primary)" }}>{l.name}</span>
+      <span className="tabular" style={{ color: "var(--text-secondary)" }}>
+        {showsMagnitude ? l.value.toFixed(1) : humanize(l.value)}
+        <span
+          className={unit.abstract ? "italic" : undefined}
+          style={{ color: "var(--text-muted)" }}
+        >
+          {" "}
+          {unit.text}
+        </span>
+      </span>
     </div>
   );
 }
