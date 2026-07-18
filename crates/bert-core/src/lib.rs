@@ -310,7 +310,7 @@ pub enum ParameterValue {
 /// Smart parameter with enhanced type system
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SmartParameter {
-    /// Unique identifier for this parameter (excluded from serialization)
+    /// Identifier for this parameter (excluded from serialization); defaults to the nil uuid
     #[serde(skip)]
     pub id: Uuid,
     /// Human-readable parameter name
@@ -356,8 +356,9 @@ pub enum ParameterType {
 ///
 /// # Serialization
 ///
-/// The `id` field is automatically generated and excluded from serialization to ensure
-/// consistent parameter identification across save/load cycles.
+/// The `id` field is excluded from serialization, so it never affects save/load
+/// cycles. It defaults to the nil uuid; a caller that needs a distinct id assigns
+/// one, keeping id minting out of the kernel so identical inputs yield identical models.
 ///
 /// # Examples
 ///
@@ -366,18 +367,18 @@ pub enum ParameterType {
 ///
 /// // Create a temperature parameter for an energy flow
 /// let temperature = Parameter {
-///     id: uuid::Uuid::new_v4(), // Auto-generated
 ///     name: "Temperature".to_string(),
 ///     value: "350".to_string(),
 ///     unit: "Celsius".to_string(),
+///     ..Default::default()
 /// };
 ///
 /// // Create a flow rate constraint for material flow
 /// let flow_rate = Parameter {
-///     id: uuid::Uuid::new_v4(),
 ///     name: "Max Flow Rate".to_string(),
 ///     value: "50".to_string(),
 ///     unit: "kg/min".to_string(),
+///     ..Default::default()
 /// };
 /// ```
 ///
@@ -386,10 +387,10 @@ pub enum ParameterType {
 /// - [`Flow`]: Contains a vector of parameters to characterize interactions
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Parameter {
-    /// Unique identifier for this parameter (excluded from serialization).
+    /// Identifier for this parameter (excluded from serialization).
     ///
-    /// Automatically generated to distinguish parameters even when they have
-    /// identical names or values. Used internally for parameter management.
+    /// Defaults to the nil uuid; a caller may assign a distinct id. Kept out of
+    /// serialization so the kernel stays deterministic across construction and load.
     #[serde(skip)]
     pub id: Uuid,
 
@@ -416,7 +417,7 @@ pub struct Parameter {
 impl Default for Parameter {
     fn default() -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id: Uuid::nil(),
             name: "".to_string(),
             value: "".to_string(),
             unit: "".to_string(),
@@ -425,10 +426,14 @@ impl Default for Parameter {
 }
 
 impl SmartParameter {
-    /// Create new smart parameter with generated ID
+    /// Create a smart parameter with the nil id.
+    ///
+    /// Id minting is left to the caller: identical inputs must yield identical
+    /// models, so the kernel never introduces randomness. A caller that needs a
+    /// distinct id assigns one to the public `id` field.
     pub fn new(name: String, value: ParameterValue) -> Self {
         Self {
-            id: Uuid::new_v4(),
+            id: Uuid::nil(),
             name,
             value,
         }
@@ -1958,6 +1963,24 @@ impl_has_sources_and_sinks!(System, Environment);
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parameter_construction_is_deterministic() {
+        // Identical inputs must yield equal parameters: the id no longer carries
+        // per-call randomness, so undo/redo model comparison stays stable.
+        assert_eq!(Parameter::default(), Parameter::default());
+        let a = SmartParameter::new("t".to_string(), ParameterValue::Boolean {
+            value: true,
+            true_label: "on".to_string(),
+            false_label: "off".to_string(),
+        });
+        let b = SmartParameter::new("t".to_string(), ParameterValue::Boolean {
+            value: true,
+            true_label: "on".to_string(),
+            false_label: "off".to_string(),
+        });
+        assert_eq!(a, b);
+    }
 
     #[test]
     fn agent_model_roundtrip_with_agent() {
