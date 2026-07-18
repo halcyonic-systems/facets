@@ -589,12 +589,18 @@ pub struct Comparison {
 
 impl Comparison {
     /// Percent divergence at the horizon: `|sim − actual| / |actual|` at the last
-    /// commonly-defined point, as a percentage. `None` if either series is empty;
-    /// falls back to the absolute residual (as a percent of 1) when the actual
-    /// endpoint is ~0, so a zero denominator never yields infinity.
+    /// commonly-defined point, as a percentage. Scored in-sample — on a run longer
+    /// than the data the horizon is the data's last index, never a forecast tick
+    /// past it. `None` if either series is empty; falls back to the absolute
+    /// residual (as a percent of 1) when the actual endpoint is ~0, so a zero
+    /// denominator never yields infinity.
     pub fn divergence_pct(&self) -> Option<f32> {
-        let s = *self.simulated.last()?;
-        let a = *self.actual.last()?;
+        let k = self.simulated.len().min(self.actual.len());
+        if k == 0 {
+            return None;
+        }
+        let s = self.simulated[k - 1];
+        let a = self.actual[k - 1];
         if a.abs() < 1e-9 {
             return Some((s - a).abs() * 100.0);
         }
@@ -781,6 +787,25 @@ mod tests {
         };
         // |100 - 150| / 150 = 33.3%.
         assert!((c.divergence_pct().unwrap() - 33.333).abs() < 0.01);
+    }
+
+    // #75: a run longer than the data scores in-sample — the horizon is the
+    // data's last index, never a forecast tick past it.
+    #[test]
+    fn divergence_pct_windows_to_the_data_endpoint() {
+        let mut simulated = vec![0.0; 30];
+        simulated[18] = 120.0; // in-sample endpoint (data has 19 points, index 18)
+        simulated[29] = 500.0; // forecast endpoint — never compared
+        let c = Comparison {
+            element_name: "reservoir".into(),
+            kind: "stock",
+            simulated,
+            actual: vec![100.0; 19],
+            baseline: None,
+            unit: String::new(),
+        };
+        // In-sample: |120 - 100| / 100 = 20%, not the 400% last-vs-last would give.
+        assert!((c.divergence_pct().unwrap() - 20.0).abs() < 1e-4);
     }
 
     /// #25: the divergence figure reads the EXECUTED series, never the declared
