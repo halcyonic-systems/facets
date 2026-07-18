@@ -15,6 +15,7 @@ import {
   type CitationResolver,
 } from "./analysis/citations";
 import { Card, Pill } from "./ui";
+import { TraceDiagram } from "./analysis/TraceDiagram";
 
 const MODEL_OPTIONS: { label: string; value: string }[] = [
   { label: "Local (gemma4)", value: "" },
@@ -170,7 +171,13 @@ export function AnalystPanel({
 
             {run.response.trace.length > 0 && (
               <Section title="Trace">
-                <ul className="grid gap-1">
+                <TraceDiagram
+                  trace={run.response.trace}
+                  evidence={run.response.evidence}
+                  resolver={run.resolver}
+                  onNavigate={onNavigate}
+                />
+                <ul className="mt-2 grid gap-1">
                   {run.response.trace.map((t, i) => (
                     <li key={i} className="text-xs" style={{ color: "var(--text-secondary)" }}>
                       <Cited text={t} resolver={run.resolver} onNavigate={onNavigate} />
