@@ -700,6 +700,7 @@ function Workspace() {
               onErrors={setSlErrors}
               onCompiled={onSlCompiled}
               onClose={() => setSlOpen(false)}
+              canvasModel={canvasModel}
             />
           )}
 

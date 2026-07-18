@@ -22,6 +22,7 @@ import init, {
   describe as wasmDescribe,
   analyze_canvas as wasmAnalyzeCanvas,
   compile_sl as wasmCompileSl,
+  emit_sl as wasmEmitSl,
 } from "bert-lenses-kernel";
 import wasmUrl from "bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url";
 
@@ -206,4 +207,12 @@ export function analyzeCanvas(model: CanvasModel): CanvasAnalysis {
  *  `analyzeCanvas` path as any canvas edit, so every verdict stays kernel-side. */
 export function compileSl(text: string): SlOutcome {
   return call("compile_sl", () => wasmCompileSl(text));
+}
+
+/** Serialize the canvas model to canonical SL text (the model→text direction).
+ *  Throws a KernelError for the few shapes SL v1 cannot express (names with
+ *  quotes/newlines, genus without kingdom). Round-trip is golden-tested
+ *  kernel-side. */
+export function emitSl(model: CanvasModel): string {
+  return call("emit_sl", () => wasmEmitSl(JSON.stringify(model)));
 }

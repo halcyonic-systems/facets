@@ -9,7 +9,7 @@
 // verdicts stay where they always were — the kernel, via the verdict pill and
 // the audit panel.
 
-import { compileSl } from "./kernel";
+import { compileSl, emitSl } from "./kernel";
 import type { CanvasModel, SlError } from "./kernel/types";
 
 interface SlPaneProps {
@@ -21,9 +21,24 @@ interface SlPaneProps {
    *  `lensExplicit` = the text pinned a lens via `@lens`. */
   onCompiled: (model: CanvasModel, lensExplicit: boolean) => void;
   onClose: () => void;
+  /** The current canvas model, for the text←canvas direction (null = none). */
+  canvasModel: CanvasModel | null;
 }
 
-export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose }: SlPaneProps) {
+export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel }: SlPaneProps) {
+  // Canvas → text: serialize the live model into the pane (kernel emit_sl —
+  // canonical, round-trip-golden-tested). Replaces the pane text; the author
+  // asked for it by pressing the button, so no confirm.
+  function fromCanvas() {
+    if (!canvasModel) return;
+    try {
+      onTextChange(emitSl(canvasModel));
+      onErrors([]);
+    } catch (e) {
+      onErrors([{ line: 0, message: e instanceof Error ? e.message : String(e) }]);
+    }
+  }
+
   function compile() {
     const outcome = compileSl(text);
     if ("errors" in outcome) {
@@ -92,6 +107,20 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
           title="Compile SL → model (⌘⏎)"
         >
           Compile
+        </button>
+        <button
+          onClick={fromCanvas}
+          disabled={!canvasModel}
+          className="rounded-full px-3 py-1.5 text-sm"
+          style={{
+            border: "1px solid var(--hairline)",
+            color: "var(--text-secondary)",
+            opacity: canvasModel ? 1 : 0.45,
+            cursor: canvasModel ? "pointer" : "not-allowed",
+          }}
+          title={canvasModel ? "Replace the text with the current canvas model, serialized" : "No model on the canvas yet"}
+        >
+          ← From canvas
         </button>
         <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
           ⌘⏎ · deterministic compile, kernel verdicts

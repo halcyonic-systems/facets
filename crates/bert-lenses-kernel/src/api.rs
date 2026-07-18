@@ -192,6 +192,16 @@ pub fn compile_sl(text: &str) -> Result<JsValue, JsError> {
     }
 }
 
+/// Serialize a canvas editing model to canonical SL text — the model→text
+/// direction. Round-trip is golden-tested kernel-side (`sl_roundtrip.rs`):
+/// emit∘parse is the identity on SL-born models and canonicalizing otherwise.
+#[wasm_bindgen]
+pub fn emit_sl(canvas_json: &str) -> Result<String, JsError> {
+    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    bert_canvas::sl::emit_sl(&model).map_err(|e| JsError::new(&e))
+}
+
 /// Validate a proposed connection at the model's current lens. Returns the issues
 /// the candidate edge INTRODUCED (empty = legal). The per-drag "React asks Rust"
 /// call — the canvas rejects an edge iff the kernel says so.

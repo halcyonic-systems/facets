@@ -83,6 +83,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     let mut by_name: HashMap<String, usize> = HashMap::new();
     // explicit positions from the annotation layer, applied after layout.
     let mut positions: HashMap<String, (f32, f32)> = HashMap::new();
+    // `@directed <n>` marks (1-based flow index, source line) to apply at the end.
+    let mut directed_marks: Vec<(usize, usize)> = Vec::new();
     let mut next_id: u64 = 1;
 
     for (idx, raw) in text.lines().enumerate() {
@@ -137,6 +139,17 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             ),
                         },
                         _ => fail("@lens syntax: `@lens <klir|bunge|mobus>`".into(), &mut errors),
+                    },
+                    "directed" => match tokens.as_slice() {
+                        [_, Tok::Word(n)] if n.parse::<usize>().is_ok() => {
+                            directed_marks.push((n.parse().unwrap(), line_no));
+                        }
+                        _ => fail(
+                            "@directed syntax: `@directed <flow number>` (1-based, in \
+                             declaration order)"
+                                .into(),
+                            &mut errors,
+                        ),
                     },
                     // Unknown annotations are skipped by contract: the view
                     // layer is ignorable, so future annotations degrade softly.
@@ -393,6 +406,16 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         }
     }
 
+    for (n, line_no) in &directed_marks {
+        match relations.get_mut(n.wrapping_sub(1)) {
+            Some(r) if *n >= 1 => r.klir_directed = true,
+            _ => errors.push(SlError {
+                line: *line_no,
+                message: format!("@directed {n}: only {} flow(s) declared", relations.len()),
+            }),
+        }
+    }
+
     if !errors.is_empty() {
         return Err(errors);
     }
@@ -449,6 +472,155 @@ fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>)
             thing.y = y;
         }
     }
+}
+
+/// Serialize a [`CanvasModel`] to canonical SL text — the model→text direction.
+///
+/// Canonical form: things first (declaration order), then flows, then boundary,
+/// then the annotation block (`@lens`, `@pos` per thing, `@directed` per
+/// klir-directed flow). Environment things emit as `source` (originates a
+/// bond), `sink` (touched by a bond), or `environment` (untouched) — the same
+/// edge-derived reading `project()` uses, so the emitted word is the kernel's
+/// identity, not a stored type. `emit_sl` is canonicalizing: for any model,
+/// `emit(parse(emit(m))) == emit(m)`; for models born from things-first SL
+/// text, `parse(emit(m))` reproduces `m` digit for digit (ids included).
+///
+/// Errs on the two shapes SL v1 cannot express: a name containing `"` or a
+/// newline, and a genus asserted without a kingdom. `primitive`/`interface` on
+/// environment things (semantically inert — the kernel ignores them) are
+/// dropped rather than emitted.
+pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
+    use std::fmt::Write as _;
+    let mut out = String::new();
+
+    // system / domain
+    match (&model.system_type.kingdom, &model.system_type.genus) {
+        (Some(k), Some(g)) => writeln!(out, "system : {k:?}/{g:?}").unwrap(),
+        (Some(k), None) => writeln!(out, "system : {k:?}").unwrap(),
+        (None, Some(_)) => {
+            return Err("system_type has a genus but no kingdom — not expressible in SL v1".into())
+        }
+        (None, None) => {}
+    }
+    if let Some(domain) = &model.system_type.domain {
+        writeln!(out, "domain {}", quote(domain)?).unwrap();
+    }
+
+    // things — env identity edge-derived from bonds, mirroring project()
+    let originates = |id: u64| model.relations.iter().any(|r| r.is_bond && r.a == id);
+    let touched = |id: u64| model.relations.iter().any(|r| r.is_bond && (r.a == id || r.b == id));
+    for t in &model.things {
+        let keyword = match t.role {
+            Role::Component => "component",
+            Role::Environment if originates(t.id) => "source",
+            Role::Environment if touched(t.id) => "sink",
+            Role::Environment => "environment",
+        };
+        write!(out, "{keyword} {}", name_token(&t.name)?).unwrap();
+        if t.role == Role::Component {
+            if let Some(p) = t.primitive {
+                write!(out, " primitive {p:?}").unwrap();
+            }
+            if t.interface {
+                write!(out, " interface").unwrap();
+            }
+        }
+        out.push('\n');
+    }
+
+    // flows
+    let name_of = |id: u64| {
+        model
+            .things
+            .iter()
+            .find(|t| t.id == id)
+            .map(|t| t.name.clone())
+            .ok_or_else(|| format!("relation endpoint {id} names no thing"))
+    };
+    for r in &model.relations {
+        write!(out, "flow {} -> {}", name_token(&name_of(r.a)?)?, name_token(&name_of(r.b)?)?)
+            .unwrap();
+        if r.kind != Kind::Unspecified {
+            write!(out, " : {}", format!("{:?}", r.kind).to_ascii_lowercase()).unwrap();
+        }
+        if !r.name.is_empty() {
+            write!(out, " {}", quote(&r.name)?).unwrap();
+        }
+        if !r.is_bond {
+            write!(out, " mere").unwrap();
+        }
+        out.push('\n');
+    }
+
+    // boundary (only when authored)
+    if model.boundary != CanvasBoundaryProps::default() {
+        writeln!(
+            out,
+            "boundary porosity {} fuzziness {}",
+            model.boundary.porosity, model.boundary.perceptive_fuzziness
+        )
+        .unwrap();
+    }
+
+    // annotation block — view state, ignorable
+    out.push('\n');
+    writeln!(out, "@lens {}", format!("{:?}", model.lens).to_ascii_lowercase()).unwrap();
+    for t in &model.things {
+        writeln!(out, "@pos {} {} {}", name_token(&t.name)?, t.x, t.y).unwrap();
+    }
+    for (i, r) in model.relations.iter().enumerate() {
+        if r.klir_directed {
+            writeln!(out, "@directed {}", i + 1).unwrap();
+        }
+    }
+    Ok(out)
+}
+
+/// Words the tokenizer or line parsers claim — a thing name matching one must
+/// be quoted to stay a name.
+fn is_reserved(word: &str) -> bool {
+    matches!(
+        word.to_ascii_lowercase().as_str(),
+        "system"
+            | "domain"
+            | "component"
+            | "source"
+            | "sink"
+            | "environment"
+            | "flow"
+            | "boundary"
+            | "interface"
+            | "primitive"
+            | "mere"
+            | "porosity"
+            | "fuzziness"
+            | "energy"
+            | "matter"
+            | "field"
+            | "informational"
+    )
+}
+
+/// A name as a token: bare when it reads as an identifier and shadows nothing,
+/// quoted otherwise.
+fn name_token(name: &str) -> Result<String, String> {
+    let bare = !name.is_empty()
+        && !is_reserved(name)
+        && name.chars().next().is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        && name != "->";
+    if bare {
+        Ok(name.to_string())
+    } else {
+        quote(name)
+    }
+}
+
+fn quote(s: &str) -> Result<String, String> {
+    if s.contains('"') || s.contains('\n') {
+        return Err(format!("name/label {s:?} contains a quote or newline — not expressible in SL v1"));
+    }
+    Ok(format!("\"{s}\""))
 }
 
 fn parse_system_type(word: &str) -> Result<(Kingdom, Option<Genus>), String> {
