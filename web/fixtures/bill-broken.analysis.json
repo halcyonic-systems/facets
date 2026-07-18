@@ -4,7 +4,7 @@
       {
         "severity": "Warning",
         "location": "interactions[14]",
-        "message": "duplicate edge C0.2→C0.3 (same type as interactions[3])",
+        "message": "duplicate edge C0.2→C0.3 (same type and substance as interactions[3])",
         "suggestion": "Remove the duplicate, or distinguish it by substance or usability"
       },
       {

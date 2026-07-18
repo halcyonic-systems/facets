@@ -213,21 +213,27 @@ fn system_name(model: &WorldModel, id_str: &str) -> String {
         .unwrap_or_else(|| id_str.to_string())
 }
 
-/// Universal Warning: two interactions with the same source, sink, and type are
-/// parallel duplicates. Distinct from `check_duplicate_ids` (repeated *ids*) — a
-/// genuine second channel differs in substance or usability, so identical edges
-/// are almost always an accidental double-draw. Warned, never blocked.
+/// Universal Warning: two interactions with the same source, sink, type, and
+/// substance are parallel duplicates. Distinct from `check_duplicate_ids`
+/// (repeated *ids*) — a genuine second channel differs in substance or
+/// usability, so identical edges are almost always an accidental double-draw.
+/// Warned, never blocked.
 fn check_duplicate_edges(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
-    let mut seen: HashMap<(String, String, InteractionType), String> = HashMap::new();
+    let mut seen: HashMap<(String, String, InteractionType, SubstanceType), String> = HashMap::new();
     for (i, ix) in model.interactions.iter().enumerate() {
-        let key = (serialize_id(&ix.source), serialize_id(&ix.sink), ix.ty);
+        let key = (
+            serialize_id(&ix.source),
+            serialize_id(&ix.sink),
+            ix.ty,
+            ix.substance.ty,
+        );
         let loc = format!("interactions[{i}]");
         match seen.get(&key) {
             Some(prior) => issues.push(
                 ValidationIssue::warning(
                     &loc,
                     format!(
-                        "duplicate edge {}→{} (same type as {prior})",
+                        "duplicate edge {}→{} (same type and substance as {prior})",
                         key.0, key.1
                     ),
                     Some("Remove the duplicate, or distinguish it by substance or usability"),
@@ -2078,6 +2084,25 @@ mod tests {
                 .iter()
                 .any(|i| i.message.contains("duplicate edge")),
             "same endpoints but different type is not a duplicate edge"
+        );
+    }
+
+    #[test]
+    fn distinct_substance_is_not_a_duplicate() {
+        // Same endpoints and type (Flow), but one carries Material and one
+        // Message — a genuine second channel, not an accidental double-draw.
+        let mut m = two_component_model();
+        m.interactions
+            .push(flow(0, "a", sys_id(vec![0, 0]), sys_id(vec![0, 1])));
+        let mut message = flow(1, "b", sys_id(vec![0, 0]), sys_id(vec![0, 1]));
+        message.substance.ty = SubstanceType::Message;
+        m.interactions.push(message);
+        assert!(
+            !validate(&m)
+                .issues
+                .iter()
+                .any(|i| i.message.contains("duplicate edge")),
+            "same endpoints and type but different substance is not a duplicate edge"
         );
     }
 
