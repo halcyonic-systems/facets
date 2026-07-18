@@ -34,6 +34,8 @@ export function InspectorDock({
   onNavigate,
   onSystemTypeChange,
   resetKeys,
+  focused,
+  onToggleFocus,
 }: {
   result: RunResultRich | null;
   runError: string | null;
@@ -45,12 +47,17 @@ export function InspectorDock({
   onNavigate: (target: IssueTarget) => void;
   onSystemTypeChange: (next: SystemType) => void;
   resetKeys: unknown[];
+  // #57: focus mode. When on, the parent hides the palette + canvas and this
+  // dock fills the whole work region so the active tab reads as a full screen.
+  focused: boolean;
+  onToggleFocus: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("run");
   const [collapsed, setCollapsed] = useState(false);
   const issueCount = verdict?.issues.length ?? 0;
 
-  if (collapsed) {
+  // Focus wins over the thin collapse rail — a full-width dock can't be a sliver.
+  if (collapsed && !focused) {
     return (
       <div
         className="flex w-8 flex-col items-center gap-3 border-l py-2"
@@ -76,7 +83,7 @@ export function InspectorDock({
 
   return (
     <div
-      className="flex w-96 shrink-0 flex-col border-l"
+      className={`flex flex-col border-l ${focused ? "min-h-0 flex-1" : "w-96 shrink-0"}`}
       style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
     >
       {/* Tab strip — the instrument's face selector. The active tab carries the
@@ -95,41 +102,63 @@ export function InspectorDock({
         />
         <TabButton label="Analyst" active={tab === "analyst"} onClick={() => setTab("analyst")} />
         <TabButton label="Type" active={tab === "type"} onClick={() => setTab("type")} />
-        <button
-          onClick={() => setCollapsed(true)}
-          title="Collapse inspector"
-          className="ml-auto px-3 text-xs"
-          style={{ color: "var(--text-muted)" }}
-        >
-          ▸
-        </button>
+        <div className="ml-auto flex items-stretch">
+          {/* Focus toggle — pops the active tab full-width (hides the canvas) and
+              back. Same quiet glyph-button chrome as the collapse control. */}
+          <button
+            onClick={onToggleFocus}
+            title={focused ? "Exit focus (show canvas)" : "Focus — expand this tab full-width"}
+            aria-pressed={focused}
+            className="px-3 text-xs"
+            style={{ color: focused ? "var(--lens-accent)" : "var(--text-muted)" }}
+          >
+            {focused ? "⤡" : "⤢"}
+          </button>
+          {/* Collapse to a sliver — only meaningful in the docked (non-focus)
+              layout; full-width focus can't collapse to a rail. */}
+          {!focused && (
+            <button
+              onClick={() => setCollapsed(true)}
+              title="Collapse inspector"
+              className="px-3 text-xs"
+              style={{ color: "var(--text-muted)" }}
+            >
+              ▸
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        <KernelErrorBoundary resetKeys={resetKeys}>
-          {tab === "run" && <RunTab result={result} runError={runError} lens={canvasModel?.lens ?? "Klir"} />}
-          {tab === "formal" && <FormalTab desc={desc} analysisError={analysisError} />}
-          {tab === "audit" && (
-            <AuditTab
-              verdict={verdict}
-              issueTargets={issueTargets}
-              analysisError={analysisError}
-              onNavigate={onNavigate}
-            />
-          )}
-          {tab === "analyst" &&
-            (canvasModel ? (
-              <AnalystPanel canvasModel={canvasModel} onNavigate={onNavigate} />
-            ) : (
-              <Placeholder>Open or import a model to analyze it.</Placeholder>
-            ))}
-          {tab === "type" &&
-            (canvasModel ? (
-              <SystemTypeEditor value={canvasModel.system_type} onChange={onSystemTypeChange} />
-            ) : (
-              <Placeholder>Open or import a model to assert its system type.</Placeholder>
-            ))}
-        </KernelErrorBoundary>
+        {/* In focus mode the panel gets the whole row; hold it to a comfortable
+            reading measure so it reads as a designed screen, not a stretched
+            dock (harvested from #55's PanelScreen shell). */}
+        <div className={focused ? "mx-auto w-full max-w-4xl" : undefined}>
+          <KernelErrorBoundary resetKeys={resetKeys}>
+            {tab === "run" && <RunTab result={result} runError={runError} lens={canvasModel?.lens ?? "Klir"} />}
+            {tab === "formal" && <FormalTab desc={desc} analysisError={analysisError} />}
+            {tab === "audit" && (
+              <AuditTab
+                verdict={verdict}
+                issueTargets={issueTargets}
+                analysisError={analysisError}
+                onNavigate={onNavigate}
+              />
+            )}
+            {tab === "analyst" &&
+              (canvasModel ? (
+                <AnalystPanel canvasModel={canvasModel} onNavigate={onNavigate} />
+              ) : (
+                <Placeholder>Open or import a model to analyze it.</Placeholder>
+              ))}
+            {tab === "type" &&
+              (canvasModel ? (
+                <SystemTypeEditor value={canvasModel.system_type} onChange={onSystemTypeChange} />
+              ) : (
+                <Placeholder>Open or import a model to assert its system type.</Placeholder>
+              ))}
+          </KernelErrorBoundary>
+        </div>
       </div>
     </div>
   );

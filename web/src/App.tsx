@@ -143,6 +143,11 @@ function Workspace() {
   // #77: gentle, skippable first-step type/name prompt on new-model creation.
   const [typePromptOpen, setTypePromptOpen] = useState(false);
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
+  // #57: inspector focus mode. Pops the docked inspector to full width and hides
+  // the palette + canvas so the active reading (Run / Formal / Audit) gets the
+  // whole work region. Presentation-only — the canvas <main> stays mounted (just
+  // display:none'd), so its pan/zoom viewport survives the round trip untouched.
+  const [inspectorFocused, setInspectorFocused] = useState(false);
   // Unsaved-work tracking (presentation-only): true once the loaded model has
   // been edited on the canvas or via a popover, cleared on every load/new/save
   // seam. The nav affordances (Home, Switch model) confirm-before-discard only
@@ -761,9 +766,11 @@ function Workspace() {
           </div>
         )}
 
-        {/* Body: docked-left palette + the canvas viewport it authors onto. */}
+        {/* Body: docked-left palette + the canvas viewport it authors onto. In
+            inspector-focus mode (#57) the palette and SL pane fold away and the
+            canvas <main> is hidden (not unmounted) so the dock can fill the row. */}
         <div className="flex min-h-0 flex-1">
-          {canvasModel && (
+          {canvasModel && !inspectorFocused && (
             <PaletteDock collapsed={paletteCollapsed} onToggle={() => setPaletteCollapsed((c) => !c)}>
               <PaletteRail lens={canvasModel.lens} armed={armed} onArm={setArmed} />
             </PaletteDock>
@@ -771,7 +778,7 @@ function Workspace() {
 
           {/* The SL text pane — mounts independently of a loaded model, so an
               author can write a model from blank text. */}
-          {slOpen && (
+          {slOpen && !inspectorFocused && (
             <SlPane
               text={slText}
               errors={slErrors}
@@ -783,7 +790,7 @@ function Workspace() {
             />
           )}
 
-          <main className="min-h-0 flex-1 overflow-y-auto">
+          <main className={`min-h-0 flex-1 overflow-y-auto ${inspectorFocused && canvasModel ? "hidden" : ""}`}>
             {canvasModel ? (
               <KernelErrorBoundary resetKeys={[canvasModel, demo?.key ?? "import"]}>
                 <div className="flex min-h-full flex-col p-4">
@@ -948,6 +955,8 @@ function Workspace() {
               }}
               onSystemTypeChange={(st) => setCanvasModel((m) => (m ? { ...m, system_type: st } : m))}
               resetKeys={[canvasModel, demo?.key ?? "import"]}
+              focused={inspectorFocused}
+              onToggleFocus={() => setInspectorFocused((f) => !f)}
             />
           )}
         </div>
