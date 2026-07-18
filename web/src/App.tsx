@@ -13,6 +13,7 @@ import { SimScrubber } from "./canvas/SimScrubber";
 import { type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
+import { NewModelTypePrompt } from "./NewModelTypePrompt";
 import { SlPane } from "./SlPane";
 import type { SlError } from "./kernel/types";
 import { Banner, Pill } from "./ui";
@@ -134,6 +135,8 @@ function Workspace() {
   // Shell chrome state (presentation only): the File→Open gallery (also the
   // start screen before anything is loaded), the docked palette's collapse.
   const [galleryOpen, setGalleryOpen] = useState(true);
+  // #77: gentle, skippable first-step type/name prompt on new-model creation.
+  const [typePromptOpen, setTypePromptOpen] = useState(false);
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
   // Unsaved-work tracking (presentation-only): true once the loaded model has
   // been edited on the canvas or via a popover, cleared on every load/new/save
@@ -284,6 +287,7 @@ function Workspace() {
     setArmed(null);
     setGalleryOpen(false);
     setDirty(false);
+    setTypePromptOpen(true); // #77: offer the kind/name first step (skippable)
   }
 
   function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -941,6 +945,16 @@ function Workspace() {
           )}
         </div>
       </div>
+
+      {typePromptOpen && canvasModel && (
+        <NewModelTypePrompt
+          onApply={(name, systemType) => {
+            setCanvasModel((m) => (m ? { ...m, name, system_type: systemType } : m));
+            setTypePromptOpen(false);
+          }}
+          onSkip={() => setTypePromptOpen(false)}
+        />
+      )}
 
       {galleryOpen && (
         <OpenDialog
