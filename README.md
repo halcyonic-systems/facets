@@ -35,6 +35,14 @@ not a saved tier.)
 than silently dropping or guessing at authored structure — every refusal points
 at a specific formal precondition you can look up.
 
+**One model, three surfaces.** You can author by gesture on the canvas, or write
+the same model as text in **SL, the system language** — a human-writable notation
+that compiles deterministically into a model (never via an LLM). Neither surface
+is the source of truth: both are concrete syntaxes over one neutral spec, and
+JSON serializes it. SL's parser judges no systemhood — legality stays the
+kernel's verdict, reached the same way canvas gestures reach it. Specification
+and reading order: [`docs/language/`](docs/language/).
+
 **Who this is for.** Someone already convinced the tool is worth using, who now
 wants to assess the quality of the theory underneath it, on their own or with
 help from an LLM or another expert. Likely an engineer, scientist, or
@@ -80,7 +88,12 @@ crates/                     # TRUTH — the kernel, self-contained + wasm-ready
   bert-lenses-kernel/       #   JS-facing wasm-bindgen boundary (marshaling only)
 web/                        # FACE — React 19 + TS + Vite 6 + Tailwind 4 (Halcyonic Frost)
 fixtures/                   # serde↔TS contract goldens (fixtures/contract/)
-docs/                       # design + architecture docs (see docs/design/, docs/archive/)
+  sl/                       #   SL corpus: spec examples = round-trip goldens = teaching set
+docs/                       # see docs/README.md for the indexed tour
+  language/                 #   SL — the system language: spec, corpus, lineage
+  design/                   #   research foundations + design positions
+  decisions/                #   ADRs
+  archive/                  #   superseded, kept as record
 assets/models/              # sample BERT models (demos + blockchain examples)
 assets/fonts/               # STIX fonts for the formal face
 pipeline/                   # OPTIONAL Python data-prep — off the product path, not in CI
@@ -145,6 +158,16 @@ cargo build --workspace --target wasm32-unknown-unknown
 - [`docs/on-the-word-ladder.md`](docs/on-the-word-ladder.md) — the three
   distinct senses of "ladder/rung" in this repo's docs and code, and which one
   is the actual vocabulary debt.
+- [`docs/language/`](docs/language/) — **SL, the system language**: the v1.0
+  specification (lexicon, grammar, semantics, round-trip contract, the
+  structure/dynamics boundary), the corpus, and the lineage from Mobus Ch. 4 and
+  BERT SL v0.1. Start here if you want to write models as text, or to evaluate
+  the language as a language.
+- [`docs/design/dynamics-principled-position.md`](docs/design/dynamics-principled-position.md)
+  — what counts as dynamics: a state-transition family satisfying the semigroup
+  axiom; conservation as an invariant the *model* declares, not one the engine
+  assumes. Adoption tracked in
+  [#86](https://github.com/halcyonic-systems/bert-lenses/issues/86).
 - [`docs/README.md`](docs/README.md) — index of the full docs/ folder.
 - [`docs/design/llm-integration-research.md`](docs/design/llm-integration-research.md)
   — research foundation for LLM context/authoring/analysis (rests on the kernel
