@@ -164,6 +164,9 @@ const S3: StyleSpec = {
 // field recession — neutral grid, quiet dots). It is now the default register;
 // the others stay reachable for reference (?s=0 = the pre-#53 incumbent).
 function pick(): StyleSpec {
+  // No `window` under a node test runner — this module is imported transitively
+  // by pure-geometry unit tests, so fall back to the default register there.
+  if (typeof window === "undefined") return S1;
   const s = new URLSearchParams(window.location.search).get("s");
   return s === "0" ? CURRENT : s === "2" ? S2 : s === "3" ? S3 : S1;
 }

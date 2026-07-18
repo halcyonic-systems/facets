@@ -34,6 +34,10 @@ interface Props {
   sim?: SimFrame | null;
   onPanChange?: (pan: Pt) => void;
   onScaleChange?: (scale: number) => void;
+  /** Bump to request a fit-to-content pass against the current viewport (e.g.
+   *  after an SL compile lays the model out around a fixed center that may sit
+   *  outside the narrower SL-pane viewport). Each distinct value fits once. */
+  fitToken?: number;
 }
 
 export default function Canvas({
@@ -51,6 +55,7 @@ export default function Canvas({
   sim,
   onPanChange,
   onScaleChange,
+  fitToken,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const gestures = useCanvasGestures({ model, svgRef, onModelChange, onReject, armed, onSelectThing });
@@ -63,6 +68,21 @@ export default function Canvas({
   useEffect(() => {
     onScaleChange?.(scale);
   }, [scale, onScaleChange]);
+
+  // Fit-to-content on request: a new `fitToken` frames the current model in the
+  // live viewport (read from the SVG's client rect, so an open SL pane's
+  // narrower width is respected). Keyed on the token alone — the render that
+  // carries a given token already holds the compiled model, so `fitToViewport`
+  // closes over it; adding it to deps would refit on every render (e.g. drags).
+  const { fitToViewport } = gestures;
+  useEffect(() => {
+    if (fitToken === undefined) return;
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    fitToViewport(rect.width, rect.height);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitToken]);
 
   // Wheel zoom needs a NON-passive native listener (browsers default wheel to
   // passive, which would ignore preventDefault and scroll the page instead).

@@ -154,3 +154,70 @@ export function ringPoint(ring: Ring, toward: Pt): Pt {
   const theta = Math.atan2((toward.y - ring.cy) / ring.ry, (toward.x - ring.cx) / ring.rx);
   return { x: ring.cx + ring.rx * Math.cos(theta), y: ring.cy + ring.ry * Math.sin(theta) };
 }
+
+// ---- Fit-to-content (#83; #78 PNG export reuses `contentBounds`) ------------
+// Pure view/pixel math: the world-space extent of everything drawn, and the
+// pan+scale that frames it in a viewport. No systems meaning — no verdict reads
+// pan or scale, and the box is layout, not systemhood.
+
+export interface Box {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+/** World-space bounding box of everything drawn for `model`: node bodies
+ *  (center ± NODE_R) unioned with the Mobus membrane ring when that lens draws
+ *  it (the ring circumscribes the components and can reach past the node box).
+ *  Returns null for an empty model. Shared by fit-to-content and PNG export. */
+export function contentBounds(model: CanvasModel): Box | null {
+  if (model.things.length === 0) return null;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const t of model.things) {
+    minX = Math.min(minX, t.x - NODE_R);
+    minY = Math.min(minY, t.y - NODE_R);
+    maxX = Math.max(maxX, t.x + NODE_R);
+    maxY = Math.max(maxY, t.y + NODE_R);
+  }
+  if (model.lens === "Mobus") {
+    const ring = componentRing(model.things.filter((t) => t.role === "Component"));
+    if (ring) {
+      minX = Math.min(minX, ring.cx - ring.rx);
+      minY = Math.min(minY, ring.cy - ring.ry);
+      maxX = Math.max(maxX, ring.cx + ring.rx);
+      maxY = Math.max(maxY, ring.cy + ring.ry);
+    }
+  }
+  return { minX, minY, maxX, maxY };
+}
+
+export interface ViewTransform {
+  pan: Pt;
+  scale: number;
+}
+
+/** Pan+scale that centers `box` in a `vw`×`vh` viewport with a `pad` px inset,
+ *  clamped to [minScale, maxScale]. maxScale (default 1) keeps a tiny model from
+ *  blowing up to fill the stage; the clamp range mirrors the wheel-zoom limits.
+ *  Same transform the stage `<g translate scale>` consumes — no new system. */
+export function fitToBox(
+  box: Box,
+  vw: number,
+  vh: number,
+  opts: { pad?: number; minScale?: number; maxScale?: number } = {},
+): ViewTransform {
+  const pad = opts.pad ?? 48;
+  const minScale = opts.minScale ?? 0.25;
+  const maxScale = opts.maxScale ?? 1;
+  const bw = Math.max(1, box.maxX - box.minX);
+  const bh = Math.max(1, box.maxY - box.minY);
+  const raw = Math.min((vw - 2 * pad) / bw, (vh - 2 * pad) / bh);
+  const scale = Math.max(minScale, Math.min(maxScale, raw));
+  const cx = (box.minX + box.maxX) / 2;
+  const cy = (box.minY + box.maxY) / 2;
+  return { pan: { x: vw / 2 - scale * cx, y: vh / 2 - scale * cy }, scale };
+}
