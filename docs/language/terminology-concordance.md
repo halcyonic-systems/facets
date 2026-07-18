@@ -1,8 +1,10 @@
 # Terminology Concordance — Klir · Bunge · Mobus
 
-**Status**: Reference (LIVE). Compiled 2026-07-18 from primary sources and primary-read notes; every cell carries a **VERIFIED** or **UNGROUNDED** mark, and no cell is filled from general knowledge. This is the SSOT the SL lexicon table (`spec.md` §3) summarizes; it also serves the per-lens UI copy (palette labels, `describe()` typesetting) and the K≅2 convergence program — a filled-in concordance *is* a compact convergence exhibit.
+**Status**: Reference (LIVE). Compiled 2026-07-18 from primary sources and primary-read notes; every cell carries a **VERIFIED** mark or an explicit attribution **ruling** (the §14 ledger closed same day), and no cell is filled from general knowledge. This is the SSOT the SL lexicon table (`spec.md` §3) summarizes; it also serves the per-lens UI copy (palette labels, `describe()` typesetting) and the K≅2 convergence program — a filled-in concordance *is* a compact convergence exhibit.
 
 **How to read it.** For each kernel distinction, the row gives each tradition's term and its grounding. Convergence rows (all traditions share a word or an isomorphic concept) are evidence for the common core; divergence cells (a tradition lacks the distinction) are equally informative — they are exactly what the corresponding lens *drops*, and they explain the lens's rendering choices. **VERIFIED** = the term was found in a primary text on disk, or in a primary-read note that itself cites the book by page/line. **UNGROUNDED** = not found in an available source this pass; listed honestly in §14 rather than filled in.
+
+**Two verification targets, marked separately** (council outside-pass, 2026-07-18): *source-verified* — the tradition's own text says this (the default meaning of VERIFIED above); *repo-verified* — the instrument implements this. They fail independently: a cell can be repo-verified yet source-UNGROUNDED (row 1's Bunge M was, until §14.1 closed) or source-verified yet unimplemented. Where the split matters, the row says which target a mark hits; a bare VERIFIED is source-verified.
 
 **Citation roots** (sibling repos):
 - `GSR/` = `halcyonic-projects/active/general-systems-reasoner/`
@@ -16,7 +18,7 @@
 
 | # | Distinction | Klir | Bunge | Mobus |
 |---|---|---|---|---|
-| 1 | The system | `S = (T, R)` | `σ = ⟨C, E, S⟩` | 7-tuple `⟨C,N,G,B,T,H,Δt⟩`; SOI `S₀,₀` |
+| 1 | The system | `S = (T, R)` | `σ = ⟨C, E, S⟩` (1979); CESM `µ(σ)` (2004) | 7-tuple `⟨C,N,G,B,T,H,Δt⟩`; SOI `S₀,₀` |
 | 2 | Part inside | **thing** (element of T) | **component** (C) | **component** (C) |
 | 3 | Thing outside | environment (observer-side, not a coordinate) | **environment** (E) | **environment** = sources & sinks |
 | 4 | Connection | **relation** (R) | connection / coupling / **bond** (▷) | interaction / **flow** (N, G edges) |
@@ -36,10 +38,12 @@ Bold marks the term SL adopted (or, in row 1, the formal object each lens typese
 ## 1. The system itself
 
 - **Klir — `S = (T, R)`. VERIFIED.** "S = (T, R) — where T is 'a set of things distinguished within S' and R 'a relation … defined on T'" (`GSR/klir_markdowns/Klir-Systemhood-vs-Thinghood-(2001).md:19`).
-- **Bunge — `σ = ⟨C, E, S⟩`. VERIFIED.** "the ordered triple σ = ⟨C, E, S⟩ is (or represents) a system over T iff C and E are mutually disjoint subsets of T … and S is a nonempty set of relations on the union of C and E" (`SSF/docs/reference/mobus-bunge-system-definitions-reference.md:185`; minimal model at `GSR/bunge_markdowns/Bunge-Concrete-System-Definition-CES-(1979).md:77-79`). The fourth CESM coordinate M (Mechanism) is VERIFIED as this repo's usage (`docs/theory-fidelity.md:24`) but not yet as a verbatim Bunge quote (§14).
+- **Bunge — `σ = ⟨C, E, S⟩`. VERIFIED.** "the ordered triple σ = ⟨C, E, S⟩ is (or represents) a system over T iff C and E are mutually disjoint subsets of T … and S is a nonempty set of relations on the union of C and E" (`SSF/docs/reference/mobus-bunge-system-definitions-reference.md:185`; minimal model at `GSR/bunge_markdowns/Bunge-Concrete-System-Definition-CES-(1979).md:77-79`). The fourth CESM coordinate M (Mechanism) is now **VERIFIED verbatim** (2004, not the 1979 CES paper): "The simplest sketch or model of a concrete system σ is the list of its composition, environment, structure, and mechanism, or µ(σ) = ⟨C(σ), E(σ), S(σ), M(σ)⟩ … M(σ) stands for the mechanisms, or characteristic processes of σ" (`GSR/bunge_markdowns/Bunge-How-Does-It-Work-(2004).md:289-294`); "M(σ) is empty for conceptual systems" (`:300`). So CES (1979) and CESM (2004) are both Bunge's, a quarter-century apart — the kernel's CES-with-mechanism-note is faithful to the 1979 formal object while acknowledging the 2004 extension.
 - **Mobus — the 7-tuple, SOI. VERIFIED, with the provenance nuance this repo already carries:** the book prints a **7**-tuple `⟨C,N,G,B,T,H,Δt⟩` (`VAULT/mobus/4-a-model-of-system.md:196-199`); the 8-tuple with E first-class is the Lean formalization's deliberate improvement (`SSF/Systems/Mobus/Tuple.lean`), credited as such in anything published. "S₀,₀ is the designated SOI" (`SSF/docs/reference/mobus-bunge-system-definitions-reference.md:133`).
 
 **Convergence reading:** three formal objects, one referent — this is the K≅2 claim itself, and the three `describe()` typesettings render exactly these three signatures.
+
+**The named referent (#84, shipped 2026-07-18):** SL now names the SOI — `system "Name" [: Kingdom/Genus]` → `CanvasModel.name` → the root system's `info.name`. The name is the one place all three traditions already agreed without a shared word: Mobus's designated SOI `S₀,₀`, Bunge's `σ`, Klir's `S` each denote *this* system, and the paragraph's proper name ("Process M", "Steel-Plant") is what the denotation binds to.
 
 ## 2. A thing inside the system — the strongest shared word
 
@@ -69,7 +73,7 @@ Bold marks the term SL adopted (or, in row 1, the formal object each lens typese
 
 - **Bunge — VERIFIED, verbatim.** "the total set of relations among the components … may be decomposed into its bondage B_A and the set B̄_A of nonbonding relations"; "Unlike a mere relation, a connection makes some difference to its relata"; systemhood requires B_A ≠ ∅ (`Bunge-Concrete-System-Definition-CES-(1979).md:23, 33, 62-69`).
 - **Klir — absent, VERIFIED.** All of systemhood collapses into one undifferentiated R (`Klir-Relations-(2001).md:63`); the Klir lens drops bond-vs-mere (`docs/theory-fidelity.md:20`).
-- **Mobus — absent** in sources read (§14).
+- **Mobus — absent, VERIFIED by scoped sweep** (§14.5). Chapters 3–4 swept for bond/bonding, coupling, connection/relation type, mere aggregate, glue, "makes a difference": every bond hit is physical/chemical/social bonding in the ontogenesis narrative, never a structural typology partitioning relations. His nearest device — boundaries implied where interrelations are "much stronger" among internal components (`VAULT/mobus/3-system-ontology.md:1182`) — is an interaction-strength/endo-exo criterion, not Bunge's difference-making partition.
 
 SL's `mere` is therefore a **single-tradition contribution**, and the aggregate/system verdict it feeds (Bunge Def 1.1 in the UI) is the most lens-specific rule in the tool.
 
@@ -91,7 +95,7 @@ SL's `mere` is therefore a **single-tradition contribution**, and the aggregate/
 
 ## 8. The boundary — Bunge formalized it too (correction to earlier framing)
 
-- **Mobus — `B = ⟨P, I⟩`. VERIFIED (partial).** "B_{i,l}=⟨P_{i,l},I_{i,l}⟩ where P is the set of properties and … I_{i,l} is the set of interfaces. The exact form of P is still an object of research" (`mobus-bunge-system-definitions-reference.md:175-177`). The specific property words *porosity* and *perceptive fuzziness* are grounded in read-notes and `theory-fidelity.md:31`, not yet a verbatim book quote (§14).
+- **Mobus — `B = ⟨P, I⟩`. VERIFIED.** "B_{i,l}=⟨P_{i,l},I_{i,l}⟩ where P is the set of properties and … I_{i,l} is the set of interfaces. The exact form of P is still an object of research" (`mobus-bunge-system-definitions-reference.md:175-177`). The property words are now **VERIFIED verbatim**: "as porosity (0 being completely non-porous) and 'perceptive fuzziness,' meaning the degree to which it is easily perceived" (`VAULT/mobus/4-a-model-of-system.md:376`).
 - **Bunge — a topological boundary, VERIFIED verbatim (1992).** "A boundary component of a system is … one every neighborhood of which contains at least one system component and at least one thing in the environment"; boundaries are **link-type-relative** ("different link types induce different boundaries") and universal ("every concrete system, except for the universe as a whole, has at least one boundary") (`GSR/bunge_markdowns/Bunge-System-Boundary-(1992).md:47-51`). *Earlier repo framing ("Bunge's boundary is informal") is corrected by this source.*
 - **Klir — an observer-drawn distinction. VERIFIED.** "A distinction splits the world into two parts … 'environment' and … system of interest" (`VAULT/klir/klir-facets.md:1442-1446`, `9851`).
 
@@ -99,7 +103,7 @@ SL's `mere` is therefore a **single-tradition contribution**, and the aggregate/
 
 ## 9. Interface
 
-- **Mobus — "interfaces," I. VERIFIED** as the second coordinate of B (`mobus-bunge-system-definitions-reference.md:177`). The subset relation I ⊆ C is the **Lean formalization's** coherence constraint (`SSF/Systems/Mobus/Tuple.lean`, `iface_sub`) — machine-checked and load-bearing in this repo, but not confirmed as Mobus's own verbatim claim this pass (§14); cite the Lean when the constraint is meant, the book when the word is.
+- **Mobus — "interfaces," I. VERIFIED** as the second coordinate of B (`mobus-bunge-system-definitions-reference.md:177`). **Ruling on I ⊆ C (§14.3, resolved 2026-07-18):** the book's claim is that interfaces are components *of the boundary subsystem* and systems in their own right — "the set of interfaces embedded in the boundary are components in the boundary subsystem and are themselves subsystems. That is, every r_{i,l} ∈ I_{i,l} is an S itself" (`VAULT/mobus/4-a-model-of-system.md:386`; also `:334`). The **flat subset I ⊆ C over the system's own component set** is the Lean formalization's choice (`SSF/Systems/Mobus/Tuple.lean`, `iface_sub`) — a faithful simplification (the boundary subsystem's components are components), credited as the Lean's, same pattern as the 8th tuple slot. Cite the book for interfaces-as-(boundary-)components, the Lean for the flat subset constraint.
 - **Bunge — "interface points." VERIFIED.** "it has some boundary or interface points … the input and output terminals of a system are members of its boundary" (`Bunge-System-Boundary-(1992).md:168, 236-237`).
 - **Klir — absent** (§14).
 
@@ -118,7 +122,7 @@ SL's `mere` is therefore a **single-tradition contribution**, and the aggregate/
 
 ## 12. Milieu vs discrete objects — Mobus's alone
 
-- **Mobus — VERIFIED for the distinction, UNGROUNDED for the letters.** Environment = discrete sources/sinks *plus* "all of the channels (or fields) through which flows occur" (`mobus-bunge-system-definitions-reference.md:40`). The letter-names O (objects) and M (milieu) were not found verbatim this pass (§14).
+- **Mobus — VERIFIED for the distinction; letters RULED Lean-side (§14.4, resolved 2026-07-18).** Environment = discrete sources/sinks *plus* "all of the channels (or fields) through which flows occur" (`mobus-bunge-system-definitions-reference.md:40`). The letter-names O (objects) and M (milieu) do **not** appear in the book as environment letters — chapters 3–4 denote the environment `G = ⟨Src, Snk⟩` throughout (`VAULT/mobus/4-a-model-of-system.md:285, 301, 304`; the E/M letters near Fig. 4.7 label *internal* processes, not environment sets). The O/M lettering is the Lean layer's convention (`SSF/Systems/Mobus/Interface.lean:7`), credited as such.
 - **Bunge — no such split, VERIFIED.** E is discrete acting things only; "field" appears as a flow substance, not an environment partition (`Bunge-Concrete-System-Definition-CES-(1979).md:58-59, 92`). **Klir — absent** (`klir-facets.md:4153`).
 
 ---
@@ -132,15 +136,17 @@ SL's `mere` is therefore a **single-tradition contribution**, and the aggregate/
 
 This document is the first full three-way, twelve-row grid; those four remain the deeper dives per pair.
 
-## 14. UNGROUNDED ledger (open verification work)
+## 14. Verification ledger (all cells resolved 2026-07-18)
 
-Cells asserted nowhere above until a primary source lands; each is a small, closeable verification task:
+The five UNGROUNDED cells of the first pass, each now closed as VERIFIED-with-citation or as an explicit attribution ruling. The distinction between the two outcomes is deliberate: a ruling is not a failure — it records that the constraint is the formalization's contribution, credited as such.
 
-1. Bunge's fourth CESM coordinate **M (Mechanism)** — verbatim quote (repo usage is grounded; the Bunge sentence is not on disk).
-2. Mobus **porosity / perceptive fuzziness** — verbatim book quote for the property words (the P = properties structure is grounded).
-3. Mobus **I ⊆ C** — whether the book states the subset relation, or it is purely the Lean's (correctly conservative) formalization choice.
-4. Mobus environment letters **O / M** — verbatim naming (the distinction is grounded).
-5. Any Mobus bond-vs-nonbond counterpart (believed absent; confirm absence in Ch. 3–4).
+1. Bunge's fourth CESM coordinate **M (Mechanism)** — **VERIFIED verbatim.** µ(σ) = ⟨C(σ), E(σ), S(σ), M(σ)⟩ with M the "mechanisms, or characteristic processes" (`GSR/bunge_markdowns/Bunge-How-Does-It-Work-(2004).md:289-294, 311-316`). Source is the 2004 paper, not the 1979 CES definition — row 1 now carries the two-paper provenance.
+2. Mobus **porosity / perceptive fuzziness** — **VERIFIED verbatim** (`VAULT/mobus/4-a-model-of-system.md:376`; further porosity usages `:664, :677, :736, :738`). Row 8 updated.
+3. Mobus **I ⊆ C** — **RULED.** Book states interfaces are components of the *boundary subsystem* and systems in their own right (`4-a-model-of-system.md:386`); the flat subset over the system's own C is the Lean's formalization choice (`Tuple.lean`, `iface_sub`), credited as such. Row 9 updated; `spec.md` §3 wording aligned.
+4. Mobus environment letters **O / M** — **RULED.** Not the book's (environment is `G = ⟨Src, Snk⟩`; `4-a-model-of-system.md:285-304`); Lean-side convention (`Interface.lean:7`). Row 12 updated.
+5. Mobus **bond-vs-nonbond counterpart** — **absence VERIFIED, scoped.** Sweep of `VAULT/mobus/3-system-ontology.md` + `4-a-model-of-system.md` for: bond, bonding, coupling, connection type, relation type, structural relation, mere aggregate, aggregate vs system, glue, non-bond, "makes a difference," "hold together," internal/external relation. No structural bonding/nonbonding partition exists; nearest device is the interaction-strength boundary criterion (`3-system-ontology.md:1182`), a location criterion rather than a difference-making one. Row 5 updated.
+
+**Bibliographic independence (the empty citation edge).** Mobus does not cite Bunge: a case-insensitive sweep for "Bunge" across all 16 chapter bodies of *Systems Science: Theory, Analysis, Modeling, and Design* in `VAULT/mobus/` returns zero hits, against a text that cites heavily inline (Checkland, Shannon & Weaver, Smith & Morowitz, Mobus 2019 ×10). Caveat, stated honestly: the end-of-book reference list is not on disk (the vault holds chapter bodies only; the full PDF is not in Zotero), so the finding covers the chapter bodies, not the printed bibliography. Why it matters: rows 2, 8, and 9 show Bunge and Mobus converging on *component*, a formalized *boundary*, and *interface* — and the empty citation edge is what makes that convergence evidential rather than genealogical. Independent arrivals at the same distinctions are K≅2 evidence; borrowed vocabulary would not be.
 
 ## 15. Consumers
 
