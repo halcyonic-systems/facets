@@ -1,5 +1,7 @@
 # Shape Vocabulary Research — Precedent Brief
 
+**Status: RESEARCH.** Tracking issue: [#81](https://github.com/halcyonic-systems/bert-lenses/issues/81) (palette shape vocabulary). Notation-precedent foundation; no decision, no code changed.
+
 *Research for bert-lenses #81 (palette shape vocabulary). Precedent-gathering only — no code changed, nothing posted to GitHub. Feeds a later design session; pairs with #78 (image export) for a W30 closure week.*
 
 ## 1. Why this matters

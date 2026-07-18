@@ -1,6 +1,6 @@
 # Hierarchical Decomposition in bert-lenses — Investigation & Design Options
 
-*Investigation, 2026-07-18. No implementation. Tracking issue: #89 (filed 2026-07-18 from the §5 draft, with the Option B endorsement and the Lean-first gate). Math layer: `decomposition-foundations.md`.*
+*Status: PROPOSED, 2026-07-18. Tracking issue: [#89](https://github.com/halcyonic-systems/bert-lenses/issues/89) (filed 2026-07-18 from the §5 draft, with the Option B endorsement and the Lean-first gate). Investigation only, no implementation. Math layer: `decomposition-foundations.md` (RESEARCH).*
 
 ## TL;DR
 

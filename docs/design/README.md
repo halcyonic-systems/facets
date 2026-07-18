@@ -2,6 +2,8 @@
 
 Design positions and research foundations, grouped by status. See [`../README.md`](../README.md) for the status vocabulary and the full docs tour.
 
+**Repo-claims convention.** Claims a design doc makes about *this repo* — that a code path exists, that a corpus file is present, that a function behaves a certain way — are held to the same VERIFIED / UNVERIFIED standard as claims about external sources. A repo-claim carries no more authority than a web-claim by virtue of being about our own code; it can be stale or wrong the same way. Correspondingly, a session that executes one of these docs verifies the doc against the current code as its **first step**, before acting on it. This is not optional diligence: unmarked repo-claims in `sl2-authoring-language.md` (an assumed auto-layout pass; a named corpus file that did not exist) were caught only when this check was finally applied, and a stale supersession nearly drove a spec-writing step on retired framing.
+
 ## LIVE (current, load-bearing)
 
 - [`lens-palettes.md`](lens-palettes.md) — the lens grounding for Phase 3/4 (Klir / Bunge / Mobus) and the two kernel primitives (boundary identity, edge classification) behind the faithful renderings.

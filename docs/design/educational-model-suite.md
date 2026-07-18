@@ -1,5 +1,7 @@
 # Educational model suite — a graded curriculum for learn-while-authoring
 
+**Status: RESEARCH** (2026-07-18). Curriculum planned for [#80](https://github.com/halcyonic-systems/bert-lenses/issues/80) (also serves #21); not yet in-tool.
+
 *Planning doc, 2026-07-18. Ground truth for what the instrument can express today:
 README, `docs/theory-fidelity.md`, `docs/kernel-architecture.md`,
 `docs/design/lens-palettes.md`, ROADMAP.md. Pedagogy spine: Mobus Ch.4

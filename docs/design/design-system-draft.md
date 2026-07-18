@@ -1,6 +1,6 @@
 # bert-lenses — design system (DRAFT / sketch to react to)
 
-> **Status: DRAFT, not committed.** A sketch to react to, not a spec. Builds on
+> **Status: RESEARCH** — a sketch to react to, not committed and not a spec. Builds on
 > `web/DESIGN.md` (Halcyonic Frost) and `web/src/tokens.ts` + `web/src/index.css`
 > as-is; it does not fork them. Written to guide issue #50 (the per-lens authoring
 > palette) and design work on this project going forward. Grounded in two prototype

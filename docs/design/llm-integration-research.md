@@ -1,5 +1,8 @@
 # LLM Integration — Research & First-Principles Foundation
 
+**Status: RESEARCH** (2026-07-16). Rests on [`kernel-architecture.md`](../kernel-architecture.md) (LIVE). §12's recommended-first-rung plan was executed by the 2026-07-17 analysis rung.
+**Supersedes:** `llm-authoring-vision.md` (now removed) as the primary LLM-assist reference.
+
 *Context · Authoring · Analysis in bert-lenses. Research only — no implementation. Written 2026-07-16 as the foundation for a deliberate first rung, from a five-facet parallel research pass (foundations, existing assets, modular architecture, the analysis capability, external prior art). Companion to `llm-authoring-vision.md` (which this supersedes as the primary reference).*
 
 ---
