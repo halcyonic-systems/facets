@@ -132,6 +132,11 @@ function Workspace() {
   const [armed, setArmed] = useState<PaletteTool | null>(null);
   const [canvasPan, setCanvasPan] = useState<Pt>({ x: 0, y: 0 });
   const [canvasScale, setCanvasScale] = useState(1);
+  // Fit-to-content request counter (presentation-only): bumped after an SL
+  // compile so the canvas frames the freshly laid-out model in the current
+  // viewport (its auto-layout centers on a fixed point that can otherwise land
+  // outside the narrower SL-pane view — #83). Canvas fits once per new value.
+  const [fitToken, setFitToken] = useState<number | undefined>(undefined);
   // Shell chrome state (presentation only): the File→Open gallery (also the
   // start screen before anything is loaded), the docked palette's collapse.
   const [galleryOpen, setGalleryOpen] = useState(true);
@@ -269,6 +274,7 @@ function Workspace() {
     setArmed(null);
     setGalleryOpen(false);
     setDirty(false);
+    setFitToken((n) => (n ?? 0) + 1); // frame the compiled layout in the current viewport (#83)
     setNotice("SL compiled ✓");
   }
 
@@ -816,6 +822,7 @@ function Workspace() {
                       sim={simFrame}
                       onPanChange={setCanvasPan}
                       onScaleChange={setCanvasScale}
+                      fitToken={fitToken}
                     />
                     {boundaryAnchor && (
                       <BoundaryPopover

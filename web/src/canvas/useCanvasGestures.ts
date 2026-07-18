@@ -13,7 +13,7 @@ import {
 import type { CanvasModel, Relation, Thing } from "../kernel/types";
 import type { PaletteTool } from "./lenses/registry";
 import { validateConnection } from "../kernel";
-import { NODE_R, thingById, type Pt } from "./geometry";
+import { NODE_R, thingById, contentBounds, fitToBox, type Pt } from "./geometry";
 
 interface DraftNode {
   id: number;
@@ -165,6 +165,16 @@ export function useCanvasGestures({
       scale: next,
       pan: { x: cx - (cx - state.pan.x) * k, y: cy - (cy - state.pan.y) * k },
     });
+  }
+
+  /** Frame the whole model in a `vw`×`vh` viewport — reuses the same `zoom`
+   *  action (scale + pan together) the wheel path uses, so no new view state is
+   *  introduced. A no-op for an empty model. Called after compile (#83). */
+  function fitToViewport(vw: number, vh: number) {
+    const box = contentBounds(model);
+    if (!box) return;
+    const { pan, scale } = fitToBox(box, vw, vh);
+    dispatch({ type: "zoom", scale, pan });
   }
 
   function hitTest(p: Pt, exclude?: number): Thing | undefined {
@@ -338,6 +348,7 @@ export function useCanvasGestures({
 
   return {
     state,
+    fitToViewport,
     onStageWheel,
     onNodePointerDown,
     onHandlePointerDown,
