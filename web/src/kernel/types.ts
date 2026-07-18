@@ -189,6 +189,8 @@ export interface CanvasModel {
   boundary: CanvasBoundaryProps;
   /** serde `default` on the Rust side — absent on pre-existing models. */
   system_type?: SystemType;
+  /** Author-given SOI name (#84). serde `default`; absent on pre-existing models. */
+  name?: string;
 }
 
 // ---- SL: the textual authoring surface ---------------------------------------

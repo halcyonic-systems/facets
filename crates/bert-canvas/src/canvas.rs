@@ -174,6 +174,11 @@ pub struct CanvasModel {
     /// pre-existing models deserialize unchanged; not gated by any validator.
     #[serde(default)]
     pub system_type: SystemType,
+    /// Author-given name of the system of interest (Mobus's "Process M",
+    /// "Steel-Plant"). serde `default` so pre-existing models deserialize
+    /// unchanged; `None` projects as the placeholder root name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 fn info(id: Id, level: i32, name: &str) -> Info {
@@ -275,7 +280,8 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
     let mut sources: Vec<ExternalEntity> = Vec::new();
     let mut sinks: Vec<ExternalEntity> = Vec::new();
 
-    let mut root = new_system(root_id.clone(), 0, "System", env_id.clone(), None, None);
+    let root_name = model.name.as_deref().unwrap_or("System");
+    let mut root = new_system(root_id.clone(), 0, root_name, env_id.clone(), None, None);
     // Authored P lands on the root membrane — the projection stops erasing it.
     root.boundary.porosity = model.boundary.porosity;
     root.boundary.perceptive_fuzziness = model.boundary.perceptive_fuzziness;
@@ -548,15 +554,19 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         });
     }
 
-    let boundary = model
-        .systems
-        .iter()
-        .find(|s| s.info.level == 0)
+    let root = model.systems.iter().find(|s| s.info.level == 0);
+    let boundary = root
         .map(|s| CanvasBoundaryProps {
             porosity: s.boundary.porosity,
             perceptive_fuzziness: s.boundary.perceptive_fuzziness,
         })
         .unwrap_or_default();
+    // The projection's placeholder root name reads back as unnamed — a model
+    // genuinely named "System" is indistinguishable and also reads back None.
+    let name = root
+        .map(|s| s.info.name.as_str())
+        .filter(|n| !n.is_empty() && *n != "System")
+        .map(str::to_string);
 
     CanvasModel {
         lens,
@@ -564,6 +574,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         relations,
         boundary,
         system_type: SystemType::default(),
+        name,
     }
 }
 
@@ -631,6 +642,7 @@ mod tests {
                 relations: vec![bond(10, 1, 2)],
                 boundary: Default::default(),
                 system_type: Default::default(),
+                name: None,
             };
             let wm = project(&model);
             assert_eq!(wm.mode, Some(lens.mode()));
@@ -654,6 +666,7 @@ mod tests {
             relations: vec![bond(10, 1, 2)],
             boundary: Default::default(),
             system_type: Default::default(),
+            name: None,
         };
         let loop_edge = bond(11, 1, 1); // A → A
         let issues = validate_connection(&model, &loop_edge);
@@ -710,6 +723,7 @@ mod tests {
             relations: vec![bond(10, 1, 2)], // Env → Comp
             boundary: Default::default(),
             system_type: Default::default(),
+            name: None,
         };
         let wm = project(&model);
         assert_eq!(wm.environment.sources.len(), 1);

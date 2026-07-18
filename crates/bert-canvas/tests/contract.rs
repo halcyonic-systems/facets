@@ -93,6 +93,9 @@ fn sample() -> CanvasModel {
             genus: Some(Genus::Social),
             domain: Some("U.S. legislative process".to_string()),
         },
+        // Named so the golden proves the present-name case (#84): the SOI name
+        // must survive canvas → world → canvas.
+        name: Some("Pump Station".to_string()),
     }
 }
 

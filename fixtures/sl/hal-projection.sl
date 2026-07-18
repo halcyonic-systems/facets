@@ -1,7 +1,7 @@
 # The hal stack (the sovereign AI infrastructure) as a bounded system — the
 # model sketched in docs/design/sl2-authoring-language.md §2.3, authored for
 # real as the third corpus entry.
-system : Concrete/Technical
+system "hal stack" : Concrete/Technical
 domain "sovereign AI infrastructure"
 component Proxy interface
 component DailyLoop interface

@@ -1,6 +1,6 @@
 # The bathtub — the classic stock-and-flow first lesson: a faucet fills a
 # buffering stock, a drain empties it.
-system : Concrete/Physical
+system "Bathtub" : Concrete/Physical
 component Tub primitive Buffering interface
 source Faucet
 sink Drain

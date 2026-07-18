@@ -291,6 +291,14 @@ digit; arbitrary canvas models canonicalize (`emit∘parse∘emit == emit`).
 Throws (JsError) on the shapes SL v1 cannot express: a name/label containing
 `"` or a newline, a genus asserted without a kingdom.
 
+**v1.1 (#84):** `CanvasModel` gained an optional `name` field — the author-given
+SOI name. SL grew the matching form `system "Name" [: Kingdom[/Genus]]` (name
+is a quoted string, before the colon-clause). No signature changed; old models
+and old SL text parse unchanged. `project()` writes the name into the root
+system's `info.name` (placeholder `"System"` when unnamed) and `to_canvas`
+reads it back — a model genuinely named `"System"` reads back as unnamed, the
+one deliberate asymmetry.
+
 ## Contract fixtures (definition-of-done for boundary shapes)
 
 Every serde type that crosses this wasm edge ships a committed JSON fixture in

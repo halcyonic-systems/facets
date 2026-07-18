@@ -74,6 +74,7 @@ fn canvas_born_model_canonicalizes() {
         }],
         boundary: CanvasBoundaryProps { porosity: 0.33, perceptive_fuzziness: 0.0 },
         system_type: SystemType::default(),
+        name: None,
     };
     let t1 = emit_sl(&m).unwrap();
     let m2 = parse_sl(&t1).unwrap();
@@ -89,6 +90,27 @@ fn canvas_born_model_canonicalizes() {
     assert_eq!((m2.things[0].x, m2.things[0].y), (10.5, -3.25));
     // The untouched env thing emits as `environment` (no bond touches it).
     assert!(t1.contains("environment Milieu"), "{t1}");
+}
+
+#[test]
+fn soi_name_survives_both_round_trips() {
+    // #84: the SOI name must survive text → model → text AND canvas → world →
+    // canvas; an unnamed model must read back unnamed (the "System" placeholder
+    // never leaks in as an authored name).
+    let m = parse_sl("system \"Process M\" : Concrete\ncomponent Work\n").unwrap();
+    assert_eq!(m.name.as_deref(), Some("Process M"));
+    let emitted = emit_sl(&m).unwrap();
+    assert!(emitted.starts_with("system \"Process M\" : Concrete\n"), "{emitted}");
+
+    let world = bert_canvas::canvas::project(&m);
+    assert_eq!(world.systems[0].info.name, "Process M");
+    let back = bert_canvas::canvas::to_canvas(&world);
+    assert_eq!(back.name.as_deref(), Some("Process M"));
+
+    let unnamed = parse_sl("component Work\n").unwrap();
+    let world = bert_canvas::canvas::project(&unnamed);
+    assert_eq!(world.systems[0].info.name, "System");
+    assert_eq!(bert_canvas::canvas::to_canvas(&world).name, None);
 }
 
 #[test]

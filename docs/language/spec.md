@@ -44,13 +44,13 @@ SL is one unified language: the traditions *contributed* the words, and the lang
 
 | Word | Kernel distinction | Contributed by | Kernel referent |
 |---|---|---|---|
-| `system` | the bounded whole being modeled | Klir, Bunge, Mobus — the convergence word | `SystemType` (the type assertion; the model itself is the system) |
+| `system` | the bounded whole being modeled; optionally names the SOI (v1.1, #84) | Klir, Bunge, Mobus — the convergence word; the name is Mobus's SOI · Bunge's σ · Klir's S, bound to a proper name | `SystemType` + `CanvasModel.name` |
 | `Conceptual`, `Concrete` | the two kingdoms of systems | Bunge (Treatise Vol. 4, Post. 6.4) | `Kingdom` |
 | `Physical`, `Chemical`, `Biological`, `Social`, `Technical` | the five genera of concrete systems | Bunge (Post. 6.4); Klir's §2.4 type-(a) axis lands on nearly the same list | `Genus` |
 | `domain` | the analyst's subject-area framing | Mobus (the generic lexicon translated into domain-specific terms, §4.4) | `SystemType.domain` |
 | `component` | a thing inside the boundary | **Bunge (composition C) and Mobus (C in the tuple)** — shared; Klir diverges (things/elements) | `Role::Component` |
 | `source`, `sink`, `environment` | a thing outside the boundary | Mobus (Src/Snk environment objects); `environment` shared with Bunge (E) | `Role::Environment` (§5.2 on the three words) |
-| `interface` | membership in the root membrane's I (I ⊆ C, Tuple.lean) | **Mobus (I in B) and Bunge ("interface points" = i/o terminals ∈ boundary, 1992)** — shared | `Thing.interface` |
+| `interface` | membership in the root membrane's I (flat I ⊆ C is the Lean's convention, Tuple.lean; the book makes interfaces components of the *boundary subsystem* — concordance row 9) | **Mobus (I in B) and Bunge ("interface points" = i/o terminals ∈ boundary, 1992)** — shared | `Thing.interface` |
 | `primitive` + one of `Combining`, `Splitting`, `Buffering`, `Impeding`, `Propelling`, `Copying`, `Sensing`, `Modulating`, `Amplifying`, `Inverting` | the work-process taxonomy | Mobus | `ProcessPrimitive` |
 | `flow` | a drawn connection (edge in N or G) | word: Mobus; the underlying relation is three-tradition (Klir dependency, Bunge connection/bond, Mobus flow) | `Relation` |
 | `->` | direction (from, to) | Mobus (flows carry direction); contrast the observer's `@directed` | `Relation.a` / `.b` |
@@ -59,10 +59,10 @@ SL is one unified language: the traditions *contributed* the words, and the lang
 | `boundary`, `porosity`, `fuzziness` | B's properties P = ⟨porosity, perceptive_fuzziness⟩ | **Mobus (B = ⟨P, I⟩) and Bunge (topological boundary, 1992)** — shared concept; the property words are Mobus's | `CanvasBoundaryProps` |
 | `@pos`, `@lens`, `@directed` | view state (§6) | `@directed` is Klir's observer commitment (Facets Ch. 4); `@pos`/`@lens` are house words | `x`/`y`, `lens`, `klir_directed` |
 
-Two deliberate absences:
+One deliberate absence (and one absence resolved):
 
-- **No system name.** Mobus's paragraph names its subject ("Process M", "Steel-Plant"), but `CanvasModel` has no root-name field, so by C3 the word does not exist yet. Tracked as #84; when the kernel gains the field, SL gains `system "Name" …` in v1.1.
-- **No decomposition syntax.** Sub-paragraphs (Mobus §4.3.1) require a nested neutral spec; nesting is gated on the 8-tuple decomposition mathematics and is out of scope for v1 (design doc Q3).
+- **The system name landed (v1.1, #84 — closed 2026-07-18).** Mobus's paragraph names its subject ("Process M", "Steel-Plant"); the kernel gained `CanvasModel.name` and SL gained `system "Name" [: Kingdom[/Genus]]` the same day, exactly on the C3 schedule the v1 spec committed to: the word entered the lexicon only once the kernel carried the distinction. The name is a quoted string, projects into the root system's `info.name`, and round-trips both ways (concordance row 1, "the named referent").
+- **No decomposition syntax.** Sub-paragraphs (Mobus §4.3.1) require a nested neutral spec; nesting is gated on the 8-tuple decomposition mathematics and is out of scope for v1 (#89; foundations in `docs/design/decomposition-foundations.md`).
 
 ## 4. Grammar
 
@@ -73,7 +73,7 @@ model       = { line } ;
 line        = blank | comment | structure | annotation ;
 
 structure   = system | domain | thing | flow | boundary ;
-system      = "system" [ ":" kingdom [ "/" genus ] ] ;
+system      = "system" [ string ] [ ":" kingdom [ "/" genus ] ] ;
 domain      = "domain" string ;
 thing       = thingword name { attr } ;
 thingword   = "component" | "source" | "sink" | "environment" ;
@@ -103,7 +103,7 @@ Tokenization: whitespace separates tokens; `"…"` groups (no escape sequences �
 
 ### 4.1 `system`
 
-At most one per file. Asserts the modeler's ontological type: `system : Concrete/Technical`. Kingdom alone is legal (`system : Concrete`); genus alone is not (genus is meaningful only within a kingdom — matching the kernel, where no validator gates `system_type` at all: it is semantic metadata, not a systemhood verdict).
+At most one per file. Optionally names the SOI and asserts the modeler's ontological type: `system "Steel-Plant" : Concrete/Technical`. The name is a quoted string (never a bare word — the bare token after `system` is reserved against ambiguity with the type clause) and lands in `CanvasModel.name`; either part may appear alone (`system "Bathtub"`, `system : Concrete`). Kingdom alone is legal; genus alone is not (genus is meaningful only within a kingdom — matching the kernel, where no validator gates `system_type` at all: it is semantic metadata, not a systemhood verdict). An empty name (`system ""`) is a parse fault.
 
 ### 4.2 `domain`
 
@@ -176,7 +176,7 @@ Two guarantees, distinguished honestly (`tests/sl_roundtrip.rs`):
 
 ## 8. The structure/dynamics boundary
 
-*This section adopts `docs/design/dynamics-principled-position.md` (the post-critique position); §8.2 lifts its liftable paragraph verbatim.*
+*This section adopts `docs/design/dynamics-principled-position.md` (ADOPTED); that document is the single source of truth for the dynamics-record definition, and §8.2 references it normatively rather than restating it.*
 
 ### 8.1 The departure from Mobus, argued
 
@@ -190,7 +190,7 @@ SL v0.1's §4 made the complementary error at the spec level: it named its runti
 
 ### 8.2 What SL declares if it ever gains dynamical syntax
 
-> An SL model never contains a simulator. It **declares** a dynamics record per system: the **support** (discrete Δt, event-indexed, …), the **carrier** (what the state space is), the **kind** (the transition functor: deterministic map, input-driven table, distribution), the **invariants** (conserved quantities, bounds — axis D, where conservation lives), and the **rates/parameters** of a named transfer-function family. Engines *interpret* declarations; they are substitutable and separately verified against the semigroup contract. A declaration is checkable, diffable, lens-translatable, and provable-about; a script is none of these. This is Mobus's own T ("any suitable form") taken at its formal word rather than at its Ch. 4 prose.
+§8.2 adopts the declaration model of `docs/design/dynamics-principled-position.md` (ADOPTED); the position doc is the single source of truth for the dynamics-record definition. In brief: an SL model never contains a simulator — it **declares** a dynamics record per system whose fields are the support, the carrier (state space), the kind (transition functor), the invariants (conserved quantities and bounds — where conservation lives), and the rates/parameters of a named transfer-function family; engines interpret those declarations and are separately verified against the semigroup contract.
 
 Three consequences the position doc establishes, recorded here so future SL versions do not regress:
 
@@ -207,21 +207,21 @@ The three corpus files are committed at `fixtures/sl/` and are the round-trip go
 Mobus's verbal exemplar: "Process M takes in materials A and B from sources 1 and 2 along with energy E from source 3 to make product Z with waste product X going to sinks 5 and 6 respectively" (§4.3.1). In SL, each clause becomes one line:
 
 ```
-system : Concrete
-component "Process M" primitive Combining interface
+system "Process M" : Concrete
+component Work primitive Combining interface
 source "Source 1"
 source "Source 2"
 source "Source 3"
 sink "Sink 5"
 sink "Sink 6"
-flow "Source 1" -> "Process M" : matter "material A"
-flow "Source 2" -> "Process M" : matter "material B"
-flow "Source 3" -> "Process M" : energy "energy E"
-flow "Process M" -> "Sink 5" : matter "product Z"
-flow "Process M" -> "Sink 6" : matter "waste X"
+flow "Source 1" -> Work : matter "material A"
+flow "Source 2" -> Work : matter "material B"
+flow "Source 3" -> Work : energy "energy E"
+flow Work -> "Sink 5" : matter "product Z"
+flow Work -> "Sink 6" : matter "waste X"
 ```
 
-What the paragraph carries that SL v1 does not: the name "Process M" as the *system's* name (here it is a component's name — #84), the efficiency figure, and the rate refinements ("one mass of delivery each 24 hours") — the latter two are dynamics declarations in the §8.2 sense, deferred with the rest of the dynamical face.
+With v1.1 (#84), "Process M" is finally the *system's* name, as in Mobus's own sentence; the lone component is its combining work process. What the paragraph carries that SL still does not: the efficiency figure and the rate refinements ("one mass of delivery each 24 hours") — dynamics declarations in the §8.2 sense, deferred with the rest of the dynamical face.
 
 ### 9.2 Bathtub (`bathtub.sl`) — the stock-and-flow first lesson
 
@@ -269,8 +269,8 @@ A three-component decomposition with two boundary interfaces, an authored membra
 
 | Gap | Tracked | Direction |
 |---|---|---|
-| No root-system name (kernel lacks the field) | #84 | Add `CanvasModel.name` → `system "Name" [: type]` |
-| No decomposition / sub-paragraphs (flat, single-root) | design doc Q3 | Gated on 8-tuple decomposition math; nesting enters the neutral spec first |
+| ~~No root-system name~~ shipped as v1.1 | #84 (closed 2026-07-18) | `CanvasModel.name` → `system "Name" [: type]` — see §3, §4.1 |
+| No decomposition / sub-paragraphs (flat, single-root) | #89 | Gated on 8-tuple decomposition math (`docs/design/decomposition-foundations.md`); nesting enters the neutral spec first |
 | No controlled systems-English tier (the verbal surface proper) | design doc §5 Rung 2 | Fixed-grammar system-paragraph parsing to the same neutral spec |
 | Compiled diagram can land partly off-viewport | #83 | Zoom-to-fit after compile (UI, not language) |
 | Empty text compiles to an empty model silently | session log 7/18 | Possibly a nonempty gate or confirm in the pane (UI, not language) |

@@ -16,7 +16,7 @@
 //! Grammar (v1 — structure only, no expressions, no decomposition):
 //!
 //! ```text
-//! system : Concrete/Technical          # optional type assertion
+//! system "Steel-Plant" : Concrete/Technical   # optional SOI name + type assertion
 //! domain "steel manufacturing"         # optional framing
 //! component Furnace primitive Combining interface
 //! source "Iron Vendor"                 # source|sink|environment: env things;
@@ -75,6 +75,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     let mut relations: Vec<Relation> = Vec::new();
     let mut boundary: Option<CanvasBoundaryProps> = None;
     let mut system_type = SystemType::default();
+    let mut system_name: Option<String> = None;
     let mut system_seen = false;
     let mut domain_seen = false;
     let mut lens = Lens::Mobus;
@@ -175,7 +176,18 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     continue;
                 }
                 system_seen = true;
-                match rest {
+                let (name_tok, type_rest) = match rest {
+                    [Tok::Str(n), tail @ ..] => (Some(n), tail),
+                    tail => (None, tail),
+                };
+                if let Some(n) = name_tok {
+                    if n.is_empty() {
+                        fail("system name cannot be empty".into(), &mut errors);
+                    } else {
+                        system_name = Some(n.clone());
+                    }
+                }
+                match type_rest {
                     [] => {}
                     [Tok::Colon, Tok::Word(ty)] => match parse_system_type(ty) {
                         Ok((kingdom, genus)) => {
@@ -185,7 +197,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         Err(msg) => fail(msg, &mut errors),
                     },
                     _ => fail(
-                        "system syntax: `system` or `system : <Kingdom>[/<Genus>]`".into(),
+                        "system syntax: `system [\"Name\"] [: <Kingdom>[/<Genus>]]`".into(),
                         &mut errors,
                     ),
                 }
@@ -426,6 +438,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         relations,
         boundary: boundary.unwrap_or_default(),
         system_type,
+        name: system_name,
     };
     auto_layout(&mut model, &positions);
     Ok(SlParse {
@@ -493,13 +506,23 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
     use std::fmt::Write as _;
     let mut out = String::new();
 
-    // system / domain
-    match (&model.system_type.kingdom, &model.system_type.genus) {
-        (Some(k), Some(g)) => writeln!(out, "system : {k:?}/{g:?}").unwrap(),
-        (Some(k), None) => writeln!(out, "system : {k:?}").unwrap(),
+    // system / domain — the SOI name (quoted) before the type clause
+    let sys_name = match &model.name {
+        Some(n) => Some(quote(n)?),
+        None => None,
+    };
+    let sys_type = match (&model.system_type.kingdom, &model.system_type.genus) {
+        (Some(k), Some(g)) => Some(format!("{k:?}/{g:?}")),
+        (Some(k), None) => Some(format!("{k:?}")),
         (None, Some(_)) => {
             return Err("system_type has a genus but no kingdom — not expressible in SL v1".into())
         }
+        (None, None) => None,
+    };
+    match (&sys_name, &sys_type) {
+        (Some(n), Some(t)) => writeln!(out, "system {n} : {t}").unwrap(),
+        (Some(n), None) => writeln!(out, "system {n}").unwrap(),
+        (None, Some(t)) => writeln!(out, "system : {t}").unwrap(),
         (None, None) => {}
     }
     if let Some(domain) = &model.system_type.domain {

@@ -296,6 +296,7 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
 /// CESM: `Bridge.lean`'s information-loss section lists T among what the
 /// projection DISCARDS. Pinned as a constant (and by a test) so the panel can
 /// never drift into claiming a formal bridge the Lean contradicts.
+// NOT a Lean-projected coordinate — unbridged prose note only.
 pub const MECHANISM_NOTE: &str = "M (mechanism — Bunge 2004, CESM) is documented but formally \
 UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T).";
 
@@ -311,7 +312,9 @@ pub enum LensDescription {
         neutral: usize,
         note: String,
     },
-    /// Bunge `σ = ⟨C, E, S, M⟩` — the CESM model; systemhood is earned (Def 1.1).
+    /// Bunge `σ = ⟨C, E, S⟩` delivered (the Lean-bridged CES); M carried only as
+    /// the untyped `mechanism_note` prose — see `MECHANISM_NOTE` and the
+    /// concordance §14. Systemhood is earned (Def 1.1).
     Bunge {
         composition: Vec<String>,
         environment: Vec<String>,
@@ -557,6 +560,7 @@ mod tests {
             relations,
             boundary: Default::default(),
             system_type: Default::default(),
+            name: None,
         }
     }
 
@@ -716,6 +720,17 @@ mod tests {
         };
         assert!(mechanism_note.contains("formally UNbridged"));
         assert!(mechanism_note.contains("CES, not CESM"));
+        // Doc/code contract (council outside-pass F2): the source's own doc
+        // strings must tell the same story as the pinned note — CES delivered,
+        // M as prose only. Guards the doc comments against re-inflating to a
+        // delivered CESM while the Lean bridge stays CES.
+        // Needles assembled at runtime so include_str! can't match this test's
+        // own literals — only the actual doc comments satisfy them.
+        let src = include_str!("lenses.rs");
+        let bunge_doc = format!("`σ = ⟨C, E, S⟩` {}", "delivered (the Lean-bridged CES)");
+        let m_doc = format!("{} — unbridged prose note only.", "NOT a Lean-projected coordinate");
+        assert!(src.contains(&bunge_doc), "Bunge variant doc must present CES as delivered");
+        assert!(src.contains(&m_doc), "MECHANISM_NOTE separator comment must stay");
     }
 
     #[test]

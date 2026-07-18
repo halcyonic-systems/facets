@@ -144,7 +144,7 @@ function parseSystemType(v: unknown, where: string): SystemType {
 }
 
 function parseCanvasModel(v: unknown): CanvasModel {
-  const o = shape(v, "CanvasModel", ["lens", "things", "relations", "boundary"], ["system_type"]);
+  const o = shape(v, "CanvasModel", ["lens", "things", "relations", "boundary"], ["system_type", "name"]);
   const b = shape(o.boundary, "CanvasModel.boundary", ["porosity", "perceptive_fuzziness"]);
   return {
     lens: oneOf(o.lens, "CanvasModel.lens", LENSES),
@@ -155,6 +155,7 @@ function parseCanvasModel(v: unknown): CanvasModel {
       perceptive_fuzziness: num(b.perceptive_fuzziness, "boundary.perceptive_fuzziness"),
     },
     ...(o.system_type === undefined ? {} : { system_type: parseSystemType(o.system_type, "CanvasModel.system_type") }),
+    ...(o.name === undefined ? {} : { name: str(o.name, "CanvasModel.name") }),
   };
 }
 
@@ -427,6 +428,14 @@ describe("serde↔TS boundary fixtures", () => {
       genus: "Social",
       domain: "U.S. legislative process",
     });
+  });
+
+  it("CanvasModel carries the SOI name when present, omits it when absent (#84)", () => {
+    const m = parseCanvasModel(fixture("canvas_model"));
+    expect(m.name).toBe("Pump Station");
+    const legacy = { ...(fixture("canvas_model") as Record<string, unknown>) };
+    delete legacy.name;
+    expect(parseCanvasModel(legacy).name).toBeUndefined();
   });
 
   it("CanvasModel omits system_type on a pre-existing model (serde default)", () => {
