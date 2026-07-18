@@ -48,6 +48,8 @@ The round-trip contract (model → text → model, exact) is tested over these i
 
 **Corpus precedence.** Because the three `.sl` files carry all three roles at once — round-trip golden, spec example, teaching set — the roles are ranked when they conflict: round-trip correctness comes first. Do not modify SL syntax for pedagogical reasons; a teaching improvement that would perturb a golden's round-trip is out of scope for these files and belongs in a dedicated teaching fixture instead.
 
+**Where pedagogy edits go.** That dedicated home is [`fixtures/sl/teaching/`](../../fixtures/sl/teaching/) — a graded set (a two-thing first model, a copy-adaptation of the bathtub, and two files that fail on purpose so a learner can read the error). Those fixtures carry no round-trip or spec obligation, so teaching-motivated edits are free there and should land there rather than on the goldens.
+
 ## Where the language lives in the code
 
 | Concern | Location |

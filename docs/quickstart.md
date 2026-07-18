@@ -66,6 +66,7 @@ Compile it, read its verdicts under each lens, and compare how the Klir, Bunge, 
 
 ## Where to go next
 
+- More models to learn from: [`fixtures/sl/teaching/`](../fixtures/sl/teaching/) — a graded teaching set starting from a two-line first model, including two files that fail on purpose so you learn to read SL's errors.
 - The language, in full: [`language/`](language/) (spec, corpus, lineage).
 - Assessing the theory: [`theory-fidelity.md`](theory-fidelity.md) → [`language/terminology-concordance.md`](language/terminology-concordance.md).
 - Every term above, defined: [`glossary.md`](glossary.md).
