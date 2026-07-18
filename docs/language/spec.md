@@ -38,24 +38,26 @@ The model-content rows are the neutral spec proper; the view rows are the annota
 
 ## 3. Lexicon
 
-Every SL word, with the kernel distinction that licenses it. There are no other words.
+Every SL word, with the kernel distinction that licenses it and the tradition(s) that contributed it. There are no other words.
 
-| Word | Licenses it | Kernel referent |
-|---|---|---|
-| `system` | the model's asserted ontological type | `SystemType` |
-| `Conceptual`, `Concrete` | Bunge's two kingdoms (Treatise Vol. 4, Post. 6.4) | `Kingdom` |
-| `Physical`, `Chemical`, `Biological`, `Social`, `Technical` | Bunge's five genera of concrete systems | `Genus` |
-| `domain` | the analyst's subject-area framing | `SystemType.domain` |
-| `component` | a thing inside the boundary (Bunge C) | `Role::Component` |
-| `source`, `sink`, `environment` | a thing outside the boundary (Bunge E; Mobus environment object) | `Role::Environment` (§5.2 on the three words) |
-| `interface` | membership in the root membrane's I (I ⊆ C, Tuple.lean) | `Thing.interface` |
-| `primitive` + one of `Combining`, `Splitting`, `Buffering`, `Impeding`, `Propelling`, `Copying`, `Sensing`, `Modulating`, `Amplifying`, `Inverting` | Mobus's work-process taxonomy | `ProcessPrimitive` |
-| `flow` | a drawn connection (edge in N or G) | `Relation` |
-| `->` | direction (from, to) | `Relation.a` / `.b` |
-| `energy`, `matter`, `field`, `informational` | the connection-kind taxonomy | `Kind` (the fifth value, `Unspecified`, is the *absence* of the clause) |
-| `mere` | Bunge's bond vs mere-relation predicate, negated | `Relation.is_bond = false` |
-| `boundary`, `porosity`, `fuzziness` | B's properties P = ⟨porosity, perceptive_fuzziness⟩ | `CanvasBoundaryProps` |
-| `@pos`, `@lens`, `@directed` | view state (§6) | `x`/`y`, `lens`, `klir_directed` |
+SL is one unified language: the traditions *contributed* the words, and the language owns them now, with derivation acknowledged. Attribution is therefore a ledger, not a partition — and it is deliberately **multi-tradition where the traditions converge**. That `component` is both Bunge's word (composition C) and Mobus's (C in the tuple) is not an ambiguity to resolve; it is convergence evidence of exactly the kind the K≅2 program runs on. Rows crediting a single tradition mark a distinction that tradition alone contributed (`mere` is Bunge's; the work-process taxonomy is Mobus's; the observer's direction toggle is Klir's). Per-cell primary citations live in the terminology concordance ([`terminology-concordance.md`](terminology-concordance.md)), the SSOT this column summarizes.
+
+| Word | Kernel distinction | Contributed by | Kernel referent |
+|---|---|---|---|
+| `system` | the bounded whole being modeled | Klir, Bunge, Mobus — the convergence word | `SystemType` (the type assertion; the model itself is the system) |
+| `Conceptual`, `Concrete` | the two kingdoms of systems | Bunge (Treatise Vol. 4, Post. 6.4) | `Kingdom` |
+| `Physical`, `Chemical`, `Biological`, `Social`, `Technical` | the five genera of concrete systems | Bunge (Post. 6.4); Klir's §2.4 type-(a) axis lands on nearly the same list | `Genus` |
+| `domain` | the analyst's subject-area framing | Mobus (the generic lexicon translated into domain-specific terms, §4.4) | `SystemType.domain` |
+| `component` | a thing inside the boundary | **Bunge (composition C) and Mobus (C in the tuple)** — shared; Klir diverges (things/elements) | `Role::Component` |
+| `source`, `sink`, `environment` | a thing outside the boundary | Mobus (Src/Snk environment objects); `environment` shared with Bunge (E) | `Role::Environment` (§5.2 on the three words) |
+| `interface` | membership in the root membrane's I (I ⊆ C, Tuple.lean) | **Mobus (I in B) and Bunge ("interface points" = i/o terminals ∈ boundary, 1992)** — shared | `Thing.interface` |
+| `primitive` + one of `Combining`, `Splitting`, `Buffering`, `Impeding`, `Propelling`, `Copying`, `Sensing`, `Modulating`, `Amplifying`, `Inverting` | the work-process taxonomy | Mobus | `ProcessPrimitive` |
+| `flow` | a drawn connection (edge in N or G) | word: Mobus; the underlying relation is three-tradition (Klir dependency, Bunge connection/bond, Mobus flow) | `Relation` |
+| `->` | direction (from, to) | Mobus (flows carry direction); contrast the observer's `@directed` | `Relation.a` / `.b` |
+| `energy`, `matter`, `field`, `informational` | the connection-kind taxonomy | Bunge, **verbatim** ("flows — of energy, matter, or fields … informational", CES 1979), mapping 1:1 onto Mobus substances (Material/Energy/Message; `canvas.rs:64`) | `Kind` (the fifth value, `Unspecified`, is the *absence* of the clause) |
+| `mere` | bond vs mere-relation (B vs B̄) | Bunge | `Relation.is_bond = false` |
+| `boundary`, `porosity`, `fuzziness` | B's properties P = ⟨porosity, perceptive_fuzziness⟩ | **Mobus (B = ⟨P, I⟩) and Bunge (topological boundary, 1992)** — shared concept; the property words are Mobus's | `CanvasBoundaryProps` |
+| `@pos`, `@lens`, `@directed` | view state (§6) | `@directed` is Klir's observer commitment (Facets Ch. 4); `@pos`/`@lens` are house words | `x`/`y`, `lens`, `klir_directed` |
 
 Two deliberate absences:
 

@@ -34,6 +34,7 @@ That file is [`fixtures/sl/process-m.sl`](../../fixtures/sl/process-m.sl) — no
 | 1 | **[`spec.md`](spec.md)** — the SL v1.0 specification | The normative document: five design commitments, lexicon, EBNF grammar, semantics, the annotation layer, the round-trip contract, the structure/dynamics boundary, three worked examples, lineage, known gaps. Start here to *learn or evaluate* the language. |
 | 2 | [`../design/sl2-authoring-language.md`](../design/sl2-authoring-language.md) | The research foundation behind the spec: why three syntaxes over one neutral spec, the precedent survey (SysML v2, Modelica, Stella, Quint, gpt-jargon as negative control), the keep/shed analysis against Mobus and BERT SL v0.1, and the staged rung plan. Start here to understand *why the language is shaped this way*. |
 | 3 | [`../design/dynamics-principled-position.md`](../design/dynamics-principled-position.md) | Why SL v1 stops at structure. Dynamics as a state-transition family; conservation as an invariant the model *declares* rather than one the engine assumes. The spec's §8 boundary is lifted from its §5. |
+| 4 | [`terminology-concordance.md`](terminology-concordance.md) | The homage ledger behind the lexicon: 12 kernel distinctions × {Klir, Bunge, Mobus}, every cell primary-cited. Where the traditions share a word (`component`, `environment`, `interface`, the kind taxonomy) the row is convergence evidence; where one stands alone (`mere`, `@directed`, the process primitives) the row explains that lens's distinctive vocabulary. |
 
 ## The corpus
 
