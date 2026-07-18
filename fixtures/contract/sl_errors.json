@@ -1,0 +1,10 @@
+[
+  {
+    "line": 1,
+    "message": "`Ghost` is not declared (declare things before flows)"
+  },
+  {
+    "line": 2,
+    "message": "unknown keyword `widget` (system, domain, component, source, sink, environment, flow, boundary)"
+  }
+]

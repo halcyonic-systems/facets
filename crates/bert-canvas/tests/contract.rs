@@ -124,6 +124,16 @@ fn lens_description_fixtures() {
 }
 
 #[test]
+fn sl_error_fixture() {
+    // The SL parse-fault list crosses the edge inside compile_sl's `{ errors }`
+    // arm; the element shape gets its own fixture, like EdgeFact/PortFact.
+    let errors = bert_canvas::sl::parse_sl("flow Ghost -> Nowhere\nwidget X\n")
+        .expect_err("sample must not parse");
+    assert!(errors.len() >= 2, "need multiple SlErrors to fixture");
+    check_fixture("sl_errors", &errors);
+}
+
+#[test]
 fn canvas_analysis_and_validation_fixtures() {
     let a = analyze(&sample(), Lens::Mobus);
     // The Mobus (Operational) gate rejects the self-loop, so the validation is

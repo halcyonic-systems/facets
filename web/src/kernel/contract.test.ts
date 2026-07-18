@@ -29,6 +29,7 @@ import type {
   Relation,
   RunResult,
   RunResultRich,
+  SlError,
   SystemType,
   Targets,
   Thing,
@@ -224,6 +225,14 @@ function parseValidationIssue(v: unknown, where: string): ValidationIssue {
     location: str(o.location, `${where}.location`),
     message: str(o.message, `${where}.message`),
     suggestion: nullableStr(o.suggestion, `${where}.suggestion`),
+  };
+}
+
+function parseSlError(v: unknown, where: string): SlError {
+  const o = shape(v, where, ["line", "message"]);
+  return {
+    line: num(o.line, `${where}.line`),
+    message: str(o.message, `${where}.message`),
   };
 }
 
@@ -436,6 +445,14 @@ describe("serde↔TS boundary fixtures", () => {
     expect(parsePortFact(fixture("port_fact")).direction).toBeTypeOf("string");
     // a self-loop edge must report mobus_ok=false somewhere in the ladder
     expect(f.edges.some((e) => e.self_loop && !e.mobus_ok)).toBe(true);
+  });
+
+  it("SlError list validates (compile_sl's { errors } arm)", () => {
+    const errors = arr(fixture("sl_errors"), "sl_errors").map((x, i) =>
+      parseSlError(x, `sl_errors[${i}]`),
+    );
+    expect(errors.length).toBeGreaterThan(1);
+    expect(errors[0].line).toBe(1);
   });
 
   it("ValidationResult validates (with a real issue)", () => {

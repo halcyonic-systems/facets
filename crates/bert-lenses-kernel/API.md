@@ -262,6 +262,35 @@ type CanvasAnalysis = {
 ```
 Throws only on unparseable canvas JSON.
 
+## SL surface (built — the textual authoring surface, #82)
+
+### `compile_sl(text: string) → { ok: CanvasModel, lens_explicit: boolean } | { errors: SlError[] }`
+Compile SL text (the line-oriented authoring notation) into a canvas editing
+model. The parser (`bert_canvas::sl::parse_sl_full`) is deterministic — a
+compiler, never an LLM — and judges NOTHING about systemhood: it resolves
+names, applies the `@` annotation layer (`@pos`, `@lens`, `@directed`;
+unknown annotations skipped), and auto-lays-out unpositioned things on a
+deterministic ring. Legality stays with the kernel: callers run the result
+through `analyze_canvas` exactly as they would a canvas edit. `lens_explicit`
+reports whether the text pinned a lens via `@lens` — lens is view state, so
+without a pin the caller should keep the author's current lens. Parse faults
+come back line-anchored and complete (all faults in one pass):
+```ts
+type SlError = { line: number, message: string }
+```
+Never throws on bad SL — faults are the `{ errors }` arm; throws only on
+non-string input at the wasm edge.
+
+### `emit_sl(canvas_json: string) → string`
+Serialize a canvas model to canonical SL text (the model→text direction):
+things first (environment identity edge-derived from bonds, the same reading
+`project()` uses), then flows, boundary, and the annotation block. Golden
+round-trip contract (`crates/bert-canvas/tests/sl_roundtrip.rs`, corpus in
+`fixtures/sl/`): SL-born models round-trip text → model → text digit for
+digit; arbitrary canvas models canonicalize (`emit∘parse∘emit == emit`).
+Throws (JsError) on the shapes SL v1 cannot express: a name/label containing
+`"` or a newline, a genus asserted without a kingdom.
+
 ## Contract fixtures (definition-of-done for boundary shapes)
 
 Every serde type that crosses this wasm edge ships a committed JSON fixture in
