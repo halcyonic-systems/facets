@@ -46,6 +46,7 @@ Research foundations — what others build on; not themselves decisions:
 ## Decisions
 
 - [`decisions/0001-canvas-rendering-svg.md`](decisions/0001-canvas-rendering-svg.md) — **ADOPTED** — the hand-rolled React+SVG canvas call (vs. a graph library), from the blind-pick spike.
+- [`decisions/0002-web-first-rebuild.md`](decisions/0002-web-first-rebuild.md) — **ADOPTED** — the egui → React/wasm rebuild (Rust brain, React face); written retrospectively from the repo record.
 
 ## Historical (pre-web-rebuild, kept as record)
 
