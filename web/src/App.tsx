@@ -104,7 +104,7 @@ export default function App() {
           {/* During kernel load the File button is disabled (loaded={false}),
               so its menu never opens — the items are visibly greyed, not silent
               no-ops behind a live-looking menu. */}
-          <MenuBar loaded={false} onNew={() => {}} onOpen={() => {}} onSave={() => {}} onExport={() => {}} onSaveToFolder={() => {}} onSaveToLibrary={() => {}} canExport={false} />
+          <MenuBar loaded={false} onNew={() => {}} onOpen={() => {}} onSave={() => {}} onExport={() => {}} onSaveToFolder={() => {}} onSaveToLibrary={() => {}} canExport={false} hasModel={false} currentLabel={null} dirty={false} onHome={() => {}} libraryModels={[]} onSwitchDemo={() => {}} onSwitchLibrary={() => {}} onOpenFull={() => {}} />
           <div className="flex flex-1 items-center justify-center">
             <p className="text-sm" style={{ color: loadError ? "var(--verdict-error)" : "var(--text-muted)" }}>
               {loadError ? `Failed to load the wasm kernel: ${loadError}` : "loading kernel…"}
@@ -135,6 +135,11 @@ function Workspace() {
   // start screen before anything is loaded), the docked palette's collapse.
   const [galleryOpen, setGalleryOpen] = useState(true);
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
+  // Unsaved-work tracking (presentation-only): true once the loaded model has
+  // been edited on the canvas or via a popover, cleared on every load/new/save
+  // seam. The nav affordances (Home, Switch model) confirm-before-discard only
+  // when this is set, so an untouched or freshly-saved model navigates freely.
+  const [dirty, setDirty] = useState(false);
   // The SL text pane (textual authoring surface). Text + faults live here so
   // the pane survives toggling; seeded with a worked example (Mobus's steel
   // plant, Ch.4 §4.3.1) so the first Compile lands a real model.
@@ -218,6 +223,7 @@ function Workspace() {
     setSelectedThingId(null);
     setArmed(null);
     setGalleryOpen(false);
+    setDirty(false);
     runWith(d.modelJson, d.csv, d.manifest, d.manifest.dt ?? 1, d.t); // one click → runs
   };
 
@@ -238,6 +244,7 @@ function Workspace() {
       setBoundaryAnchor(null);
       setArmed(null);
       setGalleryOpen(false);
+      setDirty(false);
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
@@ -258,6 +265,7 @@ function Workspace() {
     setBoundaryAnchor(null);
     setArmed(null);
     setGalleryOpen(false);
+    setDirty(false);
     setNotice("SL compiled ✓");
   }
 
@@ -275,6 +283,7 @@ function Workspace() {
     setBoundaryAnchor(null);
     setArmed(null);
     setGalleryOpen(false);
+    setDirty(false);
   }
 
   function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -351,6 +360,7 @@ function Workspace() {
         setLibraryModels(await listModels());
         setCurrentName(stem);
         setSaveDialogOpen(false);
+        setDirty(false);
         setNotice(`saved to library → ${stem}`);
         return;
       }
@@ -358,6 +368,7 @@ function Workspace() {
       await writeModel(dirHandle, stem, json);
       setCurrentName(stem);
       setSaveDialogOpen(false);
+      setDirty(false);
       setNotice(`saved → ${stem}.json`);
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
@@ -399,6 +410,7 @@ function Workspace() {
       setArmed(null);
       setCurrentName(name.replace(/\.json$/i, ""));
       setGalleryOpen(false);
+      setDirty(false);
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
@@ -421,6 +433,7 @@ function Workspace() {
       setArmed(null);
       setCurrentName(name);
       setGalleryOpen(false);
+      setDirty(false);
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
@@ -550,6 +563,7 @@ function Workspace() {
     setCanvasModel((m) =>
       m ? { ...m, relations: m.relations.map((r) => (r.id === next.id ? next : r)) } : m,
     );
+    setDirty(true);
   }
 
   // Delete removes the selected element. Deleting a component cascades to its
@@ -565,11 +579,13 @@ function Workspace() {
         : m,
     );
     setSelectedThingId(null);
+    setDirty(true);
   }
 
   function deleteRelation(id: number) {
     setCanvasModel((m) => (m ? { ...m, relations: m.relations.filter((r) => r.id !== id) } : m));
     setSelectedRelationId(null);
+    setDirty(true);
   }
 
   // A node edit from the popover (rename, work-process set/clear): same shape
@@ -578,6 +594,7 @@ function Workspace() {
     setCanvasModel((m) =>
       m ? { ...m, things: m.things.map((t) => (t.id === next.id ? next : t)) } : m,
     );
+    setDirty(true);
   }
 
   const selectedThing =
@@ -585,9 +602,53 @@ function Workspace() {
 
   function updateBoundary(next: import("./kernel/types").CanvasBoundaryProps) {
     setCanvasModel((m) => (m ? { ...m, boundary: next } : m));
+    setDirty(true);
   }
 
   const clean = verdict !== null && verdict.issues.length === 0;
+
+  // A human label for the model now on the canvas — the demo's title, else the
+  // saved name, else a neutral "untitled". Shown in the menu bar and used to
+  // mark the active row in the Switch menu.
+  const currentLabel = demo?.title ?? currentName ?? (canvasModel ? "untitled" : null);
+
+  // Confirm-before-discard gate for the nav affordances. No dirty-model guard
+  // existed before this wave, so this is it: only the unsaved-work case prompts.
+  function guardDiscard(): boolean {
+    if (!dirty) return true;
+    return window.confirm("Discard unsaved changes to the current model?");
+  }
+
+  // Home / Close (#73): leave the canvas and return to the start screen — a null
+  // model behind the open gallery, exactly the app's initial state. The one
+  // route back out of a loaded model.
+  function goHome() {
+    if (!guardDiscard()) return;
+    setDemo(null);
+    setCanvasModel(null);
+    setManifest({ model: "", data: "", t: 12, mapping: [] });
+    setResult(null);
+    setRunError(null);
+    setSelectedRelationId(null);
+    setSelectedThingId(null);
+    setBoundaryAnchor(null);
+    setArmed(null);
+    setCurrentName(null);
+    setDirty(false);
+    setGalleryOpen(true);
+  }
+
+  // Switch model (#74): load another model without routing through the full
+  // Open… dialog. Both quick paths reuse the existing load seams (which reset
+  // dirty), guarded so an unsaved model isn't silently dropped.
+  function switchToDemo(d: Demo) {
+    if (!guardDiscard()) return;
+    pick(d);
+  }
+  function switchToLibrary(name: string) {
+    if (!guardDiscard()) return;
+    loadFromLibrary(name);
+  }
 
   return (
     <>
@@ -600,6 +661,14 @@ function Workspace() {
         onSaveToFolder={saveToFolder}
         onSaveToLibrary={saveToLibrary}
         canExport={canvasModel !== null}
+        hasModel={canvasModel !== null}
+        currentLabel={currentLabel}
+        dirty={dirty}
+        onHome={goHome}
+        libraryModels={libraryModels}
+        onSwitchDemo={switchToDemo}
+        onSwitchLibrary={switchToLibrary}
+        onOpenFull={() => setGalleryOpen(true)}
       />
       <input
         ref={importInputRef}
@@ -722,7 +791,10 @@ function Workspace() {
                       model={canvasModel}
                       lens={canvasModel.lens}
                       facts={facts}
-                      onModelChange={setCanvasModel}
+                      onModelChange={(m) => {
+                        setCanvasModel(m);
+                        setDirty(true);
+                      }}
                       onReject={setToast}
                       selectedRelationId={selectedRelationId}
                       onSelectRelation={setSelectedRelationId}
@@ -916,6 +988,14 @@ function MenuBar({
   onSaveToFolder,
   onSaveToLibrary,
   canExport,
+  hasModel,
+  currentLabel,
+  dirty,
+  onHome,
+  libraryModels,
+  onSwitchDemo,
+  onSwitchLibrary,
+  onOpenFull,
 }: {
   loaded: boolean;
   onNew: () => void;
@@ -925,8 +1005,17 @@ function MenuBar({
   onSaveToFolder: () => void;
   onSaveToLibrary: () => void;
   canExport: boolean;
+  hasModel: boolean;
+  currentLabel: string | null;
+  dirty: boolean;
+  onHome: () => void;
+  libraryModels: { name: string; savedAt: number }[];
+  onSwitchDemo: (d: Demo) => void;
+  onSwitchLibrary: (name: string) => void;
+  onOpenFull: () => void;
 }) {
   const [fileOpen, setFileOpen] = useState(false);
+  const [switchOpen, setSwitchOpen] = useState(false);
   const item = (label: string, onClick: () => void, disabled = false) => (
     <button
       onClick={() => {
@@ -956,6 +1045,25 @@ function MenuBar({
       >
         bert&#8202;·&#8202;lenses
       </span>
+
+      {/* Home / Close (#73): the one route back to the start screen from a
+          loaded model. Disabled when already home (no model), so it never
+          no-ops silently. */}
+      <button
+        onClick={onHome}
+        disabled={!loaded || !hasModel}
+        title={hasModel ? "Close this model and return to the start screen" : "Already at the start screen"}
+        className="rounded px-2 py-1 text-xs uppercase tracking-wide"
+        style={{
+          fontFamily: "var(--font-mono)",
+          color: loaded && hasModel ? "var(--text-secondary)" : "var(--text-muted)",
+          opacity: loaded && hasModel ? 1 : 0.5,
+          cursor: loaded && hasModel ? "pointer" : "not-allowed",
+        }}
+      >
+        Home
+      </button>
+
       <div className="relative">
         <button
           onClick={() => setFileOpen((o) => !o)}
@@ -992,6 +1100,121 @@ function MenuBar({
           </>
         )}
       </div>
+      {/* Switch model (#74): an in-canvas quick-open — demos + browser library
+          in a compact menu, so switching models never routes through the full
+          Open… dialog. Only meaningful once a model is loaded. */}
+      <div className="relative">
+        <button
+          onClick={() => setSwitchOpen((o) => !o)}
+          disabled={!loaded || !hasModel}
+          className="rounded px-2 py-1 text-xs uppercase tracking-wide"
+          style={{
+            fontFamily: "var(--font-mono)",
+            color: loaded && hasModel ? "var(--text-secondary)" : "var(--text-muted)",
+            opacity: loaded && hasModel ? 1 : 0.5,
+            cursor: loaded && hasModel ? "pointer" : "not-allowed",
+            background: switchOpen ? "var(--bg-surface)" : "transparent",
+          }}
+          title="Switch to another model without leaving the canvas"
+        >
+          Switch ▾
+        </button>
+        {switchOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setSwitchOpen(false)} />
+            <div
+              className="absolute left-0 top-full z-20 mt-1 max-h-[70vh] w-56 overflow-y-auto py-1"
+              style={{
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border)",
+                boxShadow: "var(--shadow-card)",
+                borderRadius: "var(--radius-md)",
+              }}
+            >
+              <div
+                className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Demos
+              </div>
+              {DEMOS.map((d) => {
+                const active = currentLabel === d.title;
+                return (
+                  <button
+                    key={d.key}
+                    onClick={() => {
+                      setSwitchOpen(false);
+                      onSwitchDemo(d);
+                    }}
+                    className="block w-full truncate px-3 py-1.5 text-left text-xs"
+                    style={{ color: active ? "var(--accent-strong)" : "var(--text-secondary)" }}
+                    title={d.title}
+                  >
+                    {active ? "• " : ""}
+                    {d.title}
+                  </button>
+                );
+              })}
+              <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
+              <div
+                className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide"
+                style={{ color: "var(--text-muted)" }}
+              >
+                Saved in this browser
+              </div>
+              {libraryModels.length === 0 ? (
+                <div className="px-3 py-1.5 text-xs" style={{ color: "var(--text-muted)" }}>
+                  no saved models yet
+                </div>
+              ) : (
+                libraryModels.map((m) => {
+                  const active = currentLabel === m.name;
+                  return (
+                    <button
+                      key={m.name}
+                      onClick={() => {
+                        setSwitchOpen(false);
+                        onSwitchLibrary(m.name);
+                      }}
+                      className="block w-full truncate px-3 py-1.5 text-left text-xs"
+                      style={{ color: active ? "var(--accent-strong)" : "var(--text-secondary)" }}
+                      title={m.name}
+                    >
+                      {active ? "• " : ""}
+                      {m.name}
+                    </button>
+                  );
+                })
+              )}
+              <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
+              <button
+                onClick={() => {
+                  setSwitchOpen(false);
+                  onOpenFull();
+                }}
+                className="block w-full px-3 py-1.5 text-left text-xs"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                More… (Open dialog)
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* The model now on the canvas — a quiet mono label, dot-marked when it
+          carries unsaved edits. */}
+      {currentLabel && (
+        <span
+          className="max-w-[16rem] truncate text-[11px]"
+          style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+          title={dirty ? `${currentLabel} — unsaved changes` : currentLabel}
+        >
+          {currentLabel}
+          {dirty ? " •" : ""}
+        </span>
+      )}
+
       <span
         className="ml-auto inline-flex items-center gap-1.5 text-[11px]"
         style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
