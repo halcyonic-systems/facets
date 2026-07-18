@@ -1,5 +1,7 @@
 # What Counts as Dynamics — The Principled Position
 
+**Status: ADOPTED (2026-07-18, [#86](https://github.com/halcyonic-systems/bert-lenses/issues/86)).** This is the repo's position of record on what counts as dynamics. It supersedes the retired "dynamics = the conservation engine" framing (roadmap Arc 4). `language/spec.md` §8 is normatively bound to it; this doc is the single source of truth for the dynamics-record definition.
+
 *Research → engineering translation. Written 2026-07-18 from the full research pass in
 `dynamics-research/` (six primary-source reads → `synthesis.md` → two adversarial
 critiques: `critique-novelty.md`, `critique-coverage.md`). This document is the

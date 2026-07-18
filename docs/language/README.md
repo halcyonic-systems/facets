@@ -46,6 +46,8 @@ Three `.sl` files in [`fixtures/sl/`](../../fixtures/sl/) serve simultaneously a
 
 The round-trip contract (model → text → model, exact) is tested over these in [`crates/bert-canvas/tests/sl_roundtrip.rs`](../../crates/bert-canvas/tests/sl_roundtrip.rs).
 
+**Corpus precedence.** Because the three `.sl` files carry all three roles at once — round-trip golden, spec example, teaching set — the roles are ranked when they conflict: round-trip correctness comes first. Do not modify SL syntax for pedagogical reasons; a teaching improvement that would perturb a golden's round-trip is out of scope for these files and belongs in a dedicated teaching fixture instead.
+
 ## Where the language lives in the code
 
 | Concern | Location |

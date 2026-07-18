@@ -21,13 +21,16 @@ Rust mirrors this exactly: `validate_mode` (`crates/bert-core/src/validate.rs:12
 - *Where:* `Kernel.toKlir` (Lean, unconditional) → `Mode::Core` (`lib.rs:634-644`) → no gate in `validate_mode` beyond on-ness (reference integrity).
 - *Why this scope:* Klir's 1967 system is a single relational structure classifying things by relation-membership, not GSPS's later multi-level hierarchy (metasystem, structure system, etc.). This is a named scope decision — the kernel takes the 1967 kernel-system, not the full GSPS ladder of system types (see the perspectival-realist scope statement below).
 
-**Bunge — CESM, `σ = ⟨C, E, S, M⟩`**
+**Bunge — CES, `σ = ⟨C, E, S⟩`** (M carried as untyped `mechanism_note` prose — not a Lean-projected coordinate; see concordance §14)
 - *Takes:* composition (named components), environment (bonded externals), the bondage/mere-relation split, endo/exo-structure (locus), the aggregate-vs-system verdict. Exposed via `describe(model, Bunge)`: `composition[]`, `environment[]`, `endostructure`, `exostructure`, `bondage`, `mere_relations`, `boundary_components[]`, `verdict`, `mechanism_note`.
 - *Drops:* mechanism as anything beyond a structural note (`mechanism_note` is prose, not typed structure), and everything outside bondhood/composition — materialist ontology commitments, emergence-as-process, historicity.
 - *Where:* `Kernel.toBunge` gated on `Kernel.HasBond` (Lean) → `check_bond` (`validate.rs:150-162`) → `Mode::Structural`.
 - *Why:* the bond-vs-mere predicate is author-declared, not derived from dynamics — `is_bond` is a declaration the kernel checks for legality against `HasBond`, not something computed from a run. `crates/bert-canvas/src/lenses.rs:37-39` states the Lean criterion directly: `FlowInducesAction` — a flow that modifies history is a bond. The kernel validates a claim about mechanism; it does not compute mechanism.
 
 **Mobus — 8-tuple, `S = ⟨C, N, E, G, B, T, H, Δt⟩`**
+
+Provenance: Mobus's book prints a 7-tuple `⟨C, N, G, B, T, H, Δt⟩`; this formalization extends it to an 8-tuple with E first-class — a Lean improvement, not a claim that Mobus published 8. See concordance row 1.
+
 - *Takes:* components, endostructure (N), environment as first-class objects+milieu, exostructure (G), boundary/interfaces (B) with porosity and perceptive-fuzziness, and — thin — transformation/history/time-constant slots (T, H, Δt).
 - *Drops (deliberately, stated in code):* T/H/Δt are "stringly-typed notes in v2.0 — typing deferred" (`validate.rs:177`). The structural tuple (C·N·E·G·B) is real, machine-checked structure; the dynamical slots are not yet typed structure, only prose.
 - *Where:* `Kernel.toMobus` gated on `Kernel.Irreflexive` (Lean) → `check_self_loops` (`validate.rs:165-179`, `k ≠ o`) → `Mode::Operational`; `Mode::Full` adds `check_dynamical_face`, which only warns (never blocks) if no system populates T/H/Δt (`validate.rs:186-203`) — Full is the default view, so an empty face informs rather than blocks.
@@ -63,6 +66,7 @@ GitHub issue #5 (bert-lenses) decided how a component carries a Mobus work-proce
 | Derived & translated | Boundary identity set, endo/exo locus, aggregate verdict, ports, per-edge facts — computed from the projection, surfaced to canvas ids, never re-derived in the face. | **Solid** — verified in `lens_facts`; single source. |
 | Declared & validated | Bond-vs-mere is author-declared (`is_bond`), checked for consistency against `HasBond` — not derived from dynamics. An LLM proposing bonds proposes a declaration, checked for legality, not something the kernel infers from behavior. | Real but partial. |
 | Noted / thin | The dynamical face T/H/Δt is stringly-typed notes in v2.0 (typing deferred); `check_dynamical_face` only warns. The structural tuple (C·N·E·G·B) is real; the dynamical slots are not yet typed structure. | Thin — do not over-trust the dynamical face as machine-checked. |
+| Bunge M (mechanism) | Delivered as CES: M is carried as untyped `mechanism_note` prose, not a Lean-projected coordinate. `describe(model, Bunge)` typesets `⟨C, E, S⟩`; the mechanism slot is authorial prose only (see concordance §14). | Noted / thin — do not treat as machine-checked. |
 | Reachability / dead-end / duplicate-edge checks | `check_dead_ends`, `check_reachability`, `check_duplicate_edges` in `validate.rs` (`:134-135,141`), all Warning-severity (legitimate absorbing states stay legal), surfaced through `analyze` → `issue_targets`. | **Landed 2026-07-17 (#66).** |
 
 ## Asserted system type (metadata, not a gate)

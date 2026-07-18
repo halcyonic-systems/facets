@@ -21,7 +21,10 @@ A formal kernel then does what no drawing tool does: it **judges** the model —
 deciding whether what you described actually holds as a *system* under each of
 three traditions of systems science (Klir, Bunge, Mobus), with every verdict
 citing the precondition it rests on. Where the model holds, you can run it: a
-conservation-faithful simulation, driven by your own data.
+deterministic dynamics run under a model-declared invariant, driven by your own
+data. The current engine supports one dynamics-kind — an Id-functor over ℝⁿ
+stocks with an additive conservation invariant — and further kinds are
+declarable.
 
 Three things make this unlike other modeling tools:
 
@@ -42,18 +45,28 @@ Three things make this unlike other modeling tools:
 
 **Rust is the brain, React is the face.** The kernel is Rust compiled to
 WebAssembly, and it owns all the formalism: every systemhood verdict, all
-validation, the conservation-faithful simulation. The web layer renders what
+validation, the dynamics run under its declared invariant. The web layer renders what
 the kernel decides and nothing more. `crates/` = truth · `web/` = face; any
 systems logic in JS is a bug.
 
 ## What this tool believes
 
 **The three lenses are generated, not opinions.** Klir, Bunge, and Mobus are
-three faithful views the K ≅ **2** kernel *generates* from one model, each
-licensed by its own machine-checked precondition (proven in
-`Klir/ViewGeneration.lean`). `describe(model, lens)` hands the model back in
-each lens's own vocabulary — counts hold, words change, and that invariant is
-machine-tested.
+three faithful views the K ≅ **2** kernel *generates* from one model. What is
+actually proven, graduated honestly:
+
+- **Klir is unconditional.** `toKlir` holds for every kernel — no precondition.
+- **Bunge and Mobus each sit behind an independent machine-checked precondition.**
+  `toBunge` requires `HasBond`, `toMobus` requires `Irreflexive`; neither entails
+  the other, and there is no proven entailment between them.
+- **One composite path is proven.** `toMobus_toBunge` is the single proven
+  composite: when both preconditions hold, Mobus-then-Bunge factors through Klir.
+
+The maps all live in `Klir/ViewGeneration.lean` (despite the filename).
+`describe(model, lens)` hands the model back in each lens's own vocabulary — its
+counts-hold invariant is **machine-tested at runtime**, not Lean-proven. The
+canonical scope of what's proven vs tested is
+[`docs/theory-fidelity.md`](docs/theory-fidelity.md).
 
 **A lens is a commitment the kernel checks.** Klir asks only for
 things-in-relation. Bunge demands a bond between distinct components, or refuses
@@ -76,16 +89,24 @@ neutral spec is. SL's parser judges no systemhood: legality stays the kernel's
 verdict, reached the same way canvas gestures reach it. Specification, corpus,
 and reading order: [`docs/language/`](docs/language/).
 
-**Who this is for.** First, anyone who wants to describe a system — a supply
-chain, a protocol, a cell, an organization — and find out whether what they
-described actually *is* one, then watch it run. No systems-science background
-required: each lens's palette carries its tradition's own vocabulary as you
-author (and deeper in-tool teaching is tracked in
-[#80](https://github.com/halcyonic-systems/bert-lenses/issues/80)). Second, someone
-assessing the quality of the theory underneath the instrument, on their own or
-with help from an LLM or another expert — likely an engineer, scientist, or
-mathematician, often with a systems or complexity background, though neither is
-required.
+**Who this is for.** Two readers, two paths in.
+
+*The newcomer* — anyone who wants to describe a system (a supply chain, a
+protocol, a cell, an organization), find out whether what they described actually
+*is* one, and watch it run. Start with [`docs/quickstart.md`](docs/quickstart.md):
+ten minutes from `just dev` to a judged, running model. You need no
+systems-science background to begin — each lens's palette carries its tradition's
+own vocabulary as you author, so you pick it up in place. That is
+palette-vocabulary now; guided in-tool teaching is in progress
+([#80](https://github.com/halcyonic-systems/bert-lenses/issues/80)).
+
+*The auditor* — someone assessing the quality of the theory underneath the
+instrument, on their own or with an LLM or another expert (likely an engineer,
+scientist, or mathematician, often with a systems or complexity background,
+though neither is required). Start with
+[`docs/theory-fidelity.md`](docs/theory-fidelity.md), then the
+[terminology concordance](docs/language/terminology-concordance.md) for the
+cited Klir·Bunge·Mobus lineage of every word.
 
 The full, cited version of everything above is
 [`docs/theory-fidelity.md`](docs/theory-fidelity.md); [`docs/README.md`](docs/README.md)
@@ -101,7 +122,7 @@ flowchart TB
     subgraph TRUTH["crates/ · the truth (Rust, compiled to WASM)"]
         KERNEL["bert-lenses-kernel<br/>JS ↔ wasm boundary"]
         CANVAS["bert-canvas<br/>lenses: describe · lens_facts · analyze"]
-        COMPOSE["bert-compose<br/>dynamical engine: conservation-faithful run"]
+        COMPOSE["bert-compose<br/>dynamical engine: run under a declared invariant"]
         TETHER["bert-tether<br/>boundary: CSV import · forcing"]
         CORE["bert-core<br/>semantic authority: WorldModel · validators · projection"]
     end
@@ -181,8 +202,11 @@ cargo build --workspace --target wasm32-unknown-unknown
 
 ## Where to look
 
+- [`docs/README.md`](docs/README.md) — the status-marked index of the whole
+  docs/ folder (LIVE · ADOPTED · PROPOSED · RESEARCH · HISTORICAL). Start here
+  to find anything below.
 - [`CLAUDE.md`](CLAUDE.md) — the agent runbook: invariants, the 5-crate layout,
-  working rules, and the 8-step palette-extension procedure. Start here.
+  working rules, and the 8-step palette-extension procedure.
 - [`crates/bert-lenses-kernel/API.md`](crates/bert-lenses-kernel/API.md) — the
   frozen JS↔wasm surface (append-only).
 - [`docs/kernel-architecture.md`](docs/kernel-architecture.md) — what the kernel
@@ -202,11 +226,10 @@ cargo build --workspace --target wasm32-unknown-unknown
   BERT SL v0.1. Start here if you want to write models as text, or to evaluate
   the language as a language.
 - [`docs/design/dynamics-principled-position.md`](docs/design/dynamics-principled-position.md)
-  — what counts as dynamics: a state-transition family satisfying the semigroup
-  axiom; conservation as an invariant the *model* declares, not one the engine
-  assumes. Adoption tracked in
+  — **ADOPTED** — what counts as dynamics: a state-transition family satisfying
+  the semigroup axiom; conservation as an invariant the *model* declares, not one
+  the engine assumes. Adopted via
   [#86](https://github.com/halcyonic-systems/bert-lenses/issues/86).
-- [`docs/README.md`](docs/README.md) — index of the full docs/ folder.
 - [`docs/design/llm-integration-research.md`](docs/design/llm-integration-research.md)
   — research foundation for LLM context/authoring/analysis (rests on the kernel
   above); the read-only analysis rung it specified shipped 2026-07-17.

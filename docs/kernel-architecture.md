@@ -6,7 +6,7 @@
 
 ## What the kernel is (and isn't)
 
-The kernel is the Rust core in `crates/`, compiled to WASM, that **owns systemhood** — it is a *decision procedure*, not a database and not a renderer. Given a model, it decides what is well-formed, what counts as a system vs an aggregate, what each faithful lens says, and (via the compose engine) what a conservation-faithful run does. Its verdicts are grounded in a machine-checked Lean formalization (`systems-science-foundations/`), not in house style. The React face computes **nothing** about systems — it renders kernel verdicts (`web/src` = face, `crates/` = truth).
+The kernel is the Rust core in `crates/`, compiled to WASM, that **owns systemhood** — it is a *decision procedure*, not a database and not a renderer. Given a model, it decides what is well-formed, what counts as a system vs an aggregate, what each faithful lens says, and (via the compose engine) what a deterministic dynamics run under a model-declared invariant does (current engine: one supported dynamics-kind — Id-functor over ℝⁿ stocks with an additive conservation invariant; further kinds are declarable). Its verdicts are grounded in a machine-checked Lean formalization (`systems-science-foundations/`), not in house style. The React face computes **nothing** about systems — it renders kernel verdicts (`web/src` = face, `crates/` = truth).
 
 Five crates:
 
@@ -15,7 +15,7 @@ Five crates:
 | `bert-core` | The truth core: `WorldModel`, all validators, `project`, mode-gating (`validate.rs`, `lib.rs`) |
 | `bert-canvas` | The lens/authoring domain: `CanvasModel`, `lens_facts`, `describe`, `analyze` (`lenses.rs`, `canvas.rs`) |
 | `bert-tether` | Boundary interface: CSV import, run manifest, forcing |
-| `bert-compose` | The dynamical engine: conservation-faithful run (engine-only, wasm-clean) |
+| `bert-compose` | The dynamical engine: a dynamics run under the model's declared invariant (current engine: one supported dynamics-kind — Id-functor over ℝⁿ stocks with an additive conservation invariant; engine-only, wasm-clean) |
 | `bert-lenses-kernel` | The JS↔wasm boundary — marshaling only; frozen append-only surface (`API.md`) |
 
 ---
@@ -29,8 +29,8 @@ All three were verified by direct read. They are **richer than the research doc 
 `lenses.rs:305-347`. Returns a `#[serde(tag="lens")]` discriminated union — the model typeset in **each lens's own formal notation, with the actual named structure**, not just counts:
 
 - **Klir** `S = (T, R)`: `things`, `relations`, `directed`, `neutral`, `note`.
-- **Bunge** `σ = ⟨C, E, S, M⟩` (CESM): `composition[]` (named), `environment[]` (named), `endostructure`, `exostructure`, `bondage`, `mere_relations`, `boundary_components[]` (named), `verdict`, `mechanism_note`.
-- **Mobus** `S = ⟨C, N, E, G, B, T, H, Δt⟩` (8-tuple): `c[]` (named), `n`, `e_objects[]` (named), `milieu_note`, `g`, `b_interfaces[]` (named), `porosity`, `perceptive_fuzziness`, `t_note`, `h_note`, `dt_note`, `self_loop_conflicts[]`.
+- **Bunge** `σ = ⟨C, E, S⟩` (CES; M carried as untyped `mechanism_note` prose, not a Lean-projected coordinate — see concordance §14): `composition[]` (named), `environment[]` (named), `endostructure`, `exostructure`, `bondage`, `mere_relations`, `boundary_components[]` (named), `verdict`, `mechanism_note`.
+- **Mobus** `S = ⟨C, N, E, G, B, T, H, Δt⟩` (8-tuple; Mobus's book prints a 7-tuple `⟨C, N, G, B, T, H, Δt⟩` — this formalization extends it to an 8-tuple with E first-class, a Lean improvement, not a claim that Mobus published 8; see concordance row 1): `c[]` (named), `n`, `e_objects[]` (named), `milieu_note`, `g`, `b_interfaces[]` (named), `porosity`, `perceptive_fuzziness`, `t_note`, `h_note`, `dt_note`, `self_loop_conflicts[]`.
 
 Counts are "read off the same kernel facts the canvas renders — never re-derived" (`lenses.rs:344`). **This is the load-bearing fact for lens-faithful LLM reasoning: the kernel literally hands you the model in Bunge's or Mobus's vocabulary, named. The LLM never has to *know* a lens — it's fed the lens's own object.**
 
@@ -83,6 +83,6 @@ Counts are "read off the same kernel facts the canvas renders — never re-deriv
 ## Where the guarantees are documented (cross-refs)
 
 - `crates/bert-lenses-kernel/API.md` — the frozen wasm boundary (every exported fn's shape + error contract).
-- `docs/canvas-architecture.md` — the canvas/face side.
+- `docs/archive/canvas-architecture.md` — the canvas/face side (HISTORICAL, egui-era).
 - `systems-science-foundations/Systems/` — the Lean proofs the verdicts mirror (`Klir/ViewGeneration.lean`, `Mobus/Tuple.lean`, `FlowNetwork.lean`).
 - `docs/design/llm-integration-research.md` — the LLM story that rests on this kernel (its §4 substrate and §11 lens-fidelity claims are the ones this doc verifies).
