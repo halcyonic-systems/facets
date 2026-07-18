@@ -47,6 +47,7 @@ Research foundations — what others build on; not themselves decisions:
 
 - [`decisions/0001-canvas-rendering-svg.md`](decisions/0001-canvas-rendering-svg.md) — **ADOPTED** — the hand-rolled React+SVG canvas call (vs. a graph library), from the blind-pick spike.
 - [`decisions/0002-web-first-rebuild.md`](decisions/0002-web-first-rebuild.md) — **ADOPTED** — the egui → React/wasm rebuild (Rust brain, React face); written retrospectively from the repo record.
+- [`decisions/0003-conservation-declared-not-assumed.md`](decisions/0003-conservation-declared-not-assumed.md) — **ADOPTED** — conservation is an invariant a model declares, never the engine's premise; the compose engine is the first interpreter of one dynamics-kind. Records the #86 position in force.
 
 ## Historical (pre-web-rebuild, kept as record)
 
