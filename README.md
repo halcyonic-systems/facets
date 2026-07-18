@@ -1,9 +1,44 @@
 # bert-lenses
 
-bert-lenses is a web-first instrument for modeling systems. You author a system
-as things and the relations between them, and a formal kernel checks your
-model — deciding whether it holds as a *system* under each of three traditions
-(Klir, Bunge, Mobus) and, where it does, simulating it.
+**A modeling and simulation instrument for systems — powered by SL, a novel
+system language.**
+
+You describe a system by drawing it on a canvas, or by writing it as text:
+
+```
+system : Concrete
+component "Process M" primitive Combining interface
+source "Source 1"
+sink "Sink 5"
+flow "Source 1" -> "Process M" : matter "material A"
+flow "Process M" -> "Sink 5" : matter "product Z"
+```
+
+*(an excerpt of [`fixtures/sl/process-m.sl`](fixtures/sl/process-m.sl) — Mobus's
+own textbook system paragraph, written in SL)*
+
+A formal kernel then does what no drawing tool does: it **judges** the model —
+deciding whether what you described actually holds as a *system* under each of
+three traditions of systems science (Klir, Bunge, Mobus), with every verdict
+citing the precondition it rests on. Where the model holds, you can run it: a
+conservation-faithful simulation, driven by your own data.
+
+Three things make this unlike other modeling tools:
+
+- **One model, three lenses.** Klir, Bunge, and Mobus are not styles or skins —
+  they are three mathematically faithful views the kernel *generates* from one
+  neutral model, each entered through its own machine-checked precondition.
+  Author once; read it as any tradition.
+- **A language, not just a canvas.** SL is human-writable, line-oriented, and
+  compiles deterministically — a compiler, never an LLM. Its lexicon is drawn
+  from the traditions themselves (`component` is Bunge's word *and* Mobus's;
+  `mere` is Bunge's alone; the flow kinds are Bunge verbatim), with every
+  word's lineage cited in the
+  [terminology concordance](docs/language/terminology-concordance.md). Text and
+  canvas round-trip through the same model; neither is privileged.
+- **The theory is checkable.** The kernel's core is grounded in machine-checked
+  Lean 4 proofs, and the tool refuses loudly with a citable reason rather than
+  guessing. You can audit the theory under the instrument, not just trust it.
 
 **Rust is the brain, React is the face.** The kernel is Rust compiled to
 WebAssembly, and it owns all the formalism: every systemhood verdict, all
@@ -35,19 +70,22 @@ not a saved tier.)
 than silently dropping or guessing at authored structure — every refusal points
 at a specific formal precondition you can look up.
 
-**One model, three surfaces.** You can author by gesture on the canvas, or write
-the same model as text in **SL, the system language** — a human-writable notation
-that compiles deterministically into a model (never via an LLM). Neither surface
-is the source of truth: both are concrete syntaxes over one neutral spec, and
-JSON serializes it. SL's parser judges no systemhood — legality stays the
-kernel's verdict, reached the same way canvas gestures reach it. Specification
+**One model, three surfaces.** Canvas gestures, SL text, and JSON are three
+concrete syntaxes over one neutral spec — none of them the source of truth; the
+neutral spec is. SL's parser judges no systemhood: legality stays the kernel's
+verdict, reached the same way canvas gestures reach it. Specification, corpus,
 and reading order: [`docs/language/`](docs/language/).
 
-**Who this is for.** Someone already convinced the tool is worth using, who now
-wants to assess the quality of the theory underneath it, on their own or with
-help from an LLM or another expert. Likely an engineer, scientist, or
-mathematician, and often someone with a systems or complexity background, though
-neither is required.
+**Who this is for.** First, anyone who wants to describe a system — a supply
+chain, a protocol, a cell, an organization — and find out whether what they
+described actually *is* one, then watch it run. No systems-science background
+required: each lens's palette carries its tradition's own vocabulary as you
+author (and deeper in-tool teaching is tracked in
+[#80](https://github.com/halcyonic-systems/bert-lenses/issues/80)). Second, someone
+assessing the quality of the theory underneath the instrument, on their own or
+with help from an LLM or another expert — likely an engineer, scientist, or
+mathematician, often with a systems or complexity background, though neither is
+required.
 
 The full, cited version of everything above is
 [`docs/theory-fidelity.md`](docs/theory-fidelity.md); [`docs/README.md`](docs/README.md)
