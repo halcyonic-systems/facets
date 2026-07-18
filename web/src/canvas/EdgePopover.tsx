@@ -5,7 +5,7 @@
 //   Mobus: set substance type + drive with data (the tether).
 // Every edit flows through onModelChange → App re-runs validate_mode +
 // lens_facts in Rust; the popover itself decides nothing about systemhood.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ColumnMapping, Kind, Lens, Manifest, Relation } from "../kernel/types";
 import type { Pt } from "./geometry";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
@@ -50,16 +50,7 @@ export function EdgePopover({
     >
       {/* Flow name — shared across lenses. A flow's name is its identity (and the
           manifest key when tethered); an FSA transition IS a named trigger. */}
-      <div className="mb-2 flex items-center justify-between gap-2 text-xs">
-        <span style={{ color: "var(--text-secondary)" }}>name</span>
-        <input
-          value={relation.name}
-          onChange={(e) => onUpdateRelation({ ...relation, name: e.target.value })}
-          placeholder="e.g. referral"
-          className="w-32 rounded-md px-1.5 py-0.5 text-xs"
-          style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
-        />
-      </div>
+      <FlowNameField relation={relation} onUpdateRelation={onUpdateRelation} />
       {lens === "Klir" && (
         <KlirBody relation={relation} sigIndex={sigIndex} onUpdate={onUpdateRelation} onClose={onClose} />
       )}
@@ -78,6 +69,68 @@ export function EdgePopover({
         <button onClick={onDelete} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--verdict-error)" }}>
           delete flow
         </button>
+      </div>
+    </div>
+  );
+}
+
+// The name saves live on every keystroke (onUpdateRelation), but that's invisible —
+// so a committed name reads as unsaved. Enter (or blurring the field) is the commit
+// gesture; a brief ✓ confirms the save landed. Presentation only: no new save path.
+function FlowNameField({
+  relation,
+  onUpdateRelation,
+}: {
+  relation: Relation;
+  onUpdateRelation: (r: Relation) => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  function confirm() {
+    if (!relation.name.trim()) return;
+    setJustSaved(true);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setJustSaved(false), 1600);
+  }
+
+  const committed = !focused && relation.name.trim().length > 0;
+  // Persistent ✓ once committed (it IS saved); brighter "saved" pulse right after a commit.
+  const showCheck = justSaved || committed;
+
+  return (
+    <div className="mb-2 flex items-center justify-between gap-2 text-xs">
+      <span style={{ color: "var(--text-secondary)" }}>name</span>
+      <div className="relative w-32">
+        <input
+          value={relation.name}
+          onChange={(e) => onUpdateRelation({ ...relation, name: e.target.value })}
+          onFocus={() => setFocused(true)}
+          onBlur={() => {
+            setFocused(false);
+            confirm();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
+          placeholder="e.g. referral"
+          title="press Enter to confirm"
+          className="w-full rounded-md py-0.5 pl-1.5 pr-5 text-xs"
+          style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+        />
+        <span
+          aria-hidden={!showCheck}
+          className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center text-xs transition-opacity duration-200"
+          style={{
+            color: "var(--verdict-ok)",
+            opacity: showCheck ? (justSaved ? 1 : 0.55) : 0,
+          }}
+        >
+          ✓
+        </span>
       </div>
     </div>
   );
