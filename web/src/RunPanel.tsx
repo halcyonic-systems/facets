@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import type { CanvasModel, Comparison, Level, RunResultRich } from "./kernel/types";
 import { Card, Pill, Stat, Verdict, humanize } from "./ui";
-import { horizonOf, inSampleDivergencePct, unitLabel } from "./runViz";
+import { horizonOf, unitLabel } from "./runViz";
 
 // Category labels are lens-faithful (K≅2 on the run panel): Klir and Bunge share
 // input/output/internal (both authors' own words — Klir ch.2 "input, output, and
@@ -52,7 +52,7 @@ export function RunPanel({ result, lens }: { result: RunResultRich; lens: Canvas
   // Divergence is scored in-sample: the fit is only meaningful where data exists,
   // never against a forecast tick past the horizon.
   const lead = result.comparisons
-    .map((c) => ({ c, pct: inSampleDivergencePct(c) }))
+    .map((c) => ({ c, pct: c.divergence_pct }))
     .filter((r) => r.pct != null && r.pct > 0.5)
     .sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0))[0];
   const forecastTicks = lead ? lead.c.simulated.length - lead.c.actual.length : 0;
@@ -124,7 +124,7 @@ function ComparisonChart({ c }: { c: Comparison }) {
   // with nothing to check against. Fit is scored in-sample only.
   const h = horizonOf(c);
   const forecastTicks = c.simulated.length - c.actual.length;
-  const pct = inSampleDivergencePct(c);
+  const pct = c.divergence_pct;
   return (
     <div>
       <div className="mb-1 flex items-baseline justify-between">
