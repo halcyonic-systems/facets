@@ -13,6 +13,8 @@ import { SimScrubber } from "./canvas/SimScrubber";
 import { type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
+import { SlPane } from "./SlPane";
+import type { SlError } from "./kernel/types";
 import { Banner, Pill } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 import {
@@ -27,6 +29,25 @@ import { saveModel, listModels, loadModel, deleteModel } from "./modelStore";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const LENSES: CanvasModel["lens"][] = ["Klir", "Bunge", "Mobus"];
+
+// The SL pane's seed text — Mobus's steel plant (Ch.4 §4.3.1) as a system
+// paragraph, so the pane's first Compile produces a live model.
+const SL_SEED = `# Mobus's steel plant — a system paragraph in SL
+system : Concrete/Technical
+domain "steel manufacturing"
+component "Steel Plant" primitive Combining interface
+source "Iron Vendor"
+source "Power Utility"
+sink Customers
+sink "Waste Disposal"
+flow "Iron Vendor" -> "Steel Plant" : matter "iron"
+flow "Power Utility" -> "Steel Plant" : energy "electricity"
+flow "Steel Plant" -> Customers : matter "steel"
+flow "Steel Plant" -> "Waste Disposal" : matter "scrap"
+boundary porosity 0.7 fuzziness 0.1
+
+@lens mobus
+`;
 
 // The minted demos carry the compose ladder's original tight spacing (~120px),
 // too cramped for their domain-named flow labels ("Watershed → Reservoir").
@@ -114,6 +135,12 @@ function Workspace() {
   // start screen before anything is loaded), the docked palette's collapse.
   const [galleryOpen, setGalleryOpen] = useState(true);
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
+  // The SL text pane (textual authoring surface). Text + faults live here so
+  // the pane survives toggling; seeded with a worked example (Mobus's steel
+  // plant, Ch.4 §4.3.1) so the first Compile lands a real model.
+  const [slOpen, setSlOpen] = useState(false);
+  const [slText, setSlText] = useState(SL_SEED);
+  const [slErrors, setSlErrors] = useState<SlError[]>([]);
   // Folder save/load (File System Access): the picked working folder, the
   // current model's filename stem (so re-saving is one gesture into the same
   // file), the SaveDialog toggle, and the folder listing shown in OpenDialog
@@ -214,6 +241,24 @@ function Workspace() {
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
+  }
+
+  // SL pane → Compile: the parsed model lands through the same reset seam as
+  // import. The lens is view state — if a model is already on the canvas, the
+  // author's current lens survives the compile unless the text pinned one via
+  // @lens (the parser reports which).
+  function onSlCompiled(cm: CanvasModel, lensExplicit: boolean) {
+    setDemo(null);
+    setCanvasModel((prev) => (prev && !lensExplicit ? { ...cm, lens: prev.lens } : cm));
+    setManifest({ model: "", data: "", t: 12, mapping: [] });
+    setResult(null);
+    setRunError(null);
+    setSelectedRelationId(null);
+    setSelectedThingId(null);
+    setBoundaryAnchor(null);
+    setArmed(null);
+    setGalleryOpen(false);
+    setNotice("SL compiled ✓");
   }
 
   // File → New: a blank canvas to author a model from scratch (the #14 path — no
@@ -609,6 +654,18 @@ function Workspace() {
                   ? "✓ clean"
                   : `${verdict.issues.length} issue${verdict.issues.length === 1 ? "" : "s"}`}
             </Pill>
+            <button
+              onClick={() => setSlOpen((o) => !o)}
+              className="rounded-pill px-3 py-1.5 text-sm font-body transition-colors"
+              style={{
+                borderRadius: "var(--radius-pill)",
+                background: slOpen ? "var(--lens-accent)" : "var(--bg-surface)",
+                color: slOpen ? "#fff" : "var(--text-secondary)",
+              }}
+              title="Toggle the SL text pane (textual authoring surface)"
+            >
+              SL
+            </button>
             <div className="ml-auto flex flex-wrap items-center gap-3">
               <NumField label="Δt" value={dt} onChange={setDt} />
               <NumField label="T" value={t} onChange={setT} />
@@ -631,6 +688,19 @@ function Workspace() {
             <PaletteDock collapsed={paletteCollapsed} onToggle={() => setPaletteCollapsed((c) => !c)}>
               <PaletteRail lens={canvasModel.lens} armed={armed} onArm={setArmed} />
             </PaletteDock>
+          )}
+
+          {/* The SL text pane — mounts independently of a loaded model, so an
+              author can write a model from blank text. */}
+          {slOpen && (
+            <SlPane
+              text={slText}
+              errors={slErrors}
+              onTextChange={setSlText}
+              onErrors={setSlErrors}
+              onCompiled={onSlCompiled}
+              onClose={() => setSlOpen(false)}
+            />
           )}
 
           <main className="min-h-0 flex-1 overflow-y-auto">
@@ -757,10 +827,19 @@ function Workspace() {
                 </div>
               </KernelErrorBoundary>
             ) : (
-              <div className="flex h-full items-center justify-center p-6">
+              <div className="flex h-full flex-col items-center justify-center gap-3 p-6">
                 <p className="text-sm" style={{ color: "var(--text-muted)" }}>
                   Open a demo or a model file (File → Open…) to begin.
                 </p>
+                {!slOpen && (
+                  <button
+                    onClick={() => setSlOpen(true)}
+                    className="rounded-full px-4 py-1.5 text-sm font-semibold"
+                    style={{ background: "var(--bg-surface)", color: "var(--text-secondary)", border: "1px solid var(--hairline)" }}
+                  >
+                    …or write SL text
+                  </button>
+                )}
               </div>
             )}
           </main>
@@ -795,6 +874,10 @@ function Workspace() {
           selected={demo}
           onPick={pick}
           onNew={newModel}
+          onWriteSl={() => {
+            setSlOpen(true);
+            setGalleryOpen(false);
+          }}
           onClose={() => setGalleryOpen(false)}
           closable={canvasModel !== null}
           onOpenFile={() => importInputRef.current?.click()}
@@ -979,6 +1062,7 @@ function OpenDialog({
   selected,
   onPick,
   onNew,
+  onWriteSl,
   onClose,
   closable,
   onOpenFile,
@@ -993,6 +1077,7 @@ function OpenDialog({
   selected: Demo | null;
   onPick: (d: Demo) => void;
   onNew: () => void;
+  onWriteSl: () => void;
   onClose: () => void;
   closable: boolean;
   onOpenFile: () => void;
@@ -1042,6 +1127,18 @@ function OpenDialog({
         >
           <span style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>Start blank</span>
           <span className="ml-2" style={{ color: "var(--text-muted)" }}>— author a new model from scratch</span>
+        </button>
+        <button
+          onClick={onWriteSl}
+          className="mt-2 w-full p-3 text-left text-sm transition-colors"
+          style={{
+            background: "transparent",
+            border: "1px dashed var(--border)",
+            borderRadius: "var(--radius-card)",
+          }}
+        >
+          <span style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>Write SL</span>
+          <span className="ml-2" style={{ color: "var(--text-muted)" }}>— author a model as text in the system language</span>
         </button>
 
         {/* From a file: open a model JSON off disk via the OS file picker (the

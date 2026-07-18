@@ -176,6 +176,22 @@ pub fn to_canvas(model_json: &str) -> Result<JsValue, JsError> {
     to_js(&bert_canvas::canvas::to_canvas(&model))
 }
 
+/// Compile SL text (the textual authoring surface) into a canvas editing
+/// model, or the full list of parse faults (`{ ok }` | `{ errors }`). The
+/// parser is deterministic and judges nothing about systemhood — the returned
+/// `CanvasModel` goes through the same `analyze_canvas` path as any canvas
+/// edit, so the kernel still issues every verdict.
+#[wasm_bindgen]
+pub fn compile_sl(text: &str) -> Result<JsValue, JsError> {
+    match bert_canvas::sl::parse_sl_full(text) {
+        Ok(parse) => to_js(&SlOutcome::Ok {
+            ok: parse.model,
+            lens_explicit: parse.lens_explicit,
+        }),
+        Err(errors) => to_js(&SlOutcome::Errors { errors }),
+    }
+}
+
 /// Validate a proposed connection at the model's current lens. Returns the issues
 /// the candidate edge INTRODUCED (empty = legal). The per-drag "React asks Rust"
 /// call — the canvas rejects an edge iff the kernel says so.
@@ -344,6 +360,19 @@ impl From<bert_tether::forcing::RunReadout> for RunResultRich {
 enum OperationalOutcome {
     Ok { ok: bert_core::operational::OperationalSpec },
     Errors { errors: Vec<OperationalError> },
+}
+
+/// The tagged result of [`compile_sl`]: a canvas model, or the parse faults.
+#[derive(Serialize)]
+#[serde(untagged)]
+enum SlOutcome {
+    Ok {
+        ok: bert_canvas::canvas::CanvasModel,
+        lens_explicit: bool,
+    },
+    Errors {
+        errors: Vec<bert_canvas::sl::SlError>,
+    },
 }
 
 /// A recorded run, flattened to its public trace for the face to chart.

@@ -191,6 +191,19 @@ export interface CanvasModel {
   system_type?: SystemType;
 }
 
+// ---- SL: the textual authoring surface ---------------------------------------
+
+/** One parse fault, anchored to its 1-indexed source line. */
+export interface SlError {
+  line: number;
+  message: string;
+}
+
+/** compile_sl: the compiled canvas model (plus whether the text pinned a lens
+ *  via `@lens` — lens is view state, so without a pin the caller keeps the
+ *  author's current lens), or every fault found. */
+export type SlOutcome = { ok: CanvasModel; lens_explicit: boolean } | { errors: SlError[] };
+
 // ---- Phase 3: the lens primitives --------------------------------------------
 // Mirrors crates/bert-lenses-kernel/src/lenses.rs. Every field is a kernel
 // verdict translated to canvas ids — the three lens renderings READ these,

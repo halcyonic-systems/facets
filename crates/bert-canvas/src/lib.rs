@@ -10,3 +10,4 @@
 
 pub mod canvas;
 pub mod lenses;
+pub mod sl;

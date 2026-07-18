@@ -21,6 +21,7 @@ import init, {
   lens_facts as wasmLensFacts,
   describe as wasmDescribe,
   analyze_canvas as wasmAnalyzeCanvas,
+  compile_sl as wasmCompileSl,
 } from "bert-lenses-kernel";
 import wasmUrl from "bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url";
 
@@ -38,6 +39,7 @@ import type {
   LensFacts,
   LensDescription,
   CanvasAnalysis,
+  SlOutcome,
 } from "./types";
 import type { Lens } from "./types";
 
@@ -194,4 +196,14 @@ export function describeLens(model: CanvasModel, lens: Lens): LensDescription {
  *  waterfall — memoize on the canvas model. */
 export function analyzeCanvas(model: CanvasModel): CanvasAnalysis {
   return call("analyze_canvas", () => wasmAnalyzeCanvas(JSON.stringify(model)));
+}
+
+// ---- SL: the textual authoring surface ----------------------------------------
+
+/** Compile SL text into a canvas editing model, or the parse-fault list —
+ *  `{ ok }` | `{ errors }`. Deterministic (the parser is a compiler, never an
+ *  LLM) and judgment-free: the returned model goes through the same
+ *  `analyzeCanvas` path as any canvas edit, so every verdict stays kernel-side. */
+export function compileSl(text: string): SlOutcome {
+  return call("compile_sl", () => wasmCompileSl(text));
 }

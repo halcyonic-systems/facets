@@ -1,0 +1,707 @@
+//! SL — the textual authoring surface over the canvas editing model.
+//!
+//! A line-oriented, declarative concrete syntax that compiles into a
+//! [`CanvasModel`] (the neutral spec: `CanvasModel` minus view state). The
+//! lexicon is the kernel's existing vocabulary and nothing more — a word
+//! appears here only because it names a distinction `CanvasModel` already
+//! carries. The parser judges NOTHING about systemhood: it resolves names and
+//! builds the editing model; legality stays with the kernel validators, same
+//! as for canvas gestures (Mobus: "syntax is structural legality").
+//!
+//! Structure lines are semantic. `@`-prefixed lines are the view/annotation
+//! layer (positions, lens) — semantically inert, so a diff of the structure
+//! lines shows systems changing, never node drags. Unrecognized annotations
+//! are skipped (the ignorable contract); malformed recognized ones fail loud.
+//!
+//! Grammar (v1 — structure only, no expressions, no decomposition):
+//!
+//! ```text
+//! system : Concrete/Technical          # optional type assertion
+//! domain "steel manufacturing"         # optional framing
+//! component Furnace primitive Combining interface
+//! source "Iron Vendor"                 # source|sink|environment: env things;
+//! sink Customers                       #   actual role is edge-derived in project()
+//! flow "Iron Vendor" -> Furnace : matter "iron"
+//! flow Furnace -> Customers : matter "steel" mere   # mere = not a bond
+//! boundary porosity 0.7 fuzziness 0.1
+//!
+//! @lens mobus                          # view layer, ignorable
+//! @pos Furnace 480 320
+//! ```
+
+use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
+
+use bert_core::ProcessPrimitive;
+
+use crate::canvas::{
+    CanvasBoundaryProps, CanvasModel, Genus, Kind, Kingdom, Lens, Relation, Role, SystemType, Thing,
+};
+
+/// A parse fault, anchored to its 1-indexed source line. All faults are
+/// collected in one pass so the author sees every problem at once.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct SlError {
+    pub line: usize,
+    pub message: String,
+}
+
+/// Auto-layout geometry: components sit on an inner N-gon, environment things
+/// on an outer ring, both in declaration order. Deterministic — same text,
+/// same picture. Values sized to the SVG stage the canvas renders.
+const CENTER: (f32, f32) = (480.0, 320.0);
+const COMPONENT_RADIUS: f32 = 170.0;
+const ENV_RADIUS: f32 = 320.0;
+
+/// Compile SL text into a [`CanvasModel`], or every fault found.
+pub fn parse_sl(text: &str) -> Result<CanvasModel, Vec<SlError>> {
+    parse_sl_full(text).map(|p| p.model)
+}
+
+/// A successful parse plus surface facts the caller may need: whether the text
+/// pinned a lens via `@lens` (lens is view state — absent an explicit pin, the
+/// caller should keep the author's current lens rather than let the parser's
+/// default clobber it).
+pub struct SlParse {
+    pub model: CanvasModel,
+    pub lens_explicit: bool,
+}
+
+/// [`parse_sl`], with the surface facts. The parser stays judgment-free.
+pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
+    let mut errors: Vec<SlError> = Vec::new();
+    let mut things: Vec<Thing> = Vec::new();
+    let mut relations: Vec<Relation> = Vec::new();
+    let mut boundary: Option<CanvasBoundaryProps> = None;
+    let mut system_type = SystemType::default();
+    let mut system_seen = false;
+    let mut domain_seen = false;
+    let mut lens = Lens::Mobus;
+    let mut lens_explicit = false;
+    // name → thing index; names are the text surface's identifiers.
+    let mut by_name: HashMap<String, usize> = HashMap::new();
+    // explicit positions from the annotation layer, applied after layout.
+    let mut positions: HashMap<String, (f32, f32)> = HashMap::new();
+    let mut next_id: u64 = 1;
+
+    for (idx, raw) in text.lines().enumerate() {
+        let line_no = idx + 1;
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let fail = |msg: String, errors: &mut Vec<SlError>| {
+            errors.push(SlError {
+                line: line_no,
+                message: msg,
+            })
+        };
+        let tokens = match tokenize(line) {
+            Ok(t) => t,
+            Err(msg) => {
+                fail(msg, &mut errors);
+                continue;
+            }
+        };
+        if tokens.is_empty() {
+            continue;
+        }
+
+        // ---- annotation layer (view state; never systemhood) ----
+        if let Tok::Word(w) = &tokens[0] {
+            if let Some(ann) = w.strip_prefix('@') {
+                match ann {
+                    "pos" => match tokens.as_slice() {
+                        [_, name, Tok::Word(xs), Tok::Word(ys)] if name.is_name() => {
+                            match (xs.parse::<f32>(), ys.parse::<f32>()) {
+                                (Ok(x), Ok(y)) => {
+                                    positions.insert(name.name(), (x, y));
+                                }
+                                _ => fail(
+                                    "@pos needs numeric x y (e.g. `@pos Furnace 480 320`)".into(),
+                                    &mut errors,
+                                ),
+                            }
+                        }
+                        _ => fail("@pos syntax: `@pos <name> <x> <y>`".into(), &mut errors),
+                    },
+                    "lens" => match tokens.as_slice() {
+                        [_, Tok::Word(l)] => match l.to_ascii_lowercase().as_str() {
+                            "klir" => (lens, lens_explicit) = (Lens::Klir, true),
+                            "bunge" => (lens, lens_explicit) = (Lens::Bunge, true),
+                            "mobus" => (lens, lens_explicit) = (Lens::Mobus, true),
+                            other => fail(
+                                format!("unknown lens `{other}` (klir | bunge | mobus)"),
+                                &mut errors,
+                            ),
+                        },
+                        _ => fail("@lens syntax: `@lens <klir|bunge|mobus>`".into(), &mut errors),
+                    },
+                    // Unknown annotations are skipped by contract: the view
+                    // layer is ignorable, so future annotations degrade softly.
+                    _ => {}
+                }
+                continue;
+            }
+        }
+
+        // ---- structure lines (the neutral spec) ----
+        let keyword = match &tokens[0] {
+            Tok::Word(w) => w.to_ascii_lowercase(),
+            _ => {
+                fail("line must start with a keyword".into(), &mut errors);
+                continue;
+            }
+        };
+        let rest = &tokens[1..];
+        match keyword.as_str() {
+            "system" => {
+                if system_seen {
+                    fail("`system` already declared".into(), &mut errors);
+                    continue;
+                }
+                system_seen = true;
+                match rest {
+                    [] => {}
+                    [Tok::Colon, Tok::Word(ty)] => match parse_system_type(ty) {
+                        Ok((kingdom, genus)) => {
+                            system_type.kingdom = Some(kingdom);
+                            system_type.genus = genus;
+                        }
+                        Err(msg) => fail(msg, &mut errors),
+                    },
+                    _ => fail(
+                        "system syntax: `system` or `system : <Kingdom>[/<Genus>]`".into(),
+                        &mut errors,
+                    ),
+                }
+            }
+            "domain" => {
+                if domain_seen {
+                    fail("`domain` already declared".into(), &mut errors);
+                    continue;
+                }
+                domain_seen = true;
+                match rest {
+                    [Tok::Str(s)] => system_type.domain = Some(s.clone()),
+                    _ => fail("domain syntax: `domain \"<subject area>\"`".into(), &mut errors),
+                }
+            }
+            "component" | "source" | "sink" | "environment" => {
+                let role = if keyword == "component" {
+                    Role::Component
+                } else {
+                    Role::Environment
+                };
+                let Some((name, attrs)) = rest.split_first() else {
+                    fail(format!("{keyword} needs a name"), &mut errors);
+                    continue;
+                };
+                if !name.is_name() {
+                    fail(format!("{keyword} needs a name"), &mut errors);
+                    continue;
+                }
+                let name = name.name();
+                if by_name.contains_key(&name) {
+                    fail(format!("`{name}` is already declared"), &mut errors);
+                    continue;
+                }
+                let mut primitive: Option<ProcessPrimitive> = None;
+                let mut interface = false;
+                let mut i = 0;
+                let mut ok = true;
+                while i < attrs.len() {
+                    match &attrs[i] {
+                        Tok::Word(w) if w.eq_ignore_ascii_case("interface") => {
+                            if role == Role::Environment {
+                                fail(
+                                    "`interface` applies to components only (environment \
+                                     internals are opaque)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                            interface = true;
+                            i += 1;
+                        }
+                        Tok::Word(w) if w.eq_ignore_ascii_case("primitive") => {
+                            match attrs.get(i + 1) {
+                                Some(Tok::Word(p)) => match parse_primitive(p) {
+                                    Ok(prim) => {
+                                        if role == Role::Environment {
+                                            fail(
+                                                "`primitive` applies to components only".into(),
+                                                &mut errors,
+                                            );
+                                            ok = false;
+                                        }
+                                        primitive = Some(prim);
+                                    }
+                                    Err(msg) => {
+                                        fail(msg, &mut errors);
+                                        ok = false;
+                                    }
+                                },
+                                _ => {
+                                    fail(
+                                        "primitive syntax: `primitive <Name>` (e.g. Buffering)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        other => {
+                            fail(
+                                format!("unexpected `{}` after {keyword} name", other.display()),
+                                &mut errors,
+                            );
+                            ok = false;
+                            i += 1;
+                        }
+                    }
+                }
+                if !ok {
+                    continue;
+                }
+                by_name.insert(name.clone(), things.len());
+                things.push(Thing {
+                    id: next_id,
+                    name,
+                    x: 0.0,
+                    y: 0.0,
+                    role,
+                    primitive,
+                    interface,
+                });
+                next_id += 1;
+            }
+            "flow" => {
+                // flow A -> B [: kind] ["label"] [mere]
+                let (a, b, mut tail) = match rest {
+                    [a, Tok::Arrow, b, tail @ ..] if a.is_name() && b.is_name() => {
+                        (a.name(), b.name(), tail)
+                    }
+                    _ => {
+                        fail(
+                            "flow syntax: `flow <a> -> <b> [: <kind>] [\"label\"] [mere]`".into(),
+                            &mut errors,
+                        );
+                        continue;
+                    }
+                };
+                let mut kind = Kind::Unspecified;
+                if let [Tok::Colon, Tok::Word(k), rest_tail @ ..] = tail {
+                    match parse_kind(k) {
+                        Ok(parsed) => kind = parsed,
+                        Err(msg) => {
+                            fail(msg, &mut errors);
+                            continue;
+                        }
+                    }
+                    tail = rest_tail;
+                }
+                let mut name = String::new();
+                if let [Tok::Str(label), rest_tail @ ..] = tail {
+                    name = label.clone();
+                    tail = rest_tail;
+                }
+                let mut is_bond = true;
+                if let [Tok::Word(w), rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("mere") {
+                        is_bond = false;
+                        tail = rest_tail;
+                    }
+                }
+                if !tail.is_empty() {
+                    fail(
+                        format!("unexpected `{}` at end of flow", tail[0].display()),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                let (Some(&ai), Some(&bi)) = (by_name.get(&a), by_name.get(&b)) else {
+                    let missing = if by_name.contains_key(&a) { &b } else { &a };
+                    fail(
+                        format!("`{missing}` is not declared (declare things before flows)"),
+                        &mut errors,
+                    );
+                    continue;
+                };
+                relations.push(Relation {
+                    id: next_id,
+                    a: things[ai].id,
+                    b: things[bi].id,
+                    name,
+                    is_bond,
+                    kind,
+                    klir_directed: false,
+                });
+                next_id += 1;
+            }
+            "boundary" => {
+                if boundary.is_some() {
+                    fail("`boundary` already declared".into(), &mut errors);
+                    continue;
+                }
+                let mut props = CanvasBoundaryProps::default();
+                let mut i = 0;
+                let mut ok = true;
+                while i < rest.len() {
+                    let field = match &rest[i] {
+                        Tok::Word(w) => w.to_ascii_lowercase(),
+                        other => {
+                            fail(format!("unexpected `{}` in boundary", other.display()), &mut errors);
+                            ok = false;
+                            break;
+                        }
+                    };
+                    let value = rest.get(i + 1).and_then(|t| match t {
+                        Tok::Word(w) => w.parse::<f32>().ok(),
+                        _ => None,
+                    });
+                    match (field.as_str(), value) {
+                        ("porosity", Some(v)) => props.porosity = v,
+                        ("fuzziness", Some(v)) => props.perceptive_fuzziness = v,
+                        _ => {
+                            fail(
+                                "boundary syntax: `boundary [porosity <0..1>] [fuzziness <0..1>]`"
+                                    .into(),
+                                &mut errors,
+                            );
+                            ok = false;
+                            break;
+                        }
+                    }
+                    i += 2;
+                }
+                if ok {
+                    boundary = Some(props);
+                }
+            }
+            other => fail(
+                format!(
+                    "unknown keyword `{other}` (system, domain, component, source, sink, \
+                     environment, flow, boundary)"
+                ),
+                &mut errors,
+            ),
+        }
+    }
+
+    if !errors.is_empty() {
+        return Err(errors);
+    }
+
+    let mut model = CanvasModel {
+        lens,
+        things,
+        relations,
+        boundary: boundary.unwrap_or_default(),
+        system_type,
+    };
+    auto_layout(&mut model, &positions);
+    Ok(SlParse {
+        model,
+        lens_explicit,
+    })
+}
+
+/// Place things deterministically: explicit `@pos` wins; otherwise components
+/// take the inner N-gon and environment things the outer ring, in declaration
+/// order. A lone component sits at the center.
+fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>) {
+    let ring = |i: usize, n: usize, radius: f32| -> (f32, f32) {
+        let angle = -std::f32::consts::FRAC_PI_2
+            + (i as f32) * std::f32::consts::TAU / (n.max(1) as f32);
+        (
+            CENTER.0 + radius * angle.cos(),
+            CENTER.1 + radius * angle.sin(),
+        )
+    };
+    let components: Vec<usize> = (0..model.things.len())
+        .filter(|&i| model.things[i].role == Role::Component && !positions.contains_key(&model.things[i].name))
+        .collect();
+    let env: Vec<usize> = (0..model.things.len())
+        .filter(|&i| model.things[i].role == Role::Environment && !positions.contains_key(&model.things[i].name))
+        .collect();
+    for (slot, &i) in components.iter().enumerate() {
+        let (x, y) = if components.len() == 1 {
+            CENTER
+        } else {
+            ring(slot, components.len(), COMPONENT_RADIUS)
+        };
+        model.things[i].x = x;
+        model.things[i].y = y;
+    }
+    for (slot, &i) in env.iter().enumerate() {
+        let (x, y) = ring(slot, env.len(), ENV_RADIUS);
+        model.things[i].x = x;
+        model.things[i].y = y;
+    }
+    for thing in &mut model.things {
+        if let Some(&(x, y)) = positions.get(&thing.name) {
+            thing.x = x;
+            thing.y = y;
+        }
+    }
+}
+
+fn parse_system_type(word: &str) -> Result<(Kingdom, Option<Genus>), String> {
+    let (kingdom_str, genus_str) = match word.split_once('/') {
+        Some((k, g)) => (k, Some(g)),
+        None => (word, None),
+    };
+    let kingdom = match kingdom_str.to_ascii_lowercase().as_str() {
+        "conceptual" => Kingdom::Conceptual,
+        "concrete" => Kingdom::Concrete,
+        other => return Err(format!("unknown kingdom `{other}` (Conceptual | Concrete)")),
+    };
+    let genus = match genus_str {
+        None => None,
+        Some(g) => Some(match g.to_ascii_lowercase().as_str() {
+            "physical" => Genus::Physical,
+            "chemical" => Genus::Chemical,
+            "biological" => Genus::Biological,
+            "social" => Genus::Social,
+            "technical" => Genus::Technical,
+            other => {
+                return Err(format!(
+                    "unknown genus `{other}` (Physical | Chemical | Biological | Social | Technical)"
+                ))
+            }
+        }),
+    };
+    Ok((kingdom, genus))
+}
+
+fn parse_kind(word: &str) -> Result<Kind, String> {
+    match word.to_ascii_lowercase().as_str() {
+        "energy" => Ok(Kind::Energy),
+        "matter" => Ok(Kind::Matter),
+        "field" => Ok(Kind::Field),
+        "informational" => Ok(Kind::Informational),
+        other => Err(format!(
+            "unknown kind `{other}` (energy | matter | field | informational)"
+        )),
+    }
+}
+
+fn parse_primitive(word: &str) -> Result<ProcessPrimitive, String> {
+    use ProcessPrimitive::*;
+    match word.to_ascii_lowercase().as_str() {
+        "combining" => Ok(Combining),
+        "splitting" => Ok(Splitting),
+        "buffering" => Ok(Buffering),
+        "impeding" => Ok(Impeding),
+        "propelling" => Ok(Propelling),
+        "copying" => Ok(Copying),
+        "sensing" => Ok(Sensing),
+        "modulating" => Ok(Modulating),
+        "amplifying" => Ok(Amplifying),
+        "inverting" => Ok(Inverting),
+        other => Err(format!(
+            "unknown primitive `{other}` (Combining, Splitting, Buffering, Impeding, Propelling, \
+             Copying, Sensing, Modulating, Amplifying, Inverting)"
+        )),
+    }
+}
+
+/// Line tokens: bare words, quoted strings, `->`, `:`.
+#[derive(Clone, Debug, PartialEq)]
+enum Tok {
+    Word(String),
+    Str(String),
+    Arrow,
+    Colon,
+}
+
+impl Tok {
+    /// Words and quoted strings both name things; punctuation does not.
+    fn is_name(&self) -> bool {
+        matches!(self, Tok::Word(_) | Tok::Str(_))
+    }
+    fn name(&self) -> String {
+        match self {
+            Tok::Word(w) => w.clone(),
+            Tok::Str(s) => s.clone(),
+            _ => String::new(),
+        }
+    }
+    fn display(&self) -> String {
+        match self {
+            Tok::Word(w) => w.clone(),
+            Tok::Str(s) => format!("\"{s}\""),
+            Tok::Arrow => "->".into(),
+            Tok::Colon => ":".into(),
+        }
+    }
+}
+
+fn tokenize(line: &str) -> Result<Vec<Tok>, String> {
+    let mut tokens = Vec::new();
+    let mut chars = line.chars().peekable();
+    while let Some(&c) = chars.peek() {
+        if c.is_whitespace() {
+            chars.next();
+        } else if c == '"' {
+            chars.next();
+            let mut s = String::new();
+            loop {
+                match chars.next() {
+                    Some('"') => break,
+                    Some(ch) => s.push(ch),
+                    None => return Err("unterminated quote".into()),
+                }
+            }
+            tokens.push(Tok::Str(s));
+        } else if c == ':' {
+            chars.next();
+            tokens.push(Tok::Colon);
+        } else if c == '#' {
+            break; // trailing comment
+        } else {
+            let mut w = String::new();
+            while let Some(&ch) = chars.peek() {
+                if ch.is_whitespace() || ch == '"' || ch == ':' || ch == '#' {
+                    break;
+                }
+                w.push(ch);
+                chars.next();
+            }
+            if w == "->" {
+                tokens.push(Tok::Arrow);
+            } else {
+                tokens.push(Tok::Word(w));
+            }
+        }
+    }
+    Ok(tokens)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const STEEL: &str = r#"
+# Mobus's steel plant, as a system paragraph in SL
+system : Concrete/Technical
+domain "steel manufacturing"
+component "Steel Plant" primitive Combining interface
+source "Iron Vendor"
+source "Power Utility"
+sink Customers
+sink "Waste Disposal"
+flow "Iron Vendor" -> "Steel Plant" : matter "iron"
+flow "Power Utility" -> "Steel Plant" : energy "electricity"
+flow "Steel Plant" -> Customers : matter "steel"
+flow "Steel Plant" -> "Waste Disposal" : matter "scrap"
+boundary porosity 0.7 fuzziness 0.1
+
+@lens mobus
+@pos "Steel Plant" 480 320
+"#;
+
+    #[test]
+    fn steel_plant_compiles() {
+        let model = parse_sl(STEEL).expect("steel plant parses");
+        assert_eq!(model.things.len(), 5);
+        assert_eq!(model.relations.len(), 4);
+        assert_eq!(model.lens, Lens::Mobus);
+        assert_eq!(model.boundary.porosity, 0.7);
+        assert_eq!(model.system_type.kingdom, Some(Kingdom::Concrete));
+        assert_eq!(model.system_type.genus, Some(Genus::Technical));
+        assert_eq!(model.system_type.domain.as_deref(), Some("steel manufacturing"));
+        let plant = model.things.iter().find(|t| t.name == "Steel Plant").unwrap();
+        assert_eq!(plant.role, Role::Component);
+        assert!(plant.interface);
+        assert_eq!(plant.primitive, Some(ProcessPrimitive::Combining));
+        assert_eq!((plant.x, plant.y), (480.0, 320.0)); // @pos wins over layout
+        let iron = model.things.iter().find(|t| t.name == "Iron Vendor").unwrap();
+        assert_eq!(iron.role, Role::Environment);
+        let flow = &model.relations[0];
+        assert_eq!(flow.kind, Kind::Matter);
+        assert!(flow.is_bond);
+        assert_eq!(flow.name, "iron");
+    }
+
+    #[test]
+    fn steel_plant_projects_and_validates() {
+        // The parsed model must flow through the SAME compile path the canvas
+        // uses — project() then the kernel's mode validator.
+        let model = parse_sl(STEEL).unwrap();
+        let world = crate::canvas::project(&model);
+        // 1 component + 4 env things touched by bonds → 2 sources, 2 sinks.
+        assert_eq!(world.environment.sources.len(), 2);
+        assert_eq!(world.environment.sinks.len(), 2);
+        // Structure is legal for the Core reading; the parser never checked
+        // any of this itself.
+        let core = bert_core::validate::validate_mode(&world, crate::canvas::Lens::Klir.mode());
+        assert!(core.issues.is_empty(), "core-mode issues: {:?}", core.issues);
+    }
+
+    #[test]
+    fn mere_relation_and_unspecified_kind() {
+        let model = parse_sl(
+            "component A\ncomponent B\nflow A -> B mere\n",
+        )
+        .unwrap();
+        assert!(!model.relations[0].is_bond);
+        assert_eq!(model.relations[0].kind, Kind::Unspecified);
+        assert_eq!(model.relations[0].name, "");
+    }
+
+    #[test]
+    fn errors_carry_line_numbers_and_accumulate() {
+        let err = parse_sl(
+            "component A\nflow A -> Ghost\nwidget B\nsource S interface\n",
+        )
+        .unwrap_err();
+        assert_eq!(err.len(), 3);
+        assert_eq!(err[0].line, 2);
+        assert!(err[0].message.contains("Ghost"));
+        assert_eq!(err[1].line, 3);
+        assert!(err[1].message.contains("widget"));
+        assert_eq!(err[2].line, 4);
+        assert!(err[2].message.contains("components only"));
+    }
+
+    #[test]
+    fn duplicate_names_rejected() {
+        let err = parse_sl("component A\nsource A\n").unwrap_err();
+        assert_eq!(err[0].line, 2);
+        assert!(err[0].message.contains("already declared"));
+    }
+
+    #[test]
+    fn unknown_annotations_are_skipped() {
+        // The ignorable contract: the view layer degrades softly.
+        let model = parse_sl("component A\n@future-thing whatever 1 2\n").unwrap();
+        assert_eq!(model.things.len(), 1);
+    }
+
+    #[test]
+    fn layout_is_deterministic_and_separates_rings() {
+        let text = "component A\ncomponent B\nsource S\n";
+        let m1 = parse_sl(text).unwrap();
+        let m2 = parse_sl(text).unwrap();
+        for (t1, t2) in m1.things.iter().zip(&m2.things) {
+            assert_eq!((t1.x, t1.y), (t2.x, t2.y));
+        }
+        let dist = |t: &Thing| ((t.x - CENTER.0).powi(2) + (t.y - CENTER.1).powi(2)).sqrt();
+        let a = m1.things.iter().find(|t| t.name == "A").unwrap();
+        let s = m1.things.iter().find(|t| t.name == "S").unwrap();
+        assert!((dist(a) - COMPONENT_RADIUS).abs() < 0.5);
+        assert!((dist(s) - ENV_RADIUS).abs() < 0.5);
+    }
+
+    #[test]
+    fn trailing_comments_and_blank_lines_ignored() {
+        let model = parse_sl("\ncomponent A  # the core\n\n# whole-line comment\n").unwrap();
+        assert_eq!(model.things.len(), 1);
+    }
+}
