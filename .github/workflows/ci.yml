@@ -29,6 +29,10 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
+      # --- Doc gate: provenance drift in LIVE docs (issue #92) ---
+      - name: doc-lint (provenance drift-gate)
+        run: python3 scripts/doc_lint.py
+
       # --- Rust gates (the brain) ---
       - name: cargo test
         run: cargo test --workspace

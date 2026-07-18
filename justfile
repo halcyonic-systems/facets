@@ -19,6 +19,7 @@ dev: wasm
 # The full gate suite — mirrors CI. Rust brain first, then the web face against
 # a freshly built pkg, so a stale-wasm mismatch can never pass silently.
 check:
+    python3 scripts/doc_lint.py
     cargo test --workspace
     cargo clippy --workspace --all-targets -- -D warnings
     cargo build --workspace --target wasm32-unknown-unknown
