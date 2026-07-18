@@ -23,7 +23,7 @@
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
-use bert_core::validate::{validate_mode, Severity, ValidationResult};
+use bert_core::validate::{validate_mode, Severity, ValidationIssue, ValidationResult};
 use bert_core::{EdgeLocus, Id, Interaction, Mode};
 
 use crate::canvas::{project_with_map, CanvasModel, Kind, Lens, Role};
@@ -383,7 +383,13 @@ pub struct IssueTarget {
 pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
     let facts = lens_facts(model);
     let p = project_with_map(model);
-    let validation = validate_mode(&p.world, lens.mode());
+    let mut validation = validate_mode(&p.world, lens.mode());
+
+    // The Mobus lens carries the open-system commitment the neutral kernel does
+    // not; assert it here, over the port directions only this face computes.
+    if lens == Lens::Mobus {
+        check_mobus_openness(&facts, &mut validation.issues);
+    }
 
     // Kernel subject → canvas element, via the projection's id maps reversed.
     let thing_of: HashMap<&Id, u64> = p.thing_ids.iter().map(|(k, v)| (v, *k)).collect();
@@ -406,6 +412,42 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
         issue_targets,
         facts,
         description,
+    }
+}
+
+/// Mobus openness: a system exchanges with its environment, and the boundary
+/// gates that exchange in both directions (Fig. 4.9). A model whose boundary
+/// gates only outward — every port `Exports`, none `Receives` or `Hybrid` —
+/// emits without intake, which the open-system commitment flags. Warning, not
+/// error: a closed boundary is a legitimate authoring intermediate (the boundary
+/// accretes), and Klir/Bunge stay silent — openness is Mobus's commitment alone.
+///
+/// A boundary with no ports at all is silent: nothing is being emitted, so there
+/// is no one-way exchange to flag — that is an earlier stage, before any crossing
+/// is drawn. The warning fires only once the boundary emits.
+fn check_mobus_openness(facts: &LensFacts, issues: &mut Vec<ValidationIssue>) {
+    if facts.ports.is_empty() {
+        return;
+    }
+    let gates_inward = facts
+        .ports
+        .iter()
+        .any(|p| matches!(p.direction, PortDirection::Receives | PortDirection::Hybrid));
+    if !gates_inward {
+        issues.push(ValidationIssue {
+            severity: Severity::Warning,
+            location: "mode/Operational".to_string(),
+            message: "Mobus: a system is open — it receives from its environment; this \
+                      model's boundary gates only outward (exports-only), so it emits \
+                      without intake"
+                .to_string(),
+            suggestion: Some(
+                "Add a receiving interface (an inward-gating flow from an environment \
+                 object), or keep this as a closed authoring intermediate"
+                    .to_string(),
+            ),
+            subject: None,
+        });
     }
 }
 
@@ -743,5 +785,72 @@ mod tests {
         assert!(lens_facts(&m).aggregate, "mere relations do not bond");
         m.relations.push(relation(11, 1, 2, true));
         assert!(!lens_facts(&m).aggregate, "one bond makes it a system");
+    }
+
+    /// Detect the Mobus openness warning by its stable phrasing.
+    fn has_openness_warning(a: &CanvasAnalysis) -> bool {
+        a.validation
+            .issues
+            .iter()
+            .any(|i| i.message.contains("exports-only"))
+    }
+
+    #[test]
+    fn mobus_warns_on_exports_only_boundary() {
+        // A→B (an endo bond, so Bunge already reads a system) plus A→Env (an
+        // outward port with no inward twin): a boundary that emits without intake.
+        let m = model(
+            vec![
+                thing(1, "A", Role::Component),
+                thing(2, "B", Role::Component),
+                thing(3, "Env", Role::Environment),
+            ],
+            vec![relation(10, 1, 2, true), relation(11, 1, 3, true)],
+        );
+        // The one port gates purely outward.
+        let f = lens_facts(&m);
+        assert_eq!(f.ports.len(), 1);
+        assert_eq!(f.ports[0].direction, PortDirection::Exports);
+
+        // Mobus carries the open-system commitment, so it flags the closed boundary.
+        let mobus = analyze(&m, Lens::Mobus);
+        assert!(has_openness_warning(&mobus), "Mobus flags the exports-only boundary");
+        // Warning, never error: a closed boundary is a legitimate intermediate.
+        assert!(!mobus.validation.has_errors());
+
+        // Klir and Bunge do not commit to openness — they stay silent on it.
+        assert!(!has_openness_warning(&analyze(&m, Lens::Klir)), "Klir silent on openness");
+        assert!(!has_openness_warning(&analyze(&m, Lens::Bunge)), "Bunge silent on openness");
+    }
+
+    #[test]
+    fn mobus_silent_when_a_port_gates_inward() {
+        // Env→A is a receiving port; the A↔B cycle keeps the graph otherwise
+        // well-formed. An open boundary trips the warning under no lens.
+        let m = model(
+            vec![
+                thing(1, "A", Role::Component),
+                thing(2, "B", Role::Component),
+                thing(3, "Env", Role::Environment),
+            ],
+            vec![
+                relation(10, 1, 2, true),
+                relation(11, 2, 1, true),
+                relation(12, 3, 1, true),
+            ],
+        );
+        let f = lens_facts(&m);
+        assert!(
+            f.ports
+                .iter()
+                .any(|p| matches!(p.direction, PortDirection::Receives | PortDirection::Hybrid)),
+            "Env→A is an inward-gating port",
+        );
+        for lens in [Lens::Klir, Lens::Bunge, Lens::Mobus] {
+            assert!(
+                !has_openness_warning(&analyze(&m, lens)),
+                "an inward-gated boundary never trips the openness warning",
+            );
+        }
     }
 }
