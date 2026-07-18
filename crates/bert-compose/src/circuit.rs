@@ -414,6 +414,37 @@ impl Wire {
     }
 }
 
+/// Axis D of the dynamics taxonomy (`docs/design/dynamics-principled-position.md`
+/// §2–§3): the invariant a model DECLARES over its state space. Conservation is
+/// one declarable invariant, not the engine's premise — the position doc's move
+/// is to "finish the inversion" so a non-conservation kind can decline the mass
+/// ledger while the SAME transition family runs underneath ("Keep the ledger as
+/// a declarable, checkable invariant; shed it as the stepping loop's structural
+/// premise", §3). Default = conservation, so every model built today is
+/// byte-for-byte unchanged; a Boolean-network / RBN single trajectory (§2 table,
+/// "axis-D made optional") declares `None` and steps ledger-free over the same
+/// `Id` functor.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum Invariant {
+    /// Additive conserved mass (Energy/Material): the ledger runs and
+    /// `balance()` is meaningful. The one implemented cell, and the default —
+    /// declining it is opt-in, never silent.
+    #[default]
+    ConservedAdditive,
+    /// No declared invariant (axis D = none): the mass ledger is not computed
+    /// and carries no meaning. Transitions are untouched — same functor, same
+    /// trajectory — only the accounting is declined (RBN single trajectory).
+    None,
+}
+
+impl Invariant {
+    /// Whether the conservation ledger runs this step. Only `ConservedAdditive`
+    /// declares the additive-mass invariant; every other kind steps ledger-free.
+    pub fn tracks_ledger(self) -> bool {
+        matches!(self, Invariant::ConservedAdditive)
+    }
+}
+
 #[derive(Default)]
 pub struct Circuit {
     pub nodes: Vec<Node>,
@@ -422,6 +453,10 @@ pub struct Circuit {
     /// Per-tick data rows: [tick, n0.activity, n0.storage, n0.total, n1…].
     /// Cleared on Reset or when the topology changes mid-recording.
     pub history: Vec<Vec<f32>>,
+    /// The declared state invariant (axis D). Conservation by default, so
+    /// existing models are unchanged; a non-conservation kind declares `None`
+    /// to step without the mass ledger below. See `Invariant`.
+    pub invariant: Invariant,
     // — conservation ledger (physical mass only; see module docs) —
     /// Cumulative physical mass delivered out of Sources.
     pub emitted: f32,
@@ -431,7 +466,9 @@ pub struct Circuit {
     /// (friction, valve shed, amp power, sensing, mismatches, dead ends).
     pub dissipated: f32,
     /// Per-tick ledger snapshot `[emitted, delivered(sunk), stored, dissipated]`
-    /// — what the conservation chart plots. Same length as `history`.
+    /// — what the conservation chart plots. Same length as `history` while the
+    /// invariant is declared; empty when a model declines conservation (axis D
+    /// = `None`), since there is then no mass ledger to plot.
     pub ledger_history: Vec<[f32; 4]>,
 }
 
@@ -706,6 +743,11 @@ impl Circuit {
         let n = self.nodes.len();
         let nw = self.wires.len();
 
+        // Axis D: run the mass ledger only when the model declares conservation
+        // (the default). A declined invariant steps the identical transition
+        // family with no accounting — see `Invariant`.
+        let ledger = self.invariant.tracks_ledger();
+
         // Ledger deltas for this tick, committed at the end.
         let mut emitted_now = 0.0f32;
         let mut sunk_now = 0.0f32;
@@ -714,15 +756,17 @@ impl Circuit {
         // Dead ends: an activity with no pushed outwire is read by nothing —
         // it evaporates this tick. Count it so the ledger stays exact.
         // (Buffers never dangle: release is 0 without a pushed outlet.)
-        for i in 0..n {
-            if matches!(self.nodes[i].kind, NodeKind::Process(_))
-                && self.nodes[i].out_substance.base != SubstanceType::Message
-                && !self
-                    .wires
-                    .iter()
-                    .any(|w| w.from == i && w.mode == FlowMode::Pushed)
-            {
-                dissipated_now += self.nodes[i].activity;
+        if ledger {
+            for i in 0..n {
+                if matches!(self.nodes[i].kind, NodeKind::Process(_))
+                    && self.nodes[i].out_substance.base != SubstanceType::Message
+                    && !self
+                        .wires
+                        .iter()
+                        .any(|w| w.from == i && w.mode == FlowMode::Pushed)
+                {
+                    dissipated_now += self.nodes[i].activity;
+                }
             }
         }
 
@@ -781,12 +825,14 @@ impl Circuit {
 
         // Emissions: physical mass actually delivered out of Sources this
         // tick, over pushed and gradient wires alike.
-        for k in 0..nw {
-            let w = &self.wires[k];
-            if matches!(self.nodes[w.from].kind, NodeKind::Source)
-                && self.wire_substance(w) != SubstanceType::Message
-            {
-                emitted_now += amount_on(k);
+        if ledger {
+            for k in 0..nw {
+                let w = &self.wires[k];
+                if matches!(self.nodes[w.from].kind, NodeKind::Source)
+                    && self.wire_substance(w) != SubstanceType::Message
+                {
+                    emitted_now += amount_on(k);
+                }
             }
         }
 
@@ -985,22 +1031,26 @@ impl Circuit {
             // The ledger rule (one rule, every arm): whatever physical mass a
             // node was delivered and neither re-emits, passes down a gradient,
             // nor stores, it dissipated. Exact by construction — see module
-            // docs for why each channel is intended.
-            match node.kind {
-                // Inflow to a source has nowhere to go (the UI refuses these
-                // wires; ledgered defensively).
-                NodeKind::Source => dissipated_now += delivered_phys,
-                NodeKind::Sink => sunk_now += delivered_phys,
-                NodeKind::Process(_) => {
-                    let out_phys = if node.out_substance.base == SubstanceType::Message {
-                        0.0
-                    } else {
-                        next_activity[i]
-                    };
-                    dissipated_now += delivered_phys
-                        - out_phys
-                        - gradient_out[i]
-                        - (next_storage[i] - node.storage);
+            // docs for why each channel is intended. Skipped wholesale when the
+            // model declines conservation (axis D) — the transition above stands
+            // on its own; only the accounting is optional.
+            if ledger {
+                match node.kind {
+                    // Inflow to a source has nowhere to go (the UI refuses these
+                    // wires; ledgered defensively).
+                    NodeKind::Source => dissipated_now += delivered_phys,
+                    NodeKind::Sink => sunk_now += delivered_phys,
+                    NodeKind::Process(_) => {
+                        let out_phys = if node.out_substance.base == SubstanceType::Message {
+                            0.0
+                        } else {
+                            next_activity[i]
+                        };
+                        dissipated_now += delivered_phys
+                            - out_phys
+                            - gradient_out[i]
+                            - (next_storage[i] - node.storage);
+                    }
                 }
             }
         }
@@ -1019,9 +1069,11 @@ impl Circuit {
                 node.spark.pop_front();
             }
         }
-        self.emitted += emitted_now;
-        self.sunk += sunk_now;
-        self.dissipated += dissipated_now;
+        if ledger {
+            self.emitted += emitted_now;
+            self.sunk += sunk_now;
+            self.dissipated += dissipated_now;
+        }
         self.tick += 1;
 
         // Record the tick. A topology change invalidates prior columns.
@@ -1038,8 +1090,10 @@ impl Circuit {
             row.push(node.total);
         }
         self.history.push(row);
-        self.ledger_history
-            .push([self.emitted, self.sunk, self.stored(), self.dissipated]);
+        if ledger {
+            self.ledger_history
+                .push([self.emitted, self.sunk, self.stored(), self.dissipated]);
+        }
     }
 
     /// The recorded run as CSV with raw node names. (The app exports via
@@ -2475,5 +2529,152 @@ mod tests {
             c.wires.push(Wire::new(f, t));
         }
         assert_eq!(c.diversity(), 3, "source, {{buffer,buffer}}, sink");
+    }
+
+    // ── The dynamics contract (docs/design/dynamics-principled-position.md §4)
+    // ─────────────────────────────────────────────────────────────────────
+    //
+    // Two laws bind every stepper the tool ships. Pinned here for the one
+    // deterministic kind that exists today; a future `Dist(X)` kind inherits
+    // the obligation with Chapman–Kolmogorov in place of the double-step law
+    // (position §4 / §8). The opt-in ledger (axis D) rides the same seam.
+
+    /// The live dynamical state T acts on: activity, storage, total per node,
+    /// plus the support index (the tick). The recorded run — `history`,
+    /// `ledger_history`, each node's `spark` ring — is H and is deliberately
+    /// excluded, so the H-record law below can pollute it without touching what
+    /// the transition sees.
+    fn dyn_state(c: &Circuit) -> (u64, Vec<[f32; 3]>) {
+        (
+            c.tick,
+            c.nodes
+                .iter()
+                .map(|n| [n.activity, n.storage, n.total])
+                .collect(),
+        )
+    }
+
+    /// **Semigroup axiom** — the kernel's dynamics contract (Mesarovic–Takahara
+    /// Def 2.7 β; position §4 rule 1): "for every mode bert-lenses ships,
+    /// φ_{t′t″} ∘ φ_{tt′} = φ_{tt″} (property test: step twice = step once with
+    /// doubled span, for deterministic kinds)." On discrete unit support the
+    /// family is generated by `step`, so composing `a` steps then `b` more must
+    /// land bit-for-bit on the state reached by `a + b` steps from the same
+    /// start. A stepper that read a wall-clock, an unseeded RNG, or the recorded
+    /// history (see the next test) would break the composition.
+    #[test]
+    fn semigroup_double_step_law() {
+        for seed in 1..=200u64 {
+            let s = seed.wrapping_mul(0x2545F4914F6CDD1D);
+            let a = 1 + (seed % 5) as usize;
+            let b = 1 + (seed % 7) as usize;
+
+            // `random_conservative` is deterministic in its seed, so these two
+            // start identical — no `Clone` needed.
+            let mut whole = random_conservative(s, true);
+            for _ in 0..a + b {
+                whole.step();
+            }
+            let mut parts = random_conservative(s, true);
+            for _ in 0..a {
+                parts.step();
+            }
+            for _ in 0..b {
+                parts.step();
+            }
+            assert_eq!(
+                dyn_state(&whole),
+                dyn_state(&parts),
+                "semigroup: seed {seed}, φ_{{{a}+{b}}} ≠ φ_{b} ∘ φ_{a}"
+            );
+        }
+    }
+
+    /// **H is a record, never an input to T** (position §4 rule 2): "if T reads
+    /// H the semigroup axiom fails... any history-dependence must be folded into
+    /// the carrier. If T needs the past, the state was misidentified." So we
+    /// warm two identical circuits to the same live state, scribble on one's H —
+    /// the `history` and `ledger_history` rows and every node's `spark` ring —
+    /// leave the other's clean, step both, and demand the identical transition.
+    #[test]
+    fn history_is_a_record_not_an_input_to_t() {
+        for seed in 1..=200u64 {
+            let s = seed.wrapping_mul(0x9E3779B97F4A7C15);
+            let warm = 3 + (seed % 6) as usize;
+
+            let mut clean = random_conservative(s, true);
+            let mut polluted = random_conservative(s, true);
+            for _ in 0..warm {
+                clean.step();
+                polluted.step();
+            }
+
+            // Same carrier, divergent record: garbage into H only.
+            let width = 1 + polluted.nodes.len() * 3;
+            polluted.history.push(vec![9.9; width]);
+            polluted.ledger_history.push([1e9, -1e9, 42.0, 7.0]);
+            for nd in &mut polluted.nodes {
+                nd.spark.push_back(123.456);
+            }
+            assert_eq!(
+                dyn_state(&clean),
+                dyn_state(&polluted),
+                "warm carriers must match before the step (seed {seed})"
+            );
+
+            clean.step();
+            polluted.step();
+            assert_eq!(
+                dyn_state(&clean),
+                dyn_state(&polluted),
+                "H-record: seed {seed}, a polluted history steered the transition"
+            );
+        }
+    }
+
+    /// Opt-in conservation ledger (position §3; the RBN unlock, §2 table
+    /// "axis-D made optional"). Declining the invariant must leave the
+    /// transition family bit-for-bit identical — same `Id` functor, same
+    /// trajectory — and only switch the mass ledger off; the default stays
+    /// conservation, so no existing model loses its accounting silently.
+    #[test]
+    fn declining_conservation_leaves_transitions_identical() {
+        // The default is conservation, ledger live.
+        assert!(Invariant::default().tracks_ledger());
+        assert_eq!(Circuit::default().invariant, Invariant::ConservedAdditive);
+        assert!(!Invariant::None.tracks_ledger());
+
+        for seed in 1..=200u64 {
+            let s = seed.wrapping_mul(0xD6E8FEB86659FD93);
+            let mut conserved = random_conservative(s, true);
+            let mut declined = random_conservative(s, true);
+            declined.invariant = Invariant::None;
+            for _ in 0..40 {
+                conserved.step();
+                declined.step();
+            }
+            assert_eq!(
+                dyn_state(&conserved),
+                dyn_state(&declined),
+                "declining conservation changed the trajectory (seed {seed})"
+            );
+            // Declined: no mass ledger at all.
+            assert!(
+                declined.ledger_history.is_empty(),
+                "declined run keeps no ledger history"
+            );
+            assert_eq!(
+                [declined.emitted, declined.sunk, declined.dissipated],
+                [0.0, 0.0, 0.0],
+                "declined run accrues no ledger totals"
+            );
+            // Conserved (the default): ledgers every tick and still balances.
+            assert_eq!(
+                conserved.ledger_history.len(),
+                conserved.history.len(),
+                "conserved run ledgers every recorded tick"
+            );
+            assert_balanced(&conserved, &format!("opt-in default seed {seed}"));
+        }
     }
 }
