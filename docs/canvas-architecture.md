@@ -102,7 +102,7 @@ stamps mappings, it is not a simulation control surface.
 ## Convergence with bert-compose
 The Mobus rung is the seam to the dynamical face (`../bert/bert-compose/`): **Run is a mode transition**
 (Mobus-structural → Operational). The engine half shipped in bert (bert#108 lowering + `RecordedRun` H);
-wiring Run/H into this app — sim data on demand, never ambient — is the next gate. See `../ROADMAP.md`
+wiring Run/H into this app — sim data on demand, never ambient — is the next gate. See `archive/roadmap-pre-web-rebuild.md`
 Arc 4.2 and the README "Convergence with bert-compose".
 
 ## Fidelity & design

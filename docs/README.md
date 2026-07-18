@@ -19,7 +19,7 @@ Start at the main [`README.md`](../README.md) and [`CLAUDE.md`](../CLAUDE.md) fo
 
 Positions — a stance the repo takes, or is being asked to take:
 
-- [`design/dynamics-principled-position.md`](design/dynamics-principled-position.md) — **PROPOSED** ([#86](https://github.com/halcyonic-systems/bert-lenses/issues/86)) — what counts as dynamics: a state-transition family satisfying the semigroup axiom (Mesarovic–Takahara); a dynamics-*kind* is the transition functor; **conservation is an invariant the model declares, not the engine's premise**. Supersedes the "dynamics = the conservation engine" framing in [`../ROADMAP.md`](../ROADMAP.md) Arc 4 (the amendment is checklist item 6 on #86). `language/spec.md` §8 is already written from it. Research trail: [`design/dynamics-research/`](design/dynamics-research/).
+- [`design/dynamics-principled-position.md`](design/dynamics-principled-position.md) — **PROPOSED** ([#86](https://github.com/halcyonic-systems/bert-lenses/issues/86)) — what counts as dynamics: a state-transition family satisfying the semigroup axiom (Mesarovic–Takahara); a dynamics-*kind* is the transition functor; **conservation is an invariant the model declares, not the engine's premise**. Supersedes the "dynamics = the conservation engine" framing in the retired [`archive/roadmap-pre-web-rebuild.md`](archive/roadmap-pre-web-rebuild.md) Arc 4 (the amendment is checklist item 6 on #86). `language/spec.md` §8 is already written from it. Research trail: [`design/dynamics-research/`](design/dynamics-research/).
 - [`design/hierarchical-decomposition-investigation.md`](design/hierarchical-decomposition-investigation.md) — **PROPOSED** (issue drafted in its §5, not yet filed) — the kernel's data model can carry arbitrary depth, but every active path is flat: `project()` forces level 1, `to_canvas()` drops deeper levels, `validate_operational()` refuses `level > 1`. Recommends decomposition by reference; implementation gated on deriving the parent↔child boundary math from the Lean 8-tuple.
 
 Research foundations — what others build on; not themselves decisions:
@@ -44,6 +44,6 @@ Research foundations — what others build on; not themselves decisions:
 
 ## Root-level references
 
-- [`../ROADMAP.md`](../ROADMAP.md) — **HISTORICAL** — pre-web-rebuild plan of record (see its banner). Current status lives on the [roadmap board](https://github.com/orgs/halcyonic-systems/projects/12). Its Arc 4 dynamics framing is superseded by `design/dynamics-principled-position.md` (see #86).
+- **[Roadmap board](https://github.com/orgs/halcyonic-systems/projects/12)** — **LIVE** — the forward-looking plan, organized by epic (Reality Interface · Joy Surface · Resident Co-author · Trusted Seam · Legible Foundations · The Language · What Runs · Notation · Teaching Surface). There is no roadmap *file*; the retired one is [`archive/roadmap-pre-web-rebuild.md`](archive/roadmap-pre-web-rebuild.md).
 - [`../crates/bert-lenses-kernel/API.md`](../crates/bert-lenses-kernel/API.md) — **LIVE** — the frozen JS↔wasm surface (append-only). Includes the SL surface (`compile_sl` / `emit_sl`).
 - [`../web/DESIGN.md`](../web/DESIGN.md) — **LIVE** — Halcyonic Frost design tokens for the face.

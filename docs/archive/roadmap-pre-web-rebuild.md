@@ -1,14 +1,19 @@
 # bert-lenses roadmap
 
-> **Status (2026-07-17): history, not current truth.** The arcs and paths below
-> (the egui canvas, `src/main.rs`, in-process `generate()`, the `docs/archive/`
-> design docs) predate the web-first rebuild. For where the project actually
-> stands, read the README **Status** section and **CLAUDE.md**: Phases 0–3 are
-> shipped, Phase 4 (the per-lens authoring palette, #50) is next, and — outside
-> this roadmap's own arc numbering — the read-only LLM analysis rung shipped
-> 2026-07-17 (#66 kernel checks, GSR `/analyze`, the Analyst panel; see
-> `docs/kernel-architecture.md` and `docs/theory-fidelity.md`). This file is
-> kept as the pre-web-rebuild plan of record.
+> **RETIRED 2026-07-18 — history, not a plan.** This was the pre-web-rebuild plan
+> of record (egui canvas, `src/main.rs`, in-process `generate()`). It is kept as a
+> record of how the project was thought about, and is no longer maintained.
+>
+> **Forward-looking work lives on the [roadmap board](https://github.com/orgs/halcyonic-systems/projects/12)**,
+> organized by epic. For what the instrument is *for* — the commitments that don't
+> go stale — read the README's "What this tool believes".
+>
+> Two specific corrections, so this file isn't read as current: its **Arc 4** frames
+> dynamics as plumbing ("converge with bert-compose... the conservation engine"),
+> superseded by `docs/design/dynamics-principled-position.md` (dynamics is a
+> state-transition family; conservation is a model-declared invariant — adoption
+> tracked in issue #86). And it predates **SL**, the system language, which now has
+> its own home at `docs/language/`.
 
 One kernel, three lenses. The path is **view → author → translate → run**, in
 dependency order. bert-lenses stays standalone through the author and translate

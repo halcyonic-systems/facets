@@ -175,9 +175,10 @@ cargo build --workspace --target wasm32-unknown-unknown
 - [`docs/design/lens-palettes.md`](docs/design/lens-palettes.md) — the lens
   grounding for Phase 3/4 (Klir / Bunge / Mobus).
 - [`web/DESIGN.md`](web/DESIGN.md) — Halcyonic Frost design tokens for the face.
-- [`ROADMAP.md`](ROADMAP.md) — history (predates the web rebuild; see the
-  [project board](https://github.com/orgs/halcyonic-systems/projects/12) for
-  current status).
+- **Forward-looking work → the [roadmap board](https://github.com/orgs/halcyonic-systems/projects/12)**,
+  organized by epic. The old `ROADMAP.md` is retired to
+  [`docs/archive/roadmap-pre-web-rebuild.md`](docs/archive/roadmap-pre-web-rebuild.md);
+  what the instrument is *for* lives in "What this tool believes" above.
 
 ## Status
 
