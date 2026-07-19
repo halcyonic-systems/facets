@@ -101,8 +101,44 @@ pub fn validate(model: &WorldModel) -> ValidationResult {
     check_level_consistency(model, &mut issues);
     check_processor_flows(model, &mut issues);
     check_s0_interface_processors(model, &mut issues);
+    check_stock_units(model, &mut issues);
 
     ValidationResult { issues }
+}
+
+/// Dimensional-consistency check for declared stock units (bert-lenses#76). A
+/// stock accumulates its inflow over Δt, so its dimension is the flow's unit ×
+/// time (a `kW` inflow accrues energy, `ML/mo` accrues `ML`) — a stock's unit is
+/// a QUANTITY, not a rate. This warns (never errors) when a stock declares a
+/// rate-like unit, the cheap string signal for the mismatch. The full check —
+/// flow-unit × Δt reconciled against the stock unit — needs the unit algebra
+/// deferred to #94; this is the no-parse proxy, so it catches a declared rate
+/// (contains `/`) but not a rate without a slash (`kW`).
+fn check_stock_units(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
+    for (i, system) in model.systems.iter().enumerate() {
+        let Some(agent) = system.agent.as_ref() else {
+            continue;
+        };
+        if agent.primitive != Some(ProcessPrimitive::Buffering) {
+            continue;
+        }
+        let unit = agent.stock_unit.trim();
+        if !unit.is_empty() && unit.contains('/') {
+            issues.push(ValidationIssue::warning(
+                format!("systems[{i}].agent.stock_unit"),
+                format!(
+                    "stock \"{}\" declares a rate-like unit '{unit}' — a stock \
+                     accumulates its inflow over Δt, so its dimension is a \
+                     quantity (rate × time), not a rate",
+                    system.info.name
+                ),
+                Some(
+                    "Declare the accumulated quantity's unit (e.g. 'ML' for an \
+                     'ML/mo' inflow, 'kWh' for a 'kW' inflow)",
+                ),
+            ));
+        }
+    }
 }
 
 /// Gate *entry* into a target mode on the kernel ladder.
@@ -1064,6 +1100,50 @@ mod tests {
         let model = minimal_model();
         let result = validate(&model);
         assert!(result.is_clean(), "got: {:#?}", result.issues);
+    }
+
+    /// bert-lenses#76: a stock that declares a RATE-like unit gets a
+    /// dimensional-consistency WARNING (never an error) — a stock holds an
+    /// accumulated quantity, not a rate. A quantity unit, or no unit, is clean.
+    #[test]
+    fn rate_like_stock_unit_warns_never_errors() {
+        let buffering = |unit: &str| {
+            let mut m = minimal_model();
+            let agent = AgentModel {
+                primitive: Some(ProcessPrimitive::Buffering),
+                stock_unit: unit.to_string(),
+                ..AgentModel::default()
+            };
+            m.systems[0].agent = Some(agent);
+            validate(&m)
+        };
+
+        let warned = buffering("ML/mo");
+        assert!(
+            !warned.has_errors(),
+            "a declared-unit smell is a warning, not an error: {:#?}",
+            warned.issues
+        );
+        assert!(
+            warned
+                .issues
+                .iter()
+                .any(|i| i.severity == Severity::Warning
+                    && i.location.contains("stock_unit")),
+            "a rate-like stock unit warns: {:#?}",
+            warned.issues
+        );
+
+        // A quantity unit and an undeclared unit raise no stock-unit warning.
+        for clean_unit in ["ML", ""] {
+            assert!(
+                !buffering(clean_unit)
+                    .issues
+                    .iter()
+                    .any(|i| i.location.contains("stock_unit")),
+                "unit {clean_unit:?} should not trip the dimensional warning"
+            );
+        }
     }
 
     /// Law: a source that couples to no interaction lies outside the system's boundary — an error, not a warning.

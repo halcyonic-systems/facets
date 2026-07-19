@@ -311,6 +311,18 @@ pub fn summarize(
 ) -> RunReadout {
     let ticks = run.history.len();
 
+    // A level/trajectory reads the stock's DECLARED unit when the modeler set
+    // one (bert-lenses#76) — a stock accumulates a rate over Δt, so its
+    // dimension is not the feeding flow's — falling back to the flow-copied
+    // `out_substance.unit` otherwise.
+    let unit_of = |node: &bert_compose::circuit::Node| {
+        if node.stock_unit.is_empty() {
+            node.out_substance.unit.clone()
+        } else {
+            node.stock_unit.clone()
+        }
+    };
+
     // Final levels, one row per node, ordered by purpose.
     let mut levels: Vec<Level> = circuit
         .nodes
@@ -324,7 +336,7 @@ pub fn summarize(
             };
             Level {
                 name: node.name.clone(),
-                unit: node.out_substance.unit.clone(),
+                unit: unit_of(node),
                 value,
                 category,
             }
@@ -350,7 +362,7 @@ pub fn summarize(
             let series = run.history.iter().map(|row| row[1 + i * 3 + col]).collect();
             Trajectory {
                 name: node.name.clone(),
-                unit: node.out_substance.unit.clone(),
+                unit: unit_of(node),
                 series,
             }
         })
@@ -494,6 +506,48 @@ fn id_name_map(model: &WorldModel) -> HashMap<Id, String> {
 mod tests {
     use super::*;
     use crate::manifest::RunManifest;
+
+    /// bert-lenses#76: when a stock declares its own unit, the run panel reads
+    /// THAT (a quantity like `ML`) instead of copying the feeding flow's unit
+    /// (`ML/mo`, a rate). An undeclared stock still falls back to the flow unit.
+    #[test]
+    fn declared_stock_unit_wins_over_the_flow_copied_one() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let mut model: WorldModel = serde_json::from_str(json).unwrap();
+        // Declare a stock unit on the Buffering component; leave its inflow's
+        // unit (the flow-copied fallback) alone.
+        let buffer = model
+            .systems
+            .iter_mut()
+            .find(|s| {
+                s.agent.as_ref().and_then(|a| a.primitive)
+                    == Some(bert_core::ProcessPrimitive::Buffering)
+            })
+            .expect("the sample has a Buffering stock");
+        let buffer_name = buffer.info.name.clone();
+        buffer.agent.as_mut().unwrap().stock_unit = "ML".to_string();
+
+        let spec = bert_core::operational::validate_operational(&model).expect("projects");
+        let mut circuit = bert_compose::from_spec(&spec);
+        let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0);
+        let readout = summarize(
+            &model,
+            &crate::tether::ImportedData::default(),
+            &circuit,
+            &run,
+            1.0,
+        );
+
+        let stock = readout
+            .levels
+            .iter()
+            .find(|l| l.name == buffer_name)
+            .expect("the stock has a level row");
+        assert_eq!(
+            stock.unit, "ML",
+            "the run reads the declared stock unit, not the flow-copied one"
+        );
+    }
 
     // Law: a forced run must conserve (residual ~0 against throughput) and every
     // level/trajectory/comparison it reads back must carry the model's own

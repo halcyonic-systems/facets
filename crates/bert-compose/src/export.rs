@@ -192,6 +192,10 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                             HashMap::new()
                         },
                         network_config: None,
+                        // A stock's declared unit (bert-lenses#76) rides back to
+                        // the model so the round-trip stays lossless; empty when
+                        // the compose node never declared one.
+                        stock_unit: node.stock_unit.clone(),
                     }),
                 });
                 node_id.insert(i, sid);
@@ -317,6 +321,7 @@ pub fn from_spec(spec: &bert_core::operational::OperationalSpec) -> Circuit {
         );
         node.name = p.name.clone();
         node.param = p.agency_capacity;
+        node.stock_unit = p.stock_unit.clone();
         if let Some(s) = p.initial_storage {
             node.initial_storage = s as f32;
             node.storage = s as f32;
@@ -421,6 +426,9 @@ pub fn from_spec(spec: &bert_core::operational::OperationalSpec) -> Circuit {
         }
         c.wires.push(wire);
     }
+    // Root-boundary porosity rides the seam (bert-lenses#54): the run scales
+    // boundary crossings by it, no effect until authored nonzero.
+    c.porosity = spec.porosity;
     c
 }
 
@@ -522,6 +530,7 @@ mod tests {
                 },
             ],
             flows: vec![flow("dev tokens", 0, 12.0), flow("ent tokens", 1, 1.0)],
+            porosity: 0.0,
         };
 
         let mut c = from_spec(&spec);
@@ -581,6 +590,7 @@ mod tests {
                 rate_series: Some(vec![4.0, 8.0, 0.5]),
                 dt_stride: None,
             }],
+            porosity: 0.0,
         };
 
         let mut c = from_spec(&spec);
@@ -636,6 +646,7 @@ mod tests {
                 agency_capacity: 0.0,
                 cognitive_params: Default::default(),
                 initial_storage: None,
+                stock_unit: String::new(),
             }],
             sources: vec![OperationalTerminal {
                 id: id(IdType::Source, 0),
@@ -650,6 +661,7 @@ mod tests {
                 flow("to big", id(IdType::Subsystem, 1), id(IdType::Sink, 0), Some(vec![3.0])),
                 flow("to small", id(IdType::Subsystem, 1), id(IdType::Sink, 1), Some(vec![1.0])),
             ],
+            porosity: 0.0,
         };
 
         let mut c = from_spec(&spec);
@@ -697,6 +709,7 @@ mod tests {
                 rate_series: Some(vec![10.0, 20.0]),
                 dt_stride: Some(3), // one value every 3 fast ticks
             }],
+            porosity: 0.0,
         };
         let mut c = from_spec(&spec);
         assert_eq!(c.wires[0].dt_stride, Some(3), "stride survives spec → circuit");

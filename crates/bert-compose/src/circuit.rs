@@ -297,6 +297,12 @@ pub struct Node {
     /// Impeding "slows the rate of flow with a consequent back-pressure". The
     /// push-model default (`false`) sheds; this makes the valve back up.
     pub back_pressure: bool,
+    /// A stock's declared unit (bert-lenses#76). A Buffering stock accumulates
+    /// its inflow over Δt, so its dimension is not the feeding flow's unit
+    /// (`out_substance.unit`) — a `kW` inflow accrues energy, not power. The
+    /// run reads this when non-empty, falling back to the flow-copied unit
+    /// otherwise. Empty for every non-stock node and every undeclared stock.
+    pub stock_unit: String,
     /// Provenance: the Troncale process this node was stamped from (a
     /// `ladder::Rung` name), or `None` if hand-placed. Pure UI hint — lets the
     /// inspector show "this is part of a Feedback process" alongside the
@@ -327,6 +333,7 @@ impl Node {
             time_constant: 0.0,   // 0 = fixed-rate drain
             maintenance: 0.0,     // 0 = no upkeep loss
             back_pressure: false, // false = push model sheds; true = backs up
+            stock_unit: String::new(),
             process: None,
             storage: 0.0,
             activity: 0.0,
@@ -449,6 +456,14 @@ impl Invariant {
 pub struct Circuit {
     pub nodes: Vec<Node>,
     pub wires: Vec<Wire>,
+    /// Root-boundary porosity (B's P, bert-lenses#54). When authored NONZERO it
+    /// scales boundary-crossing influx (a source-fed crossing flow delivers
+    /// `porosity ×` its rate — the coefficient acts within the active transition
+    /// φ, never a metasystem swap). `0.0` = the unauthored default = no effect
+    /// (full influx), so every existing circuit runs byte-for-byte as before.
+    /// Sourced from the seam (`OperationalSpec::porosity`); config, not state, so
+    /// `reset` leaves it untouched.
+    pub porosity: f32,
     pub tick: u64,
     /// Per-tick data rows: [tick, n0.activity, n0.storage, n0.total, n1…].
     /// Cleared on Reset or when the topology changes mid-recording.
@@ -546,11 +561,29 @@ impl Circuit {
     /// replicates. `step()` delegates its pushed-wire arithmetic here; the
     /// gradient case omits only the buffer over-drain cap (step applies that
     /// to its own capped rates).
+    /// The porosity coefficient applied to a boundary-crossing inbound flow
+    /// (bert-lenses#54). A crossing flow is one a Source emits across the root
+    /// boundary; its rate is scaled by the authored porosity so a semi-permeable
+    /// membrane gates what enters the bounded system. The convention is
+    /// deliberate and honest: porosity `0.0` is the kernel's UNAUTHORED default
+    /// (`canvas.rs`), so it means "no effect" (factor `1.0`), NOT "sealed" — only
+    /// a nonzero value attenuates. This is our modeling choice (Mobus leaves P's
+    /// form open, §4.3; the Lean keeps P parametric), credited as such. Internal
+    /// (process→process) flows never cross the boundary and are untouched.
+    fn crossing_factor(&self, wire_from: usize) -> f32 {
+        if self.porosity > 0.0 && matches!(self.nodes[wire_from].kind, NodeKind::Source) {
+            self.porosity
+        } else {
+            1.0
+        }
+    }
+
     pub fn wire_amount(&self, k: usize) -> f32 {
         let w = &self.wires[k];
         if w.mode == FlowMode::Gradient {
             return if self.has_potential(w.from) {
-                (w.conductance * (self.level(w.from) - self.level(w.to))).max(0.0)
+                self.crossing_factor(w.from)
+                    * (w.conductance * (self.level(w.from) - self.level(w.to))).max(0.0)
             } else {
                 0.0
             };
@@ -579,7 +612,7 @@ impl Circuit {
             // is declared anywhere.
             let emission = self.source_emission(w.from);
             return if emission > 0.0 {
-                sender.activity * self.source_wire_rate(k) / emission
+                self.crossing_factor(w.from) * sender.activity * self.source_wire_rate(k) / emission
             } else {
                 0.0
             };
@@ -778,7 +811,11 @@ impl Circuit {
             .iter()
             .map(|w| {
                 if w.mode == FlowMode::Gradient && self.has_potential(w.from) {
-                    (w.conductance * (self.level(w.from) - self.level(w.to))).max(0.0)
+                    // Boundary porosity scales a source-fed crossing gradient
+                    // (bert-lenses#54), mirroring `wire_amount`'s gradient path
+                    // so display and run agree.
+                    self.crossing_factor(w.from)
+                        * (w.conductance * (self.level(w.from) - self.level(w.to))).max(0.0)
                 } else {
                     0.0
                 }
@@ -2757,5 +2794,119 @@ mod tests {
             );
             assert_balanced(&conserved, &format!("opt-in default seed {seed}"));
         }
+    }
+
+    /// bert-lenses#54: an authored NONZERO porosity scales a boundary-crossing
+    /// (source-fed) flow's magnitude and the mass that enters — the coefficient
+    /// acts inside the run — and the ledger still conserves at the reduced
+    /// influx.
+    #[test]
+    fn porosity_scales_source_crossing_and_conserves() {
+        let build = |porosity: f32| {
+            let mut c = Circuit {
+                porosity,
+                ..Default::default()
+            };
+            c.nodes.push(node(NodeKind::Source));
+            c.nodes
+                .push(node(NodeKind::Process(ProcessPrimitive::Buffering)));
+            c.nodes.push(node(NodeKind::Sink));
+            c.nodes[0].param = 10.0;
+            c.wires.push(Wire::new(0, 1)); // Source → Buffer: crossing
+            c.wires.push(Wire::new(1, 2)); // Buffer → Sink
+            c
+        };
+
+        let mut open = build(0.0); // unauthored
+        let mut half = build(0.5);
+        for _ in 0..30 {
+            open.step();
+            half.step();
+        }
+
+        assert!(
+            (open.wire_amount(0) - 10.0).abs() < 1e-4,
+            "unauthored porosity delivers the full crossing rate: {}",
+            open.wire_amount(0)
+        );
+        assert!(
+            (half.wire_amount(0) - 5.0).abs() < 1e-4,
+            "porosity 0.5 halves the crossing flow: {}",
+            half.wire_amount(0)
+        );
+        assert!(
+            (half.emitted - 0.5 * open.emitted).abs() < 1e-3,
+            "only the porous fraction enters over the run: {} vs full {}",
+            half.emitted,
+            open.emitted
+        );
+        assert!(
+            half.balance().abs() < 1e-3,
+            "the run conserves at the attenuated influx: residual {}",
+            half.balance()
+        );
+    }
+
+    /// The convention, made explicit (bert-lenses#54): porosity `0.0` is the
+    /// UNAUTHORED default (no effect), so it runs IDENTICALLY to a fully-porous
+    /// `1.0` — only a value strictly between attenuates. Guards against reading
+    /// `0.0` as "sealed".
+    #[test]
+    fn porosity_zero_equals_fully_porous_one() {
+        let build = |porosity: f32| {
+            let mut c = Circuit {
+                porosity,
+                ..Default::default()
+            };
+            c.nodes.push(node(NodeKind::Source));
+            c.nodes
+                .push(node(NodeKind::Process(ProcessPrimitive::Buffering)));
+            c.nodes.push(node(NodeKind::Sink));
+            c.nodes[0].param = 4.0;
+            c.wires.push(Wire::new(0, 1));
+            c.wires.push(Wire::new(1, 2));
+            for _ in 0..20 {
+                c.step();
+            }
+            c
+        };
+        assert_eq!(
+            build(0.0).history,
+            build(1.0).history,
+            "unauthored (0.0) and fully-porous (1.0) produce the same run"
+        );
+    }
+
+    /// Porosity touches ONLY source-fed boundary crossings: a circuit with no
+    /// Source (an internal drain from a stock) runs byte-for-byte the same
+    /// whatever the porosity, so internal flows are never scaled.
+    #[test]
+    fn porosity_leaves_internal_flows_untouched() {
+        let build = |porosity: f32| {
+            let mut c = Circuit {
+                porosity,
+                ..Default::default()
+            };
+            c.nodes
+                .push(node(NodeKind::Process(ProcessPrimitive::Buffering)));
+            c.nodes
+                .push(node(NodeKind::Process(ProcessPrimitive::Propelling)));
+            c.nodes.push(node(NodeKind::Sink));
+            c.nodes[0].initial_storage = 12.0;
+            c.nodes[0].storage = 12.0;
+            c.nodes[0].release_rate = 2.0;
+            c.nodes[1].param = 1.0;
+            c.wires.push(Wire::new(0, 1)); // Buffer → Propel: internal
+            c.wires.push(Wire::new(1, 2)); // Propel → Sink
+            for _ in 0..15 {
+                c.step();
+            }
+            c
+        };
+        assert_eq!(
+            build(0.0).history,
+            build(0.5).history,
+            "no source to gate — porosity leaves an internal run identical"
+        );
     }
 }
