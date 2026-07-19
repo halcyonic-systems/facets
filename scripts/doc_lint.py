@@ -110,22 +110,106 @@ def check_file(path: Path) -> list[str]:
     return violations
 
 
+# --- mode-entry vocabulary gate (issue #90) --------------------------------
+# "ladder"/"rung"/"climb" carried three unrelated senses (see the archived
+# docs/archive/on-the-word-ladder.md concordance). Only the MODE-ENTRY sense is
+# a fidelity hazard: it implies Klir→Bunge→Mobus is a linear tower, but the Lean
+# proves parallel lenses over a meet-semilattice. That sense is retired — mode
+# entry now speaks "lens" vocabulary. This check keeps it retired.
+#
+# Scope: LIVE docs (same set as above) + string literals in web/src/**/*.{ts,tsx}.
+# It flags whole-word ladder/rung/climb, then exempts lines that carry a
+# SURVIVING-sense marker. The surviving senses (left untouched by #90):
+#   - project/build-plan phase: "analysis rung", "staged rung", "rung plan",
+#     "first rung", explicit "Rung N/Rung A" SL build-plan labels;
+#   - the compose "dependency ladder" (bert-compose) and per-edge "edge ladder"
+#     classification (bert-canvas) — real orderings, correctly named;
+#   - Klir's GSPS hierarchy of system types;
+#   - meta-discussion of the retired term itself: any reference to the archived
+#     `on-the-word-ladder` concordance, or the quoted `ladder/rung` term-set.
+# web/src COMMENTS are out of scope by design — the Bucket C "edge ladder" name
+# legitimately lives in JSDoc there; only quoted string literals are checked.
+MODE_ENTRY_WORD = re.compile(r"\b(?:ladder|rung|climb)\b", re.IGNORECASE)
+# Case-SENSITIVE by design: the "Rung N" label pattern must not match "rung on",
+# "rung of", etc. All prose survivors use lowercase phrases; only the capitalized
+# SL build-plan labels ("Rung 2") and the "GSPS" acronym carry uppercase.
+SURVIVING_SENSE = re.compile(
+    r"analysis rung"
+    r"|rung plan"
+    r"|staged rung"
+    r"|first[\s-]rung"
+    r"|\bRungs?\s+[0-9A-Z]"          # "Rung 2", "Rungs 1", "Rung A" — SL build-plan labels
+    r"|dependency ladder"
+    r"|edge ladder"
+    r"|compose ladder"
+    r"|\bGSPS\b"
+    r"|on-the-word-ladder"            # references to the archived concordance file
+    r"|ladder/rung"                   # meta-quotation of the retired term-set
+)
+# Quoted string literal on a line: "...", '...', or `...` (naive, line-local —
+# enough to separate a user-facing string from a // or /** */ comment).
+STRING_LITERAL = re.compile(r'"[^"]*"' r"|'[^']*'" r"|`[^`]*`")
+
+
+def mode_entry_vocab() -> list[str]:
+    violations: list[str] = []
+
+    # LIVE docs: whole-line scan, surviving-sense marker exempts the line.
+    for path in live_docs():
+        rel = path.relative_to(REPO)
+        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if MODE_ENTRY_WORD.search(line) and not SURVIVING_SENSE.search(line):
+                violations.append(
+                    f"{rel}:{line_no}: mode-entry 'ladder/rung/climb' in a LIVE doc "
+                    f"(use lens vocabulary; retired per #90): {line.strip()[:80]}"
+                )
+
+    # web/src string literals only (comments are out of scope).
+    web_src = REPO / "web" / "src"
+    if web_src.is_dir():
+        for path in sorted(web_src.rglob("*.ts")) + sorted(web_src.rglob("*.tsx")):
+            rel = path.relative_to(REPO)
+            for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+                if SURVIVING_SENSE.search(line):
+                    continue
+                for lit in STRING_LITERAL.findall(line):
+                    if MODE_ENTRY_WORD.search(lit):
+                        violations.append(
+                            f"{rel}:{line_no}: mode-entry 'ladder/rung/climb' in a "
+                            f"user-facing string (use lens vocabulary; #90): {lit[:80]}"
+                        )
+                        break
+    return violations
+
+
 def main() -> int:
     all_violations: list[str] = []
     for doc in live_docs():
         all_violations += check_file(doc)
 
-    if all_violations:
-        print("doc-lint: provenance drift in LIVE docs (issue #92)\n", file=sys.stderr)
-        for v in all_violations:
-            print(f"  {v}", file=sys.stderr)
-        print(
-            "\nLIVE docs must cite the terminology concordance, not re-assert provenance.",
-            file=sys.stderr,
-        )
+    mode_violations = mode_entry_vocab()
+
+    if all_violations or mode_violations:
+        if all_violations:
+            print("doc-lint: provenance drift in LIVE docs (issue #92)\n", file=sys.stderr)
+            for v in all_violations:
+                print(f"  {v}", file=sys.stderr)
+            print(
+                "\nLIVE docs must cite the terminology concordance, not re-assert provenance.",
+                file=sys.stderr,
+            )
+        if mode_violations:
+            print("\ndoc-lint: mode-entry 'ladder/rung/climb' vocabulary (issue #90)\n", file=sys.stderr)
+            for v in mode_violations:
+                print(f"  {v}", file=sys.stderr)
+            print(
+                "\nMode entry is a lattice of parallel lenses, not a ladder. Say "
+                '"enter the Bunge lens" / "satisfy the Bunge precondition", never a rung to climb.',
+                file=sys.stderr,
+            )
         return 1
 
-    print(f"doc-lint: OK — {len(live_docs())} LIVE docs clean")
+    print(f"doc-lint: OK — {len(live_docs())} LIVE docs clean, mode-entry vocabulary clean")
     return 0
 
 

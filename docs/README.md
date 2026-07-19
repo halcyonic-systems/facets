@@ -9,7 +9,7 @@ Start at the main [`README.md`](../README.md) and [`CLAUDE.md`](../CLAUDE.md) fo
 ## Start here
 
 - [`quickstart.md`](quickstart.md) — **LIVE** — ten minutes from `just dev` to a judged, running model, using the two smallest corpus files (bathtub, then process-m). The newcomer on-ramp.
-- [`glossary.md`](glossary.md) — **LIVE** — fast definitions of the ~15 load-bearing terms (system, lens, bond/mere, conservation invariant, WorldModel, Save vs Export, run ledger, SL, systemhood, mode/rung, neutral spec, golden, dynamics-kind, precondition, concordance), each grounded in a fuller doc.
+- [`glossary.md`](glossary.md) — **LIVE** — fast definitions of the ~15 load-bearing terms (system, lens, bond/mere, conservation invariant, WorldModel, Save vs Export, run ledger, SL, systemhood, mode/lens, neutral spec, golden, dynamics-kind, precondition, concordance), each grounded in a fuller doc.
 
 ## The language
 
@@ -21,7 +21,6 @@ Start at the main [`README.md`](../README.md) and [`CLAUDE.md`](../CLAUDE.md) fo
 
 - [`kernel-architecture.md`](kernel-architecture.md) — **LIVE** — what the kernel *is* as a system: what `describe`/`lens_facts`/`validate_mode`/`analyze` actually compute, verified against source with confidence ratings. Read before trusting the substrate.
 - [`theory-fidelity.md`](theory-fidelity.md) — **LIVE** — per-tradition (Klir/Bunge/Mobus) take/drop/where/why, the mode-stamp semantics, the perspectival-realist scope statement, and the #5 collapse as a worked example of the refuse-don't-truncate discipline. For a reader assessing the theory's quality, not just its UI.
-- [`on-the-word-ladder.md`](on-the-word-ladder.md) — **LIVE** — the three distinct senses of "ladder/rung/climb" in this repo (mode entry, the compose dependency ladder, per-edge classification) and which one is the actual vocabulary debt.
 
 ## Design positions and research
 
@@ -52,6 +51,7 @@ Research foundations — what others build on; not themselves decisions:
 ## Historical (pre-web-rebuild, kept as record)
 
 - [`archive/canvas-architecture.md`](archive/canvas-architecture.md) — **HISTORICAL** — the standalone egui canvas (`src/main.rs`). Superseded by the web rebuild; its kernel-seam semantics (mode stamping, audit-panel verdict-quoting) carried forward and are still accurate, but the UI mechanics it describes are gone. (A stub remains at the old `canvas-architecture.md` path.)
+- [`archive/on-the-word-ladder.md`](archive/on-the-word-ladder.md) — **HISTORICAL** — the concordance of the three senses of "ladder/rung/climb" in this repo. Its mode-entry hazard (Bucket A) is retired: mode entry now speaks **lens** vocabulary (see [`theory-fidelity.md`](theory-fidelity.md), gated by `scripts/doc_lint.py`); the doc survives as the record of the words that legitimately stay (compose dependency ladder, per-edge classification, project-phase "rung"). Issue [#90](https://github.com/halcyonic-systems/bert-lenses/issues/90). (A stub remains at the old `on-the-word-ladder.md` path.)
 - [`archive/fidelity-audit.md`](archive/fidelity-audit.md) — **HISTORICAL** — faithfulness verdicts from the egui-era canvas; the current fidelity assessment is [`theory-fidelity.md`](theory-fidelity.md).
 - [`archive/`](archive/) — **HISTORICAL** — superseded design docs (see [`archive/README.md`](archive/README.md)).
 

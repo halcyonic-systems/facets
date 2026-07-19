@@ -38,9 +38,9 @@ The bert-lenses **s**ystem **l**anguage: a human-writable, line-oriented textual
 
 The property the kernel decides: whether a model holds as a system under a given lens, versus being a mere aggregate. The SL parser judges no systemhood — legality stays the kernel's verdict. See [`kernel-architecture.md`](kernel-architecture.md).
 
-### Mode / rung
+### Mode / lens
 
-A **mode** is the lens an author commits a model to (Core, Structural/Bunge, Operational/Mobus, Full). The modes are parallel lenses sharing only Core's on-ness — a meet-semilattice, not a tower — so "rung" language must not be read as a ladder of strict inheritance. See [`on-the-word-ladder.md`](on-the-word-ladder.md).
+A **mode** is the lens an author commits a model to (Core, Structural/Bunge, Operational/Mobus, Full). The modes are parallel lenses sharing only Core's on-ness — a meet-semilattice, not a linear tower — so committing to one lens implies nothing about the others; each is an independent precondition over the same kernel. See [`theory-fidelity.md`](theory-fidelity.md).
 
 ### Neutral spec
 
