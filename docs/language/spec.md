@@ -129,7 +129,7 @@ Parsing collects **all** faults in one pass and reports each with its 1-indexed 
 
 ### 5.1 What a compiled model means
 
-A parsed file denotes exactly one `CanvasModel`: things and relations in declaration order with sequentially assigned ids, the boundary and type assertion as written, view state per §6. What that model *means as a system* is not SL's to say: meaning is delivered by the kernel — `project()` compiles it to a `WorldModel`, `validate_mode` gates it at the active lens's rung (Klir→Core, Bunge→Structural, Mobus→Operational), and the lens palettes render its formal object. SL is a notation for the model, not an authority over it (C2).
+A parsed file denotes exactly one `CanvasModel`: things and relations in declaration order with sequentially assigned ids, the boundary and type assertion as written, view state per §6. What that model *means as a system* is not SL's to say: meaning is delivered by the kernel — `project()` compiles it to a `WorldModel`, `validate_mode` gates it at the active lens (Klir→Core, Bunge→Structural, Mobus→Operational), and the lens palettes render its formal object. SL is a notation for the model, not an authority over it (C2).
 
 ### 5.2 `source`, `sink`, `environment` — author intent, edge-derived identity
 
@@ -261,7 +261,7 @@ A three-component decomposition with two boundary interfaces, an authored membra
 
 **BERT SL v0.1 (`bert/docs/system-language-spec.md`).** The prior spec in this lineage: a publication-grade lexicon and grammar *for the data model* — 40 concepts, ID encoding, the four Lean coherence constraints (its §2.6), edge-derived source/sink roles (its §1.2 migration note, adopted here as §5.2). What it lacked is exactly what this spec adds: a human-writable concrete syntax; v0.1's "speakable" mode was natural-language-to-model via chat, not a notation a person writes and diffs. Its §4 execution mapping (Mesa/Bevy) is shed per §8.1.
 
-**SL v2.0 addendum (`system-language-spec-v2-addendum.md`).** Contributed the kernel re-founding (the 8-tuple as a generated view over a proven kernel) and the mode ladder; its mode-declaration *surface syntax* stayed cut — in bert-lenses, modes are the three lenses, view state on the neutral spec, which is why `@lens` is an annotation and not a structure line.
+**SL v2.0 addendum (`system-language-spec-v2-addendum.md`).** Contributed the kernel re-founding (the 8-tuple as a generated view over a proven kernel) and the mode lattice; its mode-declaration *surface syntax* stayed cut — in bert-lenses, modes are the three lenses, view state on the neutral spec, which is why `@lens` is an annotation and not a structure line.
 
 **Precedents** (research and verification marks in `docs/design/sl2-authoring-language.md` §4): SysML v2 for the architecture — text and diagrams as projections of one abstract syntax, text privileged because it maps losslessly; Modelica for one-artifact/two-concerns (§6); Stella for the bar the tool clears — two coequal views of one model with a live validity signal; Quint for approachable-surface-over-fixed-semantics via a deterministic transpiler; ACE/Gherkin for the fail-loud parse discipline; gpt-jargon as the negative control (C1). For the dynamics boundary: Petri-net P-invariants and CRN conservation laws as the prior art for invariant-on-structure independent of the transition rule — the position §8 applies is their pattern, cited as lineage, not a rediscovery.
 

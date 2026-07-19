@@ -71,7 +71,8 @@ canonical scope of what's proven vs tested is
 **A lens is a commitment the kernel checks.** Klir asks only for
 things-in-relation. Bunge demands a bond between distinct components, or refuses
 the model as an aggregate. Mobus demands no self-dependency. The three are
-independent — a lattice, not a ladder.
+independent — a lattice of parallel lenses, not a linear tower. Satisfying one
+lens implies nothing about the others.
 
 **Save ≠ Export.** *Save* keeps your working canvas state, the shape you're
 mid-authoring. *Export* writes a mode-stamped `WorldModel`: what you're
@@ -217,9 +218,11 @@ cargo build --workspace --target wasm32-unknown-unknown
   (Klir/Bunge/Mobus) take/drop/where/why, mode-stamp semantics, and the
   perspectival-realist scope statement. Start here if you're assessing the
   theory, not just the tool.
-- [`docs/on-the-word-ladder.md`](docs/on-the-word-ladder.md) — the three
-  distinct senses of "ladder/rung" in this repo's docs and code, and which one
-  is the actual vocabulary debt.
+- [`docs/archive/on-the-word-ladder.md`](docs/archive/on-the-word-ladder.md) —
+  **HISTORICAL** — the concordance of the three senses of "ladder/rung/climb";
+  its mode-entry hazard is retired (mode entry now speaks lens vocabulary,
+  [#90](https://github.com/halcyonic-systems/bert-lenses/issues/90)), the doc
+  kept as the record of the words that legitimately survive.
 - [`docs/language/`](docs/language/) — **SL, the system language**: the v1.0
   specification (lexicon, grammar, semantics, round-trip contract, the
   structure/dynamics boundary), the corpus, and the lineage from Mobus Ch. 4 and

@@ -40,14 +40,14 @@ Counts are "read off the same kernel facts the canvas renders — never re-deriv
 
 ### 3. `validate_mode(model, mode)` → Lean-grounded legality per lens  — VERIFIED
 
-`validate.rs:122-139`. This is the hard guarantee. It never asks "is the model valid" — it asks "may this model be authored *as* this mode," each rung adding its own faithful-view hypothesis proven in `ViewGeneration.lean`:
+`validate.rs:122-139`. This is the hard guarantee. It never asks "is the model valid" — it asks "may this model be authored *as* this mode," each lens adding its own faithful-view hypothesis proven in `ViewGeneration.lean`:
 
 - **Core**: on-ness (every interaction endpoint resolves) — via `validate`'s reference checks.
 - **Structural (Bunge)**: `check_bond` (`:143`) — requires ≥1 bond between *distinct* components, else an "aggregate" error. Mirrors Lean `Kernel.HasBond`.
 - **Operational (Mobus)**: `check_self_loops` (`:158`) — no self-dependency (`k ≠ o`, Mobus §4.3), else error, canvas-navigable via `.with_subject`. Mirrors Lean `Kernel.Irreflexive`.
 - **Full**: self-loops + `check_dynamical_face` (warns if T/H/Δt nowhere populated).
 
-**Crucial subtlety (verified, `:107-116`): the rungs are parallel lenses, not a tower.** Structural needs a bond, Operational needs irreflexivity, but *neither inherits the other* — they share only Core's on-ness. So "valid in Bunge" and "valid in Mobus" are independent, Lean-proven claims about the same model. This is precisely what makes cross-lens disagreement meaningful.
+**Crucial subtlety (verified, `:107-116`): the modes are parallel lenses, not a tower.** Structural needs a bond, Operational needs irreflexivity, but *neither inherits the other* — they share only Core's on-ness. So "valid in Bunge" and "valid in Mobus" are independent, Lean-proven claims about the same model. This is precisely what makes cross-lens disagreement meaningful.
 
 ### 4. `analyze(model, lens)` → all three from ONE projection  — VERIFIED (this is the substrate)
 
