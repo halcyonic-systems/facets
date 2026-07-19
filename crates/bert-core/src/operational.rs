@@ -74,6 +74,14 @@ pub struct OperationalProcess {
     pub agency_capacity: f32,
     pub cognitive_params: HashMap<String, f64>,
     pub initial_storage: Option<f64>,
+    /// The stock's declared unit (bert-lenses#76). A stock accumulates a rate
+    /// over Δt, so its dimension is not the feeding flow's unit (`kW` in →
+    /// energy stored, not power); the modeler declares it here rather than
+    /// inheriting the flow's. Empty = undeclared (the run falls back to the
+    /// flow-copied unit). `skip` when empty so an unauthored spec hashes
+    /// byte-for-byte as before.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub stock_unit: String,
 }
 
 /// A boundary terminal: an environment source or sink a flow may cross.
@@ -142,6 +150,18 @@ pub struct OperationalSpec {
     pub sources: Vec<OperationalTerminal>,
     pub sinks: Vec<OperationalTerminal>,
     pub flows: Vec<OperationalFlow>,
+    /// Root-boundary porosity (B's P, bert-lenses#54) — the coefficient that
+    /// scales boundary-crossing influx in the run when authored NONZERO. The
+    /// kernel treats `0.0` as the unauthored default (`canvas.rs` boundary
+    /// docs), so `0.0` means "no effect" here too, NOT "sealed": only a nonzero
+    /// value attenuates. `skip` when zero so an unauthored spec serializes and
+    /// hashes byte-for-byte as before (the recorded-run key stays reproducible).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub porosity: f32,
+}
+
+fn is_zero(v: &f32) -> bool {
+    *v == 0.0
 }
 
 impl OperationalSpec {
@@ -208,6 +228,16 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
     let mut spec = OperationalSpec::default();
     let mut projected: HashSet<Id> = HashSet::new();
 
+    // The root system's boundary carries B's P (bert-lenses#54). Its porosity
+    // rides the seam so the run can scale boundary crossings — no effect until
+    // authored nonzero, per the unauthored-default convention.
+    spec.porosity = model
+        .systems
+        .iter()
+        .find(|s| s.info.level == 0)
+        .map(|s| s.boundary.porosity)
+        .unwrap_or(0.0);
+
     for ext in &model.environment.sources {
         projected.insert(ext.info.id.clone());
         spec.sources.push(OperationalTerminal {
@@ -269,6 +299,7 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
             agency_capacity: agent.agency_capacity,
             cognitive_params: agent.cognitive_params.clone(),
             initial_storage: agent.initial_state.get("storage").and_then(|v| v.as_f64()),
+            stock_unit: agent.stock_unit.clone(),
         });
     }
 
@@ -469,6 +500,7 @@ mod tests {
             process_configs: vec![],
             initial_state: HashMap::new(),
             network_config: None,
+            stock_unit: String::new(),
         }
     }
 
@@ -564,6 +596,35 @@ mod tests {
         assert_eq!(spec.flows.len(), 2);
         assert_eq!(spec.flows[0].substance, SubstanceType::Material);
         assert_eq!(spec.flows[0].unit, "L");
+    }
+
+    /// bert-lenses#54/#76: the root boundary's porosity and a stock's declared
+    /// unit ride the seam onto the projected spec — and an unauthored model
+    /// omits both from its serialization, so its content hash is unchanged.
+    #[test]
+    fn porosity_and_stock_unit_cross_the_seam() {
+        let mut model = mobus_model();
+        model.systems[0].boundary.porosity = 0.7;
+        model.systems[1].agent.as_mut().unwrap().stock_unit = "ML".to_string();
+
+        let spec = validate_operational(&model).expect("projects clean");
+        assert_eq!(spec.porosity, 0.7, "root porosity reaches the spec");
+        assert_eq!(
+            spec.processes[0].stock_unit, "ML",
+            "the stock's declared unit reaches the spec"
+        );
+
+        // The unauthored model carries neither field into its JSON, so its
+        // recorded-run key is byte-for-byte what it was before the fields
+        // existed.
+        let bare = validate_operational(&mobus_model()).expect("projects clean");
+        assert_eq!(bare.porosity, 0.0);
+        assert!(bare.processes[0].stock_unit.is_empty());
+        let json = serde_json::to_string(&bare).unwrap();
+        assert!(
+            !json.contains("porosity") && !json.contains("stock_unit"),
+            "unauthored spec omits the new fields: {json}"
+        );
     }
 
     #[test]

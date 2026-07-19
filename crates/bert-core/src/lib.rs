@@ -1195,6 +1195,14 @@ pub struct AgentModel {
     /// Optional network behavior configuration for multi-agent interactions
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub network_config: Option<NetworkConfig>,
+
+    /// A stock's declared unit (bert-lenses#76). A Buffering component's stock
+    /// accumulates its inflow over Δt, so its dimension differs from the flow's
+    /// (a `kW` inflow accrues energy, not power); the modeler declares the
+    /// stock's own unit here instead of the run copying the flow's. Empty =
+    /// undeclared. `skip` when empty so existing models serialize unchanged.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub stock_unit: String,
 }
 
 fn default_agency_capacity() -> f32 {
@@ -1243,6 +1251,7 @@ impl Default for AgentModel {
             process_configs: Vec::new(),
             initial_state: HashMap::new(),
             network_config: None,
+            stock_unit: String::new(),
         }
     }
 }
