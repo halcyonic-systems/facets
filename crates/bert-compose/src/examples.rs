@@ -518,6 +518,9 @@ pub fn universal_homeostat_for_test() -> Circuit {
 mod tests {
     use super::*;
 
+    /// Law: every bundled example is substance-clean, actually moves mass,
+    /// and balances its conservation ledger exactly — no shipped example
+    /// may leak.
     /// Every bundled example must be valid (no substance mismatches) and
     /// actually do something when run — the on-ramp can't ship dead circuits.
     #[test]

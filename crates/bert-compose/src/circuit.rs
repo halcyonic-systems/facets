@@ -1190,6 +1190,8 @@ mod tests {
         Node::new(kind, 0, pos2(0.0, 0.0))
     }
 
+    /// Law: mass is conserved end-to-end across source, buffer, and sink
+    /// regardless of stock accumulation.
     /// Source → Buffer → Sink: the stock fills faster than it drains, state
     /// accumulates, and mass is conserved end to end.
     #[test]
@@ -1220,6 +1222,8 @@ mod tests {
         );
     }
 
+    /// Law: an undeclared wire's fallback rate never alters a sibling wire's
+    /// declared rate, and total emission stays conserved.
     /// bert#111 fixture: a source with two outflows, one carrying a declared
     /// per-wire rate, emits each wire at its own rate — the undeclared
     /// sibling must not alter the declared one, and mass stays conserved.
@@ -1262,6 +1266,9 @@ mod tests {
         );
     }
 
+    /// Law: a forced wire delivers its rate series value-for-value each tick
+    /// (never collapsing to a mean), holding the last value past the
+    /// series' end, while mass stays conserved.
     /// bert-lenses#16: a forced source wire emits an OBSERVED series tick by
     /// tick — the green line must BEND through the series, not sit at a mean.
     /// Fixture is deliberately non-monotonic (spike then crash, the xAI shape)
@@ -1296,6 +1303,9 @@ mod tests {
         assert!(c.balance().abs() < 1e-3, "conserved: {}", c.balance());
     }
 
+    /// Law: a wire's own Δt (dt_stride) governs how often it samples its
+    /// series — it holds each value for `stride` ticks, independent of the
+    /// base clock.
     /// Rung 3 (multi-timescale): a forced wire with `dt_stride = s` samples its
     /// series once every `s` ticks and holds the value between — the channel's
     /// own Δt = s × base Δt (Mobus's per-node Δt_{i,l}, an integer multiple).
@@ -1324,6 +1334,8 @@ mod tests {
         assert!(c.balance().abs() < 1e-3, "slow channel conserves: {}", c.balance());
     }
 
+    /// Law: an unset (or 1) dt_stride is the single-clock case — the series
+    /// advances every tick, identical to unstrided forcing.
     /// Rung 3 back-compat: `dt_stride` unset (or 1) is the single-clock case —
     /// the series advances every tick, identical to rung-1 forcing.
     #[test]
@@ -1341,6 +1353,8 @@ mod tests {
         }
     }
 
+    /// Law: a Splitting process divides inflow across outwires in exact
+    /// proportion to their declared weights, conserving total mass.
     /// Rung 2 (computed interior): a Splitting process divides its inflow
     /// across outwires in proportion to per-wire WEIGHTS — the legible
     /// allocation capability. Weights [3,1] → a 75/25 split; mass conserved.
@@ -1375,6 +1389,8 @@ mod tests {
         assert!(c.balance().abs() < 1e-3, "split conserves: {}", c.balance());
     }
 
+    /// Law: a time-varying weight series shifts the split proportionally
+    /// tick by tick, and the split still conserves mass.
     /// Rung 2: the allocation can VARY per tick — a weight series shifts the
     /// split legibly over time (the computed interior answers to a signal),
     /// reusing rung-1's per-wire series. Wire a's weight falls from 9 to 1
@@ -1409,6 +1425,8 @@ mod tests {
         assert!(c.balance().abs() < 1e-3, "shifting split conserves: {}", c.balance());
     }
 
+    /// Law: with no declared rates anywhere, a multi-outflow source splits
+    /// its param uniformly across all wires.
     /// bert#111 back-compat: with no declared rates anywhere, a two-outflow
     /// source splits `param` uniformly — the pre-#111 behavior, unchanged.
     #[test]
@@ -1434,6 +1452,8 @@ mod tests {
         );
     }
 
+    /// Law: a closed sense-invert-modulate loop around a buffer keeps the
+    /// stock bounded — negative feedback regulates rather than running away.
     /// Sensing + Inverting + Modulating around a Buffer = a homeostat: the
     /// control loop throttles inflow as the sensed level rises. The loop must
     /// regulate (bounded storage), not run away.
@@ -1472,6 +1492,8 @@ mod tests {
         assert!(c.nodes[5].total > 0.0, "flow still reaches the sink");
     }
 
+    /// Law: an amplifier cannot manufacture mass — its output is capped by
+    /// the metered power actually available, not by the desired gain.
     /// Amplifying cannot manufacture mass: output is capped by metered power.
     #[test]
     fn amplifier_bounded_by_power() {
@@ -1496,6 +1518,9 @@ mod tests {
         assert!((c.nodes[2].activity - 2.5).abs() < f32::EPSILON);
     }
 
+    /// Law: a substance/primitive mismatch (Material into a Message-only
+    /// primitive, or vice versa) is always flagged as an advisory, never
+    /// silently altered or swallowed.
     #[test]
     fn copying_material_is_flagged_not_swallowed() {
         let mut c = Circuit::default();
@@ -1538,6 +1563,9 @@ mod tests {
         assert!(c.substance_mismatches().is_empty());
     }
 
+    /// Law: per-wire delivery obeys the substance's physics — a physical
+    /// split divides the flow per wire, a Message replicates in full to
+    /// every receiver, and an observation tap reads the source's level.
     /// wire_amount — the view's per-wire delivery: a physical split halves
     /// per wire (a conserved split LOOKS conserved), Message replicates to
     /// every receiver, an observation tap reads the stock.
@@ -1602,6 +1630,9 @@ mod tests {
         );
     }
 
+    /// Law: each node's sparkline tracks its live signal — storage for a
+    /// buffer, activity for everything else — capped at SPARK_CAP and
+    /// cleared on reset.
     /// The sparkline ring: caps at SPARK_CAP, tracks the live signal (a
     /// buffer's storage, everything else's activity), clears on reset.
     #[test]
@@ -1654,6 +1685,8 @@ mod tests {
         assert!(c.history.is_empty(), "reset clears the recording");
     }
 
+    /// Law: a gradient (potential-field) wire between two buffers passively
+    /// equalizes their stocks with no controller, conserving total mass.
     /// Gradient flow = Potential Fields. A full buffer wired by a gradient flow
     /// to an empty buffer equalizes (a battery discharging / two tanks), and
     /// total stock is conserved — no controller needed (passive homeostasis).
@@ -1682,6 +1715,8 @@ mod tests {
         );
     }
 
+    /// Law: a buffer's release rate cannot leak mass through a gradient-only
+    /// outwire — without a pushed outlet, nothing is destroyed.
     /// A buffer with release but NO pushed outlet must not destroy mass —
     /// you can't pour out of a tank with no spout (a gradient outwire is a
     /// field, not a spout). Regression for the conservation bug Shingai found
@@ -1713,6 +1748,8 @@ mod tests {
         );
     }
 
+    /// Law: a buffer wired by a gradient to a fixed-potential source charges
+    /// toward that potential, gradient shrinking as it fills.
     /// A source at fixed potential charges a buffer toward that potential
     /// (a capacitor charging), gradient shrinking as it fills.
     #[test]
@@ -1837,6 +1874,8 @@ mod tests {
         c
     }
 
+    /// Law: over the fully conservative primitive set with no dead ends, the
+    /// ledger balances every tick and nothing dissipates.
     /// Property: over the conservative set with every node given an outlet,
     /// the ledger balances every tick AND nothing dissipates — there is no
     /// intended loss channel in this set, so any dissipation is a leak.
@@ -1857,6 +1896,8 @@ mod tests {
         }
     }
 
+    /// Law: even with dead-end outputs allowed, the ledger stays exact every
+    /// tick — dissipation is accounted for, not lost.
     /// Property: same set but dead ends allowed — mass may dissipate (it
     /// evaporates at the dangling node) but the ledger must still be exact.
     #[test]
@@ -1870,6 +1911,9 @@ mod tests {
         }
     }
 
+    /// Law: across the full primitive palette (friction, sensors, amplifiers,
+    /// valves, signal sources), the ledger accounts every unit exactly, even
+    /// though dissipation is expected.
     /// Property: the FULL palette — friction, sensors, amps, valves, signal
     /// sources, observation taps. Dissipation is expected; the ledger must
     /// still account every unit (any delivery double-count or undercount
@@ -1933,6 +1977,8 @@ mod tests {
 
     // ── Targeted probes: the checkpoint's known suspects ─────────────────
 
+    /// Law: a sink is terminal — flow wired onward from it must never be
+    /// re-emitted.
     /// A sink is terminal: wiring onward from it must re-emit nothing.
     #[test]
     fn sink_never_reemits() {
@@ -1954,6 +2000,8 @@ mod tests {
         );
     }
 
+    /// Law: flow illegally wired into a Source is shed to the dissipation
+    /// ledger, never silently destroyed.
     /// Flow wired into a Source (UI refuses; engine defends): the mass is
     /// shed to the ledger, not silently destroyed.
     #[test]
@@ -1970,6 +2018,8 @@ mod tests {
         assert!(c.dissipated > 0.0, "shed inflow must appear in the ledger");
     }
 
+    /// Law: a gradient wire from a node with no potential is inert — it must
+    /// never mint mass out of the sender's activity.
     /// A gradient wire from a node with no potential is inert — before this
     /// fix it minted mass off the sender's activity without draining anything.
     #[test]
@@ -2002,6 +2052,8 @@ mod tests {
         );
     }
 
+    /// Law: an uncontrolled valve defaults open (passes flow through); once
+    /// gated, the blocked portion is shed to the ledger, not destroyed.
     /// A valve with no control wire sits open (was: closed by default,
     /// destroying every inflow). With control it sheds — to the ledger.
     #[test]
@@ -2047,6 +2099,8 @@ mod tests {
         );
     }
 
+    /// Law: output wired to nowhere evaporates onto the dissipation ledger
+    /// and is surfaced as an advisory, never silently lost.
     /// Output wired to nowhere evaporates — but onto the ledger, with the
     /// dead end surfaced as an advisory.
     #[test]
@@ -2068,6 +2122,8 @@ mod tests {
         );
     }
 
+    /// Law: the model's intended dissipations — friction loss and amplifier
+    /// power draw — are always tracked in the ledger, never unaccounted.
     /// Friction (Propelling at η<1) and amplifier power draw are the model's
     /// intended dissipations — decided + documented in the module docs —
     /// and both are tracked.
@@ -2111,6 +2167,8 @@ mod tests {
         assert!(amp.dissipated > 0.0, "the metered power draw is ledgered");
     }
 
+    /// Law: a Copying node relabeled to a physical substance splits its
+    /// fanout instead of duplicating — matter cannot be copied.
     /// Matter doesn't copy: a Copying node relabeled to a physical substance
     /// splits across its fanout instead of duplicating to every receiver.
     #[test]
@@ -2139,6 +2197,8 @@ mod tests {
         );
     }
 
+    /// Law: a buffer with both pushed and gradient outflows conserves mass
+    /// exactly, regardless of the mix.
     /// Mixed pushed + gradient outflow from one buffer — the checkpoint's
     /// remaining suspect — conserves exactly.
     #[test]
@@ -2168,6 +2228,9 @@ mod tests {
         );
     }
 
+    /// Law: a named substance inherits its declared base type's physics
+    /// exactly — it splits/conserves like Material or replicates like
+    /// Message, with mismatch warnings carrying the human name.
     /// A named substance inherits its base physics exactly: money splits and
     /// conserves like Material; votes copy like Message; a mismatch warning
     /// carries the human name.
@@ -2208,6 +2271,9 @@ mod tests {
         assert_eq!(m[0].2.name, "votes", "the warning speaks the human name");
     }
 
+    /// Law: a bounded buffer's stock clamps at capacity and the overflow is
+    /// dissipated, with conservation holding every tick; capacity 0 means
+    /// unbounded.
     /// Capacity: a bounded buffer fed faster than it releases fills to the
     /// ceiling and then overflows — the stock clamps at capacity and the
     /// excess is dissipated, conservation holding every tick. (Mobus Ch.4
@@ -2250,6 +2316,8 @@ mod tests {
         );
     }
 
+    /// Law: raising a controller's setpoint raises the homeostat's regulated
+    /// level; the default setpoint reproduces the bare 1−signal control law.
     /// Setpoint: the controller's explicit reference. Raising it makes the
     /// homeostat hold a higher regulated stock; the default (1.0) reproduces
     /// the bare `1 − signal`. (Mobus Fig 4.12 comparator.)
@@ -2296,6 +2364,9 @@ mod tests {
         );
     }
 
+    /// Law: a buffer with a time constant drains exponentially (first-order
+    /// decay, shrinking steps) rather than at a fixed rate, and conserves
+    /// mass either way.
     /// Time constant: a first-order buffer drains exponentially (release ≈
     /// stock/τ) — the step sizes SHRINK — versus the fixed-rate buffer's
     /// constant steps. Both conserve. (Mobus: Buffering smooths over time;
@@ -2339,6 +2410,8 @@ mod tests {
         assert!(lin_bal.abs() < 1e-3, "fixed-rate drain conserves");
     }
 
+    /// Law: a stock's maintenance upkeep is always lost to dissipation,
+    /// never delivered downstream, whether or not the stock is used.
     /// Maintenance respiration: a stock loses its upkeep every tick to
     /// dissipation — never delivered downstream — whether or not it's used.
     /// (Odum depreciation / Mobus Fig 3.17 maintenance energy.)
@@ -2387,6 +2460,9 @@ mod tests {
         );
     }
 
+    /// Law: substance identity propagates downstream from its declared
+    /// source through pass-through nodes; the source itself is never
+    /// overwritten.
     /// Substance inheritance: declare it once at the Source and the
     /// pass-through nodes (buffer, splitter, …) take it from their inflow —
     /// no per-node copies. A signal node is never overwritten.
@@ -2419,6 +2495,9 @@ mod tests {
         );
     }
 
+    /// Law: back-pressure throttles the upstream source to produce only what
+    /// can pass, wasting nothing; without it, the blocked flow is shed —
+    /// both conserve.
     /// Back-pressure: a throttled valve backs its flow up the chain instead
     /// of shedding it. With back-pressure the upstream Source emits only what
     /// passes (little waste); without it the valve sheds the blocked half.
@@ -2461,6 +2540,8 @@ mod tests {
         );
     }
 
+    /// Law: nodes with identical wiring profiles (same inputs, same outputs)
+    /// count as one diversity class, not as separate individuals.
     #[test]
     fn diversity_from_wiring_alone() {
         let mut c = Circuit::default();

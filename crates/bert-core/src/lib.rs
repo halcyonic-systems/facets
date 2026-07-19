@@ -2014,6 +2014,7 @@ mod tests {
         assert_eq!(agent.primitive, None);
     }
 
+    /// Law: a legacy `primitives` array with more than one entry must be refused, not silently collapsed to its first entry — silent drop is data loss.
     #[test]
     fn legacy_multi_primitive_array_is_refused_with_a_decompose_message() {
         // Refused, not first-entry-dropped: no artifact ever carried a
@@ -2028,6 +2029,7 @@ mod tests {
         );
     }
 
+    /// Law: serialization is canonical — `primitive` writes only the scalar form and never the legacy `primitives` key, and `None` is omitted entirely.
     #[test]
     fn primitive_writes_the_scalar_form_and_omits_none() {
         let agent = AgentModel {
@@ -2042,6 +2044,7 @@ mod tests {
         assert!(!none.contains("primitive"), "None omitted entirely: {none}");
     }
 
+    /// Law: reading a legacy `primitives` array and writing it back yields the canonical scalar form — a load-then-save migrates without a flag day.
     #[test]
     fn legacy_model_self_migrates_on_resave() {
         // A legacy-form agent, once loaded and written back, carries the

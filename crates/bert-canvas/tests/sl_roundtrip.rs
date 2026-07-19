@@ -17,6 +17,8 @@ fn json(m: &CanvasModel) -> serde_json::Value {
     serde_json::to_value(m).unwrap()
 }
 
+/// Law: SL round-trip fidelity — for corpus text, parse ∘ emit ∘ parse is the
+/// identity on the model (digit for digit) and emit is a fixpoint on its own output.
 #[test]
 fn corpus_round_trips_digit_for_digit() {
     for (name, text) in CORPUS {
@@ -30,6 +32,8 @@ fn corpus_round_trips_digit_for_digit() {
     }
 }
 
+/// Law: every corpus model is a legal Core-mode system — the corpus doubles
+/// as the edu-suite's first lessons, so it must ship with zero Core issues.
 #[test]
 fn corpus_projects_clean_at_core() {
     // Every corpus model must be a legal Core-mode system — the corpus doubles
@@ -42,6 +46,9 @@ fn corpus_projects_clean_at_core() {
     }
 }
 
+/// Law: for a model NOT born from SL text (gap ids, interleaved history), emit
+/// is canonicalizing — emit(parse(emit(m))) is a fixpoint, and structure
+/// (names, roles, flow shape, positions) survives the renumbering.
 #[test]
 fn canvas_born_model_canonicalizes() {
     // Gap ids, interleaved declaration history, a directed mere relation, an
@@ -92,6 +99,9 @@ fn canvas_born_model_canonicalizes() {
     assert!(t1.contains("environment Milieu"), "{t1}");
 }
 
+/// Law: the SOI name survives both round trips — text → model → text AND
+/// canvas → world → canvas — and an unnamed model reads back unnamed (the
+/// "System" placeholder never leaks in as an authored name).
 #[test]
 fn soi_name_survives_both_round_trips() {
     // #84: the SOI name must survive text → model → text AND canvas → world →
@@ -113,6 +123,8 @@ fn soi_name_survives_both_round_trips() {
     assert_eq!(bert_canvas::canvas::to_canvas(&world).name, None);
 }
 
+/// Law: a name containing a quote is not expressible in SL v1 — emit refuses
+/// it with an error rather than silently corrupting the text.
 #[test]
 fn unrepresentable_names_refused() {
     let mut m = parse_sl("component A\n").unwrap();

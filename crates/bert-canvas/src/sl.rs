@@ -824,6 +824,9 @@ boundary porosity 0.7 fuzziness 0.1
         assert_eq!(flow.name, "iron");
     }
 
+    /// Law: SL parses to a `CanvasModel` and never itself judges legality —
+    /// the parsed model must flow through the SAME compile path the canvas
+    /// uses (`project()` then the kernel's mode validator) to earn a verdict.
     #[test]
     fn steel_plant_projects_and_validates() {
         // The parsed model must flow through the SAME compile path the canvas
@@ -850,6 +853,8 @@ boundary porosity 0.7 fuzziness 0.1
         assert_eq!(model.relations[0].name, "");
     }
 
+    /// Law: the parser accumulates every fault in one pass rather than
+    /// stopping at the first, and anchors each to its correct 1-indexed line.
     #[test]
     fn errors_carry_line_numbers_and_accumulate() {
         let err = parse_sl(
@@ -865,6 +870,8 @@ boundary porosity 0.7 fuzziness 0.1
         assert!(err[2].message.contains("components only"));
     }
 
+    /// Law: the grammar forbids two declarations sharing one name — a repeat
+    /// is a fault, not a silent overwrite or an implicit alias.
     #[test]
     fn duplicate_names_rejected() {
         let err = parse_sl("component A\nsource A\n").unwrap_err();
@@ -872,6 +879,8 @@ boundary porosity 0.7 fuzziness 0.1
         assert!(err[0].message.contains("already declared"));
     }
 
+    /// Law: the ignorable contract — an unrecognized `@`-annotation is
+    /// skipped, not a fault; the view layer degrades softly.
     #[test]
     fn unknown_annotations_are_skipped() {
         // The ignorable contract: the view layer degrades softly.
@@ -879,6 +888,9 @@ boundary porosity 0.7 fuzziness 0.1
         assert_eq!(model.things.len(), 1);
     }
 
+    /// Law: auto-layout is deterministic (same text, same picture) and
+    /// separates roles into rings — components on the inner N-gon, environment
+    /// things on the outer ring.
     #[test]
     fn layout_is_deterministic_and_separates_rings() {
         let text = "component A\ncomponent B\nsource S\n";

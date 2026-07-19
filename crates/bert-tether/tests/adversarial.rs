@@ -18,6 +18,7 @@ fn reservoir() -> bert_core::WorldModel {
     serde_json::from_str(RESERVOIR).expect("reservoir asset parses")
 }
 
+/// Law: `parse_csv` and Δt inference must return Ok/Err (or a well-defined value) for any input, never panic — a wasm panic is an unrecoverable abort.
 /// Pathological CSVs must parse-or-error, never panic; the inferred-Δt path over
 /// a time column (which sorts gaps) must survive non-finite and degenerate values.
 #[test]
@@ -52,6 +53,7 @@ fn parse_csv_and_inferred_dt_survive_weird_input() {
     }
 }
 
+/// Law: `mapping_status` must yield Ok/Err for any manifest + CSV combination, however malformed, never abort.
 /// `mapping_status` reconstructs the draft, runs the gates, and infers Δt — all
 /// from user-typed manifest state. Weird manifests must yield Ok/Err, not abort.
 #[test]
@@ -114,6 +116,7 @@ fn mapping_status_survives_weird_manifests() {
     }
 }
 
+/// Law: `force_and_run` must return `Err` for incomplete or nonsensical inputs (bad mapping, non-finite/zero/negative Δt or horizon) rather than abort.
 /// `force_and_run` is the heaviest path (resolve → gates → commit → project →
 /// simulate). Incomplete or nonsensical inputs must return `Err`, never abort.
 #[test]
@@ -165,6 +168,7 @@ fn force_and_run_refuses_without_panicking() {
     }
 }
 
+/// Law: flow/component target enumeration must complete (never panic) for any model, including one with no interactions or systems at all.
 /// The target enumerations off a well-formed model must not panic even when the
 /// model is odd (this exercises the handle arithmetic in `name_of`).
 #[test]

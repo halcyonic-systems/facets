@@ -566,6 +566,7 @@ mod tests {
         assert_eq!(spec.flows[0].unit, "L");
     }
 
+    /// Law: Core (Klir) has no flow semantics to execute — `validate_operational` must refuse it, naming the rung.
     #[test]
     fn klir_mode_refuses_with_cited_rung() {
         let mut m = mobus_model();
@@ -578,6 +579,7 @@ mod tests {
         );
     }
 
+    /// Law: Structural (Bunge) commits to bonded composition, not typed flows — `validate_operational` must refuse it, naming the rung.
     #[test]
     fn bunge_mode_refuses_with_cited_rung() {
         let mut m = mobus_model();
@@ -590,6 +592,7 @@ mod tests {
         );
     }
 
+    /// Law: a system with an agent but no Mobus primitive is refused, and the refusal names the offending component.
     #[test]
     fn missing_primitive_is_named() {
         let mut m = mobus_model();
@@ -600,6 +603,7 @@ mod tests {
             .any(|e| e.reason.contains("Tank") && e.reason.contains("no Mobus primitive")));
     }
 
+    /// Law: a level-1 system with no agent model at all is refused, and the refusal names it.
     #[test]
     fn missing_agent_is_named() {
         let mut m = mobus_model();
@@ -610,6 +614,7 @@ mod tests {
             .any(|e| e.reason.contains("Tank") && e.reason.contains("no agent model")));
     }
 
+    /// Law: hierarchy below level 1 has no executable reading in the flat circuit vocabulary — any system at level 2+ is refused.
     #[test]
     fn deep_hierarchy_refused() {
         let mut m = mobus_model();
@@ -624,6 +629,7 @@ mod tests {
         assert!(errs.iter().any(|e| e.reason.contains("level 2")));
     }
 
+    /// Law: boundary crossings run only in their declared direction — a flow leaving a sink or entering a source is refused.
     #[test]
     fn reversed_boundary_crossing_refused() {
         let mut m = mobus_model();
@@ -635,6 +641,7 @@ mod tests {
         assert!(errs.iter().any(|e| e.reason.contains("enters a source")));
     }
 
+    /// Law: a Force (gradient) flow is under-specified, and refused, without a parsable conductance parameter.
     #[test]
     fn gradient_flow_needs_conductance() {
         let mut m = mobus_model();
@@ -653,6 +660,7 @@ mod tests {
         assert_eq!(spec.flows[1].conductance, Some(0.42));
     }
 
+    /// Law: a component no flow touches would ride along silently in the circuit — it is refused, not tolerated.
     #[test]
     fn isolated_component_refused() {
         let mut m = mobus_model();
@@ -688,6 +696,7 @@ mod tests {
         m
     }
 
+    /// Law: bert#108 — an interface-routed flow lowers to an Impeding work-process marker rather than being refused; an un-routed flow carries no marker.
     #[test]
     fn interface_routing_lowers_citing_108() {
         let spec = validate_operational(&routed_mobus_model())
@@ -713,6 +722,7 @@ mod tests {
         );
     }
 
+    /// Law: bert#108's identity default is observationally exact — stripped of its provenance marker, a routed and an unrouted projection are the same spec.
     #[test]
     fn interface_lowering_is_identity_default() {
         // Unparameterized, the lowering is observationally the flow attaching
@@ -734,6 +744,7 @@ mod tests {
         );
     }
 
+    /// Law: the spec's content hash is stable across identical projections and moves whenever a structural element (e.g. a work-process primitive) changes.
     #[test]
     fn content_hash_tracks_structural_change() {
         let a = validate_operational(&mobus_model()).expect("projects");
@@ -757,6 +768,7 @@ mod tests {
         assert_eq!(spec, back, "the seam payload survives JSON unchanged");
     }
 
+    /// Law: Mobus §4.3 (k ≠ o) — a self-loop is refused when validating for execution, the same hypothesis as the mode-transition gate.
     #[test]
     fn self_loop_refused_via_operational_rung() {
         let mut m = mobus_model();

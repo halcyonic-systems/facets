@@ -237,6 +237,8 @@ mod tests {
         );
     }
 
+    /// Law: every domain lens must supply a non-empty label for all 12
+    /// primitive slots — no blanks, no gaps.
     #[test]
     fn lenses_rename_every_primitive() {
         // Each domain lens covers all 12 slots, no blanks.
@@ -249,6 +251,9 @@ mod tests {
         }
     }
 
+    /// Law: a lens re-skins only auto-generated names (preserving the
+    /// trailing number); a user's custom name is never touched, and the
+    /// identity lens changes nothing.
     #[test]
     fn display_name_reskins_auto_keeps_custom() {
         let sensing = NodeKind::Process(ProcessPrimitive::Sensing);
@@ -261,6 +266,9 @@ mod tests {
         assert_eq!(display_name(0, sensing, "Sensing 5"), "Sensing 5");
     }
 
+    /// Law: a lens is pure presentation — it must never change the
+    /// simulation's dynamics, so every lens produces a byte-identical
+    /// trajectory (the K≅2 invariance, machine-checked).
     /// THE artifact, as a test: a lens is pure presentation, so the universal
     /// homeostat produces a byte-identical CSV under every lens. The dynamics
     /// do not know which domain you're reading — that invariance IS the K≅2

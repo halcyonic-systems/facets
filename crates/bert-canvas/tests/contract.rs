@@ -99,12 +99,18 @@ fn sample() -> CanvasModel {
     }
 }
 
+/// Law: `CanvasModel`'s wasm-boundary shape is a frozen contract — any Rust
+/// field change must re-bless the fixture deliberately, never drift silently
+/// past the TS mirror.
 #[test]
 fn canvas_model_fixture() {
     // The editing model itself crosses the edge (project / to_canvas / analyze).
     check_fixture("canvas_model", &sample());
 }
 
+/// Law: `LensFacts`/`EdgeFact`/`PortFact` freeze their wasm-boundary shape
+/// against a model that actually populates edges AND ports, so the contract
+/// covers real data, not an empty degenerate case.
 #[test]
 fn lens_facts_fixture() {
     let facts = lens_facts(&sample());
@@ -118,6 +124,9 @@ fn lens_facts_fixture() {
     check_fixture("port_fact", &facts.ports[0]);
 }
 
+/// Law: each `LensDescription` variant (Klir/Bunge/Mobus) freezes its
+/// wasm-boundary shape against the SAME model, so the fixtures stay
+/// comparable across lenses (K≅2's counts, applied to the contract).
 #[test]
 fn lens_description_fixtures() {
     let m = sample();
@@ -126,6 +135,8 @@ fn lens_description_fixtures() {
     check_fixture("lens_description_mobus", &describe(&m, Lens::Mobus));
 }
 
+/// Law: `SlError`'s wasm-boundary shape is frozen against a real multi-fault
+/// parse, so the contract covers an accumulated fault list, not a single fault.
 #[test]
 fn sl_error_fixture() {
     // The SL parse-fault list crosses the edge inside compile_sl's `{ errors }`
@@ -136,6 +147,9 @@ fn sl_error_fixture() {
     check_fixture("sl_errors", &errors);
 }
 
+/// Law: `CanvasAnalysis`/`ValidationResult` freeze their wasm-boundary shape
+/// against a model whose self-loop actually trips an Operational issue, so
+/// severity/location/subject are exercised, not left at their defaults.
 #[test]
 fn canvas_analysis_and_validation_fixtures() {
     let a = analyze(&sample(), Lens::Mobus);

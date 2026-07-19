@@ -474,6 +474,9 @@ mod tests {
     use bert_core::ProcessPrimitive;
     use glam::vec2 as pos2;
 
+    /// Law: per-flow rates survive the spec→circuit seam into execution —
+    /// no last-wire-wins collapse, and each wire fires at its own declared
+    /// rate.
     /// bert#111: per-flow amounts survive the seam INTO EXECUTION. A source
     /// with two pushed, differently-quantified outflows keeps both rates on
     /// their wires (no last-wire-wins), the FIRST flow names the display
@@ -543,6 +546,8 @@ mod tests {
         );
     }
 
+    /// Law: a forced flow's observed rate series survives the spec→circuit
+    /// seam and executes tick by tick, not just at rest in the spec.
     /// bert-lenses#16, the seam hop: a forced flow's observed series survives
     /// spec → circuit AND executes tick by tick. Complements the pure-circuit
     /// `forced_wire_delivers_series_tick_by_tick` — the #111 lesson is that a
@@ -595,6 +600,8 @@ mod tests {
         }
     }
 
+    /// Law: a per-wire rate series reaches any sender's outflow (not just a
+    /// Source's) and governs a computed split end to end.
     /// Rung 2, the seam hop: a per-wire series reaches a SPLITTER's outflows
     /// (not just a source's) and governs the allocation. This is the export
     /// generalization — the series rides the wire regardless of sender kind —
@@ -663,6 +670,8 @@ mod tests {
         assert!(c.balance().abs() < 1e-2, "the computed split conserves: {}", c.balance());
     }
 
+    /// Law: a flow's dt_stride survives the spec→circuit seam and the wire
+    /// zero-order-holds its series on that slower clock.
     /// Rung 3, the seam hop: a flow's `dt_stride` survives spec → circuit and
     /// makes the wire zero-order-hold its series on the slower clock.
     #[test]
@@ -703,6 +712,9 @@ mod tests {
         }
     }
 
+    /// Law: an exported model always validates cleanly and its JSON
+    /// round-trip preserves every asserted quantity (rates, stocks,
+    /// substance).
     #[test]
     fn emitted_model_validates_and_round_trips() {
         let mut c = Circuit::default();
@@ -767,6 +779,9 @@ mod tests {
         assert_eq!(src_flow.unit, "L", "declared unit on the interaction");
     }
 
+    /// Law: every exported model satisfies bert-core's operational contract,
+    /// the two validation gates agree on refusals, and representational
+    /// (Klir/Bunge) rungs always refuse execution.
     /// The seam as a contract: every model compose exports satisfies
     /// bert-core's `validate_operational`, the two gates agree on refusals,
     /// and the projected spec drives a circuit whose ledger balances.
@@ -826,6 +841,8 @@ mod tests {
         assert!(from_world_model(&model).is_err());
     }
 
+    /// Law: cognitive parameters (setpoint, back-pressure) survive the JSON
+    /// round-trip intact.
     /// An Inverting node's setpoint and a Modulating node's back-pressure flag
     /// survive the JSON round-trip (cognitive_params, same path as capacity).
     #[test]
@@ -867,6 +884,8 @@ mod tests {
         );
     }
 
+    /// Law: save→load preserves every knob the canvas can set and the
+    /// reloaded circuit behaves identically (same dynamics, conserves).
     /// Save → Load round-trip: every knob the canvas can set survives —
     /// kinds, names, rates, stocks, release, substances, gradient mode and
     /// conductance — and the loaded circuit behaves identically.

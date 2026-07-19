@@ -143,6 +143,9 @@ mod tests {
         model.interactions[0].sink_interface = Some(iface_id);
     }
 
+    /// Law: a model whose flow routes through a boundary interface is
+    /// runnable input as-is — it projects, builds, and runs conserving, with
+    /// zero edits.
     /// THE bert#108 4.2 acceptance test (this IS the contract): a model that
     /// routes a flow through a boundary interface — which validate_operational
     /// REFUSED before the identity-default lowering — now projects, builds a
@@ -179,6 +182,9 @@ mod tests {
         );
     }
 
+    /// Law: a recorded trajectory H is keyed to the spec it ran on — any
+    /// structural edit invalidates it, and a stale H is refused rather than
+    /// silently returned.
     /// H is keyed to the spec it ran on and lives here, outside the WorldModel
     /// (A2). A structural edit moves the key, so the recording surfaces as stale
     /// rather than silently returning the old trajectory.
@@ -210,6 +216,9 @@ mod tests {
         );
     }
 
+    /// Law: a run's Δt is stamped into H, (T, Δt) maps to a tick count via
+    /// T/Δt, and the Δt=1 driver is observationally identical to stepping
+    /// the circuit directly.
     /// Δt supply: a run accepts an explicit Δt and stamps it into H; the `(T, Δt)`
     /// form turns a horizon into a tick count; and the Δt=1 driver is exactly
     /// stepping the circuit N times (observational equivalence).

@@ -627,6 +627,7 @@ mod tests {
         assert_eq!(parse_csv("   \n"), Err(CsvError::Empty));
     }
 
+    // Law: a mapping cannot finish until every column is spoken for — assigned to a role with a chosen target, or explicitly ignored.
     // T1 — mapping-total.
     #[test]
     fn t1_finish_blocked_until_every_column_is_spoken_for() {
@@ -645,6 +646,7 @@ mod tests {
         assert!(!d.is_total(), "an unresolved target blocks the finish");
     }
 
+    // Law: a flow-magnitude column with no declared unit must refuse and name the offending column, never finish silently.
     // T2 — no silent units.
     #[test]
     fn t2_flow_magnitude_without_units_refuses_and_names_the_column() {
@@ -660,6 +662,7 @@ mod tests {
         assert!(d.units_ok().is_ok(), "declaring units clears T2");
     }
 
+    // Law: committing a draft only reads the draft and returns data keyed to the chosen targets — it never mutates the canvas model.
     // T5 — import is pure: commit only reads the draft and yields data.
     #[test]
     fn t5_commit_yields_only_data_keyed_to_targets() {
@@ -685,6 +688,7 @@ mod tests {
         assert_eq!(data.time.len(), 3, "the time column is retained");
     }
 
+    /// Law: a flow magnitude supplies its Flow interaction's amount as the mapped column's mean, and a stock level supplies a component's initial storage as the column's first observation.
     #[test]
     fn projection_params_supply_mean_amount_and_initial_stock() {
         let mut d = draft();
@@ -701,6 +705,7 @@ mod tests {
         assert!((params.stock_initial[&3] - 100.0).abs() < 1e-9);
     }
 
+    /// Law: the observation Δt is inferred as the median gap between consecutive present timestamps in the mapped time column.
     #[test]
     fn inferred_dt_is_the_median_spacing() {
         let mut d = draft();
@@ -708,6 +713,7 @@ mod tests {
         assert_eq!(d.inferred_dt(), Some(1.0), "months spaced by 1");
     }
 
+    /// Law: a mapped time column with duplicate values (a long-format panel) must be refused before finish, so a magnitude column is never silently averaged across duplicated entity rows.
     /// T4 (#26): a long-format panel — duplicate time values — is refused before
     /// finish, so a magnitude column is never silently averaged across the
     /// duplicated entity rows.
@@ -733,6 +739,7 @@ mod tests {
         assert!(agg.can_finish());
     }
 
+    /// Law: a fully-mapped, unit-declared CSV can finish and its declared numbers project unchanged into ModelParams end to end.
     #[test]
     fn demo_csv_maps_and_supplies_the_acceptance_path() {
         // The shipped acceptance file parses, maps total, and supplies the numbers
@@ -783,6 +790,7 @@ mod tests {
         assert!((c.divergence_pct().unwrap() - 33.333).abs() < 0.01);
     }
 
+    /// Law: divergence must be measured against the EXECUTED series, never the declared baseline — a run that starves must report the executed gap even when its declared mean sits close to actual.
     /// #25: the divergence figure reads the EXECUTED series, never the declared
     /// baseline. A hoarding run (executed ≈ 0 against a rising actual) must report
     /// the hoarding gap even when the declared mean happens to sit close to the
