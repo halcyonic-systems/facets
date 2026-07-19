@@ -344,6 +344,7 @@ mod tests {
         }
     }
 
+    /// Law: a manifest and the hand-driven wizard must produce byte-identical ImportedData for the same CSV and meaning — one projection path, nothing to drift.
     /// #38 invariant 1, the identity fixture: a manifest and the hand-driven
     /// wizard produce byte-identical ImportedData for the same CSV + meaning.
     /// One projection path — nothing to drift.
@@ -391,6 +392,7 @@ mod tests {
         );
     }
 
+    /// Law: the manifest compiles onto the same draft the wizard drives, so a gate (e.g. T2) refuses a headless run through the exact same check and message path as an interactive one.
     /// Gates are gates everywhere (#38 invariant 2): the manifest compiles onto
     /// the draft, and T2 refuses a unitless flow exactly as the wizard does.
     #[test]
@@ -416,6 +418,7 @@ mod tests {
         assert!(!draft.can_finish());
     }
 
+    /// Law: a manifest entry naming an element the model doesn't have is a loud error listing the known candidates — never a silent misbind.
     #[test]
     fn unknown_element_is_a_loud_error_naming_candidates() {
         let (flows, comps) = ctx();
@@ -439,6 +442,7 @@ mod tests {
         );
     }
 
+    /// Law: T1 applies at the manifest level too — a CSV column absent from the manifest's mapping is an error, exactly as an unassigned column blocks the wizard.
     #[test]
     fn unmapped_csv_column_is_a_t1_error() {
         let (flows, comps) = ctx();
@@ -459,6 +463,7 @@ mod tests {
         assert!(errs[0].contains("ignore"), "the fix is named: {errs:?}");
     }
 
+    /// Law: a finished draft must serialize to a manifest that re-applies to reproduce an identical draft, force flag included.
     /// Round-trip: a finished draft serializes to a manifest that re-applies to
     /// an identical draft — the wizard-save half of #38 (subsumes #37).
     #[test]

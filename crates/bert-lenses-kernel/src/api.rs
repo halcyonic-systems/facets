@@ -472,6 +472,9 @@ mod tests {
         mint(&homeo, "Homeostat", "homeostat");
     }
 
+    /// Law: every systemhood verdict is computed in the kernel — the wasm edge
+    /// carries reports out, never judgment in (JS decides nothing).
+    ///
     /// The `validate()` path: recent canonical models produce a report without
     /// panicking (they are structural, so they carry issues — that's fine; the
     /// point is the verdict is computed in the kernel, which the smoke slice shows).
@@ -620,6 +623,10 @@ mod tests {
         check_fixture("run_result_rich", &RunResultRich::from(readout));
     }
 
+    /// Law: under the declared conservation invariant, the full run() spine
+    /// balances its ledger every tick — the declared invariant is checked at
+    /// the boundary the user actually calls, not only in engine unit tests.
+    ///
     /// The full `run()` spine on the bundled executable sample: parse → project →
     /// build circuit → record → conserve. Regenerate the sample with
     /// `mint_runnable_sample` if the engine's serialization changes.

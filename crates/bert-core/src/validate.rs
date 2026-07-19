@@ -445,7 +445,11 @@ fn check_orphan_sources(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
             if !referenced_sources.contains(&id_str) {
                 issues.push(ValidationIssue::error(
                     format!("{loc_prefix}.sources[{i}]"),
-                    format!("orphan source '{id_str}' is not referenced by any interaction"),
+                    format!(
+                        "orphan source '{id_str}' is not referenced by any interaction — \
+                         the environment enters a model only through flows, so a source \
+                         that couples to nothing lies outside the system's boundary"
+                    ),
                     Some("Add an interaction with this source, or remove it"),
                 ));
             }
@@ -472,7 +476,11 @@ fn check_orphan_sinks(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
             if !referenced_sinks.contains(&id_str) {
                 issues.push(ValidationIssue::error(
                     format!("{loc_prefix}.sinks[{i}]"),
-                    format!("orphan sink '{id_str}' is not referenced by any interaction"),
+                    format!(
+                        "orphan sink '{id_str}' is not referenced by any interaction — \
+                         a sink is defined by what flows into it, so one that receives \
+                         nothing is not part of the system's coupling to its environment"
+                    ),
                     Some("Add an interaction with this sink, or remove it"),
                 ));
             }
@@ -563,7 +571,11 @@ fn check_orphan_interfaces(model: &WorldModel, issues: &mut Vec<ValidationIssue>
             if !referenced.contains(&id_str) {
                 issues.push(ValidationIssue::warning(
                     format!("systems[{i}].boundary.interfaces[{j}]"),
-                    format!("interface '{id_str}' has no flow routing and no attached processor"),
+                    format!(
+                        "interface '{id_str}' has no flow routing and no attached processor — \
+                         a boundary interface is individuated by the flow it gates, so one \
+                         that gates nothing carries no systemic role"
+                    ),
                     Some("Add a flow using this interface, attach an interface processor, or remove it if unused"),
                 ));
             }
@@ -1054,6 +1066,7 @@ mod tests {
         assert!(result.is_clean(), "got: {:#?}", result.issues);
     }
 
+    /// Law: a source that couples to no interaction lies outside the system's boundary — an error, not a warning.
     #[test]
     fn orphan_source_is_error() {
         let mut model = minimal_model();
@@ -1081,6 +1094,7 @@ mod tests {
             .any(|i| i.message.contains("orphan source")));
     }
 
+    /// Law: a sink that receives no interaction plays no coupling role — an error, not a warning.
     #[test]
     fn orphan_sink_is_error() {
         let mut model = minimal_model();
@@ -1108,6 +1122,7 @@ mod tests {
             .any(|i| i.message.contains("orphan sink")));
     }
 
+    /// Law: every interaction endpoint must resolve to a known entity (on-ness) — a dangling reference is an error.
     #[test]
     fn dangling_interaction_source_is_error() {
         let mut model = minimal_model();
@@ -1161,6 +1176,7 @@ mod tests {
         assert!(result.issues.iter().any(|i| i.location == "version"));
     }
 
+    /// Law: a system's level must equal its ID's index depth minus one; a mismatch is a warning.
     #[test]
     fn level_mismatch_is_warning() {
         let mut model = minimal_model();
@@ -1237,6 +1253,7 @@ mod tests {
         }
     }
 
+    /// Law: a processor with a parent_interface but no connecting flow is a warning — an import/export processor must be a source or sink in some flow.
     #[test]
     fn processor_without_flows_is_warning() {
         let mut model = minimal_model();
@@ -1305,6 +1322,7 @@ mod tests {
             .any(|i| i.message.contains("Processor") && i.message.contains("no connecting flows")));
     }
 
+    /// Law: a boundary interface with no flow routing and no attached processor carries no systemic role — a warning, not an error.
     #[test]
     fn orphan_interface_is_warning() {
         let mut model = minimal_model();
@@ -1347,6 +1365,7 @@ mod tests {
             .any(|i| i.location == "environment.info.id"));
     }
 
+    /// Law: every S0 boundary interface must be claimed by a level-1 processor so external flows trace to internal subsystems — an unclaimed interface warns.
     #[test]
     fn s0_interface_without_processor_is_warning() {
         let mut model = minimal_model();
@@ -1424,6 +1443,7 @@ mod tests {
             .any(|i| i.message.contains("has no processor")));
     }
 
+    /// Law: an S0 boundary interface claimed by a level-1 processor traces external flows to an internal subsystem — no warning fires.
     #[test]
     fn s0_interface_with_processor_no_warning() {
         let mut model = minimal_model();
@@ -1633,6 +1653,7 @@ mod tests {
         m
     }
 
+    /// Law: Bunge Def 1.1 — an unbonded collection of components is a valid Core model but not a Structural system; entering Structural requires at least one bond.
     #[test]
     fn aggregate_enters_core_but_not_structural() {
         let m = two_component_model();
@@ -1653,6 +1674,7 @@ mod tests {
         );
     }
 
+    /// Law: Bunge Def 1.1 — a bonded pair of distinct components satisfies Structural entry.
     #[test]
     fn a_bond_enters_structural() {
         let mut m = two_component_model();
@@ -1666,6 +1688,7 @@ mod tests {
         );
     }
 
+    /// Law: check_bond reads bonds off system endpoints only — routing a bond through interfaces does not hide it from Bunge's HasBond check.
     #[test]
     fn interface_mediated_bond_enters_structural() {
         // Invariant guard: even when a bond runs through interfaces, the
@@ -1716,6 +1739,7 @@ mod tests {
         );
     }
 
+    /// Law: Mobus §4.3 (Irreflexive) — a self-loop is legal under Bunge's bond but illegal entering Operational.
     #[test]
     fn self_loop_enters_structural_but_not_operational() {
         let mut m = two_component_model();
@@ -1736,6 +1760,7 @@ mod tests {
         );
     }
 
+    /// Law: Structural and Operational are independent lenses on the kernel ladder — satisfying one implies nothing about the other (rungs don't inherit).
     #[test]
     fn structural_and_operational_are_independent_lenses() {
         // A single-component model with no bond is *not* Structural, yet it is
@@ -1745,6 +1770,7 @@ mod tests {
         assert!(!validate_mode(&m, Mode::Operational).has_errors());
     }
 
+    /// Law: an absent `mode` stamp resolves to Full and must not serialize a `mode` key, so pre-mode-ladder files stay byte-stable.
     #[test]
     fn absent_mode_is_full_and_byte_stable() {
         let m = minimal_model();
@@ -1787,6 +1813,7 @@ mod tests {
         }
     }
 
+    /// Law: Full mode warns, never errors, when no system populates the dynamical face (transformation/history/time_constant).
     #[test]
     fn empty_dynamical_face_warns_in_full_mode() {
         // Clear S0's default time_constant so no system carries a dynamical face.
@@ -1816,6 +1843,7 @@ mod tests {
 
     // ---- Kernel projection round trip (bert#88 Part 3) -------------------
 
+    /// Law: the kernel projection's `things` include every relatum (systems, environment) and `dep` mirrors the declared interactions exactly.
     #[test]
     fn kernel_projects_things_and_dependencies() {
         let mut m = two_component_model();
@@ -1831,6 +1859,7 @@ mod tests {
         assert_eq!(k.dep, vec![(sys_id(vec![0, 0]), sys_id(vec![0, 1]))]);
     }
 
+    /// Law: environment sources and sinks are relata in the kernel projection, same as systems.
     #[test]
     fn kernel_includes_environment_externals() {
         // Exercise the environment source/sink branch of kernel().
@@ -1879,6 +1908,7 @@ mod tests {
         assert_eq!(things.len(), 4);
     }
 
+    /// Law: viewing a model through any mode must not mutate its kernel — mode views are read-only.
     #[test]
     fn mode_views_are_read_only_kernel_invariant() {
         // The Rust twin of the Lean round-trip theorems: viewing a model through
@@ -1903,6 +1933,7 @@ mod tests {
         }
     }
 
+    /// Law: Bunge 1992 — the boundary is exactly the components directly coupled to environmental items; interior components are shielded.
     #[test]
     fn boundary_components_marks_only_env_coupled() {
         // Bunge 1992: the boundary is the set of components directly coupled to
@@ -1916,6 +1947,7 @@ mod tests {
         assert_eq!(m.boundary_components(), vec![sys_id(vec![0, 0])]);
     }
 
+    /// Law: endo/exo edge locus (N vs G) is computed strictly from the kernel graph, never from styling (K≅2).
     #[test]
     fn edge_locus_splits_n_from_g() {
         // Endo/exo = N/G: kernel-computed, never stylistic.
@@ -1926,6 +1958,7 @@ mod tests {
         assert_eq!(m.edge_locus(&exo), EdgeLocus::Exo);
     }
 
+    /// Law: a model with no environment-coupled component has an empty boundary set.
     #[test]
     fn boundary_empty_for_closed_model() {
         let mut m = two_component_model();
@@ -2002,6 +2035,7 @@ mod tests {
             .collect()
     }
 
+    /// Law: a node with incoming flow but none outgoing is surfaced as a dead-end warning, never an error — legitimate terminal states are common.
     #[test]
     fn corrected_bill_surfaces_five_absorbing_states_as_warnings() {
         let m = bill_corrected();
@@ -2026,6 +2060,7 @@ mod tests {
         );
     }
 
+    /// Law: parallel edges of the same type warn as duplicates, and removing a node's outgoing flow turns it into a dead-end warning.
     #[test]
     fn broken_bill_fires_duplicate_edge_and_vetoed_dead_end() {
         // Break the corrected FSA two ways: strip Vetoed's outgoing transitions
@@ -2049,6 +2084,7 @@ mod tests {
         );
     }
 
+    /// Law: two interactions with identical source, sink, and type are duplicate edges — flagged once, as a warning.
     #[test]
     fn duplicate_edge_is_universal_warning() {
         // Two identical Material flows A→B; a Force edge A→B is a distinct type.
@@ -2070,6 +2106,7 @@ mod tests {
         );
     }
 
+    /// Law: same endpoints but a different interaction type is not a duplicate edge — type is part of edge identity.
     #[test]
     fn distinct_edge_type_is_not_a_duplicate() {
         let mut m = two_component_model();
@@ -2087,6 +2124,7 @@ mod tests {
         );
     }
 
+    /// Law: a node reachable from no entry (no incoming flow, or fed only through a disconnected cycle) is a warning.
     #[test]
     fn distinct_substance_is_not_a_duplicate() {
         // Same endpoints and type (Flow), but one carries Material and one
@@ -2139,6 +2177,7 @@ mod tests {
         );
     }
 
+    /// Law: dead-end and reachability checks run only in Operational/Full modes — Core and Structural carry no flow semantics to check.
     #[test]
     fn dead_end_and_reachability_only_in_dynamic_modes() {
         // The container-plus-cycle model has both a dead-end and unreachable

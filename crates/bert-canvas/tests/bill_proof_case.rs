@@ -39,6 +39,9 @@ fn duplicate_issue_idxs(a: &CanvasAnalysis) -> Vec<usize> {
         .collect()
 }
 
+/// Law: the v1 Tauri-era JSON shape loads through the real path
+/// (deserialize → to_canvas → analyze) end to end, and Operational mode
+/// drives the Mobus lens description on the result.
 #[test]
 fn step0_v1_bill_parses_and_analyzes() {
     // If this test compiles-and-runs, the canvas load path accepts v1 JSON
@@ -54,6 +57,9 @@ fn step0_v1_bill_parses_and_analyzes() {
     );
 }
 
+/// Law: a correct FSA with legitimate absorbing states loads with zero
+/// Errors, exactly its terminal states warn as dead-ends, non-absorbing
+/// states (Vetoed, which still emits) do not, and every node is reachable.
 #[test]
 fn corrected_bill_five_terminals_no_errors() {
     let a = load(CORRECTED);
@@ -97,6 +103,9 @@ fn corrected_bill_five_terminals_no_errors() {
     );
 }
 
+/// Law: structurally-legal-but-domain-questionable defects (an injected
+/// dead-end, a duplicate edge) surface as Warnings, never Errors, and each
+/// issue resolves to the correct canvas element kind (thing vs relation).
 #[test]
 fn broken_bill_dead_end_and_duplicate_with_targets_no_errors() {
     let a = load(BROKEN);

@@ -495,6 +495,9 @@ mod tests {
     use super::*;
     use crate::manifest::RunManifest;
 
+    // Law: a forced run must conserve (residual ~0 against throughput) and every
+    // level/trajectory/comparison it reads back must carry the model's own
+    // domain name, never a bare engine column.
     // The runnable sample is Source → Buffering → Sink; interaction 0 is the
     // inflow. Force it with a constant CSV series and confirm the whole pipeline
     // runs, conserves, and reads back domain-named.
@@ -533,6 +536,8 @@ mod tests {
         assert_eq!(cmp.unit, "units/mo");
     }
 
+    // Law: conservation and domain-name legibility hold for every bundled
+    // demo, not just one hand-picked model.
     // Each bundled demo (model + CSV + mapping) must run forced, conserve, and
     // read back domain-named — proving the exact element-name match (incl. the
     // "→" char) and the whole one-click path.
@@ -574,6 +579,7 @@ mod tests {
         }
     }
 
+    /// Law: `force_and_run` must refuse an incomplete (T1-failing) mapping with a legible reason rather than running the model.
     #[test]
     fn incomplete_mapping_is_refused_with_a_reason() {
         let json = include_str!("../../../assets/models/runnable-sample.json");

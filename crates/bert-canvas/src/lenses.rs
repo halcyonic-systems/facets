@@ -606,6 +606,8 @@ mod tests {
         }
     }
 
+    /// Law: the boundary identity holds — a component is in boundary_thing_ids
+    /// iff it is coupled to the environment; an uncoupled component is not.
     #[test]
     fn boundary_facts_are_canvas_keyed() {
         // 3(Env) → 1(Comp) → 2(Comp): only 1 couples to the environment.
@@ -622,6 +624,8 @@ mod tests {
         assert_eq!(f.environment_thing_ids, vec![3]);
     }
 
+    /// Law: the edge ladder reports every canvas relation — bonds AND mere
+    /// relations alike — each classified endo/exo by the same C/E role split.
     #[test]
     fn edges_ladder_reports_every_relation() {
         let m = model(
@@ -646,6 +650,9 @@ mod tests {
         assert_eq!(by_id(12).locus, EdgeLocus::Endo);
     }
 
+    /// Law: a Bunge diagonal bond (self-loop) has no Mobus preimage, so it is
+    /// flagged not-Mobus and raises no port; it also touches no environment,
+    /// so the boundary set is unchanged.
     #[test]
     fn self_loop_flagged_not_mobus() {
         let m = model(
@@ -662,6 +669,9 @@ mod tests {
         assert!(f.ports.is_empty());
     }
 
+    /// Law: ports are bipartite (component ↔ environment, never comp-comp or
+    /// env-env) and directional (Receives / Exports / Hybrid); the ported node
+    /// IS a marked boundary node, and coupled pairs merge into one port.
     #[test]
     fn ports_are_bipartite_and_directional() {
         let mut m = model(
@@ -706,6 +716,9 @@ mod tests {
         )
     }
 
+    /// Law: K≅2 — the same model's thing/relation counts agree across the
+    /// Klir, Bunge, and Mobus lenses (composition+environment=things,
+    /// bondage+mere=relations, endo/exo=N/G); only the vocabulary changes.
     #[test]
     fn describe_counts_hold_across_lenses() {
         // K≅2 made visible: the counts agree, only the vocabulary changes.
@@ -727,6 +740,9 @@ mod tests {
         assert_eq!(g, exostructure);
     }
 
+    /// Law: describe's Bunge verdict and boundary_components are read off the
+    /// same kernel facts as `analyze` — a bond between distinct components
+    /// makes a system (Def 1.1); stripping all bonds makes an aggregate.
     #[test]
     fn describe_bunge_verdict_matches_kernel() {
         let m = rich_model();
@@ -743,6 +759,8 @@ mod tests {
         assert_eq!(verdict, "aggregate");
     }
 
+    /// Law: Mobus's b_interfaces are the boundary components reified as ports,
+    /// and self_loop_conflicts lists exactly the bonds with no Mobus preimage.
     #[test]
     fn describe_mobus_lists_self_loop_conflicts() {
         let m = rich_model();
@@ -753,6 +771,9 @@ mod tests {
         assert_eq!(b_interfaces, vec!["A"], "B's interfaces are the boundary components, reified");
     }
 
+    /// Law: the mechanism note must always state M/T as formally UNbridged
+    /// (Bridge.lean delivers CES, not CESM) — both the pinned constant and the
+    /// source's own doc comments must tell this same story, never a delivered CESM.
     #[test]
     fn mechanism_note_never_claims_bridge() {
         // Pin the wording: M↔T is conceptually parallel but formally UNbridged
@@ -775,6 +796,9 @@ mod tests {
         assert!(src.contains(&m_doc), "MECHANISM_NOTE separator comment must stay");
     }
 
+    /// Law: one bond flips the aggregate verdict — two components joined only
+    /// by a mere relation are an aggregate (Def 1.1); adding a bond makes them
+    /// a system.
     #[test]
     fn aggregate_flips_with_the_bond() {
         // Two components joined only by a mere relation: an aggregate (Def 1.1).
@@ -795,6 +819,9 @@ mod tests {
             .any(|i| i.message.contains("exports-only"))
     }
 
+    /// Law: Mobus alone carries the open-system commitment — a boundary that
+    /// gates only outward (exports-only, no receiving port) draws a warning
+    /// under Mobus but stays silent under Klir and Bunge.
     #[test]
     fn mobus_warns_on_exports_only_boundary() {
         // A→B (an endo bond, so Bunge already reads a system) plus A→Env (an
@@ -823,6 +850,8 @@ mod tests {
         assert!(!has_openness_warning(&analyze(&m, Lens::Bunge)), "Bunge silent on openness");
     }
 
+    /// Law: an inward-gated boundary (any port Receives or Hybrid) never
+    /// trips the openness warning, under any lens.
     #[test]
     fn mobus_silent_when_a_port_gates_inward() {
         // Env→A is a receiving port; the A↔B cycle keeps the graph otherwise

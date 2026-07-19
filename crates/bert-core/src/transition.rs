@@ -673,6 +673,7 @@ mod tests {
     // runs H are out of scope by A2's Gate-4 constraint — H must live outside
     // `WorldModel`, so no `H` field participates in this round-trip.
 
+    /// Law: `rebuild(downgrade(m).model, downgrade(m).loss)` reproduces `m` field-for-field — Full→Operational sheds nothing irrecoverably.
     #[test]
     fn l1_full_to_operational_round_trips() {
         let m = full_model();
@@ -680,6 +681,7 @@ mod tests {
         assert_eq!(as_json(&rebuild(down, &loss)), as_json(&m));
     }
 
+    /// Law: the same round-trip completeness holds descending straight to Core.
     #[test]
     fn l1_full_to_core_round_trips() {
         let m = full_model();
@@ -687,6 +689,7 @@ mod tests {
         assert_eq!(as_json(&rebuild(down, &loss)), as_json(&m));
     }
 
+    /// Law: Structural owns no stored field, so its downgrade witness is empty and the round-trip is exact.
     #[test]
     fn l1_structural_to_core_round_trips() {
         let mut m = full_model();
@@ -698,6 +701,7 @@ mod tests {
 
     // ---- L2 witness minimality ------------------------------------------
 
+    /// Law: every witness entry records a genuinely non-minimal value — the witness never carries a no-op shed.
     #[test]
     fn l2_no_witness_entry_equals_its_minimal() {
         let m = full_model();
@@ -721,6 +725,7 @@ mod tests {
         }
     }
 
+    /// Law: upgrading then downgrading the same edge sheds nothing — an upgrade adds no state to shed back.
     #[test]
     fn l2_upgrade_then_downgrade_is_empty() {
         let core = scaffold(Mode::Core);
@@ -745,6 +750,7 @@ mod tests {
 
     // ---- L3 kernel invariance -------------------------------------------
 
+    /// Law: the kernel (`WorldModel::kernel`) is byte-identical across every mode transition, in every direction.
     #[test]
     fn l3_kernel_is_byte_identical_across_every_transition() {
         for start in [Mode::Core, Mode::Structural, Mode::Operational, Mode::Full] {
@@ -764,6 +770,7 @@ mod tests {
 
     // ---- L4 commuting ---------------------------------------------------
 
+    /// Law: a direct descent and its step-wise composition land on the same model, and the composed witness is the concatenation of each step's — commuting law from `Kernel.toMobus_toBunge`.
     #[test]
     fn l4_full_to_core_equals_composition_witnesses_concatenate() {
         let m = full_model();
@@ -788,6 +795,7 @@ mod tests {
 
     // ---- L5 refusal -----------------------------------------------------
 
+    /// Law: a downgrade never errs, even from a model that would violate the target rung's precondition (e.g. a self-loop entering Operational).
     #[test]
     fn l5_downgrades_never_err() {
         let mut m = full_model();
@@ -807,6 +815,7 @@ mod tests {
         }
     }
 
+    /// Law: an upgrade refuses iff its target rung's precondition fails, and the refusal cites the Lean hypothesis by name (`Kernel.HasBond`, `Kernel.Irreflexive`).
     #[test]
     fn l5_upgrade_errs_iff_precondition_fails_and_cites_hypothesis() {
         // No bond: entering Structural refuses citing HasBond.
@@ -888,6 +897,7 @@ mod tests {
         }
     }
 
+    /// Law: entering a mode rung via `validate_transition` is not the executability gate — a model can reach Full yet still be refused by `validate_operational`.
     #[test]
     fn l6_reaching_full_does_not_imply_operational_executability() {
         let m = isolated_component_model();
@@ -904,6 +914,7 @@ mod tests {
         );
     }
 
+    /// Law: bert#108 — interface-routed flows are legal Operational structure at the transition layer; the routing lowers to an identity default rather than being refused.
     #[test]
     fn l6_transition_to_operational_accepts_interface_routed_flow_lowers() {
         // A bonded model whose bond routes through an interface: valid Operational
@@ -939,6 +950,7 @@ mod tests {
 
     // ---- L7 immutability ------------------------------------------------
 
+    /// Law: `validate_transition` must not mutate its borrowed model, on either a descent or an ascent.
     #[test]
     fn l7_input_is_never_mutated() {
         let m = full_model();
@@ -950,6 +962,7 @@ mod tests {
 
     // ---- Identity and cross-moves ---------------------------------------
 
+    /// Law: transitioning a model to the mode it already carries is the identity — no shedding, no re-stamping.
     #[test]
     fn identity_when_from_equals_to() {
         let m = full_model();
@@ -959,6 +972,7 @@ mod tests {
         ));
     }
 
+    /// Law: a cross-move composes through the meet (`Core`) — Structural→Operational sheds nothing at the meet, so it nets an upgrade.
     #[test]
     fn cross_move_structural_to_operational_upgrades_through_the_meet() {
         let m = scaffold(Mode::Structural);
@@ -970,6 +984,7 @@ mod tests {
         ));
     }
 
+    /// Law: a cross-move that sheds real data at the meet nets a downgrade, even though the far end is a different rung than the start.
     #[test]
     fn cross_move_operational_to_structural_sheds_then_reascends() {
         let m = full_model_operational();
@@ -1004,6 +1019,7 @@ mod tests {
         "toMobus_toBunge",
     ];
 
+    /// Law: every Lean declaration this module cites by name must still exist in `ViewGeneration.lean` — a citation must never outlive its referent.
     #[test]
     fn lean_citations_resolve_or_skip_gracefully() {
         let source = include_str!("transition.rs");

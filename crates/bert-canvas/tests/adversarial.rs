@@ -192,6 +192,10 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
     ]
 }
 
+/// Law: every canvas boundary function (project, to_canvas, validate_connection,
+/// lens_facts, describe, analyze) never panics on any parseable-but-pathological
+/// `CanvasModel`, at any lens — on wasm a panic is an unrecoverable abort, so
+/// "no panic" is the whole contract for these total functions.
 #[test]
 fn every_boundary_fn_survives_adversarial_canvas_models() {
     for (label, model) in adversarial_models() {
@@ -208,6 +212,9 @@ fn every_boundary_fn_survives_adversarial_canvas_models() {
 /// Parseable-but-pathological JSON straight off the wire (serde defaults engage:
 /// missing `role`, `is_bond`, `kind`, `klir_directed`). Proves the boundary is
 /// safe on the ACTUAL shapes the face sends, not just hand-built structs.
+/// Law: the no-panic contract holds on the ACTUAL wire shapes the face sends
+/// — JSON that engages serde defaults (missing role/is_bond/kind) — not just
+/// on hand-built structs.
 #[test]
 fn wire_json_with_defaults_survives_every_boundary_fn() {
     let jsons = [

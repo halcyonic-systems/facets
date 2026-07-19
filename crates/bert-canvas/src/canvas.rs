@@ -630,6 +630,8 @@ mod tests {
         }
     }
 
+    /// Law: two components joined by a bond project to a legal (error-free)
+    /// world at every lens — Klir, Bunge, and Mobus alike.
     #[test]
     fn projects_a_bonded_pair_cleanly_at_every_lens() {
         for lens in [Lens::Klir, Lens::Bunge, Lens::Mobus] {
@@ -658,6 +660,8 @@ mod tests {
         }
     }
 
+    /// Law: a self-loop (k = o) is illegal at Mobus's irreflexivity gate but
+    /// legal at Klir — Core has no such gate.
     #[test]
     fn self_loop_is_rejected_at_mobus_but_not_klir() {
         let model = CanvasModel {
@@ -679,6 +683,9 @@ mod tests {
         assert!(validate_connection(&klir, &loop_edge).is_empty());
     }
 
+    /// Law: `to_canvas` reads a real WorldModel back faithfully (roles,
+    /// primitives, positions, named relations survive), and re-projecting the
+    /// result still validates as an executable Operational model.
     #[test]
     fn to_canvas_loads_a_demo_faithfully() {
         // The reservoir demo: Watershed(Source) → Reservoir(Buffering) → Release(Sink).
@@ -711,6 +718,8 @@ mod tests {
         );
     }
 
+    /// Law: an environment thing's Source/Sink identity is derived from bond
+    /// direction (originates → Source, receives → Sink), never a stored type.
     #[test]
     fn environment_projects_by_bond_direction() {
         // env originates a bond → Source; env receives → Sink.
