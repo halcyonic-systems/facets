@@ -255,6 +255,7 @@ export default function Canvas({
 
         {connectFrom !== null && connectPos && (
           <line
+            data-export-ignore
             x1={thingById(model, connectFrom)?.x}
             y1={thingById(model, connectFrom)?.y}
             x2={connectPos.x}

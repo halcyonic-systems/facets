@@ -27,6 +27,7 @@ import {
   type DirHandleLike,
 } from "./fsAccess";
 import { saveModel, listModels, loadModel, deleteModel } from "./modelStore";
+import { diagramFilename, exportDiagramSvg, exportDiagramPng } from "./canvas/exportDiagram";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const LENSES: CanvasModel["lens"][] = ["Klir", "Bunge", "Mobus"];
@@ -316,6 +317,28 @@ function Workspace() {
       const world = project(canvasModel);
       const name = (demo?.key ?? "model").replace(/[^a-z0-9_-]+/gi, "-");
       downloadJson(`${name}${suffix}.json`, JSON.stringify(world, null, 2));
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // File → Export diagram (SVG/PNG) (#78): serialize the live canvas SVG framed
+  // on its content extent — a deliverable diagram straight off the stage, no
+  // cropped screenshot. Reads the mounted SVG by class (single canvas on screen).
+  async function exportDiagram(format: "svg" | "png") {
+    if (!canvasModel) return;
+    const svg = document.querySelector<SVGSVGElement>("svg.canvas-stage");
+    if (!svg) {
+      setToast("canvas not ready");
+      return;
+    }
+    const filename = diagramFilename(canvasModel, currentLabel);
+    try {
+      const ok =
+        format === "svg"
+          ? exportDiagramSvg(svg, canvasModel, filename)
+          : await exportDiagramPng(svg, canvasModel, filename);
+      if (!ok) setToast("nothing to export — the model is empty");
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
@@ -668,6 +691,8 @@ function Workspace() {
         onOpen={() => setGalleryOpen(true)}
         onSave={() => exportModel(".model")}
         onExport={() => exportModel(".world")}
+        onExportSvg={() => exportDiagram("svg")}
+        onExportPng={() => exportDiagram("png")}
         onSaveToFolder={saveToFolder}
         onSaveToLibrary={saveToLibrary}
         canExport={canvasModel !== null}
@@ -1006,6 +1031,8 @@ function MenuBar({
   onOpen,
   onSave,
   onExport,
+  onExportSvg,
+  onExportPng,
   onSaveToFolder,
   onSaveToLibrary,
   canExport,
@@ -1023,6 +1050,8 @@ function MenuBar({
   onOpen: () => void;
   onSave: () => void;
   onExport: () => void;
+  onExportSvg?: () => void;
+  onExportPng?: () => void;
   onSaveToFolder: () => void;
   onSaveToLibrary: () => void;
   canExport: boolean;
@@ -1116,7 +1145,10 @@ function MenuBar({
               {item("Save", onSave, !canExport)}
               {item("Save to folder…", onSaveToFolder, !canExport)}
               {item("Save to library…", onSaveToLibrary, !canExport)}
-              {item("Export", onExport, !canExport)}
+              <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
+              {item("Export JSON", onExport, !canExport)}
+              {onExportSvg && item("Export diagram (SVG)", onExportSvg, !canExport)}
+              {onExportPng && item("Export diagram (PNG)", onExportPng, !canExport)}
             </div>
           </>
         )}

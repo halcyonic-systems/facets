@@ -80,6 +80,7 @@ export function NodeBody({
       )}
       {hovered && (
         <circle
+          data-export-ignore
           r={NODE_R + STYLE.hoverHalo.pad}
           fill="none"
           stroke="var(--lens-accent)"
@@ -260,6 +261,7 @@ export function EdgeScaffold({
     <g>
       {/* invisible wide hit-path — the click target for "drive this flow" */}
       <path
+        data-export-ignore
         d={d}
         fill="none"
         stroke="transparent"
@@ -272,6 +274,7 @@ export function EdgeScaffold({
       />
       {selected && (
         <path
+          data-export-ignore
           d={d}
           fill="none"
           stroke="var(--lens-accent)"
