@@ -401,6 +401,9 @@ struct RunResultRich {
 struct LevelDto {
     name: String,
     unit: String,
+    /// bert-lenses#94: `unit` was derived from the inflow (inflow × Δt) rather than
+    /// author-declared — the face marks its provenance. Additive; defaults false.
+    unit_derived: bool,
     value: f32,
     category: String,
 }
@@ -418,6 +421,8 @@ struct ComparisonDto {
 struct TrajDto {
     name: String,
     unit: String,
+    /// See [`LevelDto::unit_derived`].
+    unit_derived: bool,
     series: Vec<f32>,
 }
 
@@ -434,6 +439,7 @@ impl From<bert_tether::forcing::RunReadout> for RunResultRich {
                 .map(|l| LevelDto {
                     name: l.name,
                     unit: l.unit,
+                    unit_derived: l.unit_derived,
                     value: l.value,
                     category: l.category.to_string(),
                 })
@@ -457,6 +463,7 @@ impl From<bert_tether::forcing::RunReadout> for RunResultRich {
                 .map(|t| TrajDto {
                     name: t.name,
                     unit: t.unit,
+                    unit_derived: t.unit_derived,
                     series: t.series,
                 })
                 .collect(),

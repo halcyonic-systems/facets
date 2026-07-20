@@ -267,7 +267,16 @@ function LevelRow({ level: l }: { level: Level }) {
         {showsMagnitude ? l.value.toFixed(1) : humanize(l.value)}
         <span
           className={unit.abstract ? "italic" : undefined}
-          style={{ color: "var(--text-muted)" }}
+          style={{
+            color: "var(--text-muted)",
+            // #94: an undeclared stock's unit was inferred from its inflow over Δt,
+            // not declared — a muted dotted underline + title discloses that
+            // provenance without a heavy badge.
+            ...(l.unit_derived
+              ? { borderBottom: "1px dotted var(--text-muted)", cursor: "help" }
+              : {}),
+          }}
+          title={l.unit_derived ? "derived from inflow × Δt" : undefined}
         >
           {" "}
           {unit.text}

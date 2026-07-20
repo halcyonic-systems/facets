@@ -167,6 +167,131 @@ pub fn convert(value: f64, from: &Unit, to: &Unit) -> Option<f64> {
     Some(value * from.scale / to.scale)
 }
 
+/// Render the unit a stock *displays* when it accumulates a flow of `inflow`
+/// over Δt — the display-side image of the #94 integration law, and the inverse-
+/// lite of [`parse_unit`]. Deliberately NOT an SI canonicalization.
+///
+/// > **THE RULING (Shingai, bert-lenses#94, 2026-07-20):** "derived stock units
+/// > display as the inflow's unit × the model's time unit — the author's own
+/// > vocabulary, never SI-canonicalized. `kW` inflow with hour-scale Δt → `kW·h`;
+/// > `ML/mo` inflow → `ML`."
+///
+/// A `kW` inflow under an hour-scale Δt therefore displays `kW·h`, not the
+/// dimensionally-equal `J`: picking a canonical representative would invent a unit
+/// the author never declared — the same kernel-never-invents discipline
+/// [`parse_unit`] keeps (an unknown token yields nothing rather than a guess).
+/// This is also the Stella/Vensim convention (a stock is its flow accumulated over
+/// the time step).
+///
+/// Three families, by what the inflow is:
+/// - **A rate written with a time denominator** (`ML/mo`, `kg/day`, `kWh/day`,
+///   `m/s²`): Δt cancels one power of that denominator, so the display drops it —
+///   `ML/mo` → `ML`, `m/s²` → `m/s`. This is purely syntactic on the denominator,
+///   so an *unregistered* numerator still renders: `tok/mo` → `tok`.
+/// - **An intrinsic, single-symbol rate** (`kW`, `W`, `A`): integration appends
+///   the model's time unit — `kW` → `kW·h` given `Some("h")`, or `kW·Δt` when the
+///   model declares no time-unit symbol (the abstract step, never an invented
+///   `h`). Restricted to a single factor: a compound like `kW·h` carries
+///   `per_time` yet already *is* a stockable quantity (energy), so it passes
+///   through unchanged.
+/// - **A bare quantity** (`L`, `kWh`, `J`, `kg`, or an unknown `tok`): passes
+///   through as-is — the per-tick reading an `L` inflow filling an `L` stock the
+///   consistency check already admits.
+///
+/// Returns `None` only for an empty inflow unit: a unitless flow leaves the stock
+/// abstract, with nothing to derive.
+pub fn derived_stock_unit(inflow: &str, time_unit: Option<&str>) -> Option<String> {
+    let trimmed = inflow.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    // A rate written with a time denominator: Δt cancels one power of it. Keyed
+    // off the denominator alone, so the numerator need not be a registry unit.
+    if trimmed.contains('/') {
+        if let Some(display) = cancel_one_time_denominator(trimmed) {
+            return Some(display);
+        }
+        // A slash whose denominator is not time (`kg/mol`): not an integrable
+        // rate — fall through and treat it as the compound quantity it is.
+    }
+
+    let is_product = trimmed.contains(['·', '*', '⋅']);
+    match parse_unit(trimmed) {
+        // An intrinsic single-symbol rate — the watt, the ampere — integrates by
+        // appending the model's time unit. The single-factor guard is load-bearing:
+        // `parse_product` propagates `per_time` onto compound forms where the flag
+        // is only advisory (`kW·h` is energy), so keying the append on `per_time`
+        // alone would wrongly re-rate an already-integrated quantity.
+        Some(u) if u.per_time && !is_product => {
+            let step = time_unit
+                .map(str::trim)
+                .filter(|t| !t.is_empty())
+                .unwrap_or("Δt");
+            Some(format!("{trimmed}·{step}"))
+        }
+        // Any other parseable unit is a stockable quantity (`L`, `kWh`, `J`): the
+        // stock holds it directly.
+        Some(_) => Some(trimmed.to_string()),
+        // Unparseable and not a slash-rate (a bare `tok`): pass the author's own
+        // token through — the kernel neither sharpens nor erases what it can't read.
+        None => Some(trimmed.to_string()),
+    }
+}
+
+/// Drop one power of time from a slash-rate's denominator — the author-vocabulary
+/// image of "the flow's `/time` cancels against Δt". `ML/mo` → `ML`, `kg/day` →
+/// `kg`, `m/s²` → `m/s`. `None` when no denominator reads as a pure time (the
+/// caller then treats the slash form as a plain compound quantity).
+fn cancel_one_time_denominator(unit: &str) -> Option<String> {
+    let mut parts = unit.split('/');
+    let numerator = parts.next()?.trim().to_string();
+    let mut denominators: Vec<String> = parts.map(|d| d.trim().to_string()).collect();
+
+    let idx = denominators.iter().position(|d| is_pure_time(d))?;
+    match reduce_time_power(&denominators[idx]) {
+        // A time raised above the first power keeps the remainder (`s²` → `s`).
+        Some(reduced) => denominators[idx] = reduced,
+        // A first-power time cancels entirely and leaves the denominator list.
+        None => {
+            denominators.remove(idx);
+        }
+    }
+
+    if denominators.is_empty() {
+        Some(numerator)
+    } else {
+        Some(format!("{numerator}/{}", denominators.join("/")))
+    }
+}
+
+/// Does this denominator segment measure pure time (`s`, `mo`, `s²`), and nothing
+/// else? Only then does Δt cancel against it.
+fn is_pure_time(segment: &str) -> bool {
+    match parse_product(segment) {
+        Some(u) => {
+            let d = u.dimension;
+            d.exponent(BaseDim::Time) >= 1
+                && d.0
+                    .iter()
+                    .enumerate()
+                    .all(|(i, &e)| i == BaseDim::Time as usize || e == 0)
+        }
+        None => false,
+    }
+}
+
+/// Reduce a single time factor's power by one for the Δt cancellation: `s²` → `s`,
+/// `s^3` → `s^2`; a first-power time (`s`, `mo`, `day`) cancels wholly → `None`.
+fn reduce_time_power(segment: &str) -> Option<String> {
+    let (symbol, exp) = split_exponent(segment.trim())?;
+    match exp - 1 {
+        n if n <= 0 => None,
+        1 => Some(symbol.to_string()),
+        n => Some(format!("{symbol}^{n}")),
+    }
+}
+
 /// Parse a unit string into a [`Unit`], or `None` when it is empty or names a
 /// token the registry does not know.
 ///
@@ -491,6 +616,57 @@ mod tests {
         let cands = litres.stock_candidate_dimensions();
         assert!(cands.contains(&litres.dimension));
         assert!(cands.contains(&litres.integrated_dimension()));
+    }
+
+    #[test]
+    fn derived_display_appends_time_to_an_intrinsic_rate() {
+        // THE ruling example: a kW inflow under an hour-scale Δt displays kW·h —
+        // the author's own tokens, not the SI-canonical J.
+        assert_eq!(derived_stock_unit("kW", Some("h")).as_deref(), Some("kW·h"));
+        assert_eq!(derived_stock_unit("W", Some("s")).as_deref(), Some("W·s"));
+        // No declared time-unit symbol → the abstract step, never an invented `h`.
+        assert_eq!(derived_stock_unit("kW", None).as_deref(), Some("kW·Δt"));
+        // A blank time unit is treated as absent.
+        assert_eq!(derived_stock_unit("MW", Some("  ")).as_deref(), Some("MW·Δt"));
+    }
+
+    #[test]
+    fn derived_display_cancels_a_slash_denominator() {
+        // The other ruling example, and the dominant real case: the /time cancels.
+        assert_eq!(derived_stock_unit("ML/mo", None).as_deref(), Some("ML"));
+        assert_eq!(derived_stock_unit("kg/day", None).as_deref(), Some("kg"));
+        // Numerator need not be a registry unit — cancellation is syntactic on the
+        // denominator (the demos' `tok/mo`, `units/mo`).
+        assert_eq!(derived_stock_unit("tok/mo", None).as_deref(), Some("tok"));
+        assert_eq!(derived_stock_unit("units/mo", None).as_deref(), Some("units"));
+        // An already-quantity numerator per time integrates back to the quantity.
+        assert_eq!(derived_stock_unit("kWh/day", None).as_deref(), Some("kWh"));
+        // A time raised above the first power keeps the remainder.
+        assert_eq!(derived_stock_unit("m/s²", None).as_deref(), Some("m/s"));
+        assert_eq!(derived_stock_unit("m/s^3", None).as_deref(), Some("m/s^2"));
+    }
+
+    #[test]
+    fn derived_display_passes_a_quantity_through() {
+        // A bare quantity inflow may fill a like-united stock — pass it through.
+        assert_eq!(derived_stock_unit("L", None).as_deref(), Some("L"));
+        assert_eq!(derived_stock_unit("J", None).as_deref(), Some("J"));
+        assert_eq!(derived_stock_unit("kg", None).as_deref(), Some("kg"));
+        // A compound quantity carries `per_time` (advisory) yet is already
+        // integrated — it must NOT be re-rated by appending time.
+        assert_eq!(derived_stock_unit("kW·h", Some("h")).as_deref(), Some("kW·h"));
+        assert_eq!(derived_stock_unit("kWh", None).as_deref(), Some("kWh"));
+        // A slash whose denominator is not time is a plain compound, not a rate.
+        assert_eq!(derived_stock_unit("kg/mol", None).as_deref(), Some("kg/mol"));
+        // An unknown bare token is the author's own; render it unchanged.
+        assert_eq!(derived_stock_unit("widgets", None).as_deref(), Some("widgets"));
+    }
+
+    #[test]
+    fn derived_display_is_none_only_for_an_empty_unit() {
+        // A unitless flow leaves the stock abstract — nothing to derive.
+        assert!(derived_stock_unit("", None).is_none());
+        assert!(derived_stock_unit("   ", None).is_none());
     }
 
     #[test]

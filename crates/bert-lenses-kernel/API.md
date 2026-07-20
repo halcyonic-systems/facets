@@ -96,17 +96,21 @@ executable. `today` = `YYYY-MM-DD` from JS (the wasm path never reads system tim
 type RunResultRich = {
   ticks: number, dt: number,
   residual: number, conserved: boolean,
-  levels: { name, unit, value, category: "product"|"resource"|"internal" }[],
+  levels: { name, unit, unit_derived: boolean,   // unit derived from inflow×Δt (#94)
+            value, category: "product"|"resource"|"internal" }[],
   comparisons: {                        // simulated vs actual, BY DOMAIN NAME
     element, kind: "stock"|"flow", unit,
     simulated: number[], actual: number[],
     declared: number[]|null,            // the flat declared-mean baseline (flows)
     divergence_pct: number|null,
   }[],
-  trajectories: { name, unit, series: number[] }[],
+  trajectories: { name, unit, unit_derived: boolean, series: number[] }[],
 }
 ```
 Everything is labeled by the model's own names + units — no engine columns leak.
+`unit_derived` is true when an undeclared Buffering stock's `unit` was derived from
+its inflow integrated over Δt (bert-lenses#94: `ML/mo` → `ML`, in the author's own
+vocabulary, never SI-canonicalized), rather than read from a declared stock unit.
 
 ## Phase 2 surface (built — the canvas seam)
 

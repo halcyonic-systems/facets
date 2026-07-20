@@ -268,6 +268,10 @@ pub fn force_and_run(
 pub struct Level {
     pub name: String,
     pub unit: String,
+    /// True iff `unit` was *derived* from the inflow (an undeclared stock's
+    /// inflow × Δt, bert-lenses#94), not read from an author-declared stock unit —
+    /// the face renders it with a muted provenance mark.
+    pub unit_derived: bool,
     pub value: f32,
     /// "product" | "resource" | "internal" — purpose category.
     pub category: &'static str,
@@ -277,6 +281,8 @@ pub struct Level {
 pub struct Trajectory {
     pub name: String,
     pub unit: String,
+    /// See [`Level::unit_derived`].
+    pub unit_derived: bool,
     pub series: Vec<f32>,
 }
 
@@ -311,16 +317,31 @@ pub fn summarize(
 ) -> RunReadout {
     let ticks = run.history.len();
 
-    // A level/trajectory reads the stock's DECLARED unit when the modeler set
-    // one (bert-lenses#76) — a stock accumulates a rate over Δt, so its
-    // dimension is not the feeding flow's — falling back to the flow-copied
-    // `out_substance.unit` otherwise.
-    let unit_of = |node: &bert_compose::circuit::Node| {
-        if node.stock_unit.is_empty() {
-            node.out_substance.unit.clone()
-        } else {
-            node.stock_unit.clone()
+    // A level/trajectory reads the stock's DECLARED unit when the modeler set one
+    // (bert-lenses#76). Otherwise, for a Buffering stock, it DERIVES a display unit
+    // from the inflow's unit × Δt (bert-lenses#94, THE ruling 2026-07-20: the
+    // inflow's own vocabulary, never SI-canonicalized — `ML/mo` → `ML`, `kW` →
+    // `kW·Δt`). A stock accumulates its inflow over Δt, so the flow-copied
+    // `out_substance.unit` (a rate) is the wrong thing to show on a stock; the
+    // derivation is the right one. The `.1` flags a derived unit so the face can
+    // mark its provenance. The run carries no time-unit *symbol* (only a numeric
+    // Δt), so an intrinsic rate integrates to `·Δt`; other node kinds and
+    // unparseable/absent units keep the flow-copied fallback verbatim.
+    let unit_of = |node: &bert_compose::circuit::Node| -> (String, bool) {
+        if !node.stock_unit.is_empty() {
+            return (node.stock_unit.clone(), false);
         }
+        if matches!(
+            node.kind,
+            NodeKind::Process(bert_core::ProcessPrimitive::Buffering)
+        ) {
+            if let Some(derived) =
+                bert_core::units::derived_stock_unit(&node.out_substance.unit, None)
+            {
+                return (derived, true);
+            }
+        }
+        (node.out_substance.unit.clone(), false)
     };
 
     // Final levels, one row per node, ordered by purpose.
@@ -334,9 +355,11 @@ pub fn summarize(
                 NodeKind::Source => ("resource", circuit.level(i)),
                 NodeKind::Process(_) => ("internal", circuit.level(i)),
             };
+            let (unit, unit_derived) = unit_of(node);
             Level {
                 name: node.name.clone(),
-                unit: unit_of(node),
+                unit,
+                unit_derived,
                 value,
                 category,
             }
@@ -360,9 +383,11 @@ pub fn summarize(
         .map(|(i, node)| {
             let col = col_of(&node.kind);
             let series = run.history.iter().map(|row| row[1 + i * 3 + col]).collect();
+            let (unit, unit_derived) = unit_of(node);
             Trajectory {
                 name: node.name.clone(),
-                unit: unit_of(node),
+                unit,
+                unit_derived,
                 series,
             }
         })
@@ -547,6 +572,59 @@ mod tests {
             stock.unit, "ML",
             "the run reads the declared stock unit, not the flow-copied one"
         );
+        assert!(!stock.unit_derived, "a declared unit is not marked derived");
+    }
+
+    /// bert-lenses#94 (display slice): an undeclared Buffering stock fed by a
+    /// unit-bearing rate inflow displays the DERIVED unit (inflow × Δt in the
+    /// author's own vocabulary — `ML/mo` → `ML`) instead of the flow-copied rate,
+    /// flagged as derived so the face can mark its provenance.
+    #[test]
+    fn undeclared_stock_displays_the_derived_unit() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let mut model: WorldModel = serde_json::from_str(json).unwrap();
+
+        // Give the inflow a rate unit, leave the stock's unit UNdeclared.
+        let buffer_name = {
+            let buffer = model
+                .systems
+                .iter()
+                .find(|s| {
+                    s.agent.as_ref().and_then(|a| a.primitive)
+                        == Some(bert_core::ProcessPrimitive::Buffering)
+                })
+                .expect("the sample has a Buffering stock");
+            assert!(
+                buffer.agent.as_ref().unwrap().stock_unit.is_empty(),
+                "precondition: the stock declares no unit"
+            );
+            buffer.info.name.clone()
+        };
+        for ix in &mut model.interactions {
+            ix.unit = "ML/mo".to_string();
+        }
+
+        let spec = bert_core::operational::validate_operational(&model).expect("projects");
+        let mut circuit = bert_compose::from_spec(&spec);
+        let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0);
+        let readout = summarize(
+            &model,
+            &crate::tether::ImportedData::default(),
+            &circuit,
+            &run,
+            1.0,
+        );
+
+        let stock = readout
+            .levels
+            .iter()
+            .find(|l| l.name == buffer_name)
+            .expect("the stock has a level row");
+        assert_eq!(
+            stock.unit, "ML",
+            "the undeclared stock displays its inflow's unit integrated over Δt (ML/mo → ML)"
+        );
+        assert!(stock.unit_derived, "a derived unit is flagged for the face");
     }
 
     // Law: a forced run must conserve (residual ~0 against throughput) and every
