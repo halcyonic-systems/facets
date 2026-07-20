@@ -40,7 +40,7 @@ SL compiles to `CanvasModel` (`crates/bert-canvas/src/canvas.rs:165`), the editi
 
 The model-content rows are the neutral spec proper; the view rows are the annotation layer. The compiled model is then *compiled again* by the existing deterministic `project()` into a `WorldModel` for validation and the lens palettes — SL adds a surface above an unchanged pipeline.
 
-A concept-by-concept table setting each SL line beside its canvas gesture, JSON fragment, and kernel referent — "three concrete syntaxes, one neutral spec" made visible rather than asserted — lives in the reader's tour (#95), its single didactic home. The lexicon table (§3) already carries the kernel-referent column that table extends.
+A concept-by-concept table setting each SL line beside its canvas gesture, JSON fragment, and kernel referent — "three concrete syntaxes, one neutral spec" made visible rather than asserted — lives in the [reader's tour](../tour.md#the-notation-table) (#95), its single didactic home. The lexicon table (§3) already carries the kernel-referent column that table extends.
 
 ## 3. Lexicon
 

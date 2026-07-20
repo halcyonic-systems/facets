@@ -2,7 +2,7 @@
 
 **Status: v1.0 specified and shipped (2026-07-18).** Implementation is live in the app: write SL in the text pane, compile, and the model renders and is judged like any other. Round-trip goldens pass. The language is under active development; §"Known gaps" in the spec lists what v1.1 owes.
 
-SL is a human-writable textual notation that compiles **deterministically** into a bert-lenses model. It is the third concrete syntax over the one neutral abstract spec this repo already holds: the canvas authors that spec by gesture, JSON serializes it, and SL writes it as text. All three are views of the same model, and none of them is the source of truth — the neutral spec is. A concept-by-concept table setting the SL line beside its canvas gesture, JSON fragment, and kernel referent lives in the reader's tour (#95), its single didactic home.
+SL is a human-writable textual notation that compiles **deterministically** into a bert-lenses model. It is the third concrete syntax over the one neutral abstract spec this repo already holds: the canvas authors that spec by gesture, JSON serializes it, and SL writes it as text. All three are views of the same model, and none of them is the source of truth — the neutral spec is. A concept-by-concept table setting the SL line beside its canvas gesture, JSON fragment, and kernel referent lives in the [reader's tour](../tour.md#the-notation-table) (#95), its single didactic home.
 
 ## What it looks like
 

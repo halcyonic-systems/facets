@@ -9,6 +9,7 @@ Start at the main [`README.md`](../README.md) and [`CLAUDE.md`](../CLAUDE.md) fo
 ## Start here
 
 - [`quickstart.md`](quickstart.md) — **LIVE** — ten minutes from `just dev` to a judged, running model, using the two smallest corpus files (bathtub, then process-m). The newcomer on-ramp.
+- [`tour.md`](tour.md) — **LIVE** — the reader's tour: one running model (hal-projection) grown line by line, each step pairing SL with what the canvas and the three lenses render; three audience entry paths and the SL ↔ canvas ↔ JSON ↔ kernel notation table.
 - [`glossary.md`](glossary.md) — **LIVE** — fast definitions of the ~15 load-bearing terms (system, lens, bond/mere, conservation invariant, WorldModel, Save vs Export, run ledger, SL, systemhood, mode/lens, neutral spec, golden, dynamics-kind, precondition, concordance), each grounded in a fuller doc.
 
 ## The language
