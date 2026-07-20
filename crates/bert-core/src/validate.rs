@@ -141,12 +141,12 @@ fn check_stock_units(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     }
 }
 
-/// Gate *entry* into a target mode on the kernel ladder.
+/// Gate *entry* into a target mode on the kernel lattice.
 ///
 /// This never asks "is the model valid"; it asks "may this model be authored
-/// *as* a [`Mode`]". Every model is a valid Core model — each rung adds its own
+/// *as* a [`Mode`]". Every model is a valid Core model — each mode adds its own
 /// faithful-view hypothesis, proven in
-/// `systems-science-foundations/Systems/Klir/ViewGeneration.lean`. The rungs are
+/// `systems-science-foundations/Systems/Klir/ViewGeneration.lean`. The modes are
 /// parallel lenses, not a tower: `Structural` needs a bond (Bunge) and
 /// `Operational` needs irreflexivity (Mobus), but neither inherits the other —
 /// they share only `Core`'s on-ness. `Full` extends `Operational` with a
@@ -1644,7 +1644,7 @@ mod tests {
         );
     }
 
-    // ---- Mode ladder (bert#88) -------------------------------------------
+    // ---- Mode lattice (bert#88) ------------------------------------------
 
     fn sys_id(indices: Vec<i64>) -> Id {
         Id {
@@ -1840,7 +1840,7 @@ mod tests {
         );
     }
 
-    /// Law: Structural and Operational are independent lenses on the kernel ladder — satisfying one implies nothing about the other (rungs don't inherit).
+    /// Law: Structural and Operational are independent lenses on the kernel lattice — satisfying one implies nothing about the other (modes don't inherit).
     #[test]
     fn structural_and_operational_are_independent_lenses() {
         // A single-component model with no bond is *not* Structural, yet it is
@@ -1850,7 +1850,7 @@ mod tests {
         assert!(!validate_mode(&m, Mode::Operational).has_errors());
     }
 
-    /// Law: an absent `mode` stamp resolves to Full and must not serialize a `mode` key, so pre-mode-ladder files stay byte-stable.
+    /// Law: an absent `mode` stamp resolves to Full and must not serialize a `mode` key, so pre-mode-lattice files stay byte-stable.
     #[test]
     fn absent_mode_is_full_and_byte_stable() {
         let m = minimal_model();
@@ -2261,7 +2261,7 @@ mod tests {
     #[test]
     fn dead_end_and_reachability_only_in_dynamic_modes() {
         // The container-plus-cycle model has both a dead-end and unreachable
-        // nodes, but neither check runs below the Operational rung.
+        // nodes, but neither check runs below the Operational mode.
         let m = bill_corrected();
         for mode in [Mode::Core, Mode::Structural] {
             let r = validate_mode(&m, mode);

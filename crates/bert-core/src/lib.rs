@@ -600,7 +600,7 @@ pub struct WorldModel {
     /// Older versions trigger migration logic during deserialization.
     pub version: u32,
 
-    /// Authoring mode along the kernel ladder (Core/Structural/Operational/Full).
+    /// Authoring mode along the kernel lattice (Core/Structural/Operational/Full).
     ///
     /// Absent ≡ [`Mode::Full`], so files written before SL v2.0 deserialize and
     /// re-serialize byte-for-byte unchanged. Read it through [`WorldModel::mode`],
@@ -636,10 +636,10 @@ pub struct WorldModel {
     pub hidden_entities: Vec<Id>,
 }
 
-/// A rung on the kernel ladder: how much structure an author has committed to.
+/// A mode on the kernel lattice: how much structure an author has committed to.
 ///
 /// Each mode is a faithful view the K ≅ 2 kernel generates (proven in
-/// `systems-science-foundations/Systems/Klir/ViewGeneration.lean`). The rungs are
+/// `systems-science-foundations/Systems/Klir/ViewGeneration.lean`). The modes are
 /// *parallel lenses* over one kernel, not a cumulative tower: `Structural` (Bunge)
 /// and `Operational` (Mobus) each impose their own precondition independently —
 /// neither inherits the other's. They share only `Core`'s on-ness. `Full` extends
