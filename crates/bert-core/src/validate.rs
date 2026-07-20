@@ -169,11 +169,13 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
             check_self_loops(model, issues);
             check_dead_ends(model, issues);
             check_reachability(model, issues);
+            check_reachability_requirements(model, issues);
         }
         Mode::Full => {
             check_self_loops(model, issues);
             check_dead_ends(model, issues);
             check_reachability(model, issues);
+            check_reachability_requirements(model, issues);
             check_dynamical_face(model, issues);
         }
     }
@@ -378,6 +380,161 @@ fn check_reachability(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
             );
         }
     }
+}
+
+/// Operational/Full refusal: evaluate the author's declared reachability
+/// requirements (#69) against the flow graph. Where #66's checks only *warn* —
+/// a lone graph observation cannot know whether an absorbing state or a single
+/// mandatory checkpoint is intended — a stated requirement encodes the intent, so
+/// a violation is an Error, citing the specific elements. This is the deterministic
+/// promotion of the "structurally-silent missing path" error class the LLM leg
+/// could not catch (WP4, 2026-07-17): the kernel cannot invent the requirement,
+/// but once the author states it, the kernel can prove or refuse it exactly.
+///
+/// The graph runs over *all* relata (systems, sources, sinks) so a requirement may
+/// name an external entry or terminal, not only internal systems. A requirement
+/// naming an id that resolves to no entity is itself a defect and errors.
+fn check_reachability_requirements(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
+    if model.reachability_requirements.is_empty() {
+        return;
+    }
+
+    let mut adj: HashMap<String, Vec<String>> = HashMap::new();
+    for ix in &model.interactions {
+        adj.entry(serialize_id(&ix.source))
+            .or_default()
+            .push(serialize_id(&ix.sink));
+    }
+    let known = collect_known_ids(model);
+
+    for (i, req) in model.reachability_requirements.iter().enumerate() {
+        let loc = format!("reachability_requirements[{i}]");
+        match req {
+            ReachabilityRequirement::MustReach { from, to } => {
+                let (from_s, to_s) = (serialize_id(from), serialize_id(to));
+                if let Some(id) = unresolved(&known, [&from_s, &to_s]) {
+                    issues.push(unresolved_requirement(&loc, id));
+                    continue;
+                }
+                if !path_exists(&adj, &from_s, &to_s, None) {
+                    issues.push(
+                        ValidationIssue::error(
+                            &loc,
+                            format!(
+                                "required reachability violated: no flow path runs from \
+                                 '{from_name}' to '{to_name}' — the model asserts '{to_name}' \
+                                 is an outcome the process must be able to arrive at, and the \
+                                 graph provides no route to it",
+                                from_name = relatum_name(model, &from_s),
+                                to_name = relatum_name(model, &to_s),
+                            ),
+                            Some(
+                                "Add the missing transition(s) so the target is reachable, \
+                                 or drop the requirement if it no longer holds",
+                            ),
+                        )
+                        .with_subject(to),
+                    );
+                }
+            }
+            ReachabilityRequirement::AlternativePath { from, to, avoiding } => {
+                let (from_s, to_s, avoid_s) =
+                    (serialize_id(from), serialize_id(to), serialize_id(avoiding));
+                if let Some(id) = unresolved(&known, [&from_s, &to_s, &avoid_s]) {
+                    issues.push(unresolved_requirement(&loc, id));
+                    continue;
+                }
+                if !path_exists(&adj, &from_s, &to_s, Some(&avoid_s)) {
+                    issues.push(
+                        ValidationIssue::error(
+                            &loc,
+                            format!(
+                                "required alternative path violated: every flow path from \
+                                 '{from_name}' to '{to_name}' passes through '{avoid_name}' — \
+                                 the model asserts a route avoiding '{avoid_name}' must exist, \
+                                 and none does, so '{avoid_name}' is a forced detour",
+                                from_name = relatum_name(model, &from_s),
+                                to_name = relatum_name(model, &to_s),
+                                avoid_name = relatum_name(model, &avoid_s),
+                            ),
+                            Some(
+                                "Add the alternative transition that bypasses the forced \
+                                 detour, or drop the requirement if the detour is intended",
+                            ),
+                        )
+                        .with_subject(avoiding),
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// First id in `ids` that is not a known entity, if any — a requirement that names
+/// a non-existent element is malformed, not merely unsatisfied.
+fn unresolved<'a>(
+    known: &HashSet<String>,
+    ids: impl IntoIterator<Item = &'a String>,
+) -> Option<&'a String> {
+    ids.into_iter().find(|id| !known.contains(*id))
+}
+
+fn unresolved_requirement(loc: &str, id: &str) -> ValidationIssue {
+    ValidationIssue::error(
+        loc,
+        format!("reachability requirement references '{id}', which resolves to no known entity"),
+        Some("Point the requirement at an existing system, source, or sink id"),
+    )
+}
+
+/// Directed reachability over the flow graph: is `to` reachable from `from`,
+/// optionally with `blocked` removed from the graph? Removing `blocked` (or
+/// starting/ending on it) makes it unreachable *through* that node, which is
+/// exactly the forced-detour question.
+fn path_exists(
+    adj: &HashMap<String, Vec<String>>,
+    from: &str,
+    to: &str,
+    blocked: Option<&str>,
+) -> bool {
+    if Some(from) == blocked || Some(to) == blocked {
+        return false;
+    }
+    let mut stack = vec![from.to_string()];
+    let mut seen: HashSet<String> = stack.iter().cloned().collect();
+    while let Some(n) = stack.pop() {
+        if n == to {
+            return true;
+        }
+        if let Some(next) = adj.get(&n) {
+            for m in next {
+                if Some(m.as_str()) == blocked {
+                    continue;
+                }
+                if seen.insert(m.clone()) {
+                    stack.push(m.clone());
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Name any relatum — system, external source, or sink — for a message, falling
+/// back to its id when unnamed. Broader than [`system_name`], which sees only systems.
+fn relatum_name(model: &WorldModel, id_str: &str) -> String {
+    let externals = model
+        .environment
+        .sources
+        .iter()
+        .chain(&model.environment.sinks)
+        .chain(model.systems.iter().flat_map(|s| s.sources.iter().chain(&s.sinks)));
+    for ext in externals {
+        if serialize_id(&ext.info.id) == id_str && !ext.info.name.is_empty() {
+            return ext.info.name.clone();
+        }
+    }
+    system_name(model, id_str)
 }
 
 /// Classify a model as open or closed *with respect to mass*, returning a short
@@ -1092,6 +1249,7 @@ mod tests {
             }],
             interactions: vec![],
             hidden_entities: vec![],
+            reachability_requirements: vec![],
         }
     }
 
@@ -2272,5 +2430,244 @@ mod tests {
                 r.issues
             );
         }
+    }
+
+    // ---- Declared reachability requirements (#69) -------------------------
+
+    fn reachability_msgs(r: &ValidationResult) -> Vec<&str> {
+        r.issues
+            .iter()
+            .filter(|i| i.severity == Severity::Error && i.message.contains("required"))
+            .map(|i| i.message.as_str())
+            .collect()
+    }
+
+    /// Law: a satisfied must-reach requirement raises nothing — the graph provides
+    /// a route to the declared outcome.
+    #[test]
+    fn must_reach_satisfied_is_clean() {
+        let mut m = bill_corrected();
+        // Introduced (C0.0) can reach Law (C0.9): 0→1→2→3→4→5→6→7→9.
+        m.reachability_requirements
+            .push(ReachabilityRequirement::MustReach {
+                from: sys_id(vec![0, 0]),
+                to: sys_id(vec![0, 9]),
+            });
+        let r = validate_mode(&m, Mode::Operational);
+        assert!(
+            reachability_msgs(&r).is_empty(),
+            "a reachable target must not error: {:#?}",
+            r.issues
+        );
+    }
+
+    /// Law: a must-reach requirement whose target the graph cannot route to is a
+    /// refusal (Error), citing the unreachable outcome.
+    #[test]
+    fn must_reach_unreachable_target_refuses() {
+        let mut m = bill_corrected();
+        // Sever every route into Law (7→9, 8→9) so it is unreachable.
+        m.interactions.retain(|ix| ix.sink != sys_id(vec![0, 9]));
+        m.reachability_requirements
+            .push(ReachabilityRequirement::MustReach {
+                from: sys_id(vec![0, 0]),
+                to: sys_id(vec![0, 9]),
+            });
+        let r = validate_mode(&m, Mode::Operational);
+        assert!(r.has_errors(), "an unmet must-reach is an Error: {:#?}", r.issues);
+        assert!(
+            reachability_msgs(&r)
+                .iter()
+                .any(|msg| msg.contains("no flow path") && msg.contains("Law")),
+            "the refusal cites the unreachable outcome: {:#?}",
+            r.issues
+        );
+    }
+
+    /// Law: an alternative-path requirement holds when a route that avoids the
+    /// named node exists — the corrected bill's direct 5→7 edge bypasses Conference.
+    #[test]
+    fn alternative_path_present_is_clean() {
+        let mut m = bill_corrected();
+        // Passed-second-chamber (C0.5) reaches Enrolled (C0.7) either via Conference
+        // (C0.6) or the direct "if identical" edge (5→7): an alternative exists.
+        m.reachability_requirements
+            .push(ReachabilityRequirement::AlternativePath {
+                from: sys_id(vec![0, 5]),
+                to: sys_id(vec![0, 7]),
+                avoiding: sys_id(vec![0, 6]),
+            });
+        let r = validate_mode(&m, Mode::Operational);
+        assert!(
+            reachability_msgs(&r).is_empty(),
+            "the direct 5→7 edge satisfies the alternative-path requirement: {:#?}",
+            r.issues
+        );
+    }
+
+    /// Law: the WP4 (2026-07-17) forced-detour case. Deleting the "if identical"
+    /// edge (5→7) funnels every route to Enrolled through Conference committee — a
+    /// structurally-silent omission no LLM caught. With the alternative-path
+    /// requirement declared, the kernel refuses and names the forced detour.
+    #[test]
+    fn alternative_path_forced_detour_refuses() {
+        let mut m = bill_corrected();
+        // Delete F16, the direct 5→7 "if identical" edge: now 5→7 only via 6.
+        m.interactions
+            .retain(|ix| !(ix.source == sys_id(vec![0, 5]) && ix.sink == sys_id(vec![0, 7])));
+        m.reachability_requirements
+            .push(ReachabilityRequirement::AlternativePath {
+                from: sys_id(vec![0, 5]),
+                to: sys_id(vec![0, 7]),
+                avoiding: sys_id(vec![0, 6]),
+            });
+        let r = validate_mode(&m, Mode::Operational);
+        assert!(
+            r.has_errors(),
+            "a missing required alternative is an Error: {:#?}",
+            r.issues
+        );
+        assert!(
+            reachability_msgs(&r)
+                .iter()
+                .any(|msg| msg.contains("forced detour") && msg.contains("Conference committee")),
+            "the refusal names the forced detour: {:#?}",
+            r.issues
+        );
+        // The offending element is navigable (subject set to the forced-detour node).
+        assert!(
+            r.issues
+                .iter()
+                .any(|i| i.subject.as_ref() == Some(&sys_id(vec![0, 6]))),
+            "the forced-detour node is the issue subject: {:#?}",
+            r.issues
+        );
+    }
+
+    /// Law: a requirement naming an element that resolves to no entity is itself a
+    /// defect — an Error distinct from an unmet-but-well-formed requirement.
+    #[test]
+    fn requirement_with_unknown_element_errors() {
+        let mut m = bill_corrected();
+        m.reachability_requirements
+            .push(ReachabilityRequirement::MustReach {
+                from: sys_id(vec![0, 0]),
+                to: sys_id(vec![0, 999]),
+            });
+        let r = validate_mode(&m, Mode::Operational);
+        assert!(r.has_errors());
+        assert!(
+            r.issues
+                .iter()
+                .any(|i| i.message.contains("resolves to no known entity")),
+            "an unresolvable requirement element errors: {:#?}",
+            r.issues
+        );
+    }
+
+    /// Law: declared reachability requirements are flow-graph properties — they are
+    /// evaluated only in Operational/Full, never in Core or Structural.
+    #[test]
+    fn requirements_only_in_dynamic_modes() {
+        let mut m = bill_corrected();
+        m.interactions
+            .retain(|ix| ix.sink != sys_id(vec![0, 9]));
+        m.reachability_requirements
+            .push(ReachabilityRequirement::MustReach {
+                from: sys_id(vec![0, 0]),
+                to: sys_id(vec![0, 9]),
+            });
+        for mode in [Mode::Core, Mode::Structural] {
+            let r = validate_mode(&m, mode);
+            assert!(
+                reachability_msgs(&r).is_empty(),
+                "requirements must not fire in {mode:?}: {:#?}",
+                r.issues
+            );
+        }
+    }
+
+    /// The four committed fixtures under `fixtures/reachability/` (satisfying and
+    /// violating, per check) are generated from these models, never hand-authored
+    /// (per the never-hand-author-BERT-JSON discipline). Regenerate after an
+    /// intentional shape change with `BLESS_FIXTURES=1`.
+    #[test]
+    fn reachability_requirement_fixtures() {
+        let must_reach = |from, to| ReachabilityRequirement::MustReach { from, to };
+        let alt = |from, to, avoiding| ReachabilityRequirement::AlternativePath {
+            from,
+            to,
+            avoiding,
+        };
+
+        // must-reach: satisfied on the corrected bill; violated once Law is severed.
+        let mut mr_ok = bill_corrected();
+        mr_ok
+            .reachability_requirements
+            .push(must_reach(sys_id(vec![0, 0]), sys_id(vec![0, 9])));
+
+        let mut mr_bad = bill_corrected();
+        mr_bad.interactions.retain(|ix| ix.sink != sys_id(vec![0, 9]));
+        mr_bad
+            .reachability_requirements
+            .push(must_reach(sys_id(vec![0, 0]), sys_id(vec![0, 9])));
+
+        // alternative-path: satisfied via the direct 5→7 edge; violated once it is cut.
+        let mut alt_ok = bill_corrected();
+        alt_ok
+            .reachability_requirements
+            .push(alt(sys_id(vec![0, 5]), sys_id(vec![0, 7]), sys_id(vec![0, 6])));
+
+        let mut alt_bad = bill_corrected();
+        alt_bad
+            .interactions
+            .retain(|ix| !(ix.source == sys_id(vec![0, 5]) && ix.sink == sys_id(vec![0, 7])));
+        alt_bad
+            .reachability_requirements
+            .push(alt(sys_id(vec![0, 5]), sys_id(vec![0, 7]), sys_id(vec![0, 6])));
+
+        for (name, model, expect_error) in [
+            ("must-reach-satisfied", &mr_ok, false),
+            ("must-reach-violated", &mr_bad, true),
+            ("alt-path-satisfied", &alt_ok, false),
+            ("alt-path-violated", &alt_bad, true),
+        ] {
+            bless_or_check(name, model);
+            let r = validate_mode(model, Mode::Operational);
+            assert_eq!(
+                !reachability_msgs(&r).is_empty(),
+                expect_error,
+                "fixture {name} error-expectation mismatch: {:#?}",
+                r.issues
+            );
+        }
+    }
+
+    /// Write-or-assert a model fixture. `BLESS_FIXTURES=1` (re)writes; otherwise it
+    /// asserts the committed file round-trips to the same model, so a shape change
+    /// fails instead of silently diverging.
+    fn bless_or_check(name: &str, model: &WorldModel) {
+        let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../fixtures/reachability");
+        let path = format!("{dir}/{name}.json");
+        let actual = serde_json::to_string_pretty(model).expect("serialize fixture");
+        if std::env::var_os("BLESS_FIXTURES").is_some() {
+            std::fs::create_dir_all(dir).expect("create fixture dir");
+            std::fs::write(&path, format!("{actual}\n")).expect("write fixture");
+            return;
+        }
+        let expected = std::fs::read_to_string(&path)
+            .unwrap_or_else(|_| panic!("missing fixture {path}; run BLESS_FIXTURES=1 to create"));
+        // Compare through a parse-and-reserialize so the fixture proves the model
+        // both round-trips and matches its generator (WorldModel has no PartialEq).
+        let reserialized = serde_json::to_string_pretty(
+            &serde_json::from_str::<WorldModel>(&expected)
+                .unwrap_or_else(|_| panic!("parse fixture {path}")),
+        )
+        .expect("reserialize fixture");
+        assert_eq!(
+            reserialized.trim_end_matches('\n'),
+            actual,
+            "fixture {name} drifted from its generator; regenerate with BLESS_FIXTURES=1"
+        );
     }
 }
