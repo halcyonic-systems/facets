@@ -30,7 +30,7 @@ SL compiles to `CanvasModel` (`crates/bert-canvas/src/canvas.rs:165`), the editi
 
 | Field | Layer | SL realization |
 |---|---|---|
-| `things` — id, name, `role` (Component/Environment), optional `primitive`, `interface` flag | model | `component` / `source` / `sink` / `environment` lines (§4.3) |
+| `things` — id, name, `role` (Component/Environment), optional `primitive`, `interface` flag, optional `child_model` decomposition reference | model | `component` / `source` / `sink` / `environment` lines (§4.3) |
 | `relations` — a, b, name, `is_bond`, `kind` | model | `flow` lines (§4.4) |
 | `boundary` — porosity, perceptive_fuzziness | model | `boundary` line (§4.5) |
 | `system_type` — kingdom, genus, domain | model | `system` / `domain` lines (§4.1–4.2) |
@@ -60,6 +60,7 @@ SL is one unified language: the traditions *contributed* the words, and the lang
 | `source`, `sink`, `environment` | a thing outside the boundary | Mobus (Src/Snk environment objects); `environment` shared with Bunge (E) | `Role::Environment` (§5.2 on the three words) |
 | `interface` | membership in the root membrane's I (flat I ⊆ C is the Lean's convention, Tuple.lean; the book makes interfaces components of the *boundary subsystem* — concordance row 9) | **Mobus (I in B) and Bunge ("interface points" = i/o terminals ∈ boundary, 1992)** — shared | `Thing.interface` |
 | `primitive` + one of `Combining`, `Splitting`, `Buffering`, `Impeding`, `Propelling`, `Copying`, `Sensing`, `Modulating`, `Amplifying`, `Inverting` | the work-process taxonomy | Mobus | `ProcessPrimitive` |
+| `decomposes` | a component carries a child model that realizes it, gated by the boundary contract (β) | **Mobus (Eq. 4.3, the word's primary source) and Bunge (every system a component of its next supersystem)** — shared; Klir least (his hierarchy is epistemological levels, not part-whole) | `System.child_model` (`ModelRef`), checked by `decomposition::check_decomposition` |
 | `flow` | a drawn connection (edge in N or G) | word: Mobus; the underlying relation is three-tradition (Klir dependency, Bunge connection/bond, Mobus flow) | `Relation` |
 | `->` | direction (from, to) | Mobus (flows carry direction); contrast the observer's `@directed` | `Relation.a` / `.b` |
 | `energy`, `matter`, `field`, `informational` | the connection-kind taxonomy | Bunge, **verbatim** ("flows — of energy, matter, or fields … informational", CES 1979), mapping 1:1 onto Mobus substances (Material/Energy/Message; `canvas.rs:64`) | `Kind` (the fifth value, `Unspecified`, is the *absence* of the clause) |
@@ -67,10 +68,10 @@ SL is one unified language: the traditions *contributed* the words, and the lang
 | `boundary`, `porosity`, `fuzziness` | B's properties P = ⟨porosity, perceptive_fuzziness⟩ | **Mobus (B = ⟨P, I⟩) and Bunge (topological boundary, 1992)** — shared concept; the property words are Mobus's | `CanvasBoundaryProps` |
 | `@pos`, `@lens`, `@directed` | view state (§6) | `@directed` is Klir's observer commitment (Facets Ch. 4); `@pos`/`@lens` are house words | `x`/`y`, `lens`, `klir_directed` |
 
-One deliberate absence (and one absence resolved):
+Two absences resolved:
 
 - **The system name landed (v1.1, #84 — closed 2026-07-18).** Mobus's paragraph names its subject ("Process M", "Steel-Plant"); the kernel gained `CanvasModel.name` and SL gained `system "Name" [: Kingdom[/Genus]]` the same day, exactly on the C3 schedule the v1 spec committed to: the word entered the lexicon only once the kernel carried the distinction. The name is a quoted string, projects into the root system's `info.name`, and round-trips both ways (concordance row 1, "the named referent").
-- **No decomposition syntax.** Sub-paragraphs (Mobus §4.3.1) require a nested neutral spec; nesting is gated on the 8-tuple decomposition mathematics and is out of scope for v1 (#89; foundations in `docs/design/decomposition-foundations.md`).
+- **Decomposition by reference landed (#89 step 4 — merged 2026-07-20).** Mobus's sub-paragraphs (§4.3.1) needed the kernel to carry the part-whole distinction first; it did once `System.child_model` (a `ModelRef`) and the Lean decomposition contract merged (steps 2–3, same day), so `decomposes` entered the lexicon on exactly the C3 schedule the name waited on — the word earns its place only once the kernel names the distinction. SL takes the *reference* form (the child is its own flat model, keyed by a stamped id — §4.3, §6 of `decomposition-foundations.md`), never nested block text: each SL file stays one flat paragraph, the recursion living in the reference index and not the page layout. The block form is the road not taken.
 
 ## 4. Grammar
 
@@ -87,7 +88,8 @@ system      = "system" [ string ] [ ":" kingdom [ "/" genus ] ] ;
 domain      = "domain" string ;
 thing       = thingword name { attr } ;
 thingword   = "component" | "source" | "sink" | "environment" ;
-attr        = "interface" | "primitive" primword ;      (* component lines only *)
+attr        = "interface" | "primitive" primword
+            | "decomposes" string modelid ;            (* component lines only *)
 flow        = "flow" name "->" name [ ":" kindword ] [ string ] [ "mere" ] ;
 boundary    = "boundary" { propword number } ;
 propword    = "porosity" | "fuzziness" ;
@@ -102,6 +104,7 @@ genus       = "Physical" | "Chemical" | "Biological" | "Social" | "Technical" ;
 kindword    = "energy" | "matter" | "field" | "informational" ;
 primword    = "Combining" | "Splitting" | "Buffering" | "Impeding" | "Propelling"
             | "Copying" | "Sensing" | "Modulating" | "Amplifying" | "Inverting" ;
+modelid     = "@" base58                              (* a stamped model id, model_id.rs *) ;
 
 name        = word | string ;
 string      = '"' { any character except '"' and newline } '"' ;
@@ -123,6 +126,8 @@ At most one per file. The free-text subject area that frames narration: `domain 
 
 `component Furnace primitive Combining interface` declares a component, optionally designating it a work process of a named primitive kind and/or a member of the boundary interface set. `source` / `sink` / `environment` declare environment things; the attribute words are rejected there (environment internals are opaque — Mobus §4.3.3.2.2, mirrored at `canvas.rs:84`). Names are unique per file; things must be declared before any flow references them.
 
+`component Furnace primitive Combining decomposes "furnace-interior" @Hrs6K91KnZZsiPcWzftv8U` designates the component as decomposed: it carries a child model that realizes it (`System.child_model`, the reference form of §6 in `decomposition-foundations.md` — Option B, the child is its own model). Both halves are mandatory. The quoted string is a human label (it may drift under renames — the toolchain re-stamps, the compiler never resolves it); the `@`-prefixed token is the child's stamped model id, base58 per `model_id.rs`, and is the key. A name with no `@id` is a fault (`unstamped reference — resolve via the library`; stamping is later tooling, not the compiler's job); an id that fails the base58 decoder is a fault; a second `decomposes` on one line is a fault; `decomposes` on an environment thing is a fault (its internals are opaque). `decomposes` and `interface` on the same component is a fault in v1: the Lean contract covers a component's internal network only, not flows crossing the parent membrane through an interface component (the gate-open narrowing, #89) — parent-side knowledge the store-free compiler rejects early rather than deferring. `decomposes` emits last, after `primitive` and `interface` (§7.1).
+
 ### 4.4 `flow`
 
 `flow "Iron Vendor" -> Furnace : matter "iron"` declares a directed connection. The kind clause is optional (absent = `Unspecified`); the quoted label is optional (the flow's name); trailing `mere` declares a mere relation — Bunge's B̄, a relation that is not a bond, which exists only in the editing model and never projects.
@@ -133,7 +138,7 @@ At most one per file: `boundary porosity 0.7 fuzziness 0.1`. Key-value pairs in 
 
 ### 4.6 Errors
 
-Parsing collects **all** faults in one pass and reports each with its 1-indexed line — never a first-error-only bail, and never a guess. Fault classes: lexical (unterminated quote), unknown keyword, malformed clause, duplicate name, undeclared flow endpoint, redeclared singleton (`system`/`domain`/`boundary`), attribute on an environment thing, out-of-range `@directed`, malformed known annotation. The ACE/Gherkin discipline — deterministic parse, fail loud on anything ambiguous — is inherited deliberately.
+Parsing collects **all** faults in one pass and reports each with its 1-indexed line — never a first-error-only bail, and never a guess. Fault classes: lexical (unterminated quote), unknown keyword, malformed clause, duplicate name, undeclared flow endpoint, redeclared singleton (`system`/`domain`/`boundary`), attribute on an environment thing, unstamped or malformed decomposition reference, `decomposes` on an interface component, duplicate `decomposes`, out-of-range `@directed`, malformed known annotation. The ACE/Gherkin discipline — deterministic parse, fail loud on anything ambiguous — is inherited deliberately.
 
 ## 5. Semantics
 
@@ -177,7 +182,7 @@ Marks the *n*-th declared flow (1-based) with Klir's observer orientation toggle
 
 ### 7.1 Canonical form
 
-`emit_sl` writes a model as: `system` / `domain` lines; thing lines in `things` order (environment words edge-derived per §5.2 — the emitted word is the kernel's reading); `flow` lines in `relations` order; `boundary` if authored; blank line; `@lens`; `@pos` per thing; `@directed` per directed flow. Names emit bare when they read as identifiers and shadow no keyword, quoted otherwise. Floats emit via shortest-round-trip decimal representation, so re-parsing recovers them bit-exactly.
+`emit_sl` writes a model as: `system` / `domain` lines; thing lines in `things` order (environment words edge-derived per §5.2 — the emitted word is the kernel's reading); `flow` lines in `relations` order; `boundary` if authored; blank line; `@lens`; `@pos` per thing; `@directed` per directed flow. On a component thing line the attributes emit in a fixed order: `primitive`, then `interface`, then `decomposes` last (the reference, quoted label plus `@`-id). Names emit bare when they read as identifiers and shadow no keyword, quoted otherwise. Floats emit via shortest-round-trip decimal representation, so re-parsing recovers them bit-exactly.
 
 ### 7.2 The contract (golden-tested)
 
@@ -296,7 +301,8 @@ A three-component decomposition with two boundary interfaces, an authored membra
 | Gap | Tracked | Direction |
 |---|---|---|
 | ~~No root-system name~~ shipped as v1.1 | #84 (closed 2026-07-18) | `CanvasModel.name` → `system "Name" [: type]` — see §3, §4.1 |
-| No decomposition / sub-paragraphs (flat, single-root) | #89 | Gated on 8-tuple decomposition math (`docs/design/decomposition-foundations.md`); nesting enters the neutral spec first |
+| ~~No decomposition / sub-paragraphs~~ decompose-by-reference shipped (step 4) | #89 (step 4 merged 2026-07-20) | `decomposes "label" @id` → `System.child_model` — see §3, §4.3, §7.1; the reference form keeps each file one flat paragraph, the recursion in the id index |
+| `interface` + `decomposes` refused together (v1) | #89 | The Lean contract covers a component's internal network only; when it grows the membrane-crossing case (flows through an interface component) the co-occurrence becomes legal and the `interface`/`decomposes` emission order (§7.1) gets revisited |
 | No controlled systems-English tier (the verbal surface proper) | design doc §5 Rung 2 | Fixed-grammar system-paragraph parsing to the same neutral spec |
 | Compiled diagram can land partly off-viewport | #83 | Zoom-to-fit after compile (UI, not language) |
 | Empty text compiles to an empty model silently | session log 7/18 | Possibly a nonempty gate or confirm in the pane (UI, not language) |

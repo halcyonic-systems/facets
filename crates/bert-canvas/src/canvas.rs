@@ -18,7 +18,7 @@ use bert_core::validate::{validate_mode, ValidationIssue};
 use bert_core::{
     AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType, HcgsArchetype,
     Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Interface, InterfaceType,
-    Mode, ProcessPrimitive, Substance, SubstanceType, System, Transform2d, Vec2, WorldModel,
+    Mode, ModelRef, ProcessPrimitive, Substance, SubstanceType, System, Transform2d, Vec2, WorldModel,
 };
 
 const RADIUS: f32 = 34.0;
@@ -69,6 +69,19 @@ fn kind_to_substance(k: Kind) -> SubstanceType {
     }
 }
 
+/// A reference from a component to the child model that realizes it (SL's
+/// `decomposes` clause; bert-lenses#89 step 4). Two halves: a human `name` label
+/// (may drift harmlessly across renames) and the stamped `id` — the stable key,
+/// the same `ModelRef` the kernel carries in [`bert_core::System::child_model`].
+/// The kernel stores only the id; the name is the surface layer's readability
+/// affordance, so a reference reconstructed from a kernel model (`to_canvas`)
+/// carries the component's own name as its label.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct ChildRef {
+    pub name: String,
+    pub id: ModelRef,
+}
+
 /// A node on the canvas.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Thing {
@@ -86,6 +99,13 @@ pub struct Thing {
     /// on env things (their internals are opaque, §4.3.3.2.2).
     #[serde(default)]
     pub interface: bool,
+    /// The child model this component decomposes into, by reference (SL's
+    /// `decomposes`; bert-lenses#89 step 4). `None` for atomic components and
+    /// every model authored before step 4; `skip_serializing_if` so those stay
+    /// byte-identical on disk. Projects to [`bert_core::System::child_model`]
+    /// (the id only); ignored on env things (their internals are opaque).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub child_model: Option<ChildRef>,
 }
 
 /// A drawn connection: `a → b`, a bond (or a mere relation), optionally typed.
@@ -308,6 +328,11 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     Some((t.x, t.y)),
                     t.primitive,
                 ));
+                // The `decomposes` reference carries its id into the kernel; the
+                // human label stays surface-side (the kernel keys on the id).
+                if let Some(child) = &t.child_model {
+                    systems.last_mut().unwrap().child_model = Some(child.id);
+                }
                 if t.interface {
                     designated.push((systems.len() - 1, t.id, &t.name));
                 }
@@ -480,12 +505,13 @@ fn substance_to_kind(s: SubstanceType) -> Kind {
 /// canvas is a VIEW + drive-target picker, and the run uses the original model —
 /// so this only needs to draw the structure faithfully.
 ///
-/// Decomposition (`System::child_model`) is NOT representable on the canvas
-/// editing model, so this projection DROPS it. A caller crossing into the
-/// canvas/SL surface must first refuse a decomposed model via
-/// [`WorldModel::assert_sl_expressible`](bert_core::WorldModel::assert_sl_expressible)
-/// (the shipping `to_canvas` wasm entry does); step 4 (bert-lenses#89) lifts the
-/// gap by teaching SL the `decomposes` form.
+/// Decomposition (`System::child_model`) is now PRESERVED (bert-lenses#89 step
+/// 4): a level-1 system carrying a `child_model` reference reconstructs a
+/// [`ChildRef`] on its component thing, so the reference survives into SL's
+/// `decomposes` clause instead of being silently dropped. The kernel stores only
+/// the id, so the reconstructed label is the component's own name (the label may
+/// drift; the id is the key). This is what lifted the `assert_sl_expressible`
+/// guard the shipping `to_canvas` wasm entry used to enforce.
 pub fn to_canvas(model: &WorldModel) -> CanvasModel {
     use std::collections::HashMap;
 
@@ -518,6 +544,16 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             // parent_interface is the designation's inverse: a level-1 system
             // attached to a root-membrane interface IS a designated member of I.
             interface: s.boundary.parent_interface.is_some(),
+            // The kernel keys decomposition on the id alone; label the
+            // reconstructed reference with the component's own name.
+            child_model: s.child_model.map(|id| ChildRef {
+                name: if s.info.name.is_empty() {
+                    bert_core::model_id::encode_uuid(&id.as_uuid())
+                } else {
+                    s.info.name.clone()
+                },
+                id,
+            }),
         });
     }
 
@@ -543,6 +579,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             role: Role::Environment,
             primitive: None,
             interface: false,
+            child_model: None,
         });
     }
 
@@ -626,6 +663,7 @@ mod tests {
             role,
             primitive: None,
             interface: false,
+            child_model: None,
         }
     }
     fn bond(id: u64, a: u64, b: u64) -> Relation {
