@@ -234,6 +234,7 @@ fn new_system(
             primitive: Some(p),
             ..Default::default()
         }),
+        child_model: None,
     }
 }
 

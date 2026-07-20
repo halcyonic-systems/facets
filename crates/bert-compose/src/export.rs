@@ -87,6 +87,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
         time_constant: String::new(),
         archetype: None,
         agent: None,
+        child_model: None,
     });
 
     // Map node index → its model id (subsystem or environment external).
@@ -197,6 +198,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                         // the compose node never declared one.
                         stock_unit: node.stock_unit.clone(),
                     }),
+                    child_model: None,
                 });
                 node_id.insert(i, sid);
             }

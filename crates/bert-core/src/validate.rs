@@ -1343,6 +1343,7 @@ mod tests {
                 time_constant: "Second".to_string(),
                 archetype: None,
                 agent: None,
+                child_model: None,
             }],
             interactions: vec![],
             hidden_entities: vec![],
@@ -1774,6 +1775,7 @@ mod tests {
             time_constant: "Second".to_string(),
             archetype: None,
             agent: None,
+            child_model: None,
         });
         let result = validate(&model);
         assert!(result.has_warnings());
@@ -1964,6 +1966,7 @@ mod tests {
             time_constant: "Second".to_string(),
             archetype: None,
             agent: None,
+            child_model: None,
         });
         // Add a flow so the processor doesn't trigger check_processor_flows warning
         model.environment.sources.push(ExternalEntity {
@@ -2072,6 +2075,7 @@ mod tests {
             time_constant: String::new(),
             archetype: None,
             agent: None,
+            child_model: None,
         }
     }
 

@@ -488,6 +488,7 @@ mod tests {
             time_constant: String::new(),
             archetype: None,
             agent,
+            child_model: None,
         }
     }
 
