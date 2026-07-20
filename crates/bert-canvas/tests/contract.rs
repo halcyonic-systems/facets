@@ -47,6 +47,7 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
         role,
         primitive: None,
         interface: false,
+        child_model: None,
     }
 }
 

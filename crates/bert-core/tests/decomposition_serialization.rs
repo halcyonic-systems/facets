@@ -79,13 +79,14 @@ fn a_reference_to_an_unknown_model_loads_fine() {
 }
 
 #[test]
-fn projecting_a_decomposed_model_to_sl_is_refused_loudly() {
-    // The SL gap: SL cannot express `decomposes` until step 4, so a decomposed
-    // model must be refused at the projection seam, never silently flattened.
+fn assert_sl_expressible_flags_a_decomposed_model() {
+    // Step 4 lifted the seam guard (`to_canvas` now preserves `child_model` and
+    // SL's `decomposes` clause expresses it), but the method survives as a cheap
+    // flatness predicate: it still reports a decomposed component by name.
     let (_, model) = load_golden();
-    let err = model.assert_sl_expressible().expect_err("a decomposed model must be refused");
-    assert!(err.contains("step 4"), "the refusal must name step 4: {err}");
-    assert!(err.contains("Furnace"), "the refusal must name the offending component: {err}");
+    let err = model.assert_sl_expressible().expect_err("a decomposed model is not flat");
+    assert!(err.contains("not flat"), "the predicate must say the model is not flat: {err}");
+    assert!(err.contains("Furnace"), "the predicate must name the decomposed component: {err}");
 }
 
 #[test]

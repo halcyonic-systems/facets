@@ -173,11 +173,11 @@ pub fn project(canvas_json: &str) -> Result<JsValue, JsError> {
 #[wasm_bindgen]
 pub fn to_canvas(model_json: &str) -> Result<JsValue, JsError> {
     let model = parse_model(model_json)?;
-    // The canvas editing model has no `child_model` field and SL has no
-    // `decomposes` clause (step 4), so a decomposed model must be refused here
-    // rather than silently flattened. Guard lives in bert-core (the seam it
-    // controls); lift the refusal when step 4 lands. bert-lenses#89 step 3.
-    model.assert_sl_expressible().map_err(|e| JsError::new(&e))?;
+    // Step 4 (bert-lenses#89) lifted the `assert_sl_expressible` guard that used
+    // to refuse a decomposed model here: `to_canvas` now preserves `child_model`
+    // as a `ChildRef`, and SL's `decomposes` clause expresses it, so the seam is
+    // no longer lossy. The predicate survives in bert-core for callers that want
+    // to test flatness.
     to_js(&bert_canvas::canvas::to_canvas(&model))
 }
 

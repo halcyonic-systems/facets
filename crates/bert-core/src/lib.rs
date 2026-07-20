@@ -771,28 +771,21 @@ impl WorldModel {
         *self.model_id.get_or_insert_with(ModelId::mint)
     }
 
-    /// Refuse, loudly, to hand a decomposed model to a surface that cannot yet
-    /// express decomposition (bert-lenses#89 step 3, the SL gap).
+    /// Whether this model is flat — carries no `child_model` reference on any
+    /// component. A cheap predicate; `Err` names the first decomposed component.
     ///
-    /// SL has no `decomposes` clause until step 4 (foundations doc §6/§7.4), and
-    /// the canvas editing model ([`to_canvas`](../bert_canvas/canvas/fn.to_canvas.html))
-    /// has no `child_model` field — so projecting a model whose kernel state
-    /// carries a `child_model` reference through either surface would SILENTLY
-    /// drop the reference. This is the guard at the seam bert-core controls: the
-    /// SL/canvas projection path MUST call it and surface the error rather than
-    /// drop. When step 4 teaches SL the `decomposes` reference form, delete the
-    /// guard call at that seam (this method can stay as a cheap predicate).
-    ///
-    /// Returns the coordinate of the first offending component (`Err`) or `Ok`
-    /// when the model is flat.
+    /// Historically (bert-lenses#89 step 3) this was the loud guard at the
+    /// SL/canvas seam: SL had no `decomposes` clause and `to_canvas` had no
+    /// `child_model` field, so projecting a decomposed model would SILENTLY drop
+    /// the reference. Step 4 lifted that — SL's `decomposes` clause expresses the
+    /// reference and `to_canvas` preserves it, so the seam call is gone (the
+    /// `to_canvas` wasm entry no longer invokes this). The predicate survives for
+    /// callers that still want to ask "is this model flat?".
     pub fn assert_sl_expressible(&self) -> Result<(), String> {
         for s in &self.systems {
             if s.child_model.is_some() {
                 return Err(format!(
-                    "`decomposes` not yet expressible in SL: component \"{}\" carries a \
-                     child_model reference, and SL cannot represent decomposition until \
-                     bert-lenses#89 step 4. Projecting it to SL or the canvas would \
-                     silently drop the reference — refused",
+                    "component \"{}\" carries a child_model reference — the model is not flat",
                     if s.info.name.is_empty() { &s.info.description } else { &s.info.name }
                 ));
             }
@@ -1305,9 +1298,10 @@ pub struct System {
     /// layer's job — [`decomposition::check_decomposition`], step 5). The kernel
     /// does no I/O.
     ///
-    /// SL cannot yet express `decomposes` (step 4), so a model carrying a
-    /// `child_model` must NOT be projected to SL silently lossy — see
-    /// [`WorldModel::assert_sl_expressible`].
+    /// SL expresses this reference as the `decomposes` clause (step 4): the id
+    /// round-trips through SL and the canvas editing model, so a decomposed model
+    /// is no longer refused at that seam (see the history note on
+    /// [`WorldModel::assert_sl_expressible`]).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub child_model: Option<ModelRef>,
 }

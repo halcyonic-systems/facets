@@ -4,13 +4,18 @@
 //! text (canvas-born, gap ids), the guarantee is canonicalization:
 //! `emit(parse(emit(m))) == emit(m)`.
 
-use bert_canvas::canvas::{CanvasBoundaryProps, CanvasModel, Kind, Lens, Relation, Role, SystemType, Thing};
+use bert_canvas::canvas::{
+    project, to_canvas, CanvasBoundaryProps, CanvasModel, ChildRef, Kind, Lens, Relation, Role,
+    SystemType, Thing,
+};
 use bert_canvas::sl::{emit_sl, parse_sl};
+use bert_core::{ModelId, ModelRef};
 
-const CORPUS: [(&str, &str); 3] = [
+const CORPUS: [(&str, &str); 4] = [
     ("process-m", include_str!("../../../fixtures/sl/process-m.sl")),
     ("bathtub", include_str!("../../../fixtures/sl/bathtub.sl")),
     ("hal-projection", include_str!("../../../fixtures/sl/hal-projection.sl")),
+    ("decomposition", include_str!("../../../fixtures/sl/decomposition.sl")),
 ];
 
 fn json(m: &CanvasModel) -> serde_json::Value {
@@ -62,6 +67,7 @@ fn canvas_born_model_canonicalizes() {
         role,
         primitive: None,
         interface: false,
+        child_model: None,
     };
     let m = CanvasModel {
         lens: Lens::Klir,
@@ -130,4 +136,90 @@ fn unrepresentable_names_refused() {
     let mut m = parse_sl("component A\n").unwrap();
     m.things[0].name = "has \" quote".into();
     assert!(emit_sl(&m).unwrap_err().contains("not expressible"));
+}
+
+/// Law: `decomposes "name" @id` parses to a `ChildRef` carrying both halves —
+/// the human label and the base58-decoded id — and emit puts it last (after
+/// `primitive`), digit for digit.
+#[test]
+fn decomposes_clause_parses_and_emits_last() {
+    let text =
+        "component Furnace primitive Combining decomposes \"furnace-interior\" @Hrs6K91KnZZsiPcWzftv8U\n";
+    let m = parse_sl(text).unwrap();
+    let child = m.things[0].child_model.as_ref().expect("Furnace decomposes");
+    assert_eq!(child.name, "furnace-interior");
+    // The id decodes to the known uuid the fixture's base58 string names — no
+    // uuid dev-dep needed, the kernel's own base58 codec is the bridge.
+    let expected = ModelRef::new(bert_core::model_id::decode_uuid("Hrs6K91KnZZsiPcWzftv8U").unwrap());
+    assert_eq!(child.id, expected);
+
+    let emitted = emit_sl(&m).unwrap();
+    assert!(
+        emitted.contains(
+            "component Furnace primitive Combining decomposes \"furnace-interior\" @Hrs6K91KnZZsiPcWzftv8U"
+        ),
+        "decomposes must emit last, after primitive:\n{emitted}"
+    );
+}
+
+/// Law: the decomposition faults the store-free compiler must catch — a name
+/// without an `@id` (unstamped), a malformed id, `decomposes` on an environment
+/// thing, `decomposes` + `interface` co-occurring, and a duplicate clause.
+#[test]
+fn decomposes_faults_are_caught_one_pass() {
+    let unstamped = parse_sl("component F decomposes \"child\"\n").unwrap_err();
+    assert!(unstamped[0].message.contains("unstamped"), "{unstamped:?}");
+
+    let malformed = parse_sl("component F decomposes \"child\" @not-base58-0\n").unwrap_err();
+    assert!(malformed[0].message.contains("malformed decomposes id"), "{malformed:?}");
+
+    let on_env =
+        parse_sl("source S decomposes \"child\" @Hrs6K91KnZZsiPcWzftv8U\n").unwrap_err();
+    assert!(on_env[0].message.contains("components only"), "{on_env:?}");
+
+    let with_iface = parse_sl(
+        "component F interface decomposes \"child\" @Hrs6K91KnZZsiPcWzftv8U\n",
+    )
+    .unwrap_err();
+    assert!(
+        with_iface[0].message.contains("interface components") && with_iface[0].message.contains("#89"),
+        "{with_iface:?}");
+
+    let dup = parse_sl(
+        "component F decomposes \"a\" @Hrs6K91KnZZsiPcWzftv8U decomposes \"b\" @Hrs6K91KnZZsiPcWzftv8U\n",
+    )
+    .unwrap_err();
+    assert!(dup.iter().any(|e| e.message.contains("already given")), "{dup:?}");
+}
+
+/// Law: a WorldModel carrying a `child_model` reference survives the full seam —
+/// to_canvas → emit_sl → parse → project — with the id (the key) preserved end
+/// to end. This is the path the lifted `assert_sl_expressible` guard used to
+/// refuse; the human label drifts to the component's own name across the kernel
+/// hop (the kernel stores only the id), which is the documented behavior.
+#[test]
+fn worldmodel_reference_survives_to_canvas_and_back() {
+    let id = ModelRef::to(ModelId::mint());
+    // A canvas model with a decomposed component projects to a real WorldModel
+    // carrying System.child_model — a faithful "WorldModel with a reference".
+    let src = parse_sl("component Furnace primitive Combining\n").unwrap();
+    let mut src = src;
+    src.things[0].child_model = Some(ChildRef { name: "furnace-interior".into(), id });
+
+    let world = project(&src);
+    let furnace = world.systems.iter().find(|s| s.info.name == "Furnace").unwrap();
+    assert_eq!(furnace.child_model, Some(id), "project must carry the reference into the kernel");
+
+    let cm = to_canvas(&world);
+    let carried = cm.things.iter().find(|t| t.name == "Furnace").unwrap();
+    let child = carried.child_model.as_ref().expect("to_canvas preserves the reference");
+    assert_eq!(child.id, id, "to_canvas must preserve the id");
+    assert_eq!(child.name, "Furnace", "label drifts to the component name (kernel has no label)");
+
+    let text = emit_sl(&cm).unwrap();
+    assert!(text.contains("decomposes"), "emit must write the clause:\n{text}");
+    let reparsed = parse_sl(&text).unwrap();
+    let world2 = project(&reparsed);
+    let furnace2 = world2.systems.iter().find(|s| s.info.name == "Furnace").unwrap();
+    assert_eq!(furnace2.child_model, Some(id), "the id must survive the whole round trip");
 }

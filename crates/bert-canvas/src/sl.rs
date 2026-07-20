@@ -33,10 +33,12 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use bert_core::ProcessPrimitive;
+use bert_core::model_id::{decode_uuid, encode_uuid};
+use bert_core::{ModelRef, ProcessPrimitive};
 
 use crate::canvas::{
-    CanvasBoundaryProps, CanvasModel, Genus, Kind, Kingdom, Lens, Relation, Role, SystemType, Thing,
+    CanvasBoundaryProps, CanvasModel, ChildRef, Genus, Kind, Kingdom, Lens, Relation, Role,
+    SystemType, Thing,
 };
 
 /// A parse fault, anchored to its 1-indexed source line. All faults are
@@ -234,10 +236,77 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 }
                 let mut primitive: Option<ProcessPrimitive> = None;
                 let mut interface = false;
+                let mut child_model: Option<ChildRef> = None;
                 let mut i = 0;
                 let mut ok = true;
                 while i < attrs.len() {
                     match &attrs[i] {
+                        Tok::Word(w) if w.eq_ignore_ascii_case("decomposes") => {
+                            if role == Role::Environment {
+                                fail(
+                                    "`decomposes` applies to components only (environment \
+                                     internals are opaque)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                            if child_model.is_some() {
+                                fail("`decomposes` already given on this component".into(), &mut errors);
+                                ok = false;
+                            }
+                            // `decomposes "child-name" @<base58-id>` — both halves
+                            // mandatory: the name is a human label, the stamped id
+                            // is the key (resolution is later tooling, not the
+                            // compiler; #89 step 4).
+                            match (attrs.get(i + 1), attrs.get(i + 2)) {
+                                (Some(Tok::Str(cname)), Some(Tok::Word(idtok)))
+                                    if idtok.starts_with('@') =>
+                                {
+                                    if cname.is_empty() {
+                                        fail("decomposes child name cannot be empty".into(), &mut errors);
+                                        ok = false;
+                                    }
+                                    match decode_uuid(&idtok[1..]) {
+                                        Ok(uuid) => {
+                                            if ok {
+                                                child_model = Some(ChildRef {
+                                                    name: cname.clone(),
+                                                    id: ModelRef::new(uuid),
+                                                });
+                                            }
+                                        }
+                                        Err(e) => {
+                                            fail(
+                                                format!("malformed decomposes id `{}`: {e}", &idtok[1..]),
+                                                &mut errors,
+                                            );
+                                            ok = false;
+                                        }
+                                    }
+                                    i += 3;
+                                }
+                                (Some(Tok::Str(_)), _) => {
+                                    fail(
+                                        "unstamped reference — resolve via the library: \
+                                         `decomposes \"name\" @<id>`"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                    i += 2;
+                                }
+                                _ => {
+                                    fail(
+                                        "decomposes syntax: `decomposes \"<child name>\" @<id>`"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                    i += 1;
+                                }
+                            }
+                        }
                         Tok::Word(w) if w.eq_ignore_ascii_case("interface") => {
                             if role == Role::Environment {
                                 fail(
@@ -290,6 +359,19 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         }
                     }
                 }
+                // Parent-side-only knowledge the store-free compiler can and must
+                // reject early: v1's Lean contract covers a component's internal
+                // network only, not flows crossing the parent membrane through an
+                // interface component (issue #89 gate-open narrowing).
+                if interface && child_model.is_some() {
+                    fail(
+                        "v1 refuses to decompose interface components — membrane-crossing \
+                         flows not yet in the Lean contract; see #89"
+                            .into(),
+                        &mut errors,
+                    );
+                    ok = false;
+                }
                 if !ok {
                     continue;
                 }
@@ -302,6 +384,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     role,
                     primitive,
                     interface,
+                    child_model,
                 });
                 next_id += 1;
             }
@@ -547,6 +630,12 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
             if t.interface {
                 write!(out, " interface").unwrap();
             }
+            // `decomposes` emits last (§7.1 canonical order): name quoted, id in
+            // the canonical base58 form, both mandatory.
+            if let Some(child) = &t.child_model {
+                write!(out, " decomposes {} @{}", quote(&child.name)?, encode_uuid(&child.id.as_uuid()))
+                    .unwrap();
+            }
         }
         out.push('\n');
     }
@@ -614,6 +703,7 @@ fn is_reserved(word: &str) -> bool {
             | "boundary"
             | "interface"
             | "primitive"
+            | "decomposes"
             | "mere"
             | "porosity"
             | "fuzziness"

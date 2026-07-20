@@ -582,6 +582,7 @@ mod tests {
             role,
             primitive: None,
             interface: false,
+            child_model: None,
         }
     }
     fn relation(id: u64, a: u64, b: u64, is_bond: bool) -> Relation {
