@@ -16,13 +16,15 @@ The tour is one document, but three readers arrive with different questions. Eac
 
 **The newcomer / practitioner** (write your first model). Start at the [`quickstart.md`](quickstart.md) ten-minute path, then read [§"The model grows"](#the-model-grows) in order — each step adds one idea and shows what it draws. Exit into the graded [`fixtures/sl/teaching/`](../fixtures/sl/teaching/) set (a two-thing first model, a copy-and-adapt, and two files that fail on purpose so you learn to read the errors) and the lens palettes in [`design/lens-palettes.md`](design/lens-palettes.md).
 
-**The governance / applied reader** (what the tool refuses, and why that is the point). Read the growth steps where a single line changes the verdict — [§"Flows: systemhood is earned"](#flows-systemhood-is-earned) especially — then the honest-boundary table in [`theory-fidelity.md`](theory-fidelity.md#honest-boundary-table), then the decision records [`decisions/`](decisions/) (ADRs 0001–0003) and the status vocabulary in [`docs/README.md`](README.md). The tool's willingness to refuse — an unbonded heap is not a system, a self-loop is not operational, a two-primitive component must decompose — is the evidence that its verdicts mean something.
+**The philosopher of science** (what the tool refuses, and why refusal is the credential). Read the growth steps where a single line changes the verdict — [§"Flows: systemhood is earned"](#flows-systemhood-is-earned) especially — then the honest-boundary table in [`theory-fidelity.md`](theory-fidelity.md#honest-boundary-table), then the decision records [`decisions/`](decisions/) (ADRs 0001–0003) and the status vocabulary in [`docs/README.md`](README.md). The tool's willingness to refuse — an unbonded heap is not a system, a self-loop is not operational, a two-primitive component must decompose — is the epistemic argument: verdicts mean something exactly because they can come out negative, and the dated decision records show the discipline that keeps them honest.
 
 ---
 
 ## The model grows
 
 A file is a sequence of lines, each independently a comment, a structure line, or an annotation ([spec §4](language/spec.md#4-grammar)). We add them in the fixture's order and watch the model accrue.
+
+> **The running model's referent, in thirty seconds.** hal is the author's own local sovereign-AI stack, in daily use: a proxy fronting a fleet of language models, a daily loop that drives routine work through it, and a council that convenes several models to deliberate; its public face is live at [homeostat.systems](https://homeostat.systems). It is the running model because it is real — the instrument turned on the builder's own infrastructure, and one of the round-trip goldens — not because you need to know hal: the eleven lines below are self-contained, and no step depends on the referent.
 
 ### A comment, then the system itself
 
