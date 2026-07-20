@@ -51,6 +51,9 @@ export interface LensEdgeProps {
 export interface LensPortProps {
   port: PortFact;
   at: Pt;
+  /** Outward membrane normal (radians) at `at` — the notch shape rotates to
+   *  it so an arrowhead points along the boundary, into or out of the interior. */
+  normal: number;
   /** Ports belong to B — clicking one opens the boundary inspector. */
   onSelect?: () => void;
 }

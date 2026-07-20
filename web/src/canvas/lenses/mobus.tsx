@@ -6,12 +6,17 @@
 // (Tuple.lean): the crossing is env-object ↔ port, never straight to interior.
 import type { PortFact, Relation } from "../../kernel/types";
 import { KIND_COLOR } from "../types";
-import { edgeGeometry, rimPoint, ringPoint, straightPath, thingById, NODE_R, type Pt } from "../geometry";
+import { edgeGeometry, rimPoint, ringPoint, straightPath, thingById, NODE_R } from "../geometry";
 import { STYLE } from "../style";
 import { EdgeScaffold, NodeBody, type EdgeStyle } from "./common";
-import type { LensEdgeProps, LensNodeProps } from "./registry";
+import type { LensEdgeProps, LensNodeProps, LensPortProps } from "./registry";
 
 function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointerDown }: LensNodeProps) {
+  // Modulating is Mobus's regulator/decision process — reify it as a triangle
+  // (Fig. 4.17), the shape carrying what the corner badge otherwise would,
+  // so the badge is dropped for it to avoid a doubled marker.
+  const isRegulator = thing.role === "Component" && thing.primitive === "Modulating";
+  const shape = thing.role === "Environment" ? "square" : isRegulator ? "triangle" : "circle";
   return (
     <NodeBody
       pending={isOrphan}
@@ -20,13 +25,13 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
       sim={sim}
       onPointerDown={onPointerDown}
       onHandlePointerDown={onHandlePointerDown}
-      isSquare={thing.role === "Environment"}
+      shape={shape}
       showHalo={thing.role === "Component"}
       envOpen={thing.role === "Environment"}
       stroke="var(--lens-node-stroke)"
       strokeOpacity={1}
       strokeWidth={STYLE.nodeStrokeWidth}
-      badge={thing.primitive}
+      badge={isRegulator ? undefined : thing.primitive}
       labelSmall={false}
       boundaryRim={false}
     />
@@ -113,11 +118,26 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
   );
 }
 
-/** A Mobus interface — a pill notch breaking the membrane stroke (Fig. 4.9:
- *  "round-edged rectangles that penetrate the boundary"). Direction glyph:
- *  ▸ receives / ◂ exports / ⇄ hybrid. Interfaces gate, they don't transform. */
-function PortView({ port, at, onSelect }: { port: PortFact; at: Pt; onSelect?: () => void }) {
-  const glyph = port.direction === "Receives" ? "▸" : port.direction === "Exports" ? "◂" : "⇄";
+/** A Mobus interface — a notch breaking the membrane (Fig. 4.9: "round-edged
+ *  rectangles that penetrate the boundary"), its outline carrying direction:
+ *  an arrowhead pointing inward receives, outward exports, a diamond is hybrid.
+ *  The notch rotates to the membrane normal so the arrow reads before any glyph;
+ *  φ rides above as the protocol label. Interfaces gate, they don't transform. */
+function portNotch(direction: PortFact["direction"]): string {
+  // Local frame: +x is the outward normal (the caller rotates it there); the
+  // membrane runs along ±y. A home-plate whose tip points inward/outward gives
+  // the direction its outline; the hybrid is a symmetric diamond.
+  switch (direction) {
+    case "Receives":
+      return "-15,0 -2,-9 15,-9 15,9 -2,9";
+    case "Exports":
+      return "15,0 2,-9 -15,-9 -15,9 2,9";
+    default:
+      return "15,0 0,-9 -15,0 0,9";
+  }
+}
+
+function PortView({ port, at, normal, onSelect }: LensPortProps) {
   const label = port.protocol.length > 22 ? `${port.protocol.slice(0, 21)}…` : port.protocol;
   return (
     <g
@@ -132,19 +152,14 @@ function PortView({ port, at, onSelect }: { port: PortFact; at: Pt; onSelect?: (
       }
     >
       <title>{`interface — ${port.direction.toLowerCase()} · φ: ${port.protocol}`}</title>
-      <rect
-        x={-16}
-        y={-9}
-        width={32}
-        height={18}
-        rx={STYLE.portRx}
+      <polygon
+        transform={`rotate(${(normal * 180) / Math.PI})`}
+        points={portNotch(port.direction)}
+        strokeLinejoin="round"
         fill="var(--bg-primary)"
         stroke="var(--lens-accent)"
         strokeWidth={STYLE.portStrokeWidth}
       />
-      <text textAnchor="middle" dominantBaseline="central" fontSize={10} fill="var(--lens-accent)" className="pointer-events-none">
-        {glyph}
-      </text>
       <text y={-15} textAnchor="middle" fontSize={9} fill="var(--text-muted)" className="font-mono pointer-events-none">
         {label}
       </text>

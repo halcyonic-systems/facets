@@ -8,7 +8,7 @@
 import { useEffect, useRef } from "react";
 import type { CanvasModel, EdgeFact, Lens, LensFacts, PortFact, Thing } from "../kernel/types";
 import type { SimFrame } from "./types";
-import { componentRing, ringPoint, thingById, NODE_R, type Pt, type Ring } from "./geometry";
+import { componentRing, rimPoint, ringPoint, thingById, NODE_R, type Pt, type Ring } from "./geometry";
 import { useCanvasGestures } from "./useCanvasGestures";
 import { STYLE } from "./style";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
@@ -143,6 +143,23 @@ export default function Canvas({
               : [];
           })
       : [];
+
+  // A node-level cue that a component OWNS an interface: a tick on its own rim
+  // aimed at the port (research brief §4 Option B), distinct from the membrane
+  // notch out on the ring. Mobus-only — ports exist under no other lens.
+  const interfaceTicks: { key: string; tip: Pt; deg: number }[] = ring
+    ? [...portsAt, ...flowlessAt].flatMap(({ port, at }) => {
+        const comp = thingById(model, port.component);
+        if (!comp) return [];
+        return [
+          {
+            key: `tick-${port.component}-${port.env}`,
+            tip: rimPoint(comp, at, NODE_R),
+            deg: (Math.atan2(at.y - comp.y, at.x - comp.x) * 180) / Math.PI,
+          },
+        ];
+      })
+    : [];
 
   return (
     <svg
@@ -283,11 +300,23 @@ export default function Canvas({
         {/* Mobus interface ports — pill notches in the membrane, one per kernel
             PortFact (r = (S, φ): existence, direction, and protocol are kernel
             facts; only the pixel position is computed here). */}
+        {/* Interface-bearing rim ticks — drawn under the notches so the
+            membrane glyph stays the focal mark. */}
+        {interfaceTicks.map(({ key, tip, deg }) => (
+          <polygon
+            key={key}
+            transform={`translate(${tip.x}, ${tip.y}) rotate(${deg})`}
+            points="7,0 -2,-4 -2,4"
+            fill="var(--lens-accent)"
+            pointerEvents="none"
+          />
+        ))}
         {portsAt.map(({ port, at }) => (
           <views.PortView
             key={`${port.component}-${port.env}`}
             port={port}
             at={at}
+            normal={ring ? Math.atan2(at.y - ring.cy, at.x - ring.cx) : 0}
             onSelect={onSelectBoundary ? () => onSelectBoundary(at) : undefined}
           />
         ))}
@@ -296,6 +325,7 @@ export default function Canvas({
             <views.PortView
               port={port}
               at={at}
+              normal={ring ? Math.atan2(at.y - ring.cy, at.x - ring.cx) : 0}
               onSelect={onSelectBoundary ? () => onSelectBoundary(at) : undefined}
             />
           </g>

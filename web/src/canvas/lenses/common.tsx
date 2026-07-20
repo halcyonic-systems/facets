@@ -19,14 +19,24 @@ export interface EdgeStyle {
   filter?: string;
 }
 
+/** The node body shape. `circle` = ordinary component, `square` = env
+ *  object, `triangle` = a Mobus regulator (the Modulating primitive reified as
+ *  its own shape). Klir/Bunge never emit `triangle`. */
+export type NodeShape = "circle" | "square" | "triangle";
+
+/** Upward triangle, circumradius NODE_R, centered on its circumcenter (the same
+ *  origin the circle/square use) so it drops into node layout unchanged. */
+const TRIANGLE_POINTS = `0,${-NODE_R} ${NODE_R * 0.866},${NODE_R * 0.5} ${-NODE_R * 0.866},${NODE_R * 0.5}`;
+
 interface NodeBodyProps {
   thing: { id: number; x: number; y: number; name: string };
   hovered: boolean;
   sim?: { value: number; unit: string; frac: number };
   onPointerDown: (e: ReactPointerEvent) => void;
   onHandlePointerDown: (e: ReactPointerEvent) => void;
-  /** Env objects render as squares under Bunge/Mobus; Klir keeps every thing a circle. */
-  isSquare: boolean;
+  /** Node shape: circle component, square env object, triangle regulator.
+   *  Env objects are squares under Bunge/Mobus; Klir keeps every thing a circle. */
+  shape: NodeShape;
   /** Bunge/Mobus composition halo (the C/E wash); a set partition, not a ring. */
   showHalo: boolean;
   /** Mobus env sources/sinks are open unfilled shapes (epistemically unknowable). */
@@ -53,7 +63,7 @@ export function NodeBody({
   sim,
   onPointerDown,
   onHandlePointerDown,
-  isSquare,
+  shape,
   showHalo,
   envOpen,
   stroke,
@@ -107,7 +117,7 @@ export function NodeBody({
           <clipPath id={clipId}>
             <rect x={-NODE_R} y={NODE_R - 2 * NODE_R * frac} width={NODE_R * 2} height={2 * NODE_R * frac} />
           </clipPath>
-          {isSquare ? (
+          {shape === "square" ? (
             <rect
               x={-NODE_R}
               y={-NODE_R}
@@ -118,13 +128,15 @@ export function NodeBody({
               opacity={STYLE.simFillOpacity}
               clipPath={`url(#${clipId})`}
             />
+          ) : shape === "triangle" ? (
+            <polygon points={TRIANGLE_POINTS} fill="var(--accent)" opacity={STYLE.simFillOpacity} clipPath={`url(#${clipId})`} />
           ) : (
             <circle r={NODE_R} fill="var(--accent)" opacity={STYLE.simFillOpacity} clipPath={`url(#${clipId})`} />
           )}
         </>
       )}
 
-      {isSquare ? (
+      {shape === "square" ? (
         <rect
           x={-NODE_R}
           y={-NODE_R}
@@ -132,6 +144,16 @@ export function NodeBody({
           height={NODE_R * 2}
           rx={STYLE.squareRx}
           fill={envOpen ? "none" : STYLE.nodeFill}
+          stroke={stroke}
+          strokeOpacity={strokeOpacity}
+          strokeWidth={strokeWidth}
+          fillOpacity={frac !== null ? 0 : 1}
+        />
+      ) : shape === "triangle" ? (
+        <polygon
+          points={TRIANGLE_POINTS}
+          strokeLinejoin="round"
+          fill={STYLE.nodeFill}
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}

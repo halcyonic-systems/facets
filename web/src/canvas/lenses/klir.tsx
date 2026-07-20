@@ -15,7 +15,7 @@ function NodeView({ thing, hovered, sim, onPointerDown, onHandlePointerDown }: L
       sim={sim}
       onPointerDown={onPointerDown}
       onHandlePointerDown={onHandlePointerDown}
-      isSquare={false}
+      shape="circle"
       showHalo={false}
       envOpen={false}
       stroke="var(--lens-node-stroke)"
