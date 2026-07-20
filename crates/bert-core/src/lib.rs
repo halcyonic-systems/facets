@@ -16,6 +16,7 @@
 
 pub mod operational;
 pub mod transition;
+pub mod units;
 pub mod validate;
 
 use enum_iterator::Sequence;
