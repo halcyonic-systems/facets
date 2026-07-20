@@ -106,14 +106,18 @@ pub fn validate(model: &WorldModel) -> ValidationResult {
     ValidationResult { issues }
 }
 
-/// Dimensional-consistency check for declared stock units (bert-lenses#76). A
-/// stock accumulates its inflow over Δt, so its dimension is the flow's unit ×
-/// time (a `kW` inflow accrues energy, `ML/mo` accrues `ML`) — a stock's unit is
-/// a QUANTITY, not a rate. This warns (never errors) when a stock declares a
-/// rate-like unit, the cheap string signal for the mismatch. The full check —
-/// flow-unit × Δt reconciled against the stock unit — needs the unit algebra
-/// deferred to #94; this is the no-parse proxy, so it catches a declared rate
-/// (contains `/`) but not a rate without a slash (`kW`).
+/// Intrinsic-shape check for a declared stock unit (bert-lenses#76, upgraded to
+/// real parsing by #94). A stock accumulates its inflow over Δt, so its dimension
+/// is a QUANTITY, not a rate — a stock declaring a rate unit is suspect in
+/// isolation, before any inflow is consulted. This warns (never errors) when the
+/// declared stock unit parses as a rate.
+///
+/// This runs in every mode because it needs no context beyond the stock's own
+/// unit — it is an observation about one declaration, not a proven contradiction
+/// between two, so it stays a Warning (`docs/kernel-architecture.md`:
+/// observed-warns). Where #76 could only catch a literal slash, the [`units`]
+/// parser now also catches a slashless rate like `kW` (power is a rate), and
+/// declines to fire on a token it cannot parse — no unit, no claim.
 fn check_stock_units(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     for (i, system) in model.systems.iter().enumerate() {
         let Some(agent) = system.agent.as_ref() else {
@@ -123,7 +127,10 @@ fn check_stock_units(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
             continue;
         }
         let unit = agent.stock_unit.trim();
-        if !unit.is_empty() && unit.contains('/') {
+        let Some(parsed) = units::parse_unit(unit) else {
+            continue;
+        };
+        if parsed.per_time {
             issues.push(ValidationIssue::warning(
                 format!("systems[{i}].agent.stock_unit"),
                 format!(
@@ -138,6 +145,94 @@ fn check_stock_units(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
                 ),
             ));
         }
+    }
+}
+
+/// Derived-vs-declared dimensional consistency (bert-lenses#94). Where
+/// [`check_stock_units`] judges a stock unit in isolation, this reconciles two
+/// author-declared facts through the flow × Δt integration law: a Buffering
+/// stock's declared unit against the dimension its inflow's unit accumulates to.
+/// A `kW` inflow accrues energy, so a stock declaring `kW` (power) has stated an
+/// inconsistency the kernel can prove.
+///
+/// **Severity: Error (a refusal).** Per the observed-warns / declared-refuses
+/// doctrine (`docs/kernel-architecture.md`, #69), the kernel refuses stated
+/// inconsistencies and only warns about observations it cannot pin to intent.
+/// Both the flow unit and the stock unit are author-declared, and the derivation
+/// is a kernel law, not a guess — so their disagreement is a *declared*
+/// inconsistency, the same class as a violated reachability requirement. It
+/// refuses only in Operational/Full, where units feed a run; in Core/Structural
+/// a half-authored unit is not yet a claim. The refusal is gated on BOTH units
+/// parsing: an unknown unit is not a stated fact, so it cannot contradict one.
+///
+/// Bare-quantity inflows are admitted leniently (see
+/// [`units::Unit::stock_candidate_dimensions`]) — only a genuinely irreconcilable
+/// pair refuses, never an honest `L`-flow / `L`-stock.
+fn check_stock_dimensions(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
+    for (i, system) in model.systems.iter().enumerate() {
+        let Some(agent) = system.agent.as_ref() else {
+            continue;
+        };
+        if agent.primitive != Some(ProcessPrimitive::Buffering) {
+            continue;
+        }
+        let Some(declared) = units::parse_unit(agent.stock_unit.trim()) else {
+            continue;
+        };
+        let stock_id = serialize_id(&system.info.id);
+        for ix in &model.interactions {
+            if serialize_id(&ix.sink) != stock_id {
+                continue;
+            }
+            let Some(flow) = units::parse_unit(ix.unit.trim()) else {
+                continue;
+            };
+            let candidates = flow.stock_candidate_dimensions();
+            if !candidates.contains(&declared.dimension) {
+                issues.push(
+                    ValidationIssue::error(
+                        format!("systems[{i}].agent.stock_unit"),
+                        format!(
+                            "stock \"{}\" declares unit '{}', but its inflow '{}' \
+                             ({}) accumulates over Δt to a different dimension — a \
+                             stock holds the integral of its inflow, so a '{}' \
+                             inflow fills a '{}'-dimensioned stock, not '{}'",
+                            system.info.name,
+                            agent.stock_unit.trim(),
+                            ix.info.name,
+                            ix.unit.trim(),
+                            ix.unit.trim(),
+                            integrated_unit_hint(&ix.unit),
+                            agent.stock_unit.trim(),
+                        ),
+                        Some(
+                            "Declare the stock's unit as the inflow's unit × time \
+                             (e.g. 'kWh' for a 'kW' inflow, 'ML' for an 'ML/mo' \
+                             inflow), or correct the inflow's unit",
+                        ),
+                    )
+                    .with_subject(&system.info.id),
+                );
+                break;
+            }
+        }
+    }
+}
+
+/// A best-effort human label for the dimension a flow unit integrates to, used
+/// only to make the mismatch message concrete (`kW` → `kWh`, `ML/mo` → `ML`).
+/// Falls back to the flow unit itself when the shape is not one this small table
+/// recognizes — the message stays honest either way.
+fn integrated_unit_hint(flow_unit: &str) -> String {
+    let trimmed = flow_unit.trim();
+    match trimmed {
+        "kW" => "kWh".to_string(),
+        "W" => "Wh".to_string(),
+        "MW" => "MWh".to_string(),
+        _ => match trimmed.split_once('/') {
+            Some((quantity, _rate)) => quantity.to_string(),
+            None => trimmed.to_string(),
+        },
     }
 }
 
@@ -170,12 +265,14 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
             check_dead_ends(model, issues);
             check_reachability(model, issues);
             check_reachability_requirements(model, issues);
+            check_stock_dimensions(model, issues);
         }
         Mode::Full => {
             check_self_loops(model, issues);
             check_dead_ends(model, issues);
             check_reachability(model, issues);
             check_reachability_requirements(model, issues);
+            check_stock_dimensions(model, issues);
             check_dynamical_face(model, issues);
         }
     }
@@ -1302,6 +1399,132 @@ mod tests {
                 "unit {clean_unit:?} should not trip the dimensional warning"
             );
         }
+    }
+
+    /// #94: the slashless-rate case #76 could not catch — `kW` is power, a rate,
+    /// so a stock declaring it warns exactly as `ML/mo` does.
+    #[test]
+    fn slashless_rate_stock_unit_warns() {
+        let mut m = minimal_model();
+        m.systems[0].agent = Some(AgentModel {
+            primitive: Some(ProcessPrimitive::Buffering),
+            stock_unit: "kW".to_string(),
+            ..AgentModel::default()
+        });
+        let r = validate(&m);
+        assert!(!r.has_errors());
+        assert!(
+            r.issues
+                .iter()
+                .any(|i| i.severity == Severity::Warning && i.location.contains("stock_unit")),
+            "a slashless rate stock unit warns: {:#?}",
+            r.issues
+        );
+    }
+
+    /// A Buffering stock declaring `unit`, fed by one inflow carrying
+    /// `flow_unit`. Returns the stock-unit issues an Operational validation
+    /// raises, isolated from unrelated operational checks.
+    fn stock_fed_by(unit: &str, flow_unit: &str) -> Vec<ValidationIssue> {
+        let mut m = minimal_model();
+        let stock_id = m.systems[0].info.id.clone();
+        m.systems[0].agent = Some(AgentModel {
+            primitive: Some(ProcessPrimitive::Buffering),
+            stock_unit: unit.to_string(),
+            ..AgentModel::default()
+        });
+        let source_id = Id {
+            ty: IdType::Source,
+            indices: vec![0],
+        };
+        let mut inflow = flow(0, "inflow", source_id, stock_id);
+        inflow.unit = flow_unit.to_string();
+        m.interactions.push(inflow);
+        validate_mode(&m, Mode::Operational)
+            .issues
+            .into_iter()
+            .filter(|i| i.location.contains("stock_unit"))
+            .collect()
+    }
+
+    /// #94 headline: a `kW`-fed stock accumulates energy over Δt, so declaring
+    /// the stock in `kW` (power) is a REFUSAL — both units are author-declared and
+    /// the flow × Δt derivation is a kernel law, making the disagreement a stated
+    /// (declared) inconsistency, not a mere smell (observed-warns/declared-refuses,
+    /// docs/kernel-architecture.md).
+    #[test]
+    fn kw_fed_stock_declaring_power_is_refused() {
+        let issues = stock_fed_by("kW", "kW");
+        assert!(
+            issues.iter().any(|i| i.severity == Severity::Error),
+            "a power stock fed by a power inflow refuses: {issues:#?}"
+        );
+    }
+
+    /// The same stock declared in energy (`kWh`) reconciles — flow × Δt = kW·s =
+    /// energy — so no error. Likewise `ML/mo` → `ML`.
+    #[test]
+    fn correctly_integrated_stock_unit_is_clean() {
+        assert!(
+            !stock_fed_by("kWh", "kW")
+                .iter()
+                .any(|i| i.severity == Severity::Error),
+            "energy stock fed by power inflow is consistent"
+        );
+        assert!(
+            !stock_fed_by("ML", "ML/mo")
+                .iter()
+                .any(|i| i.severity == Severity::Error),
+            "volume stock fed by a volume-rate inflow is consistent"
+        );
+    }
+
+    /// A bare-quantity inflow is admitted leniently: an `L`-flow may fill an `L`
+    /// stock (the per-tick shorthand), so no refusal.
+    #[test]
+    fn bare_quantity_flow_and_matching_stock_is_clean() {
+        assert!(
+            !stock_fed_by("L", "L")
+                .iter()
+                .any(|i| i.severity == Severity::Error),
+            "an L-flow filling an L-stock is not a contradiction"
+        );
+    }
+
+    /// An unparseable unit on either side is not a stated fact, so it cannot
+    /// contradict one — the kernel stays silent rather than refusing a unit it
+    /// does not understand.
+    #[test]
+    fn unknown_units_never_refuse() {
+        assert!(stock_fed_by("widgets", "kW").is_empty());
+        assert!(stock_fed_by("kWh", "sprockets").is_empty());
+    }
+
+    /// The refusal only fires in a run-bearing mode; Core/Structural authoring
+    /// tolerates a half-specified unit.
+    #[test]
+    fn dimension_mismatch_does_not_refuse_in_core() {
+        let mut m = minimal_model();
+        let stock_id = m.systems[0].info.id.clone();
+        m.systems[0].agent = Some(AgentModel {
+            primitive: Some(ProcessPrimitive::Buffering),
+            stock_unit: "kW".to_string(),
+            ..AgentModel::default()
+        });
+        let source_id = Id {
+            ty: IdType::Source,
+            indices: vec![0],
+        };
+        let mut inflow = flow(0, "inflow", source_id, stock_id);
+        inflow.unit = "kW".to_string();
+        m.interactions.push(inflow);
+        assert!(
+            !validate_mode(&m, Mode::Core)
+                .issues
+                .iter()
+                .any(|i| i.severity == Severity::Error && i.location.contains("stock_unit")),
+            "Core mode does not refuse a unit mismatch"
+        );
     }
 
     /// Law: a source that couples to no interaction lies outside the system's boundary — an error, not a warning.
