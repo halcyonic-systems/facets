@@ -51,6 +51,8 @@ export interface LensEdgeProps {
 export interface LensPortProps {
   port: PortFact;
   at: Pt;
+  /** Outward normal of the membrane at `at` (rad) — orients the penetrating capsule. */
+  angle?: number;
   /** Ports belong to B — clicking one opens the boundary inspector. */
   onSelect?: () => void;
 }

@@ -23,6 +23,7 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
       isSquare={thing.role === "Environment"}
       showHalo={thing.role === "Component"}
       envOpen={thing.role === "Environment"}
+      sphere={thing.role === "Component"}
       stroke="var(--lens-node-stroke)"
       strokeOpacity={1}
       strokeWidth={STYLE.nodeStrokeWidth}
@@ -116,12 +117,30 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
   );
 }
 
-/** A Mobus interface — a pill notch breaking the membrane stroke (Fig. 4.9:
- *  "round-edged rectangles that penetrate the boundary"). Direction glyph:
- *  ▸ receives / ◂ exports / ⇄ hybrid. Interfaces gate, they don't transform. */
-function PortView({ port, at, onSelect }: { port: PortFact; at: Pt; onSelect?: () => void }) {
-  const glyph = port.direction === "Receives" ? "▸" : port.direction === "Exports" ? "◂" : "⇄";
+/** A Mobus interface — a round-edged capsule that PENETRATES the boundary (Fig.
+ *  4.9), straddling the membrane along its outward normal so it reads as a
+ *  pass-way, not a bead on the ring. The direction chevron points the way the
+ *  substance crosses; ⇄ for a bidirectional message interface (Fig. 4.16).
+ *  Interfaces gate, they don't transform. `angle` is the outward normal (rad). */
+function PortView({
+  port,
+  at,
+  angle = 0,
+  onSelect,
+}: {
+  port: PortFact;
+  at: Pt;
+  angle?: number;
+  onSelect?: () => void;
+}) {
+  const chevron =
+    port.direction === "Receives"
+      ? "M2.5-3.4 L-2 0 L2.5 3.4" // inward — flow enters
+      : port.direction === "Exports"
+        ? "M-2.5-3.4 L2 0 L-2.5 3.4" // outward — flow leaves
+        : "M1-3 L4 0 L1 3 M-1-3 L-4 0 L-1 3"; // ⇄ hybrid
   const label = port.protocol.length > 22 ? `${port.protocol.slice(0, 21)}…` : port.protocol;
+  const out = { x: Math.cos(angle), y: Math.sin(angle) };
   return (
     <g
       transform={`translate(${at.x}, ${at.y})`}
@@ -135,20 +154,29 @@ function PortView({ port, at, onSelect }: { port: PortFact; at: Pt; onSelect?: (
       }
     >
       <title>{`interface — ${port.direction.toLowerCase()} · φ: ${port.protocol}`}</title>
-      <rect
-        x={-16}
-        y={-9}
-        width={32}
-        height={18}
-        rx={STYLE.portRx}
-        fill="var(--bg-primary)"
-        stroke="var(--lens-accent)"
-        strokeWidth={STYLE.portStrokeWidth}
-      />
-      <text textAnchor="middle" dominantBaseline="central" fontSize={10} fill="var(--lens-accent)" className="pointer-events-none">
-        {glyph}
-      </text>
-      <text y={-15} textAnchor="middle" fontSize={9} fill="var(--text-muted)" className="font-mono pointer-events-none">
+      {/* long axis along the normal → half inside, half outside the membrane */}
+      <g transform={`rotate(${(angle * 180) / Math.PI})`}>
+        <rect
+          x={-12}
+          y={-7}
+          width={24}
+          height={14}
+          rx={STYLE.portRx + 4}
+          fill="var(--bg-primary)"
+          stroke="var(--lens-accent)"
+          strokeWidth={STYLE.portStrokeWidth}
+        />
+        <path d={chevron} fill="none" stroke="var(--lens-accent)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+      <text
+        x={out.x * 20}
+        y={out.y * 20}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={9}
+        fill="var(--text-muted)"
+        className="font-mono pointer-events-none"
+      >
         {label}
       </text>
     </g>
