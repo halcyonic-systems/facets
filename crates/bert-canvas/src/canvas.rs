@@ -479,6 +479,13 @@ fn substance_to_kind(s: SubstanceType) -> Kind {
 /// params (storage, cognitive params) is NOT round-tripped here: in Phase 2b the
 /// canvas is a VIEW + drive-target picker, and the run uses the original model —
 /// so this only needs to draw the structure faithfully.
+///
+/// Decomposition (`System::child_model`) is NOT representable on the canvas
+/// editing model, so this projection DROPS it. A caller crossing into the
+/// canvas/SL surface must first refuse a decomposed model via
+/// [`WorldModel::assert_sl_expressible`](bert_core::WorldModel::assert_sl_expressible)
+/// (the shipping `to_canvas` wasm entry does); step 4 (bert-lenses#89) lifts the
+/// gap by teaching SL the `decomposes` form.
 pub fn to_canvas(model: &WorldModel) -> CanvasModel {
     use std::collections::HashMap;
 

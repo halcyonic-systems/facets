@@ -771,6 +771,35 @@ impl WorldModel {
         *self.model_id.get_or_insert_with(ModelId::mint)
     }
 
+    /// Refuse, loudly, to hand a decomposed model to a surface that cannot yet
+    /// express decomposition (bert-lenses#89 step 3, the SL gap).
+    ///
+    /// SL has no `decomposes` clause until step 4 (foundations doc §6/§7.4), and
+    /// the canvas editing model ([`to_canvas`](../bert_canvas/canvas/fn.to_canvas.html))
+    /// has no `child_model` field — so projecting a model whose kernel state
+    /// carries a `child_model` reference through either surface would SILENTLY
+    /// drop the reference. This is the guard at the seam bert-core controls: the
+    /// SL/canvas projection path MUST call it and surface the error rather than
+    /// drop. When step 4 teaches SL the `decomposes` reference form, delete the
+    /// guard call at that seam (this method can stay as a cheap predicate).
+    ///
+    /// Returns the coordinate of the first offending component (`Err`) or `Ok`
+    /// when the model is flat.
+    pub fn assert_sl_expressible(&self) -> Result<(), String> {
+        for s in &self.systems {
+            if s.child_model.is_some() {
+                return Err(format!(
+                    "`decomposes` not yet expressible in SL: component \"{}\" carries a \
+                     child_model reference, and SL cannot represent decomposition until \
+                     bert-lenses#89 step 4. Projecting it to SL or the canvas would \
+                     silently drop the reference — refused",
+                    if s.info.name.is_empty() { &s.info.description } else { &s.info.name }
+                ));
+            }
+        }
+        Ok(())
+    }
+
     /// Project the kernel: forget every elaboration, keep `(things, dep)`.
     ///
     /// Mirrors Lean `Kernel.toKlir`. `things` enumerates every declarable
@@ -1264,17 +1293,22 @@ pub struct System {
     pub agent: Option<AgentModel>,
 
     /// Reference to a child model that decomposes this component, by reference
-    /// (bert-lenses#89 step 2). `None` for every flat single-level model and
+    /// (bert-lenses#89 step 3). `None` for every flat single-level model and
     /// every model authored to date.
     ///
-    /// `#[serde(skip)]` — this step adds the IN-MEMORY kernel field plus the
-    /// pairwise boundary-contract check ([`decomposition`]) ONLY. The serialized
-    /// form and the digit-for-digit round-trip contract are step 3 (foundations
-    /// doc §7.3), so the reference is invisible to serialization and to every
-    /// existing path (`project`, `validate`, `compose`); a loaded model always
-    /// resolves it to `None`. Resolving a `ModelRef` to its `WorldModel` is the
-    /// store layer's job (step 5) — the kernel does no I/O.
-    #[serde(skip)]
+    /// Serialized as the referent's canonical base58 model id (the same encoding
+    /// [`ModelId`] uses), `skip_serializing_if = "Option::is_none"` so every
+    /// model without a decomposition stays byte-identical on disk — the existing
+    /// goldens prove it. The reference is just an id: a `child_model` naming a
+    /// model that is not currently loaded still deserializes cleanly (resolution,
+    /// and the boundary-contract check against the resolved child, are the store
+    /// layer's job — [`decomposition::check_decomposition`], step 5). The kernel
+    /// does no I/O.
+    ///
+    /// SL cannot yet express `decomposes` (step 4), so a model carrying a
+    /// `child_model` must NOT be projected to SL silently lossy — see
+    /// [`WorldModel::assert_sl_expressible`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub child_model: Option<ModelRef>,
 }
 

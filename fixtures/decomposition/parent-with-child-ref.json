@@ -1,0 +1,183 @@
+{
+  "version": 1,
+  "model_id": "37EWfXHPNk5pZG7dPbPmE6",
+  "environment": {
+    "info": {
+      "id": "E-1",
+      "level": -1,
+      "name": "",
+      "description": ""
+    },
+    "sources": [
+      {
+        "info": {
+          "id": "Src-1.0",
+          "level": -1,
+          "name": "Src-1.0",
+          "description": ""
+        },
+        "type": "Source",
+        "transform": null,
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null
+      }
+    ],
+    "sinks": [
+      {
+        "info": {
+          "id": "Snk-1.0",
+          "level": -1,
+          "name": "Snk-1.0",
+          "description": ""
+        },
+        "type": "Sink",
+        "transform": null,
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null
+      }
+    ]
+  },
+  "systems": [
+    {
+      "info": {
+        "id": "S0",
+        "level": 0,
+        "name": "Root",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "E-1",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0",
+          "level": 0,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": null
+      },
+      "radius": 50.0,
+      "transform": null,
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": ""
+    },
+    {
+      "info": {
+        "id": "C0.0",
+        "level": 1,
+        "name": "Furnace",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.0",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": null
+      },
+      "radius": 50.0,
+      "transform": null,
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "child_model": "Hrs6K91KnZZsiPcWzftv8U"
+    },
+    {
+      "info": {
+        "id": "C0.1",
+        "level": 1,
+        "name": "Sibling",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.1",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": null
+      },
+      "radius": 50.0,
+      "transform": null,
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": ""
+    }
+  ],
+  "interactions": [
+    {
+      "info": {
+        "id": "F0",
+        "level": 0,
+        "name": "in",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Product",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.0",
+      "sink_interface": null,
+      "amount": "0",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F1",
+        "level": 0,
+        "name": "out",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Product",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.1",
+      "sink_interface": null,
+      "amount": "0",
+      "unit": "",
+      "parameters": []
+    }
+  ],
+  "hidden_entities": []
+}
