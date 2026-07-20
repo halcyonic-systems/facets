@@ -268,6 +268,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
 
     WorldModel {
         version: 1,
+        model_id: None,
         // Compose's dynamics live in the engine, not the dynamical-face string
         // slots, so exports declare the Operational rung they actually occupy.
         mode: Some(bert_core::Mode::Operational),

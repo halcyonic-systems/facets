@@ -550,6 +550,7 @@ mod tests {
         root_sys.parent = env_id.clone();
         WorldModel {
             version: CURRENT_FILE_VERSION,
+            model_id: None,
             mode: Some(Mode::Operational),
             environment: Environment {
                 info: info(env_id, -1, "Environment"),

@@ -15,6 +15,7 @@
 #![allow(clippy::items_after_test_module)]
 
 pub mod decomposition;
+pub mod model_id;
 pub mod operational;
 pub mod transition;
 pub mod units;
@@ -23,6 +24,8 @@ pub mod validate;
 use enum_iterator::Sequence;
 use std::fmt::Formatter;
 use uuid::Uuid;
+
+pub use model_id::ModelId;
 
 /// Corresponds to the System Language Interaction types.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default, Serialize, Deserialize, Sequence)]
@@ -602,6 +605,17 @@ pub struct WorldModel {
     /// Older versions trigger migration logic during deserialization.
     pub version: u32,
 
+    /// This model's stable self-identity (bert-lenses#89 step 2.5), the name by
+    /// which another model references it (a decomposed parent → its child).
+    ///
+    /// `None` until an operation needs it; mint via [`WorldModel::mint_id`].
+    /// `skip_serializing_if = "Option::is_none"` keeps every model authored
+    /// before this field existed byte-for-byte identical on disk — loading
+    /// never injects one. Serialized in the canonical base58 encoding (see
+    /// [`ModelId`]). Full life-cycle: [`model_id`](crate::model_id) module docs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<ModelId>,
+
     /// Authoring mode along the kernel lattice (Core/Structural/Operational/Full).
     ///
     /// Absent ≡ [`Mode::Full`], so files written before SL v2.0 deserialize and
@@ -742,6 +756,48 @@ impl WorldModel {
     /// The committed authoring mode, resolving an absent field to [`Mode::Full`].
     pub fn mode(&self) -> Mode {
         self.mode.unwrap_or(Mode::Full)
+    }
+
+    /// This model's stable identity, minting one if it has none yet — idempotent.
+    ///
+    /// The single place a model acquires a [`ModelId`]: at creation for a new
+    /// model, or lazily the first time an operation needs the model to be
+    /// nameable (being referenced by a decomposed parent). Never called on plain
+    /// load or save, so a model without an id stays byte-identical on disk. A
+    /// save-as-copy path must clear `model_id` on the clone before calling this,
+    /// so the copy mints a fresh identity rather than inheriting the origin's
+    /// (see the [`model_id`] module docs).
+    pub fn mint_id(&mut self) -> ModelId {
+        *self.model_id.get_or_insert_with(ModelId::mint)
+    }
+
+    /// Refuse, loudly, to hand a decomposed model to a surface that cannot yet
+    /// express decomposition (bert-lenses#89 step 3, the SL gap).
+    ///
+    /// SL has no `decomposes` clause until step 4 (foundations doc §6/§7.4), and
+    /// the canvas editing model ([`to_canvas`](../bert_canvas/canvas/fn.to_canvas.html))
+    /// has no `child_model` field — so projecting a model whose kernel state
+    /// carries a `child_model` reference through either surface would SILENTLY
+    /// drop the reference. This is the guard at the seam bert-core controls: the
+    /// SL/canvas projection path MUST call it and surface the error rather than
+    /// drop. When step 4 teaches SL the `decomposes` reference form, delete the
+    /// guard call at that seam (this method can stay as a cheap predicate).
+    ///
+    /// Returns the coordinate of the first offending component (`Err`) or `Ok`
+    /// when the model is flat.
+    pub fn assert_sl_expressible(&self) -> Result<(), String> {
+        for s in &self.systems {
+            if s.child_model.is_some() {
+                return Err(format!(
+                    "`decomposes` not yet expressible in SL: component \"{}\" carries a \
+                     child_model reference, and SL cannot represent decomposition until \
+                     bert-lenses#89 step 4. Projecting it to SL or the canvas would \
+                     silently drop the reference — refused",
+                    if s.info.name.is_empty() { &s.info.description } else { &s.info.name }
+                ));
+            }
+        }
+        Ok(())
     }
 
     /// Project the kernel: forget every elaboration, keep `(things, dep)`.
@@ -1171,6 +1227,10 @@ pub struct Info {
 /// stably. Resolution (browser storage / files → the referenced `WorldModel`)
 /// is the store layer's job (foundations doc §7 step 5); the kernel does no I/O.
 /// See [`decomposition::check_decomposition`].
+///
+/// Serialized in the SAME canonical base58 encoding as the [`ModelId`] it names
+/// (see the [`model_id`] module) — one encoding for a model id everywhere it
+/// appears as text, JSON now and SL later.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ModelRef(pub Uuid);
 
@@ -1180,9 +1240,26 @@ impl ModelRef {
         Self(id)
     }
 
+    /// Reference the model named by a [`ModelId`].
+    pub fn to(id: ModelId) -> Self {
+        Self(id.as_uuid())
+    }
+
     /// The underlying stable identity.
     pub fn as_uuid(&self) -> Uuid {
         self.0
+    }
+}
+
+impl serde::Serialize for ModelRef {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&model_id::encode_uuid(&self.0))
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for ModelRef {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_str(model_id::Base58Visitor).map(ModelRef)
     }
 }
 
@@ -1216,17 +1293,22 @@ pub struct System {
     pub agent: Option<AgentModel>,
 
     /// Reference to a child model that decomposes this component, by reference
-    /// (bert-lenses#89 step 2). `None` for every flat single-level model and
+    /// (bert-lenses#89 step 3). `None` for every flat single-level model and
     /// every model authored to date.
     ///
-    /// `#[serde(skip)]` — this step adds the IN-MEMORY kernel field plus the
-    /// pairwise boundary-contract check ([`decomposition`]) ONLY. The serialized
-    /// form and the digit-for-digit round-trip contract are step 3 (foundations
-    /// doc §7.3), so the reference is invisible to serialization and to every
-    /// existing path (`project`, `validate`, `compose`); a loaded model always
-    /// resolves it to `None`. Resolving a `ModelRef` to its `WorldModel` is the
-    /// store layer's job (step 5) — the kernel does no I/O.
-    #[serde(skip)]
+    /// Serialized as the referent's canonical base58 model id (the same encoding
+    /// [`ModelId`] uses), `skip_serializing_if = "Option::is_none"` so every
+    /// model without a decomposition stays byte-identical on disk — the existing
+    /// goldens prove it. The reference is just an id: a `child_model` naming a
+    /// model that is not currently loaded still deserializes cleanly (resolution,
+    /// and the boundary-contract check against the resolved child, are the store
+    /// layer's job — [`decomposition::check_decomposition`], step 5). The kernel
+    /// does no I/O.
+    ///
+    /// SL cannot yet express `decomposes` (step 4), so a model carrying a
+    /// `child_model` must NOT be projected to SL silently lossy — see
+    /// [`WorldModel::assert_sl_expressible`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub child_model: Option<ModelRef>,
 }
 
