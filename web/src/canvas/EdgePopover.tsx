@@ -9,6 +9,16 @@ import { useEffect, useRef, useState } from "react";
 import type { ColumnMapping, Kind, Lens, Manifest, Relation } from "../kernel/types";
 import type { Pt } from "./geometry";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
+import {
+  FormalismLine,
+  SUBSTANCES,
+  bungeFormalism,
+  klirFormalism,
+  kindToSubstance,
+  mobusFormalism,
+  substanceToKind,
+  type Substance,
+} from "./lenses/glossary";
 
 const KINDS: Kind[] = ["Unspecified", "Energy", "Matter", "Field", "Informational"];
 
@@ -163,11 +173,7 @@ function KlirBody({
   return (
     <>
       <Title>relation r{sigIndex + 1}</Title>
-      <Row>
-        <span className="font-mono" style={{ color: "var(--text-muted)" }}>
-          r{sigIndex + 1} ⊆ T×T · binary
-        </span>
-      </Row>
+      <FormalismLine parts={klirFormalism(sigIndex)} />
       <Row>
         <span style={{ color: "var(--text-secondary)" }}>orientation</span>
         <div className="flex gap-1">
@@ -198,6 +204,7 @@ function BungeBody({
   return (
     <>
       <Title>{relation.is_bond ? "bond" : "mere relation"} &ldquo;{relation.name || "unnamed"}&rdquo;</Title>
+      <FormalismLine parts={bungeFormalism(relation)} />
       <Row>
         <span style={{ color: "var(--text-secondary)" }}>connection kind</span>
         <select
@@ -266,17 +273,20 @@ function MobusBody({
   return (
     <>
       <Title>flow &ldquo;{relation.name || "unnamed"}&rdquo;</Title>
+      <FormalismLine parts={mobusFormalism()} />
       <Row>
+        {/* Mobus's substances are material · energy · message (concordance row 6);
+            the model stores a Kind, so map both ways via kind_to_substance. */}
         <span style={{ color: "var(--text-secondary)" }}>substance</span>
         <select
-          value={relation.kind}
-          onChange={(e) => onUpdate({ ...relation, kind: e.target.value as Kind })}
+          value={kindToSubstance(relation.kind)}
+          onChange={(e) => onUpdate({ ...relation, kind: substanceToKind(e.target.value as Substance) })}
           className="rounded-md px-1.5 py-0.5 text-xs"
           style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
         >
-          {KINDS.map((k) => (
-            <option key={k} value={k}>
-              {k.toLowerCase()}
+          {SUBSTANCES.map((s) => (
+            <option key={s} value={s}>
+              {s}
             </option>
           ))}
         </select>

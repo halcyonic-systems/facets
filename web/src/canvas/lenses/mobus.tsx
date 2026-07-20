@@ -82,6 +82,8 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
 
   // At Mobus an exo flow's name already labels its port (φ) — repeating it on
   // the edge doubles the text right at the membrane.
+  // Pair the name with its flow-set (#80): an internal flow lives in N. Exo flows
+  // (interior set) carry their name at the port φ and stay in G, so they skip this.
   const label =
     relation.name && interior === null ? (
       <text
@@ -93,6 +95,7 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
         className="font-mono pointer-events-none"
       >
         {relation.name}
+        <tspan fill="var(--text-secondary)">{" · N"}</tspan>
       </text>
     ) : null;
 
