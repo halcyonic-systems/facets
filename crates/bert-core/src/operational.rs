@@ -583,6 +583,7 @@ mod tests {
                 flow(1, "tank → drain", buf, snk),
             ],
             hidden_entities: vec![],
+            reachability_requirements: vec![],
         }
     }
 

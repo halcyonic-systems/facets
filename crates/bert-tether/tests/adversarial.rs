@@ -188,6 +188,7 @@ fn target_enumeration_is_total() {
         systems: vec![],
         interactions: vec![],
         hidden_entities: vec![],
+        reachability_requirements: vec![],
     };
     assert!(flow_targets(&empty).is_empty());
     assert!(component_targets(&empty).is_empty());

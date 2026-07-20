@@ -615,6 +615,7 @@ mod tests {
             systems: vec![root, comp_a, comp_b],
             interactions: vec![minimal_flow(0, "bond", a, b)],
             hidden_entities: vec![],
+            reachability_requirements: vec![],
         }
     }
 
@@ -894,6 +895,7 @@ mod tests {
             systems: vec![root, comp_a, comp_b],
             interactions: vec![flow],
             hidden_entities: vec![],
+            reachability_requirements: vec![],
         }
     }
 

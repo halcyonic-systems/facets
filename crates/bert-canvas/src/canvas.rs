@@ -451,6 +451,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
         systems,
         interactions,
         hidden_entities: vec![],
+        reachability_requirements: vec![],
     };
 
     Projection {

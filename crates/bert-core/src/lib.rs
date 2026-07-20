@@ -634,6 +634,37 @@ pub struct WorldModel {
     /// allowing users to maintain their preferred level of detail.
     #[serde(default)]
     pub hidden_entities: Vec<Id>,
+
+    /// Reachability properties the author *asserts* about the flow graph (#69).
+    ///
+    /// The unconditional graph checks (#66 — dead-end, reachability, duplicate
+    /// edge) only *warn*, because a lone graph observation cannot know intent: an
+    /// absorbing state may be a legitimate terminal, a single mandatory checkpoint
+    /// may be exactly what the domain requires. A requirement supplies the missing
+    /// intent — the author states that a specific outcome must be reachable, or
+    /// that a route avoiding a specific node must exist — so its violation is a
+    /// *refusal*, not a question (see [`validate::validate_mode`]). Empty by
+    /// default; only Operational/Full modes carry the flow semantics to evaluate
+    /// them.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub reachability_requirements: Vec<ReachabilityRequirement>,
+}
+
+/// A reachability property the author asserts about the flow graph (#69), checked
+/// deterministically in Operational/Full modes. Unlike the #66 graph *warnings*,
+/// a stated requirement encodes intent, so a violation is an Error.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(tag = "kind")]
+pub enum ReachabilityRequirement {
+    /// A specific sink/terminal must be reachable: refuse if no directed flow path
+    /// runs `from → to`. The "must-reach-sink" case — the author asserts `to` is an
+    /// outcome the process must be able to arrive at.
+    MustReach { from: Id, to: Id },
+
+    /// A route from `from` to `to` that does NOT pass through `avoiding` must exist:
+    /// refuse if every path funnels through `avoiding` (it is a forced detour and
+    /// the required alternative is missing). The "required-alternative-path" case.
+    AlternativePath { from: Id, to: Id, avoiding: Id },
 }
 
 /// A mode on the kernel lattice: how much structure an author has committed to.
