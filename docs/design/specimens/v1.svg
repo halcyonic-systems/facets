@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="660" viewBox="0 0 920 660">
+  <defs>
+    <radialGradient id="sphere" cx="38%" cy="34%" r="72%">
+      <stop offset="0%" stop-color="#ececf6"/>
+      <stop offset="62%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#ececf6"/>
+    </radialGradient>
+  </defs>
+  <rect width="920" height="660" fill="#f5f5fb"/>
+  <text x="460" y="42" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="20" fill="#1a1a2e">Palette shape vocabulary — v1</text>
+  <g><circle cx="120" cy="130" r="30" fill="url(#sphere)" stroke="#55617a" stroke-width="1.75"/><text x="120" y="180" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#1a1a2e">component</text></g>
+  <g><rect x="220" y="100" width="60" height="60" rx="6" fill="none" stroke="#55617a" stroke-width="1.75"/><text x="250" y="180" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#1a1a2e">environment object</text></g>
+  <g><ellipse cx="430" cy="130" rx="52" ry="30" fill="#d9efef" fill-opacity="0.18" stroke="#55617a" stroke-width="2.5"/><text x="430" y="180" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#1a1a2e">boundary membrane</text></g>
+  
+    <g>
+      <line x1="600" y1="104" x2="600" y2="156" stroke="#55617a" stroke-width="2" stroke-dasharray="6 4" opacity="0.7"/>
+      <rect x="588" y="123" width="24" height="14" rx="6" fill="#f5f5fb" stroke="#0e8a8a" stroke-width="1.75"/>
+      <path d="M2.5-3.4 L-2 0 L2.5 3.4" transform="translate(600,130)" fill="none" stroke="#0e8a8a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="600" y="170" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#1a1a2e">interface — receives</text>
+    </g>
+  
+    <g>
+      <line x1="740" y1="104" x2="740" y2="156" stroke="#55617a" stroke-width="2" stroke-dasharray="6 4" opacity="0.7"/>
+      <rect x="728" y="123" width="24" height="14" rx="6" fill="#f5f5fb" stroke="#0e8a8a" stroke-width="1.75"/>
+      <path d="M-2.5-3.4 L2 0 L-2.5 3.4" transform="translate(740,130)" fill="none" stroke="#0e8a8a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="740" y="170" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#1a1a2e">interface — exports</text>
+    </g>
+  
+    <g>
+      <line x1="860" y1="104" x2="860" y2="156" stroke="#55617a" stroke-width="2" stroke-dasharray="6 4" opacity="0.7"/>
+      <rect x="848" y="123" width="24" height="14" rx="6" fill="#f5f5fb" stroke="#0e8a8a" stroke-width="1.75"/>
+      <path d="M1-3 L4 0 L1 3 M-1-3 L-4 0 L-1 3" transform="translate(860,130)" fill="none" stroke="#0e8a8a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="860" y="170" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#1a1a2e">interface — hybrid</text>
+    </g>
+  <line x1="60" y1="220" x2="860" y2="220" stroke="#8888a8" stroke-width="1" opacity="0.35"/>
+  <text x="60" y="252" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" fill="#8888a8">process primitives</text>
+  
+    <g>
+      <circle cx="150" cy="340" r="30" fill="url(#sphere)" stroke="#55617a" stroke-width="1.75"/>
+      <g transform="translate(171.6,318.4)">
+        <circle r="9" fill="#ffffff" stroke="#0e8a8a" stroke-width="1"/>
+        <g transform="scale(1.2)" fill="none" stroke="#0e8a8a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M-6-3.4 L-1 0 M-6 3.4 L-1 0 M-1 0 H6"/><circle cx="-1" cy="0" r="1" fill="#0e8a8a" stroke="none"/></g>
+      </g>
+      <text x="150" y="390" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#1a1a2e">combining</text>
+    </g>
+  
+    <g>
+      <circle cx="305" cy="340" r="30" fill="url(#sphere)" stroke="#55617a" stroke-width="1.75"/>
+      <g transform="translate(326.6,318.4)">
+        <circle r="9" fill="#ffffff" stroke="#0e8a8a" stroke-width="1"/>
+        <g transform="scale(1.2)" fill="none" stroke="#0e8a8a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M-6 0 H1 M1 0 L6-3.4 M1 0 L6 3.4"/><circle cx="1" cy="0" r="1" fill="#0e8a8a" stroke="none"/></g>
+      </g>
+      <text x="305" y="390" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#1a1a2e">splitting</text>
+    </g>
+  
+    <g>
+      <circle cx="460" cy="340" r="30" fill="url(#sphere)" stroke="#55617a" stroke-width="1.75"/>
+      <g transform="translate(481.6,318.4)">
+        <circle r="9" fill="#ffffff" stroke="#0e8a8a" stroke-width="1"/>
+        <g transform="scale(1.2)" fill="none" stroke="#0e8a8a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M-6 0 H-3.2 M3.2 0 H6"/><path d="M-3.2-3.4 L-3.2 3.4 L0 0 Z M3.2-3.4 L3.2 3.4 L0 0 Z" fill="none"/></g>
+      </g>
+      <text x="460" y="390" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#1a1a2e">impeding</text>
+    </g>
+  
+    <g>
+      <circle cx="615" cy="340" r="30" fill="url(#sphere)" stroke="#55617a" stroke-width="1.75"/>
+      <g transform="translate(636.6,318.4)">
+        <circle r="9" fill="#ffffff" stroke="#0e8a8a" stroke-width="1"/>
+        <g transform="scale(1.2)" fill="none" stroke="#0e8a8a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M-6 0 H-4"/><path d="M-4-3.6 L-0.4 0 L-4 3.6 M0.2-3.6 L3.8 0 L0.2 3.6" fill="none"/></g>
+      </g>
+      <text x="615" y="390" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#1a1a2e">propelling</text>
+    </g>
+  
+    <g>
+      <circle cx="770" cy="340" r="30" fill="url(#sphere)" stroke="#55617a" stroke-width="1.75"/>
+      <g transform="translate(791.6,318.4)">
+        <circle r="9" fill="#ffffff" stroke="#0e8a8a" stroke-width="1"/>
+        <g transform="scale(1.2)" fill="none" stroke="#0e8a8a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M-6 0 H-4 M4 0 H6"/><ellipse cx="0" cy="-3.2" rx="4" ry="1.5" fill="none"/><path d="M-4-3.2 V3.2 A4 1.5 0 0 0 4 3.2 V-3.2" fill="none"/></g>
+      </g>
+      <text x="770" y="390" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#1a1a2e">buffering</text>
+    </g>
+  
+    <g>
+      <circle cx="150" cy="500" r="30" fill="url(#sphere)" stroke="#55617a" stroke-width="1.75"/>
+      <g transform="translate(171.6,478.4)">
+        <circle r="9" fill="#ffffff" stroke="#0e8a8a" stroke-width="1"/>
+        <g transform="scale(1.2)" fill="none" stroke="#0e8a8a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M0-5 L4.6 3.6 L-4.6 3.6 Z" fill="#c07b1e" stroke="none"/></g>
+      </g>
+      <text x="150" y="550" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#1a1a2e">modulating</text>
+    </g>
+  
+    <g>
+      <circle cx="305" cy="500" r="30" fill="url(#sphere)" stroke="#55617a" stroke-width="1.75"/>
+      <g transform="translate(326.6,478.4)">
+        <circle r="9" fill="#ffffff" stroke="#0e8a8a" stroke-width="1"/>
+        <g transform="scale(1.2)" fill="none" stroke="#0e8a8a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="-3" cy="0" r="1.4" fill="#0e8a8a" stroke="none"/><path d="M0.5-2.6 A3.3 3.3 0 0 1 0.5 2.6" fill="none"/><path d="M3-4.4 A5.6 5.6 0 0 1 3 4.4" fill="none"/></g>
+      </g>
+      <text x="305" y="550" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#1a1a2e">sensing</text>
+    </g>
+  
+    <g>
+      <circle cx="460" cy="500" r="30" fill="url(#sphere)" stroke="#55617a" stroke-width="1.75"/>
+      <g transform="translate(481.6,478.4)">
+        <circle r="9" fill="#ffffff" stroke="#0e8a8a" stroke-width="1"/>
+        <g transform="scale(1.2)" fill="none" stroke="#0e8a8a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M-4 4 V0 M0 4 V-2 M4 4 V-4.4"/></g>
+      </g>
+      <text x="460" y="550" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#1a1a2e">amplifying</text>
+    </g>
+  
+    <g>
+      <circle cx="615" cy="500" r="30" fill="url(#sphere)" stroke="#55617a" stroke-width="1.75"/>
+      <g transform="translate(636.6,478.4)">
+        <circle r="9" fill="#ffffff" stroke="#0e8a8a" stroke-width="1"/>
+        <g transform="scale(1.2)" fill="none" stroke="#0e8a8a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M-3-4.4 V4.4 M-3-4.4 L-4.6-2.4 M-3-4.4 L-1.4-2.4" fill="none"/><path d="M3 4.4 V-4.4 M3 4.4 L1.4 2.4 M3 4.4 L4.6 2.4" fill="none"/></g>
+      </g>
+      <text x="615" y="550" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#1a1a2e">inverting</text>
+    </g>
+  
+    <g>
+      <circle cx="770" cy="500" r="30" fill="url(#sphere)" stroke="#55617a" stroke-width="1.75"/>
+      <g transform="translate(791.6,478.4)">
+        <circle r="9" fill="#ffffff" stroke="#0e8a8a" stroke-width="1"/>
+        <g transform="scale(1.2)" fill="none" stroke="#0e8a8a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="-4.6" y="-1.4" width="6" height="6" rx="1" fill="none"/><rect x="-1.4" y="-4.6" width="6" height="6" rx="1" fill="#ffffff"/></g>
+      </g>
+      <text x="770" y="550" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#1a1a2e">copying</text>
+    </g>
+</svg>

@@ -109,11 +109,14 @@ export default function Canvas({
   // not a semantic error: C ∩ E = ∅ is enforced by the kernel's roles).
   const ring: Ring | null =
     lens === "Mobus" ? componentRing(model.things.filter((t) => t.role === "Component")) : null;
-  const portsAt: { port: PortFact; at: Pt }[] =
+  const outwardNormal = (r: Ring, p: Pt) => Math.atan2(p.y - r.cy, p.x - r.cx);
+  const portsAt: { port: PortFact; at: Pt; angle: number }[] =
     ring && facts
       ? facts.ports.flatMap((port) => {
           const env = thingById(model, port.env);
-          return env ? [{ port, at: ringPoint(ring, env) }] : [];
+          if (!env) return [];
+          const at = ringPoint(ring, env);
+          return [{ port, at, angle: outwardNormal(ring, at) }];
         })
       : [];
 
@@ -121,26 +124,27 @@ export default function Canvas({
   // notch too — placed at the ring point toward the designated component itself
   // (the membrane meets the component; no env object exists to aim at). The
   // display attrs are presentation; membership in I is the kernel's.
-  const flowlessAt: { port: PortFact; at: Pt }[] =
+  const flowlessAt: { port: PortFact; at: Pt; angle: number }[] =
     ring && facts
       ? facts.authored_interface_thing_ids
           .filter((id) => !facts.ports.some((p) => p.component === id))
           .flatMap((id) => {
             const comp = thingById(model, id);
-            return comp
-              ? [
-                  {
-                    port: {
-                      component: id,
-                      env: -1,
-                      relation_ids: [],
-                      direction: "Hybrid" as const,
-                      protocol: "(flowless)",
-                    },
-                    at: ringPoint(ring, comp),
-                  },
-                ]
-              : [];
+            if (!comp) return [];
+            const at = ringPoint(ring, comp);
+            return [
+              {
+                port: {
+                  component: id,
+                  env: -1,
+                  relation_ids: [],
+                  direction: "Hybrid" as const,
+                  protocol: "(flowless)",
+                },
+                at,
+                angle: outwardNormal(ring, at),
+              },
+            ];
           })
       : [];
 
@@ -173,6 +177,13 @@ export default function Canvas({
         >
           <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-slate)" />
         </marker>
+        {/* the "work sphere" sheen of the house drawings (Fig. 4.5) — a neutral
+            top-left highlight, never a substance color. */}
+        <radialGradient id="mobus-sphere" cx="38%" cy="34%" r="72%">
+          <stop offset="0%" stopColor="var(--bg-surface)" />
+          <stop offset="62%" stopColor="var(--bg-secondary)" />
+          <stop offset="100%" stopColor="var(--bg-surface)" />
+        </radialGradient>
         {/* perceptive fuzziness → membrane edge blur (Mobus B properties) */}
         <filter id="ring-blur" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation={facts ? facts.boundary_props.perceptive_fuzziness * 6 : 0} />
@@ -283,19 +294,21 @@ export default function Canvas({
         {/* Mobus interface ports — pill notches in the membrane, one per kernel
             PortFact (r = (S, φ): existence, direction, and protocol are kernel
             facts; only the pixel position is computed here). */}
-        {portsAt.map(({ port, at }) => (
+        {portsAt.map(({ port, at, angle }) => (
           <views.PortView
             key={`${port.component}-${port.env}`}
             port={port}
             at={at}
+            angle={angle}
             onSelect={onSelectBoundary ? () => onSelectBoundary(at) : undefined}
           />
         ))}
-        {flowlessAt.map(({ port, at }) => (
+        {flowlessAt.map(({ port, at, angle }) => (
           <g key={`authored-${port.component}`} opacity={0.6}>
             <views.PortView
               port={port}
               at={at}
+              angle={angle}
               onSelect={onSelectBoundary ? () => onSelectBoundary(at) : undefined}
             />
           </g>

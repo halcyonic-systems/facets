@@ -4,7 +4,7 @@
 // `NodeBody` draws the shared node chrome; `EdgeScaffold` draws the shared edge
 // plumbing (hit-path, selection, segments, drive dot, sim readout).
 import type { ProcessPrimitive } from "../../kernel/types";
-import { PRIMITIVE_BADGE } from "../types";
+import { primitiveGlyph } from "./primitive-glyphs";
 import { humanize } from "../../ui";
 import { NODE_R, type Pt } from "../geometry";
 import { STYLE } from "../style";
@@ -31,6 +31,8 @@ interface NodeBodyProps {
   showHalo: boolean;
   /** Mobus env sources/sinks are open unfilled shapes (epistemically unknowable). */
   envOpen: boolean;
+  /** Mobus components carry the "work sphere" sheen of the house drawings (Fig. 4.5). */
+  sphere?: boolean;
   stroke: string;
   strokeOpacity: number;
   strokeWidth: number;
@@ -56,6 +58,7 @@ export function NodeBody({
   isSquare,
   showHalo,
   envOpen,
+  sphere = false,
   stroke,
   strokeOpacity,
   strokeWidth,
@@ -140,7 +143,7 @@ export function NodeBody({
       ) : (
         <circle
           r={NODE_R}
-          fill={STYLE.nodeFill}
+          fill={sphere ? "url(#mobus-sphere)" : STYLE.nodeFill}
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
@@ -148,38 +151,28 @@ export function NodeBody({
         />
       )}
 
+      {/* Process-primitive badge — a drawn Mobus icon (Fig. 4.5) on a surface
+          medallion, so every primitive reads as one hand. Modulating carries its
+          own warm fill (the regulator, Fig. 4.17); the rest inherit the accent. */}
       {badge && (
         <g transform={`translate(${NODE_R * 0.72}, ${-NODE_R * 0.72})`}>
-          {STYLE.badge.form === "filled" && <circle r={STYLE.badge.r} fill="var(--lens-accent)" />}
-          {STYLE.badge.form === "outline" && (
-            <circle
-              r={STYLE.badge.r}
-              fill={STYLE.nodeFill}
-              stroke="var(--lens-accent)"
-              strokeWidth={STYLE.badge.strokeWidth}
-            />
-          )}
-          {STYLE.badge.form === "corner" && (
-            <rect
-              x={-STYLE.badge.r}
-              y={-STYLE.badge.r}
-              width={STYLE.badge.r * 2}
-              height={STYLE.badge.r * 2}
-              rx={1}
-              fill={STYLE.nodeFill}
-              stroke="var(--lens-accent)"
-              strokeWidth={STYLE.badge.strokeWidth}
-            />
-          )}
-          <text
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={9}
-            fill={STYLE.badge.form === "filled" ? "white" : "var(--lens-accent)"}
-            className="font-mono"
+          <circle
+            r={STYLE.badge.r}
+            fill={STYLE.nodeFill}
+            stroke="var(--lens-accent)"
+            strokeWidth={STYLE.badge.strokeWidth}
+          />
+          <g
+            transform={`scale(${(STYLE.badge.r * 0.8) / 6})`}
+            style={{ color: "var(--lens-accent)" }}
+            fill="none"
+            stroke="var(--lens-accent)"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            {PRIMITIVE_BADGE[badge]}
-          </text>
+            {primitiveGlyph(badge)}
+          </g>
         </g>
       )}
 
