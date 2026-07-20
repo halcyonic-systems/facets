@@ -14,6 +14,7 @@
 // the semantic authority. Remove if bert-core is re-vendored lint-clean upstream.
 #![allow(clippy::items_after_test_module)]
 
+pub mod decomposition;
 pub mod operational;
 pub mod transition;
 pub mod units;
@@ -1158,6 +1159,33 @@ pub struct Info {
     pub description: String,
 }
 
+/// An opaque, stable reference to another [`WorldModel`] — the child model a
+/// decomposed component points at by reference (bert-lenses#89, §4 of
+/// `docs/design/decomposition-foundations.md`).
+///
+/// A stable identity that survives renames: NOT a display name, NOT a file path.
+/// It is backed by the kernel's existing [`Uuid`] machinery (the primitive
+/// [`Parameter`]/[`SmartParameter`] ids already use), deliberately NOT the
+/// hierarchical [`Id`]: `Id` is a WITHIN-model coordinate (`[0, 1, 2]`) that
+/// changes when a model is restructured, so it cannot name a whole model
+/// stably. Resolution (browser storage / files → the referenced `WorldModel`)
+/// is the store layer's job (foundations doc §7 step 5); the kernel does no I/O.
+/// See [`decomposition::check_decomposition`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ModelRef(pub Uuid);
+
+impl ModelRef {
+    /// Wrap a uuid as a model reference.
+    pub fn new(id: Uuid) -> Self {
+        Self(id)
+    }
+
+    /// The underlying stable identity.
+    pub fn as_uuid(&self) -> Uuid {
+        self.0
+    }
+}
+
 /// A system. Either root or subsystem.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct System {
@@ -1186,6 +1214,20 @@ pub struct System {
     /// Contains behavioral parameters for ABM export and agency properties.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<AgentModel>,
+
+    /// Reference to a child model that decomposes this component, by reference
+    /// (bert-lenses#89 step 2). `None` for every flat single-level model and
+    /// every model authored to date.
+    ///
+    /// `#[serde(skip)]` — this step adds the IN-MEMORY kernel field plus the
+    /// pairwise boundary-contract check ([`decomposition`]) ONLY. The serialized
+    /// form and the digit-for-digit round-trip contract are step 3 (foundations
+    /// doc §7.3), so the reference is invisible to serialization and to every
+    /// existing path (`project`, `validate`, `compose`); a loaded model always
+    /// resolves it to `None`. Resolving a `ModelRef` to its `WorldModel` is the
+    /// store layer's job (step 5) — the kernel does no I/O.
+    #[serde(skip)]
+    pub child_model: Option<ModelRef>,
 }
 
 /// Agent behavioral model for ABM export and agency properties.

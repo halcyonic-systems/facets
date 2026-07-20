@@ -12,6 +12,12 @@ not the book's printed 7-tuple.*
 **Non-goals, explicit:** no grammar change, no kernel change, no nesting in the
 neutral spec. This doc's job is to make the gate's opening condition precise.
 
+*Gate met 2026-07-20 (SSF `Systems/Core/Decomposition.lean` merged). This PR is
+step 2 of §7's dependency order: the kernel grows `System.child_model:
+Option<ModelRef>` plus the pairwise boundary-contract check (`crates/bert-core/
+src/decomposition.rs`), transcribed row-for-row from the merged Lean. No
+serialization (step 3), SL grammar (step 4), or UI (step 5) yet.*
+
 ---
 
 ## 1. The question

@@ -555,6 +555,7 @@ mod tests {
             time_constant: String::new(),
             archetype: None,
             agent: None,
+            child_model: None,
         }
     }
 
