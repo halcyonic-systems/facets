@@ -1,5 +1,5 @@
 ## Lens
-Mobus — 8-tuple system ⟨C,N,E,G,B,T,H,Δt⟩
+Mobus — 8-tuple system ⟨C,N,E,G,B,T,H,Δt⟩ (E first-class = Lean's addition to the book's 7-tuple)
 
 ## Formal object (kernel: describe)
 8-tuple ⟨C,N,E,G,B,T,H,Δt⟩:
@@ -48,7 +48,7 @@ Relations:
 Ports (Mobus lens only):
 
 ## Kernel verdicts (analysis.validation)
-- [issue:0] Warning at interactions[14]: duplicate edge C0.2→C0.3 (same type as interactions[3]) — Suggestion: Remove the duplicate, or distinguish it by substance or usability (target: [relation:29])
+- [issue:0] Warning at interactions[14]: duplicate edge C0.2→C0.3 (same type and substance as interactions[3]) — Suggestion: Remove the duplicate, or distinguish it by substance or usability (target: [relation:29])
 - [issue:1] Warning at systems[9]: 'Vetoed' has no outgoing transitions — intended as a terminal/absorbing state? — Suggestion: If it should continue, add an outgoing flow; if it is an endpoint, this is fine (target: [thing:9])
 - [issue:2] Warning at systems[10]: 'Law' has no outgoing transitions — intended as a terminal/absorbing state? — Suggestion: If it should continue, add an outgoing flow; if it is an endpoint, this is fine (target: [thing:10])
 - [issue:3] Warning at systems[11]: 'died in committee' has no outgoing transitions — intended as a terminal/absorbing state? — Suggestion: If it should continue, add an outgoing flow; if it is an endpoint, this is fine (target: [thing:11])

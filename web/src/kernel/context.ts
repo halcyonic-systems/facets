@@ -45,8 +45,10 @@ export function buildModelContext(model: CanvasModel): ModelContext {
 // verdicts below carry every computed fact.
 const LENS_FRAMING: Record<Lens, string> = {
   Klir: "state/structure system S = (T, R), observer-relative distinction",
-  Bunge: "CESM ontology σ = ⟨C,E,S,M⟩ (composition, environment, structure, mechanism)",
-  Mobus: "8-tuple system ⟨C,N,E,G,B,T,H,Δt⟩",
+  // µ(σ) is the four-coordinate CESM object (2004); σ alone is the 1979 CES triple
+  // (concordance row 1). E first-class is the Lean's addition to Mobus's 7-tuple.
+  Bunge: "CESM ontology µ(σ) = ⟨C,E,S,M⟩ (composition, environment, structure, mechanism)",
+  Mobus: "8-tuple system ⟨C,N,E,G,B,T,H,Δt⟩ (E first-class = Lean's addition to the book's 7-tuple)",
 };
 
 const LENS_MODE: Record<Lens, string> = {
@@ -76,7 +78,7 @@ function renderFormalObject(d: LensDescription): string {
       ].join("\n");
     case "Bunge":
       return [
-        `σ = ⟨C,E,S,M⟩: composition=${list(d.composition)}, environment=${list(d.environment)},`,
+        `µ(σ) = ⟨C,E,S,M⟩: composition=${list(d.composition)}, environment=${list(d.environment)},`,
         `endostructure=${d.endostructure}, exostructure=${d.exostructure}, bondage=${d.bondage}, mere_relations=${d.mere_relations},`,
         `boundary_components=${list(d.boundary_components)}, verdict=${d.verdict}`,
         d.mechanism_note,

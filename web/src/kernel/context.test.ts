@@ -167,7 +167,7 @@ describe("renderContextForPrompt", () => {
   it("renders the Mobus context (snapshot)", () => {
     expect(renderContextForPrompt(mobusCtx)).toMatchInlineSnapshot(`
       "## Lens
-      Mobus — 8-tuple system ⟨C,N,E,G,B,T,H,Δt⟩
+      Mobus — 8-tuple system ⟨C,N,E,G,B,T,H,Δt⟩ (E first-class = Lean's addition to the book's 7-tuple)
 
       ## Formal object (kernel: describe)
       8-tuple ⟨C,N,E,G,B,T,H,Δt⟩:
@@ -208,7 +208,7 @@ describe("renderContextForPrompt", () => {
 
   it("renders the Bunge formal object and a thing-target issue with a null suggestion", () => {
     const out = renderContextForPrompt(bungeCtx);
-    expect(out).toContain("σ = ⟨C,E,S,M⟩: composition=[A, B]");
+    expect(out).toContain("µ(σ) = ⟨C,E,S,M⟩: composition=[A, B]");
     expect(out).toContain("verdict=aggregate");
     expect(out).toContain("- [issue:0] Warning at systems[0]: 'A' is unreachable from any entry point (target: [thing:1])");
     expect(out).not.toContain("Suggestion:");
