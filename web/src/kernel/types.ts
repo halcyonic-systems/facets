@@ -100,12 +100,17 @@ export interface Comparison {
 export interface Level {
   name: string;
   unit: string;
+  /** #94: unit was derived from the inflow (inflow × Δt), not author-declared —
+   *  the face marks its provenance. serde default false on the Rust side. */
+  unit_derived: boolean;
   value: number;
   category: "product" | "resource" | "internal";
 }
 export interface Trajectory {
   name: string;
   unit: string;
+  /** See Level.unit_derived. */
+  unit_derived: boolean;
   series: number[];
 }
 export interface RunResultRich {
