@@ -8,6 +8,8 @@ SL is a human-writable textual notation that compiles deterministically into a b
 
 ## 1. Design commitments
 
+*Status: normative.* Each commitment is enforced by the implementation, and binds any second implementer of this core (germen already implements it).
+
 Five commitments govern every rule below. Each is enforced by the implementation, not merely stated.
 
 **C1 — The compile step is a compiler, never an LLM.** `parse_sl` is a deterministic function of the text: same input, same model, every run. An LLM may help a human *write* SL (`docs/design/llm-integration-research.md`), but nothing between the text and the model interprets, guesses, or smooths. The negative control is gpt-jargon, where the LLM *is* the interpreter on every run; SL is precisely not that.
@@ -21,6 +23,8 @@ Five commitments govern every rule below. Each is enforced by the implementation
 **C5 — Structure only; dynamics are declared elsewhere, and never as scripts.** SL v1 describes C, N, E, G, B — the structural face. It contains no dynamical syntax and, by design, never an embedded simulator. §8 states this boundary precisely and argues it against Mobus's own embedded-scripts proposal.
 
 ## 2. The neutral spec (compile target)
+
+*Status: normative.*
 
 SL compiles to `CanvasModel` (`crates/bert-canvas/src/canvas.rs:165`), the editing model all three surfaces share. Its content divides into model content and view state:
 
@@ -36,7 +40,11 @@ SL compiles to `CanvasModel` (`crates/bert-canvas/src/canvas.rs:165`), the editi
 
 The model-content rows are the neutral spec proper; the view rows are the annotation layer. The compiled model is then *compiled again* by the existing deterministic `project()` into a `WorldModel` for validation and the lens palettes — SL adds a surface above an unchanged pipeline.
 
+A concept-by-concept table setting each SL line beside its canvas gesture, JSON fragment, and kernel referent — "three concrete syntaxes, one neutral spec" made visible rather than asserted — lives in the reader's tour (#95), its single didactic home. The lexicon table (§3) already carries the kernel-referent column that table extends.
+
 ## 3. Lexicon
+
+*Status: normative.*
 
 Every SL word, with the kernel distinction that licenses it and the tradition(s) that contributed it. There are no other words.
 
@@ -65,6 +73,8 @@ One deliberate absence (and one absence resolved):
 - **No decomposition syntax.** Sub-paragraphs (Mobus §4.3.1) require a nested neutral spec; nesting is gated on the 8-tuple decomposition mathematics and is out of scope for v1 (#89; foundations in `docs/design/decomposition-foundations.md`).
 
 ## 4. Grammar
+
+*Status: normative.*
 
 SL is line-oriented. A file is a sequence of lines, each independently one of: blank, comment, structure line, or annotation line. In EBNF (terminals case-insensitive for keywords; names case-sensitive):
 
@@ -127,6 +137,8 @@ Parsing collects **all** faults in one pass and reports each with its 1-indexed 
 
 ## 5. Semantics
 
+*Status: normative.*
+
 ### 5.1 What a compiled model means
 
 A parsed file denotes exactly one `CanvasModel`: things and relations in declaration order with sequentially assigned ids, the boundary and type assertion as written, view state per §6. What that model *means as a system* is not SL's to say: meaning is delivered by the kernel — `project()` compiles it to a `WorldModel`, `validate_mode` gates it at the active lens (Klir→Core, Bunge→Structural, Mobus→Operational), and the lens palettes render its formal object. SL is a notation for the model, not an authority over it (C2).
@@ -140,6 +152,8 @@ All three words compile to `Role::Environment`. The distinction they express —
 A file that parses always yields a model — including a structurally *illegal* one (e.g. a self-loop, which the Operational gate rejects). This is deliberate and matches the canvas: authoring states are routinely mid-thought, and the verdict pill / audit panel carry the kernel's issues live. SL does not gate compilation on validity; it gates nothing (C2).
 
 ## 6. The annotation layer
+
+*Status: normative; the "why a section, not a second file" defense is rationale (argued, adopted).*
 
 Annotations are `@`-prefixed lines, conventionally last in the file. Three are defined; unknown annotations are *skipped, not errors* — the ignorable contract that lets future view-state vocabulary degrade softly in old parsers. Malformed instances of a *known* annotation fail loud (§4.6).
 
@@ -159,6 +173,8 @@ Marks the *n*-th declared flow (1-based) with Klir's observer orientation toggle
 
 ## 7. Serialization and the round-trip contract
 
+*Status: normative (golden-tested, `tests/sl_roundtrip.rs`).*
+
 ### 7.1 Canonical form
 
 `emit_sl` writes a model as: `system` / `domain` lines; thing lines in `things` order (environment words edge-derived per §5.2 — the emitted word is the kernel's reading); `flow` lines in `relations` order; `boundary` if authored; blank line; `@lens`; `@pos` per thing; `@directed` per directed flow. Names emit bare when they read as identifiers and shadow no keyword, quoted otherwise. Floats emit via shortest-round-trip decimal representation, so re-parsing recovers them bit-exactly.
@@ -175,6 +191,8 @@ Two guarantees, distinguished honestly (`tests/sl_roundtrip.rs`):
 `emit_sl` refuses loudly rather than lose information silently: a name or label containing `"` or a newline, and a `system_type` with genus but no kingdom, are errors. Nothing else in `CanvasModel` is outside the language. One asymmetry is accepted knowingly: `primitive`/`interface` on an *environment* thing (expressible in JSON, semantically inert — the kernel ignores both) is dropped on emit rather than round-tripped.
 
 ## 8. The structure/dynamics boundary
+
+*Status: rationale (argued, adopted). §8.1 argues the departure from Mobus; §8.2 adopts the forward position from `dynamics-principled-position.md`. The C5 boundary it defends is normative.*
 
 *This section adopts `docs/design/dynamics-principled-position.md` (ADOPTED); that document is the single source of truth for the dynamics-record definition, and §8.2 references it normatively rather than restating it.*
 
@@ -199,6 +217,8 @@ Three consequences the position doc establishes, recorded here so future SL vers
 - In v1, dynamics reach a model exclusively through the existing tether/run-manifest path (data + forcing, separately authored); the run is the machine's job. What is lost, stated honestly: the expressiveness of arbitrary protocol logic per element. That loss is the price of a checkable language, and it is paid knowingly.
 
 ## 9. Worked examples (the golden corpus)
+
+*Status: normative — the three examples are the round-trip goldens, so their behavior binds.*
 
 The three corpus files are committed at `fixtures/sl/` and are the round-trip goldens; all three parse, emit, re-parse identically, and project clean at Core mode.
 
@@ -257,15 +277,21 @@ A three-component decomposition with two boundary interfaces, an authored membra
 
 ## 10. Lineage
 
+*Status: informative.*
+
 **Mobus, Ch. 4 (2015/2022).** SL inherits the load-bearing insight — one definition, three coequal views (verbal, graphical, mathematical; §4.3) — the ontology-drawn lexicon, the system-paragraph as the verbal form, and the syntax-as-structural-legality doctrine (§4.4.1.3). It sheds his sysXML/XML serialization (the neutral spec's JSON already fills that role), his embedded-JavaScript behaviors (§8), and the 7-tuple's folding of E into G — the machine-checked authority is the 8-tuple with E first-class (`Tuple.lean`; E-as-first-class is the Lean formalization's improvement on the printed tuple, credited as such).
 
 **BERT SL v0.1 (`bert/docs/system-language-spec.md`).** The prior spec in this lineage: a publication-grade lexicon and grammar *for the data model* — 40 concepts, ID encoding, the four Lean coherence constraints (its §2.6), edge-derived source/sink roles (its §1.2 migration note, adopted here as §5.2). What it lacked is exactly what this spec adds: a human-writable concrete syntax; v0.1's "speakable" mode was natural-language-to-model via chat, not a notation a person writes and diffs. Its §4 execution mapping (Mesa/Bevy) is shed per §8.1.
 
 **SL v2.0 addendum (`system-language-spec-v2-addendum.md`).** Contributed the kernel re-founding (the 8-tuple as a generated view over a proven kernel) and the mode lattice; its mode-declaration *surface syntax* stayed cut — in bert-lenses, modes are the three lenses, view state on the neutral spec, which is why `@lens` is an annotation and not a structure line.
 
-**Precedents** (research and verification marks in `docs/design/sl2-authoring-language.md` §4): SysML v2 for the architecture — text and diagrams as projections of one abstract syntax, text privileged because it maps losslessly; Modelica for one-artifact/two-concerns (§6); Stella for the bar the tool clears — two coequal views of one model with a live validity signal; Quint for approachable-surface-over-fixed-semantics via a deterministic transpiler; ACE/Gherkin for the fail-loud parse discipline; gpt-jargon as the negative control (C1). For the dynamics boundary: Petri-net P-invariants and CRN conservation laws as the prior art for invariant-on-structure independent of the transition rule — the position §8 applies is their pattern, cited as lineage, not a rediscovery.
+**SysML v2 (formal/2026-03-02) — the architecture precedent, and the ontological foil.** SysML v2 Part 1, the language specification, was formally adopted in March 2026 (*OMG Systems Modeling Language, Part 1: Language Specification*, formal/2026-03-02, 691 pp). It is the standards-body validation of the architecture SL inherits: one abstract syntax, concrete syntaxes as projections of it, the textual notation privileged because it maps losslessly while a diagram is a partial projection, semantics anchored in a kernel artifact (their KerML plus a semantic library; here the kernel plus `Tuple.lean`). It is also the exact inverse of C3. §7.1 states outright that the language carries no construct named system, subsystem, or component — "An entity with structure and behavior in SysML is represented simply as a part" — with domain terminology supplied through user-defined metadata (§7.27). SL's lexicon is the opposite commitment: every word names a kernel-licensed ontological distinction and nothing else (§3, C3). SysML v2 is ontologically agnostic by design, and correct for its job of building engineered systems; SL is the ontologically committed counterpart, for studying systemness. Primary cites: §7.1 and Figure 1 (§6.1). The audience and interoperability consequences are drawn out for readers in the language README's "Why SL, and when SysML" section (#99).
+
+**Precedents** (research and verification marks in `docs/design/sl2-authoring-language.md` §4): SysML v2 (formal/2026-03-02) for the architecture — text and diagrams as projections of one abstract syntax, text privileged because it maps losslessly (the ontological contrast is drawn out above); Modelica for one-artifact/two-concerns (§6); Stella for the bar the tool clears — two coequal views of one model with a live validity signal; Quint for approachable-surface-over-fixed-semantics via a deterministic transpiler; ACE/Gherkin for the fail-loud parse discipline; gpt-jargon as the negative control (C1). For the dynamics boundary: Petri-net P-invariants and CRN conservation laws as the prior art for invariant-on-structure independent of the transition rule — the position §8 applies is their pattern, cited as lineage, not a rediscovery.
 
 ## 11. Known gaps and v1.1 candidates
+
+*Status: informative (roadmap; the honesty mechanism in place of a conformance clause).*
 
 | Gap | Tracked | Direction |
 |---|---|---|
