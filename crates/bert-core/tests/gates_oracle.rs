@@ -78,16 +78,17 @@ impl Lcg {
 /// bound: every `dep` is a random subset of `n × n` pairs (so self-loops and
 /// distinct edges both appear), for a spread of `n`.
 fn corpus() -> Vec<(u64, Vec<(u64, u64)>)> {
-    let mut rng = Lcg(0x5eed_1_5_5); // fixed seed
-    let mut models = Vec::new();
+    let mut rng = Lcg(0x05ee_d155); // fixed seed ("seed 1.5.5")
 
     // A few pinned boundary cases at n = 3 (empty, self-loop only, one distinct
     // edge, full self-loop diagonal, a bonded-and-reflexive mix).
-    models.push((3, vec![]));
-    models.push((3, vec![(1, 1)]));
-    models.push((3, vec![(0, 2)]));
-    models.push((3, vec![(0, 0), (1, 1), (2, 2)]));
-    models.push((3, vec![(0, 1), (2, 2)]));
+    let mut models: Vec<(u64, Vec<(u64, u64)>)> = vec![
+        (3, vec![]),
+        (3, vec![(1, 1)]),
+        (3, vec![(0, 2)]),
+        (3, vec![(0, 0), (1, 1), (2, 2)]),
+        (3, vec![(0, 1), (2, 2)]),
+    ];
 
     // Random subsets for n = 3, 4, 5.
     for &n in &[3u64, 4, 5] {
