@@ -8,8 +8,8 @@
 //! `from_world_model` error paths into the kernel crate, so any executor
 //! (compose today, Mesa via the bridge, others later) checks the same
 //! contract. Representational modes fail loudly by design: Klir's Core and
-//! Bunge's Structural rungs commit to no flow semantics, so there is nothing
-//! to execute — the refusal cites the rung, not a defect.
+//! Bunge's Structural lens commits to no flow semantics, so there is nothing
+//! to execute — the refusal cites the mode, not a defect.
 //!
 //! What the contract deliberately tolerates: dead ends (a process with no
 //! outgoing flow). The compose engine defines evaporation semantics for them
@@ -26,7 +26,7 @@
 //! the routing *lowers* to a work process already in compose's palette — an
 //! [`InterfacePrimitive::Impeding`] filter (with back-pressure) by default.
 //!
-//! Unparameterized — always, at this rung — the transfer characteristic is the
+//! Unparameterized — always, at this mode — the transfer characteristic is the
 //! identity: the degenerate zero-width conduit. So the flow still attaches
 //! directly to its declared endpoints and runs exactly as if the interface
 //! were absent; the lowering is recorded on [`OperationalFlow::interface_routing`]
@@ -96,7 +96,7 @@ pub struct OperationalTerminal {
 /// included, recapitulates the fundamental work processes; an interface sited in
 /// the boundary B is an Impeding process — a filter with back-pressure — by
 /// default. Unparameterized the characteristic is the identity (the degenerate
-/// zero-width conduit), so at this rung the choice of primitive is provenance
+/// zero-width conduit), so at this mode the choice of primitive is provenance
 /// only; it names where a future transfer characteristic would attach.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum InterfacePrimitive {
@@ -191,8 +191,8 @@ impl OperationalSpec {
 ///
 /// The checks, in the order they accumulate:
 /// 1. Mode gate — `Core` (Klir) and `Structural` (Bunge) are representational
-///    rungs and never execute.
-/// 2. The `Operational` rung's own validity: on-ness plus irreflexivity, via
+///    modes and never execute.
+/// 2. The `Operational` mode's own validity: on-ness plus irreflexivity, via
 ///    [`validate_mode`].
 /// 3. Projection totality — every level-1 system carries a primitive, no
 ///    hierarchy below level 1, every flow endpoint lands on a projected node,
@@ -310,7 +310,7 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
         // bert#108: interface routing lowers, it does not refuse. An interface
         // is a component sited in the boundary B; by Mobus it recapitulates a
         // work process, so the routing lowers to an Impeding filter. Identity
-        // default at this rung — the flow still attaches directly to its
+        // default at this mode — the flow still attaches directly to its
         // declared endpoints (the endpoint/direction checks below run on
         // `ix.source`/`ix.sink` regardless), and this only records the lineage.
         // (Interface-reference integrity is enforced upstream by `validate`;
@@ -627,29 +627,29 @@ mod tests {
         );
     }
 
-    /// Law: Core (Klir) has no flow semantics to execute — `validate_operational` must refuse it, naming the rung.
+    /// Law: Core (Klir) has no flow semantics to execute — `validate_operational` must refuse it, naming the mode.
     #[test]
-    fn klir_mode_refuses_with_cited_rung() {
+    fn klir_mode_refuses_with_cited_mode() {
         let mut m = mobus_model();
         m.mode = Some(Mode::Core);
         let errs = validate_operational(&m).unwrap_err();
         assert!(
             errs.iter()
                 .any(|e| e.location == "mode" && e.reason.contains("Core (Klir)")),
-            "the refusal names the rung: {errs:#?}"
+            "the refusal names the mode: {errs:#?}"
         );
     }
 
-    /// Law: Structural (Bunge) commits to bonded composition, not typed flows — `validate_operational` must refuse it, naming the rung.
+    /// Law: Structural (Bunge) commits to bonded composition, not typed flows — `validate_operational` must refuse it, naming the mode.
     #[test]
-    fn bunge_mode_refuses_with_cited_rung() {
+    fn bunge_mode_refuses_with_cited_mode() {
         let mut m = mobus_model();
         m.mode = Some(Mode::Structural);
         let errs = validate_operational(&m).unwrap_err();
         assert!(
             errs.iter()
                 .any(|e| e.location == "mode" && e.reason.contains("Structural (Bunge)")),
-            "the refusal names the rung: {errs:#?}"
+            "the refusal names the mode: {errs:#?}"
         );
     }
 
@@ -831,7 +831,7 @@ mod tests {
 
     /// Law: Mobus §4.3 (k ≠ o) — a self-loop is refused when validating for execution, the same hypothesis as the mode-transition gate.
     #[test]
-    fn self_loop_refused_via_operational_rung() {
+    fn self_loop_refused_via_operational_mode() {
         let mut m = mobus_model();
         let buf = m.systems[1].info.id.clone();
         m.interactions.push(flow(2, "ouroboros", buf.clone(), buf));

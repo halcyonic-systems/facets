@@ -1,11 +1,11 @@
-//! Mode transitions on the kernel ladder: moving a [`WorldModel`] from the rung
-//! its stamp names to another rung, either shedding out-of-mode structure into a
-//! recoverable [`LossWitness`] (downgrade) or checking the target rung's
+//! Mode transitions on the kernel lattice: moving a [`WorldModel`] from the mode
+//! its stamp names to another mode, either shedding out-of-mode structure into a
+//! recoverable [`LossWitness`] (downgrade) or checking the target mode's
 //! precondition and re-stamping (upgrade).
 //!
 //! The [`Mode`] poset (lib.rs, `Mode`) is a **meet-semilattice (tree-shaped); no
 //! joins by design** — `Core` is the meet of every pair, `Structural` and `Full`
-//! are parallel leaves with no join (the rungs are lenses, not a cumulative
+//! are parallel leaves with no join (the modes are lenses, not a cumulative
 //! tower; `Cybernetic` is deliberately absent). Transitions are defined on the
 //! three Hasse edges — `Core`–`Structural`, `Core`–`Operational`,
 //! `Operational`–`Full` — and every cross-move composes through the meet: e.g.
@@ -114,7 +114,7 @@ impl std::fmt::Debug for Transition {
     }
 }
 
-/// Transition `model` from its stamped rung ([`WorldModel::mode`], never a
+/// Transition `model` from its stamped mode ([`WorldModel::mode`], never a
 /// parameter — the stamp is the authority) to `to`.
 ///
 /// A descent shears every out-of-mode field into the [`LossWitness`]; an ascent
@@ -133,11 +133,11 @@ pub fn validate_transition(
     let mut work = model.clone();
     let mut entries: Vec<LossEntry> = Vec::new();
 
-    let mut rung = from;
-    while rung != meet {
-        let up = parent(rung).expect("only Core lacks a parent, and Core is a meet");
-        apply_descent(rung, &mut work, &mut entries);
-        rung = up;
+    let mut mode = from;
+    while mode != meet {
+        let up = parent(mode).expect("only Core lacks a parent, and Core is a meet");
+        apply_descent(mode, &mut work, &mut entries);
+        mode = up;
     }
 
     let mut errors: Vec<TransitionError> = Vec::new();
@@ -177,7 +177,7 @@ pub fn rebuild(mut model: WorldModel, loss: &LossWitness) -> WorldModel {
     model
 }
 
-/// The Core-ward parent of a rung, or `None` for the meet itself.
+/// The Core-ward parent of a mode, or `None` for the meet itself.
 fn parent(mode: Mode) -> Option<Mode> {
     match mode {
         Mode::Full => Some(Mode::Operational),
@@ -186,7 +186,7 @@ fn parent(mode: Mode) -> Option<Mode> {
     }
 }
 
-/// The deepest rung on both Core-ward chains — the meet at which a cross-move pivots.
+/// The deepest mode on both Core-ward chains — the meet at which a cross-move pivots.
 fn meet(a: Mode, b: Mode) -> Mode {
     let mut chain_a: HashSet<Mode> = HashSet::new();
     let mut walk = Some(a);
@@ -204,7 +204,7 @@ fn meet(a: Mode, b: Mode) -> Mode {
     Mode::Core
 }
 
-/// The rungs to *enter*, meet-ward first, climbing from `meet` up to `to`.
+/// The modes to *enter*, meet-ward first, ascending from `meet` up to `to`.
 fn ascent_chain(meet: Mode, to: Mode) -> Vec<Mode> {
     let mut chain = Vec::new();
     let mut walk = Some(to);
@@ -219,10 +219,10 @@ fn ascent_chain(meet: Mode, to: Mode) -> Vec<Mode> {
     chain
 }
 
-/// Shear the fields the rung being *left* owns, moving each non-minimal value
-/// into `entries`. `rung` is the child mode; the descent lands on its parent.
-fn apply_descent(rung: Mode, model: &mut WorldModel, entries: &mut Vec<LossEntry>) {
-    match rung {
+/// Shear the fields the mode being *left* owns, moving each non-minimal value
+/// into `entries`. `mode` is the child being left; the descent lands on its parent.
+fn apply_descent(mode: Mode, model: &mut WorldModel, entries: &mut Vec<LossEntry>) {
+    match mode {
         Mode::Full => strip_dynamical(model, entries),
         Mode::Operational => strip_operational(model, entries),
         Mode::Structural => strip_structural(model, entries),
@@ -376,7 +376,7 @@ fn strip_operational(model: &mut WorldModel, entries: &mut Vec<LossEntry>) {
     }
 }
 
-/// `Structural → Core`: Bunge's rung adds the `HasBond` obligation, not stored
+/// `Structural → Core`: Bunge's lens adds the `HasBond` obligation, not stored
 /// data. The inside/outside membership rides in the entity Ids and array
 /// placement that `kernel` already preserves, and milieu `M` is spec-level (A3),
 /// so there is nothing to shear in the current schema — the witness is empty. A
@@ -795,7 +795,7 @@ mod tests {
 
     // ---- L5 refusal -----------------------------------------------------
 
-    /// Law: a downgrade never errs, even from a model that would violate the target rung's precondition (e.g. a self-loop entering Operational).
+    /// Law: a downgrade never errs, even from a model that would violate the target mode's precondition (e.g. a self-loop entering Operational).
     #[test]
     fn l5_downgrades_never_err() {
         let mut m = full_model();
@@ -815,7 +815,7 @@ mod tests {
         }
     }
 
-    /// Law: an upgrade refuses iff its target rung's precondition fails, and the refusal cites the Lean hypothesis by name (`Kernel.HasBond`, `Kernel.Irreflexive`).
+    /// Law: an upgrade refuses iff its target mode's precondition fails, and the refusal cites the Lean hypothesis by name (`Kernel.HasBond`, `Kernel.Irreflexive`).
     #[test]
     fn l5_upgrade_errs_iff_precondition_fails_and_cites_hypothesis() {
         // No bond: entering Structural refuses citing HasBond.
@@ -848,7 +848,7 @@ mod tests {
 
     // ---- L6 stratification ----------------------------------------------
     //
-    // Entering a rung is not the executability gate on top of it: a model can
+    // Entering a mode is not the executability gate on top of it: a model can
     // reach Operational/Full through `validate_transition` yet be refused by
     // `validate_operational` (bert#108). Two fixtures pin the two ways this
     // happens — an isolated component, and an interface-routed flow.
@@ -897,7 +897,7 @@ mod tests {
         }
     }
 
-    /// Law: entering a mode rung via `validate_transition` is not the executability gate — a model can reach Full yet still be refused by `validate_operational`.
+    /// Law: entering a mode via `validate_transition` is not the executability gate — a model can reach Full yet still be refused by `validate_operational`.
     #[test]
     fn l6_reaching_full_does_not_imply_operational_executability() {
         let m = isolated_component_model();
@@ -984,7 +984,7 @@ mod tests {
         ));
     }
 
-    /// Law: a cross-move that sheds real data at the meet nets a downgrade, even though the far end is a different rung than the start.
+    /// Law: a cross-move that sheds real data at the meet nets a downgrade, even though the far end is a different mode than the start.
     #[test]
     fn cross_move_operational_to_structural_sheds_then_reascends() {
         let m = full_model_operational();
