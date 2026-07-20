@@ -625,6 +625,31 @@ mod tests {
         assert!(messages(&issues).contains("src_lands"), "must name the property: {}", messages(&issues));
     }
 
+    // ── snk_lands (interface-landing, sink half) ──
+
+    #[test]
+    fn snk_lands_passes_when_flow_originates_at_a_component() {
+        let issues =
+            check_decomposition_contract(&parent_model(), &comp(), &child_model("Energy", "Material", false, false));
+        assert!(!messages(&issues).contains("snk_lands"));
+    }
+
+    #[test]
+    fn snk_lands_fails_when_flow_originates_at_the_environment() {
+        // Rewire the outbound boundary flow to leave from an env source instead
+        // of the interface component, so it originates at no interface member.
+        // Its target stays the env sink, keeping it a child sink; source and sink
+        // both env means it lands on no component (the degenerate env→env case).
+        let mut child = child_model("Energy", "Material", false, false);
+        for ix in &mut child.interactions {
+            if ix.info.name == "child-out" {
+                ix.source = serde_json::from_value(json!("Src-1.0")).unwrap();
+            }
+        }
+        let issues = check_decomposition_contract(&parent_model(), &comp(), &child);
+        assert!(messages(&issues).contains("snk_lands"), "must name the property: {}", messages(&issues));
+    }
+
     // ── derived_env ──
 
     #[test]
