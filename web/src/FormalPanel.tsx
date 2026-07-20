@@ -83,6 +83,9 @@ function BungeFace({ d }: { d: Extract<LensDescription, { lens: "Bunge" }> }) {
           {isSystem ? "system — 𝔹 ≠ ∅ (Def 1.1)" : "aggregate — 𝔹 = ∅ (Def 1.1)"}
         </span>
       </div>
+      <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+        µ(σ) is Bunge's 2004 four-coordinate object; bare σ names the 1979 ⟨C, E, S⟩ triple.
+      </p>
       <Line label={<Tex tex="\mathcal{C}" />}>{names(d.composition)}</Line>
       <Line label={<Tex tex="\mathcal{E}" />}>{names(d.environment)}</Line>
       <Line label={<Tex tex="\mathcal{S}" />}>
