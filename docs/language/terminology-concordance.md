@@ -151,5 +151,28 @@ The five UNGROUNDED cells of the first pass, each now closed as VERIFIED-with-ci
 ## 15. Consumers
 
 - **SL lexicon** (`spec.md` §3) — summarizes the "Contributed by" column from this grid.
-- **Per-lens UI copy** — palette labels and `describe()` typesetting should match column vocabulary per lens (Klir says *thing/relation*, Bunge says *component/bond*, Mobus says *component/flow*): this grid is the check.
+- **Per-lens UI copy** — palette labels and `describe()` typesetting should match column vocabulary per lens (Klir says *thing/relation*, Bunge says *component/bond*, Mobus says *component/flow*): this grid is the check. The audit against the web app is §15.1.
 - **K≅2 convergence program** — rows 2, 3, 6, 8, 9, 11 are citable convergence exhibits; rows 5, 7, 10, 12 are the honest divergence ledger that keeps the convergence claim falsifiable.
+
+### 15.1 Per-lens UI-copy audit (2026-07-20)
+
+The web app's user-facing lens strings, audited against the settled terms above, per lens. Where a string is *authored* (palette, node inspector, edge-editor titles) a mismatch would be fixed here; none were — every authored label already speaks its lens's column. Where a mismatch lives in a *code string* (`describe()` typesetting or the shared edge-editor enum), it is recorded below for #80's build, which consumes this stabilized section rather than the doc re-deriving it.
+
+**Matched — authored labels are settled-term-faithful.**
+
+| Surface (`web/src/…`) | Klir | Bunge | Mobus |
+|---|---|---|---|
+| palette place / connect (`canvas/lenses/registry.ts`) | thing · relation | component · environment thing · bond ⁄ mere relation | component · environment object · typed flow · interface · primitives |
+| node inspector (`canvas/NodePopover.tsx:56`) | thing | component · environment thing | component · environment object |
+| edge-editor title (`canvas/EdgePopover.tsx`) | relation rₙ ⊆ T×T · neutral / directed | bond ⁄ mere relation · connection kind | flow · substance |
+| formal face (`FormalPanel.tsx`) | \|T\| things (thinghood) · \|R\| relations (systemhood) | 𝒞 · ℰ · bonds (endo/exo) + mere · boundary (1992) | C · N · E=⟨O,M⟩ · G · B=⟨P,I⟩ · porosity / fuzziness |
+
+Each cell traces to a row: thing/relation (rows 2, 4) and Klir neutral/directed (row 7); component/bond, environment thing, and boundary-1992 (rows 2, 3, 5, 8); component/flow, environment object, B=⟨P,I⟩, interfaces, and primitives (rows 2, 3, 9, 10). The Bunge/Mobus environment split — Bunge says "thing," Mobus says "object" — is itself row-12-faithful (milieu-vs-object is Mobus's alone).
+
+**Mismatched — code strings, handed to #80.** The authored labels above are correct; these three live in `describe()` typesetting and the shared edge enum, so they belong to #80's pair-names-with-math build, not a doc fix:
+
+1. **The Mobus "substance" picker offers Bunge's kind enum, not Mobus's substances.** The Mobus edge editor's `substance` select (`web/src/canvas/EdgePopover.tsx:13,277`) lists the raw `Kind` enum `{unspecified, energy, matter, field, informational}`. Per row 6, the Mobus lens's substance words are **material · energy · message**, and the collapse already exists in Rust (`kind_to_substance`, `crates/bert-canvas/src/canvas.rs:64-68`: Matter→Material, Informational→Message, Energy/Field→Energy). The Mobus picker should present the substance names through that map. The same enum under the Bunge lens (`connection kind`, `EdgePopover.tsx:209`) is correct as-is — row 6 has energy/matter/field/informational as Bunge verbatim.
+2. **The Bunge formal object labels the four-coordinate object with the symbol σ.** `FormalPanel.tsx:73` and `kernel/context.ts:48` print the Bunge object as a four-coordinate σ (composition, environment, structure, mechanism). Per row 1 / §14.1, σ is the 1979 CES triple; the four-coordinate object is µ(σ) (Bunge 2004, the `mechanism_note` provenance). The formal face should carry µ(σ) for the four-tuple, or keep σ to the triple and hold M as the mechanism note.
+3. **The Mobus formal object prints the eight-tuple without crediting E as the Lean's improvement.** The Mobus formal face (`FormalPanel.tsx:106`, `kernel/context.ts:49`) prints `⟨C, N, E, G, B, T, H, Δt⟩` as "S". Per row 1, the book prints the seven-tuple; E-as-first-class is the Lean formalization's deliberate improvement (`SSF/Systems/Mobus/Tuple.lean`), to be credited as such on any published surface. The formal face is a published surface, so it should carry that credit (a source-note or the "Lean improvement" label), not present the eight-tuple as the book's own.
+
+A fourth, lower-priority note for #80: `kernel/context.ts` (`renderElements`) labels every element `[thing:id]` / `[relation:id]` regardless of lens. This is a lens-invariant serialization prefix for the LLM context, not lens chrome, and is likely intentional as a stable reference scheme; flagged only so #80 can rule on it explicitly.
