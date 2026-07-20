@@ -20,13 +20,17 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
       sim={sim}
       onPointerDown={onPointerDown}
       onHandlePointerDown={onHandlePointerDown}
-      isSquare={thing.role === "Environment"}
+      shape={
+        thing.role === "Environment" ? "square" : thing.primitive === "Modulating" ? "triangle" : "circle"
+      }
       showHalo={thing.role === "Component"}
       envOpen={thing.role === "Environment"}
       stroke="var(--lens-node-stroke)"
       strokeOpacity={1}
       strokeWidth={STYLE.nodeStrokeWidth}
-      badge={thing.primitive}
+      // The regulator's triangle carries its own identity — a corner badge would
+      // just restate it (Fig. 4.17: the decision/regulator process IS the shape).
+      badge={thing.primitive === "Modulating" ? undefined : thing.primitive}
       labelSmall={false}
       boundaryRim={false}
     />
@@ -113,11 +117,19 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
   );
 }
 
-/** A Mobus interface — a pill notch breaking the membrane stroke (Fig. 4.9:
- *  "round-edged rectangles that penetrate the boundary"). Direction glyph:
- *  ▸ receives / ◂ exports / ⇄ hybrid. Interfaces gate, they don't transform. */
+/** A Mobus interface — a gate straddling the membrane (Fig. 4.9: "round-edged
+ *  rectangles that penetrate the boundary"). Direction lives in the SILHOUETTE,
+ *  not a text glyph: an arrow into the boundary (receives), out of it (exports),
+ *  or two-headed (hybrid) — so it survives at export/zoom where a glyph would
+ *  not. The gate is unmistakably not a circle, keeping component ∕ port distinct.
+ *  Interfaces gate, they don't transform; φ is named above. */
+const PORT_GATE: Record<PortFact["direction"], string> = {
+  Receives: "M -15 -9 L 8 -9 L 15 0 L 8 9 L -15 9 Z",
+  Exports: "M 15 -9 L -8 -9 L -15 0 L -8 9 L 15 9 Z",
+  Hybrid: "M -8 -9 L 8 -9 L 15 0 L 8 9 L -8 9 L -15 0 Z",
+};
+
 function PortView({ port, at, onSelect }: { port: PortFact; at: Pt; onSelect?: () => void }) {
-  const glyph = port.direction === "Receives" ? "▸" : port.direction === "Exports" ? "◂" : "⇄";
   const label = port.protocol.length > 22 ? `${port.protocol.slice(0, 21)}…` : port.protocol;
   return (
     <g
@@ -132,19 +144,13 @@ function PortView({ port, at, onSelect }: { port: PortFact; at: Pt; onSelect?: (
       }
     >
       <title>{`interface — ${port.direction.toLowerCase()} · φ: ${port.protocol}`}</title>
-      <rect
-        x={-16}
-        y={-9}
-        width={32}
-        height={18}
-        rx={STYLE.portRx}
+      <path
+        d={PORT_GATE[port.direction]}
         fill="var(--bg-primary)"
         stroke="var(--lens-accent)"
         strokeWidth={STYLE.portStrokeWidth}
+        strokeLinejoin="round"
       />
-      <text textAnchor="middle" dominantBaseline="central" fontSize={10} fill="var(--lens-accent)" className="pointer-events-none">
-        {glyph}
-      </text>
       <text y={-15} textAnchor="middle" fontSize={9} fill="var(--text-muted)" className="font-mono pointer-events-none">
         {label}
       </text>

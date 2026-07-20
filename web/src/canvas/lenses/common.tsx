@@ -10,6 +10,77 @@ import { NODE_R, type Pt } from "../geometry";
 import { STYLE } from "../style";
 import type { ReactNode, PointerEvent as ReactPointerEvent } from "react";
 
+// ---- The node shape alphabet -------------------------------------------------
+// Exactly three closed glyphs carry role across the lenses: circle (component),
+// square (environment object), triangle (Mobus regulator). Every finer
+// distinction stays a marking (rim accent, badge, port notch), never a fourth
+// shape. The glyphs are drawn to equal visual WEIGHT, not equal bounding box —
+// a full-side square reads heavier than the circle and an inscribed triangle
+// lighter, so each is scaled to parity.
+export type NodeShape = "circle" | "square" | "triangle";
+
+const SQUARE_HALF = NODE_R * 0.9;
+const TRI_R = NODE_R * 1.15;
+const TRI_CORNER = TRI_R * 0.16;
+
+// Equilateral, apex up, centroid at the origin.
+const TRI_PTS: Pt[] = [-90, 30, 150].map((deg) => {
+  const a = (deg * Math.PI) / 180;
+  return { x: TRI_R * Math.cos(a), y: TRI_R * Math.sin(a) };
+});
+
+// Vertical extent + half-width per glyph — drives the sim-fill clip so a stock
+// fills from its own base rather than a circle's.
+const SHAPE_BOX: Record<NodeShape, { top: number; bottom: number; halfW: number }> = {
+  circle: { top: -NODE_R, bottom: NODE_R, halfW: NODE_R },
+  square: { top: -SQUARE_HALF, bottom: SQUARE_HALF, halfW: SQUARE_HALF },
+  triangle: { top: -TRI_R, bottom: TRI_R / 2, halfW: (TRI_R * Math.sqrt(3)) / 2 },
+};
+
+function unitFrom(to: Pt, from: Pt): Pt {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const len = Math.hypot(dx, dy) || 1;
+  return { x: dx / len, y: dy / len };
+}
+
+/** A closed polygon path with each corner rounded by `r` (quadratic corners). */
+function roundedPolygon(pts: Pt[], r: number): string {
+  const n = pts.length;
+  let d = "";
+  for (let i = 0; i < n; i++) {
+    const cur = pts[i];
+    const toPrev = unitFrom(pts[(i - 1 + n) % n], cur);
+    const toNext = unitFrom(pts[(i + 1) % n], cur);
+    const a = { x: cur.x + toPrev.x * r, y: cur.y + toPrev.y * r };
+    const b = { x: cur.x + toNext.x * r, y: cur.y + toNext.y * r };
+    d += `${i === 0 ? "M" : "L"} ${a.x.toFixed(2)} ${a.y.toFixed(2)} Q ${cur.x.toFixed(2)} ${cur.y.toFixed(2)} ${b.x.toFixed(2)} ${b.y.toFixed(2)} `;
+  }
+  return `${d}Z`;
+}
+
+interface GlyphProps {
+  fill: string;
+  stroke?: string;
+  strokeOpacity?: number;
+  strokeWidth?: number;
+  fillOpacity?: number;
+  clipPath?: string;
+}
+
+/** The node body glyph — the single place the shape alphabet is drawn to SVG. */
+function bodyGlyph(shape: NodeShape, props: GlyphProps): ReactNode {
+  if (shape === "square") {
+    return (
+      <rect x={-SQUARE_HALF} y={-SQUARE_HALF} width={SQUARE_HALF * 2} height={SQUARE_HALF * 2} rx={STYLE.squareRx} strokeLinejoin="round" {...props} />
+    );
+  }
+  if (shape === "triangle") {
+    return <path d={roundedPolygon(TRI_PTS, TRI_CORNER)} strokeLinejoin="round" {...props} />;
+  }
+  return <circle r={NODE_R} {...props} />;
+}
+
 /** Resolved per-lens stroke styling for a visible edge path. */
 export interface EdgeStyle {
   color: string;
@@ -25,8 +96,10 @@ interface NodeBodyProps {
   sim?: { value: number; unit: string; frac: number };
   onPointerDown: (e: ReactPointerEvent) => void;
   onHandlePointerDown: (e: ReactPointerEvent) => void;
-  /** Env objects render as squares under Bunge/Mobus; Klir keeps every thing a circle. */
-  isSquare: boolean;
+  /** The node body glyph. Klir keeps every thing a circle (its deliberate
+   *  flattening); Bunge/Mobus draw env objects as squares; Mobus draws the
+   *  regulator primitive as a triangle. The alphabet is exactly these three. */
+  shape: NodeShape;
   /** Bunge/Mobus composition halo (the C/E wash); a set partition, not a ring. */
   showHalo: boolean;
   /** Mobus env sources/sinks are open unfilled shapes (epistemically unknowable). */
@@ -53,7 +126,7 @@ export function NodeBody({
   sim,
   onPointerDown,
   onHandlePointerDown,
-  isSquare,
+  shape,
   showHalo,
   envOpen,
   stroke,
@@ -101,52 +174,33 @@ export function NodeBody({
         />
       )}
 
-      {/* the sim payoff: a stock's disc fills/drains as the scrubber indexes ticks */}
+      {/* the sim payoff: a stock fills/drains from its own base as the scrubber
+          indexes ticks — the clip spans this glyph's extent, not a circle's. */}
       {frac !== null && (
         <>
           <clipPath id={clipId}>
-            <rect x={-NODE_R} y={NODE_R - 2 * NODE_R * frac} width={NODE_R * 2} height={2 * NODE_R * frac} />
-          </clipPath>
-          {isSquare ? (
             <rect
-              x={-NODE_R}
-              y={-NODE_R}
-              width={NODE_R * 2}
-              height={NODE_R * 2}
-              rx={STYLE.squareRx}
-              fill="var(--accent)"
-              opacity={STYLE.simFillOpacity}
-              clipPath={`url(#${clipId})`}
+              x={-SHAPE_BOX[shape].halfW}
+              y={SHAPE_BOX[shape].bottom - (SHAPE_BOX[shape].bottom - SHAPE_BOX[shape].top) * frac}
+              width={SHAPE_BOX[shape].halfW * 2}
+              height={(SHAPE_BOX[shape].bottom - SHAPE_BOX[shape].top) * frac}
             />
-          ) : (
-            <circle r={NODE_R} fill="var(--accent)" opacity={STYLE.simFillOpacity} clipPath={`url(#${clipId})`} />
-          )}
+          </clipPath>
+          {bodyGlyph(shape, {
+            fill: "var(--accent)",
+            fillOpacity: STYLE.simFillOpacity,
+            clipPath: `url(#${clipId})`,
+          })}
         </>
       )}
 
-      {isSquare ? (
-        <rect
-          x={-NODE_R}
-          y={-NODE_R}
-          width={NODE_R * 2}
-          height={NODE_R * 2}
-          rx={STYLE.squareRx}
-          fill={envOpen ? "none" : STYLE.nodeFill}
-          stroke={stroke}
-          strokeOpacity={strokeOpacity}
-          strokeWidth={strokeWidth}
-          fillOpacity={frac !== null ? 0 : 1}
-        />
-      ) : (
-        <circle
-          r={NODE_R}
-          fill={STYLE.nodeFill}
-          stroke={stroke}
-          strokeOpacity={strokeOpacity}
-          strokeWidth={strokeWidth}
-          fillOpacity={frac !== null ? 0 : 1}
-        />
-      )}
+      {bodyGlyph(shape, {
+        fill: envOpen ? "none" : STYLE.nodeFill,
+        stroke,
+        strokeOpacity,
+        strokeWidth,
+        fillOpacity: frac !== null ? 0 : 1,
+      })}
 
       {badge && (
         <g transform={`translate(${NODE_R * 0.72}, ${-NODE_R * 0.72})`}>

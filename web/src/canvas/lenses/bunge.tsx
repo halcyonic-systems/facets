@@ -19,7 +19,7 @@ function NodeView({ thing, isBoundary, isOrphan, hovered, sim, onPointerDown, on
       sim={sim}
       onPointerDown={onPointerDown}
       onHandlePointerDown={onHandlePointerDown}
-      isSquare={thing.role === "Environment"}
+      shape={thing.role === "Environment" ? "square" : "circle"}
       showHalo={thing.role === "Component"}
       envOpen={false}
       stroke="var(--lens-node-stroke)"

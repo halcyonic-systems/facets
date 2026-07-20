@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 740" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Roboto, sans-serif">
+  <style>
+    .ink   { fill: none; stroke: #2b3440; stroke-width: 1.75; }
+    .fillsq{ fill: #e8ecf1; stroke: #2b3440; stroke-width: 1.75; }
+    .rim   { fill: none; stroke: #2b3440; stroke-width: 1.25; }
+    .gate  { fill: #ffffff; stroke: #2b3440; stroke-width: 1.75; }
+    .role  { fill: #2b3440; font-size: 13px; text-anchor: middle; }
+    .lens  { fill: #8a94a3; font-size: 12px; letter-spacing: 0.08em; }
+    .mono  { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .badge { fill: #ffffff; stroke: #2b3440; stroke-width: 1; }
+    .glyph { fill: #2b3440; font-size: 9px; text-anchor: middle; }
+    .head  { fill: #2b3440; font-size: 15px; font-weight: 600; }
+    .cap   { fill: #8a94a3; font-size: 12px; }
+  </style>
+
+  <text x="48" y="52" class="head">bert-lenses palette shape vocabulary — v2</text>
+  <text x="48" y="72" class="cap">The complete node and interface glyph set, monochrome.</text>
+
+  <!-- ===================== KLIR ===================== -->
+  <text x="48" y="132" class="lens mono">KLIR</text>
+  <g transform="translate(150,180)">
+    <circle r="34" class="ink"/>
+    <text y="58" class="role">component</text>
+  </g>
+
+  <!-- ===================== BUNGE ===================== -->
+  <text x="48" y="312" class="lens mono">BUNGE</text>
+  <g transform="translate(150,360)">
+    <circle r="34" class="ink"/>
+    <text y="58" class="role">component</text>
+  </g>
+  <g transform="translate(360,360)">
+    <rect x="-30.6" y="-30.6" width="61.2" height="61.2" rx="6" class="fillsq" stroke-linejoin="round"/>
+    <text y="58" class="role">environment object</text>
+  </g>
+  <g transform="translate(570,360)">
+    <circle r="37" class="rim"/>
+    <circle r="34" class="ink"/>
+    <text y="58" class="role">boundary component</text>
+  </g>
+
+  <!-- ===================== MOBUS ===================== -->
+  <text x="48" y="512" class="lens mono">MOBUS</text>
+  <g transform="translate(150,560)">
+    <circle r="34" class="ink"/>
+    <text y="58" class="role">component</text>
+  </g>
+  <g transform="translate(360,560)">
+    <rect x="-30.6" y="-30.6" width="61.2" height="61.2" rx="6" class="ink" stroke-linejoin="round"/>
+    <text y="58" class="role">environment object</text>
+  </g>
+  <g transform="translate(570,560)">
+    <path d="M 0 -39.1 L 33.9 19.6 L -33.9 19.6 Z" class="ink" stroke-linejoin="round"/>
+    <text y="58" class="role">regulator</text>
+  </g>
+  <g transform="translate(780,560)">
+    <circle r="34" class="ink"/>
+    <g transform="translate(24.5,-24.5)">
+      <circle r="9" class="badge"/>
+      <text dominant-baseline="central" class="glyph mono">Bu</text>
+    </g>
+    <text y="58" class="role">process (buffering)</text>
+  </g>
+
+  <!-- interfaces: silhouette carries direction -->
+  <g transform="translate(200,690)">
+    <text y="-22" class="glyph mono">&#966;</text>
+    <path d="M -15 -9 L 8 -9 L 15 0 L 8 9 L -15 9 Z" class="gate" stroke-linejoin="round"/>
+    <text y="34" class="role">interface &#183; receives</text>
+  </g>
+  <g transform="translate(450,690)">
+    <text y="-22" class="glyph mono">&#966;</text>
+    <path d="M 15 -9 L -8 -9 L -15 0 L -8 9 L 15 9 Z" class="gate" stroke-linejoin="round"/>
+    <text y="34" class="role">interface &#183; exports</text>
+  </g>
+  <g transform="translate(700,690)">
+    <text y="-22" class="glyph mono">&#966;</text>
+    <path d="M -8 -9 L 8 -9 L 15 0 L 8 9 L -8 9 L -15 0 Z" class="gate" stroke-linejoin="round"/>
+    <text y="34" class="role">interface &#183; hybrid</text>
+  </g>
+</svg>
