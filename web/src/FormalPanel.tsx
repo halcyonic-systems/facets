@@ -70,7 +70,9 @@ function BungeFace({ d }: { d: Extract<LensDescription, { lens: "Bunge" }> }) {
   return (
     <div className="grid gap-2">
       <div className="mb-1 flex items-baseline justify-between gap-3">
-        <Tex block tex={`\\sigma = \\langle \\mathcal{C},\\; \\mathcal{E},\\; \\mathcal{S},\\; \\mathcal{M} \\rangle`} />
+        {/* µ(σ) is the four-coordinate CESM object (Bunge 2004); bare σ is the
+            1979 CES triple. Label the four-tuple µ(σ) (concordance row 1 / §14.1). */}
+        <Tex block tex={`\\mu(\\sigma) = \\langle \\mathcal{C},\\; \\mathcal{E},\\; \\mathcal{S},\\; \\mathcal{M} \\rangle`} />
         <span
           className="rounded-full px-3 py-1 text-xs font-semibold"
           style={{
@@ -105,6 +107,11 @@ function MobusFace({ d }: { d: Extract<LensDescription, { lens: "Mobus" }> }) {
           block
           tex={`S_{i,l} = \\langle C,\\; N,\\; E,\\; G,\\; B,\\; T,\\; H,\\; \\Delta t \\rangle`}
         />
+        {/* Honest provenance (concordance row 1): the book prints the seven-tuple;
+            E first-class is the Lean formalization's addition, credited as such. */}
+        <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+          E is the Lean formalization's addition; Mobus's book prints the seven-tuple ⟨C, N, G, B, T, H, Δt⟩.
+        </p>
       </div>
       <Line label={<Tex tex="C" />}>{names(d.c)}</Line>
       <Line label={<Tex tex="N" />}>{d.n} internal flow{d.n === 1 ? "" : "s"} (the internal network)</Line>

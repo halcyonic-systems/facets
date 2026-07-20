@@ -36,7 +36,19 @@ function EdgeView({ model, relation, sigIndex, selected, driven, sim, onSelect }
   const { d, labelAt } = geo;
   // Direction is the observer's explicit per-relation toggle; default undirected.
   const marker = relation.klir_directed === true;
-  const label = (
+  // Pair the name with the signature (#80): the name to anchor on, the formalism
+  // to read. Without a name the relation was pure notation — the bounce-off case.
+  const sig = `r${sigIndex + 1} ⊆ T×T${relation.klir_directed ? " (directed)" : ""}`;
+  const label = relation.name ? (
+    <text x={labelAt.x} y={labelAt.y - 12} textAnchor="middle" className="font-mono pointer-events-none">
+      <tspan x={labelAt.x} fontSize={11} fill="var(--text-secondary)">
+        {relation.name}
+      </tspan>
+      <tspan x={labelAt.x} dy={11} fontSize={9} fill="var(--text-muted)">
+        {sig}
+      </tspan>
+    </text>
+  ) : (
     <text
       x={labelAt.x}
       y={labelAt.y - 8}
@@ -45,7 +57,7 @@ function EdgeView({ model, relation, sigIndex, selected, driven, sim, onSelect }
       fill="var(--text-secondary)"
       className="font-mono pointer-events-none"
     >
-      {`r${sigIndex + 1} ⊆ T×T${relation.klir_directed ? " (directed)" : ""}`}
+      {sig}
     </text>
   );
   return (

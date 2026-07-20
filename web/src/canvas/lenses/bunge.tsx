@@ -65,6 +65,8 @@ function EdgeView({ model, relation, fact, selected, driven, sim, onSelect }: Le
       </g>
     ) : null;
 
+  // Pair the name with the connection's formalism (#80): ▷ for a bond that acts
+  // on its things, ∼ for a mere relation that does not (Bunge Def 1.1).
   const label = relation.name ? (
     <text
       x={labelAt.x + (driven ? 9 : 0)}
@@ -75,6 +77,7 @@ function EdgeView({ model, relation, fact, selected, driven, sim, onSelect }: Le
       className="font-mono pointer-events-none"
     >
       {relation.name}
+      <tspan fill="var(--text-secondary)">{` ${relation.is_bond ? "▷" : "∼"}`}</tspan>
     </text>
   ) : null;
 
