@@ -607,6 +607,7 @@ mod tests {
 
         WorldModel {
             version: CURRENT_FILE_VERSION,
+            model_id: None,
             mode: Some(mode),
             environment: Environment {
                 info: info(env, -1, "Environment"),
@@ -880,6 +881,7 @@ mod tests {
 
         WorldModel {
             version: CURRENT_FILE_VERSION,
+            model_id: None,
             mode: Some(Mode::Operational),
             environment: Environment {
                 info: info(env, -1, "Environment"),

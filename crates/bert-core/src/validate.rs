@@ -1294,6 +1294,7 @@ mod tests {
         };
         WorldModel {
             version: CURRENT_FILE_VERSION,
+            model_id: None,
             mode: None,
             environment: Environment {
                 info: Info {

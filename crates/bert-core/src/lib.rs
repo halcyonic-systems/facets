@@ -15,6 +15,7 @@
 #![allow(clippy::items_after_test_module)]
 
 pub mod decomposition;
+pub mod model_id;
 pub mod operational;
 pub mod transition;
 pub mod units;
@@ -23,6 +24,8 @@ pub mod validate;
 use enum_iterator::Sequence;
 use std::fmt::Formatter;
 use uuid::Uuid;
+
+pub use model_id::ModelId;
 
 /// Corresponds to the System Language Interaction types.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default, Serialize, Deserialize, Sequence)]
@@ -602,6 +605,17 @@ pub struct WorldModel {
     /// Older versions trigger migration logic during deserialization.
     pub version: u32,
 
+    /// This model's stable self-identity (bert-lenses#89 step 2.5), the name by
+    /// which another model references it (a decomposed parent → its child).
+    ///
+    /// `None` until an operation needs it; mint via [`WorldModel::mint_id`].
+    /// `skip_serializing_if = "Option::is_none"` keeps every model authored
+    /// before this field existed byte-for-byte identical on disk — loading
+    /// never injects one. Serialized in the canonical base58 encoding (see
+    /// [`ModelId`]). Full life-cycle: [`model_id`](crate::model_id) module docs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<ModelId>,
+
     /// Authoring mode along the kernel lattice (Core/Structural/Operational/Full).
     ///
     /// Absent ≡ [`Mode::Full`], so files written before SL v2.0 deserialize and
@@ -742,6 +756,19 @@ impl WorldModel {
     /// The committed authoring mode, resolving an absent field to [`Mode::Full`].
     pub fn mode(&self) -> Mode {
         self.mode.unwrap_or(Mode::Full)
+    }
+
+    /// This model's stable identity, minting one if it has none yet — idempotent.
+    ///
+    /// The single place a model acquires a [`ModelId`]: at creation for a new
+    /// model, or lazily the first time an operation needs the model to be
+    /// nameable (being referenced by a decomposed parent). Never called on plain
+    /// load or save, so a model without an id stays byte-identical on disk. A
+    /// save-as-copy path must clear `model_id` on the clone before calling this,
+    /// so the copy mints a fresh identity rather than inheriting the origin's
+    /// (see the [`model_id`] module docs).
+    pub fn mint_id(&mut self) -> ModelId {
+        *self.model_id.get_or_insert_with(ModelId::mint)
     }
 
     /// Project the kernel: forget every elaboration, keep `(things, dep)`.
@@ -1171,6 +1198,10 @@ pub struct Info {
 /// stably. Resolution (browser storage / files → the referenced `WorldModel`)
 /// is the store layer's job (foundations doc §7 step 5); the kernel does no I/O.
 /// See [`decomposition::check_decomposition`].
+///
+/// Serialized in the SAME canonical base58 encoding as the [`ModelId`] it names
+/// (see the [`model_id`] module) — one encoding for a model id everywhere it
+/// appears as text, JSON now and SL later.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ModelRef(pub Uuid);
 
@@ -1180,9 +1211,26 @@ impl ModelRef {
         Self(id)
     }
 
+    /// Reference the model named by a [`ModelId`].
+    pub fn to(id: ModelId) -> Self {
+        Self(id.as_uuid())
+    }
+
     /// The underlying stable identity.
     pub fn as_uuid(&self) -> Uuid {
         self.0
+    }
+}
+
+impl serde::Serialize for ModelRef {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&model_id::encode_uuid(&self.0))
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for ModelRef {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_str(model_id::Base58Visitor).map(ModelRef)
     }
 }
 

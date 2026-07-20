@@ -179,6 +179,7 @@ fn target_enumeration_is_total() {
     // An empty model has no targets — and must not panic producing that answer.
     let empty = bert_core::WorldModel {
         version: 1,
+        model_id: None,
         mode: None,
         environment: bert_core::Environment {
             info: bert_core::Info { id: bert_core::Id { ty: bert_core::IdType::Environment, indices: vec![-1] }, level: -1, name: String::new(), description: String::new() },

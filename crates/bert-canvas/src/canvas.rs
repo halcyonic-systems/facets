@@ -443,6 +443,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
 
     let world = WorldModel {
         version: 1,
+        model_id: None,
         mode: Some(model.lens.mode()),
         environment: Environment {
             info: info(env_id, -1, "Environment"),
