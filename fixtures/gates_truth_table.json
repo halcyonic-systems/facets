@@ -1,0 +1,31 @@
+{
+  "_generator": {
+    "source": "systems-science-foundations/Systems/Klir/GatesTruthTable.lean",
+    "command": "lake env lean --run Systems/Klir/GatesTruthTable.lean > ../bert-lenses/fixtures/gates_truth_table.json",
+    "lean_decls": {"has_bond": "Systems.Kernel.HasBond", "irreflexive": "Systems.Kernel.Irreflexive", "klir_view": "Systems.Kernel.toKlir"},
+    "acts_on_pinning": "HasBond is computed under the total action instance, where every distinct pair is bonded; this is the syntactic semantics bert-core::check_bond implements. See hasBondB_iff.",
+    "bound": "all (T, R) kernels over Fin n for n <= 2, with T = univ",
+    "row_count": 19
+  },
+  "rows": [
+    {"n": 0, "things": [], "dep": [], "gates": {"has_bond": false, "irreflexive": true}, "modes": {"core": true, "structural": false, "operational": true, "full": true}},
+    {"n": 1, "things": [0], "dep": [[0, 0]], "gates": {"has_bond": false, "irreflexive": false}, "modes": {"core": true, "structural": false, "operational": false, "full": false}},
+    {"n": 1, "things": [0], "dep": [], "gates": {"has_bond": false, "irreflexive": true}, "modes": {"core": true, "structural": false, "operational": true, "full": true}},
+    {"n": 2, "things": [0, 1], "dep": [[0, 0], [0, 1], [1, 0], [1, 1]], "gates": {"has_bond": true, "irreflexive": false}, "modes": {"core": true, "structural": true, "operational": false, "full": false}},
+    {"n": 2, "things": [0, 1], "dep": [[0, 0], [0, 1], [1, 0]], "gates": {"has_bond": true, "irreflexive": false}, "modes": {"core": true, "structural": true, "operational": false, "full": false}},
+    {"n": 2, "things": [0, 1], "dep": [[0, 0], [0, 1], [1, 1]], "gates": {"has_bond": true, "irreflexive": false}, "modes": {"core": true, "structural": true, "operational": false, "full": false}},
+    {"n": 2, "things": [0, 1], "dep": [[0, 0], [0, 1]], "gates": {"has_bond": true, "irreflexive": false}, "modes": {"core": true, "structural": true, "operational": false, "full": false}},
+    {"n": 2, "things": [0, 1], "dep": [[0, 0], [1, 0], [1, 1]], "gates": {"has_bond": true, "irreflexive": false}, "modes": {"core": true, "structural": true, "operational": false, "full": false}},
+    {"n": 2, "things": [0, 1], "dep": [[0, 0], [1, 0]], "gates": {"has_bond": true, "irreflexive": false}, "modes": {"core": true, "structural": true, "operational": false, "full": false}},
+    {"n": 2, "things": [0, 1], "dep": [[0, 0], [1, 1]], "gates": {"has_bond": false, "irreflexive": false}, "modes": {"core": true, "structural": false, "operational": false, "full": false}},
+    {"n": 2, "things": [0, 1], "dep": [[0, 0]], "gates": {"has_bond": false, "irreflexive": false}, "modes": {"core": true, "structural": false, "operational": false, "full": false}},
+    {"n": 2, "things": [0, 1], "dep": [[0, 1], [1, 0], [1, 1]], "gates": {"has_bond": true, "irreflexive": false}, "modes": {"core": true, "structural": true, "operational": false, "full": false}},
+    {"n": 2, "things": [0, 1], "dep": [[0, 1], [1, 0]], "gates": {"has_bond": true, "irreflexive": true}, "modes": {"core": true, "structural": true, "operational": true, "full": true}},
+    {"n": 2, "things": [0, 1], "dep": [[0, 1], [1, 1]], "gates": {"has_bond": true, "irreflexive": false}, "modes": {"core": true, "structural": true, "operational": false, "full": false}},
+    {"n": 2, "things": [0, 1], "dep": [[0, 1]], "gates": {"has_bond": true, "irreflexive": true}, "modes": {"core": true, "structural": true, "operational": true, "full": true}},
+    {"n": 2, "things": [0, 1], "dep": [[1, 0], [1, 1]], "gates": {"has_bond": true, "irreflexive": false}, "modes": {"core": true, "structural": true, "operational": false, "full": false}},
+    {"n": 2, "things": [0, 1], "dep": [[1, 0]], "gates": {"has_bond": true, "irreflexive": true}, "modes": {"core": true, "structural": true, "operational": true, "full": true}},
+    {"n": 2, "things": [0, 1], "dep": [[1, 1]], "gates": {"has_bond": false, "irreflexive": false}, "modes": {"core": true, "structural": false, "operational": false, "full": false}},
+    {"n": 2, "things": [0, 1], "dep": [], "gates": {"has_bond": false, "irreflexive": true}, "modes": {"core": true, "structural": false, "operational": true, "full": true}}
+  ]
+}
