@@ -99,6 +99,16 @@ function serializeDiagram(live: SVGSVGElement, model: CanvasModel): Serialized |
   const stage = clone.querySelector(":scope > g");
   stage?.setAttribute("transform", "translate(0,0) scale(1)");
 
+  // The Klir place label is screen-space copy (outside the pan group, x="50%"
+  // of the live viewport) — re-anchor it to the exported frame's top center so
+  // the diagram keeps its you-are-here. The containers (Mobus membrane, Bunge
+  // hull) are world-space and need nothing.
+  const place = clone.querySelector("[data-place-label]");
+  if (place) {
+    place.setAttribute("x", String(vbX + width / 2));
+    place.setAttribute("y", String(vbY + 20));
+  }
+
   const bg =
     getComputedStyle(document.documentElement).getPropertyValue("--bg-primary").trim() || "#ffffff";
   const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");

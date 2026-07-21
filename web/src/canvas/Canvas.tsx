@@ -8,7 +8,7 @@
 import { useEffect, useRef } from "react";
 import type { CanvasModel, EdgeFact, Lens, LensFacts, PortFact, Thing } from "../kernel/types";
 import type { SimFrame } from "./types";
-import { componentRing, ringPoint, thingById, NODE_R, type Pt, type Ring } from "./geometry";
+import { bungeHull, membraneRing, ringPoint, thingById, NODE_R, type Hull, type Pt, type Ring } from "./geometry";
 import { useCanvasGestures } from "./useCanvasGestures";
 import { STYLE } from "./style";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
@@ -42,6 +42,10 @@ interface Props {
    *  after an SL compile lays the model out around a fixed center that may sit
    *  outside the narrower SL-pane viewport). Each distinct value fits once. */
   fitToken?: number;
+  /** The containing system's name (author SOI name, else the shell's label) —
+   *  the per-lens container labels itself with it (#100 phase 0), so a model
+   *  can never impersonate its only component. */
+  placeName?: string | null;
 }
 
 export default function Canvas({
@@ -61,6 +65,7 @@ export default function Canvas({
   onPanChange,
   onScaleChange,
   fitToken,
+  placeName = null,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const gestures = useCanvasGestures({ model, svgRef, onModelChange, onReject, armed, onSelectThing });
@@ -109,11 +114,17 @@ export default function Canvas({
   const orphanSet = new Set(facts?.orphan_env_thing_ids ?? []);
   const edgeFactById = new Map<number, EdgeFact>((facts?.edges ?? []).map((e) => [e.id, e]));
 
-  // Mobus: B = ⟨P, I⟩ reified — the membrane around the components (env objects
-  // stay outside; an env thing dragged inside the ellipse is a layout artifact,
-  // not a semantic error: C ∩ E = ∅ is enforced by the kernel's roles).
-  const ring: Ring | null =
-    lens === "Mobus" ? componentRing(model.things.filter((t) => t.role === "Component")) : null;
+  // The per-lens container (#100 phase 0) — one mechanism, three honest
+  // renderings. Mobus: B = ⟨P, I⟩ reified, a membrane around the components,
+  // present from birth (an empty interior draws it small — an empty system is
+  // still a system). Bunge: a dashed hull, the observer's partition over one
+  // flat ontology — never a membrane object. Klir: neither; a place label does
+  // the orientation via copy, faithful to the flat (T, R). Env objects and a
+  // walked child's G′ stand-ins sit outside both containers by construction
+  // (they follow Components only; an env thing dragged inside is a layout
+  // artifact, not a semantic error: C ∩ E = ∅ is enforced by the kernel's roles).
+  const ring: Ring | null = lens === "Mobus" ? membraneRing(model.things) : null;
+  const hull: Hull | null = lens === "Bunge" ? bungeHull(model.things) : null;
   const outwardNormal = (r: Ring, p: Pt) => Math.atan2(p.y - r.cy, p.x - r.cx);
   const portsAt: { port: PortFact; at: Pt; angle: number }[] =
     ring && facts
@@ -226,32 +237,78 @@ export default function Canvas({
           </g>
         )}
 
+        {/* Bunge: the C/E partition as a dashed hull — the observer's
+            re-cuttable cut, not a boundary object (unfilled, unclickable, no
+            ports; the rim-accent on boundary components stays the only
+            boundary marking). The label names the containing system. */}
+        {hull && (
+          <g pointerEvents="none">
+            <rect
+              x={hull.x}
+              y={hull.y}
+              width={hull.w}
+              height={hull.h}
+              rx={18}
+              fill="none"
+              stroke="var(--lens-accent)"
+              strokeOpacity={0.55}
+              strokeWidth={1.5}
+              strokeDasharray="8 6"
+            />
+            {placeName && (
+              <text x={hull.x + 12} y={hull.y - 10} fontSize={11} fill="var(--text-secondary)" className="font-mono">
+                {placeName}
+              </text>
+            )}
+          </g>
+        )}
+
         {/* Mobus: the boundary ring is the star — a real membrane, drawn behind
-            the flows. Porosity → dash density; fuzziness → edge blur. Bunge gets
-            NO ring: its boundary is a marked component-subset, never a perimeter. */}
+            the flows and labeled with the system's name ON the boundary (the
+            membrane is an object with properties, its name among them).
+            Porosity → dash density; fuzziness → edge blur. */}
         {ring && (
-          <ellipse
-            cx={ring.cx}
-            cy={ring.cy}
-            rx={ring.rx}
-            ry={ring.ry}
-            fill="var(--accent-soft)"
-            fillOpacity={STYLE.ring.fillOpacity}
-            stroke="var(--accent-slate)"
-            strokeWidth={STYLE.ring.strokeWidth}
-            strokeDasharray={
-              facts && facts.boundary_props.porosity > 0
-                ? `${Math.max(2, 14 - facts.boundary_props.porosity * 12)} ${2 + facts.boundary_props.porosity * 8}`
-                : undefined
-            }
-            filter={facts && facts.boundary_props.perceptive_fuzziness > 0 ? "url(#ring-blur)" : undefined}
-            pointerEvents={onSelectBoundary ? "stroke" : "none"}
-            className={onSelectBoundary ? "cursor-pointer" : undefined}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelectBoundary?.({ x: ring.cx, y: ring.cy - ring.ry });
-            }}
-          />
+          <>
+            <ellipse
+              cx={ring.cx}
+              cy={ring.cy}
+              rx={ring.rx}
+              ry={ring.ry}
+              fill="var(--accent-soft)"
+              fillOpacity={STYLE.ring.fillOpacity}
+              stroke="var(--accent-slate)"
+              strokeWidth={STYLE.ring.strokeWidth}
+              strokeDasharray={
+                facts && facts.boundary_props.porosity > 0
+                  ? `${Math.max(2, 14 - facts.boundary_props.porosity * 12)} ${2 + facts.boundary_props.porosity * 8}`
+                  : undefined
+              }
+              filter={facts && facts.boundary_props.perceptive_fuzziness > 0 ? "url(#ring-blur)" : undefined}
+              pointerEvents={onSelectBoundary ? "stroke" : "none"}
+              className={onSelectBoundary ? "cursor-pointer" : undefined}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectBoundary?.({ x: ring.cx, y: ring.cy - ring.ry });
+              }}
+            />
+            {placeName && (
+              <text
+                x={ring.cx}
+                y={ring.cy - ring.ry}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={STYLE.label.size}
+                fill="var(--accent-slate)"
+                paintOrder="stroke"
+                stroke="var(--bg-primary)"
+                strokeWidth={4}
+                strokeLinejoin="round"
+                className="font-body pointer-events-none"
+              >
+                {placeName}
+              </text>
+            )}
+          </>
         )}
 
         {model.relations.map((r) => (
@@ -344,6 +401,23 @@ export default function Canvas({
           </foreignObject>
         )}
       </g>
+
+      {/* Klir: NO ontological container — orientation is copy. A screen-space
+          place label (outside the pan/zoom group) does the you-are-here work;
+          the export path re-anchors it into the diagram's frame. */}
+      {lens === "Klir" && placeName && (
+        <text
+          data-place-label
+          x="50%"
+          y={24}
+          textAnchor="middle"
+          fontSize={11}
+          fill="var(--text-muted)"
+          className="font-mono pointer-events-none"
+        >
+          viewing: {placeName}
+        </text>
+      )}
     </svg>
   );
 }

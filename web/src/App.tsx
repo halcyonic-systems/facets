@@ -347,6 +347,7 @@ function Workspace() {
     setGalleryOpen(false);
     setDirty(false);
     setWalk([]);
+    setFitToken((n) => (n ?? 0) + 1); // frame the newborn membrane (#100 phase 0)
     setTypePromptOpen(true); // #77: offer the kind/name first step (skippable)
   }
 
@@ -1173,6 +1174,10 @@ function Workspace() {
                       onPanChange={setCanvasPan}
                       onScaleChange={setCanvasScale}
                       fitToken={fitToken}
+                      // #100 phase 0: the container/place label names the
+                      // SYSTEM (author SOI name, else the shell's label), so a
+                      // model can never impersonate its only component.
+                      placeName={canvasModel.name?.trim() || currentLabel}
                     />
                     {boundaryAnchor && (
                       <BoundaryPopover

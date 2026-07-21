@@ -1,6 +1,8 @@
 // Bunge lens views. Boundary components are MARKED with a rim accent (never a
-// drawn perimeter); connections split endo/exo as a kind-colored directed edge
-// (one directed graph per connection-kind, §2.1); mere relations do not bond.
+// drawn perimeter — the dashed hull the stage draws is the observer's C/E
+// partition, not a boundary object); connections split endo/exo as a
+// kind-colored directed edge (one directed graph per connection-kind, §2.1);
+// mere relations do not bond.
 // Self-loops (feedback, the diagonal M_pp) render but flag their lack of a
 // Mobus preimage — state the incompatibility, don't hide it.
 import { KIND_COLOR } from "../types";
@@ -19,7 +21,10 @@ function NodeView({ thing, isBoundary, isOrphan, hovered, sim, onPointerDown, on
       sim={sim}
       onPointerDown={onPointerDown}
       onHandlePointerDown={onHandlePointerDown}
-      isSquare={thing.role === "Environment"}
+      // Env things are the SAME SHAPE as components (#100 phase 0): an
+      // environment item is a thing viewed from one level up, not another kind
+      // of entity — which side of the hull it sits on carries the partition.
+      isSquare={false}
       showHalo={thing.role === "Component"}
       envOpen={false}
       stroke="var(--lens-node-stroke)"

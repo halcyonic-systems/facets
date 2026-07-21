@@ -25,7 +25,8 @@ interface NodeBodyProps {
   sim?: { value: number; unit: string; frac: number };
   onPointerDown: (e: ReactPointerEvent) => void;
   onHandlePointerDown: (e: ReactPointerEvent) => void;
-  /** Env objects render as squares under Bunge/Mobus; Klir keeps every thing a circle. */
+  /** Env objects render as squares under Mobus only; Klir and Bunge keep every
+   *  thing the same shape (Bunge's env is the same kind of entity, one level up). */
   isSquare: boolean;
   /** Bunge/Mobus composition halo (the C/E wash); a set partition, not a ring. */
   showHalo: boolean;
