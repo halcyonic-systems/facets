@@ -1656,6 +1656,29 @@ function Workspace() {
                 setSelectedRelationId(t.relation);
               }}
               onSystemTypeChange={(st) => setCanvasModel((m) => (m ? { ...m, system_type: st } : m))}
+              // #94: accept a run-derived stock unit as DECLARED — write it onto
+              // the matching component (run nodes carry the components' own
+              // names). An authoring edit like any other: dirty, saved via the
+              // normal save path. Absent canvas = nothing to write into.
+              onAcceptUnit={
+                canvasModel
+                  ? (name, unit) => {
+                      setCanvasModel((m) =>
+                        m
+                          ? {
+                              ...m,
+                              things: m.things.map((t) =>
+                                t.role === "Component" && t.name.trim() === name.trim()
+                                  ? { ...t, stock_unit: unit }
+                                  : t,
+                              ),
+                            }
+                          : m,
+                      );
+                      setDirty(true);
+                    }
+                  : undefined
+              }
               resetKeys={[canvasModel, demo?.key ?? "import"]}
               focused={inspectorFocused}
               onToggleFocus={() => setInspectorFocused((f) => !f)}

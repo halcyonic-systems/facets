@@ -1,5 +1,6 @@
 // The run/results panel — legible, domain-named. Every label is the model's own
 // name + unit; every number is the kernel's. The face renders, it does not judge.
+import { useState } from "react";
 import {
   Line,
   LineChart,
@@ -45,7 +46,18 @@ const WORDING = {
   residualLabel: "balance residual",
 };
 
-export function RunPanel({ result, lens }: { result: RunResultRich; lens: CanvasModel["lens"] }) {
+export function RunPanel({
+  result,
+  lens,
+  onAcceptUnit,
+}: {
+  result: RunResultRich;
+  lens: CanvasModel["lens"];
+  /** #94: accept a derived stock unit as the component's DECLARED unit. The
+   *  parent writes it into the authoring model; absent = no authoring surface
+   *  to write into, so no affordance is shown. */
+  onAcceptUnit?: (name: string, unit: string) => void;
+}) {
   // Lead with the sharpest MEANINGFUL divergence. A forced flow trivially
   // matches its own data (~0% off) — that's a tautology, not a finding, so it
   // never headlines; only a real gap (a responding stock, an unforced flow) does.
@@ -106,7 +118,7 @@ export function RunPanel({ result, lens }: { result: RunResultRich; lens: Canvas
       )}
 
       <Card title="Final levels" source="bert-core · wasm">
-        <Levels levels={result.levels} ticks={result.ticks} lens={lens} />
+        <Levels levels={result.levels} ticks={result.ticks} lens={lens} onAcceptUnit={onAcceptUnit} />
       </Card>
     </div>
   );
@@ -223,7 +235,17 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   );
 }
 
-function Levels({ levels, ticks, lens }: { levels: Level[]; ticks: number; lens: CanvasModel["lens"] }) {
+function Levels({
+  levels,
+  ticks,
+  lens,
+  onAcceptUnit,
+}: {
+  levels: Level[];
+  ticks: number;
+  lens: CanvasModel["lens"];
+  onAcceptUnit?: (name: string, unit: string) => void;
+}) {
   const groups: Level["category"][] = ["product", "resource", "internal"];
   return (
     <div className="grid gap-4">
@@ -244,7 +266,9 @@ function Levels({ levels, ticks, lens }: { levels: Level[]; ticks: number; lens:
             </div>
             <div className="grid gap-1">
               {rows.map((l) => (
-                <LevelRow key={l.name} level={l} />
+                // Keyed by name + unit so an accepted row's local state resets
+                // when a different model/run puts a different unit on the name.
+                <LevelRow key={`${l.name}·${l.unit}`} level={l} onAcceptUnit={onAcceptUnit} />
               ))}
             </div>
           </div>
@@ -254,12 +278,26 @@ function Levels({ levels, ticks, lens }: { levels: Level[]; ticks: number; lens:
   );
 }
 
-function LevelRow({ level: l }: { level: Level }) {
+function LevelRow({
+  level: l,
+  onAcceptUnit,
+}: {
+  level: Level;
+  onAcceptUnit?: (name: string, unit: string) => void;
+}) {
   // A whole-number source/process level renders as e.g. "3.0" — a magnitude cue
   // that reads it as a stock height, not a count of parts. Sinks keep humanize
   // (they're accumulated totals that can run large). Every row states its unit.
   const unit = unitLabel(l.unit);
   const showsMagnitude = l.category !== "product" && Number.isInteger(l.value);
+  // #94: one-click accept — write the derived unit into the component's DECLARED
+  // stock unit. Only for a real unit: `·Δt` is the kernel's own no-time-symbol
+  // placeholder (an abstract step, not a unit), so it is never acceptable as a
+  // declaration — declare the model's time unit first and re-run. Local state
+  // flips the row to its declared rendering, matching what the next run reads.
+  const [accepted, setAccepted] = useState(false);
+  const derived = l.unit_derived && !accepted;
+  const acceptable = derived && onAcceptUnit !== undefined && !l.unit.includes("Δt");
   return (
     <div className="flex items-baseline justify-between text-sm">
       <span style={{ color: "var(--text-primary)" }}>{l.name}</span>
@@ -272,15 +310,33 @@ function LevelRow({ level: l }: { level: Level }) {
             // #94: an undeclared stock's unit was inferred from its inflow over Δt,
             // not declared — a muted dotted underline + title discloses that
             // provenance without a heavy badge.
-            ...(l.unit_derived
+            ...(derived
               ? { borderBottom: "1px dotted var(--text-muted)", cursor: "help" }
               : {}),
           }}
-          title={l.unit_derived ? "derived from inflow × Δt" : undefined}
+          title={derived ? "derived from inflow × Δt" : undefined}
         >
           {" "}
           {unit.text}
         </span>
+        {acceptable && (
+          <button
+            onClick={() => {
+              onAcceptUnit(l.name, l.unit);
+              setAccepted(true);
+            }}
+            className="ml-2 rounded border px-1.5 py-0.5 text-[10px]"
+            style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+            title={`Declare ${l.unit} as ${l.name}'s stock unit`}
+          >
+            accept
+          </button>
+        )}
+        {accepted && (
+          <span className="ml-2 text-[10px]" style={{ color: "var(--verdict-ok)" }}>
+            declared ✓
+          </span>
+        )}
       </span>
     </div>
   );

@@ -324,9 +324,12 @@ pub fn summarize(
     // `kW·Δt`). A stock accumulates its inflow over Δt, so the flow-copied
     // `out_substance.unit` (a rate) is the wrong thing to show on a stock; the
     // derivation is the right one. The `.1` flags a derived unit so the face can
-    // mark its provenance. The run carries no time-unit *symbol* (only a numeric
-    // Δt), so an intrinsic rate integrates to `·Δt`; other node kinds and
-    // unparseable/absent units keep the flow-copied fallback verbatim.
+    // mark its provenance. Δt itself is a pure number; the model may declare what
+    // it counts via `WorldModel::time_unit` (#94), and that symbol carries into
+    // the integration (`kW` → `kW·h`) — undeclared, an intrinsic rate integrates
+    // to the abstract `·Δt`. Other node kinds and unparseable/absent units keep
+    // the flow-copied fallback verbatim.
+    let time_unit = model.time_unit.as_deref();
     let unit_of = |node: &bert_compose::circuit::Node| -> (String, bool) {
         if !node.stock_unit.is_empty() {
             return (node.stock_unit.clone(), false);
@@ -336,7 +339,7 @@ pub fn summarize(
             NodeKind::Process(bert_core::ProcessPrimitive::Buffering)
         ) {
             if let Some(derived) =
-                bert_core::units::derived_stock_unit(&node.out_substance.unit, None)
+                bert_core::units::derived_stock_unit(&node.out_substance.unit, time_unit)
             {
                 return (derived, true);
             }
@@ -673,6 +676,53 @@ mod tests {
             "power integrated over the step displays as energy, not the raw kW"
         );
         assert!(stock.unit_derived, "the derivation is flagged for the face");
+    }
+
+    /// bert-lenses#94 tail: the same kW-fed stock, in a model that DECLARES its
+    /// time-unit symbol (`WorldModel::time_unit = "h"`), displays `kW·h` — the
+    /// abstract `·Δt` step upgrades to the author's own vocabulary end to end.
+    #[test]
+    fn a_declared_time_unit_upgrades_kw_dt_to_kwh() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let mut model: WorldModel = serde_json::from_str(json).unwrap();
+
+        let buffer_name = model
+            .systems
+            .iter()
+            .find(|s| {
+                s.agent.as_ref().and_then(|a| a.primitive)
+                    == Some(bert_core::ProcessPrimitive::Buffering)
+            })
+            .expect("the sample has a Buffering stock")
+            .info
+            .name
+            .clone();
+        for ix in &mut model.interactions {
+            ix.unit = "kW".to_string();
+        }
+        model.time_unit = Some("h".to_string());
+
+        let spec = bert_core::operational::validate_operational(&model).expect("projects");
+        let mut circuit = bert_compose::from_spec(&spec);
+        let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0);
+        let readout = summarize(
+            &model,
+            &crate::tether::ImportedData::default(),
+            &circuit,
+            &run,
+            1.0,
+        );
+
+        let stock = readout
+            .levels
+            .iter()
+            .find(|l| l.name == buffer_name)
+            .expect("the stock has a level row");
+        assert_eq!(
+            stock.unit, "kW·h",
+            "the declared time-unit symbol carries into the integrated display"
+        );
+        assert!(stock.unit_derived, "still derived — the stock itself declared nothing");
     }
 
     // Law: a forced run must conserve (residual ~0 against throughput) and every

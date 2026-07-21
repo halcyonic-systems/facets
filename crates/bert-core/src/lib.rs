@@ -664,6 +664,18 @@ pub struct WorldModel {
     /// them.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub reachability_requirements: Vec<ReachabilityRequirement>,
+
+    /// The model's time-unit SYMBOL (bert-lenses#94): what one unit of model
+    /// time is called — `"h"`, `"mo"`, `"day"`. Δt is a pure number everywhere
+    /// in the run machinery; this names what that number counts, so a derived
+    /// stock unit can integrate an intrinsic rate in the author's vocabulary
+    /// (`kW` inflow → a `kW·h` stock instead of the abstract `kW·Δt`). Display
+    /// vocabulary only — no conversion or dimension check reads it (declaring
+    /// `"h"` does not rescale a run; the number Δt stays the number Δt). `None`
+    /// = undeclared, the abstract-step rendering; `skip` keeps every model
+    /// authored before this field byte-identical on disk.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_unit: Option<String>,
 }
 
 /// A reachability property the author asserts about the flow graph (#69), checked

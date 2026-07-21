@@ -118,7 +118,7 @@ function parseChildRef(v: unknown, where: string): ChildRef {
 }
 
 function parseThing(v: unknown, where: string): Thing {
-  const o = shape(v, where, ["id", "name", "x", "y", "role"], ["primitive", "interface", "child_model"]);
+  const o = shape(v, where, ["id", "name", "x", "y", "role"], ["primitive", "interface", "child_model", "stock_unit"]);
   return {
     id: num(o.id, `${where}.id`),
     name: str(o.name, `${where}.name`),
@@ -128,6 +128,7 @@ function parseThing(v: unknown, where: string): Thing {
     ...(o.primitive === undefined ? {} : { primitive: str(o.primitive, `${where}.primitive`) as Thing["primitive"] }),
     ...(o.interface === undefined ? {} : { interface: bool(o.interface, `${where}.interface`) }),
     ...(o.child_model === undefined ? {} : { child_model: parseChildRef(o.child_model, `${where}.child_model`) }),
+    ...(o.stock_unit === undefined ? {} : { stock_unit: str(o.stock_unit, `${where}.stock_unit`) }),
   };
 }
 
@@ -154,7 +155,7 @@ function parseSystemType(v: unknown, where: string): SystemType {
 }
 
 function parseCanvasModel(v: unknown): CanvasModel {
-  const o = shape(v, "CanvasModel", ["lens", "things", "relations", "boundary"], ["model_id", "system_type", "name"]);
+  const o = shape(v, "CanvasModel", ["lens", "things", "relations", "boundary"], ["model_id", "system_type", "name", "time_unit"]);
   const b = shape(o.boundary, "CanvasModel.boundary", ["porosity", "perceptive_fuzziness"]);
   return {
     lens: oneOf(o.lens, "CanvasModel.lens", LENSES),
@@ -167,6 +168,7 @@ function parseCanvasModel(v: unknown): CanvasModel {
     },
     ...(o.system_type === undefined ? {} : { system_type: parseSystemType(o.system_type, "CanvasModel.system_type") }),
     ...(o.name === undefined ? {} : { name: str(o.name, "CanvasModel.name") }),
+    ...(o.time_unit === undefined ? {} : { time_unit: str(o.time_unit, "CanvasModel.time_unit") }),
   };
 }
 

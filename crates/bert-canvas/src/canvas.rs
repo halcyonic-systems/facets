@@ -106,6 +106,14 @@ pub struct Thing {
     /// (the id only); ignored on env things (their internals are opaque).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub child_model: Option<ChildRef>,
+    /// The stock's declared unit (bert-lenses#76/#94) — meaningful on a
+    /// Buffering component, whose stock accumulates its inflow over Δt and so
+    /// carries its own unit rather than inheriting the flow's. Set by the run
+    /// panel's accept-derived-unit affordance (or SL's `stock` clause); empty =
+    /// undeclared (the run derives a display unit and marks its provenance).
+    /// `skip` when empty so existing models serialize unchanged.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub stock_unit: String,
 }
 
 /// A drawn connection: `a → b`, a bond (or a mere relation), optionally typed.
@@ -207,6 +215,13 @@ pub struct CanvasModel {
     /// unchanged; `None` projects as the placeholder root name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    /// The model's time-unit symbol (bert-lenses#94) — what one unit of model
+    /// time is called (`"h"`, `"mo"`). Projects to [`WorldModel::time_unit`],
+    /// where the run's derived-stock-unit display reads it (`kW` inflow →
+    /// `kW·h` instead of the abstract `kW·Δt`). `None` = undeclared; `skip` so
+    /// pre-existing models serialize unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_unit: Option<String>,
 }
 
 fn info(id: Id, level: i32, name: &str) -> Info {
@@ -340,6 +355,17 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                 // human label stays surface-side (the kernel keys on the id).
                 if let Some(child) = &t.child_model {
                     systems.last_mut().unwrap().child_model = Some(child.id);
+                }
+                // A declared stock unit rides the agent record (bert-lenses#76/#94).
+                // The agent normally exists iff a primitive was authored; a unit
+                // declared without one still projects (a default AgentModel is
+                // additive — serde skips its every unset field), so the accept
+                // affordance can never silently drop an author's declaration.
+                if !t.stock_unit.is_empty() {
+                    let sys = systems.last_mut().unwrap();
+                    sys.agent
+                        .get_or_insert_with(AgentModel::default)
+                        .stock_unit = t.stock_unit.clone();
                 }
                 if t.interface {
                     designated.push((systems.len() - 1, t.id, &t.name));
@@ -487,6 +513,14 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
         interactions,
         hidden_entities: vec![],
         reachability_requirements: vec![],
+        // The declared time-unit symbol crosses the seam verbatim (an empty or
+        // whitespace-only declaration reads as undeclared).
+        time_unit: model
+            .time_unit
+            .as_deref()
+            .map(str::trim)
+            .filter(|t| !t.is_empty())
+            .map(str::to_string),
     };
 
     Projection {
@@ -562,6 +596,11 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
                 },
                 id,
             }),
+            stock_unit: s
+                .agent
+                .as_ref()
+                .map(|a| a.stock_unit.clone())
+                .unwrap_or_default(),
         });
     }
 
@@ -588,6 +627,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             primitive: None,
             interface: false,
             child_model: None,
+            stock_unit: String::new(),
         });
     }
 
@@ -631,6 +671,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         boundary,
         system_type: SystemType::default(),
         name,
+        time_unit: model.time_unit.clone(),
     }
 }
 
@@ -699,6 +740,7 @@ mod tests {
             primitive: None,
             interface: false,
             child_model: None,
+            stock_unit: String::new(),
         }
     }
     fn bond(id: u64, a: u64, b: u64) -> Relation {
@@ -729,6 +771,7 @@ mod tests {
                 boundary: Default::default(),
                 system_type: Default::default(),
                 name: None,
+                time_unit: None,
             };
             let wm = project(&model);
             assert_eq!(wm.mode, Some(lens.mode()));
@@ -756,6 +799,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            time_unit: None,
         };
         let loop_edge = bond(11, 1, 1); // A → A
         let issues = validate_connection(&model, &loop_edge);
@@ -819,6 +863,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            time_unit: None,
         };
         let wm = project(&model);
         assert_eq!(wm.environment.sources.len(), 1);
@@ -838,6 +883,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            time_unit: None,
         });
         assert!(world.model_id.is_none(), "the canvas never mints");
         let id = world.mint_id();
@@ -867,6 +913,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            time_unit: None,
         };
         let child = decompose_thing(&model, 3).expect("interior component derives");
         assert!(child.model_id.is_some(), "the child is born nameable");

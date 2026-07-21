@@ -949,6 +949,7 @@ mod tests {
             primitive: None,
             interface: false,
             child_model: None,
+            stock_unit: String::new(),
         }
     }
     fn relation(id: u64, a: u64, b: u64, is_bond: bool) -> Relation {
@@ -971,6 +972,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            time_unit: None,
         }
     }
 

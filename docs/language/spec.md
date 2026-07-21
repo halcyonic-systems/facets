@@ -30,7 +30,8 @@ SL compiles to `CanvasModel` (`crates/bert-canvas/src/canvas.rs:165`), the editi
 
 | Field | Layer | SL realization |
 |---|---|---|
-| `things` — id, name, `role` (Component/Environment), optional `primitive`, `interface` flag, optional `child_model` decomposition reference | model | `component` / `source` / `sink` / `environment` lines (§4.3) |
+| `things` — id, name, `role` (Component/Environment), optional `primitive`, `interface` flag, optional `child_model` decomposition reference, optional `stock_unit` declared unit | model | `component` / `source` / `sink` / `environment` lines (§4.3) |
+| `time_unit` — the model's time-unit symbol | model | `time unit` line (§4.6) |
 | `relations` — a, b, name, `is_bond`, `kind` | model | `flow` lines (§4.4) |
 | `boundary` — porosity, perceptive_fuzziness | model | `boundary` line (§4.5) |
 | `system_type` — kingdom, genus, domain | model | `system` / `domain` lines (§4.1–4.2) |
@@ -66,6 +67,8 @@ SL is one unified language: the traditions *contributed* the words, and the lang
 | `energy`, `matter`, `field`, `informational` | the connection-kind taxonomy | Bunge, **verbatim** ("flows — of energy, matter, or fields … informational", CES 1979), mapping 1:1 onto Mobus substances (Material/Energy/Message; `canvas.rs:64`) | `Kind` (the fifth value, `Unspecified`, is the *absence* of the clause) |
 | `mere` | bond vs mere-relation (B vs B̄) | Bunge | `Relation.is_bond = false` |
 | `boundary`, `porosity`, `fuzziness` | B's properties P = ⟨porosity, perceptive_fuzziness⟩ | **Mobus (B = ⟨P, I⟩) and Bunge (topological boundary, 1992)** — shared concept; the property words are Mobus's | `CanvasBoundaryProps` |
+| `stock` | a Buffering stock's declared unit — the stock accumulates its inflow over Δt, so its dimension differs from the flow's and carries its own unit (#76/#94) | Mobus (stocks/buffers, the Buffering work process); the Stella/Vensim stock-flow convention | `Thing.stock_unit` → `AgentModel.stock_unit` |
+| `time unit` | the model's time-unit symbol — what one Δt is called, so an intrinsic rate integrates in the author's vocabulary (`kW` → `kW·h`, #94) | Mobus (Δt in the 8-tuple's time base); the symbol is display vocabulary, never a rescaling | `CanvasModel.time_unit` → `WorldModel.time_unit` |
 | `@pos`, `@lens`, `@directed` | view state (§6) | `@directed` is Klir's observer commitment (Facets Ch. 4); `@pos`/`@lens` are house words | `x`/`y`, `lens`, `klir_directed` |
 
 Two absences resolved:
@@ -83,12 +86,14 @@ SL is line-oriented. A file is a sequence of lines, each independently one of: b
 model       = { line } ;
 line        = blank | comment | structure | annotation ;
 
-structure   = system | domain | thing | flow | boundary ;
+structure   = system | domain | timeunit | thing | flow | boundary ;
 system      = "system" [ string ] [ ":" kingdom [ "/" genus ] ] ;
 domain      = "domain" string ;
+timeunit    = "time" "unit" name ;                     (* the Δt symbol, #94 *)
 thing       = thingword name { attr } ;
 thingword   = "component" | "source" | "sink" | "environment" ;
 attr        = "interface" | "primitive" primword
+            | "stock" name                             (* declared stock unit *)
             | "decomposes" string modelid ;            (* component lines only *)
 flow        = "flow" name "->" name [ ":" kindword ] [ string ] [ "mere" ] ;
 boundary    = "boundary" { propword number } ;
@@ -128,6 +133,8 @@ At most one per file. The free-text subject area that frames narration: `domain 
 
 `component Furnace primitive Combining decomposes "furnace-interior" @Hrs6K91KnZZsiPcWzftv8U` designates the component as decomposed: it carries a child model that realizes it (`System.child_model`, the reference form of §6 in `decomposition-foundations.md` — Option B, the child is its own model). Both halves are mandatory. The quoted string is a human label (it may drift under renames — the toolchain re-stamps, the compiler never resolves it); the `@`-prefixed token is the child's stamped model id, base58 per `model_id.rs`, and is the key. A name with no `@id` is a fault (`unstamped reference — resolve via the library`; stamping is later tooling, not the compiler's job); an id that fails the base58 decoder is a fault; a second `decomposes` on one line is a fault; `decomposes` on an environment thing is a fault (its internals are opaque). `decomposes` and `interface` on the same component is a fault in v1: the Lean contract covers a component's internal network only, not flows crossing the parent membrane through an interface component (the gate-open narrowing, #89) — parent-side knowledge the store-free compiler rejects early rather than deferring. `decomposes` emits last, after `primitive` and `interface` (§7.1).
 
+`component Battery primitive Buffering stock "kW·h"` declares the stock's unit (#76/#94): a Buffering component's stock accumulates its inflow over Δt, so its dimension differs from the flow's, and the modeler declares the stock's own unit rather than the run copying the flow's. The unit is a name token — bare when identifier-shaped (`stock ML`), quoted otherwise (`stock "kW·h"`). A second `stock` on one line is a fault; `stock` on an environment thing is a fault (its internals are opaque). Undeclared, the run *derives* a display unit from the inflow and flags its provenance; the run panel's accept affordance writes the derived unit back as this clause.
+
 ### 4.4 `flow`
 
 `flow "Iron Vendor" -> Furnace : matter "iron"` declares a directed connection. The kind clause is optional (absent = `Unspecified`); the quoted label is optional (the flow's name); trailing `mere` declares a mere relation — Bunge's B̄, a relation that is not a bond, which exists only in the editing model and never projects.
@@ -136,9 +143,13 @@ At most one per file. The free-text subject area that frames narration: `domain 
 
 At most one per file: `boundary porosity 0.7 fuzziness 0.1`. Key-value pairs in any order, either omittable; values are the root membrane's P. Absent line = unauthored (0.0, the kernel default).
 
-### 4.6 Errors
+### 4.6 `time unit`
 
-Parsing collects **all** faults in one pass and reports each with its 1-indexed line — never a first-error-only bail, and never a guess. Fault classes: lexical (unterminated quote), unknown keyword, malformed clause, duplicate name, undeclared flow endpoint, redeclared singleton (`system`/`domain`/`boundary`), attribute on an environment thing, unstamped or malformed decomposition reference, `decomposes` on an interface component, duplicate `decomposes`, out-of-range `@directed`, malformed known annotation. The ACE/Gherkin discipline — deterministic parse, fail loud on anything ambiguous — is inherited deliberately.
+At most one per file: `time unit h`. The model's time-unit symbol (#94) — what one unit of model time is called, landing in `CanvasModel.time_unit` and projecting to `WorldModel.time_unit`. The symbol is a name token (bare or quoted). It is display vocabulary, never a rescaling: Δt stays the pure number the run surface supplies; the symbol names what that number counts, so an undeclared kW-fed stock displays `kW·h` instead of the abstract `kW·Δt`. Absent = undeclared (the kernel never invents a symbol). An empty symbol is a parse fault.
+
+### 4.7 Errors
+
+Parsing collects **all** faults in one pass and reports each with its 1-indexed line — never a first-error-only bail, and never a guess. Fault classes: lexical (unterminated quote), unknown keyword, malformed clause, duplicate name, undeclared flow endpoint, redeclared singleton (`system`/`domain`/`time unit`/`boundary`), attribute on an environment thing, unstamped or malformed decomposition reference, `decomposes` on an interface component, duplicate `decomposes`, duplicate `stock`, out-of-range `@directed`, malformed known annotation. The ACE/Gherkin discipline — deterministic parse, fail loud on anything ambiguous — is inherited deliberately.
 
 ## 5. Semantics
 
@@ -160,7 +171,7 @@ A file that parses always yields a model — including a structurally *illegal* 
 
 *Status: normative; the "why a section, not a second file" defense is rationale (argued, adopted).*
 
-Annotations are `@`-prefixed lines, conventionally last in the file. Three are defined; unknown annotations are *skipped, not errors* — the ignorable contract that lets future view-state vocabulary degrade softly in old parsers. Malformed instances of a *known* annotation fail loud (§4.6).
+Annotations are `@`-prefixed lines, conventionally last in the file. Three are defined; unknown annotations are *skipped, not errors* — the ignorable contract that lets future view-state vocabulary degrade softly in old parsers. Malformed instances of a *known* annotation fail loud (§4.7).
 
 **Why a section, not a second file.** The semantic requirement is only that presentation not contaminate meaning (C4), and a marked section satisfies it as fully as a separate file: the structure-lines diff is clean either way. Given that, one artifact wins — a model is one pasteable, reviewable, portable thing. Modelica made the same call (layout inline as `annotation(…)`, semantically null, preserved on save); SVG/HTML keep style separable but co-located. Decided for v1; recorded in the 2026-07-18 session log.
 
@@ -182,7 +193,7 @@ Marks the *n*-th declared flow (1-based) with Klir's observer orientation toggle
 
 ### 7.1 Canonical form
 
-`emit_sl` writes a model as: `system` / `domain` lines; thing lines in `things` order (environment words edge-derived per §5.2 — the emitted word is the kernel's reading); `flow` lines in `relations` order; `boundary` if authored; blank line; `@lens`; `@pos` per thing; `@directed` per directed flow. On a component thing line the attributes emit in a fixed order: `primitive`, then `interface`, then `decomposes` last (the reference, quoted label plus `@`-id). Names emit bare when they read as identifiers and shadow no keyword, quoted otherwise. Floats emit via shortest-round-trip decimal representation, so re-parsing recovers them bit-exactly.
+`emit_sl` writes a model as: `system` / `domain` / `time unit` lines; thing lines in `things` order (environment words edge-derived per §5.2 — the emitted word is the kernel's reading); `flow` lines in `relations` order; `boundary` if authored; blank line; `@lens`; `@pos` per thing; `@directed` per directed flow. On a component thing line the attributes emit in a fixed order: `primitive`, then `interface`, then `stock`, then `decomposes` last (the reference, quoted label plus `@`-id). Names emit bare when they read as identifiers and shadow no keyword, quoted otherwise. Floats emit via shortest-round-trip decimal representation, so re-parsing recovers them bit-exactly.
 
 ### 7.2 The contract (golden-tested)
 

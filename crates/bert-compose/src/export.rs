@@ -277,6 +277,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
         interactions,
         hidden_entities: Vec::new(),
         reachability_requirements: Vec::new(),
+        time_unit: None,
     }
 }
 

@@ -18,7 +18,9 @@
 //! ```text
 //! system "Steel-Plant" : Concrete/Technical   # optional SOI name + type assertion
 //! domain "steel manufacturing"         # optional framing
+//! time unit h                          # optional: the model's time-unit symbol (#94)
 //! component Furnace primitive Combining interface
+//! component Battery primitive Buffering stock "kW·h"   # declared stock unit (#76/#94)
 //! source "Iron Vendor"                 # source|sink|environment: env things;
 //! sink Customers                       #   actual role is edge-derived in project()
 //! flow "Iron Vendor" -> Furnace : matter "iron"
@@ -80,6 +82,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     let mut system_name: Option<String> = None;
     let mut system_seen = false;
     let mut domain_seen = false;
+    let mut time_unit: Option<String> = None;
     let mut lens = Lens::Mobus;
     let mut lens_explicit = false;
     // name → thing index; names are the text surface's identifiers.
@@ -215,6 +218,29 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     _ => fail("domain syntax: `domain \"<subject area>\"`".into(), &mut errors),
                 }
             }
+            // `time unit <symbol>` — the model's time-unit symbol (#94): what
+            // one unit of model time is called, so the run can integrate an
+            // intrinsic rate in the author's vocabulary (`kW` → `kW·h`).
+            "time" => {
+                if time_unit.is_some() {
+                    fail("`time unit` already declared".into(), &mut errors);
+                    continue;
+                }
+                match rest {
+                    [Tok::Word(u), sym] if u.eq_ignore_ascii_case("unit") && sym.is_name() => {
+                        let sym = sym.name();
+                        if sym.trim().is_empty() {
+                            fail("time unit cannot be empty".into(), &mut errors);
+                        } else {
+                            time_unit = Some(sym.trim().to_string());
+                        }
+                    }
+                    _ => fail(
+                        "time syntax: `time unit <symbol>` (e.g. `time unit h`)".into(),
+                        &mut errors,
+                    ),
+                }
+            }
             "component" | "source" | "sink" | "environment" => {
                 let role = if keyword == "component" {
                     Role::Component
@@ -237,6 +263,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut primitive: Option<ProcessPrimitive> = None;
                 let mut interface = false;
                 let mut child_model: Option<ChildRef> = None;
+                let mut stock_unit = String::new();
                 let mut i = 0;
                 let mut ok = true;
                 while i < attrs.len() {
@@ -306,6 +333,38 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                     i += 1;
                                 }
                             }
+                        }
+                        // `stock <unit>` — the stock's declared unit (#76/#94),
+                        // bare or quoted (`stock ML`, `stock "kW·h"`).
+                        Tok::Word(w) if w.eq_ignore_ascii_case("stock") => {
+                            if role == Role::Environment {
+                                fail(
+                                    "`stock` applies to components only (environment \
+                                     internals are opaque)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                            if !stock_unit.is_empty() {
+                                fail("`stock` already given on this component".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(u) if u.is_name() && !u.name().trim().is_empty() => {
+                                    stock_unit = u.name().trim().to_string();
+                                }
+                                _ => {
+                                    fail(
+                                        "stock syntax: `stock <unit>` (e.g. `stock ML`, \
+                                         `stock \"kW·h\"`)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
                         }
                         Tok::Word(w) if w.eq_ignore_ascii_case("interface") => {
                             if role == Role::Environment {
@@ -385,6 +444,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     primitive,
                     interface,
                     child_model,
+                    stock_unit,
                 });
                 next_id += 1;
             }
@@ -493,7 +553,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
             }
             other => fail(
                 format!(
-                    "unknown keyword `{other}` (system, domain, component, source, sink, \
+                    "unknown keyword `{other}` (system, domain, time, component, source, sink, \
                      environment, flow, boundary)"
                 ),
                 &mut errors,
@@ -523,6 +583,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         boundary: boundary.unwrap_or_default(),
         system_type,
         name: system_name,
+        time_unit,
     };
     auto_layout(&mut model, &positions);
     Ok(SlParse {
@@ -612,6 +673,10 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
     if let Some(domain) = &model.system_type.domain {
         writeln!(out, "domain {}", quote(domain)?).unwrap();
     }
+    // The model's time-unit symbol (#94) — header block, with system/domain.
+    if let Some(tu) = model.time_unit.as_deref().map(str::trim).filter(|t| !t.is_empty()) {
+        writeln!(out, "time unit {}", name_token(tu)?).unwrap();
+    }
 
     // things — env identity edge-derived from bonds, mirroring project()
     let originates = |id: u64| model.relations.iter().any(|r| r.is_bond && r.a == id);
@@ -630,6 +695,10 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
             }
             if t.interface {
                 write!(out, " interface").unwrap();
+            }
+            // Declared stock unit (#76/#94) — before `decomposes` (which stays last).
+            if !t.stock_unit.is_empty() {
+                write!(out, " stock {}", name_token(&t.stock_unit)?).unwrap();
             }
             // `decomposes` emits last (§7.1 canonical order): name quoted, id in
             // the canonical base58 form, both mandatory.
@@ -705,6 +774,9 @@ fn is_reserved(word: &str) -> bool {
             | "interface"
             | "primitive"
             | "decomposes"
+            | "stock"
+            | "time"
+            | "unit"
             | "mere"
             | "porosity"
             | "fuzziness"

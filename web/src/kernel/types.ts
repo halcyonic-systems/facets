@@ -161,6 +161,10 @@ export interface Thing {
   interface?: boolean;
   /** The child model this component decomposes into, by reference. */
   child_model?: ChildRef;
+  /** The stock's declared unit (#76/#94) — meaningful on a Buffering component.
+   *  Written by the run panel's accept-derived-unit affordance (or SL's `stock`
+   *  clause). serde skip-if-empty on the Rust side — absent = undeclared. */
+  stock_unit?: string;
 }
 
 export interface Relation {
@@ -209,6 +213,11 @@ export interface CanvasModel {
   system_type?: SystemType;
   /** Author-given SOI name (#84). serde `default`; absent on pre-existing models. */
   name?: string;
+  /** The model's time-unit symbol (#94) — what one Δt is called ("h", "mo").
+   *  Projects to the kernel model, where the run's derived-stock-unit display
+   *  reads it (kW → kW·h instead of kW·Δt). serde skip-if-None — absent =
+   *  undeclared (the abstract ·Δt rendering). */
+  time_unit?: string;
 }
 
 // ---- SL: the textual authoring surface ---------------------------------------

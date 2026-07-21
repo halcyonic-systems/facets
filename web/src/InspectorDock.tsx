@@ -33,6 +33,7 @@ export function InspectorDock({
   canvasModel,
   onNavigate,
   onSystemTypeChange,
+  onAcceptUnit,
   resetKeys,
   focused,
   onToggleFocus,
@@ -46,6 +47,9 @@ export function InspectorDock({
   canvasModel: CanvasModel | null;
   onNavigate: (target: IssueTarget) => void;
   onSystemTypeChange: (next: SystemType) => void;
+  /** #94: run panel's accept-derived-unit affordance — writes a derived stock
+   *  unit into the authoring model as declared. Placement only; App owns it. */
+  onAcceptUnit?: (name: string, unit: string) => void;
   resetKeys: unknown[];
   // #57: focus mode. When on, the parent hides the palette + canvas and this
   // dock fills the whole work region so the active tab reads as a full screen.
@@ -135,7 +139,14 @@ export function InspectorDock({
             dock (harvested from #55's PanelScreen shell). */}
         <div className={focused ? "mx-auto w-full max-w-4xl" : undefined}>
           <KernelErrorBoundary resetKeys={resetKeys}>
-            {tab === "run" && <RunTab result={result} runError={runError} lens={canvasModel?.lens ?? "Klir"} />}
+            {tab === "run" && (
+              <RunTab
+                result={result}
+                runError={runError}
+                lens={canvasModel?.lens ?? "Klir"}
+                onAcceptUnit={onAcceptUnit}
+              />
+            )}
             {tab === "formal" && <FormalTab desc={desc} analysisError={analysisError} />}
             {tab === "audit" && (
               <AuditTab
@@ -208,7 +219,17 @@ function Placeholder({ children }: { children: React.ReactNode }) {
   );
 }
 
-function RunTab({ result, runError, lens }: { result: RunResultRich | null; runError: string | null; lens: CanvasModel["lens"] }) {
+function RunTab({
+  result,
+  runError,
+  lens,
+  onAcceptUnit,
+}: {
+  result: RunResultRich | null;
+  runError: string | null;
+  lens: CanvasModel["lens"];
+  onAcceptUnit?: (name: string, unit: string) => void;
+}) {
   if (runError) {
     return (
       <Card title="Result" source="bert-compose · wasm">
@@ -218,7 +239,7 @@ function RunTab({ result, runError, lens }: { result: RunResultRich | null; runE
       </Card>
     );
   }
-  if (result) return <RunPanel result={result} lens={lens} />;
+  if (result) return <RunPanel result={result} lens={lens} onAcceptUnit={onAcceptUnit} />;
   return (
     <Placeholder>
       Run a demo bundle (model + CSV + mapping) to see the forced simulation here.
