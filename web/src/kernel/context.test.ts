@@ -72,10 +72,10 @@ const mobusAnalysis: CanvasAnalysis = {
     boundary_props: { porosity: 0.35, perceptive_fuzziness: 0.2 },
     aggregate: false,
     edges: [
-      { id: 10, a: 1, b: 2, bond: true, kind: "Energy", locus: "Endo", self_loop: false, mobus_ok: true },
-      { id: 11, a: 3, b: 1, bond: true, kind: "Energy", locus: "Exo", self_loop: false, mobus_ok: true },
-      { id: 12, a: 2, b: 2, bond: true, kind: "Matter", locus: "Endo", self_loop: true, mobus_ok: false },
-      { id: 13, a: 1, b: 2, bond: false, kind: "Unspecified", locus: "Endo", self_loop: false, mobus_ok: true },
+      { id: 10, a: 1, b: 2, bond: true, kind: "Energy", locus: "Endo", channel: "Internuncial", self_loop: false, mobus_ok: true },
+      { id: 11, a: 3, b: 1, bond: true, kind: "Energy", locus: "Exo", channel: "Input", self_loop: false, mobus_ok: true },
+      { id: 12, a: 2, b: 2, bond: true, kind: "Matter", locus: "Endo", channel: "Internuncial", self_loop: true, mobus_ok: false },
+      { id: 13, a: 1, b: 2, bond: false, kind: "Unspecified", locus: "Endo", channel: null, self_loop: false, mobus_ok: true },
     ],
     ports: [{ component: 1, env: 3, relation_ids: [11], direction: "Receives", protocol: "supply" }],
   },
@@ -120,7 +120,7 @@ const klirAnalysis: CanvasAnalysis = {
     authored_interface_thing_ids: [],
     boundary_props: { porosity: 0, perceptive_fuzziness: 0 },
     aggregate: false,
-    edges: [{ id: 5, a: 1, b: 2, bond: false, kind: "Unspecified", locus: "Endo", self_loop: false, mobus_ok: true }],
+    edges: [{ id: 5, a: 1, b: 2, bond: false, kind: "Unspecified", locus: "Endo", channel: null, self_loop: false, mobus_ok: true }],
     ports: [],
   },
   description: {

@@ -16,6 +16,7 @@ import { edgeGeometry, thingById } from "./canvas/geometry";
 import { EdgePopover } from "./canvas/EdgePopover";
 import { NodePopover, type DecomposeAffordance } from "./canvas/NodePopover";
 import { KlirRegister } from "./canvas/KlirRegister";
+import { BungeRegister } from "./canvas/BungeRegister";
 import { BoundaryPopover } from "./canvas/BoundaryPopover";
 import { PaletteRail } from "./canvas/PaletteRail";
 import type { PaletteTool } from "./canvas/lenses/registry";
@@ -26,7 +27,7 @@ import { InspectorDock } from "./InspectorDock";
 import { NewModelTypePrompt } from "./NewModelTypePrompt";
 import { SlPane } from "./SlPane";
 import type { SlError } from "./kernel/types";
-import { Banner, Pill } from "./ui";
+import { Banner, Pill, ToolButton } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 import {
   isFolderSupported,
@@ -811,6 +812,17 @@ function Workspace() {
   // A node edit from the popover (rename, work-process set/clear): same shape
   // as updateRelation — the kernel re-projects + re-judges on every change.
   function updateThing(next: import("./kernel/types").Thing) {
+    // The re-cut narration (#100 phase 2, F8-as-curriculum): when a Bunge
+    // author moves a thing across the C/E partition, say the C→E→S dependency
+    // out loud AT the moment it is enacted — the one-line lesson, no wizard,
+    // no enforced sequence. The re-derivation itself is the kernel's (the
+    // analyze memo below re-judges ℰ, 𝒮, and the hull off the new 𝒞).
+    const prev = canvasModel?.things.find((t) => t.id === next.id);
+    if (canvasModel?.lens === "Bunge" && prev && prev.role !== next.role) {
+      setNotice(
+        `re-cut: "${next.name || "unnamed"}" → ${next.role === "Component" ? "𝒞" : "ℰ"} — composition chosen; environment and structure re-derive (C → E → S)`,
+      );
+    }
     setCanvasModel((m) =>
       m ? { ...m, things: m.things.map((t) => (t.id === next.id ? next : t)) } : m,
     );
@@ -829,8 +841,19 @@ function Workspace() {
 
   // The math-panel-first Klir register (#100): under Klir the set listings are
   // the primary surface and the node-and-edge picture demotes to a locator, so
-  // the container composes differently — Bunge and Mobus are untouched.
+  // the container composes differently — Mobus is untouched.
   const isKlir = canvasModel?.lens === "Klir";
+
+  // The Bunge register (#100 phase 2): Bunge KEEPS the picture (the coupling
+  // graph with its hull is the primary face), but his structure is also his
+  // coupling matrix M — so the Bunge canvas carries a graph ⇄ matrix view
+  // toggle (F1, the Klir register's toggle grammar as a sibling, not a clone).
+  // While the matrix is up the picture demotes to the same locator Klir uses.
+  const [bungeView, setBungeView] = useState<"graph" | "matrix">("graph");
+  const isBungeMatrix = canvasModel?.lens === "Bunge" && bungeView === "matrix";
+  // Either register up = text is the primary reading surface: locator on, and
+  // the pixel popovers yield to the registers' inline editors.
+  const registerActive = isKlir || isBungeMatrix;
 
   // The decomposition door's case, decided off KERNEL facts (boundary
   // membership = lens_facts.boundary_thing_ids — the same set the kernel's v1
@@ -1318,9 +1341,49 @@ function Workspace() {
                         ladder={desc?.lens === "Klir" ? desc.ladder : null}
                       />
                     )}
+                    {/* Bunge (#100 phase 2): the coupling matrix M as the
+                        register surface — same composition as the Klir
+                        register (panel + locator), Bunge's own semantics
+                        (kind-of-action cells, bond vs mere, the cut as the
+                        row/col ordering). C→E→S→M inside (F8). */}
+                    {isBungeMatrix && (
+                      <BungeRegister
+                        model={canvasModel}
+                        facts={facts}
+                        desc={desc?.lens === "Bunge" ? desc : null}
+                        selectedThingId={selectedThingId}
+                        selectedRelationId={selectedRelationId}
+                        onSelectThing={(id) => {
+                          setSelectedThingId(id);
+                          if (id !== null) {
+                            setSelectedRelationId(null);
+                            setBoundaryAnchor(null);
+                          }
+                        }}
+                        onSelectRelation={(id) => {
+                          setSelectedRelationId(id);
+                          if (id !== null) {
+                            setSelectedThingId(null);
+                            setBoundaryAnchor(null);
+                          }
+                        }}
+                        onUpdateThing={updateThing}
+                        onUpdateRelation={updateRelation}
+                        onDeleteThing={deleteThing}
+                        onDeleteRelation={deleteRelation}
+                        onModelChange={(m) => {
+                          setCanvasModel(m);
+                          setDirty(true);
+                        }}
+                        onReject={setToast}
+                        decomposeFor={decomposeFor}
+                        placeName={canvasModel.name?.trim() || currentLabel}
+                        onViewGraph={() => setBungeView("graph")}
+                      />
+                    )}
                     <div
                       className={
-                        isKlir
+                        registerActive
                           ? `absolute bottom-9 right-3 overflow-hidden rounded-lg ${
                               // #100 harvest: the locator was "way too small"
                               // on 2 of 3 arms — preset sizes, medium default.
@@ -1329,7 +1392,7 @@ function Workspace() {
                           : "absolute inset-0"
                       }
                       style={
-                        isKlir
+                        registerActive
                           ? {
                               border: "1px solid var(--hairline)",
                               background: "var(--bg-primary)",
@@ -1377,7 +1440,7 @@ function Workspace() {
                       // model can never impersonate its only component.
                       placeName={canvasModel.name?.trim() || currentLabel}
                     />
-                      {isKlir && (
+                      {registerActive && (
                         <span
                           className="pointer-events-none absolute bottom-1 right-1.5 text-[9px] uppercase tracking-wide"
                           style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
@@ -1385,7 +1448,7 @@ function Workspace() {
                           locator
                         </span>
                       )}
-                      {isKlir && (
+                      {registerActive && (
                         <div className="absolute right-1.5 top-1 flex gap-0.5">
                           {(["s", "m", "l"] as const).map((s) => (
                             <button
@@ -1418,7 +1481,7 @@ function Workspace() {
                         onClose={() => setBoundaryAnchor(null)}
                       />
                     )}
-                    {selectedThing && !isKlir && (
+                    {selectedThing && !registerActive && (
                       <NodePopover
                         thing={selectedThing}
                         lens={canvasModel.lens}
@@ -1431,7 +1494,7 @@ function Workspace() {
                         decompose={decomposeFor(selectedThing)}
                       />
                     )}
-                    {selectedRelation && popoverAnchor && !isKlir && (
+                    {selectedRelation && popoverAnchor && !registerActive && (
                       <EdgePopover
                         relation={selectedRelation}
                         lens={canvasModel.lens}
@@ -1439,17 +1502,41 @@ function Workspace() {
                         headers={csvHeaders}
                         manifest={manifest}
                         anchor={toScreen(popoverAnchor)}
+                        fact={facts?.edges.find((e) => e.id === selectedRelation.id)}
                         onApplyManifest={applyDrive}
                         onUpdateRelation={updateRelation}
                         onDelete={() => deleteRelation(selectedRelation.id)}
                         onClose={() => setSelectedRelationId(null)}
                       />
                     )}
+                    {/* The Bunge view toggle (#100 phase 2, F1): coupling
+                        graph ⇄ coupling matrix — one structure, two of
+                        Bunge's own notations, the Klir register's toggle
+                        grammar as a sibling. Rendered on the graph face; the
+                        register carries its own copy of the same control. */}
+                    {canvasModel.lens === "Bunge" && !isBungeMatrix && (
+                      <div className="absolute left-3 top-3 flex items-center gap-1">
+                        <ToolButton
+                          active
+                          onClick={() => {}}
+                          title="the coupling graph — things, bonds, and the hull (the observer's cut)"
+                        >
+                          graph
+                        </ToolButton>
+                        <ToolButton
+                          onClick={() => setBungeView("matrix")}
+                          title="Bunge's coupling matrix M — who acts on whom, by what kind of action"
+                        >
+                          matrix
+                        </ToolButton>
+                      </div>
+                    )}
                     {/* Bunge's single most lens-specific rule: systemhood is
                         EARNED. The verdict is the kernel's (validate_mode(
                         Structural) via lens_facts.aggregate) — the face only
-                        announces it. */}
-                    {canvasModel.lens === "Bunge" && facts && (
+                        announces it. Graph view only — the register carries
+                        the same verdict as its headline pill. */}
+                    {canvasModel.lens === "Bunge" && !isBungeMatrix && facts && (
                       <Banner
                         tone={facts.aggregate ? "error" : "soft"}
                         className="pointer-events-none absolute left-48 top-3"

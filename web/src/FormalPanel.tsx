@@ -65,6 +65,11 @@ function KlirFace({ d }: { d: Extract<LensDescription, { lens: "Klir" }> }) {
   );
 }
 
+// Line order is load-bearing (#100 phase 2, F8): 𝒞 → 𝓔 → 𝒮 → (boundary,
+// derived) → ℳ. Bunge's definitions are indexed to the chosen composition —
+// 𝓔_A and 𝒮_A only exist relative to 𝒞_A — so the reading order silently
+// embodies the C→E→S dependency, with M last as the question this surface
+// cannot yet answer. Layout as pedagogy; zero prescription. Don't reorder.
 function BungeFace({ d }: { d: Extract<LensDescription, { lens: "Bunge" }> }) {
   const isSystem = d.verdict === "system";
   return (
