@@ -6,6 +6,8 @@
 // Every call needs a live user gesture + a permission grant, so this can only
 // run interactively (no headless drive).
 
+import { modelIdentity } from "./kernel";
+
 interface FileHandleLike {
   createWritable(): Promise<{ write(data: string): Promise<void>; close(): Promise<void> }>;
   getFile(): Promise<{ text(): Promise<string> }>;
@@ -59,4 +61,23 @@ export async function readModelFile(dir: DirHandleLike, name: string): Promise<s
   const handle = await dir.getFileHandle(name);
   const file = await handle.getFile();
   return file.text();
+}
+
+/** The text of the folder's model whose stable base58 id is `id`, or null.
+ *  Filenames are display labels, never keys: every `.json` is read and its
+ *  identity decoded by the kernel (no per-folder index to go stale — the
+ *  folder's contents can change outside this app between calls). A file that
+ *  is not a model simply never matches. */
+export async function readModelFileByRef(dir: DirHandleLike, id: string): Promise<string | null> {
+  for (const name of await listModelFiles(dir)) {
+    const text = await readModelFile(dir, name);
+    let fileId: string | null;
+    try {
+      fileId = modelIdentity(text);
+    } catch {
+      fileId = null;
+    }
+    if (fileId === id) return text;
+  }
+  return null;
 }

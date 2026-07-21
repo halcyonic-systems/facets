@@ -23,6 +23,8 @@ import init, {
   analyze_canvas as wasmAnalyzeCanvas,
   compile_sl as wasmCompileSl,
   emit_sl as wasmEmitSl,
+  model_identity as wasmModelIdentity,
+  check_decompositions as wasmCheckDecompositions,
 } from "bert-lenses-kernel";
 import wasmUrl from "bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url";
 
@@ -215,4 +217,27 @@ export function compileSl(text: string): SlOutcome {
  *  kernel-side. */
 export function emitSl(model: CanvasModel): string {
   return call("emit_sl", () => wasmEmitSl(JSON.stringify(model)));
+}
+
+// ---- Decomposition: store-layer resolution (#89 step 5a) -----------------------
+
+/** A model's stable self-identity (canonical base58) read off its JSON — null
+ *  when the model never minted one. Reading never mints. The store layer's
+ *  decoder: it stamps records and matches `decomposes @id` references with
+ *  this, never by reading model JSON itself. */
+export function modelIdentity(modelJson: string): string | null {
+  return call<string | undefined>("model_identity", () => wasmModelIdentity(modelJson)) ?? null;
+}
+
+/** Judge every decomposition seam in a model against its store-resolved
+ *  referents (base58 id → child model JSON). Missing and unparseable referents
+ *  come back as defined issues in the result — computed in Rust; the store
+ *  only resolves ids to text. */
+export function checkDecompositions(
+  modelJson: string,
+  resolved: Record<string, string>,
+): ValidationResult {
+  return call("check_decompositions", () =>
+    wasmCheckDecompositions(modelJson, JSON.stringify(resolved)),
+  );
 }

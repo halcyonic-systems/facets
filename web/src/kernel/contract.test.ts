@@ -20,6 +20,7 @@ import { describe, it, expect } from "vitest";
 import type {
   CanvasAnalysis,
   CanvasModel,
+  ChildRef,
   CsvParse,
   EdgeFact,
   LensDescription,
@@ -108,8 +109,13 @@ const SEVERITIES = ["Error", "Warning"] as const;
 const KINGDOMS = ["Conceptual", "Concrete"] as const;
 const GENERA = ["Physical", "Chemical", "Biological", "Social", "Technical"] as const;
 
+function parseChildRef(v: unknown, where: string): ChildRef {
+  const o = shape(v, where, ["name", "id"], []);
+  return { name: str(o.name, `${where}.name`), id: str(o.id, `${where}.id`) };
+}
+
 function parseThing(v: unknown, where: string): Thing {
-  const o = shape(v, where, ["id", "name", "x", "y", "role"], ["primitive", "interface"]);
+  const o = shape(v, where, ["id", "name", "x", "y", "role"], ["primitive", "interface", "child_model"]);
   return {
     id: num(o.id, `${where}.id`),
     name: str(o.name, `${where}.name`),
@@ -118,6 +124,7 @@ function parseThing(v: unknown, where: string): Thing {
     role: oneOf(o.role, `${where}.role`, ROLES),
     ...(o.primitive === undefined ? {} : { primitive: str(o.primitive, `${where}.primitive`) as Thing["primitive"] }),
     ...(o.interface === undefined ? {} : { interface: bool(o.interface, `${where}.interface`) }),
+    ...(o.child_model === undefined ? {} : { child_model: parseChildRef(o.child_model, `${where}.child_model`) }),
   };
 }
 

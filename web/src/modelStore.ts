@@ -5,7 +5,11 @@
 //
 // One database, one store keyed by model name (put overwrites same name). Each
 // request is wrapped in a Promise so App.tsx sees the same async shape the
-// folder helpers expose.
+// folder helpers expose. Records also carry the model's stable base58 id (read
+// via the kernel decoder, #89) so a `decomposes @id` reference resolves by
+// identity while the name stays a display label.
+
+import { modelIdentity } from "./kernel";
 
 const DB_NAME = "bert-lenses";
 const STORE = "models";
@@ -14,6 +18,11 @@ export interface ModelRecord {
   name: string;
   json: string;
   savedAt: number;
+  /** The model's stable base58 id, read from the JSON via the kernel decoder at
+   *  save time. Absent on records saved before ids existed and on models that
+   *  never minted one — `loadModelByRef` decodes those on the fly, and the next
+   *  save of the slot backfills this field (put overwrites the whole record). */
+  modelId?: string;
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -51,6 +60,8 @@ async function withStore<T>(
 /** Store `json` under `name`, overwriting any model already saved there. */
 export async function saveModel(name: string, json: string): Promise<void> {
   const record: ModelRecord = { name, json, savedAt: Date.now() };
+  const id = identityOf(json);
+  if (id) record.modelId = id;
   await withStore("readwrite", (store) => store.put(record));
 }
 
@@ -72,4 +83,24 @@ export async function loadModel(name: string): Promise<string> {
 /** Remove one model from the library. */
 export async function deleteModel(name: string): Promise<void> {
   await withStore("readwrite", (store) => store.delete(name));
+}
+
+/** The stored JSON of the model whose stable id is `id` (base58), or null.
+ *  Lookup is by identity — the name is only the display label. Legacy records
+ *  without a stamped `modelId` are decoded on the fly. */
+export async function loadModelByRef(id: string): Promise<string | null> {
+  const records = await withStore<ModelRecord[]>("readonly", (store) => store.getAll());
+  for (const r of records) {
+    if ((r.modelId ?? identityOf(r.json)) === id) return r.json;
+  }
+  return null;
+}
+
+// A hand-imported or corrupt record must not make every save/resolution throw.
+function identityOf(json: string): string | null {
+  try {
+    return modelIdentity(json);
+  } catch {
+    return null;
+  }
 }

@@ -138,6 +138,13 @@ export type ProcessPrimitive =
   | "Amplifying"
   | "Inverting";
 
+/** A component → child-model reference (SL's `decomposes`, #89): a human label
+ *  plus the stable base58 model id. The id is the key — the label may drift. */
+export interface ChildRef {
+  name: string;
+  id: string;
+}
+
 export interface Thing {
   id: number;
   name: string;
@@ -147,6 +154,8 @@ export interface Thing {
   primitive?: ProcessPrimitive;
   /** Authored interface designation (I ⊆ C; flowless well-formed). */
   interface?: boolean;
+  /** The child model this component decomposes into, by reference. */
+  child_model?: ChildRef;
 }
 
 export interface Relation {
