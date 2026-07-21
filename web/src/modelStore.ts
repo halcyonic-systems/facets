@@ -86,6 +86,53 @@ export async function deleteModel(name: string): Promise<void> {
   await withStore("readwrite", (store) => store.delete(name));
 }
 
+/** Rename a library slot (#116 candidate 3): the SAME record — json, savedAt,
+ *  and above all `modelId` — moves under a new key. The store is keyed by name,
+ *  so a rename is put-under-new-name + delete-old, issued in ONE readwrite
+ *  transaction so they commit or fail together; the record's content is copied
+ *  verbatim, which is exactly what save-as deliberately cannot do (save-as
+ *  clears the id BY DESIGN — the copy rule). Because `decomposes @id`
+ *  references resolve by identity (loadModelByRef), a parent's stamp survives
+ *  this rename by construction.
+ *
+ *  A taken target name is REFUSED, not suffixed: mintLibraryName's collision
+ *  suffix is for machine-minted names at door time, but a rename is the user's
+ *  explicit choice — silently storing a different name would be a clobber of
+ *  intent. The refusal names the conflict so the user can pick again. */
+export async function renameModel(from: string, to: string): Promise<void> {
+  if (from === to) return;
+  const db = await openDb();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      const store = tx.objectStore(STORE);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      const clash = store.get(to);
+      clash.onsuccess = () => {
+        if (clash.result !== undefined) {
+          reject(new Error(`a model named "${to}" is already saved — pick another name`));
+          tx.abort();
+          return;
+        }
+        const src = store.get(from);
+        src.onsuccess = () => {
+          const record = src.result as ModelRecord | undefined;
+          if (!record) {
+            reject(new Error(`no saved model named "${from}"`));
+            tx.abort();
+            return;
+          }
+          store.put({ ...record, name: to });
+          store.delete(from);
+        };
+      };
+    });
+  } finally {
+    db.close();
+  }
+}
+
 /** The stored JSON of the model whose stable id is `id` (base58), or null.
  *  Lookup is by identity — the name is only the display label. Legacy records
  *  without a stamped `modelId` are decoded on the fly. */
