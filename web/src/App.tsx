@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ready, runForced, toCanvas, project, parseCsv, analyzeCanvas } from "./kernel";
-import type { CanvasModel, Manifest, RunResultRich } from "./kernel/types";
+import { ready, runForced, toCanvas, project, parseCsv, analyzeCanvas, checkDecompositions } from "./kernel";
+import type { CanvasModel, Manifest, RunResultRich, ValidationIssue } from "./kernel/types";
 import { DEMOS, type Demo } from "./demos";
 import Canvas from "./canvas/Canvas";
 import { edgeGeometry, thingById } from "./canvas/geometry";
@@ -27,6 +27,7 @@ import {
   type DirHandleLike,
 } from "./fsAccess";
 import { saveModel, listModels, loadModel, deleteModel } from "./modelStore";
+import { resolveModelRefs } from "./modelResolve";
 import { diagramFilename, exportDiagramSvg, exportDiagramPng } from "./canvas/exportDiagram";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -507,8 +508,66 @@ function Workspace() {
       return { ok: null, error: e instanceof Error ? e.message : String(e) };
     }
   }, [canvasModel]);
-  const verdict = analysis.ok?.validation ?? null;
-  const issueTargets = analysis.ok?.issue_targets ?? [];
+
+  // Decomposition seams are judged at resolution time (#89 step 5a): collect
+  // the model's `decomposes` references, resolve them through the store layer
+  // (IndexedDB library, then the working folder), and let the kernel check
+  // every seam — including the cross-model derived_env identity. Async because
+  // resolution is I/O; the issues merge into the same verdict the pill and
+  // audit panel read, so a missing or broken referent is as loud as any other
+  // validation error. Effect-shaped (not memo) — a stale check is discarded.
+  const [decompositionIssues, setDecompositionIssues] = useState<ValidationIssue[]>([]);
+  useEffect(() => {
+    const refs = canvasModel
+      ? canvasModel.things.flatMap((t) => (t.child_model ? [t.child_model.id] : []))
+      : [];
+    if (!canvasModel || refs.length === 0) {
+      setDecompositionIssues([]);
+      return;
+    }
+    let stale = false;
+    (async () => {
+      const resolved = await resolveModelRefs(refs, dirHandle);
+      if (stale) return;
+      const report = checkDecompositions(JSON.stringify(project(canvasModel)), resolved);
+      if (!stale) setDecompositionIssues(report.issues);
+    })().catch((e) => {
+      // Resolution failing outright (storage error, projection throw) must
+      // still surface on the audit panel, never only the console.
+      if (!stale) {
+        setDecompositionIssues([
+          {
+            severity: "Error",
+            location: "decomposition",
+            message: `decomposition references could not be checked: ${
+              e instanceof Error ? e.message : String(e)
+            }`,
+            suggestion: null,
+          },
+        ]);
+      }
+    });
+    return () => {
+      stale = true;
+    };
+  }, [canvasModel, dirHandle]);
+
+  // The kernel's lens-gate verdict plus the resolution-time decomposition
+  // issues, one list — the issues Pill, the audit panel, and the dock all read
+  // this. Decomposition rows carry no canvas target yet (enter/exit navigation
+  // is step 5b), so their issue_targets entries are non-navigable.
+  const verdict = useMemo(() => {
+    const base = analysis.ok?.validation ?? null;
+    if (decompositionIssues.length === 0) return base;
+    return { issues: [...(base?.issues ?? []), ...decompositionIssues] };
+  }, [analysis, decompositionIssues]);
+  const issueTargets = useMemo(
+    () => [
+      ...(analysis.ok?.issue_targets ?? []),
+      ...decompositionIssues.map(() => ({ thing: null, relation: null })),
+    ],
+    [analysis, decompositionIssues],
+  );
   const facts = analysis.ok?.facts ?? null;
   const desc = analysis.ok?.description ?? null;
   const analysisError = analysis.error;

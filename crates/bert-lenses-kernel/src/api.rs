@@ -139,6 +139,33 @@ pub fn run_forced(
     to_js(&RunResultRich::from(readout))
 }
 
+/// A model's stable self-identity (canonical base58), read from its JSON —
+/// `null` for a model that never minted one. The store layer's decoder: records
+/// carry this id so a `decomposes @id` reference resolves by identity, with the
+/// name as display label only. Reading is not minting — this never assigns an
+/// id (`WorldModel::mint_id` stays caller-invoked, never a load/save effect).
+#[wasm_bindgen]
+pub fn model_identity(model_json: &str) -> Result<Option<String>, JsError> {
+    let model = parse_model(model_json)?;
+    Ok(model.model_id.map(|id| id.to_base58()))
+}
+
+/// Check every decomposition seam in a model against its store-resolved
+/// referents. `resolved_json` maps canonical base58 id → the referent model's
+/// JSON text; the store layer resolves ids to text and judges nothing. Every
+/// verdict — including the missing-referent and unparseable-referent refusals —
+/// is a defined `ValidationIssue` from `bert_core::decomposition`, never a
+/// throw, so an unresolvable reference can never crash the face.
+#[wasm_bindgen]
+pub fn check_decompositions(model_json: &str, resolved_json: &str) -> Result<JsValue, JsError> {
+    let model = parse_model(model_json)?;
+    let resolved: std::collections::HashMap<String, String> = serde_json::from_str(resolved_json)
+        .map_err(|e| JsError::new(&format!("invalid resolved-referents map: {e}")))?;
+    to_js(&bert_core::validate::ValidationResult {
+        issues: bert_core::decomposition::check_decompositions(&model, &resolved),
+    })
+}
+
 // ---- Phase 2: the canvas seam ----------------------------------------------
 
 /// Validate a model at a given lens rung: "Core" | "Structural" | "Operational"

@@ -299,6 +299,27 @@ system's `info.name` (placeholder `"System"` when unnamed) and `to_canvas`
 reads it back — a model genuinely named `"System"` reads back as unnamed, the
 one deliberate asymmetry.
 
+## Decomposition surface (built — store-layer resolution, #89 step 5a)
+
+### `model_identity(model_json: string) → string | null`
+The model's stable self-identity in canonical base58, or `null` for a model
+that never minted one. The store layer's decoder: saved records carry this id
+so a `decomposes @id` reference resolves by identity (the name stays a display
+label). Reading never mints — `WorldModel::mint_id` remains caller-invoked
+tooling, so load/save cannot grow an id as a side effect. Throws (JsError) only
+on unparseable model JSON.
+
+### `check_decompositions(model_json: string, resolved_json: string) → ValidationResult`
+Check every decomposition seam in the model against its store-resolved
+referents. `resolved_json` is a JSON object mapping canonical base58 id → the
+referent model's JSON text — the store layer resolves ids to text across its
+backends and judges nothing. Runs the full boundary contract per seam
+(`bert_core::decomposition`), including the cross-model `derived_env` identity
+(child environment stand-ins ↔ parent interior neighbors, matched by name). A
+reference missing from the map and a referent whose text does not parse are
+each a defined `ValidationIssue` in the result — never a throw, never a silent
+drop. Throws only on unparseable model JSON or a malformed map.
+
 ## Contract fixtures (definition-of-done for boundary shapes)
 
 Every serde type that crosses this wasm edge ships a committed JSON fixture in
