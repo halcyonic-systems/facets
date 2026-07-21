@@ -258,7 +258,12 @@ function parseLensDescription(v: unknown): LensDescription {
   const strs = (x: unknown, w: string) => arr(x, w).map((s, i) => str(s, `${w}[${i}]`));
   switch (lens) {
     case "Klir": {
-      const k = shape(v, "LensDescription(Klir)", ["lens", "question", "things", "relations", "directed", "neutral", "note"]);
+      // "ladder" here is Klir's GSPS epistemological hierarchy (the surviving
+      // sense, #90) — the field name on the wire, not mode-entry vocabulary.
+      const k = shape(v, "LensDescription(Klir)", [
+        "lens", "question", "things", "relations", "directed", "neutral", "note", "ladder", // GSPS
+      ]);
+      const l = shape(k.ladder, "Klir.ladder", ["position", "claim", "to_climb", "decomposed"]); // GSPS
       return {
         lens,
         question: str(k.question, "Klir.question"),
@@ -267,6 +272,12 @@ function parseLensDescription(v: unknown): LensDescription {
         directed: num(k.directed, "Klir.directed"),
         neutral: num(k.neutral, "Klir.neutral"),
         note: str(k.note, "Klir.note"),
+        ladder: {
+          position: str(l.position, "Klir.ladder.position"), // GSPS
+          claim: str(l.claim, "Klir.ladder.claim"), // GSPS
+          to_climb: str(l.to_climb, "Klir.ladder.to_climb"), // GSPS
+          decomposed: strs(l.decomposed, "Klir.ladder.decomposed"), // GSPS
+        },
       };
     }
     case "Bunge": {

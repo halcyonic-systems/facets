@@ -282,6 +282,18 @@ export interface LensFacts {
   ports: PortFact[];
 }
 
+/** Klir's GSPS epistemological ladder (#100): the model's HONEST position on
+ *  the E→D→G / S/M semilattice (Fig. 4.13), kernel-derived — ∅ | E | SE | S²E.
+ *  D and G are unreachable from this surface by design (they need observed
+ *  data; the compose seam) and `to_climb` says so. The face only typesets. */
+export interface KlirLadder {
+  position: string;
+  claim: string;
+  to_climb: string;
+  /** Evidence for the S² step: decomposed elements, by name. */
+  decomposed: string[];
+}
+
 /** describe(model, lens): the model typeset as the active lens's own formal
  *  object — computed by the kernel; the FormalPanel only renders it. Every
  *  variant leads with `question` — the tradition's guiding question, shown as
@@ -295,6 +307,9 @@ export type LensDescription =
       directed: number;
       neutral: number;
       note: string;
+      /** Where this model stands on the ladder — the register's opt-in
+       *  complement (#100 harvest), collapsed until asked for. */
+      ladder: KlirLadder;
     }
   | {
       lens: "Bunge";

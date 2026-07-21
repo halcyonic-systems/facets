@@ -10,10 +10,11 @@
 import { useEffect, useRef, useState } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import type { CanvasModel, Relation, Thing } from "../kernel/types";
+import type { CanvasModel, KlirLadder, Relation, Thing } from "../kernel/types";
 import { validateConnection } from "../kernel";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 import { DecomposeRows, type DecomposeAffordance } from "./NodePopover";
+import { KlirLadderPanel, LadderChip } from "./KlirLadderPanel";
 import { FormalismLine, klirFormalism } from "./lenses/glossary";
 import { cellGlyph, cellRelations, nextIdOf, nextThingPosition, relationTuple } from "./klirNotation";
 
@@ -35,6 +36,10 @@ interface Props {
   /** #100 phase 0: the containing system's display name (author SOI name, else
    *  the shell's label). Editing writes CanvasModel.name (#116 semantics). */
   placeName: string | null;
+  /** The kernel's ladder verdict (describe → Klir.ladder), surfaced as an
+   *  opt-in complement: a collapsed "position" chip that expands into an
+   *  introduced Hasse panel (#100 harvest, from the ladder-first arm). */
+  ladder: KlirLadder | null;
 }
 
 function Tex({ tex, block = false }: { tex: string; block?: boolean }) {
@@ -58,8 +63,12 @@ export function KlirRegister({
   onReject,
   decomposeFor,
   placeName,
+  ladder,
 }: Props) {
   const [view, setView] = useState<"sets" | "matrix">("sets");
+  // The ladder is an opt-in complement: collapsed on every mount, never the
+  // anchor — first contact is one quiet chip beside the headline.
+  const [ladderOpen, setLadderOpen] = useState(false);
   const [thingDraft, setThingDraft] = useState("");
   const [relA, setRelA] = useState("");
   const [relB, setRelB] = useState("");
@@ -163,7 +172,10 @@ export function KlirRegister({
           <span className="text-lg" style={{ color: "var(--text-primary)" }}>
             <Tex tex={"S = (T,\\; R), \\qquad R \\subseteq T \\times T"} />
           </span>
-          <div className="flex gap-1">
+          <div className="flex items-center gap-1">
+            {ladder && (
+              <LadderChip ladder={ladder} open={ladderOpen} onToggle={() => setLadderOpen((o) => !o)} />
+            )}
             <SmallButton active={view === "sets"} onClick={() => setView("sets")} title="the set listings — Eq. 1.1 read literally">
               sets
             </SmallButton>
@@ -172,6 +184,10 @@ export function KlirRegister({
             </SmallButton>
           </div>
         </div>
+
+        {/* The ladder complement, expanded on demand: introduction first, then
+            the model's position (#100 harvest — see KlirLadderPanel). */}
+        {ladder && ladderOpen && <KlirLadderPanel ladder={ladder} onClose={() => setLadderOpen(false)} />}
 
         {/* ---- T — thinghood, taken for granted -------------------------------- */}
         <section className="mb-4">

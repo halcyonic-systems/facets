@@ -1309,6 +1309,9 @@ function Workspace() {
                         onReject={setToast}
                         decomposeFor={decomposeFor}
                         placeName={canvasModel.name?.trim() || currentLabel}
+                        // The kernel's ladder verdict (#100 harvest) — the
+                        // register renders it as a collapsed complement chip.
+                        ladder={desc?.lens === "Klir" ? desc.ladder : null}
                       />
                     )}
                     <div
