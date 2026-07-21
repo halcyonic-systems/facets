@@ -6,9 +6,11 @@ preconditions are proved in `systems-science-foundations` (SSF), and enforced in
 declaration each Rust gate mirrors, and the CI mechanism that makes drift
 between them a build failure rather than a matter of trust.
 
-Rung 1 of the escalation ladder (bert-lenses#24). Rungs 1.5+ (a subprocess or
-embedded Lean oracle, then a Rust→Lean extraction theorem) are out of scope
-here; this rung is the falsifiability floor they regress against.
+Rungs 1 and 1.5 of the escalation ladder (bert-lenses#24) are shipped and
+documented here: the committed truth-table fixture (§D) is the falsifiability
+floor, and the subprocess oracle (§D) removes its enumeration bound at test
+time. The remaining rungs — an embedded oracle and a Rust→Lean extraction
+theorem — are status-tracked in §E, with the recorded decision rule for each.
 
 ## A. The view-generation result
 
@@ -120,6 +122,37 @@ that instance, and the collapse is *proved*, not asserted, by
     — a gate has drifted from its Lean precondition
   ```
 
+- **Oracle (rung 1.5)** — `crates/bert-core/tests/gates_oracle.rs`
+  (`rust_gates_agree_with_lean_oracle_beyond_the_fixture_bound`). The fixture
+  can only disagree on a row someone thought to enumerate; this test removes
+  the bound. It generates a fixed-seed corpus of `(T, R)` kernels past `n = 2`
+  (pinned boundary cases plus random subsets at `n = 3, 4, 5`), shells out to
+  the SSF executable `lake exe gates-oracle` — which evaluates the SAME
+  `hasBondB` / `irreflexiveB` declarations the fixture enumerator uses — and
+  asserts `validate_mode`'s verdict equals the oracle's for every mode on every
+  model. Zero FFI: JSON over a pipe (contract documented at the head of
+  `SSF/Systems/Klir/GatesOracle.lean`), sidestepping Lean's officially unstable
+  C ABI. The test is **Lean-optional**: with no oracle found it prints how to
+  enable one (`GATES_ORACLE=<binary>` or `SSF_DIR=<repo>`) and passes as a
+  no-op, so the Rust-only CI job keeps running rung 1 without a Lean toolchain.
+
 This answers the credential-transfer objection in writing: the mode stamp is not
 decorative relative to the proof object, because a committed, machine-checked
 set of verdicts stands between the Rust gates and any silent drift.
+
+## E. Escalation-ladder status
+
+The binding is a staged program (bert-lenses#24 comments, 2026-07-11 research).
+Status of each rung, with the recorded decision rule where one gates it:
+
+| Rung | Artifact | Status |
+|---|---|---|
+| 1 — vectors | `fixtures/gates_truth_table.json` + `gates_truth_table.rs` in CI | **Shipped** 2026-07-20 (§D) |
+| 1.5 — subprocess oracle | `gates-oracle` (SSF) + `gates_oracle.rs`, Lean-optional | **Shipped** 2026-07-20 (§D) |
+| 2 — embedded oracle | `lean-rs` (or similar) embedding the Lean runtime | **Not adopted** — decision rule is "only if oracle latency bites". Measured 2026-07-21: the full 365-model corpus is one batched subprocess call, ~30 ms of oracle process time, 0.29 s total test wall time. Latency does not bite; re-measure only if call volume grows orders of magnitude (e.g. per-model property tests replacing the batched corpus). |
+| 3 — extraction theorem | Aeneas-translated Rust gates + `extracted_gate ⟺ named_precondition` proved in Lean | **Not started** — the recorded end state. Open decisions before work begins: where the extracted Lean artifacts and theorems live (SSF vs a Lake package in this repo), and the toolchain pins (Charon/Aeneas/Lean drift is the pipeline's documented failure mode — pin hard). Our gates are pure predicates over `(T, R)`, exactly the fragment Aeneas handles. |
+
+Rung 2 is a performance escape hatch, not a fidelity upgrade — rungs 1/1.5
+already give two-sided falsifiability. Rung 3 is the fidelity upgrade: it would
+retire the hand-mirroring in §C's mapping table by making the shipped Rust the
+proved object.
