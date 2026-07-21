@@ -66,7 +66,8 @@ pub struct PortFact {
     /// The exo flows this port gates (canvas relation ids).
     pub relation_ids: Vec<u64>,
     pub direction: PortDirection,
-    /// φ — joined non-empty flow names, else the kind's name.
+    /// φ — joined non-empty flow names, else the substance word (Mobus
+    /// register: material / energy / message).
     pub protocol: String,
 }
 
@@ -105,13 +106,18 @@ pub struct LensFacts {
     pub ports: Vec<PortFact>,
 }
 
-fn kind_name(k: Kind) -> &'static str {
+/// Mobus's substance words for the port-protocol fallback (concordance row 6:
+/// material · energy · message; the same collapse as `kind_to_substance`,
+/// canvas.rs). Ports are a Mobus-only surface, so φ must speak substance —
+/// never Bunge's kind enum (§15.1 mismatch 1, #100 D batch). Unspecified stays
+/// "unspecified": the residue register counts it, so the label never silently
+/// answers a question the author has not.
+fn substance_word(k: Kind) -> &'static str {
     match k {
         Kind::Unspecified => "unspecified",
-        Kind::Energy => "energy",
-        Kind::Matter => "matter",
-        Kind::Field => "field",
-        Kind::Informational => "informational",
+        Kind::Energy | Kind::Field => "energy",
+        Kind::Matter => "material",
+        Kind::Informational => "message",
     }
 }
 
@@ -246,7 +252,7 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
             entry.2 = true;
         }
         let label = if r.name.trim().is_empty() {
-            kind_name(r.kind).to_string()
+            substance_word(r.kind).to_string()
         } else {
             r.name.trim().to_string()
         };
@@ -1001,6 +1007,28 @@ mod tests {
         let m_doc = format!("{} — unbridged prose note only.", "NOT a Lean-projected coordinate");
         assert!(src.contains(&bunge_doc), "Bunge variant doc must present CES as delivered");
         assert!(src.contains(&m_doc), "MECHANISM_NOTE separator comment must stay");
+    }
+
+    /// Law: an unnamed flow's port protocol speaks Mobus's substance register
+    /// (concordance row 6: material · energy · message), never Bunge's kind
+    /// enum — and an unspecified kind stays "unspecified", never silently
+    /// folded into energy.
+    #[test]
+    fn port_protocol_speaks_substance_not_kind() {
+        let mut m = model(
+            vec![thing(1, "A", Role::Component), thing(2, "Src", Role::Environment)],
+            vec![relation(10, 2, 1, true)],
+        );
+        for (kind, word) in [
+            (Kind::Informational, "message"),
+            (Kind::Matter, "material"),
+            (Kind::Field, "energy"),
+            (Kind::Unspecified, "unspecified"),
+        ] {
+            m.relations[0].kind = kind;
+            let f = lens_facts(&m);
+            assert_eq!(f.ports[0].protocol, word, "φ fallback for {kind:?}");
+        }
     }
 
     /// Law: the residue register is per-lens, not nested — Mobus hides the

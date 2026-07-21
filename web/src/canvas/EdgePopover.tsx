@@ -276,14 +276,23 @@ function MobusBody({
       <FormalismLine parts={mobusFormalism()} />
       <Row>
         {/* Mobus's substances are material · energy · message (concordance row 6);
-            the model stores a Kind, so map both ways via kind_to_substance. */}
+            the model stores a Kind, so map both ways via kind_to_substance. An
+            unspecified kind shows as "unspecified" — the residue register counts
+            it, so the picker never silently reads it as energy. */}
         <span style={{ color: "var(--text-secondary)" }}>substance</span>
         <select
-          value={kindToSubstance(relation.kind)}
-          onChange={(e) => onUpdate({ ...relation, kind: substanceToKind(e.target.value as Substance) })}
+          value={relation.kind === "Unspecified" ? "" : kindToSubstance(relation.kind)}
+          onChange={(e) => {
+            if (e.target.value) onUpdate({ ...relation, kind: substanceToKind(e.target.value as Substance) });
+          }}
           className="rounded-md px-1.5 py-0.5 text-xs"
           style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
         >
+          {relation.kind === "Unspecified" && (
+            <option value="" disabled>
+              unspecified
+            </option>
+          )}
           {SUBSTANCES.map((s) => (
             <option key={s} value={s}>
               {s}

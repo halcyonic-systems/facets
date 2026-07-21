@@ -209,7 +209,7 @@ type PortFact = {                         // one Mobus interface r=(S,φ) per (c
   env: number,
   relation_ids: number[],                 // the exo flows this port gates
   direction: PortDirection,
-  protocol: string,                       // φ — joined flow names, else the kind
+  protocol: string,                       // φ — joined flow names, else the substance word (#100)
 }
 type LensFacts = {
   boundary_thing_ids: number[],           // {c ∈ C : coupled to E} — Bunge marks, Mobus reifies
