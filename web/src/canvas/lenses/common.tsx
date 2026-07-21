@@ -39,6 +39,16 @@ interface NodeBodyProps {
   strokeWidth: number;
   /** Mobus process-primitive badge (undefined for Klir/Bunge). */
   badge?: ProcessPrimitive;
+  /** Mobus only (#100 phase 4, #81 harvest): draw the primitive glyph AT THE
+   *  CENTER of the body — the component IS the process — instead of the
+   *  corner medallion. Default false keeps the corner-badge rendering, so
+   *  Klir/Bunge output is untouched (they never pass a badge anyway). */
+  badgeCentered?: boolean;
+  /** Mobus only (#100 phase 4): render the body as the decision/regulator
+   *  triangle — the one shape Mobus reserves for a process sub-kind (his
+   *  Fig 4.17, drawn warm). No Klir/Bunge analog exists by design; neither
+   *  lens ever sets this. */
+  regulatorTriangle?: boolean;
   /** Klir recesses labels (thinghood taken for granted; the relation is salient). */
   labelSmall: boolean;
   /** Bunge marks boundary components with a rim accent (kernel `isBoundary`). */
@@ -52,6 +62,14 @@ interface NodeBodyProps {
    *  Klir/Mobus output is unchanged. */
   simPosition?: boolean;
 }
+
+// The regulator triangle (Mobus Fig 4.17), apex up, circumradius optically
+// enlarged 1.15× so it reads the same visual weight as the circle (#81 V2
+// harvest: optical-sizing constants — triangles read smaller than their box).
+const TRI_R = NODE_R * 1.15;
+const TRI_HALF_W = TRI_R * 0.866;
+const TRI_BOT = TRI_R * 0.5;
+const TRI_PATH = `M 0 ${-TRI_R} L ${TRI_HALF_W} ${TRI_BOT} L ${-TRI_HALF_W} ${TRI_BOT} Z`;
 
 /** The node chrome common to every lens — the per-lens views resolve the style
  *  knobs above from kernel facts (role, primitive, boundary membership). */
@@ -69,6 +87,8 @@ export function NodeBody({
   strokeOpacity,
   strokeWidth,
   badge,
+  badgeCentered = false,
+  regulatorTriangle = false,
   labelSmall,
   boundaryRim,
   pending = false,
@@ -76,6 +96,10 @@ export function NodeBody({
 }: NodeBodyProps) {
   const frac = sim ? Math.max(0, Math.min(1, sim.frac)) : null;
   const clipId = `fill-clip-${thing.id}`;
+  // Vertical extents of the body shape — the sim fill's clip rises bottom-up
+  // between them, so the triangle drains/fills over ITS height, not the circle's.
+  const [shapeTop, shapeBot] = regulatorTriangle ? [-TRI_R, TRI_BOT] : [-NODE_R, NODE_R];
+  const shapeH = shapeBot - shapeTop;
 
   return (
     <g
@@ -140,9 +164,11 @@ export function NodeBody({
       {!simPosition && frac !== null && (
         <>
           <clipPath id={clipId}>
-            <rect x={-NODE_R} y={NODE_R - 2 * NODE_R * frac} width={NODE_R * 2} height={2 * NODE_R * frac} />
+            <rect x={-TRI_HALF_W} y={shapeBot - shapeH * frac} width={TRI_HALF_W * 2} height={shapeH * frac} />
           </clipPath>
-          {isSquare ? (
+          {regulatorTriangle ? (
+            <path d={TRI_PATH} fill="var(--accent)" opacity={STYLE.simFillOpacity} clipPath={`url(#${clipId})`} />
+          ) : isSquare ? (
             <rect
               x={-NODE_R}
               y={-NODE_R}
@@ -159,7 +185,23 @@ export function NodeBody({
         </>
       )}
 
-      {isSquare ? (
+      {regulatorTriangle ? (
+        /* Mobus Fig 4.17: the decision/regulator process is the ONE process
+           sub-kind the house tradition gives its own shape — a warm triangle.
+           The body IS the primitive here, so no glyph repeats it. */
+        <path
+          data-node-shape="triangle"
+          d={TRI_PATH}
+          fill="color-mix(in srgb, var(--verdict-warning) 16%, var(--bg-secondary))"
+          stroke={stroke}
+          strokeOpacity={strokeOpacity}
+          strokeWidth={strokeWidth}
+          strokeLinejoin="round"
+          fillOpacity={frac !== null && !simPosition ? 0 : 1}
+        >
+          <title>decision ⁄ regulator — a modulating work process (Mobus Fig 4.17)</title>
+        </path>
+      ) : isSquare ? (
         <rect
           x={-NODE_R}
           y={-NODE_R}
@@ -183,10 +225,30 @@ export function NodeBody({
         />
       )}
 
-      {/* Process-primitive badge — a drawn Mobus icon (Fig. 4.5) on a surface
-          medallion, so every primitive reads as one hand. Modulating carries its
-          own warm fill (the regulator, Fig. 4.17); the rest inherit the accent. */}
-      {badge && (
+      {/* Process-primitive glyph, centered (#100 phase 4, #81 harvest): the
+          component IS the process, so the glyph is the body's face — not a
+          corner medallion on an otherwise empty circle. The glyphs are a
+          bert-lenses stroke family in Mobus's spirit, not his printed icons. */}
+      {badge && badgeCentered && (
+        <g
+          data-glyph="centered"
+          transform={`scale(${(NODE_R * 0.62) / 6})`}
+          style={{ color: "var(--lens-accent)" }}
+          fill="none"
+          stroke="var(--lens-accent)"
+          strokeWidth={2.1 / ((NODE_R * 0.62) / 6)}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          pointerEvents="none"
+        >
+          <title>{`work process: ${badge.toLowerCase()}`}</title>
+          {primitiveGlyph(badge)}
+        </g>
+      )}
+
+      {/* Corner-medallion badge — the pre-phase-4 form, kept for any caller
+          that wants the annotation reading rather than the glyph-first one. */}
+      {badge && !badgeCentered && (
         <g transform={`translate(${NODE_R * 0.72}, ${-NODE_R * 0.72})`}>
           <circle
             r={STYLE.badge.r}

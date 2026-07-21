@@ -1,5 +1,7 @@
 // Mobus lens views. The boundary ring is reified as a real membrane (drawn by
-// the stage backdrop); components carry process-primitive badges; env
+// the stage backdrop); a component stamped with a work process renders GLYPH-
+// FIRST (it IS that process — #100 phase 4, #81 harvest), with the decision/
+// regulator (Modulating) as the warm Fig 4.17 triangle; env
 // sources/sinks are open shapes; flows are typed strokes (material solid heavy,
 // energy glowing, message thin/dashed — Message is a peer substance, copyable,
 // not conserved). Exo flows render as two segments because G is bipartite
@@ -12,6 +14,12 @@ import { EdgeScaffold, NodeBody, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
 
 function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointerDown }: LensNodeProps) {
+  // #100 phase 4: the decision/regulator process is the ONE sub-kind Mobus's
+  // own drawings give a shape — the warm triangle of Fig 4.17. Kernel taxonomy:
+  // Modulating IS that decision/regulation primitive (the regulator monitor;
+  // see primitive-glyphs.tsx). Components only — a primitive on an env object
+  // is dead state project() ignores, so it never earns the shape.
+  const regulator = thing.role === "Component" && thing.primitive === "Modulating";
   return (
     <NodeBody
       pending={isOrphan}
@@ -23,11 +31,18 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
       isSquare={thing.role === "Environment"}
       showHalo={thing.role === "Component"}
       envOpen={thing.role === "Environment"}
-      sphere={thing.role === "Component"}
-      stroke="var(--lens-node-stroke)"
+      sphere={thing.role === "Component" && !regulator}
+      regulatorTriangle={regulator}
+      stroke={regulator ? "var(--verdict-warning)" : "var(--lens-node-stroke)"}
       strokeOpacity={1}
       strokeWidth={STYLE.nodeStrokeWidth}
-      badge={thing.primitive}
+      // Glyph-first (#81 harvest): a stamped component IS its process — the
+      // glyph is the face, not a corner annotation. The triangle body already
+      // says Modulating, so it carries no glyph on top. Components only: a
+      // primitive on an env object is dead state project() ignores (the
+      // designate gesture already rejects it), so it is not drawn either.
+      badge={thing.role === "Component" && !regulator ? thing.primitive : undefined}
+      badgeCentered
       labelSmall={false}
       boundaryRim={false}
     />
