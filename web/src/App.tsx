@@ -193,6 +193,10 @@ function Workspace() {
   // viewport (its auto-layout centers on a fixed point that can otherwise land
   // outside the narrower SL-pane view — #83). Canvas fits once per new value.
   const [fitToken, setFitToken] = useState<number | undefined>(undefined);
+  // The Klir locator's preset size (#100 harvest — "way too small" on 2 of 3
+  // blind-pick arms). Three presets, medium default; a change refits the
+  // picture to the new box via fitToken. Presentation only.
+  const [locSize, setLocSize] = useState<"s" | "m" | "l">("m");
   // Shell chrome state (presentation only): the File→Open gallery (also the
   // start screen before anything is loaded), the docked palette's collapse.
   const [galleryOpen, setGalleryOpen] = useState(true);
@@ -1309,12 +1313,19 @@ function Workspace() {
                         onReject={setToast}
                         decomposeFor={decomposeFor}
                         placeName={canvasModel.name?.trim() || currentLabel}
+                        // The kernel's ladder verdict (#100 harvest) — the
+                        // register renders it as a collapsed complement chip.
+                        ladder={desc?.lens === "Klir" ? desc.ladder : null}
                       />
                     )}
                     <div
                       className={
                         isKlir
-                          ? "absolute bottom-9 right-3 h-44 w-72 overflow-hidden rounded-lg"
+                          ? `absolute bottom-9 right-3 overflow-hidden rounded-lg ${
+                              // #100 harvest: the locator was "way too small"
+                              // on 2 of 3 arms — preset sizes, medium default.
+                              locSize === "s" ? "h-44 w-72" : locSize === "m" ? "h-64 w-[26rem]" : "h-96 w-[38rem]"
+                            }`
                           : "absolute inset-0"
                       }
                       style={
@@ -1373,6 +1384,29 @@ function Workspace() {
                         >
                           locator
                         </span>
+                      )}
+                      {isKlir && (
+                        <div className="absolute right-1.5 top-1 flex gap-0.5">
+                          {(["s", "m", "l"] as const).map((s) => (
+                            <button
+                              key={s}
+                              onClick={() => {
+                                setLocSize(s);
+                                setFitToken((n) => (n ?? 0) + 1); // reframe in the new box
+                              }}
+                              className="rounded px-1 text-[9px] uppercase leading-4"
+                              style={{
+                                fontFamily: "var(--font-mono)",
+                                color: locSize === s ? "var(--text-primary)" : "var(--text-muted)",
+                                background: locSize === s ? "var(--lens-accent-soft)" : "transparent",
+                                border: `1px solid ${locSize === s ? "var(--lens-accent)" : "var(--hairline)"}`,
+                              }}
+                              title={`locator size — ${s === "s" ? "small" : s === "m" ? "medium" : "large"}`}
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
                       )}
                     </div>
                     </div>

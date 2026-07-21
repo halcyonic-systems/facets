@@ -10,12 +10,13 @@
 import { useEffect, useRef, useState } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import type { CanvasModel, Relation, Thing } from "../kernel/types";
+import type { CanvasModel, KlirLadder, Relation, Thing } from "../kernel/types";
 import { validateConnection } from "../kernel";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 import { DecomposeRows, type DecomposeAffordance } from "./NodePopover";
+import { KlirLadderPanel, LadderChip } from "./KlirLadderPanel";
 import { FormalismLine, klirFormalism } from "./lenses/glossary";
-import { cellRelations, nextIdOf, nextThingPosition, relationTuple } from "./klirNotation";
+import { cellGlyph, cellRelations, nextIdOf, nextThingPosition, relationTuple } from "./klirNotation";
 
 interface Props {
   model: CanvasModel;
@@ -35,6 +36,10 @@ interface Props {
   /** #100 phase 0: the containing system's display name (author SOI name, else
    *  the shell's label). Editing writes CanvasModel.name (#116 semantics). */
   placeName: string | null;
+  /** The kernel's ladder verdict (describe → Klir.ladder), surfaced as an
+   *  opt-in complement: a collapsed "position" chip that expands into an
+   *  introduced Hasse panel (#100 harvest, from the ladder-first arm). */
+  ladder: KlirLadder | null;
 }
 
 function Tex({ tex, block = false }: { tex: string; block?: boolean }) {
@@ -58,8 +63,18 @@ export function KlirRegister({
   onReject,
   decomposeFor,
   placeName,
+  ladder,
 }: Props) {
   const [view, setView] = useState<"sets" | "matrix">("sets");
+  // The ladder is an opt-in complement: collapsed on every mount, never the
+  // anchor — first contact is one quiet chip beside the headline.
+  const [ladderOpen, setLadderOpen] = useState(false);
+  // #100 harvest: an empty-cell click PROPOSES the pair instead of creating it
+  // ("it immediately creates it… might just move that out, but the concept is
+  // really cool") — the same click again, or the confirm strip, commits; the
+  // kernel still judges at commit time. Two-step to match the sets view's own
+  // deliberate pick-pair-then-add grammar.
+  const [proposed, setProposed] = useState<{ a: number; b: number } | null>(null);
   const [thingDraft, setThingDraft] = useState("");
   const [relA, setRelA] = useState("");
   const [relB, setRelB] = useState("");
@@ -92,6 +107,15 @@ export function KlirRegister({
   useEffect(() => {
     if (selectedRelationId !== null) relationEdRef.current?.scrollIntoView({ block: "nearest" });
   }, [selectedRelationId]);
+
+  // A proposal can't outlive its endpoints (a deleted thing withdraws it).
+  useEffect(() => {
+    if (
+      proposed &&
+      (!model.things.some((t) => t.id === proposed.a) || !model.things.some((t) => t.id === proposed.b))
+    )
+      setProposed(null);
+  }, [model, proposed]);
 
   function addThing() {
     const id = nextIdOf(model.things.map((t) => t.id));
@@ -126,6 +150,7 @@ export function KlirRegister({
     } catch (err) {
       onReject(err instanceof Error ? err.message : String(err));
     }
+    setProposed(null);
   }
 
   const sigOf = (r: Relation) => model.relations.indexOf(r);
@@ -163,8 +188,18 @@ export function KlirRegister({
           <span className="text-lg" style={{ color: "var(--text-primary)" }}>
             <Tex tex={"S = (T,\\; R), \\qquad R \\subseteq T \\times T"} />
           </span>
-          <div className="flex gap-1">
-            <SmallButton active={view === "sets"} onClick={() => setView("sets")} title="the set listings — Eq. 1.1 read literally">
+          <div className="flex items-center gap-1">
+            {ladder && (
+              <LadderChip ladder={ladder} open={ladderOpen} onToggle={() => setLadderOpen((o) => !o)} />
+            )}
+            <SmallButton
+              active={view === "sets"}
+              onClick={() => {
+                setView("sets");
+                setProposed(null); // a pending matrix proposal doesn't follow
+              }}
+              title="the set listings — Eq. 1.1 read literally"
+            >
               sets
             </SmallButton>
             <SmallButton active={view === "matrix"} onClick={() => setView("matrix")} title="the |T|×|T| incidence matrix over the same R">
@@ -172,6 +207,10 @@ export function KlirRegister({
             </SmallButton>
           </div>
         </div>
+
+        {/* The ladder complement, expanded on demand: introduction first, then
+            the model's position (#100 harvest — see KlirLadderPanel). */}
+        {ladder && ladderOpen && <KlirLadderPanel ladder={ladder} onClose={() => setLadderOpen(false)} />}
 
         {/* ---- T — thinghood, taken for granted -------------------------------- */}
         <section className="mb-4">
@@ -282,11 +321,20 @@ export function KlirRegister({
             <IncidenceMatrix
               model={model}
               selectedRelationId={selectedRelationId}
+              proposed={proposed}
               onPickCell={(a, b) => {
                 const rels = cellRelations(model, a, b);
-                if (rels.length > 0) onSelectRelation(rels[0].id === selectedRelationId ? null : rels[0].id);
-                else addRelation(a, b);
+                if (rels.length > 0) {
+                  onSelectRelation(rels[0].id === selectedRelationId ? null : rels[0].id);
+                  setProposed(null);
+                } else if (proposed && proposed.a === a && proposed.b === b) {
+                  addRelation(a, b); // the second click commits
+                } else {
+                  setProposed({ a, b }); // the first click only proposes
+                }
               }}
+              onConfirm={() => proposed && addRelation(proposed.a, proposed.b)}
+              onCancel={() => setProposed(null)}
             />
           )}
 
@@ -337,15 +385,31 @@ function PairSelect({
 /** The Relation Matrix — |T|×|T| incidence over the same R the set listing
  *  shows. Cell (row, col) reads as the ordered pair (row, col): a directed
  *  relation marks its own order, a neutral one marks both. A marked cell
- *  selects its relation; an empty cell proposes the pair to the kernel. */
+ *  selects its relation; an empty cell proposes the pair to the kernel.
+ *
+ *  Cell presentation grafted from the blind pick's matrix-centric arm (#100
+ *  harvest): glyphs ● / → / ↺ (with a ×N stack count), hairline-gridded cells
+ *  with a soft accent wash where R is inhabited, a faint diagonal tint, and
+ *  hover tooltips reading each occupant as rN "name" = (row, col). The editing
+ *  grammar stays this register's own. */
+const CELL = 30;
+
 function IncidenceMatrix({
   model,
   selectedRelationId,
+  proposed,
   onPickCell,
+  onConfirm,
+  onCancel,
 }: {
   model: CanvasModel;
   selectedRelationId: number | null;
+  /** The pair a first empty-cell click proposed — not yet in R (#100 harvest:
+   *  click softened to propose-then-confirm). */
+  proposed: { a: number; b: number } | null;
   onPickCell: (a: number, b: number) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
 }) {
   if (model.things.length === 0) {
     return (
@@ -355,24 +419,40 @@ function IncidenceMatrix({
     );
   }
   const short = (name: string) => (name.length > 12 ? `${name.slice(0, 11)}…` : name);
+  const nameOf = (id: number) => model.things.find((t) => t.id === id)?.name || `t${id}`;
+  // Each occupant read the way the set listing writes it: rN "name" = (a, b).
+  const cellTitle = (rels: Relation[]): string =>
+    rels
+      .map(
+        (r) =>
+          `r${model.relations.indexOf(r) + 1}${r.name ? ` "${r.name}"` : ""} = (${nameOf(r.a)}, ${nameOf(r.b)})${r.klir_directed === true ? " directed" : ""}`,
+      )
+      .join(" · ");
+  const headerCellStyle = {
+    fontFamily: "var(--font-mono)",
+    background: "var(--bg-secondary)",
+    color: "var(--text-secondary)",
+    borderBottom: "1px solid var(--hairline)",
+    borderRight: "1px solid var(--hairline)",
+  } as const;
   return (
     <div className="overflow-x-auto pl-6">
-      <table className="border-separate" style={{ borderSpacing: 2 }}>
+      <table className="border-separate" style={{ borderSpacing: 0 }}>
         <thead>
           <tr>
-            <th className="text-[10px] font-normal" style={{ color: "var(--text-muted)" }}>
-              <span style={{ fontFamily: "var(--font-mono)" }}>row→col</span>
+            <th className="px-2 text-left align-bottom text-[10px] font-normal" style={headerCellStyle}>
+              row→col
             </th>
             {model.things.map((t) => (
-              <th key={t.id} className="px-1 pb-1 align-bottom text-[10px] font-normal" title={t.name}>
+              <th
+                key={t.id}
+                className="px-1 pb-1 align-bottom text-[10px] font-normal"
+                style={{ ...headerCellStyle, minWidth: CELL, maxWidth: CELL }}
+                title={t.name}
+              >
                 <span
                   className="inline-block max-h-24 overflow-hidden"
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    color: "var(--text-secondary)",
-                    writingMode: "vertical-rl",
-                    transform: "rotate(180deg)",
-                  }}
+                  style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
                 >
                   {short(t.name || `t${t.id}`)}
                 </span>
@@ -384,8 +464,8 @@ function IncidenceMatrix({
           {model.things.map((a) => (
             <tr key={a.id}>
               <th
-                className="max-w-28 truncate pr-2 text-right text-[10px] font-normal"
-                style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}
+                className="max-w-28 truncate px-2 text-right text-[10px] font-normal"
+                style={{ ...headerCellStyle, height: CELL }}
                 title={a.name}
               >
                 {short(a.name || `t${a.id}`)}
@@ -393,28 +473,40 @@ function IncidenceMatrix({
               {model.things.map((b) => {
                 const rels = cellRelations(model, a.id, b.id);
                 const hit = rels.some((r) => r.id === selectedRelationId);
+                const isProposed = proposed !== null && proposed.a === a.id && proposed.b === b.id;
                 return (
-                  <td key={b.id} className="p-0">
+                  <td key={b.id} className="p-0" style={{ borderBottom: "1px solid var(--hairline)", borderRight: "1px solid var(--hairline)" }}>
                     <button
                       onClick={() => onPickCell(a.id, b.id)}
-                      className="h-6 w-6 rounded-sm text-xs leading-none"
+                      className="block text-[11px] leading-none"
                       style={{
+                        width: CELL,
+                        height: CELL,
                         fontFamily: "var(--font-mono)",
-                        color: rels.length ? "var(--text-primary)" : "var(--text-muted)",
+                        color: rels.length ? "var(--text-primary)" : isProposed ? "var(--lens-accent)" : "var(--text-muted)",
                         background: hit
                           ? "color-mix(in srgb, var(--lens-accent) 30%, transparent)"
                           : rels.length
-                            ? "color-mix(in srgb, var(--lens-accent) 10%, var(--bg-secondary))"
-                            : "var(--bg-secondary)",
-                        border: `1px solid ${hit ? "var(--lens-accent)" : "var(--hairline)"}`,
+                            ? "color-mix(in srgb, var(--lens-accent) 14%, transparent)"
+                            : a.id === b.id
+                              ? "color-mix(in srgb, var(--lens-accent) 6%, transparent)"
+                              : "var(--bg-primary)",
+                        outline: hit
+                          ? "1.5px solid var(--lens-accent)"
+                          : isProposed
+                            ? "1.5px dashed var(--lens-accent)"
+                            : undefined,
+                        outlineOffset: -1.5,
                       }}
                       title={
                         rels.length
-                          ? `(${a.name}, ${b.name}) ∈ R — click to edit`
-                          : `(${a.name}, ${b.name}) ∉ R — click to add`
+                          ? `${cellTitle(rels)} — click to edit`
+                          : isProposed
+                            ? `(${a.name}, ${b.name}) proposed — click again to add it to R`
+                            : `(${a.name}, ${b.name}) ∉ R — click to propose`
                       }
                     >
-                      {rels.length === 0 ? "·" : rels.length === 1 ? "1" : rels.length}
+                      {rels.length ? cellGlyph(a.id, b.id, rels) : isProposed ? "+" : ""}
                     </button>
                   </td>
                 );
@@ -423,8 +515,29 @@ function IncidenceMatrix({
           ))}
         </tbody>
       </table>
+      {/* The confirm strip: a proposal is visible, revocable, and only becomes
+          a member of R on an explicit second act (the cell again, or "add"). */}
+      {proposed && (
+        <div
+          className="mt-2 flex w-fit items-center gap-2 rounded-md border px-2 py-1 text-xs"
+          style={{ borderColor: "var(--lens-accent)", background: "var(--bg-secondary)" }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") onCancel();
+          }}
+        >
+          <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}>
+            add ({nameOf(proposed.a)}, {nameOf(proposed.b)}) to R?
+          </span>
+          <SmallButton active onClick={onConfirm} title="Add this pair to R (the kernel judges legality)">
+            add
+          </SmallButton>
+          <SmallButton onClick={onCancel} title="Withdraw the proposal — nothing was created">
+            cancel
+          </SmallButton>
+        </div>
+      )}
       <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
-        a neutral relation marks both orders; a directed one marks (row, col) only
+        ● neutral (marks both orders) · → directed, read row → col · ↺ self-relation
       </p>
     </div>
   );

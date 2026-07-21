@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CanvasModel, Relation, Thing } from "../kernel/types";
-import { cellRelations, nextIdOf, nextThingPosition, relationTuple } from "./klirNotation";
+import { cellGlyph, cellRelations, nextIdOf, nextThingPosition, relationTuple } from "./klirNotation";
 
 const thing = (id: number, x = 0, y = 0): Thing => ({ id, name: `T${id}`, x, y, role: "Component" });
 const rel = (id: number, a: number, b: number, directed?: boolean): Relation => ({
@@ -42,6 +42,23 @@ describe("cellRelations", () => {
   });
   it("leaves unrelated cells empty", () => {
     expect(cellRelations(m, 1, 3)).toEqual([]);
+  });
+});
+
+describe("cellGlyph", () => {
+  it("is empty for an unoccupied cell", () => {
+    expect(cellGlyph(1, 2, [])).toBe("");
+  });
+  it("marks a neutral occupant ●, a directed one → (read row → col)", () => {
+    expect(cellGlyph(1, 2, [rel(10, 1, 2)])).toBe("●");
+    expect(cellGlyph(1, 2, [rel(10, 1, 2, true)])).toBe("→");
+    // The mirrored cell of a directed relation never shows an arrow — but a
+    // neutral companion still marks it ●.
+    expect(cellGlyph(2, 1, [rel(11, 1, 2)])).toBe("●");
+  });
+  it("marks the diagonal ↺ and counts stacked relations", () => {
+    expect(cellGlyph(1, 1, [rel(10, 1, 1)])).toBe("↺");
+    expect(cellGlyph(1, 2, [rel(10, 1, 2), rel(11, 1, 2)])).toBe("●×2");
   });
 });
 

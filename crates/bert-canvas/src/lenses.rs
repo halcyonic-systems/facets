@@ -459,13 +459,110 @@ pub fn guiding_question(lens: Lens) -> &'static str {
     }
 }
 
+// ---- Klir's epistemological ladder (#100, the Klir register) ----------------
+//
+// GSPS's deepest structure: a model is a CLAIM about data commitment, located
+// on the E→D→G hierarchy under the S/M operators (Fig. 4.13 semilattice) and
+// named by a letter-string (`SE`, `SD`, `S²D`, …). The canvas derives the
+// model's HONEST position from what it actually contains — a diagnostic, never
+// a decoration:
+//
+// - `∅`   — nothing distinguished: there is no system yet (the investigator's
+//           distinction comes first).
+// - `E`   — a source system: things distinguished as variables of interest, no
+//           systemhood asserted. State sets and support are not yet nameable on
+//           this surface, so E is the frame's claim, thin and said so.
+// - `SE`  — a structure claim over source systems: couplings named among the
+//           distinguished things, each r ⊆ T×T.
+// - `S²E` — structure applied twice: a coupled element is itself a structured
+//           system (a decomposition reference).
+//
+// D and G stay unreachable from this surface BY DESIGN: a data system needs
+// observed states over a named support, a generative system a behavior function
+// over that data — both arrive with the compose seam (Concept E), and the
+// ladder says so instead of pretending. Judgment lives here in the kernel; the
+// face only typesets the position.
+
+/// The model's position on Klir's epistemological ladder, with the claim that
+/// position makes and what would earn the next rung.
+#[derive(Serialize, Clone, Debug)]
+pub struct KlirLadder {
+    /// The Klir letter-string: `∅` | `E` | `SE` | `S²E`.
+    pub position: String,
+    /// What standing here asserts, in Klir's terms.
+    pub claim: String,
+    /// What would earn the next rung — honest about what this surface cannot
+    /// author (D/G need data; the compose seam).
+    pub to_climb: String,
+    /// Evidence for the S² step: elements that are themselves structured
+    /// systems (carry a decomposition reference), by name.
+    pub decomposed: Vec<String>,
+}
+
+/// Locate the model on the ladder. Read off the editing model directly (thing
+/// and relation existence, decomposition references) — the same inputs
+/// `lens_facts` reads, none re-derived in JS.
+pub fn klir_ladder(model: &CanvasModel) -> KlirLadder {
+    let decomposed: Vec<String> = model
+        .things
+        .iter()
+        .filter(|t| t.child_model.is_some())
+        .map(|t| t.name.clone())
+        .collect();
+    let (position, claim, to_climb) = if model.things.is_empty() {
+        (
+            "∅",
+            "no distinction drawn — nothing is yet distinguished as a system; \
+             the investigator's act comes first",
+            "distinguish things: placing members of T is the first \
+             epistemological commitment",
+        )
+    } else if model.relations.is_empty() {
+        (
+            "E",
+            "a source system — things distinguished as variables of interest, \
+             no systemhood asserted; state sets and support are not yet \
+             nameable on this surface, so the frame is all E claims",
+            "assert a coupling: a relation r ⊆ T×T between two things makes \
+             the first structure claim (SE)",
+        )
+    } else if decomposed.is_empty() {
+        (
+            "SE",
+            "a structure system over source systems — couplings named among \
+             the distinguished things, each r ⊆ T×T",
+            "sideways: decompose an element into its own (T, R) for S²E · \
+             upward: D needs observed states over a named support — not \
+             authorable here; arrives with the compose seam",
+        )
+    } else {
+        (
+            "S²E",
+            "structure applied twice — coupled elements that are themselves \
+             structured systems",
+            "upward: D needs observed states over a named support, G a \
+             behavior function over them — neither is authorable here; both \
+             arrive with the compose seam",
+        )
+    };
+    KlirLadder {
+        position: position.to_string(),
+        claim: claim.to_string(),
+        to_climb: to_climb.to_string(),
+        decomposed,
+    }
+}
+
 /// One model, typeset in the active lens's own formal notation. Every variant
 /// leads with `question` — the tradition's guiding question, the orientation
 /// line the face shows at lens switch.
 #[derive(Serialize, Clone, Debug)]
 #[serde(tag = "lens")]
 pub enum LensDescription {
-    /// Klir `S = (T, R)` — thinghood + systemhood; observer-constituted.
+    /// Klir `S = (T, R)` — thinghood + systemhood; observer-constituted. The
+    /// `ladder` (#100 harvest): where this model stands on the epistemological
+    /// hierarchy — a diagnostic the counts must earn, surfaced by the register
+    /// as an opt-in complement (introduced first, never the anchor).
     Klir {
         question: String,
         things: usize,
@@ -473,6 +570,7 @@ pub enum LensDescription {
         directed: usize,
         neutral: usize,
         note: String,
+        ladder: KlirLadder,
     },
     /// Bunge `σ = ⟨C, E, S⟩` delivered (the Lean-bridged CES); M carried only as
     /// the untyped `mechanism_note` prose — see `MECHANISM_NOTE` and the
@@ -685,6 +783,7 @@ fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> Le
                 note: "a system is what is distinguished as a system by the investigator; \
                        the distinction frame is the observer's act, not a boundary"
                     .to_string(),
+                ladder: klir_ladder(model),
             }
         }
         Lens::Bunge => {
@@ -1089,6 +1188,64 @@ mod tests {
             Some(2),
             "the answers Mobus renders are exactly what Bunge cannot see"
         );
+    }
+
+    /// Law: the ladder position is EARNED, rung by rung — nothing distinguished
+    /// is ∅, things without couplings are E (a source frame), a coupling makes
+    /// the structure claim SE, and a decomposed coupled element makes S²E.
+    #[test]
+    fn klir_ladder_climbs_with_the_model() {
+        let mut m = model(vec![], vec![]);
+        assert_eq!(klir_ladder(&m).position, "∅");
+
+        m.things.push(thing(1, "A", Role::Component));
+        m.things.push(thing(2, "B", Role::Component));
+        assert_eq!(klir_ladder(&m).position, "E", "things alone are a source frame");
+
+        m.relations.push(relation(10, 1, 2, true));
+        assert_eq!(klir_ladder(&m).position, "SE", "a coupling is the structure claim");
+
+        m.things[0].child_model = Some(crate::canvas::ChildRef {
+            name: "A-inner".to_string(),
+            id: bert_core::ModelRef::to(
+                "Hrs6K91KnZZsiPcWzftv8U".parse::<bert_core::ModelId>().unwrap(),
+            ),
+        });
+        let l = klir_ladder(&m);
+        assert_eq!(l.position, "S²E", "a structured element applies S twice");
+        assert_eq!(l.decomposed, vec!["A"], "the decomposed element is the evidence");
+    }
+
+    /// Law: the ladder is a diagnostic, not a decoration — removing what earned
+    /// a rung drops the position back down, and D/G are never claimed from this
+    /// surface (no observed data exists here; the to_climb copy says so).
+    #[test]
+    fn klir_ladder_is_diagnostic_not_decoration() {
+        let m = rich_model();
+        let l = klir_ladder(&m);
+        assert_eq!(l.position, "SE");
+        assert!(l.to_climb.contains("compose seam"), "the data axis is honestly gated");
+
+        let mut stripped = m.clone();
+        stripped.relations.clear();
+        assert_eq!(klir_ladder(&stripped).position, "E", "no couplings, no structure claim");
+        // No path on this surface ever claims a data or generative rung.
+        for probe in [&m, &stripped] {
+            let p = klir_ladder(probe).position;
+            assert!(!p.contains('D') && !p.contains('G'), "D/G need observed data");
+        }
+    }
+
+    /// Law: describe's Klir face carries the same ladder `klir_ladder` derives —
+    /// one judgment, typeset once.
+    #[test]
+    fn describe_klir_carries_the_ladder() {
+        let m = rich_model();
+        let LensDescription::Klir { ladder, .. } = describe(&m, Lens::Klir) else {
+            panic!("expected Klir");
+        };
+        assert_eq!(ladder.position, klir_ladder(&m).position);
+        assert_eq!(ladder.claim, klir_ladder(&m).claim);
     }
 
     /// Law: every `describe` carries its lens's guiding question — three

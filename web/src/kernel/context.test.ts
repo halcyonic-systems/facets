@@ -131,6 +131,12 @@ const klirAnalysis: CanvasAnalysis = {
     directed: 0,
     neutral: 1,
     note: "a system is what is distinguished as a system by the investigator",
+    ladder: {
+      position: "SE",
+      claim: "a structure system over source systems",
+      to_climb: "D needs observed states over a named support",
+      decomposed: [],
+    },
   },
   residue: { hidden: [], unspecified: [] },
 };

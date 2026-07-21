@@ -5,5 +5,13 @@
   "relations": 4,
   "directed": 0,
   "neutral": 4,
-  "note": "a system is what is distinguished as a system by the investigator; the distinction frame is the observer's act, not a boundary"
+  "note": "a system is what is distinguished as a system by the investigator; the distinction frame is the observer's act, not a boundary",
+  "ladder": {
+    "position": "S²E",
+    "claim": "structure applied twice — coupled elements that are themselves structured systems",
+    "to_climb": "upward: D needs observed states over a named support, G a behavior function over them — neither is authorable here; both arrive with the compose seam",
+    "decomposed": [
+      "Pump"
+    ]
+  }
 }
