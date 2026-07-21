@@ -25,7 +25,7 @@
 //! | `snk_preserves_kind` | `βsnk` preserves substance kind | equal substance-kind multisets | `Decomposition.snk_preserves_kind` |
 //! | `src_lands` | each child source lands on an interface member | `ix.sink ∈ child.boundary_components()` | `Decomposition.src_lands` |
 //! | `snk_lands` | each child sink lands on an interface member | `ix.source ∈ child.boundary_components()` | `Decomposition.snk_lands` |
-//! | `derived_env` | `E′` = parent's interior neighborhood of `c` (nothing else) | every child env object carries a boundary flow | `Decomposition.derived_env` |
+//! | `derived_env` | `E′` = parent's interior neighborhood of `c` (nothing else) | every child env object carries a boundary flow AND stands for (names) an interior neighbor; every neighbor has a stand-in | `Decomposition.derived_env` |
 //! | *(caller-facing)* | referent must resolve | `check_decomposition` on `None` | unresolved-reference refusal |
 //!
 //! Direction-preservation (contract property (i)) is by construction, exactly as
@@ -45,14 +45,19 @@
 //!   whose far endpoint is a genuine component always lands. The check retains
 //!   real teeth only for the degenerate case — a "boundary flow" whose non-env
 //!   endpoint is itself an environment entity (env→env), landing on no component.
-//! - **`derived_env` equality is only half-checkable in the kernel.** The full
-//!   Lean equality `E′ = succ(c) ∪ pred(c)` matches child env objects to parent
-//!   neighbors across TWO models with disjoint id spaces; the cross-model
-//!   neighbor-identity map is the store layer's (step 5). The kernel checks the
-//!   falsifiable half — `E′` contains nothing free-floating (every child env
-//!   object is justified by a boundary flow) — which, together with the `β`
-//!   bijections, pins `E′` to `c`'s incident-flow endpoints.
+//! - **`derived_env` identity is nominal (step 5a).** The full Lean equality
+//!   `E′ = succ(c) ∪ pred(c)` matches child env objects to parent neighbors
+//!   across TWO models with disjoint id spaces, so it needs an identity
+//!   criterion neither id space provides. The criterion is the NAME: a child
+//!   env object stands for the parent interior neighbor whose name it carries
+//!   ([`env_identity_map`]) — the one key both models share in v1. The check is
+//!   three-part: nothing free-floating (every env object carries a boundary
+//!   flow), nothing foreign (every env object names a neighbor), nothing
+//!   missing (every neighbor is named by an env object). Labels drift — but an
+//!   env stand-in whose label drifted from its neighbor's IS a stale model,
+//!   and the refusal says exactly which name to fix.
 
+use crate::model_id;
 use crate::validate::{Severity, ValidationIssue};
 use crate::{is_system_relatum, Id, Interaction, ModelRef, SubstanceType, WorldModel};
 use std::collections::{HashMap, HashSet};
@@ -159,6 +164,51 @@ pub fn check_decomposition(
     }
 }
 
+/// Every decomposition reference the model carries: (component id, child ref),
+/// in model order. The store layer resolves the refs to model text; the kernel
+/// walks them ([`check_decompositions`]).
+pub fn decomposition_refs(model: &WorldModel) -> Vec<(Id, ModelRef)> {
+    model
+        .systems
+        .iter()
+        .filter_map(|s| s.child_model.map(|r| (s.info.id.clone(), r)))
+        .collect()
+}
+
+/// Resolution-time entry over a WHOLE model: check every decomposition seam in
+/// `parent` against its store-resolved referents. `resolved` maps the canonical
+/// base58 id to the child model's JSON text — the shape a store layer can hand
+/// over without knowing any systems semantics. A missing key is the unresolved-
+/// referent refusal; a present-but-unparseable value is its own defined issue
+/// (a referent that resolves to non-model text is louder than a missing one,
+/// never quieter). Still no I/O: the store did the reading.
+pub fn check_decompositions(
+    parent: &WorldModel,
+    resolved: &HashMap<String, String>,
+) -> Vec<ValidationIssue> {
+    let mut issues = Vec::new();
+    for (comp, child_ref) in decomposition_refs(parent) {
+        let key = model_id::encode_uuid(&child_ref.as_uuid());
+        match resolved.get(&key).map(|json| serde_json::from_str::<WorldModel>(json)) {
+            None => issues.extend(check_decomposition(parent, &comp, &child_ref, None)),
+            Some(Ok(child)) => {
+                issues.extend(check_decomposition(parent, &comp, &child_ref, Some(&child)));
+            }
+            Some(Err(e)) => issues.push(refuse(
+                id_str(&comp),
+                format!(
+                    "component \"{}\" declares child_model {key} and the store resolved \
+                     it, but the resolved text is not a loadable model: {e}",
+                    comp_name(parent, &comp),
+                ),
+                "Re-save the referenced child model, or clear this component's child_model reference",
+                Some(comp.clone()),
+            )),
+        }
+    }
+    issues
+}
+
 /// Human name of `comp` in `parent`, falling back to its id coordinate.
 fn comp_name(parent: &WorldModel, comp: &Id) -> String {
     parent
@@ -168,6 +218,58 @@ fn comp_name(parent: &WorldModel, comp: &Id) -> String {
         .map(|s| s.info.name.clone())
         .filter(|n| !n.is_empty())
         .unwrap_or_else(|| id_str(comp))
+}
+
+/// The cross-model identity map the full `derived_env` equality needs: child
+/// environment object → the parent interior neighbor of `comp` it stands for.
+/// Identity is nominal — matched by name, the one key both models share across
+/// their disjoint id spaces (module note). Empty names identify nothing; when
+/// two neighbors share a name the map picks the first in model order (the
+/// contract check compares name SETS, so a shared name never misreports).
+pub fn env_identity_map(parent: &WorldModel, comp: &Id, child: &WorldModel) -> HashMap<Id, Id> {
+    let mut neighbor_by_name: HashMap<String, Id> = HashMap::new();
+    for n in interior_neighbors(parent, comp) {
+        // Raw name, not comp_name: the fallback id coordinate is a display
+        // affordance, never an identity.
+        let name = parent
+            .systems
+            .iter()
+            .find(|s| s.info.id == n)
+            .map(|s| s.info.name.clone())
+            .unwrap_or_default();
+        if !name.is_empty() {
+            neighbor_by_name.entry(name).or_insert(n);
+        }
+    }
+    let mut map = HashMap::new();
+    for e in child
+        .environment
+        .sources
+        .iter()
+        .chain(child.environment.sinks.iter())
+    {
+        if let Some(n) = neighbor_by_name.get(&e.info.name) {
+            map.insert(e.info.id.clone(), n.clone());
+        }
+    }
+    map
+}
+
+/// `succ(c) ∪ pred(c)`: the parent components `comp`'s internal-network flows
+/// touch — what the Lean equality says `E′` must be. Deduplicated, model order.
+fn interior_neighbors(parent: &WorldModel, comp: &Id) -> Vec<Id> {
+    let mut seen = HashSet::new();
+    let mut neighbors = Vec::new();
+    for id in inflows(parent, comp)
+        .iter()
+        .map(|ix| &ix.source)
+        .chain(outflows(parent, comp).iter().map(|ix| &ix.sink))
+    {
+        if seen.insert(id.clone()) {
+            neighbors.push(id.clone());
+        }
+    }
+    neighbors
 }
 
 /// The pairwise boundary contract (Lean `Decomposition` + `substitution_sound`),
@@ -328,9 +430,8 @@ pub fn check_decomposition_contract(
     }
 
     // Row `derived_env`: `E′` is DERIVED from `comp`'s neighborhood — nothing may
-    // appear in it that a boundary flow does not justify. The kernel checks the
-    // falsifiable half (no free-floating env object); see the module note on why
-    // the full cross-model equality is the store layer's.
+    // appear in it that a boundary flow does not justify. The falsifiable
+    // within-child half: no free-floating env object.
     for e in &env {
         let used = child
             .interactions
@@ -347,6 +448,79 @@ pub fn check_decomposition_contract(
                     id_str(e)
                 ),
                 "Remove the free-floating environment object, or connect it via a boundary flow that maps to an incident flow of the decomposed component",
+                Some(comp.clone()),
+            ));
+        }
+    }
+
+    // Row `derived_env`, cross-model half (the equality proper, step 5a): under
+    // nominal identity ([`env_identity_map`]), `E′ = succ(c) ∪ pred(c)` becomes
+    // two set inclusions on names — no env object foreign to the neighborhood,
+    // no neighbor missing a stand-in.
+    let neighbors = interior_neighbors(parent, comp);
+    let neighbor_names: HashSet<&str> = neighbors
+        .iter()
+        .filter_map(|n| {
+            parent
+                .systems
+                .iter()
+                .find(|s| &s.info.id == n)
+                .map(|s| s.info.name.as_str())
+        })
+        .filter(|n| !n.is_empty())
+        .collect();
+    let env_names: HashSet<&str> = child
+        .environment
+        .sources
+        .iter()
+        .chain(child.environment.sinks.iter())
+        .map(|e| e.info.name.as_str())
+        .filter(|n| !n.is_empty())
+        .collect();
+    for e in child
+        .environment
+        .sources
+        .iter()
+        .chain(child.environment.sinks.iter())
+    {
+        if !neighbor_names.contains(e.info.name.as_str()) {
+            let label = if e.info.name.is_empty() {
+                id_str(&e.info.id)
+            } else {
+                e.info.name.clone()
+            };
+            issues.push(refuse(
+                format!("{loc}/derived_env"),
+                format!(
+                    "Decomposition.derived_env: child environment object \"{label}\" does \
+                     not stand for any interior neighbor of \"{}\" — E′ is exactly the \
+                     parent's interior neighborhood of the decomposed component, and a \
+                     stand-in carries its neighbor's name",
+                    comp_name(parent, comp)
+                ),
+                "Name the environment object after the parent neighbor it stands for, or remove it",
+                Some(comp.clone()),
+            ));
+        }
+    }
+    for n in &neighbors {
+        let name = parent
+            .systems
+            .iter()
+            .find(|s| &s.info.id == n)
+            .map(|s| s.info.name.as_str())
+            .unwrap_or("");
+        if name.is_empty() || !env_names.contains(name) {
+            issues.push(refuse(
+                format!("{loc}/derived_env"),
+                format!(
+                    "Decomposition.derived_env: parent interior neighbor \"{}\" of \"{}\" \
+                     has no stand-in in the child's environment — E′ must contain the \
+                     parent's whole interior neighborhood of the decomposed component",
+                    comp_name(parent, n),
+                    comp_name(parent, comp)
+                ),
+                "Add an environment object named after the neighbor, carrying its boundary flow(s)",
                 Some(comp.clone()),
             ));
         }
@@ -391,12 +565,14 @@ mod tests {
 
     /// A child model whose boundary flows match `parent_model`'s C0.0 seam: one
     /// Energy inbound (Src0 → K0.0) and one Material outbound (K0.0 → Snk0). Its
-    /// env holds exactly the two neighbor stand-ins. `kinds`/`extras` let a test
-    /// perturb one fact to make a single property barely fail.
+    /// env holds exactly the two neighbor stand-ins, both named "Sibling" — the
+    /// nominal identity `derived_env` requires (C0.1 is both the inflow's source
+    /// and the outflow's sink). `kinds`/`extras` let a test perturb one fact to
+    /// make a single property barely fail.
     fn child_model(in_kind: &str, out_kind: &str, extra_env_source: bool, land_src_on_env: bool) -> WorldModel {
-        let mut sources = vec![ext("Src-1.0", "Source")];
+        let mut sources = vec![ext("Src-1.0", "Sibling", "Source")];
         if extra_env_source {
-            sources.push(ext("Src-1.1", "Source"));
+            sources.push(ext("Src-1.1", "Sibling", "Source"));
         }
         // src flow target: normally the interface component K0.0; when
         // `land_src_on_env`, it lands on a sink (no interface component) instead.
@@ -406,7 +582,7 @@ mod tests {
             "environment": {
                 "info": { "id": "E-1", "level": -1, "name": "", "description": "" },
                 "sources": sources,
-                "sinks": [ ext("Snk-1.0", "Sink") ]
+                "sinks": [ ext("Snk-1.0", "Sibling", "Sink") ]
             },
             "systems": [
                 sys("S0", 0, "FurnaceInterior", "E-1"),
@@ -440,9 +616,9 @@ mod tests {
         })
     }
 
-    fn ext(id: &str, ty: &str) -> Value {
+    fn ext(id: &str, name: &str, ty: &str) -> Value {
         json!({
-            "info": { "id": id, "level": -1, "name": id, "description": "" },
+            "info": { "id": id, "level": -1, "name": name, "description": "" },
             "type": ty,
             "equivalence": "", "model": ""
         })
@@ -509,7 +685,7 @@ mod tests {
         let mut parent = parent_model();
         let value = json!({
             "info": { "id": "E-1", "level": -1, "name": "", "description": "" },
-            "sources": [], "sinks": [ ext("Snk-1.0", "Sink") ]
+            "sources": [], "sinks": [ ext("Snk-1.0", "Snk-1.0", "Sink") ]
         });
         parent.environment = serde_json::from_value(value).unwrap();
         parent.interactions.push(
@@ -668,6 +844,70 @@ mod tests {
         assert!(messages(&issues).contains("derived_env"), "must name the property: {}", messages(&issues));
     }
 
+    // ── derived_env, cross-model nominal identity (step 5a) ──
+
+    #[test]
+    fn derived_env_identity_passes_when_stand_ins_name_the_neighbor() {
+        // Both env objects carry "Sibling" — the name of C0.0's one interior
+        // neighbor — so the nominal equality holds in both directions.
+        let issues =
+            check_decomposition_contract(&parent_model(), &comp(), &child_model("Energy", "Material", false, false));
+        assert!(!messages(&issues).contains("derived_env"), "{}", messages(&issues));
+    }
+
+    #[test]
+    fn derived_env_fails_when_an_env_object_names_no_neighbor() {
+        // Same structure, one fact changed: the inbound stand-in's name drifts
+        // to "Stranger", which is no interior neighbor of C0.0.
+        let mut child = child_model("Energy", "Material", false, false);
+        child.environment.sources[0].info.name = "Stranger".into();
+        let issues = check_decomposition_contract(&parent_model(), &comp(), &child);
+        assert!(
+            messages(&issues).contains("derived_env")
+                && messages(&issues).contains("does not stand for any interior neighbor"),
+            "must name the property and the direction: {}",
+            messages(&issues)
+        );
+    }
+
+    #[test]
+    fn derived_env_fails_when_a_neighbor_has_no_stand_in() {
+        // Grow the parent neighborhood by one: a new component "Feeder" with an
+        // Energy inflow into C0.0. The child balances the flow counts and kinds
+        // (a second Energy inbound from a second "Sibling" stand-in), so every β
+        // row passes — but "Feeder" has no stand-in, so E′ ⊉ succ(c) ∪ pred(c).
+        let mut parent = parent_model();
+        parent
+            .systems
+            .push(serde_json::from_value(sys("C0.2", 1, "Feeder", "S0")).unwrap());
+        parent.interactions.push(
+            serde_json::from_value(endo_flow("F2", "feed", "C0.2", "C0.0", "Energy")).unwrap(),
+        );
+        let mut child = child_model("Energy", "Material", true, false);
+        child.interactions.push(
+            serde_json::from_value(exo_flow("F2", "extra-in", "Src-1.1", "C0.0", "Energy")).unwrap(),
+        );
+        let issues = check_decomposition_contract(&parent, &comp(), &child);
+        assert!(
+            messages(&issues).contains("derived_env")
+                && messages(&issues).contains("\"Feeder\"")
+                && messages(&issues).contains("has no stand-in"),
+            "must name the property and the missing neighbor: {}",
+            messages(&issues)
+        );
+        assert!(!messages(&issues).contains("βsrc"), "the β rows must still pass: {}", messages(&issues));
+    }
+
+    #[test]
+    fn env_identity_map_pairs_stand_ins_with_their_neighbors() {
+        let parent = parent_model();
+        let child = child_model("Energy", "Material", false, false);
+        let map = env_identity_map(&parent, &comp(), &child);
+        let sibling: Id = serde_json::from_value(json!("C0.1")).unwrap();
+        assert_eq!(map.len(), 2, "both stand-ins identify");
+        assert!(map.values().all(|n| n == &sibling), "both stand for Sibling");
+    }
+
     // ── caller-facing: missing referent ──
 
     #[test]
@@ -687,5 +927,57 @@ mod tests {
         let issues =
             check_decomposition(&parent_model(), &comp(), &ModelRef::new(uuid::Uuid::nil()), Some(&child));
         assert!(issues.is_empty(), "a resolved, well-formed seam is clean: {}", messages(&issues));
+    }
+
+    // ── check_decompositions: the whole-model resolution-time walk ──
+
+    /// `parent_model` with C0.0 stamped as decomposed, plus the child's JSON and
+    /// the canonical key the store would resolve it under.
+    fn decomposed_parent() -> (WorldModel, String, String) {
+        let mut parent = parent_model();
+        let child_ref = ModelRef::to(crate::ModelId::mint());
+        parent.systems[1].child_model = Some(child_ref);
+        let key = crate::model_id::encode_uuid(&child_ref.as_uuid());
+        let child_json =
+            serde_json::to_string(&child_model("Energy", "Material", false, false)).unwrap();
+        (parent, key, child_json)
+    }
+
+    #[test]
+    fn check_decompositions_is_clean_when_every_referent_resolves() {
+        let (parent, key, child_json) = decomposed_parent();
+        let resolved = HashMap::from([(key, child_json)]);
+        let issues = check_decompositions(&parent, &resolved);
+        assert!(issues.is_empty(), "a resolved, well-formed model is clean: {}", messages(&issues));
+    }
+
+    #[test]
+    fn check_decompositions_surfaces_a_missing_referent() {
+        let (parent, _, _) = decomposed_parent();
+        let issues = check_decompositions(&parent, &HashMap::new());
+        assert_eq!(issues.len(), 1);
+        assert!(messages(&issues).contains("could not be resolved"), "{}", messages(&issues));
+    }
+
+    #[test]
+    fn check_decompositions_surfaces_an_unparseable_referent() {
+        let (parent, key, _) = decomposed_parent();
+        let resolved = HashMap::from([(key, "{ not a model".to_string())]);
+        let issues = check_decompositions(&parent, &resolved);
+        assert_eq!(issues.len(), 1);
+        assert!(
+            messages(&issues).contains("not a loadable model"),
+            "corrupt referent text must be its own defined issue: {}",
+            messages(&issues)
+        );
+    }
+
+    #[test]
+    fn decomposition_refs_lists_every_stamped_component() {
+        let (parent, _, _) = decomposed_parent();
+        let refs = decomposition_refs(&parent);
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].0, comp());
+        assert!(decomposition_refs(&parent_model()).is_empty(), "a flat model has no refs");
     }
 }
