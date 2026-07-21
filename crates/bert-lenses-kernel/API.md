@@ -21,6 +21,11 @@ type ValidationIssue = {
   location: string,
   message: string,
   suggestion: string | null,
+  // #129, additive: stable doc anchor for the precondition the issue cites —
+  // a repo-relative docs path + heading anchor chosen kernel-side
+  // (bert_core::validate::doc; anchors pinned by the doc_anchors_resolve
+  // test). Optional on the wire; absent/null = no doc link.
+  doc?: string | null,
 }
 ```
 Throws only if `model_json` is not parseable as a `WorldModel`.

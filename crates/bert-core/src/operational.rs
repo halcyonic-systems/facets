@@ -222,7 +222,14 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
         .into_iter()
         .filter(|i| i.severity == Severity::Error)
     {
-        errors.push(OperationalError::new(issue.location, issue.message, None));
+        // The delegated issue's repair path rides along as the hint (#129) —
+        // the run gate must never be quieter than the audit panel about the
+        // same defect.
+        errors.push(OperationalError {
+            location: issue.location,
+            reason: issue.message,
+            hint: issue.suggestion,
+        });
     }
 
     let mut spec = OperationalSpec::default();
@@ -350,7 +357,11 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
                          (a level-1 work process or an environment terminal)",
                         ix.info.name
                     ),
-                    None,
+                    Some(
+                        "Point the flow at a level-1 work process, a Source, or a Sink \
+                         — or fix the endpoint that failed to project (see the errors \
+                         above for why it was skipped)",
+                    ),
                 ));
                 flow_ok = false;
             }

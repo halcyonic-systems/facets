@@ -84,6 +84,9 @@ fn refuse(location: String, message: String, suggestion: &str, subject: Option<I
         location,
         message,
         suggestion: Some(suggestion.to_string()),
+        // Every seam refusal cites the boundary contract's spec entry (#129):
+        // all rows here transcribe the one Lean `Decomposition` structure.
+        doc: Some(crate::validate::doc::DECOMPOSITION.to_string()),
         subject,
     }
 }
@@ -94,6 +97,7 @@ fn warn(location: String, message: String, suggestion: String, subject: Option<I
         location,
         message,
         suggestion: Some(suggestion),
+        doc: Some(crate::validate::doc::DECOMPOSITION.to_string()),
         subject,
     }
 }
@@ -298,11 +302,11 @@ fn interior_neighbors(parent: &WorldModel, comp: &Id) -> Vec<Id> {
 /// are not yet in the Lean contract (`inflows`/`outflows` cover the internal
 /// network only) — refuse loudly rather than check a seam the mathematics does
 /// not yet underwrite.
-fn decomposability(parent: &WorldModel, comp: &Id) -> Result<(), ValidationIssue> {
+fn decomposability(parent: &WorldModel, comp: &Id) -> Result<(), Box<ValidationIssue>> {
     let comp_is_component =
         is_system_relatum(comp) && parent.systems.iter().any(|s| &s.info.id == comp);
     if !comp_is_component {
-        return Err(refuse(
+        return Err(Box::new(refuse(
             id_str(comp),
             format!(
                 "Decomposition.comp_mem: \"{}\" is not a component of the parent model — \
@@ -311,10 +315,10 @@ fn decomposability(parent: &WorldModel, comp: &Id) -> Result<(), ValidationIssue
             ),
             "Reference a component that exists in the parent model's systems",
             Some(comp.clone()),
-        ));
+        )));
     }
     if parent.boundary_components().contains(comp) {
-        return Err(refuse(
+        return Err(Box::new(refuse(
             id_str(comp),
             format!(
                 "v1 refuses to decompose \"{}\": it is an interface component of the \
@@ -326,7 +330,7 @@ fn decomposability(parent: &WorldModel, comp: &Id) -> Result<(), ValidationIssue
             ),
             "Decompose an interior component, or wait for the external-flow case to land in the Lean contract",
             Some(comp.clone()),
-        ));
+        )));
     }
     Ok(())
 }
@@ -406,7 +410,7 @@ fn child_root(root_id: &Id, env_id: &Id, name: &str) -> System {
 /// so the child opens under the same lens. Pure otherwise: no I/O; the store
 /// layer saves the result and stamps the parent's reference.
 pub fn derive_child(parent: &WorldModel, comp: &Id) -> Result<WorldModel, Vec<ValidationIssue>> {
-    decomposability(parent, comp).map_err(|issue| vec![issue])?;
+    decomposability(parent, comp).map_err(|issue| vec![*issue])?;
 
     let env_id = Id {
         ty: IdType::Environment,
@@ -541,7 +545,7 @@ pub fn check_decomposition_contract(
     let loc = id_str(comp);
 
     if let Err(issue) = decomposability(parent, comp) {
-        issues.push(issue);
+        issues.push(*issue);
         return issues;
     }
 

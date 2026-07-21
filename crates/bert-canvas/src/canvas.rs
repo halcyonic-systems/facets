@@ -655,6 +655,7 @@ pub fn decompose_thing(
                       model relatum"
                 .to_string(),
             suggestion: Some("Select a component of the model".to_string()),
+            doc: Some(bert_core::validate::doc::DECOMPOSITION.to_string()),
             subject: None,
         }]),
     }

@@ -808,6 +808,7 @@ fn check_mobus_openness(facts: &LensFacts, issues: &mut Vec<ValidationIssue>) {
                  object), or keep this as a closed authoring intermediate"
                     .to_string(),
             ),
+            doc: Some(bert_core::validate::doc::OPENNESS.to_string()),
             subject: None,
         });
     }
