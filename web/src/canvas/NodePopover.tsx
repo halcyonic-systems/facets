@@ -8,7 +8,7 @@
 // the decision ovals INSIDE process ovals; agent designation is future work).
 import type { Lens, ProcessPrimitive, Thing } from "../kernel/types";
 import type { Pt } from "./geometry";
-import { InspectorRow as Row, InspectorTitle as Title } from "../ui";
+import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 
 /** The decomposition door as the shell hands it to the inspector (#89 step 5b).
  *  Which case applies is decided upstream off KERNEL facts (boundary membership
@@ -75,6 +75,40 @@ export function NodePopover({
           style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
         />
       </Row>
+      {/* The re-cut (#100 phase 2, ratified scope + F8): Bunge's C/E split is
+          indexed to a chosen reference class A — 𝒞_A, 𝓔_A, 𝒮_A — so which
+          side of the cut a thing sits on is the OBSERVER'S choice, re-drawable
+          at will. Moving a thing across the partition IS choosing A anew; the
+          kernel re-derives ℰ, 𝒮, and the hull from the new 𝒞 (the App
+          narrates that dependency at the moment it is enacted). Bunge-only:
+          under Mobus a source/sink is a different glyph vocabulary, not a
+          re-cuttable cut. A decomposed component stays put — its child model
+          is anchored to its being in 𝒞. */}
+      {lens === "Bunge" && (
+        <Row>
+          <span style={{ color: "var(--text-secondary)" }}>side of the cut</span>
+          <div className="flex gap-1" title={
+            thing.child_model
+              ? "this component decomposes into a child model — the reference class holds it in 𝒞"
+              : "the C/E partition is relative to the reference class A (Def 1.2) — re-cut by moving this thing across it"
+          }>
+            <SmallButton
+              active={isComponent}
+              disabled={!!thing.child_model && !isComponent}
+              onClick={() => !isComponent && onUpdateThing({ ...thing, role: "Component" })}
+            >
+              𝒞
+            </SmallButton>
+            <SmallButton
+              active={!isComponent}
+              disabled={!!thing.child_model && isComponent}
+              onClick={() => isComponent && onUpdateThing({ ...thing, role: "Environment" })}
+            >
+              ℰ
+            </SmallButton>
+          </div>
+        </Row>
+      )}
       {lens === "Mobus" && isComponent && (
         <Row>
           <span style={{ color: "var(--text-secondary)" }}>work process</span>

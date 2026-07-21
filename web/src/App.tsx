@@ -811,6 +811,17 @@ function Workspace() {
   // A node edit from the popover (rename, work-process set/clear): same shape
   // as updateRelation — the kernel re-projects + re-judges on every change.
   function updateThing(next: import("./kernel/types").Thing) {
+    // The re-cut narration (#100 phase 2, F8-as-curriculum): when a Bunge
+    // author moves a thing across the C/E partition, say the C→E→S dependency
+    // out loud AT the moment it is enacted — the one-line lesson, no wizard,
+    // no enforced sequence. The re-derivation itself is the kernel's (the
+    // analyze memo below re-judges ℰ, 𝒮, and the hull off the new 𝒞).
+    const prev = canvasModel?.things.find((t) => t.id === next.id);
+    if (canvasModel?.lens === "Bunge" && prev && prev.role !== next.role) {
+      setNotice(
+        `re-cut: "${next.name || "unnamed"}" → ${next.role === "Component" ? "𝒞" : "ℰ"} — composition chosen; environment and structure re-derive (C → E → S)`,
+      );
+    }
     setCanvasModel((m) =>
       m ? { ...m, things: m.things.map((t) => (t.id === next.id ? next : t)) } : m,
     );
