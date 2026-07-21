@@ -14,7 +14,8 @@ import { DEMOS, type Demo } from "./demos";
 import Canvas from "./canvas/Canvas";
 import { edgeGeometry, thingById } from "./canvas/geometry";
 import { EdgePopover } from "./canvas/EdgePopover";
-import { NodePopover } from "./canvas/NodePopover";
+import { NodePopover, type DecomposeAffordance } from "./canvas/NodePopover";
+import { KlirRegister } from "./canvas/KlirRegister";
 import { BoundaryPopover } from "./canvas/BoundaryPopover";
 import { PaletteRail } from "./canvas/PaletteRail";
 import type { PaletteTool } from "./canvas/lenses/registry";
@@ -775,6 +776,24 @@ function Workspace() {
 
   const clean = verdict !== null && verdict.issues.length === 0;
 
+  // The math-panel-first Klir register (#100): under Klir the set listings are
+  // the primary surface and the node-and-edge picture demotes to a locator, so
+  // the container composes differently — Bunge and Mobus are untouched.
+  const isKlir = canvasModel?.lens === "Klir";
+
+  // The decomposition door's case, decided off KERNEL facts (boundary
+  // membership = lens_facts.boundary_thing_ids — the same set the kernel's v1
+  // refusal checks). One function, read by the NodePopover AND the Klir
+  // register's inline thing editor.
+  function decomposeFor(thing: Thing): DecomposeAffordance | null {
+    if (thing.role !== "Component") return null;
+    if (thing.child_model)
+      return { kind: "entered", label: thing.child_model.name, onEnter: () => enterThingChild(thing) };
+    if (!facts) return null;
+    if (facts.boundary_thing_ids.includes(thing.id)) return { kind: "interface" };
+    return { kind: "ready", onDecompose: () => decomposeThing(thing) };
+  }
+
   // A human label for the model now on the canvas — the demo's title, else the
   // saved name, else a neutral "untitled". Shown in the menu bar and used to
   // mark the active row in the Switch menu.
@@ -1162,6 +1181,59 @@ function Workspace() {
                       border: "1px solid color-mix(in srgb, var(--lens-accent) 30%, var(--hairline))",
                     }}
                   >
+                    {/* Klir (#100): the register IS the stage — the literal
+                        T/R listings (and their matrix twin) fill the region;
+                        the node-and-edge picture demotes to the small locator
+                        box below. Editing happens in the register's own text;
+                        the pixel popovers stay a Bunge/Mobus device. */}
+                    {isKlir && (
+                      <KlirRegister
+                        model={canvasModel}
+                        selectedThingId={selectedThingId}
+                        selectedRelationId={selectedRelationId}
+                        onSelectThing={(id) => {
+                          setSelectedThingId(id);
+                          if (id !== null) {
+                            setSelectedRelationId(null);
+                            setBoundaryAnchor(null);
+                          }
+                        }}
+                        onSelectRelation={(id) => {
+                          setSelectedRelationId(id);
+                          if (id !== null) {
+                            setSelectedThingId(null);
+                            setBoundaryAnchor(null);
+                          }
+                        }}
+                        onUpdateThing={updateThing}
+                        onUpdateRelation={updateRelation}
+                        onDeleteThing={deleteThing}
+                        onDeleteRelation={deleteRelation}
+                        onModelChange={(m) => {
+                          setCanvasModel(m);
+                          setDirty(true);
+                        }}
+                        onReject={setToast}
+                        decomposeFor={decomposeFor}
+                        placeName={canvasModel.name?.trim() || currentLabel}
+                      />
+                    )}
+                    <div
+                      className={
+                        isKlir
+                          ? "absolute bottom-9 right-3 h-44 w-72 overflow-hidden rounded-lg"
+                          : "absolute inset-0"
+                      }
+                      style={
+                        isKlir
+                          ? {
+                              border: "1px solid var(--hairline)",
+                              background: "var(--bg-primary)",
+                              boxShadow: "var(--shadow-card)",
+                            }
+                          : undefined
+                      }
+                    >
                     <Canvas
                       model={canvasModel}
                       lens={canvasModel.lens}
@@ -1196,6 +1268,15 @@ function Workspace() {
                       // model can never impersonate its only component.
                       placeName={canvasModel.name?.trim() || currentLabel}
                     />
+                      {isKlir && (
+                        <span
+                          className="pointer-events-none absolute bottom-1 right-1.5 text-[9px] uppercase tracking-wide"
+                          style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+                        >
+                          locator
+                        </span>
+                      )}
+                    </div>
                     {boundaryAnchor && (
                       <BoundaryPopover
                         boundary={canvasModel.boundary}
@@ -1204,7 +1285,7 @@ function Workspace() {
                         onClose={() => setBoundaryAnchor(null)}
                       />
                     )}
-                    {selectedThing && (
+                    {selectedThing && !isKlir && (
                       <NodePopover
                         thing={selectedThing}
                         lens={canvasModel.lens}
@@ -1212,28 +1293,12 @@ function Workspace() {
                         onUpdateThing={updateThing}
                         onDelete={() => deleteThing(selectedThing.id)}
                         onClose={() => setSelectedThingId(null)}
-                        // The decomposition door (#89 step 5b), inspector-first.
-                        // Which case renders is a kernel fact: boundary
-                        // membership comes from lens_facts.boundary_thing_ids —
-                        // the same set the kernel's v1 refusal checks.
-                        decompose={
-                          selectedThing.role !== "Component"
-                            ? null
-                            : selectedThing.child_model
-                              ? {
-                                  kind: "entered",
-                                  label: selectedThing.child_model.name,
-                                  onEnter: () => enterThingChild(selectedThing),
-                                }
-                              : !facts
-                                ? null
-                                : facts.boundary_thing_ids.includes(selectedThing.id)
-                                  ? { kind: "interface" }
-                                  : { kind: "ready", onDecompose: () => decomposeThing(selectedThing) }
-                        }
+                        // The decomposition door (#89 step 5b), inspector-first
+                        // — the case is decided off kernel facts in decomposeFor.
+                        decompose={decomposeFor(selectedThing)}
                       />
                     )}
-                    {selectedRelation && popoverAnchor && (
+                    {selectedRelation && popoverAnchor && !isKlir && (
                       <EdgePopover
                         relation={selectedRelation}
                         lens={canvasModel.lens}
