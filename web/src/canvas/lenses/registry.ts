@@ -113,7 +113,7 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
         verb: "place",
         id: "thing",
         label: "thing",
-        tip: "a member of T — S = (T, R), Facets Eq. 1.1; systemhood lives in R",
+        tip: "a member of T — S = (T, R), Facets Eq. 1.1; one new row AND column of the matrix (systemhood lives in R)",
         role: "Component",
       },
     ],
@@ -122,7 +122,7 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
       {
         id: "relation",
         label: "relation",
-        tip: "drag the handle between two things — neutral by default; direction is the observer's per-relation toggle (Facets ch. 4)",
+        tip: "click an empty cell (row, col) of the matrix to relate the two things — neutral by default; direction is the observer's per-relation toggle in the cell editor (Facets ch. 4)",
       },
     ],
     derived: [],

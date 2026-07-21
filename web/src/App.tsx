@@ -12,6 +12,7 @@ import {
 import type { CanvasModel, IssueTarget, Manifest, RunResultRich, Thing, ValidationIssue } from "./kernel/types";
 import { DEMOS, type Demo } from "./demos";
 import Canvas from "./canvas/Canvas";
+import KlirMatrix from "./canvas/KlirMatrix";
 import { edgeGeometry, thingById } from "./canvas/geometry";
 import { EdgePopover } from "./canvas/EdgePopover";
 import { NodePopover } from "./canvas/NodePopover";
@@ -1162,6 +1163,28 @@ function Workspace() {
                       border: "1px solid color-mix(in srgb, var(--lens-accent) 30%, var(--hairline))",
                     }}
                   >
+                    {/* The Klir register (#100 phase 1) leaves the diagram
+                        paradigm: (T, R) is relational structure and Klir
+                        thinks in tables, so under the Klir lens the incidence
+                        matrix is the canvas — same model, same kernel seams
+                        (validate_connection on relate; analyze_canvas re-judges
+                        every change), different medium. Bunge and Mobus keep
+                        the diagram canvas untouched. */}
+                    {canvasModel.lens === "Klir" ? (
+                      <KlirMatrix
+                        model={canvasModel}
+                        onModelChange={(m) => {
+                          setCanvasModel(m);
+                          setDirty(true);
+                        }}
+                        onReject={setToast}
+                        armed={armed}
+                        onEnterThing={(t) => {
+                          if (t.child_model) enterThingChild(t);
+                        }}
+                        placeName={canvasModel.name?.trim() || currentLabel}
+                      />
+                    ) : (
                     <Canvas
                       model={canvasModel}
                       lens={canvasModel.lens}
@@ -1196,6 +1219,7 @@ function Workspace() {
                       // model can never impersonate its only component.
                       placeName={canvasModel.name?.trim() || currentLabel}
                     />
+                    )}
                     {boundaryAnchor && (
                       <BoundaryPopover
                         boundary={canvasModel.boundary}
@@ -1298,7 +1322,9 @@ function Workspace() {
                       className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-mono"
                       style={{ color: "var(--text-muted)" }}
                     >
-                      arm a tool to stamp (Esc disarms) · click a node to edit · drag the handle dot to connect · click a flow to drive it
+                      {canvasModel.lens === "Klir"
+                        ? "click an empty cell to relate · a filled cell to edit ⁄ unrelate · + adds a thing (one new row and column)"
+                        : "arm a tool to stamp (Esc disarms) · click a node to edit · drag the handle dot to connect · click a flow to drive it"}
                     </div>
                     {toast && (
                       <Banner tone="error" className="absolute bottom-3 left-3">
