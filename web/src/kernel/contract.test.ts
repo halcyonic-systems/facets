@@ -412,10 +412,11 @@ function parseRunResultRich(v: unknown): RunResultRich {
     residual: num(o.residual, "residual"),
     conserved: bool(o.conserved, "conserved"),
     levels: arr(o.levels, "levels").map((l, i) => {
-      const ll = shape(l, `levels[${i}]`, ["name", "unit", "value", "category"]);
+      const ll = shape(l, `levels[${i}]`, ["name", "unit", "unit_derived", "value", "category"]);
       return {
         name: str(ll.name, "level.name"),
         unit: str(ll.unit, "level.unit"),
+        unit_derived: bool(ll.unit_derived, "level.unit_derived"),
         value: num(ll.value, "level.value"),
         category: oneOf(ll.category, "level.category", ["product", "resource", "internal"] as const),
       };
@@ -433,8 +434,13 @@ function parseRunResultRich(v: unknown): RunResultRich {
       };
     }),
     trajectories: arr(o.trajectories, "trajectories").map((t, i) => {
-      const tt = shape(t, `trajectories[${i}]`, ["name", "unit", "series"]);
-      return { name: str(tt.name, "traj.name"), unit: str(tt.unit, "traj.unit"), series: nums(tt.series, "traj.series") };
+      const tt = shape(t, `trajectories[${i}]`, ["name", "unit", "unit_derived", "series"]);
+      return {
+        name: str(tt.name, "traj.name"),
+        unit: str(tt.unit, "traj.unit"),
+        unit_derived: bool(tt.unit_derived, "traj.unit_derived"),
+        series: nums(tt.series, "traj.series"),
+      };
     }),
   };
 }

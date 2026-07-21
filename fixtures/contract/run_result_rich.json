@@ -7,18 +7,21 @@
     {
       "name": "Release",
       "unit": "",
+      "unit_derived": false,
       "value": 16.5,
       "category": "product"
     },
     {
       "name": "Watershed",
       "unit": "ML/mo",
+      "unit_derived": false,
       "value": 30.75,
       "category": "resource"
     },
     {
       "name": "Reservoir",
-      "unit": "ML/mo",
+      "unit": "ML",
+      "unit_derived": true,
       "value": 421.0,
       "category": "internal"
     }
@@ -77,6 +80,7 @@
     {
       "name": "Watershed",
       "unit": "ML/mo",
+      "unit_derived": false,
       "series": [
         20.0,
         35.0,
@@ -95,6 +99,7 @@
     {
       "name": "Release",
       "unit": "",
+      "unit_derived": false,
       "series": [
         0.0,
         1.5,
@@ -112,7 +117,8 @@
     },
     {
       "name": "Reservoir",
-      "unit": "ML/mo",
+      "unit": "ML",
+      "unit_derived": true,
       "series": [
         98.5,
         117.0,
