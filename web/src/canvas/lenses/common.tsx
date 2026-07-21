@@ -232,6 +232,9 @@ interface EdgeScaffoldProps {
   overlay?: ReactNode;
   /** The per-lens edge label (Klir signature vs Bunge/Mobus flow name). */
   label?: ReactNode;
+  /** Hover copy on the edge's hit path (e.g. Bunge's channel vocabulary,
+   *  #100 phase 2 F6). Omitted by Klir/Mobus — their output is unchanged. */
+  title?: string;
 }
 
 /** The edge plumbing common to every lens — hit target, selection halo, muted
@@ -250,6 +253,7 @@ export function EdgeScaffold({
   onSelect,
   overlay,
   label,
+  title,
 }: EdgeScaffoldProps) {
   return (
     <g>
@@ -265,7 +269,9 @@ export function EdgeScaffold({
           e.stopPropagation();
           onSelect?.(relationId);
         }}
-      />
+      >
+        {title && <title>{title}</title>}
+      </path>
       {selected && (
         <path
           data-export-ignore

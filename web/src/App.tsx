@@ -1439,6 +1439,7 @@ function Workspace() {
                         headers={csvHeaders}
                         manifest={manifest}
                         anchor={toScreen(popoverAnchor)}
+                        fact={facts?.edges.find((e) => e.id === selectedRelation.id)}
                         onApplyManifest={applyDrive}
                         onUpdateRelation={updateRelation}
                         onDelete={() => deleteRelation(selectedRelation.id)}

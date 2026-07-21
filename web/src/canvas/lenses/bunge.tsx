@@ -42,13 +42,34 @@ function edgeStyle(relation: Relation, fact: EdgeFact | undefined): EdgeStyle {
     return { color: "var(--text-muted)", width: STYLE.edge.mere, dash: "3 4", opacity: 0.7 };
   }
   // Endo/exo as an edge split — kernel-computed (edge ∈ N vs edge ∈ G), kind-colored.
+  // The exo dash further reads the kernel's coupling channel (#100 phase 2 F6,
+  // Bunge's own matrix grammar): an INPUT arrives in short marks (M₀ᵣ — ℰ acts
+  // on 𝒞), an OUTPUT departs in long ones (Mₛ₀ — 𝒞 acts on ℰ); internuncial
+  // actions (Mᵣₛ) stay solid. Subtle by intent — the direction arrow still
+  // carries the action; the dash only says which side of the cut is acting.
   const exo = fact?.locus === "Exo";
   return {
     color: KIND_COLOR[relation.kind],
     width: exo ? STYLE.edge.exo : STYLE.edge.bond,
-    dash: exo ? "10 3" : undefined,
+    dash: exo ? (fact?.channel === "Input" ? "4 5" : "12 4") : undefined,
     opacity: 0.85,
   };
+}
+
+/** Bunge's channel vocabulary, verbatim (input / output / internuncial —
+ *  his M₀ᵣ / Mₛ₀ / Mᵣₛ matrix reading), for the edge's hover copy. */
+export function channelCopy(fact: EdgeFact | undefined, isBond: boolean): string {
+  if (!isBond) return "mere relation — holds between its relata but acts on neither (no channel; Bunge Def 1.1)";
+  switch (fact?.channel) {
+    case "Input":
+      return "input — the environment acts on the composition (M₀ᵣ)";
+    case "Output":
+      return "output — the composition acts on the environment (Mₛ₀)";
+    case "Internuncial":
+      return "internuncial — component acts on component (Mᵣₛ)";
+    default:
+      return "coupling outside 𝒮 — neither relatum is in the composition";
+  }
 }
 
 function EdgeView({ model, relation, fact, selected, driven, sim, onSelect }: LensEdgeProps) {
@@ -100,6 +121,7 @@ function EdgeView({ model, relation, fact, selected, driven, sim, onSelect }: Le
       onSelect={onSelect}
       overlay={overlay}
       label={label}
+      title={channelCopy(fact, relation.is_bond)}
     />
   );
 }

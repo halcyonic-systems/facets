@@ -6,7 +6,8 @@
 // Every edit flows through onModelChange → App re-runs validate_mode +
 // lens_facts in Rust; the popover itself decides nothing about systemhood.
 import { useEffect, useRef, useState } from "react";
-import type { ColumnMapping, Kind, Lens, Manifest, Relation } from "../kernel/types";
+import type { ColumnMapping, EdgeFact, Kind, Lens, Manifest, Relation } from "../kernel/types";
+import { channelCopy } from "./lenses/bunge";
 import type { Pt } from "./geometry";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 import {
@@ -29,6 +30,7 @@ export function EdgePopover({
   headers,
   manifest,
   anchor,
+  fact,
   onApplyManifest,
   onUpdateRelation,
   onDelete,
@@ -40,6 +42,8 @@ export function EdgePopover({
   headers: string[];
   manifest: Manifest;
   anchor: Pt;
+  /** The kernel's edge-ladder reading — Bunge shows its coupling channel (F6). */
+  fact?: EdgeFact;
   onApplyManifest: (m: Manifest) => void;
   onUpdateRelation: (r: Relation) => void;
   onDelete: () => void;
@@ -64,7 +68,7 @@ export function EdgePopover({
       {lens === "Klir" && (
         <KlirBody relation={relation} sigIndex={sigIndex} onUpdate={onUpdateRelation} onClose={onClose} />
       )}
-      {lens === "Bunge" && <BungeBody relation={relation} onUpdate={onUpdateRelation} onClose={onClose} />}
+      {lens === "Bunge" && <BungeBody relation={relation} fact={fact} onUpdate={onUpdateRelation} onClose={onClose} />}
       {lens === "Mobus" && (
         <MobusBody
           relation={relation}
@@ -87,7 +91,8 @@ export function EdgePopover({
 // The name saves live on every keystroke (onUpdateRelation), but that's invisible —
 // so a committed name reads as unsaved. Enter (or blurring the field) is the commit
 // gesture; a brief ✓ confirms the save landed. Presentation only: no new save path.
-function FlowNameField({
+// Exported for the Bunge register's inline coupling editor (#100 phase 2).
+export function FlowNameField({
   relation,
   onUpdateRelation,
 }: {
@@ -192,12 +197,17 @@ function KlirBody({
 
 // ---- Bunge: kind-typed directed bonds; bond vs mere relation is the criterion ----
 
-function BungeBody({
+// Exported for the Bunge register (#100 phase 2): the matrix view edits a
+// selected coupling inline with the SAME body the popover uses — one editor,
+// two homes, no duplicated verbs.
+export function BungeBody({
   relation,
+  fact,
   onUpdate,
   onClose,
 }: {
   relation: Relation;
+  fact?: EdgeFact;
   onUpdate: (r: Relation) => void;
   onClose: () => void;
 }) {
@@ -205,6 +215,12 @@ function BungeBody({
     <>
       <Title>{relation.is_bond ? "bond" : "mere relation"} &ldquo;{relation.name || "unnamed"}&rdquo;</Title>
       <FormalismLine parts={bungeFormalism(relation)} />
+      {/* The kernel's channel verdict, in Bunge's own vocabulary (F6): where
+          this action sits in his coupling matrix. Read-only — the channel is
+          derived from the cut + direction, never authored directly. */}
+      <p className="mb-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+        {channelCopy(fact, relation.is_bond)}
+      </p>
       <Row>
         <span style={{ color: "var(--text-secondary)" }}>connection kind</span>
         <select
