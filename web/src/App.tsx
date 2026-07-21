@@ -35,7 +35,8 @@ import {
   readModelFile,
   type DirHandleLike,
 } from "./fsAccess";
-import { saveModel, listModels, loadModel, deleteModel } from "./modelStore";
+import { saveModel, listModelRecords, loadModel, deleteModel } from "./modelStore";
+import { buildLibraryTree, flattenLibraryTree, type LibraryNode } from "./libraryTree";
 import { mintLibraryName, parentSlotName } from "./libraryNames";
 import { resolveModelRefs } from "./modelResolve";
 import { diagramFilename, exportDiagramSvg, exportDiagramPng } from "./canvas/exportDiagram";
@@ -208,8 +209,16 @@ function Workspace() {
   // The browser-local model library (IndexedDB, fsAccess.ts's flag-free sibling):
   // whether the pending SaveDialog writes to the folder or the library, and the
   // library's current listing (shown in OpenDialog, refreshed when it opens).
+  // The listing is a TREE (#105): children reached by `decomposes` references
+  // group under their root SOIs, read fresh from the records on every refresh —
+  // grouping is never stored, so deleting a parent simply re-reads its children
+  // as roots. The flattened form feeds the Switch menu's indented rows.
   const [saveTarget, setSaveTarget] = useState<"folder" | "library">("folder");
-  const [libraryModels, setLibraryModels] = useState<{ name: string; savedAt: number }[]>([]);
+  const [libraryTree, setLibraryTree] = useState<LibraryNode[]>([]);
+  const libraryList = useMemo(() => flattenLibraryTree(libraryTree), [libraryTree]);
+  async function refreshLibrary() {
+    setLibraryTree(buildLibraryTree(await listModelRecords()));
+  }
   // A soft, informational message channel, distinct from `toast` (which the
   // canvas reserves for kernel rejections, rendered "rejected — …").
   const [notice, setNotice] = useState<string | null>(null);
@@ -450,7 +459,7 @@ function Workspace() {
     try {
       if (saveTarget === "library") {
         await saveModel(stem, json);
-        setLibraryModels(await listModels());
+        await refreshLibrary();
         setCurrentName(stem);
         setSaveDialogOpen(false);
         setDirty(false);
@@ -541,7 +550,7 @@ function Workspace() {
   async function removeFromLibrary(name: string) {
     try {
       await deleteModel(name);
-      setLibraryModels(await listModels());
+      await refreshLibrary();
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
@@ -652,9 +661,7 @@ function Workspace() {
   // this browser" section reflects the current IndexedDB contents.
   useEffect(() => {
     if (!galleryOpen) return;
-    listModels()
-      .then(setLibraryModels)
-      .catch((e) => setToast(e instanceof Error ? e.message : String(e)));
+    refreshLibrary().catch((e) => setToast(e instanceof Error ? e.message : String(e)));
   }, [galleryOpen]);
 
   const csvHeaders = useMemo(() => {
@@ -844,7 +851,7 @@ function Workspace() {
     try {
       // Library slots are keyed by name (put overwrites), so an occupied name
       // gets a numeric suffix rather than silently clobbering another model.
-      const taken = new Set((await listModels()).map((m) => m.name));
+      const taken = new Set((await listModelRecords()).map((m) => m.name));
       const parent = parentSlotName(currentName, canvasModel.name, demo?.key, taken);
       if (!parent) {
         setNotice("name this model first (File → Save to library…) — the decomposition reference needs a saved parent to live in");
@@ -865,7 +872,7 @@ function Workspace() {
         ),
       };
       await saveModel(parent.name, JSON.stringify(project(stamped), null, 2));
-      setLibraryModels(await listModels());
+      await refreshLibrary();
       setCanvasModel(stamped);
       setCurrentName(parent.name);
       setDirty(false);
@@ -962,7 +969,7 @@ function Workspace() {
       setArmed(null);
       setCurrentName(target.currentName);
       setDirty(target.dirty);
-      setLibraryModels(await listModels());
+      await refreshLibrary();
       setFitToken((n) => (n ?? 0) + 1);
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
@@ -986,7 +993,7 @@ function Workspace() {
         currentLabel={currentLabel}
         dirty={dirty}
         onHome={goHome}
-        libraryModels={libraryModels}
+        libraryModels={libraryList}
         onSwitchDemo={switchToDemo}
         onSwitchLibrary={switchToLibrary}
         onOpenFull={() => setGalleryOpen(true)}
@@ -1398,7 +1405,7 @@ function Workspace() {
           folderFiles={folderFiles}
           onOpenFolder={openFolder}
           onOpenFromFolder={openFromFolder}
-          libraryModels={libraryModels}
+          libraryTree={libraryTree}
           onLoadFromLibrary={loadFromLibrary}
           onDeleteFromLibrary={removeFromLibrary}
         />
@@ -1467,7 +1474,7 @@ function MenuBar({
   currentLabel: string | null;
   dirty: boolean;
   onHome: () => void;
-  libraryModels: { name: string; savedAt: number }[];
+  libraryModels: { name: string; savedAt: number; depth: number }[];
   onSwitchDemo: (d: Demo) => void;
   onSwitchLibrary: (name: string) => void;
   onOpenFull: () => void;
@@ -1628,6 +1635,9 @@ function MenuBar({
                   no saved models yet
                 </div>
               ) : (
+                // Depth mirrors the OpenDialog's grouping (#105): children of a
+                // decomposed model indent under their root SOI instead of
+                // reading as top-level peers.
                 libraryModels.map((m) => {
                   const active = currentLabel === m.name;
                   return (
@@ -1637,10 +1647,18 @@ function MenuBar({
                         setSwitchOpen(false);
                         onSwitchLibrary(m.name);
                       }}
-                      className="block w-full truncate px-3 py-1.5 text-left text-xs"
-                      style={{ color: active ? "var(--accent-strong)" : "var(--text-secondary)" }}
+                      className="block w-full truncate py-1.5 pr-3 text-left text-xs"
+                      style={{
+                        paddingLeft: 12 + m.depth * 12,
+                        color: active ? "var(--accent-strong)" : "var(--text-secondary)",
+                      }}
                       title={m.name}
                     >
+                      {m.depth > 0 && (
+                        <span aria-hidden style={{ color: "var(--text-muted)" }}>
+                          {"└ "}
+                        </span>
+                      )}
                       {active ? "• " : ""}
                       {m.name}
                     </button>
@@ -1741,6 +1759,68 @@ function PaletteDock({
   );
 }
 
+// One library row plus, recursively, the rows of the children its `decomposes`
+// references reach (#105) — the root at depth 0, each level indented one step
+// with a connector glyph. Every row loads on click and deletes on ×; deleting
+// a parent never touches its children (the next listing reads them as roots).
+// A reference that resolves to no saved record shows as a quiet "n missing"
+// note on the parent — the library-level echo of the kernel's missing-referent
+// issue on the canvas.
+function LibraryRow({
+  node,
+  depth,
+  onLoad,
+  onDelete,
+}: {
+  node: LibraryNode;
+  depth: number;
+  onLoad: (name: string) => void;
+  onDelete: (name: string) => void;
+}) {
+  return (
+    <>
+      <div
+        className={depth === 0 ? "flex items-center gap-2" : "mt-1 flex items-center gap-2"}
+        style={{ paddingLeft: depth === 0 ? 0 : (depth - 1) * 14 }}
+      >
+        {depth > 0 && (
+          <span aria-hidden className="shrink-0 text-xs" style={{ color: "var(--text-muted)" }}>
+            └
+          </span>
+        )}
+        <button
+          onClick={() => onLoad(node.name)}
+          className="min-w-0 flex-1 text-left"
+          title={node.name}
+        >
+          <div
+            className={depth === 0 ? "truncate text-sm" : "truncate text-xs"}
+            style={{ color: "var(--text-primary)" }}
+          >
+            {node.name}
+          </div>
+          <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+            saved {relTime(node.savedAt)}
+            {node.missingReferents > 0 &&
+              ` · ${node.missingReferents} referent${node.missingReferents === 1 ? "" : "s"} missing`}
+          </div>
+        </button>
+        <button
+          onClick={() => onDelete(node.name)}
+          title={`Delete ${node.name}`}
+          className="shrink-0 rounded px-1.5 text-sm"
+          style={{ color: "var(--text-muted)" }}
+        >
+          ×
+        </button>
+      </div>
+      {node.children.map((c) => (
+        <LibraryRow key={c.name} node={c} depth={depth + 1} onLoad={onLoad} onDelete={onDelete} />
+      ))}
+    </>
+  );
+}
+
 // File → Open: the demo gallery, now a start screen / modal rather than a
 // permanent hero section above the fold.
 function OpenDialog({
@@ -1755,7 +1835,7 @@ function OpenDialog({
   folderFiles,
   onOpenFolder,
   onOpenFromFolder,
-  libraryModels,
+  libraryTree,
   onLoadFromLibrary,
   onDeleteFromLibrary,
 }: {
@@ -1770,7 +1850,7 @@ function OpenDialog({
   folderFiles: string[] | null;
   onOpenFolder: () => void;
   onOpenFromFolder: (name: string) => void;
-  libraryModels: { name: string; savedAt: number }[];
+  libraryTree: LibraryNode[];
   onLoadFromLibrary: (name: string) => void;
   onDeleteFromLibrary: (name: string) => void;
 }) {
@@ -1907,7 +1987,13 @@ function OpenDialog({
         </div>
 
         {/* Saved in this browser: the IndexedDB library. Always shown (flag-free,
-            works in every browser) — click a row to load, × to delete. */}
+            works in every browser) — click a row to load, × to delete. One card
+            per root SOI (#105): subsystems reached by `decomposes` references
+            nest indented inside their root's card instead of sprawling as
+            top-level peers, so this section reads as "pick your system of
+            interest". The grouping is a fresh reading of the reference graph on
+            every open — deleting a parent leaves its children, which simply
+            list as roots next time. */}
         <div className="mt-4">
           <div
             className="mb-2 text-[10px] font-semibold uppercase tracking-wide"
@@ -1915,16 +2001,16 @@ function OpenDialog({
           >
             Saved in this browser
           </div>
-          {libraryModels.length === 0 ? (
+          {libraryTree.length === 0 ? (
             <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               no saved models yet
             </p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
-              {libraryModels.map((m) => (
+              {libraryTree.map((root) => (
                 <div
-                  key={m.name}
-                  className="flex items-center gap-2 p-3"
+                  key={root.name}
+                  className="p-3"
                   style={{
                     background: "var(--bg-secondary)",
                     border: "1px solid var(--border)",
@@ -1932,26 +2018,12 @@ function OpenDialog({
                     borderRadius: "var(--radius-card)",
                   }}
                 >
-                  <button
-                    onClick={() => onLoadFromLibrary(m.name)}
-                    className="min-w-0 flex-1 text-left"
-                    title={m.name}
-                  >
-                    <div className="truncate text-sm" style={{ color: "var(--text-primary)" }}>
-                      {m.name}
-                    </div>
-                    <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                      saved {relTime(m.savedAt)}
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => onDeleteFromLibrary(m.name)}
-                    title={`Delete ${m.name}`}
-                    className="shrink-0 rounded px-1.5 text-sm"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    ×
-                  </button>
+                  <LibraryRow
+                    node={root}
+                    depth={0}
+                    onLoad={onLoadFromLibrary}
+                    onDelete={onDeleteFromLibrary}
+                  />
                 </div>
               ))}
             </div>

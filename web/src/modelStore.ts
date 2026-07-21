@@ -65,12 +65,13 @@ export async function saveModel(name: string, json: string): Promise<void> {
   await withStore("readwrite", (store) => store.put(record));
 }
 
-/** Every saved model's name + timestamp, newest first (for the library list). */
-export async function listModels(): Promise<{ name: string; savedAt: number }[]> {
+/** Every saved record in full, newest first. The library list parses each
+ *  record's JSON at list time to group children under their decomposing
+ *  parents (libraryTree.ts) — records number in the tens, so parse-on-list
+ *  needs no cache and the store keeps no derived grouping state. */
+export async function listModelRecords(): Promise<ModelRecord[]> {
   const records = await withStore<ModelRecord[]>("readonly", (store) => store.getAll());
-  return records
-    .map((r) => ({ name: r.name, savedAt: r.savedAt }))
-    .sort((a, b) => b.savedAt - a.savedAt);
+  return records.sort((a, b) => b.savedAt - a.savedAt);
 }
 
 /** The stored JSON for one model, for `toCanvas`. */
