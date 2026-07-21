@@ -72,6 +72,9 @@ fn relation(id: u64, a: u64, b: u64, name: &str, is_bond: bool, kind: Kind) -> R
 fn sample() -> CanvasModel {
     CanvasModel {
         lens: Lens::Mobus,
+        // A fixed identity so the golden proves `model_id` crosses the edge
+        // deterministically (the walk depends on it surviving the seam).
+        model_id: Some("Hrs6K91KnZZsiPcWzftv8U".parse::<ModelId>().unwrap()),
         things: vec![
             // Pump carries a decomposition reference (#89): the golden proves
             // `child_model` crosses the edge as { name, base58 id }.
@@ -146,6 +149,21 @@ fn lens_description_fixtures() {
     check_fixture("lens_description_klir", &describe(&m, Lens::Klir));
     check_fixture("lens_description_bunge", &describe(&m, Lens::Bunge));
     check_fixture("lens_description_mobus", &describe(&m, Lens::Mobus));
+}
+
+/// Law: `DecompositionReport` freezes its wasm-boundary shape against a real
+/// seam check — the sample's pump reference deliberately unresolved (an empty
+/// store), so the fixture exercises a defined issue with its canvas target
+/// resolved to the decomposed component. Deterministic: nothing is minted.
+#[test]
+fn decomposition_report_fixture() {
+    let report = bert_canvas::lenses::check_decompositions_canvas(
+        &sample(),
+        &std::collections::HashMap::new(),
+    );
+    assert_eq!(report.issues.len(), 1, "the pump's referent must be unresolved");
+    assert_eq!(report.issue_targets[0].thing, Some(1), "the issue targets the Pump");
+    check_fixture("decomposition_report", &report);
 }
 
 /// Law: `SlError`'s wasm-boundary shape is frozen against a real multi-fault

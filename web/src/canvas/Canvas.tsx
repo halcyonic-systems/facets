@@ -27,6 +27,10 @@ interface Props {
   /** The rail's armed tool — place stamps on stage click, designate on node click. */
   armed?: PaletteTool | null;
   onSelectThing?: (id: number | null) => void;
+  /** Double-click a thing — the decomposition walk's enter gesture (#89 step
+   *  5b). The canvas only reports the gesture; whether the thing has a child to
+   *  enter (and what entering means) is the shell's call. */
+  onEnterThing?: (thing: Thing) => void;
   /** Click the Mobus membrane (or a port — interfaces belong to B) to open the
    *  boundary inspector; the anchor is a world-space point on the ring. */
   onSelectBoundary?: (at: Pt) => void;
@@ -50,6 +54,7 @@ export default function Canvas({
   onSelectRelation,
   armed = null,
   onSelectThing,
+  onEnterThing,
   onSelectBoundary,
   driven,
   sim,
@@ -279,16 +284,23 @@ export default function Canvas({
         )}
 
         {model.things.map((t) => (
-          <views.NodeView
+          <g
             key={t.id}
-            thing={t}
-            isBoundary={boundarySet.has(t.id)}
-            isOrphan={orphanSet.has(t.id)}
-            hovered={hoverTarget === t.id}
-            sim={sim?.nodes[t.name]}
-            onPointerDown={(e) => gestures.onNodePointerDown(e, t)}
-            onHandlePointerDown={(e) => gestures.onHandlePointerDown(e, t)}
-          />
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              onEnterThing?.(t);
+            }}
+          >
+            <views.NodeView
+              thing={t}
+              isBoundary={boundarySet.has(t.id)}
+              isOrphan={orphanSet.has(t.id)}
+              hovered={hoverTarget === t.id}
+              sim={sim?.nodes[t.name]}
+              onPointerDown={(e) => gestures.onNodePointerDown(e, t)}
+              onHandlePointerDown={(e) => gestures.onHandlePointerDown(e, t)}
+            />
+          </g>
         ))}
 
         {/* Mobus interface ports — pill notches in the membrane, one per kernel

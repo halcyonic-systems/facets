@@ -184,6 +184,14 @@ pub struct SystemType {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CanvasModel {
     pub lens: Lens,
+    /// The model's stable self-identity, carried through the canvas seam so a
+    /// walked child re-projects under the SAME id its parent references
+    /// (bert-lenses#89 step 5b) — without this, every edit-and-save of a child
+    /// would break the parent's `decomposes` stamp. Carried, never minted:
+    /// `to_canvas` copies it in, `project` writes it back, and a model without
+    /// one stays without one (`skip_serializing_if` keeps old files identical).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<bert_core::ModelId>,
     #[serde(default)]
     pub things: Vec<Thing>,
     #[serde(default)]
@@ -468,7 +476,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
 
     let world = WorldModel {
         version: 1,
-        model_id: None,
+        model_id: model.model_id,
         mode: Some(model.lens.mode()),
         environment: Environment {
             info: info(env_id, -1, "Environment"),
@@ -617,11 +625,38 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
 
     CanvasModel {
         lens,
+        model_id: model.model_id,
         things,
         relations,
         boundary,
         system_type: SystemType::default(),
         name,
+    }
+}
+
+/// Derive the newborn child of the canvas component `thing_id` — the door's
+/// canvas half (bert-lenses#89 step 5b). Projects the editing model and hands
+/// the projected component to [`bert_core::decomposition::derive_child`], which
+/// derives G′, mints the child's identity, and judges eligibility (interface
+/// components refuse under the v1 narrowing). The caller saves the returned
+/// model and stamps the parent's `child_model` reference — stamping is tooling,
+/// never done here.
+pub fn decompose_thing(
+    model: &CanvasModel,
+    thing_id: u64,
+) -> Result<WorldModel, Vec<ValidationIssue>> {
+    let p = project_with_map(model);
+    match p.thing_ids.get(&thing_id) {
+        Some(comp) => bert_core::decomposition::derive_child(&p.world, comp),
+        None => Err(vec![ValidationIssue {
+            severity: bert_core::validate::Severity::Error,
+            location: format!("thing {thing_id}"),
+            message: "nothing to decompose here: the selected element does not project as a \
+                      model relatum"
+                .to_string(),
+            suggestion: Some("Select a component of the model".to_string()),
+            subject: None,
+        }]),
     }
 }
 
@@ -685,6 +720,7 @@ mod tests {
         for lens in [Lens::Klir, Lens::Bunge, Lens::Mobus] {
             let model = CanvasModel {
                 lens,
+                model_id: None,
                 things: vec![
                     thing(1, "A", Role::Component),
                     thing(2, "B", Role::Component),
@@ -714,6 +750,7 @@ mod tests {
     fn self_loop_is_rejected_at_mobus_but_not_klir() {
         let model = CanvasModel {
             lens: Lens::Mobus,
+            model_id: None,
             things: vec![thing(1, "A", Role::Component), thing(2, "B", Role::Component)],
             relations: vec![bond(10, 1, 2)],
             boundary: Default::default(),
@@ -773,6 +810,7 @@ mod tests {
         // env originates a bond → Source; env receives → Sink.
         let model = CanvasModel {
             lens: Lens::Mobus,
+            model_id: None,
             things: vec![
                 thing(1, "Env", Role::Environment),
                 thing(2, "Comp", Role::Component),
@@ -785,5 +823,65 @@ mod tests {
         let wm = project(&model);
         assert_eq!(wm.environment.sources.len(), 1);
         assert_eq!(wm.environment.sinks.len(), 0);
+    }
+
+    /// Law: a model's stable identity survives the canvas round trip — carried,
+    /// never minted (a model without one stays without one). Without this, every
+    /// edit-and-save of a walked child would orphan its parent's reference.
+    #[test]
+    fn model_id_survives_the_canvas_round_trip() {
+        let mut world = project(&CanvasModel {
+            lens: Lens::Mobus,
+            model_id: None,
+            things: vec![thing(1, "A", Role::Component), thing(2, "B", Role::Component)],
+            relations: vec![bond(10, 1, 2)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+        });
+        assert!(world.model_id.is_none(), "the canvas never mints");
+        let id = world.mint_id();
+        let cm = to_canvas(&world);
+        assert_eq!(cm.model_id, Some(id), "to_canvas carries the identity in");
+        assert_eq!(project(&cm).model_id, Some(id), "project writes it back");
+    }
+
+    /// Law: the door refuses through the kernel — an interior component derives
+    /// a child that is born passing its own seam; an environment thing refuses
+    /// with a defined issue, never a panic.
+    #[test]
+    fn decompose_thing_derives_a_passing_child() {
+        // Src(env) → A → B → Snk(env): A and B are boundary components (v1
+        // refuses), so add interior C between them: A → C → B.
+        let model = CanvasModel {
+            lens: Lens::Mobus,
+            model_id: None,
+            things: vec![
+                thing(1, "Src", Role::Environment),
+                thing(2, "A", Role::Component),
+                thing(3, "C", Role::Component),
+                thing(4, "B", Role::Component),
+                thing(5, "Snk", Role::Environment),
+            ],
+            relations: vec![bond(10, 1, 2), bond(11, 2, 3), bond(12, 3, 4), bond(13, 4, 5)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+        };
+        let child = decompose_thing(&model, 3).expect("interior component derives");
+        assert!(child.model_id.is_some(), "the child is born nameable");
+        assert_eq!(child.systems[0].info.name, "C");
+        let p = project_with_map(&model);
+        let issues = bert_core::decomposition::check_decomposition_contract(
+            &p.world,
+            &p.thing_ids[&3],
+            &child,
+        );
+        assert!(issues.is_empty(), "newborn seam must hold: {issues:?}");
+
+        let refused = decompose_thing(&model, 1).err().expect("env thing refuses");
+        assert!(refused[0].message.contains("not a component"), "{refused:?}");
+        let missing = decompose_thing(&model, 99).err().expect("unknown id refuses");
+        assert!(missing[0].message.contains("nothing to decompose"), "{missing:?}");
     }
 }

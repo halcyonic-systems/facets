@@ -517,6 +517,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
 
     let mut model = CanvasModel {
         lens,
+        model_id: None,
         things,
         relations,
         boundary: boundary.unwrap_or_default(),

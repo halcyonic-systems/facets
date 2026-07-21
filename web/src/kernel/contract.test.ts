@@ -22,6 +22,7 @@ import type {
   CanvasModel,
   ChildRef,
   CsvParse,
+  DecompositionReport,
   EdgeFact,
   LensDescription,
   LensFacts,
@@ -151,10 +152,11 @@ function parseSystemType(v: unknown, where: string): SystemType {
 }
 
 function parseCanvasModel(v: unknown): CanvasModel {
-  const o = shape(v, "CanvasModel", ["lens", "things", "relations", "boundary"], ["system_type", "name"]);
+  const o = shape(v, "CanvasModel", ["lens", "things", "relations", "boundary"], ["model_id", "system_type", "name"]);
   const b = shape(o.boundary, "CanvasModel.boundary", ["porosity", "perceptive_fuzziness"]);
   return {
     lens: oneOf(o.lens, "CanvasModel.lens", LENSES),
+    ...(o.model_id === undefined ? {} : { model_id: str(o.model_id, "CanvasModel.model_id") }),
     things: arr(o.things, "CanvasModel.things").map((t, i) => parseThing(t, `Thing[${i}]`)),
     relations: arr(o.relations, "CanvasModel.relations").map((r, i) => parseRelation(r, `Relation[${i}]`)),
     boundary: {
@@ -328,6 +330,24 @@ function parseCanvasAnalysis(v: unknown): CanvasAnalysis {
   };
 }
 
+function parseDecompositionReport(v: unknown): DecompositionReport {
+  const o = shape(v, "DecompositionReport", ["issues", "issue_targets"]);
+  const issues = arr(o.issues, "DecompositionReport.issues").map((x, i) =>
+    parseValidationIssue(x, `issues[${i}]`),
+  );
+  const issue_targets = arr(o.issue_targets, "DecompositionReport.issue_targets").map((t, i) => {
+    const tt = shape(t, `issue_targets[${i}]`, ["thing", "relation"]);
+    return {
+      thing: nullableNum(tt.thing, `issue_targets[${i}].thing`),
+      relation: nullableNum(tt.relation, `issue_targets[${i}].relation`),
+    };
+  });
+  if (issue_targets.length !== issues.length) {
+    throw new Error("DecompositionReport: issue_targets must be index-parallel with issues");
+  }
+  return { issues, issue_targets };
+}
+
 function parseCsvParse(v: unknown): CsvParse {
   const o = shape(v, "CsvParse", ["headers", "rows"]);
   return {
@@ -481,6 +501,20 @@ describe("serde↔TS boundary fixtures", () => {
     expect(parseLensDescription(fixture("lens_description_klir")).lens).toBe("Klir");
     expect(parseLensDescription(fixture("lens_description_bunge")).lens).toBe("Bunge");
     expect(parseLensDescription(fixture("lens_description_mobus")).lens).toBe("Mobus");
+  });
+
+  it("CanvasModel carries the stable model_id when present (#89 step 5b)", () => {
+    const m = parseCanvasModel(fixture("canvas_model"));
+    expect(m.model_id).toBe("Hrs6K91KnZZsiPcWzftv8U");
+    const legacy = { ...(fixture("canvas_model") as Record<string, unknown>) };
+    delete legacy.model_id;
+    expect(parseCanvasModel(legacy).model_id).toBeUndefined();
+  });
+
+  it("DecompositionReport pairs seam issues with canvas targets (#89 step 5b)", () => {
+    const r = parseDecompositionReport(fixture("decomposition_report"));
+    expect(r.issues.length).toBeGreaterThan(0);
+    expect(r.issue_targets[0].thing).toBe(1);
   });
 
   it("CanvasAnalysis composes validation + facts + description", () => {

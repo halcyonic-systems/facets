@@ -166,6 +166,58 @@ pub fn check_decompositions(model_json: &str, resolved_json: &str) -> Result<JsV
     })
 }
 
+/// The decomposition door (bert-lenses#89 step 5b): derive the newborn child of
+/// the canvas component `thing_id` — G′ from flows(c), environment stand-ins
+/// named after the parent's interior neighbors, a freshly minted identity — or
+/// the kernel's refusal (`{ ok } | { issues }`). Delegates to
+/// `bert_canvas::canvas::decompose_thing` → `bert_core::decomposition::
+/// derive_child`. The caller (the store layer) saves `child_json` and stamps
+/// the parent's reference; the kernel derives and judges, and writes nothing.
+#[wasm_bindgen]
+pub fn decompose_component(canvas_json: &str, thing_id: u32) -> Result<JsValue, JsError> {
+    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    match bert_canvas::canvas::decompose_thing(&model, u64::from(thing_id)) {
+        Ok(child) => to_js(&DecomposeOutcome::Ok {
+            ok: DecomposedChild {
+                child_json: serde_json::to_string_pretty(&child)
+                    .map_err(|e| JsError::new(&e.to_string()))?,
+                child_id: child
+                    .model_id
+                    .map(|id| id.to_base58())
+                    .unwrap_or_default(),
+                child_name: child
+                    .systems
+                    .iter()
+                    .find(|s| s.info.level == 0)
+                    .map(|s| s.info.name.clone())
+                    .unwrap_or_default(),
+            },
+        }),
+        Err(issues) => to_js(&DecomposeOutcome::Issues { issues }),
+    }
+}
+
+/// Judge every decomposition seam in a CANVAS model against its store-resolved
+/// referents, with each issue's canvas navigation target resolved — the
+/// canvas-keyed sibling of `check_decompositions`, shaped like
+/// `analyze_canvas`'s `validation` + `issue_targets` pair so seam violations
+/// navigate on the audit panel like any other issue. Projection, judgment, and
+/// target resolution all happen in `bert_canvas::lenses`.
+#[wasm_bindgen]
+pub fn check_decompositions_canvas(
+    canvas_json: &str,
+    resolved_json: &str,
+) -> Result<JsValue, JsError> {
+    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    let resolved: std::collections::HashMap<String, String> = serde_json::from_str(resolved_json)
+        .map_err(|e| JsError::new(&format!("invalid resolved-referents map: {e}")))?;
+    to_js(&bert_canvas::lenses::check_decompositions_canvas(
+        &model, &resolved,
+    ))
+}
+
 // ---- Phase 2: the canvas seam ----------------------------------------------
 
 /// Validate a model at a given lens rung: "Core" | "Structural" | "Operational"
@@ -298,6 +350,24 @@ pub fn analyze_canvas(canvas_json: &str) -> Result<JsValue, JsError> {
 #[derive(Serialize)]
 struct ConnectionVerdict {
     issues: Vec<bert_core::validate::ValidationIssue>,
+}
+
+/// The tagged result of [`decompose_component`]: the newborn child, or the
+/// kernel's refusal issues.
+#[derive(Serialize)]
+#[serde(untagged)]
+enum DecomposeOutcome {
+    Ok { ok: DecomposedChild },
+    Issues { issues: Vec<bert_core::validate::ValidationIssue> },
+}
+
+/// The newborn child as the store layer needs it: the model text to save, the
+/// canonical base58 identity to stamp, and the root name as the default label.
+#[derive(Serialize)]
+struct DecomposedChild {
+    child_json: String,
+    child_id: String,
+    child_name: String,
 }
 
 #[derive(Serialize)]

@@ -25,6 +25,8 @@ import init, {
   emit_sl as wasmEmitSl,
   model_identity as wasmModelIdentity,
   check_decompositions as wasmCheckDecompositions,
+  decompose_component as wasmDecomposeComponent,
+  check_decompositions_canvas as wasmCheckDecompositionsCanvas,
 } from "bert-lenses-kernel";
 import wasmUrl from "bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url";
 
@@ -43,6 +45,8 @@ import type {
   LensDescription,
   CanvasAnalysis,
   SlOutcome,
+  DecomposeOutcome,
+  DecompositionReport,
 } from "./types";
 import type { Lens } from "./types";
 
@@ -239,5 +243,27 @@ export function checkDecompositions(
 ): ValidationResult {
   return call("check_decompositions", () =>
     wasmCheckDecompositions(modelJson, JSON.stringify(resolved)),
+  );
+}
+
+/** The decomposition door (#89 step 5b): derive the newborn child of the canvas
+ *  component `thingId` — G′, minted identity, empty interior — or the kernel's
+ *  refusal issues. The caller saves the child text and stamps the reference;
+ *  derivation and judgment happen in Rust. */
+export function decomposeComponent(model: CanvasModel, thingId: number): DecomposeOutcome {
+  return call("decompose_component", () =>
+    wasmDecomposeComponent(JSON.stringify(model), thingId),
+  );
+}
+
+/** Judge every decomposition seam in the CANVAS model against store-resolved
+ *  referents, with each issue's canvas navigation target resolved kernel-side —
+ *  seam violations navigate on the audit panel like any other issue. */
+export function checkDecompositionsCanvas(
+  model: CanvasModel,
+  resolved: Record<string, string>,
+): DecompositionReport {
+  return call("check_decompositions_canvas", () =>
+    wasmCheckDecompositionsCanvas(JSON.stringify(model), JSON.stringify(resolved)),
   );
 }

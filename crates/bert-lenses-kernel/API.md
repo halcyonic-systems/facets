@@ -320,13 +320,58 @@ reference missing from the map and a referent whose text does not parse are
 each a defined `ValidationIssue` in the result — never a throw, never a silent
 drop. Throws only on unparseable model JSON or a malformed map.
 
+## Decomposition surface (built — the enter/exit walk, #89 step 5b)
+
+**v1.1:** `CanvasModel` gained an optional `model_id` field (canonical base58) —
+the model's stable self-identity carried through the canvas seam. `to_canvas`
+copies it in and `project()` writes it back, so a walked child re-projects under
+the SAME id its parent references; a model without one stays without one
+(carried, never minted). No signature changed; old canvas JSON parses unchanged.
+
+### `decompose_component(canvas_json: string, thing_id: number) → { ok: DecomposedChild } | { issues: ValidationIssue[] }`
+The decomposition door: derive the newborn child of the canvas component
+`thing_id`. The kernel (`bert_core::decomposition::derive_child`) derives G′
+from flows(c) — each interior neighbor becomes a child environment stand-in
+(Source/Sink per direction) carrying the neighbor's name exactly, each incident
+flow becomes a child boundary flow with its substance/name/amount/unit carried
+over — mints the child's identity, and inherits the parent's mode. The interior
+is empty (no placeholder primitive); until the first component exists the
+boundary flows terminate on the child's root, so the newborn passes
+`check_decompositions` from birth. Refusals (`comp_mem`, the v1
+interface-component narrowing, a non-component selection) come back as the
+`{ issues }` arm — defined, never a throw. The caller saves `child_json` and
+stamps the parent's `decomposes` reference; stamping is store-layer tooling.
+```ts
+type DecomposedChild = {
+  child_json: string,   // the newborn WorldModel, pretty-printed — save as-is
+  child_id: string,     // canonical base58 identity to stamp on the parent
+  child_name: string,   // the child root's name — the default library label
+}
+```
+Throws only on unparseable canvas JSON.
+
+### `check_decompositions_canvas(canvas_json: string, resolved_json: string) → DecompositionReport`
+The canvas-keyed sibling of `check_decompositions`: judge every seam in a
+CANVAS model against its store-resolved referents, and resolve each issue's
+kernel subject back to its canvas thing — the same `validation` +
+`issue_targets` pairing `analyze_canvas` uses, so seam violations navigate on
+the audit panel like any other issue.
+```ts
+type DecompositionReport = {
+  issues: ValidationIssue[],
+  issue_targets: IssueTarget[],  // index-parallel with issues
+}
+```
+Throws only on unparseable canvas JSON or a malformed map.
+
 ## Contract fixtures (definition-of-done for boundary shapes)
 
 Every serde type that crosses this wasm edge ships a committed JSON fixture in
 `fixtures/contract/`, generated from REAL kernel output — never hand-typed:
 - Rust writes/asserts them: `crates/bert-canvas/tests/contract.rs` (the
   canvas-family shapes: `CanvasModel`, `LensFacts` + `EdgeFact`/`PortFact`,
-  `LensDescription` ×3, `ValidationResult`, `CanvasAnalysis`) and the
+  `LensDescription` ×3, `ValidationResult`, `CanvasAnalysis`,
+  `DecompositionReport`) and the
   `bert-lenses-kernel` api.rs test module (the run-family DTOs: `CsvParse`,
   `Targets`, `MappingStatus`, `RunResult`, `RunResultRich`). Drift fails the
   test; regenerate an intentional change with `BLESS_FIXTURES=1`.

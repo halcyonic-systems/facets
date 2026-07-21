@@ -1,0 +1,16 @@
+{
+  "issues": [
+    {
+      "severity": "Error",
+      "location": "C0.0",
+      "message": "component \"Pump\" declares child_model Hrs6K91KnZZsiPcWzftv8U but the referent could not be resolved — a decomposition reference must point at a loadable model (Decomposition: the child 8-tuple is required for the seam)",
+      "suggestion": "Restore the referenced child model, or clear this component's child_model reference"
+    }
+  ],
+  "issue_targets": [
+    {
+      "thing": 1,
+      "relation": null
+    }
+  ]
+}

@@ -415,6 +415,46 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
     }
 }
 
+/// The decomposition seam verdict, canvas-keyed (bert-lenses#89 step 5b): the
+/// same issues [`bert_core::decomposition::check_decompositions`] produces,
+/// paired with canvas navigation targets resolved from the projection's id maps
+/// — exactly the [`CanvasAnalysis`] pattern, so the audit panel can navigate a
+/// seam violation to its decomposed component like any other issue.
+#[derive(Serialize, Clone, Debug)]
+pub struct DecompositionReport {
+    pub issues: Vec<ValidationIssue>,
+    /// Index-parallel with `issues`; both fields None when an issue carries no
+    /// canvas subject.
+    pub issue_targets: Vec<IssueTarget>,
+}
+
+/// Judge every decomposition seam in the canvas model against its store-resolved
+/// referents (canonical base58 id → child model JSON), and resolve each issue's
+/// kernel subject back to its canvas thing. Projection and judgment both happen
+/// here in Rust; the store layer only resolved ids to text.
+pub fn check_decompositions_canvas(
+    model: &CanvasModel,
+    resolved: &HashMap<String, String>,
+) -> DecompositionReport {
+    let p = project_with_map(model);
+    let issues = bert_core::decomposition::check_decompositions(&p.world, resolved);
+    let thing_of: HashMap<&Id, u64> = p.thing_ids.iter().map(|(k, v)| (v, *k)).collect();
+    let issue_targets = issues
+        .iter()
+        .map(|issue| match &issue.subject {
+            Some(id) => IssueTarget {
+                thing: thing_of.get(id).copied(),
+                relation: None,
+            },
+            None => IssueTarget::default(),
+        })
+        .collect();
+    DecompositionReport {
+        issues,
+        issue_targets,
+    }
+}
+
 /// Mobus openness: a system exchanges with its environment, and the boundary
 /// gates that exchange in both directions (Fig. 4.9). A model whose boundary
 /// gates only outward — every port `Exports`, none `Receives` or `Hybrid` —
@@ -599,6 +639,7 @@ mod tests {
     fn model(things: Vec<Thing>, relations: Vec<Relation>) -> CanvasModel {
         CanvasModel {
             lens: Lens::Mobus,
+            model_id: None,
             things,
             relations,
             boundary: Default::default(),
