@@ -32,6 +32,11 @@ function NodeView({ thing, isBoundary, isOrphan, hovered, sim, onPointerDown, on
       strokeWidth={STYLE.nodeStrokeWidth}
       labelSmall={false}
       boundaryRim={isBoundary}
+      // #100 phase 2: the readout is a state-space POSITION (Fig 1.5), not a
+      // tank level — Bunge's states are properties of things, and the value
+      // locates the thing in its state space. Trajectory/lawful region: the
+      // compose seam's scope, see NodeBody's comment.
+      simPosition
     />
   );
 }

@@ -46,6 +46,11 @@ interface NodeBodyProps {
   /** Kernel `orphan_env_thing_ids`: an env thing no bond touches — not yet in ℰ
    *  (Bunge Def 1.2 ii), dropped by project(). Rendered muted, never hidden. */
   pending?: boolean;
+  /** Bunge only (#100 phase 2): render the sim value as a POSITION in state
+   *  space (a marker on an axis beside the thing — his Fig 1.5 register), not
+   *  as the tank-level disc fill (a Mobus stock metaphor). Default false, so
+   *  Klir/Mobus output is unchanged. */
+  simPosition?: boolean;
 }
 
 /** The node chrome common to every lens — the per-lens views resolve the style
@@ -67,6 +72,7 @@ export function NodeBody({
   labelSmall,
   boundaryRim,
   pending = false,
+  simPosition = false,
 }: NodeBodyProps) {
   const frac = sim ? Math.max(0, Math.min(1, sim.frac)) : null;
   const clipId = `fill-clip-${thing.id}`;
@@ -105,8 +111,33 @@ export function NodeBody({
         />
       )}
 
+      {/* Bunge's dynamics register is the STATE SPACE (Fig 1.5): the value is a
+          position on an axis of the thing's state, not a level in a tank — so
+          under Bunge the readout is a marker on a state axis beside the node.
+          Static by design (#100 phase 2 / F4): the trajectory h(x) through
+          this space and the lawful region S_L(K) are the compose seam's scope
+          (a recorded run IS a trajectory — H = History) and are deliberately
+          not drawn here. */}
+      {simPosition && frac !== null && (
+        <g pointerEvents="none">
+          <title>position in the thing&apos;s state space (Bunge Fig 1.5) — the trajectory h(x) arrives with the compose seam</title>
+          <line
+            x1={NODE_R + 10}
+            y1={-NODE_R}
+            x2={NODE_R + 10}
+            y2={NODE_R}
+            stroke="var(--hairline)"
+            strokeWidth={1}
+          />
+          {[-NODE_R, NODE_R].map((y) => (
+            <line key={y} x1={NODE_R + 7.5} y1={y} x2={NODE_R + 12.5} y2={y} stroke="var(--hairline)" strokeWidth={1} />
+          ))}
+          <circle cx={NODE_R + 10} cy={NODE_R - 2 * NODE_R * frac} r={3} fill="var(--accent)" />
+        </g>
+      )}
+
       {/* the sim payoff: a stock's disc fills/drains as the scrubber indexes ticks */}
-      {frac !== null && (
+      {!simPosition && frac !== null && (
         <>
           <clipPath id={clipId}>
             <rect x={-NODE_R} y={NODE_R - 2 * NODE_R * frac} width={NODE_R * 2} height={2 * NODE_R * frac} />
@@ -139,7 +170,7 @@ export function NodeBody({
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
-          fillOpacity={frac !== null ? 0 : 1}
+          fillOpacity={frac !== null && !simPosition ? 0 : 1}
         />
       ) : (
         <circle
@@ -148,7 +179,7 @@ export function NodeBody({
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
-          fillOpacity={frac !== null ? 0 : 1}
+          fillOpacity={frac !== null && !simPosition ? 0 : 1}
         />
       )}
 
