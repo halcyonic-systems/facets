@@ -45,6 +45,28 @@ import { diagramFilename, exportDiagramSvg, exportDiagramPng } from "./canvas/ex
 const today = () => new Date().toISOString().slice(0, 10);
 const LENSES: CanvasModel["lens"][] = ["Klir", "Bunge", "Mobus"];
 
+// #109 walk choreography — the enter/exit transition's OUT phase length. Must
+// match the walk-*-out animation durations in index.css: the model swap waits
+// for this beat (and races data resolution via Promise.all), so the old canvas
+// finishes pressing through the membrane before the next one arrives.
+const WALK_OUT_MS = 150;
+
+// The choreography's presentation state: which phase the canvas wrapper is
+// animating (dive = enter a child, rise = exit to an ancestor) and the CSS
+// transform-origin the phase zooms around. Null = no transition in flight.
+interface WalkFx {
+  phase: "dive-out" | "dive-in" | "rise-out" | "rise-in";
+  origin: string;
+}
+
+// Instant swap under prefers-reduced-motion (#109): the JS sequencing skips
+// the out-phase beat entirely (belt), and index.css disables the keyframes
+// for any class that still lands (braces).
+const prefersReducedMotion = () =>
+  typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 // One ancestor on the decomposition walk (#89 step 5b): everything needed to
 // restore that model when the breadcrumb exits back to it, plus the display
 // facts the breadcrumb renders (label, id on hover, seam glyph as of descent).
@@ -192,6 +214,9 @@ function Workspace() {
   // pushes the current model as a segment; the breadcrumb exits by restoring
   // one. Navigation state only — every model and verdict stays kernel-fed.
   const [walk, setWalk] = useState<WalkSegment[]>([]);
+  // #109: the enter/exit transition phase on the canvas wrapper. Presentation
+  // only — the walk's document-navigation mechanism above is untouched.
+  const [walkFx, setWalkFx] = useState<WalkFx | null>(null);
   // The SL text pane (textual authoring surface). Text + faults live here so
   // the pane survives toggling; seeded with a worked example (Mobus's steel
   // plant, Ch.4 §4.3.1) so the first Compile lands a real model.
@@ -231,18 +256,40 @@ function Workspace() {
   });
   const [toast, setToast] = useState<string | null>(null);
 
-  // Esc = disarm the rail tool, else clear selection. Delete/Backspace removes the
-  // selected node or flow (guarded so it never fires while typing in a field).
+  // #109: the Escape exit route, held in a ref refreshed every render so the
+  // window keydown handler (subscribed on a narrow dep list) never fires a
+  // STALE exitTo — the exit autosaves, and it must save the current canvas,
+  // not the closure it was subscribed with. The ref also owns the "nothing
+  // capturing is open" gate: dialogs keep Escape to themselves.
+  const escapeExitRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    escapeExitRef.current = () => {
+      if (galleryOpen || saveDialogOpen || typePromptOpen) return;
+      if (walk.length > 0) void exitTo(walk.length - 1);
+    };
+  });
+
+  // Esc = disarm the rail tool, else clear selection (closing any popover),
+  // else — while walking, with no field focused and no dialog open — exit one
+  // level of the walk (#109). Field editors win outright: the #116 label
+  // draft, the node-name draft, and dialog inputs all cancel on their own
+  // Escape handlers, so a focused input never also navigates. Delete/Backspace
+  // removes the selected node or flow (same typing guard).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        setArmed((a) => {
-          if (a) return null;
-          setSelectedThingId(null);
-          setSelectedRelationId(null);
-          setBoundaryAnchor(null);
-          return a;
-        });
+        if (armed) {
+          setArmed(null);
+          return;
+        }
+        const hadSelection = selectedThingId !== null || selectedRelationId !== null || boundaryAnchor !== null;
+        setSelectedThingId(null);
+        setSelectedRelationId(null);
+        setBoundaryAnchor(null);
+        if (hadSelection) return;
+        const el = document.activeElement as HTMLElement | null;
+        if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+        escapeExitRef.current();
         return;
       }
       if (e.key === "Delete" || e.key === "Backspace") {
@@ -259,7 +306,7 @@ function Workspace() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selectedThingId, selectedRelationId]);
+  }, [selectedThingId, selectedRelationId, boundaryAnchor, armed]);
 
   const runWith = (modelJson: string, csv: string, m: Manifest, dtv: number, tv: number) => {
     try {
@@ -915,10 +962,25 @@ function Workspace() {
   async function enterThingChild(thing: Thing) {
     const ref = thing.child_model;
     if (!ref || !canvasModel) return;
+    // The dive choreography (#109): the view presses toward the clicked
+    // component (dive-out, origin at the component's screen position) while
+    // the child resolves CONCURRENTLY — resolution races the beat, never the
+    // other way round. If resolution is slow the out-phase completes (fill:
+    // forwards holds it) and the child arrives when ready, exactly the
+    // existing async enter path. Reduced motion: no phases, instant swap.
+    const animate = !prefersReducedMotion();
+    if (animate) {
+      const at = toScreen({ x: thing.x, y: thing.y });
+      setWalkFx({ phase: "dive-out", origin: `${at.x}px ${at.y}px` });
+    }
     try {
-      const resolved = await resolveModelRefs([ref.id], dirHandle);
+      const [resolved] = await Promise.all([
+        resolveModelRefs([ref.id], dirHandle),
+        animate ? delay(WALK_OUT_MS) : undefined,
+      ]);
       const json = resolved[ref.id];
       if (json === undefined) {
+        setWalkFx(null);
         const row = decomposition.issues.find((_, i) => decomposition.targets[i]?.thing === thing.id);
         setToast(row?.message ?? `child model ${ref.id} could not be resolved`);
         return;
@@ -951,8 +1013,14 @@ function Workspace() {
       setCurrentName(ref.name);
       setGalleryOpen(false);
       setDirty(false);
+      // Entry orientation (#109 §3): the fit fires IN the swap batch, so the
+      // child's first committed frame already centers its membrane with the
+      // G′ stand-ins framed — and the dive-in phase starts from opacity 0,
+      // so the one pre-fit paint the fit effect allows is never visible.
       setFitToken((n) => (n ?? 0) + 1);
+      setWalkFx(animate ? { phase: "dive-in", origin: "50% 50%" } : null);
     } catch (e) {
+      setWalkFx(null);
       setToast(e instanceof Error ? e.message : String(e));
     }
   }
@@ -964,15 +1032,25 @@ function Workspace() {
   // against the just-saved children.
   async function exitTo(index: number) {
     if (!canvasModel || index >= walk.length) return;
+    // The reverse choreography (#109): the child recedes (rise-out) and the
+    // restored ancestor arrives pulling back to rest (rise-in). Same racing
+    // discipline as enter — the autosaves run concurrently with the beat and
+    // are never delayed by it. Center-origin on both phases (the entered
+    // component's post-fit screen position isn't knowable pre-render).
+    const animate = !prefersReducedMotion();
+    if (animate) setWalkFx({ phase: "rise-out", origin: "50% 50%" });
     try {
-      if (dirty && currentName) {
-        await saveModel(currentName, JSON.stringify(project(canvasModel), null, 2));
-      }
-      for (const seg of walk.slice(index + 1)) {
-        if (seg.dirty && seg.currentName) {
-          await saveModel(seg.currentName, JSON.stringify(project(seg.canvas), null, 2));
+      const saves = (async () => {
+        if (dirty && currentName) {
+          await saveModel(currentName, JSON.stringify(project(canvasModel), null, 2));
         }
-      }
+        for (const seg of walk.slice(index + 1)) {
+          if (seg.dirty && seg.currentName) {
+            await saveModel(seg.currentName, JSON.stringify(project(seg.canvas), null, 2));
+          }
+        }
+      })();
+      await Promise.all([saves, animate ? delay(WALK_OUT_MS) : undefined]);
       const target = walk[index];
       setWalk(walk.slice(0, index));
       setDemo(target.demo);
@@ -990,7 +1068,9 @@ function Workspace() {
       setDirty(target.dirty);
       await refreshLibrary();
       setFitToken((n) => (n ?? 0) + 1);
+      setWalkFx(animate ? { phase: "rise-in", origin: "50% 50%" } : null);
     } catch (e) {
+      setWalkFx(null);
       setToast(e instanceof Error ? e.message : String(e));
     }
   }
@@ -1181,6 +1261,19 @@ function Workspace() {
                       border: "1px solid color-mix(in srgb, var(--lens-accent) 30%, var(--hairline))",
                     }}
                   >
+                    {/* #109: the choreography wrapper — the walk-fx-* classes
+                        animate ONLY this layer (opacity + transform), so the
+                        banners/popovers anchored to the container never warp.
+                        The "in" phases clear themselves on animation end. It
+                        encloses the whole per-lens view, so under Klir the
+                        register dives with its locator. */}
+                    <div
+                      className={`absolute inset-0${walkFx ? ` walk-fx-${walkFx.phase}` : ""}`}
+                      style={walkFx ? { transformOrigin: walkFx.origin } : undefined}
+                      onAnimationEnd={() =>
+                        setWalkFx((fx) => (fx && (fx.phase === "dive-in" || fx.phase === "rise-in") ? null : fx))
+                      }
+                    >
                     {/* Klir (#100): the register IS the stage — the literal
                         T/R listings (and their matrix twin) fill the region;
                         the node-and-edge picture demotes to the small locator
@@ -1253,6 +1346,11 @@ function Workspace() {
                       onEnterThing={(t) => {
                         if (t.child_model) enterThingChild(t);
                       }}
+                      // #109 exit gesture (a): while walking, double-click on
+                      // the empty stage exits one level — the mirror of
+                      // double-click-to-enter. Null when not walking, so the
+                      // stage double-click stays the node-draft creator.
+                      onExitUp={walk.length > 0 ? () => void exitTo(walk.length - 1) : null}
                       onSelectBoundary={(at) => {
                         setBoundaryAnchor(at);
                         setSelectedThingId(null);
@@ -1276,6 +1374,7 @@ function Workspace() {
                           locator
                         </span>
                       )}
+                    </div>
                     </div>
                     {boundaryAnchor && (
                       <BoundaryPopover

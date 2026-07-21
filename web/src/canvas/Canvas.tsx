@@ -31,6 +31,12 @@ interface Props {
    *  5b). The canvas only reports the gesture; whether the thing has a child to
    *  enter (and what entering means) is the shell's call. */
   onEnterThing?: (thing: Thing) => void;
+  /** #109 exit gesture: while walking, double-click on the EMPTY stage (not on
+   *  any thing/relation/boundary) exits one level up — the mirror of
+   *  double-click-to-enter. Null/undefined = not walking, and the stage
+   *  double-click keeps its node-draft meaning. The shell owns the exit
+   *  (same autosaving exitTo path as the breadcrumb). */
+  onExitUp?: (() => void) | null;
   /** Click the Mobus membrane (or a port — interfaces belong to B) to open the
    *  boundary inspector; the anchor is a world-space point on the ring. */
   onSelectBoundary?: (at: Pt) => void;
@@ -59,6 +65,7 @@ export default function Canvas({
   armed = null,
   onSelectThing,
   onEnterThing,
+  onExitUp = null,
   onSelectBoundary,
   driven,
   sim,
@@ -222,7 +229,17 @@ export default function Canvas({
       onPointerDown={gestures.onStagePointerDown}
       onPointerMove={gestures.onStagePointerMove}
       onPointerUp={gestures.onStagePointerUp}
-      onDoubleClick={gestures.onStageDoubleClick}
+      onDoubleClick={(e) => {
+        // #109: while walking, an empty-stage double-click exits one level
+        // (things/edges/membrane are child elements, so target ≠ currentTarget
+        // for them — a double-click ON a thing still enters via its own
+        // handler). Not walking → the gesture stays the node-draft creator.
+        if (onExitUp && e.target === e.currentTarget) {
+          onExitUp();
+          return;
+        }
+        gestures.onStageDoubleClick(e);
+      }}
     >
       <defs>
         <marker
