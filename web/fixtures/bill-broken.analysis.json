@@ -5,43 +5,50 @@
         "severity": "Warning",
         "location": "interactions[14]",
         "message": "duplicate edge C0.2→C0.3 (same type and substance as interactions[3])",
-        "suggestion": "Remove the duplicate, or distinguish it by substance or usability"
+        "suggestion": "Remove the duplicate, or distinguish it by substance or usability",
+        "doc": "docs/language/terminology-concordance.md#4-a-connection-between-parts"
       },
       {
         "severity": "Warning",
         "location": "systems[9]",
         "message": "'Vetoed' has no outgoing transitions — intended as a terminal/absorbing state?",
-        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine"
+        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine",
+        "doc": "docs/kernel-architecture.md#the-layered-guarantee--honestly-rated"
       },
       {
         "severity": "Warning",
         "location": "systems[10]",
         "message": "'Law' has no outgoing transitions — intended as a terminal/absorbing state?",
-        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine"
+        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine",
+        "doc": "docs/kernel-architecture.md#the-layered-guarantee--honestly-rated"
       },
       {
         "severity": "Warning",
         "location": "systems[11]",
         "message": "'died in committee' has no outgoing transitions — intended as a terminal/absorbing state?",
-        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine"
+        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine",
+        "doc": "docs/kernel-architecture.md#the-layered-guarantee--honestly-rated"
       },
       {
         "severity": "Warning",
         "location": "systems[12]",
         "message": "'fail' has no outgoing transitions — intended as a terminal/absorbing state?",
-        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine"
+        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine",
+        "doc": "docs/kernel-architecture.md#the-layered-guarantee--honestly-rated"
       },
       {
         "severity": "Warning",
         "location": "systems[13]",
         "message": "'dead' has no outgoing transitions — intended as a terminal/absorbing state?",
-        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine"
+        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine",
+        "doc": "docs/kernel-architecture.md#the-layered-guarantee--honestly-rated"
       },
       {
         "severity": "Warning",
         "location": "systems[14]",
         "message": "'pocket-vetoed' has no outgoing transitions — intended as a terminal/absorbing state?",
-        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine"
+        "suggestion": "If it should continue, add an outgoing flow; if it is an endpoint, this is fine",
+        "doc": "docs/kernel-architecture.md#the-layered-guarantee--honestly-rated"
       }
     ]
   },

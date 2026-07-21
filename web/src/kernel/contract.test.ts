@@ -232,12 +232,14 @@ function parseLensFacts(v: unknown): LensFacts {
 }
 
 function parseValidationIssue(v: unknown, where: string): ValidationIssue {
-  const o = shape(v, where, ["severity", "location", "message", "suggestion"]);
+  // `doc` is optional on the wire (serde default): absent means no doc link.
+  const o = shape(v, where, ["severity", "location", "message", "suggestion"], ["doc"]);
   return {
     severity: oneOf(o.severity, `${where}.severity`, SEVERITIES),
     location: str(o.location, `${where}.location`),
     message: str(o.message, `${where}.message`),
     suggestion: nullableStr(o.suggestion, `${where}.suggestion`),
+    doc: "doc" in o ? nullableStr(o.doc, `${where}.doc`) : null,
   };
 }
 

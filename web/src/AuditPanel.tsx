@@ -3,8 +3,25 @@
 // READ-ONLY). Rows and targets both come from analyze_canvas: messages are the
 // kernel's verbatim, and navigation rides issue_targets (kernel-resolved from
 // the projection's id maps) — never a location string parsed in JS.
+//
+// #129: each issue may carry `doc` — a stable, kernel-chosen anchor into the
+// repo's glossary/concordance/spec (bert_core::validate::doc). The face only
+// typesets it as a link; WHICH entry a refusal cites is kernel judgment.
 import type { IssueTarget, ValidationResult } from "./kernel/types";
 import { Card, Pill } from "./ui";
+
+// Where the linked docs live. The anchors are repo-relative
+// (`docs/glossary.md#precondition`), pinned by the kernel's doc_anchors_resolve
+// test, so a rendered link can only die if this base moves.
+const DOCS_BASE = "https://github.com/halcyonic-systems/bert-lenses/blob/main/";
+
+/** "docs/glossary.md#precondition" → "glossary § precondition" — presentation
+ *  only (a shorter label for the same anchor). */
+function docLabel(doc: string): string {
+  const [path, anchor] = doc.split("#");
+  const file = path.split("/").pop()?.replace(/\.md$/, "") ?? path;
+  return anchor ? `${file} § ${anchor}` : file;
+}
 
 export function AuditPanel({
   validation,
@@ -36,9 +53,28 @@ export function AuditPanel({
               <Pill tone={issue.severity === "Error" ? "error" : "warning"}>{issue.severity}</Pill>
               <div className="min-w-0">
                 <div style={{ color: "var(--text-primary)" }}>{issue.message}</div>
-                {issue.suggestion && (
+                {(issue.suggestion || issue.doc) && (
                   <div className="mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
                     {issue.suggestion}
+                    {issue.doc && (
+                      <>
+                        {issue.suggestion ? " · " : ""}
+                        <a
+                          href={DOCS_BASE + issue.doc}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          title="read the precondition this refusal cites"
+                          style={{
+                            color: "var(--lens-accent)",
+                            textDecoration: "underline",
+                            textDecorationStyle: "dotted",
+                          }}
+                        >
+                          {docLabel(issue.doc)}
+                        </a>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

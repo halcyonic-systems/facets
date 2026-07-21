@@ -12,12 +12,65 @@ pub enum Severity {
     Warning,
 }
 
+/// Stable doc anchors for surfaced refusals (bert-lenses#129). Each is a
+/// repo-relative doc path plus a GitHub-style heading anchor — the kernel
+/// decides which glossary/concordance/spec entry a refusal's precondition
+/// cites (judgment stays kernel-side); the face only turns the string into a
+/// link. Anchors are pinned by `doc_anchors_resolve` in this module's tests,
+/// so a renamed heading fails the gate instead of shipping a dead link.
+pub mod doc {
+    /// Bunge's bond-vs-mere distinction — the `HasBond` precondition's concept.
+    pub const BOND: &str = "docs/glossary.md#bond--mere";
+    /// The named, machine-checked lens entry gates (`HasBond`, `Irreflexive`).
+    pub const PRECONDITION: &str = "docs/glossary.md#precondition";
+    /// Modes as parallel lenses (Core / Structural / Operational / Full).
+    pub const MODE_LENS: &str = "docs/glossary.md#mode--lens";
+    /// The mode-stamped file artifact and its structural conventions.
+    pub const WORLD_MODEL: &str = "docs/glossary.md#worldmodel";
+    /// Environment, sources, and sinks across the three traditions.
+    pub const ENVIRONMENT: &str =
+        "docs/language/terminology-concordance.md#3-a-thing-outside-the-system";
+    /// Relations / bonds / flows — what an interaction is, per tradition.
+    pub const CONNECTION: &str =
+        "docs/language/terminology-concordance.md#4-a-connection-between-parts";
+    /// Interfaces as boundary members, per tradition.
+    pub const INTERFACE: &str = "docs/language/terminology-concordance.md#9-interface";
+    /// The observed-warns / declared-refuses doctrine (#69) and the layered guarantee.
+    pub const OBSERVED_DECLARED: &str =
+        "docs/kernel-architecture.md#the-layered-guarantee--honestly-rated";
+    /// The decomposition boundary contract (Lean `Decomposition`, all seam rows).
+    pub const DECOMPOSITION: &str =
+        "docs/design/decomposition-foundations.md#3-the-boundary-contract-stated-precisely";
+    /// What each lens takes and drops — Mobus's openness commitment lives here.
+    pub const OPENNESS: &str = "docs/theory-fidelity.md#per-tradition-take--drop--where--why";
+
+    /// Every anchor above, for the existence gate in tests.
+    pub const ALL: &[&str] = &[
+        BOND,
+        PRECONDITION,
+        MODE_LENS,
+        WORLD_MODEL,
+        ENVIRONMENT,
+        CONNECTION,
+        INTERFACE,
+        OBSERVED_DECLARED,
+        DECOMPOSITION,
+        OPENNESS,
+    ];
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidationIssue {
     pub severity: Severity,
     pub location: String,
     pub message: String,
     pub suggestion: Option<String>,
+    /// Stable doc anchor for the precondition this issue cites (one of
+    /// [`doc`]'s constants) — the face renders it as a glossary/docs link
+    /// (bert-lenses#129). Kernel judgment: which entry a refusal teaches is
+    /// decided here, never by string-matching in JS.
+    #[serde(default)]
+    pub doc: Option<String>,
     /// The kernel entity this issue is about, when a check knows one — an
     /// IN-PROCESS handle for callers holding id maps (bert-canvas resolves it
     /// to canvas ids for click-to-navigate). `serde(skip)`: the wire shape is
@@ -32,6 +85,12 @@ impl ValidationIssue {
         self
     }
 
+    /// Attach the stable doc anchor this issue's precondition cites (#129).
+    pub fn with_doc(mut self, doc: &str) -> Self {
+        self.doc = Some(doc.to_string());
+        self
+    }
+
     fn error(
         location: impl Into<String>,
         message: impl Into<String>,
@@ -42,6 +101,7 @@ impl ValidationIssue {
             location: location.into(),
             message: message.into(),
             suggestion: suggestion.map(|s| s.to_string()),
+            doc: None,
             subject: None,
         }
     }
@@ -56,6 +116,7 @@ impl ValidationIssue {
             location: location.into(),
             message: message.into(),
             suggestion: suggestion.map(|s| s.to_string()),
+            doc: None,
             subject: None,
         }
     }
@@ -143,7 +204,7 @@ fn check_stock_units(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
                     "Declare the accumulated quantity's unit (e.g. 'ML' for an \
                      'ML/mo' inflow, 'kWh' for a 'kW' inflow)",
                 ),
-            ));
+            ).with_doc(doc::OBSERVED_DECLARED));
         }
     }
 }
@@ -211,6 +272,7 @@ fn check_stock_dimensions(model: &WorldModel, issues: &mut Vec<ValidationIssue>)
                              inflow), or correct the inflow's unit",
                         ),
                     )
+                    .with_doc(doc::OBSERVED_DECLARED)
                     .with_subject(&system.info.id),
                 );
                 break;
@@ -292,7 +354,7 @@ fn check_bond(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
             "Bunge Def 1.1: a system requires at least one bond between distinct \
              components; an unbonded collection is an aggregate",
             Some("Add an interaction between two distinct systems, or author in Core mode"),
-        ));
+        ).with_doc(doc::BOND));
     }
 }
 
@@ -308,7 +370,7 @@ fn check_self_loops(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
                     ix.info.name
                 ),
                 Some("Remove the self-loop; feedback as a first-class cycle is Cybernetic mode (not yet available)"),
-            ).with_subject(&ix.info.id));
+            ).with_doc(doc::PRECONDITION).with_subject(&ix.info.id));
         }
     }
 }
@@ -333,7 +395,7 @@ fn check_dynamical_face(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
             "Full mode shows the dynamical face, but no system has a transformation, \
              history, or time constant",
             Some("Populate the dynamical slots, or view this model in Operational mode"),
-        ));
+        ).with_doc(doc::MODE_LENS));
     }
 }
 
@@ -373,6 +435,7 @@ fn check_duplicate_edges(model: &WorldModel, issues: &mut Vec<ValidationIssue>) 
                     ),
                     Some("Remove the duplicate, or distinguish it by substance or usability"),
                 )
+                .with_doc(doc::CONNECTION)
                 .with_subject(&ix.info.id),
             ),
             None => {
@@ -409,6 +472,7 @@ fn check_dead_ends(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
                     ),
                     Some("If it should continue, add an outgoing flow; if it is an endpoint, this is fine"),
                 )
+                .with_doc(doc::OBSERVED_DECLARED)
                 .with_subject(&system.info.id),
             );
         }
@@ -473,6 +537,7 @@ fn check_reachability(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
                     ),
                     Some("Connect it to the flow graph, or check whether it sits in a disconnected cycle"),
                 )
+                .with_doc(doc::OBSERVED_DECLARED)
                 .with_subject(&system.info.id),
             );
         }
@@ -530,6 +595,7 @@ fn check_reachability_requirements(model: &WorldModel, issues: &mut Vec<Validati
                                  or drop the requirement if it no longer holds",
                             ),
                         )
+                        .with_doc(doc::OBSERVED_DECLARED)
                         .with_subject(to),
                     );
                 }
@@ -559,6 +625,7 @@ fn check_reachability_requirements(model: &WorldModel, issues: &mut Vec<Validati
                                  detour, or drop the requirement if the detour is intended",
                             ),
                         )
+                        .with_doc(doc::OBSERVED_DECLARED)
                         .with_subject(avoiding),
                     );
                 }
@@ -582,6 +649,7 @@ fn unresolved_requirement(loc: &str, id: &str) -> ValidationIssue {
         format!("reachability requirement references '{id}', which resolves to no known entity"),
         Some("Point the requirement at an existing system, source, or sink id"),
     )
+    .with_doc(doc::OBSERVED_DECLARED)
 }
 
 /// Directed reachability over the flow graph: is `to` reachable from `from`,
@@ -741,7 +809,7 @@ fn check_orphan_sources(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
                          that couples to nothing lies outside the system's boundary"
                     ),
                     Some("Add an interaction with this source, or remove it"),
-                ));
+                ).with_doc(doc::ENVIRONMENT));
             }
         }
     };
@@ -772,7 +840,7 @@ fn check_orphan_sinks(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
                          nothing is not part of the system's coupling to its environment"
                     ),
                     Some("Add an interaction with this sink, or remove it"),
-                ));
+                ).with_doc(doc::ENVIRONMENT));
             }
         }
     };
@@ -795,7 +863,7 @@ fn check_interaction_references(
                 format!("interactions[{i}].source"),
                 format!("source '{src}' does not resolve to any known entity"),
                 Some("Check the source ID matches an existing system, source, or sink"),
-            ).with_subject(&ix.info.id));
+            ).with_doc(doc::CONNECTION).with_subject(&ix.info.id));
         }
         let snk = serialize_id(&ix.sink);
         if !known.contains(&snk) {
@@ -803,7 +871,7 @@ fn check_interaction_references(
                 format!("interactions[{i}].sink"),
                 format!("sink '{snk}' does not resolve to any known entity"),
                 Some("Check the sink ID matches an existing system, source, or sink"),
-            ).with_subject(&ix.info.id));
+            ).with_doc(doc::CONNECTION).with_subject(&ix.info.id));
         }
     }
 }
@@ -821,7 +889,7 @@ fn check_interface_references(
                     format!("interactions[{i}].source_interface"),
                     format!("source_interface '{id_str}' does not resolve to any known interface"),
                     Some("Check the interface ID exists on the source system's boundary"),
-                ));
+                ).with_doc(doc::INTERFACE));
             }
         }
         if let Some(ref snk_iface) = ix.sink_interface {
@@ -831,7 +899,7 @@ fn check_interface_references(
                     format!("interactions[{i}].sink_interface"),
                     format!("sink_interface '{id_str}' does not resolve to any known interface"),
                     Some("Check the interface ID exists on the sink system's boundary"),
-                ));
+                ).with_doc(doc::INTERFACE));
             }
         }
     }
@@ -867,7 +935,7 @@ fn check_orphan_interfaces(model: &WorldModel, issues: &mut Vec<ValidationIssue>
                          that gates nothing carries no systemic role"
                     ),
                     Some("Add a flow using this interface, attach an interface processor, or remove it if unused"),
-                ));
+                ).with_doc(doc::INTERFACE));
             }
         }
     }
@@ -885,7 +953,7 @@ fn check_parent_references(
                 format!("systems[{i}].parent"),
                 format!("parent '{parent}' does not resolve to any known entity"),
                 Some("Parent must be 'E-1' (environment) or an existing system ID"),
-            ));
+            ).with_doc(doc::WORLD_MODEL));
         }
     }
 }
@@ -899,7 +967,7 @@ fn check_duplicate_ids(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
                 &location,
                 format!("duplicate ID '{id_str}' (first seen at {prior})"),
                 Some("Each entity must have a unique ID"),
-            ));
+            ).with_doc(doc::WORLD_MODEL));
         }
     };
 
@@ -961,7 +1029,7 @@ fn check_environment_id(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
             "environment.info.id",
             format!("environment ID is '{env_id}', expected 'E-1'"),
             Some("The environment entity should always have ID 'E-1'"),
-        ));
+        ).with_doc(doc::WORLD_MODEL));
     }
 }
 
@@ -976,7 +1044,7 @@ fn check_source_sink_type_consistency(model: &WorldModel, issues: &mut Vec<Valid
                     format!("{loc_prefix}.sources[{i}].type"),
                     "entity in sources array has type 'Sink'".to_string(),
                     Some("Entities in the sources array should have type 'Source'"),
-                ));
+                ).with_doc(doc::ENVIRONMENT));
             }
         }
         for (i, snk) in sinks.iter().enumerate() {
@@ -985,7 +1053,7 @@ fn check_source_sink_type_consistency(model: &WorldModel, issues: &mut Vec<Valid
                     format!("{loc_prefix}.sinks[{i}].type"),
                     "entity in sinks array has type 'Source'".to_string(),
                     Some("Entities in the sinks array should have type 'Sink'"),
-                ));
+                ).with_doc(doc::ENVIRONMENT));
             }
         }
     };
@@ -1015,7 +1083,7 @@ fn check_version(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
                 model.version
             ),
             Some("This model may have been created with a different version of BERT"),
-        ));
+        ).with_doc(doc::WORLD_MODEL));
     }
 }
 
@@ -1032,7 +1100,7 @@ fn check_level_consistency(model: &WorldModel, issues: &mut Vec<ValidationIssue>
                     expected
                 ),
                 Some("Level should equal the number of ID indices minus one"),
-            ));
+            ).with_doc(doc::WORLD_MODEL));
         }
     }
 }
@@ -1084,15 +1152,19 @@ fn check_required_fields(
                     location,
                     format!("Missing required field '{field}'"),
                     Some(&format!("Add the '{field}' field to {location}")),
-                ));
+                ).with_doc(doc::WORLD_MODEL));
             }
         }
     } else {
         issues.push(ValidationIssue::error(
             location,
             format!("Expected an object, found {}", json_type_name(obj)),
-            None,
-        ));
+            Some(&format!(
+                "Replace {location} with an object carrying its required fields \
+                 ({}), or re-export the model from BERT",
+                required.join(", ")
+            )),
+        ).with_doc(doc::WORLD_MODEL));
     }
 }
 
@@ -1213,7 +1285,7 @@ fn check_processor_flows(model: &WorldModel, issues: &mut Vec<ValidationIssue>) 
                     system.info.name
                 ),
                 Some("Import processors should be a source in at least one flow; export processors should be a sink"),
-            ));
+            ).with_doc(doc::INTERFACE));
         }
     }
 }
@@ -1246,7 +1318,7 @@ fn check_s0_interface_processors(model: &WorldModel, issues: &mut Vec<Validation
                     iface.info.name
                 ),
                 Some("Add a level-1 subsystem with boundary.parent_interface pointing to this interface"),
-            ));
+            ).with_doc(doc::INTERFACE));
         }
     }
 }
@@ -2897,5 +2969,68 @@ mod tests {
             actual,
             "fixture {name} drifted from its generator; regenerate with BLESS_FIXTURES=1"
         );
+    }
+
+    /// #129: every stable doc anchor resolves to a real heading in its file —
+    /// a renamed heading or moved doc fails here instead of shipping a dead
+    /// link from a refusal.
+    #[test]
+    fn doc_anchors_resolve() {
+        /// GitHub-style heading slug: lowercase, spaces to hyphens, hyphens and
+        /// underscores kept, all other punctuation dropped.
+        fn slug(heading: &str) -> String {
+            let mut s = String::new();
+            for ch in heading.trim().chars() {
+                if ch.is_alphanumeric() {
+                    s.extend(ch.to_lowercase());
+                } else if ch == ' ' {
+                    s.push('-');
+                } else if ch == '-' || ch == '_' {
+                    s.push(ch);
+                }
+            }
+            s
+        }
+        let repo = format!("{}/../..", env!("CARGO_MANIFEST_DIR"));
+        for target in doc::ALL {
+            let (path, anchor) = target
+                .split_once('#')
+                .unwrap_or_else(|| panic!("doc target '{target}' must carry an anchor"));
+            let text = std::fs::read_to_string(format!("{repo}/{path}"))
+                .unwrap_or_else(|_| panic!("doc target file missing: {path}"));
+            let resolves = text
+                .lines()
+                .filter(|l| l.starts_with('#'))
+                .any(|l| slug(l.trim_start_matches('#')) == anchor);
+            assert!(resolves, "no heading in {path} slugifies to '#{anchor}'");
+        }
+    }
+
+    /// #129 gap fill: the pre-parse type-mismatch refusal used to ship with no
+    /// suggestion — the one no-suggestion path in the validator. It now carries
+    /// a repair path and its doc anchor, like every other refusal.
+    #[test]
+    fn json_type_mismatch_carries_repair_path_and_doc() {
+        let result = validate_json_structure(&serde_json::json!([1, 2]));
+        let issue = result
+            .issues
+            .iter()
+            .find(|i| i.message.contains("Expected an object"))
+            .expect("a non-object root must refuse");
+        assert!(issue.suggestion.is_some(), "the refusal must carry a repair path");
+        assert_eq!(issue.doc.as_deref(), Some(doc::WORLD_MODEL));
+    }
+
+    /// #129: mode-gate refusals cite their precondition's doc entry.
+    #[test]
+    fn mode_gate_refusals_carry_doc_links() {
+        let model = minimal_model();
+        let structural = validate_mode(&model, Mode::Structural);
+        let bond = structural
+            .issues
+            .iter()
+            .find(|i| i.location == "mode/Structural")
+            .expect("an unbonded singleton refuses Structural");
+        assert_eq!(bond.doc.as_deref(), Some(doc::BOND));
     }
 }
