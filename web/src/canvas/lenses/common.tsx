@@ -30,7 +30,7 @@ interface NodeBodyProps {
   isSquare: boolean;
   /** Bunge/Mobus composition halo (the C/E wash); a set partition, not a ring. */
   showHalo: boolean;
-  /** Mobus env sources/sinks are open unfilled shapes (epistemically unknowable). */
+  /** Mobus env sources/sinks are open unfilled shapes (out of scope at this bounding — flows only, by choice). */
   envOpen: boolean;
   /** Mobus components carry the "work sphere" sheen of the house drawings (Fig. 4.5). */
   sphere?: boolean;
