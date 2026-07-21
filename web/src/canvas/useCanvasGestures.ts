@@ -169,12 +169,15 @@ export function useCanvasGestures({
 
   /** Frame the whole model in a `vw`×`vh` viewport — reuses the same `zoom`
    *  action (scale + pan together) the wheel path uses, so no new view state is
-   *  introduced. A no-op for an empty model. Called after compile (#83). */
-  function fitToViewport(vw: number, vh: number) {
+   *  introduced. A no-op for an empty model. Called after compile (#83).
+   *  `ox`/`oy` offset the target viewport within the stage (the Klir register's
+   *  locator margin, #100) and `pad` tightens the inset for small viewports —
+   *  pure view framing, same transform, no new state. */
+  function fitToViewport(vw: number, vh: number, opts: { ox?: number; oy?: number; pad?: number } = {}) {
     const box = contentBounds(model);
     if (!box) return;
-    const { pan, scale } = fitToBox(box, vw, vh);
-    dispatch({ type: "zoom", scale, pan });
+    const { pan, scale } = fitToBox(box, vw, vh, opts.pad === undefined ? {} : { pad: opts.pad });
+    dispatch({ type: "zoom", scale, pan: { x: pan.x + (opts.ox ?? 0), y: pan.y + (opts.oy ?? 0) } });
   }
 
   function hitTest(p: Pt, exclude?: number): Thing | undefined {

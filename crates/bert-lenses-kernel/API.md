@@ -249,6 +249,23 @@ type LensDescription =
 ```
 Throws on unparseable canvas JSON or an unknown lens string.
 
+The Klir variant gains one additive field (#100 Klir register, wire-compatible):
+```ts
+type LensDescription = /* Klir arm */ { ..., ladder: KlirLadder }
+type KlirLadder = {
+  position: string,     // the Klir letter-string: "∅" | "E" | "SE" | "S²E"
+  claim: string,        // what standing there asserts, in Klir's terms
+  to_climb: string,     // what earns the next rung (honest: D/G need data — compose seam)
+  decomposed: string[], // evidence for the S² step: decomposed elements, by name
+}
+```
+The model's HONEST position on Klir's epistemological ladder (Fig. 4.13
+semilattice), derived by the kernel from what the model actually contains
+(things → E, couplings → SE, decomposition references → S²E; nothing → ∅).
+D and G are never claimed from this surface — they need observed states over a
+named support, which arrives with the compose seam. Kernel judgment; the face
+only typesets the position.
+
 ## Phase 4 surface (built — the atomic author-view call)
 
 ### `analyze_canvas(canvas_json: string) → CanvasAnalysis`

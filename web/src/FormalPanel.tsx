@@ -58,6 +58,12 @@ function KlirFace({ d }: { d: Extract<LensDescription, { lens: "Klir" }> }) {
       <Line label={<Tex tex="|R|" />}>
         {d.relations} relations (systemhood) · {d.neutral} neutral, {d.directed} directed
       </Line>
+      {/* The ladder position (#100) — same kernel verdict the canvas anchors
+          on; repeated here so the formal object names its own epistemological
+          standing. */}
+      <Line label="position">
+        <span className="font-mono">{d.ladder.position}</span> — {d.ladder.claim}
+      </Line>
       <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--text-muted)" }}>
         {d.note}.
       </p>

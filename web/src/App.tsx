@@ -1195,6 +1195,9 @@ function Workspace() {
                       // SYSTEM (author SOI name, else the shell's label), so a
                       // model can never impersonate its only component.
                       placeName={canvasModel.name?.trim() || currentLabel}
+                      // #100 Klir register: the kernel's ladder verdict — the
+                      // anchor of the Klir surface; null under other lenses.
+                      klirLadder={desc?.lens === "Klir" ? desc.ladder : null}
                     />
                     {boundaryAnchor && (
                       <BoundaryPopover

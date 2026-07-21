@@ -6,12 +6,23 @@
 // in the `LensRegistry` (stateless views, one set per lens). This file is the
 // stage: backdrops, the render loop, and the node-name draft input.
 import { useEffect, useRef, useState } from "react";
-import type { CanvasModel, EdgeFact, Lens, LensFacts, PortFact, Thing } from "../kernel/types";
+import type { CanvasModel, EdgeFact, KlirLadder, Lens, LensFacts, PortFact, Thing } from "../kernel/types";
 import type { SimFrame } from "./types";
 import { bungeHull, membraneRing, ringPoint, thingById, NODE_R, type Hull, type Pt, type Ring } from "./geometry";
 import { useCanvasGestures } from "./useCanvasGestures";
 import { STYLE } from "./style";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
+import { KlirLadderPanel } from "./lenses/klir-ladder"; // Klir's GSPS hierarchy surface
+
+/** The Klir locator margin (#100 ladder-first register): the region the (T, R)
+ *  picture demotes into — a framed authoring viewport at the bottom-right,
+ *  clear of the residue strip (top-right) and the gesture-hint line (bottom).
+ *  Pure screen layout, no systems meaning. */
+function klirLocatorBox(w: number, h: number): { x: number; y: number; w: number; h: number } {
+  const lw = Math.max(220, Math.min(w * 0.36, 420));
+  const lh = Math.max(180, Math.min(h * 0.46, 360));
+  return { x: w - lw - 12, y: h - lh - 40, w: lw, h: lh };
+}
 
 interface Props {
   model: CanvasModel;
@@ -46,6 +57,9 @@ interface Props {
    *  the per-lens container labels itself with it (#100 phase 0), so a model
    *  can never impersonate its only component. */
   placeName?: string | null;
+  /** Klir's GSPS ladder position (kernel judgment, from `describe`) — the
+   *  anchor of the Klir register surface (#100). Null under other lenses. */
+  klirLadder?: KlirLadder | null;
 }
 
 export default function Canvas({
@@ -66,10 +80,27 @@ export default function Canvas({
   onScaleChange,
   fitToken,
   placeName = null,
+  klirLadder = null,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
   const gestures = useCanvasGestures({ model, svgRef, onModelChange, onReject, armed, onSelectThing });
   const { pan, scale, connectFrom, connectPos, hoverTarget, draft } = gestures.state;
+
+  // Viewport size, tracked for the Klir register's screen-space layout (the
+  // ladder panel + locator margin need concrete px). Pure view measurement.
+  const [viewSize, setViewSize] = useState<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const measure = () => {
+      const r = svg.getBoundingClientRect();
+      setViewSize({ w: r.width, h: r.height });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(svg);
+    return () => ro.disconnect();
+  }, []);
 
   // Click-to-edit container label (#116): the membrane/hull/place label writes
   // the model's SELF-name (CanvasModel.name — the field the SL `system "..."`
@@ -128,14 +159,39 @@ export default function Canvas({
   // carries a given token already holds the compiled model, so `fitToViewport`
   // closes over it; adding it to deps would refit on every render (e.g. drags).
   const { fitToViewport } = gestures;
+  /** Frame the model for the active lens: the full viewport normally; under
+   *  Klir the locator margin — the (T, R) picture is demoted there (#100),
+   *  the ladder holds the stage. */
+  const fitForLens = (w: number, h: number) => {
+    if (lens === "Klir") {
+      const b = klirLocatorBox(w, h);
+      fitToViewport(b.w, b.h, { ox: b.x, oy: b.y, pad: 28 });
+    } else {
+      fitToViewport(w, h);
+    }
+  };
   useEffect(() => {
     if (fitToken === undefined) return;
     const svg = svgRef.current;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
-    fitToViewport(rect.width, rect.height);
+    fitForLens(rect.width, rect.height);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitToken]);
+
+  // Lens switching reframes: entering Klir tucks the picture into the locator;
+  // leaving restores the full-viewport frame. The ref-guard makes re-renders
+  // no-ops, so this fires exactly once per actual switch, both directions.
+  const prevLens = useRef(lens);
+  useEffect(() => {
+    if (prevLens.current === lens) return;
+    prevLens.current = lens;
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    fitForLens(rect.width, rect.height);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lens]);
 
   // Wheel zoom needs a NON-passive native listener (browsers default wheel to
   // passive, which would ignore preventDefault and scroll the page instead).
@@ -463,6 +519,37 @@ export default function Canvas({
           </foreignObject>
         )}
       </g>
+
+      {/* The Klir register (#100, ladder-first): the model's epistemological
+          position anchors the surface; the node-and-edge picture demotes to a
+          framed locator margin (bottom-right) where every authoring gesture
+          still works — stamp, drag, connect, select. Both are screen-space and
+          export-ignored: exports keep the clean (T, R) diagram. */}
+      {lens === "Klir" &&
+        viewSize &&
+        (() => {
+          const b = klirLocatorBox(viewSize.w, viewSize.h);
+          return (
+            <g data-export-ignore pointerEvents="none">
+              <rect
+                x={b.x}
+                y={b.y}
+                width={b.w}
+                height={b.h}
+                rx={10}
+                fill="none"
+                stroke="var(--border)"
+                strokeDasharray="4 4"
+              />
+              <text x={b.x + 8} y={b.y - 6} fontSize={10} fill="var(--text-muted)" className="font-mono">
+                locator — the (T, R) picture · authoring margin
+              </text>
+            </g>
+          );
+        })()}
+      {lens === "Klir" && klirLadder && viewSize && (
+        <KlirLadderPanel model={model} ladder={klirLadder} x={16} y={44} maxHeight={viewSize.h - 56} />
+      )}
 
       {/* Klir: NO ontological container — orientation is copy. A screen-space
           place label (outside the pan/zoom group) does the you-are-here work;
