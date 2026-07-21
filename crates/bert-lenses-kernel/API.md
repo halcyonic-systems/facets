@@ -116,6 +116,9 @@ Everything is labeled by the model's own names + units — no engine columns lea
 `unit_derived` is true when an undeclared Buffering stock's `unit` was derived from
 its inflow integrated over Δt (bert-lenses#94: `ML/mo` → `ML`, in the author's own
 vocabulary, never SI-canonicalized), rather than read from a declared stock unit.
+An intrinsic rate integrates using the model's declared time-unit symbol
+(`WorldModel.time_unit` / SL `time unit h`): `kW` → `kW·h`, or the abstract
+`kW·Δt` when the model declares none — the kernel never invents a symbol.
 
 ## Phase 2 surface (built — the canvas seam)
 
@@ -124,9 +127,10 @@ The canvas holds its own editing model and asks Rust for legality. Shapes:
 type Lens = "Klir" | "Bunge" | "Mobus"            // → Core | Structural | Operational
 type Role = "Component" | "Environment"
 type Kind = "Unspecified" | "Energy" | "Matter" | "Field" | "Informational"
-type Thing = { id: number, name: string, x: number, y: number, role?: Role, primitive?: string }
+type Thing = { id: number, name: string, x: number, y: number, role?: Role, primitive?: string,
+               stock_unit?: string }                  // declared stock unit (#76/#94)
 type Relation = { id: number, a: number, b: number, name?: string, is_bond?: boolean, kind?: Kind }
-type CanvasModel = { lens: Lens, things: Thing[], relations: Relation[] }
+type CanvasModel = { lens: Lens, things: Thing[], relations: Relation[], time_unit?: string }
 ```
 
 ### `validate_mode(model_json, mode) → ValidationResult`
@@ -345,6 +349,16 @@ and old SL text parse unchanged. `project()` writes the name into the root
 system's `info.name` (placeholder `"System"` when unnamed) and `to_canvas`
 reads it back — a model genuinely named `"System"` reads back as unnamed, the
 one deliberate asymmetry.
+
+**#94 tail (units):** two additive, serde-skipped fields cross the seam. `Thing`
+gained `stock_unit?: string` (the declared stock unit, #76; SL clause
+`stock <unit>` on component lines; written by the run panel's accept-derived-unit
+affordance) and `CanvasModel` gained `time_unit?: string` (the model's time-unit
+symbol; SL line `time unit <symbol>`). `project()` carries them onto
+`AgentModel.stock_unit` / `WorldModel.time_unit` and `to_canvas` reads them
+back. With a declared time unit, an undeclared kW-fed stock's derived display
+upgrades `kW·Δt` → `kW·h`; the symbol is display vocabulary only — Δt stays a
+pure number, nothing rescales. Old models and old SL text parse unchanged.
 
 ## Decomposition surface (built — store-layer resolution, #89 step 5a)
 

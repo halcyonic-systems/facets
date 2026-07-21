@@ -68,6 +68,7 @@ fn canvas_born_model_canonicalizes() {
         primitive: None,
         interface: false,
         child_model: None,
+        stock_unit: String::new(),
     };
     let m = CanvasModel {
         lens: Lens::Klir,
@@ -89,6 +90,7 @@ fn canvas_born_model_canonicalizes() {
         boundary: CanvasBoundaryProps { porosity: 0.33, perceptive_fuzziness: 0.0 },
         system_type: SystemType::default(),
         name: None,
+        time_unit: None,
     };
     let t1 = emit_sl(&m).unwrap();
     let m2 = parse_sl(&t1).unwrap();
@@ -128,6 +130,57 @@ fn soi_name_survives_both_round_trips() {
     let world = bert_canvas::canvas::project(&unnamed);
     assert_eq!(world.systems[0].info.name, "System");
     assert_eq!(bert_canvas::canvas::to_canvas(&world).name, None);
+}
+
+/// Law (bert-lenses#94 tail): the model's time-unit symbol and a declared stock
+/// unit survive BOTH round trips — text → model → text AND canvas → world →
+/// canvas — and an undeclared model stays undeclared (no invented symbol).
+#[test]
+fn time_unit_and_stock_unit_survive_both_round_trips() {
+    let text = "time unit h\ncomponent Battery primitive Buffering stock \"kW·h\"\n";
+    let m = parse_sl(text).unwrap();
+    assert_eq!(m.time_unit.as_deref(), Some("h"));
+    assert_eq!(m.things[0].stock_unit, "kW·h");
+
+    // text → model → text: both clauses re-emit, and the emitted text is a fixpoint.
+    let emitted = emit_sl(&m).unwrap();
+    assert!(emitted.contains("time unit h\n"), "{emitted}");
+    assert!(emitted.contains("stock \"kW·h\""), "{emitted}");
+    let m2 = parse_sl(&emitted).unwrap();
+    assert_eq!(json(&m), json(&m2), "declared units drifted across the text round trip\n{emitted}");
+
+    // canvas → world → canvas: the symbol lands on WorldModel::time_unit, the
+    // stock unit on the agent record, and both read back.
+    let world = project(&m);
+    assert_eq!(world.time_unit.as_deref(), Some("h"));
+    assert_eq!(
+        world.systems[1].agent.as_ref().unwrap().stock_unit,
+        "kW·h",
+        "the declared stock unit reaches the kernel model"
+    );
+    let back = to_canvas(&world);
+    assert_eq!(back.time_unit.as_deref(), Some("h"));
+    assert_eq!(back.things[0].stock_unit, "kW·h");
+
+    // Undeclared stays undeclared — the kernel never invents a symbol.
+    let bare = parse_sl("component Work\n").unwrap();
+    assert_eq!(bare.time_unit, None);
+    assert_eq!(project(&bare).time_unit, None);
+    assert!(!emit_sl(&bare).unwrap().contains("time unit"));
+}
+
+/// Law: a stock unit declared WITHOUT a primitive still projects (an accept on a
+/// primitive-less component must never be silently dropped by the seam).
+#[test]
+fn stock_unit_without_primitive_survives_the_seam() {
+    let m = parse_sl("component Tank stock ML\n").unwrap();
+    assert_eq!(m.things[0].primitive, None);
+    let world = project(&m);
+    assert_eq!(world.systems[1].agent.as_ref().unwrap().stock_unit, "ML");
+    let back = to_canvas(&world);
+    assert_eq!(back.things[0].stock_unit, "ML");
+    // And it re-emits bare (an identifier-shaped unit needs no quotes).
+    assert!(emit_sl(&back).unwrap().contains("component Tank stock ML"), "{}", emit_sl(&back).unwrap());
 }
 
 /// Law: a name containing a quote is not expressible in SL v1 — emit refuses

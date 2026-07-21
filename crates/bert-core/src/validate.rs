@@ -1421,6 +1421,7 @@ mod tests {
             interactions: vec![],
             hidden_entities: vec![],
             reachability_requirements: vec![],
+            time_unit: None,
         }
     }
 

@@ -50,6 +50,7 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
         primitive: None,
         interface: false,
         child_model: None,
+        stock_unit: String::new(),
     }
 }
 
@@ -112,6 +113,11 @@ fn sample() -> CanvasModel {
         // Named so the golden proves the present-name case (#84): the SOI name
         // must survive canvas → world → canvas.
         name: Some("Pump Station".to_string()),
+        // Absent here on purpose: `time_unit` (#94) is skip-if-None, so leaving
+        // it undeclared keeps the golden byte-identical (the additive contract).
+        // Round-trip coverage of the declared case lives in sl_roundtrip.rs and
+        // the canvas unit tests.
+        time_unit: None,
     }
 }
 

@@ -527,6 +527,7 @@ pub fn derive_child(parent: &WorldModel, comp: &Id) -> Result<WorldModel, Vec<Va
         interactions,
         hidden_entities: vec![],
         reachability_requirements: vec![],
+        time_unit: None,
     };
     child.mint_id();
     Ok(child)

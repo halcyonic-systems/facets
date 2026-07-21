@@ -618,6 +618,7 @@ mod tests {
             interactions: vec![minimal_flow(0, "bond", a, b)],
             hidden_entities: vec![],
             reachability_requirements: vec![],
+            time_unit: None,
         }
     }
 
@@ -899,6 +900,7 @@ mod tests {
             interactions: vec![flow],
             hidden_entities: vec![],
             reachability_requirements: vec![],
+            time_unit: None,
         }
     }
 
