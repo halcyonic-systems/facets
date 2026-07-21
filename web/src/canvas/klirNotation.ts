@@ -29,6 +29,16 @@ export function cellRelations(model: CanvasModel, a: number, b: number): Relatio
   );
 }
 
+/** What an incidence cell shows (#100 harvest, from the matrix-centric arm):
+ *  nothing (empty), ● (neutral occupant), → (directed, read row → col),
+ *  ↺ (diagonal self-relation), with a ×N count when relations stack. Pure
+ *  typesetting over cellRelations' reading — no verdict. */
+export function cellGlyph(row: number, col: number, rs: Relation[]): string {
+  if (rs.length === 0) return "";
+  const head = row === col ? "↺" : rs.some((r) => r.klir_directed === true && r.a === row) ? "→" : "●";
+  return rs.length > 1 ? `${head}×${rs.length}` : head;
+}
+
 /** Where a register-born thing lands on the (demoted) picture. Layout carries
  *  no Klir meaning — this only guarantees a fresh, non-overlapping spot: x
  *  strictly right of everything, y cycling a short column. */

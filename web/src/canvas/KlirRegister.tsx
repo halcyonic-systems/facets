@@ -15,7 +15,7 @@ import { validateConnection } from "../kernel";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 import { DecomposeRows, type DecomposeAffordance } from "./NodePopover";
 import { FormalismLine, klirFormalism } from "./lenses/glossary";
-import { cellRelations, nextIdOf, nextThingPosition, relationTuple } from "./klirNotation";
+import { cellGlyph, cellRelations, nextIdOf, nextThingPosition, relationTuple } from "./klirNotation";
 
 interface Props {
   model: CanvasModel;
@@ -337,7 +337,15 @@ function PairSelect({
 /** The Relation Matrix — |T|×|T| incidence over the same R the set listing
  *  shows. Cell (row, col) reads as the ordered pair (row, col): a directed
  *  relation marks its own order, a neutral one marks both. A marked cell
- *  selects its relation; an empty cell proposes the pair to the kernel. */
+ *  selects its relation; an empty cell proposes the pair to the kernel.
+ *
+ *  Cell presentation grafted from the blind pick's matrix-centric arm (#100
+ *  harvest): glyphs ● / → / ↺ (with a ×N stack count), hairline-gridded cells
+ *  with a soft accent wash where R is inhabited, a faint diagonal tint, and
+ *  hover tooltips reading each occupant as rN "name" = (row, col). The editing
+ *  grammar stays this register's own. */
+const CELL = 30;
+
 function IncidenceMatrix({
   model,
   selectedRelationId,
@@ -355,24 +363,40 @@ function IncidenceMatrix({
     );
   }
   const short = (name: string) => (name.length > 12 ? `${name.slice(0, 11)}…` : name);
+  const nameOf = (id: number) => model.things.find((t) => t.id === id)?.name || `t${id}`;
+  // Each occupant read the way the set listing writes it: rN "name" = (a, b).
+  const cellTitle = (rels: Relation[]): string =>
+    rels
+      .map(
+        (r) =>
+          `r${model.relations.indexOf(r) + 1}${r.name ? ` "${r.name}"` : ""} = (${nameOf(r.a)}, ${nameOf(r.b)})${r.klir_directed === true ? " directed" : ""}`,
+      )
+      .join(" · ");
+  const headerCellStyle = {
+    fontFamily: "var(--font-mono)",
+    background: "var(--bg-secondary)",
+    color: "var(--text-secondary)",
+    borderBottom: "1px solid var(--hairline)",
+    borderRight: "1px solid var(--hairline)",
+  } as const;
   return (
     <div className="overflow-x-auto pl-6">
-      <table className="border-separate" style={{ borderSpacing: 2 }}>
+      <table className="border-separate" style={{ borderSpacing: 0 }}>
         <thead>
           <tr>
-            <th className="text-[10px] font-normal" style={{ color: "var(--text-muted)" }}>
-              <span style={{ fontFamily: "var(--font-mono)" }}>row→col</span>
+            <th className="px-2 text-left align-bottom text-[10px] font-normal" style={headerCellStyle}>
+              row→col
             </th>
             {model.things.map((t) => (
-              <th key={t.id} className="px-1 pb-1 align-bottom text-[10px] font-normal" title={t.name}>
+              <th
+                key={t.id}
+                className="px-1 pb-1 align-bottom text-[10px] font-normal"
+                style={{ ...headerCellStyle, minWidth: CELL, maxWidth: CELL }}
+                title={t.name}
+              >
                 <span
                   className="inline-block max-h-24 overflow-hidden"
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    color: "var(--text-secondary)",
-                    writingMode: "vertical-rl",
-                    transform: "rotate(180deg)",
-                  }}
+                  style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
                 >
                   {short(t.name || `t${t.id}`)}
                 </span>
@@ -384,8 +408,8 @@ function IncidenceMatrix({
           {model.things.map((a) => (
             <tr key={a.id}>
               <th
-                className="max-w-28 truncate pr-2 text-right text-[10px] font-normal"
-                style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}
+                className="max-w-28 truncate px-2 text-right text-[10px] font-normal"
+                style={{ ...headerCellStyle, height: CELL }}
                 title={a.name}
               >
                 {short(a.name || `t${a.id}`)}
@@ -394,27 +418,32 @@ function IncidenceMatrix({
                 const rels = cellRelations(model, a.id, b.id);
                 const hit = rels.some((r) => r.id === selectedRelationId);
                 return (
-                  <td key={b.id} className="p-0">
+                  <td key={b.id} className="p-0" style={{ borderBottom: "1px solid var(--hairline)", borderRight: "1px solid var(--hairline)" }}>
                     <button
                       onClick={() => onPickCell(a.id, b.id)}
-                      className="h-6 w-6 rounded-sm text-xs leading-none"
+                      className="block text-[11px] leading-none"
                       style={{
+                        width: CELL,
+                        height: CELL,
                         fontFamily: "var(--font-mono)",
                         color: rels.length ? "var(--text-primary)" : "var(--text-muted)",
                         background: hit
                           ? "color-mix(in srgb, var(--lens-accent) 30%, transparent)"
                           : rels.length
-                            ? "color-mix(in srgb, var(--lens-accent) 10%, var(--bg-secondary))"
-                            : "var(--bg-secondary)",
-                        border: `1px solid ${hit ? "var(--lens-accent)" : "var(--hairline)"}`,
+                            ? "color-mix(in srgb, var(--lens-accent) 14%, transparent)"
+                            : a.id === b.id
+                              ? "color-mix(in srgb, var(--lens-accent) 6%, transparent)"
+                              : "var(--bg-primary)",
+                        outline: hit ? "1.5px solid var(--lens-accent)" : undefined,
+                        outlineOffset: -1.5,
                       }}
                       title={
                         rels.length
-                          ? `(${a.name}, ${b.name}) ∈ R — click to edit`
+                          ? `${cellTitle(rels)} — click to edit`
                           : `(${a.name}, ${b.name}) ∉ R — click to add`
                       }
                     >
-                      {rels.length === 0 ? "·" : rels.length === 1 ? "1" : rels.length}
+                      {cellGlyph(a.id, b.id, rels)}
                     </button>
                   </td>
                 );
@@ -424,7 +453,7 @@ function IncidenceMatrix({
         </tbody>
       </table>
       <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
-        a neutral relation marks both orders; a directed one marks (row, col) only
+        ● neutral (marks both orders) · → directed, read row → col · ↺ self-relation
       </p>
     </div>
   );
