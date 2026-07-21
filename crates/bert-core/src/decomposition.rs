@@ -527,7 +527,11 @@ pub fn derive_child(parent: &WorldModel, comp: &Id) -> Result<WorldModel, Vec<Va
         interactions,
         hidden_entities: vec![],
         reachability_requirements: vec![],
-        time_unit: None,
+        // Vocabulary flows down; the Δt VALUE does not. Mobus §4.3.3.6: lower
+        // levels tick faster (integer divisors of the level above), but the
+        // unit the ticks are counted in is shared — so the newborn inherits
+        // the symbol as a freely-overridable default (ruled 2026-07-21, #94).
+        time_unit: parent.time_unit.clone(),
     };
     child.mint_id();
     Ok(child)
@@ -1304,6 +1308,20 @@ mod tests {
         let child = derive_child(&parent, &comp()).expect("interior component derives");
         let issues = check_decomposition_contract(&parent, &comp(), &child);
         assert!(issues.is_empty(), "the newborn must pass its own seam: {}", messages(&issues));
+    }
+
+    /// Law: the time-unit SYMBOL flows down as a default (Mobus §4.3.3.6 —
+    /// levels share the vocabulary their Δts are counted in); an unnamed
+    /// parent leaves the child unnamed too, never invents one.
+    #[test]
+    fn derived_child_inherits_the_time_unit_symbol() {
+        let mut parent = parent_model();
+        parent.time_unit = Some("h".to_string());
+        let child = derive_child(&parent, &comp()).expect("derives");
+        assert_eq!(child.time_unit.as_deref(), Some("h"));
+        parent.time_unit = None;
+        let bare = derive_child(&parent, &comp()).expect("derives");
+        assert_eq!(bare.time_unit, None, "no symbol is ever invented");
     }
 
     #[test]
