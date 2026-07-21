@@ -107,7 +107,11 @@ that instance, and the collapse is *proved*, not asserted, by
     > ../bert-lenses/fixtures/gates_truth_table.json
   ```
 
-  The Lean side runs offline; no Lean toolchain is needed in Rust CI.
+  The Lean side runs offline; no Lean toolchain is needed in Rust CI. The SSF
+  commit the committed fixture (and every Lean citation in this document) refers
+  to is pinned in `docs/lean-provenance.md`, which also carries the audit path;
+  regenerating the fixture and moving that pin are one atomic change (its
+  "Update discipline" section).
 
 - **Consumption** — `crates/bert-core/tests/gates_truth_table.rs`
   (`rust_gates_agree_with_lean_verdicts_on_every_row`, on the standard
@@ -156,3 +160,10 @@ Rung 2 is a performance escape hatch, not a fidelity upgrade — rungs 1/1.5
 already give two-sided falsifiability. Rung 3 is the fidelity upgrade: it would
 retire the hand-mirroring in §C's mapping table by making the shipped Rust the
 proved object.
+
+The provenance complement to this ladder (bert-lenses#128): which SSF commit
+the shipped artifacts refer to, the full claim→theorem map beyond the gate
+predicates, and the from-this-repo-alone audit commands live in
+`docs/lean-provenance.md`. The split is exactly the extraction-vs-provenance
+seam: this document owns how the artifacts are produced and consumed; that one
+owns which proofs, where, at what pin.

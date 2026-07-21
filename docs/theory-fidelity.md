@@ -1,6 +1,6 @@
 # Theory fidelity — what each lens takes, drops, and why
 
-*For a reader already convinced the tool is useful and now assessing the quality of the theory underneath — independently, or with an LLM/expert's help. Every claim below cites file:line so it's checkable against the current source, not taken on faith. A secondary, harder-nosed reading (a scholar looking for the weak points) is folded in where the two audiences ask the same question; where they diverge, this doc favors the assessing reader.*
+*For a reader already convinced the tool is useful and now assessing the quality of the theory underneath — independently, or with an LLM/expert's help. Every claim below cites file:line so it's checkable against the current source, not taken on faith. Citations into `systems-science-foundations` are pinned: the exact commit they refer to, the claim→theorem map, and the audit commands are in [`lean-provenance.md`](lean-provenance.md). A secondary, harder-nosed reading (a scholar looking for the weak points) is folded in where the two audiences ask the same question; where they diverge, this doc favors the assessing reader.*
 
 ## What the kernel actually is
 
@@ -81,3 +81,4 @@ The model carries an author-asserted `system_type` (`CanvasModel.system_type` in
 - `docs/archive/on-the-word-ladder.md` — **HISTORICAL** — the concordance of the three senses of "ladder/rung/climb"; the mode-entry sense is retired (mode entry now speaks lens vocabulary, #90), the doc kept as the record of the surviving senses.
 - `docs/design/llm-integration-research.md` §11 — how lens-fidelity is enforced for LLM-generated reasoning (`describe()` as injected, kernel-translated vocabulary).
 - `systems-science-foundations/Systems/Klir/ViewGeneration.lean`, `Systems/Mobus/Tuple.lean` — the machine-checked source.
+- `docs/lean-provenance.md` — the pinned SSF commit these citations refer to, the per-claim theorem map, and how an auditor checks every proof from this repo alone.

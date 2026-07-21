@@ -21,6 +21,7 @@ Start at the main [`README.md`](../README.md) and [`CLAUDE.md`](../CLAUDE.md) fo
 ## Theory and kernel
 
 - [`kernel-architecture.md`](kernel-architecture.md) — **LIVE** — what the kernel *is* as a system: what `describe`/`lens_facts`/`validate_mode`/`analyze` actually compute, verified against source with confidence ratings. Read before trusting the substrate.
+- [`lean-provenance.md`](lean-provenance.md) — **LIVE** — the pinned `systems-science-foundations` commit behind every "machine-checked" claim, the per-claim claim→theorem map, the from-this-repo-alone audit path, and the pin-moves-with-the-fixture update discipline (issue [#128](https://github.com/halcyonic-systems/bert-lenses/issues/128); the provenance complement to [`../spec/LENS_ENTRY_SPEC.md`](../spec/LENS_ENTRY_SPEC.md) §D).
 - [`theory-fidelity.md`](theory-fidelity.md) — **LIVE** — per-tradition (Klir/Bunge/Mobus) take/drop/where/why, the mode-stamp semantics, the perspectival-realist scope statement, and the #5 collapse as a worked example of the refuse-don't-truncate discipline. For a reader assessing the theory's quality, not just its UI.
 
 ## Design positions and research
