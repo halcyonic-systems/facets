@@ -12,9 +12,11 @@
 //!   BLESS_FIXTURES=1 cargo test -p bert-canvas --test contract
 
 use bert_canvas::canvas::{
-    CanvasBoundaryProps, CanvasModel, Genus, Kind, Kingdom, Lens, Relation, Role, SystemType, Thing,
+    CanvasBoundaryProps, CanvasModel, ChildRef, Genus, Kind, Kingdom, Lens, Relation, Role,
+    SystemType, Thing,
 };
 use bert_canvas::lenses::{analyze, describe, lens_facts};
+use bert_core::{ModelId, ModelRef};
 
 /// Write-or-assert a fixture. With `BLESS_FIXTURES=1` it (re)writes the file;
 /// otherwise it asserts the serialization matches the committed fixture exactly,
@@ -71,7 +73,17 @@ fn sample() -> CanvasModel {
     CanvasModel {
         lens: Lens::Mobus,
         things: vec![
-            thing(1, "Pump", Role::Component),
+            // Pump carries a decomposition reference (#89): the golden proves
+            // `child_model` crosses the edge as { name, base58 id }.
+            Thing {
+                child_model: Some(ChildRef {
+                    name: "pump-interior".to_string(),
+                    // The decomposition golden's fixed id, parsed from its
+                    // canonical base58 form.
+                    id: ModelRef::to("Hrs6K91KnZZsiPcWzftv8U".parse::<ModelId>().unwrap()),
+                }),
+                ..thing(1, "Pump", Role::Component)
+            },
             // Tank is interface-DESIGNATED with no exo flow: the golden proves
             // the authored-flowless case (well-formed; Mobus-visible, Bunge-blind).
             Thing { interface: true, ..thing(2, "Tank", Role::Component) },
