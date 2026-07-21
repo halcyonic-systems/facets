@@ -56,6 +56,11 @@
 //!   missing (every neighbor is named by an env object). Labels drift — but an
 //!   env stand-in whose label drifted from its neighbor's IS a stale model,
 //!   and the refusal says exactly which name to fix.
+//! - **Birth-name drift is a Warning, not a row (bert-lenses#116).** The door
+//!   names the child's root after the component at door time; a later rename
+//!   of either side never propagates. Child root name ≠ component name is
+//!   outside the Lean contract (the seam holds by id), so it surfaces as a
+//!   Warning-severity note, never a refusal.
 
 use crate::model_id;
 use crate::validate::{Severity, ValidationIssue};
@@ -79,6 +84,16 @@ fn refuse(location: String, message: String, suggestion: &str, subject: Option<I
         location,
         message,
         suggestion: Some(suggestion.to_string()),
+        subject,
+    }
+}
+
+fn warn(location: String, message: String, suggestion: String, subject: Option<Id>) -> ValidationIssue {
+    ValidationIssue {
+        severity: Severity::Warning,
+        location,
+        message,
+        suggestion: Some(suggestion),
         subject,
     }
 }
@@ -732,6 +747,35 @@ pub fn check_decomposition_contract(
         }
     }
 
+    // Birth-name drift (bert-lenses#116): the door names the child's root after
+    // the component AT door time, and a later rename of either side never
+    // propagates — the reference stays intact (the stamp resolves by id), so a
+    // diverged pair is drift, not breakage. Warning, symmetric in spirit with
+    // the env stand-in name check above: both are the nominal-identity seam
+    // fraying. Empty names identify nothing (env_identity_map's rule), so
+    // either side being unnamed stays silent.
+    let comp_raw = raw_name(parent, comp);
+    let root_raw = child
+        .systems
+        .iter()
+        .find(|s| s.info.level == 0)
+        .map(|s| s.info.name.as_str())
+        .unwrap_or("");
+    if !comp_raw.is_empty() && !root_raw.is_empty() && comp_raw != root_raw {
+        issues.push(warn(
+            format!("{loc}/child_root"),
+            format!(
+                "component \"{comp_raw}\" decomposes into a model that calls itself \
+                 \"{root_raw}\" — rename one to match"
+            ),
+            format!(
+                "Rename the component to \"{root_raw}\", or edit the child model's \
+                 system declaration (`system \"...\"`) to \"{comp_raw}\""
+            ),
+            Some(comp.clone()),
+        ));
+    }
+
     issues
 }
 
@@ -773,8 +817,10 @@ mod tests {
     /// Energy inbound (Src0 → K0.0) and one Material outbound (K0.0 → Snk0). Its
     /// env holds exactly the two neighbor stand-ins, both named "Sibling" — the
     /// nominal identity `derived_env` requires (C0.1 is both the inflow's source
-    /// and the outflow's sink). `kinds`/`extras` let a test perturb one fact to
-    /// make a single property barely fail.
+    /// and the outflow's sink). The root calls itself "Furnace" — the component's
+    /// name, as the door mints it — so birth-name drift stays silent at baseline.
+    /// `kinds`/`extras` let a test perturb one fact to make a single property
+    /// barely fail.
     fn child_model(in_kind: &str, out_kind: &str, extra_env_source: bool, land_src_on_env: bool) -> WorldModel {
         let mut sources = vec![ext("Src-1.0", "Sibling", "Source")];
         if extra_env_source {
@@ -791,7 +837,7 @@ mod tests {
                 "sinks": [ ext("Snk-1.0", "Sibling", "Sink") ]
             },
             "systems": [
-                sys("S0", 0, "FurnaceInterior", "E-1"),
+                sys("S0", 0, "Furnace", "E-1"),
                 sys("C0.0", 1, "Burner", "S0"),
             ],
             "interactions": [
@@ -1102,6 +1148,64 @@ mod tests {
             messages(&issues)
         );
         assert!(!messages(&issues).contains("βsrc"), "the β rows must still pass: {}", messages(&issues));
+    }
+
+    // ── birth-name drift (bert-lenses#116) ──
+
+    #[test]
+    fn birth_name_drift_is_silent_when_names_match() {
+        // Baseline: the child root calls itself "Furnace", the component's name.
+        let issues =
+            check_decomposition_contract(&parent_model(), &comp(), &child_model("Energy", "Material", false, false));
+        assert!(issues.is_empty(), "matching names must stay silent: {}", messages(&issues));
+    }
+
+    #[test]
+    fn birth_name_drift_warns_when_names_diverge() {
+        // One fact changed: the component was renamed after the door minted the
+        // child, so the root still announces the birth name.
+        let mut parent = parent_model();
+        parent.systems[1].info.name = "living room".into();
+        let mut child = child_model("Energy", "Material", false, false);
+        child.systems[0].info.name = "home".into();
+        let issues = check_decomposition_contract(&parent, &comp(), &child);
+        let drift: Vec<_> = issues.iter().filter(|i| i.location.contains("child_root")).collect();
+        assert_eq!(drift.len(), 1, "exactly one drift note: {}", messages(&issues));
+        assert_eq!(drift[0].severity, Severity::Warning, "drift is a Warning, never an Error");
+        assert_eq!(
+            drift[0].message,
+            "component \"living room\" decomposes into a model that calls itself \"home\" — rename one to match"
+        );
+        let suggestion = drift[0].suggestion.as_deref().unwrap_or("");
+        assert!(
+            suggestion.contains("Rename the component") && suggestion.contains("system declaration"),
+            "suggestion must offer both repair paths: {suggestion}"
+        );
+    }
+
+    #[test]
+    fn birth_name_drift_is_silent_when_either_side_is_unnamed() {
+        // Empty names identify nothing (env_identity_map's rule) — an unnamed
+        // root has no self-name to drift.
+        let mut child = child_model("Energy", "Material", false, false);
+        child.systems[0].info.name = String::new();
+        let issues = check_decomposition_contract(&parent_model(), &comp(), &child);
+        assert!(
+            !issues.iter().any(|i| i.location.contains("child_root")),
+            "an unnamed root must not warn: {}",
+            messages(&issues)
+        );
+    }
+
+    #[test]
+    fn birth_name_drift_is_silent_on_an_unresolved_referent() {
+        // A missing referent is its own refusal; there is no root to compare.
+        let issues = check_decomposition(&parent_model(), &comp(), &ModelRef::new(uuid::Uuid::nil()), None);
+        assert!(
+            !issues.iter().any(|i| i.location.contains("child_root")),
+            "unresolved must not warn about drift: {}",
+            messages(&issues)
+        );
     }
 
     #[test]
