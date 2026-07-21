@@ -193,11 +193,16 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
         tip: "designate a component into I (I ⊆ C, Tuple.lean; flowless is well-formed — no coverage constraint). Stamp again to undo.",
         designation: { type: "interface" as const },
       },
+      // #100 phase 4 (#81 harvest): each primitive tool BOTH stamps an existing
+      // leaf component AND places a new component that IS that process on an
+      // empty-stage click — one gesture, glyph-first. The glyphs are a
+      // bert-lenses stroke family in the spirit of Mobus's process vocabulary,
+      // not his printed iconography.
       ...PRIMITIVES.map((p) => ({
       verb: "designate" as const,
       id: `primitive-${p}`,
       label: PRIMITIVE_BADGE[p],
-      tip: `work process: ${p.toLowerCase()} — stamp onto a leaf component (Mobus's atomic process vocabulary)`,
+      tip: `work process: ${p.toLowerCase()} — click empty canvas to place one, or stamp onto an existing leaf component (Mobus's atomic process vocabulary)`,
       designation: { type: "primitive" as const, primitive: p },
       })),
     ],

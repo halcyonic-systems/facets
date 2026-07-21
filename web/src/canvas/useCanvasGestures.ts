@@ -118,6 +118,24 @@ function nextId(ids: number[]): number {
 /** Pointer jitter under this many client px reads as a click, not a drag. */
 const CLICK_SLOP = 4;
 
+/** #100 phase 4 (#81 harvest): a primitive designate tool doubles as a STAMP —
+ *  clicking the empty stage places a new component that IS that work process,
+ *  collapsing place-then-badge into one gesture. Pure: returns the next model,
+ *  or null when the armed tool isn't a primitive (interface designation stays
+ *  unary-on-existing; place tools have their own branch). The two-step path —
+ *  place a component, then stamp it — is untouched. */
+export function stampPrimitiveAt(model: CanvasModel, armed: PaletteTool, p: Pt): CanvasModel | null {
+  if (armed.verb !== "designate" || armed.designation.type !== "primitive") return null;
+  const id = nextId(model.things.map((t) => t.id));
+  return {
+    ...model,
+    things: [
+      ...model.things,
+      { id, name: `T${id}`, x: p.x, y: p.y, role: "Component", primitive: armed.designation.primitive },
+    ],
+  };
+}
+
 interface GestureDeps {
   model: CanvasModel;
   svgRef: RefObject<SVGSVGElement | null>;
@@ -248,6 +266,15 @@ export function useCanvasGestures({
         ...model,
         things: [...model.things, { id, name, x: p.x, y: p.y, role: armed.role }],
       });
+      return;
+    }
+    if (armed?.verb === "designate") {
+      // A primitive tool stamps the glyph as the placeable thing (one gesture,
+      // stays armed for repeat-stamping). The interface tool keeps its unary
+      // meaning: empty-stage click does nothing, tool stays armed (lens-
+      // palettes.md § Gesture spec).
+      const next = stampPrimitiveAt(model, armed, toWorld(e));
+      if (next) onModelChange(next);
       return;
     }
     onSelectThing?.(null);

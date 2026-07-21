@@ -1,6 +1,9 @@
-// The Mobus atomic-process icon family (Fig. 4.5) — the five simplest-process
-// primitives plus the derived work processes (Fig. 4.12/4.13), drawn as one
-// stroke family in a normalized ±6 box so the badge medallion can scale them to
+// The process-primitive glyph family — a bert-lenses stroke vocabulary IN THE
+// SPIRIT of Mobus's atomic processes (Fig. 4.5) and derived work processes
+// (Fig. 4.12/4.13), NOT his printed iconography (the #100 honesty note: the
+// book's actual glyph artwork isn't reproduced here — these are our drawings;
+// only the Fig. 4.17 orange regulator triangle is his convention directly).
+// One stroke family in a normalized ±6 box so any caller can scale them to
 // any spec. Substance topology only (merge / fork / gate / push / drum); the
 // substance TYPE stays on the flow (KIND_COLOR), never in the glyph. Modulating
 // is the regulator/decision monitor — the one glyph the house draws filled and

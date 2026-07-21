@@ -3,10 +3,24 @@
 // LensPalette[lens] and nothing else: absence is ontology, so switching lens
 // adds/removes rows the way it adds/sheds rendered structure. The rail offers,
 // the kernel decides — no legality is computed here.
-import type { Lens } from "../kernel/types";
+import type { Lens, ProcessPrimitive } from "../kernel/types";
 import { LensPalette, type PaletteHint, type PaletteTool } from "./lenses/registry";
+import { primitiveGlyph } from "./lenses/primitive-glyphs";
 import { STYLE } from "./style";
 import { ToolButton } from "../ui";
+
+/** The primitive's own glyph on its rail row (#100 phase 4): picking a
+ *  primitive stamps this drawing as the component's face, so the rail shows
+ *  the thing you are placing, not just a two-letter code. */
+function GlyphChip({ primitive }: { primitive: ProcessPrimitive }) {
+  return (
+    <svg width={14} height={14} viewBox="-7.5 -7.5 15 15" aria-hidden className="mr-1 inline-block align-[-2px]">
+      <g fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+        {primitiveGlyph(primitive)}
+      </g>
+    </svg>
+  );
+}
 
 export function PaletteRail({
   lens,
@@ -27,6 +41,9 @@ export function PaletteRail({
       title={t.tip}
       onClick={() => onArm(armed?.id === t.id ? null : t)}
     >
+      {t.verb === "designate" && t.designation.type === "primitive" && (
+        <GlyphChip primitive={t.designation.primitive} />
+      )}
       {t.label}
     </ToolButton>
   );

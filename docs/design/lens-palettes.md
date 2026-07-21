@@ -547,8 +547,11 @@ Writes go to the kernel's `B.P`; the face flips `BOUNDARY_PROPS_AUTHORING`
   *stays armed* for repeat-stamping; Esc or second click on the tool disarms.
   Double-click on empty stage = the lens default kind, unchanged.
 - **Arm → designate:** click a component applies (interface membership /
-  work-process primitive); clicking empty canvas does nothing but keeps the tool
-  armed; Esc disarms.
+  work-process primitive); Esc disarms. Empty-canvas click: a **primitive tool
+  stamps a new component that IS that process** (glyph-first, one gesture —
+  #100 phase 4, from the #81 harvest; the place-then-stamp two-step still
+  works); the interface tool does nothing but stays armed (a status on an
+  existing component has no nullary reading).
 - **Connect:** unchanged drag-handle gesture; node→empty births the environment
   thing/object plus its bond/flow in one act (§9's relational birth, retained).
 - **Illegal adds:** rows a lens's ontology lacks simply don't render (absence is

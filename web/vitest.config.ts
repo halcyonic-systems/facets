@@ -7,6 +7,8 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    // .tsx too: register tests render lens views to static markup (no DOM
+    // needed — react-dom/server), e.g. src/canvas/mobusRegister.test.tsx.
+    include: ["src/**/*.test.{ts,tsx}"],
   },
 });
