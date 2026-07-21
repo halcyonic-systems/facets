@@ -257,9 +257,10 @@ function parseLensDescription(v: unknown): LensDescription {
   const strs = (x: unknown, w: string) => arr(x, w).map((s, i) => str(s, `${w}[${i}]`));
   switch (lens) {
     case "Klir": {
-      const k = shape(v, "LensDescription(Klir)", ["lens", "things", "relations", "directed", "neutral", "note"]);
+      const k = shape(v, "LensDescription(Klir)", ["lens", "question", "things", "relations", "directed", "neutral", "note"]);
       return {
         lens,
+        question: str(k.question, "Klir.question"),
         things: num(k.things, "Klir.things"),
         relations: num(k.relations, "Klir.relations"),
         directed: num(k.directed, "Klir.directed"),
@@ -269,11 +270,12 @@ function parseLensDescription(v: unknown): LensDescription {
     }
     case "Bunge": {
       const b = shape(v, "LensDescription(Bunge)", [
-        "lens", "composition", "environment", "endostructure", "exostructure",
+        "lens", "question", "composition", "environment", "endostructure", "exostructure",
         "bondage", "mere_relations", "boundary_components", "verdict", "mechanism_note",
       ]);
       return {
         lens,
+        question: str(b.question, "Bunge.question"),
         composition: strs(b.composition, "Bunge.composition"),
         environment: strs(b.environment, "Bunge.environment"),
         endostructure: num(b.endostructure, "Bunge.endostructure"),
@@ -287,11 +289,12 @@ function parseLensDescription(v: unknown): LensDescription {
     }
     case "Mobus": {
       const m = shape(v, "LensDescription(Mobus)", [
-        "lens", "c", "n", "e_objects", "milieu_note", "g", "b_interfaces",
+        "lens", "question", "c", "n", "e_objects", "milieu_note", "g", "b_interfaces",
         "porosity", "perceptive_fuzziness", "t_note", "h_note", "dt_note", "self_loop_conflicts",
       ]);
       return {
         lens,
+        question: str(m.question, "Mobus.question"),
         c: strs(m.c, "Mobus.c"),
         n: num(m.n, "Mobus.n"),
         e_objects: strs(m.e_objects, "Mobus.e_objects"),

@@ -241,6 +241,7 @@
   },
   "description": {
     "lens": "Mobus",
+    "question": "how is the mechanism built, and what happens when it runs?",
     "c": [
       "Introduced",
       "In Committee",

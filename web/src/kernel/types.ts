@@ -283,10 +283,13 @@ export interface LensFacts {
 }
 
 /** describe(model, lens): the model typeset as the active lens's own formal
- *  object — computed by the kernel; the FormalPanel only renders it. */
+ *  object — computed by the kernel; the FormalPanel only renders it. Every
+ *  variant leads with `question` — the tradition's guiding question, shown as
+ *  the orientation line at lens switch (#100). */
 export type LensDescription =
   | {
       lens: "Klir";
+      question: string;
       things: number;
       relations: number;
       directed: number;
@@ -295,6 +298,7 @@ export type LensDescription =
     }
   | {
       lens: "Bunge";
+      question: string;
       composition: string[];
       environment: string[];
       endostructure: number;
@@ -308,6 +312,7 @@ export type LensDescription =
     }
   | {
       lens: "Mobus";
+      question: string;
       c: string[];
       n: number;
       e_objects: string[];

@@ -37,6 +37,7 @@ const mobusCanvas: CanvasModel = {
 
 const mobusDescription: LensDescription = {
   lens: "Mobus",
+  question: "how is the mechanism built, and what happens when it runs?",
   c: ["Pump", "Tank"],
   n: 2,
   e_objects: ["Grid"],
@@ -120,6 +121,7 @@ const klirAnalysis: CanvasAnalysis = {
   },
   description: {
     lens: "Klir",
+    question: "what does the data commit me to?",
     things: 2,
     relations: 1,
     directed: 0,
@@ -147,6 +149,7 @@ const bungeAnalysis: CanvasAnalysis = {
   facts: klirAnalysis.facts,
   description: {
     lens: "Bunge",
+    question: "what is the thing, and by what mechanism does it change?",
     composition: ["A", "B"],
     environment: [],
     endostructure: 1,

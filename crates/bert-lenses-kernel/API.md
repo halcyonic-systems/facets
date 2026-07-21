@@ -226,17 +226,21 @@ Throws only on unparseable canvas JSON.
 The formal face: the model typeset as the active lens's own formal object.
 Computed by the kernel from the same projection as `lens_facts`; the face only
 renders it (KaTeX) — the math is never assembled in JS. Tagged union on `lens`:
+Every variant leads with `question` (#100, additive, wire-compatible): the
+tradition's guiding question — lens switching is question switching, so the
+orientation copy the face docks at the lens picker is a kernel string, never
+assembled in JS.
 ```ts
 type LensDescription =
-  | { lens: "Klir", things: number, relations: number,
+  | { lens: "Klir", question: string, things: number, relations: number,
       directed: number, neutral: number, note: string }
-  | { lens: "Bunge", composition: string[], environment: string[],
+  | { lens: "Bunge", question: string, composition: string[], environment: string[],
       endostructure: number, exostructure: number,
       bondage: number, mere_relations: number,
       boundary_components: string[],            // the derived set (Bunge 1992)
       verdict: "system" | "aggregate",          // Def 1.1, from the kernel
       mechanism_note: string }                  // fixed: M formally UNbridged (CES, not CESM)
-  | { lens: "Mobus", c: string[], n: number,
+  | { lens: "Mobus", question: string, c: string[], n: number,
       e_objects: string[], milieu_note: string, g: number,
       b_interfaces: string[],                   // = boundary components, reified
       porosity: number, perceptive_fuzziness: number,

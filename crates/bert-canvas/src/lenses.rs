@@ -300,12 +300,33 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
 pub const MECHANISM_NOTE: &str = "M (mechanism — Bunge 2004, CESM) is documented but formally \
 UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T).";
 
-/// One model, typeset in the active lens's own formal notation.
+/// Each tradition is an answer to a different guiding question (#100 D batch);
+/// the switch moment is where the tool orients the user toward what the active
+/// lens is looking for. Copy lives here, kernel-side, like every other lens
+/// string `describe` typesets.
+pub fn guiding_question(lens: Lens) -> &'static str {
+    match lens {
+        Lens::Klir => {
+            "what does the data commit me to? — the behavior function answers, \
+             and deliberately refuses to say what is behind it"
+        }
+        Lens::Bunge => {
+            "what is the thing, and by what mechanism does it change? — a \
+             behavior function without its M is not yet knowledge"
+        }
+        Lens::Mobus => "how is the mechanism built, and what happens when it runs?",
+    }
+}
+
+/// One model, typeset in the active lens's own formal notation. Every variant
+/// leads with `question` — the tradition's guiding question, the orientation
+/// line the face shows at lens switch.
 #[derive(Serialize, Clone, Debug)]
 #[serde(tag = "lens")]
 pub enum LensDescription {
     /// Klir `S = (T, R)` — thinghood + systemhood; observer-constituted.
     Klir {
+        question: String,
         things: usize,
         relations: usize,
         directed: usize,
@@ -316,6 +337,7 @@ pub enum LensDescription {
     /// the untyped `mechanism_note` prose — see `MECHANISM_NOTE` and the
     /// concordance §14. Systemhood is earned (Def 1.1).
     Bunge {
+        question: String,
         composition: Vec<String>,
         environment: Vec<String>,
         endostructure: usize,
@@ -329,6 +351,7 @@ pub enum LensDescription {
     /// Mobus `S = ⟨C, N, E, G, B, T, H, Δt⟩` — the 8-tuple (post-2022 revision;
     /// Tuple.lean is the authority, NOT the book's 7-tuple).
     Mobus {
+        question: String,
         c: Vec<String>,
         n: usize,
         e_objects: Vec<String>,
@@ -509,6 +532,7 @@ fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> Le
             // (Klir has no bond concept — that predicate is Bunge's).
             let directed = model.relations.iter().filter(|r| r.klir_directed).count();
             LensDescription::Klir {
+                question: guiding_question(lens).to_string(),
                 things: model.things.len(),
                 relations: model.relations.len(),
                 directed,
@@ -528,6 +552,7 @@ fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> Le
             let environment: Vec<String> = facts.environment_thing_ids.iter().map(|&id| name_of(id)).collect();
             let bondage = facts.edges.iter().filter(|e| e.bond).count();
             LensDescription::Bunge {
+                question: guiding_question(lens).to_string(),
                 composition,
                 environment,
                 endostructure: facts
@@ -548,6 +573,7 @@ fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> Le
             }
         }
         Lens::Mobus => LensDescription::Mobus {
+            question: guiding_question(lens).to_string(),
             c: model
                 .things
                 .iter()
@@ -836,6 +862,30 @@ mod tests {
         let m_doc = format!("{} — unbridged prose note only.", "NOT a Lean-projected coordinate");
         assert!(src.contains(&bunge_doc), "Bunge variant doc must present CES as delivered");
         assert!(src.contains(&m_doc), "MECHANISM_NOTE separator comment must stay");
+    }
+
+    /// Law: every `describe` carries its lens's guiding question — three
+    /// distinct questions, one per tradition (#100: lens switching is question
+    /// switching, so the orientation copy is a kernel string, never assembled
+    /// in JS).
+    #[test]
+    fn describe_carries_the_guiding_question() {
+        let m = rich_model();
+        let questions: Vec<String> = [Lens::Klir, Lens::Bunge, Lens::Mobus]
+            .into_iter()
+            .map(|lens| {
+                let q = guiding_question(lens).to_string();
+                match describe(&m, lens) {
+                    LensDescription::Klir { question, .. }
+                    | LensDescription::Bunge { question, .. }
+                    | LensDescription::Mobus { question, .. } => assert_eq!(question, q),
+                }
+                q
+            })
+            .collect();
+        assert!(questions[0].starts_with("what does the data commit me to?"));
+        assert!(questions[1].starts_with("what is the thing, and by what mechanism"));
+        assert!(questions[2].starts_with("how is the mechanism built"));
     }
 
     /// Law: one bond flips the aggregate verdict — two components joined only
