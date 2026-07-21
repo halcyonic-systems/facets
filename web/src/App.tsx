@@ -36,6 +36,7 @@ import {
   type DirHandleLike,
 } from "./fsAccess";
 import { saveModel, listModels, loadModel, deleteModel } from "./modelStore";
+import { mintLibraryName, parentSlotName } from "./libraryNames";
 import { resolveModelRefs } from "./modelResolve";
 import { diagramFilename, exportDiagramSvg, exportDiagramPng } from "./canvas/exportDiagram";
 
@@ -262,7 +263,10 @@ function Workspace() {
     }
   };
 
-  const pick = (d: Demo) => {
+  // Guarded + flushed at the seam itself (#111), so every caller — the Switch
+  // menu AND the OpenDialog gallery — gets the same discard discipline.
+  const pick = async (d: Demo) => {
+    if (!guardDiscard() || !(await flushWalk())) return;
     setDemo(d);
     setCanvasModel(spaceOut(toCanvas(d.modelJson))); // load the demo onto the canvas as a diagram
     setManifest(d.manifest);
@@ -281,7 +285,8 @@ function Workspace() {
   // kernel seam the demo picker uses (toCanvas). No demo bundle means no CSV /
   // manifest, so the run path stays dark for imports — structure, lens, formal
   // object, and audit still light up (they read the canvas model).
-  function importModel(json: string) {
+  async function importModel(json: string) {
+    if (!guardDiscard() || !(await flushWalk())) return;
     try {
       const cm = toCanvas(json);
       setDemo(null);
@@ -305,7 +310,10 @@ function Workspace() {
   // import. The lens is view state — if a model is already on the canvas, the
   // author's current lens survives the compile unless the text pinned one via
   // @lens (the parser reports which).
-  function onSlCompiled(cm: CanvasModel, lensExplicit: boolean) {
+  // No confirm here (compiling over the canvas is the author's stated intent),
+  // but a walk's dirty ancestors still autosave before the reset (#111).
+  async function onSlCompiled(cm: CanvasModel, lensExplicit: boolean) {
+    if (!(await flushWalk())) return;
     setDemo(null);
     setCanvasModel((prev) => (prev && !lensExplicit ? { ...cm, lens: prev.lens } : cm));
     setManifest({ model: "", data: "", t: 12, mapping: [] });
@@ -325,7 +333,8 @@ function Workspace() {
   // File → New: a blank canvas to author a model from scratch (the #14 path — no
   // demo bundle, so the run stays dark until tethered; structure/lens/formal/audit
   // read the empty model). Boundary defaults are neutral, editable via the popover.
-  function newModel() {
+  async function newModel() {
+    if (!guardDiscard() || !(await flushWalk())) return;
     setDemo(null);
     setCanvasModel({ lens: "Mobus", things: [], relations: [], boundary: { porosity: 0, perceptive_fuzziness: 0 } });
     setManifest({ model: "", data: "", t: 12, mapping: [] });
@@ -480,6 +489,7 @@ function Workspace() {
   // (toCanvas + reset), plus it remembers the folder + filename stem for saving.
   async function openFromFolder(name: string) {
     if (!dirHandle) return;
+    if (!guardDiscard() || !(await flushWalk())) return;
     try {
       const cm = toCanvas(await readModelFile(dirHandle, name));
       setDemo(null);
@@ -502,8 +512,10 @@ function Workspace() {
 
   // OpenDialog → Saved in this browser: load one model out of the IndexedDB
   // library onto the canvas — same seam as import (toCanvas + reset), and it
-  // remembers the name so a re-save overwrites the same library slot.
+  // remembers the name so a re-save overwrites the same library slot. Guarded
+  // here (#111), so the dialog's direct load no longer bypasses the gate.
   async function loadFromLibrary(name: string) {
+    if (!guardDiscard() || !(await flushWalk())) return;
     try {
       const cm = toCanvas(await loadModel(name));
       setDemo(null);
@@ -759,20 +771,39 @@ function Workspace() {
   // mark the active row in the Switch menu.
   const currentLabel = demo?.title ?? currentName ?? (canvasModel ? "untitled" : null);
 
-  // Confirm-before-discard gate for the nav affordances. No dirty-model guard
-  // existed before this wave, so this is it: only the unsaved-work case prompts.
-  // A walk's ancestor snapshots count as unsaved work too — leaving the walk
-  // discards them (breadcrumb exits, by contrast, autosave).
+  // Confirm-before-discard gate for the nav affordances: only the unsaved-work
+  // case prompts. A walk's dirty ancestors autosave on reset (flushWalk below),
+  // so only a segment flushWalk cannot save — dirty with no name — still
+  // counts as discardable work here.
   function guardDiscard(): boolean {
-    if (!dirty && !walk.some((s) => s.dirty)) return true;
+    if (!dirty && !walk.some((s) => s.dirty && !s.currentName)) return true;
     return window.confirm("Discard unsaved changes to the current model?");
+  }
+
+  // Walk-reset autosave (#111): every path that discards the walk gets the
+  // breadcrumb-exit discipline — dirty ancestor segments are saved before
+  // setWalk([]) throws their snapshots away. Dirty-only, name-required, same
+  // as exitTo. The current model is not saved here; guardDiscard's confirm
+  // owns that decision. False = a save failed, so the caller must not reset.
+  async function flushWalk(): Promise<boolean> {
+    try {
+      for (const seg of walk) {
+        if (seg.dirty && seg.currentName) {
+          await saveModel(seg.currentName, JSON.stringify(project(seg.canvas), null, 2));
+        }
+      }
+      return true;
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
+      return false;
+    }
   }
 
   // Home / Close (#73): leave the canvas and return to the start screen — a null
   // model behind the open gallery, exactly the app's initial state. The one
   // route back out of a loaded model.
-  function goHome() {
-    if (!guardDiscard()) return;
+  async function goHome() {
+    if (!guardDiscard() || !(await flushWalk())) return;
     setDemo(null);
     setCanvasModel(null);
     setManifest({ model: "", data: "", t: 12, mapping: [] });
@@ -789,40 +820,59 @@ function Workspace() {
   }
 
   // Switch model (#74): load another model without routing through the full
-  // Open… dialog. Both quick paths reuse the existing load seams (which reset
-  // dirty), guarded so an unsaved model isn't silently dropped.
+  // Open… dialog. Both quick paths reuse the existing load seams, which now
+  // carry the guard + walk flush themselves (#111) — no second gate here.
   function switchToDemo(d: Demo) {
-    if (!guardDiscard()) return;
-    pick(d);
+    void pick(d);
   }
   function switchToLibrary(name: string) {
-    if (!guardDiscard()) return;
-    loadFromLibrary(name);
+    void loadFromLibrary(name);
   }
 
   // The door (#89 step 5b): derive the child of a component in the KERNEL
   // (G′ from flows(c), minted identity, empty interior), save it to the browser
   // library, and stamp the parent's `decomposes` reference. Stamping is
   // tooling — this layer writes the reference; the kernel derived and judged.
+  // The stamped parent persists in the same breath (#111) — the moment the
+  // reference is written into it is the moment it must live somewhere a walk
+  // reset can't reach. Child saved first: a crash between the two leaves an
+  // unreferenced child (recoverable), never a reference to a missing child.
   async function decomposeThing(thing: Thing) {
     if (!canvasModel) return;
     try {
+      // Library slots are keyed by name (put overwrites), so an occupied name
+      // gets a numeric suffix rather than silently clobbering another model.
+      const taken = new Set((await listModels()).map((m) => m.name));
+      const parent = parentSlotName(currentName, canvasModel.name, demo?.key, taken);
+      if (!parent) {
+        setNotice("name this model first (File → Save to library…) — the decomposition reference needs a saved parent to live in");
+        return;
+      }
       const out = decomposeComponent(canvasModel, thing.id);
       if ("issues" in out) {
         setToast(out.issues[0]?.message ?? "cannot decompose this component");
         return;
       }
-      // Library slots are keyed by name (put overwrites), so an occupied name
-      // gets a numeric suffix rather than silently clobbering another model.
-      const taken = new Set((await listModels()).map((m) => m.name));
-      const base = out.ok.child_name || "subsystem";
-      let name = base;
-      for (let n = 2; taken.has(name); n++) name = `${base}-${n}`;
+      taken.add(parent.name);
+      const name = mintLibraryName(out.ok.child_name || "subsystem", taken);
       await saveModel(name, out.ok.child_json);
+      const stamped: CanvasModel = {
+        ...canvasModel,
+        things: canvasModel.things.map((t) =>
+          t.id === thing.id ? { ...thing, child_model: { name, id: out.ok.child_id } } : t,
+        ),
+      };
+      await saveModel(parent.name, JSON.stringify(project(stamped), null, 2));
       setLibraryModels(await listModels());
-      updateThing({ ...thing, child_model: { name, id: out.ok.child_id } });
+      setCanvasModel(stamped);
+      setCurrentName(parent.name);
+      setDirty(false);
       setSelectedThingId(null);
-      setNotice(`decomposed → saved "${name}" to the library — double-click the component to enter`);
+      setNotice(
+        parent.isNew
+          ? `decomposed → saved "${name}" to the library; parent saved as "${parent.name}" — double-click the component to enter`
+          : `decomposed → saved "${name}" to the library — double-click the component to enter`,
+      );
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
