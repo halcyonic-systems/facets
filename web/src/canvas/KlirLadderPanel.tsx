@@ -115,7 +115,7 @@ function Hasse({ position }: { position: string }) {
       width={HASSE_W}
       height={HASSE_H + (belowEmpty ? 30 : 0)}
       role="img"
-      aria-label={`Klir's epistemological ladder — this model stands at ${position}`}
+      aria-label={`Klir's GSPS epistemological ladder — this model stands at ${position}`}
     >
       {covers.map(([a, b]) => edge(a, b))}
       {/* M — the metasystem operator, indicated beyond this surface. */}
@@ -215,7 +215,7 @@ export function LadderChip({
         color: "var(--text-secondary)",
         border: `1px solid ${open ? "var(--lens-accent)" : "var(--border)"}`,
       }}
-      title="Where this model stands on Klir's epistemological ladder — click for the introduction"
+      title="Where this model stands on Klir's GSPS epistemological ladder — click for the introduction"
     >
       position: <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{ladder.position}</span>{" "}
       {open ? "▾" : "▸"}
