@@ -5,6 +5,7 @@
   "bond": true,
   "kind": "Energy",
   "locus": "Endo",
+  "channel": "Internuncial",
   "self_loop": false,
   "mobus_ok": true
 }

@@ -106,6 +106,7 @@ const KINDS = ["Unspecified", "Energy", "Matter", "Field", "Informational"] as c
 const LENSES = ["Klir", "Bunge", "Mobus"] as const;
 const ROLES = ["Component", "Environment"] as const;
 const LOCI = ["Endo", "Exo"] as const;
+const CHANNELS = ["Input", "Output", "Internuncial"] as const;
 const PORT_DIRS = ["Receives", "Exports", "Hybrid"] as const;
 const SEVERITIES = ["Error", "Warning"] as const;
 const KINGDOMS = ["Conceptual", "Concrete"] as const;
@@ -170,7 +171,7 @@ function parseCanvasModel(v: unknown): CanvasModel {
 }
 
 function parseEdgeFact(v: unknown, where = "EdgeFact"): EdgeFact {
-  const o = shape(v, where, ["id", "a", "b", "bond", "kind", "locus", "self_loop", "mobus_ok"]);
+  const o = shape(v, where, ["id", "a", "b", "bond", "kind", "locus", "channel", "self_loop", "mobus_ok"]);
   return {
     id: num(o.id, `${where}.id`),
     a: num(o.a, `${where}.a`),
@@ -178,6 +179,7 @@ function parseEdgeFact(v: unknown, where = "EdgeFact"): EdgeFact {
     bond: bool(o.bond, `${where}.bond`),
     kind: oneOf(o.kind, `${where}.kind`, KINDS),
     locus: oneOf(o.locus, `${where}.locus`, LOCI),
+    channel: o.channel === null ? null : oneOf(o.channel, `${where}.channel`, CHANNELS),
     self_loop: bool(o.self_loop, `${where}.self_loop`),
     mobus_ok: bool(o.mobus_ok, `${where}.mobus_ok`),
   };

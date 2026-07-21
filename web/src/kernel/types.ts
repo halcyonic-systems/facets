@@ -232,6 +232,11 @@ export type SlOutcome = { ok: CanvasModel; lens_explicit: boolean } | { errors: 
 /** Bunge endo/exostructure = Mobus N/G — kernel-computed, never stylistic. */
 export type EdgeLocus = "Endo" | "Exo";
 
+/** Bunge's coupling-matrix grammar (M₀ᵣ / Mₛ₀ / Mᵣₛ): environment acting on a
+ *  component = input, component on environment = output, component on
+ *  component = internuncial (#100 phase 2, F6). */
+export type BungeChannel = "Input" | "Output" | "Internuncial";
+
 /** One canvas relation read through the flow→bond→relation ladder. */
 export interface EdgeFact {
   id: number;
@@ -241,6 +246,8 @@ export interface EdgeFact {
   bond: boolean;
   kind: Kind;
   locus: EdgeLocus;
+  /** null for mere relations (they do not act) and env–env couplings (outside 𝒮). */
+  channel: BungeChannel | null;
   self_loop: boolean;
   /** false iff self-loop: no Mobus preimage (FlowNetwork.lean no_self_loops). */
   mobus_ok: boolean;

@@ -28,6 +28,18 @@ use bert_core::{EdgeLocus, Id, Interaction, Mode};
 
 use crate::canvas::{project_with_map, CanvasModel, Kind, Lens, Role};
 
+/// Bunge's three coupling channels — his own matrix notation's row/column
+/// grammar (M₀ᵣ / Mₛ₀ / Mᵣₛ): the environment acting on a component is an
+/// *input*, a component acting on the environment an *output*, and component
+/// acting on component *internuncial*. Refines the endo/exo locus with the
+/// action's direction (#100 phase 2, F6).
+#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BungeChannel {
+    Input,
+    Output,
+    Internuncial,
+}
+
 /// One canvas relation, read through the edge ladder.
 #[derive(Serialize, Clone, Debug)]
 pub struct EdgeFact {
@@ -40,6 +52,11 @@ pub struct EdgeFact {
     pub kind: Kind,
     /// Endo (∈ N, endostructure) vs Exo (∈ G, exostructure) — kernel-computed.
     pub locus: EdgeLocus,
+    /// The action's place in Bunge's coupling matrix (input / output /
+    /// internuncial). `None` for mere relations (they do not act, so they sit
+    /// in no channel) and for env–env couplings (outside 𝒮 — M has no 0,0
+    /// cell). Kernel-computed; the Bunge face only styles it.
+    pub channel: Option<BungeChannel>,
     pub self_loop: bool,
     /// `false` iff self-loop: a Bunge diagonal bond has NO Mobus preimage
     /// (`FlowNetwork.lean:68` `no_self_loops`, Mobus §4.3 `k ≠ o`). A real
@@ -193,8 +210,8 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
     // projected — B̄) classify from the same C/E role split, here in Rust.
     let interaction_by_id: HashMap<&Id, &Interaction> =
         p.world.interactions.iter().map(|i| (&i.info.id, i)).collect();
+    let is_comp = |id: u64| roles.get(&id).copied().unwrap_or_default() == Role::Component;
     let locus_from_roles = |a: u64, b: u64| {
-        let is_comp = |id: u64| roles.get(&id).copied().unwrap_or_default() == Role::Component;
         if is_comp(a) && is_comp(b) {
             EdgeLocus::Endo
         } else {
@@ -213,6 +230,20 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
                 Some(ix) => p.world.edge_locus(ix),
                 None => locus_from_roles(r.a, r.b),
             };
+            // The coupling channel (M₀ᵣ / Mₛ₀ / Mᵣₛ): only bonds act, and only
+            // couplings that touch 𝒞 sit in the matrix — the exo direction
+            // says whether the action arrives (input) or departs (output).
+            let channel = if !r.is_bond {
+                None
+            } else if locus == EdgeLocus::Endo {
+                Some(BungeChannel::Internuncial)
+            } else {
+                match (is_comp(r.a), is_comp(r.b)) {
+                    (false, true) => Some(BungeChannel::Input),
+                    (true, false) => Some(BungeChannel::Output),
+                    _ => None, // env–env: outside 𝒮 (M has no 0,0 cell)
+                }
+            };
             let self_loop = r.a == r.b;
             EdgeFact {
                 id: r.id,
@@ -221,6 +252,7 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
                 bond: r.is_bond,
                 kind: r.kind,
                 locus,
+                channel,
                 self_loop,
                 mobus_ok: !self_loop,
             }
@@ -343,6 +375,11 @@ fn lens_residue(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensResid
         .count();
     let untyped = model.relations.len() - typed;
     let primitives = model.things.iter().filter(|t| t.primitive.is_some()).count();
+    let components = model
+        .things
+        .iter()
+        .filter(|t| t.role == Role::Component)
+        .count();
     let bare_components = model
         .things
         .iter()
@@ -388,7 +425,11 @@ fn lens_residue(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensResid
         // Bunge has no process taxonomy (row 10), no reified membrane or
         // authored I (rows 8–9 are Mobus's B = ⟨P, I⟩), and no observer
         // direction toggle (row 7 is Klir's). He DOES ask each connection's
-        // kind (row 6), so an unspecified kind is his unanswered question.
+        // kind (row 6), so an unspecified kind is his unanswered question —
+        // and he asks every system's mechanism (CESM's M), which this surface
+        // can never answer (the slot arrives from compose's declared dynamics,
+        // #97), so a nonempty composition always carries the ⊘M line: the
+        // consequence made loud (F2-modified), a status and never a gate.
         Lens::Bunge => (
             vec![
                 residue_entry(primitives, "process primitive", "process primitives"),
@@ -400,7 +441,14 @@ fn lens_residue(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensResid
                 residue_entry(membrane_props, "membrane property", "membrane properties"),
                 residue_entry(directed, "directed annotation", "directed annotations"),
             ],
-            vec![residue_entry(untyped, "connection kind", "connection kinds")],
+            vec![
+                residue_entry(untyped, "connection kind", "connection kinds"),
+                residue_entry(
+                    usize::from(components > 0),
+                    "mechanism (⊘M — reads as a black box)",
+                    "mechanisms",
+                ),
+            ],
         ),
         // Mobus never projects mere relations (B̄ is Bunge's alone, row 5) and
         // carries no observer toggle. He asks every flow's substance (row 6)
@@ -438,8 +486,16 @@ fn lens_residue(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensResid
 /// projection DISCARDS. Pinned as a constant (and by a test) so the panel can
 /// never drift into claiming a formal bridge the Lean contradicts.
 // NOT a Lean-projected coordinate — unbridged prose note only.
+//
+// The second sentence is the ⊘M consequence (#100 phase 2, F2-modified): with
+// no mechanism stated the model reads as a black box at this lens — a status
+// per Bunge's Mechanism Postulate (every system has one; naming it is what a
+// mechanismic account adds), never an error and never a gate. The mechanism
+// slot itself arrives from compose's declared dynamics (#97) — not built here.
 pub const MECHANISM_NOTE: &str = "M (mechanism — Bunge 2004, CESM) is documented but formally \
-UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T).";
+UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T). \
+⊘M: with no mechanism stated, this model reads as a black box at this lens — every system \
+has a mechanism (Mechanism Postulate); stating it is what remains. A status, not an error.";
 
 /// Each tradition is an answer to a different guiding question (#100 D batch);
 /// the switch moment is where the tool orients the user toward what the active
@@ -1095,6 +1151,10 @@ mod tests {
         };
         assert!(mechanism_note.contains("formally UNbridged"));
         assert!(mechanism_note.contains("CES, not CESM"));
+        // The ⊘M consequence (F2-modified) is a status, never an error/gate —
+        // the copy must say what mechanism-absence MEANS, in Bunge's terms.
+        assert!(mechanism_note.contains("reads as a black box"));
+        assert!(mechanism_note.contains("A status, not an error"));
         // Doc/code contract (council outside-pass F2): the source's own doc
         // strings must tell the same story as the pinned note — CES delivered,
         // M as prose only. Guards the doc comments against re-inflating to a
@@ -1158,6 +1218,11 @@ mod tests {
             "no primitives, designations, membrane properties, or toggles authored"
         );
         assert_eq!(count(&bunge.unspecified, "connection kinds"), Some(4));
+        assert_eq!(
+            count(&bunge.unspecified, "mechanism (⊘M — reads as a black box)"),
+            Some(1),
+            "a nonempty composition always carries the ⊘M consequence (F2)"
+        );
 
         let mobus = analyze(&m, Lens::Mobus).residue;
         assert_eq!(count(&mobus.hidden, "mere relation"), Some(1), "B̄ never projects");
@@ -1182,7 +1247,13 @@ mod tests {
         let mobus = analyze(&m, Lens::Mobus).residue;
         assert!(mobus.unspecified.is_empty(), "every substance and primitive is answered");
         let bunge = analyze(&m, Lens::Bunge).residue;
-        assert!(bunge.unspecified.is_empty(), "every connection kind is answered");
+        // Every connection kind is answered; only M remains — the one question
+        // this surface can never answer (the mechanism slot is #97's, at the
+        // compose seam), so the ⊘M line is the entire unspecified residue.
+        assert_eq!(
+            bunge.unspecified.iter().map(|e| e.label.as_str()).collect::<Vec<_>>(),
+            vec!["mechanism (⊘M — reads as a black box)"],
+        );
         assert_eq!(
             bunge.hidden.iter().find(|e| e.label == "process primitives").map(|e| e.count),
             Some(2),
@@ -1270,6 +1341,46 @@ mod tests {
         assert!(questions[0].starts_with("what does the data commit me to?"));
         assert!(questions[1].starts_with("what is the thing, and by what mechanism"));
         assert!(questions[2].starts_with("how is the mechanism built"));
+    }
+
+    /// Law: the coupling channel is Bunge's matrix grammar — env→comp is an
+    /// input (M₀ᵣ), comp→env an output (Mₛ₀), comp→comp internuncial (Mᵣₛ);
+    /// mere relations do not act, so they sit in no channel.
+    #[test]
+    fn channel_refines_locus_with_direction() {
+        let m = model(
+            vec![
+                thing(1, "A", Role::Component),
+                thing(2, "B", Role::Component),
+                thing(3, "Src", Role::Environment),
+            ],
+            vec![
+                relation(10, 1, 2, true),  // comp → comp: internuncial
+                relation(11, 3, 1, true),  // env → comp: input
+                relation(12, 1, 3, true),  // comp → env: output
+                relation(13, 1, 2, false), // mere: no channel — it does not act
+                relation(14, 1, 1, true),  // self-loop: internuncial (endo)
+            ],
+        );
+        let f = lens_facts(&m);
+        let ch = |id: u64| f.edges.iter().find(|e| e.id == id).unwrap().channel;
+        assert_eq!(ch(10), Some(BungeChannel::Internuncial));
+        assert_eq!(ch(11), Some(BungeChannel::Input));
+        assert_eq!(ch(12), Some(BungeChannel::Output));
+        assert_eq!(ch(13), None, "a mere relation acts on nothing");
+        assert_eq!(ch(14), Some(BungeChannel::Internuncial));
+    }
+
+    /// Law: the ⊘M residue line is gated on a nonempty composition — no
+    /// component, no system, no mechanism to ask for.
+    #[test]
+    fn mechanism_residue_needs_a_composition() {
+        let empty = model(vec![thing(3, "Src", Role::Environment)], vec![]);
+        let r = analyze(&empty, Lens::Bunge).residue;
+        assert!(
+            !r.unspecified.iter().any(|e| e.label.contains("mechanism")),
+            "no composition, no M question yet"
+        );
     }
 
     /// Law: one bond flips the aggregate verdict — two components joined only

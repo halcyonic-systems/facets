@@ -16,5 +16,5 @@
     "Pump"
   ],
   "verdict": "system",
-  "mechanism_note": "M (mechanism — Bunge 2004, CESM) is documented but formally UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T)."
+  "mechanism_note": "M (mechanism — Bunge 2004, CESM) is documented but formally UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T). ⊘M: with no mechanism stated, this model reads as a black box at this lens — every system has a mechanism (Mechanism Postulate); stating it is what remains. A status, not an error."
 }

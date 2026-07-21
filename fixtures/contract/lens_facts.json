@@ -22,6 +22,7 @@
       "bond": true,
       "kind": "Energy",
       "locus": "Endo",
+      "channel": "Internuncial",
       "self_loop": false,
       "mobus_ok": true
     },
@@ -32,6 +33,7 @@
       "bond": true,
       "kind": "Energy",
       "locus": "Exo",
+      "channel": "Input",
       "self_loop": false,
       "mobus_ok": true
     },
@@ -42,6 +44,7 @@
       "bond": true,
       "kind": "Matter",
       "locus": "Endo",
+      "channel": "Internuncial",
       "self_loop": true,
       "mobus_ok": false
     },
@@ -52,6 +55,7 @@
       "bond": false,
       "kind": "Unspecified",
       "locus": "Endo",
+      "channel": null,
       "self_loop": false,
       "mobus_ok": true
     }
