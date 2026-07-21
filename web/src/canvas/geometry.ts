@@ -155,6 +155,67 @@ export function ringPoint(ring: Ring, toward: Pt): Pt {
   return { x: ring.cx + ring.rx * Math.cos(theta), y: ring.cy + ring.ry * Math.sin(theta) };
 }
 
+// ---- The per-lens container (#100 phase 0) ----------------------------------
+// Still pure pixel math: WHAT the containment means per lens (Mobus's membrane
+// object vs Bunge's observer partition vs Klir's none) is decided by which of
+// these the canvas draws — here is only WHERE. Both follow the COMPONENT things
+// as they move, and fall back to a small enclosure when the interior is empty:
+// an empty system is still a system, and the walked-into newborn (G′ stand-ins
+// only) must read as a place, not a blank.
+
+/** Half-extent of the empty-interior container. */
+const EMPTY_HALF = NODE_R * 2;
+
+type Placed = Pick<Thing, "role" | "x" | "y">;
+
+/** Where an empty interior sits: a newborn's stand-ins surround it, so their
+ *  centroid; a fully blank canvas centers on the world origin. */
+function interiorCenter(things: Placed[]): Pt {
+  if (things.length === 0) return { x: 0, y: 0 };
+  const n = things.length;
+  return {
+    x: things.reduce((s, t) => s + t.x, 0) / n,
+    y: things.reduce((s, t) => s + t.y, 0) / n,
+  };
+}
+
+/** The Mobus membrane for a model's things: the component ring, or — empty
+ *  interior — a small membrane at the stand-ins' centroid. Never null: under
+ *  Mobus the boundary is a reified object, present from birth. */
+export function membraneRing(things: Placed[]): Ring {
+  const ring = componentRing(things.filter((t) => t.role === "Component"));
+  if (ring) return ring;
+  const c = interiorCenter(things);
+  return { cx: c.x, cy: c.y, rx: EMPTY_HALF, ry: EMPTY_HALF };
+}
+
+/** Bunge's hull box — the observer's cut over one flat ontology. Drawn dashed,
+ *  unfilled, unclickable by the canvas; an axis-aligned box (not an ellipse) so
+ *  the partition and the Mobus membrane cannot be mistaken for each other. */
+export interface Hull {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+const HULL_PAD = NODE_R + 28;
+
+export function bungeHull(things: Placed[]): Hull {
+  const comps = things.filter((t) => t.role === "Component");
+  if (comps.length === 0) {
+    const c = interiorCenter(things);
+    return { x: c.x - EMPTY_HALF, y: c.y - EMPTY_HALF, w: EMPTY_HALF * 2, h: EMPTY_HALF * 2 };
+  }
+  const xs = comps.map((t) => t.x);
+  const ys = comps.map((t) => t.y);
+  const minX = Math.min(...xs) - HULL_PAD;
+  const maxX = Math.max(...xs) + HULL_PAD;
+  const minY = Math.min(...ys) - HULL_PAD;
+  const maxY = Math.max(...ys) + HULL_PAD;
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+}
+
 // ---- Fit-to-content (#83; #78 PNG export reuses `contentBounds`) ------------
 // Pure view/pixel math: the world-space extent of everything drawn, and the
 // pan+scale that frames it in a viewport. No systems meaning — no verdict reads
@@ -168,11 +229,12 @@ export interface Box {
 }
 
 /** World-space bounding box of everything drawn for `model`: node bodies
- *  (center ± NODE_R) unioned with the Mobus membrane ring when that lens draws
- *  it (the ring circumscribes the components and can reach past the node box).
- *  Returns null for an empty model. Shared by fit-to-content and PNG export. */
+ *  (center ± NODE_R) unioned with the per-lens container (#100 phase 0 — the
+ *  Mobus membrane / Bunge hull reach past the node box, and draw even for an
+ *  empty interior, so an empty Mobus/Bunge model still has drawn content).
+ *  Null only when nothing at all is drawn (an empty Klir model — no
+ *  container). Shared by fit-to-content and SVG/PNG export. */
 export function contentBounds(model: CanvasModel): Box | null {
-  if (model.things.length === 0) return null;
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -184,14 +246,19 @@ export function contentBounds(model: CanvasModel): Box | null {
     maxY = Math.max(maxY, t.y + NODE_R);
   }
   if (model.lens === "Mobus") {
-    const ring = componentRing(model.things.filter((t) => t.role === "Component"));
-    if (ring) {
-      minX = Math.min(minX, ring.cx - ring.rx);
-      minY = Math.min(minY, ring.cy - ring.ry);
-      maxX = Math.max(maxX, ring.cx + ring.rx);
-      maxY = Math.max(maxY, ring.cy + ring.ry);
-    }
+    const ring = membraneRing(model.things);
+    minX = Math.min(minX, ring.cx - ring.rx);
+    minY = Math.min(minY, ring.cy - ring.ry);
+    maxX = Math.max(maxX, ring.cx + ring.rx);
+    maxY = Math.max(maxY, ring.cy + ring.ry);
+  } else if (model.lens === "Bunge") {
+    const hull = bungeHull(model.things);
+    minX = Math.min(minX, hull.x);
+    minY = Math.min(minY, hull.y);
+    maxX = Math.max(maxX, hull.x + hull.w);
+    maxY = Math.max(maxY, hull.y + hull.h);
   }
+  if (minX === Infinity) return null;
   return { minX, minY, maxX, maxY };
 }
 
