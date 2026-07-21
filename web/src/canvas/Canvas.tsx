@@ -5,7 +5,7 @@
 // `useCanvasGestures` (pointer events → a pure reducer); per-lens rendering lives
 // in the `LensRegistry` (stateless views, one set per lens). This file is the
 // stage: backdrops, the render loop, and the node-name draft input.
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CanvasModel, EdgeFact, Lens, LensFacts, PortFact, Thing } from "../kernel/types";
 import type { SimFrame } from "./types";
 import { bungeHull, membraneRing, ringPoint, thingById, NODE_R, type Hull, type Pt, type Ring } from "./geometry";
@@ -70,6 +70,49 @@ export default function Canvas({
   const svgRef = useRef<SVGSVGElement>(null);
   const gestures = useCanvasGestures({ model, svgRef, onModelChange, onReject, armed, onSelectThing });
   const { pan, scale, connectFrom, connectPos, hoverTarget, draft } = gestures.state;
+
+  // Click-to-edit container label (#116): the membrane/hull/place label writes
+  // the model's SELF-name (CanvasModel.name — the field the SL `system "..."`
+  // declaration round-trips), never the shell's library label it may be
+  // displaying as a fallback. Escape cancels; Enter/blur commits; an empty
+  // commit clears to unnamed (the label falls back as before).
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
+  const beginNameEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setNameDraft(model.name ?? "");
+  };
+  const commitName = () => {
+    if (nameDraft === null) return;
+    const name = nameDraft.trim();
+    if (name !== (model.name ?? "")) {
+      const next = { ...model };
+      if (name) next.name = name;
+      else delete next.name;
+      onModelChange(next);
+    }
+    setNameDraft(null);
+  };
+  const nameField = (widthClass: string) => (
+    <input
+      autoFocus
+      className={`${widthClass} rounded-md border px-2 py-1 text-xs font-body`}
+      style={{ borderColor: "var(--lens-accent)", background: "var(--bg-secondary)", color: "var(--text-primary)" }}
+      value={nameDraft ?? ""}
+      placeholder="name this system…"
+      onPointerDown={(e) => e.stopPropagation()}
+      onChange={(e) => setNameDraft(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") commitName();
+        if (e.key === "Escape") setNameDraft(null);
+      }}
+      onBlur={commitName}
+    />
+  );
+  const nameInput = (props: React.SVGProps<SVGForeignObjectElement>) => (
+    <foreignObject data-export-ignore pointerEvents="auto" {...props} height={32}>
+      {nameField("w-full")}
+    </foreignObject>
+  );
 
   useEffect(() => {
     onPanChange?.(pan);
@@ -240,7 +283,8 @@ export default function Canvas({
         {/* Bunge: the C/E partition as a dashed hull — the observer's
             re-cuttable cut, not a boundary object (unfilled, unclickable, no
             ports; the rim-accent on boundary components stays the only
-            boundary marking). The label names the containing system. */}
+            boundary marking). The label names the containing system, and only
+            the label is interactive — click to rename (#116). */}
         {hull && (
           <g pointerEvents="none">
             <rect
@@ -255,8 +299,19 @@ export default function Canvas({
               strokeWidth={1.5}
               strokeDasharray="8 6"
             />
-            {placeName && (
-              <text x={hull.x + 12} y={hull.y - 10} fontSize={11} fill="var(--text-secondary)" className="font-mono">
+            {nameDraft !== null && nameInput({ x: hull.x + 8, y: hull.y - 26, width: 160 })}
+            {nameDraft === null && placeName && (
+              <text
+                x={hull.x + 12}
+                y={hull.y - 10}
+                fontSize={11}
+                fill="var(--text-secondary)"
+                className="font-mono cursor-text"
+                pointerEvents="auto"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={beginNameEdit}
+              >
+                <title>Click to rename this system (writes the SL system declaration)</title>
                 {placeName}
               </text>
             )}
@@ -291,7 +346,11 @@ export default function Canvas({
                 onSelectBoundary?.({ x: ring.cx, y: ring.cy - ring.ry });
               }}
             />
-            {placeName && (
+            {/* The name ON the membrane is click-to-edit (#116): only the text
+                is interactive — the ellipse keeps its stroke-only hit area, so
+                boundary clicks behave exactly as before. */}
+            {nameDraft !== null && nameInput({ x: ring.cx - 60, y: ring.cy - ring.ry - 16, width: 120 })}
+            {nameDraft === null && placeName && (
               <text
                 x={ring.cx}
                 y={ring.cy - ring.ry}
@@ -303,8 +362,11 @@ export default function Canvas({
                 stroke="var(--bg-primary)"
                 strokeWidth={4}
                 strokeLinejoin="round"
-                className="font-body pointer-events-none"
+                className="font-body cursor-text"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={beginNameEdit}
               >
+                <title>Click to rename this system (writes the SL system declaration)</title>
                 {placeName}
               </text>
             )}
@@ -405,7 +467,12 @@ export default function Canvas({
       {/* Klir: NO ontological container — orientation is copy. A screen-space
           place label (outside the pan/zoom group) does the you-are-here work;
           the export path re-anchors it into the diagram's frame. */}
-      {lens === "Klir" && placeName && (
+      {lens === "Klir" && nameDraft !== null && (
+        <foreignObject data-export-ignore x="0" y={8} width="100%" height={32} pointerEvents="auto">
+          <div className="flex justify-center">{nameField("w-40")}</div>
+        </foreignObject>
+      )}
+      {lens === "Klir" && nameDraft === null && placeName && (
         <text
           data-place-label
           x="50%"
@@ -413,8 +480,11 @@ export default function Canvas({
           textAnchor="middle"
           fontSize={11}
           fill="var(--text-muted)"
-          className="font-mono pointer-events-none"
+          className="font-mono cursor-text"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={beginNameEdit}
         >
+          <title>Click to rename this system (writes the SL system declaration)</title>
           viewing: {placeName}
         </text>
       )}

@@ -997,6 +997,24 @@ boundary porosity 0.7 fuzziness 0.1
         assert!((dist(s) - ENV_RADIUS).abs() < 0.5);
     }
 
+    /// The container label's rename round trip (bert-lenses#116): the canvas
+    /// writes `CanvasModel.name`, `emit_sl` serializes it as the system
+    /// declaration, and compiling that text reproduces the same self-name.
+    /// An unnamed model emits no system line and reads back unnamed.
+    #[test]
+    fn self_name_round_trips_through_the_system_declaration() {
+        let mut model = parse_sl("component A\n").unwrap();
+        model.name = Some("living room".into());
+        let text = emit_sl(&model).unwrap();
+        assert!(text.starts_with("system \"living room\"\n"), "{text}");
+        assert_eq!(parse_sl(&text).unwrap().name.as_deref(), Some("living room"));
+
+        model.name = None;
+        let text = emit_sl(&model).unwrap();
+        assert!(!text.contains("system"), "{text}");
+        assert_eq!(parse_sl(&text).unwrap().name, None);
+    }
+
     #[test]
     fn trailing_comments_and_blank_lines_ignored() {
         let model = parse_sl("\ncomponent A  # the core\n\n# whole-line comment\n").unwrap();
