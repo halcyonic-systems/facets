@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ready, runForced, toCanvas, project, parseCsv, analyzeCanvas, checkDecompositions } from "./kernel";
-import type { CanvasModel, Manifest, RunResultRich, ValidationIssue } from "./kernel/types";
+import {
+  ready,
+  runForced,
+  toCanvas,
+  project,
+  parseCsv,
+  analyzeCanvas,
+  checkDecompositionsCanvas,
+  decomposeComponent,
+} from "./kernel";
+import type { CanvasModel, IssueTarget, Manifest, RunResultRich, Thing, ValidationIssue } from "./kernel/types";
 import { DEMOS, type Demo } from "./demos";
 import Canvas from "./canvas/Canvas";
 import { edgeGeometry, thingById } from "./canvas/geometry";
@@ -32,6 +41,26 @@ import { diagramFilename, exportDiagramSvg, exportDiagramPng } from "./canvas/ex
 
 const today = () => new Date().toISOString().slice(0, 10);
 const LENSES: CanvasModel["lens"][] = ["Klir", "Bunge", "Mobus"];
+
+// One ancestor on the decomposition walk (#89 step 5b): everything needed to
+// restore that model when the breadcrumb exits back to it, plus the display
+// facts the breadcrumb renders (label, id on hover, seam glyph as of descent).
+// The walk is presentation/navigation state — every seam verdict along it is
+// still the kernel's.
+interface WalkSegment {
+  label: string;
+  modelId: string | null;
+  /** Its decomposition seams' status when we descended (saves happen only at
+   *  navigation seams, so this is fresh whenever the breadcrumb is visible). */
+  clean: boolean;
+  canvas: CanvasModel;
+  demo: Demo | null;
+  manifest: Manifest;
+  dt: number;
+  t: number;
+  currentName: string | null;
+  dirty: boolean;
+}
 
 // The SL pane's seed text — Mobus's steel plant (Ch.4 §4.3.1) as a system
 // paragraph, so the pane's first Compile produces a live model.
@@ -155,6 +184,11 @@ function Workspace() {
   // seam. The nav affordances (Home, Switch model) confirm-before-discard only
   // when this is set, so an untouched or freshly-saved model navigates freely.
   const [dirty, setDirty] = useState(false);
+  // The decomposition walk (#89 step 5b): the ancestors above the model on the
+  // canvas, root-first. Empty = not walking. Entering a decomposed component
+  // pushes the current model as a segment; the breadcrumb exits by restoring
+  // one. Navigation state only — every model and verdict stays kernel-fed.
+  const [walk, setWalk] = useState<WalkSegment[]>([]);
   // The SL text pane (textual authoring surface). Text + faults live here so
   // the pane survives toggling; seeded with a worked example (Mobus's steel
   // plant, Ch.4 §4.3.1) so the first Compile lands a real model.
@@ -239,6 +273,7 @@ function Workspace() {
     setArmed(null);
     setGalleryOpen(false);
     setDirty(false);
+    setWalk([]);
     runWith(d.modelJson, d.csv, d.manifest, d.manifest.dt ?? 1, d.t); // one click → runs
   };
 
@@ -260,6 +295,7 @@ function Workspace() {
       setArmed(null);
       setGalleryOpen(false);
       setDirty(false);
+      setWalk([]);
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
@@ -281,6 +317,7 @@ function Workspace() {
     setArmed(null);
     setGalleryOpen(false);
     setDirty(false);
+    setWalk([]);
     setFitToken((n) => (n ?? 0) + 1); // frame the compiled layout in the current viewport (#83)
     setNotice("SL compiled ✓");
   }
@@ -300,6 +337,7 @@ function Workspace() {
     setArmed(null);
     setGalleryOpen(false);
     setDirty(false);
+    setWalk([]);
     setTypePromptOpen(true); // #77: offer the kind/name first step (skippable)
   }
 
@@ -392,7 +430,13 @@ function Workspace() {
   async function confirmSave(name: string) {
     if (!canvasModel) return;
     const stem = name.trim().replace(/\.json$/i, "") || "untitled";
-    const json = JSON.stringify(project(canvasModel), null, 2);
+    // Save-as-copy discipline (bert-core model_id contract): saving under a NEW
+    // name is a copy, and a copy must not inherit its origin's identity — clear
+    // it so a later decomposition mints a fresh one. Re-saving the same slot
+    // keeps the id (that's what keeps a walked child's parent reference alive).
+    const world = project(canvasModel) as { model_id?: string };
+    if (currentName && stem !== currentName) delete world.model_id;
+    const json = JSON.stringify(world, null, 2);
     try {
       if (saveTarget === "library") {
         await saveModel(stem, json);
@@ -450,6 +494,7 @@ function Workspace() {
       setCurrentName(name.replace(/\.json$/i, ""));
       setGalleryOpen(false);
       setDirty(false);
+      setWalk([]);
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
@@ -473,6 +518,7 @@ function Workspace() {
       setCurrentName(name);
       setGalleryOpen(false);
       setDirty(false);
+      setWalk([]);
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
@@ -516,35 +562,43 @@ function Workspace() {
   // resolution is I/O; the issues merge into the same verdict the pill and
   // audit panel read, so a missing or broken referent is as loud as any other
   // validation error. Effect-shaped (not memo) — a stale check is discarded.
-  const [decompositionIssues, setDecompositionIssues] = useState<ValidationIssue[]>([]);
+  // Since step 5b the kernel also resolves each issue's canvas target
+  // (check_decompositions_canvas), so seam rows navigate like any other issue.
+  const [decomposition, setDecomposition] = useState<{
+    issues: ValidationIssue[];
+    targets: IssueTarget[];
+  }>({ issues: [], targets: [] });
   useEffect(() => {
     const refs = canvasModel
       ? canvasModel.things.flatMap((t) => (t.child_model ? [t.child_model.id] : []))
       : [];
     if (!canvasModel || refs.length === 0) {
-      setDecompositionIssues([]);
+      setDecomposition({ issues: [], targets: [] });
       return;
     }
     let stale = false;
     (async () => {
       const resolved = await resolveModelRefs(refs, dirHandle);
       if (stale) return;
-      const report = checkDecompositions(JSON.stringify(project(canvasModel)), resolved);
-      if (!stale) setDecompositionIssues(report.issues);
+      const report = checkDecompositionsCanvas(canvasModel, resolved);
+      if (!stale) setDecomposition({ issues: report.issues, targets: report.issue_targets });
     })().catch((e) => {
       // Resolution failing outright (storage error, projection throw) must
       // still surface on the audit panel, never only the console.
       if (!stale) {
-        setDecompositionIssues([
-          {
-            severity: "Error",
-            location: "decomposition",
-            message: `decomposition references could not be checked: ${
-              e instanceof Error ? e.message : String(e)
-            }`,
-            suggestion: null,
-          },
-        ]);
+        setDecomposition({
+          issues: [
+            {
+              severity: "Error",
+              location: "decomposition",
+              message: `decomposition references could not be checked: ${
+                e instanceof Error ? e.message : String(e)
+              }`,
+              suggestion: null,
+            },
+          ],
+          targets: [{ thing: null, relation: null }],
+        });
       }
     });
     return () => {
@@ -554,19 +608,15 @@ function Workspace() {
 
   // The kernel's lens-gate verdict plus the resolution-time decomposition
   // issues, one list — the issues Pill, the audit panel, and the dock all read
-  // this. Decomposition rows carry no canvas target yet (enter/exit navigation
-  // is step 5b), so their issue_targets entries are non-navigable.
+  // this. Both halves carry kernel-resolved canvas targets, index-parallel.
   const verdict = useMemo(() => {
     const base = analysis.ok?.validation ?? null;
-    if (decompositionIssues.length === 0) return base;
-    return { issues: [...(base?.issues ?? []), ...decompositionIssues] };
-  }, [analysis, decompositionIssues]);
+    if (decomposition.issues.length === 0) return base;
+    return { issues: [...(base?.issues ?? []), ...decomposition.issues] };
+  }, [analysis, decomposition]);
   const issueTargets = useMemo(
-    () => [
-      ...(analysis.ok?.issue_targets ?? []),
-      ...decompositionIssues.map(() => ({ thing: null, relation: null })),
-    ],
-    [analysis, decompositionIssues],
+    () => [...(analysis.ok?.issue_targets ?? []), ...decomposition.targets],
+    [analysis, decomposition],
   );
   const facts = analysis.ok?.facts ?? null;
   const desc = analysis.ok?.description ?? null;
@@ -711,8 +761,10 @@ function Workspace() {
 
   // Confirm-before-discard gate for the nav affordances. No dirty-model guard
   // existed before this wave, so this is it: only the unsaved-work case prompts.
+  // A walk's ancestor snapshots count as unsaved work too — leaving the walk
+  // discards them (breadcrumb exits, by contrast, autosave).
   function guardDiscard(): boolean {
-    if (!dirty) return true;
+    if (!dirty && !walk.some((s) => s.dirty)) return true;
     return window.confirm("Discard unsaved changes to the current model?");
   }
 
@@ -732,6 +784,7 @@ function Workspace() {
     setArmed(null);
     setCurrentName(null);
     setDirty(false);
+    setWalk([]);
     setGalleryOpen(true);
   }
 
@@ -745,6 +798,123 @@ function Workspace() {
   function switchToLibrary(name: string) {
     if (!guardDiscard()) return;
     loadFromLibrary(name);
+  }
+
+  // The door (#89 step 5b): derive the child of a component in the KERNEL
+  // (G′ from flows(c), minted identity, empty interior), save it to the browser
+  // library, and stamp the parent's `decomposes` reference. Stamping is
+  // tooling — this layer writes the reference; the kernel derived and judged.
+  async function decomposeThing(thing: Thing) {
+    if (!canvasModel) return;
+    try {
+      const out = decomposeComponent(canvasModel, thing.id);
+      if ("issues" in out) {
+        setToast(out.issues[0]?.message ?? "cannot decompose this component");
+        return;
+      }
+      // Library slots are keyed by name (put overwrites), so an occupied name
+      // gets a numeric suffix rather than silently clobbering another model.
+      const taken = new Set((await listModels()).map((m) => m.name));
+      const base = out.ok.child_name || "subsystem";
+      let name = base;
+      for (let n = 2; taken.has(name); n++) name = `${base}-${n}`;
+      await saveModel(name, out.ok.child_json);
+      setLibraryModels(await listModels());
+      updateThing({ ...thing, child_model: { name, id: out.ok.child_id } });
+      setSelectedThingId(null);
+      setNotice(`decomposed → saved "${name}" to the library — double-click the component to enter`);
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // Enter a decomposed component's child (#89 step 5b): resolve the reference
+  // by id through the store layer, push the current model as a walk segment,
+  // and put the child on the canvas. Mechanism = navigation across documents;
+  // only the breadcrumb makes it read as a hierarchical dive. A referent that
+  // resolves nowhere surfaces the kernel's defined issue in place — never a
+  // crash, never a silent no-op.
+  async function enterThingChild(thing: Thing) {
+    const ref = thing.child_model;
+    if (!ref || !canvasModel) return;
+    try {
+      const resolved = await resolveModelRefs([ref.id], dirHandle);
+      const json = resolved[ref.id];
+      if (json === undefined) {
+        const row = decomposition.issues.find((_, i) => decomposition.targets[i]?.thing === thing.id);
+        setToast(row?.message ?? `child model ${ref.id} could not be resolved`);
+        return;
+      }
+      const cm = toCanvas(json);
+      setWalk((w) => [
+        ...w,
+        {
+          label: currentLabel ?? "untitled",
+          modelId: canvasModel.model_id ?? null,
+          clean: decomposition.issues.length === 0,
+          canvas: canvasModel,
+          demo,
+          manifest,
+          dt,
+          t,
+          currentName,
+          dirty,
+        },
+      ]);
+      setDemo(null);
+      setCanvasModel(cm);
+      setManifest({ model: "", data: "", t: 12, mapping: [] });
+      setResult(null);
+      setRunError(null);
+      setSelectedRelationId(null);
+      setSelectedThingId(null);
+      setBoundaryAnchor(null);
+      setArmed(null);
+      setCurrentName(ref.name);
+      setGalleryOpen(false);
+      setDirty(false);
+      setFitToken((n) => (n ?? 0) + 1);
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // Exit to an ancestor (breadcrumb click). AUTOSAVES before navigating — the
+  // current child and every deeper segment being popped, dirty-only, so work is
+  // never lost and an untouched newborn is never rewritten. No confirm dialog;
+  // explicit save is unchanged. Restoring the ancestor re-runs its seam check
+  // against the just-saved children.
+  async function exitTo(index: number) {
+    if (!canvasModel || index >= walk.length) return;
+    try {
+      if (dirty && currentName) {
+        await saveModel(currentName, JSON.stringify(project(canvasModel), null, 2));
+      }
+      for (const seg of walk.slice(index + 1)) {
+        if (seg.dirty && seg.currentName) {
+          await saveModel(seg.currentName, JSON.stringify(project(seg.canvas), null, 2));
+        }
+      }
+      const target = walk[index];
+      setWalk(walk.slice(0, index));
+      setDemo(target.demo);
+      setCanvasModel(target.canvas);
+      setManifest(target.manifest);
+      setDt(target.dt);
+      setT(target.t);
+      setResult(null);
+      setRunError(null);
+      setSelectedRelationId(null);
+      setSelectedThingId(null);
+      setBoundaryAnchor(null);
+      setArmed(null);
+      setCurrentName(target.currentName);
+      setDirty(target.dirty);
+      setLibraryModels(await listModels());
+      setFitToken((n) => (n ?? 0) + 1);
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
+    }
   }
 
   return (
@@ -786,6 +956,42 @@ function Workspace() {
         className="flex min-h-0 flex-1 flex-col"
         data-lens={canvasModel?.lens ?? "Klir"}
       >
+        {/* The walk breadcrumb (#89 step 5b): the label path down the
+            decomposition (`Boiler › Furnace`), each segment carrying its
+            contract-status glyph (✓ seams hold / ⚠ violations, kernel-fed).
+            Ids live on hover/title only. Clicking an ancestor exits to it
+            (autosaving on the way — see exitTo). Shown only while walking. */}
+        {walk.length > 0 && canvasModel && (
+          <nav
+            className="flex flex-wrap items-center gap-1.5 border-b px-4 py-1.5 text-xs"
+            style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)", fontFamily: "var(--font-mono)" }}
+          >
+            {walk.map((seg, i) => (
+              <span key={i} className="flex items-center gap-1.5">
+                {i > 0 && <span style={{ color: "var(--text-muted)" }}>›</span>}
+                <button
+                  onClick={() => exitTo(i)}
+                  className="flex items-center gap-1"
+                  style={{ color: "var(--text-secondary)" }}
+                  title={seg.modelId ? `${seg.label} @${seg.modelId}` : seg.label}
+                >
+                  <SeamGlyph clean={seg.clean} />
+                  {seg.label}
+                </button>
+              </span>
+            ))}
+            <span style={{ color: "var(--text-muted)" }}>›</span>
+            <span
+              className="flex items-center gap-1 font-semibold"
+              style={{ color: "var(--text-primary)" }}
+              title={canvasModel.model_id ? `${currentLabel} @${canvasModel.model_id}` : currentLabel ?? undefined}
+            >
+              <SeamGlyph clean={decomposition.issues.length === 0} />
+              {currentLabel}
+            </span>
+          </nav>
+        )}
+
         {/* Provisional control strip — temporary neutral home for the
             lens-switch pills, clean/issues Pill, and the Δt/T + Run controls
             that used to live inside the canvas Card. NOT a designed toolbar:
@@ -904,6 +1110,9 @@ function Workspace() {
                         setSelectedThingId(id);
                         if (id !== null) setBoundaryAnchor(null);
                       }}
+                      onEnterThing={(t) => {
+                        if (t.child_model) enterThingChild(t);
+                      }}
                       onSelectBoundary={(at) => {
                         setBoundaryAnchor(at);
                         setSelectedThingId(null);
@@ -931,6 +1140,25 @@ function Workspace() {
                         onUpdateThing={updateThing}
                         onDelete={() => deleteThing(selectedThing.id)}
                         onClose={() => setSelectedThingId(null)}
+                        // The decomposition door (#89 step 5b), inspector-first.
+                        // Which case renders is a kernel fact: boundary
+                        // membership comes from lens_facts.boundary_thing_ids —
+                        // the same set the kernel's v1 refusal checks.
+                        decompose={
+                          selectedThing.role !== "Component"
+                            ? null
+                            : selectedThing.child_model
+                              ? {
+                                  kind: "entered",
+                                  label: selectedThing.child_model.name,
+                                  onEnter: () => enterThingChild(selectedThing),
+                                }
+                              : !facts
+                                ? null
+                                : facts.boundary_thing_ids.includes(selectedThing.id)
+                                  ? { kind: "interface" }
+                                  : { kind: "ready", onDecompose: () => decomposeThing(selectedThing) }
+                        }
                       />
                     )}
                     {selectedRelation && popoverAnchor && (
@@ -959,6 +1187,17 @@ function Workspace() {
                         {facts.aggregate
                           ? "⚠ aggregate (heap) — no bond among distinct components (Bunge Def 1.1)"
                           : "✓ system — ≥1 bond among distinct components (Bunge Def 1.1)"}
+                      </Banner>
+                    )}
+                    {/* Grace note for a walked-into newborn (#89 step 5b): an
+                        empty interior is the intended starting state, so nudge
+                        gently — an invitation on the canvas, not an error row
+                        on the audit. Counting components is empty-state UI,
+                        not a systems verdict. */}
+                    {walk.length > 0 && !canvasModel.things.some((t) => t.role === "Component") && (
+                      <Banner tone="soft" className="pointer-events-none absolute left-3 top-3">
+                        newly decomposed — the stand-ins around you are this system's
+                        neighbors; place your first primitive and wire them through it
                       </Banner>
                     )}
                     <div
@@ -1087,6 +1326,20 @@ function Workspace() {
         />
       )}
     </>
+  );
+}
+
+// The breadcrumb's per-segment contract-status glyph: ✓ every decomposition
+// seam of that model held / ⚠ violations. The verdict itself is the kernel's
+// (check_decompositions_canvas); this only colors it.
+function SeamGlyph({ clean }: { clean: boolean }) {
+  return (
+    <span
+      aria-label={clean ? "seams hold" : "seam violations"}
+      style={{ color: clean ? "var(--verdict-ok)" : "var(--verdict-warning)" }}
+    >
+      {clean ? "✓" : "⚠"}
+    </span>
   );
 }
 

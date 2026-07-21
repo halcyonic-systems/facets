@@ -193,6 +193,10 @@ export interface SystemType {
 
 export interface CanvasModel {
   lens: Lens;
+  /** The model's stable base58 self-identity, carried through the canvas seam
+   *  (to_canvas copies it in, project writes it back) so a walked child
+   *  re-projects under the id its parent references. Carried, never minted. */
+  model_id?: string;
   things: Thing[];
   relations: Relation[];
   boundary: CanvasBoundaryProps;
@@ -320,6 +324,20 @@ export type LensDescription =
 export interface IssueTarget {
   thing: number | null;
   relation: number | null;
+}
+
+/** decompose_component: the newborn child as the store layer needs it — the
+ *  model text to save, the base58 identity to stamp, the default label — or the
+ *  kernel's refusal issues (v1 interface narrowing, non-component selection). */
+export type DecomposeOutcome =
+  | { ok: { child_json: string; child_id: string; child_name: string } }
+  | { issues: ValidationIssue[] };
+
+/** check_decompositions_canvas: seam issues paired with canvas navigation
+ *  targets (index-parallel), the same shape family as CanvasAnalysis. */
+export interface DecompositionReport {
+  issues: ValidationIssue[];
+  issue_targets: IssueTarget[];
 }
 
 export interface CanvasAnalysis {

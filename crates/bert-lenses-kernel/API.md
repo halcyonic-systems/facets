@@ -370,7 +370,8 @@ Every serde type that crosses this wasm edge ships a committed JSON fixture in
 `fixtures/contract/`, generated from REAL kernel output — never hand-typed:
 - Rust writes/asserts them: `crates/bert-canvas/tests/contract.rs` (the
   canvas-family shapes: `CanvasModel`, `LensFacts` + `EdgeFact`/`PortFact`,
-  `LensDescription` ×3, `ValidationResult`, `CanvasAnalysis`) and the
+  `LensDescription` ×3, `ValidationResult`, `CanvasAnalysis`,
+  `DecompositionReport`) and the
   `bert-lenses-kernel` api.rs test module (the run-family DTOs: `CsvParse`,
   `Targets`, `MappingStatus`, `RunResult`, `RunResultRich`). Drift fails the
   test; regenerate an intentional change with `BLESS_FIXTURES=1`.
