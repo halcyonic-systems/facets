@@ -627,6 +627,54 @@ mod tests {
         assert!(stock.unit_derived, "a derived unit is flagged for the face");
     }
 
+    /// bert-lenses#94 acceptance: a kW-fed stock displays ENERGY, not power,
+    /// without the modeler declaring the stock's unit. The model carries no
+    /// time-unit symbol yet, so the display is the abstract step `kW·Δt` (the
+    /// ruling's no-invented-`h` form); `derived_stock_unit("kW", Some("h"))`
+    /// renders `kW·h` the moment a model-level time unit exists to pass.
+    #[test]
+    fn a_kw_fed_stock_displays_energy_not_power() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let mut model: WorldModel = serde_json::from_str(json).unwrap();
+
+        let buffer_name = model
+            .systems
+            .iter()
+            .find(|s| {
+                s.agent.as_ref().and_then(|a| a.primitive)
+                    == Some(bert_core::ProcessPrimitive::Buffering)
+            })
+            .expect("the sample has a Buffering stock")
+            .info
+            .name
+            .clone();
+        for ix in &mut model.interactions {
+            ix.unit = "kW".to_string();
+        }
+
+        let spec = bert_core::operational::validate_operational(&model).expect("projects");
+        let mut circuit = bert_compose::from_spec(&spec);
+        let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0);
+        let readout = summarize(
+            &model,
+            &crate::tether::ImportedData::default(),
+            &circuit,
+            &run,
+            1.0,
+        );
+
+        let stock = readout
+            .levels
+            .iter()
+            .find(|l| l.name == buffer_name)
+            .expect("the stock has a level row");
+        assert_eq!(
+            stock.unit, "kW·Δt",
+            "power integrated over the step displays as energy, not the raw kW"
+        );
+        assert!(stock.unit_derived, "the derivation is flagged for the face");
+    }
+
     // Law: a forced run must conserve (residual ~0 against throughput) and every
     // level/trajectory/comparison it reads back must carry the model's own
     // domain name, never a bare engine column.
