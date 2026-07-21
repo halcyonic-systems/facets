@@ -17,6 +17,7 @@ import { DecomposeRows, type DecomposeAffordance } from "./NodePopover";
 import { KlirLadderPanel, LadderChip } from "./KlirLadderPanel";
 import { FormalismLine, klirFormalism } from "./lenses/glossary";
 import { cellGlyph, cellRelations, nextIdOf, nextThingPosition, relationTuple } from "./klirNotation";
+import { CELL, confirmStripClass, confirmStripStyle, headerCellStyle } from "./registerChrome";
 
 interface Props {
   model: CanvasModel;
@@ -392,7 +393,6 @@ function PairSelect({
  *  with a soft accent wash where R is inhabited, a faint diagonal tint, and
  *  hover tooltips reading each occupant as rN "name" = (row, col). The editing
  *  grammar stays this register's own. */
-const CELL = 30;
 
 function IncidenceMatrix({
   model,
@@ -428,13 +428,6 @@ function IncidenceMatrix({
           `r${model.relations.indexOf(r) + 1}${r.name ? ` "${r.name}"` : ""} = (${nameOf(r.a)}, ${nameOf(r.b)})${r.klir_directed === true ? " directed" : ""}`,
       )
       .join(" · ");
-  const headerCellStyle = {
-    fontFamily: "var(--font-mono)",
-    background: "var(--bg-secondary)",
-    color: "var(--text-secondary)",
-    borderBottom: "1px solid var(--hairline)",
-    borderRight: "1px solid var(--hairline)",
-  } as const;
   return (
     <div className="overflow-x-auto pl-6">
       <table className="border-separate" style={{ borderSpacing: 0 }}>
@@ -519,8 +512,8 @@ function IncidenceMatrix({
           a member of R on an explicit second act (the cell again, or "add"). */}
       {proposed && (
         <div
-          className="mt-2 flex w-fit items-center gap-2 rounded-md border px-2 py-1 text-xs"
-          style={{ borderColor: "var(--lens-accent)", background: "var(--bg-secondary)" }}
+          className={confirmStripClass}
+          style={confirmStripStyle}
           onKeyDown={(e) => {
             if (e.key === "Escape") onCancel();
           }}

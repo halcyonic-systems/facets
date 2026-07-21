@@ -121,7 +121,7 @@ export function ToolButton({
       className="rounded-full px-2.5 py-1 text-xs"
       style={{
         background: active ? "var(--lens-accent)" : "var(--bg-surface)",
-        color: active ? "#fff" : "var(--text-secondary)",
+        color: active ? "var(--text-on-accent)" : "var(--text-secondary)",
         border: "1px solid var(--border)",
         opacity: disabled ? 0.45 : 1,
         cursor: disabled ? "not-allowed" : "pointer",
@@ -161,7 +161,7 @@ export function Banner({
 }) {
   const style =
     tone === "error"
-      ? { background: "var(--verdict-error)", color: "#fff" }
+      ? { background: "var(--verdict-error)", color: "var(--text-on-accent)" }
       : {
           background: "var(--lens-accent-soft)",
           color: "var(--lens-accent)",

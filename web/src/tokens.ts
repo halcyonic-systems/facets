@@ -9,6 +9,7 @@ export const color = {
   verdictError: "var(--verdict-error)",
   textPrimary: "var(--text-primary)",
   textMuted: "var(--text-muted)",
+  textOnAccent: "var(--text-on-accent)",
   // the per-lens seam — redefined by data-lens on the workspace root
   lensAccent: "var(--lens-accent)",
   lensAccentSoft: "var(--lens-accent-soft)",
@@ -26,3 +27,9 @@ export const kind = {
   Field: "#3f6f8f",
   Unspecified: "var(--text-muted)",
 } as const;
+
+// Export-time fallback: exportDiagram resolves --bg-primary from computed style
+// at snapshot time; when that comes back empty (detached document, tests) the
+// exported SVG still needs a concrete page color. Literal here because tokens.ts
+// is the one sanctioned home for raw color values (check-tokens.mjs enforces).
+export const exportBgFallback = "#ffffff";

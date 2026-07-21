@@ -4,6 +4,7 @@
 // concrete values so it renders with no stylesheet, and drop the interactive-only
 // overlays. Presentation only — no kernel, no systems meaning here.
 import { contentBounds } from "./geometry";
+import { exportBgFallback } from "../tokens";
 import type { CanvasModel } from "../kernel/types";
 
 const PAD = 48;
@@ -110,7 +111,7 @@ function serializeDiagram(live: SVGSVGElement, model: CanvasModel): Serialized |
   }
 
   const bg =
-    getComputedStyle(document.documentElement).getPropertyValue("--bg-primary").trim() || "#ffffff";
+    getComputedStyle(document.documentElement).getPropertyValue("--bg-primary").trim() || exportBgFallback;
   const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
   rect.setAttribute("x", String(vbX));
   rect.setAttribute("y", String(vbY));

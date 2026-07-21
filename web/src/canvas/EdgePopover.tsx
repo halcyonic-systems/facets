@@ -349,7 +349,7 @@ function MobusBody({
           className="rounded-full px-3 py-1 text-xs font-semibold"
           style={{
             background: column ? "var(--accent)" : "var(--bg-surface)",
-            color: column ? "#fff" : "var(--text-muted)",
+            color: column ? "var(--text-on-accent)" : "var(--text-muted)",
             cursor: column ? "pointer" : "not-allowed",
           }}
         >

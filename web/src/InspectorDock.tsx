@@ -190,7 +190,7 @@ function TabButton({
       {badge !== undefined && (
         <span
           className="inline-flex min-w-[1.1rem] items-center justify-center rounded-full px-1 text-[10px] font-medium tabular"
-          style={{ background: "var(--verdict-warning)", color: "#fff" }}
+          style={{ background: "var(--verdict-warning)", color: "var(--text-on-accent)" }}
         >
           {badge}
         </span>

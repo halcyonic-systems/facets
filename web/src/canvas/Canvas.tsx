@@ -463,7 +463,7 @@ export default function Canvas({
         ))}
 
         {draft && (
-          <foreignObject x={draft.x - 60} y={draft.y - 16} width={120} height={32}>
+          <foreignObject data-export-ignore x={draft.x - 60} y={draft.y - 16} width={120} height={32}>
             <input
               autoFocus
               className="w-full rounded-md border px-2 py-1 text-xs font-body"

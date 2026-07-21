@@ -82,7 +82,7 @@ function BungeFace({ d }: { d: Extract<LensDescription, { lens: "Bunge" }> }) {
           className="rounded-full px-3 py-1 text-xs font-semibold"
           style={{
             background: isSystem ? "var(--accent-soft)" : "var(--verdict-error)",
-            color: isSystem ? "var(--accent-strong)" : "#fff",
+            color: isSystem ? "var(--accent-strong)" : "var(--text-on-accent)",
           }}
         >
           {isSystem ? "system — 𝔹 ≠ ∅ (Def 1.1)" : "aggregate — 𝔹 = ∅ (Def 1.1)"}

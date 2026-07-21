@@ -185,7 +185,7 @@ export function DecomposeRows({ decompose }: { decompose: DecomposeAffordance })
           <button
             onClick={decompose.onEnter}
             className="shrink-0 rounded-full px-3 py-1 text-xs font-semibold"
-            style={{ background: "var(--lens-accent)", color: "#fff" }}
+            style={{ background: "var(--lens-accent)", color: "var(--text-on-accent)" }}
             title="Enter the child model (double-clicking the node also enters)"
           >
             enter →
