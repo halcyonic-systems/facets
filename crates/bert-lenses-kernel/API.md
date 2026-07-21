@@ -266,9 +266,26 @@ type CanvasAnalysis = {
   validation: ValidationResult,   // validate_mode at the lens's mode
   facts: LensFacts,
   description: LensDescription,
+  residue: LensResidue,           // what this lens is NOT showing (#100)
 }
 ```
 Throws only on unparseable canvas JSON.
+
+`CanvasAnalysis` gains one additive field (#100, wire-compatible): the
+**residue register** — the read-side analog of `transition.rs`'s write-side
+`LossWitness`, completing the render guarantee (totality + fidelity + loud
+residue). Kernel judgment; the face only typesets `${count} ${label}`:
+```ts
+type ResidueEntry = { count: number, label: string }  // label arrives number-agreed
+type LensResidue = {
+  hidden: ResidueEntry[],       // model has it, this lens does not ask that question
+  unspecified: ResidueEntry[],  // lens asks a question the model has not answered
+}
+```
+Residue is per-lens, NOT nested (the mode poset is a tree): Bunge sees mere
+relations Mobus never projects, while Mobus sees primitives Bunge has no
+ontology for. Empty vectors mean no residue of that flavor — silence, never
+zero-filled rows.
 
 ## SL surface (built — the textual authoring surface, #82)
 

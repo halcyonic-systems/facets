@@ -26,6 +26,7 @@ import type {
   EdgeFact,
   LensDescription,
   LensFacts,
+  LensResidue,
   MappingStatus,
   PortFact,
   Relation,
@@ -312,8 +313,21 @@ function parseLensDescription(v: unknown): LensDescription {
   }
 }
 
+function parseLensResidue(v: unknown): LensResidue {
+  const o = shape(v, "LensResidue", ["hidden", "unspecified"]);
+  const entries = (x: unknown, w: string) =>
+    arr(x, w).map((e, i) => {
+      const ee = shape(e, `${w}[${i}]`, ["count", "label"]);
+      return { count: num(ee.count, `${w}[${i}].count`), label: str(ee.label, `${w}[${i}].label`) };
+    });
+  return {
+    hidden: entries(o.hidden, "LensResidue.hidden"),
+    unspecified: entries(o.unspecified, "LensResidue.unspecified"),
+  };
+}
+
 function parseCanvasAnalysis(v: unknown): CanvasAnalysis {
-  const o = shape(v, "CanvasAnalysis", ["validation", "issue_targets", "facts", "description"]);
+  const o = shape(v, "CanvasAnalysis", ["validation", "issue_targets", "facts", "description", "residue"]);
   const validation = parseValidationResult(o.validation);
   const issue_targets = arr(o.issue_targets, "CanvasAnalysis.issue_targets").map((t, i) => {
     const tt = shape(t, `issue_targets[${i}]`, ["thing", "relation"]);
@@ -330,6 +344,7 @@ function parseCanvasAnalysis(v: unknown): CanvasAnalysis {
     issue_targets,
     facts: parseLensFacts(o.facts),
     description: parseLensDescription(o.description),
+    residue: parseLensResidue(o.residue),
   };
 }
 
@@ -531,6 +546,14 @@ describe("serde↔TS boundary fixtures", () => {
     expect(a.validation.issues.length).toBeGreaterThan(0);
     expect(a.facts.edges.length).toBeGreaterThan(0);
     expect(a.description.lens).toBe("Mobus");
+  });
+
+  it("LensResidue carries both flavors, number-agreed (#100)", () => {
+    const r = parseLensResidue(fixture("lens_residue"));
+    expect(r.hidden.length).toBeGreaterThan(0);
+    expect(r.unspecified.length).toBeGreaterThan(0);
+    // The sample's one mere relation arrives singular — labels never re-pluralize.
+    expect(r.hidden[0]).toEqual({ count: 1, label: "mere relation" });
   });
 
   it("CsvParse validates", () => {

@@ -350,6 +350,23 @@ export interface DecompositionReport {
   issue_targets: IssueTarget[];
 }
 
+/** One residue line: count + number-agreed noun phrase — render
+ *  `${count} ${label}` verbatim, never re-pluralize. */
+export interface ResidueEntry {
+  count: number;
+  label: string;
+}
+
+/** The residue register (#100): what the active lens is NOT showing. Two
+ *  flavors, rendered distinctly — hidden: the model has it, this lens does not
+ *  ask that question; unspecified: the lens asks a question the model has not
+ *  answered. Per-lens, not nested (the mode poset is a tree). Kernel judgment;
+ *  the face only typesets counts. */
+export interface LensResidue {
+  hidden: ResidueEntry[];
+  unspecified: ResidueEntry[];
+}
+
 export interface CanvasAnalysis {
   /** validate_mode at the canvas lens's mode (Klir→Core / Bunge→Structural /
    *  Mobus→Operational). */
@@ -359,4 +376,5 @@ export interface CanvasAnalysis {
   issue_targets: IssueTarget[];
   facts: LensFacts;
   description: LensDescription;
+  residue: LensResidue;
 }

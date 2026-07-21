@@ -632,6 +632,7 @@ function Workspace() {
   );
   const facts = analysis.ok?.facts ?? null;
   const desc = analysis.ok?.description ?? null;
+  const residue = analysis.ok?.residue ?? null;
   const analysisError = analysis.error;
 
   useEffect(() => {
@@ -1258,6 +1259,28 @@ function Workspace() {
                         newly decomposed — the stand-ins around you are this system's
                         neighbors; place your first primitive and wire them through it
                       </Banner>
+                    )}
+                    {/* The residue register (#100): every lens view enumerates
+                        what it is NOT showing. Kernel judgment (analyze's
+                        residue) — hidden: the model has it, this lens does not
+                        ask that question; unanswered: the lens asks, the model
+                        has not answered. Pedagogy, not alarm. */}
+                    {residue && (residue.hidden.length > 0 || residue.unspecified.length > 0) && (
+                      <div
+                        className="pointer-events-none absolute right-3 top-3 max-w-[46%] text-right text-[11px]"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        {[
+                          residue.hidden.length > 0
+                            ? `not visible in this lens: ${residue.hidden.map((e) => `${e.count} ${e.label}`).join(", ")}`
+                            : null,
+                          residue.unspecified.length > 0
+                            ? `unanswered: ${residue.unspecified.map((e) => `${e.count} ${e.label}`).join(", ")}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </div>
                     )}
                     <div
                       className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-mono"

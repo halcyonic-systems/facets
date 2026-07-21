@@ -80,6 +80,10 @@ const mobusAnalysis: CanvasAnalysis = {
     ports: [{ component: 1, env: 3, relation_ids: [11], direction: "Receives", protocol: "supply" }],
   },
   description: mobusDescription,
+  residue: {
+    hidden: [{ count: 1, label: "mere relation" }],
+    unspecified: [{ count: 1, label: "substance" }],
+  },
 };
 
 function ctxOf(canvas: CanvasModel, analysis: CanvasAnalysis): ModelContext {
@@ -128,6 +132,7 @@ const klirAnalysis: CanvasAnalysis = {
     neutral: 1,
     note: "a system is what is distinguished as a system by the investigator",
   },
+  residue: { hidden: [], unspecified: [] },
 };
 
 const klirCtx = ctxOf(klirCanvas, klirAnalysis);
@@ -160,6 +165,7 @@ const bungeAnalysis: CanvasAnalysis = {
     verdict: "aggregate",
     mechanism_note: "M (mechanism) is documented but formally UNbridged: CES, not CESM.",
   },
+  residue: { hidden: [], unspecified: [] },
 };
 
 const bungeCtx = ctxOf({ ...klirCanvas, lens: "Bunge" }, bungeAnalysis);

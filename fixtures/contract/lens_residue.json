@@ -1,0 +1,18 @@
+{
+  "hidden": [
+    {
+      "count": 1,
+      "label": "mere relation"
+    }
+  ],
+  "unspecified": [
+    {
+      "count": 1,
+      "label": "substance"
+    },
+    {
+      "count": 2,
+      "label": "process primitives"
+    }
+  ]
+}
