@@ -69,6 +69,12 @@ export function KlirRegister({
   // The ladder is an opt-in complement: collapsed on every mount, never the
   // anchor — first contact is one quiet chip beside the headline.
   const [ladderOpen, setLadderOpen] = useState(false);
+  // #100 harvest: an empty-cell click PROPOSES the pair instead of creating it
+  // ("it immediately creates it… might just move that out, but the concept is
+  // really cool") — the same click again, or the confirm strip, commits; the
+  // kernel still judges at commit time. Two-step to match the sets view's own
+  // deliberate pick-pair-then-add grammar.
+  const [proposed, setProposed] = useState<{ a: number; b: number } | null>(null);
   const [thingDraft, setThingDraft] = useState("");
   const [relA, setRelA] = useState("");
   const [relB, setRelB] = useState("");
@@ -101,6 +107,15 @@ export function KlirRegister({
   useEffect(() => {
     if (selectedRelationId !== null) relationEdRef.current?.scrollIntoView({ block: "nearest" });
   }, [selectedRelationId]);
+
+  // A proposal can't outlive its endpoints (a deleted thing withdraws it).
+  useEffect(() => {
+    if (
+      proposed &&
+      (!model.things.some((t) => t.id === proposed.a) || !model.things.some((t) => t.id === proposed.b))
+    )
+      setProposed(null);
+  }, [model, proposed]);
 
   function addThing() {
     const id = nextIdOf(model.things.map((t) => t.id));
@@ -135,6 +150,7 @@ export function KlirRegister({
     } catch (err) {
       onReject(err instanceof Error ? err.message : String(err));
     }
+    setProposed(null);
   }
 
   const sigOf = (r: Relation) => model.relations.indexOf(r);
@@ -176,7 +192,14 @@ export function KlirRegister({
             {ladder && (
               <LadderChip ladder={ladder} open={ladderOpen} onToggle={() => setLadderOpen((o) => !o)} />
             )}
-            <SmallButton active={view === "sets"} onClick={() => setView("sets")} title="the set listings — Eq. 1.1 read literally">
+            <SmallButton
+              active={view === "sets"}
+              onClick={() => {
+                setView("sets");
+                setProposed(null); // a pending matrix proposal doesn't follow
+              }}
+              title="the set listings — Eq. 1.1 read literally"
+            >
               sets
             </SmallButton>
             <SmallButton active={view === "matrix"} onClick={() => setView("matrix")} title="the |T|×|T| incidence matrix over the same R">
@@ -298,11 +321,20 @@ export function KlirRegister({
             <IncidenceMatrix
               model={model}
               selectedRelationId={selectedRelationId}
+              proposed={proposed}
               onPickCell={(a, b) => {
                 const rels = cellRelations(model, a, b);
-                if (rels.length > 0) onSelectRelation(rels[0].id === selectedRelationId ? null : rels[0].id);
-                else addRelation(a, b);
+                if (rels.length > 0) {
+                  onSelectRelation(rels[0].id === selectedRelationId ? null : rels[0].id);
+                  setProposed(null);
+                } else if (proposed && proposed.a === a && proposed.b === b) {
+                  addRelation(a, b); // the second click commits
+                } else {
+                  setProposed({ a, b }); // the first click only proposes
+                }
               }}
+              onConfirm={() => proposed && addRelation(proposed.a, proposed.b)}
+              onCancel={() => setProposed(null)}
             />
           )}
 
@@ -365,11 +397,19 @@ const CELL = 30;
 function IncidenceMatrix({
   model,
   selectedRelationId,
+  proposed,
   onPickCell,
+  onConfirm,
+  onCancel,
 }: {
   model: CanvasModel;
   selectedRelationId: number | null;
+  /** The pair a first empty-cell click proposed — not yet in R (#100 harvest:
+   *  click softened to propose-then-confirm). */
+  proposed: { a: number; b: number } | null;
   onPickCell: (a: number, b: number) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
 }) {
   if (model.things.length === 0) {
     return (
@@ -433,6 +473,7 @@ function IncidenceMatrix({
               {model.things.map((b) => {
                 const rels = cellRelations(model, a.id, b.id);
                 const hit = rels.some((r) => r.id === selectedRelationId);
+                const isProposed = proposed !== null && proposed.a === a.id && proposed.b === b.id;
                 return (
                   <td key={b.id} className="p-0" style={{ borderBottom: "1px solid var(--hairline)", borderRight: "1px solid var(--hairline)" }}>
                     <button
@@ -442,7 +483,7 @@ function IncidenceMatrix({
                         width: CELL,
                         height: CELL,
                         fontFamily: "var(--font-mono)",
-                        color: rels.length ? "var(--text-primary)" : "var(--text-muted)",
+                        color: rels.length ? "var(--text-primary)" : isProposed ? "var(--lens-accent)" : "var(--text-muted)",
                         background: hit
                           ? "color-mix(in srgb, var(--lens-accent) 30%, transparent)"
                           : rels.length
@@ -450,16 +491,22 @@ function IncidenceMatrix({
                             : a.id === b.id
                               ? "color-mix(in srgb, var(--lens-accent) 6%, transparent)"
                               : "var(--bg-primary)",
-                        outline: hit ? "1.5px solid var(--lens-accent)" : undefined,
+                        outline: hit
+                          ? "1.5px solid var(--lens-accent)"
+                          : isProposed
+                            ? "1.5px dashed var(--lens-accent)"
+                            : undefined,
                         outlineOffset: -1.5,
                       }}
                       title={
                         rels.length
                           ? `${cellTitle(rels)} — click to edit`
-                          : `(${a.name}, ${b.name}) ∉ R — click to add`
+                          : isProposed
+                            ? `(${a.name}, ${b.name}) proposed — click again to add it to R`
+                            : `(${a.name}, ${b.name}) ∉ R — click to propose`
                       }
                     >
-                      {cellGlyph(a.id, b.id, rels)}
+                      {rels.length ? cellGlyph(a.id, b.id, rels) : isProposed ? "+" : ""}
                     </button>
                   </td>
                 );
@@ -468,6 +515,27 @@ function IncidenceMatrix({
           ))}
         </tbody>
       </table>
+      {/* The confirm strip: a proposal is visible, revocable, and only becomes
+          a member of R on an explicit second act (the cell again, or "add"). */}
+      {proposed && (
+        <div
+          className="mt-2 flex w-fit items-center gap-2 rounded-md border px-2 py-1 text-xs"
+          style={{ borderColor: "var(--lens-accent)", background: "var(--bg-secondary)" }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") onCancel();
+          }}
+        >
+          <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-secondary)" }}>
+            add ({nameOf(proposed.a)}, {nameOf(proposed.b)}) to R?
+          </span>
+          <SmallButton active onClick={onConfirm} title="Add this pair to R (the kernel judges legality)">
+            add
+          </SmallButton>
+          <SmallButton onClick={onCancel} title="Withdraw the proposal — nothing was created">
+            cancel
+          </SmallButton>
+        </div>
+      )}
       <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
         ● neutral (marks both orders) · → directed, read row → col · ↺ self-relation
       </p>
