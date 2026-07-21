@@ -37,7 +37,7 @@ import {
   readModelFile,
   type DirHandleLike,
 } from "./fsAccess";
-import { saveModel, listModelRecords, loadModel, deleteModel } from "./modelStore";
+import { saveModel, listModelRecords, loadModel, deleteModel, renameModel } from "./modelStore";
 import { buildLibraryTree, flattenLibraryTree, type LibraryNode } from "./libraryTree";
 import { mintLibraryName, parentSlotName } from "./libraryNames";
 import { resolveModelRefs } from "./modelResolve";
@@ -606,6 +606,28 @@ function Workspace() {
       await refreshLibrary();
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // Rename a library slot in place (#116 candidate 3): same record, same id,
+  // new key — the store refuses a taken name, and the refusal surfaces as a
+  // toast while the row stays in edit mode (returns false). Every in-memory
+  // pointer at the old key follows the rename: `currentName` (so a re-save
+  // lands in the renamed slot, not a resurrected old one) and any walk
+  // segment's autosave slot (flushWalk writes by name). The parent's
+  // `decomposes @id` stamp needs no touch-up — resolution is by identity.
+  async function renameInLibrary(from: string, to: string): Promise<boolean> {
+    const target = to.trim();
+    if (!target || target === from) return true;
+    try {
+      await renameModel(from, target);
+      if (currentName === from) setCurrentName(target);
+      setWalk((w) => w.map((s) => (s.currentName === from ? { ...s, currentName: target } : s)));
+      await refreshLibrary();
+      return true;
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
+      return false;
     }
   }
 
@@ -1693,6 +1715,7 @@ function Workspace() {
           libraryTree={libraryTree}
           onLoadFromLibrary={loadFromLibrary}
           onDeleteFromLibrary={removeFromLibrary}
+          onRenameInLibrary={renameInLibrary}
         />
       )}
 
@@ -2046,22 +2069,38 @@ function PaletteDock({
 
 // One library row plus, recursively, the rows of the children its `decomposes`
 // references reach (#105) — the root at depth 0, each level indented one step
-// with a connector glyph. Every row loads on click and deletes on ×; deleting
-// a parent never touches its children (the next listing reads them as roots).
-// A reference that resolves to no saved record shows as a quiet "n missing"
-// note on the parent — the library-level echo of the kernel's missing-referent
-// issue on the canvas.
+// with a connector glyph. Every row loads on click, deletes on ×, and renames
+// on ✎ (#116 candidate 3): the name becomes an input, Enter or blur commits,
+// Esc cancels — the same commit grammar as the click-to-edit membrane labels.
+// A refused rename (name collision) keeps the row in edit mode so the user
+// can pick again; the slot's identity never changes, so a renamed child stays
+// exactly where its parent's stamp reaches it. Deleting a parent never touches
+// its children (the next listing reads them as roots). A reference that
+// resolves to no saved record shows as a quiet "n missing" note on the parent
+// — the library-level echo of the kernel's missing-referent issue on the
+// canvas.
 function LibraryRow({
   node,
   depth,
   onLoad,
   onDelete,
+  onRename,
 }: {
   node: LibraryNode;
   depth: number;
   onLoad: (name: string) => void;
   onDelete: (name: string) => void;
+  onRename: (from: string, to: string) => Promise<boolean>;
 }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  // Esc cancels by design, but the input's blur (fired as it leaves) must not
+  // resurrect the commit from the pre-cancel render — the ref outlives the
+  // stale closure.
+  const cancelled = useRef(false);
+  const commit = async () => {
+    if (draft === null || cancelled.current) return;
+    if (await onRename(node.name, draft)) setDraft(null);
+  };
   return (
     <>
       <div
@@ -2073,23 +2112,61 @@ function LibraryRow({
             └
           </span>
         )}
-        <button
-          onClick={() => onLoad(node.name)}
-          className="min-w-0 flex-1 text-left"
-          title={node.name}
-        >
-          <div
-            className={depth === 0 ? "truncate text-sm" : "truncate text-xs"}
-            style={{ color: "var(--text-primary)" }}
+        {draft !== null ? (
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void commit();
+              if (e.key === "Escape") {
+                cancelled.current = true;
+                setDraft(null);
+              }
+            }}
+            onBlur={() => void commit()}
+            className={
+              depth === 0 ? "min-w-0 flex-1 rounded px-1 text-sm" : "min-w-0 flex-1 rounded px-1 text-xs"
+            }
+            style={{
+              background: "var(--bg-primary)",
+              border: "1px solid var(--border)",
+              color: "var(--text-primary)",
+            }}
+            aria-label={`Rename ${node.name}`}
+          />
+        ) : (
+          <button
+            onClick={() => onLoad(node.name)}
+            className="min-w-0 flex-1 text-left"
+            title={node.name}
           >
-            {node.name}
-          </div>
-          <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-            saved {relTime(node.savedAt)}
-            {node.missingReferents > 0 &&
-              ` · ${node.missingReferents} referent${node.missingReferents === 1 ? "" : "s"} missing`}
-          </div>
-        </button>
+            <div
+              className={depth === 0 ? "truncate text-sm" : "truncate text-xs"}
+              style={{ color: "var(--text-primary)" }}
+            >
+              {node.name}
+            </div>
+            <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+              saved {relTime(node.savedAt)}
+              {node.missingReferents > 0 &&
+                ` · ${node.missingReferents} referent${node.missingReferents === 1 ? "" : "s"} missing`}
+            </div>
+          </button>
+        )}
+        {draft === null && (
+          <button
+            onClick={() => {
+              cancelled.current = false;
+              setDraft(node.name);
+            }}
+            title={`Rename ${node.name} — same model, new library name`}
+            className="shrink-0 rounded px-1.5 text-sm"
+            style={{ color: "var(--text-muted)" }}
+          >
+            ✎
+          </button>
+        )}
         <button
           onClick={() => onDelete(node.name)}
           title={`Delete ${node.name}`}
@@ -2100,7 +2177,14 @@ function LibraryRow({
         </button>
       </div>
       {node.children.map((c) => (
-        <LibraryRow key={c.name} node={c} depth={depth + 1} onLoad={onLoad} onDelete={onDelete} />
+        <LibraryRow
+          key={c.name}
+          node={c}
+          depth={depth + 1}
+          onLoad={onLoad}
+          onDelete={onDelete}
+          onRename={onRename}
+        />
       ))}
     </>
   );
@@ -2123,6 +2207,7 @@ function OpenDialog({
   libraryTree,
   onLoadFromLibrary,
   onDeleteFromLibrary,
+  onRenameInLibrary,
 }: {
   selected: Demo | null;
   onPick: (d: Demo) => void;
@@ -2138,6 +2223,7 @@ function OpenDialog({
   libraryTree: LibraryNode[];
   onLoadFromLibrary: (name: string) => void;
   onDeleteFromLibrary: (name: string) => void;
+  onRenameInLibrary: (from: string, to: string) => Promise<boolean>;
 }) {
   return (
     <div
@@ -2308,6 +2394,7 @@ function OpenDialog({
                     depth={0}
                     onLoad={onLoadFromLibrary}
                     onDelete={onDeleteFromLibrary}
+                    onRename={onRenameInLibrary}
                   />
                 </div>
               ))}
