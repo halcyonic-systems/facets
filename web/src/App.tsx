@@ -670,6 +670,7 @@ function Workspace() {
                 e instanceof Error ? e.message : String(e)
               }`,
               suggestion: null,
+              doc: null,
             },
           ],
           targets: [{ thing: null, relation: null }],

@@ -10,6 +10,10 @@ export interface ValidationIssue {
   location: string;
   message: string;
   suggestion: string | null;
+  /** Stable doc anchor for the precondition this issue cites (#129): a
+   *  repo-relative docs path + heading anchor, chosen by the kernel
+   *  (`bert_core::validate::doc`). The face only turns it into a link. */
+  doc: string | null;
 }
 
 export interface ValidationResult {
