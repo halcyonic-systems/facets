@@ -283,10 +283,13 @@ export interface LensFacts {
 }
 
 /** describe(model, lens): the model typeset as the active lens's own formal
- *  object — computed by the kernel; the FormalPanel only renders it. */
+ *  object — computed by the kernel; the FormalPanel only renders it. Every
+ *  variant leads with `question` — the tradition's guiding question, shown as
+ *  the orientation line at lens switch (#100). */
 export type LensDescription =
   | {
       lens: "Klir";
+      question: string;
       things: number;
       relations: number;
       directed: number;
@@ -295,6 +298,7 @@ export type LensDescription =
     }
   | {
       lens: "Bunge";
+      question: string;
       composition: string[];
       environment: string[];
       endostructure: number;
@@ -308,6 +312,7 @@ export type LensDescription =
     }
   | {
       lens: "Mobus";
+      question: string;
       c: string[];
       n: number;
       e_objects: string[];
@@ -345,6 +350,23 @@ export interface DecompositionReport {
   issue_targets: IssueTarget[];
 }
 
+/** One residue line: count + number-agreed noun phrase — render
+ *  `${count} ${label}` verbatim, never re-pluralize. */
+export interface ResidueEntry {
+  count: number;
+  label: string;
+}
+
+/** The residue register (#100): what the active lens is NOT showing. Two
+ *  flavors, rendered distinctly — hidden: the model has it, this lens does not
+ *  ask that question; unspecified: the lens asks a question the model has not
+ *  answered. Per-lens, not nested (the mode poset is a tree). Kernel judgment;
+ *  the face only typesets counts. */
+export interface LensResidue {
+  hidden: ResidueEntry[];
+  unspecified: ResidueEntry[];
+}
+
 export interface CanvasAnalysis {
   /** validate_mode at the canvas lens's mode (Klir→Core / Bunge→Structural /
    *  Mobus→Operational). */
@@ -354,4 +376,5 @@ export interface CanvasAnalysis {
   issue_targets: IssueTarget[];
   facts: LensFacts;
   description: LensDescription;
+  residue: LensResidue;
 }

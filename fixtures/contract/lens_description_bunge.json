@@ -1,5 +1,6 @@
 {
   "lens": "Bunge",
+  "question": "what is the thing, and by what mechanism does it change? — a behavior function without its M is not yet knowledge",
   "composition": [
     "Pump",
     "Tank"

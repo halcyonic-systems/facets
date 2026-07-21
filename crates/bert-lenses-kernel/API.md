@@ -209,7 +209,7 @@ type PortFact = {                         // one Mobus interface r=(S,φ) per (c
   env: number,
   relation_ids: number[],                 // the exo flows this port gates
   direction: PortDirection,
-  protocol: string,                       // φ — joined flow names, else the kind
+  protocol: string,                       // φ — joined flow names, else the substance word (#100)
 }
 type LensFacts = {
   boundary_thing_ids: number[],           // {c ∈ C : coupled to E} — Bunge marks, Mobus reifies
@@ -226,17 +226,21 @@ Throws only on unparseable canvas JSON.
 The formal face: the model typeset as the active lens's own formal object.
 Computed by the kernel from the same projection as `lens_facts`; the face only
 renders it (KaTeX) — the math is never assembled in JS. Tagged union on `lens`:
+Every variant leads with `question` (#100, additive, wire-compatible): the
+tradition's guiding question — lens switching is question switching, so the
+orientation copy the face docks at the lens picker is a kernel string, never
+assembled in JS.
 ```ts
 type LensDescription =
-  | { lens: "Klir", things: number, relations: number,
+  | { lens: "Klir", question: string, things: number, relations: number,
       directed: number, neutral: number, note: string }
-  | { lens: "Bunge", composition: string[], environment: string[],
+  | { lens: "Bunge", question: string, composition: string[], environment: string[],
       endostructure: number, exostructure: number,
       bondage: number, mere_relations: number,
       boundary_components: string[],            // the derived set (Bunge 1992)
       verdict: "system" | "aggregate",          // Def 1.1, from the kernel
       mechanism_note: string }                  // fixed: M formally UNbridged (CES, not CESM)
-  | { lens: "Mobus", c: string[], n: number,
+  | { lens: "Mobus", question: string, c: string[], n: number,
       e_objects: string[], milieu_note: string, g: number,
       b_interfaces: string[],                   // = boundary components, reified
       porosity: number, perceptive_fuzziness: number,
@@ -262,9 +266,26 @@ type CanvasAnalysis = {
   validation: ValidationResult,   // validate_mode at the lens's mode
   facts: LensFacts,
   description: LensDescription,
+  residue: LensResidue,           // what this lens is NOT showing (#100)
 }
 ```
 Throws only on unparseable canvas JSON.
+
+`CanvasAnalysis` gains one additive field (#100, wire-compatible): the
+**residue register** — the read-side analog of `transition.rs`'s write-side
+`LossWitness`, completing the render guarantee (totality + fidelity + loud
+residue). Kernel judgment; the face only typesets `${count} ${label}`:
+```ts
+type ResidueEntry = { count: number, label: string }  // label arrives number-agreed
+type LensResidue = {
+  hidden: ResidueEntry[],       // model has it, this lens does not ask that question
+  unspecified: ResidueEntry[],  // lens asks a question the model has not answered
+}
+```
+Residue is per-lens, NOT nested (the mode poset is a tree): Bunge sees mere
+relations Mobus never projects, while Mobus sees primitives Bunge has no
+ontology for. Empty vectors mean no residue of that flavor — silence, never
+zero-filled rows.
 
 ## SL surface (built — the textual authoring surface, #82)
 

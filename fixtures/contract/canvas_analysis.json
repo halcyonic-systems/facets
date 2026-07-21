@@ -87,6 +87,7 @@
   },
   "description": {
     "lens": "Mobus",
+    "question": "how is the mechanism built, and what happens when it runs?",
     "c": [
       "Pump",
       "Tank"
@@ -108,6 +109,24 @@
     "dt_note": "Δt: time scale — a parametric field on the system",
     "self_loop_conflicts": [
       "recycle"
+    ]
+  },
+  "residue": {
+    "hidden": [
+      {
+        "count": 1,
+        "label": "mere relation"
+      }
+    ],
+    "unspecified": [
+      {
+        "count": 1,
+        "label": "substance"
+      },
+      {
+        "count": 2,
+        "label": "process primitives"
+      }
     ]
   }
 }

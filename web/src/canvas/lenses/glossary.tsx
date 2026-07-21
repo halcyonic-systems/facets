@@ -156,7 +156,9 @@ export function mobusFormalism(): FormalismPart[] {
 /** The picker offers Mobus's three substances; the model still stores a Kind, so
  *  this mirrors Rust kind_to_substance (crates/bert-canvas/src/canvas.rs:64-68)
  *  in both directions. Matter↔material, Informational↔message, Energy↔energy;
- *  Field and Unspecified read as energy (the many-to-one fold the kernel makes). */
+ *  Field reads as energy (the many-to-one fold the kernel makes). Unspecified
+ *  never reaches this map — the picker shows it as "unspecified" (an unanswered
+ *  question the residue register counts), not a silent energy. */
 export const SUBSTANCES = ["material", "energy", "message"] as const;
 export type Substance = (typeof SUBSTANCES)[number];
 

@@ -241,6 +241,7 @@
   },
   "description": {
     "lens": "Mobus",
+    "question": "how is the mechanism built, and what happens when it runs?",
     "c": [
       "Introduced",
       "In Committee",
@@ -268,5 +269,14 @@
     "h_note": "H: history (accumulated state conditioning T) — NOT hierarchy",
     "dt_note": "Δt: time scale — a parametric field on the system",
     "self_loop_conflicts": []
+  },
+  "residue": {
+    "hidden": [],
+    "unspecified": [
+      {
+        "count": 14,
+        "label": "process primitives"
+      }
+    ]
   }
 }

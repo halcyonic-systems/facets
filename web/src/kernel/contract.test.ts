@@ -26,6 +26,7 @@ import type {
   EdgeFact,
   LensDescription,
   LensFacts,
+  LensResidue,
   MappingStatus,
   PortFact,
   Relation,
@@ -257,9 +258,10 @@ function parseLensDescription(v: unknown): LensDescription {
   const strs = (x: unknown, w: string) => arr(x, w).map((s, i) => str(s, `${w}[${i}]`));
   switch (lens) {
     case "Klir": {
-      const k = shape(v, "LensDescription(Klir)", ["lens", "things", "relations", "directed", "neutral", "note"]);
+      const k = shape(v, "LensDescription(Klir)", ["lens", "question", "things", "relations", "directed", "neutral", "note"]);
       return {
         lens,
+        question: str(k.question, "Klir.question"),
         things: num(k.things, "Klir.things"),
         relations: num(k.relations, "Klir.relations"),
         directed: num(k.directed, "Klir.directed"),
@@ -269,11 +271,12 @@ function parseLensDescription(v: unknown): LensDescription {
     }
     case "Bunge": {
       const b = shape(v, "LensDescription(Bunge)", [
-        "lens", "composition", "environment", "endostructure", "exostructure",
+        "lens", "question", "composition", "environment", "endostructure", "exostructure",
         "bondage", "mere_relations", "boundary_components", "verdict", "mechanism_note",
       ]);
       return {
         lens,
+        question: str(b.question, "Bunge.question"),
         composition: strs(b.composition, "Bunge.composition"),
         environment: strs(b.environment, "Bunge.environment"),
         endostructure: num(b.endostructure, "Bunge.endostructure"),
@@ -287,11 +290,12 @@ function parseLensDescription(v: unknown): LensDescription {
     }
     case "Mobus": {
       const m = shape(v, "LensDescription(Mobus)", [
-        "lens", "c", "n", "e_objects", "milieu_note", "g", "b_interfaces",
+        "lens", "question", "c", "n", "e_objects", "milieu_note", "g", "b_interfaces",
         "porosity", "perceptive_fuzziness", "t_note", "h_note", "dt_note", "self_loop_conflicts",
       ]);
       return {
         lens,
+        question: str(m.question, "Mobus.question"),
         c: strs(m.c, "Mobus.c"),
         n: num(m.n, "Mobus.n"),
         e_objects: strs(m.e_objects, "Mobus.e_objects"),
@@ -309,8 +313,21 @@ function parseLensDescription(v: unknown): LensDescription {
   }
 }
 
+function parseLensResidue(v: unknown): LensResidue {
+  const o = shape(v, "LensResidue", ["hidden", "unspecified"]);
+  const entries = (x: unknown, w: string) =>
+    arr(x, w).map((e, i) => {
+      const ee = shape(e, `${w}[${i}]`, ["count", "label"]);
+      return { count: num(ee.count, `${w}[${i}].count`), label: str(ee.label, `${w}[${i}].label`) };
+    });
+  return {
+    hidden: entries(o.hidden, "LensResidue.hidden"),
+    unspecified: entries(o.unspecified, "LensResidue.unspecified"),
+  };
+}
+
 function parseCanvasAnalysis(v: unknown): CanvasAnalysis {
-  const o = shape(v, "CanvasAnalysis", ["validation", "issue_targets", "facts", "description"]);
+  const o = shape(v, "CanvasAnalysis", ["validation", "issue_targets", "facts", "description", "residue"]);
   const validation = parseValidationResult(o.validation);
   const issue_targets = arr(o.issue_targets, "CanvasAnalysis.issue_targets").map((t, i) => {
     const tt = shape(t, `issue_targets[${i}]`, ["thing", "relation"]);
@@ -327,6 +344,7 @@ function parseCanvasAnalysis(v: unknown): CanvasAnalysis {
     issue_targets,
     facts: parseLensFacts(o.facts),
     description: parseLensDescription(o.description),
+    residue: parseLensResidue(o.residue),
   };
 }
 
@@ -528,6 +546,14 @@ describe("serde↔TS boundary fixtures", () => {
     expect(a.validation.issues.length).toBeGreaterThan(0);
     expect(a.facts.edges.length).toBeGreaterThan(0);
     expect(a.description.lens).toBe("Mobus");
+  });
+
+  it("LensResidue carries both flavors, number-agreed (#100)", () => {
+    const r = parseLensResidue(fixture("lens_residue"));
+    expect(r.hidden.length).toBeGreaterThan(0);
+    expect(r.unspecified.length).toBeGreaterThan(0);
+    // The sample's one mere relation arrives singular — labels never re-pluralize.
+    expect(r.hidden[0]).toEqual({ count: 1, label: "mere relation" });
   });
 
   it("CsvParse validates", () => {

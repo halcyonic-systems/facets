@@ -37,6 +37,7 @@ const mobusCanvas: CanvasModel = {
 
 const mobusDescription: LensDescription = {
   lens: "Mobus",
+  question: "how is the mechanism built, and what happens when it runs?",
   c: ["Pump", "Tank"],
   n: 2,
   e_objects: ["Grid"],
@@ -79,6 +80,10 @@ const mobusAnalysis: CanvasAnalysis = {
     ports: [{ component: 1, env: 3, relation_ids: [11], direction: "Receives", protocol: "supply" }],
   },
   description: mobusDescription,
+  residue: {
+    hidden: [{ count: 1, label: "mere relation" }],
+    unspecified: [{ count: 1, label: "substance" }],
+  },
 };
 
 function ctxOf(canvas: CanvasModel, analysis: CanvasAnalysis): ModelContext {
@@ -120,12 +125,14 @@ const klirAnalysis: CanvasAnalysis = {
   },
   description: {
     lens: "Klir",
+    question: "what does the data commit me to?",
     things: 2,
     relations: 1,
     directed: 0,
     neutral: 1,
     note: "a system is what is distinguished as a system by the investigator",
   },
+  residue: { hidden: [], unspecified: [] },
 };
 
 const klirCtx = ctxOf(klirCanvas, klirAnalysis);
@@ -147,6 +154,7 @@ const bungeAnalysis: CanvasAnalysis = {
   facts: klirAnalysis.facts,
   description: {
     lens: "Bunge",
+    question: "what is the thing, and by what mechanism does it change?",
     composition: ["A", "B"],
     environment: [],
     endostructure: 1,
@@ -157,6 +165,7 @@ const bungeAnalysis: CanvasAnalysis = {
     verdict: "aggregate",
     mechanism_note: "M (mechanism) is documented but formally UNbridged: CES, not CESM.",
   },
+  residue: { hidden: [], unspecified: [] },
 };
 
 const bungeCtx = ctxOf({ ...klirCanvas, lens: "Bunge" }, bungeAnalysis);

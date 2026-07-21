@@ -192,4 +192,11 @@ fn canvas_analysis_and_validation_fixtures() {
     );
     check_fixture("validation_result", &a.validation);
     check_fixture("canvas_analysis", &a);
+    // The residue register (#100) gets a standalone fixture — the web side
+    // validates the element shape directly, like EdgeFact/PortFact. The sample
+    // exercises both flavors: a hidden mere relation, unanswered substances
+    // and primitives.
+    assert!(!a.residue.hidden.is_empty(), "need hidden residue to fixture");
+    assert!(!a.residue.unspecified.is_empty(), "need unspecified residue to fixture");
+    check_fixture("lens_residue", &a.residue);
 }

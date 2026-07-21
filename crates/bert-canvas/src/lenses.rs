@@ -66,7 +66,8 @@ pub struct PortFact {
     /// The exo flows this port gates (canvas relation ids).
     pub relation_ids: Vec<u64>,
     pub direction: PortDirection,
-    /// φ — joined non-empty flow names, else the kind's name.
+    /// φ — joined non-empty flow names, else the substance word (Mobus
+    /// register: material / energy / message).
     pub protocol: String,
 }
 
@@ -105,13 +106,18 @@ pub struct LensFacts {
     pub ports: Vec<PortFact>,
 }
 
-fn kind_name(k: Kind) -> &'static str {
+/// Mobus's substance words for the port-protocol fallback (concordance row 6:
+/// material · energy · message; the same collapse as `kind_to_substance`,
+/// canvas.rs). Ports are a Mobus-only surface, so φ must speak substance —
+/// never Bunge's kind enum (§15.1 mismatch 1, #100 D batch). Unspecified stays
+/// "unspecified": the residue register counts it, so the label never silently
+/// answers a question the author has not.
+fn substance_word(k: Kind) -> &'static str {
     match k {
         Kind::Unspecified => "unspecified",
-        Kind::Energy => "energy",
-        Kind::Matter => "matter",
-        Kind::Field => "field",
-        Kind::Informational => "informational",
+        Kind::Energy | Kind::Field => "energy",
+        Kind::Matter => "material",
+        Kind::Informational => "message",
     }
 }
 
@@ -246,7 +252,7 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
             entry.2 = true;
         }
         let label = if r.name.trim().is_empty() {
-            kind_name(r.kind).to_string()
+            substance_word(r.kind).to_string()
         } else {
             r.name.trim().to_string()
         };
@@ -282,6 +288,141 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
     }
 }
 
+// ---- The residue register: what this lens is NOT showing --------------------
+//
+// The render guarantee's third clause (#100): totality and fidelity hold by
+// construction; residue makes the read-side loss loud. `bert-core`'s
+// `transition.rs` `LossWitness` is the write-side analog (what a mode descent
+// shears off); this is the read-side enumeration (what a lens view leaves
+// undrawn). Two flavors, rendered distinctly and never mixed:
+//
+// - **hidden** — the model has it, this lens cannot see it: *this lens does
+//   not ask that question* (substances under Klir).
+// - **unspecified** — the lens could show it, the model has not answered:
+//   *this lens asks a question the model has not answered* (unspecified
+//   substances under Mobus).
+//
+// Residue is PER-LENS, not nested — the mode poset is a tree (spec finding,
+// #17): Bunge sees mere relations Mobus never projects, while Mobus sees
+// primitives Bunge has no ontology for. A "levels above you" framing would be
+// wrong, so no entry ever references another lens's position. Judgment lives
+// here in the kernel; the face only typesets counts.
+
+/// One residue line: a count plus its number-agreed noun phrase, so the face
+/// renders `{count} {label}` verbatim and never re-pluralizes.
+#[derive(Serialize, Clone, Debug)]
+pub struct ResidueEntry {
+    pub count: usize,
+    pub label: String,
+}
+
+/// What the active lens is not showing, per flavor. Empty vectors mean no
+/// residue of that flavor — the face stays silent, not zero-filled.
+#[derive(Serialize, Clone, Debug)]
+pub struct LensResidue {
+    pub hidden: Vec<ResidueEntry>,
+    pub unspecified: Vec<ResidueEntry>,
+}
+
+/// A residue line, number-agreed; `None` when there is nothing to report.
+fn residue_entry(count: usize, singular: &str, plural: &str) -> Option<ResidueEntry> {
+    (count > 0).then(|| ResidueEntry {
+        count,
+        label: if count == 1 { singular } else { plural }.to_string(),
+    })
+}
+
+/// Enumerate the residue for one lens over already-computed facts. Counts are
+/// read off the same model + facts the canvas renders — never re-derived in JS.
+fn lens_residue(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensResidue {
+    let mere = model.relations.iter().filter(|r| !r.is_bond).count();
+    let typed = model
+        .relations
+        .iter()
+        .filter(|r| r.kind != Kind::Unspecified)
+        .count();
+    let untyped = model.relations.len() - typed;
+    let primitives = model.things.iter().filter(|t| t.primitive.is_some()).count();
+    let bare_components = model
+        .things
+        .iter()
+        .filter(|t| t.role == Role::Component && t.primitive.is_none())
+        .count();
+    let directed = model.relations.iter().filter(|r| r.klir_directed).count();
+    // Effective I = flow-crossing ∪ authored — the same union b_interfaces reports.
+    let interfaces = facts
+        .boundary_thing_ids
+        .iter()
+        .chain(&facts.authored_interface_thing_ids)
+        .collect::<HashSet<_>>()
+        .len();
+    let membrane_props = [
+        facts.boundary_props.porosity,
+        facts.boundary_props.perceptive_fuzziness,
+    ]
+    .iter()
+    .filter(|v| **v != 0.0)
+    .count();
+
+    let (hidden, unspecified) = match lens {
+        // Klir renders the flat (T, R): roles, the bond partition (the drawn
+        // line stays; its mere-marking does not), kinds, primitives,
+        // interfaces, and membrane properties are all thinghood he
+        // deliberately excludes. Nothing is unspecified — neutral IS a Klir
+        // answer, and (T, R) is always fully answered.
+        Lens::Klir => (
+            vec![
+                residue_entry(
+                    facts.environment_thing_ids.len(),
+                    "environment role",
+                    "environment roles",
+                ),
+                residue_entry(mere, "mere-relation marking", "mere-relation markings"),
+                residue_entry(typed, "connection kind", "connection kinds"),
+                residue_entry(primitives, "process primitive", "process primitives"),
+                residue_entry(interfaces, "interface", "interfaces"),
+                residue_entry(membrane_props, "membrane property", "membrane properties"),
+            ],
+            vec![],
+        ),
+        // Bunge has no process taxonomy (row 10), no reified membrane or
+        // authored I (rows 8–9 are Mobus's B = ⟨P, I⟩), and no observer
+        // direction toggle (row 7 is Klir's). He DOES ask each connection's
+        // kind (row 6), so an unspecified kind is his unanswered question.
+        Lens::Bunge => (
+            vec![
+                residue_entry(primitives, "process primitive", "process primitives"),
+                residue_entry(
+                    facts.authored_interface_thing_ids.len(),
+                    "interface designation",
+                    "interface designations",
+                ),
+                residue_entry(membrane_props, "membrane property", "membrane properties"),
+                residue_entry(directed, "directed annotation", "directed annotations"),
+            ],
+            vec![residue_entry(untyped, "connection kind", "connection kinds")],
+        ),
+        // Mobus never projects mere relations (B̄ is Bunge's alone, row 5) and
+        // carries no observer toggle. He asks every flow's substance (row 6)
+        // and every component's work process (row 10), so those unanswered
+        // slots are his unspecified residue.
+        Lens::Mobus => (
+            vec![
+                residue_entry(mere, "mere relation", "mere relations"),
+                residue_entry(directed, "directed annotation", "directed annotations"),
+            ],
+            vec![
+                residue_entry(untyped, "substance", "substances"),
+                residue_entry(bare_components, "process primitive", "process primitives"),
+            ],
+        ),
+    };
+    LensResidue {
+        hidden: hidden.into_iter().flatten().collect(),
+        unspecified: unspecified.into_iter().flatten().collect(),
+    }
+}
+
 // ---- The formal face: describe(model, lens) ---------------------------------
 //
 // The same model read as its formal object in each lens's own notation — where
@@ -300,12 +441,33 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
 pub const MECHANISM_NOTE: &str = "M (mechanism — Bunge 2004, CESM) is documented but formally \
 UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T).";
 
-/// One model, typeset in the active lens's own formal notation.
+/// Each tradition is an answer to a different guiding question (#100 D batch);
+/// the switch moment is where the tool orients the user toward what the active
+/// lens is looking for. Copy lives here, kernel-side, like every other lens
+/// string `describe` typesets.
+pub fn guiding_question(lens: Lens) -> &'static str {
+    match lens {
+        Lens::Klir => {
+            "what does the data commit me to? — the behavior function answers, \
+             and deliberately refuses to say what is behind it"
+        }
+        Lens::Bunge => {
+            "what is the thing, and by what mechanism does it change? — a \
+             behavior function without its M is not yet knowledge"
+        }
+        Lens::Mobus => "how is the mechanism built, and what happens when it runs?",
+    }
+}
+
+/// One model, typeset in the active lens's own formal notation. Every variant
+/// leads with `question` — the tradition's guiding question, the orientation
+/// line the face shows at lens switch.
 #[derive(Serialize, Clone, Debug)]
 #[serde(tag = "lens")]
 pub enum LensDescription {
     /// Klir `S = (T, R)` — thinghood + systemhood; observer-constituted.
     Klir {
+        question: String,
         things: usize,
         relations: usize,
         directed: usize,
@@ -316,6 +478,7 @@ pub enum LensDescription {
     /// the untyped `mechanism_note` prose — see `MECHANISM_NOTE` and the
     /// concordance §14. Systemhood is earned (Def 1.1).
     Bunge {
+        question: String,
         composition: Vec<String>,
         environment: Vec<String>,
         endostructure: usize,
@@ -329,6 +492,7 @@ pub enum LensDescription {
     /// Mobus `S = ⟨C, N, E, G, B, T, H, Δt⟩` — the 8-tuple (post-2022 revision;
     /// Tuple.lean is the authority, NOT the book's 7-tuple).
     Mobus {
+        question: String,
         c: Vec<String>,
         n: usize,
         e_objects: Vec<String>,
@@ -368,6 +532,8 @@ pub struct CanvasAnalysis {
     pub issue_targets: Vec<IssueTarget>,
     pub facts: LensFacts,
     pub description: LensDescription,
+    /// The residue register (#100): what this lens is NOT showing, per flavor.
+    pub residue: LensResidue,
 }
 
 /// The canvas element a validation issue points at, if any.
@@ -407,11 +573,13 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
         .collect();
 
     let description = describe_from_facts(model, lens, &facts);
+    let residue = lens_residue(model, lens, &facts);
     CanvasAnalysis {
         validation,
         issue_targets,
         facts,
         description,
+        residue,
     }
 }
 
@@ -509,6 +677,7 @@ fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> Le
             // (Klir has no bond concept — that predicate is Bunge's).
             let directed = model.relations.iter().filter(|r| r.klir_directed).count();
             LensDescription::Klir {
+                question: guiding_question(lens).to_string(),
                 things: model.things.len(),
                 relations: model.relations.len(),
                 directed,
@@ -528,6 +697,7 @@ fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> Le
             let environment: Vec<String> = facts.environment_thing_ids.iter().map(|&id| name_of(id)).collect();
             let bondage = facts.edges.iter().filter(|e| e.bond).count();
             LensDescription::Bunge {
+                question: guiding_question(lens).to_string(),
                 composition,
                 environment,
                 endostructure: facts
@@ -548,6 +718,7 @@ fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> Le
             }
         }
         Lens::Mobus => LensDescription::Mobus {
+            question: guiding_question(lens).to_string(),
             c: model
                 .things
                 .iter()
@@ -836,6 +1007,112 @@ mod tests {
         let m_doc = format!("{} — unbridged prose note only.", "NOT a Lean-projected coordinate");
         assert!(src.contains(&bunge_doc), "Bunge variant doc must present CES as delivered");
         assert!(src.contains(&m_doc), "MECHANISM_NOTE separator comment must stay");
+    }
+
+    /// Law: an unnamed flow's port protocol speaks Mobus's substance register
+    /// (concordance row 6: material · energy · message), never Bunge's kind
+    /// enum — and an unspecified kind stays "unspecified", never silently
+    /// folded into energy.
+    #[test]
+    fn port_protocol_speaks_substance_not_kind() {
+        let mut m = model(
+            vec![thing(1, "A", Role::Component), thing(2, "Src", Role::Environment)],
+            vec![relation(10, 2, 1, true)],
+        );
+        for (kind, word) in [
+            (Kind::Informational, "message"),
+            (Kind::Matter, "material"),
+            (Kind::Field, "energy"),
+            (Kind::Unspecified, "unspecified"),
+        ] {
+            m.relations[0].kind = kind;
+            let f = lens_facts(&m);
+            assert_eq!(f.ports[0].protocol, word, "φ fallback for {kind:?}");
+        }
+    }
+
+    /// Law: the residue register is per-lens, not nested — Mobus hides the
+    /// mere relation Bunge renders, Bunge holds unanswered the kind question
+    /// Klir never asks, and Klir hides the roles both others show. Zero-count
+    /// entries never appear, and labels arrive number-agreed.
+    #[test]
+    fn residue_is_per_lens_not_nested() {
+        // rich_model: 2 components (no primitives), 1 env thing, endo + exo
+        // bonds, 1 mere relation, 1 self-loop — every relation Unspecified.
+        let m = rich_model();
+        let count = |list: &[ResidueEntry], label: &str| {
+            list.iter().find(|e| e.label == label).map(|e| e.count)
+        };
+
+        let klir = analyze(&m, Lens::Klir).residue;
+        assert_eq!(count(&klir.hidden, "environment role"), Some(1));
+        assert_eq!(count(&klir.hidden, "mere-relation marking"), Some(1));
+        assert_eq!(count(&klir.hidden, "interface"), Some(1));
+        assert!(
+            klir.unspecified.is_empty(),
+            "Klir asks nothing the model can leave unanswered — (T, R) is always full"
+        );
+
+        let bunge = analyze(&m, Lens::Bunge).residue;
+        assert!(
+            bunge.hidden.is_empty(),
+            "no primitives, designations, membrane properties, or toggles authored"
+        );
+        assert_eq!(count(&bunge.unspecified, "connection kinds"), Some(4));
+
+        let mobus = analyze(&m, Lens::Mobus).residue;
+        assert_eq!(count(&mobus.hidden, "mere relation"), Some(1), "B̄ never projects");
+        assert_eq!(count(&mobus.unspecified, "substances"), Some(4));
+        assert_eq!(count(&mobus.unspecified, "process primitives"), Some(2));
+    }
+
+    /// Law: answering a lens's question empties its unspecified residue — and
+    /// the SAME answers surface as another lens's hidden residue (primitives:
+    /// unspecified under Mobus until authored, hidden under Bunge after).
+    #[test]
+    fn residue_moves_as_the_model_answers() {
+        let mut m = rich_model();
+        for r in &mut m.relations {
+            r.kind = Kind::Energy;
+        }
+        for t in &mut m.things {
+            if t.role == Role::Component {
+                t.primitive = Some(bert_core::ProcessPrimitive::Buffering);
+            }
+        }
+        let mobus = analyze(&m, Lens::Mobus).residue;
+        assert!(mobus.unspecified.is_empty(), "every substance and primitive is answered");
+        let bunge = analyze(&m, Lens::Bunge).residue;
+        assert!(bunge.unspecified.is_empty(), "every connection kind is answered");
+        assert_eq!(
+            bunge.hidden.iter().find(|e| e.label == "process primitives").map(|e| e.count),
+            Some(2),
+            "the answers Mobus renders are exactly what Bunge cannot see"
+        );
+    }
+
+    /// Law: every `describe` carries its lens's guiding question — three
+    /// distinct questions, one per tradition (#100: lens switching is question
+    /// switching, so the orientation copy is a kernel string, never assembled
+    /// in JS).
+    #[test]
+    fn describe_carries_the_guiding_question() {
+        let m = rich_model();
+        let questions: Vec<String> = [Lens::Klir, Lens::Bunge, Lens::Mobus]
+            .into_iter()
+            .map(|lens| {
+                let q = guiding_question(lens).to_string();
+                match describe(&m, lens) {
+                    LensDescription::Klir { question, .. }
+                    | LensDescription::Bunge { question, .. }
+                    | LensDescription::Mobus { question, .. } => assert_eq!(question, q),
+                }
+                q
+            })
+            .collect();
+        assert!(questions[0].starts_with("what does the data commit me to?"));
+        assert!(questions[1].starts_with("what is the thing, and by what mechanism"));
+        assert!(questions[2].starts_with("how is the mechanism built"));
     }
 
     /// Law: one bond flips the aggregate verdict — two components joined only
