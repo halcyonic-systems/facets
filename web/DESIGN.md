@@ -29,6 +29,18 @@ Frost family (slate / teal / indigo).
 - **Surfaces:** soft cards (`--radius-card`, `--shadow-card`) on a radial-tinted
   stage. Generous whitespace; legibility over decoration.
 - Light + dark are both first-class (the smoke slice renders in either).
+- **Ink on filled accents:** `--text-on-accent` (white in both themes) — never a
+  raw `#fff` in a component.
+
+## Fitness functions (#131)
+
+`npm run check:tokens` (in `just check` and CI) enforces this file mechanically:
+no raw color literals outside `tokens.ts` / `canvas/style.ts` (var(--x) or token
+imports only); px type only from the frozen vocabulary (`text-[9px|10px|11px]`,
+numeric SVG/recharts sizes 8–12); lens registers import their matrix/confirm
+chrome from `canvas/registerChrome.ts` instead of re-deriving it; every
+`<foreignObject>` overlay carries `data-export-ignore`. Growing the vocabulary
+is fine — do it in `check-tokens.mjs`, deliberately, not ad hoc at a call site.
 
 ## Growing this
 

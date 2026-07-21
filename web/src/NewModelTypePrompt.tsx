@@ -89,7 +89,7 @@ export function NewModelTypePrompt({
           <button
             onClick={apply}
             className="rounded-full px-5 py-1.5 text-sm font-semibold"
-            style={{ background: "var(--accent)", color: "#fff" }}
+            style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
           >
             Start authoring
           </button>

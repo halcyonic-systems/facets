@@ -142,7 +142,7 @@ export function AnalystPanel({
             onClick={analyze}
             disabled={busy}
             className="ml-auto rounded-full px-5 py-2 text-sm font-semibold transition-colors"
-            style={{ background: "var(--accent)", color: "#fff", opacity: busy ? 0.5 : 1, cursor: busy ? "wait" : "pointer" }}
+            style={{ background: "var(--accent)", color: "var(--text-on-accent)", opacity: busy ? 0.5 : 1, cursor: busy ? "wait" : "pointer" }}
           >
             {busy ? "Analyzing…" : "Analyze"}
           </button>

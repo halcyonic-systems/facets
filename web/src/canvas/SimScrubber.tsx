@@ -45,7 +45,7 @@ export function SimScrubber({
         onClick={() => setPlaying((p) => !p)}
         aria-label={playing ? "pause" : "play"}
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm"
-        style={{ background: "var(--accent)", color: "#fff" }}
+        style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
       >
         {playing ? "⏸" : "▶"}
       </button>

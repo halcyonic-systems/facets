@@ -33,6 +33,7 @@ import { KIND_COLOR } from "./types";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 import { DecomposeRows, type DecomposeAffordance } from "./NodePopover";
 import { BungeBody, FlowNameField } from "./EdgePopover";
+import { CELL, confirmStripClass, confirmStripStyle, headerCellStyle } from "./registerChrome";
 import { bungeCellGlyph, bungeCellRelations, matrixThings } from "./bungeNotation";
 import { nextIdOf, nextThingPosition } from "./klirNotation";
 
@@ -206,7 +207,7 @@ export function BungeRegister({
               className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
               style={{
                 background: aggregate ? "var(--verdict-error)" : "var(--accent-soft)",
-                color: aggregate ? "#fff" : "var(--accent-strong)",
+                color: aggregate ? "var(--text-on-accent)" : "var(--accent-strong)",
               }}
             >
               {aggregate ? "aggregate — 𝔹 = ∅" : "system — 𝔹 ≠ ∅"}
@@ -496,7 +497,6 @@ function InlineThingEditor({
  *  a bond a bond, made visible), ∼ a mere relation that holds without acting.
  *  Table scaffolding and commit grammar mirror the Klir register's incidence
  *  matrix (the siblings share a face); the semantics here are Bunge's own. */
-const CELL = 30;
 
 function CouplingMatrix({
   model,
@@ -549,13 +549,6 @@ function CouplingMatrix({
           } ${nameOf(r.b)} — ${r.kind === "Unspecified" ? "kind unstated" : `${r.kind.toLowerCase()} action`} · ${channelWord(r)}`,
       )
       .join(" · ");
-  const headerCellStyle = {
-    fontFamily: "var(--font-mono)",
-    background: "var(--bg-secondary)",
-    color: "var(--text-secondary)",
-    borderBottom: "1px solid var(--hairline)",
-    borderRight: "1px solid var(--hairline)",
-  } as const;
   // The cut, visible inside the matrix: a stronger rule where 𝒞 ends and ℰ
   // begins — the same partition the hull draws on the graph.
   const cutBorder = "2px solid color-mix(in srgb, var(--lens-accent) 45%, var(--hairline))";
@@ -672,8 +665,8 @@ function CouplingMatrix({
           a member of 𝒮 on an explicit second act (the cell again, or "add"). */}
       {proposed && (
         <div
-          className="mt-2 flex w-fit items-center gap-2 rounded-md border px-2 py-1 text-xs"
-          style={{ borderColor: "var(--lens-accent)", background: "var(--bg-secondary)" }}
+          className={confirmStripClass}
+          style={confirmStripStyle}
           onKeyDown={(e) => {
             if (e.key === "Escape") onCancel();
           }}

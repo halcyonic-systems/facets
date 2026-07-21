@@ -1198,7 +1198,7 @@ function Workspace() {
                   style={{
                     borderRadius: "var(--radius-pill)",
                     background: canvasModel.lens === l ? "var(--lens-accent)" : "transparent",
-                    color: canvasModel.lens === l ? "#fff" : "var(--text-secondary)",
+                    color: canvasModel.lens === l ? "var(--text-on-accent)" : "var(--text-secondary)",
                     transition: "var(--transition-base)",
                   }}
                 >
@@ -1228,7 +1228,7 @@ function Workspace() {
               style={{
                 borderRadius: "var(--radius-pill)",
                 background: slOpen ? "var(--lens-accent)" : "var(--bg-surface)",
-                color: slOpen ? "#fff" : "var(--text-secondary)",
+                color: slOpen ? "var(--text-on-accent)" : "var(--text-secondary)",
               }}
               title="Toggle the SL text pane (textual authoring surface)"
             >
@@ -1242,7 +1242,7 @@ function Workspace() {
                 disabled={!demo}
                 title={demo ? "Run the forced simulation" : "Run needs a demo bundle (model + CSV + mapping)"}
                 className="rounded-full px-5 py-2 text-sm font-semibold transition-colors"
-                style={{ background: "var(--accent)", color: "#fff", opacity: demo ? 1 : 0.45, cursor: demo ? "pointer" : "not-allowed" }}
+                style={{ background: "var(--accent)", color: "var(--text-on-accent)", opacity: demo ? 1 : 0.45, cursor: demo ? "pointer" : "not-allowed" }}
               >
                 ▶ Run
               </button>
@@ -2386,7 +2386,7 @@ function SaveDialog({
           <button
             onClick={commit}
             className="rounded-md px-4 py-1.5 text-xs font-semibold"
-            style={{ background: "var(--accent)", color: "#fff" }}
+            style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
           >
             Save
           </button>

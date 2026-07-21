@@ -103,7 +103,7 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
         <button
           onClick={compile}
           className="rounded-full px-4 py-1.5 text-sm font-semibold"
-          style={{ background: "var(--accent)", color: "#fff" }}
+          style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
           title="Compile SL → model (⌘⏎)"
         >
           Compile
