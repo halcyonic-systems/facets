@@ -59,7 +59,10 @@
 
 use crate::model_id;
 use crate::validate::{Severity, ValidationIssue};
-use crate::{is_system_relatum, Id, Interaction, ModelRef, SubstanceType, WorldModel};
+use crate::{
+    is_system_relatum, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType, Id,
+    IdType, Info, Interaction, ModelRef, SubstanceType, System, Transform2d, Vec2, WorldModel,
+};
 use std::collections::{HashMap, HashSet};
 
 /// Serialize an `Id` to its coordinate string (`"C0.1"`) for issue locations.
@@ -155,7 +158,7 @@ pub fn check_decomposition(
                  be resolved — a decomposition reference must point at a loadable \
                  model (Decomposition: the child 8-tuple is required for the seam)",
                 comp_name(parent, comp),
-                child_ref.as_uuid()
+                model_id::encode_uuid(&child_ref.as_uuid())
             ),
             "Restore the referenced child model, or clear this component's child_model reference",
             Some(comp.clone()),
@@ -272,6 +275,244 @@ fn interior_neighbors(parent: &WorldModel, comp: &Id) -> Vec<Id> {
     neighbors
 }
 
+/// The eligibility gate the door and the seam check share. Row `comp_mem`
+/// (`comp ∈ parent.components` — everything downstream is defined in terms of a
+/// genuine parent component, so a failure short-circuits) plus the v1 binding
+/// narrowing (gate comment, 2026-07-20): REFUSE to decompose a component that is
+/// itself a parent interface. Flows crossing the parent membrane THROUGH `comp`
+/// are not yet in the Lean contract (`inflows`/`outflows` cover the internal
+/// network only) — refuse loudly rather than check a seam the mathematics does
+/// not yet underwrite.
+fn decomposability(parent: &WorldModel, comp: &Id) -> Result<(), ValidationIssue> {
+    let comp_is_component =
+        is_system_relatum(comp) && parent.systems.iter().any(|s| &s.info.id == comp);
+    if !comp_is_component {
+        return Err(refuse(
+            id_str(comp),
+            format!(
+                "Decomposition.comp_mem: \"{}\" is not a component of the parent model — \
+                 only a genuine system component may be decomposed",
+                id_str(comp)
+            ),
+            "Reference a component that exists in the parent model's systems",
+            Some(comp.clone()),
+        ));
+    }
+    if parent.boundary_components().contains(comp) {
+        return Err(refuse(
+            id_str(comp),
+            format!(
+                "v1 refuses to decompose \"{}\": it is an interface component of the \
+                 parent (it couples to the environment). The boundary contract in \
+                 SSF Decomposition.lean covers the parent's INTERNAL network only; \
+                 membrane-crossing flows through an interface component are not yet \
+                 formalized, so decomposing one has no checked seam",
+                comp_name(parent, comp)
+            ),
+            "Decompose an interior component, or wait for the external-flow case to land in the Lean contract",
+            Some(comp.clone()),
+        ));
+    }
+    Ok(())
+}
+
+/// Raw name of a system, by id — the identity key `env_identity_map` matches on
+/// (empty stays empty; the `comp_name` fallback coordinate is display-only).
+fn raw_name(parent: &WorldModel, id: &Id) -> String {
+    parent
+        .systems
+        .iter()
+        .find(|s| &s.info.id == id)
+        .map(|s| s.info.name.clone())
+        .unwrap_or_default()
+}
+
+/// A bare child system shell: default membrane, no primitive, no transform
+/// unless placed. The newborn's only system is its root (the SOI itself).
+fn child_root(root_id: &Id, env_id: &Id, name: &str) -> System {
+    System {
+        info: Info {
+            id: root_id.clone(),
+            level: 0,
+            name: name.to_string(),
+            description: String::new(),
+        },
+        sources: vec![],
+        sinks: vec![],
+        parent: env_id.clone(),
+        complexity: Complexity::Atomic,
+        boundary: Boundary {
+            info: Info {
+                id: Id {
+                    ty: IdType::Boundary,
+                    indices: root_id.indices.clone(),
+                },
+                level: 0,
+                name: String::new(),
+                description: String::new(),
+            },
+            porosity: 0.0,
+            perceptive_fuzziness: 0.0,
+            interfaces: vec![],
+            parent_interface: None,
+        },
+        radius: 50.0,
+        transform: None,
+        equivalence: String::new(),
+        history: String::new(),
+        transformation: String::new(),
+        member_autonomy: 1.0,
+        time_constant: String::new(),
+        archetype: None,
+        agent: None,
+        child_model: None,
+    }
+}
+
+/// Derive the newborn child of `comp` — the kernel half of the decomposition
+/// door (bert-lenses#89 step 5b). G′ comes from `flows(c)`: each interior
+/// neighbor of `comp` becomes a child environment stand-in (Source per inflow
+/// direction, Sink per outflow direction — a neighbor coupled both ways gets
+/// both), carrying the neighbor's name EXACTLY (the identity key
+/// [`env_identity_map`] matches on), and each incident flow becomes a child
+/// boundary flow with its substance, name, amount, and unit carried over.
+///
+/// The interior is EMPTY by design — no placeholder primitive is authored for
+/// the modeler. Until the first component exists, the boundary flows terminate
+/// on the child's ROOT (the SOI as its own black box): the root is then the one
+/// interface member `boundary_components()` derives, so the newborn passes
+/// [`check_decomposition_contract`] from birth. Placing real components and
+/// re-routing the flows refines that scaffolding without ever passing through a
+/// state the contract cannot name.
+///
+/// Mints the child's identity via [`WorldModel::mint_id`] — this is precisely
+/// the "an operation needs the model to be nameable" moment the minting policy
+/// reserves (the parent is about to reference it). Inherits the parent's mode,
+/// so the child opens under the same lens. Pure otherwise: no I/O; the store
+/// layer saves the result and stamps the parent's reference.
+pub fn derive_child(parent: &WorldModel, comp: &Id) -> Result<WorldModel, Vec<ValidationIssue>> {
+    decomposability(parent, comp).map_err(|issue| vec![issue])?;
+
+    let env_id = Id {
+        ty: IdType::Environment,
+        indices: vec![-1],
+    };
+    let root_id = Id {
+        ty: IdType::System,
+        indices: vec![0],
+    };
+    let root_name = comp_name(parent, comp);
+
+    let in_c = inflows(parent, comp);
+    let out_c = outflows(parent, comp);
+
+    // One Source stand-in per inflow neighbor, one Sink per outflow neighbor,
+    // first-appearance order; the shared env index space mirrors the canvas
+    // projection's. Positions are a readable two-column layout for the canvas.
+    let mut env_idx: i64 = 0;
+    let mut sources: Vec<ExternalEntity> = Vec::new();
+    let mut sinks: Vec<ExternalEntity> = Vec::new();
+    let mut source_of: HashMap<Id, Id> = HashMap::new();
+    let mut sink_of: HashMap<Id, Id> = HashMap::new();
+    let stand_in = |neighbor: &Id,
+                        inbound: bool,
+                        idx: &mut i64,
+                        entities: &mut Vec<ExternalEntity>,
+                        of: &mut HashMap<Id, Id>| {
+        if of.contains_key(neighbor) {
+            return;
+        }
+        let id = Id {
+            ty: if inbound { IdType::Source } else { IdType::Sink },
+            indices: vec![-1, *idx],
+        };
+        *idx += 1;
+        let column = if inbound { -260.0 } else { 260.0 };
+        entities.push(ExternalEntity {
+            info: Info {
+                id: id.clone(),
+                level: -1,
+                name: raw_name(parent, neighbor),
+                description: String::new(),
+            },
+            ty: if inbound {
+                ExternalEntityType::Source
+            } else {
+                ExternalEntityType::Sink
+            },
+            transform: Some(Transform2d {
+                translation: Vec2::new(column, entities.len() as f32 * 130.0),
+                rotation: 0.0,
+            }),
+            equivalence: String::new(),
+            model: String::new(),
+            is_same_as_id: None,
+        });
+        of.insert(neighbor.clone(), id);
+    };
+    for ix in &in_c {
+        stand_in(&ix.source, true, &mut env_idx, &mut sources, &mut source_of);
+    }
+    for ix in &out_c {
+        stand_in(&ix.sink, false, &mut env_idx, &mut sinks, &mut sink_of);
+    }
+
+    let mut interactions: Vec<Interaction> = Vec::new();
+    let flow = |k: usize, from: Id, to: Id, ix: &Interaction| Interaction {
+        info: Info {
+            id: Id {
+                ty: IdType::Flow,
+                indices: vec![k as i64],
+            },
+            level: 0,
+            name: ix.info.name.clone(),
+            description: String::new(),
+        },
+        substance: ix.substance.clone(),
+        ty: ix.ty,
+        usability: ix.usability,
+        source: from,
+        source_interface: None,
+        sink: to,
+        sink_interface: None,
+        amount: ix.amount,
+        unit: ix.unit.clone(),
+        parameters: vec![],
+        smart_parameters: vec![],
+        endpoint_offset: None,
+    };
+    for ix in &in_c {
+        let from = source_of[&ix.source].clone();
+        interactions.push(flow(interactions.len(), from, root_id.clone(), ix));
+    }
+    for ix in &out_c {
+        let to = sink_of[&ix.sink].clone();
+        interactions.push(flow(interactions.len(), root_id.clone(), to, ix));
+    }
+
+    let mut child = WorldModel {
+        version: crate::CURRENT_FILE_VERSION,
+        model_id: None,
+        mode: parent.mode,
+        environment: Environment {
+            info: Info {
+                id: env_id.clone(),
+                level: -1,
+                name: "Environment".to_string(),
+                description: String::new(),
+            },
+            sources,
+            sinks,
+        },
+        systems: vec![child_root(&root_id, &env_id, &root_name)],
+        interactions,
+        hidden_entities: vec![],
+        reachability_requirements: vec![],
+    };
+    child.mint_id();
+    Ok(child)
+}
+
 /// The pairwise boundary contract (Lean `Decomposition` + `substitution_sound`),
 /// checked per pair — parent-side needs only `flows(comp)`, child-side only its
 /// `G′`/`I′` — with no global tree pass (foundations doc §3). Pure: no I/O, no
@@ -284,43 +525,8 @@ pub fn check_decomposition_contract(
     let mut issues = Vec::new();
     let loc = id_str(comp);
 
-    // Row `comp_mem`: `comp ∈ parent.components`. Everything downstream is defined
-    // in terms of a genuine parent component, so a failure here short-circuits.
-    let comp_is_component =
-        is_system_relatum(comp) && parent.systems.iter().any(|s| &s.info.id == comp);
-    if !comp_is_component {
-        issues.push(refuse(
-            loc,
-            format!(
-                "Decomposition.comp_mem: \"{}\" is not a component of the parent model — \
-                 only a genuine system component may be decomposed",
-                id_str(comp)
-            ),
-            "Reference a component that exists in the parent model's systems",
-            Some(comp.clone()),
-        ));
-        return issues;
-    }
-
-    // v1 binding narrowing (gate comment, 2026-07-20): REFUSE to decompose a
-    // component that is itself a parent interface. Flows crossing the parent
-    // membrane THROUGH `comp` are not yet in the Lean contract (`inflows`/
-    // `outflows` cover the internal network only) — refuse loudly rather than
-    // check a seam the mathematics does not yet underwrite.
-    if parent.boundary_components().contains(comp) {
-        issues.push(refuse(
-            loc,
-            format!(
-                "v1 refuses to decompose \"{}\": it is an interface component of the \
-                 parent (it couples to the environment). The boundary contract in \
-                 SSF Decomposition.lean covers the parent's INTERNAL network only; \
-                 membrane-crossing flows through an interface component are not yet \
-                 formalized, so decomposing one has no checked seam",
-                comp_name(parent, comp)
-            ),
-            "Decompose an interior component, or wait for the external-flow case to land in the Lean contract",
-            Some(comp.clone()),
-        ));
+    if let Err(issue) = decomposability(parent, comp) {
+        issues.push(issue);
         return issues;
     }
 
@@ -979,5 +1185,59 @@ mod tests {
         assert_eq!(refs.len(), 1);
         assert_eq!(refs[0].0, comp());
         assert!(decomposition_refs(&parent_model()).is_empty(), "a flat model has no refs");
+    }
+
+    // ── derive_child: the newborn the door mints (step 5b) ──
+
+    #[test]
+    fn derived_child_is_born_passing_the_contract() {
+        let parent = parent_model();
+        let child = derive_child(&parent, &comp()).expect("interior component derives");
+        let issues = check_decomposition_contract(&parent, &comp(), &child);
+        assert!(issues.is_empty(), "the newborn must pass its own seam: {}", messages(&issues));
+    }
+
+    #[test]
+    fn derived_child_carries_seam_facts_exactly() {
+        let parent = parent_model();
+        let child = derive_child(&parent, &comp()).expect("derives");
+        // Identity minted, mode inherited, interior empty (root only).
+        assert!(child.model_id.is_some(), "the door mints the child's identity");
+        assert_eq!(child.mode, parent.mode);
+        assert_eq!(child.systems.len(), 1, "no placeholder primitive is authored");
+        assert_eq!(child.systems[0].info.name, "Furnace");
+        // One stand-in per direction, both named after the neighbor exactly.
+        assert_eq!(child.environment.sources.len(), 1);
+        assert_eq!(child.environment.sinks.len(), 1);
+        assert_eq!(child.environment.sources[0].info.name, "Sibling");
+        assert_eq!(child.environment.sinks[0].info.name, "Sibling");
+        // One boundary flow per incident flow, substance kinds carried over.
+        assert_eq!(child.interactions.len(), 2);
+        assert_eq!(child.interactions[0].substance.ty, SubstanceType::Energy);
+        assert_eq!(child.interactions[1].substance.ty, SubstanceType::Material);
+        assert_eq!(child.interactions[0].info.name, "in");
+        assert_eq!(child.interactions[1].info.name, "out");
+    }
+
+    #[test]
+    fn derive_child_refuses_a_ghost_component() {
+        let ghost: Id = serde_json::from_value(json!("C0.9")).unwrap();
+        let issues = derive_child(&parent_model(), &ghost).err().expect("ghost must refuse");
+        assert!(messages(&issues).contains("comp_mem"), "{}", messages(&issues));
+    }
+
+    #[test]
+    fn derive_child_refuses_an_interface_component() {
+        let mut parent = parent_model();
+        let value = json!({
+            "info": { "id": "E-1", "level": -1, "name": "", "description": "" },
+            "sources": [], "sinks": [ ext("Snk-1.0", "Snk-1.0", "Sink") ]
+        });
+        parent.environment = serde_json::from_value(value).unwrap();
+        parent.interactions.push(
+            serde_json::from_value(exo_flow("F2", "leak", "C0.0", "Snk-1.0", "Material")).unwrap(),
+        );
+        let issues = derive_child(&parent, &comp()).err().expect("interface must refuse");
+        assert!(messages(&issues).contains("v1 refuses"), "{}", messages(&issues));
     }
 }
