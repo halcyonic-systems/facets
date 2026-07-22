@@ -4,15 +4,18 @@
 // reading sits beside it. Placement only: each tab hosts the existing panel
 // unchanged (same props, same kernel-fed data). The dock decides nothing — it
 // arranges. Frost chrome, lens-tinted active tab (rides the --lens-* seam).
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   CanvasModel,
   IssueTarget,
+  Lens,
   LensDescription,
   RunResultRich,
   SystemType,
+  Thing,
   ValidationResult,
 } from "./kernel/types";
+import { NodeEditorRows, type DecomposeAffordance } from "./canvas/NodeEditor";
 import { RunPanel } from "./RunPanel";
 import { FormalPanel } from "./FormalPanel";
 import { AuditPanel } from "./AuditPanel";
@@ -21,7 +24,18 @@ import { SystemTypeEditor } from "./SystemTypeEditor";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 import { Card } from "./ui";
 
-type Tab = "run" | "formal" | "audit" | "analyst" | "type";
+type Tab = "element" | "run" | "formal" | "audit" | "analyst" | "type";
+
+/** The selected element's editing surface, as the shell hands it over (#122).
+ *  Null thing = nothing selected; the face says so rather than vanishing. */
+export interface ElementSelection {
+  thing: Thing | null;
+  lens: Lens;
+  decompose: DecomposeAffordance | null;
+  onUpdate: (t: Thing) => void;
+  onDelete: () => void;
+  onDeselect: () => void;
+}
 
 export function InspectorDock({
   result,
@@ -34,6 +48,7 @@ export function InspectorDock({
   onNavigate,
   onSystemTypeChange,
   onAcceptUnit,
+  element,
   resetKeys,
   focused,
   onToggleFocus,
@@ -51,6 +66,10 @@ export function InspectorDock({
    *  unit into the authoring model as declared. Placement only; App owns it. */
   onAcceptUnit?: (name: string, unit: string) => void;
   resetKeys: unknown[];
+  /** #122: the canvas's element editor lives HERE, not in a popover at the
+   *  pointer. Null in a surface that carries its own inline editor (the Klir
+   *  and Bunge registers), which then owns the element face itself. */
+  element: ElementSelection | null;
   // #57: focus mode. When on, the parent hides the palette + canvas and this
   // dock fills the whole work region so the active tab reads as a full screen.
   focused: boolean;
@@ -59,6 +78,17 @@ export function InspectorDock({
   const [tab, setTab] = useState<Tab>("run");
   const [collapsed, setCollapsed] = useState(false);
   const issueCount = verdict?.issues.length ?? 0;
+
+  // Selecting a thing on the canvas raises its editor here — the docked
+  // replacement for the popover that used to mount under the pointer. An
+  // arriving selection also un-collapses the dock: a click that produced no
+  // visible response would read as a dead click.
+  const selectedId = element?.thing?.id ?? null;
+  useEffect(() => {
+    if (selectedId === null) return;
+    setTab("element");
+    setCollapsed(false);
+  }, [selectedId]);
 
   // Focus wins over the thin collapse rail — a full-width dock can't be a sliver.
   if (collapsed && !focused) {
@@ -96,6 +126,9 @@ export function InspectorDock({
         className="flex items-stretch border-b"
         style={{ borderColor: "var(--hairline)" }}
       >
+        {element && (
+          <TabButton label="Element" active={tab === "element"} onClick={() => setTab("element")} />
+        )}
         <TabButton label="Run" active={tab === "run"} onClick={() => setTab("run")} />
         <TabButton label="Formal" active={tab === "formal"} onClick={() => setTab("formal")} />
         <TabButton
@@ -139,6 +172,19 @@ export function InspectorDock({
             dock (harvested from #55's PanelScreen shell). */}
         <div className={focused ? "mx-auto w-full max-w-4xl" : undefined}>
           <KernelErrorBoundary resetKeys={resetKeys}>
+            {tab === "element" &&
+              (element?.thing ? (
+                <NodeEditorRows
+                  thing={element.thing}
+                  lens={element.lens}
+                  decompose={element.decompose}
+                  onUpdateThing={element.onUpdate}
+                  onDelete={element.onDelete}
+                  onClose={element.onDeselect}
+                />
+              ) : (
+                <Placeholder>Click a component or environment thing to edit it here.</Placeholder>
+              ))}
             {tab === "run" && (
               <RunTab
                 result={result}

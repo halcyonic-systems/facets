@@ -18,6 +18,61 @@ export function matrixThings(model: CanvasModel): Thing[] {
   ];
 }
 
+/** A row/column of M. Either one thing, or the environment taken EN BLOC —
+ *  Bunge's own device for an open system (1979 §2.1, pp. 18–19): instead of an
+ *  m×m over the composition he forms an (m+1)×(m+1) "letting 0 stand for the
+ *  environment en bloc", so the input row M₀ᵣ and the output column Mₛ₀ are
+ *  literally row 0 and column 0. Def 1.2's worked example lumps the same way
+ *  in prose ("an environment lumped into a single thing c"). The itemized
+ *  alternative — one row per named environment thing — is ours, not his: more
+ *  information, less his notation, so it is the toggle's other half. */
+export type MatrixSlot = { kind: "thing"; thing: Thing } | { kind: "env" };
+
+/** The rows/cols of M under either environment reading. En bloc puts 0 FIRST,
+ *  as Bunge prints it, so row 0 = inputs and column 0 = outputs; itemized
+ *  keeps composition-then-environment, the cut visible as the ordering. */
+export function matrixSlots(model: CanvasModel, enBloc: boolean): MatrixSlot[] {
+  const components = model.things.filter((t) => t.role === "Component");
+  if (!enBloc) return matrixThings(model).map((thing) => ({ kind: "thing", thing }));
+  const slots: MatrixSlot[] = components.map((thing) => ({ kind: "thing", thing }));
+  return model.things.some((t) => t.role === "Environment") ? [{ kind: "env" }, ...slots] : slots;
+}
+
+/** Whether a slot stands for a thing on the environment side — the env slot
+ *  itself, or (itemized) a thing whose role is Environment. Used only to place
+ *  the cut rule; the role fact is the model's, the channel facts are the
+ *  kernel's. */
+export function slotIsEnv(slot: MatrixSlot): boolean {
+  return slot.kind === "env" || slot.thing.role === "Environment";
+}
+
+/** The relations occupying cell (row slot, col slot). Delegates to the
+ *  thing-level reading below; an env slot stands for EVERY environment thing at
+ *  once, so its cells collect what any of them acts on (or is acted on by) —
+ *  the same relations, gathered under Bunge's index 0. */
+export function slotCellRelations(model: CanvasModel, row: MatrixSlot, col: MatrixSlot): Relation[] {
+  // M₀₀ = 0 in Bunge's own printed matrix: the environment's couplings to
+  // itself are not in 𝒮 (neither relatum is a component), so index 0 has no
+  // self-cell to fill.
+  if (row.kind === "env" && col.kind === "env") return [];
+  const ids = (slot: MatrixSlot): number[] =>
+    slot.kind === "thing"
+      ? [slot.thing.id]
+      : model.things.filter((t) => t.role === "Environment").map((t) => t.id);
+  const rows = ids(row);
+  const cols = ids(col);
+  const seen = new Set<number>();
+  const out: Relation[] = [];
+  for (const r of rows)
+    for (const c of cols)
+      for (const rel of bungeCellRelations(model, r, c))
+        if (!seen.has(rel.id)) {
+          seen.add(rel.id);
+          out.push(rel);
+        }
+  return out;
+}
+
 /** The relations occupying cell (row, col), read as "row acts on col": a bond
  *  is directed action, so it marks its own order only; a mere relation holds
  *  but does not act, so it marks both orders (no channel to orient it). */
@@ -52,8 +107,20 @@ export function kindGlyph(kind: Kind): string {
  *  without acting, ↺ on the diagonal, with a ×N stack count. Pure typesetting
  *  over bungeCellRelations' reading — no verdict. */
 export function bungeCellGlyph(row: number, col: number, rs: Relation[]): string {
+  return cellGlyph(row === col, rs);
+}
+
+/** The same typesetting, slot-addressed: a self-cell is the diagonal (one thing
+ *  acting on itself). Index 0 has no self-cell, so en bloc never lands here
+ *  with both slots environmental. */
+export function slotCellGlyph(row: MatrixSlot, col: MatrixSlot, rs: Relation[]): string {
+  const self = row.kind === "thing" && col.kind === "thing" && row.thing.id === col.thing.id;
+  return cellGlyph(self, rs);
+}
+
+function cellGlyph(self: boolean, rs: Relation[]): string {
   if (rs.length === 0) return "";
   const bond = rs.find((r) => r.is_bond);
-  const head = row === col ? "↺" : bond ? kindGlyph(bond.kind) : "∼";
+  const head = self ? "↺" : bond ? kindGlyph(bond.kind) : "∼";
   return rs.length > 1 ? `${head}×${rs.length}` : head;
 }

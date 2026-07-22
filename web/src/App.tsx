@@ -9,12 +9,20 @@ import {
   checkDecompositionsCanvas,
   decomposeComponent,
 } from "./kernel";
-import type { CanvasModel, IssueTarget, Manifest, RunResultRich, Thing, ValidationIssue } from "./kernel/types";
+import type {
+  CanvasModel,
+  IssueTarget,
+  Manifest,
+  ResidueEntry,
+  RunResultRich,
+  Thing,
+  ValidationIssue,
+} from "./kernel/types";
 import { DEMOS, type Demo } from "./demos";
 import Canvas from "./canvas/Canvas";
 import { edgeGeometry, thingById } from "./canvas/geometry";
 import { EdgePopover } from "./canvas/EdgePopover";
-import { NodePopover, type DecomposeAffordance } from "./canvas/NodePopover";
+import type { DecomposeAffordance } from "./canvas/NodeEditor";
 import { KlirRegister } from "./canvas/KlirRegister";
 import { BungeRegister } from "./canvas/BungeRegister";
 import { BoundaryPopover } from "./canvas/BoundaryPopover";
@@ -42,6 +50,11 @@ import { buildLibraryTree, flattenLibraryTree, type LibraryNode } from "./librar
 import { mintLibraryName, parentSlotName } from "./libraryNames";
 import { resolveModelRefs } from "./modelResolve";
 import { diagramFilename, exportDiagramSvg, exportDiagramPng } from "./canvas/exportDiagram";
+
+// A residue line, exactly as the kernel worded it. `count === 0` is the
+// uncountable line (Bunge's ⊘M): one unanswered question, not a tally, so no
+// number precedes it.
+const residueLine = (e: ResidueEntry) => (e.count === 0 ? e.label : `${e.count} ${e.label}`);
 
 const today = () => new Date().toISOString().slice(0, 10);
 const LENSES: CanvasModel["lens"][] = ["Klir", "Bunge", "Mobus"];
@@ -1407,9 +1420,13 @@ function Workspace() {
                     <div
                       className={
                         registerActive
-                          ? `absolute bottom-9 right-3 overflow-hidden rounded-lg ${
+                          ? `absolute bottom-9 right-3 max-h-[45vh] max-w-[70%] overflow-hidden rounded-lg ${
                               // #100 harvest: the locator was "way too small"
                               // on 2 of 3 arms — preset sizes, medium default.
+                              // The caps are the harvest residue: on a short
+                              // viewport the large preset climbed over the
+                              // register's own text, so the preset is a
+                              // request the available room still bounds.
                               locSize === "s" ? "h-44 w-72" : locSize === "m" ? "h-64 w-[26rem]" : "h-96 w-[38rem]"
                             }`
                           : "absolute inset-0"
@@ -1504,19 +1521,6 @@ function Workspace() {
                         onClose={() => setBoundaryAnchor(null)}
                       />
                     )}
-                    {selectedThing && !registerActive && (
-                      <NodePopover
-                        thing={selectedThing}
-                        lens={canvasModel.lens}
-                        anchor={toScreen({ x: selectedThing.x, y: selectedThing.y })}
-                        onUpdateThing={updateThing}
-                        onDelete={() => deleteThing(selectedThing.id)}
-                        onClose={() => setSelectedThingId(null)}
-                        // The decomposition door (#89 step 5b), inspector-first
-                        // — the case is decided off kernel facts in decomposeFor.
-                        decompose={decomposeFor(selectedThing)}
-                      />
-                    )}
                     {selectedRelation && popoverAnchor && !registerActive && (
                       <EdgePopover
                         relation={selectedRelation}
@@ -1592,10 +1596,10 @@ function Workspace() {
                       >
                         {[
                           residue.hidden.length > 0
-                            ? `not visible in this lens: ${residue.hidden.map((e) => `${e.count} ${e.label}`).join(", ")}`
+                            ? `not visible in this lens: ${residue.hidden.map(residueLine).join(", ")}`
                             : null,
                           residue.unspecified.length > 0
-                            ? `unanswered: ${residue.unspecified.map((e) => `${e.count} ${e.label}`).join(", ")}`
+                            ? `unanswered: ${residue.unspecified.map(residueLine).join(", ")}`
                             : null,
                         ]
                           .filter(Boolean)
@@ -1606,7 +1610,7 @@ function Workspace() {
                       className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-mono"
                       style={{ color: "var(--text-muted)" }}
                     >
-                      arm a tool to stamp (Esc disarms) · click a node to edit · drag the handle dot to connect · click a flow to drive it
+                      arm a tool to stamp (Esc disarms) · click a node to edit it in the Element tab · double-click to enter it · drag the handle dot to connect · click a flow to drive it
                     </div>
                     {toast && (
                       <Banner tone="error" className="absolute bottom-3 left-3">
@@ -1703,6 +1707,22 @@ function Workspace() {
                   : undefined
               }
               resetKeys={[canvasModel, demo?.key ?? "import"]}
+              // #122: on the canvas the element editor is DOCKED, so the first
+              // click of a double-click can no longer flash a menu into the
+              // gesture that enters a child. A register carries its own inline
+              // editor, so it keeps the element face and the dock stands down.
+              element={
+                canvasModel && !registerActive
+                  ? {
+                      thing: selectedThing,
+                      lens: canvasModel.lens,
+                      decompose: selectedThing ? decomposeFor(selectedThing) : null,
+                      onUpdate: updateThing,
+                      onDelete: () => selectedThing && deleteThing(selectedThing.id),
+                      onDeselect: () => setSelectedThingId(null),
+                    }
+                  : null
+              }
               focused={inspectorFocused}
               onToggleFocus={() => setInspectorFocused((f) => !f)}
             />

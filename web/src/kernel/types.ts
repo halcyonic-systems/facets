@@ -386,7 +386,8 @@ export interface DecompositionReport {
 }
 
 /** One residue line: count + number-agreed noun phrase — render
- *  `${count} ${label}` verbatim, never re-pluralize. */
+ *  `${count} ${label}` verbatim, never re-pluralize. `count === 0` is the
+ *  uncountable line (Bunge's ⊘M): render the label alone. */
 export interface ResidueEntry {
   count: number;
   label: string;

@@ -66,6 +66,11 @@ interface NodeBodyProps {
 // The regulator triangle (Mobus Fig 4.17), apex up, circumradius optically
 // enlarged 1.15× so it reads the same visual weight as the circle (#81 V2
 // harvest: optical-sizing constants — triangles read smaller than their box).
+// The centered process glyph's share of the node radius. Sized so the glyph
+// reads as the body's face while the circle still breathes around it — the
+// phase-4 beauty pass called 0.62 a touch large.
+const GLYPH_FRAC = 0.56;
+
 const TRI_R = NODE_R * 1.15;
 const TRI_HALF_W = TRI_R * 0.866;
 const TRI_BOT = TRI_R * 0.5;
@@ -232,11 +237,11 @@ export function NodeBody({
       {badge && badgeCentered && (
         <g
           data-glyph="centered"
-          transform={`scale(${(NODE_R * 0.62) / 6})`}
+          transform={`scale(${(NODE_R * GLYPH_FRAC) / 6})`}
           style={{ color: "var(--lens-accent)" }}
           fill="none"
           stroke="var(--lens-accent)"
-          strokeWidth={2.1 / ((NODE_R * 0.62) / 6)}
+          strokeWidth={2.1 / ((NODE_R * GLYPH_FRAC) / 6)}
           strokeLinecap="round"
           strokeLinejoin="round"
           pointerEvents="none"

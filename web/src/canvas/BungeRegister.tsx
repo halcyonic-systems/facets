@@ -31,10 +31,17 @@ import type {
 import { validateConnection } from "../kernel";
 import { KIND_COLOR } from "./types";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
-import { DecomposeRows, type DecomposeAffordance } from "./NodePopover";
+import { DecomposeRows, type DecomposeAffordance } from "./NodeEditor";
 import { BungeBody, FlowNameField } from "./EdgePopover";
 import { CELL, confirmStripClass, confirmStripStyle, headerCellStyle } from "./registerChrome";
-import { bungeCellGlyph, bungeCellRelations, matrixThings } from "./bungeNotation";
+import {
+  bungeCellRelations,
+  matrixSlots,
+  slotCellGlyph,
+  slotCellRelations,
+  slotIsEnv,
+  type MatrixSlot,
+} from "./bungeNotation";
 import { nextIdOf, nextThingPosition } from "./klirNotation";
 
 type BungeDesc = Extract<LensDescription, { lens: "Bunge" }>;
@@ -94,6 +101,13 @@ export function BungeRegister({
   // (#100 harvest), unchanged: first click proposes, the same cell again or
   // the confirm strip commits, the kernel judges at commit time.
   const [proposed, setProposed] = useState<{ a: number; b: number } | null>(null);
+  // How M reads the environment. En bloc is Bunge's OWN (1979 §2.1, pp. 18–19):
+  // for an open system he forms an (m+1)×(m+1) matrix "letting 0 stand for the
+  // environment en bloc", so the inputs are row 0 and the outputs column 0 —
+  // and Def 1.2's worked example lumps the same way in prose. Itemizing ℰ is
+  // ours: more information, less his notation. His reading is the default;
+  // ours is the escape hatch when you need to address one env thing.
+  const [enBloc, setEnBloc] = useState(true);
   const [compDraft, setCompDraft] = useState("");
   const [envDraft, setEnvDraft] = useState("");
 
@@ -273,10 +287,34 @@ export function BungeRegister({
 
         {/* ---- 𝒮 — structure, as Bunge's coupling matrix M -------------------- */}
         <section className="mt-4">
-          <div className="mb-1 flex items-baseline gap-3 text-sm" style={mono}>
-            <span style={{ color: "var(--text-secondary)" }}>𝒮 = M</span>
-            <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-              row acts on column — the kind of action is what makes a bond a bond
+          <div className="mb-1 flex items-baseline justify-between gap-3 text-sm" style={mono}>
+            <span className="flex items-baseline gap-3">
+              <span style={{ color: "var(--text-secondary)" }}>𝒮 = M</span>
+              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                row acts on column — the kind of action is what makes a bond a bond
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1">
+              <SmallButton
+                active={enBloc}
+                onClick={() => {
+                  setEnBloc(true);
+                  setProposed(null);
+                }}
+                title="ℰ en bloc — Bunge's own (m+1)×(m+1): index 0 stands for the environment, row 0 the inputs M₀ᵣ, column 0 the outputs Mₛ₀ (1979 §2.1)"
+              >
+                ℰ = 0
+              </SmallButton>
+              <SmallButton
+                active={!enBloc}
+                onClick={() => {
+                  setEnBloc(false);
+                  setProposed(null);
+                }}
+                title="ℰ itemized — one row per environment thing (ours, not his: more information, less his notation)"
+              >
+                ℰ itemized
+              </SmallButton>
             </span>
           </div>
           <CouplingMatrix
@@ -284,6 +322,10 @@ export function BungeRegister({
             edgeFacts={edgeFacts}
             selectedRelationId={selectedRelationId}
             proposed={proposed}
+            enBloc={enBloc}
+            onSelectFirst={(rels) =>
+              onSelectRelation(rels[0].id === selectedRelationId ? null : rels[0].id)
+            }
             onPickCell={(a, b) => {
               const rels = bungeCellRelations(model, a, b);
               if (rels.length > 0) {
@@ -448,7 +490,7 @@ function InlineThingEditor({
           />
         </Row>
         <Row>
-          <span style={{ color: "var(--text-secondary)" }}>side of the cut</span>
+          <span style={{ color: "var(--text-secondary)" }}>cut</span>
           <div
             className="flex gap-1"
             title={
@@ -461,6 +503,7 @@ function InlineThingEditor({
               active={isComponent}
               disabled={!!thing.child_model && !isComponent}
               onClick={() => !isComponent && onUpdate({ ...thing, role: "Component" })}
+              title="re-cut: put this thing inside the cut (𝒞 — the composition)"
             >
               𝒞
             </SmallButton>
@@ -468,11 +511,15 @@ function InlineThingEditor({
               active={!isComponent}
               disabled={!!thing.child_model && isComponent}
               onClick={() => isComponent && onUpdate({ ...thing, role: "Environment" })}
+              title="re-cut: put this thing outside the cut (ℰ — the environment)"
             >
               ℰ
             </SmallButton>
           </div>
         </Row>
+        <p className="mb-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+          re-cut — the cut is yours to draw; ℰ and 𝒮 follow from it
+        </p>
         {decompose && <DecomposeRows decompose={decompose} />}
         <div className="flex justify-between">
           <button onClick={onDelete} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--verdict-error)" }}>
@@ -503,7 +550,9 @@ function CouplingMatrix({
   edgeFacts,
   selectedRelationId,
   proposed,
+  enBloc,
   onPickCell,
+  onSelectFirst,
   onConfirm,
   onCancel,
 }: {
@@ -511,20 +560,33 @@ function CouplingMatrix({
   edgeFacts: Map<number, EdgeFact>;
   selectedRelationId: number | null;
   proposed: { a: number; b: number } | null;
+  /** Bunge's own (m+1)×(m+1) reading: the environment as index 0. */
+  enBloc: boolean;
   onPickCell: (a: number, b: number) => void;
+  /** Selection for cells no pair of things addresses (the en-bloc env row/col):
+   *  there is nothing to propose, but its occupants are still editable. */
+  onSelectFirst: (rels: Relation[]) => void;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  const things = matrixThings(model);
-  if (things.length === 0) {
+  const slots = matrixSlots(model, enBloc);
+  if (slots.length === 0) {
     return (
       <p className="pl-6 text-xs" style={{ color: "var(--text-muted)" }}>
         no things yet — place a component first; M is over 𝒞 ∪ ℰ.
       </p>
     );
   }
-  const compCount = things.filter((t) => t.role === "Component").length;
+  // Where the cut's rule falls: en bloc it is the single line after index 0
+  // (Bunge prints 0 first); itemized it is where the composition ends.
+  const cutAt = enBloc ? (slots[0].kind === "env" ? 1 : slots.length) : slots.filter((s) => !slotIsEnv(s)).length;
   const short = (name: string) => (name.length > 12 ? `${name.slice(0, 11)}…` : name);
+  const slotKey = (s: MatrixSlot) => (s.kind === "env" ? "env" : s.thing.id);
+  const slotLabel = (s: MatrixSlot) => (s.kind === "env" ? "0" : short(s.thing.name || `#${s.thing.id}`));
+  const slotTitle = (s: MatrixSlot) =>
+    s.kind === "env"
+      ? "0 — the environment en bloc (Bunge 1979 §2.1): row 0 is the input M₀ᵣ, column 0 the output Mₛ₀"
+      : `${s.thing.name} ∈ ${s.thing.role === "Component" ? "𝒞" : "ℰ"}`;
   const nameOf = (id: number) => model.things.find((t) => t.id === id)?.name || `#${id}`;
   const channelWord = (r: Relation): string => {
     if (!r.is_bond) return "mere — holds, does not act";
@@ -552,8 +614,9 @@ function CouplingMatrix({
   // The cut, visible inside the matrix: a stronger rule where 𝒞 ends and ℰ
   // begins — the same partition the hull draws on the graph.
   const cutBorder = "2px solid color-mix(in srgb, var(--lens-accent) 45%, var(--hairline))";
-  const cutLeft = (i: number) => (i === compCount && compCount > 0 && i < things.length ? { borderLeft: cutBorder } : {});
-  const cutTop = (i: number) => (i === compCount && compCount > 0 && i < things.length ? { borderTop: cutBorder } : {});
+  const ruled = cutAt > 0 && cutAt < slots.length;
+  const cutLeft = (i: number) => (ruled && i === cutAt ? { borderLeft: cutBorder } : {});
+  const cutTop = (i: number) => (ruled && i === cutAt ? { borderTop: cutBorder } : {});
   return (
     <div className="overflow-x-auto pl-6">
       <table className="border-separate" style={{ borderSpacing: 0 }}>
@@ -562,50 +625,57 @@ function CouplingMatrix({
             <th className="px-2 text-left align-bottom text-[10px] font-normal" style={headerCellStyle}>
               r acts on s
             </th>
-            {things.map((t, i) => (
+            {slots.map((s, i) => (
               <th
-                key={t.id}
+                key={slotKey(s)}
                 className="px-1 pb-1 align-bottom text-[10px] font-normal"
                 style={{ ...headerCellStyle, minWidth: CELL, maxWidth: CELL, ...cutLeft(i) }}
-                title={`${t.name} ∈ ${t.role === "Component" ? "𝒞" : "ℰ"}`}
+                title={slotTitle(s)}
               >
                 <span
                   className="inline-block max-h-24 overflow-hidden"
                   style={{
-                    writingMode: "vertical-rl",
-                    transform: "rotate(180deg)",
-                    ...(t.role === "Environment" ? { color: "var(--text-muted)" } : {}),
+                    // Index 0 reads upright: it is a numeral, not a name, and
+                    // the vertical run makes it look like a dropped glyph.
+                    ...(s.kind === "env" ? {} : { writingMode: "vertical-rl", transform: "rotate(180deg)" }),
+                    ...(slotIsEnv(s) ? { color: "var(--text-muted)" } : {}),
                   }}
                 >
-                  {short(t.name || `#${t.id}`)}
+                  {slotLabel(s)}
                 </span>
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {things.map((a, ai) => (
-            <tr key={a.id}>
+          {slots.map((a, ai) => (
+            <tr key={slotKey(a)}>
               <th
                 className="max-w-28 truncate px-2 text-right text-[10px] font-normal"
                 style={{
                   ...headerCellStyle,
                   height: CELL,
                   ...cutTop(ai),
-                  ...(a.role === "Environment" ? { color: "var(--text-muted)" } : {}),
+                  ...(slotIsEnv(a) ? { color: "var(--text-muted)" } : {}),
                 }}
-                title={`${a.name} ∈ ${a.role === "Component" ? "𝒞" : "ℰ"}`}
+                title={slotTitle(a)}
               >
-                {short(a.name || `#${a.id}`)}
+                {slotLabel(a)}
               </th>
-              {things.map((b, bi) => {
-                const rels = bungeCellRelations(model, a.id, b.id);
+              {slots.map((b, bi) => {
+                const rels = slotCellRelations(model, a, b);
                 const bond = rels.find((r) => r.is_bond);
                 const hit = rels.some((r) => r.id === selectedRelationId);
-                const isProposed = proposed !== null && proposed.a === a.id && proposed.b === b.id;
+                // A proposal names two THINGS; index 0 names none of them, so
+                // the en-bloc environment row/column is read-only — an action
+                // is added from the graph, or with the environment itemized.
+                const addressable = a.kind === "thing" && b.kind === "thing";
+                const isProposed =
+                  addressable && proposed !== null && proposed.a === a.thing.id && proposed.b === b.thing.id;
+                const selfCell = a.kind === "thing" && b.kind === "thing" && a.thing.id === b.thing.id;
                 return (
                   <td
-                    key={b.id}
+                    key={slotKey(b)}
                     className="p-0"
                     style={{
                       borderBottom: "1px solid var(--hairline)",
@@ -615,7 +685,10 @@ function CouplingMatrix({
                     }}
                   >
                     <button
-                      onClick={() => onPickCell(a.id, b.id)}
+                      onClick={() => {
+                        if (addressable) onPickCell(a.thing.id, b.thing.id);
+                        else if (rels.length) onSelectFirst(rels);
+                      }}
                       className="block text-[11px] leading-none"
                       style={{
                         width: CELL,
@@ -634,7 +707,7 @@ function CouplingMatrix({
                           ? "color-mix(in srgb, var(--lens-accent) 30%, transparent)"
                           : rels.length
                             ? "color-mix(in srgb, var(--lens-accent) 14%, transparent)"
-                            : a.id === b.id
+                            : selfCell
                               ? "color-mix(in srgb, var(--lens-accent) 6%, transparent)"
                               : "var(--bg-primary)",
                         outline: hit
@@ -647,12 +720,14 @@ function CouplingMatrix({
                       title={
                         rels.length
                           ? `${cellTitle(rels)} — click to edit`
-                          : isProposed
-                            ? `${a.name} ▷ ${b.name} proposed — click again to add the bond`
-                            : `no action ${a.name} → ${b.name} — click to propose a bond`
+                          : !addressable
+                            ? "index 0 is the environment en bloc — add an action from the graph, or itemize ℰ to address one thing"
+                            : isProposed
+                              ? `${a.thing.name} ▷ ${b.thing.name} proposed — click again to add the bond`
+                              : `no action ${a.thing.name} → ${b.thing.name} — click to propose a bond`
                       }
                     >
-                      {rels.length ? bungeCellGlyph(a.id, b.id, rels) : isProposed ? "+" : ""}
+                      {rels.length ? slotCellGlyph(a, b, rels) : isProposed ? "+" : ""}
                     </button>
                   </td>
                 );
@@ -683,9 +758,14 @@ function CouplingMatrix({
         </div>
       )}
       <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
-        kind of action: e energy · m matter · f field · i informational · &middot; unstated · ∼ mere relation
-        (holds, does not act) · ↺ self-action — blocks: ℰ-row × 𝒞-col = inputs (M₀ᵣ), 𝒞-row × ℰ-col =
-        outputs (Mₛ₀), 𝒞 × 𝒞 = internuncial (Mᵣₛ)
+        {enBloc
+          ? "0 is the environment en bloc; the heavier rule after it is the cut. kind of action: "
+          : "the heavier rule is the cut — 𝒞 before it, ℰ after (re-cut from any thing's editor). kind of action: "}
+        e energy · m matter · f field · i informational · &middot; unstated · ∼ mere relation
+        (holds, does not act) · ↺ self-action — blocks:{" "}
+        {enBloc
+          ? "row 0 = inputs (M₀ᵣ), column 0 = outputs (Mₛ₀), the interior = internuncial (Mᵣₛ)"
+          : "ℰ-row × 𝒞-col = inputs (M₀ᵣ), 𝒞-row × ℰ-col = outputs (Mₛ₀), 𝒞 × 𝒞 = internuncial (Mᵣₛ)"}
       </p>
     </div>
   );

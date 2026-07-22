@@ -1,13 +1,18 @@
-// Per-lens node editing — the element inspector's popover form (harvest of the
-// egui blind-pick's inspector organ, #5). Rename everywhere; the work-process
-// row is Mobus-only and READ/EDIT (the rail's stamp is write-only by design —
-// this is where a stamped primitive becomes editable/clearable). Every edit
-// flows through onUpdateThing → App re-runs analyze_canvas in Rust; nothing
-// here decides a systems fact. Work processes are Economy-side content — the
-// row deliberately says "work process", not "agent" (Mobus ch. 10: agents are
-// the decision ovals INSIDE process ovals; agent designation is future work).
+// Per-lens node editing — the element inspector's form (harvest of the egui
+// blind-pick's inspector organ, #5). Rename everywhere; the work-process row is
+// Mobus-only and READ/EDIT (the rail's stamp is write-only by design — this is
+// where a stamped primitive becomes editable/clearable). Every edit flows
+// through onUpdateThing → App re-runs analyze_canvas in Rust; nothing here
+// decides a systems fact. Work processes are Economy-side content — the row
+// deliberately says "work process", not "agent" (Mobus ch. 10: agents are the
+// decision ovals INSIDE process ovals; agent designation is future work).
+//
+// These are ROWS, not a popover (#122 ruling, 2026-07-22): the rows mount in
+// whatever surface the active reading docks them in — the inspector dock on the
+// canvas, the register's own inline editor in a register. Nothing anchored at
+// the pointer, so the first click of a double-click can never flash a menu into
+// the gesture that enters a child.
 import type { Lens, ProcessPrimitive, Thing } from "../kernel/types";
-import type { Pt } from "./geometry";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 
 /** The decomposition door as the shell hands it to the inspector (#89 step 5b).
@@ -31,10 +36,9 @@ const PRIMITIVES: ProcessPrimitive[] = [
   "Inverting",
 ];
 
-export function NodePopover({
+export function NodeEditorRows({
   thing,
   lens,
-  anchor,
   onUpdateThing,
   onDelete,
   onClose,
@@ -42,26 +46,16 @@ export function NodePopover({
 }: {
   thing: Thing;
   lens: Lens;
-  anchor: Pt;
   onUpdateThing: (t: Thing) => void;
   onDelete: () => void;
-  onClose: () => void;
+  /** Clearing the selection. Null in a surface that has no "close" — the dock
+   *  keeps the element face up whether or not anything is selected. */
+  onClose: (() => void) | null;
   decompose?: DecomposeAffordance | null;
 }) {
   const isComponent = thing.role === "Component";
   return (
-    <div
-      className="absolute z-10 -translate-x-1/2 rounded-xl p-3"
-      style={{
-        left: anchor.x,
-        top: anchor.y + 20,
-        width: 230,
-        background: "var(--bg-secondary)",
-        border: "1px solid var(--lens-accent)",
-        boxShadow: "var(--shadow-card-hover)",
-        borderRadius: "var(--radius-lg)",
-      }}
-    >
+    <div>
       <Title>
         {lens === "Klir" ? "thing" : isComponent ? "component" : lens === "Mobus" ? "environment object" : "environment thing"}
         &nbsp;&ldquo;{thing.name || "unnamed"}&rdquo;
@@ -85,8 +79,9 @@ export function NodePopover({
           re-cuttable cut. A decomposed component stays put — its child model
           is anchored to its being in 𝒞. */}
       {lens === "Bunge" && (
+        <>
         <Row>
-          <span style={{ color: "var(--text-secondary)" }}>side of the cut</span>
+          <span style={{ color: "var(--text-secondary)" }}>cut</span>
           <div className="flex gap-1" title={
             thing.child_model
               ? "this component decomposes into a child model — the reference class holds it in 𝒞"
@@ -96,6 +91,7 @@ export function NodePopover({
               active={isComponent}
               disabled={!!thing.child_model && !isComponent}
               onClick={() => !isComponent && onUpdateThing({ ...thing, role: "Component" })}
+              title="re-cut: put this thing inside the cut (𝒞 — the composition)"
             >
               𝒞
             </SmallButton>
@@ -103,11 +99,16 @@ export function NodePopover({
               active={!isComponent}
               disabled={!!thing.child_model && isComponent}
               onClick={() => isComponent && onUpdateThing({ ...thing, role: "Environment" })}
+              title="re-cut: put this thing outside the cut (ℰ — the environment)"
             >
               ℰ
             </SmallButton>
           </div>
         </Row>
+        <p className="mb-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+          re-cut — the cut is yours to draw; ℰ and 𝒮 follow from it
+        </p>
+        </>
       )}
       {lens === "Mobus" && isComponent && (
         <Row>
@@ -138,9 +139,11 @@ export function NodePopover({
         <button onClick={onDelete} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--verdict-error)" }}>
           delete
         </button>
-        <button onClick={onClose} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--text-muted)" }}>
-          close
-        </button>
+        {onClose && (
+          <button onClick={onClose} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--text-muted)" }}>
+            deselect
+          </button>
+        )}
       </div>
     </div>
   );

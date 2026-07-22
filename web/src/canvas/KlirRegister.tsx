@@ -13,7 +13,7 @@ import "katex/dist/katex.min.css";
 import type { CanvasModel, KlirLadder, Relation, Thing } from "../kernel/types";
 import { validateConnection } from "../kernel";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
-import { DecomposeRows, type DecomposeAffordance } from "./NodePopover";
+import { DecomposeRows, type DecomposeAffordance } from "./NodeEditor";
 import { KlirLadderPanel, LadderChip } from "./KlirLadderPanel";
 import { FormalismLine, klirFormalism } from "./lenses/glossary";
 import { cellGlyph, cellRelations, nextIdOf, nextThingPosition, relationTuple } from "./klirNotation";
