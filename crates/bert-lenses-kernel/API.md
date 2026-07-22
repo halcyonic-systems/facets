@@ -496,6 +496,37 @@ front with a `JsError` (a legible "Δt must be a positive, finite number"),
 folding the runaway case into the same throw-don't-hang contract. (`run`'s
 Phase-0 `ticks: usize` is a direct, caller-chosen count and is left as-is.)
 
+## The archive seam (#140, ADR 0004 — additive)
+
+An archive must not be a lens's projection. `project`'s output is a
+`WorldModel` — Mobus's lens format — and it is lossy on exactly the non-Mobus
+vocabulary (Bunge's `mere` and `field`, Klir's `@directed`, the authored system
+type). It keeps its job: Mobus export, and the executable projection `run`
+consumes. It is no longer what storage writes.
+
+### `open_model(text: string) → CanvasModel`
+The read side, total over both stored generations — the neutral archive and the
+legacy `WorldModel`. Shape decides (`things` vs `systems`); the format marker
+corroborates but never gates, so a hand-edited file that lost its marker still
+opens. Prefer this for anything out of STORAGE. `to_canvas` remains the explicit
+projection→canvas conversion for a model *known* to be a `WorldModel` (a bundled
+demo, an imported executable model).
+
+A legacy file returns exactly what `to_canvas` returns. What it lost was lost
+when it was **written**; reading cannot restore it.
+
+### `write_archive(canvas_json: string) → string`
+The text to persist: the neutral model plus `"format": "bert-lenses/canvas@1"`.
+The marker's job is not upgrade-in-place — migration is necessarily destructive
+— but to let a future reader tell generations apart without guessing.
+
+### `model_identity` — widened, not changed
+Now answers for both generations. Every input that resolved before still
+resolves, so a working folder holding both at once stays navigable. This
+function must answer for a file read out of a bare directory, where there is no
+record to denormalize metadata into — the constraint that decided the archive is
+self-describing JSON rather than SL (ADR 0004, decision 2).
+
 ## Notes
 - The wasm is built with `wasm-pack build --target web` into `pkg/` (a build
   artifact, gitignored). `--release` for the shipped bundle; `--dev` while iterating.

@@ -144,10 +144,39 @@ pub fn run_forced(
 /// carry this id so a `decomposes @id` reference resolves by identity, with the
 /// name as display label only. Reading is not minting — this never assigns an
 /// id (`WorldModel::mint_id` stays caller-invoked, never a load/save effect).
+///
+/// Answers for BOTH stored generations (#140): the neutral archive and the
+/// legacy `WorldModel`. Widened, never narrowed — every input that resolved
+/// before still resolves, so a working folder holding both generations at once
+/// stays fully navigable.
 #[wasm_bindgen]
 pub fn model_identity(model_json: &str) -> Result<Option<String>, JsError> {
-    let model = parse_model(model_json)?;
-    Ok(model.model_id.map(|id| id.to_base58()))
+    Ok(crate::archive::identity(model_json).map(|id| id.to_base58()))
+}
+
+/// Open a stored model onto the canvas, whichever generation wrote it (#140,
+/// ADR 0004) — the archive's read side. Prefer this over `to_canvas` for
+/// anything coming out of STORAGE; `to_canvas` remains the explicit
+/// WorldModel→canvas conversion for a model known to be a projection (a bundled
+/// demo, an imported executable model).
+///
+/// A legacy file comes back exactly as `to_canvas` returns it. What it lost was
+/// lost when it was WRITTEN — reading cannot restore it.
+#[wasm_bindgen]
+pub fn open_model(text: &str) -> Result<JsValue, JsError> {
+    let model = crate::archive::read(text).map_err(|e| JsError::new(&e))?;
+    to_js(&model)
+}
+
+/// The text to PERSIST for a canvas model (#140, ADR 0004) — the neutral model
+/// plus its format marker. This is what every storage write sends; `project`
+/// keeps its own job (Mobus export, and the executable projection `run`
+/// consumes), and is no longer what the library writes.
+#[wasm_bindgen]
+pub fn write_archive(canvas_json: &str) -> Result<String, JsError> {
+    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    crate::archive::write(&model).map_err(|e| JsError::new(&e))
 }
 
 /// Check every decomposition seam in a model against its store-resolved

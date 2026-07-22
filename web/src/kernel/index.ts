@@ -15,6 +15,8 @@ import init, {
   mapping_status as wasmMappingStatus,
   run_forced as wasmRunForced,
   to_canvas as wasmToCanvas,
+  open_model as wasmOpenModel,
+  write_archive as wasmWriteArchive,
   project as wasmProject,
   validate_mode as wasmValidateMode,
   validate_connection as wasmValidateConnection,
@@ -160,7 +162,24 @@ export function toCanvas(modelJson: string): CanvasModel {
   return call("to_canvas", () => wasmToCanvas(modelJson));
 }
 
-/** Project the canvas editing model into a bert-core WorldModel (JSON). */
+/** Open a STORED model onto the canvas, whichever generation wrote it (#140,
+ *  ADR 0004) — the neutral archive or a legacy WorldModel. Shape decides in
+ *  Rust; the face never sniffs a format. Use this for storage; `toCanvas` stays
+ *  the explicit conversion for a model known to be a projection (a bundled
+ *  demo, an imported executable model). */
+export function openModel(text: string): CanvasModel {
+  return call("open_model", () => wasmOpenModel(text));
+}
+
+/** The text to PERSIST for a canvas model — the neutral model plus its format
+ *  marker. Every storage write goes through here; `project` is export + run. */
+export function writeArchive(model: CanvasModel): string {
+  return call("write_archive", () => wasmWriteArchive(JSON.stringify(model)));
+}
+
+/** Project the canvas editing model into a bert-core WorldModel (JSON) — the
+ *  Mobus export and the executable projection `run` consumes. NOT the archive
+ *  (#140): it is lossy on Bunge's `mere`/`field` and Klir's `@directed`. */
 export function project(model: CanvasModel): unknown {
   return call("project", () => wasmProject(JSON.stringify(model)));
 }

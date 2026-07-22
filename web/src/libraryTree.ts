@@ -48,13 +48,24 @@ function readRefs(json: string): ParsedRefs {
   try {
     const parsed = JSON.parse(json) as {
       model_id?: unknown;
+      // The neutral archive keys its elements `things` and carries the child
+      // reference as an object (label + id); the legacy WorldModel keys them
+      // `systems` and carries the bare id string (#140). Both generations sit
+      // in one library, so the listing reads both — a record whose format it
+      // could not read would silently flatten its children to roots.
+      things?: { child_model?: unknown }[];
       systems?: { child_model?: unknown }[];
     };
+    const archived = (Array.isArray(parsed.things) ? parsed.things : []).flatMap((t) => {
+      const ref = t?.child_model as { id?: unknown } | undefined;
+      return typeof ref?.id === "string" ? [ref.id] : [];
+    });
+    const legacy = (Array.isArray(parsed.systems) ? parsed.systems : []).flatMap((s) =>
+      typeof s?.child_model === "string" ? [s.child_model] : [],
+    );
     return {
       id: typeof parsed.model_id === "string" ? parsed.model_id : null,
-      refs: (Array.isArray(parsed.systems) ? parsed.systems : []).flatMap((s) =>
-        typeof s?.child_model === "string" ? [s.child_model] : [],
-      ),
+      refs: [...archived, ...legacy],
     };
   } catch {
     return { id: null, refs: [] };
