@@ -3,6 +3,8 @@ import {
   ready,
   runForced,
   toCanvas,
+  openModel,
+  writeArchive,
   project,
   parseCsv,
   analyzeCanvas,
@@ -363,7 +365,9 @@ function Workspace() {
   async function importModel(json: string) {
     if (!guardDiscard() || !(await flushWalk())) return;
     try {
-      const cm = toCanvas(json);
+      // Either generation may arrive here — a neutral archive, or a legacy
+      // WorldModel someone exported before #140. The kernel decides which.
+      const cm = openModel(json);
       setDemo(null);
       setCanvasModel(cm);
       setManifest({ model: "", data: "", t: 12, mapping: [] });
@@ -519,9 +523,12 @@ function Workspace() {
     // name is a copy, and a copy must not inherit its origin's identity — clear
     // it so a later decomposition mints a fresh one. Re-saving the same slot
     // keeps the id (that's what keeps a walked child's parent reference alive).
-    const world = project(canvasModel) as { model_id?: string };
-    if (currentName && stem !== currentName) delete world.model_id;
-    const json = JSON.stringify(world, null, 2);
+    // #140: storage writes the NEUTRAL model. `project` stays the Mobus
+    // export and the executable projection — it is lossy on Bunge's `mere` and
+    // `field` and Klir's `@directed`, so it must never be what we archive.
+    const copy = { ...canvasModel } as CanvasModel & { model_id?: string };
+    if (currentName && stem !== currentName) delete copy.model_id;
+    const json = writeArchive(copy);
     try {
       if (saveTarget === "library") {
         await saveModel(stem, json);
@@ -567,7 +574,7 @@ function Workspace() {
     if (!dirHandle) return;
     if (!guardDiscard() || !(await flushWalk())) return;
     try {
-      const cm = toCanvas(await readModelFile(dirHandle, name));
+      const cm = openModel(await readModelFile(dirHandle, name));
       setDemo(null);
       setCanvasModel(cm);
       setManifest({ model: "", data: "", t: 12, mapping: [] });
@@ -593,7 +600,7 @@ function Workspace() {
   async function loadFromLibrary(name: string) {
     if (!guardDiscard() || !(await flushWalk())) return;
     try {
-      const cm = toCanvas(await loadModel(name));
+      const cm = openModel(await loadModel(name));
       setDemo(null);
       setCanvasModel(cm);
       setManifest({ model: "", data: "", t: 12, mapping: [] });
@@ -927,7 +934,7 @@ function Workspace() {
     try {
       for (const seg of walk) {
         if (seg.dirty && seg.currentName) {
-          await saveModel(seg.currentName, JSON.stringify(project(seg.canvas), null, 2));
+          await saveModel(seg.currentName, writeArchive(seg.canvas));
         }
       }
       return true;
@@ -1000,7 +1007,7 @@ function Workspace() {
           t.id === thing.id ? { ...thing, child_model: { name, id: out.ok.child_id } } : t,
         ),
       };
-      await saveModel(parent.name, JSON.stringify(project(stamped), null, 2));
+      await saveModel(parent.name, writeArchive(stamped));
       await refreshLibrary();
       setCanvasModel(stamped);
       setCurrentName(parent.name);
@@ -1048,7 +1055,7 @@ function Workspace() {
         setToast(row?.message ?? `child model ${ref.id} could not be resolved`);
         return;
       }
-      const cm = toCanvas(json);
+      const cm = openModel(json);
       setWalk((w) => [
         ...w,
         {
@@ -1105,11 +1112,11 @@ function Workspace() {
     try {
       const saves = (async () => {
         if (dirty && currentName) {
-          await saveModel(currentName, JSON.stringify(project(canvasModel), null, 2));
+          await saveModel(currentName, writeArchive(canvasModel));
         }
         for (const seg of walk.slice(index + 1)) {
           if (seg.dirty && seg.currentName) {
-            await saveModel(seg.currentName, JSON.stringify(project(seg.canvas), null, 2));
+            await saveModel(seg.currentName, writeArchive(seg.canvas));
           }
         }
       })();

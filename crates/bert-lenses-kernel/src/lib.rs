@@ -14,3 +14,4 @@
 //! The exact JSON shapes this boundary returns are frozen in `API.md`.
 
 pub mod api;
+pub mod archive;

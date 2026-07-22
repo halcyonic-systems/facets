@@ -10,6 +10,16 @@ function modelJson(id: string | null, refs: string[] = []): string {
   });
 }
 
+// The #140 neutral archive: elements keyed `things`, the child reference an
+// object (label + id) rather than a bare string.
+function archiveJson(id: string | null, refs: string[] = []): string {
+  return JSON.stringify({
+    format: "bert-lenses/canvas@1",
+    ...(id === null ? {} : { model_id: id }),
+    things: refs.map((r) => ({ child_model: { name: "child", id: r } })),
+  });
+}
+
 function rec(
   name: string,
   savedAt: number,
@@ -18,6 +28,37 @@ function rec(
 ): LibraryRecordLike {
   return modelId === undefined ? { name, savedAt, json } : { name, savedAt, json, modelId };
 }
+
+describe("buildLibraryTree across storage generations (#140)", () => {
+  it("nests a child referenced by an ARCHIVE parent", () => {
+    const tree = buildLibraryTree([
+      rec("parent", 2, archiveJson("P", ["C"])),
+      rec("child", 1, archiveJson("C"), "C"),
+    ]);
+    expect(tree.map((n) => n.name)).toEqual(["parent"]);
+    expect(tree[0].children.map((n) => n.name)).toEqual(["child"]);
+  });
+
+  // One library holds both generations during and after migration. Reading only
+  // one shape would silently flatten the other's children into roots — a
+  // listing that looks fine and is wrong.
+  it("nests across generations in either direction", () => {
+    const mixed = buildLibraryTree([
+      rec("archive-parent", 4, archiveJson("AP", ["LC"])),
+      rec("legacy-child", 3, modelJson("LC"), "LC"),
+      rec("legacy-parent", 2, modelJson("LP", ["AC"])),
+      rec("archive-child", 1, archiveJson("AC"), "AC"),
+    ]);
+    expect(mixed.map((n) => n.name)).toEqual(["archive-parent", "legacy-parent"]);
+    expect(mixed[0].children.map((n) => n.name)).toEqual(["legacy-child"]);
+    expect(mixed[1].children.map((n) => n.name)).toEqual(["archive-child"]);
+  });
+
+  it("counts a missing referent the same whichever generation names it", () => {
+    const tree = buildLibraryTree([rec("parent", 1, archiveJson("P", ["gone"]))]);
+    expect(tree[0].missingReferents).toBe(1);
+  });
+});
 
 describe("buildLibraryTree", () => {
   it("lists unreferenced models as roots, newest first", () => {

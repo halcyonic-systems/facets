@@ -1,0 +1,248 @@
+//! The archive seam (bert-lenses#140, ADR 0004): what a saved model IS on disk.
+//!
+//! An archive must not be a lens's projection. The library used to persist
+//! `project(canvas)` — a `WorldModel`, which is Mobus's lens format — and that
+//! seam silently destroyed the non-Mobus vocabulary: Bunge's `mere` relations
+//! and `field` kind, Klir's `@directed`, and the authored system type. The
+//! archive is therefore the NEUTRAL model, `CanvasModel`, which carries the
+//! union of all three traditions' words with each tagged to its own.
+//!
+//! `project` keeps its job — Mobus export, and the executable projection the
+//! compose engine runs (the 8-tuple carries T and Δt, which is what running
+//! requires). It simply stops being what the library writes.
+//!
+//! Reading is total over both formats: every file the app ever wrote must keep
+//! opening. Format is decided by SHAPE, with the marker as corroboration rather
+//! than the gate — a hand-written or hand-edited file that omits the marker is
+//! still read correctly, because refusing it would strand real user data.
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use bert_core::{ModelId, WorldModel};
+
+use bert_canvas::canvas::{to_canvas, CanvasModel};
+
+/// The archive's format marker. Migration is necessarily destructive — what an
+/// old `WorldModel` file already dropped cannot be recovered — so the marker's
+/// job is not to enable upgrade-in-place; it is to let a future reader tell
+/// generations apart without guessing from shape alone.
+pub const FORMAT: &str = "bert-lenses/canvas@1";
+
+/// A written archive: the neutral model, plus the marker that names it.
+/// `flatten` keeps the model's own fields at the top level, so an archive is a
+/// `CanvasModel` with one extra key — readable by anything that already reads
+/// a canvas model, marker or not.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Archive {
+    pub format: String,
+    #[serde(flatten)]
+    pub model: CanvasModel,
+}
+
+/// The text to persist for `model`.
+pub fn write(model: &CanvasModel) -> Result<String, String> {
+    let archive = Archive {
+        format: FORMAT.to_string(),
+        model: model.clone(),
+    };
+    serde_json::to_string_pretty(&archive).map_err(|e| format!("could not write archive: {e}"))
+}
+
+/// Which generation a stored text belongs to. Shape decides: the neutral model
+/// keys its elements `things`, the Mobus projection keys them `systems`.
+enum Shape {
+    Canvas,
+    Legacy,
+}
+
+fn shape_of(text: &str) -> Result<Shape, String> {
+    let value: Value =
+        serde_json::from_str(text).map_err(|e| format!("not a model file: invalid JSON: {e}"))?;
+    let object = value
+        .as_object()
+        .ok_or_else(|| "not a model file: expected a JSON object".to_string())?;
+    // The marker is corroboration, never the gate (see the module note).
+    if object.contains_key("things") {
+        Ok(Shape::Canvas)
+    } else if object.contains_key("systems") {
+        Ok(Shape::Legacy)
+    } else {
+        Err("not a model file: no `things` (archive) or `systems` (legacy) key".to_string())
+    }
+}
+
+/// Open a stored model, whichever generation wrote it. A legacy `WorldModel`
+/// comes back through `to_canvas` exactly as before — the content it lost was
+/// lost when it was WRITTEN, and reading cannot restore it.
+pub fn read(text: &str) -> Result<CanvasModel, String> {
+    match shape_of(text)? {
+        Shape::Canvas => serde_json::from_str::<CanvasModel>(text)
+            .map_err(|e| format!("could not read archive: {e}")),
+        Shape::Legacy => {
+            let world: WorldModel = serde_json::from_str(text)
+                .map_err(|e| format!("could not read legacy model: {e}"))?;
+            Ok(to_canvas(&world))
+        }
+    }
+}
+
+/// A stored model's stable identity, whichever generation wrote it. The store
+/// layer keys records and resolves `decomposes` references by this, and it must
+/// answer for a file read out of a bare working folder — where there is no
+/// record to denormalize into. That requirement is precisely why the archive is
+/// self-describing JSON rather than SL (ADR 0004, decision 2).
+pub fn identity(text: &str) -> Option<ModelId> {
+    match shape_of(text).ok()? {
+        Shape::Canvas => serde_json::from_str::<CanvasModel>(text).ok()?.model_id,
+        Shape::Legacy => serde_json::from_str::<WorldModel>(text).ok()?.model_id,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bert_canvas::canvas::{project, Kind, Kingdom, Lens, Relation, Role, SystemType, Thing};
+
+    /// A model wearing every word the old archive destroyed.
+    fn lossy_model() -> CanvasModel {
+        let mut m = CanvasModel {
+            lens: Lens::Bunge,
+            model_id: None,
+            things: Vec::new(),
+            relations: Vec::new(),
+            boundary: Default::default(),
+            system_type: SystemType {
+                kingdom: Some(Kingdom::Concrete),
+                genus: None,
+                domain: Some("Social".to_string()),
+            },
+            name: Some("two-thing".to_string()),
+            time_unit: None,
+        };
+        m.things.push(Thing {
+            id: 1,
+            name: "a".into(),
+            x: 0.0,
+            y: 0.0,
+            role: Role::Component,
+            primitive: None,
+            interface: false,
+            child_model: None,
+            stock_unit: String::new(),
+        });
+        m.things.push(Thing {
+            id: 2,
+            name: "b".into(),
+            x: 10.0,
+            y: 0.0,
+            role: Role::Component,
+            primitive: None,
+            interface: false,
+            child_model: None,
+            stock_unit: String::new(),
+        });
+        m.relations.push(Relation {
+            id: 1,
+            a: 1,
+            b: 2,
+            name: "acts".into(),
+            is_bond: true,
+            kind: Kind::Field,
+            klir_directed: true,
+        });
+        m.relations.push(Relation {
+            id: 2,
+            a: 1,
+            b: 2,
+            name: "older than".into(),
+            is_bond: false,
+            kind: Kind::Unspecified,
+            klir_directed: false,
+        });
+        m
+    }
+
+    /// The defect this seam exists to fix: everything the Mobus projection
+    /// destroys survives a write/read round trip through the archive.
+    #[test]
+    fn archive_keeps_what_the_projection_destroys() {
+        let before = lossy_model();
+        let after = read(&write(&before).unwrap()).unwrap();
+
+        assert_eq!(after.system_type, before.system_type, "Bunge's kingdom/genus");
+        assert_eq!(after.relations.len(), 2, "the mere relation survives");
+        assert!(
+            after.relations.iter().any(|r| !r.is_bond),
+            "Bunge's B̄ — a relation that holds without acting"
+        );
+        assert!(
+            after.relations.iter().any(|r| r.kind == Kind::Field),
+            "Bunge's field kind, uncollapsed"
+        );
+        assert!(
+            after.relations.iter().any(|r| r.klir_directed),
+            "Klir's observer declaration"
+        );
+        assert_eq!(after.lens, before.lens);
+    }
+
+    /// The same model through the OLD archive path, pinned as a regression
+    /// witness: this is what was being lost on every save.
+    #[test]
+    fn the_legacy_path_still_loses_exactly_what_it_lost() {
+        let before = lossy_model();
+        let world = project(&before);
+        let after = to_canvas(&world);
+
+        assert!(
+            after.relations.iter().all(|r| r.is_bond),
+            "legacy: the mere relation is gone"
+        );
+        assert!(
+            !after.relations.iter().any(|r| r.kind == Kind::Field),
+            "legacy: field collapsed"
+        );
+        assert!(
+            !after.relations.iter().any(|r| r.klir_directed),
+            "legacy: the observer declaration is gone"
+        );
+        assert_eq!(
+            after.system_type,
+            SystemType::default(),
+            "legacy: the authored system type is gone"
+        );
+    }
+
+    #[test]
+    fn reads_a_legacy_world_model_file() {
+        let world = project(&lossy_model());
+        let text = serde_json::to_string(&world).unwrap();
+        let opened = read(&text).unwrap();
+        assert_eq!(opened.things.len(), 2, "legacy files keep opening");
+    }
+
+    #[test]
+    fn an_archive_carries_its_marker_and_reads_without_one() {
+        let text = write(&lossy_model()).unwrap();
+        assert!(text.contains(FORMAT), "the generation is named in the file");
+
+        // Shape decides, so a marker-less canvas file still opens — real files
+        // get hand-edited, and refusing them would strand user data.
+        let mut value: Value = serde_json::from_str(&text).unwrap();
+        value.as_object_mut().unwrap().remove("format");
+        let opened = read(&serde_json::to_string(&value).unwrap()).unwrap();
+        assert_eq!(opened.relations.len(), 2);
+    }
+
+    #[test]
+    fn identity_answers_for_both_generations_and_refuses_neither_quietly() {
+        let mut m = lossy_model();
+        m.model_id = Some(ModelId::mint());
+
+        assert_eq!(identity(&write(&m).unwrap()), m.model_id, "archive");
+        let legacy = serde_json::to_string(&project(&m)).unwrap();
+        assert_eq!(identity(&legacy), m.model_id, "legacy");
+        assert_eq!(identity("{\"nope\":1}"), None, "not a model file");
+        assert_eq!(identity("not json"), None);
+    }
+}
