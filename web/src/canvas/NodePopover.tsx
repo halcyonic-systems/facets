@@ -85,8 +85,9 @@ export function NodePopover({
           re-cuttable cut. A decomposed component stays put — its child model
           is anchored to its being in 𝒞. */}
       {lens === "Bunge" && (
+        <>
         <Row>
-          <span style={{ color: "var(--text-secondary)" }}>side of the cut</span>
+          <span style={{ color: "var(--text-secondary)" }}>cut</span>
           <div className="flex gap-1" title={
             thing.child_model
               ? "this component decomposes into a child model — the reference class holds it in 𝒞"
@@ -96,6 +97,7 @@ export function NodePopover({
               active={isComponent}
               disabled={!!thing.child_model && !isComponent}
               onClick={() => !isComponent && onUpdateThing({ ...thing, role: "Component" })}
+              title="re-cut: put this thing inside the cut (𝒞 — the composition)"
             >
               𝒞
             </SmallButton>
@@ -103,11 +105,16 @@ export function NodePopover({
               active={!isComponent}
               disabled={!!thing.child_model && isComponent}
               onClick={() => isComponent && onUpdateThing({ ...thing, role: "Environment" })}
+              title="re-cut: put this thing outside the cut (ℰ — the environment)"
             >
               ℰ
             </SmallButton>
           </div>
         </Row>
+        <p className="mb-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+          re-cut — the cut is yours to draw; ℰ and 𝒮 follow from it
+        </p>
+        </>
       )}
       {lens === "Mobus" && isComponent && (
         <Row>

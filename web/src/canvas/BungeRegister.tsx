@@ -448,7 +448,7 @@ function InlineThingEditor({
           />
         </Row>
         <Row>
-          <span style={{ color: "var(--text-secondary)" }}>side of the cut</span>
+          <span style={{ color: "var(--text-secondary)" }}>cut</span>
           <div
             className="flex gap-1"
             title={
@@ -461,6 +461,7 @@ function InlineThingEditor({
               active={isComponent}
               disabled={!!thing.child_model && !isComponent}
               onClick={() => !isComponent && onUpdate({ ...thing, role: "Component" })}
+              title="re-cut: put this thing inside the cut (𝒞 — the composition)"
             >
               𝒞
             </SmallButton>
@@ -468,11 +469,15 @@ function InlineThingEditor({
               active={!isComponent}
               disabled={!!thing.child_model && isComponent}
               onClick={() => isComponent && onUpdate({ ...thing, role: "Environment" })}
+              title="re-cut: put this thing outside the cut (ℰ — the environment)"
             >
               ℰ
             </SmallButton>
           </div>
         </Row>
+        <p className="mb-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+          re-cut — the cut is yours to draw; ℰ and 𝒮 follow from it
+        </p>
         {decompose && <DecomposeRows decompose={decompose} />}
         <div className="flex justify-between">
           <button onClick={onDelete} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--verdict-error)" }}>
@@ -683,7 +688,8 @@ function CouplingMatrix({
         </div>
       )}
       <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
-        kind of action: e energy · m matter · f field · i informational · &middot; unstated · ∼ mere relation
+        the heavier rule is the cut — 𝒞 before it, ℰ after (re-cut from any thing's editor). kind of
+        action: e energy · m matter · f field · i informational · &middot; unstated · ∼ mere relation
         (holds, does not act) · ↺ self-action — blocks: ℰ-row × 𝒞-col = inputs (M₀ᵣ), 𝒞-row × ℰ-col =
         outputs (Mₛ₀), 𝒞 × 𝒞 = internuncial (Mᵣₛ)
       </p>

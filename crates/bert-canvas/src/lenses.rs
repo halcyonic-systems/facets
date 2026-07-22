@@ -341,7 +341,9 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
 // here in the kernel; the face only typesets counts.
 
 /// One residue line: a count plus its number-agreed noun phrase, so the face
-/// renders `{count} {label}` verbatim and never re-pluralizes.
+/// renders `{count} {label}` verbatim and never re-pluralizes. `count == 0` is
+/// the uncountable line — a single unanswered question that is not a tally of
+/// anything (Bunge's ⊘M); the face renders the label alone.
 #[derive(Serialize, Clone, Debug)]
 pub struct ResidueEntry {
     pub count: usize,
@@ -354,6 +356,15 @@ pub struct ResidueEntry {
 pub struct LensResidue {
     pub hidden: Vec<ResidueEntry>,
     pub unspecified: Vec<ResidueEntry>,
+}
+
+/// An uncountable residue line — the question is asked once and unanswered, so
+/// no tally precedes it. `None` when the lens has no reason to raise it.
+fn residue_flag(raise: bool, label: &str) -> Option<ResidueEntry> {
+    raise.then(|| ResidueEntry {
+        count: 0,
+        label: label.to_string(),
+    })
 }
 
 /// A residue line, number-agreed; `None` when there is nothing to report.
@@ -443,11 +454,11 @@ fn lens_residue(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensResid
             ],
             vec![
                 residue_entry(untyped, "connection kind", "connection kinds"),
-                residue_entry(
-                    usize::from(components > 0),
-                    "mechanism (⊘M — reads as a black box)",
-                    "mechanisms",
-                ),
+                // Uncountable by nature: a model has ONE mechanism question,
+                // and it is unanswered here — so the line reads as the note
+                // does ("no mechanism stated"), never as a tally ("1
+                // mechanism", which read as though one were present).
+                residue_flag(components > 0, "no mechanism stated (⊘M — reads as a black box)"),
             ],
         ),
         // Mobus never projects mere relations (B̄ is Bunge's alone, row 5) and
@@ -1195,8 +1206,9 @@ mod tests {
 
     /// Law: the residue register is per-lens, not nested — Mobus hides the
     /// mere relation Bunge renders, Bunge holds unanswered the kind question
-    /// Klir never asks, and Klir hides the roles both others show. Zero-count
-    /// entries never appear, and labels arrive number-agreed.
+    /// Klir never asks, and Klir hides the roles both others show. Counted
+    /// entries never appear at zero, and their labels arrive number-agreed;
+    /// the one uncountable line (⊘M) carries count 0 by design.
     #[test]
     fn residue_is_per_lens_not_nested() {
         // rich_model: 2 components (no primitives), 1 env thing, endo + exo
@@ -1221,9 +1233,12 @@ mod tests {
             "no primitives, designations, membrane properties, or toggles authored"
         );
         assert_eq!(count(&bunge.unspecified, "connection kinds"), Some(4));
+        // The ⊘M line is the uncountable one (count 0): the face renders it as
+        // prose, so it can never read as "1 mechanism" — present — against the
+        // note's "no mechanism stated".
         assert_eq!(
-            count(&bunge.unspecified, "mechanism (⊘M — reads as a black box)"),
-            Some(1),
+            count(&bunge.unspecified, "no mechanism stated (⊘M — reads as a black box)"),
+            Some(0),
             "a nonempty composition always carries the ⊘M consequence (F2)"
         );
 
@@ -1255,7 +1270,7 @@ mod tests {
         // compose seam), so the ⊘M line is the entire unspecified residue.
         assert_eq!(
             bunge.unspecified.iter().map(|e| e.label.as_str()).collect::<Vec<_>>(),
-            vec!["mechanism (⊘M — reads as a black box)"],
+            vec!["no mechanism stated (⊘M — reads as a black box)"],
         );
         assert_eq!(
             bunge.hidden.iter().find(|e| e.label == "process primitives").map(|e| e.count),

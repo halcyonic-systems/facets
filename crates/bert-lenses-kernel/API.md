@@ -303,6 +303,7 @@ Throws only on unparseable canvas JSON.
 residue). Kernel judgment; the face only typesets `${count} ${label}`:
 ```ts
 type ResidueEntry = { count: number, label: string }  // label arrives number-agreed
+                                                      // count 0 = uncountable line: render the label alone
 type LensResidue = {
   hidden: ResidueEntry[],       // model has it, this lens does not ask that question
   unspecified: ResidueEntry[],  // lens asks a question the model has not answered

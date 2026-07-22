@@ -9,7 +9,15 @@ import {
   checkDecompositionsCanvas,
   decomposeComponent,
 } from "./kernel";
-import type { CanvasModel, IssueTarget, Manifest, RunResultRich, Thing, ValidationIssue } from "./kernel/types";
+import type {
+  CanvasModel,
+  IssueTarget,
+  Manifest,
+  ResidueEntry,
+  RunResultRich,
+  Thing,
+  ValidationIssue,
+} from "./kernel/types";
 import { DEMOS, type Demo } from "./demos";
 import Canvas from "./canvas/Canvas";
 import { edgeGeometry, thingById } from "./canvas/geometry";
@@ -42,6 +50,11 @@ import { buildLibraryTree, flattenLibraryTree, type LibraryNode } from "./librar
 import { mintLibraryName, parentSlotName } from "./libraryNames";
 import { resolveModelRefs } from "./modelResolve";
 import { diagramFilename, exportDiagramSvg, exportDiagramPng } from "./canvas/exportDiagram";
+
+// A residue line, exactly as the kernel worded it. `count === 0` is the
+// uncountable line (Bunge's ⊘M): one unanswered question, not a tally, so no
+// number precedes it.
+const residueLine = (e: ResidueEntry) => (e.count === 0 ? e.label : `${e.count} ${e.label}`);
 
 const today = () => new Date().toISOString().slice(0, 10);
 const LENSES: CanvasModel["lens"][] = ["Klir", "Bunge", "Mobus"];
@@ -1407,9 +1420,13 @@ function Workspace() {
                     <div
                       className={
                         registerActive
-                          ? `absolute bottom-9 right-3 overflow-hidden rounded-lg ${
+                          ? `absolute bottom-9 right-3 max-h-[45vh] max-w-[70%] overflow-hidden rounded-lg ${
                               // #100 harvest: the locator was "way too small"
                               // on 2 of 3 arms — preset sizes, medium default.
+                              // The caps are the harvest residue: on a short
+                              // viewport the large preset climbed over the
+                              // register's own text, so the preset is a
+                              // request the available room still bounds.
                               locSize === "s" ? "h-44 w-72" : locSize === "m" ? "h-64 w-[26rem]" : "h-96 w-[38rem]"
                             }`
                           : "absolute inset-0"
@@ -1592,10 +1609,10 @@ function Workspace() {
                       >
                         {[
                           residue.hidden.length > 0
-                            ? `not visible in this lens: ${residue.hidden.map((e) => `${e.count} ${e.label}`).join(", ")}`
+                            ? `not visible in this lens: ${residue.hidden.map(residueLine).join(", ")}`
                             : null,
                           residue.unspecified.length > 0
-                            ? `unanswered: ${residue.unspecified.map((e) => `${e.count} ${e.label}`).join(", ")}`
+                            ? `unanswered: ${residue.unspecified.map(residueLine).join(", ")}`
                             : null,
                         ]
                           .filter(Boolean)
