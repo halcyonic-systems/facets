@@ -31,7 +31,7 @@ import type {
 import { validateConnection } from "../kernel";
 import { KIND_COLOR } from "./types";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
-import { DecomposeRows, type DecomposeAffordance } from "./NodePopover";
+import { DecomposeRows, type DecomposeAffordance } from "./NodeEditor";
 import { BungeBody, FlowNameField } from "./EdgePopover";
 import { CELL, confirmStripClass, confirmStripStyle, headerCellStyle } from "./registerChrome";
 import {

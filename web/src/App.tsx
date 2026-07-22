@@ -22,7 +22,7 @@ import { DEMOS, type Demo } from "./demos";
 import Canvas from "./canvas/Canvas";
 import { edgeGeometry, thingById } from "./canvas/geometry";
 import { EdgePopover } from "./canvas/EdgePopover";
-import { NodePopover, type DecomposeAffordance } from "./canvas/NodePopover";
+import type { DecomposeAffordance } from "./canvas/NodeEditor";
 import { KlirRegister } from "./canvas/KlirRegister";
 import { BungeRegister } from "./canvas/BungeRegister";
 import { BoundaryPopover } from "./canvas/BoundaryPopover";
@@ -1521,19 +1521,6 @@ function Workspace() {
                         onClose={() => setBoundaryAnchor(null)}
                       />
                     )}
-                    {selectedThing && !registerActive && (
-                      <NodePopover
-                        thing={selectedThing}
-                        lens={canvasModel.lens}
-                        anchor={toScreen({ x: selectedThing.x, y: selectedThing.y })}
-                        onUpdateThing={updateThing}
-                        onDelete={() => deleteThing(selectedThing.id)}
-                        onClose={() => setSelectedThingId(null)}
-                        // The decomposition door (#89 step 5b), inspector-first
-                        // — the case is decided off kernel facts in decomposeFor.
-                        decompose={decomposeFor(selectedThing)}
-                      />
-                    )}
                     {selectedRelation && popoverAnchor && !registerActive && (
                       <EdgePopover
                         relation={selectedRelation}
@@ -1623,7 +1610,7 @@ function Workspace() {
                       className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-mono"
                       style={{ color: "var(--text-muted)" }}
                     >
-                      arm a tool to stamp (Esc disarms) · click a node to edit · drag the handle dot to connect · click a flow to drive it
+                      arm a tool to stamp (Esc disarms) · click a node to edit it in the Element tab · double-click to enter it · drag the handle dot to connect · click a flow to drive it
                     </div>
                     {toast && (
                       <Banner tone="error" className="absolute bottom-3 left-3">
@@ -1720,6 +1707,22 @@ function Workspace() {
                   : undefined
               }
               resetKeys={[canvasModel, demo?.key ?? "import"]}
+              // #122: on the canvas the element editor is DOCKED, so the first
+              // click of a double-click can no longer flash a menu into the
+              // gesture that enters a child. A register carries its own inline
+              // editor, so it keeps the element face and the dock stands down.
+              element={
+                canvasModel && !registerActive
+                  ? {
+                      thing: selectedThing,
+                      lens: canvasModel.lens,
+                      decompose: selectedThing ? decomposeFor(selectedThing) : null,
+                      onUpdate: updateThing,
+                      onDelete: () => selectedThing && deleteThing(selectedThing.id),
+                      onDeselect: () => setSelectedThingId(null),
+                    }
+                  : null
+              }
               focused={inspectorFocused}
               onToggleFocus={() => setInspectorFocused((f) => !f)}
             />
