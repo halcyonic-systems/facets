@@ -8,6 +8,7 @@
 # teaches: The least restrictive paradigm: the goal-seeking element reads both the input and the output, combining anticipation with reaction.
 # omits: The essential relationship between x and y, the goal itself, and the partial ordering of the four paradigms by severity of restriction — none of which is structure.
 # note: One of four siblings over ONE fixed composition. Klir varies only what the goal-seeking element is allowed to read; the diff between the four files is the whole lesson.
+# note: Klir partially orders the four paradigms "by the severity of their restrictions", and states that feedback and feedforward are NOT COMPARABLE. Gallery order is not a ranking: informationless is the most restrictive and full-information the least, but the two middle paradigms are incomparable to each other.
 # note: Klir labels the elements A and B; the names here are his own prose terms for them ("goal-implementing element", "goal-seeking element"). x, y and z are his.
 # note: Klir draws x and y as variables on wires, not as things. Rendering the wire's origin and destination as environment things is our construction — the block diagram has no other place to put them.
 # note: No ontological type is asserted. Klir asserts none; these are design frames, and the kingdom would be ours rather than his.

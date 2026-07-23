@@ -56,6 +56,34 @@
       "title": "The two-thing system — a and b act on each other",
       "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §1.2, Definition 1.2, Example, Fig. 1.2",
       "teaches": "The same composition and environment again, with the reciprocal internal structure a⋈b — the third and last of the conceivable internal structures on two things."
+    },
+    {
+      "file": "bunge/coupling-sigma1.sl",
+      "tradition": "bunge",
+      "title": "Coupling graph σ₁ — a symmetric chain",
+      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §2.1, Coupling Graphs and Matrices",
+      "teaches": "The first of Bunge's three coupling examples: a system given as a graph and, equivalently, as a matrix. Every coupling is mutual and excitatory, so the matrix is symmetric and the graph is an undirected chain."
+    },
+    {
+      "file": "bunge/coupling-sigma2.sl",
+      "tradition": "bunge",
+      "title": "Coupling graph σ₂ — a cycle with inhibition",
+      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §2.1, Coupling Graphs and Matrices",
+      "teaches": "Bunge's second coupling example: four components in a directed cycle where two of the four couplings are inhibitory rather than excitatory, entered in the matrix as −1 against +1."
+    },
+    {
+      "file": "bunge/coupling-sigma3.sl",
+      "tradition": "bunge",
+      "title": "Coupling graph σ₃ — self-action and feedback",
+      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §2.1, Coupling Graphs and Matrices",
+      "teaches": "Bunge's third coupling example, and the one that reads differently in two traditions: components 2 and 3 each act on themselves, and act on each other. His caption — \"the loops indicate self action or feedback\" — names both at once, and both are legal Bunge structure."
+    },
+    {
+      "file": "klir/criminal-court.sl",
+      "tradition": "klir",
+      "title": "Criminal courts and probation, New York State",
+      "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 4, book pp. 77–78, Fig. 4.7",
+      "teaches": "A structure system in Klir's own sense: five elements, ten directed variables, and a feedback edge, over an institutional domain rather than a physical one. Each variable is an output of exactly one element — Klir's own legality rule for structure systems, checkable against this model."
     }
   ]
 }
