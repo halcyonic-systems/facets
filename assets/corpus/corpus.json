@@ -7,6 +7,55 @@
       "title": "Students in a course",
       "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 2, Table 2.1 and Table 2.2, Fig. 2.2a",
       "teaches": "An equivalence relation on a named set, given by Klir as a set, as a matrix, and as a node-edge diagram — the same system in three registers, with the relation partitioning the set into equivalence classes."
+    },
+    {
+      "file": "klir/goal-oriented-informationless.sl",
+      "tradition": "klir",
+      "title": "Goal-oriented systems — the Informationless paradigm",
+      "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 10 §10.2, Fig. 10.1",
+      "teaches": "The most restrictive of Klir's four goal-oriented paradigms: the goal-seeking element emits its variable blind, receiving neither the input nor the output it is trying to influence."
+    },
+    {
+      "file": "klir/goal-oriented-feedback.sl",
+      "tradition": "klir",
+      "title": "Goal-oriented systems — the Feedback paradigm",
+      "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 10 §10.2, Fig. 10.1",
+      "teaches": "The goal-seeking element reads the output variable, so it can react to undesirable changes in the output but has no mechanism for anticipating them."
+    },
+    {
+      "file": "klir/goal-oriented-feedforward.sl",
+      "tradition": "klir",
+      "title": "Goal-oriented systems — the Feedforward paradigm",
+      "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 10 §10.2, Fig. 10.1",
+      "teaches": "The goal-seeking element reads the input variable, letting it anticipate the output rather than only react to it."
+    },
+    {
+      "file": "klir/goal-oriented-full-information.sl",
+      "tradition": "klir",
+      "title": "Goal-oriented systems — the Full-information paradigm",
+      "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 10 §10.2, Fig. 10.1",
+      "teaches": "The least restrictive paradigm: the goal-seeking element reads both the input and the output, combining anticipation with reaction."
+    },
+    {
+      "file": "bunge/two-thing-ab.sl",
+      "tradition": "bunge",
+      "title": "The two-thing system — a acts on b",
+      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §1.2, Definition 1.2, Example, Fig. 1.2",
+      "teaches": "The simplest possible system in Bunge's words: two connected things in an environment lumped into a single thing, with the internal structure a▷b — a acts on b, and not conversely."
+    },
+    {
+      "file": "bunge/two-thing-ba.sl",
+      "tradition": "bunge",
+      "title": "The two-thing system — b acts on a",
+      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §1.2, Definition 1.2, Example, Fig. 1.2",
+      "teaches": "The same composition and environment as its siblings, with the internal structure reversed to b▷a — showing that structure, not composition, is what distinguishes these systems."
+    },
+    {
+      "file": "bunge/two-thing-bidirectional.sl",
+      "tradition": "bunge",
+      "title": "The two-thing system — a and b act on each other",
+      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §1.2, Definition 1.2, Example, Fig. 1.2",
+      "teaches": "The same composition and environment again, with the reciprocal internal structure a⋈b — the third and last of the conceivable internal structures on two things."
     }
   ]
 }

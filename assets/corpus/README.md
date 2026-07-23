@@ -23,6 +23,14 @@ here without perturbing a golden.
 | File | Author | Citation | Teaches | Omits |
 |---|---|---|---|---|
 | `klir/students-in-a-course.sl` | George Klir | *Facets of Systems Science*, 2nd ed. (2001), Ch. 2, Table 2.1 and Table 2.2, Fig. 2.2a | An equivalence relation on a named set, given as a set, a matrix, and a node-edge diagram — the same system in three registers, with the relation partitioning the set into equivalence classes. | The other three characteristics in Table 2.1 (major, age, full-time status) and the relations they induce; Klir's `Rm` on majors is a sibling lesson, not this one. |
+| `klir/goal-oriented-*.sl` (4) | George Klir | *Facets of Systems Science*, 2nd ed. (2001), Ch. 10 §10.2, Fig. 10.1 | Four paradigms over one fixed composition, varying only what the goal-seeking element may read: nothing, the output, the input, or both. | The essential relationship between x and y, the goal itself, and the partial ordering of the paradigms by severity of restriction. |
+| `bunge/two-thing-*.sl` (3) | Mario Bunge | *Treatise on Basic Philosophy*, Vol. 4 (1979), Ch. 1 §1.2, Definition 1.2, Example, Fig. 1.2 | "The simplest possible system" in his words — two connected things in an environment lumped into one thing, under each of the three conceivable internal structures. | The caveat that not every conceivable structure is nomologically possible; and the quantitative model of §2.2. |
+
+## The variant sets are the point
+
+Two of the three groups above are **sibling sets that teach by diff**: one composition held fixed, the structure varied, the difference carrying the lesson. Klir does it with four goal-oriented paradigms; Bunge does it with three internal structures on two things. Neither cites the other for the device.
+
+That is why they are separate indexed entries rather than one entry with variants — a reader should be able to open them side by side and see that the *only* thing that changed is the structure.
 
 ## Adding an entry
 
