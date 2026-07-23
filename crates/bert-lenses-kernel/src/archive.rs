@@ -246,3 +246,71 @@ mod tests {
         assert_eq!(identity("not json"), None);
     }
 }
+
+#[cfg(test)]
+mod decomposition_seam {
+    use super::*;
+    use bert_canvas::canvas::{decompose_thing, CanvasModel, Kind, Lens, Relation, Role, Thing};
+
+    fn thing(id: u64, name: &str, role: Role) -> Thing {
+        Thing {
+            id,
+            name: name.into(),
+            x: id as f32 * 100.0,
+            y: 0.0,
+            role,
+            primitive: None,
+            interface: false,
+            child_model: None,
+            stock_unit: String::new(),
+        }
+    }
+
+    /// The decomposition door stamps the parent with the child's minted id and
+    /// stores the child separately. The child now goes to storage through
+    /// `read` → `write` (it is derived as a WorldModel), so if that path dropped
+    /// the identity, every parent would reference a child the store cannot find.
+    /// Pin it: the id the parent is stamped with is the id the stored child
+    /// answers to.
+    #[test]
+    fn a_derived_child_keeps_the_identity_its_parent_is_stamped_with() {
+        let mut m = CanvasModel {
+            lens: Lens::Mobus,
+            model_id: None,
+            // Intake and Output touch the environment, so they are interface
+            // components; Furnace is INTERIOR — the only kind v1's boundary
+            // contract will decompose.
+            things: vec![
+                thing(1, "Furnace", Role::Component),
+                thing(2, "Supply", Role::Environment),
+                thing(3, "Product", Role::Environment),
+                thing(4, "Intake", Role::Component),
+                thing(5, "Output", Role::Component),
+            ],
+            relations: vec![
+                Relation { id: 1, a: 2, b: 4, name: "crude".into(), is_bond: true, kind: Kind::Matter, klir_directed: false },
+                Relation { id: 2, a: 4, b: 1, name: "feed".into(), is_bond: true, kind: Kind::Matter, klir_directed: false },
+                Relation { id: 3, a: 1, b: 5, name: "hot".into(), is_bond: true, kind: Kind::Matter, klir_directed: false },
+                Relation { id: 4, a: 5, b: 3, name: "refined".into(), is_bond: true, kind: Kind::Matter, klir_directed: false },
+            ],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: Some("Refinery".into()),
+            time_unit: None,
+        };
+        m.things[0].primitive = Some(bert_core::ProcessPrimitive::Combining);
+
+        let child = decompose_thing(&m, 1).expect("the door opens for an interior component");
+        let stamped_id = child.model_id.expect("the kernel mints the newborn an identity");
+
+        // Exactly what the face now does with `child_json`.
+        let child_json = serde_json::to_string(&child).unwrap();
+        let stored = write(&read(&child_json).unwrap()).unwrap();
+
+        assert_eq!(
+            identity(&stored),
+            Some(stamped_id),
+            "the stored child must answer to the id its parent was stamped with"
+        );
+    }
+}
