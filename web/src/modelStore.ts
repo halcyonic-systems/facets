@@ -10,6 +10,7 @@
 // identity while the name stays a display label.
 
 import { modelIdentity } from "./kernel";
+import type { ArchiveText } from "./kernel";
 
 const DB_NAME = "bert-lenses";
 const STORE = "models";
@@ -57,8 +58,12 @@ async function withStore<T>(
   }
 }
 
-/** Store `json` under `name`, overwriting any model already saved there. */
-export async function saveModel(name: string, json: string): Promise<void> {
+/** Store `json` under `name`, overwriting any model already saved there.
+ *
+ *  Takes `ArchiveText`, not `string` (#140, ADR 0004): an archive must not be a
+ *  lens's projection, and the type is what enforces it — a WorldModel cannot
+ *  reach this function without a deliberate cast. */
+export async function saveModel(name: string, json: ArchiveText): Promise<void> {
   const record: ModelRecord = { name, json, savedAt: Date.now() };
   const id = identityOf(json);
   if (id) record.modelId = id;

@@ -92,6 +92,41 @@ after rejecting it there would be incoherent.
   discarded; a Klir behavior function is oriented by his input/output
   declaration, which the old archive hardcoded to false.
 
+## Enforcement — structural, not a rule
+
+The defect went unnoticed because the encoding was re-decided at seven call
+sites. A convention ("remember to use the archive") or a grep gate would both
+have been bandaids: a grep cannot tell an in-memory projection from a stored
+one, and it false-positives on the word `project()` appearing in prose. The seam
+is therefore sealed by construction:
+
+- **Writes are type-sealed.** `writeArchive` returns a branded `ArchiveText`,
+  and `saveModel` / `writeModel` accept only that type. `JSON.stringify(project(m))`
+  is a plain `string`, so persisting a projection is a **compile error**. Writes
+  are the destructive direction, so this is where the guarantee belongs.
+- **There is only one reader.** `open_model` is a superset of the
+  WorldModel-only conversion, so the face no longer exposes a second reader to
+  reach for by mistake — `toCanvas` is gone from `web/src/kernel/index.ts`
+  (the wasm export remains, the API being append-only). Bundled demos, which
+  are `WorldModel`s by design, read through the same door as everything else.
+
+`project` keeps its legitimate in-memory uses (the analyst context, export, the
+run path) and needs no guard, because it can no longer reach storage.
+
+**The asymmetry is deliberate: writes are sealed, reads are not.** A wrong write
+destroys content permanently and silently — that is the defect this ADR exists
+for. A wrong read is recoverable and self-announcing: the model on screen is
+visibly wrong and the file on disk is untouched. Sealing reads would also be
+weaker in kind, since a reader's input is any string that arrives from storage,
+so there is no producer to brand. What removes the risk instead is that there is
+now only **one** reader (`open_model`, a superset of the WorldModel-only
+conversion) — a second reader is what someone reaches for by mistake, and there
+isn't one.
+
+Revisit if either premise changes: if a third stored generation ever appears, or
+if a reader gains a destructive side effect (an in-place upgrade-on-open, say),
+reads stop being cheap to get wrong and want their own guarantee.
+
 ## Human readability, without a second archive
 
 The readability SL offers is real and should not be lost. It is recovered as a

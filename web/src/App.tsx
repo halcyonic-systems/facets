@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ready,
   runForced,
-  toCanvas,
   openModel,
   writeArchive,
   project,
@@ -345,7 +344,7 @@ function Workspace() {
   const pick = async (d: Demo) => {
     if (!guardDiscard() || !(await flushWalk())) return;
     setDemo(d);
-    setCanvasModel(spaceOut(toCanvas(d.modelJson))); // load the demo onto the canvas as a diagram
+    setCanvasModel(spaceOut(openModel(d.modelJson))); // load the demo onto the canvas as a diagram
     setManifest(d.manifest);
     setDt(d.manifest.dt ?? 1);
     setT(d.t);
@@ -528,6 +527,10 @@ function Workspace() {
     // `field` and Klir's `@directed`, so it must never be what we archive.
     const copy = { ...canvasModel } as CanvasModel & { model_id?: string };
     if (currentName && stem !== currentName) delete copy.model_id;
+    // Encoded here rather than via `persist` because one text serves two
+    // destinations below (library slot or working folder) and the save-as-copy
+    // rule must drop identity BEFORE it is written. These are the only two
+    // places in the app that turn a model into stored text.
     const json = writeArchive(copy);
     try {
       if (saveTarget === "library") {
@@ -925,6 +928,11 @@ function Workspace() {
     return window.confirm("Discard unsaved changes to the current model?");
   }
 
+  // #140: the ONE place a model becomes stored text. Every storage write
+  // funnels here, so the archive encoding is chosen once — the seam that was
+  // spread across seven separate call sites before it had a name.
+  const persist = (name: string, model: CanvasModel) => saveModel(name, writeArchive(model));
+
   // Walk-reset autosave (#111): every path that discards the walk gets the
   // breadcrumb-exit discipline — dirty ancestor segments are saved before
   // setWalk([]) throws their snapshots away. Dirty-only, name-required, same
@@ -934,7 +942,7 @@ function Workspace() {
     try {
       for (const seg of walk) {
         if (seg.dirty && seg.currentName) {
-          await saveModel(seg.currentName, writeArchive(seg.canvas));
+          await persist(seg.currentName, seg.canvas);
         }
       }
       return true;
@@ -1000,14 +1008,19 @@ function Workspace() {
       }
       taken.add(parent.name);
       const name = mintLibraryName(out.ok.child_name || "subsystem", taken);
-      await saveModel(name, out.ok.child_json);
+      // The kernel derives the newborn as a WorldModel (`child.systems`), so it
+      // was still landing in storage in the format #140 demoted. Nothing is
+      // lost either way — a newborn carries no `mere`, `field`, or `@directed`
+      // yet — but a write path that emits the old format is exactly how the old
+      // format comes back.
+      await persist(name, openModel(out.ok.child_json));
       const stamped: CanvasModel = {
         ...canvasModel,
         things: canvasModel.things.map((t) =>
           t.id === thing.id ? { ...thing, child_model: { name, id: out.ok.child_id } } : t,
         ),
       };
-      await saveModel(parent.name, writeArchive(stamped));
+      await persist(parent.name, stamped);
       await refreshLibrary();
       setCanvasModel(stamped);
       setCurrentName(parent.name);
@@ -1112,11 +1125,11 @@ function Workspace() {
     try {
       const saves = (async () => {
         if (dirty && currentName) {
-          await saveModel(currentName, writeArchive(canvasModel));
+          await persist(currentName, canvasModel);
         }
         for (const seg of walk.slice(index + 1)) {
           if (seg.dirty && seg.currentName) {
-            await saveModel(seg.currentName, writeArchive(seg.canvas));
+            await persist(seg.currentName, seg.canvas);
           }
         }
       })();

@@ -30,6 +30,7 @@ import {
   renameModel,
 } from "./modelStore";
 import { buildLibraryTree } from "./libraryTree";
+import type { ArchiveText } from "./kernel";
 
 const CHILD_ID = "3mJr7AoUXx2Wqd";
 const PARENT_ID = "9wVAwv8pqPCVsK";
@@ -37,8 +38,13 @@ const PARENT_ID = "9wVAwv8pqPCVsK";
 // The #116 field case: a component born "home" was decomposed (child minted
 // into slot "home-2" by collision suffix), then renamed "living room" on the
 // canvas — the slot kept the birth name.
-const childJson = JSON.stringify({ model_id: CHILD_ID, name: "home", systems: [] });
-const parentJson = JSON.stringify({
+// These fixtures ARE stored text, so they wear the storage brand. The cast is
+// the test standing in for `writeArchive`; production code cannot skip it
+// (#140) — which is why the only compile errors this seal produced were here.
+const stored = (v: unknown) => JSON.stringify(v) as ArchiveText;
+
+const childJson = stored({ model_id: CHILD_ID, name: "home", systems: [] });
+const parentJson = stored({
   model_id: PARENT_ID,
   name: "house",
   systems: [{ name: "living room", child_model: CHILD_ID }],
