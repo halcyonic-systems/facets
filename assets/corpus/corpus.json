@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "file": "klir/students-in-a-course.sl",
+      "tradition": "klir",
+      "title": "Students in a course",
+      "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 2, Table 2.1 and Table 2.2, Fig. 2.2a",
+      "teaches": "An equivalence relation on a named set, given by Klir as a set, as a matrix, and as a node-edge diagram — the same system in three registers, with the relation partitioning the set into equivalence classes."
+    }
+  ]
+}
