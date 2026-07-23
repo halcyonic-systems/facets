@@ -7,6 +7,7 @@
 // run interactively (no headless drive).
 
 import { modelIdentity } from "./kernel";
+import type { ArchiveText } from "./kernel";
 
 interface FileHandleLike {
   createWritable(): Promise<{ write(data: string): Promise<void>; close(): Promise<void> }>;
@@ -39,8 +40,13 @@ export async function pickDirectory(): Promise<DirHandleLike | null> {
   }
 }
 
-/** Write `text` to `<filename>.json` in the folder, creating/truncating it. */
-export async function writeModel(dir: DirHandleLike, filename: string, text: string): Promise<void> {
+/** Write `text` to `<filename>.json` in the folder, creating/truncating it.
+ *  `ArchiveText` for the same reason as `saveModel` (#140, ADR 0004). */
+export async function writeModel(
+  dir: DirHandleLike,
+  filename: string,
+  text: ArchiveText,
+): Promise<void> {
   const handle = await dir.getFileHandle(ext(filename), { create: true });
   const w = await handle.createWritable();
   await w.write(text);

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ready,
   runForced,
-  toCanvas,
   openModel,
   writeArchive,
   project,
@@ -345,7 +344,7 @@ function Workspace() {
   const pick = async (d: Demo) => {
     if (!guardDiscard() || !(await flushWalk())) return;
     setDemo(d);
-    setCanvasModel(spaceOut(toCanvas(d.modelJson))); // load the demo onto the canvas as a diagram
+    setCanvasModel(spaceOut(openModel(d.modelJson))); // load the demo onto the canvas as a diagram
     setManifest(d.manifest);
     setDt(d.manifest.dt ?? 1);
     setT(d.t);

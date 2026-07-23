@@ -92,6 +92,27 @@ after rejecting it there would be incoherent.
   discarded; a Klir behavior function is oriented by his input/output
   declaration, which the old archive hardcoded to false.
 
+## Enforcement — structural, not a rule
+
+The defect went unnoticed because the encoding was re-decided at seven call
+sites. A convention ("remember to use the archive") or a grep gate would both
+have been bandaids: a grep cannot tell an in-memory projection from a stored
+one, and it false-positives on the word `project()` appearing in prose. The seam
+is therefore sealed by construction:
+
+- **Writes are type-sealed.** `writeArchive` returns a branded `ArchiveText`,
+  and `saveModel` / `writeModel` accept only that type. `JSON.stringify(project(m))`
+  is a plain `string`, so persisting a projection is a **compile error**. Writes
+  are the destructive direction, so this is where the guarantee belongs.
+- **There is only one reader.** `open_model` is a superset of the
+  WorldModel-only conversion, so the face no longer exposes a second reader to
+  reach for by mistake — `toCanvas` is gone from `web/src/kernel/index.ts`
+  (the wasm export remains, the API being append-only). Bundled demos, which
+  are `WorldModel`s by design, read through the same door as everything else.
+
+`project` keeps its legitimate in-memory uses (the analyst context, export, the
+run path) and needs no guard, because it can no longer reach storage.
+
 ## Human readability, without a second archive
 
 The readability SL offers is real and should not be lost. It is recovered as a

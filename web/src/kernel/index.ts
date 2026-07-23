@@ -14,7 +14,6 @@ import init, {
   model_targets as wasmModelTargets,
   mapping_status as wasmMappingStatus,
   run_forced as wasmRunForced,
-  to_canvas as wasmToCanvas,
   open_model as wasmOpenModel,
   write_archive as wasmWriteArchive,
   project as wasmProject,
@@ -155,26 +154,28 @@ export function runForced(
 
 // ---- Phase 2: the canvas seam ------------------------------------------------
 
-/** Load an executable WorldModel onto the canvas as an editing model — the
- *  display-faithful inverse of `project`. Structure only; the run always uses
- *  the original model + CSV + manifest, never a re-projection of the canvas. */
-export function toCanvas(modelJson: string): CanvasModel {
-  return call("to_canvas", () => wasmToCanvas(modelJson));
-}
-
 /** Open a STORED model onto the canvas, whichever generation wrote it (#140,
  *  ADR 0004) — the neutral archive or a legacy WorldModel. Shape decides in
- *  Rust; the face never sniffs a format. Use this for storage; `toCanvas` stays
- *  the explicit conversion for a model known to be a projection (a bundled
- *  demo, an imported executable model). */
+ *  Rust; the face never sniffs a format. This is the ONLY read a stored model
+ *  needs: it is a superset of the WorldModel-only conversion, so there is no
+ *  second reader to reach for by mistake. */
 export function openModel(text: string): CanvasModel {
   return call("open_model", () => wasmOpenModel(text));
 }
 
+/** Text that is known to be a neutral archive (#140, ADR 0004).
+ *
+ *  The brand is the seam's enforcement: storage accepts only this type, and
+ *  only `writeArchive` produces it. A projection — `JSON.stringify(project(m))`
+ *  — is a plain `string` and will not type-check at a storage call, so the
+ *  defect this issue fixed (persisting Mobus's lossy lens format) is now a
+ *  compile error rather than a convention someone has to remember. */
+export type ArchiveText = string & { readonly __archive: unique symbol };
+
 /** The text to PERSIST for a canvas model — the neutral model plus its format
- *  marker. Every storage write goes through here; `project` is export + run. */
-export function writeArchive(model: CanvasModel): string {
-  return call("write_archive", () => wasmWriteArchive(JSON.stringify(model)));
+ *  marker. The only way to make an `ArchiveText`; `project` is export + run. */
+export function writeArchive(model: CanvasModel): ArchiveText {
+  return call("write_archive", () => wasmWriteArchive(JSON.stringify(model))) as ArchiveText;
 }
 
 /** Project the canvas editing model into a bert-core WorldModel (JSON) — the
