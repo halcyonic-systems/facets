@@ -113,6 +113,20 @@ is therefore sealed by construction:
 `project` keeps its legitimate in-memory uses (the analyst context, export, the
 run path) and needs no guard, because it can no longer reach storage.
 
+**The asymmetry is deliberate: writes are sealed, reads are not.** A wrong write
+destroys content permanently and silently — that is the defect this ADR exists
+for. A wrong read is recoverable and self-announcing: the model on screen is
+visibly wrong and the file on disk is untouched. Sealing reads would also be
+weaker in kind, since a reader's input is any string that arrives from storage,
+so there is no producer to brand. What removes the risk instead is that there is
+now only **one** reader (`open_model`, a superset of the WorldModel-only
+conversion) — a second reader is what someone reaches for by mistake, and there
+isn't one.
+
+Revisit if either premise changes: if a third stored generation ever appears, or
+if a reader gains a destructive side effect (an in-place upgrade-on-open, say),
+reads stop being cheap to get wrong and want their own guarantee.
+
 ## Human readability, without a second archive
 
 The readability SL offers is real and should not be lost. It is recovered as a
