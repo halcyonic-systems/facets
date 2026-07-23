@@ -79,6 +79,13 @@
       "teaches": "Bunge's third coupling example, and the one that reads differently in two traditions: components 2 and 3 each act on themselves, and act on each other. His caption — \"the loops indicate self action or feedback\" — names both at once, and both are legal Bunge structure."
     },
     {
+      "file": "klir/cellular-array-cell.sl",
+      "tradition": "klir",
+      "title": "A cell in a cellular array",
+      "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 4, book pp. 83–84, Fig. 4.11",
+      "teaches": "That the environment is placed by the observer, not found in the world. This cell's environment is four OTHER CELLS OF THE SAME ARRAY — nothing distinguishes inside from outside except where the investigator drew the boundary, and the same 5×5 array admits 2²⁵ different structure systems depending on which subset of cells is chosen."
+    },
+    {
       "file": "klir/criminal-court.sl",
       "tradition": "klir",
       "title": "Criminal courts and probation, New York State",
