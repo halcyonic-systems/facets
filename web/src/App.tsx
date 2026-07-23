@@ -9,6 +9,7 @@ import {
   analyzeCanvas,
   checkDecompositionsCanvas,
   decomposeComponent,
+  compileSl,
 } from "./kernel";
 import type {
   CanvasModel,
@@ -20,6 +21,7 @@ import type {
   ValidationIssue,
 } from "./kernel/types";
 import { DEMOS, type Demo } from "./demos";
+import { CORPUS, firstSentence, type CorpusEntry } from "./corpus";
 import Canvas from "./canvas/Canvas";
 import { edgeGeometry, thingById } from "./canvas/geometry";
 import { EdgePopover } from "./canvas/EdgePopover";
@@ -355,6 +357,30 @@ function Workspace() {
     setDirty(false);
     setWalk([]);
     runWith(d.modelJson, d.csv, d.manifest, d.manifest.dt ?? 1, d.t); // one click → runs
+  };
+
+  // Source corpus → open: an author's own model, shipped as SL text. Reuses the
+  // two existing seams and invents nothing — guardDiscard (which onSlCompiled
+  // deliberately omits, because compiling in the pane is the author's stated
+  // intent) then the SL compile seam itself.
+  //
+  // A corpus entry ships no CSV and no manifest, so the run path stays dark.
+  // That is the File → Import case exactly (see the comment there), not a new
+  // state: structure, lens, formal object and audit still light up, because
+  // they read the canvas model.
+  const pickCorpus = async (e: CorpusEntry) => {
+    if (!guardDiscard() || !(await flushWalk())) return;
+    const outcome = compileSl(e.sl);
+    if ("errors" in outcome) {
+      // Should be unreachable: the ship gate asserts every entry compiles with
+      // zero faults. Report the first fault the way importModel reports a bad
+      // file rather than failing silently.
+      setToast(outcome.errors[0]?.message ?? "corpus entry failed to compile");
+      return;
+    }
+    await onSlCompiled(outcome.ok, outcome.lens_explicit);
+    setGalleryOpen(false);
+    setDirty(false);
   };
 
   // File → Import: load a user-supplied model JSON onto the canvas via the same
@@ -1764,6 +1790,7 @@ function Workspace() {
         <OpenDialog
           selected={demo}
           onPick={pick}
+          onPickCorpus={pickCorpus}
           onNew={newModel}
           onWriteSl={() => {
             setSlOpen(true);
@@ -2272,9 +2299,11 @@ function OpenDialog({
   onLoadFromLibrary,
   onDeleteFromLibrary,
   onRenameInLibrary,
+  onPickCorpus,
 }: {
   selected: Demo | null;
   onPick: (d: Demo) => void;
+  onPickCorpus: (e: CorpusEntry) => void;
   onNew: () => void;
   onWriteSl: () => void;
   onClose: () => void;
@@ -2316,6 +2345,7 @@ function OpenDialog({
           )}
         </div>
         <DemoGallery selected={selected} onPick={onPick} />
+        <CorpusGallery onPick={onPickCorpus} />
         <button
           onClick={onNew}
           className="mt-3 w-full p-3 text-left text-sm transition-colors"
@@ -2579,6 +2609,53 @@ function DemoGallery({ selected, onPick }: { selected: Demo | null; onPick: (d: 
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// A separate, labelled section below the demo grid — never interleaved with it.
+// A card that goes dark on click sitting inside a grid of one-click runs reads
+// as a bug, and the two sets answer different questions: "show me the tool
+// working" versus "show me what this author actually said". The citation is the
+// third line, and it is what makes a corpus card a corpus card.
+function CorpusGallery({ onPick }: { onPick: (e: CorpusEntry) => void }) {
+  if (CORPUS.length === 0) return null;
+  return (
+    <div className="mt-5">
+      <div
+        className="mb-2 text-xs font-semibold uppercase tracking-wide"
+        style={{ color: "var(--text-muted)" }}
+      >
+        Source corpus
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {CORPUS.map((e) => (
+          <button
+            key={e.file}
+            onClick={() => onPick(e)}
+            className="p-4 text-left transition-shadow"
+            style={{
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border)",
+              boxShadow: "var(--shadow-card)",
+              borderRadius: "var(--radius-card)",
+            }}
+          >
+            <div
+              className="text-base font-semibold"
+              style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}
+            >
+              {e.title}
+            </div>
+            <div className="mt-1 text-xs leading-snug" style={{ color: "var(--text-muted)" }}>
+              {firstSentence(e.teaches)}
+            </div>
+            <div className="mt-2 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+              {e.citation}
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
