@@ -49,6 +49,29 @@ Rung 2 accumulates *many* swept models; they land in the library. The current fl
 
 Sequence: **Rung 0 (canvas preview/accept) → Rung 1 (single draft) → [#148: the faceted library] → Rung 2 (sweep + curate into it).**
 
+## Local-model readiness + the scaffolding that shrinks the job (the drafter question)
+
+The goal is *make the model work as little as possible to do the job right* — push correctness into the harness so a small **local** model suffices, and only the plausibility is asked of the weights. Two findings and a stack.
+
+**Finding 1 — the best local model already clears the free-form bar.** A live probe (2026-07-23, `scratchpad/sl_probe.sh` → the headless `bert-canvas --example slcheck` legality checker) handed local models a *fresh* system not in the corpus (a thermostat/furnace control loop), the compact grammar, and the two teaching fixtures as few-shots. **`gemma4:12b` emitted valid SL first try** — `OK things=5 relations=4`, and *modeled it well*: Sensor as a `Sensing` primitive, informational flows for the control loop, `matter` for gas, `energy` for heat leakage. So the floor is met by a 7.6 GB local model with **few-shots + compact grammar alone** — no grammar-constrained decoding required to get a legal, sensible draft. (`ornith` returned empty/flaky; `qwen3:32b` = the heavier reasoner fallback.)
+
+**Finding 2 — the kernel already carries the correctness the model would otherwise have to.** `parse_sl_full` is deterministic and its errors *name the fix* (`unknown keyword \`x\` (system, domain, time, component, source, sink, environment, flow, boundary)`). That turns robustness into a cheap loop, not a smarter model.
+
+**The scaffolding stack (least-work-for-the-model), most already built:**
+1. **Kernel owns legality** — `compile_sl` + `validate_mode` reject illegal/cross-lens SL. The model only has to be *plausible*; a wrong draft is caught, never absorbed. *(exists)*
+2. **Human owns meaning** — Rung 0 preview/accept (shipped, PR #155). The draft need only be *close enough to accept-or-fix*, not right. *(shipped)*
+3. **Few-shots + compact grammar in-prompt** — the model pattern-matches a worked example, doesn't invent the grammar. The teaching fixtures are the exemplars. *(exists; the probe used exactly this)*
+4. **Compile→error→retry** — feed the parser's keyword-listing faults back on failure; near-free, and the single biggest robustness gain per token. *(build: a small loop in the authoring route)*
+5. **RAG-narrowing of few-shots** — retrieve the most relevant corpus entries per task via GSR's existing narrowing, so the prompt stays small and on-target. *(exists via GSR)*
+6. **`describe(model, lens)` injection for edits** — hand the model already-lens-labeled structure so it echoes rather than translates. *(exists)*
+7. **Grammar-constrained decoding — the hard floor, insurance not prerequisite.** SL has a formal EBNF (`docs/language/spec.md §4`); an Ollama GBNF grammar would make the model *unable* to emit a syntactically-invalid token, and this holds **regardless of model size**. Finding 1 says we don't need it to start; build it only if free-form drafts wobble on harder systems. *(build-if-needed)*
+8. **Escalate-on-failure** — after N failed compiles, route to a cloud tier via the existing `gsr.ts` seam. *(routing exists)*
+9. **Coverage dial** — instrument first-try-compile rate per model from Rung 1 day one (germen's pattern); it tells us when local suffices and when to escalate. *(build: one counter)*
+
+**Decision (Shingai, 2026-07-23): `gemma4:12b` is the default Rung-1 drafter**, scaffolded by items 1–5 (four already exist). Items 7/9 are the calibrated insurance; the scaffolding stays a *living stack* — refine it as harder systems expose wobble, escalating to cloud only on measured failure. This is the answer to "is my best local model up to the task": yes, because the harness does the correctness work and the model only has to be plausible.
+
+**Refinement ladder (the "keep refining its scaffolding" path, cheapest-first):** (a) compile→error→retry loop [item 4] — biggest robustness/token; (b) RAG-narrowed few-shots [item 5] as the corpus grows past two exemplars; (c) coverage dial [item 9] to see *where* gemma wobbles before adding weight; (d) grammar-constrained GBNF decoding [item 7] only if (a)–(c) leave a syntax gap. Each rung is measured against the coverage dial, not added on spec.
+
 ## Open decisions (Shingai)
 - SL-generation: an SL mode in GSR vs prompt-the-LLM-to-emit-SL via `gsr.ts`. (Lean: reuse `gsr.ts`, add an SL prompt.)
 - Surface: dedicated window vs in-page copilot. (Guard: window-on-demand.)
