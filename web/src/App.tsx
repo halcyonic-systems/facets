@@ -2650,7 +2650,7 @@ function CorpusGallery({ onPick }: { onPick: (e: CorpusEntry) => void }) {
             <div className="mt-1 text-xs leading-snug" style={{ color: "var(--text-muted)" }}>
               {firstSentence(e.teaches)}
             </div>
-            <div className="mt-2 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+            <div className="mt-2 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
               {e.citation}
             </div>
           </button>
