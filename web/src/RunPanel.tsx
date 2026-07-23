@@ -15,6 +15,7 @@ import {
 import type { CanvasModel, Comparison, Level, RunResultRich } from "./kernel/types";
 import { Card, Pill, Stat, Verdict, humanize } from "./ui";
 import { horizonOf, unitLabel } from "./runViz";
+import { BungeStateSpace } from "./canvas/BungeStateSpace";
 
 // Category labels are lens-faithful (K≅2 on the run panel): Klir and Bunge share
 // input/output/internal (both authors' own words — Klir ch.2 "input, output, and
@@ -114,6 +115,15 @@ export function RunPanel({
               <ComparisonChart key={c.element} c={c} />
             ))}
           </div>
+        </Card>
+      )}
+
+      {/* #100 phase 5: in the Bunge lens, the run reads as a trajectory through
+          state space — the coalgebra unfolding drawn in Bunge's register, beside
+          the coupling matrix that carries its structure. */}
+      {lens === "Bunge" && result.trajectories.length > 0 && (
+        <Card title="State space" source="bert-compose · wasm">
+          <BungeStateSpace result={result} />
         </Card>
       )}
 
