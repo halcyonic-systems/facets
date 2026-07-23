@@ -34,6 +34,7 @@ ORDER = [
     "bunge/coupling-sigma3.sl",
     # Klir — the two largest
     "klir/cellular-array-cell.sl",
+    "klir/serial-binary-adder.sl",
     "klir/criminal-court.sl",
 ]
 
