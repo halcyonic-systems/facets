@@ -3,9 +3,11 @@
 // LensPalette[lens] and nothing else: absence is ontology, so switching lens
 // adds/removes rows the way it adds/sheds rendered structure. The rail offers,
 // the kernel decides — no legality is computed here.
+import { useState } from "react";
 import type { Lens, ProcessPrimitive } from "../kernel/types";
 import { LensPalette, type PaletteHint, type PaletteTool } from "./lenses/registry";
 import { primitiveGlyph } from "./lenses/primitive-glyphs";
+import { ProcessReference } from "./ProcessReference";
 import { STYLE } from "./style";
 import { ToolButton } from "../ui";
 
@@ -33,6 +35,7 @@ export function PaletteRail({
   onArm: (tool: PaletteTool | null) => void;
 }) {
   const spec = LensPalette[lens];
+  const [showRef, setShowRef] = useState(false);
 
   const toolRow = (t: PaletteTool) => (
     <ToolButton
@@ -60,36 +63,69 @@ export function PaletteRail({
   );
 
   return (
-    <div
-      className="absolute left-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-40 flex-col gap-3 overflow-y-auto p-3"
-      style={{
-        background: "var(--bg-secondary)",
-        border: "1px solid var(--border)",
-        boxShadow: "var(--shadow-card)",
-        borderRadius: STYLE.dockRadius,
-      }}
-    >
-      {spec.place.length > 0 && (
-        <Section label="place">
-          {spec.place.map(toolRow)}
-        </Section>
+    <>
+      <div
+        className="absolute left-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-40 flex-col gap-3 overflow-y-auto p-3"
+        style={{
+          background: "var(--bg-secondary)",
+          border: "1px solid var(--border)",
+          boxShadow: "var(--shadow-card)",
+          borderRadius: STYLE.dockRadius,
+        }}
+      >
+        {spec.place.length > 0 && (
+          <Section label="place">
+            {spec.place.map(toolRow)}
+          </Section>
+        )}
+        {spec.designate.length > 0 && (
+          <Section label="designate">
+            <div className="flex flex-wrap gap-1">{spec.designate.map(toolRow)}</div>
+          </Section>
+        )}
+        {spec.connect.length > 0 && (
+          <Section label="connect">
+            {spec.connect.map(hintRow)}
+          </Section>
+        )}
+        {spec.derived.length > 0 && (
+          <Section label="derived — computed">
+            {spec.derived.map(hintRow)}
+          </Section>
+        )}
+        {/* The process-vocabulary reference (#100): available in any lens, since the
+            primitives are the shared substrate the lenses read differently. */}
+        <button
+          className="mt-1 text-left text-[10px] font-semibold uppercase tracking-wide"
+          style={{ color: "var(--text-muted)" }}
+          onClick={() => setShowRef((v) => !v)}
+          title="The ten process primitives, on one surface"
+        >
+          {showRef ? "× processes" : "≡ processes"}
+        </button>
+      </div>
+
+      {showRef && (
+        <div
+          className="absolute left-[11.5rem] top-3 z-10 w-72 overflow-y-auto p-3"
+          style={{
+            maxHeight: "calc(100% - 1.5rem)",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--border)",
+            boxShadow: "var(--shadow-card)",
+            borderRadius: STYLE.dockRadius,
+          }}
+        >
+          <div
+            className="mb-2 text-[10px] font-semibold uppercase tracking-wide"
+            style={{ color: "var(--lens-accent)" }}
+          >
+            processes — the vocabulary
+          </div>
+          <ProcessReference />
+        </div>
       )}
-      {spec.designate.length > 0 && (
-        <Section label="designate">
-          <div className="flex flex-wrap gap-1">{spec.designate.map(toolRow)}</div>
-        </Section>
-      )}
-      {spec.connect.length > 0 && (
-        <Section label="connect">
-          {spec.connect.map(hintRow)}
-        </Section>
-      )}
-      {spec.derived.length > 0 && (
-        <Section label="derived — computed">
-          {spec.derived.map(hintRow)}
-        </Section>
-      )}
-    </div>
+    </>
   );
 }
 
