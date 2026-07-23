@@ -26,6 +26,7 @@ here without perturbing a golden.
 | `klir/goal-oriented-*.sl` (4) | George Klir | *Facets of Systems Science*, 2nd ed. (2001), Ch. 10 §10.2, Fig. 10.1 | Four paradigms over one fixed composition, varying only what the goal-seeking element may read: nothing, the output, the input, or both. | The essential relationship between x and y, the goal itself, and the partial ordering of the paradigms by severity of restriction. |
 | `bunge/two-thing-*.sl` (3) | Mario Bunge | *Treatise on Basic Philosophy*, Vol. 4 (1979), Ch. 1 §1.2, Definition 1.2, Example, Fig. 1.2 | "The simplest possible system" in his words — two connected things in an environment lumped into one thing, under each of the three conceivable internal structures. | The caveat that not every conceivable structure is nomologically possible; and the quantitative model of §2.2. |
 | `bunge/coupling-sigma{1,2,3}.sl` | Mario Bunge | *Treatise on Basic Philosophy*, Vol. 4 (1979), Ch. 1 §2.1 | The graph half of Bunge's "two standard and equivalent ways" of representing a system: a symmetric chain, a cycle carrying inhibition, and a graph with self-action. | The matrix half (SL has no matrix register), and — in σ₂ — the sign of each coupling. |
+| `klir/cellular-array-cell.sl` | George Klir | *Facets of Systems Science*, 2nd ed. (2001), Ch. 4, book pp. 83–84, Fig. 4.11 | That the environment is **placed by the observer**: this cell's environment is four other cells of the same array, and the same 5×5 array admits 2²⁵ structure systems depending which subset of cells is chosen. | The behaviour function — each cell is a deterministic generative system over two states, and none of that is structure. |
 | `klir/criminal-court.sl` | George Klir | *Facets of Systems Science*, 2nd ed. (2001), Ch. 4, book pp. 77–78, Fig. 4.7 | A structure system over an institutional domain: five elements, ten directed variables, a feedback edge, and Klir's own legality rule (each variable is an output of exactly one element) checkable against the model. | The behaviour of every element — Klir's blocks are "initially source systems, which later become data systems". |
 
 ## Two entries that teach by refusal
@@ -52,10 +53,11 @@ That is why they are separate indexed entries rather than one entry with variant
    any part of the model is our construction rather than the author's own
    drawing.
 3. Pin the lens with `@lens`, matching the directory.
-4. Add a row to `corpus.json`. Entry order is gallery order — the one editorial
-   field with no header counterpart. `citation` is composed mechanically as
-   `author ", " work " (" year "), " locus [", " figure]`; the gate composes it
-   and compares, so do not hand-write a variant.
+4. Add the file to `ORDER` in `scripts/reindex_corpus.py` and run it. Entry order
+   is gallery order — the one editorial field with no header counterpart, which
+   is why the script will not invent a position for you and fails loudly on an
+   unlisted file. Everything else in the index is projected from the header, so
+   `citation` cannot drift from its composition rule.
 5. `cargo test -p bert-canvas --test source_corpus`.
 
 An unindexed file is a gate failure, not a silent omission from the gallery.
