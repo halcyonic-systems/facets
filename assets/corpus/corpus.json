@@ -86,6 +86,13 @@
       "teaches": "That the environment is placed by the observer, not found in the world. This cell's environment is four OTHER CELLS OF THE SAME ARRAY — nothing distinguishes inside from outside except where the investigator drew the boundary, and the same 5×5 array admits 2²⁵ different structure systems depending on which subset of cells is chosen."
     },
     {
+      "file": "klir/serial-binary-adder.sl",
+      "tradition": "klir",
+      "title": "A serial binary adder",
+      "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 4, book pp. 78–79, Fig. 4.8",
+      "teaches": "A cycle as pure structure. The carry leaves CARRY, is held one discrete time by MEMORY, and returns as the previous carry that both SUM and CARRY depend on — a loop that exists in the wiring, with no dynamics run and no state stored anywhere in this model."
+    },
+    {
       "file": "klir/criminal-court.sl",
       "tradition": "klir",
       "title": "Criminal courts and probation, New York State",
