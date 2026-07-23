@@ -37,6 +37,7 @@ import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
 import { NewModelTypePrompt } from "./NewModelTypePrompt";
 import { SlPane } from "./SlPane";
+import { authorSl } from "./gsr";
 import type { SlError } from "./kernel/types";
 import { Banner, Pill, ToolButton } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
@@ -1396,6 +1397,23 @@ function Workspace() {
               onCompiled={(cm, lensExplicit) => onSlCompiled(cm, lensExplicit, true)}
               onClose={() => setSlOpen(false)}
               canvasModel={canvasModel}
+              onRequestDraft={async (description) => {
+                // #10 Rung 1: GSR authors the SL; the pane compiles it to a
+                // Rung-0 preview. Seed the drafter with the current lens so the
+                // reading matches; the kernel still owns legality on compile.
+                // compile→retry (≤2): the kernel's own faults (which name the
+                // fix) feed back so the drafter heals near-misses before the
+                // author ever sees them — the harness carrying correctness.
+                const lens = canvasModel?.lens;
+                let { sl } = await authorSl({ description, lens });
+                for (let i = 0; i < 2; i++) {
+                  const outcome = compileSl(sl);
+                  if (!("errors" in outcome)) break;
+                  const errs = outcome.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
+                  ({ sl } = await authorSl({ description, lens, priorSl: sl, errors: errs }));
+                }
+                return sl;
+              }}
             />
           )}
 
