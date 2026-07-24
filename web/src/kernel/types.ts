@@ -37,6 +37,17 @@ export interface RunResult {
   final_balance: number;
 }
 
+/// A discrete-time Markov run (#67): the state labels and the distribution
+/// trajectory. `kind` discriminates it from a conservation `RunResult` — a
+/// Markov run has no `residual`/`conserved`, because it conserves probability,
+/// not substance. `history[t]` is the state distribution after `t` steps, one
+/// entry per `states` label; every row sums to 1.
+export interface MarkovRunResult {
+  kind: "markov";
+  states: string[];
+  history: number[][];
+}
+
 export interface CsvParse {
   headers: string[];
   rows: string[][];

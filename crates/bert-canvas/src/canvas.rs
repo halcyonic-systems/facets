@@ -782,6 +782,43 @@ pub fn validate_connection(model: &CanvasModel, candidate: &Relation) -> Vec<Val
         .collect()
 }
 
+/// Read a model AS A KLIR STATE MACHINE for the #67 DTMC run: its things are the
+/// states `T`, its directed relations are the transitions `R`. Returns the state
+/// labels and the weighted edges (`from_index`, `to_index`, `weight`) a
+/// [`bert_compose::markov::Chain`] consumes.
+///
+/// This reads the Klir `(T, R)` structure DIRECTLY — it never projects to a
+/// `WorldModel` or calls `validate_operational`, so the Mobus irreflexivity gate
+/// (`k ≠ o`, which refuses self-loops entering Operational mode) is bypassed
+/// entirely. A self-loop `a → a` is a legal, ordinary transition here (a state
+/// that stays put), as it is at Klir/Core. Feedback-as-a-first-class-cycle is
+/// Cybernetic mode's future seat; Klir carries it for now.
+///
+/// Weights are UNIFORM for now — every out-edge of a state gets weight 1, so the
+/// derived matrix splits a state's mass evenly across its successors. The
+/// per-transition weight the later authoring surface (SL syntax / CSV) will
+/// populate slots in where the `1` is; this function is its uniform default.
+pub fn markov_edges(model: &CanvasModel) -> (Vec<String>, Vec<(usize, usize, u64)>) {
+    use std::collections::HashMap;
+    let states: Vec<String> = model.things.iter().map(|t| t.name.clone()).collect();
+    let index: HashMap<u64, usize> = model
+        .things
+        .iter()
+        .enumerate()
+        .map(|(i, t)| (t.id, i))
+        .collect();
+    let edges = model
+        .relations
+        .iter()
+        .filter_map(|r| {
+            let &i = index.get(&r.a)?;
+            let &j = index.get(&r.b)?;
+            Some((i, j, 1u64))
+        })
+        .collect();
+    (states, edges)
+}
+
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
@@ -812,6 +849,42 @@ mod tests {
             kind: Kind::Unspecified,
             klir_directed: false,
         }
+    }
+
+    /// Law: `markov_edges` reads a Klir state machine's things as states and its
+    /// directed relations as transitions — self-loops included, with no
+    /// projection and no Operational gate. The parity automaton (each state with
+    /// a self-loop `0` and a cross-edge `1`) reads back as the four expected
+    /// edges over two states.
+    #[test]
+    fn markov_edges_reads_klir_state_machine_with_self_loops() {
+        let model = CanvasModel {
+            lens: Lens::Klir,
+            model_id: None,
+            things: vec![
+                thing(1, "Even", Role::Component),
+                thing(2, "Odd", Role::Component),
+            ],
+            // Self-loops (1→1, 2→2) are legal Klir transitions; they would be
+            // refused entering Operational mode, which this path never touches.
+            relations: vec![
+                bond(10, 1, 2), // Even --1--> Odd
+                bond(11, 1, 1), // Even --0--> Even (self-loop)
+                bond(12, 2, 1), // Odd  --1--> Even
+                bond(13, 2, 2), // Odd  --0--> Odd  (self-loop)
+            ],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            time_unit: None,
+        };
+        let (states, edges) = markov_edges(&model);
+        assert_eq!(states, vec!["Even".to_string(), "Odd".to_string()]);
+        assert_eq!(
+            edges,
+            vec![(0, 1, 1), (0, 0, 1), (1, 0, 1), (1, 1, 1)],
+            "uniform-weighted edges, self-loops kept"
+        );
     }
 
     /// Law: two components joined by a bond project to a legal (error-free)

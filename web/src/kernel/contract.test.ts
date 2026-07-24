@@ -31,6 +31,7 @@ import type {
   PortFact,
   Relation,
   RunResult,
+  MarkovRunResult,
   RunResultRich,
   SlError,
   SystemType,
@@ -438,6 +439,15 @@ function parseRunResult(v: unknown): RunResult {
   };
 }
 
+function parseMarkovRunResult(v: unknown): MarkovRunResult {
+  const o = shape(v, "MarkovRunResult", ["kind", "states", "history"]);
+  return {
+    kind: oneOf(o.kind, "MarkovRunResult.kind", ["markov"] as const),
+    states: arr(o.states, "states").map((s, i) => str(s, `states[${i}]`)),
+    history: arr(o.history, "history").map((row, i) => arr(row, `history[${i}]`).map((x, j) => num(x, `history[${i}][${j}]`))),
+  };
+}
+
 function parseRunResultRich(v: unknown): RunResultRich {
   const o = shape(v, "RunResultRich", ["ticks", "dt", "residual", "conserved", "levels", "comparisons", "trajectories"]);
   const nums = (x: unknown, w: string) => arr(x, w).map((n, i) => num(n, `${w}[${i}]`));
@@ -594,6 +604,15 @@ describe("serde↔TS boundary fixtures", () => {
     const r = parseRunResult(fixture("run_result"));
     expect(r.history.length).toBeGreaterThan(0);
     expect(r.ledger_history[0]).toHaveLength(4);
+  });
+
+  it("MarkovRunResult validates", () => {
+    const r = parseMarkovRunResult(fixture("markov_run_result"));
+    expect(r.kind).toBe("markov");
+    expect(r.states).toEqual(["Even", "Odd"]);
+    // Uniform parity mixes in one step: every row after the first is [½, ½].
+    expect(r.history[0]).toEqual([1, 0]);
+    expect(r.history[1]).toEqual([0.5, 0.5]);
   });
 
   it("RunResultRich validates", () => {
