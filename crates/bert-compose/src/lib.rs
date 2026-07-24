@@ -20,6 +20,7 @@ pub mod examples;
 pub mod export;
 pub mod ladder;
 pub mod lens;
+pub mod markov;
 pub mod run;
 
 /// The engine and the node vocabulary a caller reads results against.
