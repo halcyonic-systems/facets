@@ -5,8 +5,8 @@
 //! `emit(parse(emit(m))) == emit(m)`.
 
 use bert_canvas::canvas::{
-    project, to_canvas, CanvasBoundaryProps, CanvasModel, ChildRef, Kind, Lens, Relation, Role,
-    SystemType, Thing,
+    project, to_canvas, CanvasBoundaryProps, CanvasModel, ChildRef, Kind, KlirVarKind, Lens,
+    Relation, Role, ScaleType, SystemType, Thing,
 };
 use bert_canvas::sl::{emit_sl, parse_sl};
 use bert_core::{ModelId, ModelRef};
@@ -69,6 +69,9 @@ fn canvas_born_model_canonicalizes() {
         interface: false,
         child_model: None,
         stock_unit: String::new(),
+        scale: None,
+        states: None,
+        variable_kind: None,
     };
     let m = CanvasModel {
         lens: Lens::Klir,
@@ -181,6 +184,84 @@ fn stock_unit_without_primitive_survives_the_seam() {
     assert_eq!(back.things[0].stock_unit, "ML");
     // And it re-emits bare (an identifier-shaped unit needs no quotes).
     assert!(emit_sl(&back).unwrap().contains("component Tank stock ML"), "{}", emit_sl(&back).unwrap());
+}
+
+/// Law (bert-lenses#154): a component's Klir source-system metadata — the
+/// measurement `scale` and the `states` set — survives text → model → text
+/// digit for digit, and the `{A, B, C}` set literal is a fixpoint. A state
+/// label needing quotes (a space) rides through the braces intact.
+#[test]
+fn klir_scale_and_states_round_trip_through_sl() {
+    let text = "component Light scale Nominal states {Green, Yellow, \"Solid Red\"}\n";
+    let m = parse_sl(text).unwrap();
+    assert_eq!(m.things[0].scale, Some(ScaleType::Nominal));
+    assert_eq!(
+        m.things[0].states.as_deref(),
+        Some(["Green".to_string(), "Yellow".to_string(), "Solid Red".to_string()].as_slice())
+    );
+
+    let emitted = emit_sl(&m).unwrap();
+    assert!(emitted.contains("scale Nominal"), "{emitted}");
+    assert!(emitted.contains("states {Green, Yellow, \"Solid Red\"}"), "{emitted}");
+    let m2 = parse_sl(&emitted).unwrap();
+    assert_eq!(json(&m), json(&m2), "Klir metadata drifted across the round trip\n{emitted}");
+    assert_eq!(emit_sl(&m2).unwrap(), emitted, "emit is not a fixpoint");
+
+    // An empty set is legal Klir notation and re-emits as `{}`.
+    let empty = parse_sl("component V scale Ordinal states {}\n").unwrap();
+    assert_eq!(empty.things[0].states.as_deref(), Some([].as_slice()));
+    assert!(emit_sl(&empty).unwrap().contains("states {}"));
+
+    // Undeclared stays undeclared — no invented scale, set, or kind.
+    let bare = parse_sl("component W\n").unwrap();
+    assert_eq!(bare.things[0].scale, None);
+    assert_eq!(bare.things[0].states, None);
+    assert_eq!(bare.things[0].variable_kind, None);
+    let bare_text = emit_sl(&bare).unwrap();
+    assert!(!bare_text.contains("scale"));
+    assert!(!bare_text.contains("states"));
+    assert!(!bare_text.contains("kind"));
+}
+
+/// Law (bert-lenses#154 revision): the source-system metadata rides ENVIRONMENT
+/// lines too — Klir's Table 4.1 characterizes the input variables, which are
+/// frequently the environmental drivers. An env `source` carrying `kind` /
+/// `scale` / `states` survives text → model → text digit for digit.
+#[test]
+fn klir_source_metadata_rides_env_lines() {
+    let text = "source Feed kind Support scale Ratio states {Low, High}\n";
+    let m = parse_sl(text).unwrap();
+    assert_eq!(m.things[0].role, Role::Environment);
+    assert_eq!(m.things[0].variable_kind, Some(KlirVarKind::Support));
+    assert_eq!(m.things[0].scale, Some(ScaleType::Ratio));
+    assert_eq!(
+        m.things[0].states.as_deref(),
+        Some(["Low".to_string(), "High".to_string()].as_slice())
+    );
+
+    // The env keyword is edge-derived (no bond touches Feed → `environment`);
+    // what matters is the Klir metadata rides the line and survives.
+    let emitted = emit_sl(&m).unwrap();
+    assert!(emitted.contains("Feed kind Support scale Ratio states {Low, High}"), "{emitted}");
+    let m2 = parse_sl(&emitted).unwrap();
+    assert_eq!(json(&m), json(&m2), "env Klir metadata drifted\n{emitted}");
+    assert_eq!(emit_sl(&m2).unwrap(), emitted, "emit is not a fixpoint");
+}
+
+/// Law (bert-lenses#154): `kind Basic|Support` round-trips, and the default
+/// (`Basic` / omitted) never emits, so old models stay byte-identical.
+#[test]
+fn klir_variable_kind_round_trips() {
+    let support = parse_sl("component Time kind Support\n").unwrap();
+    assert_eq!(support.things[0].variable_kind, Some(KlirVarKind::Support));
+    assert!(emit_sl(&support).unwrap().contains("kind Support"));
+
+    // Explicit Basic round-trips as authored.
+    let basic = parse_sl("component X kind Basic\n").unwrap();
+    assert_eq!(basic.things[0].variable_kind, Some(KlirVarKind::Basic));
+    let basic_text = emit_sl(&basic).unwrap();
+    assert!(basic_text.contains("kind Basic"), "{basic_text}");
+    assert_eq!(json(&basic), json(&parse_sl(&basic_text).unwrap()));
 }
 
 /// Law: a name containing a quote is not expressible in SL v1 — emit refuses

@@ -21,8 +21,12 @@
 //! time unit h                          # optional: the model's time-unit symbol (#94)
 //! component Furnace primitive Combining interface
 //! component Battery primitive Buffering stock "kW·h"   # declared stock unit (#76/#94)
-//! source "Iron Vendor"                 # source|sink|environment: env things;
-//! sink Customers                       #   actual role is edge-derived in project()
+//! component Light scale Nominal states {Green, Yellow, Red}  # Klir source-system (#154)
+//! source "Iron Vendor" kind Support scale Ratio   # Klir source metadata rides
+//!                                      #   env lines too — env vars are the
+//!                                      #   input drivers Table 4.1 characterizes
+//! sink Customers                       # source|sink|environment: env things;
+//!                                      #   actual role is edge-derived in project()
 //! flow "Iron Vendor" -> Furnace : matter "iron"
 //! flow Furnace -> Customers : matter "steel" mere   # mere = not a bond
 //! boundary porosity 0.7 fuzziness 0.1
@@ -39,8 +43,8 @@ use bert_core::model_id::{decode_uuid, encode_uuid};
 use bert_core::{ModelRef, ProcessPrimitive};
 
 use crate::canvas::{
-    CanvasBoundaryProps, CanvasModel, ChildRef, Genus, Kind, Kingdom, Lens, Relation, Role,
-    SystemType, Thing,
+    CanvasBoundaryProps, CanvasModel, ChildRef, Genus, Kind, Kingdom, KlirVarKind, Lens, Relation,
+    Role, ScaleType, SystemType, Thing,
 };
 
 /// A parse fault, anchored to its 1-indexed source line. All faults are
@@ -264,6 +268,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut interface = false;
                 let mut child_model: Option<ChildRef> = None;
                 let mut stock_unit = String::new();
+                let mut scale: Option<ScaleType> = None;
+                let mut states: Option<Vec<String>> = None;
+                let mut variable_kind: Option<KlirVarKind> = None;
                 let mut i = 0;
                 let mut ok = true;
                 while i < attrs.len() {
@@ -366,6 +373,83 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             }
                             i += 2;
                         }
+                        // `scale <Nominal|Ordinal|Interval|Ratio>` — Klir's
+                        // measurement scale for the source variable (#154). Rides
+                        // env lines too (#154 revision): Table 4.1 most wants the
+                        // INPUT variables characterized, and those are frequently
+                        // the environmental drivers (source/sink).
+                        Tok::Word(w) if w.eq_ignore_ascii_case("scale") => {
+                            if scale.is_some() {
+                                fail("`scale` already given on this component".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Word(s)) => match parse_scale(s) {
+                                    Ok(sc) => scale = Some(sc),
+                                    Err(msg) => {
+                                        fail(msg, &mut errors);
+                                        ok = false;
+                                    }
+                                },
+                                _ => {
+                                    fail(
+                                        "scale syntax: `scale <Nominal|Ordinal|Interval|Ratio>`"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        // `states {A, B, C}` — the variable's state set in Klir
+                        // set notation (#154). A brace-enclosed, comma-separated
+                        // list of value labels; `{}` is an explicit empty set.
+                        // Rides env lines too (#154 revision), same rationale as
+                        // `scale`.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("states") => {
+                            if states.is_some() {
+                                fail("`states` already given on this component".into(), &mut errors);
+                                ok = false;
+                            }
+                            match parse_state_set(attrs, i + 1) {
+                                Ok((set, next)) => {
+                                    if ok {
+                                        states = Some(set);
+                                    }
+                                    i = next;
+                                }
+                                Err(msg) => {
+                                    fail(msg, &mut errors);
+                                    ok = false;
+                                    i += 1;
+                                }
+                            }
+                        }
+                        // `kind <Basic|Support>` — Klir's basic-vs-supporting
+                        // standing (#154). Authored, not derived from R; `Basic`
+                        // is the default (omit), so this declares the rare support
+                        // variable. Rides env lines like `scale`/`states`.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("kind") => {
+                            if variable_kind.is_some() {
+                                fail("`kind` already given on this variable".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Word(k)) => match parse_var_kind(k) {
+                                    Ok(vk) => variable_kind = Some(vk),
+                                    Err(msg) => {
+                                        fail(msg, &mut errors);
+                                        ok = false;
+                                    }
+                                },
+                                _ => {
+                                    fail("kind syntax: `kind <Basic|Support>`".into(), &mut errors);
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
                         Tok::Word(w) if w.eq_ignore_ascii_case("interface") => {
                             if role == Role::Environment {
                                 fail(
@@ -445,6 +529,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     interface,
                     child_model,
                     stock_unit,
+                    scale,
+                    states,
+                    variable_kind,
                 });
                 next_id += 1;
             }
@@ -700,6 +787,25 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
             if !t.stock_unit.is_empty() {
                 write!(out, " stock {}", name_token(&t.stock_unit)?).unwrap();
             }
+        }
+        // Klir source-system metadata (#154): kind, then scale, then state set.
+        // Emitted on env things too (#154 revision) — Table 4.1 characterizes the
+        // input variables, which are frequently the environmental drivers.
+        if let Some(vk) = t.variable_kind {
+            write!(out, " kind {vk:?}").unwrap();
+        }
+        if let Some(sc) = t.scale {
+            write!(out, " scale {sc:?}").unwrap();
+        }
+        if let Some(set) = &t.states {
+            let labels = set
+                .iter()
+                .map(|s| name_token(s))
+                .collect::<Result<Vec<_>, _>>()?
+                .join(", ");
+            write!(out, " states {{{labels}}}").unwrap();
+        }
+        if t.role == Role::Component {
             // `decomposes` emits last (§7.1 canonical order): name quoted, id in
             // the canonical base58 form, both mandatory.
             if let Some(child) = &t.child_model {
@@ -775,6 +881,9 @@ fn is_reserved(word: &str) -> bool {
             | "primitive"
             | "decomposes"
             | "stock"
+            | "scale"
+            | "states"
+            | "kind"
             | "time"
             | "unit"
             | "mere"
@@ -869,13 +978,71 @@ fn parse_primitive(word: &str) -> Result<ProcessPrimitive, String> {
     }
 }
 
-/// Line tokens: bare words, quoted strings, `->`, `:`.
+fn parse_scale(word: &str) -> Result<ScaleType, String> {
+    match word.to_ascii_lowercase().as_str() {
+        "nominal" => Ok(ScaleType::Nominal),
+        "ordinal" => Ok(ScaleType::Ordinal),
+        "interval" => Ok(ScaleType::Interval),
+        "ratio" => Ok(ScaleType::Ratio),
+        other => Err(format!(
+            "unknown scale `{other}` (Nominal, Ordinal, Interval, Ratio)"
+        )),
+    }
+}
+
+fn parse_var_kind(word: &str) -> Result<KlirVarKind, String> {
+    match word.to_ascii_lowercase().as_str() {
+        "basic" => Ok(KlirVarKind::Basic),
+        "support" => Ok(KlirVarKind::Support),
+        other => Err(format!("unknown kind `{other}` (Basic, Support)")),
+    }
+}
+
+/// Read a `{A, B, C}` set literal starting at token `start` (the expected
+/// `{`), returning the value labels and the index just past the `}`. `{}` is a
+/// legal empty set; a trailing comma or a missing brace is a fault.
+fn parse_state_set(attrs: &[Tok], start: usize) -> Result<(Vec<String>, usize), String> {
+    let syntax = "states syntax: `states {A, B, C}` (brace-enclosed, comma-separated)";
+    if attrs.get(start) != Some(&Tok::LBrace) {
+        return Err(syntax.into());
+    }
+    let mut set: Vec<String> = Vec::new();
+    let mut i = start + 1;
+    // empty set: `{}`
+    if attrs.get(i) == Some(&Tok::RBrace) {
+        return Ok((set, i + 1));
+    }
+    loop {
+        match attrs.get(i) {
+            Some(t) if t.is_name() => {
+                let label = t.name();
+                if label.trim().is_empty() {
+                    return Err("state label cannot be empty".into());
+                }
+                set.push(label);
+                i += 1;
+            }
+            _ => return Err(syntax.into()),
+        }
+        match attrs.get(i) {
+            Some(Tok::Comma) => i += 1,
+            Some(Tok::RBrace) => return Ok((set, i + 1)),
+            _ => return Err(syntax.into()),
+        }
+    }
+}
+
+/// Line tokens: bare words, quoted strings, `->`, `:`, and the set-literal
+/// punctuation `{ } ,` (Klir state sets, #154).
 #[derive(Clone, Debug, PartialEq)]
 enum Tok {
     Word(String),
     Str(String),
     Arrow,
     Colon,
+    LBrace,
+    RBrace,
+    Comma,
 }
 
 impl Tok {
@@ -896,6 +1063,9 @@ impl Tok {
             Tok::Str(s) => format!("\"{s}\""),
             Tok::Arrow => "->".into(),
             Tok::Colon => ":".into(),
+            Tok::LBrace => "{".into(),
+            Tok::RBrace => "}".into(),
+            Tok::Comma => ",".into(),
         }
     }
 }
@@ -920,12 +1090,28 @@ fn tokenize(line: &str) -> Result<Vec<Tok>, String> {
         } else if c == ':' {
             chars.next();
             tokens.push(Tok::Colon);
+        } else if c == '{' {
+            chars.next();
+            tokens.push(Tok::LBrace);
+        } else if c == '}' {
+            chars.next();
+            tokens.push(Tok::RBrace);
+        } else if c == ',' {
+            chars.next();
+            tokens.push(Tok::Comma);
         } else if c == '#' {
             break; // trailing comment
         } else {
             let mut w = String::new();
             while let Some(&ch) = chars.peek() {
-                if ch.is_whitespace() || ch == '"' || ch == ':' || ch == '#' {
+                if ch.is_whitespace()
+                    || ch == '"'
+                    || ch == ':'
+                    || ch == '#'
+                    || ch == '{'
+                    || ch == '}'
+                    || ch == ','
+                {
                     break;
                 }
                 w.push(ch);

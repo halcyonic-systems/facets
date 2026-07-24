@@ -129,6 +129,9 @@ mod tests {
             interface: false,
             child_model: None,
             stock_unit: String::new(),
+            scale: None,
+            states: None,
+            variable_kind: None,
         });
         m.things.push(Thing {
             id: 2,
@@ -140,6 +143,9 @@ mod tests {
             interface: false,
             child_model: None,
             stock_unit: String::new(),
+            scale: None,
+            states: None,
+            variable_kind: None,
         });
         m.relations.push(Relation {
             id: 1,
@@ -184,6 +190,36 @@ mod tests {
             "Klir's observer declaration"
         );
         assert_eq!(after.lens, before.lens);
+    }
+
+    /// Klir's source-system metadata (#154) — the authored scale and state set —
+    /// survives a write/read round trip; a thing that declares neither reads
+    /// back with both absent (the skip-if-None contract).
+    #[test]
+    fn archive_keeps_klir_source_system_metadata() {
+        use bert_canvas::canvas::ScaleType;
+        let mut before = lossy_model();
+        before.things[0].scale = Some(ScaleType::Nominal);
+        before.things[0].states = Some(vec!["Green".into(), "Yellow".into(), "Red".into()]);
+
+        let after = read(&write(&before).unwrap()).unwrap();
+        assert_eq!(after.things[0].scale, Some(ScaleType::Nominal));
+        assert_eq!(
+            after.things[0].states.as_deref(),
+            Some(["Green".to_string(), "Yellow".to_string(), "Red".to_string()].as_slice())
+        );
+        assert_eq!(after.things[1].scale, None, "undeclared stays absent");
+        assert_eq!(after.things[1].states, None);
+    }
+
+    /// The skip-if-None contract at the byte level: a thing with neither field
+    /// serializes without the keys, so models authored before #154 stay
+    /// byte-identical on disk.
+    #[test]
+    fn undeclared_metadata_is_omitted_from_the_json() {
+        let text = write(&lossy_model()).unwrap();
+        assert!(!text.contains("\"scale\""), "no scale key when undeclared:\n{text}");
+        assert!(!text.contains("\"states\""), "no states key when undeclared:\n{text}");
     }
 
     /// The same model through the OLD archive path, pinned as a regression
@@ -263,6 +299,9 @@ mod decomposition_seam {
             interface: false,
             child_model: None,
             stock_unit: String::new(),
+            scale: None,
+            states: None,
+            variable_kind: None,
         }
     }
 
