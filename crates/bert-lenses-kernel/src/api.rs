@@ -72,6 +72,32 @@ pub fn run(model_json: &str, dt: f64, ticks: usize) -> Result<JsValue, JsError> 
     })
 }
 
+/// Run a CANVAS model as a discrete-time Markov chain (#67) — the state-machine
+/// run mode beside `run`. Reads the model's Klir `(T, R)` directly (things =
+/// states, directed relations = transitions), builds the chain with uniform
+/// edge weights, and evolves a distribution for `ticks` steps from a point mass
+/// on the first state. Takes CANVAS json, not a `WorldModel`, and never calls
+/// `validate_operational` — so the Mobus self-loop gate (`k ≠ o`) is bypassed and
+/// a state that stays put is a legal transition.
+///
+/// Returns a [`MarkovRunResult`] — `kind`-tagged, carrying only the state labels
+/// and the distribution trajectory. Deliberately NOT a `RunResult`: a Markov run
+/// conserves probability, not substance, so it exposes no `residual`/`conserved`.
+#[wasm_bindgen]
+pub fn run_markov(canvas_json: &str, ticks: usize) -> Result<JsValue, JsError> {
+    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    let (states, edges) = bert_canvas::canvas::markov_edges(&model);
+    let chain = bert_compose::markov::Chain::from_edges(states, &edges);
+    let v0 = chain.point_mass(0);
+    let run = chain.run(&v0, ticks);
+    to_js(&MarkovRunResult {
+        kind: "markov",
+        states: run.states,
+        history: run.history,
+    })
+}
+
 /// Parse CSV text into headers + string rows (gaps disclosed, never filled).
 /// The column-meaning assignment ritual (`MappingDraft`, gates T1/T2/T5) is the
 /// Phase-1 wizard surface; this is its first step.
@@ -532,6 +558,18 @@ struct RunResult {
     final_balance: f32,
 }
 
+/// A Markov run (#67), flattened for the face. The `kind` tag discriminates it
+/// from a conservation [`RunResult`] so the face never reaches for a
+/// `residual`/`conserved` field that a distribution run does not have. `history`
+/// is the shared H shape: row `t` = the state distribution after `t` steps,
+/// one column per `states` entry.
+#[derive(Serialize)]
+struct MarkovRunResult {
+    kind: &'static str,
+    states: Vec<String>,
+    history: Vec<Vec<f32>>,
+}
+
 /// Parsed CSV: the header row and the string cells beneath it.
 #[derive(Serialize)]
 struct CsvParse {
@@ -759,6 +797,77 @@ mod tests {
         )
         .expect("forced run succeeds");
         check_fixture("run_result_rich", &RunResultRich::from(readout));
+    }
+
+    /// The parity automaton as a Klir CANVAS model: two states, a self-loop and a
+    /// cross-edge out of each. The #67 flagship fixture — self-loops make it, and
+    /// they are refused entering Operational mode, so the Markov path must read
+    /// Klir directly.
+    fn parity_canvas() -> bert_canvas::canvas::CanvasModel {
+        use bert_canvas::canvas::{CanvasModel, Kind, Lens, Relation, Role, Thing};
+        fn thing(id: u64, name: &str) -> Thing {
+            Thing {
+                id,
+                name: name.to_string(),
+                x: 0.0,
+                y: 0.0,
+                role: Role::Component,
+                primitive: None,
+                interface: false,
+                child_model: None,
+                stock_unit: String::new(),
+                scale: None,
+                states: None,
+                variable_kind: None,
+            }
+        }
+        fn edge(id: u64, a: u64, b: u64) -> Relation {
+            Relation { id, a, b, name: String::new(), is_bond: true, kind: Kind::Unspecified, klir_directed: false }
+        }
+        CanvasModel {
+            lens: Lens::Klir,
+            model_id: None,
+            things: vec![thing(1, "Even"), thing(2, "Odd")],
+            relations: vec![edge(10, 1, 2), edge(11, 1, 1), edge(12, 2, 1), edge(13, 2, 2)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            time_unit: None,
+        }
+    }
+
+    /// Law: the full #67 Markov spine — a Klir parity automaton (self-loops and
+    /// all) reads through `markov_edges`, builds a chain with uniform weights,
+    /// and runs to the uniform stationary distribution. End to end, the path the
+    /// `run_markov` wasm export marshals, with no projection and no Operational
+    /// gate anywhere in it.
+    #[test]
+    fn markov_parity_runs_and_converges() {
+        let model = parity_canvas();
+        let (states, edges) = bert_canvas::canvas::markov_edges(&model);
+        assert_eq!(states.len(), 2, "two states");
+        let chain = bert_compose::markov::Chain::from_edges(states, &edges);
+        // Uniform weights on the parity automaton give P = [[½,½],[½,½]]: from a
+        // point mass on Even, one step already lands on the uniform distribution.
+        let run = chain.run(&chain.point_mass(0), 20);
+        let last = run.history.last().unwrap();
+        assert!(
+            (last[0] - 0.5).abs() < 1e-6 && (last[1] - 0.5).abs() < 1e-6,
+            "uniform parity did not converge to [½,½]: {last:?}"
+        );
+        assert_eq!(run.states, vec!["Even".to_string(), "Odd".to_string()]);
+    }
+
+    #[test]
+    fn markov_run_result_fixture() {
+        let model = parity_canvas();
+        let (states, edges) = bert_canvas::canvas::markov_edges(&model);
+        let chain = bert_compose::markov::Chain::from_edges(states, &edges);
+        let run = chain.run(&chain.point_mass(0), 4);
+        check_fixture(
+            "markov_run_result",
+            &MarkovRunResult { kind: "markov", states: run.states, history: run.history },
+        );
     }
 
     /// Law: under the declared conservation invariant, the full run() spine
