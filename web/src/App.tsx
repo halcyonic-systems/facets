@@ -40,7 +40,7 @@ import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
 import { NewModelTypePrompt } from "./NewModelTypePrompt";
 import { SlPane } from "./SlPane";
-import { draftSlWithRetry, newTurnId, type CoauthorTurn } from "./coauthor";
+import { draftSlWithRetry, newTurnId, loadCoauthorTurns, saveCoauthorTurns, type CoauthorTurn } from "./coauthor";
 import type { SlError } from "./kernel/types";
 import { Banner, Pill, ToolButton } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
@@ -207,10 +207,13 @@ function Workspace() {
   // turn's status in the Co-author dock's history. undefined-vs-turn distinguishes
   // a coauthor-sourced preview from a plain paste/corpus compile (which clears it).
   const [activeTurnId, setActiveTurnId] = useState<string | null>(null);
-  // #10: the resident co-author's persistent draft history — lifted here (not
-  // local to the dock) so it survives tab switches, unlike SlPane's inline
-  // Draft box whose state dies when the SL pane closes.
-  const [coauthorTurns, setCoauthorTurns] = useState<CoauthorTurn[]>([]);
+  // #10: the resident co-author's persistent draft history — folded into the
+  // SL pane as a mode (not a dock tab; locked 2026-07-24), and lifted here so
+  // it outlives the pane's own mount (localStorage-backed, no cap).
+  const [coauthorTurns, setCoauthorTurns] = useState<CoauthorTurn[]>(loadCoauthorTurns);
+  useEffect(() => {
+    saveCoauthorTurns(coauthorTurns);
+  }, [coauthorTurns]);
   const [manifest, setManifest] = useState<Manifest>({ model: "", data: "", t: 12, mapping: [] });
   const [dt, setDt] = useState(1);
   const [t, setT] = useState(12);
@@ -538,11 +541,13 @@ function Workspace() {
     }
   }
 
-  // #10 resident co-author: description -> draft -> compile -> Rung-0 preview,
-  // recorded as a turn in the dock's history. Reuses the exact same
-  // draftSlWithRetry + onSlCompiled path the SL pane's inline Draft box calls —
-  // no new LLM plumbing, no new preview machinery. A failed compile or an
-  // unreachable drafter still lands as a turn (nothing hidden).
+  // #10 resident co-author, folded into the SL pane as a mode: description ->
+  // draft -> compile -> Rung-0 preview, recorded as a turn in the pane's
+  // history. Reuses the exact draftSlWithRetry + onSlCompiled path the pane's
+  // manual Compile button rides — the co-author is an assist that writes into
+  // the SAME SL text, never a separate write path. A failed compile or an
+  // unreachable drafter still lands as a turn and still populates the text
+  // (nothing hidden — the author can hand-fix a near-miss draft).
   async function coauthorDraft(description: string) {
     const id = newTurnId();
     const lens = canvasModel?.lens;
@@ -556,15 +561,18 @@ function Workspace() {
       ]);
       return;
     }
+    setSlText(sl);
     const outcome = compileSl(sl);
     if ("errors" in outcome) {
       const errorText = outcome.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
+      setSlErrors(outcome.errors);
       setCoauthorTurns((ts) => [
         { id, description, sl, at: new Date().toISOString(), status: "compile-error", errorText },
         ...ts,
       ]);
       return;
     }
+    setSlErrors([]);
     await onSlCompiled(outcome.ok, outcome.lens_explicit, true, id);
     setCoauthorTurns((ts) => [{ id, description, sl, at: new Date().toISOString(), status: "previewing" }, ...ts]);
   }
@@ -1536,11 +1544,11 @@ function Workspace() {
               onCompiled={(cm, lensExplicit) => onSlCompiled(cm, lensExplicit, true)}
               onClose={() => setSlOpen(false)}
               canvasModel={canvasModel}
-              // #10 Rung 1: shared with the resident Co-author dock's Draft
-              // action (coauthorDraft, below) via draftSlWithRetry — one
-              // binding, two surfaces. The pane compiles the returned SL into
-              // a Rung-0 preview itself; the kernel still owns legality.
-              onRequestDraft={(description) => draftSlWithRetry(description, canvasModel?.lens)}
+              // #10: the co-author, folded into the pane as a mode (locked
+              // 2026-07-24) — not a dock tab. coauthorDraft owns the whole
+              // draft->compile->preview->record sequence; the pane just
+              // switches back to the SL view once it resolves.
+              coauthor={{ turns: coauthorTurns, onDraft: coauthorDraft }}
             />
           )}
 
@@ -2020,12 +2028,6 @@ function Workspace() {
               }
               focused={inspectorFocused}
               onToggleFocus={() => setInspectorFocused((f) => !f)}
-              coauthorTurns={coauthorTurns}
-              onCoauthorDraft={coauthorDraft}
-              onCoauthorReopen={(sl) => {
-                setSlText(sl);
-                setSlOpen(true);
-              }}
             />
           )}
         </div>

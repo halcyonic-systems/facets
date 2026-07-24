@@ -26,6 +26,29 @@ export function newTurnId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// History persists across reloads (localStorage) — no cap. A generous soft
+// cap is a cheap later addition if the list grows unwieldy; not needed yet.
+const TURNS_KEY = "bert-lenses.coauthor-turns";
+
+export function loadCoauthorTurns(): CoauthorTurn[] {
+  try {
+    const raw = localStorage.getItem(TURNS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as CoauthorTurn[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveCoauthorTurns(turns: CoauthorTurn[]): void {
+  try {
+    localStorage.setItem(TURNS_KEY, JSON.stringify(turns));
+  } catch {
+    // storage unavailable (private mode, quota) — history stays session-only
+  }
+}
+
 /** description -> SL text, healing up to 2 kernel-reported faults before
  *  returning. The kernel's own parse errors (which name the fix) are fed back
  *  to the drafter — the harness carries correctness, the model only needs to
