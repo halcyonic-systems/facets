@@ -233,6 +233,18 @@ the engine assumes.** The argument, post-critique:
 
 ---
 
+## 3a. First DTMC increment (2026-07-24) — the `Dist(X)` row, implemented general
+
+`crates/bert-compose/src/markov.rs` (PR #168) is the first implementation of the axis-C **`Dist(X)`** cell (the Markov `#67` row), and it is deliberately built to the *axis*, not to a model.
+
+- **What it is.** `Chain::from_edges(states, weighted_edges)` → a row-stochastic matrix; `trajectory` iterates `vₙ₊₁ = vₙ P`. This is the **distribution-evolution** (Chapman–Kolmogorov / Kleisli-composition) reading of `Dist(X)` that §4's contract names — the master-equation face of the chain, not a sampled path. `H` stays the full distribution trajectory, so there is **no RNG, seed, or reproducibility surface yet** — a deliberate first cut that sidesteps the "H becomes *a* sampled path" semantics change §2's Markov row flags.
+- **General, not model-shaped.** Nothing in it knows about states counts, alphabets, or the parity automaton it is tested against (the parity chain is only the fixture: stochastic rows, one-step mixing at p=½, convergence to [½,½] for every biased coin, dead-ends absorb). Same stepper *shape* as conservation flow — the only difference is the codomain functor (axis C). Conservation-flow (`Id` + additive-invariant), DTMC (`Dist`), and the FSA stepper (`X^Σ`) are one dynamical face parameterized by C, **not parallel engines**. This is the K≅2 discipline at the dynamics layer: one neutral coalgebra `c: X → F(X)`, read through each lens — the P3 `mask` (`f: Ḡ → G`) is that coalgebra read in the register, and it is already lens-neutral (Bunge state-space / Mobus work-process / Klir behavior-function read the same trajectory).
+- **Deferred, and explicitly *not* part of closing #67** (the doc's own open gates, kept open): sampled single-path trajectories (seed + reproducibility discipline); and the **event/rate-driven CTMC** — the axis-C "second stochastic entry" from §2's amendment ("the committee votes *when* it votes"), with discrete-tick as its degenerate limit. Both are real, both wait.
+
+**Closeable `#67`, scoped in this frame** (useful/practical/closeable, in service of the general face): (1) the `Dist(X)` distribution stepper — **done** (this PR); (2) read edge weights off a Klir model — the general authoring flow (SL symbol→probability and/or a transition-weight CSV import/export), on any `(T,R)` model, never a parity form; (3) surface the trajectory through the existing lens readouts (the P3 `mask` + Bunge state-space), sharing `run.rs`'s trajectory shape. CTMC and sampled-path semantics are out of scope for the close. The permanent home of `markov.rs` is *inside* the shared `Dynamics` descriptor (the 7/23 spine: descriptor → typed transition → readout), one arm beside `run.rs`, not beside it.
+
+---
+
 ## 4. The dynamics contract (the two rules everything else hangs on)
 
 1. **Semigroup axiom as the kernel's dynamics contract** (MT Def 2.7 β): for every
