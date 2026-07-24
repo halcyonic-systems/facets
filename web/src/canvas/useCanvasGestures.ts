@@ -5,7 +5,9 @@
 // node commit). Legality is still Rust's: `validateConnection` asks the kernel
 // before an edge is accepted. The reducer computes no dynamics and no systemhood.
 import {
+  useEffect,
   useReducer,
+  useRef,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type RefObject,
@@ -115,6 +117,43 @@ function nextId(ids: number[]): number {
   return (ids.length ? Math.max(...ids) : 0) + 1;
 }
 
+/** #139: view-zoom bounds — widened from the old [0.25, 4] so a long zoom
+ *  gesture has room to run continuously instead of hitting a hard wall.
+ *  Still a hand-authoring canvas, not the cross-decomposition seam zoom the
+ *  issue also describes (nesting a child model's frame into the parent's) —
+ *  that part stays out of scope here; see #139 for the "why not now". */
+export const ZOOM_MIN = 0.15;
+export const ZOOM_MAX = 6;
+
+/** Pure zoom math, exported for testing: given the scale/pan a gesture is
+ *  currently reasoning from, a wheel event's deltaY, and whether it arrived as
+ *  a trackpad pinch (ctrlKey), returns the next clamped scale and the pan that
+ *  keeps `cursor` (view-space) fixed under the pointer. No React, no side
+ *  effects — both the direct wheel path and the easing loop below call it. */
+export function computeWheelZoom(
+  scale: number,
+  pan: Pt,
+  deltaY: number,
+  pinch: boolean,
+  cursor: Pt,
+): { scale: number; pan: Pt } {
+  const factor = Math.exp(-deltaY * (pinch ? 0.01 : 0.0015));
+  const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, scale * factor));
+  const k = next / scale;
+  return {
+    scale: next,
+    pan: { x: cursor.x - (cursor.x - pan.x) * k, y: cursor.y - (cursor.y - pan.y) * k },
+  };
+}
+
+/** Fraction of the remaining distance to the target closed per animation
+ *  frame — the easing loop's only tuning knob. Low enough to smooth over a
+ *  single large mouse-wheel notch, high enough that a held gesture still
+ *  tracks the pointer without a felt lag. */
+const ZOOM_EASE = 0.35;
+const ZOOM_DONE_SCALE_EPS = 0.0005;
+const ZOOM_DONE_PAN_EPS = 0.05;
+
 /** Pointer jitter under this many client px reads as a click, not a drag. */
 const CLICK_SLOP = 4;
 
@@ -157,6 +196,45 @@ export function useCanvasGestures({
 }: GestureDeps) {
   const [state, dispatch] = useReducer(reducer, INITIAL);
 
+  // #139: wheel/pinch zoom is eased toward a target rather than snapped —
+  // a raw mouse-wheel notch (large, sparse deltaY) would otherwise still read
+  // as a jump even though the math is continuous. `target` is where the
+  // gesture is heading (fed by every wheel event); `cur` is the animated
+  // value actually dispatched, one ease step closer each frame. null = no
+  // zoom animation in flight (idle between gestures).
+  const zoomAnimRef = useRef<{
+    raf: number;
+    cur: { scale: number; pan: Pt };
+    target: { scale: number; pan: Pt };
+  } | null>(null);
+
+  useEffect(
+    () => () => {
+      if (zoomAnimRef.current) cancelAnimationFrame(zoomAnimRef.current.raf);
+    },
+    [],
+  );
+
+  function stepZoomAnim() {
+    const anim = zoomAnimRef.current;
+    if (!anim) return;
+    anim.cur.scale += (anim.target.scale - anim.cur.scale) * ZOOM_EASE;
+    anim.cur.pan = {
+      x: anim.cur.pan.x + (anim.target.pan.x - anim.cur.pan.x) * ZOOM_EASE,
+      y: anim.cur.pan.y + (anim.target.pan.y - anim.cur.pan.y) * ZOOM_EASE,
+    };
+    const settled =
+      Math.abs(anim.target.scale - anim.cur.scale) < ZOOM_DONE_SCALE_EPS &&
+      Math.hypot(anim.target.pan.x - anim.cur.pan.x, anim.target.pan.y - anim.cur.pan.y) < ZOOM_DONE_PAN_EPS;
+    if (settled) {
+      dispatch({ type: "zoom", scale: anim.target.scale, pan: anim.target.pan });
+      zoomAnimRef.current = null;
+      return;
+    }
+    dispatch({ type: "zoom", scale: anim.cur.scale, pan: anim.cur.pan });
+    anim.raf = requestAnimationFrame(stepZoomAnim);
+  }
+
   function toWorld(e: { clientX: number; clientY: number }): Pt {
     const rect = svgRef.current!.getBoundingClientRect();
     return {
@@ -166,29 +244,43 @@ export function useCanvasGestures({
   }
 
   /** Wheel / trackpad-pinch zoom around the cursor: the world point under the
-   *  pointer stays fixed while the scale changes. Pure view state, like pan. */
+   *  pointer stays fixed while the scale changes. Pure view state, like pan.
+   *  #139: each event only updates the animation TARGET; `stepZoomAnim` eases
+   *  the dispatched scale/pan toward it, so a sparse mouse-wheel notch reads
+   *  as continuous motion instead of a snap, and a dense trackpad stream just
+   *  keeps moving the target the animation was already chasing. */
   function onStageWheel(e: WheelEvent) {
     e.preventDefault();
     const rect = svgRef.current!.getBoundingClientRect();
-    // Trackpad pinch arrives as ctrl+wheel with fine deltas; plain wheel zooms too.
-    const factor = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.002));
-    const next = Math.min(4, Math.max(0.25, state.scale * factor));
-    if (next === state.scale) return;
-    const cx = e.clientX - rect.left;
-    const cy = e.clientY - rect.top;
-    // Keep the cursor's world point stationary: pan' = c - (c - pan) * k'/k.
-    const k = next / state.scale;
-    dispatch({
-      type: "zoom",
-      scale: next,
-      pan: { x: cx - (cx - state.pan.x) * k, y: cy - (cy - state.pan.y) * k },
-    });
+    const cursor = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    const anim = zoomAnimRef.current;
+    // Reason from wherever the gesture is currently heading, not the (stale,
+    // not-yet-rendered) committed state — chaining wheel events mid-animation
+    // should feel like one continuous pull, not a re-anchor each tick.
+    const base = anim ? anim.target : { scale: state.scale, pan: state.pan };
+    const next = computeWheelZoom(base.scale, base.pan, e.deltaY, e.ctrlKey, cursor);
+    if (next.scale === base.scale) return;
+    if (anim) {
+      anim.target = next;
+    } else {
+      zoomAnimRef.current = {
+        raf: requestAnimationFrame(stepZoomAnim),
+        cur: { scale: state.scale, pan: { ...state.pan } },
+        target: next,
+      };
+    }
   }
 
   /** Frame the whole model in a `vw`×`vh` viewport — reuses the same `zoom`
    *  action (scale + pan together) the wheel path uses, so no new view state is
-   *  introduced. A no-op for an empty model. Called after compile (#83). */
+   *  introduced. A no-op for an empty model. Called after compile (#83).
+   *  Cancels any in-flight wheel-zoom animation first so a fit request can't
+   *  be clobbered by the next eased frame landing after it. */
   function fitToViewport(vw: number, vh: number) {
+    if (zoomAnimRef.current) {
+      cancelAnimationFrame(zoomAnimRef.current.raf);
+      zoomAnimRef.current = null;
+    }
     const box = contentBounds(model);
     if (!box) return;
     const { pan, scale } = fitToBox(box, vw, vh);
