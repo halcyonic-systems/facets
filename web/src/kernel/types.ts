@@ -154,6 +154,10 @@ export interface ChildRef {
   id: string;
 }
 
+/** Klir's measurement scale for a variable's state set (§4, Table 4.1). serde
+ *  serializes the Rust enum as its variant name, so these strings are exact. */
+export type ScaleType = "Nominal" | "Ordinal" | "Interval" | "Ratio";
+
 export interface Thing {
   id: number;
   name: string;
@@ -169,6 +173,12 @@ export interface Thing {
    *  Written by the run panel's accept-derived-unit affordance (or SL's `stock`
    *  clause). serde skip-if-empty on the Rust side — absent = undeclared. */
   stock_unit?: string;
+  /** Klir's source-system metadata (#154), authored in the Klir register and
+   *  read only there — the kernel carries neither. serde skip-if-None on the
+   *  Rust side, so absent = undeclared and old models stay byte-identical. */
+  scale?: ScaleType;
+  /** The variable's state set — enumerated value labels (`["Green", "Red"]`). */
+  states?: string[];
 }
 
 export interface Relation {
