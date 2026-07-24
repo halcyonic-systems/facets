@@ -56,6 +56,15 @@ Recommendation: **(a) to start** (covers the FSA/Klir-native case cleanly and is
 
 **Cost:** medium — a full-stack vertical slice (Rust enum + field, wasm/TS, SL parse/emit + golden, persistence fixture, the table view + editor). Gate on the state-set decision first.
 
+### P2 revision (post-review, 2026-07-24) — two fidelity/scope corrections
+
+**(1) basic-vs-support is AUTHORED, not derived.** The first cut derived the column from graph connectivity (`coupled ? basic : supporting`). That is unfaithful to Klir. Per `dynamics-research/read-klir.md` (§1a, citing klir-facets.md:3630-3643): a source system's variables are *partitioned* into basic and supporting, where **supporting variables encode the support set — time, space, population — the backdrop within which basic-variable states change**, and basic variables are the observed quantities measured over that support. Support-hood is a **semantic role the modeler declares**, not a property of R: an isolated variable is not thereby a support (it may just be an uncoupled observed quantity), and a variable that couples into R is not thereby basic (a `Time` support can index a relation). So the column became an **authored** field:
+- Rust: new `KlirVarKind { Basic, Support }` enum + `Thing.variable_kind: Option<KlirVarKind>`, following the `scale`/`states` optional-field pattern (`#[serde(default, skip_serializing_if = "Option::is_none")]`). **`None` reads as `Basic`** — the overwhelming default (a canvas variable is normally an observed quantity), so only an explicit `Support` (or authored `Basic`) serializes, and every pre-existing model stays byte-identical.
+- SL surface: a `kind <Basic|Support>` attribute on the variable line (emitted before `scale`/`states`); `Basic`/absent omitted from emit so old models are unchanged.
+- UI: the basic/support cell is now a Basic/Support dropdown (selecting Basic clears to `None`), NOT a read-off. `sourceRole`'s `kind` derivation was removed; its `io` derivation is kept (that one IS faithful — directed coupling = Klir input=independent / output=dependent).
+
+**(2) Env variables now carry source-system characteristics (guard lifted).** The first cut emitted/parsed `scale`/`states` on `component` lines only; the table showed env rows as read-only `env`/`—`. But Klir's Table 4.1 most wants the **input** variables characterized, and in bert-lenses those inputs are frequently the **environmental drivers** (source/sink) — the table exists to characterize them. So the "applies to components only" guard was lifted for `scale` / `states` / `variable_kind` on `source` / `sink` / `environment` lines (Shingai chose option (a)). The guards for `primitive` / `stock` / `decomposes` / `interface` stay components-only (env internals are opaque, §4.3.3.2.2). The UI's `isComponent` gate on the three editors was removed so env rows are editable. Byte-identity preserved: env things with no authored metadata emit exactly as before.
+
 ---
 
 ## P3 — Klir behavior-function / mask readout (the hard one, last)
