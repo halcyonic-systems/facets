@@ -52,6 +52,7 @@ export function InspectorDock({
   resetKeys,
   focused,
   onToggleFocus,
+  tick,
 }: {
   result: RunResultRich | null;
   runError: string | null;
@@ -65,6 +66,8 @@ export function InspectorDock({
   /** #94: run panel's accept-derived-unit affordance — writes a derived stock
    *  unit into the authoring model as declared. Placement only; App owns it. */
   onAcceptUnit?: (name: string, unit: string) => void;
+  /** #154 P1: SimScrubber tick, forwarded to RunPanel's state-space marker. */
+  tick?: number;
   resetKeys: unknown[];
   /** #122: the canvas's element editor lives HERE, not in a popover at the
    *  pointer. Null in a surface that carries its own inline editor (the Klir
@@ -191,6 +194,7 @@ export function InspectorDock({
                 runError={runError}
                 lens={canvasModel?.lens ?? "Klir"}
                 onAcceptUnit={onAcceptUnit}
+                tick={tick}
               />
             )}
             {tab === "formal" && <FormalTab desc={desc} analysisError={analysisError} />}
@@ -270,11 +274,13 @@ function RunTab({
   runError,
   lens,
   onAcceptUnit,
+  tick,
 }: {
   result: RunResultRich | null;
   runError: string | null;
   lens: CanvasModel["lens"];
   onAcceptUnit?: (name: string, unit: string) => void;
+  tick?: number;
 }) {
   if (runError) {
     return (
@@ -285,7 +291,7 @@ function RunTab({
       </Card>
     );
   }
-  if (result) return <RunPanel result={result} lens={lens} onAcceptUnit={onAcceptUnit} />;
+  if (result) return <RunPanel result={result} lens={lens} onAcceptUnit={onAcceptUnit} tick={tick} />;
   return (
     <Placeholder>
       Run a demo bundle (model + CSV + mapping) to see the forced simulation here.

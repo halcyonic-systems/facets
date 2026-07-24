@@ -12,6 +12,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceDot,
   ResponsiveContainer,
   Scatter,
   ScatterChart,
@@ -21,6 +22,13 @@ import {
   ZAxis,
 } from "recharts";
 import type { RunResultRich } from "../kernel/types";
+
+// #154 P1: clamp a scrubber tick into a series of length n (or null if the
+// series is empty / no tick given). The live marker never points off the path.
+function markerIndex(tick: number | undefined, n: number): number | null {
+  if (tick == null || n === 0) return null;
+  return Math.max(0, Math.min(n - 1, Math.round(tick)));
+}
 
 const AXIS_TICK = { fontSize: 11, fill: "var(--text-muted)" } as const;
 const TOOLTIP_STYLE = {
@@ -36,7 +44,7 @@ function label(name: string, unit: string) {
 
 /** Bunge's trajectory / state-space view of a run. Renders nothing without a
  *  run trajectory to show. Self-contained: `result` is the only input. */
-export function BungeStateSpace({ result }: { result: RunResultRich }) {
+export function BungeStateSpace({ result, tick }: { result: RunResultRich; tick?: number }) {
   const traj = result.trajectories;
   if (traj.length === 0) return null;
 
@@ -46,6 +54,9 @@ export function BungeStateSpace({ result }: { result: RunResultRich }) {
     const [a, b] = traj;
     const n = Math.min(a.series.length, b.series.length);
     const points = Array.from({ length: n }, (_, i) => ({ x: a.series[i], y: b.series[i], t: i }));
+    // #154 P1: the scrubber's current position on the path — where the system
+    // IS at this tick, not just the whole trajectory.
+    const mi = markerIndex(tick, n);
     return (
       <Frame caption={`the run's path through state space — ${label(a.name, a.unit)} × ${label(b.name, b.unit)}`}>
         <ResponsiveContainer width="100%" height={200}>
@@ -61,6 +72,17 @@ export function BungeStateSpace({ result }: { result: RunResultRich }) {
               fill="var(--accent)"
               isAnimationActive={false}
             />
+            {mi !== null && (
+              <ReferenceDot
+                x={points[mi].x}
+                y={points[mi].y}
+                r={5}
+                fill="var(--accent-strong)"
+                stroke="var(--bg-primary)"
+                strokeWidth={2}
+                isFront
+              />
+            )}
           </ScatterChart>
         </ResponsiveContainer>
       </Frame>
@@ -69,6 +91,7 @@ export function BungeStateSpace({ result }: { result: RunResultRich }) {
 
   const only = traj[0];
   const data = only.series.map((v, t) => ({ t, v }));
+  const mi = markerIndex(tick, only.series.length);
   return (
     <Frame caption={`the run's one state variable over time — ${label(only.name, only.unit)}`}>
       <ResponsiveContainer width="100%" height={200}>
@@ -78,6 +101,17 @@ export function BungeStateSpace({ result }: { result: RunResultRich }) {
           <YAxis tick={AXIS_TICK} stroke="var(--border)" width={44} />
           <Tooltip contentStyle={TOOLTIP_STYLE} />
           <Line type="monotone" dataKey="v" stroke="var(--accent)" dot={false} strokeWidth={2} isAnimationActive={false} />
+          {mi !== null && (
+            <ReferenceDot
+              x={mi}
+              y={only.series[mi]}
+              r={5}
+              fill="var(--accent-strong)"
+              stroke="var(--bg-primary)"
+              strokeWidth={2}
+              isFront
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </Frame>
