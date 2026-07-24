@@ -2416,12 +2416,13 @@ function OpenDialog({
       onClick={() => closable && onClose()}
     >
       <div
-        className="w-full max-w-3xl p-6"
+        className="w-full max-w-3xl overflow-y-auto p-6"
         style={{
           background: "var(--bg-secondary)",
           border: "1px solid var(--border)",
           boxShadow: "var(--shadow-card-hover)",
           borderRadius: "var(--radius-card)",
+          maxHeight: "calc(100vh - 3rem)", // scroll INSIDE the dialog; never overflow the viewport (#148)
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -2668,38 +2669,45 @@ function SaveDialog({
   );
 }
 
+// Demos as compact rows (#148), labelled and separate from the corpus — these
+// RUN (the tool working), the corpus is structural (what the author said). Same
+// dense row as a corpus entry so nothing on the dialog is a giant card.
 function DemoGallery({ selected, onPick }: { selected: Demo | null; onPick: (d: Demo) => void }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
-      {DEMOS.map((d) => {
-        const active = selected?.key === d.key;
-        return (
-          <button
-            key={d.key}
-            onClick={() => onPick(d)}
-            className="p-4 text-left transition-shadow"
-            style={{
-              background: "var(--bg-secondary)",
-              border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-              boxShadow: active ? "var(--shadow-card-hover)" : "var(--shadow-card)",
-              borderRadius: "var(--radius-card)",
-            }}
-          >
-            <div
-              className="text-base font-semibold"
-              style={{
-                fontFamily: "var(--font-display)",
-                color: active ? "var(--accent-strong)" : "var(--text-primary)",
-              }}
+    <div>
+      <div
+        className="mb-2 text-xs font-semibold uppercase tracking-wide"
+        style={{ color: "var(--text-muted)" }}
+      >
+        Demos — runnable
+      </div>
+      <div className="flex flex-col">
+        {DEMOS.map((d) => {
+          const active = selected?.key === d.key;
+          return (
+            <button
+              key={d.key}
+              onClick={() => onPick(d)}
+              title={d.blurb}
+              className="flex w-full items-baseline gap-2 border-b px-1 py-1.5 text-left last:border-b-0"
+              style={{ borderColor: "var(--hairline)" }}
             >
-              {d.title}
-            </div>
-            <div className="mt-1 text-xs leading-snug" style={{ color: "var(--text-muted)" }}>
-              {d.blurb.split(".")[0]}.
-            </div>
-          </button>
-        );
-      })}
+              <span
+                className="shrink-0 text-sm"
+                style={{
+                  fontFamily: "var(--font-display)",
+                  color: active ? "var(--accent-strong)" : "var(--text-primary)",
+                }}
+              >
+                {d.title}
+              </span>
+              <span className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
+                {d.blurb.split(".")[0]}.
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -2709,49 +2717,41 @@ function DemoGallery({ selected, onPick }: { selected: Demo | null; onPick: (d: 
 // as a bug, and the two sets answer different questions: "show me the tool
 // working" versus "show me what this author actually said". The citation is the
 // third line, and it is what makes a corpus card a corpus card.
-// One corpus card — shared by sibling-set clusters and standalone entries.
+// One corpus entry as a COMPACT ROW (#148) — title + a muted teach snippet on
+// one line, citation on hover. Dense by design: the gallery is a browser, not a
+// card wall, so a growing corpus stays scannable. Shared by sets and standalone.
 function CorpusCard({ e, onPick }: { e: CorpusEntry; onPick: (e: CorpusEntry) => void }) {
   return (
     <button
       onClick={() => onPick(e)}
-      className="p-4 text-left transition-shadow"
-      style={{
-        background: "var(--bg-secondary)",
-        border: "1px solid var(--border)",
-        boxShadow: "var(--shadow-card)",
-        borderRadius: "var(--radius-card)",
-      }}
+      title={e.citation}
+      className="flex w-full items-baseline gap-2 border-b px-1 py-1.5 text-left transition-colors last:border-b-0"
+      style={{ borderColor: "var(--hairline)" }}
     >
-      <div
-        className="text-base font-semibold"
+      <span
+        className="shrink-0 text-sm"
         style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}
       >
         {e.title}
-      </div>
-      <div className="mt-1 text-xs leading-snug" style={{ color: "var(--text-muted)" }}>
+      </span>
+      <span className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
         {firstSentence(e.teaches)}
-      </div>
-      <div className="mt-2 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
-        {e.citation}
-      </div>
+      </span>
     </button>
   );
 }
 
-// #148: the corpus, faceted. Flat grid → tradition sections (collapsible, so
-// adding entry N extends a fold rather than the screen) → sibling-set clusters
-// (Klir's goal-oriented paradigms etc. read as ONE lesson with variants, the
-// issue's highest-value grouping) → standalone cards. Demos stay separate.
+// #148: the corpus, faceted and COMPACT. Tradition sections COLLAPSED BY DEFAULT
+// (the dialog opens navigable — three fold headers, not 14 cards) → expand one
+// to reveal sibling-set clusters (Klir's goal-oriented paradigms etc. read as
+// ONE lesson with variants) + standalone rows. Demos stay separate; the dialog
+// scrolls internally so nothing ever overflows the viewport.
 function CorpusGallery({ onPick }: { onPick: (e: CorpusEntry) => void }) {
   const groups = groupedCorpus();
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // Collapsed by default — opening every tradition would swamp the dialog.
+  const [expanded, setExpanded] = useState<string | null>(null);
   if (groups.length === 0) return null;
-  const toggle = (t: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      next.has(t) ? next.delete(t) : next.add(t);
-      return next;
-    });
+  const toggle = (t: string) => setExpanded((prev) => (prev === t ? null : t));
   return (
     <div className="mt-5">
       <div
@@ -2760,20 +2760,20 @@ function CorpusGallery({ onPick }: { onPick: (e: CorpusEntry) => void }) {
       >
         Source corpus
       </div>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col">
         {groups.map((g) => {
           const meta = TRADITIONS.find((t) => t.key === g.tradition)!;
-          const isCollapsed = collapsed.has(g.tradition);
+          const isOpen = expanded === g.tradition;
           const count = g.sets.reduce((n, s) => n + s.entries.length, 0) + g.loose.length;
           return (
             <section key={g.tradition}>
               <button
                 onClick={() => toggle(g.tradition)}
-                className="flex w-full items-baseline gap-2 border-b pb-1 text-left"
+                className="flex w-full items-baseline gap-2 border-b py-2 text-left"
                 style={{ borderColor: "var(--hairline)" }}
               >
-                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  {isCollapsed ? "▸" : "▾"}
+                <span className="w-3 text-xs" style={{ color: "var(--text-muted)" }}>
+                  {isOpen ? "▾" : "▸"}
                 </span>
                 <span
                   className="text-sm font-semibold"
@@ -2785,18 +2785,14 @@ function CorpusGallery({ onPick }: { onPick: (e: CorpusEntry) => void }) {
                   {meta.author}
                 </span>
                 <span className="ml-auto text-[11px] tabular" style={{ color: "var(--text-muted)" }}>
-                  {count}
+                  {count} model{count === 1 ? "" : "s"}
                 </span>
               </button>
-              {!isCollapsed && (
-                <div className="mt-3 flex flex-col gap-3">
+              {isOpen && (
+                <div className="mb-2 mt-2 flex flex-col gap-2 pl-3">
                   {g.sets.map((s) => (
-                    <div
-                      key={s.name}
-                      className="rounded-lg p-2 pl-3"
-                      style={{ borderLeft: "2px solid var(--accent)", background: "var(--bg-primary)" }}
-                    >
-                      <div className="mb-2 flex items-baseline gap-2">
+                    <div key={s.name} className="pl-3" style={{ borderLeft: "2px solid var(--accent)" }}>
+                      <div className="flex items-baseline gap-2 py-1">
                         <span
                           className="text-xs font-semibold"
                           style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}
@@ -2807,7 +2803,7 @@ function CorpusGallery({ onPick }: { onPick: (e: CorpusEntry) => void }) {
                           {s.entries.length} variants · one lesson by diff
                         </span>
                       </div>
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="flex flex-col">
                         {s.entries.map((e) => (
                           <CorpusCard key={e.file} e={e} onPick={onPick} />
                         ))}
@@ -2815,7 +2811,7 @@ function CorpusGallery({ onPick }: { onPick: (e: CorpusEntry) => void }) {
                     </div>
                   ))}
                   {g.loose.length > 0 && (
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="flex flex-col">
                       {g.loose.map((e) => (
                         <CorpusCard key={e.file} e={e} onPick={onPick} />
                       ))}
