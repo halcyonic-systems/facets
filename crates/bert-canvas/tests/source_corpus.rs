@@ -22,7 +22,7 @@ use bert_canvas::sl::parse_sl_full;
 
 /// Keys of the provenance header, in the order §2.1 fixes.
 const REQUIRED: [&str; 7] = ["title", "author", "work", "year", "locus", "teaches", "omits"];
-const OPTIONAL: [&str; 3] = ["figure", "note", "gate"];
+const OPTIONAL: [&str; 4] = ["figure", "note", "gate", "set"];
 
 fn corpus_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/corpus")
