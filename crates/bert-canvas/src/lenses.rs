@@ -976,6 +976,7 @@ mod tests {
             is_bond,
             kind: Kind::Unspecified,
             klir_directed: false,
+            weight: None,
         }
     }
     fn model(things: Vec<Thing>, relations: Vec<Relation>) -> CanvasModel {

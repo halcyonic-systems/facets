@@ -181,6 +181,14 @@ pub struct Relation {
     /// regardless, so this changes what the Klir lens *shows*, not the model).
     #[serde(default)]
     pub klir_directed: bool,
+    /// Per-transition weight for the #67 DTMC read (`markov_edges`). A
+    /// non-negative integer COUNT, matching SSF's `kindCodomain .markov =
+    /// List (X × Nat)`: `Chain::from_edges` normalizes a state's out-edge counts
+    /// into its row distribution, so a count and a probability reduce to the same
+    /// `P`. `None` reads as the uniform default `1`; `skip` keeps every model
+    /// authored before this field byte-identical on disk.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub weight: Option<u64>,
 }
 
 fn default_true() -> bool {
@@ -701,6 +709,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             is_bond: true,
             kind: substance_to_kind(ix.substance.ty),
             klir_directed: false,
+            weight: None,
         });
     }
 
@@ -794,10 +803,10 @@ pub fn validate_connection(model: &CanvasModel, candidate: &Relation) -> Vec<Val
 /// that stays put), as it is at Klir/Core. Feedback-as-a-first-class-cycle is
 /// Cybernetic mode's future seat; Klir carries it for now.
 ///
-/// Weights are UNIFORM for now — every out-edge of a state gets weight 1, so the
-/// derived matrix splits a state's mass evenly across its successors. The
-/// per-transition weight the later authoring surface (SL syntax / CSV) will
-/// populate slots in where the `1` is; this function is its uniform default.
+/// Each edge carries its authored [`Relation::weight`] count; an unweighted
+/// transition reads as the uniform default `1`. `Chain::from_edges` normalizes a
+/// state's out-edge counts into its row distribution, so authoring `weight 3`
+/// vs `weight 1` on a state's two successors biases its split 3:1.
 pub fn markov_edges(model: &CanvasModel) -> (Vec<String>, Vec<(usize, usize, u64)>) {
     use std::collections::HashMap;
     let states: Vec<String> = model.things.iter().map(|t| t.name.clone()).collect();
@@ -813,7 +822,7 @@ pub fn markov_edges(model: &CanvasModel) -> (Vec<String>, Vec<(usize, usize, u64
         .filter_map(|r| {
             let &i = index.get(&r.a)?;
             let &j = index.get(&r.b)?;
-            Some((i, j, 1u64))
+            Some((i, j, r.weight.unwrap_or(1)))
         })
         .collect();
     (states, edges)
@@ -848,6 +857,7 @@ mod tests {
             is_bond: true,
             kind: Kind::Unspecified,
             klir_directed: false,
+            weight: None,
         }
     }
 

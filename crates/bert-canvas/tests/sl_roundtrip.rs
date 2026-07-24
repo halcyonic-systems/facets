@@ -89,6 +89,7 @@ fn canvas_born_model_canonicalizes() {
             is_bond: false,
             kind: Kind::Field,
             klir_directed: true,
+            weight: None,
         }],
         boundary: CanvasBoundaryProps { porosity: 0.33, perceptive_fuzziness: 0.0 },
         system_type: SystemType::default(),
@@ -262,6 +263,26 @@ fn klir_variable_kind_round_trips() {
     let basic_text = emit_sl(&basic).unwrap();
     assert!(basic_text.contains("kind Basic"), "{basic_text}");
     assert_eq!(json(&basic), json(&parse_sl(&basic_text).unwrap()));
+}
+
+/// Law (#67 J6): `weight <n>` on a transition round-trips as a `u64` count, and
+/// an unweighted flow never emits `weight`, so old models stay byte-identical.
+#[test]
+fn transition_weight_round_trips() {
+    let text = "component Even\ncomponent Odd\nflow Even -> Odd : matter \"flip\" weight 3\n";
+    let m = parse_sl(text).unwrap();
+    assert_eq!(m.relations[0].weight, Some(3));
+
+    let emitted = emit_sl(&m).unwrap();
+    assert!(emitted.contains("weight 3"), "{emitted}");
+    let m2 = parse_sl(&emitted).unwrap();
+    assert_eq!(json(&m), json(&m2), "weight drifted across the round trip\n{emitted}");
+    assert_eq!(emit_sl(&m2).unwrap(), emitted, "emit is not a fixpoint");
+
+    // Unweighted stays unweighted — no invented count, and `weight` never emits.
+    let bare = parse_sl("component A\ncomponent B\nflow A -> B\n").unwrap();
+    assert_eq!(bare.relations[0].weight, None);
+    assert!(!emit_sl(&bare).unwrap().contains("weight"));
 }
 
 /// Law: a name containing a quote is not expressible in SL v1 — emit refuses

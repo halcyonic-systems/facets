@@ -155,6 +155,7 @@ mod tests {
             is_bond: true,
             kind: Kind::Field,
             klir_directed: true,
+            weight: None,
         });
         m.relations.push(Relation {
             id: 2,
@@ -164,6 +165,7 @@ mod tests {
             is_bond: false,
             kind: Kind::Unspecified,
             klir_directed: false,
+            weight: None,
         });
         m
     }
@@ -327,10 +329,10 @@ mod decomposition_seam {
                 thing(5, "Output", Role::Component),
             ],
             relations: vec![
-                Relation { id: 1, a: 2, b: 4, name: "crude".into(), is_bond: true, kind: Kind::Matter, klir_directed: false },
-                Relation { id: 2, a: 4, b: 1, name: "feed".into(), is_bond: true, kind: Kind::Matter, klir_directed: false },
-                Relation { id: 3, a: 1, b: 5, name: "hot".into(), is_bond: true, kind: Kind::Matter, klir_directed: false },
-                Relation { id: 4, a: 5, b: 3, name: "refined".into(), is_bond: true, kind: Kind::Matter, klir_directed: false },
+                Relation { id: 1, a: 2, b: 4, name: "crude".into(), is_bond: true, kind: Kind::Matter, klir_directed: false, weight: None },
+                Relation { id: 2, a: 4, b: 1, name: "feed".into(), is_bond: true, kind: Kind::Matter, klir_directed: false, weight: None },
+                Relation { id: 3, a: 1, b: 5, name: "hot".into(), is_bond: true, kind: Kind::Matter, klir_directed: false, weight: None },
+                Relation { id: 4, a: 5, b: 3, name: "refined".into(), is_bond: true, kind: Kind::Matter, klir_directed: false, weight: None },
             ],
             boundary: Default::default(),
             system_type: Default::default(),

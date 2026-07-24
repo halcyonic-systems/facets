@@ -44,6 +44,7 @@ fn rel(id: u64, a: u64, b: u64) -> Relation {
         is_bond: true,
         kind: Kind::Unspecified,
         klir_directed: false,
+        weight: None,
     }
 }
 

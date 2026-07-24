@@ -29,6 +29,7 @@
 //!                                      #   actual role is edge-derived in project()
 //! flow "Iron Vendor" -> Furnace : matter "iron"
 //! flow Furnace -> Customers : matter "steel" mere   # mere = not a bond
+//! flow Even -> Odd : "flip" weight 3                 # weight = DTMC transition count (#67); default 1
 //! boundary porosity 0.7 fuzziness 0.1
 //!
 //! @lens mobus                          # view layer, ignorable
@@ -536,14 +537,14 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 next_id += 1;
             }
             "flow" => {
-                // flow A -> B [: kind] ["label"] [mere]
+                // flow A -> B [: kind] ["label"] [mere] [weight <n>]
                 let (a, b, mut tail) = match rest {
                     [a, Tok::Arrow, b, tail @ ..] if a.is_name() && b.is_name() => {
                         (a.name(), b.name(), tail)
                     }
                     _ => {
                         fail(
-                            "flow syntax: `flow <a> -> <b> [: <kind>] [\"label\"] [mere]`".into(),
+                            "flow syntax: `flow <a> -> <b> [: <kind>] [\"label\"] [mere] [weight <n>]`".into(),
                             &mut errors,
                         );
                         continue;
@@ -572,6 +573,35 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         tail = rest_tail;
                     }
                 }
+                // `weight <n>` — per-transition count for the #67 DTMC read
+                // (`markov_edges`); omit for the uniform default 1.
+                let mut weight = None;
+                if let [Tok::Word(w), rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("weight") {
+                        match rest_tail {
+                            [Tok::Word(n), after @ ..] => match n.parse::<u64>() {
+                                Ok(v) => {
+                                    weight = Some(v);
+                                    tail = after;
+                                }
+                                Err(_) => {
+                                    fail(
+                                        "weight syntax: `weight <non-negative integer>`".into(),
+                                        &mut errors,
+                                    );
+                                    continue;
+                                }
+                            },
+                            _ => {
+                                fail(
+                                    "weight syntax: `weight <non-negative integer>`".into(),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        }
+                    }
+                }
                 if !tail.is_empty() {
                     fail(
                         format!("unexpected `{}` at end of flow", tail[0].display()),
@@ -595,6 +625,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     is_bond,
                     kind,
                     klir_directed: false,
+                    weight,
                 });
                 next_id += 1;
             }
@@ -837,6 +868,9 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         if !r.is_bond {
             write!(out, " mere").unwrap();
         }
+        if let Some(w) = r.weight {
+            write!(out, " weight {w}").unwrap();
+        }
         out.push('\n');
     }
 
@@ -887,6 +921,7 @@ fn is_reserved(word: &str) -> bool {
             | "time"
             | "unit"
             | "mere"
+            | "weight"
             | "porosity"
             | "fuzziness"
             | "energy"

@@ -822,7 +822,16 @@ mod tests {
             }
         }
         fn edge(id: u64, a: u64, b: u64) -> Relation {
-            Relation { id, a, b, name: String::new(), is_bond: true, kind: Kind::Unspecified, klir_directed: false }
+            Relation {
+                id,
+                a,
+                b,
+                name: String::new(),
+                is_bond: true,
+                kind: Kind::Unspecified,
+                klir_directed: false,
+                weight: None,
+            }
         }
         CanvasModel {
             lens: Lens::Klir,
@@ -856,6 +865,29 @@ mod tests {
             "uniform parity did not converge to [½,½]: {last:?}"
         );
         assert_eq!(run.states, vec!["Even".to_string(), "Odd".to_string()]);
+    }
+
+    /// Law: authored per-edge weights bias the run. Even's two out-edges —
+    /// `weight 3` to Odd (flip) and `weight 1` to Even (stay) — normalize to a
+    /// [0.25 stay, 0.75 flip] first row, the biased `P` the counts specify.
+    #[test]
+    fn markov_authored_weights_bias_the_row() {
+        let mut model = parity_canvas();
+        for r in &mut model.relations {
+            // Even --flip--> Odd (10) gets weight 3; Even --stay--> Even (11) gets 1.
+            r.weight = match r.id {
+                10 => Some(3),
+                11 => Some(1),
+                _ => None,
+            };
+        }
+        let (states, edges) = bert_canvas::canvas::markov_edges(&model);
+        let chain = bert_compose::markov::Chain::from_edges(states, &edges);
+        let row = &chain.p()[0];
+        assert!(
+            (row[0] - 0.25).abs() < 1e-9 && (row[1] - 0.75).abs() < 1e-9,
+            "3:1 weighting did not bias Even's row to [0.25 stay, 0.75 flip]: {row:?}"
+        );
     }
 
     #[test]
