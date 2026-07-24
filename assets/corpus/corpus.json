@@ -96,13 +96,6 @@
       "set": "Goal-oriented paradigms"
     },
     {
-      "file": "klir/parity-automaton.sl",
-      "tradition": "klir",
-      "title": "The parity automaton",
-      "citation": "Halcyonic (editorial), DLG↔FSA worked example (2026), editorial addition, 2026-07-24",
-      "teaches": "That a finite-state automaton IS a Directed Labeled Graph — states as the things T, transitions as the directed relations R, each labeled by its input symbol — which is exactly the Klir lens's S = (T, R). The minimal non-trivial case: two states {Even, Odd} over the binary alphabet {0, 1}, where 0 preserves parity and 1 flips it."
-    },
-    {
       "file": "klir/serial-binary-adder.sl",
       "tradition": "klir",
       "title": "A serial binary adder",
