@@ -51,6 +51,7 @@ export function RunPanel({
   result,
   lens,
   onAcceptUnit,
+  tick,
 }: {
   result: RunResultRich;
   lens: CanvasModel["lens"];
@@ -58,6 +59,9 @@ export function RunPanel({
    *  parent writes it into the authoring model; absent = no authoring surface
    *  to write into, so no affordance is shown. */
   onAcceptUnit?: (name: string, unit: string) => void;
+  /** #154 P1: the SimScrubber's current tick, so the Bunge state-space readout
+   *  marks where the system is on its path. Absent = no live marker. */
+  tick?: number;
 }) {
   // Lead with the sharpest MEANINGFUL divergence. A forced flow trivially
   // matches its own data (~0% off) — that's a tautology, not a finding, so it
@@ -123,7 +127,7 @@ export function RunPanel({
           the coupling matrix that carries its structure. */}
       {lens === "Bunge" && result.trajectories.length > 0 && (
         <Card title="State space" source="bert-compose · wasm">
-          <BungeStateSpace result={result} />
+          <BungeStateSpace result={result} tick={tick} />
         </Card>
       )}
 

@@ -1814,6 +1814,7 @@ function Workspace() {
               issueTargets={issueTargets}
               analysisError={analysisError}
               canvasModel={canvasModel}
+              tick={tick}
               onNavigate={(t) => {
                 setBoundaryAnchor(null);
                 setSelectedThingId(t.thing);
