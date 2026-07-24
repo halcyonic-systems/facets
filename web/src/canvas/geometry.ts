@@ -96,8 +96,14 @@ export function edgeGeometry(
 
   if (step !== 0) {
     const mid = midpoint(a, b);
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
+    // #180: the normal must come from a direction CANONICAL to the unordered
+    // pair, not this relation's own a→b — a bidirectional sibling (b→a) has
+    // that vector pointing the opposite way, which flips the normal and folds
+    // its offset back onto the first relation's curve instead of fanning away
+    // from it. Order by node id so every sibling bows off the same axis.
+    const [lo, hi] = relation.a < relation.b ? [from, to] : [to, from];
+    const dx = hi.x - lo.x;
+    const dy = hi.y - lo.y;
     const len = Math.hypot(dx, dy) || 1;
     const px = -dy / len;
     const py = dx / len;
