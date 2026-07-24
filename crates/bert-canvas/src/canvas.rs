@@ -72,6 +72,21 @@ pub enum ScaleType {
     Ratio,
 }
 
+/// Klir's basic-vs-supporting partition of the source variables (§4, Table 4.1):
+/// basic variables are the observed quantities; supporting variables encode the
+/// support set (time, space, population) the basic states range over. This is a
+/// SEMANTIC role the modeler declares, not a property readable off R — an
+/// isolated variable is not thereby a support, and a coupled one is not thereby
+/// basic. Authored Klir metadata, read only in the register; the kernel carries
+/// none. `None` reads as `Basic` (the overwhelming default — a canvas variable
+/// is normally an observed quantity), so an explicit `Support` is the rare
+/// declared case and old models stay byte-identical.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum KlirVarKind {
+    Basic,
+    Support,
+}
+
 fn kind_to_substance(k: Kind) -> SubstanceType {
     match k {
         Kind::Matter => SubstanceType::Material,
@@ -139,6 +154,13 @@ pub struct Thing {
     /// byte-identical.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub states: Option<Vec<String>>,
+    /// Klir's basic-vs-supporting standing for this variable (§4, Table 4.1).
+    /// AUTHORED, not derived: support-hood is a semantic role (does this variable
+    /// index the support set, or is it an observed quantity?), which cannot be
+    /// read off R. `None` reads as `Basic`; `skip` so undeclared/basic variables
+    /// stay byte-identical on disk.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub variable_kind: Option<KlirVarKind>,
 }
 
 /// A drawn connection: `a → b`, a bond (or a mere relation), optionally typed.
@@ -630,6 +652,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             // carries none, so a reconstructed thing has neither.
             scale: None,
             states: None,
+            variable_kind: None,
         });
     }
 
@@ -659,6 +682,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             stock_unit: String::new(),
             scale: None,
             states: None,
+            variable_kind: None,
         });
     }
 
@@ -775,6 +799,7 @@ mod tests {
             stock_unit: String::new(),
             scale: None,
             states: None,
+            variable_kind: None,
         }
     }
     fn bond(id: u64, a: u64, b: u64) -> Relation {

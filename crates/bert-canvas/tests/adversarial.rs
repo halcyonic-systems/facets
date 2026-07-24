@@ -31,6 +31,7 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
         stock_unit: String::new(),
         scale: None,
         states: None,
+        variable_kind: None,
     }
 }
 

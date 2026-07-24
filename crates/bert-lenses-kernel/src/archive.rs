@@ -131,6 +131,7 @@ mod tests {
             stock_unit: String::new(),
             scale: None,
             states: None,
+            variable_kind: None,
         });
         m.things.push(Thing {
             id: 2,
@@ -144,6 +145,7 @@ mod tests {
             stock_unit: String::new(),
             scale: None,
             states: None,
+            variable_kind: None,
         });
         m.relations.push(Relation {
             id: 1,
@@ -299,6 +301,7 @@ mod decomposition_seam {
             stock_unit: String::new(),
             scale: None,
             states: None,
+            variable_kind: None,
         }
     }
 
