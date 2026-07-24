@@ -21,7 +21,7 @@ import type {
   ValidationIssue,
 } from "./kernel/types";
 import { DEMOS, type Demo } from "./demos";
-import { CORPUS, firstSentence, type CorpusEntry } from "./corpus";
+import { firstSentence, groupedCorpus, TRADITIONS, type CorpusEntry } from "./corpus";
 import Canvas from "./canvas/Canvas";
 import { edgeGeometry, thingById } from "./canvas/geometry";
 import { EdgePopover } from "./canvas/EdgePopover";
@@ -2618,8 +2618,49 @@ function DemoGallery({ selected, onPick }: { selected: Demo | null; onPick: (d: 
 // as a bug, and the two sets answer different questions: "show me the tool
 // working" versus "show me what this author actually said". The citation is the
 // third line, and it is what makes a corpus card a corpus card.
+// One corpus card — shared by sibling-set clusters and standalone entries.
+function CorpusCard({ e, onPick }: { e: CorpusEntry; onPick: (e: CorpusEntry) => void }) {
+  return (
+    <button
+      onClick={() => onPick(e)}
+      className="p-4 text-left transition-shadow"
+      style={{
+        background: "var(--bg-secondary)",
+        border: "1px solid var(--border)",
+        boxShadow: "var(--shadow-card)",
+        borderRadius: "var(--radius-card)",
+      }}
+    >
+      <div
+        className="text-base font-semibold"
+        style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}
+      >
+        {e.title}
+      </div>
+      <div className="mt-1 text-xs leading-snug" style={{ color: "var(--text-muted)" }}>
+        {firstSentence(e.teaches)}
+      </div>
+      <div className="mt-2 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
+        {e.citation}
+      </div>
+    </button>
+  );
+}
+
+// #148: the corpus, faceted. Flat grid → tradition sections (collapsible, so
+// adding entry N extends a fold rather than the screen) → sibling-set clusters
+// (Klir's goal-oriented paradigms etc. read as ONE lesson with variants, the
+// issue's highest-value grouping) → standalone cards. Demos stay separate.
 function CorpusGallery({ onPick }: { onPick: (e: CorpusEntry) => void }) {
-  if (CORPUS.length === 0) return null;
+  const groups = groupedCorpus();
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  if (groups.length === 0) return null;
+  const toggle = (t: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      next.has(t) ? next.delete(t) : next.add(t);
+      return next;
+    });
   return (
     <div className="mt-5">
       <div
@@ -2628,33 +2669,72 @@ function CorpusGallery({ onPick }: { onPick: (e: CorpusEntry) => void }) {
       >
         Source corpus
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        {CORPUS.map((e) => (
-          <button
-            key={e.file}
-            onClick={() => onPick(e)}
-            className="p-4 text-left transition-shadow"
-            style={{
-              background: "var(--bg-secondary)",
-              border: "1px solid var(--border)",
-              boxShadow: "var(--shadow-card)",
-              borderRadius: "var(--radius-card)",
-            }}
-          >
-            <div
-              className="text-base font-semibold"
-              style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}
-            >
-              {e.title}
-            </div>
-            <div className="mt-1 text-xs leading-snug" style={{ color: "var(--text-muted)" }}>
-              {firstSentence(e.teaches)}
-            </div>
-            <div className="mt-2 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
-              {e.citation}
-            </div>
-          </button>
-        ))}
+      <div className="flex flex-col gap-4">
+        {groups.map((g) => {
+          const meta = TRADITIONS.find((t) => t.key === g.tradition)!;
+          const isCollapsed = collapsed.has(g.tradition);
+          const count = g.sets.reduce((n, s) => n + s.entries.length, 0) + g.loose.length;
+          return (
+            <section key={g.tradition}>
+              <button
+                onClick={() => toggle(g.tradition)}
+                className="flex w-full items-baseline gap-2 border-b pb-1 text-left"
+                style={{ borderColor: "var(--hairline)" }}
+              >
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  {isCollapsed ? "▸" : "▾"}
+                </span>
+                <span
+                  className="text-sm font-semibold"
+                  style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}
+                >
+                  {meta.label}
+                </span>
+                <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                  {meta.author}
+                </span>
+                <span className="ml-auto text-[11px] tabular" style={{ color: "var(--text-muted)" }}>
+                  {count}
+                </span>
+              </button>
+              {!isCollapsed && (
+                <div className="mt-3 flex flex-col gap-3">
+                  {g.sets.map((s) => (
+                    <div
+                      key={s.name}
+                      className="rounded-lg p-2 pl-3"
+                      style={{ borderLeft: "2px solid var(--accent)", background: "var(--bg-primary)" }}
+                    >
+                      <div className="mb-2 flex items-baseline gap-2">
+                        <span
+                          className="text-xs font-semibold"
+                          style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}
+                        >
+                          {s.name}
+                        </span>
+                        <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                          {s.entries.length} variants · one lesson by diff
+                        </span>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {s.entries.map((e) => (
+                          <CorpusCard key={e.file} e={e} onPick={onPick} />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {g.loose.length > 0 && (
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      {g.loose.map((e) => (
+                        <CorpusCard key={e.file} e={e} onPick={onPick} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          );
+        })}
       </div>
     </div>
   );

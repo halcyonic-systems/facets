@@ -73,13 +73,19 @@ def main():
     entries = []
     for rel in ORDER:
         h = header(ROOT / rel)
-        entries.append({
+        entry = {
             "file": rel,
             "tradition": rel.split("/")[0],
             "title": h["title"],
             "citation": citation(h),
             "teaches": h["teaches"],
-        })
+        }
+        # Sibling-set membership (#148): models that teach by diff over one
+        # fixed composition (Klir's goal-oriented paradigms, Bunge's two-thing
+        # structures / coupling graphs). Optional — a standalone entry omits it.
+        if "set" in h:
+            entry["set"] = h["set"]
+        entries.append(entry)
 
     out = json.dumps({"version": 1, "entries": entries}, indent=2, ensure_ascii=False) + "\n"
     (ROOT / "corpus.json").write_text(out)

@@ -1,5 +1,6 @@
 # corpus-entry: v1
 # title: Coupling graph σ₁ — a symmetric chain
+# set: Coupling graphs
 # author: Mario Bunge
 # work: Treatise on Basic Philosophy, Vol. 4: A World of Systems
 # year: 1979

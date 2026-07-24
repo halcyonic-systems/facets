@@ -1,5 +1,6 @@
 # corpus-entry: v1
 # title: The two-thing system — b acts on a
+# set: Two-thing structures
 # author: Mario Bunge
 # work: Treatise on Basic Philosophy, Vol. 4: A World of Systems
 # year: 1979
