@@ -209,6 +209,8 @@ export interface Relation {
   kind: Kind;
   /** Klir's observer toggle: neutral ⇄ directed. View state; never projects. */
   klir_directed?: boolean;
+  /** Per-transition DTMC count (#67); absent reads as the uniform default 1. */
+  weight?: number;
 }
 
 /** Authored B properties for the root membrane — P = ⟨porosity, fuzziness⟩.
