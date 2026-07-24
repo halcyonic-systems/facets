@@ -193,6 +193,11 @@ export default function App() {
 function Workspace() {
   const [demo, setDemo] = useState<Demo | null>(null);
   const [canvasModel, setCanvasModel] = useState<CanvasModel | null>(null);
+  // A compiled SL draft shown on the canvas but NOT yet committed — the
+  // author's own model is stashed so Discard reverts. Accept commits the draft
+  // (the human-checks-meaning gate; llm-sl-authoring-plan.md Rung 0). null =
+  // not previewing. Works for a human pasting SL today and for an LLM drafter next.
+  const [preview, setPreview] = useState<{ stash: CanvasModel | null; priorDirty: boolean } | null>(null);
   const [manifest, setManifest] = useState<Manifest>({ model: "", data: "", t: 12, mapping: [] });
   const [dt, setDt] = useState(1);
   const [t, setT] = useState(12);
@@ -416,10 +421,16 @@ function Workspace() {
   // @lens (the parser reports which).
   // No confirm here (compiling over the canvas is the author's stated intent),
   // but a walk's dirty ancestors still autosave before the reset (#111).
-  async function onSlCompiled(cm: CanvasModel, lensExplicit: boolean) {
+  // `asPreview` (SL pane → Compile): render the draft on the canvas but do NOT
+  // commit it — stash the author's model so Discard reverts, Accept commits
+  // (llm-sl-authoring-plan.md Rung 0, the human-checks-meaning gate). Other callers
+  // (corpus open) commit directly, as before.
+  async function onSlCompiled(cm: CanvasModel, lensExplicit: boolean, asPreview = false) {
     if (!(await flushWalk())) return;
+    const prior = canvasModel;
+    const nextModel = prior && !lensExplicit ? { ...cm, lens: prior.lens } : cm;
     setDemo(null);
-    setCanvasModel((prev) => (prev && !lensExplicit ? { ...cm, lens: prev.lens } : cm));
+    setCanvasModel(nextModel);
     setManifest({ model: "", data: "", t: 12, mapping: [] });
     setResult(null);
     setRunError(null);
@@ -428,10 +439,37 @@ function Workspace() {
     setBoundaryAnchor(null);
     setArmed(null);
     setGalleryOpen(false);
-    setDirty(false);
     setWalk([]);
     setFitToken((n) => (n ?? 0) + 1); // frame the compiled layout in the current viewport (#83)
-    setNotice("SL compiled ✓");
+    if (asPreview) {
+      // If already previewing, keep the original stash so re-compiling an edited
+      // draft never buries the author's base model.
+      setPreview((p) => p ?? { stash: prior, priorDirty: dirty });
+      setDirty(true); // uncommitted draft — guard against silent loss
+      setNotice("SL compiled — previewing (Accept to keep, Discard to revert)");
+    } else {
+      setPreview(null); // committing clears any stale preview
+      setDirty(false);
+      setNotice("SL compiled ✓");
+    }
+  }
+
+  // Accept the previewed draft: it becomes the working model (still unsaved). The
+  // human-checks-meaning gate — the line between "LLM proposes" and "LLM authors".
+  function acceptPreview() {
+    setPreview(null);
+    setNotice("Accepted onto the canvas ✓");
+  }
+
+  // Discard the previewed draft: restore the author's own model and its dirty
+  // state; nothing the draft touched survives.
+  function discardPreview() {
+    if (!preview) return;
+    setCanvasModel(preview.stash);
+    setDirty(preview.priorDirty);
+    setResult(null);
+    setPreview(null);
+    setNotice("Draft discarded — reverted");
   }
 
   // File → New: a blank canvas to author a model from scratch (the #14 path — no
@@ -950,8 +988,13 @@ function Workspace() {
   // so only a segment flushWalk cannot save — dirty with no name — still
   // counts as discardable work here.
   function guardDiscard(): boolean {
-    if (!dirty && !walk.some((s) => s.dirty && !s.currentName)) return true;
-    return window.confirm("Discard unsaved changes to the current model?");
+    const proceed =
+      (!dirty && !walk.some((s) => s.dirty && !s.currentName)) ||
+      window.confirm("Discard unsaved changes to the current model?");
+    // Any load that proceeds past this gate leaves a live SL preview behind;
+    // clear the stash so the banner doesn't linger over an unrelated model.
+    if (proceed) setPreview(null);
+    return proceed;
   }
 
   // #140: the ONE place a model becomes stored text. Every storage write
@@ -1350,7 +1393,7 @@ function Workspace() {
               errors={slErrors}
               onTextChange={setSlText}
               onErrors={setSlErrors}
-              onCompiled={onSlCompiled}
+              onCompiled={(cm, lensExplicit) => onSlCompiled(cm, lensExplicit, true)}
               onClose={() => setSlOpen(false)}
               canvasModel={canvasModel}
             />
@@ -1667,6 +1710,36 @@ function Workspace() {
                       <Banner tone="soft" className="absolute bottom-3 left-3">
                         {notice}
                       </Banner>
+                    )}
+                    {/* Rung 0: a compiled draft is on the canvas but not committed.
+                        Assess it visually, then Accept (keep) or Discard (revert). */}
+                    {preview && (
+                      <div
+                        className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-3 px-4 py-2 text-sm"
+                        style={{
+                          background: "var(--bg-secondary)",
+                          border: "1px solid var(--accent)",
+                          borderRadius: "9999px",
+                          boxShadow: "var(--shadow-card)",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        <span>Previewing a draft — assess it, then</span>
+                        <button
+                          onClick={acceptPreview}
+                          className="rounded-full px-3 py-1 text-xs font-semibold"
+                          style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={discardPreview}
+                          className="rounded-full px-3 py-1 text-xs"
+                          style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}
+                        >
+                          Discard
+                        </button>
+                      </div>
                     )}
                   </div>
 
