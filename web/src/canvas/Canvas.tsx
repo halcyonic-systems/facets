@@ -12,6 +12,7 @@ import { bungeHull, membraneRing, ringPoint, thingById, NODE_R, type Hull, type 
 import { useCanvasGestures } from "./useCanvasGestures";
 import { STYLE } from "./style";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
+import { MassOverlay } from "./MassOverlay";
 
 interface Props {
   model: CanvasModel;
@@ -42,6 +43,10 @@ interface Props {
   onSelectBoundary?: (at: Pt) => void;
   driven?: Set<string>;
   sim?: SimFrame | null;
+  /** Probability mass per state name at the scrubbed tick (#67 J9). Present for
+   *  a Klir/Markov run; each node gets a disc scaled to its P(state). Absent for
+   *  every other run — the diagram draws unchanged. */
+  mass?: Record<string, number> | null;
   onPanChange?: (pan: Pt) => void;
   onScaleChange?: (scale: number) => void;
   /** Bump to request a fit-to-content pass against the current viewport (e.g.
@@ -69,6 +74,7 @@ export default function Canvas({
   onSelectBoundary,
   driven,
   sim,
+  mass = null,
   onPanChange,
   onScaleChange,
   fitToken,
@@ -418,6 +424,10 @@ export default function Canvas({
             pointerEvents="none"
           />
         )}
+
+        {/* #67 J9: probability mass rides UNDER the nodes — the state-transition
+            structure stays the primary read, the distribution is the overlay. */}
+        {mass && <MassOverlay things={model.things} mass={mass} />}
 
         {model.things.map((t) => (
           <g

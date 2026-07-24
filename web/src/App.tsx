@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ready,
   runForced,
+  runMarkov,
   openModel,
   writeArchive,
   project,
@@ -15,6 +16,7 @@ import type {
   CanvasModel,
   IssueTarget,
   Manifest,
+  MarkovRunResult,
   ResidueEntry,
   RunResultRich,
   Thing,
@@ -32,6 +34,7 @@ import { BoundaryPopover } from "./canvas/BoundaryPopover";
 import { PaletteRail } from "./canvas/PaletteRail";
 import type { PaletteTool } from "./canvas/lenses/registry";
 import { SimScrubber } from "./canvas/SimScrubber";
+import { MarkovReadout } from "./canvas/MarkovReadout";
 import { type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
@@ -203,6 +206,11 @@ function Workspace() {
   const [dt, setDt] = useState(1);
   const [t, setT] = useState(12);
   const [result, setResult] = useState<RunResultRich | null>(null);
+  // #67 J9: a Klir state machine's run is a distribution trajectory, not a
+  // conservation ledger — held apart so its result never reaches for a
+  // conservation `residual`/`conserved` field (and the conservation pill, driven
+  // by `result`, stays suppressed while a Markov run is showing).
+  const [markovRun, setMarkovRun] = useState<MarkovRunResult | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const [selectedRelationId, setSelectedRelationId] = useState<number | null>(null);
@@ -356,10 +364,29 @@ function Workspace() {
     try {
       const r = runForced(modelJson, csv, m, dtv, tv, today());
       setResult(r);
+      setMarkovRun(null);
       setRunError(null);
       setTick(0);
     } catch (e) {
       setResult(null);
+      setRunError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  // #67 J9: run a Klir state machine as a discrete-time Markov chain. The Run
+  // action routes here when the lens is Klir — the model IS a labeled directed
+  // graph (transitions), so `run_markov` evolves a distribution over its states
+  // (T reused as the step horizon). No CSV/manifest: a state machine's dynamics
+  // are its transition weights, not a forcing series.
+  const runKlir = (model: CanvasModel, ticks: number) => {
+    try {
+      const r = runMarkov(model, ticks);
+      setMarkovRun(r);
+      setResult(null);
+      setRunError(null);
+      setTick(0);
+    } catch (e) {
+      setMarkovRun(null);
       setRunError(e instanceof Error ? e.message : String(e));
     }
   };
@@ -886,6 +913,23 @@ function Workspace() {
     return { nodes, edges };
   }, [result, tick]);
 
+  // #67 J9: probability mass per state at the scrubbed tick — the row of the
+  // distribution trajectory `history[tick]`, keyed by state name so the canvas
+  // rides it on the matching node. Pure indexing (with the tick clamped into
+  // range, like the Bunge marker); no dynamics computed here. Only under Klir,
+  // so a stale run can never bleed mass onto another lens's diagram.
+  const massFrame = useMemo<Record<string, number> | null>(() => {
+    if (!markovRun || canvasModel?.lens !== "Klir") return null;
+    const rows = markovRun.history;
+    if (rows.length === 0) return null;
+    const row = rows[Math.max(0, Math.min(rows.length - 1, tick))];
+    const mass: Record<string, number> = {};
+    markovRun.states.forEach((name, i) => {
+      mass[name] = row[i] ?? 0;
+    });
+    return mass;
+  }, [markovRun, canvasModel?.lens, tick]);
+
   const selectedRelation = canvasModel?.relations.find((r) => r.id === selectedRelationId) ?? null;
   const popoverAnchor = useMemo(() => {
     if (!canvasModel || !selectedRelation) return null;
@@ -897,6 +941,9 @@ function Workspace() {
     // The armed tool belongs to the outgoing lens's verb list — disarm. The
     // canvas itself never resets (accretion pattern).
     setArmed(null);
+    // #67 J9: a Markov run belongs to the Klir reading of the model; leaving
+    // Klir drops it so its scrubber/readout never lingers under another lens.
+    if (lens !== "Klir") setMarkovRun(null);
     setCanvasModel((m) => (m ? { ...m, lens } : m));
   }
 
@@ -1380,15 +1427,38 @@ function Workspace() {
             <div className="ml-auto flex flex-wrap items-center gap-3">
               <NumField label="Δt" value={dt} onChange={setDt} />
               <NumField label="T" value={t} onChange={setT} />
-              <button
-                onClick={() => demo && runWith(demo.modelJson, demo.csv, manifest, dt, t)}
-                disabled={!demo}
-                title={demo ? "Run the forced simulation" : "Run needs a demo bundle (model + CSV + mapping)"}
-                className="rounded-full px-5 py-2 text-sm font-semibold transition-colors"
-                style={{ background: "var(--accent)", color: "var(--text-on-accent)", opacity: demo ? 1 : 0.45, cursor: demo ? "pointer" : "not-allowed" }}
-              >
-                ▶ Run
-              </button>
+              {(() => {
+                // #67 J9: under Klir the Run action is a Markov run — the model
+                // is a state machine, run straight from the canvas (no demo
+                // bundle). Every other lens keeps the CSV-forced conservation run.
+                const klirRunnable = isKlir && !!canvasModel && canvasModel.things.length > 0;
+                const runnable = isKlir ? klirRunnable : !!demo;
+                const onRun = () => {
+                  if (isKlir) {
+                    if (klirRunnable) runKlir(canvasModel, t);
+                  } else if (demo) {
+                    runWith(demo.modelJson, demo.csv, manifest, dt, t);
+                  }
+                };
+                const title = isKlir
+                  ? klirRunnable
+                    ? "Run the state machine as a Markov chain"
+                    : "Add at least one state to run"
+                  : demo
+                    ? "Run the forced simulation"
+                    : "Run needs a demo bundle (model + CSV + mapping)";
+                return (
+                  <button
+                    onClick={onRun}
+                    disabled={!runnable}
+                    title={title}
+                    className="rounded-full px-5 py-2 text-sm font-semibold transition-colors"
+                    style={{ background: "var(--accent)", color: "var(--text-on-accent)", opacity: runnable ? 1 : 0.45, cursor: runnable ? "pointer" : "not-allowed" }}
+                  >
+                    ▶ Run
+                  </button>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -1605,6 +1675,7 @@ function Workspace() {
                       }}
                       driven={drivenNames}
                       sim={simFrame}
+                      mass={massFrame}
                       onPanChange={setCanvasPan}
                       onScaleChange={setCanvasScale}
                       fitToken={fitToken}
@@ -1806,7 +1877,7 @@ function Workspace() {
                       of the forked panels). */}
                   {result && (
                     <div className="mt-3 grid gap-3">
-                      <SimScrubber result={result} tick={tick} onTick={setTick} />
+                      <SimScrubber steps={result.ticks} tick={tick} onTick={setTick} />
                       <div className="flex flex-wrap items-center gap-3">
                         <Pill tone={result.conserved ? "ok" : "error"}>
                           {result.conserved ? "✓ conserved" : "⚠ leak"}
@@ -1817,6 +1888,12 @@ function Workspace() {
                       </div>
                     </div>
                   )}
+
+                  {/* #67 J9: the Markov run's scrubber + distribution readout.
+                      Structure-primary — the mass rides the diagram above; this
+                      is the secondary, noted reading. It carries no conservation
+                      pill (a distribution run has no residual to show). */}
+                  {markovRun && <MarkovReadout run={markovRun} tick={tick} onTick={setTick} />}
 
                   {/* The Run / Formal / Audit panels no longer stack here — they
                       live in the right-docked InspectorDock (a sibling of this
