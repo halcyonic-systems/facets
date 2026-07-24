@@ -1,0 +1,65 @@
+// #10: the resident co-author's shared drafter binding. One draft→retry loop,
+// two surfaces — the SL pane's inline "Draft" affordance (one-shot, #10
+// spike/Rung 1) and the resident Co-author dock (this issue, a persistent
+// history of turns). Neither surface talks to GSR or the kernel directly;
+// both call this. No new LLM plumbing — `authorSl` (GSR /author-sl) and
+// `compile_sl` (kernel, deterministic) already exist.
+import { authorSl } from "./gsr";
+import { compileSl } from "./kernel";
+import type { Lens } from "./kernel/types";
+
+/** One draft attempt, kept for the resident dock's history. `previewing` means
+ *  the compiled draft is (or was) the active canvas preview; `accepted` /
+ *  `discarded` mirror the human-checks-meaning gate's outcome once the author
+ *  resolves it. A turn that never compiled stays `compile-error` /
+ *  `network-error` and is never silently dropped. */
+export type CoauthorTurn = {
+  id: string;
+  description: string;
+  sl: string;
+  at: string;
+  status: "previewing" | "accepted" | "discarded" | "compile-error" | "network-error";
+  errorText?: string;
+};
+
+export function newTurnId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// History persists across reloads (localStorage) — no cap. A generous soft
+// cap is a cheap later addition if the list grows unwieldy; not needed yet.
+const TURNS_KEY = "bert-lenses.coauthor-turns";
+
+export function loadCoauthorTurns(): CoauthorTurn[] {
+  try {
+    const raw = localStorage.getItem(TURNS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as CoauthorTurn[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveCoauthorTurns(turns: CoauthorTurn[]): void {
+  try {
+    localStorage.setItem(TURNS_KEY, JSON.stringify(turns));
+  } catch {
+    // storage unavailable (private mode, quota) — history stays session-only
+  }
+}
+
+/** description -> SL text, healing up to 2 kernel-reported faults before
+ *  returning. The kernel's own parse errors (which name the fix) are fed back
+ *  to the drafter — the harness carries correctness, the model only needs to
+ *  be plausible (llm-sl-authoring-plan.md, scaffolding item 4). */
+export async function draftSlWithRetry(description: string, lens?: Lens): Promise<string> {
+  let { sl } = await authorSl({ description, lens });
+  for (let i = 0; i < 2; i++) {
+    const outcome = compileSl(sl);
+    if (!("errors" in outcome)) break;
+    const errs = outcome.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
+    ({ sl } = await authorSl({ description, lens, priorSl: sl, errors: errs }));
+  }
+  return sl;
+}

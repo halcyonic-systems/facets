@@ -8,10 +8,20 @@
 // unchanged. Parse faults (syntax, unknown names) render here; systemhood
 // verdicts stay where they always were — the kernel, via the verdict pill and
 // the audit panel.
+//
+// #10 (locked 2026-07-24): the resident co-author is a MODE of this pane, not
+// a separate dock — two ways to fill the same SL text: hand-author it, or
+// describe-and-draft it. The [ SL ] / [ Co-author ] switch below is the whole
+// seam; manual authoring (textarea + Compile) is always present underneath and
+// never gated on the drafter.
 
 import { useState } from "react";
 import { compileSl, emitSl } from "./kernel";
 import type { CanvasModel, SlError } from "./kernel/types";
+import { CoAuthorMode } from "./CoAuthorMode";
+import type { CoauthorTurn } from "./coauthor";
+
+type Mode = "sl" | "coauthor";
 
 interface SlPaneProps {
   text: string;
@@ -24,18 +34,20 @@ interface SlPaneProps {
   onClose: () => void;
   /** The current canvas model, for the text←canvas direction (null = none). */
   canvasModel: CanvasModel | null;
-  /** #10 Rung 1: draft SL from a description (GSR /author-sl). Undefined =
-   *  authoring off (the pane stays a pure human/kernel surface). Window-on-
-   *  demand: the affordance is a deliberate reveal, never ambient. */
-  onRequestDraft?: (description: string) => Promise<string>;
+  /** #10: the co-author mode. Undefined = authoring off (the pane stays a
+   *  pure human/kernel surface, no mode switch shown) — window-on-demand,
+   *  never ambient. The parent owns the whole draft->compile->preview->record
+   *  sequence (onDraft); this pane only switches back to the SL view once it
+   *  resolves, so the compiled/faulty text is visible either way. */
+  coauthor?: {
+    turns: CoauthorTurn[];
+    onDraft: (description: string) => Promise<void>;
+  };
 }
 
-export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel, onRequestDraft }: SlPaneProps) {
-  // #10 Rung 1 authoring state — the draft box is revealed on demand.
-  const [drafting, setDrafting] = useState(false);
-  const [draftOpen, setDraftOpen] = useState(false);
-  const [description, setDescription] = useState("");
-  const [draftError, setDraftError] = useState<string | null>(null);
+export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel, coauthor }: SlPaneProps) {
+  const [mode, setMode] = useState<Mode>("sl");
+
   // Canvas → text: serialize the live model into the pane (kernel emit_sl —
   // canonical, round-trip-golden-tested). Replaces the pane text; the author
   // asked for it by pressing the button, so no confirm.
@@ -59,23 +71,19 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
     }
   }
 
-  // #10 Rung 1: description → SL (GSR) → pane → compile → Rung-0 preview. The
-  // LLM proposes; compile_sl disposes legality; the author accepts. A failed
-  // draft still lands in the textarea with its faults shown — nothing hidden.
-  async function draft() {
-    if (!onRequestDraft || !description.trim() || drafting) return;
-    setDrafting(true);
-    setDraftError(null);
-    try {
-      const sl = await onRequestDraft(description.trim());
-      onTextChange(sl);
-      compile(sl);
-      setDraftOpen(false);
-    } catch (e) {
-      setDraftError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setDrafting(false);
-    }
+  // The co-author's Draft action: the parent (App.tsx's coauthorDraft) owns
+  // drafting, compiling, and previewing — this pane just returns to the SL
+  // view once it resolves, so the result (compiled preview OR the faulty
+  // draft text + its errors) is where the author expects to look.
+  async function handleDraft(description: string) {
+    if (!coauthor) return;
+    await coauthor.onDraft(description);
+    setMode("sl");
+  }
+
+  function handleLoad(sl: string) {
+    onTextChange(sl);
+    setMode("sl");
   }
 
   return (
@@ -90,127 +98,104 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
         <span className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
           SL — system language
         </span>
-        <button
-          onClick={onClose}
-          className="px-1 text-sm"
-          style={{ color: "var(--text-muted)" }}
-          title="Close the SL pane"
-        >
-          ✕
-        </button>
-      </div>
-      <textarea
-        value={text}
-        onChange={(e) => onTextChange(e.target.value)}
-        onKeyDown={(e) => {
-          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-            e.preventDefault();
-            compile();
-          }
-        }}
-        spellCheck={false}
-        className="min-h-0 flex-1 resize-none p-3 font-mono text-xs leading-relaxed outline-none"
-        style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}
-        placeholder={'component Furnace interface\nsource "Iron Vendor"\nflow "Iron Vendor" -> Furnace : matter "iron"'}
-      />
-      {errors.length > 0 && (
-        <div
-          className="max-h-40 overflow-y-auto border-t px-3 py-2 text-xs"
-          style={{ borderColor: "var(--hairline)", color: "var(--verdict-error)" }}
-        >
-          {errors.map((e, i) => (
-            <div key={i} className="py-0.5 font-mono">
-              line {e.line}: {e.message}
+        <div className="flex items-center gap-2">
+          {coauthor && (
+            <div
+              className="flex overflow-hidden rounded-full"
+              style={{ border: "1px solid var(--hairline)" }}
+            >
+              <ModeButton label="SL" active={mode === "sl"} onClick={() => setMode("sl")} />
+              <ModeButton label="Co-author" active={mode === "coauthor"} onClick={() => setMode("coauthor")} />
             </div>
-          ))}
+          )}
+          <button
+            onClick={onClose}
+            className="px-1 text-sm"
+            style={{ color: "var(--text-muted)" }}
+            title="Close the SL pane"
+          >
+            ✕
+          </button>
         </div>
-      )}
-      {onRequestDraft && draftOpen && (
-        <div className="border-t px-3 py-2" style={{ borderColor: "var(--hairline)" }}>
+      </div>
+
+      {mode === "coauthor" && coauthor ? (
+        <CoAuthorMode turns={coauthor.turns} onDraft={handleDraft} onLoad={handleLoad} />
+      ) : (
+        <>
           <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            value={text}
+            onChange={(e) => onTextChange(e.target.value)}
             onKeyDown={(e) => {
               if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                 e.preventDefault();
-                draft();
+                compile();
               }
             }}
-            disabled={drafting}
-            spellCheck
-            rows={3}
-            className="w-full resize-none rounded p-2 text-xs outline-none"
-            style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: "1px solid var(--hairline)" }}
-            placeholder="Describe a system in plain language — the drafter writes the SL, you compile it to a preview and accept or discard."
+            spellCheck={false}
+            className="min-h-0 flex-1 resize-none p-3 font-mono text-xs leading-relaxed outline-none"
+            style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}
+            placeholder={'component Furnace interface\nsource "Iron Vendor"\nflow "Iron Vendor" -> Furnace : matter "iron"'}
           />
-          {draftError && (
-            <div className="mt-1 text-xs" style={{ color: "var(--verdict-error)" }}>
-              {draftError}
+          {errors.length > 0 && (
+            <div
+              className="max-h-40 overflow-y-auto border-t px-3 py-2 text-xs"
+              style={{ borderColor: "var(--hairline)", color: "var(--verdict-error)" }}
+            >
+              {errors.map((e, i) => (
+                <div key={i} className="py-0.5 font-mono">
+                  line {e.line}: {e.message}
+                </div>
+              ))}
             </div>
           )}
-          <div className="mt-2 flex items-center gap-2">
+          <div
+            className="flex items-center gap-2 border-t px-3 py-2"
+            style={{ borderColor: "var(--hairline)" }}
+          >
             <button
-              onClick={draft}
-              disabled={drafting || !description.trim()}
-              className="rounded-full px-3 py-1 text-xs font-semibold"
-              style={{
-                background: "var(--accent)", color: "var(--text-on-accent)",
-                opacity: drafting || !description.trim() ? 0.5 : 1,
-                cursor: drafting || !description.trim() ? "not-allowed" : "pointer",
-              }}
-              title="Draft SL from the description (⌘⏎)"
+              onClick={() => compile()}
+              className="rounded-full px-4 py-1.5 text-sm font-semibold"
+              style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
+              title="Compile SL → model (⌘⏎)"
             >
-              {drafting ? "Drafting…" : "Draft SL"}
+              Compile
+            </button>
+            <button
+              onClick={fromCanvas}
+              disabled={!canvasModel}
+              className="rounded-full px-3 py-1.5 text-sm"
+              style={{
+                border: "1px solid var(--hairline)",
+                color: "var(--text-secondary)",
+                opacity: canvasModel ? 1 : 0.45,
+                cursor: canvasModel ? "pointer" : "not-allowed",
+              }}
+              title={canvasModel ? "Replace the text with the current canvas model, serialized" : "No model on the canvas yet"}
+            >
+              ← From canvas
             </button>
             <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-              LLM proposes · kernel checks · you accept
+              ⌘⏎ · deterministic compile, kernel verdicts
             </span>
           </div>
-        </div>
+        </>
       )}
-      <div
-        className="flex items-center gap-2 border-t px-3 py-2"
-        style={{ borderColor: "var(--hairline)" }}
-      >
-        <button
-          onClick={() => compile()}
-          className="rounded-full px-4 py-1.5 text-sm font-semibold"
-          style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
-          title="Compile SL → model (⌘⏎)"
-        >
-          Compile
-        </button>
-        <button
-          onClick={fromCanvas}
-          disabled={!canvasModel}
-          className="rounded-full px-3 py-1.5 text-sm"
-          style={{
-            border: "1px solid var(--hairline)",
-            color: "var(--text-secondary)",
-            opacity: canvasModel ? 1 : 0.45,
-            cursor: canvasModel ? "pointer" : "not-allowed",
-          }}
-          title={canvasModel ? "Replace the text with the current canvas model, serialized" : "No model on the canvas yet"}
-        >
-          ← From canvas
-        </button>
-        {onRequestDraft && (
-          <button
-            onClick={() => { setDraftOpen((o) => !o); setDraftError(null); }}
-            className="rounded-full px-3 py-1.5 text-sm"
-            style={{
-              border: "1px solid var(--hairline)",
-              color: draftOpen ? "var(--accent)" : "var(--text-secondary)",
-            }}
-            title="Draft SL from a plain-language description"
-          >
-            ✨ Draft
-          </button>
-        )}
-        <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-          ⌘⏎ · deterministic compile, kernel verdicts
-        </span>
-      </div>
     </aside>
+  );
+}
+
+function ModeButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="px-2.5 py-1 text-[11px] font-semibold"
+      style={{
+        background: active ? "var(--accent)" : "transparent",
+        color: active ? "var(--text-on-accent)" : "var(--text-secondary)",
+      }}
+    >
+      {label}
+    </button>
   );
 }
