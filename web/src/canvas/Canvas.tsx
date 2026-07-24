@@ -461,13 +461,17 @@ export default function Canvas({
             onSelect={onSelectBoundary ? () => onSelectBoundary(at) : undefined}
           />
         ))}
+        {/* A flowless port has no membrane crossing to inspect — it names one
+            component (#180), so its click selects THAT thing, not the
+            boundary (the fixable warning for the same fact is emitted by
+            check_flowless_interfaces in bert-canvas/src/lenses.rs). */}
         {flowlessAt.map(({ port, at, angle }) => (
           <g key={`authored-${port.component}`} opacity={0.6}>
             <views.PortView
               port={port}
               at={at}
               angle={angle}
-              onSelect={onSelectBoundary ? () => onSelectBoundary(at) : undefined}
+              onSelect={onSelectThing ? () => onSelectThing(port.component) : undefined}
             />
           </g>
         ))}

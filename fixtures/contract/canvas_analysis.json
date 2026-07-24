@@ -7,6 +7,13 @@
         "message": "Mobus §4.3: flow edges require k ≠ o; 'recycle' has the same endpoint as source and sink, and self-dependency is not representable in the 8-tuple",
         "suggestion": "Remove the self-loop; feedback as a first-class cycle is Cybernetic mode (not yet available)",
         "doc": "docs/glossary.md#precondition"
+      },
+      {
+        "severity": "Warning",
+        "location": "things[2]",
+        "message": "'Tank' declares an interface but has no boundary-crossing flow — it may be internal",
+        "suggestion": "Route a flow across the boundary through this component, or remove the interface designation if it is internal",
+        "doc": "docs/language/terminology-concordance.md#9-interface"
       }
     ]
   },
@@ -14,6 +21,10 @@
     {
       "thing": null,
       "relation": 12
+    },
+    {
+      "thing": 2,
+      "relation": null
     }
   ],
   "facts": {

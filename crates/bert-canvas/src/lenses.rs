@@ -720,6 +720,7 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
     // not; assert it here, over the port directions only this face computes.
     if lens == Lens::Mobus {
         check_mobus_openness(&facts, &mut validation.issues);
+        check_flowless_interfaces(model, &facts, &p.thing_ids, &mut validation.issues);
     }
 
     // Kernel subject → canvas element, via the projection's id maps reversed.
@@ -821,6 +822,42 @@ fn check_mobus_openness(facts: &LensFacts, issues: &mut Vec<ValidationIssue>) {
             ),
             doc: Some(bert_core::validate::doc::OPENNESS.to_string()),
             subject: None,
+        });
+    }
+}
+
+/// A designated interface with no port (flowless: authored ∖ flow-crossing,
+/// bert-lenses#180) carries no boundary coupling — I is individuated by the
+/// flow it gates (Fig. 4.9), so the designation is likely a mismarked
+/// component, not a real interface. Warning, not error: it's a legitimate
+/// authoring intermediate (the boundary accretes flow by flow).
+fn check_flowless_interfaces(
+    model: &CanvasModel,
+    facts: &LensFacts,
+    thing_ids: &HashMap<u64, Id>,
+    issues: &mut Vec<ValidationIssue>,
+) {
+    for &id in &facts.authored_interface_thing_ids {
+        if facts.ports.iter().any(|p| p.component == id) {
+            continue;
+        }
+        let Some(thing) = model.things.iter().find(|t| t.id == id) else {
+            continue;
+        };
+        issues.push(ValidationIssue {
+            severity: Severity::Warning,
+            location: format!("things[{id}]"),
+            message: format!(
+                "'{}' declares an interface but has no boundary-crossing flow — it may be internal",
+                thing.name
+            ),
+            suggestion: Some(
+                "Route a flow across the boundary through this component, or remove the \
+                 interface designation if it is internal"
+                    .to_string(),
+            ),
+            doc: Some(bert_core::validate::doc::INTERFACE.to_string()),
+            subject: thing_ids.get(&id).cloned(),
         });
     }
 }
@@ -1488,6 +1525,51 @@ mod tests {
             assert!(
                 !has_openness_warning(&analyze(&m, lens)),
                 "an inward-gated boundary never trips the openness warning",
+            );
+        }
+    }
+
+    /// Law (#180): a component designated `interface` with no port (authored ∖
+    /// flow-crossing) is a fixable warning under Mobus, navigable to the
+    /// designated thing — and silent under Klir/Bunge, which have no interface
+    /// concept.
+    #[test]
+    fn mobus_warns_on_flowless_interface() {
+        let mut a = thing(1, "Thermostat", Role::Component);
+        a.interface = true;
+        let m = model(
+            vec![a, thing(2, "Furnace", Role::Component)],
+            vec![relation(10, 1, 2, true)], // an endo bond only; no exo port on 1
+        );
+        assert_eq!(
+            lens_facts(&m).authored_interface_thing_ids,
+            vec![1],
+            "1 is authored into I"
+        );
+        assert!(
+            lens_facts(&m).ports.iter().all(|p| p.component != 1),
+            "1 has no flow-crossing port — it is flowless"
+        );
+
+        let mobus = analyze(&m, Lens::Mobus);
+        let hit = mobus
+            .validation
+            .issues
+            .iter()
+            .position(|i| i.message.contains("Thermostat") && i.message.contains("no boundary-crossing flow"));
+        assert!(hit.is_some(), "Mobus flags the flowless interface: {:?}", mobus.validation.issues);
+        assert!(!mobus.validation.has_errors(), "warning, not error");
+        assert_eq!(
+            mobus.issue_targets[hit.unwrap()].thing,
+            Some(1),
+            "navigable to the designated thing"
+        );
+
+        for lens in [Lens::Klir, Lens::Bunge] {
+            let a = analyze(&m, lens);
+            assert!(
+                !a.validation.issues.iter().any(|i| i.message.contains("no boundary-crossing flow")),
+                "{lens:?} has no interface concept — stays silent"
             );
         }
     }
