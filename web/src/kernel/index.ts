@@ -10,6 +10,7 @@ import init, {
   validate as wasmValidate,
   validate_operational as wasmValidateOperational,
   run as wasmRun,
+  run_markov as wasmRunMarkov,
   parse_csv as wasmParseCsv,
   model_targets as wasmModelTargets,
   mapping_status as wasmMappingStatus,
@@ -35,6 +36,7 @@ import type {
   ValidationResult,
   OperationalOutcome,
   RunResult,
+  MarkovRunResult,
   CsvParse,
   Targets,
   Manifest,
@@ -111,6 +113,16 @@ export function validateOperational(modelJson: string): OperationalOutcome {
 /** Simulate an authored model — computed by bert-compose in wasm. */
 export function run(modelJson: string, dt: number, ticks: number): RunResult {
   return call("run", () => wasmRun(modelJson, dt, ticks));
+}
+
+/** Run a Klir state machine as a discrete-time Markov chain (#67) — the
+ *  distribution `vₙ₊₁ = vₙ P` evolution, computed by bert-compose in wasm.
+ *  Reads edge weights off the canvas model (uniform by default), starts from a
+ *  point mass on the first state, and returns the `kind:"markov"` trajectory.
+ *  Bypasses the Operational gate, so a state that stays put (a self-loop) is a
+ *  legal transition. */
+export function runMarkov(model: CanvasModel, ticks: number): MarkovRunResult {
+  return call("run_markov", () => wasmRunMarkov(JSON.stringify(model), ticks));
 }
 
 /** Parse CSV text — the first step of the tether, in wasm. */

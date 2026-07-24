@@ -4,23 +4,25 @@
 // any dynamics itself. If this file ever computed a value instead of an index,
 // that would be the invariant violation.
 import { useEffect, useRef, useState } from "react";
-import type { RunResultRich } from "../kernel/types";
 
 const TICKS_PER_SEC = 6;
 
+/** Play/scrub a run's frames. `steps` is the frame count — valid ticks are
+ *  0…steps-1, whatever kind of run produced them (a conservation trajectory or
+ *  a Markov distribution). It only indexes; it computes no dynamics. */
 export function SimScrubber({
-  result,
+  steps,
   tick,
   onTick,
 }: {
-  result: RunResultRich;
+  steps: number;
   tick: number;
   onTick: (k: number) => void;
 }) {
   const [playing, setPlaying] = useState(false);
   const tickRef = useRef(tick);
   tickRef.current = tick;
-  const lastTicks = result.ticks;
+  const lastTicks = steps;
 
   useEffect(() => {
     if (!playing || lastTicks <= 1) return;
@@ -52,7 +54,7 @@ export function SimScrubber({
       <input
         type="range"
         min={0}
-        max={Math.max(0, result.ticks - 1)}
+        max={Math.max(0, steps - 1)}
         value={tick}
         onChange={(e) => {
           setPlaying(false);
@@ -61,7 +63,7 @@ export function SimScrubber({
         className="flex-1"
       />
       <span className="w-20 shrink-0 text-right text-xs tabular" style={{ color: "var(--text-muted)" }}>
-        tick {tick} / {Math.max(0, result.ticks - 1)}
+        tick {tick} / {Math.max(0, steps - 1)}
       </span>
     </div>
   );
