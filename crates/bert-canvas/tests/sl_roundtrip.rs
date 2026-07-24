@@ -221,7 +221,7 @@ fn klir_scale_and_states_round_trip_through_sl() {
 
     // Both apply to components only.
     let err = parse_sl("source S scale Nominal\n").unwrap_err();
-    assert!(err[0].message.contains("components only"), "{:?}", err);
+    assert!(err[0].message.contains("components only"), "{err:?}");
 }
 
 /// Law: a name containing a quote is not expressible in SL v1 — emit refuses
