@@ -220,6 +220,23 @@ function Workspace() {
   // blind-pick arms). Three presets, medium default; a change refits the
   // picture to the new box via fitToken. Presentation only.
   const [locSize, setLocSize] = useState<"s" | "m" | "l">("m");
+  // The locator can also expand to a full-viewport overlay — a large diagram to
+  // read or present. Escape or the toggle returns it to the preset box.
+  const [locFull, setLocFull] = useState(false);
+  useEffect(() => {
+    // Refit once the box has actually resized (entering or leaving fullscreen),
+    // not on the click — measuring before layout settles reframes to the wrong box.
+    const raf = requestAnimationFrame(() => setFitToken((n) => (n ?? 0) + 1));
+    if (!locFull) return () => cancelAnimationFrame(raf);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLocFull(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [locFull]);
   // Shell chrome state (presentation only): the File→Open gallery (also the
   // start screen before anything is loaded), the docked palette's collapse.
   const [galleryOpen, setGalleryOpen] = useState(true);
@@ -1531,7 +1548,9 @@ function Workspace() {
                     )}
                     <div
                       className={
-                        registerActive
+                        locFull
+                          ? "fixed inset-0 z-50 overflow-hidden"
+                          : registerActive
                           ? `absolute bottom-9 right-3 max-h-[45vh] max-w-[70%] overflow-hidden rounded-lg ${
                               // #100 harvest: the locator was "way too small"
                               // on 2 of 3 arms — preset sizes, medium default.
@@ -1544,7 +1563,9 @@ function Workspace() {
                           : "absolute inset-0"
                       }
                       style={
-                        registerActive
+                        locFull
+                          ? { background: "var(--bg-primary)" }
+                          : registerActive
                           ? {
                               border: "1px solid var(--hairline)",
                               background: "var(--bg-primary)",
@@ -1602,7 +1623,8 @@ function Workspace() {
                       )}
                       {registerActive && (
                         <div className="absolute right-1.5 top-1 flex gap-0.5">
-                          {(["s", "m", "l"] as const).map((s) => (
+                          {!locFull &&
+                            (["s", "m", "l"] as const).map((s) => (
                             <button
                               key={s}
                               onClick={() => {
@@ -1620,7 +1642,20 @@ function Workspace() {
                             >
                               {s}
                             </button>
-                          ))}
+                            ))}
+                          <button
+                            onClick={() => setLocFull((f) => !f)}
+                            className="rounded px-1 text-[10px] leading-4"
+                            style={{
+                              fontFamily: "var(--font-mono)",
+                              color: "var(--text-muted)",
+                              background: "transparent",
+                              border: "1px solid var(--hairline)",
+                            }}
+                            title={locFull ? "exit fullscreen (Esc)" : "expand diagram to fullscreen"}
+                          >
+                            {locFull ? "×" : "⛶"}
+                          </button>
                         </div>
                       )}
                     </div>
