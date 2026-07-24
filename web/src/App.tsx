@@ -2563,17 +2563,12 @@ function OpenDialog({
               no saved models yet
             </p>
           ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="flex flex-col">
               {libraryTree.map((root) => (
                 <div
                   key={root.name}
-                  className="p-3"
-                  style={{
-                    background: "var(--bg-secondary)",
-                    border: "1px solid var(--border)",
-                    boxShadow: "var(--shadow-card)",
-                    borderRadius: "var(--radius-card)",
-                  }}
+                  className="border-b py-1.5 last:border-b-0"
+                  style={{ borderColor: "var(--hairline)" }}
                 >
                   <LibraryRow
                     node={root}
