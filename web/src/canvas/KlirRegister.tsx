@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import type { CanvasModel, KlirLadder, KlirVarKind, Relation, RunResultRich, ScaleType, Thing } from "../kernel/types";
+import type { CanvasModel, KlirLadder, KlirVarKind, MarkovRunResult, Relation, RunResultRich, ScaleType, Thing } from "../kernel/types";
 import { validateConnection } from "../kernel";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 import { DecomposeRows, type DecomposeAffordance } from "./NodeEditor";
@@ -45,6 +45,10 @@ interface Props {
    *  (mask) readout. The same result/tick the InspectorDock's RunPanel reads;
    *  null/absent leaves the mask view in its honest empty state. */
   result?: RunResultRich | null;
+  /** #154: a Klir/DTMC run (#67's `run_markov`) — the mask's other source.
+   *  App holds `result`/`markovRun` mutually exclusive (one run at a time), so
+   *  MaskTable just checks which one is present. */
+  markovRun?: MarkovRunResult | null;
   tick?: number;
 }
 
@@ -71,6 +75,7 @@ export function KlirRegister({
   placeName,
   ladder,
   result,
+  markovRun,
   tick,
 }: Props) {
   const [view, setView] = useState<"sets" | "matrix" | "table" | "mask">("sets");
@@ -251,7 +256,7 @@ export function KlirRegister({
         )}
 
         {/* ---- Fig. 4.3 / Table 4.3 — the behavior-function / mask readout (#154 P3) */}
-        {view === "mask" && <MaskTable result={result ?? null} tick={tick} />}
+        {view === "mask" && <MaskTable result={result ?? null} markovRun={markovRun ?? null} tick={tick} />}
 
         {(view === "sets" || view === "matrix") && (
           <>
@@ -754,28 +759,78 @@ function fmtState(v: number | undefined): string {
   return String(Math.round(v * 1000) / 1000);
 }
 
-/** The mask panel's standing caveat — the condition the P3 scope rests on. */
-function MaskCaption() {
+/** The mask panel's standing caveat — the condition the P3 scope rests on.
+ *  `kind` picks the wording: a conservation run reads the coalgebra step off a
+ *  Mobus trajectory; a markov run reads it off a Klir-native DTMC directly. */
+function MaskCaption({ kind }: { kind: "conservation" | "markov" }) {
+  if (kind === "markov") {
+    return (
+      <p className="mt-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+        f: Ḡ → G read off a <strong>Klir/DTMC run</strong> (#67 <code>run_markov</code>) — Ḡ = the
+        state distribution at tick t, G = the successor distribution at t+1, the tick-step reading
+        (support window = the current tick alone), matching the conservation mask's grammar. The
+        transition matrix P is the coalgebra structure map itself; showing P instead of the
+        tick-step pair is a genuine alternative presentation, <strong>deferred to Shingai</strong>.
+      </p>
+    );
+  }
   return (
     <p className="mt-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
       f: Ḡ → G read off a <strong>Mobus conservation run</strong>'s recorded trajectory — the
       coalgebra step T (dynamics-coalgebra-halfa.md), the first-order deterministic step (support
-      window = the current tick alone). Whether this is Klir's mask on Klir-native data is{" "}
-      <strong>deferred</strong> to a runnable Klir model (#67); richer declared-support windows and
-      the Transition descriptor are future work.
+      window = the current tick alone). Richer declared-support windows and the Transition
+      descriptor are future work.
     </p>
+  );
+}
+
+/** One column of the mask: a named quantity's per-tick series, source-agnostic
+ *  (a conservation trajectory's `series`, or a markov state's column of
+ *  `history`). MaskTable reduces both run kinds to this before rendering. */
+interface MaskColumn {
+  name: string;
+  series: number[];
+}
+
+function maskEmptyBody(kind: "conservation" | "markov") {
+  const hint =
+    kind === "markov"
+      ? "Run a Klir/DTMC model (#67) with ≥2 steps to populate it."
+      : "Run a demo bundle (model + CSV + mapping) with ≥2 sampled ticks to populate it.";
+  return (
+    <>
+      <p className="pl-6 text-xs" style={{ color: "var(--text-muted)" }}>
+        No run to read — the mask f: Ḡ → G is a reading of a recorded trajectory. {hint}
+      </p>
+      <MaskCaption kind={kind} />
+    </>
   );
 }
 
 /** Klir's behavior function / mask (Fig. 4.3, Table 4.3), the f: Ḡ → G table,
  *  presented in the Klir register. Per tick t, one row: Ḡ = the state vector at
- *  t → G = the state vector at t+1, sourced from the compose run's per-tick
- *  trajectories. This is the coalgebra structure map T read in Klir's register
+ *  t → G = the state vector at t+1. Reads whichever run kind App is holding —
+ *  a Mobus conservation run's per-tick trajectories, or a Klir/DTMC run's
+ *  per-tick distribution (#67) — discriminating on which prop is non-null
+ *  (App keeps `result`/`markovRun` mutually exclusive, one run at a time).
+ *  This is the coalgebra structure map T read in Klir's register
  *  (dynamics-coalgebra-halfa.md), the same object the Bunge trajectory unfolds.
  *  It reads a run; it steps nothing. No run → an honest empty state. */
-export function MaskTable({ result, tick }: { result: RunResultRich | null; tick?: number }) {
-  const traj = result?.trajectories ?? [];
-  const n = traj.length === 0 ? 0 : Math.min(...traj.map((t) => t.series.length));
+export function MaskTable({
+  result,
+  markovRun,
+  tick,
+}: {
+  result: RunResultRich | null;
+  markovRun?: MarkovRunResult | null;
+  tick?: number;
+}) {
+  const kind: "conservation" | "markov" = markovRun ? "markov" : "conservation";
+  const columns: MaskColumn[] = markovRun
+    ? markovRun.states.map((name, i) => ({ name, series: markovRun.history.map((row) => row[i] ?? 0) }))
+    : (result?.trajectories ?? []).map((tr) => ({ name: tr.name, series: tr.series }));
+
+  const n = columns.length === 0 ? 0 : Math.min(...columns.map((c) => c.series.length));
   // Each row is a step t → t+1, so the final sampled tick yields no row.
   const rows = Math.max(0, n - 1);
   const hi = maskRowIndex(tick, rows);
@@ -786,11 +841,7 @@ export function MaskTable({ result, tick }: { result: RunResultRich | null; tick
         <div className="mb-1 text-xs" style={{ ...mono, color: "var(--text-secondary)" }}>
           behavior function — Fig. 4.3 / Table 4.3
         </div>
-        <p className="pl-6 text-xs" style={{ color: "var(--text-muted)" }}>
-          No run to read — the mask f: Ḡ → G is a reading of a recorded trajectory. Run a demo
-          bundle (model + CSV + mapping) with ≥2 sampled ticks to populate it.
-        </p>
-        <MaskCaption />
+        {maskEmptyBody(kind)}
       </section>
     );
   }
@@ -806,14 +857,14 @@ export function MaskTable({ result, tick }: { result: RunResultRich | null; tick
           <thead>
             <tr>
               <th className={th} style={headerCellStyle}>t</th>
-              {traj.map((tr, i) => (
-                <th key={`g-${i}`} className={th} style={headerCellStyle} title={`Ḡ — ${tr.name} at tick t`}>
-                  Ḡ:{tr.name}
+              {columns.map((c, i) => (
+                <th key={`g-${i}`} className={th} style={headerCellStyle} title={`Ḡ — ${c.name} at tick t`}>
+                  Ḡ:{c.name}
                 </th>
               ))}
-              {traj.map((tr, i) => (
-                <th key={`gg-${i}`} className={th} style={headerCellStyle} title={`G — ${tr.name} at tick t+1`}>
-                  G:{tr.name}
+              {columns.map((c, i) => (
+                <th key={`gg-${i}`} className={th} style={headerCellStyle} title={`G — ${c.name} at tick t+1`}>
+                  G:{c.name}
                 </th>
               ))}
             </tr>
@@ -830,14 +881,14 @@ export function MaskTable({ result, tick }: { result: RunResultRich | null; tick
                   <td className="px-2 py-1 text-xs" style={{ ...mono, color: "var(--text-muted)", borderBottom: "1px solid var(--hairline)" }}>
                     {t}{current ? " ◂" : ""}
                   </td>
-                  {traj.map((tr, i) => (
+                  {columns.map((c, i) => (
                     <td key={`g-${i}`} className="px-2 py-1 text-sm tabular" style={{ ...mono, color: "var(--text-primary)", borderBottom: "1px solid var(--hairline)" }}>
-                      {fmtState(tr.series[t])}
+                      {fmtState(c.series[t])}
                     </td>
                   ))}
-                  {traj.map((tr, i) => (
+                  {columns.map((c, i) => (
                     <td key={`gg-${i}`} className="px-2 py-1 text-sm tabular" style={{ ...mono, color: "var(--text-secondary)", borderBottom: "1px solid var(--hairline)" }}>
-                      {fmtState(tr.series[t + 1])}
+                      {fmtState(c.series[t + 1])}
                     </td>
                   ))}
                 </tr>
@@ -846,7 +897,7 @@ export function MaskTable({ result, tick }: { result: RunResultRich | null; tick
           </tbody>
         </table>
       </div>
-      <MaskCaption />
+      <MaskCaption kind={kind} />
     </section>
   );
 }
