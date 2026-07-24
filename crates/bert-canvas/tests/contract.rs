@@ -51,6 +51,8 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
         interface: false,
         child_model: None,
         stock_unit: String::new(),
+        scale: None,
+        states: None,
     }
 }
 

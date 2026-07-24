@@ -962,6 +962,8 @@ mod tests {
             interface: false,
             child_model: None,
             stock_unit: String::new(),
+            scale: None,
+            states: None,
         }
     }
     fn relation(id: u64, a: u64, b: u64, is_bond: bool) -> Relation {

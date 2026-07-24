@@ -61,6 +61,17 @@ pub enum Kind {
     Informational,
 }
 
+/// Klir's measurement scale for a variable's state set (§4, Table 4.1): the
+/// level at which the values are comparable. Authored metadata on the source
+/// system, read only in the Klir register — the kernel carries no scale.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ScaleType {
+    Nominal,
+    Ordinal,
+    Interval,
+    Ratio,
+}
+
 fn kind_to_substance(k: Kind) -> SubstanceType {
     match k {
         Kind::Matter => SubstanceType::Material,
@@ -114,6 +125,20 @@ pub struct Thing {
     /// `skip` when empty so existing models serialize unchanged.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub stock_unit: String,
+    /// Klir's measurement scale for this variable (§4, Table 4.1) — nominal,
+    /// ordinal, interval, or ratio. Authored source-system metadata read only
+    /// in the Klir register; the kernel carries no scale, so this never
+    /// projects. `None` for every model authored before this field;
+    /// `skip_serializing_if` keeps those byte-identical on disk.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scale: Option<ScaleType>,
+    /// The variable's state set — the values it can take (Klir's source-system
+    /// state set, §4). Enumerated labels, the FSA-native case (`{Green, Yellow,
+    /// Red}`). Authored Klir metadata, never projected to the kernel. `None`
+    /// (not `Some(vec![])`) when undeclared, `skip` so old models stay
+    /// byte-identical.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub states: Option<Vec<String>>,
 }
 
 /// A drawn connection: `a → b`, a bond (or a mere relation), optionally typed.
@@ -601,6 +626,10 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
                 .as_ref()
                 .map(|a| a.stock_unit.clone())
                 .unwrap_or_default(),
+            // Klir source-system metadata lives only canvas-side; the kernel
+            // carries none, so a reconstructed thing has neither.
+            scale: None,
+            states: None,
         });
     }
 
@@ -628,6 +657,8 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             interface: false,
             child_model: None,
             stock_unit: String::new(),
+            scale: None,
+            states: None,
         });
     }
 
@@ -742,6 +773,8 @@ mod tests {
             interface: false,
             child_model: None,
             stock_unit: String::new(),
+            scale: None,
+            states: None,
         }
     }
     fn bond(id: u64, a: u64, b: u64) -> Relation {

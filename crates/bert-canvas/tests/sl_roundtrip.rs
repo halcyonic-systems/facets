@@ -6,7 +6,7 @@
 
 use bert_canvas::canvas::{
     project, to_canvas, CanvasBoundaryProps, CanvasModel, ChildRef, Kind, Lens, Relation, Role,
-    SystemType, Thing,
+    ScaleType, SystemType, Thing,
 };
 use bert_canvas::sl::{emit_sl, parse_sl};
 use bert_core::{ModelId, ModelRef};
@@ -69,6 +69,8 @@ fn canvas_born_model_canonicalizes() {
         interface: false,
         child_model: None,
         stock_unit: String::new(),
+        scale: None,
+        states: None,
     };
     let m = CanvasModel {
         lens: Lens::Klir,
@@ -181,6 +183,45 @@ fn stock_unit_without_primitive_survives_the_seam() {
     assert_eq!(back.things[0].stock_unit, "ML");
     // And it re-emits bare (an identifier-shaped unit needs no quotes).
     assert!(emit_sl(&back).unwrap().contains("component Tank stock ML"), "{}", emit_sl(&back).unwrap());
+}
+
+/// Law (bert-lenses#154): a component's Klir source-system metadata — the
+/// measurement `scale` and the `states` set — survives text → model → text
+/// digit for digit, and the `{A, B, C}` set literal is a fixpoint. A state
+/// label needing quotes (a space) rides through the braces intact.
+#[test]
+fn klir_scale_and_states_round_trip_through_sl() {
+    let text = "component Light scale Nominal states {Green, Yellow, \"Solid Red\"}\n";
+    let m = parse_sl(text).unwrap();
+    assert_eq!(m.things[0].scale, Some(ScaleType::Nominal));
+    assert_eq!(
+        m.things[0].states.as_deref(),
+        Some(["Green".to_string(), "Yellow".to_string(), "Solid Red".to_string()].as_slice())
+    );
+
+    let emitted = emit_sl(&m).unwrap();
+    assert!(emitted.contains("scale Nominal"), "{emitted}");
+    assert!(emitted.contains("states {Green, Yellow, \"Solid Red\"}"), "{emitted}");
+    let m2 = parse_sl(&emitted).unwrap();
+    assert_eq!(json(&m), json(&m2), "Klir metadata drifted across the round trip\n{emitted}");
+    assert_eq!(emit_sl(&m2).unwrap(), emitted, "emit is not a fixpoint");
+
+    // An empty set is legal Klir notation and re-emits as `{}`.
+    let empty = parse_sl("component V scale Ordinal states {}\n").unwrap();
+    assert_eq!(empty.things[0].states.as_deref(), Some([].as_slice()));
+    assert!(emit_sl(&empty).unwrap().contains("states {}"));
+
+    // Undeclared stays undeclared — no invented scale or set.
+    let bare = parse_sl("component W\n").unwrap();
+    assert_eq!(bare.things[0].scale, None);
+    assert_eq!(bare.things[0].states, None);
+    let bare_text = emit_sl(&bare).unwrap();
+    assert!(!bare_text.contains("scale"));
+    assert!(!bare_text.contains("states"));
+
+    // Both apply to components only.
+    let err = parse_sl("source S scale Nominal\n").unwrap_err();
+    assert!(err[0].message.contains("components only"), "{:?}", err);
 }
 
 /// Law: a name containing a quote is not expressible in SL v1 — emit refuses
