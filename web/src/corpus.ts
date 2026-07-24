@@ -16,6 +16,10 @@ export interface CorpusEntry {
   citation: string;
   teaches: string;
   sl: string; // raw text, header included
+  /** #148 sibling-set: models that teach by diff over ONE fixed composition
+   *  (Klir's goal-oriented paradigms, Bunge's two-thing structures). Absent =
+   *  a standalone entry. The gallery renders a set as one labelled cluster. */
+  set?: string;
 }
 
 const files = import.meta.glob("../../assets/corpus/**/*.sl", {
@@ -39,7 +43,38 @@ export const CORPUS: CorpusEntry[] = index.entries.map((e) => ({
   citation: e.citation,
   teaches: e.teaches,
   sl: slByFile(e.file),
+  set: (e as { set?: string }).set,
 }));
+
+/** Tradition display metadata for the gallery (#148). Order is the K≅2 ladder
+ *  reading — Klir (epistemic) → Bunge (ontic) → Mobus (process). */
+export const TRADITIONS: { key: CorpusEntry["tradition"]; label: string; author: string }[] = [
+  { key: "klir", label: "Klir", author: "epistemic — systems as relations on a set" },
+  { key: "bunge", label: "Bunge", author: "ontic — systems as composed, coupled things" },
+  { key: "mobus", label: "Mobus", author: "process — systems as work over flows" },
+];
+
+/** Group the corpus by tradition, then by sibling-set within it, preserving the
+ *  editorial `entries` order. Standalone entries (no `set`) list after the sets.
+ *  The shape the gallery renders — flat grid → faceted tree (#148). */
+export function groupedCorpus(): {
+  tradition: CorpusEntry["tradition"];
+  sets: { name: string; entries: CorpusEntry[] }[];
+  loose: CorpusEntry[];
+}[] {
+  return TRADITIONS.map(({ key }) => {
+    const inTradition = CORPUS.filter((e) => e.tradition === key);
+    const sets: { name: string; entries: CorpusEntry[] }[] = [];
+    const loose: CorpusEntry[] = [];
+    for (const e of inTradition) {
+      if (!e.set) { loose.push(e); continue; }
+      const bucket = sets.find((s) => s.name === e.set);
+      if (bucket) bucket.entries.push(e);
+      else sets.push({ name: e.set, entries: [e] });
+    }
+    return { tradition: key, sets, loose };
+  }).filter((g) => g.sets.length > 0 || g.loose.length > 0);
+}
 
 /** The first sentence of `teaches`, for the gallery card's muted line. */
 export function firstSentence(s: string): string {

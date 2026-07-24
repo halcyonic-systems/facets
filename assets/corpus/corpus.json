@@ -13,70 +13,80 @@
       "tradition": "klir",
       "title": "Goal-oriented systems — the Informationless paradigm",
       "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 10 §10.2, Fig. 10.1",
-      "teaches": "The most restrictive of Klir's four goal-oriented paradigms: the goal-seeking element emits its variable blind, receiving neither the input nor the output it is trying to influence."
+      "teaches": "The most restrictive of Klir's four goal-oriented paradigms: the goal-seeking element emits its variable blind, receiving neither the input nor the output it is trying to influence.",
+      "set": "Goal-oriented paradigms"
     },
     {
       "file": "klir/goal-oriented-feedback.sl",
       "tradition": "klir",
       "title": "Goal-oriented systems — the Feedback paradigm",
       "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 10 §10.2, Fig. 10.1",
-      "teaches": "The goal-seeking element reads the output variable, so it can react to undesirable changes in the output but has no mechanism for anticipating them."
+      "teaches": "The goal-seeking element reads the output variable, so it can react to undesirable changes in the output but has no mechanism for anticipating them.",
+      "set": "Goal-oriented paradigms"
     },
     {
       "file": "klir/goal-oriented-feedforward.sl",
       "tradition": "klir",
       "title": "Goal-oriented systems — the Feedforward paradigm",
       "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 10 §10.2, Fig. 10.1",
-      "teaches": "The goal-seeking element reads the input variable, letting it anticipate the output rather than only react to it."
+      "teaches": "The goal-seeking element reads the input variable, letting it anticipate the output rather than only react to it.",
+      "set": "Goal-oriented paradigms"
     },
     {
       "file": "klir/goal-oriented-full-information.sl",
       "tradition": "klir",
       "title": "Goal-oriented systems — the Full-information paradigm",
       "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 10 §10.2, Fig. 10.1",
-      "teaches": "The least restrictive paradigm: the goal-seeking element reads both the input and the output, combining anticipation with reaction."
+      "teaches": "The least restrictive paradigm: the goal-seeking element reads both the input and the output, combining anticipation with reaction.",
+      "set": "Goal-oriented paradigms"
     },
     {
       "file": "bunge/two-thing-ab.sl",
       "tradition": "bunge",
       "title": "The two-thing system — a acts on b",
       "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §1.2, Definition 1.2, Example, Fig. 1.2",
-      "teaches": "The simplest possible system in Bunge's words: two connected things in an environment lumped into a single thing, with the internal structure a▷b — a acts on b, and not conversely."
+      "teaches": "The simplest possible system in Bunge's words: two connected things in an environment lumped into a single thing, with the internal structure a▷b — a acts on b, and not conversely.",
+      "set": "Two-thing structures"
     },
     {
       "file": "bunge/two-thing-ba.sl",
       "tradition": "bunge",
       "title": "The two-thing system — b acts on a",
       "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §1.2, Definition 1.2, Example, Fig. 1.2",
-      "teaches": "The same composition and environment as its siblings, with the internal structure reversed to b▷a — showing that structure, not composition, is what distinguishes these systems."
+      "teaches": "The same composition and environment as its siblings, with the internal structure reversed to b▷a — showing that structure, not composition, is what distinguishes these systems.",
+      "set": "Two-thing structures"
     },
     {
       "file": "bunge/two-thing-bidirectional.sl",
       "tradition": "bunge",
       "title": "The two-thing system — a and b act on each other",
       "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §1.2, Definition 1.2, Example, Fig. 1.2",
-      "teaches": "The same composition and environment again, with the reciprocal internal structure a⋈b — the third and last of the conceivable internal structures on two things."
+      "teaches": "The same composition and environment again, with the reciprocal internal structure a⋈b — the third and last of the conceivable internal structures on two things.",
+      "set": "Two-thing structures"
     },
     {
       "file": "bunge/coupling-sigma1.sl",
       "tradition": "bunge",
       "title": "Coupling graph σ₁ — a symmetric chain",
       "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §2.1, Coupling Graphs and Matrices",
-      "teaches": "The first of Bunge's three coupling examples: a system given as a graph and, equivalently, as a matrix. Every coupling is mutual and excitatory, so the matrix is symmetric and the graph is an undirected chain."
+      "teaches": "The first of Bunge's three coupling examples: a system given as a graph and, equivalently, as a matrix. Every coupling is mutual and excitatory, so the matrix is symmetric and the graph is an undirected chain.",
+      "set": "Coupling graphs"
     },
     {
       "file": "bunge/coupling-sigma2.sl",
       "tradition": "bunge",
       "title": "Coupling graph σ₂ — a cycle with inhibition",
       "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §2.1, Coupling Graphs and Matrices",
-      "teaches": "Bunge's second coupling example: four components in a directed cycle where two of the four couplings are inhibitory rather than excitatory, entered in the matrix as −1 against +1."
+      "teaches": "Bunge's second coupling example: four components in a directed cycle where two of the four couplings are inhibitory rather than excitatory, entered in the matrix as −1 against +1.",
+      "set": "Coupling graphs"
     },
     {
       "file": "bunge/coupling-sigma3.sl",
       "tradition": "bunge",
       "title": "Coupling graph σ₃ — self-action and feedback",
       "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §2.1, Coupling Graphs and Matrices",
-      "teaches": "Bunge's third coupling example, and the one that reads differently in two traditions: components 2 and 3 each act on themselves, and act on each other. His caption — \"the loops indicate self action or feedback\" — names both at once, and both are legal Bunge structure."
+      "teaches": "Bunge's third coupling example, and the one that reads differently in two traditions: components 2 and 3 each act on themselves, and act on each other. His caption — \"the loops indicate self action or feedback\" — names both at once, and both are legal Bunge structure.",
+      "set": "Coupling graphs"
     },
     {
       "file": "klir/cellular-array-cell.sl",

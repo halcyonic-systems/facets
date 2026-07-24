@@ -1,5 +1,6 @@
 # corpus-entry: v1
 # title: Goal-oriented systems — the Informationless paradigm
+# set: Goal-oriented paradigms
 # author: George Klir
 # work: Facets of Systems Science, 2nd ed.
 # year: 2001
