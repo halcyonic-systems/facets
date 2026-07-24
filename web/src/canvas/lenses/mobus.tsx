@@ -45,6 +45,7 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
       badgeCentered
       labelSmall={false}
       boundaryRim={false}
+      envHint={thing.role === "Environment"}
     />
   );
 }

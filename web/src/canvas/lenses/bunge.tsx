@@ -37,6 +37,7 @@ function NodeView({ thing, isBoundary, isOrphan, hovered, sim, onPointerDown, on
       // locates the thing in its state space. Trajectory/lawful region: the
       // compose seam's scope, see NodeBody's comment.
       simPosition
+      envHint={thing.role === "Environment"}
     />
   );
 }

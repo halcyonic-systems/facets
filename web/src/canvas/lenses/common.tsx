@@ -56,6 +56,12 @@ interface NodeBodyProps {
   /** Kernel `orphan_env_thing_ids`: an env thing no bond touches — not yet in ℰ
    *  (Bunge Def 1.2 ii), dropped by project(). Rendered muted, never hidden. */
   pending?: boolean;
+  /** #180 fix 3 (Option 1): Environment-role things drag freely across the
+   *  hull with no effect — the hull is computed from role, not position (see
+   *  geometry.ts componentRing / Canvas.tsx C ∩ E = ∅). Purely informational;
+   *  no drag/drop behavior changes. Mobus + Bunge only (both compute a hull
+   *  from role) — Klir has no C/E hull, so it never sets this. */
+  envHint?: boolean;
   /** Bunge only (#100 phase 2): render the sim value as a POSITION in state
    *  space (a marker on an axis beside the thing — his Fig 1.5 register), not
    *  as the tank-level disc fill (a Mobus stock metaphor). Default false, so
@@ -98,6 +104,7 @@ export function NodeBody({
   boundaryRim,
   pending = false,
   simPosition = false,
+  envHint = false,
 }: NodeBodyProps) {
   const frac = sim ? Math.max(0, Math.min(1, sim.frac)) : null;
   const clipId = `fill-clip-${thing.id}`;
@@ -114,6 +121,9 @@ export function NodeBody({
       opacity={pending ? 0.5 : 1}
     >
       {pending && <title>not yet in ℰ — no bond touches this thing (Bunge Def 1.2 ii); connect a flow to admit it</title>}
+      {!pending && envHint && (
+        <title>Environment role — membership is set by role, not position. Change it in the node editor.</title>
+      )}
       {showHalo && (
         <circle r={NODE_R + STYLE.compHalo.pad} fill="var(--lens-accent-soft)" opacity={STYLE.compHalo.opacity} />
       )}
