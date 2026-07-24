@@ -9,6 +9,7 @@
 // verdicts stay where they always were — the kernel, via the verdict pill and
 // the audit panel.
 
+import { useState } from "react";
 import { compileSl, emitSl } from "./kernel";
 import type { CanvasModel, SlError } from "./kernel/types";
 
@@ -23,9 +24,18 @@ interface SlPaneProps {
   onClose: () => void;
   /** The current canvas model, for the text←canvas direction (null = none). */
   canvasModel: CanvasModel | null;
+  /** #10 Rung 1: draft SL from a description (GSR /author-sl). Undefined =
+   *  authoring off (the pane stays a pure human/kernel surface). Window-on-
+   *  demand: the affordance is a deliberate reveal, never ambient. */
+  onRequestDraft?: (description: string) => Promise<string>;
 }
 
-export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel }: SlPaneProps) {
+export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel, onRequestDraft }: SlPaneProps) {
+  // #10 Rung 1 authoring state — the draft box is revealed on demand.
+  const [drafting, setDrafting] = useState(false);
+  const [draftOpen, setDraftOpen] = useState(false);
+  const [description, setDescription] = useState("");
+  const [draftError, setDraftError] = useState<string | null>(null);
   // Canvas → text: serialize the live model into the pane (kernel emit_sl —
   // canonical, round-trip-golden-tested). Replaces the pane text; the author
   // asked for it by pressing the button, so no confirm.
@@ -39,13 +49,32 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
     }
   }
 
-  function compile() {
-    const outcome = compileSl(text);
+  function compile(src: string = text) {
+    const outcome = compileSl(src);
     if ("errors" in outcome) {
       onErrors(outcome.errors);
     } else {
       onErrors([]);
       onCompiled(outcome.ok, outcome.lens_explicit);
+    }
+  }
+
+  // #10 Rung 1: description → SL (GSR) → pane → compile → Rung-0 preview. The
+  // LLM proposes; compile_sl disposes legality; the author accepts. A failed
+  // draft still lands in the textarea with its faults shown — nothing hidden.
+  async function draft() {
+    if (!onRequestDraft || !description.trim() || drafting) return;
+    setDrafting(true);
+    setDraftError(null);
+    try {
+      const sl = await onRequestDraft(description.trim());
+      onTextChange(sl);
+      compile(sl);
+      setDraftOpen(false);
+    } catch (e) {
+      setDraftError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDrafting(false);
     }
   }
 
@@ -96,12 +125,55 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
           ))}
         </div>
       )}
+      {onRequestDraft && draftOpen && (
+        <div className="border-t px-3 py-2" style={{ borderColor: "var(--hairline)" }}>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                draft();
+              }
+            }}
+            disabled={drafting}
+            spellCheck
+            rows={3}
+            className="w-full resize-none rounded p-2 text-xs outline-none"
+            style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: "1px solid var(--hairline)" }}
+            placeholder="Describe a system in plain language — the drafter writes the SL, you compile it to a preview and accept or discard."
+          />
+          {draftError && (
+            <div className="mt-1 text-xs" style={{ color: "var(--verdict-error)" }}>
+              {draftError}
+            </div>
+          )}
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              onClick={draft}
+              disabled={drafting || !description.trim()}
+              className="rounded-full px-3 py-1 text-xs font-semibold"
+              style={{
+                background: "var(--accent)", color: "var(--text-on-accent)",
+                opacity: drafting || !description.trim() ? 0.5 : 1,
+                cursor: drafting || !description.trim() ? "not-allowed" : "pointer",
+              }}
+              title="Draft SL from the description (⌘⏎)"
+            >
+              {drafting ? "Drafting…" : "Draft SL"}
+            </button>
+            <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+              LLM proposes · kernel checks · you accept
+            </span>
+          </div>
+        </div>
+      )}
       <div
         className="flex items-center gap-2 border-t px-3 py-2"
         style={{ borderColor: "var(--hairline)" }}
       >
         <button
-          onClick={compile}
+          onClick={() => compile()}
           className="rounded-full px-4 py-1.5 text-sm font-semibold"
           style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
           title="Compile SL → model (⌘⏎)"
@@ -122,6 +194,19 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
         >
           ← From canvas
         </button>
+        {onRequestDraft && (
+          <button
+            onClick={() => { setDraftOpen((o) => !o); setDraftError(null); }}
+            className="rounded-full px-3 py-1.5 text-sm"
+            style={{
+              border: "1px solid var(--hairline)",
+              color: draftOpen ? "var(--accent)" : "var(--text-secondary)",
+            }}
+            title="Draft SL from a plain-language description"
+          >
+            ✨ Draft
+          </button>
+        )}
         <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
           ⌘⏎ · deterministic compile, kernel verdicts
         </span>
