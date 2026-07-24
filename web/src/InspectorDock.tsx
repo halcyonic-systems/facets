@@ -20,11 +20,13 @@ import { RunPanel } from "./RunPanel";
 import { FormalPanel } from "./FormalPanel";
 import { AuditPanel } from "./AuditPanel";
 import { AnalystPanel } from "./AnalystPanel";
+import { CoAuthorPanel } from "./CoAuthorPanel";
+import type { CoauthorTurn } from "./coauthor";
 import { SystemTypeEditor } from "./SystemTypeEditor";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 import { Card } from "./ui";
 
-type Tab = "element" | "run" | "formal" | "audit" | "analyst" | "type";
+type Tab = "element" | "run" | "formal" | "audit" | "analyst" | "coauthor" | "type";
 
 /** The selected element's editing surface, as the shell hands it over (#122).
  *  Null thing = nothing selected; the face says so rather than vanishing. */
@@ -53,6 +55,9 @@ export function InspectorDock({
   focused,
   onToggleFocus,
   tick,
+  coauthorTurns,
+  onCoauthorDraft,
+  onCoauthorReopen,
 }: {
   result: RunResultRich | null;
   runError: string | null;
@@ -77,6 +82,11 @@ export function InspectorDock({
   // dock fills the whole work region so the active tab reads as a full screen.
   focused: boolean;
   onToggleFocus: () => void;
+  /** #10 resident co-author — the dock's persistent draft history, lifted to
+   *  Workspace so it survives tab switches (unlike SlPane's inline Draft box). */
+  coauthorTurns: CoauthorTurn[];
+  onCoauthorDraft: (description: string) => Promise<void>;
+  onCoauthorReopen: (sl: string) => void;
 }) {
   const [tab, setTab] = useState<Tab>("run");
   const [collapsed, setCollapsed] = useState(false);
@@ -141,6 +151,12 @@ export function InspectorDock({
           badge={issueCount > 0 ? issueCount : undefined}
         />
         <TabButton label="Analyst" active={tab === "analyst"} onClick={() => setTab("analyst")} />
+        <TabButton
+          label="Co-author"
+          active={tab === "coauthor"}
+          onClick={() => setTab("coauthor")}
+          badge={coauthorTurns.filter((t) => t.status === "previewing").length || undefined}
+        />
         <TabButton label="Type" active={tab === "type"} onClick={() => setTab("type")} />
         <div className="ml-auto flex items-stretch">
           {/* Focus toggle — pops the active tab full-width (hides the canvas) and
@@ -212,6 +228,13 @@ export function InspectorDock({
               ) : (
                 <Placeholder>Open or import a model to analyze it.</Placeholder>
               ))}
+            {tab === "coauthor" && (
+              <CoAuthorPanel
+                turns={coauthorTurns}
+                onDraft={onCoauthorDraft}
+                onReopenInSlPane={onCoauthorReopen}
+              />
+            )}
             {tab === "type" &&
               (canvasModel ? (
                 <SystemTypeEditor value={canvasModel.system_type} onChange={onSystemTypeChange} />

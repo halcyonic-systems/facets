@@ -40,7 +40,7 @@ import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
 import { NewModelTypePrompt } from "./NewModelTypePrompt";
 import { SlPane } from "./SlPane";
-import { authorSl } from "./gsr";
+import { draftSlWithRetry, newTurnId, type CoauthorTurn } from "./coauthor";
 import type { SlError } from "./kernel/types";
 import { Banner, Pill, ToolButton } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
@@ -202,6 +202,15 @@ function Workspace() {
   // (the human-checks-meaning gate; llm-sl-authoring-plan.md Rung 0). null =
   // not previewing. Works for a human pasting SL today and for an LLM drafter next.
   const [preview, setPreview] = useState<{ stash: CanvasModel | null; priorDirty: boolean } | null>(null);
+  // #10 resident co-author: the active preview's originating turn, if any —
+  // lets accept/discard (fired from the shared preview banner) flip the SAME
+  // turn's status in the Co-author dock's history. undefined-vs-turn distinguishes
+  // a coauthor-sourced preview from a plain paste/corpus compile (which clears it).
+  const [activeTurnId, setActiveTurnId] = useState<string | null>(null);
+  // #10: the resident co-author's persistent draft history — lifted here (not
+  // local to the dock) so it survives tab switches, unlike SlPane's inline
+  // Draft box whose state dies when the SL pane closes.
+  const [coauthorTurns, setCoauthorTurns] = useState<CoauthorTurn[]>([]);
   const [manifest, setManifest] = useState<Manifest>({ model: "", data: "", t: 12, mapping: [] });
   const [dt, setDt] = useState(1);
   const [t, setT] = useState(12);
@@ -470,7 +479,7 @@ function Workspace() {
   // commit it — stash the author's model so Discard reverts, Accept commits
   // (llm-sl-authoring-plan.md Rung 0, the human-checks-meaning gate). Other callers
   // (corpus open) commit directly, as before.
-  async function onSlCompiled(cm: CanvasModel, lensExplicit: boolean, asPreview = false) {
+  async function onSlCompiled(cm: CanvasModel, lensExplicit: boolean, asPreview = false, turnId?: string) {
     if (!(await flushWalk())) return;
     const prior = canvasModel;
     const nextModel = prior && !lensExplicit ? { ...cm, lens: prior.lens } : cm;
@@ -492,10 +501,12 @@ function Workspace() {
       setPreview((p) => p ?? { stash: prior, priorDirty: dirty });
       setDirty(true); // uncommitted draft — guard against silent loss
       setNotice("SL compiled — previewing (Accept to keep, Discard to revert)");
+      setActiveTurnId(turnId ?? null);
     } else {
       setPreview(null); // committing clears any stale preview
       setDirty(false);
       setNotice("SL compiled ✓");
+      setActiveTurnId(null);
     }
   }
 
@@ -504,6 +515,11 @@ function Workspace() {
   function acceptPreview() {
     setPreview(null);
     setNotice("Accepted onto the canvas ✓");
+    if (activeTurnId) {
+      const id = activeTurnId;
+      setCoauthorTurns((ts) => ts.map((x) => (x.id === id ? { ...x, status: "accepted" } : x)));
+      setActiveTurnId(null);
+    }
   }
 
   // Discard the previewed draft: restore the author's own model and its dirty
@@ -515,6 +531,42 @@ function Workspace() {
     setResult(null);
     setPreview(null);
     setNotice("Draft discarded — reverted");
+    if (activeTurnId) {
+      const id = activeTurnId;
+      setCoauthorTurns((ts) => ts.map((x) => (x.id === id ? { ...x, status: "discarded" } : x)));
+      setActiveTurnId(null);
+    }
+  }
+
+  // #10 resident co-author: description -> draft -> compile -> Rung-0 preview,
+  // recorded as a turn in the dock's history. Reuses the exact same
+  // draftSlWithRetry + onSlCompiled path the SL pane's inline Draft box calls —
+  // no new LLM plumbing, no new preview machinery. A failed compile or an
+  // unreachable drafter still lands as a turn (nothing hidden).
+  async function coauthorDraft(description: string) {
+    const id = newTurnId();
+    const lens = canvasModel?.lens;
+    let sl = "";
+    try {
+      sl = await draftSlWithRetry(description, lens);
+    } catch (e) {
+      setCoauthorTurns((ts) => [
+        { id, description, sl: "", at: new Date().toISOString(), status: "network-error", errorText: e instanceof Error ? e.message : String(e) },
+        ...ts,
+      ]);
+      return;
+    }
+    const outcome = compileSl(sl);
+    if ("errors" in outcome) {
+      const errorText = outcome.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
+      setCoauthorTurns((ts) => [
+        { id, description, sl, at: new Date().toISOString(), status: "compile-error", errorText },
+        ...ts,
+      ]);
+      return;
+    }
+    await onSlCompiled(outcome.ok, outcome.lens_explicit, true, id);
+    setCoauthorTurns((ts) => [{ id, description, sl, at: new Date().toISOString(), status: "previewing" }, ...ts]);
   }
 
   // File → New: a blank canvas to author a model from scratch (the #14 path — no
@@ -1484,23 +1536,11 @@ function Workspace() {
               onCompiled={(cm, lensExplicit) => onSlCompiled(cm, lensExplicit, true)}
               onClose={() => setSlOpen(false)}
               canvasModel={canvasModel}
-              onRequestDraft={async (description) => {
-                // #10 Rung 1: GSR authors the SL; the pane compiles it to a
-                // Rung-0 preview. Seed the drafter with the current lens so the
-                // reading matches; the kernel still owns legality on compile.
-                // compile→retry (≤2): the kernel's own faults (which name the
-                // fix) feed back so the drafter heals near-misses before the
-                // author ever sees them — the harness carrying correctness.
-                const lens = canvasModel?.lens;
-                let { sl } = await authorSl({ description, lens });
-                for (let i = 0; i < 2; i++) {
-                  const outcome = compileSl(sl);
-                  if (!("errors" in outcome)) break;
-                  const errs = outcome.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
-                  ({ sl } = await authorSl({ description, lens, priorSl: sl, errors: errs }));
-                }
-                return sl;
-              }}
+              // #10 Rung 1: shared with the resident Co-author dock's Draft
+              // action (coauthorDraft, below) via draftSlWithRetry — one
+              // binding, two surfaces. The pane compiles the returned SL into
+              // a Rung-0 preview itself; the kernel still owns legality.
+              onRequestDraft={(description) => draftSlWithRetry(description, canvasModel?.lens)}
             />
           )}
 
@@ -1980,6 +2020,12 @@ function Workspace() {
               }
               focused={inspectorFocused}
               onToggleFocus={() => setInspectorFocused((f) => !f)}
+              coauthorTurns={coauthorTurns}
+              onCoauthorDraft={coauthorDraft}
+              onCoauthorReopen={(sl) => {
+                setSlText(sl);
+                setSlOpen(true);
+              }}
             />
           )}
         </div>
