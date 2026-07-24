@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.halcyonic.bert-lenses</string>
+
+    <!-- Serves the published static build (~/halcyonic-apps/bert-lenses/dist) at
+         http://127.0.0.1:5190. The repo lives under ~/Desktop, and launchd jobs
+         can't read TCC-protected dirs (no Full Disk Access), so the binary here
+         is NOT the repo's web/node_modules/vite -- it's a standalone vite install
+         at ~/halcyonic-apps/bert-lenses/server/node_modules (outside ~/Desktop,
+         created/updated by scripts/publish-app.sh) serving the published dist.
+         Re-run publish-app.sh after any change; this service picks it up on the
+         next restart (or `launchctl kickstart -k`). -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/home/halcyonic-apps/bert-lenses/server/node_modules/.bin/vite</string>
+        <string>preview</string>
+        <string>--port</string>
+        <string>5190</string>
+        <string>--strictPort</string>
+        <string>--host</string>
+        <string>127.0.0.1</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/home/halcyonic-apps/bert-lenses</string>
+
+    <!-- vite's shebang needs node; nvm's bin dir isn't on launchd's default PATH. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/home/.nvm/versions/node/v22.17.0/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/home/halcyonic-apps/bert-lenses/web.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/home/halcyonic-apps/bert-lenses/web.log</string>
+</dict>
+</plist>
