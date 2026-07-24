@@ -74,5 +74,49 @@ The goal is *make the model work as little as possible to do the job right* — 
 
 ## Open decisions (Shingai)
 - SL-generation: an SL mode in GSR vs prompt-the-LLM-to-emit-SL via `gsr.ts`. (Lean: reuse `gsr.ts`, add an SL prompt.)
-- Surface: dedicated window vs in-page copilot. (Guard: window-on-demand.)
+- Surface: dedicated window vs in-page copilot. (Guard: window-on-demand.) — **#10 first increment landed a candidate: an InspectorDock tab** (see below), not yet confirmed as final.
 - Rung 2 accumulation target: a fixtures dir, a runnable-corpus dir, or the library.
+
+## #10 resident co-author — first increment (scaffold, not final)
+
+*What "post-spike" meant for #10:* the spike (#9) and Rung 0/1 (above) already
+shipped a one-shot drafter — a description box local to the SL pane's state,
+gone when the pane closes. #10 asks for a *resident* window: the co-author
+stays mounted, and a history of what was tried persists across tabs. This is
+a scaffold toward that, reusing every existing binding (`authorSl`,
+`compile_sl`, the Rung-0 preview/accept banner) — no new LLM plumbing.
+
+**What was built:** a "Co-author" tab in `InspectorDock` (`CoAuthorPanel.tsx`),
+backed by `coauthorTurns` state lifted to `Workspace` (`App.tsx`) so it
+survives switching tabs. Each draft becomes a `CoauthorTurn` (description, SL,
+status: previewing/accepted/discarded/compile-error/network-error) and is
+never dropped even on failure. The draft→compile→retry loop was extracted to
+`web/src/coauthor.ts` (`draftSlWithRetry`) so the SL pane's inline Draft box
+and this dock call the exact same function — one binding, two call sites.
+Accept/discard (fired from the shared canvas preview banner, unchanged) now
+correlates back to the originating turn via an `activeTurnId`, so history
+reflects the real outcome instead of freezing at "previewing."
+
+**Flagged for Shingai — NOT finalized by this increment:**
+1. **Docking, permanently.** An InspectorDock tab was chosen because the dock
+   infrastructure (collapse rail, focus-mode expand) already exists and this
+   sidesteps inventing a second window chrome. But it competes for the same
+   tab strip as Run/Formal/Audit/Analyst/Type, and a resident co-author may
+   deserve to always be visible rather than one-tab-among-six. Alternatives:
+   a standalone side panel (like the SL pane, always docked when open), a
+   floating/detachable window, or folding this into the SL pane itself
+   (co-author becomes a mode of the pane rather than a sibling surface).
+2. **Conversational vs one-shot.** Each turn today is independent — the
+   drafter sees only the current description, not prior turns in the
+   session. A true "co-author" plausibly wants conversational memory (edit
+   the last draft by saying "make the furnace bigger" rather than
+   re-describing the whole system). That's a real scope jump (session
+   context has to flow into the GSR prompt) and wasn't attempted here.
+3. **History depth / persistence.** `coauthorTurns` is in-memory only —
+   cleared on reload, unbounded length. Whether it should persist
+   (localStorage, like the Analyst panel's coverage dial) or cap at N turns
+   is undecided.
+4. **Relationship to the SL pane's inline Draft box.** Both now exist,
+   sharing the same binding. Keep both (dock = history/overview, inline box =
+   quick one-off), or retire the inline box in favor of the dock exclusively?
+   Not decided here — the inline box was left untouched.
