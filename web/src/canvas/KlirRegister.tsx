@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import type { CanvasModel, KlirLadder, Relation, Thing } from "../kernel/types";
+import type { CanvasModel, KlirLadder, Relation, ScaleType, Thing } from "../kernel/types";
 import { validateConnection } from "../kernel";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 import { DecomposeRows, type DecomposeAffordance } from "./NodeEditor";
@@ -66,7 +66,7 @@ export function KlirRegister({
   placeName,
   ladder,
 }: Props) {
-  const [view, setView] = useState<"sets" | "matrix">("sets");
+  const [view, setView] = useState<"sets" | "matrix" | "table">("sets");
   // The ladder is an opt-in complement: collapsed on every mount, never the
   // anchor — first contact is one quiet chip beside the headline.
   const [ladderOpen, setLadderOpen] = useState(false);
@@ -206,6 +206,16 @@ export function KlirRegister({
             <SmallButton active={view === "matrix"} onClick={() => setView("matrix")} title="the |T|×|T| incidence matrix over the same R">
               matrix
             </SmallButton>
+            <SmallButton
+              active={view === "table"}
+              onClick={() => {
+                setView("table");
+                setProposed(null);
+              }}
+              title="Klir's source-system register (Table 4.1) — per variable, its role, scale, and state set"
+            >
+              table
+            </SmallButton>
           </div>
         </div>
 
@@ -213,6 +223,18 @@ export function KlirRegister({
             the model's position (#100 harvest — see KlirLadderPanel). */}
         {ladder && ladderOpen && <KlirLadderPanel ladder={ladder} onClose={() => setLadderOpen(false)} />}
 
+        {/* ---- Table 4.1 — the source-system register (#154) ------------------- */}
+        {view === "table" && (
+          <SourceSystemTable
+            model={model}
+            selectedThingId={selectedThingId}
+            onSelectThing={onSelectThing}
+            onUpdateThing={onUpdateThing}
+          />
+        )}
+
+        {view !== "table" && (
+          <>
         {/* ---- T — thinghood, taken for granted -------------------------------- */}
         <section className="mb-4">
           <div className="mb-1 flex items-baseline gap-3 text-sm" style={mono}>
@@ -352,6 +374,8 @@ export function KlirRegister({
             </div>
           )}
         </section>
+          </>
+        )}
       </div>
     </div>
   );
@@ -533,6 +557,165 @@ function IncidenceMatrix({
         ● neutral (marks both orders) · → directed, read row → col · ↺ self-relation
       </p>
     </div>
+  );
+}
+
+const SCALES: ScaleType[] = ["Nominal", "Ordinal", "Interval", "Ratio"];
+
+/** Klir's Table 4.1, the source-system register: one row per variable in T,
+ *  with its input/output role and basic-vs-supporting standing DERIVED from R
+ *  (the same directed relations the sets/matrix views read — no schema), and
+ *  its measurement scale + state set AUTHORED inline. The authored columns are
+ *  what earn the table its place: a variable declares the values it can take,
+ *  not merely that it exists. Scale and state sets live on components (SL emits
+ *  them only there); environment things read as backdrop. */
+function sourceRole(model: CanvasModel, id: number): { io: string; kind: string } {
+  const dirOut = model.relations.some((r) => r.a === id && r.klir_directed === true);
+  const dirIn = model.relations.some((r) => r.b === id && r.klir_directed === true);
+  const coupled = model.relations.some((r) => r.a === id || r.b === id);
+  // a → b reads as a drives b (the matrix's row → col): a variable that only
+  // drives is an input, only driven an output, both an in/out coupler.
+  const io = dirOut && dirIn ? "in/out" : dirOut ? "input" : dirIn ? "output" : coupled ? "internal" : "—";
+  // basic = coupled into R (part of the studied systemhood); supporting = a
+  // backdrop variable standing outside every relation.
+  const kind = coupled ? "basic" : "supporting";
+  return { io, kind };
+}
+
+export function SourceSystemTable({
+  model,
+  selectedThingId,
+  onSelectThing,
+  onUpdateThing,
+}: {
+  model: CanvasModel;
+  selectedThingId: number | null;
+  onSelectThing: (id: number | null) => void;
+  onUpdateThing: (t: Thing) => void;
+}) {
+  if (model.things.length === 0) {
+    return (
+      <p className="pl-6 text-xs" style={{ color: "var(--text-muted)" }}>
+        |T| = 0 — add a variable to T first; the source system registers each one.
+      </p>
+    );
+  }
+  const th = "px-2 py-1 text-left text-[10px] font-normal";
+  return (
+    <section className="mb-4">
+      <div className="mb-1 text-xs" style={{ ...mono, color: "var(--text-secondary)" }}>
+        source system — Table 4.1
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-separate" style={{ borderSpacing: 0 }}>
+          <thead>
+            <tr>
+              <th className={th} style={headerCellStyle}>variable</th>
+              <th className={th} style={headerCellStyle} title="derived from R: coupled = basic, uncoupled = supporting (backdrop)">basic/supporting</th>
+              <th className={th} style={headerCellStyle} title="derived from directed relations (a → b): drives = input, driven = output">in/out</th>
+              <th className={th} style={headerCellStyle} title="Klir's measurement scale — authored">scale</th>
+              <th className={th} style={headerCellStyle} title="the values the variable can take — authored">state set</th>
+            </tr>
+          </thead>
+          <tbody>
+            {model.things.map((t) => {
+              const { io, kind } = sourceRole(model, t.id);
+              const isComponent = t.role === "Component";
+              const selected = t.id === selectedThingId;
+              return (
+                <tr key={t.id} style={{ background: selected ? "color-mix(in srgb, var(--lens-accent) 12%, transparent)" : undefined }}>
+                  <td className="px-2 py-1 text-sm" style={{ ...mono, borderBottom: "1px solid var(--hairline)" }}>
+                    <button
+                      onClick={() => onSelectThing(selected ? null : t.id)}
+                      style={{ color: "var(--text-primary)" }}
+                      title="click to select this variable"
+                    >
+                      {t.name || `t${t.id}`}
+                    </button>
+                  </td>
+                  <td className="px-2 py-1 text-xs" style={{ ...mono, color: "var(--text-muted)", borderBottom: "1px solid var(--hairline)" }}>
+                    {kind}
+                  </td>
+                  <td className="px-2 py-1 text-xs" style={{ ...mono, color: "var(--text-muted)", borderBottom: "1px solid var(--hairline)" }}>
+                    {io}
+                  </td>
+                  <td className="px-2 py-1" style={{ borderBottom: "1px solid var(--hairline)" }}>
+                    {isComponent ? (
+                      <select
+                        value={t.scale ?? ""}
+                        onChange={(e) =>
+                          onUpdateThing({ ...t, scale: (e.target.value || undefined) as ScaleType | undefined })
+                        }
+                        className="rounded-md px-1 py-0.5 text-xs"
+                        style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+                      >
+                        <option value="">—</option>
+                        {SCALES.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-xs" style={{ color: "var(--text-muted)" }}>env</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-1" style={{ borderBottom: "1px solid var(--hairline)" }}>
+                    {isComponent ? (
+                      <StatesInput
+                        value={t.states}
+                        onCommit={(labels) => onUpdateThing({ ...t, states: labels })}
+                      />
+                    ) : (
+                      <span className="text-xs" style={{ color: "var(--text-muted)" }}>—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+        basic/supporting and in/out are read off R; scale and the state set are authored.
+      </p>
+    </section>
+  );
+}
+
+/** The state-set cell editor — enumerated value labels as a comma-separated
+ *  list (`Green, Yellow, Red`), the Klir set literal minus the braces. Commits
+ *  on Enter/blur; an empty field clears the declaration. */
+function StatesInput({
+  value,
+  onCommit,
+}: {
+  value: string[] | undefined;
+  onCommit: (labels: string[] | undefined) => void;
+}) {
+  const [draft, setDraft] = useState((value ?? []).join(", "));
+  useEffect(() => setDraft((value ?? []).join(", ")), [value]);
+  const commit = () => {
+    const labels = draft
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    onCommit(labels.length ? labels : undefined);
+  };
+  return (
+    <input
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        if (e.key === "Escape") {
+          setDraft((value ?? []).join(", "));
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+      placeholder="e.g. Green, Yellow, Red"
+      className="w-40 rounded-md px-1.5 py-0.5 text-xs"
+      style={{ ...mono, border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+    />
   );
 }
 
