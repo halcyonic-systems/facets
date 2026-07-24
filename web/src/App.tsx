@@ -22,7 +22,8 @@ import type {
   Thing,
   ValidationIssue,
 } from "./kernel/types";
-import { DEMOS, type Demo } from "./demos";
+import { DEMOS, isRunnable, type Demo } from "./demos";
+import { groupedExamples } from "./examples";
 import { firstSentence, groupedCorpus, TRADITIONS, type CorpusEntry } from "./corpus";
 import Canvas from "./canvas/Canvas";
 import { edgeGeometry, thingById } from "./canvas/geometry";
@@ -394,6 +395,9 @@ function Workspace() {
   // Guarded + flushed at the seam itself (#111), so every caller — the Switch
   // menu AND the OpenDialog gallery — gets the same discard discipline.
   const pick = async (d: Demo) => {
+    // Runnable only — a structural entry has no run bundle and opens via
+    // pickExample instead. The guard also narrows the optional fields (#148).
+    if (d.modelJson == null || d.csv == null || d.manifest == null || d.t == null) return;
     if (!guardDiscard() || !(await flushWalk())) return;
     setDemo(d);
     setCanvasModel(spaceOut(openModel(d.modelJson))); // load the demo onto the canvas as a diagram
@@ -426,6 +430,27 @@ function Workspace() {
       // zero faults. Report the first fault the way importModel reports a bad
       // file rather than failing silently.
       setToast(outcome.errors[0]?.message ?? "corpus entry failed to compile");
+      return;
+    }
+    await onSlCompiled(outcome.ok, outcome.lens_explicit);
+    setGalleryOpen(false);
+    setDirty(false);
+  };
+
+  // Examples gallery → open (#148): one card handler for both shapes. A runnable
+  // entry runs (the demo path, unchanged); a structural one compiles its SL and
+  // opens as a diagram (the corpus path, without a citation). onSlCompiled sets
+  // demo to null, so the loaded-demo state stays a runnable Demo or null.
+  const pickExample = async (d: Demo) => {
+    if (isRunnable(d)) {
+      await pick(d);
+      return;
+    }
+    if (!d.sl) return;
+    if (!guardDiscard() || !(await flushWalk())) return;
+    const outcome = compileSl(d.sl);
+    if ("errors" in outcome) {
+      setToast(outcome.errors[0]?.message ?? "example failed to compile");
       return;
     }
     await onSlCompiled(outcome.ok, outcome.lens_explicit);
@@ -875,7 +900,7 @@ function Workspace() {
   const csvHeaders = useMemo(() => {
     if (!demo) return [];
     try {
-      return parseCsv(demo.csv).headers;
+      return parseCsv(demo.csv!).headers;
     } catch {
       return [];
     }
@@ -950,7 +975,7 @@ function Workspace() {
   function applyDrive(next: Manifest) {
     setManifest(next);
     setSelectedRelationId(null);
-    if (demo) runWith(demo.modelJson, demo.csv, next, dt, t);
+    if (demo) runWith(demo.modelJson!, demo.csv!, next, dt, t);
   }
 
   // A per-lens edge edit (kind / bond⇄mere / direction / klir toggle): update
@@ -1437,7 +1462,7 @@ function Workspace() {
                   if (isKlir) {
                     if (klirRunnable) runKlir(canvasModel, t);
                   } else if (demo) {
-                    runWith(demo.modelJson, demo.csv, manifest, dt, t);
+                    runWith(demo.modelJson!, demo.csv!, manifest, dt, t);
                   }
                 };
                 const title = isKlir
@@ -1998,7 +2023,7 @@ function Workspace() {
       {galleryOpen && (
         <OpenDialog
           selected={demo}
-          onPick={pick}
+          onPick={pickExample}
           onPickCorpus={pickCorpus}
           onNew={newModel}
           onWriteSl={() => {
@@ -2554,7 +2579,7 @@ function OpenDialog({
             </button>
           )}
         </div>
-        <DemoGallery selected={selected} onPick={onPick} />
+        <ExamplesGallery selected={selected} onPick={onPick} />
         <CorpusGallery onPick={onPickCorpus} />
         <button
           onClick={onNew}
@@ -2782,44 +2807,75 @@ function SaveDialog({
   );
 }
 
-// Demos as compact rows (#148), labelled and separate from the corpus — these
-// RUN (the tool working), the corpus is structural (what the author said). Same
-// dense row as a corpus entry so nothing on the dialog is a giant card.
-function DemoGallery({ selected, onPick }: { selected: Demo | null; onPick: (d: Demo) => void }) {
+// Examples, faceted by genus (#148) — Bunge's kingdoms-of-genus, only the
+// genera that have entries, in canonical order. Runnable demos and structural
+// examples merge into one list here (each carrying its genus); the per-row tag
+// keeps the run affordance legible — "runs" opens and simulates, "diagram"
+// opens as structure only. Answers a DIFFERENT question from the corpus below:
+// "what kinds of system can this model?" versus "what did this author say?", so
+// the two sections are never interleaved. Same dense row as a corpus entry so
+// nothing on the dialog is a giant card.
+function ExamplesGallery({ selected, onPick }: { selected: Demo | null; onPick: (d: Demo) => void }) {
+  const groups = groupedExamples();
+  if (groups.length === 0) return null;
   return (
     <div>
       <div
         className="mb-2 text-xs font-semibold uppercase tracking-wide"
         style={{ color: "var(--text-muted)" }}
       >
-        Demos — runnable
+        Examples — by genus
       </div>
-      <div className="flex flex-col">
-        {DEMOS.map((d) => {
-          const active = selected?.key === d.key;
-          return (
-            <button
-              key={d.key}
-              onClick={() => onPick(d)}
-              title={d.blurb}
-              className="flex w-full items-baseline gap-2 border-b px-1 py-1.5 text-left last:border-b-0"
-              style={{ borderColor: "var(--hairline)" }}
-            >
+      <div className="flex flex-col gap-2">
+        {groups.map((g) => (
+          <section key={g.genus}>
+            <div className="flex items-baseline gap-2 py-1">
               <span
-                className="shrink-0 text-sm"
-                style={{
-                  fontFamily: "var(--font-display)",
-                  color: active ? "var(--accent-strong)" : "var(--text-primary)",
-                }}
+                className="text-xs font-semibold"
+                style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}
               >
-                {d.title}
+                {g.genus}
               </span>
-              <span className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
-                {d.blurb.split(".")[0]}.
+              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                {g.entries.length} model{g.entries.length === 1 ? "" : "s"}
               </span>
-            </button>
-          );
-        })}
+            </div>
+            <div className="flex flex-col">
+              {g.entries.map((d) => {
+                const active = selected?.key === d.key;
+                const runs = isRunnable(d);
+                return (
+                  <button
+                    key={d.key}
+                    onClick={() => onPick(d)}
+                    title={d.blurb}
+                    className="flex w-full items-baseline gap-2 border-b px-1 py-1.5 text-left last:border-b-0"
+                    style={{ borderColor: "var(--hairline)" }}
+                  >
+                    <span
+                      className="shrink-0 text-sm"
+                      style={{
+                        fontFamily: "var(--font-display)",
+                        color: active ? "var(--accent-strong)" : "var(--text-primary)",
+                      }}
+                    >
+                      {d.title}
+                    </span>
+                    <span className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
+                      {d.blurb.split(".")[0]}.
+                    </span>
+                    <span
+                      className="ml-auto shrink-0 text-[10px] uppercase tracking-wide"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {runs ? "runs" : "diagram"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ))}
       </div>
     </div>
   );

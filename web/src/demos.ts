@@ -1,17 +1,27 @@
-// The bundled one-click demos: each is a single unit (model + CSV + mapping)
-// loaded together, so a demo runs in one click — no three-file dance. The model
-// JSON is imported raw (the kernel takes model text); the bundle carries the CSV
-// and a manifest-shaped mapping.
+// A library entry — an example a user opens from the gallery. Two shapes share
+// one type (#148): a DYNAMIC entry carries a run bundle (model + CSV + mapping)
+// and runs in one click; a STRUCTURAL entry carries only SL text and opens as a
+// diagram that does not run. The run bundle is therefore optional. Every entry
+// carries a `genus` (Bunge's kingdom-of-genus) so the gallery can group by it.
 import type { Manifest } from "./kernel/types";
 
 export interface Demo {
   key: string;
   title: string;
   blurb: string;
-  modelJson: string;
-  csv: string;
-  manifest: Manifest;
-  t: number;
+  genus: string;
+  // Run bundle — present on a dynamic entry, absent on a structural one.
+  modelJson?: string;
+  csv?: string;
+  manifest?: Manifest;
+  t?: number;
+  // SL text — present on a structural entry, compiled to a diagram on open.
+  sl?: string;
+}
+
+/** A dynamic entry ships the full run bundle; a structural one does not. */
+export function isRunnable(d: Demo): boolean {
+  return d.modelJson != null && d.csv != null && d.manifest != null && d.t != null;
 }
 
 const bundles = import.meta.glob("../../assets/demos/*.json", { eager: true }) as Record<
@@ -36,6 +46,7 @@ export const DEMOS: Demo[] = Object.values(bundles)
     key: b.model as string,
     title: b.title as string,
     blurb: b.blurb as string,
+    genus: b.genus as string,
     modelJson: modelByName(b.model as string),
     csv: b.csv as string,
     manifest: b.mapping as Manifest,
