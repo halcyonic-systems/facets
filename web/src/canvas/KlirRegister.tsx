@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import type { CanvasModel, KlirLadder, Relation, ScaleType, Thing } from "../kernel/types";
+import type { CanvasModel, KlirLadder, KlirVarKind, Relation, ScaleType, Thing } from "../kernel/types";
 import { validateConnection } from "../kernel";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 import { DecomposeRows, type DecomposeAffordance } from "./NodeEditor";
@@ -561,25 +561,24 @@ function IncidenceMatrix({
 }
 
 const SCALES: ScaleType[] = ["Nominal", "Ordinal", "Interval", "Ratio"];
+const VAR_KINDS: KlirVarKind[] = ["Basic", "Support"];
 
-/** Klir's Table 4.1, the source-system register: one row per variable in T,
- *  with its input/output role and basic-vs-supporting standing DERIVED from R
- *  (the same directed relations the sets/matrix views read — no schema), and
- *  its measurement scale + state set AUTHORED inline. The authored columns are
- *  what earn the table its place: a variable declares the values it can take,
- *  not merely that it exists. Scale and state sets live on components (SL emits
- *  them only there); environment things read as backdrop. */
-function sourceRole(model: CanvasModel, id: number): { io: string; kind: string } {
+/** Klir's Table 4.1, the source-system register: one row per variable in T. The
+ *  input/output role is DERIVED from R (directed coupling = Klir input=
+ *  independent / output=dependent); basic-vs-supporting, the measurement scale,
+ *  and the state set are AUTHORED inline. Support-hood is a semantic role (does
+ *  this variable index the support set, or is it an observed quantity?), NOT a
+ *  reading of R — an isolated variable is not thereby a support, a coupled one
+ *  not thereby basic (read-klir.md). Every authored column is editable on
+ *  ENVIRONMENT variables too (#154 revision): Table 4.1 most wants the input
+ *  variables characterized, and those are frequently the environmental drivers. */
+function sourceIo(model: CanvasModel, id: number): string {
   const dirOut = model.relations.some((r) => r.a === id && r.klir_directed === true);
   const dirIn = model.relations.some((r) => r.b === id && r.klir_directed === true);
   const coupled = model.relations.some((r) => r.a === id || r.b === id);
   // a → b reads as a drives b (the matrix's row → col): a variable that only
   // drives is an input, only driven an output, both an in/out coupler.
-  const io = dirOut && dirIn ? "in/out" : dirOut ? "input" : dirIn ? "output" : coupled ? "internal" : "—";
-  // basic = coupled into R (part of the studied systemhood); supporting = a
-  // backdrop variable standing outside every relation.
-  const kind = coupled ? "basic" : "supporting";
-  return { io, kind };
+  return dirOut && dirIn ? "in/out" : dirOut ? "input" : dirIn ? "output" : coupled ? "internal" : "—";
 }
 
 export function SourceSystemTable({
@@ -611,7 +610,7 @@ export function SourceSystemTable({
           <thead>
             <tr>
               <th className={th} style={headerCellStyle}>variable</th>
-              <th className={th} style={headerCellStyle} title="derived from R: coupled = basic, uncoupled = supporting (backdrop)">basic/supporting</th>
+              <th className={th} style={headerCellStyle} title="Klir's basic-vs-supporting standing — authored (a semantic role, not read off R); basic = observed quantity, support = indexes the support set (time/space/pop)">basic/support</th>
               <th className={th} style={headerCellStyle} title="derived from directed relations (a → b): drives = input, driven = output">in/out</th>
               <th className={th} style={headerCellStyle} title="Klir's measurement scale — authored">scale</th>
               <th className={th} style={headerCellStyle} title="the values the variable can take — authored">state set</th>
@@ -619,8 +618,7 @@ export function SourceSystemTable({
           </thead>
           <tbody>
             {model.things.map((t) => {
-              const { io, kind } = sourceRole(model, t.id);
-              const isComponent = t.role === "Component";
+              const io = sourceIo(model, t.id);
               const selected = t.id === selectedThingId;
               return (
                 <tr key={t.id} style={{ background: selected ? "color-mix(in srgb, var(--lens-accent) 12%, transparent)" : undefined }}>
@@ -633,40 +631,44 @@ export function SourceSystemTable({
                       {t.name || `t${t.id}`}
                     </button>
                   </td>
-                  <td className="px-2 py-1 text-xs" style={{ ...mono, color: "var(--text-muted)", borderBottom: "1px solid var(--hairline)" }}>
-                    {kind}
+                  <td className="px-2 py-1" style={{ borderBottom: "1px solid var(--hairline)" }}>
+                    <select
+                      value={t.variable_kind ?? "Basic"}
+                      onChange={(e) =>
+                        // Basic is the default — clear to None rather than store it.
+                        onUpdateThing({ ...t, variable_kind: e.target.value === "Support" ? "Support" : undefined })
+                      }
+                      className="rounded-md px-1 py-0.5 text-xs"
+                      style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+                    >
+                      {VAR_KINDS.map((k) => (
+                        <option key={k} value={k}>{k}</option>
+                      ))}
+                    </select>
                   </td>
                   <td className="px-2 py-1 text-xs" style={{ ...mono, color: "var(--text-muted)", borderBottom: "1px solid var(--hairline)" }}>
                     {io}
                   </td>
                   <td className="px-2 py-1" style={{ borderBottom: "1px solid var(--hairline)" }}>
-                    {isComponent ? (
-                      <select
-                        value={t.scale ?? ""}
-                        onChange={(e) =>
-                          onUpdateThing({ ...t, scale: (e.target.value || undefined) as ScaleType | undefined })
-                        }
-                        className="rounded-md px-1 py-0.5 text-xs"
-                        style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
-                      >
-                        <option value="">—</option>
-                        {SCALES.map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="text-xs" style={{ color: "var(--text-muted)" }}>env</span>
-                    )}
+                    <select
+                      value={t.scale ?? ""}
+                      onChange={(e) =>
+                        onUpdateThing({ ...t, scale: (e.target.value || undefined) as ScaleType | undefined })
+                      }
+                      className="rounded-md px-1 py-0.5 text-xs"
+                      style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+                    >
+                      <option value="">—</option>
+                      {SCALES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
                   </td>
                   <td className="px-2 py-1" style={{ borderBottom: "1px solid var(--hairline)" }}>
-                    {isComponent ? (
-                      <StatesInput
-                        value={t.states}
-                        onCommit={(labels) => onUpdateThing({ ...t, states: labels })}
-                      />
-                    ) : (
-                      <span className="text-xs" style={{ color: "var(--text-muted)" }}>—</span>
-                    )}
+                    <StatesInput
+                      value={t.states}
+                      onCommit={(labels) => onUpdateThing({ ...t, states: labels })}
+                    />
                   </td>
                 </tr>
               );
@@ -675,7 +677,7 @@ export function SourceSystemTable({
         </table>
       </div>
       <p className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
-        basic/supporting and in/out are read off R; scale and the state set are authored.
+        in/out is read off R; basic/support, scale, and the state set are authored (on environment variables too).
       </p>
     </section>
   );

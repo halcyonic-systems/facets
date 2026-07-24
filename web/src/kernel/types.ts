@@ -158,6 +158,11 @@ export interface ChildRef {
  *  serializes the Rust enum as its variant name, so these strings are exact. */
 export type ScaleType = "Nominal" | "Ordinal" | "Interval" | "Ratio";
 
+/** Klir's basic-vs-supporting partition (§4, Table 4.1). Basic = an observed
+ *  quantity; support = a variable indexing the support set (time/space/pop). A
+ *  SEMANTIC role the modeler declares — NOT read off R. Absent reads as Basic. */
+export type KlirVarKind = "Basic" | "Support";
+
 export interface Thing {
   id: number;
   name: string;
@@ -179,6 +184,9 @@ export interface Thing {
   scale?: ScaleType;
   /** The variable's state set — enumerated value labels (`["Green", "Red"]`). */
   states?: string[];
+  /** Klir's basic-vs-supporting standing (#154) — authored, not derived from R.
+   *  Absent reads as Basic; serde skip-if-None keeps old models byte-identical. */
+  variable_kind?: KlirVarKind;
 }
 
 export interface Relation {
