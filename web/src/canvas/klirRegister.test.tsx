@@ -4,7 +4,7 @@
 // revision). Held to the same static-markup harness the Mobus register uses.
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { CanvasModel, RunResultRich } from "../kernel/types";
+import type { CanvasModel, MarkovRunResult, RunResultRich } from "../kernel/types";
 import { MaskTable, SourceSystemTable } from "./KlirRegister";
 
 const noop = () => {};
@@ -94,14 +94,20 @@ const run = (series0: number[], series1: number[]): RunResultRich => ({
   ],
 });
 
+// #154: a Klir/DTMC run (#67 `run_markov`) — the mask's other source.
+// history[t] is the distribution after t steps; every row sums to 1.
+const markov = (history: number[][], states = ["A", "B"]): MarkovRunResult => ({
+  kind: "markov",
+  states,
+  history,
+});
+
 describe("Fig. 4.3 / Table 4.3 — the behavior-function mask readout", () => {
-  it("shows an honest empty state and the deferral caveat with no run", () => {
+  it("shows an honest empty state and the conservation caveat with no run", () => {
     const m = renderToStaticMarkup(<MaskTable result={null} />);
     expect(m).toContain("No run to read");
     // The honest labeling the P3 scope rests on.
     expect(m).toContain("Mobus conservation run");
-    expect(m).toContain("deferred");
-    expect(m).toContain("#67");
   });
 
   it("produces a Ḡ → G row per step from a ≥2-stock Mobus run", () => {
@@ -126,5 +132,42 @@ describe("Fig. 4.3 / Table 4.3 — the behavior-function mask readout", () => {
     // 2 ticks → 1 row (index 0); tick 9 clamps to it, never off the path.
     const m = renderToStaticMarkup(<MaskTable result={run([5, 4], [0, 1])} tick={9} />);
     expect(m).toContain('aria-current="step"');
+  });
+
+  // #154: markovRun is the mask's other source — a Klir/DTMC run (#67). No
+  // run of either kind → the shared empty state stays generic (verified above).
+  it("shows the markov empty state when neither run is present", () => {
+    const m = renderToStaticMarkup(<MaskTable result={null} markovRun={null} />);
+    expect(m).toContain("No run to read");
+    expect(m).toContain("Mobus conservation run");
+  });
+
+  it("produces a Ḡ → G row per step from a markov run, reading history not trajectories", () => {
+    // 3 sampled ticks → 2 steps. history[0]=(1,0) history[1]=(.5,.5) history[2]=(.25,.75).
+    const m = renderToStaticMarkup(
+      <MaskTable result={null} markovRun={markov([[1, 0], [0.5, 0.5], [0.25, 0.75]])} />,
+    );
+    expect(m).toContain("f: Ḡ → G");
+    expect(m).toContain("Ḡ:A");
+    expect(m).toContain("G:A");
+    expect(m).toContain("Klir/DTMC run");
+    for (const v of ["1", "0.5", "0.25", "0.75"]) expect(m).toContain(v);
+  });
+
+  it("highlights the current mask row at the scrubber tick for a markov run", () => {
+    const m = renderToStaticMarkup(
+      <MaskTable result={null} markovRun={markov([[1, 0], [0.5, 0.5], [0.25, 0.75]])} tick={1} />,
+    );
+    expect(m).toContain('aria-current="step"');
+    expect(m).toContain("◂");
+  });
+
+  it("prefers markovRun over result when (never happens in App, but) both are passed", () => {
+    const m = renderToStaticMarkup(
+      <MaskTable result={run([4, 3, 2], [0, 1, 2])} markovRun={markov([[1, 0], [0.5, 0.5]])} />,
+    );
+    expect(m).toContain("Klir/DTMC run");
+    expect(m).toContain("Ḡ:A");
+    expect(m).not.toContain("Ḡ:Tank");
   });
 });

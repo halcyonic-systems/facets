@@ -1572,7 +1572,11 @@ function Workspace() {
                         // #154 P3: the run + scrubber tick feed the mask readout
                         // (f: Ḡ → G off the recorded trajectory). Same result/tick
                         // the InspectorDock's RunPanel reads; absent = empty state.
+                        // #154: markovRun (#67) is the mask's other source — App
+                        // keeps result/markovRun mutually exclusive, KlirRegister
+                        // just forwards both and MaskTable picks the one present.
                         result={result}
+                        markovRun={markovRun}
                         tick={tick}
                       />
                     )}
