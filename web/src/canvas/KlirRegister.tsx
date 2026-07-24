@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import type { CanvasModel, KlirLadder, KlirVarKind, Relation, ScaleType, Thing } from "../kernel/types";
+import type { CanvasModel, KlirLadder, KlirVarKind, Relation, RunResultRich, ScaleType, Thing } from "../kernel/types";
 import { validateConnection } from "../kernel";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 import { DecomposeRows, type DecomposeAffordance } from "./NodeEditor";
@@ -41,6 +41,11 @@ interface Props {
    *  opt-in complement: a collapsed "position" chip that expands into an
    *  introduced Hasse panel (#100 harvest, from the ladder-first arm). */
   ladder: KlirLadder | null;
+  /** #154 P3: the compose run + the scrubber's tick, for the behavior-function
+   *  (mask) readout. The same result/tick the InspectorDock's RunPanel reads;
+   *  null/absent leaves the mask view in its honest empty state. */
+  result?: RunResultRich | null;
+  tick?: number;
 }
 
 function Tex({ tex, block = false }: { tex: string; block?: boolean }) {
@@ -65,8 +70,10 @@ export function KlirRegister({
   decomposeFor,
   placeName,
   ladder,
+  result,
+  tick,
 }: Props) {
-  const [view, setView] = useState<"sets" | "matrix" | "table">("sets");
+  const [view, setView] = useState<"sets" | "matrix" | "table" | "mask">("sets");
   // The ladder is an opt-in complement: collapsed on every mount, never the
   // anchor — first contact is one quiet chip beside the headline.
   const [ladderOpen, setLadderOpen] = useState(false);
@@ -216,6 +223,16 @@ export function KlirRegister({
             >
               table
             </SmallButton>
+            <SmallButton
+              active={view === "mask"}
+              onClick={() => {
+                setView("mask");
+                setProposed(null);
+              }}
+              title="Klir's behavior function (Fig. 4.3 / Table 4.3) — the f: Ḡ → G mask read off the run's trajectory"
+            >
+              mask
+            </SmallButton>
           </div>
         </div>
 
@@ -233,7 +250,10 @@ export function KlirRegister({
           />
         )}
 
-        {view !== "table" && (
+        {/* ---- Fig. 4.3 / Table 4.3 — the behavior-function / mask readout (#154 P3) */}
+        {view === "mask" && <MaskTable result={result ?? null} tick={tick} />}
+
+        {(view === "sets" || view === "matrix") && (
           <>
         {/* ---- T — thinghood, taken for granted -------------------------------- */}
         <section className="mb-4">
@@ -718,6 +738,116 @@ function StatesInput({
       className="w-40 rounded-md px-1.5 py-0.5 text-xs"
       style={{ ...mono, border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
     />
+  );
+}
+
+// #154 P3: the current mask row — the step whose Ḡ sits at the scrubber tick.
+// Mirrors P1's BungeStateSpace.markerIndex clamp so the live highlight never
+// points past the last step (the final tick has no successor, hence no Ḡ→G row).
+export function maskRowIndex(tick: number | undefined, rows: number): number | null {
+  if (tick == null || rows === 0) return null;
+  return Math.max(0, Math.min(rows - 1, Math.round(tick)));
+}
+
+function fmtState(v: number | undefined): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  return String(Math.round(v * 1000) / 1000);
+}
+
+/** The mask panel's standing caveat — the condition the P3 scope rests on. */
+function MaskCaption() {
+  return (
+    <p className="mt-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+      f: Ḡ → G read off a <strong>Mobus conservation run</strong>'s recorded trajectory — the
+      coalgebra step T (dynamics-coalgebra-halfa.md), the first-order deterministic step (support
+      window = the current tick alone). Whether this is Klir's mask on Klir-native data is{" "}
+      <strong>deferred</strong> to a runnable Klir model (#67); richer declared-support windows and
+      the Transition descriptor are future work.
+    </p>
+  );
+}
+
+/** Klir's behavior function / mask (Fig. 4.3, Table 4.3), the f: Ḡ → G table,
+ *  presented in the Klir register. Per tick t, one row: Ḡ = the state vector at
+ *  t → G = the state vector at t+1, sourced from the compose run's per-tick
+ *  trajectories. This is the coalgebra structure map T read in Klir's register
+ *  (dynamics-coalgebra-halfa.md), the same object the Bunge trajectory unfolds.
+ *  It reads a run; it steps nothing. No run → an honest empty state. */
+export function MaskTable({ result, tick }: { result: RunResultRich | null; tick?: number }) {
+  const traj = result?.trajectories ?? [];
+  const n = traj.length === 0 ? 0 : Math.min(...traj.map((t) => t.series.length));
+  // Each row is a step t → t+1, so the final sampled tick yields no row.
+  const rows = Math.max(0, n - 1);
+  const hi = maskRowIndex(tick, rows);
+
+  if (rows === 0) {
+    return (
+      <section className="mb-4">
+        <div className="mb-1 text-xs" style={{ ...mono, color: "var(--text-secondary)" }}>
+          behavior function — Fig. 4.3 / Table 4.3
+        </div>
+        <p className="pl-6 text-xs" style={{ color: "var(--text-muted)" }}>
+          No run to read — the mask f: Ḡ → G is a reading of a recorded trajectory. Run a demo
+          bundle (model + CSV + mapping) with ≥2 sampled ticks to populate it.
+        </p>
+        <MaskCaption />
+      </section>
+    );
+  }
+
+  const th = "px-2 py-1 text-left text-[10px] font-normal";
+  return (
+    <section className="mb-4">
+      <div className="mb-1 text-xs" style={{ ...mono, color: "var(--text-secondary)" }}>
+        behavior function — Fig. 4.3 / Table 4.3 · f: Ḡ → G
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-separate" style={{ borderSpacing: 0 }}>
+          <thead>
+            <tr>
+              <th className={th} style={headerCellStyle}>t</th>
+              {traj.map((tr, i) => (
+                <th key={`g-${i}`} className={th} style={headerCellStyle} title={`Ḡ — ${tr.name} at tick t`}>
+                  Ḡ:{tr.name}
+                </th>
+              ))}
+              {traj.map((tr, i) => (
+                <th key={`gg-${i}`} className={th} style={headerCellStyle} title={`G — ${tr.name} at tick t+1`}>
+                  G:{tr.name}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: rows }, (_, t) => {
+              const current = t === hi;
+              return (
+                <tr
+                  key={t}
+                  aria-current={current ? "step" : undefined}
+                  style={{ background: current ? "color-mix(in srgb, var(--lens-accent) 18%, transparent)" : undefined }}
+                >
+                  <td className="px-2 py-1 text-xs" style={{ ...mono, color: "var(--text-muted)", borderBottom: "1px solid var(--hairline)" }}>
+                    {t}{current ? " ◂" : ""}
+                  </td>
+                  {traj.map((tr, i) => (
+                    <td key={`g-${i}`} className="px-2 py-1 text-sm tabular" style={{ ...mono, color: "var(--text-primary)", borderBottom: "1px solid var(--hairline)" }}>
+                      {fmtState(tr.series[t])}
+                    </td>
+                  ))}
+                  {traj.map((tr, i) => (
+                    <td key={`gg-${i}`} className="px-2 py-1 text-sm tabular" style={{ ...mono, color: "var(--text-secondary)", borderBottom: "1px solid var(--hairline)" }}>
+                      {fmtState(tr.series[t + 1])}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <MaskCaption />
+    </section>
   );
 }
 

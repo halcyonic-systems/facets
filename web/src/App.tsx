@@ -1482,6 +1482,11 @@ function Workspace() {
                         // The kernel's ladder verdict (#100 harvest) — the
                         // register renders it as a collapsed complement chip.
                         ladder={desc?.lens === "Klir" ? desc.ladder : null}
+                        // #154 P3: the run + scrubber tick feed the mask readout
+                        // (f: Ḡ → G off the recorded trajectory). Same result/tick
+                        // the InspectorDock's RunPanel reads; absent = empty state.
+                        result={result}
+                        tick={tick}
                       />
                     )}
                     {/* Bunge (#100 phase 2): the coupling matrix M as the
