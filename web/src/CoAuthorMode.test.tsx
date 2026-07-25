@@ -2,21 +2,63 @@
 // markup render checks (the pattern the Klir/Mobus register tests use): no
 // DOM, no wasm, no network — just that the history renders each turn's status
 // and content faithfully.
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CoAuthorMode } from "./CoAuthorMode";
 import type { CoauthorTurn } from "./coauthor";
+import {
+  initReasoner,
+  memoryReasonerBackend,
+  resetReasonerForTest,
+  setReasonerConfigBackend,
+} from "./reasoner";
 
 const noopDraft = async () => {};
 const noopLoad = () => {};
 
+/** #199: the drafting surface only exists once the reasoner is on. */
+async function reasonerOn(endpoint = "http://localhost:5010") {
+  resetReasonerForTest();
+  setReasonerConfigBackend(memoryReasonerBackend({ enabled: true, endpoint }));
+  await initReasoner();
+}
+
 describe("CoAuthorMode", () => {
+  beforeEach(async () => {
+    await reasonerOn();
+  });
+
   it("renders an empty state with no drafts yet", () => {
     const m = renderToStaticMarkup(
       <CoAuthorMode turns={[]} onDraft={noopDraft} onLoad={noopLoad} />,
     );
     expect(m).toContain("No drafts yet");
     expect(m).toContain("Draft");
+  });
+
+  it("offers the enable choice — and no drafting surface — while the reasoner is off", async () => {
+    resetReasonerForTest();
+    setReasonerConfigBackend(memoryReasonerBackend(null));
+    await initReasoner();
+    const m = renderToStaticMarkup(
+      <CoAuthorMode turns={[]} onDraft={noopDraft} onLoad={noopLoad} />,
+    );
+    expect(m).toContain("Turn on the co-author");
+    expect(m).toContain("Your own reasoner");
+    expect(m).toContain("Halcyonic&#x27;s hosted reasoner");
+    expect(m).toContain("http://localhost:5010");
+    expect(m).not.toContain("Describe a system in plain language");
+  });
+
+  it("says which reasoner is in use once it is on, and offers to turn it off", async () => {
+    await reasonerOn("http://127.0.0.1:5010");
+    const m = renderToStaticMarkup(
+      <CoAuthorMode turns={[]} onDraft={noopDraft} onLoad={noopLoad} />,
+    );
+    expect(m).toContain("Co-author is on");
+    expect(m).toContain("your own reasoner");
+    expect(m).toContain("http://127.0.0.1:5010");
+    expect(m).toContain("Turn off");
   });
 
   it("renders a previewing turn with its description and SL", () => {
