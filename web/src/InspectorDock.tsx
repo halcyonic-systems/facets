@@ -1,5 +1,5 @@
 // The inspector dock — the workbench's right-edge instrument panel. The three
-// analysis faces (Run / Formal / Audit) share one docked column and show one at
+// analysis faces (Run / Formal / Review) share one docked column and show one at
 // a time behind a tab strip, so the canvas keeps the viewport while the active
 // reading sits beside it. Placement only: each tab hosts the existing panel
 // unchanged (same props, same kernel-fed data). The dock decides nothing — it
@@ -18,13 +18,13 @@ import type {
 import { NodeEditorRows, type DecomposeAffordance } from "./canvas/NodeEditor";
 import { RunPanel } from "./RunPanel";
 import { FormalPanel } from "./FormalPanel";
-import { AuditPanel } from "./AuditPanel";
+import { ReviewPanel } from "./ReviewPanel";
 import { AnalystPanel } from "./AnalystPanel";
 import { SystemTypeEditor } from "./SystemTypeEditor";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 import { Card } from "./ui";
 
-type Tab = "element" | "run" | "formal" | "audit" | "analyst" | "type";
+type Tab = "element" | "run" | "formal" | "review" | "analyst" | "type";
 
 /** The selected element's editing surface, as the shell hands it over (#122).
  *  Null thing = nothing selected; the face says so rather than vanishing. */
@@ -53,6 +53,9 @@ export function InspectorDock({
   focused,
   onToggleFocus,
   tick,
+  reviewRequest,
+  reviewedAt,
+  onReview,
 }: {
   result: RunResultRich | null;
   runError: string | null;
@@ -77,6 +80,13 @@ export function InspectorDock({
   // dock fills the whole work region so the active tab reads as a full screen.
   focused: boolean;
   onToggleFocus: () => void;
+  /** #204: the author invoking a review. Bumped by the workbench's Review
+   *  action; each bump raises the review tab (an invoked review must land
+   *  somewhere visible). */
+  reviewRequest: number;
+  /** Wall-clock stamp of the last invoked review, null before the first. */
+  reviewedAt: string | null;
+  onReview: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("run");
   const [collapsed, setCollapsed] = useState(false);
@@ -92,6 +102,14 @@ export function InspectorDock({
     setTab("element");
     setCollapsed(false);
   }, [selectedId]);
+
+  // An invoked review raises its own report — otherwise the action fires into a
+  // tab the author never opens.
+  useEffect(() => {
+    if (reviewRequest === 0) return;
+    setTab("review");
+    setCollapsed(false);
+  }, [reviewRequest]);
 
   // Focus wins over the thin collapse rail — a full-width dock can't be a sliver.
   if (collapsed && !focused) {
@@ -135,9 +153,9 @@ export function InspectorDock({
         <TabButton label="Run" active={tab === "run"} onClick={() => setTab("run")} />
         <TabButton label="Formal" active={tab === "formal"} onClick={() => setTab("formal")} />
         <TabButton
-          label="Audit"
-          active={tab === "audit"}
-          onClick={() => setTab("audit")}
+          label="Review"
+          active={tab === "review"}
+          onClick={() => setTab("review")}
           badge={issueCount > 0 ? issueCount : undefined}
         />
         <TabButton label="Analyst" active={tab === "analyst"} onClick={() => setTab("analyst")} />
@@ -198,11 +216,14 @@ export function InspectorDock({
               />
             )}
             {tab === "formal" && <FormalTab desc={desc} analysisError={analysisError} />}
-            {tab === "audit" && (
-              <AuditTab
+            {tab === "review" && (
+              <ReviewTab
+                model={canvasModel}
                 verdict={verdict}
                 issueTargets={issueTargets}
                 analysisError={analysisError}
+                reviewedAt={reviewedAt}
+                onReview={onReview}
                 onNavigate={onNavigate}
               />
             )}
@@ -305,32 +326,39 @@ function FormalTab({ desc, analysisError }: { desc: LensDescription | null; anal
   return <Placeholder>Open or import a model to see its formal object in the active lens.</Placeholder>;
 }
 
-function AuditTab({
+function ReviewTab({
+  model,
   verdict,
   issueTargets,
   analysisError,
+  reviewedAt,
+  onReview,
   onNavigate,
 }: {
+  model: CanvasModel | null;
   verdict: ValidationResult | null;
   issueTargets: IssueTarget[];
   analysisError: string | null;
+  reviewedAt: string | null;
+  onReview: () => void;
   onNavigate: (target: IssueTarget) => void;
 }) {
   if (analysisError) return <RejectedCard message={analysisError} />;
-  if (!verdict) return <Placeholder>Open or import a model to audit it against the kernel.</Placeholder>;
-  if (verdict.issues.length === 0) {
-    return (
-      <Card title="Audit" source="bert-core · wasm">
-        <p className="text-sm" style={{ color: "var(--verdict-ok)" }}>
-          ✓ No issues — the kernel validates this model.
-        </p>
-      </Card>
-    );
-  }
-  return <AuditPanel validation={verdict} targets={issueTargets} onNavigate={onNavigate} />;
+  if (!verdict || !model)
+    return <Placeholder>Open or import a model to review it against the kernel.</Placeholder>;
+  return (
+    <ReviewPanel
+      model={model}
+      validation={verdict}
+      targets={issueTargets}
+      reviewedAt={reviewedAt}
+      onReview={onReview}
+      onNavigate={onNavigate}
+    />
+  );
 }
 
-// The kernel-rejected notice, shared by the Formal and Audit tabs (both read the
+// The kernel-rejected notice, shared by the Formal and Review tabs (both read the
 // same projection, so a rejection blanks both).
 function RejectedCard({ message }: { message: string }) {
   return (
