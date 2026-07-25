@@ -1163,6 +1163,45 @@ mod tests {
         );
     }
 
+    /// Law (#213 step 3): Shingai's reported workflow, end to end. Place a
+    /// component, stamp it `interface`, then drag a flow in from an environment
+    /// object — which is now a drop on the PORT, resolved to its component. The
+    /// edge must land. This is the shape the canvas actually produces (exo, not
+    /// the endo bond the sibling law uses), so the deferral is proven on the
+    /// gesture the user performs, not only on a nearby one.
+    #[test]
+    fn the_env_to_stamped_interface_flow_connects() {
+        let mut gate = thing(1, "Gate", Role::Component);
+        gate.interface = true;
+        let model = CanvasModel {
+            lens: Lens::Mobus,
+            model_id: None,
+            things: vec![gate, thing(2, "Core", Role::Component), thing(3, "Supply", Role::Environment)],
+            relations: vec![bond(10, 1, 2)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            time_unit: None,
+        };
+        let issues = validate_connection(&model, &bond(11, 3, 1));
+        assert!(
+            issues.is_empty(),
+            "the crossing flow onto the stamped interface must land: {issues:?}"
+        );
+
+        // And once it lands the designation is satisfied — the audit goes quiet.
+        let mut drawn = model.clone();
+        drawn.relations.push(bond(11, 3, 1));
+        assert!(
+            !crate::lenses::analyze(&drawn, Lens::Mobus)
+                .validation
+                .issues
+                .iter()
+                .any(bert_core::validate::is_interface_flow_refusal),
+            "a flow now crosses at Gate; the refusal must clear"
+        );
+    }
+
     /// Law: the deferral is a property of the check, not of the dedup that
     /// happens to hide it — `belongs_at_the_gesture` drops the refusal outright,
     /// while every other node-located Error stays.

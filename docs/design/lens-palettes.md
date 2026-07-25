@@ -481,7 +481,15 @@ form is the SSF formalizers' flagged simplification
 | **component / subsystem** | PLACE | stamp / double-click | member of C |
 | environment object | PLACE | stamp | member of E.O; **Source vs Sink is DERIVED from flow direction** (`project()` originates-test) — one tool, not two; unbonded = pending, as at Bunge |
 | interface | **DESIGNATE** | arm, click a component | I ⊆ C (`Tuple.lean:97` `interfaces_sub`); flowless interfaces are **well-formed** (see below) |
-| typed flow | CONNECT | drag node→node / node→empty (births env object + flow) | `check_self_loops` (k ≠ o, §4.3, `FlowNetwork.lean:68`); crossing flows must land on interfaces — bipartite G (`Tuple.lean:103`) |
+| typed flow | CONNECT | drag node→node / node→**port** / node→empty (births env object + flow) | `check_self_loops` (k ≠ o, §4.3, `FlowNetwork.lean:68`); crossing flows must land on interfaces — bipartite G (`Tuple.lean:103`) |
+
+**Dropping on a port (#213).** An interface port is a connection target, and it
+resolves to the component that owns it — `I ⊆ C`, so the port IS that component
+seen at the membrane and the edge built is the same `env ↔ component` edge a drop
+on the component builds. There is no third node type to land on and no third hop
+in the result. A port with no crossing flow yet is drawn tethered to its
+component and labelled with its name, so the notch is never an anonymous mark
+floating on the ring.
 | work-process primitive | **DESIGNATE** | arm a primitive, click a leaf component | `bert-core` `Vec<ProcessPrimitive>`; `validate_operational` instantiates `.first()` |
 
 **Derived rows (shown greyed, never armable):** boundary ring + P rendering,

@@ -8,7 +8,19 @@
 import { useEffect, useRef, useState } from "react";
 import type { CanvasModel, EdgeFact, Lens, LensFacts, PortFact, Thing } from "../kernel/types";
 import type { SimFrame } from "./types";
-import { bungeHull, membraneRing, ringPoint, thingById, NODE_R, type Hull, type Pt, type Ring } from "./geometry";
+import {
+  bungeHull,
+  membraneRing,
+  rimPoint,
+  ringPoint,
+  straightPath,
+  thingById,
+  NODE_R,
+  type Hull,
+  type PortTarget,
+  type Pt,
+  type Ring,
+} from "./geometry";
 import { useCanvasGestures } from "./useCanvasGestures";
 import { STYLE } from "./style";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
@@ -84,7 +96,70 @@ export default function Canvas({
   placeName = null,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const gestures = useCanvasGestures({ model, svgRef, onModelChange, onReject, onNotice, armed, onSelectThing });
+
+  // The Mobus membrane and its ports are computed BEFORE the gesture hook: a
+  // port is a drop target for a flow drag (#213), and the hook hit-tests
+  // against these pixels. Ring math is pure and reads only props.
+  const ring: Ring | null = lens === "Mobus" ? membraneRing(model.things) : null;
+  const outwardNormal = (r: Ring, p: Pt) => Math.atan2(p.y - r.cy, p.x - r.cx);
+  const portsAt: { port: PortFact; at: Pt; angle: number; tetherTo: Pt | null }[] =
+    ring && facts
+      ? facts.ports.flatMap((port) => {
+          const env = thingById(model, port.env);
+          if (!env) return [];
+          const at = ringPoint(ring, env);
+          // A flow-carrying port is already tied to its component by the exo
+          // edge's muted interior segment (EdgeView) — no second tether.
+          return [{ port, at, angle: outwardNormal(ring, at), tetherTo: null }];
+        })
+      : [];
+
+  // Authored-flowless interfaces (kernel fact: authored ∖ flow-crossing) get a
+  // notch too — placed at the ring point toward the designated component itself
+  // (the membrane meets the component; no env object exists to aim at). The
+  // display attrs are presentation; membership in I is the kernel's.
+  const flowlessAt: { port: PortFact; at: Pt; angle: number; tetherTo: Pt | null }[] =
+    ring && facts
+      ? facts.authored_interface_thing_ids
+          .filter((id) => !facts.ports.some((p) => p.component === id))
+          .flatMap((id) => {
+            const comp = thingById(model, id);
+            if (!comp) return [];
+            const at = ringPoint(ring, comp);
+            return [
+              {
+                port: {
+                  component: id,
+                  env: -1,
+                  relation_ids: [],
+                  direction: "Hybrid" as const,
+                  // φ is empty until a flow crosses; the port names its owner
+                  // instead, so the notch is never anonymous (#213).
+                  protocol: `${comp.name} · no flow`,
+                },
+                at,
+                angle: outwardNormal(ring, at),
+                tetherTo: rimPoint(comp, at, NODE_R),
+              },
+            ];
+          })
+      : [];
+
+  const portTargets: PortTarget[] = [...portsAt, ...flowlessAt].map(({ port, at }) => ({
+    at,
+    component: port.component,
+  }));
+
+  const gestures = useCanvasGestures({
+    model,
+    svgRef,
+    onModelChange,
+    onReject,
+    onNotice,
+    armed,
+    onSelectThing,
+    portTargets,
+  });
   const { pan, scale, connectFrom, connectPos, hoverTarget, draft } = gestures.state;
 
   // Click-to-edit container label (#116): the membrane/hull/place label writes
@@ -182,46 +257,7 @@ export default function Canvas({
   // walked child's G′ stand-ins sit outside both containers by construction
   // (they follow Components only; an env thing dragged inside is a layout
   // artifact, not a semantic error: C ∩ E = ∅ is enforced by the kernel's roles).
-  const ring: Ring | null = lens === "Mobus" ? membraneRing(model.things) : null;
   const hull: Hull | null = lens === "Bunge" ? bungeHull(model.things) : null;
-  const outwardNormal = (r: Ring, p: Pt) => Math.atan2(p.y - r.cy, p.x - r.cx);
-  const portsAt: { port: PortFact; at: Pt; angle: number }[] =
-    ring && facts
-      ? facts.ports.flatMap((port) => {
-          const env = thingById(model, port.env);
-          if (!env) return [];
-          const at = ringPoint(ring, env);
-          return [{ port, at, angle: outwardNormal(ring, at) }];
-        })
-      : [];
-
-  // Authored-flowless interfaces (kernel fact: authored ∖ flow-crossing) get a
-  // notch too — placed at the ring point toward the designated component itself
-  // (the membrane meets the component; no env object exists to aim at). The
-  // display attrs are presentation; membership in I is the kernel's.
-  const flowlessAt: { port: PortFact; at: Pt; angle: number }[] =
-    ring && facts
-      ? facts.authored_interface_thing_ids
-          .filter((id) => !facts.ports.some((p) => p.component === id))
-          .flatMap((id) => {
-            const comp = thingById(model, id);
-            if (!comp) return [];
-            const at = ringPoint(ring, comp);
-            return [
-              {
-                port: {
-                  component: id,
-                  env: -1,
-                  relation_ids: [],
-                  direction: "Hybrid" as const,
-                  protocol: "(flowless)",
-                },
-                at,
-                angle: outwardNormal(ring, at),
-              },
-            ];
-          })
-      : [];
 
   return (
     <svg
@@ -467,9 +503,36 @@ export default function Canvas({
         {/* A flowless port has no membrane crossing to inspect — it names one
             component (#180), so its click selects THAT thing, not the
             boundary (the fixable warning for the same fact is emitted by
-            check_flowless_interfaces in bert-canvas/src/lenses.rs). */}
-        {flowlessAt.map(({ port, at, angle }) => (
-          <g key={`authored-${port.component}`} opacity={0.6}>
+            check_flowless_interfaces in bert-canvas/src/lenses.rs).
+
+            #213: the notch is TETHERED to the component it designates and
+            labelled with its name. `I ⊆ C` — the port is not a second object
+            next to the component, it is that component seen at the membrane,
+            and until a flow crosses there is no other mark saying so. The
+            tether borrows the exo edge's muted interior treatment (dashed,
+            0.3 opacity) so the same line means the same thing in both cases:
+            "this port serves that component." */}
+        {flowlessAt.map(({ port, at, angle, tetherTo }) => (
+          <g
+            key={`authored-${port.component}`}
+            data-port-owner={port.component}
+            // Dragging a flow over the port lights the port AND its component
+            // (hitTest resolves the port to the owner, which sets hoverTarget) —
+            // the two react as one thing because they ARE one thing.
+            opacity={hoverTarget === port.component ? 1 : 0.6}
+          >
+            {tetherTo && (
+              <path
+                data-port-tether={port.component}
+                d={straightPath(tetherTo, at)}
+                fill="none"
+                stroke="var(--lens-accent)"
+                strokeOpacity={0.45}
+                strokeWidth={1.25}
+                strokeDasharray="4 4"
+                pointerEvents="none"
+              />
+            )}
             <views.PortView
               port={port}
               at={at}
