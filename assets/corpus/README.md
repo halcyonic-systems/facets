@@ -92,6 +92,26 @@ So `set` keeps one meaning across the corpus — one composition, several struct
 
 An unindexed file is a gate failure, not a silent omission from the gallery.
 
+## One shelf, one book
+
+Each tradition declares the works it may cite, as `(author, work, year)` triples
+in `SHELVES` at the top of `crates/bert-canvas/tests/source_corpus.rs`. Every
+entry's header must match one of its shelf's triples exactly. All three shelves
+hold a single book today.
+
+The list is an allow-list rather than "whichever book the shelf already uses"
+because the failure mode is a *new* work appearing by accident — a title typo, a
+hallucinated edition, or a chapter transcribed against the wrong book. Deriving
+the rule from the shelf's contents would accept the second book as readily as
+the first. Typing it out means a shelf that genuinely spans works (Klir's
+*Architecture of Systems Problem Solving* alongside *Facets*) is a one-line
+declaration made deliberately, in the same commit as the entry that needs it,
+and everything else is a red test.
+
+This is not decoration. On 2026-07-24 two branches were one merge away from
+shipping Mobus's ch. 7 series under two different books, caught only because a
+reviewer noticed. The citations are the corpus's entire claim to being evidence.
+
 ## A note on Klir and direction
 
 Klir's relations are undirected unless the investigator says otherwise:
