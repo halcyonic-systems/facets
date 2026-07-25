@@ -6,13 +6,30 @@
 // to the SL view. One-shot per turn (no session memory across drafts,
 // deliberately deferred); history persists across reloads (coauthor.ts,
 // localStorage, no cap).
-import { useEffect, useState } from "react";
-import type { CoauthorTurn } from "./coauthor";
+import { useEffect, useRef, useState } from "react";
+import type { CoauthorTurn, DraftStage } from "./coauthor";
 import { ReasonerGate } from "./ReasonerGate";
-import { reasonerConfig, setReasonerConfig, subscribeReasoner } from "./reasoner";
+import { endpointKind, reasonerConfig, setReasonerConfig, subscribeReasoner } from "./reasoner";
 import { Pill } from "./ui";
 
 type Tone = "neutral" | "ok" | "warning" | "error";
+
+// #218: name the stage instead of a static "Drafting…" — asking is the only
+// place a model name is safe to state, since it is the one case the endpoint
+// tells us the model without guessing (AnalystPanel's own "Local (gemma4)"
+// labels the same "" = local-default convention; a hosted endpoint's actual
+// model is chosen server-side and NOT named here rather than invented).
+export function stageLabel(stage: DraftStage | null, endpoint: string): string {
+  if (!stage) return "Drafting…";
+  switch (stage.kind) {
+    case "asking":
+      return endpointKind(endpoint) === "hosted" ? "Asking Halcyonic's reasoner…" : "Asking the local reasoner (gemma4)…";
+    case "compiling":
+      return "Compiling the draft…";
+    case "retrying":
+      return `Draft did not compile, retrying (${stage.attempt} of ${stage.maxAttempts})…`;
+  }
+}
 
 function statusTone(status: CoauthorTurn["status"]): Tone {
   switch (status) {
@@ -50,8 +67,9 @@ export function CoAuthorMode({
   turns: CoauthorTurn[];
   /** Description -> draft -> compile -> preview, recorded as a new turn.
    *  Owned by the parent so accept/discard (fired from the canvas banner)
-   *  can update the SAME turn's status. */
-  onDraft: (description: string) => Promise<void>;
+   *  can update the SAME turn's status. `onStage` (#218) reports the drafter
+   *  loop's real progress — asking / compiling / retrying — as it happens. */
+  onDraft: (description: string, onStage?: (stage: DraftStage) => void) => Promise<void>;
   /** Load a past turn's SL back into the pane's text (manual editing, or
    *  retrying an old draft) — switches the pane back to the SL view. */
   onLoad: (sl: string) => void;
@@ -59,22 +77,37 @@ export function CoAuthorMode({
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stage, setStage] = useState<DraftStage | null>(null);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const startedAtRef = useRef(0);
   // Off by default (#199). The gate below is the only enable point, and
   // enabling is the same act as choosing the endpoint.
   const [reasoner, setReasoner] = useState(reasonerConfig);
   useEffect(() => subscribeReasoner(setReasoner), []);
 
+  // Ticks once a second only while a draft call is in flight — a bounded
+  // "38s" reads as progress, an unmoving label reads as a hang (#218 item 3).
+  useEffect(() => {
+    if (!busy) return;
+    const id = setInterval(() => setElapsedMs(Date.now() - startedAtRef.current), 1000);
+    return () => clearInterval(id);
+  }, [busy]);
+
   async function draft() {
     if (!description.trim() || busy) return;
+    startedAtRef.current = Date.now();
+    setElapsedMs(0);
+    setStage(null);
     setBusy(true);
     setError(null);
     try {
-      await onDraft(description.trim());
+      await onDraft(description.trim(), setStage);
       setDescription("");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
+      setStage(null);
     }
   }
 
@@ -130,8 +163,10 @@ export function CoAuthorMode({
               >
                 {busy ? "Drafting…" : "Draft"}
               </button>
-              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                LLM proposes · kernel checks · you accept
+              <span className="text-[11px]" style={{ color: "var(--text-muted)" }} data-testid="coauthor-stage">
+                {busy
+                  ? `${stageLabel(stage, reasoner.endpoint)} (${Math.floor(elapsedMs / 1000)}s)`
+                  : "LLM proposes · kernel checks · you accept"}
               </span>
             </div>
           </>

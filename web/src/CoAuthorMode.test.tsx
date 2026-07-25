@@ -4,8 +4,8 @@
 // and content faithfully.
 import { beforeEach, describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { CoAuthorMode } from "./CoAuthorMode";
-import type { CoauthorTurn } from "./coauthor";
+import { CoAuthorMode, stageLabel } from "./CoAuthorMode";
+import type { CoauthorTurn, DraftStage } from "./coauthor";
 import {
   initReasoner,
   memoryReasonerBackend,
@@ -108,5 +108,38 @@ describe("CoAuthorMode", () => {
     );
     expect(m).toContain("accepted");
     expect(m).toContain("discarded");
+  });
+});
+
+describe("stageLabel (#218 — naming the stage instead of a static 'Drafting…')", () => {
+  const LOCAL = "http://localhost:5010";
+  const HOSTED = "https://reasoner.halcyonic.systems";
+
+  it("falls back to the static label when no stage is known yet", () => {
+    expect(stageLabel(null, LOCAL)).toBe("Drafting…");
+  });
+
+  it("names the local default model when asking one's own endpoint", () => {
+    expect(stageLabel({ kind: "asking" }, LOCAL)).toBe("Asking the local reasoner (gemma4)…");
+  });
+
+  it("does not invent a model name for the hosted reasoner", () => {
+    const label = stageLabel({ kind: "asking" }, HOSTED);
+    expect(label).toBe("Asking Halcyonic's reasoner…");
+    expect(label).not.toMatch(/gemma|claude/i);
+  });
+
+  it("names the compile phase", () => {
+    expect(stageLabel({ kind: "compiling" }, LOCAL)).toBe("Compiling the draft…");
+  });
+
+  it("makes the heal-loop retry legible, with the attempt count", () => {
+    const stage: DraftStage = { kind: "retrying", attempt: 2, maxAttempts: 3 };
+    expect(stageLabel(stage, LOCAL)).toBe("Draft did not compile, retrying (2 of 3)…");
+  });
+
+  it("reflects the final attempt distinctly from the first retry", () => {
+    const stage: DraftStage = { kind: "retrying", attempt: 3, maxAttempts: 3 };
+    expect(stageLabel(stage, LOCAL)).toBe("Draft did not compile, retrying (3 of 3)…");
   });
 });

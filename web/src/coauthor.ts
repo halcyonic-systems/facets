@@ -49,16 +49,36 @@ export function saveCoauthorTurns(turns: CoauthorTurn[]): void {
   }
 }
 
+// #218: the loop below already knows which attempt it is on and whether it
+// is waiting on the model or checking the model's output — that information
+// simply never left the function. `onStage` surfaces it verbatim (no new
+// network calls, no guessing) so a caller can turn "Drafting…" into "Asking
+// the model…" / "Compiling the draft…" / "draft did not compile, retrying
+// (2 of 3)…" instead of one static label for the whole ~90s call.
+export const DRAFT_MAX_ATTEMPTS = 3;
+
+export type DraftStage =
+  | { kind: "asking" }
+  | { kind: "compiling" }
+  | { kind: "retrying"; attempt: number; maxAttempts: number };
+
 /** description -> SL text, healing up to 2 kernel-reported faults before
  *  returning. The kernel's own parse errors (which name the fix) are fed back
  *  to the drafter — the harness carries correctness, the model only needs to
  *  be plausible (llm-sl-authoring-plan.md, scaffolding item 4). */
-export async function draftSlWithRetry(description: string, lens?: Lens): Promise<string> {
+export async function draftSlWithRetry(
+  description: string,
+  lens?: Lens,
+  onStage?: (stage: DraftStage) => void,
+): Promise<string> {
+  onStage?.({ kind: "asking" });
   let { sl } = await authorSl({ description, lens });
   for (let i = 0; i < 2; i++) {
+    onStage?.({ kind: "compiling" });
     const outcome = compileSl(sl);
     if (!("errors" in outcome)) break;
     const errs = outcome.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
+    onStage?.({ kind: "retrying", attempt: i + 2, maxAttempts: DRAFT_MAX_ATTEMPTS });
     ({ sl } = await authorSl({ description, lens, priorSl: sl, errors: errs }));
   }
   return sl;

@@ -41,7 +41,7 @@ import { InspectorDock } from "./InspectorDock";
 import { MODE_BY_LENS } from "./review";
 import { NewModelTypePrompt } from "./NewModelTypePrompt";
 import { SlPane } from "./SlPane";
-import { draftSlWithRetry, newTurnId, loadCoauthorTurns, saveCoauthorTurns, type CoauthorTurn } from "./coauthor";
+import { draftSlWithRetry, newTurnId, loadCoauthorTurns, saveCoauthorTurns, type CoauthorTurn, type DraftStage } from "./coauthor";
 import type { SlError } from "./kernel/types";
 import { Banner, Pill, ToolButton } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
@@ -558,12 +558,12 @@ function Workspace() {
   // the SAME SL text, never a separate write path. A failed compile or an
   // unreachable drafter still lands as a turn and still populates the text
   // (nothing hidden — the author can hand-fix a near-miss draft).
-  async function coauthorDraft(description: string) {
+  async function coauthorDraft(description: string, onStage?: (stage: DraftStage) => void) {
     const id = newTurnId();
     const lens = canvasModel?.lens;
     let sl = "";
     try {
-      sl = await draftSlWithRetry(description, lens);
+      sl = await draftSlWithRetry(description, lens, onStage);
     } catch (e) {
       setCoauthorTurns((ts) => [
         { id, description, sl: "", at: new Date().toISOString(), status: "network-error", errorText: e instanceof Error ? e.message : String(e) },
