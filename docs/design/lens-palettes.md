@@ -8,7 +8,7 @@
 > DESIGNED AND SHIPPED (§ The authoring palette, 2026-07-15: #50 design → #51
 > implementation, both closed)** — including boundary-property authoring
 > (porosity/fuzziness author via the boundary inspector) and interface
-> designation (authored I, flowless legal). Still open from this doc: Δt/H
+> designation (authored I; a flowless interface is **refused** at Operational since SSF #31 — see the interface row). Still open from this doc: Δt/H
 > dynamical markers, work-process badges beyond the primitive dot, agent
 > designation (§ Agents — gated on the § Process-type taxonomy source pass),
 > and **P's dynamical semantics** (porosity is authored + rendered but does
@@ -480,7 +480,7 @@ form is the SSF formalizers' flagged simplification
 |---|---|---|---|
 | **component / subsystem** | PLACE | stamp / double-click | member of C |
 | environment object | PLACE | stamp | member of E.O; **Source vs Sink is DERIVED from flow direction** (`project()` originates-test) — one tool, not two; unbonded = pending, as at Bunge |
-| interface | **DESIGNATE** | arm, click a component | I ⊆ C (`Tuple.lean:97` `interfaces_sub`); flowless interfaces are **well-formed** (see below) |
+| interface | **DESIGNATE** | arm, click a component | I ⊆ C (`Tuple.lean` `interfaces_sub`). **An interface must carry a boundary-crossing flow** (`interfaces_carry_flow`, SSF #31, proven non-redundant in SSF #35): Mobus's Listing 4.2 makes `recievesFrom`/`exportsTo` mandatory, so a flowless interface is not writable in his own description language. Refused at Operational (#219), audit-time only — you stamp before you draw the flow. The port is a drop target (#222). |
 | typed flow | CONNECT | drag node→node / node→**port** / node→empty (births env object + flow) | `check_self_loops` (k ≠ o, §4.3, `FlowNetwork.lean:68`); crossing flows must land on interfaces — bipartite G (`Tuple.lean:103`) |
 
 **Dropping on a port (#213).** An interface port is a connection target, and it
