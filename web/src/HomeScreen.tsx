@@ -65,7 +65,9 @@ export function HomeScreen(props: HomeProps) {
         className={
           route.view === "home"
             ? "mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-6 py-16"
-            : "mx-auto w-full max-w-5xl px-6 pb-20 pt-14"
+            : route.view === "shelf"
+              ? "w-full flex-1"
+              : "mx-auto w-full max-w-5xl px-6 pb-20 pt-14"
         }
       >
         {route.view === "home" && (
@@ -422,38 +424,54 @@ function ShelfRow({
   description,
   citation,
   tag,
+  zebra,
   onClick,
 }: {
   name: string;
   description: string;
   citation?: string;
   tag?: string;
+  zebra?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
-      className="block w-full border-b py-3 text-left"
-      style={{ borderColor: "var(--hairline)" }}
+      className="block w-full border-b py-2.5 pl-6 pr-8 text-left"
+      style={{
+        borderColor: "var(--hairline)",
+        // the accent earns its edge: the models that also RUN are the exception,
+        // and the exception gets the colored margin
+        borderLeft: `3px solid ${tag ? "var(--accent)" : "transparent"}`,
+        background: zebra ? "var(--bg-secondary)" : "transparent",
+      }}
     >
-      <div className="flex items-baseline gap-3">
-        <span className="text-base" style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
+      <div className="flex items-baseline gap-4">
+        {/* type roles inverted: the identifier is mono and machine-like, the
+            gloss is the serif — the reverse of a name-in-serif list */}
+        <span
+          className="text-xs font-semibold uppercase tracking-[0.16em]"
+          style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}
+        >
           {name}
         </span>
         {tag && (
           <span
-            className="ml-auto shrink-0 text-[10px] uppercase tracking-wide"
-            style={{ color: "var(--text-muted)" }}
+            className="ml-auto shrink-0 text-[10px] font-semibold uppercase tracking-[0.2em]"
+            style={{ fontFamily: "var(--font-mono)", color: "var(--accent-strong)" }}
           >
             {tag}
           </span>
         )}
       </div>
-      <div className="mt-1 max-w-2xl text-sm" style={{ color: "var(--text-secondary)" }}>
+      <div
+        className="mt-0.5 max-w-3xl text-base"
+        style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}
+      >
         {description}
       </div>
       {citation && (
-        <div className="mt-1 text-[10px]" style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
+        <div className="mt-0.5 text-[10px]" style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
           {citation}
         </div>
       )}
@@ -490,26 +508,61 @@ export function ShelfPage({
   const corpus = area === "corpus" ? corpusShelfEntries(id) : { sets: [], loose: [] };
   const count = shelf?.count ?? 0;
   return (
-    <div>
-      <BackLink label="Open a model" onClick={onBack} />
-      <SectionLabel>{area === "examples" ? "Examples" : "Source corpus"}</SectionLabel>
-      <PageTitle count={`${count} model${count === 1 ? "" : "s"}`}>{shelf?.label ?? id}</PageTitle>
-      <p className="mt-2 max-w-lg text-sm" style={{ color: "var(--text-secondary)" }}>
-        {area === "examples" ? EXAMPLES_NOTE : CORPUS_NOTE}
-      </p>
-      {area === "corpus" && shelf?.note && (
-        <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-          {shelf.note}
+    // Two columns, not one stack: the shelf's identity holds a tinted rail down
+    // the left edge and the models read as a spec sheet against it.
+    <div className="grid min-h-[calc(100vh-3rem)] grid-cols-[17rem_1fr] items-stretch">
+      <aside
+        className="px-7 pb-10 pt-10"
+        style={{ background: "var(--accent-soft)", borderRight: "1px solid var(--border)" }}
+      >
+        <button
+          onClick={onBack}
+          className="mb-10 text-[10px] uppercase tracking-[0.2em]"
+          style={{ fontFamily: "var(--font-mono)", color: "var(--accent-strong)" }}
+        >
+          ‹ Open a model
+        </button>
+        <div
+          className="text-[10px] font-semibold uppercase tracking-[0.28em]"
+          style={{ fontFamily: "var(--font-mono)", color: "var(--accent-strong)" }}
+        >
+          {area === "examples" ? "Examples" : "Source corpus"}
+        </div>
+        <h1
+          className="mt-3 text-4xl leading-tight"
+          style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}
+        >
+          {shelf?.label ?? id}
+        </h1>
+        <div className="mt-6 flex items-baseline gap-2">
+          <span className="text-2xl tabular" style={{ color: "var(--accent-strong)" }}>
+            {count}
+          </span>
+          <span
+            className="text-[10px] uppercase tracking-[0.2em]"
+            style={{ fontFamily: "var(--font-mono)", color: "var(--accent-strong)" }}
+          >
+            model{count === 1 ? "" : "s"}
+          </span>
+        </div>
+        <p className="mt-6 text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+          {area === "examples" ? EXAMPLES_NOTE : CORPUS_NOTE}
         </p>
-      )}
+        {area === "corpus" && shelf?.note && (
+          <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
+            {shelf.note}
+          </p>
+        )}
+      </aside>
 
-      <div className="mt-8 border-t" style={{ borderColor: "var(--hairline)" }}>
+      <div className="pb-16 pt-10">
         {area === "examples" &&
-          entries.map((d) => (
+          entries.map((d, i) => (
             <ShelfRow
               key={d.key}
               name={d.title}
               description={d.blurb}
+              zebra={i % 2 === 1}
               tag={isRunnable(d) ? "runs" : undefined}
               onClick={() => onOpenExample(d)}
             />
