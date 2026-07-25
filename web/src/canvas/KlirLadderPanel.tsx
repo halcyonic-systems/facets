@@ -227,7 +227,7 @@ export function LadderChip({
 export function KlirLadderPanel({ ladder, onClose }: { ladder: KlirLadder; onClose: () => void }) {
   return (
     <div
-      className="mb-4 max-w-xl rounded-xl border p-3 text-xs"
+      className="mb-4 max-w-xl rounded-md border p-3 text-xs"
       style={{ borderColor: "var(--lens-accent)", background: "var(--bg-secondary)" }}
     >
       <div className="mb-2 flex items-baseline justify-between">

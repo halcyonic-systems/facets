@@ -18,7 +18,7 @@ export function Card({
         background: "var(--bg-secondary)",
         border: "1px solid var(--border)",
         boxShadow: "var(--shadow-card)",
-        borderRadius: "var(--radius-card)",
+        borderRadius: "var(--radius-md)",
       }}
     >
       {(title || source) && (

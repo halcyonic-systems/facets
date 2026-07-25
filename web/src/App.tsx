@@ -1537,7 +1537,7 @@ function Workspace() {
                       height:440 cap), and its popovers/banners still anchor to
                       this relatively-positioned container. */}
                   <div
-                    className="relative min-h-0 flex-1 overflow-hidden rounded-xl"
+                    className="relative min-h-0 flex-1 overflow-hidden rounded-md"
                     style={{
                       minHeight: 420,
                       border: "1px solid color-mix(in srgb, var(--lens-accent) 30%, var(--hairline))",
@@ -1877,7 +1877,7 @@ function Workspace() {
                         style={{
                           background: "var(--bg-secondary)",
                           border: "1px solid var(--accent)",
-                          borderRadius: "9999px",
+                          borderRadius: "var(--radius-pill)",
                           boxShadow: "var(--shadow-card)",
                           color: "var(--text-primary)",
                         }}
@@ -2406,7 +2406,7 @@ function SaveDialog({
           background: "var(--bg-secondary)",
           border: "1px solid var(--border)",
           boxShadow: "var(--shadow-card-hover)",
-          borderRadius: "var(--radius-card)",
+          borderRadius: "var(--radius-md)",
         }}
         onClick={(e) => e.stopPropagation()}
       >

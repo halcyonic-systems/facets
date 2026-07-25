@@ -44,7 +44,7 @@ export function NewModelTypePrompt({
           background: "var(--bg-secondary)",
           border: "1px solid var(--border)",
           boxShadow: "var(--shadow-card-hover)",
-          borderRadius: "var(--radius-card)",
+          borderRadius: "var(--radius-md)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
