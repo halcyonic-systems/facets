@@ -151,7 +151,6 @@ pub fn validate(model: &WorldModel) -> ValidationResult {
     check_orphan_sinks(model, &mut issues);
     check_interaction_references(model, &known_ids, &mut issues);
     check_interface_references(model, &interface_ids, &mut issues);
-    check_orphan_interfaces(model, &mut issues);
     check_parent_references(model, &known_ids, &mut issues);
     check_duplicate_ids(model, &mut issues);
     check_duplicate_edges(model, &mut issues);
@@ -229,6 +228,12 @@ fn check_stock_units(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
 /// Bare-quantity inflows are admitted leniently (see
 /// [`units::Unit::stock_candidate_dimensions`]) — only a genuinely irreconcilable
 /// pair refuses, never an honest `L`-flow / `L`-stock.
+///
+/// #220: unreachable from the canvas today — `bert_canvas::project` writes an
+/// empty `unit` on every interaction and a canvas `Relation` has no unit field,
+/// so the flow unit never parses and the gate never opens. It is live for
+/// compose-emitted and loaded models. Closing that gap means giving the canvas a
+/// flow-unit affordance, not weakening this check.
 fn check_stock_dimensions(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     for (i, system) in model.systems.iter().enumerate() {
         let Some(agent) = system.agent.as_ref() else {
@@ -907,41 +912,27 @@ fn check_interface_references(
     }
 }
 
-fn check_orphan_interfaces(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
-    let mut referenced: HashSet<String> = HashSet::new();
-
-    for ix in &model.interactions {
-        if let Some(ref id) = ix.source_interface {
-            referenced.insert(serialize_id(id));
-        }
-        if let Some(ref id) = ix.sink_interface {
-            referenced.insert(serialize_id(id));
-        }
-    }
-
-    for system in &model.systems {
-        if let Some(ref id) = system.boundary.parent_interface {
-            referenced.insert(serialize_id(id));
-        }
-    }
-
-    for (i, system) in model.systems.iter().enumerate() {
-        for (j, iface) in system.boundary.interfaces.iter().enumerate() {
-            let id_str = serialize_id(&iface.info.id);
-            if !referenced.contains(&id_str) {
-                issues.push(ValidationIssue::warning(
-                    format!("systems[{i}].boundary.interfaces[{j}]"),
-                    format!(
-                        "interface '{id_str}' has no flow routing and no attached processor — \
-                         a boundary interface is individuated by the flow it gates, so one \
-                         that gates nothing carries no systemic role"
-                    ),
-                    Some("Add a flow using this interface, attach an interface processor, or remove it if unused"),
-                ).with_doc(doc::INTERFACE));
-            }
-        }
-    }
-}
+// `check_orphan_interfaces` was removed in bert-lenses#220. It warned when an
+// interface was neither routed by a flow nor claimed by a `parent_interface`.
+// The second disjunct made it a tautology over every canvas-projected model —
+// `bert_canvas::project` sets `parent_interface` on every designated component —
+// so it read as coverage of the flowless case while never firing on one.
+//
+// Both repairs collapse into a check that already exists. Dropping the
+// `parent_interface` disjunct leaves "no flow routes through this interface",
+// which is a weaker restatement of [`check_interfaces_carry_flow`] (that one
+// also honours the declared `receives_from`/`exports_to` and rates it Error at
+// Operational/Full per SSF #31); running both double-reports one interface at
+// two severities. Keeping the disjunct and rating the unattached half on its own
+// is [`check_s0_interface_processors`], verbatim, for the only interfaces the
+// canvas produces. Universal-mode coverage is a decided non-goal besides: #213
+// and #219 settled that Klir and Bunge carry no interface concept and stay
+// silent, so a universal Warning would fire under lenses that cannot express it.
+//
+// Not covered by either survivor, and left open: an interface declaring a
+// `receives_from`/`exports_to` that no interaction records. That is a
+// declaration-vs-graph inconsistency, a different defect from a flowless
+// interface, and neither check names it.
 
 /// Mobus's `I` is functional, not positional: an interface is a component that
 /// *transports a flow across the boundary*. `Tuple.lean` used to encode only the
@@ -957,9 +948,10 @@ fn check_orphan_interfaces(model: &WorldModel, issues: &mut Vec<ValidationIssue>
 /// a component and stated no crossing flow for it, and Mobus's own description
 /// language cannot express the pair — Listing 4.2 gives every interface a
 /// mandatory `recievesFrom`/`exportsTo`, so a flowless interface is not
-/// *writable* there. In Core/Structural a stamp without its flow is an
-/// unfinished draft rather than a claim, so it stays the
-/// [`check_orphan_interfaces`] Warning.
+/// *writable* there. Core and Structural stay silent: Klir and Bunge carry no
+/// interface concept, so a stamp without its flow is not yet a claim either
+/// lens can read (#213, #219; the universal Warning that used to sit here was
+/// removed in #220 — see the note above).
 ///
 /// The location is the interface's own path and carries no field suffix — see
 /// [`is_interface_flow_refusal`], which `bert_canvas` uses to keep this refusal
@@ -1014,8 +1006,8 @@ fn check_interfaces_carry_flow(model: &WorldModel, issues: &mut Vec<ValidationIs
 
 /// Is this issue [`check_interfaces_carry_flow`]'s refusal? An Error addressed
 /// to an interface's own path with no field suffix — the only check that writes
-/// one, since [`check_orphan_interfaces`] and [`check_s0_interface_processors`]
-/// share the path but rate Warning, and the duplicate-id check suffixes
+/// one, since [`check_s0_interface_processors`] shares the path but rates
+/// Warning, and the duplicate-id check suffixes
 /// `.info.id`. Public because `bert_canvas` has to recognize it: the stamp
 /// precedes the flow, so refusing at gesture time would refuse a half-drawn
 /// model (bert-lenses#212, #213).
@@ -1375,6 +1367,12 @@ fn check_processor_flows(model: &WorldModel, issues: &mut Vec<ValidationIssue>) 
     }
 }
 
+/// #220: unfireable for canvas-projected models — `project` claims every
+/// interface it mints with a `parent_interface`, the same masking that made
+/// `check_orphan_interfaces` vacuous. The intent is real and survives: it is
+/// about hierarchical models, where an S0 interface that no level-1 processor
+/// claims leaves external flows untraceable inward. Fires on hand-authored and
+/// legacy BERT models.
 fn check_s0_interface_processors(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     let s0_entry = model
         .systems
@@ -1787,6 +1785,149 @@ mod tests {
             .any(|i| i.location.contains("source") && i.message.contains("does not resolve")));
     }
 
+    /// The sink half of `check_interaction_references` — the source half has its
+    /// own witness above, and a check with two independent branches owes one each.
+    #[test]
+    fn dangling_interaction_sink_is_error() {
+        let mut model = minimal_model();
+        model.interactions.push(flow(
+            0,
+            "Ghost",
+            sys_id(vec![0]),
+            Id {
+                ty: IdType::Sink,
+                indices: vec![-1, 99],
+            },
+        ));
+        // The source is itself unknown here (minimal_model's root is `S0`, not
+        // `C0`), so pin the assertion to the sink issue specifically.
+        let result = validate(&model);
+        assert!(result.issues.iter().any(|i| i.location
+            == "interactions[0].sink"
+            && i.message.contains("does not resolve")));
+    }
+
+    /// An interface id on an interaction that no boundary declares. Firing
+    /// witness for `check_interface_references`, both branches — the canvas
+    /// cannot produce one (it routes only ids it just minted), so this is a
+    /// hand-authored/foreign-JSON net.
+    #[test]
+    fn dangling_flow_interface_is_error() {
+        let phantom = Id {
+            ty: IdType::Interface,
+            indices: vec![0, 42],
+        };
+        for on_source in [true, false] {
+            let mut model = minimal_model();
+            let mut ix = flow(0, "Routed", sys_id(vec![0]), sys_id(vec![0]));
+            if on_source {
+                ix.source_interface = Some(phantom.clone());
+            } else {
+                ix.sink_interface = Some(phantom.clone());
+            }
+            model.interactions.push(ix);
+            let field = if on_source {
+                "source_interface"
+            } else {
+                "sink_interface"
+            };
+            let result = validate(&model);
+            assert!(
+                result.issues.iter().any(|i| i.location
+                    == format!("interactions[0].{field}")
+                    && i.message.contains("does not resolve to any known interface")),
+                "{field} must not resolve: {:#?}",
+                result.issues
+            );
+        }
+    }
+
+    /// Firing witness for `check_parent_references`. Unreachable from the canvas
+    /// — `project` parents the root at `E-1` and every component at the root.
+    #[test]
+    fn unresolvable_parent_is_error() {
+        let mut model = minimal_model();
+        model.systems[0].parent = sys_id(vec![9, 9]);
+        let result = validate(&model);
+        assert!(
+            result.issues.iter().any(|i| i.location == "systems[0].parent"
+                && i.severity == Severity::Error),
+            "got: {:#?}",
+            result.issues
+        );
+    }
+
+    /// Firing witness for `check_duplicate_ids`. The canvas mints ids by
+    /// construction (per-type prefix plus a running index), so only a
+    /// hand-authored or externally generated model can collide.
+    #[test]
+    fn repeated_id_is_error() {
+        let mut model = minimal_model();
+        let s0 = model.systems[0].info.id.clone();
+        model.systems.push(component(vec![0, 0], "A", s0.clone()));
+        model.systems.push(component(vec![0, 0], "A again", s0));
+        let result = validate(&model);
+        assert!(
+            result.issues.iter().any(|i| i.location == "systems[2].info.id"
+                && i.message.contains("duplicate ID")),
+            "got: {:#?}",
+            result.issues
+        );
+    }
+
+    /// Firing witness for `check_source_sink_type_consistency`, both arrays. The
+    /// canvas derives the array from the type in one step, so this too is a
+    /// hand-authored net.
+    #[test]
+    fn misfiled_external_entity_is_warning() {
+        let external = |ty: ExternalEntityType, idx: i64| ExternalEntity {
+            info: Info {
+                id: Id {
+                    ty: if matches!(ty, ExternalEntityType::Source) {
+                        IdType::Source
+                    } else {
+                        IdType::Sink
+                    },
+                    indices: vec![-1, idx],
+                },
+                level: -1,
+                name: "Misfiled".to_string(),
+                description: String::new(),
+            },
+            ty,
+            transform: None,
+            equivalence: String::new(),
+            model: String::new(),
+            is_same_as_id: None,
+        };
+
+        let mut model = minimal_model();
+        model
+            .environment
+            .sources
+            .push(external(ExternalEntityType::Sink, 0));
+        model
+            .environment
+            .sinks
+            .push(external(ExternalEntityType::Source, 1));
+        let result = validate(&model);
+        for (loc, msg) in [
+            ("environment.sources[0].type", "type 'Sink'"),
+            ("environment.sinks[0].type", "type 'Source'"),
+        ] {
+            assert!(
+                result
+                    .issues
+                    .iter()
+                    .any(|i| i.location == loc
+                        && i.severity == Severity::Warning
+                        && i.message.contains(msg)),
+                "{loc} must warn: {:#?}",
+                result.issues
+            );
+        }
+    }
+
     #[test]
     fn wrong_version_is_warning() {
         let mut model = minimal_model();
@@ -1944,34 +2085,6 @@ mod tests {
             .any(|i| i.message.contains("Processor") && i.message.contains("no connecting flows")));
     }
 
-    /// Law: a boundary interface with no flow routing and no attached processor carries no systemic role — a warning, not an error.
-    #[test]
-    fn orphan_interface_is_warning() {
-        let mut model = minimal_model();
-        model.systems[0].boundary.interfaces.push(Interface {
-            info: Info {
-                id: Id {
-                    ty: IdType::Interface,
-                    indices: vec![0, 0],
-                },
-                level: 1,
-                name: "Orphan".to_string(),
-                description: String::new(),
-            },
-            protocol: String::new(),
-            ty: InterfaceType::Import,
-            exports_to: vec![],
-            receives_from: vec![],
-            angle: Some(0.0),
-        });
-        let result = validate(&model);
-        assert!(!result.has_errors());
-        assert!(result.has_warnings());
-        assert!(result.issues.iter().any(|i| i
-            .message
-            .contains("no flow routing and no attached processor")));
-    }
-
     #[test]
     fn env_id_wrong_is_warning() {
         let mut model = minimal_model();
@@ -2008,7 +2121,7 @@ mod tests {
             receives_from: vec![],
             angle: Some(0.0),
         });
-        // Add a flow referencing the interface so check_orphan_interfaces doesn't fire
+        // A flow routes through the interface, so only the processor gap remains.
         model.environment.sources.push(ExternalEntity {
             info: Info {
                 id: Id {
@@ -3118,5 +3231,275 @@ mod tests {
             .find(|i| i.location == "mode/Structural")
             .expect("an unbonded singleton refuses Structural");
         assert_eq!(bond.doc.as_deref(), Some(doc::BOND));
+    }
+
+    /// Kernel-side firing witness for `check_interfaces_carry_flow`. The
+    /// canvas-path witness lives in `bert_canvas` (`project` then
+    /// `validate_mode`); this one proves the check on a hand-built model, so the
+    /// kernel's own suite carries a witness for its own refusal.
+    #[test]
+    fn flowless_interface_is_refused_at_operational_in_kernel() {
+        let mut model = minimal_model();
+        model.systems[0].boundary.interfaces.push(Interface {
+            info: Info {
+                id: Id {
+                    ty: IdType::Interface,
+                    indices: vec![0, 0],
+                },
+                level: 1,
+                name: "Flowless".to_string(),
+                description: String::new(),
+            },
+            protocol: String::new(),
+            ty: InterfaceType::Hybrid,
+            exports_to: vec![],
+            receives_from: vec![],
+            angle: None,
+        });
+        let refused = validate_mode(&model, Mode::Operational);
+        assert!(
+            refused.issues.iter().any(is_interface_flow_refusal),
+            "Operational refuses a flowless interface: {:#?}",
+            refused.issues
+        );
+        for quiet in [Mode::Core, Mode::Structural] {
+            assert!(
+                !validate_mode(&model, quiet)
+                    .issues
+                    .iter()
+                    .any(is_interface_flow_refusal),
+                "{quiet:?} carries no interface concept"
+            );
+        }
+    }
+
+    // ---- The firing audit and its gate (bert-lenses#220) -----------------
+
+    /// What proves a check can fire, or the recorded reason nothing can.
+    struct CheckAudit {
+        check: &'static str,
+        /// Test that makes this check produce an issue. `None` means no model
+        /// reaches it through the typed path, and `note` says why.
+        witness: Option<&'static str>,
+        /// Can a model `bert_canvas::project` can actually emit make it fire?
+        /// Documentation, not mechanically enforced — the canvas lives in a
+        /// sibling crate. `false` marks a check that is dead in practice for
+        /// canvas-authored work, which is the class #220 was opened over.
+        canvas: bool,
+        note: &'static str,
+    }
+
+    /// The audit of #220, in the only form that survives the next contributor:
+    /// every `check_*` in this module has a row, and the gate below fails when a
+    /// check has none or names a witness that does not exist.
+    const FIRING_AUDIT: &[CheckAudit] = &[
+        CheckAudit {
+            check: "check_stock_units",
+            witness: Some("rate_like_stock_unit_warns_never_errors"),
+            canvas: true,
+            note: "a Buffering thing declaring 'ML/mo' projects its stock_unit verbatim",
+        },
+        CheckAudit {
+            check: "check_stock_dimensions",
+            witness: Some("kw_fed_stock_declaring_power_is_refused"),
+            canvas: false,
+            note: "project() writes `unit: \"\"` on every interaction and a canvas \
+                   Relation carries no unit field, so the flow unit never parses; \
+                   live for compose-emitted and loaded models",
+        },
+        CheckAudit {
+            check: "check_bond",
+            witness: Some("aggregate_enters_core_but_not_structural"),
+            canvas: true,
+            note: "two things and no bond, read through Bunge",
+        },
+        CheckAudit {
+            check: "check_self_loops",
+            witness: Some("self_loop_enters_structural_but_not_operational"),
+            canvas: true,
+            note: "a relation whose endpoints are the same thing",
+        },
+        CheckAudit {
+            check: "check_dynamical_face",
+            witness: Some("empty_dynamical_face_warns_in_full_mode"),
+            canvas: false,
+            note: "Lens maps only to Core/Structural/Operational, so Full never \
+                   runs on a canvas projection — and project() leaves every \
+                   dynamical slot empty, so it would always fire if it did",
+        },
+        CheckAudit {
+            check: "check_duplicate_edges",
+            witness: Some("duplicate_edge_is_universal_warning"),
+            canvas: true,
+            note: "two relations with the same endpoints and kind",
+        },
+        CheckAudit {
+            check: "check_dead_ends",
+            witness: Some("corrected_bill_surfaces_five_absorbing_states_as_warnings"),
+            canvas: true,
+            note: "a component with an inbound relation and none outbound",
+        },
+        CheckAudit {
+            check: "check_reachability",
+            witness: Some("unreachable_cycle_warns"),
+            canvas: true,
+            note: "a two-thing cycle with no entry",
+        },
+        CheckAudit {
+            check: "check_reachability_requirements",
+            witness: Some("must_reach_unreachable_target_refuses"),
+            canvas: false,
+            note: "project() writes `reachability_requirements: vec![]`; the \
+                   canvas has no gesture for stating one",
+        },
+        CheckAudit {
+            check: "check_orphan_sources",
+            witness: Some("orphan_source_is_error"),
+            canvas: false,
+            note: "an env thing projects only when a bond touches it, and its \
+                   Source/Sink type is derived from that same bond's direction",
+        },
+        CheckAudit {
+            check: "check_orphan_sinks",
+            witness: Some("orphan_sink_is_error"),
+            canvas: false,
+            note: "same derivation as check_orphan_sources",
+        },
+        CheckAudit {
+            check: "check_interaction_references",
+            witness: Some("dangling_interaction_source_is_error"),
+            canvas: false,
+            note: "every projected endpoint comes out of the id map that also \
+                   produced the systems and externals",
+        },
+        CheckAudit {
+            check: "check_interface_references",
+            witness: Some("dangling_flow_interface_is_error"),
+            canvas: false,
+            note: "project() routes only interface ids it minted on the same pass",
+        },
+        CheckAudit {
+            check: "check_interfaces_carry_flow",
+            witness: Some("flowless_interface_is_refused_at_operational_in_kernel"),
+            canvas: true,
+            note: "stamp a component `interface` and draw no crossing flow; the \
+                   canvas-path witness is bert_canvas's \
+                   flowless_interface_is_refused_at_operational",
+        },
+        CheckAudit {
+            check: "check_parent_references",
+            witness: Some("unresolvable_parent_is_error"),
+            canvas: false,
+            note: "project() parents the root at E-1 and every component at the root",
+        },
+        CheckAudit {
+            check: "check_duplicate_ids",
+            witness: Some("repeated_id_is_error"),
+            canvas: false,
+            note: "ids are minted per type prefix with a running index",
+        },
+        CheckAudit {
+            check: "check_environment_id",
+            witness: Some("env_id_wrong_is_warning"),
+            canvas: false,
+            note: "project() always writes the environment as E-1",
+        },
+        CheckAudit {
+            check: "check_source_sink_type_consistency",
+            witness: Some("misfiled_external_entity_is_warning"),
+            canvas: false,
+            note: "the array and the type are set together from one branch",
+        },
+        CheckAudit {
+            check: "check_version",
+            witness: Some("wrong_version_is_warning"),
+            canvas: false,
+            note: "project() stamps CURRENT_FILE_VERSION; fires on a file written \
+                   by another version of BERT",
+        },
+        CheckAudit {
+            check: "check_level_consistency",
+            witness: Some("level_mismatch_is_warning"),
+            canvas: false,
+            note: "project() derives level from the same index depth the id carries",
+        },
+        CheckAudit {
+            check: "check_required_fields",
+            witness: Some("preparse_missing_radius_is_error"),
+            canvas: false,
+            note: "pre-parse, on raw JSON — a typed WorldModel cannot be missing a \
+                   field, so this fires only off the typed path",
+        },
+        CheckAudit {
+            check: "check_processor_flows",
+            witness: Some("processor_without_flows_is_warning"),
+            canvas: true,
+            note: "stamp a component `interface` and draw nothing at all; at \
+                   Operational/Full check_interfaces_carry_flow also fires on \
+                   every such model, so the two overlap there and only this one \
+                   speaks in Core/Structural",
+        },
+        CheckAudit {
+            check: "check_s0_interface_processors",
+            witness: Some("s0_interface_without_processor_is_warning"),
+            canvas: false,
+            note: "project() sets boundary.parent_interface on every designated \
+                   component, so no projected S0 interface is ever unclaimed; \
+                   fires on hierarchical hand-authored models",
+        },
+    ];
+
+    /// The standing gate #220 asked for: a check with no audit row, or a row
+    /// naming a witness test that does not exist, fails here. Adding a
+    /// `check_*` to this module now costs one row and one firing test.
+    #[test]
+    fn every_check_has_a_firing_verdict() {
+        let src = include_str!("validate.rs");
+        let declared: HashSet<String> = src
+            .lines()
+            .filter_map(|l| {
+                let rest = l.strip_prefix("fn ").or_else(|| l.strip_prefix("pub fn "))?;
+                let name = rest.split('(').next()?;
+                name.starts_with("check_").then(|| name.to_string())
+            })
+            .collect();
+        let audited: HashSet<String> = FIRING_AUDIT
+            .iter()
+            .map(|row| row.check.to_string())
+            .collect();
+
+        let unaudited: Vec<_> = declared.difference(&audited).collect();
+        assert!(
+            unaudited.is_empty(),
+            "every check owes a firing verdict; missing rows for {unaudited:?}"
+        );
+        let stale: Vec<_> = audited.difference(&declared).collect();
+        assert!(stale.is_empty(), "audit rows for checks that no longer exist: {stale:?}");
+
+        for row in FIRING_AUDIT {
+            assert!(!row.note.is_empty(), "{} owes a note", row.check);
+            match row.witness {
+                Some(witness) => assert!(
+                    src.contains(&format!("fn {witness}(")),
+                    "{}'s witness {witness} does not exist in this module",
+                    row.check
+                ),
+                // Only an off-the-typed-path check may go without one.
+                None => assert!(
+                    !row.canvas,
+                    "{} is claimed reachable from the canvas but has no witness",
+                    row.check
+                ),
+            }
+        }
+
+        // The net #219 added for the flowless interface is the canvas's, and the
+        // whole point of #220 is that it must not drift back out of reach.
+        assert!(
+            FIRING_AUDIT
+                .iter()
+                .any(|r| r.check == "check_interfaces_carry_flow" && r.canvas),
+            "the flowless-interface refusal must stay reachable from the canvas"
+        );
     }
 }
