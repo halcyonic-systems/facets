@@ -47,6 +47,20 @@ here without perturbing a golden.
 
 **`bunge/coupling-sigma2.sl` is lossy in sign, and says so.** Bunge distinguishes excitation (+1) from inhibition (−1); SL has no signed relation, and design commitment C3 admits a word only if the kernel already carries the distinction. The polarity survives only in each flow's *name*, where nothing validates it. Recorded as lexicon pressure rather than papered over.
 
+## Why this is a test bench and not a showcase
+
+The corpus is the **empirical arm** of the formalization. You cannot find that `Tuple.lean` under-constrains `I` by reading `Tuple.lean` — it is internally consistent and it typechecks. You find it by modelling a steel plant and noticing the diagram implies a hop the mathematics denies (bert-lenses#213). Every entry exercises the kernel, the notation, and the Lean at once, and a defect surfaces in whichever of the three is weakest. That is why authoring an entry keeps finding things that proof-reading does not.
+
+It is also where the three lenses have to **agree**. A model authored under one lens and read under another is a live cross-check on K≅2: if two lenses disagree about the same kernel object, one of them is wrong. `bunge/coupling-sigma3.sl` above is that check firing. The convergence claim is therefore **tested here rather than asserted** — which is worth more than any paper, and is exactly what a doctrine-per-notebook tool cannot do, because its notebooks never have to agree with each other.
+
+**The standard that keeps this true, and it is the whole discipline:**
+
+> **A model that cannot embarrass us is not testing anything.**
+
+An entry earns its place by being able to come out wrong — by refusing, by failing a gate, by disagreeing with a sibling lens, by exposing a gap in the kernel. The moment entries get added for volume, or quietly shaped toward what the tool finds convenient rather than what the source actually says, the corpus stops probing and starts **confirming the tool to itself**. That failure is silent: nothing breaks, the gallery just grows.
+
+This is what the corpus/examples split defends. **The corpus holds what the source says; `assets/examples/` holds what we say.** When Mobus does not apply his own work-process taxonomy in ch. 7, the entry carries no `primitive` — stamping one would be our reading wearing his name. When he leaves §7.5 as an exercise, there is no entry. When his Listing 4.1 assigns `F-1.4` twice, the entry records the erratum instead of reproducing it. Those refusals are not fastidiousness; they are the thing that keeps the library evidence.
+
 ## The variant sets are the point
 
 Two of the three groups above are **sibling sets that teach by diff**: one composition held fixed, the structure varied, the difference carrying the lesson. Klir does it with four goal-oriented paradigms; Bunge does it with three internal structures on two things. Neither cites the other for the device.
