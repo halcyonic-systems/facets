@@ -51,59 +51,79 @@ rm ~/Library/LaunchAgents/com.halcyonic.bert-lenses.plist
 The published copy (`~/halcyonic-apps/bert-lenses/`) is left on disk; delete
 it too if fully decommissioning.
 
-## Path to a desktop app
+## The desktop app
 
-Tauri is the actual end goal — this static-dist publish step is its
-prerequisite, since Tauri wraps exactly a `web/dist`-shaped build. Scoping
-what's left, honestly:
+The same `web/dist` this doc publishes is what the macOS app wraps — Tauri v2,
+`src-tauri/`, no second build path. Build it:
 
-**Scaffolding needed.** No `src-tauri` exists in this repo today. Bringing it
-up means `cargo install tauri-cli` (or `npm create tauri-app` grafted onto the
-existing `web/`), pinned to **Tauri v2** (v1 is EOL) — a `src-tauri/` crate
-with `tauri.conf.json`, `Cargo.toml`, and the platform icon set.
+```bash
+just desktop
+```
 
-**The real open question: does the wasm-pack kernel load in a Tauri
-WKWebView on macOS?** Not tested. What's known: Tauri's macOS backend is
-WKWebView (same engine as Safari/Brave), and WKWebView has supported
-`WebAssembly.instantiateStreaming` and ES module workers for years, so there's
-no a priori reason the kernel wouldn't load. What's *not* known and must be
-verified before committing effort: (1) whether Tauri's custom `tauri://`
-asset-serving scheme sends the correct `Content-Type: application/wasm` header
-the kernel's `fetch`-based instantiation path expects (the vite-preview test
-in this doc confirms the *served* asset has the right MIME type over HTTP;
-Tauri's asset protocol is a different code path and untested), and (2) whether
-the wasm-bindgen glue's dynamic `import.meta.url` resolution behaves under
-Tauri's asset protocol the same way it does under `http://`. First concrete
-step to de-risk this: scaffold a throwaway `src-tauri`, point
-`tauri.conf.json` `frontendDist` at this repo's `web/dist`, launch it, and
-watch devtools console for wasm instantiation errors.
+That rebuilds the wasm kernel, builds `web/dist`, and runs `cargo tauri build`.
+The artifact lands at:
 
-**What changes vs. the served version:**
-- `tauri.conf.json` → `build.frontendDist` = `"../web/dist"` (or an absolute
-  path), `build.devUrl` = the 5173 dev server for `tauri dev`.
-- Asset paths: `web/dist`'s `index.html` currently references `/assets/...`
-  (absolute root paths, fine for both `vite preview` and Tauri's `tauri://`
-  scheme, which serves from the app's virtual root) — should carry over
-  unmodified, but is unverified until step above is run.
-- CSP: `tauri.conf.json`'s `app.security.csp` needs `'wasm-unsafe-eval'` (or
-  equivalent) in `script-src`, since wasm-bindgen's default instantiation path
-  needs it; Tauri's default CSP does not include it.
+```
+src-tauri/target/release/bundle/macos/bert-lenses.app
+```
 
-**The local-model co-author path** (`web/src/gsr.ts`, `VITE_GSR_URL` /
-`http://localhost:5010`, the General Systems Reasoner) uses plain browser
-`fetch`. Inside a Tauri WKWebView this should still reach `localhost` — Tauri
-doesn't sandbox outbound fetch by default — but macOS's Local Network
-permission prompt behavior for a *non-App-Store, unsigned/dev-signed* Tauri
-binary talking to `localhost` specifically (not LAN peers) is the one thing
-worth a five-minute check rather than an assumption; historically localhost
-loopback traffic has been exempt from the Local Network prompt, but this
-should be confirmed on the actual dev build, not assumed from general
-knowledge.
+Double-click it, or `open` it. ~5.4 MB, arm64, ad-hoc signed by the linker.
+Nothing is installed; drag it to `/Applications` if you want it in Spotlight.
 
-**Honest effort estimate:** scaffolding + first working double-clickable
-`.app` with the wasm kernel confirmed loading: half a day if the wasm-in-
-WKWebView question resolves cleanly; a day or two if the asset-protocol
-Content-Type issue bites and needs a custom protocol handler or an
-`asset://` → `blob:` shim. The GSR fetch path is very unlikely to add real
-time. First concrete step: the throwaway `src-tauri` scaffold + console-watch
-described above, before writing any packaging or CSP configuration.
+### `cargo tauri dev` is a false positive — never verify with it
+
+Dev serves the frontend over `http://127.0.0.1:1430` and applies `devCsp`, not
+the CSP in `tauri.conf.json`. The bundle serves over the `tauri://localhost`
+custom protocol and applies the real CSP. A wasm or CSP fault therefore passes
+green in dev and kills the bundle. Verify with `just desktop` and launch the
+`.app`, always.
+
+Two things the custom protocol changes, both already handled in
+`tauri.conf.json`:
+
+- **`script-src` must carry `'wasm-unsafe-eval'`** or the kernel dies on
+  `WebAssembly.instantiateStreaming` and the app shows "Failed to load the wasm
+  kernel". (Tauri already serves `.wasm` as `application/wasm`, so no protocol
+  handler is needed.)
+- **`connect-src` must name the reasoner origin.** The app's origin is
+  `tauri://localhost`, so an unnamed origin is blocked and surfaces as a bare
+  `TypeError: Load failed` that reads like "the reasoner is down." Named today:
+  `http://localhost:5010`, `http://127.0.0.1:5010`, and
+  `https://reasoner.halcyonic.systems`.
+
+Fonts are self-hosted for the same reason — a bundle has no network. See
+`scripts/vendor-fonts.py`.
+
+### Unsigned, and what a stranger sees
+
+The app is not Developer-ID signed and not notarized. Consequences:
+
+- **Building it yourself, or copying it locally:** nothing happens. No
+  quarantine flag, no dialog. This is the state for us indefinitely.
+- **Downloading a `.app` from the internet:** macOS quarantines it and refuses
+  to open it. On macOS 15 the old right-click → Open bypass is gone; the user
+  must go to **System Settings → Privacy & Security**, find the blocked-app
+  notice, and press **Open Anyway**. Tell anyone you send a build to expect
+  this.
+- Removing the dialog entirely means a $99/yr Apple Developer ID plus
+  notarization. That is env-vars-only in Tauri and needs zero rework here, so
+  it can be added at any point.
+
+`xattr -p com.apple.quarantine bert-lenses.app` reports the flag if a copy ever
+picks one up; `xattr -dr com.apple.quarantine bert-lenses.app` clears it.
+
+### What is deliberately absent
+
+No native file dialog and no filesystem library backend. Saving means putting a
+model in **My library**, and that is one verb with one storage interface
+(`web/src/library.ts`, `setLibraryBackend()`) behind it. IndexedDB backs it in
+both the browser and the app today; a filesystem backend can be dropped in
+later without adding a second way to save. File import/export stays what it is:
+interchange between installs, not a competing save path.
+
+### Icon
+
+`scripts/make-icon.py` draws `src-tauri/icons/icon-src.png` from the app's own
+tokens and body face, then runs `cargo tauri icon` and drops the iOS/Android
+sets. It needs `fonttools` + `pillow`, which are not project dependencies — run
+it in a throwaway venv (the docstring has the two lines).

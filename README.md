@@ -175,13 +175,14 @@ crate change must never silently serve stale wasm.
 
 There's no back end and no IPC: the kernel runs synchronously in the browser tab
 (wasm-bindgen), so bert-lenses runs in a browser, on mobile, and inside
-Claude-in-Chrome. An optional Tauri wrapper can later host the *same* web app
-natively.
+Claude-in-Chrome. `src-tauri/` hosts the *same* `web/dist` as a macOS app — a
+window, no second code path.
 
 ```bash
 just wasm     # rebuild the wasm pkg the web app consumes (run after any crate change)
 just dev      # rebuild wasm, then start the vite dev server (face sees fresh brain)
 just check    # the full gate suite — CI parity
+just desktop  # bundle the macOS .app (docs/running-permanently.md)
 ```
 
 `just check` runs exactly what CI enforces (`.github/workflows/ci.yml`): `cargo

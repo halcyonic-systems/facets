@@ -1,0 +1,24 @@
+# Its own workspace on purpose. The root workspace compiles every crate to
+# wasm32-unknown-unknown (`just check`); this one is a native host binary and
+# cannot. Nothing here is a dependency of the kernel — it wraps web/dist.
+[workspace]
+
+[package]
+name = "bert-lenses-desktop"
+version = "0.1.0"
+edition = "2021"
+description = "bert-lenses as a macOS desktop app"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"

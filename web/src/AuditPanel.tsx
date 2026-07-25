@@ -9,6 +9,7 @@
 // typesets it as a link; WHICH entry a refusal cites is kernel judgment.
 import type { IssueTarget, ValidationResult } from "./kernel/types";
 import { Card, Pill } from "./ui";
+import { openExternal } from "./desktop";
 
 // Where the linked docs live. The anchors are repo-relative
 // (`docs/glossary.md#precondition`), pinned by the kernel's doc_anchors_resolve
@@ -63,7 +64,10 @@ export function AuditPanel({
                           href={DOCS_BASE + issue.doc}
                           target="_blank"
                           rel="noreferrer"
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openExternal(e);
+                          }}
                           title="read the precondition this refusal cites"
                           style={{
                             color: "var(--lens-accent)",

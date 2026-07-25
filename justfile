@@ -28,3 +28,12 @@ check:
     cd web && npx tsc --noEmit
     cd web && npx vitest run
     cd web && npx vite build
+
+# Bundle the macOS .app. Builds the same web/dist the served version publishes,
+# then wraps it. NOTE: `cargo tauri dev` is a false positive — it serves over
+# http://127.0.0.1:1430 and applies devCsp, not the config CSP, so wasm can pass
+# there and die in the bundle. Verify with this recipe, never with dev.
+desktop: wasm
+    cd web && npm run build
+    cd src-tauri && cargo tauri build
+    @echo "bundle: src-tauri/target/release/bundle/macos/bert-lenses.app"
