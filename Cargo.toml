@@ -8,6 +8,10 @@
 # The crates are vendored, self-contained (no cross-repo path deps), and compile
 # to wasm32-unknown-unknown to run in the page — the same code an optional Tauri
 # wrapper would run natively.
+#
+# src-tauri/ is excluded: it is the native desktop host, cannot compile to wasm,
+# and is its own workspace. It depends on web/dist, not on the crates.
 [workspace]
 resolver = "2"
 members = ["crates/*"]
+exclude = ["src-tauri"]
