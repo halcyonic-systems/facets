@@ -19,7 +19,7 @@ import { useState } from "react";
 import { compileSl, emitSl } from "./kernel";
 import type { CanvasModel, SlError } from "./kernel/types";
 import { CoAuthorMode } from "./CoAuthorMode";
-import type { CoauthorTurn } from "./coauthor";
+import type { CoauthorTurn, DraftStage } from "./coauthor";
 
 type Mode = "sl" | "coauthor";
 
@@ -41,7 +41,9 @@ interface SlPaneProps {
    *  resolves, so the compiled/faulty text is visible either way. */
   coauthor?: {
     turns: CoauthorTurn[];
-    onDraft: (description: string) => Promise<void>;
+    /** `onStage` is #218's progress feed — the parent's draft call reports
+     *  which phase it is in (asking / compiling / retrying) as it happens. */
+    onDraft: (description: string, onStage?: (stage: DraftStage) => void) => Promise<void>;
   };
 }
 
@@ -75,9 +77,9 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
   // drafting, compiling, and previewing — this pane just returns to the SL
   // view once it resolves, so the result (compiled preview OR the faulty
   // draft text + its errors) is where the author expects to look.
-  async function handleDraft(description: string) {
+  async function handleDraft(description: string, onStage?: (stage: DraftStage) => void) {
     if (!coauthor) return;
-    await coauthor.onDraft(description);
+    await coauthor.onDraft(description, onStage);
     setMode("sl");
   }
 
