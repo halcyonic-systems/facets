@@ -9,13 +9,17 @@ system "Cell Energy Metabolism" : Concrete/Biological
 domain "Aerobic cellular respiration and ATP storage"
 
 # The mitochondria is the work process: it combines two inputs
-# (glucose, oxygen) into two outputs (ATP, CO2).
-component Mitochondria primitive Combining
+# (glucose, oxygen) into two outputs (ATP, CO2). It carries `interface`
+# because every boundary-crossing flow in this model terminates on it —
+# glucose and oxygen in, CO2 out.
+component Mitochondria primitive Combining interface
 
 # The ATP pool is the cytoplasmic stock that accumulates the cell's
-# usable energy currency. `interface` marks it as boundary-adjacent,
-# since ATP produced here is drawn down elsewhere in the cell.
-component "ATP Pool" primitive Buffering interface
+# usable energy currency. It carries no `interface`: the ATP stored here
+# is drawn down elsewhere INSIDE the cell, so nothing it gates crosses
+# the boundary, and an interface is individuated by the crossing flow it
+# transports.
+component "ATP Pool" primitive Buffering
 
 # The bloodstream is the environment: it supplies fuel and oxidant,
 # and absorbs the waste product. One environment entity can act as

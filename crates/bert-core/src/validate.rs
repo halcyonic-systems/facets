@@ -328,6 +328,7 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
             check_reachability(model, issues);
             check_reachability_requirements(model, issues);
             check_stock_dimensions(model, issues);
+            check_interfaces_carry_flow(model, issues);
         }
         Mode::Full => {
             check_self_loops(model, issues);
@@ -335,6 +336,7 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
             check_reachability(model, issues);
             check_reachability_requirements(model, issues);
             check_stock_dimensions(model, issues);
+            check_interfaces_carry_flow(model, issues);
             check_dynamical_face(model, issues);
         }
     }
@@ -939,6 +941,89 @@ fn check_orphan_interfaces(model: &WorldModel, issues: &mut Vec<ValidationIssue>
             }
         }
     }
+}
+
+/// Mobus's `I` is functional, not positional: an interface is a component that
+/// *transports a flow across the boundary*. `Tuple.lean` used to encode only the
+/// forward half (`bipartite`: every crossing flow lands on an interface) and
+/// left the converse open, which is exactly what a flowless interface is. SSF
+/// #31 adds `interfaces_carry_flow : ∀ i ∈ boundary.interfaces, ∃ e ∈
+/// externalFlows, i ∈ e.endpoints`, and SSF #35 proves it non-redundant against
+/// a separating instance carrying a live external flow — so it bites in a
+/// working system, not only degenerately.
+///
+/// **Severity: Error (a refusal), Operational and Full only.** This is a
+/// declared inconsistency, not an observation: the author stated `interface` on
+/// a component and stated no crossing flow for it, and Mobus's own description
+/// language cannot express the pair — Listing 4.2 gives every interface a
+/// mandatory `recievesFrom`/`exportsTo`, so a flowless interface is not
+/// *writable* there. In Core/Structural a stamp without its flow is an
+/// unfinished draft rather than a claim, so it stays the
+/// [`check_orphan_interfaces`] Warning.
+///
+/// The location is the interface's own path and carries no field suffix — see
+/// [`is_interface_flow_refusal`], which `bert_canvas` uses to keep this refusal
+/// out of the connection gesture (bert-lenses#213).
+fn check_interfaces_carry_flow(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
+    let routed: HashSet<String> = model
+        .interactions
+        .iter()
+        .flat_map(|ix| [ix.source_interface.as_ref(), ix.sink_interface.as_ref()])
+        .flatten()
+        .map(serialize_id)
+        .collect();
+
+    for (i, system) in model.systems.iter().enumerate() {
+        for (j, iface) in system.boundary.interfaces.iter().enumerate() {
+            let id_str = serialize_id(&iface.info.id);
+            let carries = !iface.receives_from.is_empty()
+                || !iface.exports_to.is_empty()
+                || routed.contains(&id_str);
+            if carries {
+                continue;
+            }
+            // The subject is the component that CLAIMED the interface, not the
+            // interface record — the designation is what the author must undo or
+            // complete, and it is what a surface can navigate to.
+            let subject = model
+                .systems
+                .iter()
+                .find(|s| s.boundary.parent_interface.as_ref().is_some_and(|p| serialize_id(p) == id_str))
+                .map_or(&iface.info.id, |s| &s.info.id);
+            issues.push(
+                ValidationIssue::error(
+                    format!("systems[{i}].boundary.interfaces[{j}]"),
+                    format!(
+                        "interface '{}' carries no boundary-crossing flow — Mobus defines \
+                         an interface as a component that transports a flow across the \
+                         boundary, so one that transports nothing is a mislabelled \
+                         component (Lean `MobusSystem.interfaces_carry_flow`)",
+                        iface.info.name
+                    ),
+                    Some(
+                        "Draw the flow this interface gates between it and an \
+                         environmental entity, or drop the interface designation",
+                    ),
+                )
+                .with_doc(doc::INTERFACE)
+                .with_subject(subject),
+            );
+        }
+    }
+}
+
+/// Is this issue [`check_interfaces_carry_flow`]'s refusal? An Error addressed
+/// to an interface's own path with no field suffix — the only check that writes
+/// one, since [`check_orphan_interfaces`] and [`check_s0_interface_processors`]
+/// share the path but rate Warning, and the duplicate-id check suffixes
+/// `.info.id`. Public because `bert_canvas` has to recognize it: the stamp
+/// precedes the flow, so refusing at gesture time would refuse a half-drawn
+/// model (bert-lenses#212, #213).
+pub fn is_interface_flow_refusal(issue: &ValidationIssue) -> bool {
+    issue.severity == Severity::Error
+        && issue.location.starts_with("systems[")
+        && issue.location.contains("].boundary.interfaces[")
+        && issue.location.ends_with(']')
 }
 
 fn check_parent_references(
