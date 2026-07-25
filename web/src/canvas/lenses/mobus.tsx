@@ -184,10 +184,13 @@ function PortView({
         />
         <path d={chevron} fill="none" stroke="var(--lens-accent)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
       </g>
+      {/* The label sits OUTSIDE the capsule, anchored away from it — centering
+          it on the outward normal put half the string back across the notch and
+          the interior, which is how `T1 · no flow` printed as `no flow`. */}
       <text
-        x={out.x * 20}
-        y={out.y * 20}
-        textAnchor="middle"
+        x={out.x * 16}
+        y={out.y * 16}
+        textAnchor={out.x > 0.25 ? "start" : out.x < -0.25 ? "end" : "middle"}
         dominantBaseline="central"
         fontSize={9}
         fill="var(--text-muted)"

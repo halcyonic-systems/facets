@@ -13,6 +13,30 @@ export interface Pt {
   y: number;
 }
 
+/** Hit radius for an interface port. The capsule is 24×14 about its center, so
+ *  a disc a little wider than its long half-axis. */
+export const PORT_HIT_R = 16;
+
+/** A port's pixel position and the component it belongs to. `I ⊆ C`
+ *  (`Tuple.lean:97` `interfaces_sub`): an interface is a component wearing a
+ *  designation, never a node of its own — so a port that is hit resolves to the
+ *  component, and the canvas never has a third node type to connect to. */
+export interface PortTarget {
+  at: Pt;
+  component: number;
+}
+
+/** The component owning the port under `p`, or null. Nearest wins when two
+ *  ports overlap on a crowded membrane. */
+export function portOwnerAt(targets: PortTarget[], p: Pt): number | null {
+  let best: { id: number; d: number } | null = null;
+  for (const t of targets) {
+    const d = Math.hypot(t.at.x - p.x, t.at.y - p.y);
+    if (d <= PORT_HIT_R && (!best || d < best.d)) best = { id: t.component, d };
+  }
+  return best ? best.id : null;
+}
+
 /** Point on the segment from `center` toward `target`, offset by `r` — the rim. */
 export function rimPoint(center: Pt, target: Pt, r: number): Pt {
   const dx = target.x - center.x;

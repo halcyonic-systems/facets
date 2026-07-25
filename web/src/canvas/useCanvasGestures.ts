@@ -17,7 +17,7 @@ import type { CanvasModel, Relation, Thing } from "../kernel/types";
 import type { PaletteTool } from "./lenses/registry";
 import { validateConnection } from "../kernel";
 import { observations, refusal } from "./connectionVerdict";
-import { NODE_R, thingById, contentBounds, fitToBox, type Pt } from "./geometry";
+import { NODE_R, portOwnerAt, thingById, contentBounds, fitToBox, type PortTarget, type Pt } from "./geometry";
 
 interface DraftNode {
   id: number;
@@ -177,6 +177,34 @@ export function stampPrimitiveAt(model: CanvasModel, armed: PaletteTool, p: Pt):
   };
 }
 
+/** What a pointer at `p` connects to: a node, else an interface port resolved to
+ *  the component that owns it, else nothing.
+ *
+ *  The resolution is the whole of #213's first half. A port is not a node to
+ *  land on — `I ⊆ C` (`Tuple.lean:97` `interfaces_sub`), so it IS its component
+ *  seen at the membrane, and the edge a drop there builds is `env ↔ component`:
+ *  the same edge dropping on the component itself builds. Before this the port
+ *  was inert to a flow drag and only the component would take the drop, which is
+ *  precisely what made the notch read as a third object standing between the
+ *  environment and the interior.
+ *
+ *  Nodes are tested first — a port that happens to sit over a node never steals
+ *  its drop. */
+export function connectionTargetAt(
+  model: CanvasModel,
+  portTargets: PortTarget[],
+  p: Pt,
+  exclude?: number,
+): Thing | undefined {
+  for (const t of model.things) {
+    if (t.id === exclude) continue;
+    if (Math.hypot(t.x - p.x, t.y - p.y) <= NODE_R) return t;
+  }
+  const owner = portOwnerAt(portTargets, p);
+  if (owner !== null && owner !== exclude) return thingById(model, owner);
+  return undefined;
+}
+
 interface GestureDeps {
   model: CanvasModel;
   svgRef: RefObject<SVGSVGElement | null>;
@@ -189,6 +217,9 @@ interface GestureDeps {
   armed?: PaletteTool | null;
   /** Click-select a node (null clears). Selection is view state, never projected. */
   onSelectThing?: (id: number | null) => void;
+  /** Where the Mobus interface ports are drawn, and whose they are (#213). The
+   *  canvas computes the pixels; the hook only needs them to hit-test. */
+  portTargets?: PortTarget[];
 }
 
 export function useCanvasGestures({
@@ -199,6 +230,7 @@ export function useCanvasGestures({
   onNotice,
   armed = null,
   onSelectThing,
+  portTargets = [],
 }: GestureDeps) {
   const [state, dispatch] = useReducer(reducer, INITIAL);
 
@@ -294,11 +326,7 @@ export function useCanvasGestures({
   }
 
   function hitTest(p: Pt, exclude?: number): Thing | undefined {
-    for (const t of model.things) {
-      if (t.id === exclude) continue;
-      if (Math.hypot(t.x - p.x, t.y - p.y) <= NODE_R) return t;
-    }
-    return undefined;
+    return connectionTargetAt(model, portTargets, p, exclude);
   }
 
   function onNodePointerDown(e: ReactPointerEvent, thing: Thing) {
