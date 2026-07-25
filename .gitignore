@@ -15,3 +15,7 @@ __pycache__/
 # macOS
 .DS_Store
 **/.DS_Store
+
+# Agent worktrees created inside the repo — never committable.
+# (A bare `git add -A` otherwise sweeps them in as embedded git repos.)
+.claude/worktrees/
