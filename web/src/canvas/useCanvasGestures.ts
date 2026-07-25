@@ -3,7 +3,8 @@
 // name draft) lives in a PURE reducer; this hook only wires pointer events to
 // dispatches and runs the model-mutating side effects (drag-move, edge commit,
 // node commit). Legality is still Rust's: `validateConnection` asks the kernel
-// before an edge is accepted. The reducer computes no dynamics and no systemhood.
+// before an edge is accepted, and only a kernel Error refuses it (see
+// connectionVerdict). The reducer computes no dynamics and no systemhood.
 import {
   useEffect,
   useReducer,
@@ -15,6 +16,7 @@ import {
 import type { CanvasModel, Relation, Thing } from "../kernel/types";
 import type { PaletteTool } from "./lenses/registry";
 import { validateConnection } from "../kernel";
+import { observations, refusal } from "./connectionVerdict";
 import { NODE_R, thingById, contentBounds, fitToBox, type Pt } from "./geometry";
 
 interface DraftNode {
@@ -180,6 +182,9 @@ interface GestureDeps {
   svgRef: RefObject<SVGSVGElement | null>;
   onModelChange: (m: CanvasModel) => void;
   onReject: (message: string) => void;
+  /** The soft channel: a kernel Warning that accompanies a legal edge. Distinct
+   *  from `onReject`, which is reserved for refusals. */
+  onNotice?: (message: string) => void;
   /** The rail's armed tool (null = no tool armed; gestures behave as before). */
   armed?: PaletteTool | null;
   /** Click-select a node (null clears). Selection is view state, never projected. */
@@ -191,6 +196,7 @@ export function useCanvasGestures({
   svgRef,
   onModelChange,
   onReject,
+  onNotice,
   armed = null,
   onSelectThing,
 }: GestureDeps) {
@@ -426,10 +432,13 @@ export function useCanvasGestures({
         // of an uncaught exception (the edge is simply not added).
         try {
           const verdict = validateConnection(model, candidate);
-          if (verdict.issues.length === 0) {
-            onModelChange({ ...model, relations: [...model.relations, candidate] });
+          const refused = refusal(verdict);
+          if (refused) {
+            onReject(refused.message);
           } else {
-            onReject(verdict.issues[0].message);
+            onModelChange({ ...model, relations: [...model.relations, candidate] });
+            const observed = observations(verdict);
+            if (observed.length > 0) onNotice?.(observed[0].message);
           }
         } catch (err) {
           onReject(err instanceof Error ? err.message : String(err));

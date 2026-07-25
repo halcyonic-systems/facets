@@ -23,6 +23,8 @@ interface Props {
   facts?: LensFacts | null;
   onModelChange: (m: CanvasModel) => void;
   onReject: (message: string) => void;
+  /** The soft channel for a Warning that rides along with a legal edge. */
+  onNotice?: (message: string) => void;
   selectedRelationId?: number | null;
   onSelectRelation?: (id: number) => void;
   /** The rail's armed tool — place stamps on stage click, designate on node click. */
@@ -65,6 +67,7 @@ export default function Canvas({
   facts = null,
   onModelChange,
   onReject,
+  onNotice,
   selectedRelationId = null,
   onSelectRelation,
   armed = null,
@@ -81,7 +84,7 @@ export default function Canvas({
   placeName = null,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const gestures = useCanvasGestures({ model, svgRef, onModelChange, onReject, armed, onSelectThing });
+  const gestures = useCanvasGestures({ model, svgRef, onModelChange, onReject, onNotice, armed, onSelectThing });
   const { pan, scale, connectFrom, connectPos, hoverTarget, draft } = gestures.state;
 
   // Click-to-edit container label (#116): the membrane/hull/place label writes
