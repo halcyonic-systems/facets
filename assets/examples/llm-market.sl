@@ -13,7 +13,7 @@
 
 system "LLM Market" : Concrete/Social
 
-domain "frontier and open-weight LLM models clearing supply through two demand channels, sourced from six labs"
+domain "Frontier and open-weight LLM models clearing supply through two demand channels, sourced from six labs"
 
 # ── Sources: the labs that release model capacity ────────────────────
 # Labs are producers, not participants in the clearing process itself —

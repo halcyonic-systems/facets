@@ -15,7 +15,7 @@
 # set: Complex → CAS → CAES
 
 system "The Human Social System" : Concrete/Social
-domain "the human social system in the Earth supra-system"
+domain "The human social system in the Earth supra-system"
 
 component "Governance" interface
 component "Work Processes" interface

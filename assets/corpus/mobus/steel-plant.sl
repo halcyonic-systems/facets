@@ -15,7 +15,7 @@
 
 system "Steel-Plant" : Concrete/Technical
 
-domain "steel manufacturing"
+domain "Steel manufacturing"
 
 # S0 as Fig. 4.14 draws it: one opaque box. Combining, because the plant's
 # transformation takes iron, coke and electric energy together and yields steel

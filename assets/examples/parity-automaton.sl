@@ -9,7 +9,7 @@
 # note: Editorial entry, not a sourced systems-science model. Authored 2026-07-24 for the DLG↔FSA thread with Andrew Penland; the seed of the #67 dynamics work. The parity automaton is a folk classic of finite-automata theory (cf. Hopcroft–Ullman, Introduction to Automata Theory, 1979); this SL is a synthetic minimal example, not a reproduction of any one figure.
 
 system "Parity Automaton" : Conceptual/Technical
-domain "parity of the number of 1s read from a binary string"
+domain "Parity of the number of 1s read from a binary string"
 
 component Even
 component Odd

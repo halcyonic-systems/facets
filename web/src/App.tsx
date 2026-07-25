@@ -1526,8 +1526,11 @@ function Workspace() {
             />
           )}
 
+          {/* No null-model empty state here: the workbench is display:none
+              whenever the home screen is open, and every path that closes the
+              home screen loads a model in the same batch. */}
           <main className={`min-h-0 flex-1 overflow-y-auto ${inspectorFocused && canvasModel ? "hidden" : ""}`}>
-            {canvasModel ? (
+            {canvasModel && (
               <KernelErrorBoundary resetKeys={[canvasModel, demo?.key ?? "import"]}>
                 <div className="flex min-h-full flex-col p-4">
                   {/* Canvas owns the viewport — fills the region (no more
@@ -1926,28 +1929,12 @@ function Workspace() {
                       <main>, below), so the canvas keeps the full viewport. */}
                 </div>
               </KernelErrorBoundary>
-            ) : (
-              <div className="flex h-full flex-col items-center justify-center gap-3 p-6">
-                <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                  Open a demo or a model file (File → Open…) to begin.
-                </p>
-                {!slOpen && (
-                  <button
-                    onClick={() => setSlOpen(true)}
-                    className="rounded-full px-4 py-1.5 text-sm font-semibold"
-                    style={{ background: "var(--bg-surface)", color: "var(--text-secondary)", border: "1px solid var(--hairline)" }}
-                  >
-                    …or write SL text
-                  </button>
-                )}
-              </div>
             )}
           </main>
 
           {/* Right-edge instrument dock: Run / Formal / Audit as tabs, one
               visible at a time, full height of the work region. Only mounts once
-              a model is loaded — before that the canvas empty-state holds the
-              main region alone. */}
+              a model is loaded. */}
           {canvasModel && (
             <InspectorDock
               result={result}

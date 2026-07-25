@@ -7,13 +7,31 @@
 //      corpus tradition can never drift from its button.
 //   3. the citation line IS the examples/corpus separator: a corpus row renders
 //      its entry's citation, an example row renders none.
+//   4. a tag on a shelf row marks the EXCEPTION (carries dynamics), never the
+//      rule; a shared citation hoists to the sibling-set header.
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { HomeMenu, LibraryBrowser, MyLibraryPage, ShelfPage } from "./HomeScreen";
+import { HomeMenu, LibraryBrowser, ShelfPage, sharedCitation } from "./HomeScreen";
 import { corpusShelves, exampleShelfEntries, exampleShelves, corpusShelfEntries } from "./home";
 import { CORPUS } from "./corpus";
+import { isRunnable } from "./demos";
+import type { CorpusEntry } from "./corpus";
+import type { LibraryNode } from "./libraryTree";
 
 const noop = () => {};
+const asyncTrue = async () => true;
+const browser = (tree: LibraryNode[] = []) =>
+  renderToStaticMarkup(
+    <LibraryBrowser
+      tree={tree}
+      onBack={noop}
+      onShelf={noop}
+      onOpenFile={noop}
+      onLoad={noop}
+      onDelete={noop}
+      onRename={asyncTrue}
+    />,
+  );
 const shelfPage = (area: "examples" | "corpus", id: string) =>
   renderToStaticMarkup(
     <ShelfPage area={area} id={id} onBack={noop} onOpenExample={noop} onOpenCorpus={noop} />,
@@ -35,9 +53,7 @@ describe("home", () => {
 });
 
 describe("library browser", () => {
-  const html = renderToStaticMarkup(
-    <LibraryBrowser savedCount={3} onBack={noop} onShelf={noop} onMine={noop} onOpenFile={noop} />,
-  );
+  const html = browser();
 
   it("names both standard-library shelves and My library", () => {
     expect(html).toContain("Standard library");
@@ -57,7 +73,6 @@ describe("library browser", () => {
       expect(s.count).toBe(sets.reduce((n, x) => n + x.entries.length, 0) + loose.length);
       expect(html).toContain(s.label);
     }
-    expect(html).toContain("Saved models");
   });
 
   it("carries no traditions of its own — the corpus shelves come from the data", () => {
@@ -97,35 +112,103 @@ describe("shelf page", () => {
     const html = shelfPage("examples", exampleShelves()[0].id);
     for (const e of CORPUS) expect(html).not.toContain(escapeHtml(e.citation));
   });
+
+  // The tag marks the exception. Every shelf model is structural, so a label
+  // that says so on every row is noise; only the ones that also run are tagged.
+  it("tags the models that carry dynamics and nothing else", () => {
+    for (const shelf of exampleShelves()) {
+      const html = shelfPage("examples", shelf.id);
+      const entries = exampleShelfEntries(shelf.id);
+      expect(html).not.toContain("diagram");
+      if (entries.some(isRunnable)) expect(html).toContain("runs");
+      else expect(html).not.toContain(">runs<");
+    }
+    // …and the shelves do carry runnable models, or the claim is vacuous.
+    expect(exampleShelves().some((s) => exampleShelfEntries(s.id).some(isRunnable))).toBe(true);
+  });
+});
+
+describe("sibling-set citations", () => {
+  const entry = (title: string, citation: string): CorpusEntry => ({
+    file: `x/${title}.sl`,
+    tradition: "klir",
+    title,
+    citation,
+    teaches: "A sentence.",
+    sl: "",
+  });
+
+  it("hoists only when every member cites the same source", () => {
+    expect(sharedCitation([entry("a", "Ch. 10"), entry("b", "Ch. 10")])).toBe("Ch. 10");
+    expect(sharedCitation([entry("a", "Ch. 10"), entry("b", "Ch. 11")])).toBeNull();
+    expect(sharedCitation([entry("a", "Ch. 10")])).toBeNull();
+  });
+
+  // Derived, not hardcoded: Klir's four goal-oriented paradigms share one
+  // figure, so the shelf prints that citation once rather than four times.
+  it("prints a set's shared citation once on the shelf", () => {
+    for (const shelf of corpusShelves()) {
+      const html = shelfPage("corpus", shelf.id);
+      for (const s of corpusShelfEntries(shelf.id).sets) {
+        const shared = sharedCitation(s.entries);
+        if (!shared) continue;
+        expect(occurrences(html, escapeHtml(shared))).toBe(1);
+      }
+    }
+  });
+
+  it("keeps the per-row citation when members cite differently", () => {
+    const differing = [entry("a", "Ch. 10"), entry("b", "Ch. 11")];
+    expect(sharedCitation(differing)).toBeNull();
+    // The corpus shelves prove the fallback still renders: every loose entry
+    // (no set, so never hoisted) keeps its own citation line.
+    for (const shelf of corpusShelves()) {
+      const html = shelfPage("corpus", shelf.id);
+      for (const e of corpusShelfEntries(shelf.id).loose) {
+        expect(html).toContain(escapeHtml(e.citation));
+      }
+    }
+  });
 });
 
 describe("my library", () => {
-  it("lists saved models, or says there are none", () => {
-    const empty = renderToStaticMarkup(
-      <MyLibraryPage tree={[]} onBack={noop} onLoad={noop} onDelete={noop} onRename={async () => true} />,
-    );
-    expect(empty).toContain("no saved models yet");
-    const filled = renderToStaticMarkup(
-      <MyLibraryPage
-        tree={[
-          {
-            name: "steel plant",
-            savedAt: Date.now(),
-            missingReferents: 0,
-            children: [{ name: "boiler", savedAt: Date.now(), missingReferents: 0, children: [] }],
-          },
-        ]}
-        onBack={noop}
-        onLoad={noop}
-        onDelete={noop}
-        onRename={async () => true}
-      />,
-    );
+  it("lists saved models inline in the browser, or says there are none", () => {
+    expect(browser()).toContain("no saved models yet");
+    const filled = browser([
+      {
+        name: "steel plant",
+        savedAt: Date.now(),
+        missingReferents: 0,
+        children: [{ name: "boiler", savedAt: Date.now(), missingReferents: 0, children: [] }],
+      },
+    ]);
     expect(filled).toContain("steel plant");
     expect(filled).toContain("boiler");
     expect(filled).toContain("2 models");
+    // Inline means no drill-in: the shelf-of-one button is gone.
+    expect(filled).not.toContain("Saved models");
+    // Rename and delete came along with the list.
+    expect(filled).toContain("Rename steel plant");
+    expect(filled).toContain("Delete boiler");
+  });
+
+  it("folds a long list behind one control rather than truncating it", () => {
+    const many = Array.from({ length: 15 }, (_, i) => ({
+      name: `model ${i}`,
+      savedAt: Date.now(),
+      missingReferents: 0,
+      children: [],
+    }));
+    const html = browser(many);
+    expect(html).toContain("model 11");
+    expect(html).not.toContain("model 12");
+    expect(html).toContain("show all 15 saved models");
   });
 });
+
+function occurrences(haystack: string, needle: string): number {
+  return haystack.split(needle).length - 1;
+}
 
 // react-dom/server escapes text; compare against the same escaping.
 function escapeHtml(s: string): string {
