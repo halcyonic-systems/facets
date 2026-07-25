@@ -36,6 +36,8 @@ ORDER = [
     "klir/cellular-array-cell.sl",
     "klir/serial-binary-adder.sl",
     "klir/criminal-court.sl",
+    # Mobus — his own SL exemplar, the SOI situated in its environment
+    "mobus/steel-plant.sl",
 ]
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent / "assets" / "corpus"
