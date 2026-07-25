@@ -21,10 +21,10 @@ export const color = {
 // across lenses and themes. The hex mirrors --kind-* in index.css (kept in sync by
 // check-tokens.mjs); literal here because these feed SVG stroke/fill style objects.
 export const kind = {
-  Matter: "#5a7a4f",
-  Energy: "#b06a1f",
-  Informational: "#8a5a9c",
-  Field: "#3f6f8f",
+  Matter: "#667a3f",
+  Energy: "#b8641c",
+  Informational: "#7b4a86",
+  Field: "#3d6280",
   Unspecified: "var(--text-muted)",
 } as const;
 
