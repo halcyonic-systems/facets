@@ -4,8 +4,49 @@
 // IN the context; the LLM narrates and never re-derives structure.
 import type { Lens } from "./kernel/types";
 import type { AnalysisResponse } from "./analysis/types";
+import { isDesktop } from "./desktop";
+import { blockedOnDesktop, reasonerConfig } from "./reasoner";
 
-const GSR_URL = import.meta.env.VITE_GSR_URL ?? "http://localhost:5010";
+/** Thrown when the reasoner is off — the caller's cue to offer the enable
+ *  choice inline rather than to report a failure. */
+export class ReasonerOffError extends Error {
+  constructor() {
+    super("The reasoner is off. Turn it on in the SL pane's Co-author mode and choose where it runs.");
+    this.name = "ReasonerOffError";
+  }
+}
+
+/** The one place a reasoner request is made. Off is off; an unreachable
+ *  endpoint is named; the desktop CSP case is called by its name instead of
+ *  arriving as a bare `TypeError: Load failed`. */
+async function post(route: string, body: unknown): Promise<Record<string, unknown>> {
+  const { enabled, endpoint } = reasonerConfig();
+  if (!enabled) throw new ReasonerOffError();
+  let res: Response;
+  try {
+    res = await fetch(`${endpoint}${route}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    if (isDesktop() && blockedOnDesktop(endpoint)) {
+      throw new Error(
+        `Could not reach the reasoner at ${endpoint} — the desktop app is not permitted to call that address. ` +
+          `The bundle's allowed list is fixed at build time; use one of the listed endpoints, or run this endpoint in the browser build.`,
+      );
+    }
+    throw new Error(
+      `Could not reach the reasoner at ${endpoint}. Check that it is running and that the address is right.`,
+    );
+  }
+  const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!res.ok || !data || data.error) {
+    const msg = (data?.error as string) ?? `GSR ${route} failed (${res.status})`;
+    throw new Error(data?.raw ? `${msg}\n\n${String(data.raw)}` : msg);
+  }
+  return data;
+}
 
 export async function analyzeModel(req: {
   context: string;
@@ -14,22 +55,13 @@ export async function analyzeModel(req: {
   model?: string;
   domain?: string;
 }): Promise<{ response: AnalysisResponse; model: string }> {
-  const res = await fetch(`${GSR_URL}/analyze`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      context: req.context,
-      question: req.question,
-      lens: req.lens.toLowerCase(),
-      model: req.model ?? "", // "" = local default; "claude-…" = frontier opt-in
-      domain: req.domain,
-    }),
+  const data = await post("/analyze", {
+    context: req.context,
+    question: req.question,
+    lens: req.lens.toLowerCase(),
+    model: req.model ?? "", // "" = local default; "claude-…" = frontier opt-in
+    domain: req.domain,
   });
-  const data = await res.json().catch(() => null);
-  if (!res.ok || !data || data.error) {
-    const msg = data?.error ?? `GSR /analyze failed (${res.status})`;
-    throw new Error(data?.raw ? `${msg}\n\n${data.raw}` : msg);
-  }
   return { response: data.response as AnalysisResponse, model: String(data.model ?? "") };
 }
 
@@ -47,21 +79,12 @@ export async function authorSl(req: {
   priorSl?: string;
   errors?: string;
 }): Promise<{ sl: string; model: string }> {
-  const res = await fetch(`${GSR_URL}/author-sl`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      description: req.description,
-      lens: req.lens ? req.lens.toLowerCase() : undefined,
-      model: req.model ?? "", // "" = local default; "claude-…" = frontier opt-in
-      prior_sl: req.priorSl,
-      errors: req.errors,
-    }),
+  const data = await post("/author-sl", {
+    description: req.description,
+    lens: req.lens ? req.lens.toLowerCase() : undefined,
+    model: req.model ?? "", // "" = local default; "claude-…" = frontier opt-in
+    prior_sl: req.priorSl,
+    errors: req.errors,
   });
-  const data = await res.json().catch(() => null);
-  if (!res.ok || !data || data.error) {
-    const msg = data?.error ?? `GSR /author-sl failed (${res.status})`;
-    throw new Error(data?.raw ? `${msg}\n\n${data.raw}` : msg);
-  }
   return { sl: String(data.sl ?? ""), model: String(data.model ?? "") };
 }
