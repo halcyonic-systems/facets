@@ -786,8 +786,16 @@ pub fn decompose_thing(
 /// being half-drawn, the #212 defect again with a different check. It is
 /// audit-time only. Nothing is lost: `analyze` runs the full set, so Review
 /// still shows it.
+///
+/// Its #225 sibling — a declared `receives_from`/`exports_to` no interaction
+/// records — is exempt for the same reason. The projection derives the
+/// declaration from the bonds, so it cannot fire on a canvas model at all; on
+/// any path that writes the declaration directly the declaration precedes the
+/// flow, and refusing the drag would be #212 a fourth time.
 fn belongs_at_the_gesture(issue: &ValidationIssue) -> bool {
-    if bert_core::validate::is_interface_flow_refusal(issue) {
+    if bert_core::validate::is_interface_flow_refusal(issue)
+        || bert_core::validate::is_interface_declaration_refusal(issue)
+    {
         return false;
     }
     issue.severity == Severity::Error || !issue.location.starts_with("systems")
@@ -1216,6 +1224,12 @@ mod tests {
             subject: None,
         };
         assert!(!belongs_at_the_gesture(&at("systems[0].boundary.interfaces[0]")));
+        assert!(!belongs_at_the_gesture(&at(
+            "systems[0].boundary.interfaces[0].exports_to"
+        )));
+        assert!(!belongs_at_the_gesture(&at(
+            "systems[0].boundary.interfaces[0].receives_from"
+        )));
         assert!(belongs_at_the_gesture(&at("systems[0].agent.stock_unit")));
         assert!(belongs_at_the_gesture(&at(
             "systems[0].boundary.interfaces[0].info.id"
