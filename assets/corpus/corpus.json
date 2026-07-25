@@ -108,6 +108,38 @@
       "title": "Students in a course",
       "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 2, Table 2.1 and Table 2.2, Fig. 2.2a",
       "teaches": "An equivalence relation on a named set, given by Klir as a set, as a matrix, and as a node-edge diagram — the same system in three registers, with the relation partitioning the set into equivalence classes."
+    },
+    {
+      "file": "mobus/digital-computing-system.sl",
+      "tradition": "mobus",
+      "title": "A digital computing system",
+      "citation": "George Mobus, Systems Science: Theory, Analysis, Modeling, and Design (2022), Ch. 7 §7.2.3–§7.2.3.1, Figs. 7.2 and 7.3",
+      "teaches": "The first rung of the chapter's ladder — a MERELY COMPLEX system, analysed only as far as level 1. What the reader should notice is how little the first pass contains and how much it already fixes: the boundary, the four environmental entities Mobus names (wall socket, file device, users, heat), the direction of every crossing flow, and the three internal components (hardware, software, and the firmware that couples them). Nothing here adapts or evolves; that is the point of starting here.",
+      "set": "Complex → CAS → CAES"
+    },
+    {
+      "file": "mobus/typical-neuron.sl",
+      "tradition": "mobus",
+      "title": "A \"typical\" neuron",
+      "citation": "George Mobus, Systems Science: Theory, Analysis, Modeling, and Design (2022), Ch. 7 §7.3.2–§7.3.3.1, Figs. 7.7 and 7.8",
+      "teaches": "The second rung — a COMPLEX ADAPTIVE system at the same level 1 as the computer, and the diff against it is the lesson. The composition is no larger, but the environment is now made of things of the SAME KIND as the SOI (other neurons are its sources and sinks), and one flow runs backwards: the membrane feeds its temporal correlation back to the synapses, which is where adaptation lives. A synapse's response strength \"depends on the history of activations at each one\" — history, in a structural model, shows up only as that returning edge.",
+      "set": "Complex → CAS → CAES"
+    },
+    {
+      "file": "mobus/mammalian-brain.sl",
+      "tradition": "mobus",
+      "title": "The mammalian brain — the afferent visual path",
+      "citation": "George Mobus, Systems Science: Theory, Analysis, Modeling, and Design (2022), Ch. 7 §7.4.4–§7.4.5, Figs. 7.12 and 7.13",
+      "teaches": "The third rung — a COMPLEX ADAPTIVE AND EVOLVABLE system, and the one entry in this set that does not close. Mobus walks a single message path into the brain and stops; the model stops with him, and the last cortical stage is left hanging. What the reader should notice is that the boundary is the hard part here, not the components: the brain is \"a system that has a seemingly clear physical boundary but in fact is so highly porous and fuzzy that identification of real boundaries is a major challenge\" (§7.1), and it is footnote 8, not any figure, that finally fixes it — brain proper is the SOI, the rest of the CNS and all of the PNS are sources and sinks.",
+      "set": "Complex → CAS → CAES"
+    },
+    {
+      "file": "mobus/human-social-system.sl",
+      "tradition": "mobus",
+      "title": "The human social system in the Ecos",
+      "citation": "George Mobus, Systems Science: Theory, Analysis, Modeling, and Design (2022), Ch. 7 §7.6.3, Fig. 7.17",
+      "teaches": "The last rung — the whole human enterprise as one SOI inside the Earth, and the only entry in the set whose lesson is an ABSENCE. Resources enter, wastes and heat leave, governance reads the environment and directs the work processes. What is missing is a product: \"Notice what is not shown in the figure. There is no 'product' or 'service' output from the HSS returning something of value back to entities in the environment.\" Every subsystem of a supra-system owes it a function; open this model and count the outward flows that are not waste. There are none, and that is Mobus's finding, not a gap in the drawing.",
+      "set": "Complex → CAS → CAES"
     }
   ]
 }

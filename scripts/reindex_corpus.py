@@ -36,6 +36,12 @@ ORDER = [
     "klir/cellular-array-cell.sl",
     "klir/serial-binary-adder.sl",
     "klir/criminal-court.sl",
+    # Mobus — ch. 7's ladder of example systems, in his order: merely complex,
+    # then complex adaptive, then complex adaptive and evolvable
+    "mobus/digital-computing-system.sl",
+    "mobus/typical-neuron.sl",
+    "mobus/mammalian-brain.sl",
+    "mobus/human-social-system.sl",
 ]
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent / "assets" / "corpus"
