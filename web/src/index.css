@@ -13,36 +13,36 @@
   color-scheme: light dark;
 
   /* surface + text — cool, faintly indigo, not flat grey */
-  --bg-primary: #f5f5fb;
+  --bg-primary: #fbfbfc;
   --bg-secondary: #ffffff;
-  --bg-surface: #ececf6;
-  --stage-from: #f6f5fd;
-  --stage-to: #eeedf8;
-  --text-primary: #1a1a2e;
-  --text-secondary: #4a4a6a;
-  --text-muted: #8888a8;
+  --bg-surface: #eeeff1;
+  --stage-from: #fdfdfe;
+  --stage-to: #f4f5f7;
+  --text-primary: #16181c;
+  --text-secondary: #464a51;
+  --text-muted: #6d7178;
   /* ink on a filled accent/verdict surface — constant across themes (the fill
      itself carries the theme; the ink on it stays white in both) */
   --text-on-accent: #ffffff;
 
   /* accents — teal leads; indigo + slate support; red/amber for verdicts */
-  --accent: #0e8a8a;
-  --accent-strong: #0a6d6d;
-  --accent-soft: #d9efef;
-  --accent-indigo: #5b53c6;
-  --accent-slate: #55617a;
-  --verdict-error: #d1435b;
-  --verdict-warning: #c07b1e;
-  --verdict-ok: #128a5a;
+  --accent: #2a2f36;
+  --accent-strong: #14181d;
+  --accent-soft: #e6e8eb;
+  --accent-indigo: #4e4d63;
+  --accent-slate: #626973;
+  --verdict-error: #c0271f;
+  --verdict-warning: #96680a;
+  --verdict-ok: #17724a;
 
   /* reserved KIND channel — substance identity (Matter / Energy / Informational
      / Field). Contractual: means substance type, never decorative, and constant
      across lenses AND themes (so no dark override — substance color must not
      shift with the theme). Consumed via tokens.ts `kind` → canvas KIND_COLOR. */
-  --kind-matter: #5a7a4f;
-  --kind-energy: #b06a1f;
-  --kind-informational: #8a5a9c;
-  --kind-field: #3f6f8f;
+  --kind-matter: #4c7d3e;
+  --kind-energy: #c26a10;
+  --kind-informational: #7d47a3;
+  --kind-field: #1f6ba8;
 
   /* per-lens seam — the semantic names the ACTIVE lens redefines (design-
      system-draft §2, lemonaid's data-theme pattern). Set by data-lens on the
@@ -55,8 +55,8 @@
   --lens-accent-soft: var(--accent-soft);
   --lens-node-stroke: var(--accent-slate);
 
-  --border: #e4e1ec;
-  --hairline: #eeecf3;
+  --border: #e2e4e8;
+  --hairline: #eef0f2;
 
   --radius-sm: 4px;
   --radius-md: 8px;
@@ -66,8 +66,8 @@
 
   /* Instrument register (#56): panels sit flat on a hairline, not floating
      on a soft web-card shadow. Base is a near-flat 1px lift; hover stays subtle. */
-  --shadow-card: 0 1px 2px rgba(26, 26, 46, 0.05);
-  --shadow-card-hover: 0 2px 8px rgba(26, 26, 46, 0.09);
+  --shadow-card: 0 1px 2px rgba(22, 24, 28, 0.05);
+  --shadow-card-hover: 0 2px 8px rgba(22, 24, 28, 0.09);
 
   --font-display: "Cormorant Garamond", Georgia, serif;
   --font-body: "Inter", system-ui, -apple-system, sans-serif;
@@ -78,26 +78,26 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-primary: #12121c;
-    --bg-secondary: #1a1a28;
-    --bg-surface: #21212f;
-    --stage-from: #16161f;
-    --stage-to: #101019;
-    --text-primary: #ecebf5;
-    --text-secondary: #b4b3c8;
-    --text-muted: #7c7b93;
+    --bg-primary: #111214;
+    --bg-secondary: #191b1e;
+    --bg-surface: #212327;
+    --stage-from: #15161a;
+    --stage-to: #0e0f11;
+    --text-primary: #f3f4f6;
+    --text-secondary: #b9bcc2;
+    --text-muted: #82868d;
 
-    --accent: #2bc4c4;
-    --accent-strong: #4dd6d6;
-    --accent-soft: #123232;
-    --accent-indigo: #8f88e6;
-    --accent-slate: #8a95af;
-    --verdict-error: #f0708a;
-    --verdict-warning: #e0a552;
-    --verdict-ok: #4fc48c;
+    --accent: #565d66;
+    --accent-strong: #6e7681;
+    --accent-soft: #23262a;
+    --accent-indigo: #9d9ab8;
+    --accent-slate: #949aa3;
+    --verdict-error: #f0716a;
+    --verdict-warning: #dda242;
+    --verdict-ok: #4cc08a;
 
-    --border: #2c2c3e;
-    --hairline: #24243360;
+    --border: #2c2e33;
+    --hairline: #23252960;
 
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.25);
     --shadow-card-hover: 0 2px 10px rgba(0, 0, 0, 0.34);
