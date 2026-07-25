@@ -9,10 +9,10 @@
         "doc": "docs/glossary.md#precondition"
       },
       {
-        "severity": "Warning",
-        "location": "things[2]",
-        "message": "'Tank' declares an interface but has no boundary-crossing flow — it may be internal",
-        "suggestion": "Route a flow across the boundary through this component, or remove the interface designation if it is internal",
+        "severity": "Error",
+        "location": "systems[0].boundary.interfaces[0]",
+        "message": "interface 'Tank' carries no boundary-crossing flow — Mobus defines an interface as a component that transports a flow across the boundary, so one that transports nothing is a mislabelled component (Lean `MobusSystem.interfaces_carry_flow`)",
+        "suggestion": "Draw the flow this interface gates between it and an environmental entity, or drop the interface designation",
         "doc": "docs/language/terminology-concordance.md#9-interface"
       }
     ]

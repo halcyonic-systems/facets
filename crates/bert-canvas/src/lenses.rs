@@ -720,7 +720,6 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
     // not; assert it here, over the port directions only this face computes.
     if lens == Lens::Mobus {
         check_mobus_openness(&facts, &mut validation.issues);
-        check_flowless_interfaces(model, &facts, &p.thing_ids, &mut validation.issues);
     }
 
     // Kernel subject → canvas element, via the projection's id maps reversed.
@@ -822,42 +821,6 @@ fn check_mobus_openness(facts: &LensFacts, issues: &mut Vec<ValidationIssue>) {
             ),
             doc: Some(bert_core::validate::doc::OPENNESS.to_string()),
             subject: None,
-        });
-    }
-}
-
-/// A designated interface with no port (flowless: authored ∖ flow-crossing,
-/// bert-lenses#180) carries no boundary coupling — I is individuated by the
-/// flow it gates (Fig. 4.9), so the designation is likely a mismarked
-/// component, not a real interface. Warning, not error: it's a legitimate
-/// authoring intermediate (the boundary accretes flow by flow).
-fn check_flowless_interfaces(
-    model: &CanvasModel,
-    facts: &LensFacts,
-    thing_ids: &HashMap<u64, Id>,
-    issues: &mut Vec<ValidationIssue>,
-) {
-    for &id in &facts.authored_interface_thing_ids {
-        if facts.ports.iter().any(|p| p.component == id) {
-            continue;
-        }
-        let Some(thing) = model.things.iter().find(|t| t.id == id) else {
-            continue;
-        };
-        issues.push(ValidationIssue {
-            severity: Severity::Warning,
-            location: format!("things[{id}]"),
-            message: format!(
-                "'{}' declares an interface but has no boundary-crossing flow — it may be internal",
-                thing.name
-            ),
-            suggestion: Some(
-                "Route a flow across the boundary through this component, or remove the \
-                 interface designation if it is internal"
-                    .to_string(),
-            ),
-            doc: Some(bert_core::validate::doc::INTERFACE.to_string()),
-            subject: thing_ids.get(&id).cloned(),
         });
     }
 }
@@ -1529,12 +1492,13 @@ mod tests {
         }
     }
 
-    /// Law (#180): a component designated `interface` with no port (authored ∖
-    /// flow-crossing) is a fixable warning under Mobus, navigable to the
-    /// designated thing — and silent under Klir/Bunge, which have no interface
-    /// concept.
+    /// Law (#180, tightened by #213): a component designated `interface` with
+    /// no port (authored ∖ flow-crossing) is REFUSED under Mobus, navigable to
+    /// the designated thing — and silent under Klir/Bunge, whose modes never run
+    /// the check. The rating is the kernel's now, from SSF #31's
+    /// `interfaces_carry_flow`; the lens no longer carries a parallel warning.
     #[test]
-    fn mobus_warns_on_flowless_interface() {
+    fn mobus_refuses_a_flowless_interface() {
         let mut a = thing(1, "Thermostat", Role::Component);
         a.interface = true;
         let m = model(
@@ -1558,7 +1522,21 @@ mod tests {
             .iter()
             .position(|i| i.message.contains("Thermostat") && i.message.contains("no boundary-crossing flow"));
         assert!(hit.is_some(), "Mobus flags the flowless interface: {:?}", mobus.validation.issues);
-        assert!(!mobus.validation.has_errors(), "warning, not error");
+        assert_eq!(
+            mobus.validation.issues[hit.unwrap()].severity,
+            Severity::Error,
+            "a refusal, not an observation"
+        );
+        assert_eq!(
+            mobus
+                .validation
+                .issues
+                .iter()
+                .filter(|i| i.message.contains("no boundary-crossing flow"))
+                .count(),
+            1,
+            "one finding, reported once — the lens-level duplicate is gone"
+        );
         assert_eq!(
             mobus.issue_targets[hit.unwrap()].thing,
             Some(1),

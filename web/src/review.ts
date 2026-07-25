@@ -21,7 +21,7 @@ export const MODE_SCOPE: Record<Lens, string> = {
   Bunge:
     "Structural mode checks bonding only — whether two distinct components are bonded at all. It says nothing about dead ends, reachability, or stock units.",
   Mobus:
-    "Operational mode checks self-loops, dead ends, reachability, and stock dimensions, plus openness and flowless interfaces.",
+    "Operational mode checks self-loops, dead ends, reachability, stock dimensions, and that every interface carries a boundary-crossing flow, plus openness.",
 };
 
 /** The edge noun each tradition uses for what the canvas stores as a relation. */

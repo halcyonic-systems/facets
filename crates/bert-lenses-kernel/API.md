@@ -180,7 +180,7 @@ root system's boundary (previously hardcoded 0.0) and `to_canvas` restores them.
 `Thing` gains one serde-defaulted field and `LensFacts` one additive list
 (#51 slice 3, wire-compatible):
 ```ts
-type Thing = { ..., interface?: boolean }  // authored member of I (I ⊆ C; flowless well-formed)
+type Thing = { ..., interface?: boolean }  // authored member of I (I ⊆ C; flowless refuses at Operational)
 type LensFacts = { ..., authored_interface_thing_ids: number[] }
 ```
 A designated component projects as an `Interface` entry on the ROOT membrane,
@@ -188,6 +188,9 @@ attached via its own `boundary.parent_interface`; crossing flows at designated
 components carry `source_interface`/`sink_interface`. Effective I =
 `boundary_thing_ids ∪ authored_interface_thing_ids`; `describe`'s Mobus
 `b_interfaces` reports authored-flowless members with a "(flowless)" suffix.
+A flowless member is an Error at `Mode::Operational`/`Full`
+(`interfaces_carry_flow`, SSF #31) — `validate_connection` never reports it, so
+stamping before drawing the crossing flow does not block the gesture.
 
 `CanvasAnalysis` gains one additive field (#51 slice 3, wire-compatible):
 ```ts

@@ -120,9 +120,10 @@ pub struct Thing {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub primitive: Option<ProcessPrimitive>,
     /// Authored interface designation — this component is a member of the root
-    /// membrane's I (I ⊆ C; a flowless interface is well-formed, Boundary.lean /
-    /// Tuple.lean: no coverage constraint from flows onto interfaces). Ignored
-    /// on env things (their internals are opaque, §4.3.3.2.2).
+    /// membrane's I (I ⊆ C, Boundary.lean / Tuple.lean). A flowless designation
+    /// is authorable, and refused at Operational: `Tuple.lean` gained the
+    /// coverage constraint from interfaces onto flows in SSF #31. Ignored on env
+    /// things (their internals are opaque, §4.3.3.2.2).
     #[serde(default)]
     pub interface: bool,
     /// The child model this component decomposes into, by reference (SL's
@@ -462,9 +463,10 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
     // Authored interface designation (I ⊆ C): each designated component adds an
     // Interface entry to the ROOT membrane and attaches to it via its own
     // boundary.parent_interface (Mobus: an interface IS a subsystem r = (S, φ)).
-    // Flowless entries are well-formed — Tuple.lean carries no coverage
-    // constraint from flows onto interfaces; validate's orphan-interface check
-    // stays a Warning ("nothing flows"), never an Error.
+    // A flowless entry projects, but no longer validates: SSF #31 added the
+    // converse coverage constraint (every interface carries a boundary-crossing
+    // flow), so `check_interfaces_carry_flow` refuses it at Operational. The
+    // projection stays faithful to what was authored and lets the kernel judge.
     let env_things: HashSet<u64> = model
         .things
         .iter()
@@ -775,7 +777,19 @@ pub fn decompose_thing(
 /// `interactions[i]` or `mode/…` (self-loops, duplicate edges, the Bunge
 /// bond). Nothing is re-tagged; this only reads the coordinate and the rating
 /// the check already wrote.
+///
+/// One refusal is exempt, and the exemption is the point of #213: the
+/// flowless-interface Error (`interfaces_carry_flow`, SSF #31) is a claim about
+/// a designation, not about an edge. The stamp is made BEFORE the crossing flow
+/// is drawn, so every model passes through the refused state on the way to a
+/// legal one — carrying it to the gesture would refuse a half-drawn model for
+/// being half-drawn, the #212 defect again with a different check. It is
+/// audit-time only. Nothing is lost: `analyze` runs the full set, so Review
+/// still shows it.
 fn belongs_at_the_gesture(issue: &ValidationIssue) -> bool {
+    if bert_core::validate::is_interface_flow_refusal(issue) {
+        return false;
+    }
     issue.severity == Severity::Error || !issue.location.starts_with("systems")
 }
 
@@ -1070,6 +1084,103 @@ mod tests {
             "interactions[0]"
         )));
         assert!(belongs_at_the_gesture(&at(Severity::Error, "mode/Structural")));
+    }
+
+    /// Law (#213 / SSF #31): a component stamped `interface` with no crossing
+    /// flow is REFUSED at Operational. The refusal is the kernel's, addressed to
+    /// the interface's own path, and it names the designated component.
+    #[test]
+    fn flowless_interface_is_refused_at_operational() {
+        let mut a = thing(1, "Gate", Role::Component);
+        a.interface = true;
+        let model = CanvasModel {
+            lens: Lens::Mobus,
+            model_id: None,
+            things: vec![a, thing(2, "Core", Role::Component)],
+            relations: vec![bond(10, 1, 2)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            time_unit: None,
+        };
+        let world = project(&model);
+        let report = validate_mode(&world, bert_core::Mode::Operational);
+        let hit = report
+            .issues
+            .iter()
+            .find(|i| bert_core::validate::is_interface_flow_refusal(i))
+            .expect("Operational refuses the flowless interface");
+        assert_eq!(hit.severity, Severity::Error);
+        assert_eq!(hit.location, "systems[0].boundary.interfaces[0]");
+        assert!(hit.message.contains("Gate"), "names the designation: {hit:?}");
+
+        // Structural is Bunge's mode and Core is Klir's; neither runs the check.
+        for quiet in [bert_core::Mode::Core, bert_core::Mode::Structural] {
+            assert!(
+                !validate_mode(&world, quiet)
+                    .issues
+                    .iter()
+                    .any(bert_core::validate::is_interface_flow_refusal),
+                "{quiet:?} must be unaffected"
+            );
+        }
+    }
+
+    /// Law (#213, the load-bearing half): that refusal never reaches the
+    /// connection gesture. The stamp precedes the flow, so every model passes
+    /// through the refused state on the way to a legal one — blocking here would
+    /// refuse a half-drawn model for being half-drawn (#212). The edge lands;
+    /// the audit still carries the refusal.
+    #[test]
+    fn flowless_interface_refusal_never_blocks_a_connection() {
+        let mut a = thing(1, "Gate", Role::Component);
+        a.interface = true;
+        let model = CanvasModel {
+            lens: Lens::Mobus,
+            model_id: None,
+            things: vec![a, thing(2, "Core", Role::Component)],
+            relations: vec![],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            time_unit: None,
+        };
+        let issues = validate_connection(&model, &bond(10, 1, 2));
+        assert!(
+            issues.is_empty(),
+            "stamping then connecting must still connect: {issues:?}"
+        );
+
+        let mut drawn = model.clone();
+        drawn.relations.push(bond(10, 1, 2));
+        assert!(
+            crate::lenses::analyze(&drawn, Lens::Mobus)
+                .validation
+                .issues
+                .iter()
+                .any(bert_core::validate::is_interface_flow_refusal),
+            "the audit keeps the refusal the gesture deferred"
+        );
+    }
+
+    /// Law: the deferral is a property of the check, not of the dedup that
+    /// happens to hide it — `belongs_at_the_gesture` drops the refusal outright,
+    /// while every other node-located Error stays.
+    #[test]
+    fn the_interface_refusal_is_dropped_at_the_gesture_by_rule() {
+        let at = |location: &str| ValidationIssue {
+            severity: Severity::Error,
+            location: location.to_string(),
+            message: String::new(),
+            suggestion: None,
+            doc: None,
+            subject: None,
+        };
+        assert!(!belongs_at_the_gesture(&at("systems[0].boundary.interfaces[0]")));
+        assert!(belongs_at_the_gesture(&at("systems[0].agent.stock_unit")));
+        assert!(belongs_at_the_gesture(&at(
+            "systems[0].boundary.interfaces[0].info.id"
+        )));
     }
 
     /// Law: `to_canvas` reads a real WorldModel back faithfully (roles,
