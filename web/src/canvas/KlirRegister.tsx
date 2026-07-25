@@ -905,7 +905,7 @@ export function MaskTable({
 const editorBox = {
   border: "1px solid var(--lens-accent)",
   background: "var(--bg-secondary)",
-  borderRadius: "var(--radius-lg)",
+  borderRadius: "var(--radius-md)",
   boxShadow: "var(--shadow-card-hover)",
 } as const;
 
@@ -927,7 +927,7 @@ function ThingEditor({
   onClose: () => void;
 }) {
   return (
-    <div className="w-64 rounded-xl p-3" style={editorBox}>
+    <div className="w-64 rounded-md p-3" style={editorBox}>
       <Title>
         thing&nbsp;&ldquo;{thing.name || "unnamed"}&rdquo;
       </Title>
@@ -970,7 +970,7 @@ function RelationEditor({
 }) {
   const directed = relation.klir_directed === true;
   return (
-    <div className="w-72 rounded-xl p-3" style={editorBox}>
+    <div className="w-72 rounded-md p-3" style={editorBox}>
       <Title>
         relation r{sigIndex + 1} <span style={{ fontFamily: "var(--font-mono)", fontWeight: 400 }}>= {tuple}</span>
       </Title>

@@ -51,7 +51,7 @@ export function EdgePopover({
 }) {
   return (
     <div
-      className="absolute z-10 -translate-x-1/2 rounded-xl p-3"
+      className="absolute z-10 -translate-x-1/2 rounded-md p-3"
       style={{
         left: anchor.x,
         top: anchor.y + 20,
@@ -59,7 +59,7 @@ export function EdgePopover({
         background: "var(--bg-secondary)",
         border: "1px solid var(--lens-accent)",
         boxShadow: "var(--shadow-card-hover)",
-        borderRadius: "var(--radius-lg)",
+        borderRadius: "var(--radius-md)",
       }}
     >
       {/* Flow name — shared across lenses. A flow's name is its identity (and the

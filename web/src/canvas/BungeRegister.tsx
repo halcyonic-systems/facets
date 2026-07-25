@@ -342,7 +342,7 @@ export function BungeRegister({
           />
           {selectedRelation && (
             <div ref={relationEdRef} className="mt-2 pl-6">
-              <div className="w-72 rounded-xl p-3" style={editorBox}>
+              <div className="w-72 rounded-md p-3" style={editorBox}>
                 {/* The SAME editor the graph's popover uses (one set of verbs):
                     name, kind, bond ⇄ mere, reverse — plus the kernel's
                     channel line. */}
@@ -450,7 +450,7 @@ function ThingSection({
 const editorBox = {
   border: "1px solid var(--lens-accent)",
   background: "var(--bg-secondary)",
-  borderRadius: "var(--radius-lg)",
+  borderRadius: "var(--radius-md)",
   boxShadow: "var(--shadow-card-hover)",
 } as const;
 
@@ -476,7 +476,7 @@ function InlineThingEditor({
   const isComponent = thing.role === "Component";
   return (
     <div ref={refEl} className="mb-2 mt-1 pl-6">
-      <div className="w-72 rounded-xl p-3" style={editorBox}>
+      <div className="w-72 rounded-md p-3" style={editorBox}>
         <Title>
           {isComponent ? "component" : "environment thing"}&nbsp;&ldquo;{thing.name || "unnamed"}&rdquo;
         </Title>

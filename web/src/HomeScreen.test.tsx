@@ -93,7 +93,24 @@ describe("shelf page", () => {
     const entries = exampleShelfEntries(shelf.id);
     expect(entries.length).toBeGreaterThan(0);
     for (const d of entries) expect(html).toContain(d.title);
-    expect(html).toContain(`${entries.length} model`);
+    // The count is the masthead's one number: numeral and unit are separate
+    // cells of the band, not one "N models" string.
+    expect(html).toContain(`>${entries.length}<`);
+    expect(html).toContain(`model${entries.length === 1 ? "" : "s"}<`);
+  });
+
+  // A model's name is data. The ledger sets it in small caps for an even
+  // column, but never text-transform: `hal` is named `hal`.
+  it("keeps a model's authored case", () => {
+    const shelf = exampleShelves().find((s) =>
+      exampleShelfEntries(s.id).some((d) => d.title === "hal"),
+    );
+    expect(shelf).toBeDefined();
+    const html = shelfPage("examples", shelf!.id);
+    expect(html).toContain(">hal<");
+    expect(html).not.toContain("HAL");
+    expect(html).not.toContain("uppercase\" style=\"font-variant-caps");
+    expect(html).not.toContain("text-transform");
   });
 
   it("renders a citation on every corpus row", () => {

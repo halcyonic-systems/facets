@@ -13,7 +13,13 @@
 // example is ours, a corpus entry is an author's. The CITATION LINE is what
 // tells them apart on the page — identical row layout, corpus rows render a
 // citation and example rows do not.
-import { useState, useRef, type ReactNode } from "react";
+//
+// Visual language: docs/design/visual-language.md. Every page with an identity
+// opens on a FILLED band that carries it; below the band the page is modular
+// blocks of ledger rows, straight-edged, separated by real rules. Names keep
+// their authored case — small caps, never text-transform (the model is named
+// `hal`, not `HAL`).
+import { useState, useRef, type CSSProperties, type ReactNode } from "react";
 import { isRunnable, type Demo } from "./demos";
 import { firstSentence, type CorpusEntry } from "./corpus";
 import type { LibraryNode } from "./libraryTree";
@@ -22,6 +28,7 @@ import {
   corpusShelves,
   exampleShelfEntries,
   exampleShelves,
+  standardLibraryCount,
   CORPUS_NOTE,
   EXAMPLES_NOTE,
   type Shelf,
@@ -53,21 +60,11 @@ export function HomeScreen(props: HomeProps) {
   return (
     <div
       className="flex min-h-0 flex-1 flex-col overflow-y-auto"
-      style={{
-        backgroundColor: "var(--bg-primary)",
-        backgroundImage: "radial-gradient(120% 80% at 50% -10%, var(--stage-from), transparent 60%)",
-      }}
+      style={{ backgroundColor: "var(--bg-primary)" }}
     >
-      {/* Home is a short block and centers in the viewport; the library and the
-          shelves are LISTS, so they take a wider column than a reading measure
-          and start near the top. Prose inside a row keeps its own max width. */}
-      <div
-        className={
-          route.view === "home"
-            ? "mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-6 py-16"
-            : "mx-auto w-full max-w-5xl px-6 pb-20 pt-14"
-        }
-      >
+      {/* All three levels are full-bleed: the masthead band runs edge to edge,
+          and the reading column is re-established under it by Column. */}
+      <div className="w-full flex-1">
         {route.view === "home" && (
           <HomeMenu onCreate={props.onCreate} onOpenLibrary={() => setRoute({ view: "library" })} />
         )}
@@ -92,13 +89,15 @@ export function HomeScreen(props: HomeProps) {
           />
         )}
         {props.onClose && (
-          <button
-            onClick={props.onClose}
-            className="mt-12 text-xs"
-            style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-          >
-            ‹ back to the model on the canvas
-          </button>
+          <Column className="pb-10">
+            <button
+              onClick={props.onClose}
+              className="text-xs"
+              style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+            >
+              ‹ back to the model on the canvas
+            </button>
+          </Column>
         )}
       </div>
     </div>
@@ -116,28 +115,110 @@ function countLibrary(tree: LibraryNode[]): number {
 }
 
 // ---------------------------------------------------------------------------
-// Shared page furniture. Hairlines and letterspaced small caps, no cards.
+// The language: band, column, block, ledger row. Straight edges, real rules,
+// colour with surface area.
 // ---------------------------------------------------------------------------
 
-function SectionLabel({ children }: { children: ReactNode }) {
+/** The reading column each block re-establishes under the full-bleed band. */
+function Column({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <div className={`mx-auto w-full max-w-5xl px-6 ${className}`}>{children}</div>;
+}
+
+/** A name as this instrument sets names: letterspaced small caps with the
+ *  AUTHORED case intact. text-transform would print `hal` as `HAL` and lie
+ *  about the model's name; small caps buys the same even ledger colour without
+ *  touching the string. */
+const nameStyle: CSSProperties = {
+  fontVariantCaps: "small-caps",
+  letterSpacing: "0.06em",
+  color: "var(--text-primary)",
+};
+
+/** The identity device. A page with a name opens on a filled accent band that
+ *  carries it — back link, eyebrow, title, and the page's one number — instead
+ *  of a line of dark text floating on the page ground. */
+function Masthead({
+  eyebrow,
+  title,
+  lede,
+  note,
+  stat,
+  statLabel,
+  back,
+}: {
+  eyebrow: string;
+  title: ReactNode;
+  lede?: string;
+  note?: string;
+  stat?: number;
+  statLabel?: string;
+  back?: { label: string; onClick: () => void };
+}) {
   return (
-    <div
-      className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em]"
-      style={{ color: "var(--text-muted)" }}
-    >
-      {children}
+    <div className="w-full px-6 pb-8 pt-8" style={{ background: "var(--accent-strong)" }}>
+      <div className="mx-auto max-w-5xl">
+        {back && (
+          <button
+            onClick={back.onClick}
+            className="mb-7 text-[11px] uppercase tracking-[0.2em]"
+            style={{ fontFamily: "var(--font-mono)", color: "var(--accent-soft)" }}
+          >
+            ‹ {back.label}
+          </button>
+        )}
+        <div className="flex items-end justify-between gap-8">
+          <div>
+            <div
+              className="text-[10px] font-semibold uppercase tracking-[0.3em]"
+              style={{ color: "var(--accent-soft)" }}
+            >
+              {eyebrow}
+            </div>
+            <h1
+              className="mt-2 text-4xl font-semibold tracking-tight"
+              style={{ color: "var(--text-on-accent)" }}
+            >
+              {title}
+            </h1>
+          </div>
+          {stat !== undefined && (
+            <div className="shrink-0 text-right">
+              <div className="text-3xl tabular" style={{ color: "var(--text-on-accent)" }}>
+                {stat}
+              </div>
+              <div className="text-[10px] uppercase tracking-[0.24em]" style={{ color: "var(--accent-soft)" }}>
+                {statLabel}
+              </div>
+            </div>
+          )}
+        </div>
+        {lede && (
+          <p className="mt-4 max-w-lg text-sm" style={{ color: "var(--accent-soft)" }}>
+            {lede}
+            {note ? ` — ${note}` : ""}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
 
-function PageTitle({ children, count }: { children: ReactNode; count?: string }) {
+/** A block's header: a tinted strip, not a floating label. What follows is one
+ *  region and the strip is where the region starts. */
+function BlockHeader({ label, count }: { label: string; count?: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-4">
-      <h1 className="text-3xl" style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
-        {children}
-      </h1>
+    <div
+      className="flex items-baseline justify-between gap-4 border-x border-t px-4 py-2"
+      style={{ background: "var(--accent-soft)", borderColor: "var(--border)" }}
+    >
+      <span
+        className="text-[11px] font-semibold uppercase tracking-[0.2em]"
+        style={{ fontFamily: "var(--font-mono)", color: "var(--accent-strong)" }}
+      >
+        {label}
+      </span>
       {count && (
-        <span className="shrink-0 text-xs tabular" style={{ color: "var(--text-muted)" }}>
+        <span className="shrink-0 text-[11px] tabular" style={{ color: "var(--accent-strong)" }}>
           {count}
         </span>
       )}
@@ -145,59 +226,93 @@ function PageTitle({ children, count }: { children: ReactNode; count?: string })
   );
 }
 
-function BackLink({ label, onClick }: { label: string; onClick: () => void }) {
+/** The ledger frame: rows live inside real edges, so the block ends somewhere. */
+function Ledger({ children }: { children: ReactNode }) {
   return (
-    <button
-      onClick={onClick}
-      className="mb-8 text-xs uppercase tracking-wide"
-      style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-    >
-      ‹ {label}
-    </button>
+    <div className="border-x border-t" style={{ borderColor: "var(--border)" }}>
+      {children}
+    </div>
   );
 }
 
-/** One door on the home menu: a full-width hairline row, name in the display
- *  face, purpose beside it. No card, no shadow — a menu line. */
-function Door({
-  title,
-  note,
+/** The gutter numeral — a continuous tinted column down a ledger's left edge,
+ *  not a rim. It is what makes the rows read as discrete entries. */
+function Gutter({ index }: { index?: number }) {
+  return (
+    <span
+      className="flex items-start justify-end py-3 pr-3 tabular text-[11px]"
+      style={{
+        background: "var(--accent-soft)",
+        color: "var(--accent-strong)",
+        borderRight: "1px solid var(--border)",
+      }}
+    >
+      {index === undefined ? "·" : String(index).padStart(2, "0")}
+    </span>
+  );
+}
+
+/** A filled chip. The exception gets a solid mark with real surface area,
+ *  never a 1px rim. */
+function Chip({ children }: { children: ReactNode }) {
+  return (
+    <span
+      className="ml-auto shrink-0 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+      style={{
+        background: "var(--accent)",
+        color: "var(--text-on-accent)",
+        borderRadius: "var(--radius-sm)",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+const ROW_GRID = "grid w-full grid-cols-[3.25rem_1fr] items-stretch border-b text-left";
+
+/** One ledger row: numbered gutter, name, gloss, optional trailing line. */
+function LedgerRow({
+  index,
+  name,
+  description,
+  trailing,
+  tag,
   onClick,
   href,
 }: {
-  title: string;
-  note: string;
+  index?: number;
+  name: string;
+  description: string;
+  trailing?: ReactNode;
+  tag?: string;
   onClick?: () => void;
   href?: string;
 }) {
   const body = (
     <>
-      <div className="flex items-baseline gap-3">
-        <span className="text-xl" style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
-          {title}
+      <Gutter index={index} />
+      <span className="block py-3 pl-5 pr-4">
+        <span className="flex items-center gap-3">
+          <span className="text-base font-semibold" style={nameStyle}>
+            {name}
+          </span>
+          {tag && <Chip>{tag}</Chip>}
         </span>
-        <span className="ml-auto text-sm" style={{ color: "var(--text-muted)" }}>
-          {href ? "↗" : "›"}
+        <span className="mt-1 block max-w-2xl text-sm" style={{ color: "var(--text-secondary)" }}>
+          {description}
         </span>
-      </div>
-      <div className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-        {note}
-      </div>
+        {trailing}
+      </span>
     </>
   );
-  const style = { borderColor: "var(--hairline)" };
+  const style = { borderColor: "var(--border)" };
   return href ? (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="block w-full border-b py-5 text-left"
-      style={style}
-    >
+    <a href={href} target="_blank" rel="noreferrer" className={ROW_GRID} style={style}>
       {body}
     </a>
   ) : (
-    <button onClick={onClick} className="block w-full border-b py-5 text-left" style={style}>
+    <button onClick={onClick} className={ROW_GRID} style={style}>
       {body}
     </button>
   );
@@ -207,29 +322,38 @@ function Door({
 // home
 // ---------------------------------------------------------------------------
 
+const LEDE =
+  "A modeling and simulation instrument for systems. Draw a system on the canvas or write it in SL; the kernel judges it under Klir, Bunge, and Mobus.";
+
 export function HomeMenu({ onCreate, onOpenLibrary }: { onCreate: () => void; onOpenLibrary: () => void }) {
   return (
     <div>
-      <h1 className="text-5xl" style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
-        bert&#8202;·&#8202;lenses
-      </h1>
-      <p className="mt-3 max-w-lg text-sm" style={{ color: "var(--text-secondary)" }}>
-        A modeling and simulation instrument for systems. Draw a system on the canvas
-        or write it in SL; the kernel judges it under Klir, Bunge, and Mobus.
-      </p>
-      <nav className="mt-12 border-t" style={{ borderColor: "var(--hairline)" }}>
-        <Door title="Create a model" note="Start from a blank canvas." onClick={onCreate} />
-        <Door
-          title="Open a model"
-          note="The standard library, your own saved models, or a file from disk."
-          onClick={onOpenLibrary}
-        />
-        <Door
-          title="Documentation"
-          note="The language, the kernel, and the traditions behind them."
-          href={DOCS_URL}
-        />
-      </nav>
+      <Masthead
+        eyebrow="Halcyonic Systems"
+        title={<span>bert&#8202;·&#8202;lenses</span>}
+        lede={LEDE}
+        stat={standardLibraryCount()}
+        statLabel="models on the shelves"
+      />
+      <Column className="pb-16 pt-10">
+        <BlockHeader label="Start here" />
+        <Ledger>
+          <LedgerRow index={1} name="Create a model" description="Start from a blank canvas." onClick={onCreate} />
+          <LedgerRow
+            index={2}
+            name="Open a model"
+            description="The standard library, your own saved models, or a file from disk."
+            onClick={onOpenLibrary}
+          />
+          <LedgerRow
+            index={3}
+            name="Documentation"
+            description="The language, the kernel, and the traditions behind them."
+            tag="external"
+            href={DOCS_URL}
+          />
+        </Ledger>
+      </Column>
     </div>
   );
 }
@@ -238,8 +362,8 @@ export function HomeMenu({ onCreate, onOpenLibrary }: { onCreate: () => void; on
 // library browser
 // ---------------------------------------------------------------------------
 
-/** A shelf button: the shelf's name and how many models are on it, so the
- *  choice is informed before the click. Counts are derived (home.ts). */
+/** A shelf tile: the shelf's name against a filled count cell. Counts are
+ *  derived (home.ts). */
 function ShelfButton({
   label,
   count,
@@ -255,20 +379,38 @@ function ShelfButton({
     <button
       onClick={onClick}
       title={note || undefined}
-      className="flex items-baseline gap-2 px-3 py-2 text-left"
-      style={{
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-sm)",
-        background: "var(--bg-secondary)",
-      }}
+      className="grid flex-1 basis-52 grid-cols-[2.75rem_1fr] items-stretch text-left"
+      style={{ background: "var(--bg-secondary)" }}
     >
-      <span className="text-sm" style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
+      <span
+        className="flex items-center justify-center py-2.5 tabular text-[11px]"
+        style={{
+          background: "var(--accent-soft)",
+          color: "var(--accent-strong)",
+          borderRight: "1px solid var(--border)",
+        }}
+      >
+        {count}
+      </span>
+      <span className="truncate px-3 py-2.5 text-sm font-semibold" style={nameStyle}>
         {label}
       </span>
-      <span className="text-[11px] tabular" style={{ color: "var(--text-muted)" }}>
-        ·&#8202;{count}
-      </span>
     </button>
+  );
+}
+
+/** The shelf tiles as one region: a 1px gap over the border colour draws the
+ *  rules BETWEEN cells, so a set of shelves is one ruled block of discrete
+ *  cells rather than a scatter of outlined boxes. The tiles flex so a row is
+ *  always full — an empty grid slot would show as a dead cell. */
+function ShelfGrid({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="flex flex-wrap gap-px border"
+      style={{ background: "var(--border)", borderColor: "var(--border)" }}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -295,112 +437,112 @@ export function LibraryBrowser({
 }) {
   const examples = exampleShelves();
   const corpus = corpusShelves();
+  const standard = standardLibraryCount();
   const savedCount = countLibrary(tree);
   const [showAllSaved, setShowAllSaved] = useState(false);
   const shownRoots = showAllSaved ? tree : tree.slice(0, INLINE_LIBRARY_ROOTS);
   const foldedRoots = tree.length - shownRoots.length;
   return (
     <div>
-      <BackLink label="Home" onClick={onBack} />
-      <PageTitle>Open a model</PageTitle>
+      <Masthead
+        eyebrow="Library"
+        title="Open a model"
+        lede="The standard library ships with the app and is maintained in the repository; My library is yours."
+        stat={standard + savedCount}
+        statLabel="models"
+        back={{ label: "Home", onClick: onBack }}
+      />
 
-      <section className="mt-10">
-        <SectionLabel>Standard library</SectionLabel>
-        <p className="mb-5 text-sm" style={{ color: "var(--text-secondary)" }}>
-          Ships with the app, maintained in the repository.
-        </p>
+      <Column className="pb-16 pt-10">
+        <section>
+          <BlockHeader label="Standard library" count={`${standard} models`} />
+          <div className="border-x border-b px-4 py-5" style={{ borderColor: "var(--border)" }}>
+            <div className="text-sm font-semibold" style={nameStyle}>
+              Examples — by genus
+            </div>
+            <p className="mb-3 mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
+              {EXAMPLES_NOTE}
+            </p>
+            <ShelfGrid>
+              {examples.map((s) => (
+                <ShelfButton key={s.id} label={s.label} count={s.count} onClick={() => onShelf(s)} />
+              ))}
+            </ShelfGrid>
 
-        <div className="mb-6">
-          <div className="text-sm" style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
-            Examples — by genus
+            <div className="mt-7 text-sm font-semibold" style={nameStyle}>
+              Source corpus — by author
+            </div>
+            <p className="mb-3 mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
+              {CORPUS_NOTE}
+            </p>
+            <ShelfGrid>
+              {corpus.map((s) => (
+                <ShelfButton key={s.id} label={s.label} count={s.count} note={s.note} onClick={() => onShelf(s)} />
+              ))}
+            </ShelfGrid>
           </div>
-          <p className="mb-2 mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
-            {EXAMPLES_NOTE}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {examples.map((s) => (
-              <ShelfButton key={s.id} label={s.label} count={s.count} onClick={() => onShelf(s)} />
-            ))}
-          </div>
-        </div>
+        </section>
 
-        <div>
-          <div className="text-sm" style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
-            Source corpus — by author
+        {/* Saved models list HERE, not behind a shelf-of-one: there was never a
+            branch to take, so the drill-in was a click that bought nothing. */}
+        <section className="mt-10">
+          <BlockHeader label="My library" count={`${savedCount} model${savedCount === 1 ? "" : "s"}`} />
+          <div className="border-x border-b px-4 py-3" style={{ borderColor: "var(--border)" }}>
+            <p className="max-w-2xl text-sm" style={{ color: "var(--text-secondary)" }}>
+              Models you have saved from this app. A model reached by a decomposition
+              reference nests under the system of interest that reaches it.
+            </p>
           </div>
-          <p className="mb-2 mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
-            {CORPUS_NOTE}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {corpus.map((s) => (
-              <ShelfButton
-                key={s.id}
-                label={s.label}
-                count={s.count}
-                note={s.note}
-                onClick={() => onShelf(s)}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
+          {tree.length === 0 ? (
+            <div
+              className="border-x border-b px-4 py-3 text-sm"
+              style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+            >
+              no saved models yet
+            </div>
+          ) : (
+            <Ledger>
+              {shownRoots.map((root, i) => (
+                <div
+                  key={root.name}
+                  className="grid w-full grid-cols-[3.25rem_1fr] items-stretch border-b"
+                  style={{ borderColor: "var(--border)" }}
+                >
+                  <Gutter index={i + 1} />
+                  <div className="py-2.5 pl-5 pr-4">
+                    <LibraryRow node={root} depth={0} onLoad={onLoad} onDelete={onDelete} onRename={onRename} />
+                  </div>
+                </div>
+              ))}
+              {foldedRoots > 0 && (
+                <button
+                  onClick={() => setShowAllSaved(true)}
+                  className="block w-full border-b px-5 py-2 text-left text-xs"
+                  style={{
+                    borderColor: "var(--border)",
+                    fontFamily: "var(--font-mono)",
+                    color: "var(--text-muted)",
+                  }}
+                >
+                  show all {tree.length} saved models
+                </button>
+              )}
+            </Ledger>
+          )}
+        </section>
 
-      {/* Saved models list HERE, not behind a shelf-of-one: there was never a
-          branch to take, so the drill-in was a click that bought nothing. */}
-      <section className="mt-10 border-t pt-8" style={{ borderColor: "var(--hairline)" }}>
-        <div className="flex items-baseline justify-between gap-4">
-          <SectionLabel>My library</SectionLabel>
-          <span className="shrink-0 text-xs tabular" style={{ color: "var(--text-muted)" }}>
-            {savedCount} model{savedCount === 1 ? "" : "s"}
-          </span>
-        </div>
-        <p className="mb-3 text-sm" style={{ color: "var(--text-secondary)" }}>
-          Models you have saved from this app. A model reached by a decomposition
-          reference nests under the system of interest that reaches it.
-        </p>
-        {tree.length === 0 ? (
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-            no saved models yet
-          </p>
-        ) : (
-          <div className="border-t" style={{ borderColor: "var(--hairline)" }}>
-            {shownRoots.map((root) => (
-              <div key={root.name} className="border-b py-2" style={{ borderColor: "var(--hairline)" }}>
-                <LibraryRow node={root} depth={0} onLoad={onLoad} onDelete={onDelete} onRename={onRename} />
-              </div>
-            ))}
-            {foldedRoots > 0 && (
-              <button
-                onClick={() => setShowAllSaved(true)}
-                className="py-2 text-xs"
-                style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-              >
-                show all {tree.length} saved models
-              </button>
-            )}
-          </div>
-        )}
-      </section>
-
-      <section className="mt-10 border-t pt-8" style={{ borderColor: "var(--hairline)" }}>
-        <SectionLabel>From a file</SectionLabel>
-        <button
-          onClick={onOpenFile}
-          className="mt-2 flex items-baseline gap-2 px-3 py-2 text-left"
-          style={{
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-sm)",
-            background: "var(--bg-secondary)",
-          }}
-        >
-          <span className="text-sm" style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
-            Open a file…
-          </span>
-          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-            a model .json from your computer
-          </span>
-        </button>
-      </section>
+        <section className="mt-10">
+          <BlockHeader label="From a file" />
+          <Ledger>
+            <LedgerRow
+              name="Open a file…"
+              description="a model .json from your computer"
+              tag="disk"
+              onClick={onOpenFile}
+            />
+          </Ledger>
+        </section>
+      </Column>
     </div>
   );
 }
@@ -409,9 +551,8 @@ export function LibraryBrowser({
 // shelf page
 // ---------------------------------------------------------------------------
 
-/** One model on a shelf. Name in the display face, description on its own line
- *  so it WRAPS instead of clipping mid-word, and — corpus only — the citation
- *  beneath it. Same row on both shelves; the citation is the separator.
+/** One model on a shelf: a ledger row, plus — corpus only — the citation
+ *  beneath the gloss. Same row on both shelves; the citation is the separator.
  *
  *  `tag` marks the EXCEPTION, never the rule: every model on a shelf is
  *  structural, so a per-row "diagram" label repeats identically down the whole
@@ -422,42 +563,34 @@ function ShelfRow({
   description,
   citation,
   tag,
+  index,
   onClick,
 }: {
   name: string;
   description: string;
   citation?: string;
   tag?: string;
+  index?: number;
   onClick: () => void;
 }) {
   return (
-    <button
+    <LedgerRow
+      index={index}
+      name={name}
+      description={description}
+      tag={tag}
       onClick={onClick}
-      className="block w-full border-b py-3 text-left"
-      style={{ borderColor: "var(--hairline)" }}
-    >
-      <div className="flex items-baseline gap-3">
-        <span className="text-base" style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
-          {name}
-        </span>
-        {tag && (
+      trailing={
+        citation ? (
           <span
-            className="ml-auto shrink-0 text-[10px] uppercase tracking-wide"
-            style={{ color: "var(--text-muted)" }}
+            className="mt-1 block text-[10px]"
+            style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
           >
-            {tag}
+            {citation}
           </span>
-        )}
-      </div>
-      <div className="mt-1 max-w-2xl text-sm" style={{ color: "var(--text-secondary)" }}>
-        {description}
-      </div>
-      {citation && (
-        <div className="mt-1 text-[10px]" style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
-          {citation}
-        </div>
-      )}
-    </button>
+        ) : undefined
+      }
+    />
   );
 }
 
@@ -489,86 +622,92 @@ export function ShelfPage({
   const entries = area === "examples" ? exampleShelfEntries(id) : [];
   const corpus = area === "corpus" ? corpusShelfEntries(id) : { sets: [], loose: [] };
   const count = shelf?.count ?? 0;
+  // Corpus rows number continuously across the sibling-sets and the loose
+  // entries: one shelf, one run of numerals.
+  let n = 0;
   return (
     <div>
-      <BackLink label="Open a model" onClick={onBack} />
-      <SectionLabel>{area === "examples" ? "Examples" : "Source corpus"}</SectionLabel>
-      <PageTitle count={`${count} model${count === 1 ? "" : "s"}`}>{shelf?.label ?? id}</PageTitle>
-      <p className="mt-2 max-w-lg text-sm" style={{ color: "var(--text-secondary)" }}>
-        {area === "examples" ? EXAMPLES_NOTE : CORPUS_NOTE}
-      </p>
-      {area === "corpus" && shelf?.note && (
-        <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-          {shelf.note}
-        </p>
-      )}
+      <Masthead
+        eyebrow={area === "examples" ? "Examples" : "Source corpus"}
+        title={shelf?.label ?? id}
+        lede={area === "examples" ? EXAMPLES_NOTE : CORPUS_NOTE}
+        note={area === "corpus" ? shelf?.note : undefined}
+        stat={count}
+        statLabel={`model${count === 1 ? "" : "s"}`}
+        back={{ label: "Open a model", onClick: onBack }}
+      />
 
-      <div className="mt-8 border-t" style={{ borderColor: "var(--hairline)" }}>
-        {area === "examples" &&
-          entries.map((d) => (
-            <ShelfRow
-              key={d.key}
-              name={d.title}
-              description={d.blurb}
-              tag={isRunnable(d) ? "runs" : undefined}
-              onClick={() => onOpenExample(d)}
-            />
-          ))}
-        {area === "corpus" && (
-          <>
-            {corpus.sets.map((s) => {
-              // A set that teaches by diff over one figure cites that one
-              // figure; repeating the line on every variant is the citation
-              // saying nothing. Hoist it to the header when it is shared, and
-              // fall back to per-row when the members actually cite differently.
-              const shared = sharedCitation(s.entries);
-              return (
-                <div key={s.name}>
-                  <div className="pt-4">
-                    <div className="flex items-baseline gap-2">
-                      <span
-                        className="text-xs font-semibold"
-                        style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}
-                      >
-                        {s.name}
-                      </span>
-                      <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                        {s.entries.length} variants · one lesson by diff
-                      </span>
-                    </div>
-                    {shared && (
-                      <div
-                        className="mt-0.5 text-[10px]"
-                        style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-                      >
-                        {shared}
-                      </div>
-                    )}
-                  </div>
-                  {s.entries.map((e) => (
-                    <ShelfRow
-                      key={e.file}
-                      name={e.title}
-                      description={firstSentence(e.teaches)}
-                      citation={shared ? undefined : e.citation}
-                      onClick={() => onOpenCorpus(e)}
-                    />
-                  ))}
-                </div>
-              );
-            })}
-            {corpus.loose.map((e) => (
+      <Column className="pb-16 pt-10">
+        <Ledger>
+          {area === "examples" &&
+            entries.map((d, i) => (
               <ShelfRow
-                key={e.file}
-                name={e.title}
-                description={firstSentence(e.teaches)}
-                citation={e.citation}
-                onClick={() => onOpenCorpus(e)}
+                key={d.key}
+                name={d.title}
+                description={d.blurb}
+                index={i + 1}
+                tag={isRunnable(d) ? "runs" : undefined}
+                onClick={() => onOpenExample(d)}
               />
             ))}
-          </>
-        )}
-      </div>
+          {area === "corpus" && (
+            <>
+              {corpus.sets.map((s) => {
+                // A set that teaches by diff over one figure cites that one
+                // figure; repeating the line on every variant is the citation
+                // saying nothing. Hoist it to the header when it is shared, and
+                // fall back to per-row when the members actually cite differently.
+                const shared = sharedCitation(s.entries);
+                return (
+                  <div key={s.name}>
+                    <div
+                      className="border-b px-4 py-2"
+                      style={{ background: "var(--accent-soft)", borderColor: "var(--border)" }}
+                    >
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xs font-semibold" style={nameStyle}>
+                          {s.name}
+                        </span>
+                        <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
+                          {s.entries.length} variants · one lesson by diff
+                        </span>
+                      </div>
+                      {shared && (
+                        <div
+                          className="mt-0.5 text-[10px]"
+                          style={{ fontFamily: "var(--font-mono)", color: "var(--accent-strong)" }}
+                        >
+                          {shared}
+                        </div>
+                      )}
+                    </div>
+                    {s.entries.map((e) => (
+                      <ShelfRow
+                        key={e.file}
+                        name={e.title}
+                        description={firstSentence(e.teaches)}
+                        citation={shared ? undefined : e.citation}
+                        index={(n += 1)}
+                        onClick={() => onOpenCorpus(e)}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
+              {corpus.loose.map((e) => (
+                <ShelfRow
+                  key={e.file}
+                  name={e.title}
+                  description={firstSentence(e.teaches)}
+                  citation={e.citation}
+                  index={(n += 1)}
+                  onClick={() => onOpenCorpus(e)}
+                />
+              ))}
+            </>
+          )}
+        </Ledger>
+      </Column>
     </div>
   );
 }
@@ -646,22 +785,18 @@ function LibraryRow({
               }
             }}
             onBlur={() => void commit()}
-            className={
-              depth === 0 ? "min-w-0 flex-1 rounded px-1 text-sm" : "min-w-0 flex-1 rounded px-1 text-xs"
-            }
+            className={depth === 0 ? "min-w-0 flex-1 px-1 text-sm" : "min-w-0 flex-1 px-1 text-xs"}
             style={{
               background: "var(--bg-primary)",
               border: "1px solid var(--border)",
+              borderRadius: "var(--radius-sm)",
               color: "var(--text-primary)",
             }}
             aria-label={`Rename ${node.name}`}
           />
         ) : (
           <button onClick={() => onLoad(node.name)} className="min-w-0 flex-1 text-left" title={node.name}>
-            <div
-              className={depth === 0 ? "truncate text-sm" : "truncate text-xs"}
-              style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}
-            >
+            <div className={depth === 0 ? "truncate text-sm font-semibold" : "truncate text-xs"} style={nameStyle}>
               {node.name}
             </div>
             <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
@@ -678,7 +813,7 @@ function LibraryRow({
               setDraft(node.name);
             }}
             title={`Rename ${node.name} — same model, new library name`}
-            className="shrink-0 rounded px-1.5 text-sm"
+            className="shrink-0 px-1.5 text-sm"
             style={{ color: "var(--text-muted)" }}
           >
             ✎
@@ -687,7 +822,7 @@ function LibraryRow({
         <button
           onClick={() => onDelete(node.name)}
           title={`Delete ${node.name}`}
-          className="shrink-0 rounded px-1.5 text-sm"
+          className="shrink-0 px-1.5 text-sm"
           style={{ color: "var(--text-muted)" }}
         >
           ×

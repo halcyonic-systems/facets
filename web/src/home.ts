@@ -52,6 +52,12 @@ export function corpusShelves(): Shelf[] {
   });
 }
 
+/** Every model on every standard-library shelf. Derived from the shelves, so it
+ *  cannot drift from what the shelf pages list. */
+export function standardLibraryCount(): number {
+  return [...exampleShelves(), ...corpusShelves()].reduce((n, s) => n + s.count, 0);
+}
+
 /** The entries on one example shelf, in the gallery's order. */
 export function exampleShelfEntries(genus: string): Demo[] {
   return groupedExamples().find((g) => g.genus === genus)?.entries ?? [];

@@ -11,8 +11,9 @@
  * Plus the design-invariant fitness functions (#131, the block/buzz `check`
  * steal) over src/**: no raw color literals outside the token homes, px type
  * only from the frozen vocabulary, lens registers share their chrome via
- * canvas/registerChrome.ts, and <foreignObject> overlays carry
- * data-export-ignore.
+ * canvas/registerChrome.ts, <foreignObject> overlays carry data-export-ignore,
+ * and the instrument register itself — corner radius capped, card lift capped,
+ * no gradients (docs/design/visual-language.md).
  *
  * Run: npm run check:tokens (also part of just check and CI).
  */
@@ -104,6 +105,15 @@ const lineOf = (src, idx) => src.slice(0, idx).split("\n").length;
 const TEXT_ARBITRARY_OK = new Set(["9px", "10px", "11px"]);
 const FONTSIZE_NUMERIC_OK = new Set([8, 9, 10, 11, 12]);
 
+// The instrument register's hard caps. 8px = --radius-md, the largest corner
+// the adopted language uses on anything (the shelf/menu chips are 4px and the
+// blocks themselves are square).
+const MAX_RADIUS_PX = 8;
+const TW_RADIUS_PX = { none: 0, sm: 2, "": 4, md: 6, lg: 8, xl: 12, "2xl": 16, "3xl": 24 };
+const RADIUS_VAR_PX = { "var(--radius-sm)": 4, "var(--radius-md)": 8 };
+const ALLOWED_RADIUS_VALUES = new Set(["var(--radius-pill)", "0", "50%", "inherit"]);
+const ALLOWED_SHADOWS = new Set(["var(--shadow-card)", "var(--shadow-card-hover)", "none"]);
+
 for (const file of srcFiles()) {
   const rel = relative(SRC, file);
   if (TOKEN_HOMES.has(rel)) continue;
@@ -157,6 +167,46 @@ for (const file of srcFiles()) {
     if (!m[0].includes("data-export-ignore"))
       problems.push(`${rel}:${lineOf(src, m.index)} <foreignObject> without data-export-ignore — screen-space overlays must not leak into exports`);
   }
+
+  // (5) The instrument register (docs/design/visual-language.md). The rejected
+  // treatment was rounded elevated cards on a gradient — "just looks like an
+  // LLM made it". These three make that unbuildable.
+  //
+  //   radius   capped at MAX_RADIUS_PX. The adopted language uses square edges
+  //            and one 4px chip (--radius-sm); --radius-md (8px) is the ceiling
+  //            for input/popover corners. Pill geometry is a different thing —
+  //            a fully-round chip is not a rounded card — so rounded-full /
+  //            --radius-pill stay allowed.
+  //   shadow   only the near-flat --shadow-card / --shadow-card-hover lift.
+  //            Tailwind's shadow scale and raw offsets are elevation, not lift.
+  //   gradient no gradient fills anywhere in src/**. Colour arrives as a filled
+  //            region with an edge, not as a fade. (The page-ground wash in
+  //            index.css body is the one sanctioned exception and lives there.)
+  for (const m of src.matchAll(/rounded-(\[[^\]]+\]|[a-z0-9]+)/g)) {
+    const arb = /^\[(\d+(?:\.\d+)?)px\]$/.exec(m[1]);
+    const px = arb ? Number(arb[1]) : (TW_RADIUS_PX[m[1]] ?? null);
+    if (px !== null && px > MAX_RADIUS_PX)
+      problems.push(`${rel}:${lineOf(src, m.index)} rounded-${m[1]} is ${px}px — the register caps corner radius at ${MAX_RADIUS_PX}px (rounded-full excepted); large radii read as web cards, not instrument`);
+  }
+  for (const m of src.matchAll(/borderRadius\s*:\s*["'`]([^"'`]+)["'`]/g)) {
+    const v = m[1].trim();
+    const raw = /^(\d+(?:\.\d+)?)px$/.exec(v);
+    const px = raw ? Number(raw[1]) : (RADIUS_VAR_PX[v] ?? null);
+    if (px !== null && px > MAX_RADIUS_PX)
+      problems.push(`${rel}:${lineOf(src, m.index)} borderRadius "${v}" is ${px}px — the register caps corner radius at ${MAX_RADIUS_PX}px; use var(--radius-sm) or var(--radius-md)`);
+    if (px === null && !ALLOWED_RADIUS_VALUES.has(v))
+      problems.push(`${rel}:${lineOf(src, m.index)} borderRadius "${v}" is not a known radius token — use var(--radius-sm) / var(--radius-md) / var(--radius-pill)`);
+  }
+  for (const m of src.matchAll(/boxShadow\s*:\s*["'`]([^"'`]+)["'`]/g)) {
+    if (!ALLOWED_SHADOWS.has(m[1].trim()))
+      problems.push(`${rel}:${lineOf(src, m.index)} boxShadow "${m[1]}" — panels sit flat on a rule; only ${[...ALLOWED_SHADOWS].join(" / ")} are permitted`);
+  }
+  for (const m of src.matchAll(/(?<![-\w])(drop-)?shadow-(?!none\b)[a-z0-9[]/g)) {
+    problems.push(`${rel}:${lineOf(src, m.index)} Tailwind shadow utility — elevation is not in the register; use boxShadow: "var(--shadow-card)"`);
+  }
+  for (const m of src.matchAll(/\b(linear|radial|conic)-gradient\s*\(/g)) {
+    problems.push(`${rel}:${lineOf(src, m.index)} ${m[1]}-gradient — colour arrives as a filled region with an edge, not a fade`);
+  }
 }
 
 if (problems.length) {
@@ -170,4 +220,7 @@ console.log(
 );
 console.log(
   "✓ Design invariants hold — no raw colors, px type in vocabulary, register chrome shared, overlays export-ignored.",
+);
+console.log(
+  `✓ Instrument register holds — corner radius ≤ ${MAX_RADIUS_PX}px, lift limited to --shadow-card, no gradients.`,
 );
