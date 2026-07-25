@@ -181,7 +181,8 @@ export interface Thing {
   y: number;
   role: CanvasRole;
   primitive?: ProcessPrimitive;
-  /** Authored interface designation (I ⊆ C; flowless well-formed). */
+  /** Authored interface designation (I ⊆ C). Must carry a boundary-crossing flow —
+   *  flowless is refused at Operational (`interfaces_carry_flow`, SSF #31). */
   interface?: boolean;
   /** The child model this component decomposes into, by reference. */
   child_model?: ChildRef;

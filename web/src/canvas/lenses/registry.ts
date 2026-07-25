@@ -190,7 +190,7 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
         verb: "designate" as const,
         id: "interface",
         label: "interface",
-        tip: "designate a component into I (I ⊆ C, Tuple.lean; flowless is well-formed — no coverage constraint). Stamp again to undo.",
+        tip: "designate a component into I (I ⊆ C, Tuple.lean `interfaces_sub`). An interface must carry a boundary-crossing flow — a flowless one is refused at Operational (`interfaces_carry_flow`, SSF #31). Drop a flow on its port to satisfy it. Stamp again to undo.",
         designation: { type: "interface" as const },
       },
       // #100 phase 4 (#81 harvest): each primitive tool BOTH stamps an existing
@@ -222,7 +222,7 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
       {
         id: "interfaces",
         label: "interface ports",
-        tip: "from crossing flows today; direct designation (I ⊆ C, flowless legal — Boundary.lean, §4.3 Eq. 4.6) lands with slice 3",
+        tip: "from crossing flows today; direct designation (I ⊆ C — Boundary.lean, §4.3 Eq. 4.6) lands with slice 3. A designated interface still owes a boundary-crossing flow (`interfaces_carry_flow`).",
       },
       {
         id: "src-snk",

@@ -93,7 +93,7 @@ fn sample() -> CanvasModel {
                 ..thing(1, "Pump", Role::Component)
             },
             // Tank is interface-DESIGNATED with no exo flow: the golden proves
-            // the authored-flowless case (well-formed; Mobus-visible, Bunge-blind).
+            // the authored-flowless case: refused at Operational since #219 (Mobus-visible, Bunge-blind).
             Thing { interface: true, ..thing(2, "Tank", Role::Component) },
             thing(3, "Grid", Role::Environment),
         ],
