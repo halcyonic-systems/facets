@@ -14,7 +14,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use bert_core::validate::{validate_mode, ValidationIssue};
+use bert_core::validate::{validate_mode, Severity, ValidationIssue};
 use bert_core::{
     AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType, HcgsArchetype,
     Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Interface, InterfaceType,
@@ -766,11 +766,31 @@ pub fn decompose_thing(
     }
 }
 
+/// Does this issue belong at the connection gesture?
+///
+/// Two things keep an issue here. A refusal always does — a `Severity::Error`
+/// is the kernel declaring the edge illegal, and no refusal is ever deferred.
+/// Otherwise the `location` decides: node-scoped checks address `systems[i]…`
+/// (dead ends, reachability), while relation- and mode-scoped ones address
+/// `interactions[i]` or `mode/…` (self-loops, duplicate edges, the Bunge
+/// bond). Nothing is re-tagged; this only reads the coordinate and the rating
+/// the check already wrote.
+fn belongs_at_the_gesture(issue: &ValidationIssue) -> bool {
+    issue.severity == Severity::Error || !issue.location.starts_with("systems")
+}
+
 /// Validate a proposed connection against the current lens: project the model
 /// WITH the candidate, run `validate_mode(lens.mode())`, and return the issues
 /// the candidate INTRODUCED (a self-loop at Mobus, an unbonded aggregate at
 /// Bunge, …). Empty = the connection is legal at this lens. React calls this per
 /// drag; it decides nothing itself.
+///
+/// The question here is "is this edge legal", not "is this model finished".
+/// Node-scoped OBSERVATIONS are dropped: the first edge into a node
+/// structurally always makes it a dead end, and that clears itself once the
+/// node's outflow is drawn. Refusals are never dropped, wherever they sit. No
+/// verdict changes and no check is removed — `analyze` still runs the whole
+/// set, so every deferred observation stays visible in the audit.
 pub fn validate_connection(model: &CanvasModel, candidate: &Relation) -> Vec<ValidationIssue> {
     use std::collections::HashSet;
     let mode = model.lens.mode();
@@ -788,6 +808,7 @@ pub fn validate_connection(model: &CanvasModel, candidate: &Relation) -> Vec<Val
         .issues
         .into_iter()
         .filter(|i| !seen.contains(&(i.location.clone(), i.message.clone())))
+        .filter(belongs_at_the_gesture)
         .collect()
 }
 
@@ -952,6 +973,103 @@ mod tests {
         // The same edge is legal at Klir (Core has no irreflexivity gate).
         let klir = CanvasModel { lens: Lens::Klir, ..model.clone() };
         assert!(validate_connection(&klir, &loop_edge).is_empty());
+    }
+
+    /// Law: the FIRST edge between two fresh components is legal at Mobus. It
+    /// necessarily makes the sink a dead end, but that is a whole-model
+    /// observation about an unfinished model, not a statement about the edge.
+    #[test]
+    fn first_edge_carries_no_gesture_time_issue_at_mobus() {
+        let model = CanvasModel {
+            lens: Lens::Mobus,
+            model_id: None,
+            things: vec![thing(1, "S", Role::Component), thing(2, "H", Role::Component)],
+            relations: vec![],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            time_unit: None,
+        };
+        let issues = validate_connection(&model, &bond(10, 1, 2));
+        assert!(issues.is_empty(), "S → H must connect: {issues:?}");
+    }
+
+    /// Law: the dead-end observation the gesture defers is not lost — `analyze`
+    /// still reports it, as a Warning, on the model the edge produced.
+    #[test]
+    fn deferred_dead_end_still_reaches_the_audit() {
+        let model = CanvasModel {
+            lens: Lens::Mobus,
+            model_id: None,
+            things: vec![thing(1, "S", Role::Component), thing(2, "H", Role::Component)],
+            relations: vec![bond(10, 1, 2)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            time_unit: None,
+        };
+        let audit = crate::lenses::analyze(&model, Lens::Mobus);
+        let hit = audit
+            .validation
+            .issues
+            .iter()
+            .find(|i| i.message.contains("no outgoing transitions"))
+            .expect("the audit keeps the dead-end observation");
+        assert_eq!(hit.severity, Severity::Warning);
+        assert!(hit.location.starts_with("systems"), "node-scoped: {hit:?}");
+    }
+
+    /// Law: relation-scoped observations stay at gesture time. A second
+    /// identical edge is a duplicate — a Warning the drawer should see as the
+    /// edge lands, not an observation deferred to the audit.
+    #[test]
+    fn duplicate_edge_stays_a_gesture_time_warning() {
+        let model = CanvasModel {
+            lens: Lens::Mobus,
+            model_id: None,
+            things: vec![
+                thing(1, "S", Role::Component),
+                thing(2, "H", Role::Component),
+                thing(3, "T", Role::Component),
+            ],
+            relations: vec![bond(10, 1, 2), bond(11, 2, 3)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            time_unit: None,
+        };
+        let issues = validate_connection(&model, &bond(12, 1, 2));
+        let dup = issues
+            .iter()
+            .find(|i| i.message.contains("duplicate edge"))
+            .expect("the duplicate is named at gesture time");
+        assert_eq!(dup.severity, Severity::Warning);
+        assert!(dup.location.starts_with("interactions"), "relation-scoped: {dup:?}");
+    }
+
+    /// Law: only OBSERVATIONS defer. A node-located refusal (the stock/inflow
+    /// dimension Error is the one the kernel can raise at `systems[i].…`) still
+    /// belongs at the gesture — location defers a Warning, never an Error.
+    #[test]
+    fn a_node_located_error_still_belongs_at_the_gesture() {
+        let at = |severity, location: &str| ValidationIssue {
+            severity,
+            location: location.to_string(),
+            message: String::new(),
+            suggestion: None,
+            doc: None,
+            subject: None,
+        };
+        assert!(belongs_at_the_gesture(&at(
+            Severity::Error,
+            "systems[0].agent.stock_unit"
+        )));
+        assert!(!belongs_at_the_gesture(&at(Severity::Warning, "systems[0]")));
+        assert!(belongs_at_the_gesture(&at(
+            Severity::Warning,
+            "interactions[0]"
+        )));
+        assert!(belongs_at_the_gesture(&at(Severity::Error, "mode/Structural")));
     }
 
     /// Law: `to_canvas` reads a real WorldModel back faithfully (roles,

@@ -1589,6 +1589,7 @@ function Workspace() {
                           setDirty(true);
                         }}
                         onReject={setToast}
+                        onNotice={setNotice}
                         decomposeFor={decomposeFor}
                         placeName={canvasModel.name?.trim() || currentLabel}
                         // The kernel's ladder verdict (#100 harvest) — the
@@ -1640,6 +1641,7 @@ function Workspace() {
                           setDirty(true);
                         }}
                         onReject={setToast}
+                        onNotice={setNotice}
                         decomposeFor={decomposeFor}
                         placeName={canvasModel.name?.trim() || currentLabel}
                         onViewGraph={() => setBungeView("graph")}
@@ -1682,6 +1684,7 @@ function Workspace() {
                         setDirty(true);
                       }}
                       onReject={setToast}
+                      onNotice={setNotice}
                       selectedRelationId={selectedRelationId}
                       onSelectRelation={setSelectedRelationId}
                       armed={armed}

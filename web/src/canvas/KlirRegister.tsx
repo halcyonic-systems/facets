@@ -12,6 +12,7 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 import type { CanvasModel, KlirLadder, KlirVarKind, MarkovRunResult, Relation, RunResultRich, ScaleType, Thing } from "../kernel/types";
 import { validateConnection } from "../kernel";
+import { observations, refusal } from "./connectionVerdict";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 import { DecomposeRows, type DecomposeAffordance } from "./NodeEditor";
 import { KlirLadderPanel, LadderChip } from "./KlirLadderPanel";
@@ -31,6 +32,8 @@ interface Props {
   onDeleteRelation: (id: number) => void;
   onModelChange: (m: CanvasModel) => void;
   onReject: (message: string) => void;
+  /** The soft channel for a Warning that rides along with a legal edge. */
+  onNotice?: (message: string) => void;
   /** The decomposition door, computed upstream off kernel facts (same function
    *  the NodePopover reads). */
   decomposeFor: (t: Thing) => DecomposeAffordance | null;
@@ -71,6 +74,7 @@ export function KlirRegister({
   onDeleteRelation,
   onModelChange,
   onReject,
+  onNotice,
   decomposeFor,
   placeName,
   ladder,
@@ -154,11 +158,14 @@ export function KlirRegister({
     };
     try {
       const verdict = validateConnection(model, candidate);
-      if (verdict.issues.length === 0) {
+      const refused = refusal(verdict);
+      if (refused) {
+        onReject(refused.message);
+      } else {
         onModelChange({ ...model, relations: [...model.relations, candidate] });
         onSelectRelation(candidate.id);
-      } else {
-        onReject(verdict.issues[0].message);
+        const observed = observations(verdict);
+        if (observed.length > 0) onNotice?.(observed[0].message);
       }
     } catch (err) {
       onReject(err instanceof Error ? err.message : String(err));
