@@ -23,8 +23,7 @@ import type {
   ValidationIssue,
 } from "./kernel/types";
 import { DEMOS, isRunnable, type Demo } from "./demos";
-import { groupedExamples } from "./examples";
-import { firstSentence, groupedCorpus, TRADITIONS, type CorpusEntry } from "./corpus";
+import type { CorpusEntry } from "./corpus";
 import Canvas from "./canvas/Canvas";
 import { edgeGeometry, thingById } from "./canvas/geometry";
 import { EdgePopover } from "./canvas/EdgePopover";
@@ -45,15 +44,9 @@ import { draftSlWithRetry, newTurnId, loadCoauthorTurns, saveCoauthorTurns, type
 import type { SlError } from "./kernel/types";
 import { Banner, Pill, ToolButton } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
-import {
-  isFolderSupported,
-  pickDirectory,
-  writeModel,
-  listModelFiles,
-  readModelFile,
-  type DirHandleLike,
-} from "./fsAccess";
-import { saveModel, listModelRecords, loadModel, deleteModel, renameModel } from "./modelStore";
+import { isFolderSupported, pickDirectory, writeModel, type DirHandleLike } from "./fsAccess";
+import { library } from "./library";
+import { HomeScreen, type HomeRoute } from "./HomeScreen";
 import { buildLibraryTree, flattenLibraryTree, type LibraryNode } from "./libraryTree";
 import { mintLibraryName, parentSlotName } from "./libraryNames";
 import { resolveModelRefs } from "./modelResolve";
@@ -140,19 +133,6 @@ function spaceOut(model: CanvasModel): CanvasModel {
 // Offer a JSON string to the browser as a file download — the save/export
 // mechanism for a pure-wasm page with no native file bridge (anchor + Blob URL,
 // no File System Access dependency, no server).
-// A coarse "saved N ago" hint for the library rows — good enough for a listing,
-// no dependency. Reads off Date.now() at render.
-function relTime(ts: number): string {
-  const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
-  if (s < 60) return "just now";
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  return `${d}d ago`;
-}
-
 function downloadJson(filename: string, json: string) {
   const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
   const a = document.createElement("a");
@@ -258,9 +238,13 @@ function Workspace() {
       window.removeEventListener("keydown", onKey);
     };
   }, [locFull]);
-  // Shell chrome state (presentation only): the File→Open gallery (also the
-  // start screen before anything is loaded), the docked palette's collapse.
-  const [galleryOpen, setGalleryOpen] = useState(true);
+  // Shell chrome state (presentation only): the home screen (the landing screen
+  // before anything is loaded, and the route back out of a model), which of its
+  // three levels it opens on, and the docked palette's collapse. The workbench
+  // stays mounted behind it — hidden, not unmounted, so a loaded model's canvas
+  // viewport survives a trip to the library.
+  const [homeOpen, setHomeOpen] = useState(true);
+  const [homeRoute, setHomeRoute] = useState<HomeRoute>({ view: "home" });
   // #77: gentle, skippable first-step type/name prompt on new-model creation.
   const [typePromptOpen, setTypePromptOpen] = useState(false);
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
@@ -288,15 +272,15 @@ function Workspace() {
   const [slOpen, setSlOpen] = useState(false);
   const [slText, setSlText] = useState(SL_SEED);
   const [slErrors, setSlErrors] = useState<SlError[]>([]);
-  // Folder save/load (File System Access): the picked working folder, the
-  // current model's filename stem (so re-saving is one gesture into the same
-  // file), the SaveDialog toggle, and the folder listing shown in OpenDialog
-  // (null = folder not picked this session yet). Explicit-save only — nothing
-  // here fires without a menu/button gesture.
+  // Folder SAVE (File System Access): the picked working folder, the current
+  // model's filename stem (so re-saving is one gesture into the same file), and
+  // the SaveDialog toggle. Explicit-save only — nothing here fires without a
+  // menu gesture. The matching "open a folder" browse path is gone: it was
+  // Chrome-only, and the home screen's two libraries plus Open a file… cover
+  // its job in every browser.
   const [dirHandle, setDirHandle] = useState<DirHandleLike | null>(null);
   const [currentName, setCurrentName] = useState<string | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [folderFiles, setFolderFiles] = useState<string[] | null>(null);
   // The browser-local model library (IndexedDB, fsAccess.ts's flag-free sibling):
   // whether the pending SaveDialog writes to the folder or the library, and the
   // library's current listing (shown in OpenDialog, refreshed when it opens).
@@ -308,7 +292,7 @@ function Workspace() {
   const [libraryTree, setLibraryTree] = useState<LibraryNode[]>([]);
   const libraryList = useMemo(() => flattenLibraryTree(libraryTree), [libraryTree]);
   async function refreshLibrary() {
-    setLibraryTree(buildLibraryTree(await listModelRecords()));
+    setLibraryTree(buildLibraryTree(await library.list()));
   }
   // A soft, informational message channel, distinct from `toast` (which the
   // canvas reserves for kernel rejections, rendered "rejected — …").
@@ -329,7 +313,7 @@ function Workspace() {
   const escapeExitRef = useRef<() => void>(() => {});
   useEffect(() => {
     escapeExitRef.current = () => {
-      if (galleryOpen || saveDialogOpen || typePromptOpen) return;
+      if (homeOpen || saveDialogOpen || typePromptOpen) return;
       if (walk.length > 0) void exitTo(walk.length - 1);
     };
   });
@@ -419,7 +403,7 @@ function Workspace() {
     setSelectedRelationId(null);
     setSelectedThingId(null);
     setArmed(null);
-    setGalleryOpen(false);
+    setHomeOpen(false);
     setDirty(false);
     setWalk([]);
     runWith(d.modelJson, d.csv, d.manifest, d.manifest.dt ?? 1, d.t); // one click → runs
@@ -445,7 +429,7 @@ function Workspace() {
       return;
     }
     await onSlCompiled(outcome.ok, outcome.lens_explicit);
-    setGalleryOpen(false);
+    setHomeOpen(false);
     setDirty(false);
   };
 
@@ -466,7 +450,7 @@ function Workspace() {
       return;
     }
     await onSlCompiled(outcome.ok, outcome.lens_explicit);
-    setGalleryOpen(false);
+    setHomeOpen(false);
     setDirty(false);
   };
 
@@ -489,7 +473,7 @@ function Workspace() {
       setSelectedThingId(null);
       setBoundaryAnchor(null);
       setArmed(null);
-      setGalleryOpen(false);
+      setHomeOpen(false);
       setDirty(false);
       setWalk([]);
     } catch (e) {
@@ -520,7 +504,7 @@ function Workspace() {
     setSelectedThingId(null);
     setBoundaryAnchor(null);
     setArmed(null);
-    setGalleryOpen(false);
+    setHomeOpen(false);
     setWalk([]);
     setFitToken((n) => (n ?? 0) + 1); // frame the compiled layout in the current viewport (#83)
     if (asPreview) {
@@ -616,7 +600,7 @@ function Workspace() {
     setSelectedThingId(null);
     setBoundaryAnchor(null);
     setArmed(null);
-    setGalleryOpen(false);
+    setHomeOpen(false);
     setDirty(false);
     setWalk([]);
     setFitToken((n) => (n ?? 0) + 1); // frame the newborn membrane (#100 phase 0)
@@ -728,7 +712,7 @@ function Workspace() {
     const json = writeArchive(copy);
     try {
       if (saveTarget === "library") {
-        await saveModel(stem, json);
+        await library.save(stem, json);
         await refreshLibrary();
         setCurrentName(stem);
         setSaveDialogOpen(false);
@@ -747,57 +731,14 @@ function Workspace() {
     }
   }
 
-  // OpenDialog → Open from folder…: pick a folder and list its .json models.
-  async function openFolder() {
-    if (!isFolderSupported()) {
-      setNotice(
-        "Folder access is off in this browser. Brave disables the File System Access API by default — enable brave://flags/#file-system-access-api and relaunch, or use Chrome/Edge.",
-      );
-      return;
-    }
-    try {
-      const dir = await pickDirectory();
-      if (!dir) return; // cancelled
-      setDirHandle(dir);
-      setFolderFiles(await listModelFiles(dir));
-    } catch (e) {
-      setToast(e instanceof Error ? e.message : String(e));
-    }
-  }
-
-  // Load one file from the picked folder onto the canvas — same seam as import
-  // (toCanvas + reset), plus it remembers the folder + filename stem for saving.
-  async function openFromFolder(name: string) {
-    if (!dirHandle) return;
-    if (!guardDiscard() || !(await flushWalk())) return;
-    try {
-      const cm = openModel(await readModelFile(dirHandle, name));
-      setDemo(null);
-      setCanvasModel(cm);
-      setManifest({ model: "", data: "", t: 12, mapping: [] });
-      setResult(null);
-      setRunError(null);
-      setSelectedRelationId(null);
-      setSelectedThingId(null);
-      setBoundaryAnchor(null);
-      setArmed(null);
-      setCurrentName(name.replace(/\.json$/i, ""));
-      setGalleryOpen(false);
-      setDirty(false);
-      setWalk([]);
-    } catch (e) {
-      setToast(e instanceof Error ? e.message : String(e));
-    }
-  }
-
-  // OpenDialog → Saved in this browser: load one model out of the IndexedDB
-  // library onto the canvas — same seam as import (toCanvas + reset), and it
-  // remembers the name so a re-save overwrites the same library slot. Guarded
-  // here (#111), so the dialog's direct load no longer bypasses the gate.
+  // Home → My library: load one of the user's saved models onto the canvas —
+  // same seam as import (toCanvas + reset), and it remembers the name so a
+  // re-save overwrites the same library slot. Guarded here (#111), so the
+  // direct load never bypasses the gate.
   async function loadFromLibrary(name: string) {
     if (!guardDiscard() || !(await flushWalk())) return;
     try {
-      const cm = openModel(await loadModel(name));
+      const cm = openModel(await library.load(name));
       setDemo(null);
       setCanvasModel(cm);
       setManifest({ model: "", data: "", t: 12, mapping: [] });
@@ -808,7 +749,7 @@ function Workspace() {
       setBoundaryAnchor(null);
       setArmed(null);
       setCurrentName(name);
-      setGalleryOpen(false);
+      setHomeOpen(false);
       setDirty(false);
       setWalk([]);
     } catch (e) {
@@ -819,7 +760,7 @@ function Workspace() {
   // Drop one model from the library and refresh the listing in place.
   async function removeFromLibrary(name: string) {
     try {
-      await deleteModel(name);
+      await library.remove(name);
       await refreshLibrary();
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
@@ -837,7 +778,7 @@ function Workspace() {
     const target = to.trim();
     if (!target || target === from) return true;
     try {
-      await renameModel(from, target);
+      await library.rename(from, target);
       if (currentName === from) setCurrentName(target);
       setWalk((w) => w.map((s) => (s.currentName === from ? { ...s, currentName: target } : s)));
       await refreshLibrary();
@@ -950,12 +891,12 @@ function Workspace() {
     return () => clearTimeout(id);
   }, [notice]);
 
-  // Refresh the library listing whenever the Open dialog opens, so the "Saved in
-  // this browser" section reflects the current IndexedDB contents.
+  // Refresh the library listing whenever the home screen opens, so "My library"
+  // reflects what is actually stored.
   useEffect(() => {
-    if (!galleryOpen) return;
+    if (!homeOpen) return;
     refreshLibrary().catch((e) => setToast(e instanceof Error ? e.message : String(e)));
-  }, [galleryOpen]);
+  }, [homeOpen]);
 
   const csvHeaders = useMemo(() => {
     if (!demo) return [];
@@ -1150,7 +1091,7 @@ function Workspace() {
   // #140: the ONE place a model becomes stored text. Every storage write
   // funnels here, so the archive encoding is chosen once — the seam that was
   // spread across seven separate call sites before it had a name.
-  const persist = (name: string, model: CanvasModel) => saveModel(name, writeArchive(model));
+  const persist = (name: string, model: CanvasModel) => library.save(name, writeArchive(model));
 
   // Walk-reset autosave (#111): every path that discards the walk gets the
   // breadcrumb-exit discipline — dirty ancestor segments are saved before
@@ -1188,7 +1129,14 @@ function Workspace() {
     setCurrentName(null);
     setDirty(false);
     setWalk([]);
-    setGalleryOpen(true);
+    openHomeAt({ view: "home" });
+  }
+
+  // Open the home screen on a chosen level — the menu (Home) or straight into
+  // the library browser (File → Open…, Switch → Open full library).
+  function openHomeAt(route: HomeRoute) {
+    setHomeRoute(route);
+    setHomeOpen(true);
   }
 
   // Switch model (#74): load another model without routing through the full
@@ -1214,7 +1162,7 @@ function Workspace() {
     try {
       // Library slots are keyed by name (put overwrites), so an occupied name
       // gets a numeric suffix rather than silently clobbering another model.
-      const taken = new Set((await listModelRecords()).map((m) => m.name));
+      const taken = new Set((await library.list()).map((m) => m.name));
       const parent = parentSlotName(currentName, canvasModel.name, demo?.key, taken);
       if (!parent) {
         setNotice("name this model first (File → Save to library…) — the decomposition reference needs a saved parent to live in");
@@ -1313,7 +1261,7 @@ function Workspace() {
       setBoundaryAnchor(null);
       setArmed(null);
       setCurrentName(ref.name);
-      setGalleryOpen(false);
+      setHomeOpen(false);
       setDirty(false);
       // Entry orientation (#109 §3): the fit fires IN the swap batch, so the
       // child's first committed frame already centers its membrane with the
@@ -1382,7 +1330,7 @@ function Workspace() {
       <MenuBar
         loaded={true}
         onNew={newModel}
-        onOpen={() => setGalleryOpen(true)}
+        onOpen={() => openHomeAt({ view: "library" })}
         onSave={() => exportModel(".model")}
         onExport={() => exportModel(".world")}
         onExportSvg={() => exportDiagram("svg")}
@@ -1397,7 +1345,7 @@ function Workspace() {
         libraryModels={libraryList}
         onSwitchDemo={switchToDemo}
         onSwitchLibrary={switchToLibrary}
-        onOpenFull={() => setGalleryOpen(true)}
+        onOpenFull={() => openHomeAt({ view: "library" })}
       />
       <input
         ref={importInputRef}
@@ -1415,6 +1363,7 @@ function Workspace() {
       <div
         className="flex min-h-0 flex-1 flex-col"
         data-lens={canvasModel?.lens ?? "Klir"}
+        style={homeOpen ? { display: "none" } : undefined}
       >
         {/* The walk breadcrumb (#89 step 5b): the label path down the
             decomposition (`Boiler › Furnace`), each segment carrying its
@@ -2072,27 +2021,21 @@ function Workspace() {
         />
       )}
 
-      {galleryOpen && (
-        <OpenDialog
-          selected={demo}
-          onPick={pickExample}
-          onPickCorpus={pickCorpus}
-          onNew={newModel}
-          onWriteSl={() => {
-            setSlOpen(true);
-            setGalleryOpen(false);
-          }}
-          onClose={() => setGalleryOpen(false)}
-          closable={canvasModel !== null}
+      {/* The home screen takes the work region while it is open (the workbench
+          above is hidden, not unmounted). Remounting on every open is what makes
+          `initialRoute` land — File→Open… opens straight on the library. */}
+      {homeOpen && (
+        <HomeScreen
+          initialRoute={homeRoute}
+          onCreate={newModel}
+          onOpenExample={pickExample}
+          onOpenCorpus={pickCorpus}
           onOpenFile={() => importInputRef.current?.click()}
-          folderSupported={isFolderSupported()}
-          folderFiles={folderFiles}
-          onOpenFolder={openFolder}
-          onOpenFromFolder={openFromFolder}
           libraryTree={libraryTree}
           onLoadFromLibrary={loadFromLibrary}
           onDeleteFromLibrary={removeFromLibrary}
           onRenameInLibrary={renameInLibrary}
+          onClose={canvasModel !== null ? () => setHomeOpen(false) : null}
         />
       )}
 
@@ -2444,344 +2387,6 @@ function PaletteDock({
   );
 }
 
-// One library row plus, recursively, the rows of the children its `decomposes`
-// references reach (#105) — the root at depth 0, each level indented one step
-// with a connector glyph. Every row loads on click, deletes on ×, and renames
-// on ✎ (#116 candidate 3): the name becomes an input, Enter or blur commits,
-// Esc cancels — the same commit grammar as the click-to-edit membrane labels.
-// A refused rename (name collision) keeps the row in edit mode so the user
-// can pick again; the slot's identity never changes, so a renamed child stays
-// exactly where its parent's stamp reaches it. Deleting a parent never touches
-// its children (the next listing reads them as roots). A reference that
-// resolves to no saved record shows as a quiet "n missing" note on the parent
-// — the library-level echo of the kernel's missing-referent issue on the
-// canvas.
-function LibraryRow({
-  node,
-  depth,
-  onLoad,
-  onDelete,
-  onRename,
-}: {
-  node: LibraryNode;
-  depth: number;
-  onLoad: (name: string) => void;
-  onDelete: (name: string) => void;
-  onRename: (from: string, to: string) => Promise<boolean>;
-}) {
-  const [draft, setDraft] = useState<string | null>(null);
-  // Esc cancels by design, but the input's blur (fired as it leaves) must not
-  // resurrect the commit from the pre-cancel render — the ref outlives the
-  // stale closure.
-  const cancelled = useRef(false);
-  const commit = async () => {
-    if (draft === null || cancelled.current) return;
-    if (await onRename(node.name, draft)) setDraft(null);
-  };
-  return (
-    <>
-      <div
-        className={depth === 0 ? "flex items-center gap-2" : "mt-1 flex items-center gap-2"}
-        style={{ paddingLeft: depth === 0 ? 0 : (depth - 1) * 14 }}
-      >
-        {depth > 0 && (
-          <span aria-hidden className="shrink-0 text-xs" style={{ color: "var(--text-muted)" }}>
-            └
-          </span>
-        )}
-        {draft !== null ? (
-          <input
-            autoFocus
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void commit();
-              if (e.key === "Escape") {
-                cancelled.current = true;
-                setDraft(null);
-              }
-            }}
-            onBlur={() => void commit()}
-            className={
-              depth === 0 ? "min-w-0 flex-1 rounded px-1 text-sm" : "min-w-0 flex-1 rounded px-1 text-xs"
-            }
-            style={{
-              background: "var(--bg-primary)",
-              border: "1px solid var(--border)",
-              color: "var(--text-primary)",
-            }}
-            aria-label={`Rename ${node.name}`}
-          />
-        ) : (
-          <button
-            onClick={() => onLoad(node.name)}
-            className="min-w-0 flex-1 text-left"
-            title={node.name}
-          >
-            <div
-              className={depth === 0 ? "truncate text-sm" : "truncate text-xs"}
-              style={{ color: "var(--text-primary)" }}
-            >
-              {node.name}
-            </div>
-            <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-              saved {relTime(node.savedAt)}
-              {node.missingReferents > 0 &&
-                ` · ${node.missingReferents} referent${node.missingReferents === 1 ? "" : "s"} missing`}
-            </div>
-          </button>
-        )}
-        {draft === null && (
-          <button
-            onClick={() => {
-              cancelled.current = false;
-              setDraft(node.name);
-            }}
-            title={`Rename ${node.name} — same model, new library name`}
-            className="shrink-0 rounded px-1.5 text-sm"
-            style={{ color: "var(--text-muted)" }}
-          >
-            ✎
-          </button>
-        )}
-        <button
-          onClick={() => onDelete(node.name)}
-          title={`Delete ${node.name}`}
-          className="shrink-0 rounded px-1.5 text-sm"
-          style={{ color: "var(--text-muted)" }}
-        >
-          ×
-        </button>
-      </div>
-      {node.children.map((c) => (
-        <LibraryRow
-          key={c.name}
-          node={c}
-          depth={depth + 1}
-          onLoad={onLoad}
-          onDelete={onDelete}
-          onRename={onRename}
-        />
-      ))}
-    </>
-  );
-}
-
-// File → Open: the demo gallery, now a start screen / modal rather than a
-// permanent hero section above the fold.
-function OpenDialog({
-  selected,
-  onPick,
-  onNew,
-  onWriteSl,
-  onClose,
-  closable,
-  onOpenFile,
-  folderSupported,
-  folderFiles,
-  onOpenFolder,
-  onOpenFromFolder,
-  libraryTree,
-  onLoadFromLibrary,
-  onDeleteFromLibrary,
-  onRenameInLibrary,
-  onPickCorpus,
-}: {
-  selected: Demo | null;
-  onPick: (d: Demo) => void;
-  onPickCorpus: (e: CorpusEntry) => void;
-  onNew: () => void;
-  onWriteSl: () => void;
-  onClose: () => void;
-  closable: boolean;
-  onOpenFile: () => void;
-  folderSupported: boolean;
-  folderFiles: string[] | null;
-  onOpenFolder: () => void;
-  onOpenFromFolder: (name: string) => void;
-  libraryTree: LibraryNode[];
-  onLoadFromLibrary: (name: string) => void;
-  onDeleteFromLibrary: (name: string) => void;
-  onRenameInLibrary: (from: string, to: string) => Promise<boolean>;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-40 flex items-center justify-center p-6"
-      style={{ background: "color-mix(in srgb, var(--bg-primary) 70%, transparent)" }}
-      onClick={() => closable && onClose()}
-    >
-      <div
-        className="w-full max-w-3xl overflow-y-auto p-6"
-        style={{
-          background: "var(--bg-secondary)",
-          border: "1px solid var(--border)",
-          boxShadow: "var(--shadow-card-hover)",
-          borderRadius: "var(--radius-card)",
-          maxHeight: "calc(100vh - 3rem)", // scroll INSIDE the dialog; never overflow the viewport (#148)
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-baseline justify-between">
-          <h2 className="text-lg font-semibold" style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
-            Open a model
-          </h2>
-          {closable && (
-            <button onClick={onClose} className="text-xs" style={{ color: "var(--text-muted)" }}>
-              close
-            </button>
-          )}
-        </div>
-        <ExamplesGallery selected={selected} onPick={onPick} />
-        <CorpusGallery onPick={onPickCorpus} />
-        <button
-          onClick={onNew}
-          className="mt-3 w-full p-3 text-left text-sm transition-colors"
-          style={{
-            background: "transparent",
-            border: "1px dashed var(--border)",
-            borderRadius: "var(--radius-card)",
-          }}
-        >
-          <span style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>Start blank</span>
-          <span className="ml-2" style={{ color: "var(--text-muted)" }}>— author a new model from scratch</span>
-        </button>
-        <button
-          onClick={onWriteSl}
-          className="mt-2 w-full p-3 text-left text-sm transition-colors"
-          style={{
-            background: "transparent",
-            border: "1px dashed var(--border)",
-            borderRadius: "var(--radius-card)",
-          }}
-        >
-          <span style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>Write SL</span>
-          <span className="ml-2" style={{ color: "var(--text-muted)" }}>— author a model as text in the system language</span>
-        </button>
-
-        {/* From a file: open a model JSON off disk via the OS file picker (the
-            folded-in Import path, works everywhere), plus an optional folder
-            picker for reopening a working folder of saved models (File System
-            Access — Chrome/Edge only, disabled + labelled elsewhere). */}
-        <div className="mt-4">
-          <div
-            className="mb-2 text-[10px] font-semibold uppercase tracking-wide"
-            style={{ color: "var(--text-muted)" }}
-          >
-            From a file
-          </div>
-          <button
-            onClick={onOpenFile}
-            className="w-full p-3 text-left text-sm transition-colors"
-            style={{
-              background: "transparent",
-              border: "1px dashed var(--border)",
-              borderRadius: "var(--radius-card)",
-            }}
-          >
-            <span style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>Choose a file…</span>
-            <span className="ml-2" style={{ color: "var(--text-muted)" }}>— open a model .json from your computer</span>
-          </button>
-
-          <button
-            onClick={onOpenFolder}
-            disabled={!folderSupported}
-            title={folderSupported ? undefined : "Opening a folder needs Chrome or Edge (File System Access API)"}
-            className="mt-2 w-full p-3 text-left text-sm transition-colors"
-            style={{
-              background: "transparent",
-              border: "1px dashed var(--border)",
-              borderRadius: "var(--radius-card)",
-              opacity: folderSupported ? 1 : 0.5,
-              cursor: folderSupported ? "pointer" : "not-allowed",
-            }}
-          >
-            <span style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>Open a folder…</span>
-            <span className="ml-2" style={{ color: "var(--text-muted)" }}>
-              — a working folder of saved models {folderSupported ? "" : "(Chrome only)"}
-            </span>
-          </button>
-
-          {folderFiles !== null && (
-            <div className="mt-3">
-              <div
-                className="mb-2 text-[10px] font-semibold uppercase tracking-wide"
-                style={{ color: "var(--text-muted)" }}
-              >
-                In this folder
-              </div>
-              {folderFiles.length === 0 ? (
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  no models in this folder yet
-                </p>
-              ) : (
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {folderFiles.map((name) => (
-                    <button
-                      key={name}
-                      onClick={() => onOpenFromFolder(name)}
-                      className="truncate p-3 text-left text-sm transition-shadow"
-                      style={{
-                        background: "var(--bg-secondary)",
-                        border: "1px solid var(--border)",
-                        boxShadow: "var(--shadow-card)",
-                        borderRadius: "var(--radius-card)",
-                        color: "var(--text-primary)",
-                      }}
-                      title={name}
-                    >
-                      {name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Saved in this browser: the IndexedDB library. Always shown (flag-free,
-            works in every browser) — click a row to load, × to delete. One card
-            per root SOI (#105): subsystems reached by `decomposes` references
-            nest indented inside their root's card instead of sprawling as
-            top-level peers, so this section reads as "pick your system of
-            interest". The grouping is a fresh reading of the reference graph on
-            every open — deleting a parent leaves its children, which simply
-            list as roots next time. */}
-        <div className="mt-4">
-          <div
-            className="mb-2 text-[10px] font-semibold uppercase tracking-wide"
-            style={{ color: "var(--text-muted)" }}
-          >
-            Saved in this browser
-          </div>
-          {libraryTree.length === 0 ? (
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              no saved models yet
-            </p>
-          ) : (
-            <div className="flex flex-col">
-              {libraryTree.map((root) => (
-                <div
-                  key={root.name}
-                  className="border-b py-1.5 last:border-b-0"
-                  style={{ borderColor: "var(--hairline)" }}
-                >
-                  <LibraryRow
-                    node={root}
-                    depth={0}
-                    onLoad={onLoadFromLibrary}
-                    onDelete={onDeleteFromLibrary}
-                    onRename={onRenameInLibrary}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // A small name-this modal reusing the OpenDialog overlay/card chrome. The only
 // decision a save needs from the user: the name. Shared by both save targets —
 // `target` only tunes the heading and the ".json" hint (a library slot has no
@@ -2854,195 +2459,6 @@ function SaveDialog({
             Save
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// Examples, faceted by genus (#148) — Bunge's kingdoms-of-genus, only the
-// genera that have entries, in canonical order. Runnable demos and structural
-// examples merge into one list here (each carrying its genus); the per-row tag
-// keeps the run affordance legible — "runs" opens and simulates, "diagram"
-// opens as structure only. Answers a DIFFERENT question from the corpus below:
-// "what kinds of system can this model?" versus "what did this author say?", so
-// the two sections are never interleaved. Same dense row as a corpus entry so
-// nothing on the dialog is a giant card.
-function ExamplesGallery({ selected, onPick }: { selected: Demo | null; onPick: (d: Demo) => void }) {
-  const groups = groupedExamples();
-  if (groups.length === 0) return null;
-  return (
-    <div>
-      <div
-        className="mb-2 text-xs font-semibold uppercase tracking-wide"
-        style={{ color: "var(--text-muted)" }}
-      >
-        Examples — by genus
-      </div>
-      <div className="flex flex-col gap-2">
-        {groups.map((g) => (
-          <section key={g.genus}>
-            <div className="flex items-baseline gap-2 py-1">
-              <span
-                className="text-xs font-semibold"
-                style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}
-              >
-                {g.genus}
-              </span>
-              <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                {g.entries.length} model{g.entries.length === 1 ? "" : "s"}
-              </span>
-            </div>
-            <div className="flex flex-col">
-              {g.entries.map((d) => {
-                const active = selected?.key === d.key;
-                const runs = isRunnable(d);
-                return (
-                  <button
-                    key={d.key}
-                    onClick={() => onPick(d)}
-                    title={d.blurb}
-                    className="flex w-full items-baseline gap-2 border-b px-1 py-1.5 text-left last:border-b-0"
-                    style={{ borderColor: "var(--hairline)" }}
-                  >
-                    <span
-                      className="shrink-0 text-sm"
-                      style={{
-                        fontFamily: "var(--font-display)",
-                        color: active ? "var(--accent-strong)" : "var(--text-primary)",
-                      }}
-                    >
-                      {d.title}
-                    </span>
-                    <span className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
-                      {d.blurb.split(".")[0]}.
-                    </span>
-                    <span
-                      className="ml-auto shrink-0 text-[10px] uppercase tracking-wide"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      {runs ? "runs" : "diagram"}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// A separate, labelled section below the demo grid — never interleaved with it.
-// A card that goes dark on click sitting inside a grid of one-click runs reads
-// as a bug, and the two sets answer different questions: "show me the tool
-// working" versus "show me what this author actually said". The citation is the
-// third line, and it is what makes a corpus card a corpus card.
-// One corpus entry as a COMPACT ROW (#148) — title + a muted teach snippet on
-// one line, citation on hover. Dense by design: the gallery is a browser, not a
-// card wall, so a growing corpus stays scannable. Shared by sets and standalone.
-function CorpusCard({ e, onPick }: { e: CorpusEntry; onPick: (e: CorpusEntry) => void }) {
-  return (
-    <button
-      onClick={() => onPick(e)}
-      title={e.citation}
-      className="flex w-full items-baseline gap-2 border-b px-1 py-1.5 text-left transition-colors last:border-b-0"
-      style={{ borderColor: "var(--hairline)" }}
-    >
-      <span
-        className="shrink-0 text-sm"
-        style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}
-      >
-        {e.title}
-      </span>
-      <span className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
-        {firstSentence(e.teaches)}
-      </span>
-    </button>
-  );
-}
-
-// #148: the corpus, faceted and COMPACT. Tradition sections COLLAPSED BY DEFAULT
-// (the dialog opens navigable — three fold headers, not 14 cards) → expand one
-// to reveal sibling-set clusters (Klir's goal-oriented paradigms etc. read as
-// ONE lesson with variants) + standalone rows. Demos stay separate; the dialog
-// scrolls internally so nothing ever overflows the viewport.
-function CorpusGallery({ onPick }: { onPick: (e: CorpusEntry) => void }) {
-  const groups = groupedCorpus();
-  // Collapsed by default — opening every tradition would swamp the dialog.
-  const [expanded, setExpanded] = useState<string | null>(null);
-  if (groups.length === 0) return null;
-  const toggle = (t: string) => setExpanded((prev) => (prev === t ? null : t));
-  return (
-    <div className="mt-5">
-      <div
-        className="mb-2 text-xs font-semibold uppercase tracking-wide"
-        style={{ color: "var(--text-muted)" }}
-      >
-        Source corpus
-      </div>
-      <div className="flex flex-col">
-        {groups.map((g) => {
-          const meta = TRADITIONS.find((t) => t.key === g.tradition)!;
-          const isOpen = expanded === g.tradition;
-          const count = g.sets.reduce((n, s) => n + s.entries.length, 0) + g.loose.length;
-          return (
-            <section key={g.tradition}>
-              <button
-                onClick={() => toggle(g.tradition)}
-                className="flex w-full items-baseline gap-2 border-b py-2 text-left"
-                style={{ borderColor: "var(--hairline)" }}
-              >
-                <span className="w-3 text-xs" style={{ color: "var(--text-muted)" }}>
-                  {isOpen ? "▾" : "▸"}
-                </span>
-                <span
-                  className="text-sm font-semibold"
-                  style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}
-                >
-                  {meta.label}
-                </span>
-                <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                  {meta.author}
-                </span>
-                <span className="ml-auto text-[11px] tabular" style={{ color: "var(--text-muted)" }}>
-                  {count} model{count === 1 ? "" : "s"}
-                </span>
-              </button>
-              {isOpen && (
-                <div className="mb-2 mt-2 flex flex-col gap-2 pl-3">
-                  {g.sets.map((s) => (
-                    <div key={s.name} className="pl-3" style={{ borderLeft: "2px solid var(--accent)" }}>
-                      <div className="flex items-baseline gap-2 py-1">
-                        <span
-                          className="text-xs font-semibold"
-                          style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}
-                        >
-                          {s.name}
-                        </span>
-                        <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                          {s.entries.length} variants · one lesson by diff
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        {s.entries.map((e) => (
-                          <CorpusCard key={e.file} e={e} onPick={onPick} />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  {g.loose.length > 0 && (
-                    <div className="flex flex-col">
-                      {g.loose.map((e) => (
-                        <CorpusCard key={e.file} e={e} onPick={onPick} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </section>
-          );
-        })}
       </div>
     </div>
   );
