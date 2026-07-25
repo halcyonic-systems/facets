@@ -33,6 +33,7 @@ import {
   EXAMPLES_NOTE,
   type Shelf,
 } from "./home";
+import { openExternal } from "./desktop";
 
 const DOCS_URL = "https://github.com/halcyonic-systems/bert-lenses/tree/main/docs";
 
@@ -308,7 +309,7 @@ function LedgerRow({
   );
   const style = { borderColor: "var(--border)" };
   return href ? (
-    <a href={href} target="_blank" rel="noreferrer" className={ROW_GRID} style={style}>
+    <a href={href} target="_blank" rel="noreferrer" onClick={openExternal} className={ROW_GRID} style={style}>
       {body}
     </a>
   ) : (

@@ -45,6 +45,10 @@ describe("home", () => {
     expect(html).toContain("Documentation");
     // The docs door links out; it is not an in-app page.
     expect(html).toContain('href="https://github.com/halcyonic-systems/bert-lenses/tree/main/docs"');
+    // A real anchor, so right-click → Copy Link works. The desktop shim hangs
+    // off its click handler; it must not replace the anchor with a button.
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noreferrer"');
     // Removed entry points stay removed.
     expect(html).not.toContain("Start blank");
     expect(html).not.toContain("Write SL");

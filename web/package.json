@@ -11,6 +11,7 @@
     "check:tokens": "node scripts/check-tokens.mjs"
   },
   "dependencies": {
+    "@tauri-apps/plugin-opener": "^2.5.4",
     "bert-lenses-kernel": "file:../crates/bert-lenses-kernel/pkg",
     "katex": "^0.17.0",
     "react": "^19.0.0",
