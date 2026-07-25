@@ -338,15 +338,13 @@ export function HomeMenu({ onCreate, onOpenLibrary }: { onCreate: () => void; on
       <Column className="pb-16 pt-10">
         <BlockHeader label="Start here" />
         <Ledger>
-          <LedgerRow index={1} name="Create a model" description="Start from a blank canvas." onClick={onCreate} />
+          <LedgerRow name="Create a model" description="Start from a blank canvas." onClick={onCreate} />
           <LedgerRow
-            index={2}
             name="Open a model"
             description="The standard library, your own saved models, or a file from disk."
             onClick={onOpenLibrary}
           />
           <LedgerRow
-            index={3}
             name="Documentation"
             description="The language, the kernel, and the traditions behind them."
             tag="external"
