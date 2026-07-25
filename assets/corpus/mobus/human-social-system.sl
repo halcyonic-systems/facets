@@ -12,7 +12,6 @@
 # note: Governance is the second component on Mobus's own designation — Fig. 7.16 shows "the very important sub-subsystem of 'Governance'", and §7.6.3 makes it the decision agent: "The latter is considered as the agent that makes the decisions about how the HSS should behave relative to the resources and waste dumps." Both components carry `interface`: governance receives the message flows from outside, the work processes take the resources and pass the wastes.
 # note: The disturbance is drawn as Fig. 7.17 draws it — global climate change, arising from the HSS's own CO₂ deposition and acting back on it. Its flow carries no kind clause: a disturbance in the caption is neither a resource nor a message, and typing it matter or energy would be our commitment.
 # note: The messages are entered as three separate flows, one per resource source, because Mobus says what they carry: "The messages received provide some information regarding the quality and capacity of the resources and their flows." A single aggregated message flow would lose which resource is being reported on.
-# set: Complex → CAS → CAES
 
 system "The Human Social System" : Concrete/Social
 domain "The human social system in the Earth supra-system"
