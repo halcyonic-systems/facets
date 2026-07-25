@@ -1,8 +1,8 @@
 # corpus-entry: v1
 # title: The Steel-Plant in its environment
-# author: George Mobus and Michael Kalton
-# work: Principles of Systems Science
-# year: 2015
+# author: George Mobus
+# work: Systems Science: Theory, Analysis, Modeling, and Design
+# year: 2022
 # locus: Ch. 4 §4.5
 # figure: Fig. 4.14 and Listing 4.1
 # teaches: Mobus's own worked exemplar for SL, at the level the figure draws it: the SOI Steel-Plant as an opaque box situated among three environmental sources and three sinks, with electric energy, iron and coke crossing in and steel, scrap and waste heat crossing out. Six flows, six environment entities, one boundary — the whole of level -1, and nothing beneath it.
