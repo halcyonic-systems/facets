@@ -65,7 +65,9 @@ export function HomeScreen(props: HomeProps) {
         className={
           route.view === "home"
             ? "mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-6 py-16"
-            : "mx-auto w-full max-w-5xl px-6 pb-20 pt-14"
+            : route.view === "shelf"
+              ? "w-full pb-20"
+              : "mx-auto w-full max-w-5xl px-6 pb-20 pt-14"
         }
       >
         {route.view === "home" && (
@@ -422,41 +424,66 @@ function ShelfRow({
   description,
   citation,
   tag,
+  index,
   onClick,
 }: {
   name: string;
   description: string;
   citation?: string;
   tag?: string;
+  index?: number;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
-      className="block w-full border-b py-3 text-left"
-      style={{ borderColor: "var(--hairline)" }}
+      className="grid w-full grid-cols-[3.25rem_1fr] items-stretch border-b text-left"
+      style={{ borderColor: "var(--border)" }}
     >
-      <div className="flex items-baseline gap-3">
-        <span className="text-base" style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
-          {name}
-        </span>
-        {tag && (
+      {/* the ledger gutter — a continuous tinted column, not a rim */}
+      <span
+        className="flex items-start justify-end py-3 pr-3 tabular text-[11px]"
+        style={{
+          background: "var(--accent-soft)",
+          color: "var(--accent-strong)",
+          borderRight: "1px solid var(--border)",
+        }}
+      >
+        {index === undefined ? "·" : String(index).padStart(2, "0")}
+      </span>
+      <span className="block py-3 pl-5 pr-4">
+        <span className="flex items-center gap-3">
           <span
-            className="ml-auto shrink-0 text-[10px] uppercase tracking-wide"
-            style={{ color: "var(--text-muted)" }}
+            className="text-base font-semibold uppercase tracking-[0.08em]"
+            style={{ color: "var(--text-primary)" }}
           >
-            {tag}
+            {name}
+          </span>
+          {tag && (
+            <span
+              className="ml-auto shrink-0 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+              style={{
+                background: "var(--accent)",
+                color: "var(--text-on-accent)",
+                borderRadius: "var(--radius-sm)",
+              }}
+            >
+              {tag}
+            </span>
+          )}
+        </span>
+        <span className="mt-1 block max-w-2xl text-sm" style={{ color: "var(--text-secondary)" }}>
+          {description}
+        </span>
+        {citation && (
+          <span
+            className="mt-1 block text-[10px]"
+            style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+          >
+            {citation}
           </span>
         )}
-      </div>
-      <div className="mt-1 max-w-2xl text-sm" style={{ color: "var(--text-secondary)" }}>
-        {description}
-      </div>
-      {citation && (
-        <div className="mt-1 text-[10px]" style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
-          {citation}
-        </div>
-      )}
+      </span>
     </button>
   );
 }
@@ -491,25 +518,61 @@ export function ShelfPage({
   const count = shelf?.count ?? 0;
   return (
     <div>
-      <BackLink label="Open a model" onClick={onBack} />
-      <SectionLabel>{area === "examples" ? "Examples" : "Source corpus"}</SectionLabel>
-      <PageTitle count={`${count} model${count === 1 ? "" : "s"}`}>{shelf?.label ?? id}</PageTitle>
-      <p className="mt-2 max-w-lg text-sm" style={{ color: "var(--text-secondary)" }}>
-        {area === "examples" ? EXAMPLES_NOTE : CORPUS_NOTE}
-      </p>
-      {area === "corpus" && shelf?.note && (
-        <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-          {shelf.note}
-        </p>
-      )}
+      {/* The masthead is a FILLED band, not a line of text on the page ground:
+          the shelf's identity gets real estate, and the list below it reads as
+          the ledger under a header. */}
+      <div className="w-full px-6 pb-8 pt-8" style={{ background: "var(--accent-strong)" }}>
+        <div className="mx-auto max-w-5xl">
+          <button
+            onClick={onBack}
+            className="mb-7 text-[11px] uppercase tracking-[0.2em]"
+            style={{ fontFamily: "var(--font-mono)", color: "var(--accent-soft)" }}
+          >
+            ‹ Open a model
+          </button>
+          <div className="flex items-end justify-between gap-8">
+            <div>
+              <div
+                className="text-[10px] font-semibold uppercase tracking-[0.3em]"
+                style={{ color: "var(--accent-soft)" }}
+              >
+                {area === "examples" ? "Examples" : "Source corpus"}
+              </div>
+              <h1
+                className="mt-2 text-4xl font-semibold tracking-tight"
+                style={{ color: "var(--text-on-accent)" }}
+              >
+                {shelf?.label ?? id}
+              </h1>
+            </div>
+            <div className="shrink-0 text-right">
+              <div className="text-3xl tabular" style={{ color: "var(--text-on-accent)" }}>
+                {count}
+              </div>
+              <div
+                className="text-[10px] uppercase tracking-[0.24em]"
+                style={{ color: "var(--accent-soft)" }}
+              >
+                model{count === 1 ? "" : "s"}
+              </div>
+            </div>
+          </div>
+          <p className="mt-4 max-w-lg text-sm" style={{ color: "var(--accent-soft)" }}>
+            {area === "examples" ? EXAMPLES_NOTE : CORPUS_NOTE}
+            {area === "corpus" && shelf?.note ? ` — ${shelf.note}` : ""}
+          </p>
+        </div>
+      </div>
 
-      <div className="mt-8 border-t" style={{ borderColor: "var(--hairline)" }}>
+      <div className="mx-auto max-w-5xl px-6">
+        <div className="mt-8 border-t" style={{ borderColor: "var(--border)" }}>
         {area === "examples" &&
-          entries.map((d) => (
+          entries.map((d, i) => (
             <ShelfRow
               key={d.key}
               name={d.title}
               description={d.blurb}
+              index={i + 1}
               tag={isRunnable(d) ? "runs" : undefined}
               onClick={() => onOpenExample(d)}
             />
@@ -568,6 +631,7 @@ export function ShelfPage({
             ))}
           </>
         )}
+        </div>
       </div>
     </div>
   );
