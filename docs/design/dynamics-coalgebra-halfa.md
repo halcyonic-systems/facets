@@ -13,7 +13,7 @@ Half A is what unblocks #100 phase 5. It is deliberately *homogeneous and per-mo
 
 ## 1. The move, in one line
 
-The 8-tuple's `T` (transform) is the **coalgebra structure map** `T : S → F(S)`; `H` (history) is its **final-coalgebra unfolding**; the `Dynamics` descriptor's `kind` names the endofunctor `F`, and its `inputType`/`outputType` ports are the Mealy `A`/`B`. `T` and `H` were *always* coalgebra-shaped — BERT only ever instantiated one functor (`Id`, conservation flow), so it never had to say so. The descriptor (landed 2026-07-23) is the place it now says so.
+The 8-tuple's `T` (transform) is the **coalgebra structure map** `T : S → F(S)`; `H` (history) is its **final-coalgebra unfolding** — for descriptors whose `outputType` separates the trajectories claimed as mechanisms (the identity observer `outputType := Carrier` always does; a **closed** `deterministic` descriptor does **not**, and its final coalgebra is the one-point set — see §2's note and #97); the `Dynamics` descriptor's `kind` names the endofunctor `F`, and its `inputType`/`outputType` ports are the Mealy `A`/`B`. `T` and `H` were *always* coalgebra-shaped — BERT only ever instantiated one functor (`Id`, conservation flow), so it never had to say so. The descriptor (landed 2026-07-23) is the place it now says so.
 
 ## 2. The functor table (grounded, cross-verified)
 
@@ -22,8 +22,18 @@ Each `DynamicsKind` is one endofunctor, and openness is the Mealy wrapper over t
 | `DynamicsKind` | Closed functor `F(X)` | Open (Mealy) form `F(X)` | BERT target |
 |---|---|---|---|
 | `deterministic` | `X^Σ` (or `Id` for Σ=1) | `(B × X)^A` | conservation-flow step; FSA/DLG (#67); Boolean net |
-| `markov` | `Dist(X)` | `(B × Dist(X))^A` | absorbing Markov (#67 ruling) |
-| `nondeterministic` | `𝒫(X)` | `(B × 𝒫(X))^A` | the life-cycle inclusion `ΔS ∈ F(S)` |
+| `markov` | `List(X × ℕ)` | `(List((B × X) × ℕ))^A` | absorbing Markov (#67 ruling) |
+| `nondeterministic` | `List X` | `(List(B × X))^A` | the life-cycle inclusion `ΔS ∈ F(S)` |
+
+> **Why `List`, not `Dist`/`𝒫` — this matters and an earlier draft of this table got it wrong.**
+> The shipped `kindCodomain` (SSF #27) is `List (X × Nat)` and `List X`, not `Dist(X)` and `𝒫(X)`.
+> That is not an approximation of the "real" functors, it is the load-bearing choice:
+> **unrestricted `𝒫` provably has no final coalgebra** (Adámek–Milius–Velebil, *A general final
+> coalgebra theorem*, MSCS 15 (2005), Ex. 3.14), so a kernel typed on `𝒫` could not carry
+> `H`-as-behaviour at all. The `List`-based functors are **polynomial (container) functors** and
+> therefore always have one. Written as `Dist`/`𝒫` this table asserted something false about the
+> shipped code; corrected 2026-07-25 (see `operations/sessions/2026-07-25/references/final-coalgebra-existence.md`).
+> Rutten's `Dist`/`𝒫` remain the right *citation* for the idea — never the type.
 
 The convergence that makes this trustworthy: Rutten's coalgebra and Spivak's *Category Theory for the Sciences* (both in-vault) land on the **identical** functor for each kind, independently — `Loop → Set` (deterministic), `Loop → Kls(Dist)` (Markov), monoid-action `S^Σ` (FSA). And `Id ⇒ Dist` is the Dirac unit of the `Dist` monad, so a deterministic system is a degenerate Markov chain by a *named* natural transformation, not an ad-hoc code path — exactly what #67 needs to relate its FSA and Markov modes rigorously.
 
