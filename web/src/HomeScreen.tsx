@@ -65,7 +65,9 @@ export function HomeScreen(props: HomeProps) {
         className={
           route.view === "home"
             ? "mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-6 py-16"
-            : "mx-auto w-full max-w-5xl px-6 pb-20 pt-14"
+            : route.view === "shelf"
+              ? "mx-auto w-full max-w-3xl px-6 pb-20 pt-10"
+              : "mx-auto w-full max-w-5xl px-6 pb-20 pt-14"
         }
       >
         {route.view === "home" && (
@@ -433,27 +435,39 @@ function ShelfRow({
   return (
     <button
       onClick={onClick}
-      className="block w-full border-b py-3 text-left"
-      style={{ borderColor: "var(--hairline)" }}
+      className="block w-full px-5 py-3.5 text-left"
+      style={{
+        background: "var(--bg-secondary)",
+        border: "1px solid var(--border)",
+        borderRadius: "var(--radius-md)",
+        boxShadow: "var(--shadow-card)",
+      }}
     >
       <div className="flex items-baseline gap-3">
-        <span className="text-base" style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
+        <span
+          className="text-xl"
+          style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}
+        >
           {name}
         </span>
         {tag && (
           <span
-            className="ml-auto shrink-0 text-[10px] uppercase tracking-wide"
-            style={{ color: "var(--text-muted)" }}
+            className="ml-auto shrink-0 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em]"
+            style={{
+              color: "var(--accent-strong)",
+              background: "var(--accent-soft)",
+              borderRadius: "var(--radius-pill)",
+            }}
           >
             {tag}
           </span>
         )}
       </div>
-      <div className="mt-1 max-w-2xl text-sm" style={{ color: "var(--text-secondary)" }}>
+      <div className="mt-1.5 max-w-2xl text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
         {description}
       </div>
       {citation && (
-        <div className="mt-1 text-[10px]" style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
+        <div className="mt-2 text-[10px]" style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
           {citation}
         </div>
       )}
@@ -492,18 +506,59 @@ export function ShelfPage({
   return (
     <div>
       <BackLink label="Open a model" onClick={onBack} />
-      <SectionLabel>{area === "examples" ? "Examples" : "Source corpus"}</SectionLabel>
-      <PageTitle count={`${count} model${count === 1 ? "" : "s"}`}>{shelf?.label ?? id}</PageTitle>
-      <p className="mt-2 max-w-lg text-sm" style={{ color: "var(--text-secondary)" }}>
-        {area === "examples" ? EXAMPLES_NOTE : CORPUS_NOTE}
-      </p>
-      {area === "corpus" && shelf?.note && (
-        <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-          {shelf.note}
-        </p>
-      )}
+      {/* One defined content surface: a shelf is an object you can see the
+          edges of, its models sitting as tiles in a recessed well. Depth does
+          the work the hairlines were doing. */}
+      <div
+        className="overflow-hidden"
+        style={{
+          background: "var(--bg-secondary)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-card)",
+          boxShadow: "var(--shadow-card)",
+        }}
+      >
+        <header className="border-b px-8 pb-6 pt-7" style={{ borderColor: "var(--border)" }}>
+          <div className="flex items-start justify-between gap-6">
+            <div>
+              <div
+                className="text-[10px] font-semibold uppercase tracking-[0.22em]"
+                style={{ fontFamily: "var(--font-mono)", color: "var(--accent)" }}
+              >
+                {area === "examples" ? "Examples" : "Source corpus"}
+              </div>
+              <h1
+                className="mt-2 text-4xl leading-none"
+                style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}
+              >
+                {shelf?.label ?? id}
+              </h1>
+            </div>
+            <span
+              className="shrink-0 px-3 py-1 text-xs tabular"
+              style={{
+                color: "var(--accent-strong)",
+                border: "1px solid var(--accent)",
+                borderRadius: "var(--radius-pill)",
+              }}
+            >
+              {count} model{count === 1 ? "" : "s"}
+            </span>
+          </div>
+          <p className="mt-3 max-w-lg text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            {area === "examples" ? EXAMPLES_NOTE : CORPUS_NOTE}
+          </p>
+          {area === "corpus" && shelf?.note && (
+            <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+              {shelf.note}
+            </p>
+          )}
+        </header>
 
-      <div className="mt-8 border-t" style={{ borderColor: "var(--hairline)" }}>
+      <div
+        className="flex flex-col gap-2.5 p-4"
+        style={{ background: "var(--bg-surface)" }}
+      >
         {area === "examples" &&
           entries.map((d) => (
             <ShelfRow
@@ -568,6 +623,7 @@ export function ShelfPage({
             ))}
           </>
         )}
+      </div>
       </div>
     </div>
   );
