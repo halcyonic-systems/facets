@@ -12,7 +12,6 @@
 # note: The retina is OUTSIDE the boundary by footnote 8, which also flags that this placement is a decision and may be the wrong one: "Under some circumstances, it would be prudent to use the reverse analysis methods of Sect. 6.7.4 Reverse Deconstruction…, for example, when analyzing the visual system and discovering that 'eyes' are actually more complex sensory organs than simple light detectors."
 # note: The thalamic relay carries `interface` because it is the only component a boundary-crossing flow touches. Mobus does not name it an interface; the flow does.
 # note: Everything flowing is a message. "The brain is an information processing system — a biological computation engine" (§7.4.2). No energy or material flow is authored, though a real brain analysis would need both.
-# set: Complex → CAS → CAES
 
 system "The Mammalian Brain" : Concrete/Biological
 domain "Brain science"

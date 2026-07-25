@@ -11,7 +11,6 @@
 # note: The synapses and the hillock carry `interface` on Mobus's own word: "Each synapse is an interface between the incoming signal and the receiving neuron system", and the hillock is "the neuron output processor". They are the only two components any boundary-crossing flow touches.
 # note: Every flow is `informational`. This is Mobus's framing, not a convenience — "The interest here is communications between neurons." The physical carriers differ (an action potential is a wave of depolarization, a neurotransmitter is a molecule crossing a cleft), and that difference is a level-2 fact about the interface protocol, not about what is flowing at level 1.
 # note: The secondary signal has two possible origins in the text — "either from the cell itself or from external sources such as neuromodulators" — and only the external one is representable at this level, since the internal one would need the cell subsystem the figure leaves empty. It is entered as an environmental source and the ambiguity recorded here.
-# set: Complex → CAS → CAES
 
 system "A Typical Neuron" : Concrete/Biological
 domain "Neurobiology"

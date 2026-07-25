@@ -12,7 +12,6 @@
 # note: Only the downward internal coupling is authored. Mobus describes the software→hardware direction — the operating system "has primary responsibility for interfacing all other programs with the hardware through the firmware component" — and does not describe a return path at this level, so none is drawn.
 # note: No work-process primitive is declared anywhere in this entry, or in any ch. 7 entry. The Combining/Splitting/Buffering taxonomy is Mobus's, but he does not apply it to these example systems; assigning one would be our reading, not his.
 # note: The two flow kinds are his: "That which flows within the computer is messages and energy" (§7.2.3.2). There are no material flows, and he says so.
-# set: Complex → CAS → CAES
 
 system "A Digital Computing System" : Concrete/Technical
 domain "Digital computing"
