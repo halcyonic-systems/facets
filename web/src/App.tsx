@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ready,
   runForced,
@@ -38,6 +38,7 @@ import { MarkovReadout } from "./canvas/MarkovReadout";
 import { type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
+import { MODE_BY_LENS } from "./review";
 import { NewModelTypePrompt } from "./NewModelTypePrompt";
 import { SlPane } from "./SlPane";
 import { draftSlWithRetry, newTurnId, loadCoauthorTurns, saveCoauthorTurns, type CoauthorTurn } from "./coauthor";
@@ -249,7 +250,7 @@ function Workspace() {
   const [typePromptOpen, setTypePromptOpen] = useState(false);
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
   // #57: inspector focus mode. Pops the docked inspector to full width and hides
-  // the palette + canvas so the active reading (Run / Formal / Audit) gets the
+  // the palette + canvas so the active reading (Run / Formal / Review) gets the
   // whole work region. Presentation-only — the canvas <main> stays mounted (just
   // display:none'd), so its pan/zoom viewport survives the round trip untouched.
   const [inspectorFocused, setInspectorFocused] = useState(false);
@@ -416,7 +417,7 @@ function Workspace() {
   //
   // A corpus entry ships no CSV and no manifest, so the run path stays dark.
   // That is the File → Import case exactly (see the comment there), not a new
-  // state: structure, lens, formal object and audit still light up, because
+  // state: structure, lens, formal object and review still light up, because
   // they read the canvas model.
   const pickCorpus = async (e: CorpusEntry) => {
     if (!guardDiscard() || !(await flushWalk())) return;
@@ -457,7 +458,7 @@ function Workspace() {
   // File → Import: load a user-supplied model JSON onto the canvas via the same
   // kernel seam the demo picker uses (toCanvas). No demo bundle means no CSV /
   // manifest, so the run path stays dark for imports — structure, lens, formal
-  // object, and audit still light up (they read the canvas model).
+  // object, and review still light up (they read the canvas model).
   async function importModel(json: string) {
     if (!guardDiscard() || !(await flushWalk())) return;
     try {
@@ -587,7 +588,7 @@ function Workspace() {
   }
 
   // File → New: a blank canvas to author a model from scratch (the #14 path — no
-  // demo bundle, so the run stays dark until tethered; structure/lens/formal/audit
+  // demo bundle, so the run stays dark until tethered; structure/lens/formal/review
   // read the empty model). Boundary defaults are neutral, editable via the popover.
   async function newModel() {
     if (!guardDiscard() || !(await flushWalk())) return;
@@ -815,7 +816,7 @@ function Workspace() {
   // (IndexedDB library, then the working folder), and let the kernel check
   // every seam — including the cross-model derived_env identity. Async because
   // resolution is I/O; the issues merge into the same verdict the pill and
-  // audit panel read, so a missing or broken referent is as loud as any other
+  // review panel read, so a missing or broken referent is as loud as any other
   // validation error. Effect-shaped (not memo) — a stale check is discarded.
   // Since step 5b the kernel also resolves each issue's canvas target
   // (check_decompositions_canvas), so seam rows navigate like any other issue.
@@ -839,7 +840,7 @@ function Workspace() {
       if (!stale) setDecomposition({ issues: report.issues, targets: report.issue_targets });
     })().catch((e) => {
       // Resolution failing outright (storage error, projection throw) must
-      // still surface on the audit panel, never only the console.
+      // still surface on the review panel, never only the console.
       if (!stale) {
         setDecomposition({
           issues: [
@@ -863,7 +864,7 @@ function Workspace() {
   }, [canvasModel, dirHandle]);
 
   // The kernel's lens-gate verdict plus the resolution-time decomposition
-  // issues, one list — the issues Pill, the audit panel, and the dock all read
+  // issues, one list — the issues Pill, the review panel, and the dock all read
   // this. Both halves carry kernel-resolved canvas targets, index-parallel.
   const verdict = useMemo(() => {
     const base = analysis.ok?.validation ?? null;
@@ -1039,6 +1040,16 @@ function Workspace() {
   }
 
   const clean = verdict !== null && verdict.issues.length === 0;
+
+  // #204: the review is an action the author takes, not a tab they may never
+  // open. The kernel already judges continuously — invoking a review raises the
+  // report and stamps when it was read. No new computation, and no LLM.
+  const [reviewRequest, setReviewRequest] = useState(0);
+  const [reviewedAt, setReviewedAt] = useState<string | null>(null);
+  const invokeReview = useCallback(() => {
+    setReviewRequest((n) => n + 1);
+    setReviewedAt(new Date().toLocaleTimeString());
+  }, []);
 
   // The math-panel-first Klir register (#100): under Klir the set listings are
   // the primary surface and the node-and-edge picture demotes to a locator, so
@@ -1439,6 +1450,20 @@ function Workspace() {
                 {desc.question}
               </span>
             )}
+            {/* #204: the review as an action. The pill beside it is the standing
+                reading; this button is the author asking for the report. */}
+            <button
+              onClick={invokeReview}
+              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em]"
+              style={{
+                background: "var(--accent-strong)",
+                color: "var(--text-on-accent)",
+                borderRadius: "var(--radius-sm)",
+              }}
+              title={`Review this model against the kernel at ${MODE_BY_LENS[canvasModel.lens]} mode`}
+            >
+              Review
+            </button>
             <Pill tone={clean ? "ok" : "warning"}>
               {verdict === null
                 ? "…"
@@ -1826,7 +1851,7 @@ function Workspace() {
                     {/* Grace note for a walked-into newborn (#89 step 5b): an
                         empty interior is the intended starting state, so nudge
                         gently — an invitation on the canvas, not an error row
-                        on the audit. Counting components is empty-state UI,
+                        on the review. Counting components is empty-state UI,
                         not a systems verdict. */}
                     {walk.length > 0 && !canvasModel.things.some((t) => t.role === "Component") && (
                       <Banner tone="soft" className="pointer-events-none absolute left-3 top-3">
@@ -1927,7 +1952,7 @@ function Workspace() {
                       pill (a distribution run has no residual to show). */}
                   {markovRun && <MarkovReadout run={markovRun} tick={tick} onTick={setTick} />}
 
-                  {/* The Run / Formal / Audit panels no longer stack here — they
+                  {/* The Run / Formal / Review panels no longer stack here — they
                       live in the right-docked InspectorDock (a sibling of this
                       <main>, below), so the canvas keeps the full viewport. */}
                 </div>
@@ -1935,7 +1960,7 @@ function Workspace() {
             )}
           </main>
 
-          {/* Right-edge instrument dock: Run / Formal / Audit as tabs, one
+          {/* Right-edge instrument dock: Run / Formal / Review as tabs, one
               visible at a time, full height of the work region. Only mounts once
               a model is loaded. */}
           {canvasModel && (
@@ -1948,6 +1973,9 @@ function Workspace() {
               analysisError={analysisError}
               canvasModel={canvasModel}
               tick={tick}
+              reviewRequest={reviewRequest}
+              reviewedAt={reviewedAt}
+              onReview={invokeReview}
               onNavigate={(t) => {
                 setBoundaryAnchor(null);
                 setSelectedThingId(t.thing);
