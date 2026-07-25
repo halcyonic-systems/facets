@@ -110,6 +110,13 @@
       "teaches": "An equivalence relation on a named set, given by Klir as a set, as a matrix, and as a node-edge diagram — the same system in three registers, with the relation partitioning the set into equivalence classes."
     },
     {
+      "file": "mobus/steel-plant.sl",
+      "tradition": "mobus",
+      "title": "The Steel-Plant in its environment",
+      "citation": "George Mobus, Systems Science: Theory, Analysis, Modeling, and Design (2022), Ch. 4 §4.5, Fig. 4.14 and Listing 4.1",
+      "teaches": "Mobus's own worked exemplar for SL, at the level the figure draws it: the SOI Steel-Plant as an opaque box situated among three environmental sources and three sinks, with electric energy, iron and coke crossing in and steel, scrap and waste heat crossing out. Six flows, six environment entities, one boundary — the whole of level -1, and nothing beneath it."
+    },
+    {
       "file": "mobus/digital-computing-system.sl",
       "tradition": "mobus",
       "title": "A digital computing system",

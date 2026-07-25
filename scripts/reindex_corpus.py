@@ -36,6 +36,8 @@ ORDER = [
     "klir/cellular-array-cell.sl",
     "klir/serial-binary-adder.sl",
     "klir/criminal-court.sl",
+    # Mobus — his own SL exemplar, the SOI situated in its environment
+    "mobus/steel-plant.sl",
     # Mobus — ch. 7's ladder of example systems, in his order: merely complex,
     # then complex adaptive, then complex adaptive and evolvable
     "mobus/digital-computing-system.sl",
