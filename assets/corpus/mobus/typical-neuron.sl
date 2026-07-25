@@ -14,7 +14,7 @@
 # set: Complex → CAS → CAES
 
 system "A Typical Neuron" : Concrete/Biological
-domain "neurobiology"
+domain "Neurobiology"
 
 component "Synaptic Compartments" interface
 component "Cell Membrane"

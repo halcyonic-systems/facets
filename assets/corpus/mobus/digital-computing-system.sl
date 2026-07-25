@@ -15,7 +15,7 @@
 # set: Complex → CAS → CAES
 
 system "A Digital Computing System" : Concrete/Technical
-domain "digital computing"
+domain "Digital computing"
 
 component Hardware interface
 component Firmware

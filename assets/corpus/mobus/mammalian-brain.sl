@@ -15,7 +15,7 @@
 # set: Complex → CAS → CAES
 
 system "The Mammalian Brain" : Concrete/Biological
-domain "brain science"
+domain "Brain science"
 
 component "Thalamic Relay Nucleus" interface
 component "Primary Visual Cortex"

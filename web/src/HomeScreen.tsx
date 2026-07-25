@@ -2,7 +2,8 @@
 // canvas. Three levels, one surface:
 //
 //   home     Create a model · Open a model · Documentation
-//   library  the shelves: examples by genus, corpus by author, My library, a file
+//   library  the shelves: examples by genus, corpus by author, your saved
+//            models listed inline, a file from disk
 //   shelf    one shelf's models, name + description (+ citation, corpus only)
 //
 // Counts on the shelf buttons are derived (home.ts) — a new example or a new
@@ -31,8 +32,7 @@ const DOCS_URL = "https://github.com/halcyonic-systems/bert-lenses/tree/main/doc
 export type HomeRoute =
   | { view: "home" }
   | { view: "library" }
-  | { view: "shelf"; area: "examples" | "corpus"; id: string }
-  | { view: "mine" };
+  | { view: "shelf"; area: "examples" | "corpus"; id: string };
 
 interface HomeProps {
   initialRoute?: HomeRoute;
@@ -58,17 +58,28 @@ export function HomeScreen(props: HomeProps) {
         backgroundImage: "radial-gradient(120% 80% at 50% -10%, var(--stage-from), transparent 60%)",
       }}
     >
-      <div className="mx-auto w-full max-w-2xl px-6 pb-20 pt-14">
+      {/* Home is a short block and centers in the viewport; the library and the
+          shelves are LISTS, so they take a wider column than a reading measure
+          and start near the top. Prose inside a row keeps its own max width. */}
+      <div
+        className={
+          route.view === "home"
+            ? "mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-6 py-16"
+            : "mx-auto w-full max-w-5xl px-6 pb-20 pt-14"
+        }
+      >
         {route.view === "home" && (
           <HomeMenu onCreate={props.onCreate} onOpenLibrary={() => setRoute({ view: "library" })} />
         )}
         {route.view === "library" && (
           <LibraryBrowser
-            savedCount={countLibrary(props.libraryTree)}
+            tree={props.libraryTree}
             onBack={() => setRoute({ view: "home" })}
             onShelf={(s) => setRoute({ view: "shelf", area: s.area, id: s.id })}
-            onMine={() => setRoute({ view: "mine" })}
             onOpenFile={props.onOpenFile}
+            onLoad={props.onLoadFromLibrary}
+            onDelete={props.onDeleteFromLibrary}
+            onRename={props.onRenameInLibrary}
           />
         )}
         {route.view === "shelf" && (
@@ -78,15 +89,6 @@ export function HomeScreen(props: HomeProps) {
             onBack={() => setRoute({ view: "library" })}
             onOpenExample={props.onOpenExample}
             onOpenCorpus={props.onOpenCorpus}
-          />
-        )}
-        {route.view === "mine" && (
-          <MyLibraryPage
-            tree={props.libraryTree}
-            onBack={() => setRoute({ view: "library" })}
-            onLoad={props.onLoadFromLibrary}
-            onDelete={props.onDeleteFromLibrary}
-            onRename={props.onRenameInLibrary}
           />
         )}
         {props.onClose && (
@@ -270,21 +272,33 @@ function ShelfButton({
   );
 }
 
+/** How many saved roots list inline before the browser folds the rest behind a
+ *  "show all" — enough that a normal library never folds at all. */
+const INLINE_LIBRARY_ROOTS = 12;
+
 export function LibraryBrowser({
-  savedCount,
+  tree,
   onBack,
   onShelf,
-  onMine,
   onOpenFile,
+  onLoad,
+  onDelete,
+  onRename,
 }: {
-  savedCount: number;
+  tree: LibraryNode[];
   onBack: () => void;
   onShelf: (s: Shelf) => void;
-  onMine: () => void;
   onOpenFile: () => void;
+  onLoad: (name: string) => void;
+  onDelete: (name: string) => void;
+  onRename: (from: string, to: string) => Promise<boolean>;
 }) {
   const examples = exampleShelves();
   const corpus = corpusShelves();
+  const savedCount = countLibrary(tree);
+  const [showAllSaved, setShowAllSaved] = useState(false);
+  const shownRoots = showAllSaved ? tree : tree.slice(0, INLINE_LIBRARY_ROOTS);
+  const foldedRoots = tree.length - shownRoots.length;
   return (
     <div>
       <BackLink label="Home" onClick={onBack} />
@@ -331,14 +345,41 @@ export function LibraryBrowser({
         </div>
       </section>
 
+      {/* Saved models list HERE, not behind a shelf-of-one: there was never a
+          branch to take, so the drill-in was a click that bought nothing. */}
       <section className="mt-10 border-t pt-8" style={{ borderColor: "var(--hairline)" }}>
-        <SectionLabel>My library</SectionLabel>
-        <p className="mb-3 text-sm" style={{ color: "var(--text-secondary)" }}>
-          Models you have saved from this app.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <ShelfButton label="Saved models" count={savedCount} onClick={onMine} />
+        <div className="flex items-baseline justify-between gap-4">
+          <SectionLabel>My library</SectionLabel>
+          <span className="shrink-0 text-xs tabular" style={{ color: "var(--text-muted)" }}>
+            {savedCount} model{savedCount === 1 ? "" : "s"}
+          </span>
         </div>
+        <p className="mb-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+          Models you have saved from this app. A model reached by a decomposition
+          reference nests under the system of interest that reaches it.
+        </p>
+        {tree.length === 0 ? (
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+            no saved models yet
+          </p>
+        ) : (
+          <div className="border-t" style={{ borderColor: "var(--hairline)" }}>
+            {shownRoots.map((root) => (
+              <div key={root.name} className="border-b py-2" style={{ borderColor: "var(--hairline)" }}>
+                <LibraryRow node={root} depth={0} onLoad={onLoad} onDelete={onDelete} onRename={onRename} />
+              </div>
+            ))}
+            {foldedRoots > 0 && (
+              <button
+                onClick={() => setShowAllSaved(true)}
+                className="py-2 text-xs"
+                style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+              >
+                show all {tree.length} saved models
+              </button>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="mt-10 border-t pt-8" style={{ borderColor: "var(--hairline)" }}>
@@ -370,7 +411,12 @@ export function LibraryBrowser({
 
 /** One model on a shelf. Name in the display face, description on its own line
  *  so it WRAPS instead of clipping mid-word, and — corpus only — the citation
- *  beneath it. Same row on both shelves; the citation is the separator. */
+ *  beneath it. Same row on both shelves; the citation is the separator.
+ *
+ *  `tag` marks the EXCEPTION, never the rule: every model on a shelf is
+ *  structural, so a per-row "diagram" label repeats identically down the whole
+ *  column and says nothing. Only the models that also carry dynamics are
+ *  tagged. */
 function ShelfRow({
   name,
   description,
@@ -403,7 +449,7 @@ function ShelfRow({
           </span>
         )}
       </div>
-      <div className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+      <div className="mt-1 max-w-2xl text-sm" style={{ color: "var(--text-secondary)" }}>
         {description}
       </div>
       {citation && (
@@ -413,6 +459,14 @@ function ShelfRow({
       )}
     </button>
   );
+}
+
+/** The citation every member of a sibling-set shares, or null if they differ.
+ *  Derived from the entries themselves — no set is named here. */
+export function sharedCitation(entries: CorpusEntry[]): string | null {
+  const first = entries[0]?.citation;
+  if (!first || entries.length < 2) return null;
+  return entries.every((e) => e.citation === first) ? first : null;
 }
 
 export function ShelfPage({
@@ -456,36 +510,53 @@ export function ShelfPage({
               key={d.key}
               name={d.title}
               description={d.blurb}
-              tag={isRunnable(d) ? "runs" : "diagram"}
+              tag={isRunnable(d) ? "runs" : undefined}
               onClick={() => onOpenExample(d)}
             />
           ))}
         {area === "corpus" && (
           <>
-            {corpus.sets.map((s) => (
-              <div key={s.name}>
-                <div className="flex items-baseline gap-2 pt-4">
-                  <span
-                    className="text-xs font-semibold"
-                    style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}
-                  >
-                    {s.name}
-                  </span>
-                  <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-                    {s.entries.length} variants · one lesson by diff
-                  </span>
+            {corpus.sets.map((s) => {
+              // A set that teaches by diff over one figure cites that one
+              // figure; repeating the line on every variant is the citation
+              // saying nothing. Hoist it to the header when it is shared, and
+              // fall back to per-row when the members actually cite differently.
+              const shared = sharedCitation(s.entries);
+              return (
+                <div key={s.name}>
+                  <div className="pt-4">
+                    <div className="flex items-baseline gap-2">
+                      <span
+                        className="text-xs font-semibold"
+                        style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}
+                      >
+                        {s.name}
+                      </span>
+                      <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                        {s.entries.length} variants · one lesson by diff
+                      </span>
+                    </div>
+                    {shared && (
+                      <div
+                        className="mt-0.5 text-[10px]"
+                        style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+                      >
+                        {shared}
+                      </div>
+                    )}
+                  </div>
+                  {s.entries.map((e) => (
+                    <ShelfRow
+                      key={e.file}
+                      name={e.title}
+                      description={firstSentence(e.teaches)}
+                      citation={shared ? undefined : e.citation}
+                      onClick={() => onOpenCorpus(e)}
+                    />
+                  ))}
                 </div>
-                {s.entries.map((e) => (
-                  <ShelfRow
-                    key={e.file}
-                    name={e.title}
-                    description={firstSentence(e.teaches)}
-                    citation={e.citation}
-                    onClick={() => onOpenCorpus(e)}
-                  />
-                ))}
-              </div>
-            ))}
+              );
+            })}
             {corpus.loose.map((e) => (
               <ShelfRow
                 key={e.file}
@@ -503,48 +574,8 @@ export function ShelfPage({
 }
 
 // ---------------------------------------------------------------------------
-// my library
+// my library rows (rendered inline in the library browser)
 // ---------------------------------------------------------------------------
-
-export function MyLibraryPage({
-  tree,
-  onBack,
-  onLoad,
-  onDelete,
-  onRename,
-}: {
-  tree: LibraryNode[];
-  onBack: () => void;
-  onLoad: (name: string) => void;
-  onDelete: (name: string) => void;
-  onRename: (from: string, to: string) => Promise<boolean>;
-}) {
-  const count = countLibrary(tree);
-  return (
-    <div>
-      <BackLink label="Open a model" onClick={onBack} />
-      <SectionLabel>My library</SectionLabel>
-      <PageTitle count={`${count} model${count === 1 ? "" : "s"}`}>Saved models</PageTitle>
-      <p className="mt-2 max-w-lg text-sm" style={{ color: "var(--text-secondary)" }}>
-        Models you have saved from this app. A model reached by a decomposition
-        reference nests under the system of interest that reaches it.
-      </p>
-      <div className="mt-8 border-t" style={{ borderColor: "var(--hairline)" }}>
-        {tree.length === 0 ? (
-          <p className="py-4 text-sm" style={{ color: "var(--text-muted)" }}>
-            no saved models yet
-          </p>
-        ) : (
-          tree.map((root) => (
-            <div key={root.name} className="border-b py-2" style={{ borderColor: "var(--hairline)" }}>
-              <LibraryRow node={root} depth={0} onLoad={onLoad} onDelete={onDelete} onRename={onRename} />
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
 
 function relTime(ts: number): string {
   const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));

@@ -20,7 +20,7 @@
 # projection-vs-promotion. What it cannot say is discussed below.
 
 system "hal" : Concrete/Technical
-domain "sovereign-AI harness: routes, deliberates, measures, fine-tunes, and self-regulates local models"
+domain "Sovereign-AI harness: routes, deliberates, measures, fine-tunes, and self-regulates local models"
 
 # ── Composition: hal's internal subsystems, one level down ───────────
 

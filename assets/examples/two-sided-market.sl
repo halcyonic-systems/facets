@@ -7,7 +7,7 @@
 # environment the platform is coupled to.
 
 system "Two-Sided Marketplace" : Concrete/Social
-domain "digital platform economy: matching buyers and sellers for a fee"
+domain "Digital platform economy: matching buyers and sellers for a fee"
 
 # ── Composition: the platform's internal mechanisms ──────────────────
 # Platform itself is the aggregator/boundary component that all outside
