@@ -24,6 +24,28 @@ use bert_canvas::sl::parse_sl_full;
 const REQUIRED: [&str; 7] = ["title", "author", "work", "year", "locus", "teaches", "omits"];
 const OPTIONAL: [&str; 4] = ["figure", "note", "gate", "set"];
 
+/// The declared works of each shelf — (author, work, year), matched exactly
+/// against the header (#194).
+///
+/// Every shelf currently holds one book, and an allow-list rather than a
+/// derived "whichever book the shelf already uses" is the point: a second work
+/// on a shelf has to be *typed here*, in the same commit as the entry that
+/// needs it. A transcription that drifts onto a neighbouring title — Mobus &
+/// Kalton's *Principles of Systems Science* (2015) for Mobus 2022, say — is
+/// then a red test rather than a silently shipped mis-attribution.
+///
+/// Extending this list is a deliberate act. A shelf may legitimately span works
+/// (Klir's *Architecture of Systems Problem Solving* alongside *Facets*), and
+/// when one does, the second triple goes here with the entry that introduces it.
+type Work = (&'static str, &'static str, &'static str);
+type Shelf = (&'static str, &'static [Work]);
+
+const SHELVES: &[Shelf] = &[
+    ("bunge", &[("Mario Bunge", "Treatise on Basic Philosophy, Vol. 4: A World of Systems", "1979")]),
+    ("klir", &[("George Klir", "Facets of Systems Science, 2nd ed.", "2001")]),
+    ("mobus", &[("George Mobus", "Systems Science: Theory, Analysis, Modeling, and Design", "2022")]),
+];
+
 fn corpus_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/corpus")
 }
@@ -121,6 +143,77 @@ fn tradition_of(root: &Path, path: &Path) -> String {
         .ok()
         .and_then(|r| r.components().next().map(|c| c.as_os_str().to_string_lossy().into_owned()))
         .unwrap_or_default()
+}
+
+/// One entry reduced to what the shelf gate reads.
+struct ShelfEntry {
+    file: String,
+    tradition: String,
+    author: String,
+    work: String,
+    year: String,
+    citation: String,
+}
+
+impl ShelfEntry {
+    fn from_header(file: &str, tradition: &str, h: &Header) -> Self {
+        Self {
+            file: file.to_string(),
+            tradition: tradition.to_string(),
+            author: h.fields["author"].clone(),
+            work: h.fields["work"].clone(),
+            year: h.fields["year"].clone(),
+            citation: citation(h),
+        }
+    }
+
+    fn matches(&self, (a, w, y): &Work) -> bool {
+        self.author == *a && self.work == *w && self.year == *y
+    }
+}
+
+/// One shelf, one book (#194): each entry's (author, work, year) must be
+/// declared for its tradition. Returns the first divergence, naming the
+/// offending entry, a sibling that agrees, and both citations.
+fn check_shelves(entries: &[ShelfEntry]) -> Result<(), String> {
+    for e in entries {
+        let Some((_, declared)) = SHELVES.iter().find(|(t, _)| *t == e.tradition) else {
+            return Err(format!(
+                "one shelf, one book: `{}` sits on shelf `{}`, which declares no works.\n  \
+                 cites: {}\n\
+                 Add the shelf and its (author, work, year) to SHELVES in \
+                 crates/bert-canvas/tests/source_corpus.rs.",
+                e.file, e.tradition, e.citation
+            ));
+        };
+        if declared.iter().any(|d| e.matches(d)) {
+            continue;
+        }
+
+        let witness = entries
+            .iter()
+            .find(|o| o.tradition == e.tradition && o.file != e.file && declared.iter().any(|d| o.matches(d)))
+            .map(|o| format!("{}\n    cites: {}", o.file, o.citation))
+            .unwrap_or_else(|| "(no other entry on this shelf cites a declared work)".to_string());
+
+        let list = declared
+            .iter()
+            .map(|(a, w, y)| format!("{a}, {w} ({y})"))
+            .collect::<Vec<_>>()
+            .join("\n    ");
+
+        return Err(format!(
+            "one shelf, one book: `{}` cites a work not declared for shelf `{}`.\n  \
+             {}\n    cites: {}\n  {}\n  \
+             declared for `{}`:\n    {}\n\
+             Fix the citation, or — if the shelf genuinely spans a second work — add\n  \
+             (\"{}\", \"{}\", \"{}\")\n\
+             to SHELVES in crates/bert-canvas/tests/source_corpus.rs, in the same commit \
+             as the entry that needs it.",
+            e.file, e.tradition, e.file, e.citation, witness, e.tradition, list, e.author, e.work, e.year
+        ));
+    }
+    Ok(())
 }
 
 fn rel_key(root: &Path, path: &Path) -> String {
@@ -255,4 +348,104 @@ fn source_corpus_index_agrees() {
             "{file}: index `citation` must be composed by the §3.2 rule and no other"
         );
     }
+}
+
+/// Law: one shelf, one book. Entries sharing a tradition cite a work declared
+/// for that tradition, so a typo'd, hallucinated or mis-attributed title cannot
+/// ship next to the book it was supposed to be.
+#[test]
+fn source_corpus_one_shelf_one_book() {
+    let root = corpus_root();
+    let mut files = Vec::new();
+    sl_files(&root, &mut files);
+    files.sort();
+    assert!(!files.is_empty(), "no .sl files found under {}", root.display());
+
+    let entries: Vec<ShelfEntry> = files
+        .iter()
+        .map(|path| {
+            let key = rel_key(&root, path);
+            let text = fs::read_to_string(path).unwrap_or_else(|e| panic!("{key}: unreadable: {e}"));
+            let header = read_header(&key, &text).unwrap_or_else(|e| panic!("{e}"));
+            ShelfEntry::from_header(&key, &tradition_of(&root, path), &header)
+        })
+        .collect();
+
+    for (tradition, _) in SHELVES {
+        assert!(
+            entries.iter().any(|e| e.tradition == *tradition),
+            "SHELVES declares `{tradition}`, which has no entries on disk — \
+             drop the declaration or restore the shelf"
+        );
+    }
+
+    if let Err(msg) = check_shelves(&entries) {
+        panic!("{msg}");
+    }
+}
+
+/// The gate has to be able to fail. This is the near-miss of #194 reconstructed:
+/// two Mobus entries transcribed from one chapter series, citing two books.
+#[test]
+fn divergent_shelf_is_rejected() {
+    let entry = |file: &str, work: &str, year: &str, locus: &str| ShelfEntry {
+        file: file.to_string(),
+        tradition: "mobus".to_string(),
+        author: "George Mobus".to_string(),
+        work: work.to_string(),
+        year: year.to_string(),
+        citation: format!("George Mobus, {work} ({year}), {locus}"),
+    };
+
+    let good = entry(
+        "mobus/digital-computing-system.sl",
+        "Systems Science: Theory, Analysis, Modeling, and Design",
+        "2022",
+        "Ch. 7 §7.2.3",
+    );
+    let drifted =
+        entry("mobus/steel-plant.sl", "Principles of Systems Science", "2015", "Ch. 4 §4.5");
+
+    check_shelves(std::slice::from_ref(&good)).expect("the declared work must pass");
+
+    let msg = check_shelves(&[good, drifted]).expect_err("a second book on one shelf must fail");
+    for fragment in [
+        "mobus/steel-plant.sl",
+        "mobus/digital-computing-system.sl",
+        "Principles of Systems Science (2015)",
+        "Systems Science: Theory, Analysis, Modeling, and Design (2022)",
+        "SHELVES",
+    ] {
+        assert!(msg.contains(fragment), "failure message omits {fragment:?}:\n{msg}");
+    }
+}
+
+/// A one-character drift in the title is the failure this exists to catch, and
+/// it is invisible to any rule derived from the shelf's own contents.
+#[test]
+fn typoed_work_is_rejected() {
+    let e = ShelfEntry {
+        file: "klir/students-in-a-course.sl".to_string(),
+        tradition: "klir".to_string(),
+        author: "George Klir".to_string(),
+        work: "Facets of Systems Science, 2nd ed".to_string(),
+        year: "2001".to_string(),
+        citation: "George Klir, Facets of Systems Science, 2nd ed (2001), Ch. 2".to_string(),
+    };
+    check_shelves(&[e]).expect_err("a missing period in the title must fail");
+}
+
+/// A new tradition directory fails loudly rather than being waved through.
+#[test]
+fn undeclared_shelf_is_rejected() {
+    let e = ShelfEntry {
+        file: "ashby/homeostat.sl".to_string(),
+        tradition: "ashby".to_string(),
+        author: "W. Ross Ashby".to_string(),
+        work: "Design for a Brain".to_string(),
+        year: "1952".to_string(),
+        citation: "W. Ross Ashby, Design for a Brain (1952), Ch. 8".to_string(),
+    };
+    let msg = check_shelves(&[e]).expect_err("an undeclared shelf must fail");
+    assert!(msg.contains("declares no works"), "{msg}");
 }
