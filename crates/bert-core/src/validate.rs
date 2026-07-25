@@ -334,6 +334,7 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
             check_reachability_requirements(model, issues);
             check_stock_dimensions(model, issues);
             check_interfaces_carry_flow(model, issues);
+            check_interface_declarations_match_flows(model, issues);
         }
         Mode::Full => {
             check_self_loops(model, issues);
@@ -342,6 +343,7 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
             check_reachability_requirements(model, issues);
             check_stock_dimensions(model, issues);
             check_interfaces_carry_flow(model, issues);
+            check_interface_declarations_match_flows(model, issues);
             check_dynamical_face(model, issues);
         }
     }
@@ -1016,6 +1018,124 @@ pub fn is_interface_flow_refusal(issue: &ValidationIssue) -> bool {
         && issue.location.starts_with("systems[")
         && issue.location.contains("].boundary.interfaces[")
         && issue.location.ends_with(']')
+}
+
+/// The declaration-vs-graph half of the interface contract (bert-lenses#225),
+/// left uncovered when `check_orphan_interfaces` was deleted in #220/#224.
+///
+/// [`check_interfaces_carry_flow`] asks a GRAPH question — does any external
+/// flow touch this interface. This asks a CONSISTENCY question — does the
+/// interface's own declared attachment agree with the interactions the model
+/// records. A model satisfies the first and violates this one whenever an
+/// interface with a real crossing flow declares an `exports_to` naming a
+/// different sink than the flow goes to. Neither check subsumes the other, and
+/// folding them would produce a message that could not say which defect it
+/// found.
+///
+/// **Severity: Error (a refusal), Operational and Full only.** Not a partial
+/// authoring state: `bert_canvas::project` DERIVES `receives_from`/`exports_to`
+/// from the same bond list it turns into interactions, so declaration and graph
+/// move together and no canvas model ever passes through this shape. The only
+/// way to write one is to state both halves explicitly — a hand-authored or
+/// generated file — and there a disagreement is two declarations that cannot
+/// both be true, which is the strongest form of the declared-refuses doctrine
+/// (`docs/kernel-architecture.md`). Core and Structural stay silent for the
+/// same reason as the sibling: Klir and Bunge carry no interface concept
+/// (#213, #219).
+///
+/// A flow counts as recording the declaration when its far endpoint is the
+/// declared entity AND its near end reaches this interface — routed through it
+/// (`source_interface`/`sink_interface`), or landing on the system whose
+/// boundary carries it, or on the subsystem attached via `parent_interface`.
+/// Mobus's Listing 4.2 tags name the ENTITY, not the edge, so a model that
+/// records the flow without routing it is honouring the declaration.
+///
+/// Audit-time only, like its sibling — see [`is_interface_declaration_refusal`].
+fn check_interface_declarations_match_flows(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
+    for (i, system) in model.systems.iter().enumerate() {
+        for (j, iface) in system.boundary.interfaces.iter().enumerate() {
+            if iface.receives_from.is_empty() && iface.exports_to.is_empty() {
+                continue;
+            }
+            let iface_id = serialize_id(&iface.info.id);
+            let mut near: HashSet<String> = HashSet::new();
+            near.insert(serialize_id(&system.info.id));
+            for s in &model.systems {
+                if s.boundary
+                    .parent_interface
+                    .as_ref()
+                    .is_some_and(|p| serialize_id(p) == iface_id)
+                {
+                    near.insert(serialize_id(&s.info.id));
+                }
+            }
+
+            let recorded = |far: &Id, incoming: bool| {
+                let far = serialize_id(far);
+                model.interactions.iter().any(|ix| {
+                    let (from, to, to_iface) = if incoming {
+                        (&ix.source, &ix.sink, ix.sink_interface.as_ref())
+                    } else {
+                        (&ix.sink, &ix.source, ix.source_interface.as_ref())
+                    };
+                    serialize_id(from) == far
+                        && (to_iface.map(serialize_id) == Some(iface_id.clone())
+                            || near.contains(&serialize_id(to)))
+                })
+            };
+
+            let declared = iface
+                .receives_from
+                .iter()
+                .map(|e| (e, true))
+                .chain(iface.exports_to.iter().map(|e| (e, false)));
+            for (entity, incoming) in declared {
+                if recorded(entity, incoming) {
+                    continue;
+                }
+                let (field, verb, direction) = if incoming {
+                    ("receives_from", "receives from", "into")
+                } else {
+                    ("exports_to", "exports to", "out of")
+                };
+                let entity_id = serialize_id(entity);
+                issues.push(
+                    ValidationIssue::error(
+                        format!("systems[{i}].boundary.interfaces[{j}].{field}"),
+                        format!(
+                            "interface '{}' declares it {verb} '{entity_id}', but no \
+                             interaction records a flow {direction} it from that entity — \
+                             the declared attachment contradicts the interactions this \
+                             model records (Mobus Listing 4.2 makes \
+                             `recievesFrom`/`exportsTo` the interface's own statement of \
+                             what it is attached to)",
+                            iface.info.name
+                        ),
+                        Some(
+                            "Draw the flow the declaration names, or drop the entity from \
+                             the interface's declaration so the two agree",
+                        ),
+                    )
+                    .with_doc(doc::INTERFACE)
+                    .with_subject(&iface.info.id),
+                );
+            }
+        }
+    }
+}
+
+/// Is this issue [`check_interface_declarations_match_flows`]'s refusal? An
+/// Error addressed to an interface's `receives_from`/`exports_to` field — no
+/// other check writes that suffix. Public for the same reason as
+/// [`is_interface_flow_refusal`]: `bert_canvas` keeps it out of the connection
+/// gesture. The declaration can outrun the graph mid-authoring on any path that
+/// writes it directly, and refusing a drag for it would be bert-lenses#212 a
+/// fourth time.
+pub fn is_interface_declaration_refusal(issue: &ValidationIssue) -> bool {
+    issue.severity == Severity::Error
+        && issue.location.starts_with("systems[")
+        && issue.location.contains("].boundary.interfaces[")
+        && (issue.location.ends_with(".receives_from") || issue.location.ends_with(".exports_to"))
 }
 
 fn check_parent_references(
@@ -3273,6 +3393,144 @@ mod tests {
         }
     }
 
+    /// Firing witness for `check_interface_declarations_match_flows` (#225), on
+    /// the sharp case the issue names: an interface with a REAL crossing flow
+    /// whose declared `exports_to` names a different sink than the flow goes to.
+    /// `check_interfaces_carry_flow` is silent here — the interface carries a
+    /// flow — which is why the two cannot be one check.
+    #[test]
+    fn divergent_interface_declaration_is_refused_at_operational() {
+        let mut model = minimal_model();
+        let drawn = Id { ty: IdType::Sink, indices: vec![-1, 0] };
+        let declared = Id { ty: IdType::Sink, indices: vec![-1, 1] };
+        let iface_id = Id { ty: IdType::Interface, indices: vec![0, 0] };
+        for (id, name) in [(&drawn, "Drawn"), (&declared, "Declared")] {
+            model.environment.sinks.push(ExternalEntity {
+                info: Info { id: id.clone(), level: -1, name: name.to_string(), description: String::new() },
+                ty: ExternalEntityType::Sink,
+                transform: None,
+                equivalence: String::new(),
+                model: String::new(),
+                is_same_as_id: None,
+            });
+        }
+        model.systems[0].boundary.interfaces.push(Interface {
+            info: Info { id: iface_id.clone(), level: 1, name: "Outflow".to_string(), description: String::new() },
+            protocol: String::new(),
+            ty: InterfaceType::Export,
+            exports_to: vec![declared.clone()],
+            receives_from: vec![],
+            angle: None,
+        });
+        model.interactions.push(Interaction {
+            info: Info {
+                id: Id { ty: IdType::Flow, indices: vec![0] },
+                level: 0,
+                name: "Out".to_string(),
+                description: String::new(),
+            },
+            substance: Substance { sub_type: String::new(), ty: SubstanceType::Energy },
+            ty: InteractionType::Flow,
+            usability: InteractionUsability::Product,
+            source: model.systems[0].info.id.clone(),
+            source_interface: Some(iface_id),
+            sink: drawn,
+            sink_interface: None,
+            amount: rust_decimal::Decimal::ONE,
+            unit: String::new(),
+            parameters: vec![],
+            smart_parameters: vec![],
+            endpoint_offset: None,
+        });
+
+        let refused = validate_mode(&model, Mode::Operational);
+        let issue = refused
+            .issues
+            .iter()
+            .find(|i| is_interface_declaration_refusal(i))
+            .unwrap_or_else(|| panic!("Operational refuses the divergent declaration: {:#?}", refused.issues));
+        assert_eq!(issue.location, "systems[0].boundary.interfaces[0].exports_to");
+        assert_eq!(issue.doc.as_deref(), Some(doc::INTERFACE));
+        assert!(
+            !refused.issues.iter().any(is_interface_flow_refusal),
+            "the interface carries a flow, so the graph check must stay silent: {:#?}",
+            refused.issues
+        );
+        for quiet in [Mode::Core, Mode::Structural] {
+            assert!(
+                !validate_mode(&model, quiet).issues.iter().any(is_interface_declaration_refusal),
+                "{quiet:?} carries no interface concept"
+            );
+        }
+
+        // Redirecting the declaration at the sink the flow actually reaches clears it.
+        model.systems[0].boundary.interfaces[0].exports_to = vec![model.environment.sinks[0].info.id.clone()];
+        assert!(
+            !validate_mode(&model, Mode::Operational)
+                .issues
+                .iter()
+                .any(is_interface_declaration_refusal),
+            "a declaration the graph records is clean"
+        );
+    }
+
+    /// A declaration the model records only by the flow's ENDPOINTS, with no
+    /// interface routing, is honoured: Listing 4.2's tags name the entity, not
+    /// the edge.
+    #[test]
+    fn unrouted_flow_still_records_the_declaration() {
+        let mut model = minimal_model();
+        let src = Id { ty: IdType::Source, indices: vec![-1, 0] };
+        model.environment.sources.push(ExternalEntity {
+            info: Info { id: src.clone(), level: -1, name: "In".to_string(), description: String::new() },
+            ty: ExternalEntityType::Source,
+            transform: None,
+            equivalence: String::new(),
+            model: String::new(),
+            is_same_as_id: None,
+        });
+        model.systems[0].boundary.interfaces.push(Interface {
+            info: Info {
+                id: Id { ty: IdType::Interface, indices: vec![0, 0] },
+                level: 1,
+                name: "Intake".to_string(),
+                description: String::new(),
+            },
+            protocol: String::new(),
+            ty: InterfaceType::Import,
+            exports_to: vec![],
+            receives_from: vec![src.clone()],
+            angle: None,
+        });
+        model.interactions.push(Interaction {
+            info: Info {
+                id: Id { ty: IdType::Flow, indices: vec![0] },
+                level: 0,
+                name: "In".to_string(),
+                description: String::new(),
+            },
+            substance: Substance { sub_type: String::new(), ty: SubstanceType::Energy },
+            ty: InteractionType::Flow,
+            usability: InteractionUsability::Resource,
+            source: src,
+            source_interface: None,
+            sink: model.systems[0].info.id.clone(),
+            sink_interface: None,
+            amount: rust_decimal::Decimal::ONE,
+            unit: String::new(),
+            parameters: vec![],
+            smart_parameters: vec![],
+            endpoint_offset: None,
+        });
+        assert!(
+            !validate_mode(&model, Mode::Operational)
+                .issues
+                .iter()
+                .any(is_interface_declaration_refusal),
+            "an unrouted but recorded flow honours the declaration"
+        );
+    }
+
     // ---- The firing audit and its gate (bert-lenses#220) -----------------
 
     /// What proves a check can fire, or the recorded reason nothing can.
@@ -3385,6 +3643,18 @@ mod tests {
             note: "stamp a component `interface` and draw no crossing flow; the \
                    canvas-path witness is bert_canvas's \
                    flowless_interface_is_refused_at_operational",
+        },
+        CheckAudit {
+            check: "check_interface_declarations_match_flows",
+            witness: Some("divergent_interface_declaration_is_refused_at_operational"),
+            canvas: false,
+            note: "project() derives receives_from/exports_to from the same bond \
+                   list it turns into interactions, so a canvas model's \
+                   declaration and graph cannot disagree; fires on hand-authored \
+                   or generated files that state both halves (a Listing 4.2 \
+                   transcription). The .sl surface carries only a boolean \
+                   `interface` flag — no syntax names an attachment — so the \
+                   source corpus cannot reach it either",
         },
         CheckAudit {
             check: "check_parent_references",
