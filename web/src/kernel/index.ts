@@ -55,7 +55,26 @@ import type { Lens } from "./types";
 
 let readyPromise: Promise<void> | null = null;
 
-/** Instantiate the wasm kernel once. Await before any call below. */
+/** Instantiate the wasm kernel once. Await before any call below.
+ *
+ *  The memo is deliberate and is NOT cleared after a trap, because clearing it
+ *  would be theatre: wasm-pack's generated `__wbg_init` opens with
+ *  `if (wasm !== undefined) return wasm;`, so a second `init()` on this module
+ *  hands back the SAME instance. "Clear the promise and re-instantiate" reads
+ *  like recovery and does nothing; genuine re-instantiation would need a fresh
+ *  copy of the glue module (a cache-busted dynamic import), which the bundler
+ *  inlines away in a production build and which the Tauri asset protocol would
+ *  have to serve with a query string.
+ *
+ *  It is also not needed, which is the part that was never measured. This
+ *  boundary holds no state between calls — every export deserializes its whole
+ *  input — so a trap unwinds one call and the module keeps answering. The
+ *  wasm-exec gate (`scripts/wasm_exec.mjs`, §E) drives 50 consecutive panics
+ *  through a probe build and asserts the analysis computed after is identical
+ *  to the one computed before. What a trap does cost is the JsValue heap slots
+ *  and the linear-memory allocations of the call that died: a bounded leak, not
+ *  a poisoned instance. If that ever stops being true the gate goes red, and
+ *  the copy in `KernelErrorBoundary` has to change with it. */
 export function ready(): Promise<void> {
   if (!readyPromise) readyPromise = init(wasmUrl).then(() => undefined);
   return readyPromise;
@@ -85,6 +104,34 @@ export function isKernelError(e: unknown): e is KernelError {
 }
 
 /**
+ * The OTHER failure mode — the one API.md forbids (Error contract, mode 2).
+ *
+ * A Rust panic does not throw; it traps. The module executes `unreachable`, and
+ * JS receives a `WebAssembly.RuntimeError` whose message is `unreachable` — no
+ * fault, no location, nothing about the model. That is a kernel BUG, and the
+ * face must not present it as a verdict: the distinction between "the kernel
+ * refuses your model, and here is the precondition" and "the kernel broke" is
+ * the whole of this tool's claim on the reader's trust.
+ *
+ * Since #233 the kernel installs `console_error_panic_hook` at init, so the
+ * panic's message and Rust source location land on `console.error` immediately
+ * before the trap. This class is how the face knows which of the two happened.
+ */
+export class KernelTrap extends Error {
+  readonly fn: string;
+  constructor(fn: string, message: string) {
+    super(message);
+    this.name = "KernelTrap";
+    this.fn = fn;
+  }
+}
+
+/** True when a boundary call trapped — a kernel bug, not a verdict. */
+export function isKernelTrap(e: unknown): e is KernelTrap {
+  return e instanceof KernelTrap;
+}
+
+/**
  * The one call primitive: invoke a wasm boundary function and normalize any
  * throw into a `KernelError`. Every forwarder below routes through this so a
  * rejected boundary call surfaces as a typed error with the kernel's message,
@@ -94,10 +141,25 @@ function call<T>(fn: string, invoke: () => unknown): T {
   try {
     return invoke() as T;
   } catch (e) {
-    if (e instanceof KernelError) throw e;
+    if (e instanceof KernelError || e instanceof KernelTrap) throw e;
+    // A trap is the contract violation, not a refusal — classify it before it
+    // can be rendered as one. `WebAssembly.RuntimeError` is the only thing a
+    // Rust panic can arrive as; a `JsError` arrives as a plain `Error`.
+    if (isTrap(e)) {
+      throw new KernelTrap(
+        fn,
+        `the kernel aborted inside ${fn}() — a panic, which its own contract forbids. ` +
+          `The panic message and its Rust source location are in the browser console.`,
+      );
+    }
     const message = e instanceof Error ? e.message : String(e);
     throw new KernelError(fn, message);
   }
+}
+
+/** A wasm trap (a Rust panic), as distinct from a thrown `JsError`. */
+function isTrap(e: unknown): boolean {
+  return typeof WebAssembly !== "undefined" && e instanceof WebAssembly.RuntimeError;
 }
 
 /** 4-layer systemhood report — computed by bert-core in wasm. */
