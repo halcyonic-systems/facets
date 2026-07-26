@@ -3,7 +3,7 @@ name = "bert-canvas"
 version = "0.1.0"
 edition = "2021"
 description = "The canvas/lens domain: the serializable CanvasModel, its projection into a bert-core WorldModel, and the faithful lens palettes (lens_facts + describe). Pure Rust, no wasm-bindgen — truth the kernel marshals."
-license = "Apache-2.0"
+license = "MIT"
 # Not on crates.io. These five crates are vendored into this repository and
 # distributed only as the wasm kernel inside the app, never as separate
 # packages. Stated rather than implied so cargo-deny can read it: it is what

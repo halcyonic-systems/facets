@@ -81,30 +81,6 @@ def indent(text: str) -> str:
     return "\n".join(("    " + line).rstrip() for line in text.strip().splitlines())
 
 
-UPSTREAM_MIT = """MIT License
-
-Copyright (c) 2024 Halcyonic Systems
-
-Original work by Joseph Ensminger
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE."""
-
 HEADER = """# Third-party notices
 
 Everything in this file is an obligation to someone else. It travels with the
@@ -118,8 +94,13 @@ The inventory tables are generated from `npm ls --prod` and `cargo metadata`
 (wasm32 platform filter) — the same metadata the build reads. Regenerate with
 `python3 scripts/gen_notices.py` after any dependency change.
 
-bert-lenses' own licence is unresolved; see `LICENSE`. That decision does not
-affect anything below.
+bert-lenses itself is MIT; see `LICENSE`. Every crate under `crates/` was
+written for this repository, so nothing here is owed for the kernel — this file
+covers the fonts, KaTeX, and the dependency graph that reaches the artifact.
+
+*Lineage, not an obligation: bert-lenses grew out of the BERT project
+(`halcyonic-systems/bert`). The kernel crates here were written for this
+repository.*
 """
 
 
@@ -132,22 +113,7 @@ def render() -> str:
     return f"""{HEADER}
 ---
 
-## 1. BERT — the vendored kernel
-
-`crates/bert-core` and `crates/bert-compose` are vendored copies of code from
-the BERT project (`halcyonic-systems/bert`), whose LICENSE is MIT. The
-notice-retention condition travels with the copies, so the text is reproduced
-here in full. `crates/bert-canvas` and `crates/bert-tether` were written in this
-repository but sit on `bert-core`'s contract.
-
-Note the contradiction recorded in `LICENSE`: the crate manifests declare
-`Apache-2.0` while this, the governing upstream LICENSE, is MIT.
-
-{indent(UPSTREAM_MIT)}
-
----
-
-## 2. Bundled fonts — SIL Open Font License 1.1
+## 1. Bundled fonts — SIL Open Font License 1.1
 
 Three faces are vendored as `.woff2` in `web/src/fonts/` and compiled into the
 bundle (a desktop app has no network, so they cannot be fetched). The OFL
@@ -157,7 +123,7 @@ requires this notice to accompany the fonts.
 
 ---
 
-## 3. KaTeX — MIT
+## 2. KaTeX — MIT
 
 KaTeX renders the formal notation. Its JavaScript and CSS are compiled into the
 shipped bundle.
@@ -166,7 +132,7 @@ shipped bundle.
 
 ---
 
-## 4. npm dependencies reaching the artifact
+## 3. npm dependencies reaching the artifact
 
 Production dependencies only — the dev toolchain (Vite, Vitest, TypeScript,
 Tailwind's compiler) builds the artifact but ships no code in it.
@@ -175,11 +141,11 @@ Tailwind's compiler) builds the artifact but ships no code in it.
 
 ---
 
-## 5. Cargo dependencies reaching the wasm kernel
+## 4. Cargo dependencies reaching the wasm kernel
 
 Resolved for `wasm32-unknown-unknown`, which is the only target whose code is
-distributed. Workspace crates are omitted — they are §1 and this repository's
-own work.
+distributed. Workspace crates are omitted — they are this repository's own work,
+covered by `LICENSE`.
 
 {table(cargo_rows)}
 """
