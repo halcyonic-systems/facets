@@ -572,6 +572,82 @@ behind the off-by-default `panic-probe` feature, panics on purpose, and is built
 into a separate `pkg-probe/` the gate throws away. No release build has the
 symbol.
 
+## The register matrices (#233 — additive; two new exports, no signature changes)
+
+Until #233 the two register matrices decided their own cell semantics in
+TypeScript: `web/src/canvas/klirNotation.ts` held Klir's symmetric-closure rule
+(a neutral relation marks both orders of the incidence matrix), and
+`web/src/canvas/bungeNotation.ts` held Bunge's en-bloc environment device (1979
+§2.1), the bond-versus-mere directionality of a cell's occupants, and `M₀₀ = 0`.
+Both files carried a "no verdict lives here" disclaimer, and the disclaimer was
+the enforcement.
+
+Those are readings of the traditions, and both registers are WRITE surfaces —
+their empty cells author new relations — so a cell that silently could not be
+authored was a refusal with no name, no reason, and no kernel behind it. The
+rules moved to `bert_canvas::notation`; the face renders the returned structure
+and posts back a cell identity.
+
+### `klir_incidence_cells(canvas_json: string) → KlirIncidence`
+Klir's |T|×|T| incidence matrix over the CANVAS model: row/column order, and
+every cell's occupants, mark, and authorability. Delegates to
+`bert_canvas::notation::klir_incidence_cells`.
+```ts
+type CellStatus =
+  | { status: "occupied" }    // relations stand here — the cell edits
+  | { status: "authorable" }  // empty and open to a new relation
+  | { status: "forbidden", reason: string }  // closed by the tradition's own rule
+type KlirMark =
+  | { mark: "empty" } | { mark: "neutral" } | { mark: "directed" } | { mark: "self_loop" }
+type KlirCell = {
+  row: number, col: number,   // thing ids
+  relations: number[],        // relation ids, model order
+  mark: KlirMark,
+  status: CellStatus,
+}
+type KlirIncidence = { things: number[], cells: KlirCell[] }
+```
+`cells` is |T|² — every pair owes a cell. Throws only if `canvas_json` is not
+parseable as a `CanvasModel`.
+
+### `bunge_coupling_cells(canvas_json: string, en_bloc: boolean) → BungeCoupling`
+Bunge's coupling matrix M. `en_bloc` selects his own (m+1)×(m+1) reading, index 0
+standing for the environment en bloc, so row 0 is the input block M₀ᵣ and column
+0 the output block Mₛ₀; `false` selects the itemized alternative (one row per
+named environment thing — ours, not his). Delegates to
+`bert_canvas::notation::bunge_coupling_cells`.
+```ts
+type CouplingSlot = { kind: "env" } | { kind: "thing", id: number, env: boolean }
+type BungeMark =
+  | { mark: "empty" } | { mark: "self_loop" }
+  | { mark: "bond", kind: Kind } | { mark: "mere" }
+type BungeCell = {
+  row: number, col: number,   // SLOT indices — index 0 carries no thing id
+  relations: number[],        // relation ids, first-seen order, deduplicated
+  mark: BungeMark,
+  status: CellStatus,
+}
+type BungeCoupling = { slots: CouplingSlot[], cut_at: number, cells: BungeCell[] }
+```
+`cut_at` is the slot index the composition/environment rule is drawn before.
+`cells` is `slots.length²`. Throws only on unparseable input.
+
+**`forbidden` carries words, not a flag.** Two cells are closed under en bloc,
+each with the precondition stated in the kernel's own refusal voice: `M₀₀`
+("the environment's couplings to itself are not in 𝒮: neither relatum is a
+component…"), and any other cell on index 0's row or column ("index 0 is the
+environment en bloc, not a named thing — an action needs two relata to be an
+action; itemize ℰ…"). Hovering a dead cell names its precondition, which is what
+the tool exists to do. A `forbidden` status with an empty reason fails the
+wasm-exec gate.
+
+**Fixtures:** `fixtures/contract/klir_incidence.json`,
+`bunge_coupling_en_bloc.json`, `bunge_coupling_itemized.json` — blessed against
+the shared contract sample with its first relation oriented, so the `directed`
+mark is real content. All three are recomputed through the real wasm package by
+`scripts/wasm_exec.mjs` and validated field-by-field against the TS mirrors by
+`web/src/kernel/contract.test.ts`.
+
 ## Notes
 - The wasm is built with `wasm-pack build --target web` into `pkg/` (a build
   artifact, gitignored). `--release` for the shipped bundle; `--dev` while iterating.

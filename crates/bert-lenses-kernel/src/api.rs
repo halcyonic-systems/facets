@@ -400,6 +400,33 @@ pub fn analyze_canvas(canvas_json: &str) -> Result<JsValue, JsError> {
     to_js(&bert_canvas::lenses::analyze(&model, lens))
 }
 
+// ---- The register matrices: cell semantics, kernel-side (#233) ---------------
+
+/// Klir's |T|×|T| incidence matrix, read by the kernel: the row/column order and
+/// every cell's occupants, mark, and authorability. The register is a WRITE
+/// surface — its empty cells author relations — so the symmetric-closure rule
+/// that decides which cell a neutral relation marks is a reading of Klir, and it
+/// belongs here rather than in the face. The face maps marks onto glyphs.
+#[wasm_bindgen]
+pub fn klir_incidence_cells(canvas_json: &str) -> Result<JsValue, JsError> {
+    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    to_js(&bert_canvas::notation::klir_incidence_cells(&model))
+}
+
+/// Bunge's coupling matrix M, read by the kernel: the slot order under either
+/// environment reading (`en_bloc` = his own (m+1)×(m+1) with 0 for the
+/// environment en bloc, 1979 §2.1), where the composition/environment cut falls,
+/// and every cell. Cells the tradition closes come back `forbidden` with the
+/// precondition in words — M₀₀ = 0, and index 0's unaddressability — so a dead
+/// cell can say why instead of merely not responding.
+#[wasm_bindgen]
+pub fn bunge_coupling_cells(canvas_json: &str, en_bloc: bool) -> Result<JsValue, JsError> {
+    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    to_js(&bert_canvas::notation::bunge_coupling_cells(&model, en_bloc))
+}
+
 // ---- Boundary DTOs (data-transfer shapes only, no logic) --------------------
 
 #[derive(Serialize)]

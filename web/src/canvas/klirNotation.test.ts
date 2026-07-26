@@ -1,6 +1,15 @@
+// The Klir register's TYPOGRAPHY, which is all that is left here after #233.
+//
+// The cell-membership assertions this file used to hold — a neutral relation
+// marks both orders, a directed one marks its own — moved with the rule itself
+// into `crates/bert-canvas/src/notation.rs` (`neutral_relation_marks_both_orders`,
+// `directed_relation_marks_its_own_order_only`, and their siblings), and cross
+// the wasm edge under the `klir_incidence` contract fixture. What is tested
+// below is the mapping from a kernel-decided mark to a character, and the layout
+// that carries no Klir meaning at all.
 import { describe, expect, it } from "vitest";
-import type { CanvasModel, Relation, Thing } from "../kernel/types";
-import { cellGlyph, cellRelations, nextIdOf, nextThingPosition, relationTuple } from "./klirNotation";
+import type { KlirIncidence, Relation, Thing } from "../kernel/types";
+import { cellIndex, klirGlyph, nextIdOf, nextThingPosition, relationsIn, relationTuple } from "./klirNotation";
 
 const thing = (id: number, x = 0, y = 0): Thing => ({ id, name: `T${id}`, x, y, role: "Component" });
 const rel = (id: number, a: number, b: number, directed?: boolean): Relation => ({
@@ -11,12 +20,6 @@ const rel = (id: number, a: number, b: number, directed?: boolean): Relation => 
   is_bond: true,
   kind: "Unspecified",
   ...(directed !== undefined ? { klir_directed: directed } : {}),
-});
-const model = (things: Thing[], relations: Relation[]): CanvasModel => ({
-  lens: "Klir",
-  things,
-  relations,
-  boundary: { porosity: 0, perceptive_fuzziness: 0 },
 });
 
 describe("relationTuple", () => {
@@ -30,35 +33,39 @@ describe("relationTuple", () => {
   });
 });
 
-describe("cellRelations", () => {
-  const m = model([thing(1), thing(2), thing(3)], [rel(10, 1, 2), rel(11, 2, 3, true)]);
-  it("marks both orders for a neutral relation", () => {
-    expect(cellRelations(m, 1, 2).map((r) => r.id)).toEqual([10]);
-    expect(cellRelations(m, 2, 1).map((r) => r.id)).toEqual([10]);
+describe("klirGlyph", () => {
+  it("is empty for an unoccupied cell, whatever the mark says", () => {
+    expect(klirGlyph({ mark: "empty" }, 0)).toBe("");
+    expect(klirGlyph({ mark: "neutral" }, 0)).toBe("");
   });
-  it("marks only its own order for a directed relation", () => {
-    expect(cellRelations(m, 2, 3).map((r) => r.id)).toEqual([11]);
-    expect(cellRelations(m, 3, 2)).toEqual([]);
+  it("marks a neutral occupant ●, a directed one → (read row → col)", () => {
+    expect(klirGlyph({ mark: "neutral" }, 1)).toBe("●");
+    expect(klirGlyph({ mark: "directed" }, 1)).toBe("→");
   });
-  it("leaves unrelated cells empty", () => {
-    expect(cellRelations(m, 1, 3)).toEqual([]);
+  it("marks the diagonal ↺ and counts stacked relations", () => {
+    expect(klirGlyph({ mark: "self_loop" }, 1)).toBe("↺");
+    expect(klirGlyph({ mark: "neutral" }, 2)).toBe("●×2");
   });
 });
 
-describe("cellGlyph", () => {
-  it("is empty for an unoccupied cell", () => {
-    expect(cellGlyph(1, 2, [])).toBe("");
+describe("cellIndex / relationsIn — reading the kernel's incidence back", () => {
+  const incidence: KlirIncidence = {
+    things: [1, 2],
+    cells: [
+      { row: 1, col: 1, relations: [], mark: { mark: "empty" }, status: { status: "authorable" } },
+      { row: 1, col: 2, relations: [11, 10], mark: { mark: "neutral" }, status: { status: "occupied" } },
+    ],
+  };
+  it("addresses a cell by (row, col) thing id", () => {
+    expect(cellIndex(incidence).get("1,2")?.relations).toEqual([11, 10]);
+    expect(cellIndex(incidence).get("2,1")).toBeUndefined();
   });
-  it("marks a neutral occupant ●, a directed one → (read row → col)", () => {
-    expect(cellGlyph(1, 2, [rel(10, 1, 2)])).toBe("●");
-    expect(cellGlyph(1, 2, [rel(10, 1, 2, true)])).toBe("→");
-    // The mirrored cell of a directed relation never shows an arrow — but a
-    // neutral companion still marks it ●.
-    expect(cellGlyph(2, 1, [rel(11, 1, 2)])).toBe("●");
+  it("resolves occupants in the kernel's order, not the model's", () => {
+    const relations = [rel(10, 1, 2), rel(11, 1, 2)];
+    expect(relationsIn(relations, [11, 10]).map((r) => r.id)).toEqual([11, 10]);
   });
-  it("marks the diagonal ↺ and counts stacked relations", () => {
-    expect(cellGlyph(1, 1, [rel(10, 1, 1)])).toBe("↺");
-    expect(cellGlyph(1, 2, [rel(10, 1, 2), rel(11, 1, 2)])).toBe("●×2");
+  it("drops an id the model no longer carries rather than faking a relation", () => {
+    expect(relationsIn([rel(10, 1, 2)], [10, 99]).map((r) => r.id)).toEqual([10]);
   });
 });
 

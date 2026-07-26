@@ -16,34 +16,29 @@
 // Every legality question still goes to the kernel (validate_connection);
 // bond/mere, kind, and channel are kernel facts — this file typesets and
 // forwards, it decides nothing.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import type {
+  BungeCoupling,
   CanvasModel,
   CanvasRole,
+  CouplingSlot,
   EdgeFact,
   LensDescription,
   LensFacts,
   Relation,
   Thing,
 } from "../kernel/types";
-import { validateConnection } from "../kernel";
+import { bungeCouplingCells, validateConnection } from "../kernel";
 import { observations, refusal } from "./connectionVerdict";
 import { KIND_COLOR } from "./types";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 import { DecomposeRows, type DecomposeAffordance } from "./NodeEditor";
 import { BungeBody, FlowNameField } from "./EdgePopover";
 import { CELL, confirmStripClass, confirmStripStyle, headerCellStyle } from "./registerChrome";
-import {
-  bungeCellRelations,
-  matrixSlots,
-  slotCellGlyph,
-  slotCellRelations,
-  slotIsEnv,
-  type MatrixSlot,
-} from "./bungeNotation";
-import { nextIdOf, nextThingPosition } from "./klirNotation";
+import { bungeGlyph, couplingIndex, slotIsEnv } from "./bungeNotation";
+import { nextIdOf, nextThingPosition, relationsIn } from "./klirNotation";
 
 type BungeDesc = Extract<LensDescription, { lens: "Bunge" }>;
 
@@ -132,6 +127,18 @@ export function BungeRegister({
   const selectedThing = model.things.find((t) => t.id === selectedThingId) ?? null;
   const selectedRelation = model.relations.find((r) => r.id === selectedRelationId) ?? null;
   const edgeFacts = new Map<number, EdgeFact>((facts?.edges ?? []).map((e) => [e.id, e]));
+
+  // M as the KERNEL reads it (#233): the slot order under the active environment
+  // reading, where the cut falls, and each cell's occupants, mark, and
+  // authorability. The en-bloc device, the bond-vs-mere directionality, and
+  // M₀₀ = 0 are Bunge's, and this register writes through those cells — so they
+  // are decided in Rust (crates/bert-canvas/src/notation.rs) and rendered here.
+  const coupling = useMemo(() => bungeCouplingCells(model, enBloc), [model, enBloc]);
+  const cells = useMemo(() => couplingIndex(coupling), [coupling]);
+  const cellsFor = (a: number, b: number): number[] => {
+    const at = (id: number) => coupling.slots.findIndex((s) => s.kind === "thing" && s.id === id);
+    return cells.get(`${at(a)},${at(b)}`)?.relations ?? [];
+  };
 
   // Keep the inline editors in view when a selection arrives from the locator.
   const thingEdRef = useRef<HTMLDivElement | null>(null);
@@ -326,6 +333,7 @@ export function BungeRegister({
           </div>
           <CouplingMatrix
             model={model}
+            coupling={coupling}
             edgeFacts={edgeFacts}
             selectedRelationId={selectedRelationId}
             proposed={proposed}
@@ -334,7 +342,7 @@ export function BungeRegister({
               onSelectRelation(rels[0].id === selectedRelationId ? null : rels[0].id)
             }
             onPickCell={(a, b) => {
-              const rels = bungeCellRelations(model, a, b);
+              const rels = relationsIn(model.relations, cellsFor(a, b));
               if (rels.length > 0) {
                 onSelectRelation(rels[0].id === selectedRelationId ? null : rels[0].id);
                 setProposed(null);
@@ -554,6 +562,7 @@ function InlineThingEditor({
 
 function CouplingMatrix({
   model,
+  coupling,
   edgeFacts,
   selectedRelationId,
   proposed,
@@ -564,6 +573,9 @@ function CouplingMatrix({
   onCancel,
 }: {
   model: CanvasModel;
+  /** The kernel's reading of M — slot order, the cut, and every cell (#233).
+   *  Every question about what a cell holds or admits is answered from here. */
+  coupling: BungeCoupling;
   edgeFacts: Map<number, EdgeFact>;
   selectedRelationId: number | null;
   proposed: { a: number; b: number } | null;
@@ -576,7 +588,9 @@ function CouplingMatrix({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  const slots = matrixSlots(model, enBloc);
+  const { slots, cut_at: cutAt } = coupling;
+  const cells = couplingIndex(coupling);
+  const thingOf = (s: CouplingSlot) => (s.kind === "env" ? null : model.things.find((t) => t.id === s.id) ?? null);
   if (slots.length === 0) {
     return (
       <p className="pl-6 text-xs" style={{ color: "var(--text-muted)" }}>
@@ -584,16 +598,17 @@ function CouplingMatrix({
       </p>
     );
   }
-  // Where the cut's rule falls: en bloc it is the single line after index 0
-  // (Bunge prints 0 first); itemized it is where the composition ends.
-  const cutAt = enBloc ? (slots[0].kind === "env" ? 1 : slots.length) : slots.filter((s) => !slotIsEnv(s)).length;
   const short = (name: string) => (name.length > 12 ? `${name.slice(0, 11)}…` : name);
-  const slotKey = (s: MatrixSlot) => (s.kind === "env" ? "env" : s.thing.id);
-  const slotLabel = (s: MatrixSlot) => (s.kind === "env" ? "0" : short(s.thing.name || `#${s.thing.id}`));
-  const slotTitle = (s: MatrixSlot) =>
-    s.kind === "env"
-      ? "0 — the environment en bloc (Bunge 1979 §2.1): row 0 is the input M₀ᵣ, column 0 the output Mₛ₀"
-      : `${s.thing.name} ∈ ${s.thing.role === "Component" ? "𝒞" : "ℰ"}`;
+  const slotKey = (s: CouplingSlot) => (s.kind === "env" ? "env" : s.id);
+  const slotLabel = (s: CouplingSlot) => {
+    if (s.kind === "env") return "0";
+    return short(thingOf(s)?.name || `#${s.id}`);
+  };
+  const slotTitle = (s: CouplingSlot) => {
+    if (s.kind === "env")
+      return "0 — the environment en bloc (Bunge 1979 §2.1): row 0 is the input M₀ᵣ, column 0 the output Mₛ₀";
+    return `${thingOf(s)?.name ?? `#${s.id}`} ∈ ${s.env ? "ℰ" : "𝒞"}`;
+  };
   const nameOf = (id: number) => model.things.find((t) => t.id === id)?.name || `#${id}`;
   const channelWord = (r: Relation): string => {
     if (!r.is_bond) return "mere — holds, does not act";
@@ -670,16 +685,17 @@ function CouplingMatrix({
                 {slotLabel(a)}
               </th>
               {slots.map((b, bi) => {
-                const rels = slotCellRelations(model, a, b);
-                const bond = rels.find((r) => r.is_bond);
+                const cell = cells.get(`${ai},${bi}`);
+                const rels = relationsIn(model.relations, cell?.relations ?? []);
                 const hit = rels.some((r) => r.id === selectedRelationId);
                 // A proposal names two THINGS; index 0 names none of them, so
-                // the en-bloc environment row/column is read-only — an action
-                // is added from the graph, or with the environment itemized.
+                // the en-bloc environment row/column is read-only — the kernel
+                // says so, with the precondition in words.
+                const closed = cell?.status.status === "forbidden" ? cell.status.reason : null;
                 const addressable = a.kind === "thing" && b.kind === "thing";
                 const isProposed =
-                  addressable && proposed !== null && proposed.a === a.thing.id && proposed.b === b.thing.id;
-                const selfCell = a.kind === "thing" && b.kind === "thing" && a.thing.id === b.thing.id;
+                  addressable && proposed !== null && proposed.a === a.id && proposed.b === b.id;
+                const selfCell = cell?.mark.mark === "self_loop";
                 return (
                   <td
                     key={slotKey(b)}
@@ -693,7 +709,7 @@ function CouplingMatrix({
                   >
                     <button
                       onClick={() => {
-                        if (addressable) onPickCell(a.thing.id, b.thing.id);
+                        if (addressable) onPickCell(a.id, b.id);
                         else if (rels.length) onSelectFirst(rels);
                       }}
                       className="block text-[11px] leading-none"
@@ -703,8 +719,8 @@ function CouplingMatrix({
                         fontFamily: "var(--font-mono)",
                         // The glyph wears the KIND's reserved color channel —
                         // substance identity, constant across lenses.
-                        color: bond
-                          ? KIND_COLOR[bond.kind]
+                        color: cell?.mark.mark === "bond"
+                          ? KIND_COLOR[cell.mark.kind]
                           : rels.length
                             ? "var(--text-muted)"
                             : isProposed
@@ -727,14 +743,14 @@ function CouplingMatrix({
                       title={
                         rels.length
                           ? `${cellTitle(rels)} — click to edit`
-                          : !addressable
-                            ? "index 0 is the environment en bloc — add an action from the graph, or itemize ℰ to address one thing"
+                          : closed
+                            ? closed
                             : isProposed
-                              ? `${a.thing.name} ▷ ${b.thing.name} proposed — click again to add the bond`
-                              : `no action ${a.thing.name} → ${b.thing.name} — click to propose a bond`
+                              ? `${slotLabel(a)} ▷ ${slotLabel(b)} proposed — click again to add the bond`
+                              : `no action ${slotLabel(a)} → ${slotLabel(b)} — click to propose a bond`
                       }
                     >
-                      {rels.length ? slotCellGlyph(a, b, rels) : isProposed ? "+" : ""}
+                      {cell ? bungeGlyph(cell.mark, rels.length) || (isProposed ? "+" : "") : ""}
                     </button>
                   </td>
                 );

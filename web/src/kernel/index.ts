@@ -29,6 +29,8 @@ import init, {
   check_decompositions as wasmCheckDecompositions,
   decompose_component as wasmDecomposeComponent,
   check_decompositions_canvas as wasmCheckDecompositionsCanvas,
+  klir_incidence_cells as wasmKlirIncidenceCells,
+  bunge_coupling_cells as wasmBungeCouplingCells,
 } from "bert-lenses-kernel";
 import wasmUrl from "bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url";
 
@@ -50,6 +52,8 @@ import type {
   SlOutcome,
   DecomposeOutcome,
   DecompositionReport,
+  KlirIncidence,
+  BungeCoupling,
 } from "./types";
 import type { Lens } from "./types";
 
@@ -360,4 +364,24 @@ export function checkDecompositionsCanvas(
   return call("check_decompositions_canvas", () =>
     wasmCheckDecompositionsCanvas(JSON.stringify(model), JSON.stringify(resolved)),
   );
+}
+
+// ---- The register matrices (#233) ---------------------------------------------
+
+/** Klir's |T|×|T| incidence matrix, read by the kernel: row/column order and
+ *  every cell's occupants, mark, and authorability. The register authors
+ *  relations out of its empty cells, so the symmetric-closure rule that decides
+ *  which cell a neutral relation marks is a reading of Klir and lives in Rust —
+ *  the face only chooses glyphs. Memoize on the canvas model. */
+export function klirIncidenceCells(model: CanvasModel): KlirIncidence {
+  return call("klir_incidence_cells", () => wasmKlirIncidenceCells(JSON.stringify(model)));
+}
+
+/** Bunge's coupling matrix M, read by the kernel: the slot order under either
+ *  environment reading (`enBloc` = his own (m+1)×(m+1) with 0 for the
+ *  environment en bloc), where the cut falls, and every cell. Cells the
+ *  tradition closes come back `forbidden` with the precondition in words.
+ *  Memoize on (model, enBloc). */
+export function bungeCouplingCells(model: CanvasModel, enBloc: boolean): BungeCoupling {
+  return call("bunge_coupling_cells", () => wasmBungeCouplingCells(JSON.stringify(model), enBloc));
 }

@@ -210,3 +210,39 @@ fn canvas_analysis_and_validation_fixtures() {
     assert!(!a.residue.unspecified.is_empty(), "need unspecified residue to fixture");
     check_fixture("lens_residue", &a.residue);
 }
+
+/// Law: the register matrices' cell semantics (#233) cross the edge as a frozen
+/// shape. The sample populates every branch that matters — a self-loop, a mere
+/// relation, an environment object (so en bloc raises index 0, and M₀₀ comes
+/// back `forbidden` with its reason) — and one relation is oriented so the Klir
+/// `directed` mark is exercised rather than merely declared.
+#[test]
+fn notation_cell_fixtures() {
+    let mut m = sample();
+    // Klir's observer toggle: orient the drive relation so the incidence matrix
+    // carries a directed mark and its mirrored cell does not.
+    m.relations[0].klir_directed = true;
+    let incidence = bert_canvas::notation::klir_incidence_cells(&m);
+    assert!(
+        incidence
+            .cells
+            .iter()
+            .any(|c| c.mark == bert_canvas::notation::KlirMark::Directed),
+        "need a directed cell to fixture"
+    );
+    check_fixture("klir_incidence", &incidence);
+
+    let coupling = bert_canvas::notation::bunge_coupling_cells(&m, true);
+    assert!(
+        matches!(
+            coupling.cells[0].status,
+            bert_canvas::notation::CellStatus::Forbidden { .. }
+        ),
+        "M₀₀ must come back forbidden, with a reason"
+    );
+    check_fixture("bunge_coupling_en_bloc", &coupling);
+    check_fixture(
+        "bunge_coupling_itemized",
+        &bert_canvas::notation::bunge_coupling_cells(&m, false),
+    );
+}

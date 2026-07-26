@@ -184,6 +184,47 @@ function fixturesThroughWasm(k) {
     ok(diff.length === 0, `fixture ${name} drifted at the boundary: ${diff.join("; ")}`);
   }
 
+  // The register matrices (#233): the notation fixtures are blessed against the
+  // sample with its first relation ORIENTED, so the Klir directed mark is real
+  // content and not a declared-but-unreached variant. Rebuild that input here
+  // rather than committing a second canvas model.
+  const oriented = JSON.stringify({
+    ...canvas,
+    relations: canvas.relations.map((r, i) => (i === 0 ? { ...r, klir_directed: true } : r)),
+  });
+  const notationCases = [
+    ["klir_incidence", () => k.klir_incidence_cells(oriented)],
+    ["bunge_coupling_en_bloc", () => k.bunge_coupling_cells(oriented, true)],
+    ["bunge_coupling_itemized", () => k.bunge_coupling_cells(oriented, false)],
+  ];
+  for (const [name, compute] of notationCases) {
+    let got;
+    try {
+      got = compute();
+    } catch (e) {
+      fail(`fixture ${name}: the boundary threw — ${e.message}`);
+      continue;
+    }
+    const d = differences(got, fixture(name));
+    ok(d.length === 0, `fixture ${name} drifted at the boundary: ${d.join("; ")}`);
+  }
+
+  // A cell the tradition closes must arrive with a REASON, through the boundary
+  // — the refusal the face renders when a dead cell is hovered. A `forbidden`
+  // tag with an empty string is the failure mode this catches: the tri-state
+  // survives marshaling but the words do not.
+  const coupling = k.bunge_coupling_cells(oriented, true);
+  const closed = coupling.cells.filter((c) => c.status?.status === "forbidden");
+  ok(closed.length > 0, "the sample raises no forbidden cell — the reason path is unexercised");
+  ok(
+    closed.every((c) => typeof c.status.reason === "string" && c.status.reason.trim().length > 20),
+    "a forbidden cell crossed the boundary without its precondition in words",
+  );
+  ok(
+    closed.some((c) => c.row === 0 && c.col === 0 && c.relations.length === 0),
+    "M₀₀ is not closed at the boundary",
+  );
+
   // The archive seam (#140): persist → reopen is the identity on the canvas
   // model, through wasm, not merely in Rust.
   const reopened = k.open_model(k.write_archive(json));

@@ -1,8 +1,19 @@
-// Pure helpers behind the Klir register (#100): tuple notation, matrix cell
-// membership, and placement for register-born things. Presentation arithmetic
-// only — no systems verdict lives here (legality stays validate_connection's;
-// these functions just typeset and place what the model already says).
-import type { CanvasModel, Relation, Thing } from "../kernel/types";
+// Presentation helpers behind the Klir register (#100): tuple notation, glyphs,
+// and placement for register-born things.
+//
+// TOMBSTONE (#233). The cell-membership rule used to live here — including the
+// symmetric closure that makes a neutral relation mark both orders of the
+// matrix. That is a reading of Klir, not typesetting, and the register is a
+// write surface, so it moved to the kernel:
+//
+//   crates/bert-canvas/src/notation.rs :: klir_incidence_cells
+//   crates/bert-lenses-kernel/src/api.rs :: klir_incidence_cells (wasm export)
+//   web/src/kernel/index.ts :: klirIncidenceCells (the forwarder)
+//
+// What remains below is typography and layout: mapping a kernel-decided mark
+// onto a character, and finding a free spot on the demoted picture. Nothing here
+// decides what a cell means.
+import type { KlirCell, KlirIncidence, KlirMark, Relation, Thing } from "../kernel/types";
 
 /** Next fresh id — same rule the gesture layer uses (max + 1). */
 export function nextIdOf(ids: number[]): number {
@@ -10,33 +21,35 @@ export function nextIdOf(ids: number[]): number {
 }
 
 /** One relation as Eq. 1.1 element text: an ordered pair when the observer has
- *  toggled it directed, an unordered pair-set otherwise. */
+ *  toggled it directed, an unordered pair-set otherwise. Typesets the model's
+ *  own `klir_directed` flag — no membership is derived here. */
 export function relationTuple(r: Relation, nameOf: (id: number) => string): string {
-  const a = nameOf(r.a);
-  const b = nameOf(r.b);
-  return r.klir_directed === true ? `(${a}, ${b})` : `{${a}, ${b}}`;
+  return r.klir_directed === true ? `(${nameOf(r.a)}, ${nameOf(r.b)})` : `{${nameOf(r.a)}, ${nameOf(r.b)}}`;
 }
 
-/** The relations that put a mark in incidence cell (a, b) — reading the matrix
- *  as ordered pairs (row, col). A directed relation marks its own order only;
- *  a neutral relation marks both orders (R ⊆ T×T, symmetric closure of the
- *  undirected reading). */
-export function cellRelations(model: CanvasModel, a: number, b: number): Relation[] {
-  return model.relations.filter((r) =>
-    r.klir_directed === true
-      ? r.a === a && r.b === b
-      : (r.a === a && r.b === b) || (r.a === b && r.b === a),
-  );
+/** The kernel's incidence cells, addressable by (row, col) thing id. */
+export function cellIndex(incidence: KlirIncidence): Map<string, KlirCell> {
+  return new Map(incidence.cells.map((c) => [`${c.row},${c.col}`, c]));
+}
+
+/** The relations a cell holds, resolved against the model in the kernel's
+ *  order. Ids the model no longer carries are dropped rather than faked. */
+export function relationsIn(relations: Relation[], ids: number[]): Relation[] {
+  const byId = new Map(relations.map((r) => [r.id, r]));
+  return ids.flatMap((id) => {
+    const r = byId.get(id);
+    return r ? [r] : [];
+  });
 }
 
 /** What an incidence cell shows (#100 harvest, from the matrix-centric arm):
- *  nothing (empty), ● (neutral occupant), → (directed, read row → col),
- *  ↺ (diagonal self-relation), with a ×N count when relations stack. Pure
- *  typesetting over cellRelations' reading — no verdict. */
-export function cellGlyph(row: number, col: number, rs: Relation[]): string {
-  if (rs.length === 0) return "";
-  const head = row === col ? "↺" : rs.some((r) => r.klir_directed === true && r.a === row) ? "→" : "●";
-  return rs.length > 1 ? `${head}×${rs.length}` : head;
+ *  nothing, ● (neutral occupant), → (directed, read row → col), ↺ (diagonal
+ *  self-relation), with a ×N count when relations stack. Pure typesetting over
+ *  the kernel's mark. */
+export function klirGlyph(mark: KlirMark, count: number): string {
+  if (mark.mark === "empty" || count === 0) return "";
+  const head = mark.mark === "self_loop" ? "↺" : mark.mark === "directed" ? "→" : "●";
+  return count > 1 ? `${head}×${count}` : head;
 }
 
 /** Where a register-born thing lands on the (demoted) picture. Layout carries

@@ -1,0 +1,134 @@
+{
+  "slots": [
+    {
+      "kind": "env"
+    },
+    {
+      "kind": "thing",
+      "id": 1,
+      "env": false
+    },
+    {
+      "kind": "thing",
+      "id": 2,
+      "env": false
+    }
+  ],
+  "cut_at": 1,
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "relations": [],
+      "mark": {
+        "mark": "empty"
+      },
+      "status": {
+        "status": "forbidden",
+        "reason": "M₀₀ = 0 — the environment's couplings to itself are not in 𝒮: neither relatum is a component, so index 0 has no self-cell to fill (Bunge 1979 §2.1)"
+      }
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "relations": [
+        11
+      ],
+      "mark": {
+        "mark": "bond",
+        "kind": "Energy"
+      },
+      "status": {
+        "status": "occupied"
+      }
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "relations": [],
+      "mark": {
+        "mark": "empty"
+      },
+      "status": {
+        "status": "forbidden",
+        "reason": "index 0 is the environment en bloc, not a named thing — an action needs two relata to be an action; itemize ℰ (or draw it on the graph) to author one here"
+      }
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "relations": [],
+      "mark": {
+        "mark": "empty"
+      },
+      "status": {
+        "status": "forbidden",
+        "reason": "index 0 is the environment en bloc, not a named thing — an action needs two relata to be an action; itemize ℰ (or draw it on the graph) to author one here"
+      }
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "relations": [],
+      "mark": {
+        "mark": "empty"
+      },
+      "status": {
+        "status": "authorable"
+      }
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "relations": [
+        10,
+        13
+      ],
+      "mark": {
+        "mark": "bond",
+        "kind": "Energy"
+      },
+      "status": {
+        "status": "occupied"
+      }
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "relations": [],
+      "mark": {
+        "mark": "empty"
+      },
+      "status": {
+        "status": "forbidden",
+        "reason": "index 0 is the environment en bloc, not a named thing — an action needs two relata to be an action; itemize ℰ (or draw it on the graph) to author one here"
+      }
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "relations": [
+        13
+      ],
+      "mark": {
+        "mark": "mere"
+      },
+      "status": {
+        "status": "occupied"
+      }
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "relations": [
+        12
+      ],
+      "mark": {
+        "mark": "self_loop"
+      },
+      "status": {
+        "status": "occupied"
+      }
+    }
+  ]
+}
