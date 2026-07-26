@@ -48,14 +48,14 @@ which drops L2 flows, never direct-to-Ollama), validated by the mode validators 
 it lands. An optional LLM "co-create" seed drafts the initial lists; the compile path
 stays deterministic. This is what turns the viewer into a creation tool.
 
-**Full design: [`docs/archive/arc2-authoring-design.md`](docs/archive/arc2-authoring-design.md)** — the
+**Full design: [`docs/archive/arc2-authoring-design.md`](arc2-authoring-design.md)** — the
 build-ready spec (deterministic spine, per-lens editable UI, live convergence, persistence,
 and the forward-design for the spatial canvas).
 
 **Build approach (2026-06-26): canvas-first, hand-built in egui.** We build the
 direct-manipulation canvas (drag thing → spawn relation → type → attach) here in the standalone
 egui shell, growing it layer by layer **Klir → Bunge → Mobus**. Visual foundation:
-[`docs/archive/design-system.md`](docs/archive/design-system.md) (palette + accreting shape grammar; visual sheet
+[`docs/archive/design-system.md`](design-system.md) (palette + accreting shape grammar; visual sheet
 in `docs/archive/mockups/`). v0 = a Klir canvas: draggable discs + **undirected** relation lines + the
 kernel-invariant chip; **Bunge** (composition/environment + **directed, typed-by-kind** bonds) and
 **Mobus** (boundary, ports, Message-as-peer flow, operational) layer on after. Faithful gradient +

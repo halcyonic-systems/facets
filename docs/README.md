@@ -2,6 +2,8 @@
 
 Start at the main [`README.md`](../README.md) and [`CLAUDE.md`](../CLAUDE.md) for the repo overview and working rules. This folder is the deeper reference layer.
 
+**This file is the canonical index.** Every document under `docs/` and `spec/` is reachable from here, either listed directly or through a folder's own `README.md` ([`language/`](language/), [`design/`](design/), [`design/dynamics-research/`](design/dynamics-research/), [`archive/`](archive/)). `scripts/doc_lint.py` enforces exactly that, plus "nothing is orphaned" and "every relative link resolves" ([#235](https://github.com/halcyonic-systems/bert-lenses/issues/235)). There is deliberately no second hand-maintained index: two of them drift, and the drift is invisible.
+
 **Status vocabulary.** Every document below carries one: **LIVE** (current, load-bearing) · **ADOPTED** (a decision in force) · **PROPOSED** (a position awaiting adoption — see its tracking issue) · **CONTINGENT(#N)** (normative content conditional on a pending decision — see issue #N) · **RESEARCH** (a foundation others build on; not itself a decision) · **HISTORICAL** (kept as record, superseded). Where one document supersedes another, both say so.
 
 **Invariant.** LIVE/normative sections may not contain verbatim lifts from PROPOSED documents.
@@ -50,16 +52,23 @@ Research foundations — what others build on; not themselves decisions:
 - [`decisions/0001-canvas-rendering-svg.md`](decisions/0001-canvas-rendering-svg.md) — **ADOPTED** — the hand-rolled React+SVG canvas call (vs. a graph library), from the blind-pick spike.
 - [`decisions/0002-web-first-rebuild.md`](decisions/0002-web-first-rebuild.md) — **ADOPTED** — the egui → React/wasm rebuild (Rust brain, React face); written retrospectively from the repo record.
 - [`decisions/0003-conservation-declared-not-assumed.md`](decisions/0003-conservation-declared-not-assumed.md) — **ADOPTED** — conservation is an invariant a model declares, never the engine's premise; the compose engine is the first interpreter of one dynamics-kind. Records the #86 position in force.
+- [`decisions/0004-neutral-archive-canvasmodel-json.md`](decisions/0004-neutral-archive-canvasmodel-json.md) — **ADOPTED** — the neutral archive format is `CanvasModel` JSON. Adopted, then indexed nowhere for four days; its only inbound link was from an orphan until [#235](https://github.com/halcyonic-systems/bert-lenses/issues/235).
 
 ## Historical (pre-web-rebuild, kept as record)
 
 - [`archive/canvas-architecture.md`](archive/canvas-architecture.md) — **HISTORICAL** — the standalone egui canvas (`src/main.rs`). Superseded by the web rebuild; its kernel-seam semantics (mode stamping, audit-panel verdict-quoting) carried forward and are still accurate, but the UI mechanics it describes are gone. (A stub remains at the old `canvas-architecture.md` path.)
 - [`archive/on-the-word-ladder.md`](archive/on-the-word-ladder.md) — **HISTORICAL** — the concordance of the three senses of "ladder/rung/climb" in this repo. Its mode-entry hazard (Bucket A) is retired: mode entry now speaks **lens** vocabulary (see [`theory-fidelity.md`](theory-fidelity.md), gated by `scripts/doc_lint.py`); the doc survives as the record of the words that legitimately stay (compose dependency ladder, per-edge classification, project-phase "rung"). Issue [#90](https://github.com/halcyonic-systems/bert-lenses/issues/90). (A stub remains at the old `on-the-word-ladder.md` path.)
 - [`archive/fidelity-audit.md`](archive/fidelity-audit.md) — **HISTORICAL** — faithfulness verdicts from the egui-era canvas; the current fidelity assessment is [`theory-fidelity.md`](theory-fidelity.md).
-- [`archive/`](archive/) — **HISTORICAL** — superseded design docs (see [`archive/README.md`](archive/README.md)).
+- [`archive/`](archive/) — **HISTORICAL** — superseded design docs and the one source-text extraction; [`archive/README.md`](archive/README.md) lists them all.
+
+Three redirect stubs remain at the pre-move paths so old links do not rot. They are three lines each and carry no content: [`canvas-architecture.md`](canvas-architecture.md), [`fidelity-audit.md`](fidelity-audit.md), [`on-the-word-ladder.md`](on-the-word-ladder.md).
 
 ## Root-level references
 
 - **[Roadmap board](https://github.com/orgs/halcyonic-systems/projects/12)** — **LIVE** — the forward-looking plan, organized by epic (Reality Interface · Joy Surface · Resident Co-author · Trusted Seam · Legible Foundations · The Language · What Runs · Notation · Teaching Surface). There is no roadmap *file*; the retired one is [`archive/roadmap-pre-web-rebuild.md`](archive/roadmap-pre-web-rebuild.md).
 - [`../crates/bert-lenses-kernel/API.md`](../crates/bert-lenses-kernel/API.md) — **LIVE** — the frozen JS↔wasm surface (append-only). Includes the SL surface (`compile_sl` / `emit_sl`).
-- [`../web/DESIGN.md`](../web/DESIGN.md) — **LIVE** — Halcyonic Frost design tokens for the face.
+- [`../web/DESIGN.md`](../web/DESIGN.md) — **LIVE** — Halcyonic Frost design tokens for the face, and the **one owner** of the design system. `design/design-system-draft.md`, `design/visual-language.md`, `design/lens-palettes.md`, and the retired `archive/design-system.md` are all subordinate to it.
+- [`../spec/LENS_ENTRY_SPEC.md`](../spec/LENS_ENTRY_SPEC.md) — **LIVE** — the lens-entry specification; §D is the provenance complement to `lean-provenance.md`.
+- [`running-permanently.md`](running-permanently.md) — **LIVE** — how to keep the app running as a permanent local service rather than a `just dev` session.
+- [`../pipeline/README.md`](../pipeline/README.md) — **LIVE** — the corpus pipeline: its own venv, its own dependencies, and how to run it.
+- [`../examples/README.md`](../examples/README.md) — **LIVE** — what the worked examples are and how to open them.
