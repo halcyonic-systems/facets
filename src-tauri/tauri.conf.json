@@ -17,12 +17,16 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' ipc: http://ipc.localhost http://localhost:5010 http://127.0.0.1:5010 https://reasoner.halcyonic.systems"
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' ipc: http://ipc.localhost http://localhost:5010 http://127.0.0.1:5010"
     }
   },
   "bundle": {
     "active": true,
     "targets": ["app"],
+    "resources": {
+      "../LICENSE": "LICENSE",
+      "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md"
+    },
     "category": "Education",
     "shortDescription": "Systems modeling instrument",
     "longDescription": "Draw a system on the canvas or write it in SL; the kernel judges it under Klir, Bunge, and Mobus.",

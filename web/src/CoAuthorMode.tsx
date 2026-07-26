@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CoauthorTurn, DraftStage } from "./coauthor";
 import { ReasonerGate } from "./ReasonerGate";
-import { endpointKind, reasonerConfig, setReasonerConfig, subscribeReasoner } from "./reasoner";
+import { isLoopback, reasonerConfig, setReasonerConfig, subscribeReasoner } from "./reasoner";
 import { Pill } from "./ui";
 
 type Tone = "neutral" | "ok" | "warning" | "error";
@@ -17,13 +17,15 @@ type Tone = "neutral" | "ok" | "warning" | "error";
 // #218: name the stage instead of a static "Drafting…" — asking is the only
 // place a model name is safe to state, since it is the one case the endpoint
 // tells us the model without guessing (AnalystPanel's own "Local (gemma4)"
-// labels the same "" = local-default convention; a hosted endpoint's actual
-// model is chosen server-side and NOT named here rather than invented).
+// labels the same "" = local-default convention). #229 narrowed the test from
+// "not the hosted endpoint" to "on this machine": a reasoner the user runs
+// elsewhere serves whatever they configured, so its model is NOT named here
+// rather than invented.
 export function stageLabel(stage: DraftStage | null, endpoint: string): string {
   if (!stage) return "Drafting…";
   switch (stage.kind) {
     case "asking":
-      return endpointKind(endpoint) === "hosted" ? "Asking Halcyonic's reasoner…" : "Asking the local reasoner (gemma4)…";
+      return isLoopback(endpoint) ? "Asking the local reasoner (gemma4)…" : "Asking your reasoner…";
     case "compiling":
       return "Compiling the draft…";
     case "retrying":

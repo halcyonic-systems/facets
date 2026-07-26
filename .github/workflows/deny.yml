@@ -1,0 +1,48 @@
+# The supply-chain gate (#229) — its own file, per CONTRIBUTING's
+# one-gate-one-file rule.
+#
+# WHAT WAS UNCOVERED. Nothing in this repository asked either supply-chain
+# question. There was no cargo-deny, no cargo-audit, no npm audit, and no
+# dependabot, so "is anything we ship known to be broken" and "may we ship it at
+# all" were both unanswered — while the artifact linked ~70 crates into a single
+# wasm blob handed to strangers.
+#
+# WHY IT IS ONE TOOL. cargo-deny answers both from one config: `licenses`
+# decides what may be redistributed inside a binary, `advisories` runs the
+# RustSec database over the graph. That is why the licence work and this gate
+# are the same task and land together.
+#
+# WHAT IT DOES NOT COVER. npm. cargo-deny is Cargo-only, and the web
+# dependencies are triaged by hand in SECURITY.md, which records what is
+# accepted and on what evidence. When that triage stops being true, that file
+# is what goes stale — not this one.
+#
+# Locally: `cargo deny check`.
+
+name: deny
+
+on:
+  push:
+  pull_request:
+  # The advisory database moves without this repository moving. A crate that was
+  # clean at merge is not clean forever, and a gate that only runs on push finds
+  # that out on the next unrelated commit.
+  schedule:
+    - cron: "17 6 * * 1"
+
+jobs:
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          # All four checks, explicitly. The default is the same set today, and
+          # naming them means a change of default cannot quietly narrow the gate.
+          # They ride on `command`, not `arguments` — `arguments` is appended as
+          # flags, so naming them there runs `cargo-deny advisories …` and dies
+          # with "unrecognized subcommand". No --all-features: deny.toml resolves
+          # the graph the way the artifact is built (wasm32, default features),
+          # and `panic-probe` is a test-only feature no release carries.
+          command: check advisories bans licenses sources

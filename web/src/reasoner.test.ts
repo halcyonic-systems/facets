@@ -4,10 +4,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_ENDPOINT,
-  HOSTED_ENDPOINT,
   blockedOnDesktop,
-  endpointKind,
   initReasoner,
+  isLoopback,
   memoryReasonerBackend,
   reasonerConfig,
   resetReasonerForTest,
@@ -52,22 +51,34 @@ describe("reasoner config", () => {
   });
 
   it("turning it off is the same seam and also persists", async () => {
-    const backend = freshBackend({ enabled: true, endpoint: HOSTED_ENDPOINT });
+    const backend = freshBackend({ enabled: true, endpoint: "http://gsr.example.com:5010" });
     await initReasoner();
-    await setReasonerConfig({ enabled: false, endpoint: HOSTED_ENDPOINT });
+    await setReasonerConfig({ enabled: false, endpoint: "http://gsr.example.com:5010" });
     expect((await backend.load())?.enabled).toBe(false);
   });
 
-  it("names the hosted endpoint as hosted and anything else as the user's own", () => {
-    expect(endpointKind(HOSTED_ENDPOINT)).toBe("hosted");
-    expect(endpointKind(`${HOSTED_ENDPOINT}/`)).toBe("hosted");
-    expect(endpointKind("http://localhost:5010")).toBe("own");
+  it("tells a reasoner on this machine from one that is not", () => {
+    expect(isLoopback("http://localhost:5010")).toBe(true);
+    expect(isLoopback("http://127.0.0.1:5010")).toBe(true);
+    expect(isLoopback("http://gsr.example.com:5010")).toBe(false);
+    expect(isLoopback("not a url")).toBe(false);
   });
 
   it("knows which endpoints the desktop bundle's connect-src cannot reach", () => {
     expect(blockedOnDesktop("http://localhost:5010")).toBe(false);
-    expect(blockedOnDesktop(HOSTED_ENDPOINT)).toBe(false);
+    expect(blockedOnDesktop("http://127.0.0.1:5010")).toBe(false);
     expect(blockedOnDesktop("http://gsr.example.com:9000")).toBe(true);
+  });
+
+  // #229 — the CRITICAL audit finding was publication, not existence: a URL
+  // compiled into a distributed binary cannot be recalled. This asserts the
+  // module names no remote host at all, so a future edit has to argue with a
+  // failing test rather than slip one back in.
+  it("names no remote endpoint anywhere in the shipped module", async () => {
+    const source = await import("node:fs/promises").then((fs) =>
+      fs.readFile(new URL("./reasoner.ts", import.meta.url), "utf8"),
+    );
+    expect(source).not.toMatch(/https?:\/\/(?!localhost|127\.0\.0\.1)/);
   });
 });
 

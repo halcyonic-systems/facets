@@ -3,7 +3,14 @@ name = "bert-core"
 version = "0.4.0"
 edition = "2021"
 description = "BERT's System Language kernel: the serialized model contract (WorldModel, 8-tuple element types) and 4-layer validator, free of UI dependencies"
-license = "Apache-2.0"
+license = "MIT"
+# Not on crates.io. These five crates are vendored into this repository and
+# distributed only as the wasm kernel inside the app, never as separate
+# packages. Stated rather than implied so cargo-deny can read it: it is what
+# makes the `path` dependencies between them a fact about this tree instead of
+# an unpinned supply-chain surface. Also keeps a publish from going out ahead
+# of the licence decision in ../../LICENSE.
+publish = false
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
