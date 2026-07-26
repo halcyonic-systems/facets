@@ -9,16 +9,26 @@
 //!
 //! If this fails: fix the README, or fix the kernel. Do not delete the test.
 
-use bert_canvas::canvas::project;
+use bert_canvas::canvas::{project, Lens};
+use bert_canvas::lenses::describe;
 use bert_canvas::sl::parse_sl;
 use bert_core::validate::validate_mode;
 use bert_core::Mode;
 
-/// Verbatim from README.md — the three lines a reader meets first.
+/// Verbatim from README.md — the four lines a reader meets first. The relation
+/// is declared `mere`: it holds, but it does not act. Klir counts it; Bunge does
+/// not, because Bunge's system is defined by bondage.
+///
+/// The `mere` matters. Without it the example would rest on an EMPTY relation
+/// set, and "Klir accepts a set with no relations" is the most contestable form
+/// of the Klir claim — `S = (T, R)` invites the reading that R must be
+/// inhabited. With it, both coordinates are populated and the disagreement is
+/// about bondage, which is Bunge's own contribution rather than a technicality.
 const README_TOOLBOX: &str = "\
 system \"Toolbox\" : Concrete/Technical
 component Hammer
 component Wrench
+flow Hammer -> Wrench : matter \"contact\" mere
 ";
 
 #[test]
@@ -26,13 +36,23 @@ fn the_readme_opening_example_behaves_as_the_readme_says() {
     let model = parse_sl(README_TOOLBOX).expect("the README's opening example must compile");
     let world = project(&model);
 
-    // "Read through Klir, that is a system — two things, and Klir asks for
-    // nothing more."
+    // "Read through Klir, that is a system: two things, one relation."
     let klir = validate_mode(&world, Mode::Core);
     assert!(
         klir.issues.is_empty(),
         "the README says Klir accepts this model; it reported: {:#?}",
         klir.issues
+    );
+
+    // And Klir must actually SEE the relation — that is the whole point of
+    // declaring it `mere` rather than omitting it. A mere relation does not
+    // project into the WorldModel the Bunge gate reads, so this reads the lens
+    // description, which is computed from the canvas model.
+    let facts = describe(&model, Lens::Klir);
+    let rendered = format!("{facts:?}");
+    assert!(
+        rendered.contains("relations: 1"),
+        "Klir must count the mere relation — S = (T, R) with R inhabited; got: {rendered}"
     );
 
     // "Switch to the Bunge lens and the kernel refuses it."
@@ -67,12 +87,13 @@ fn the_readme_opening_example_behaves_as_the_readme_says() {
     );
 }
 
-/// The separating instance for the claim above: the refusal must be *about the
-/// missing bond*, not a blanket "Structural is stricter". Add the one thing
-/// Bunge asks for and that refusal clears.
+/// The separating instance: the refusal must be *about bondage*, not a blanket
+/// "Structural is stricter". Drop the word `mere` — the only difference — and
+/// the same four lines pass both lenses, exactly as the README says.
 #[test]
-fn adding_the_bond_the_refusal_names_clears_it() {
-    let bonded = format!("{README_TOOLBOX}flow Hammer -> Wrench : matter \"force\"\n");
+fn dropping_mere_clears_the_refusal_the_readme_shows() {
+    let bonded = README_TOOLBOX.replace(" mere", "");
+    assert_ne!(bonded, README_TOOLBOX, "the fixture must actually contain `mere`");
     let model = parse_sl(&bonded).expect("the repaired model must compile");
     let world = project(&model);
 

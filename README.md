@@ -63,16 +63,19 @@ against real data.
 
 ## See it refuse
 
-The whole claim in one exchange. Three lines of SL:
+The whole claim in one exchange. Four lines of SL — two things and a relation
+between them, declared `mere`: a relation that holds but does not act.
 
 ```
 system "Toolbox" : Concrete/Technical
 component Hammer
 component Wrench
+flow Hammer -> Wrench : matter "contact" mere
 ```
 
-Read through **Klir**, that is a system — two things, and Klir asks for nothing
-more. Switch to the **Bunge** lens and the kernel refuses it:
+Read through **Klir**, that is a system: two things, one relation — `S = (T, R)`
+with both coordinates populated. Switch to the **Bunge** lens and the kernel
+refuses the same model:
 
 ```
 mode/Structural · error
@@ -85,6 +88,13 @@ mode/Structural · error
 Not a lint warning and not a style note. A verdict, naming the definition it
 rests on and the edit that clears it. Every refusal in the tool carries those
 four things: where, what rule, what repair, what to read.
+
+The disagreement is the point, and it is not a matter of strictness. Klir counts
+the relation because Klir counts relations. Bunge does not, because `mere` says
+this relation is not a *bond* — and Bunge's system is defined by bondage, so an
+unbonded collection is an aggregate. Drop the word `mere` and the same four lines
+pass both lenses. That distinction is Bunge's own contribution, and the kernel
+holds you to it.
 
 That exchange is pinned by a test — if the kernel stops refusing this model, or
 stops citing that definition, the build fails
