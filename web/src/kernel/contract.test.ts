@@ -26,6 +26,13 @@ import type {
   EdgeFact,
   LensDescription,
   LensFacts,
+  BungeCoupling,
+  BungeMark,
+  CellStatus,
+  CouplingSlot,
+  KlirCell,
+  KlirIncidence,
+  KlirMark,
   LensResidue,
   MappingStatus,
   PortFact,
@@ -344,6 +351,92 @@ function parseLensResidue(v: unknown): LensResidue {
   };
 }
 
+
+// ---- the register matrices (#233) -------------------------------------------
+
+const CELL_STATUSES = ["occupied", "authorable", "forbidden"] as const;
+
+function parseCellStatus(v: unknown, where: string): CellStatus {
+  const tag = oneOf(record(v, where).status, `${where}.status`, CELL_STATUSES);
+  if (tag === "forbidden") {
+    const o = shape(v, where, ["status", "reason"]);
+    const reason = str(o.reason, `${where}.reason`);
+    if (reason.trim() === "") throw new Error(`${where}: a forbidden cell must name its precondition`);
+    return { status: "forbidden", reason };
+  }
+  shape(v, where, ["status"]);
+  return { status: tag };
+}
+
+function parseKlirMark(v: unknown, where: string): KlirMark {
+  shape(v, where, ["mark"]);
+  return { mark: oneOf(record(v, where).mark, `${where}.mark`, ["empty", "neutral", "directed", "self_loop"] as const) };
+}
+
+function parseKlirCell(v: unknown, where: string): KlirCell {
+  const o = shape(v, where, ["row", "col", "relations", "mark", "status"]);
+  return {
+    row: num(o.row, `${where}.row`),
+    col: num(o.col, `${where}.col`),
+    relations: arr(o.relations, `${where}.relations`).map((r, i) => num(r, `${where}.relations[${i}]`)),
+    mark: parseKlirMark(o.mark, `${where}.mark`),
+    status: parseCellStatus(o.status, `${where}.status`),
+  };
+}
+
+function parseKlirIncidence(v: unknown): KlirIncidence {
+  const o = shape(v, "KlirIncidence", ["things", "cells"]);
+  const things = arr(o.things, "KlirIncidence.things").map((t, i) => num(t, `KlirIncidence.things[${i}]`));
+  const cells = arr(o.cells, "KlirIncidence.cells").map((c, i) => parseKlirCell(c, `KlirIncidence.cells[${i}]`));
+  if (cells.length !== things.length * things.length) {
+    throw new Error("KlirIncidence: the matrix must be |T|×|T| — every pair owes a cell");
+  }
+  return { things, cells };
+}
+
+function parseCouplingSlot(v: unknown, where: string): CouplingSlot {
+  const tag = oneOf(record(v, where).kind, `${where}.kind`, ["env", "thing"] as const);
+  if (tag === "env") {
+    shape(v, where, ["kind"]);
+    return { kind: "env" };
+  }
+  const o = shape(v, where, ["kind", "id", "env"]);
+  return { kind: "thing", id: num(o.id, `${where}.id`), env: bool(o.env, `${where}.env`) };
+}
+
+function parseBungeMark(v: unknown, where: string): BungeMark {
+  const tag = oneOf(record(v, where).mark, `${where}.mark`, ["empty", "self_loop", "bond", "mere"] as const);
+  if (tag === "bond") {
+    const o = shape(v, where, ["mark", "kind"]);
+    return { mark: "bond", kind: oneOf(o.kind, `${where}.kind`, KINDS) };
+  }
+  shape(v, where, ["mark"]);
+  return { mark: tag };
+}
+
+function parseBungeCoupling(v: unknown): BungeCoupling {
+  const o = shape(v, "BungeCoupling", ["slots", "cut_at", "cells"]);
+  const slots = arr(o.slots, "BungeCoupling.slots").map((s, i) => parseCouplingSlot(s, `BungeCoupling.slots[${i}]`));
+  const cells = arr(o.cells, "BungeCoupling.cells").map((c, i) => {
+    const cc = shape(c, `BungeCoupling.cells[${i}]`, ["row", "col", "relations", "mark", "status"]);
+    return {
+      row: num(cc.row, `BungeCoupling.cells[${i}].row`),
+      col: num(cc.col, `BungeCoupling.cells[${i}].col`),
+      relations: arr(cc.relations, `BungeCoupling.cells[${i}].relations`).map((r, j) =>
+        num(r, `BungeCoupling.cells[${i}].relations[${j}]`),
+      ),
+      mark: parseBungeMark(cc.mark, `BungeCoupling.cells[${i}].mark`),
+      status: parseCellStatus(cc.status, `BungeCoupling.cells[${i}].status`),
+    };
+  });
+  const cut_at = num(o.cut_at, "BungeCoupling.cut_at");
+  if (cut_at < 0 || cut_at > slots.length) throw new Error("BungeCoupling: cut_at must index into slots");
+  if (cells.length !== slots.length * slots.length) {
+    throw new Error("BungeCoupling: M must be square over its slots");
+  }
+  return { slots, cut_at, cells };
+}
+
 function parseCanvasAnalysis(v: unknown): CanvasAnalysis {
   const o = shape(v, "CanvasAnalysis", ["validation", "issue_targets", "facts", "description", "residue"]);
   const validation = parseValidationResult(o.validation);
@@ -581,6 +674,31 @@ describe("serde↔TS boundary fixtures", () => {
     expect(r.unspecified.length).toBeGreaterThan(0);
     // The sample's one mere relation arrives singular — labels never re-pluralize.
     expect(r.hidden[0]).toEqual({ count: 1, label: "mere relation" });
+  });
+
+  it("KlirIncidence validates, and every cell of |T|×|T| is present", () => {
+    const inc = parseKlirIncidence(fixture("klir_incidence"));
+    expect(inc.things.length).toBeGreaterThan(0);
+    // The sample orients one relation, so the directed reading is exercised.
+    expect(inc.cells.some((c) => c.mark.mark === "directed")).toBe(true);
+  });
+
+  it("BungeCoupling validates under both environment readings", () => {
+    const enBloc = parseBungeCoupling(fixture("bunge_coupling_en_bloc"));
+    // Bunge prints index 0 first, and the cut falls immediately after it.
+    expect(enBloc.slots[0]).toEqual({ kind: "env" });
+    expect(enBloc.cut_at).toBe(1);
+    const itemized = parseBungeCoupling(fixture("bunge_coupling_itemized"));
+    expect(itemized.slots.every((s) => s.kind === "thing")).toBe(true);
+  });
+
+  it("a closed cell arrives forbidden, carrying the precondition in words (#233)", () => {
+    const enBloc = parseBungeCoupling(fixture("bunge_coupling_en_bloc"));
+    const m00 = enBloc.cells.find((c) => c.row === 0 && c.col === 0);
+    expect(m00?.status.status).toBe("forbidden");
+    // Not a bare flag: the reason is what a dead cell says when hovered.
+    expect(m00?.status.status === "forbidden" && m00.status.reason).toContain("M₀₀ = 0");
+    expect(m00?.relations).toEqual([]);
   });
 
   it("CsvParse validates", () => {

@@ -10,4 +10,5 @@
 
 pub mod canvas;
 pub mod lenses;
+pub mod notation;
 pub mod sl;

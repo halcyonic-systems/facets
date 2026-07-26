@@ -446,3 +446,72 @@ export interface CanvasAnalysis {
   description: LensDescription;
   residue: LensResidue;
 }
+
+// ---- The register matrices (#233) -------------------------------------------
+// Klir's incidence matrix and Bunge's coupling matrix M are WRITE surfaces —
+// their empty cells author relations — so which cell a relation occupies, and
+// which cell may be authored into, is a reading of the tradition and is decided
+// in `crates/bert-canvas/src/notation.rs`. These mirrors carry that reading; the
+// face maps marks onto glyphs and colors and decides nothing.
+
+/** What an author may do with one cell. `forbidden` names the precondition, so
+ *  a dead cell can say why it is dead. */
+export type CellStatus =
+  | { status: "occupied" }
+  | { status: "authorable" }
+  | { status: "forbidden"; reason: string };
+
+/** How an occupied Klir incidence cell reads (● ↔ neutral, → directed, ↺ the
+ *  diagonal). Which one a cell earns is the kernel's call. */
+export type KlirMark =
+  | { mark: "empty" }
+  | { mark: "neutral" }
+  | { mark: "directed" }
+  | { mark: "self_loop" };
+
+export interface KlirCell {
+  row: number;
+  col: number;
+  /** Relation ids standing in this cell, in model order. */
+  relations: number[];
+  mark: KlirMark;
+  status: CellStatus;
+}
+
+export interface KlirIncidence {
+  /** Row/column order, by thing id — Klir draws no composition/environment cut. */
+  things: number[];
+  cells: KlirCell[];
+}
+
+/** A row/column of M: a named thing, or Bunge's index 0 — the environment en
+ *  bloc (1979 §2.1). `env` marks the environment side under the itemized
+ *  reading, where the cut is an ordering rather than a lumped index. */
+export type CouplingSlot = { kind: "env" } | { kind: "thing"; id: number; env: boolean };
+
+/** How an occupied coupling cell reads. The kind of action is what makes a bond
+ *  a bond (F7), so an acting cell carries its kind. */
+export type BungeMark =
+  | { mark: "empty" }
+  | { mark: "self_loop" }
+  | { mark: "bond"; kind: Kind }
+  | { mark: "mere" };
+
+export interface BungeCell {
+  /** Slot indices — slots carry no id under en bloc. */
+  row: number;
+  col: number;
+  /** Relation ids gathered into this cell, deduplicated: index 0 stands for
+   *  every environment thing at once, so one relation can be reachable from two
+   *  directions and must still be counted once. */
+  relations: number[];
+  mark: BungeMark;
+  status: CellStatus;
+}
+
+export interface BungeCoupling {
+  slots: CouplingSlot[];
+  /** The slot index the composition/environment rule is drawn before. */
+  cut_at: number;
+  cells: BungeCell[];
+}

@@ -1,0 +1,132 @@
+{
+  "slots": [
+    {
+      "kind": "thing",
+      "id": 1,
+      "env": false
+    },
+    {
+      "kind": "thing",
+      "id": 2,
+      "env": false
+    },
+    {
+      "kind": "thing",
+      "id": 3,
+      "env": true
+    }
+  ],
+  "cut_at": 2,
+  "cells": [
+    {
+      "row": 0,
+      "col": 0,
+      "relations": [],
+      "mark": {
+        "mark": "empty"
+      },
+      "status": {
+        "status": "authorable"
+      }
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "relations": [
+        10,
+        13
+      ],
+      "mark": {
+        "mark": "bond",
+        "kind": "Energy"
+      },
+      "status": {
+        "status": "occupied"
+      }
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "relations": [],
+      "mark": {
+        "mark": "empty"
+      },
+      "status": {
+        "status": "authorable"
+      }
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "relations": [
+        13
+      ],
+      "mark": {
+        "mark": "mere"
+      },
+      "status": {
+        "status": "occupied"
+      }
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "relations": [
+        12
+      ],
+      "mark": {
+        "mark": "self_loop"
+      },
+      "status": {
+        "status": "occupied"
+      }
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "relations": [],
+      "mark": {
+        "mark": "empty"
+      },
+      "status": {
+        "status": "authorable"
+      }
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "relations": [
+        11
+      ],
+      "mark": {
+        "mark": "bond",
+        "kind": "Energy"
+      },
+      "status": {
+        "status": "occupied"
+      }
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "relations": [],
+      "mark": {
+        "mark": "empty"
+      },
+      "status": {
+        "status": "authorable"
+      }
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "relations": [],
+      "mark": {
+        "mark": "empty"
+      },
+      "status": {
+        "status": "authorable"
+      }
+    }
+  ]
+}

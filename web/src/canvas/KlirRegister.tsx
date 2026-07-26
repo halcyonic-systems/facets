@@ -7,17 +7,17 @@
 // inline editor edits, the matrix's empty cells author new relations. Every
 // legality question still goes to the kernel (validate_connection); this file
 // typesets and forwards, it decides nothing.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import type { CanvasModel, KlirLadder, KlirVarKind, MarkovRunResult, Relation, RunResultRich, ScaleType, Thing } from "../kernel/types";
-import { validateConnection } from "../kernel";
+import type { CanvasModel, KlirCell, KlirLadder, KlirVarKind, MarkovRunResult, Relation, RunResultRich, ScaleType, Thing } from "../kernel/types";
+import { klirIncidenceCells, validateConnection } from "../kernel";
 import { observations, refusal } from "./connectionVerdict";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 import { DecomposeRows, type DecomposeAffordance } from "./NodeEditor";
 import { KlirLadderPanel, LadderChip } from "./KlirLadderPanel";
 import { FormalismLine, klirFormalism } from "./lenses/glossary";
-import { cellGlyph, cellRelations, nextIdOf, nextThingPosition, relationTuple } from "./klirNotation";
+import { cellIndex, klirGlyph, nextIdOf, nextThingPosition, relationsIn, relationTuple } from "./klirNotation";
 import { CELL, confirmStripClass, confirmStripStyle, headerCellStyle } from "./registerChrome";
 
 interface Props {
@@ -110,6 +110,12 @@ export function KlirRegister({
     }
     setNameDraft(null);
   };
+
+  // The incidence matrix as the KERNEL reads it (#233): occupancy, the mark, and
+  // whether a cell may be authored into. The symmetric-closure rule that used to
+  // live in klirNotation.ts is Klir's, not typography's, and this register writes
+  // through those cells — so it is decided in Rust and only rendered here.
+  const cells = useMemo(() => cellIndex(klirIncidenceCells(model)), [model]);
 
   const nameOf = (id: number) => model.things.find((t) => t.id === id)?.name || `#${id}`;
   const selectedThing = model.things.find((t) => t.id === selectedThingId) ?? null;
@@ -375,10 +381,11 @@ export function KlirRegister({
           ) : (
             <IncidenceMatrix
               model={model}
+              cells={cells}
               selectedRelationId={selectedRelationId}
               proposed={proposed}
               onPickCell={(a, b) => {
-                const rels = cellRelations(model, a, b);
+                const rels = relationsIn(model.relations, cells.get(`${a},${b}`)?.relations ?? []);
                 if (rels.length > 0) {
                   onSelectRelation(rels[0].id === selectedRelationId ? null : rels[0].id);
                   setProposed(null);
@@ -452,6 +459,7 @@ function PairSelect({
 
 function IncidenceMatrix({
   model,
+  cells,
   selectedRelationId,
   proposed,
   onPickCell,
@@ -459,6 +467,9 @@ function IncidenceMatrix({
   onCancel,
 }: {
   model: CanvasModel;
+  /** The kernel's incidence reading, keyed `row,col` by thing id. Every
+   *  question about what a cell holds is answered from here (#233). */
+  cells: Map<string, KlirCell>;
   selectedRelationId: number | null;
   /** The pair a first empty-cell click proposed — not yet in R (#100 harvest:
    *  click softened to propose-then-confirm). */
@@ -520,7 +531,8 @@ function IncidenceMatrix({
                 {short(a.name || `t${a.id}`)}
               </th>
               {model.things.map((b) => {
-                const rels = cellRelations(model, a.id, b.id);
+                const cell = cells.get(`${a.id},${b.id}`);
+                const rels = relationsIn(model.relations, cell?.relations ?? []);
                 const hit = rels.some((r) => r.id === selectedRelationId);
                 const isProposed = proposed !== null && proposed.a === a.id && proposed.b === b.id;
                 return (
@@ -555,7 +567,7 @@ function IncidenceMatrix({
                             : `(${a.name}, ${b.name}) ∉ R — click to propose`
                       }
                     >
-                      {rels.length ? cellGlyph(a.id, b.id, rels) : isProposed ? "+" : ""}
+                      {cell ? klirGlyph(cell.mark, rels.length) || (isProposed ? "+" : "") : ""}
                     </button>
                   </td>
                 );

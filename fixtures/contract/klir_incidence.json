@@ -1,0 +1,119 @@
+{
+  "things": [
+    1,
+    2,
+    3
+  ],
+  "cells": [
+    {
+      "row": 1,
+      "col": 1,
+      "relations": [],
+      "mark": {
+        "mark": "empty"
+      },
+      "status": {
+        "status": "authorable"
+      }
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "relations": [
+        10,
+        13
+      ],
+      "mark": {
+        "mark": "directed"
+      },
+      "status": {
+        "status": "occupied"
+      }
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "relations": [
+        11
+      ],
+      "mark": {
+        "mark": "neutral"
+      },
+      "status": {
+        "status": "occupied"
+      }
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "relations": [
+        13
+      ],
+      "mark": {
+        "mark": "neutral"
+      },
+      "status": {
+        "status": "occupied"
+      }
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "relations": [
+        12
+      ],
+      "mark": {
+        "mark": "self_loop"
+      },
+      "status": {
+        "status": "occupied"
+      }
+    },
+    {
+      "row": 2,
+      "col": 3,
+      "relations": [],
+      "mark": {
+        "mark": "empty"
+      },
+      "status": {
+        "status": "authorable"
+      }
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "relations": [
+        11
+      ],
+      "mark": {
+        "mark": "neutral"
+      },
+      "status": {
+        "status": "occupied"
+      }
+    },
+    {
+      "row": 3,
+      "col": 2,
+      "relations": [],
+      "mark": {
+        "mark": "empty"
+      },
+      "status": {
+        "status": "authorable"
+      }
+    },
+    {
+      "row": 3,
+      "col": 3,
+      "relations": [],
+      "mark": {
+        "mark": "empty"
+      },
+      "status": {
+        "status": "authorable"
+      }
+    }
+  ]
+}
