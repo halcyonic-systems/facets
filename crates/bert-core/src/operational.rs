@@ -853,4 +853,29 @@ mod tests {
         let errs = validate_operational(&m).unwrap_err();
         assert!(errs.iter().any(|e| e.reason.contains("k ≠ o")));
     }
+
+    /// Law: a flow must attach to nodes the projection actually produced. A
+    /// level-1 work process demoted to level 0 still resolves as a reference —
+    /// `validate` is satisfied — but it is not projected, so the flows that name
+    /// it attach to nothing and the run is refused by endpoint, naming which end
+    /// failed. Reachable, therefore witnessed (#231).
+    #[test]
+    fn a_flow_endpoint_that_is_not_projected_is_refused() {
+        let mut m = mobus_model();
+        // Separating instance: as authored, the same model projects.
+        validate_operational(&m).expect("the Mobus model projects as authored");
+
+        m.systems[1].info.level = 0;
+        let errs = validate_operational(&m).expect_err("an unprojected endpoint is refused");
+        assert!(
+            errs.iter()
+                .any(|e| e.reason.contains("sink does not resolve to a projected node")),
+            "the refusal names the end that failed; got: {errs:?}"
+        );
+        assert!(
+            errs.iter()
+                .any(|e| e.reason.contains("source does not resolve to a projected node")),
+            "and it fires per endpoint, not once per model; got: {errs:?}"
+        );
+    }
 }

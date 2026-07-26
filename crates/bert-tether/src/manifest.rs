@@ -523,4 +523,92 @@ mod tests {
         assert_eq!(m.dt, None, "dt omitted = inferred");
         assert_eq!(m.t, 18.0);
     }
+
+    /// Law: a name that binds to more than one element binds to none. A manifest
+    /// resolves elements BY NAME, so two same-named flows make the reference
+    /// ambiguous — refused, and the refusal says how many it hit and what to do,
+    /// rather than silently taking the first. Reachable (nothing stops a model
+    /// from naming two flows alike), therefore witnessed (#231).
+    #[test]
+    fn a_name_that_matches_two_elements_is_ambiguous_not_first_wins() {
+        let flows = vec![
+            (10, "Anthropic tokens routed".to_string()),
+            (11, "Anthropic tokens routed".to_string()),
+        ];
+        let comps = vec![(6, "Developer channel".to_string())];
+        let ctx = ResolveCtx {
+            flows: &flows,
+            components: &comps,
+        };
+        let (headers, rows) = parse_csv(CSV).expect("fixture parses");
+        let mut draft = MappingDraft::new("d.csv".into(), headers, rows);
+        let errors = manifest()
+            .apply_to_draft(&mut draft, &ctx)
+            .expect_err("an ambiguous name is refused");
+        assert!(
+            errors.iter().any(|e| e
+                == "\"Anthropic tokens routed\" names 2 different flows — rename them apart \
+                    before a manifest can bind"),
+            "the refusal counts the collisions and says how to fix them; got: {errors:?}"
+        );
+
+        // Separating instance: one flow of that name, and the same manifest binds.
+        let unique = vec![(10, "Anthropic tokens routed".to_string())];
+        let ctx = ResolveCtx {
+            flows: &unique,
+            components: &comps,
+        };
+        let (headers, rows) = parse_csv(CSV).expect("fixture parses");
+        let mut draft = MappingDraft::new("d.csv".into(), headers, rows);
+        manifest()
+            .apply_to_draft(&mut draft, &ctx)
+            .expect("an unambiguous name binds");
+    }
+
+    /// Law: a role that binds to a model element must name one. Flow, stock, and
+    /// param each carry their own refusal, and each is witnessed here — an
+    /// element-less binding is refused by name, not silently dropped or bound to
+    /// whatever happens to be first (#231).
+    #[test]
+    fn a_binding_role_that_names_no_element_is_refused() {
+        let (flows, comps) = ctx();
+        let ctx = ResolveCtx {
+            flows: &flows,
+            components: &comps,
+        };
+        for (role, word) in [
+            (Role::Flow, "flow"),
+            (Role::Stock, "stock"),
+            (Role::Param, "param"),
+        ] {
+            let mut m = manifest();
+            m.mapping[1].role = role;
+            m.mapping[1].element = None;
+            let (headers, rows) = parse_csv(CSV).expect("fixture parses");
+            let mut draft = MappingDraft::new("d.csv".into(), headers, rows);
+            let errors = m
+                .apply_to_draft(&mut draft, &ctx)
+                .expect_err("a binding role with no element is refused");
+            assert!(
+                errors.iter().any(|e| e
+                    == &format!("column \"anthropic_tok\" is a {word} but names no element")),
+                "the refusal names the column and the role; got: {errors:?}"
+            );
+        }
+
+        // Separating instance: the same column, same roles, WITH an element that
+        // resolves — admitted. The gate is about the missing element, not the role.
+        for role in [Role::Flow, Role::Stock, Role::Param] {
+            let mut m = manifest();
+            m.mapping[1].role = role;
+            m.mapping[1].element = Some(match role {
+                Role::Flow => "Anthropic tokens routed".to_string(),
+                _ => "Developer channel".to_string(),
+            });
+            let (headers, rows) = parse_csv(CSV).expect("fixture parses");
+            let mut draft = MappingDraft::new("d.csv".into(), headers, rows);
+            m.apply_to_draft(&mut draft, &ctx)
+                .expect("a named, resolvable element binds");
+        }
+    }
 }
