@@ -17,5 +17,10 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // `*.violation.ts` files are separating instances (#233 §4): code that must
+  // NOT compile. `verdictChannel.test.ts` type-checks each one in isolation and
+  // fails if it succeeds. They are imported by nothing, so excluding them here
+  // keeps the app's own typecheck honest without hiding them from the gate.
+  "exclude": ["src/**/*.violation.ts"]
 }

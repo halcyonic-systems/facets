@@ -820,16 +820,23 @@ function Workspace() {
   // validation error. Effect-shaped (not memo) — a stale check is discarded.
   // Since step 5b the kernel also resolves each issue's canvas target
   // (check_decompositions_canvas), so seam rows navigate like any other issue.
+  // `error` is the HOST's failure, deliberately not an issue (#233 §4): when
+  // resolution itself dies (storage error, projection throw) the kernel never
+  // judged anything, so there is no verdict to show. It used to be dressed as
+  // one — a hand-built `ValidationIssue` concatenated onto the kernel's list,
+  // under a panel that says every line is machine-checked. The provenance brand
+  // makes that a compile error now; this field is where the truth goes instead.
   const [decomposition, setDecomposition] = useState<{
     issues: ValidationIssue[];
     targets: IssueTarget[];
-  }>({ issues: [], targets: [] });
+    error: string | null;
+  }>({ issues: [], targets: [], error: null });
   useEffect(() => {
     const refs = canvasModel
       ? canvasModel.things.flatMap((t) => (t.child_model ? [t.child_model.id] : []))
       : [];
     if (!canvasModel || refs.length === 0) {
-      setDecomposition({ issues: [], targets: [] });
+      setDecomposition({ issues: [], targets: [], error: null });
       return;
     }
     let stale = false;
@@ -837,24 +844,18 @@ function Workspace() {
       const resolved = await resolveModelRefs(refs, dirHandle);
       if (stale) return;
       const report = checkDecompositionsCanvas(canvasModel, resolved);
-      if (!stale) setDecomposition({ issues: report.issues, targets: report.issue_targets });
+      if (!stale) setDecomposition({ issues: report.issues, targets: report.issue_targets, error: null });
     })().catch((e) => {
       // Resolution failing outright (storage error, projection throw) must
-      // still surface on the review panel, never only the console.
+      // still surface on the review panel, never only the console — but as the
+      // host failure it is, in its own region, outside the verdict list.
       if (!stale) {
         setDecomposition({
-          issues: [
-            {
-              severity: "Error",
-              location: "decomposition",
-              message: `decomposition references could not be checked: ${
-                e instanceof Error ? e.message : String(e)
-              }`,
-              suggestion: null,
-              doc: null,
-            },
-          ],
-          targets: [{ thing: null, relation: null }],
+          issues: [],
+          targets: [],
+          error: `decomposition references could not be checked: ${
+            e instanceof Error ? e.message : String(e)
+          }`,
         });
       }
     });
@@ -866,6 +867,8 @@ function Workspace() {
   // The kernel's lens-gate verdict plus the resolution-time decomposition
   // issues, one list — the issues Pill, the review panel, and the dock all read
   // this. Both halves carry kernel-resolved canvas targets, index-parallel.
+  // Both halves are also KERNEL output, which is the only reason they may share
+  // a list at all (#233 §4); the host's own failures go to `decomposition.error`.
   const verdict = useMemo(() => {
     const base = analysis.ok?.validation ?? null;
     if (decomposition.issues.length === 0) return base;
@@ -1252,7 +1255,7 @@ function Workspace() {
         {
           label: currentLabel ?? "untitled",
           modelId: canvasModel.model_id ?? null,
-          clean: decomposition.issues.length === 0,
+          clean: decomposition.issues.length === 0 && decomposition.error === null,
           canvas: canvasModel,
           demo,
           manifest,
@@ -1406,7 +1409,7 @@ function Workspace() {
               style={{ color: "var(--text-primary)" }}
               title={canvasModel.model_id ? `${currentLabel} @${canvasModel.model_id}` : currentLabel ?? undefined}
             >
-              <SeamGlyph clean={decomposition.issues.length === 0} />
+              <SeamGlyph clean={decomposition.issues.length === 0 && decomposition.error === null} />
               {currentLabel}
             </span>
           </nav>
@@ -1971,6 +1974,7 @@ function Workspace() {
               verdict={verdict}
               issueTargets={issueTargets}
               analysisError={analysisError}
+              hostError={decomposition.error}
               canvasModel={canvasModel}
               tick={tick}
               reviewRequest={reviewRequest}

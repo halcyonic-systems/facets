@@ -47,6 +47,7 @@ import type {
   ValidationIssue,
   ValidationResult,
 } from "./types";
+import { kernelVerdict } from "./testVerdict";
 
 // ---- fixture loading --------------------------------------------------------
 
@@ -244,13 +245,13 @@ function parseLensFacts(v: unknown): LensFacts {
 function parseValidationIssue(v: unknown, where: string): ValidationIssue {
   // `doc` is optional on the wire (serde default): absent means no doc link.
   const o = shape(v, where, ["severity", "location", "message", "suggestion"], ["doc"]);
-  return {
+  return kernelVerdict({
     severity: oneOf(o.severity, `${where}.severity`, SEVERITIES),
     location: str(o.location, `${where}.location`),
     message: str(o.message, `${where}.message`),
     suggestion: nullableStr(o.suggestion, `${where}.suggestion`),
     doc: "doc" in o ? nullableStr(o.doc, `${where}.doc`) : null,
-  };
+  });
 }
 
 function parseSlError(v: unknown, where: string): SlError {

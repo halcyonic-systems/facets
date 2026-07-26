@@ -5,7 +5,26 @@
 
 export type Severity = "Error" | "Warning";
 
-export interface ValidationIssue {
+// The verdict channel's provenance brand (#233 §4).
+//
+// The non-negotiable: no generated prose ever sits in the same list as a
+// machine-checked refusal. Until now that was comment-only — `ValidationIssue`
+// was a plain record, so `{ issues: [...verdict.issues, llmSuggestion] }` was
+// one line and compiled clean. This symbol is NOT exported, so no module
+// outside this one can write the key: the only ways to hold a
+// `ValidationIssue` are to receive one from the wasm boundary (`kernel/index`'s
+// `call`, which casts the kernel's own reply) or from `testVerdict`, which
+// `verdictChannel.test.ts` keeps out of production source.
+//
+// Phantom by construction: `declare` emits nothing, so the brand costs no
+// bytes, crosses no wasm boundary, and leaves `API.md` and the contract
+// fixtures untouched. It exists only for the compiler.
+declare const KERNEL_VERDICT: unique symbol;
+
+/** A verdict's fields, brand aside — the shape the kernel puts on the wire.
+ *  Holding one of these is NOT holding a verdict; only the branded
+ *  `ValidationIssue` may enter a `ValidationResult`. */
+export interface VerdictFields {
   severity: Severity;
   location: string;
   message: string;
@@ -14,6 +33,12 @@ export interface ValidationIssue {
    *  repo-relative docs path + heading anchor, chosen by the kernel
    *  (`bert_core::validate::doc`). The face only turns it into a link. */
   doc: string | null;
+}
+
+/** One kernel verdict. Unforgeable outside this directory — see
+ *  `KERNEL_VERDICT` above for why, and what it is defending. */
+export interface ValidationIssue extends VerdictFields {
+  readonly [KERNEL_VERDICT]: true;
 }
 
 export interface ValidationResult {

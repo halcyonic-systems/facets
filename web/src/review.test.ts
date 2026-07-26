@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CanvasModel, ValidationResult } from "./kernel/types";
+import { kernelVerdict } from "./kernel/testVerdict";
 import { MODE_BY_LENS, findingsPhrase, plainFirst, reviewCounts, summaryLine } from "./review";
 
 function model(over: Partial<CanvasModel> = {}): CanvasModel {
@@ -29,14 +30,10 @@ const rel = (id: number): CanvasModel["relations"][number] => ({
 });
 
 const result = (...issues: ValidationResult["issues"]): ValidationResult => ({ issues });
-const warn = (message: string): ValidationResult["issues"][number] => ({
-  severity: "Warning",
-  location: "x",
-  message,
-  suggestion: null,
-  doc: null,
-});
-const err = (message: string): ValidationResult["issues"][number] => ({ ...warn(message), severity: "Error" });
+const warn = (message: string): ValidationResult["issues"][number] =>
+  kernelVerdict({ severity: "Warning", location: "x", message, suggestion: null, doc: null });
+const err = (message: string): ValidationResult["issues"][number] =>
+  kernelVerdict({ severity: "Error", location: "x", message, suggestion: null, doc: null });
 
 describe("summaryLine", () => {
   it("names the counts, the lens, and the mode", () => {
