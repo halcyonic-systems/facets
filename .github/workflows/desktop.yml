@@ -85,8 +85,12 @@ jobs:
       - name: cargo clippy (src-tauri)
         run: cargo clippy --all-targets --manifest-path src-tauri/Cargo.toml -- -D warnings
 
+      # Idempotent on purpose: the cargo cache above restores ~/.cargo/bin/cargo-tauri
+      # from a previous run, and a bare `cargo install` then fails with "binary
+      # `cargo-tauri` already exists in destination". Skip when it is already there
+      # rather than --force, so a warm cache stays a saving instead of a reinstall.
       - name: Install tauri-cli
-        run: cargo install tauri-cli --version "^2" --locked
+        run: command -v cargo-tauri >/dev/null 2>&1 || cargo install tauri-cli --version "^2" --locked
 
       - name: Bundle the .app
         run: cargo tauri build
