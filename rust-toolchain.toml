@@ -1,0 +1,18 @@
+# The toolchain this repo builds with, and the two pieces `just check` needs
+# that a plain `rustup` install does not carry: the clippy component and the
+# wasm32 target. rustup reads this file, so a cold clone gets both without a
+# `rustup target add` line anyone has to remember to document.
+#
+# CI installs the same set through dtolnay/rust-toolchain@stable rather than
+# from here — the two are kept in step by hand.
+#
+# NIGHTLY WORK (fuzzing, #231): an explicit toolchain on the command line wins
+# over this file, so `cargo +nightly fuzz run …` still selects nightly. A
+# directory that must ALWAYS build on nightly carries its own
+# `rust-toolchain.toml`, which takes precedence over this one — that is the
+# supported way for `fuzz/` to override it.
+
+[toolchain]
+channel = "stable"
+components = ["clippy"]
+targets = ["wasm32-unknown-unknown"]

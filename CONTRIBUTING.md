@@ -6,6 +6,15 @@ decision, what the status words mean, and what "done" means before a change land
 Read [`README.md`](README.md) for what the instrument is and
 [`docs/README.md`](docs/README.md) for the indexed docs tour first.
 
+## Before your first command
+
+Every command in this repo is a `just` recipe, so install `just` first
+(`brew install just`, or `cargo install just`) and then run `just preflight` —
+it names every other prerequisite and prints the exact install line for whatever
+is missing. The full table is [README's Prerequisites](README.md#prerequisites).
+`python3` is one of them: `scripts/doc_lint.py` is the **first** step of
+`just check`.
+
 ## Proposing a change
 
 Small, self-evident changes (a bug fix, a doc typo, a test) just need a green
