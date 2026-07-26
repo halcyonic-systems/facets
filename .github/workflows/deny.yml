@@ -21,8 +21,13 @@
 
 name: deny
 
+# Triggers: `pull_request` covers every branch; `push` is narrowed to `main` so a
+# commit is not gated twice for the same content. Running both on every branch
+# doubled every gate — 33 macOS `desktop` runs in one day exhausted the Actions
+# allowance on a private repo, where macOS bills at a 10x multiplier (#234).
 on:
   push:
+    branches: [main]
   pull_request:
   # The advisory database moves without this repository moving. A crate that was
   # clean at merge is not clean forever, and a gate that only runs on push finds
