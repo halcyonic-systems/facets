@@ -1,0 +1,23 @@
+# Three ecosystems, because the repo has three lockfiles and one of them ships in
+# a distributed binary: a stale transitive dep under web/ is real supply-chain
+# exposure inside the macOS .app, not just a CI nag. src-tauri/ is its own cargo
+# workspace and is invisible to the root manifest.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: cargo
+    directory: "/src-tauri"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: npm
+    directory: "/web"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

@@ -21,8 +21,13 @@
 
 name: desktop
 
+# Triggers: this is the only macOS job, and macOS bills at a 10x multiplier on a
+# private repo. It runs once per pull request and once on `main` after merge —
+# never on every branch push. 33 runs in one day exhausted the Actions allowance
+# and took every other gate down with it (#234).
 on:
   push:
+    branches: [main]
   pull_request:
 
 env:

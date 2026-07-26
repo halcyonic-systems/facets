@@ -1,5 +1,7 @@
 # Bunge's Account of Dynamics — Read for the "What Counts as Dynamics" Question
 
+**Status: RESEARCH.**
+
 Source: `operations/systems-science/bunge/Bunge - 1979 - Treatise on Basic Philosophy.md` (Ontology II, "A World of Systems"). All line numbers below refer to this vault markdown file (Mathpix-OCR'd from the Treatise, Vol. 4). Every claim is tagged VERIFIED (I read the passage) or UNVERIFIED (inference).
 
 Also consulted: `operations/systems-science/bunge/README.md` and `concepts/{state-space,mechanism,emergence}.md` — VERIFIED, but these are thin generated distillations; the primary text carries the actual formal content and is what this doc cites.

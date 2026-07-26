@@ -43,6 +43,34 @@ Three things make this unlike other modeling tools:
   Lean 4 proofs, and the tool refuses loudly with a citable reason rather than
   guessing. You can audit the theory under the instrument, not just trust it.
 
+**Who this is for.** Two readers, two paths in.
+
+*The newcomer* — anyone who wants to describe a system (a supply chain, a
+protocol, a cell, an organization), find out whether what they described actually
+*is* one, and watch it run. Start with [`docs/quickstart.md`](docs/quickstart.md):
+ten minutes from a clone to a model the kernel judges, a refusal you provoke on
+purpose, and a run over real data. (Install the [prerequisites](#prerequisites)
+first — it is one `brew install just` and one `just preflight`.) You need no
+systems-science background to begin — each lens's palette carries its tradition's
+own vocabulary as you author, so you pick it up in place, and every lens pairs its
+edge names with the math on-canvas, with inline symbol explainers in the edge
+popover (shipped 2026-07-20). A graded curriculum and an illustrated walkthrough
+are neither built nor tracked; both are recorded in
+[`docs/parked.md`](docs/parked.md).
+
+*The auditor* — someone assessing the quality of the theory underneath the
+instrument, on their own or with an LLM or another expert (likely an engineer,
+scientist, or mathematician, often with a systems or complexity background,
+though neither is required). Start with
+[`docs/theory-fidelity.md`](docs/theory-fidelity.md), then the
+[terminology concordance](docs/language/terminology-concordance.md) for the
+cited Klir·Bunge·Mobus lineage of every word.
+
+Either path can stop here. What follows is the mechanics, then the positions the
+tool takes — "What this tool believes" below states them in short, and
+[`docs/theory-fidelity.md`](docs/theory-fidelity.md) is the full cited version.
+[`docs/README.md`](docs/README.md) indexes everything else.
+
 **Rust is the brain, React is the face.** The kernel is Rust compiled to
 WebAssembly, and it owns all the formalism: every systemhood verdict, all
 validation, the dynamics run under its declared invariant. The web layer renders what
@@ -89,31 +117,6 @@ concrete syntaxes over one neutral spec — none of them the source of truth; th
 neutral spec is. SL's parser judges no systemhood: legality stays the kernel's
 verdict, reached the same way canvas gestures reach it. Specification, corpus,
 and reading order: [`docs/language/`](docs/language/).
-
-**Who this is for.** Two readers, two paths in.
-
-*The newcomer* — anyone who wants to describe a system (a supply chain, a
-protocol, a cell, an organization), find out whether what they described actually
-*is* one, and watch it run. Start with [`docs/quickstart.md`](docs/quickstart.md):
-ten minutes from a clone to a model the kernel judges, a refusal you provoke on
-purpose, and a run over real data. (Install the [prerequisites](#prerequisites)
-first — it is one `brew install just` and one `just preflight`.) You need no
-systems-science background to begin — each lens's palette carries its tradition's
-own vocabulary as you author, so you pick it up in place. That is
-palette-vocabulary now; guided in-tool teaching is in progress
-([#80](https://github.com/halcyonic-systems/bert-lenses/issues/80)).
-
-*The auditor* — someone assessing the quality of the theory underneath the
-instrument, on their own or with an LLM or another expert (likely an engineer,
-scientist, or mathematician, often with a systems or complexity background,
-though neither is required). Start with
-[`docs/theory-fidelity.md`](docs/theory-fidelity.md), then the
-[terminology concordance](docs/language/terminology-concordance.md) for the
-cited Klir·Bunge·Mobus lineage of every word.
-
-The full, cited version of everything above is
-[`docs/theory-fidelity.md`](docs/theory-fidelity.md); [`docs/README.md`](docs/README.md)
-indexes the rest.
 
 ## Structure
 
@@ -258,46 +261,28 @@ python3 scripts/doc_lint.py
 
 ## Where to look
 
-- [`docs/README.md`](docs/README.md) — the status-marked index of the whole
-  docs/ folder (LIVE · ADOPTED · PROPOSED · RESEARCH · HISTORICAL). Start here
-  to find anything below.
+**[`docs/README.md`](docs/README.md) is the index** — every document under
+`docs/` and `spec/`, status-marked (LIVE · ADOPTED · PROPOSED · CONTINGENT(#N) ·
+RESEARCH · HISTORICAL) and grouped by what it is for. Start there to find
+anything.
+
+This list used to restate a dozen of those entries, and by 2026-07-26 the two had
+drifted four days apart. There is one index; three pointers live here because they
+are not under `docs/`:
+
 - [`CLAUDE.md`](CLAUDE.md) — the agent runbook: invariants, the 5-crate layout,
   working rules, and the 8-step palette-extension procedure.
 - [`crates/bert-lenses-kernel/API.md`](crates/bert-lenses-kernel/API.md) — the
   frozen JS↔wasm surface (append-only).
-- [`docs/kernel-architecture.md`](docs/kernel-architecture.md) — what the kernel
-  *is* as a system: what `describe`/`lens_facts`/`validate_mode`/`analyze` actually
-  compute, verified against source with confidence ratings. Read before trusting
-  the substrate.
-- [`docs/theory-fidelity.md`](docs/theory-fidelity.md) — per-tradition
-  (Klir/Bunge/Mobus) take/drop/where/why, mode-stamp semantics, and the
-  perspectival-realist scope statement. Start here if you're assessing the
-  theory, not just the tool.
-- [`docs/archive/on-the-word-ladder.md`](docs/archive/on-the-word-ladder.md) —
-  **HISTORICAL** — the concordance of the three senses of "ladder/rung/climb";
-  its mode-entry hazard is retired (mode entry now speaks lens vocabulary,
-  [#90](https://github.com/halcyonic-systems/bert-lenses/issues/90)), the doc
-  kept as the record of the words that legitimately survive.
-- [`docs/language/`](docs/language/) — **SL, the system language**: the v1.0
-  specification (lexicon, grammar, semantics, round-trip contract, the
-  structure/dynamics boundary), the corpus, and the lineage from Mobus Ch. 4 and
-  BERT SL v0.1. Start here if you want to write models as text, or to evaluate
-  the language as a language.
-- [`docs/design/dynamics-principled-position.md`](docs/design/dynamics-principled-position.md)
-  — **ADOPTED** — what counts as dynamics: a state-transition family satisfying
-  the semigroup axiom; conservation as an invariant the *model* declares, not one
-  the engine assumes. Adopted via
-  [#86](https://github.com/halcyonic-systems/bert-lenses/issues/86).
-- [`docs/design/llm-integration-research.md`](docs/design/llm-integration-research.md)
-  — research foundation for LLM context/authoring/analysis (rests on the kernel
-  above); the read-only analysis rung it specified shipped 2026-07-17.
-- [`docs/design/lens-palettes.md`](docs/design/lens-palettes.md) — the lens
-  grounding for Phase 3/4 (Klir / Bunge / Mobus).
-- [`web/DESIGN.md`](web/DESIGN.md) — Halcyonic Frost design tokens for the face.
-- **Forward-looking work → the [roadmap board](https://github.com/orgs/halcyonic-systems/projects/12)**,
-  organized by epic. The old `ROADMAP.md` is retired to
-  [`docs/archive/roadmap-pre-web-rebuild.md`](docs/archive/roadmap-pre-web-rebuild.md);
-  what the instrument is *for* lives in "What this tool believes" above.
+- [`web/DESIGN.md`](web/DESIGN.md) — Halcyonic Frost design tokens for the face,
+  and the one owner of the design system.
+
+**Forward-looking work → the [roadmap board](https://github.com/orgs/halcyonic-systems/projects/12)**,
+organized by epic. The old `ROADMAP.md` is retired to
+[`docs/archive/roadmap-pre-web-rebuild.md`](docs/archive/roadmap-pre-web-rebuild.md);
+work that was decided and deliberately not scheduled is in
+[`docs/parked.md`](docs/parked.md); what the instrument is *for* lives in "What
+this tool believes" above.
 
 ## Status
 

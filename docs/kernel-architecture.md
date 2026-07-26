@@ -1,5 +1,7 @@
 # The bert-lenses Kernel as a System
 
+**Status: LIVE.**
+
 *What the kernel actually is, what it actually computes, and — honestly rated — how much of the LLM-integration story (`docs/design/llm-integration-research.md`) it can really bear. Written 2026-07-16 as a source-reading pass over `crates/`. Read this when you want to trust (or distrust) the substrate before building on it.*
 
 ## The two marks, and what each one is worth

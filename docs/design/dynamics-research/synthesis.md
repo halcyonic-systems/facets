@@ -1,5 +1,7 @@
 # What Counts as Dynamics
 
+**Status: RESEARCH.**
+
 *Position paper — 2026-07-18. Synthesis over six primary-source reads in this folder
 (`read-mobus.md`, `read-bunge.md`, `read-klir.md`, `read-bertalanffy.md`,
 `read-category-theory.md`, `read-external.md`). Citations to those reads are given as

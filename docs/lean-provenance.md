@@ -1,6 +1,8 @@
 # Lean provenance — the pinned proof base behind every "machine-checked" claim
 
-*Status: **LIVE**. This repo's "machine-checked" story rests on proofs that live in a separate repo, `systems-science-foundations` (SSF). This document is the pin: the exact SSF commit the current claims refer to, a per-claim map from each claim to the Lean declaration that proves it, and the commands an auditor starting from this repo alone runs to check every one. It is the provenance complement to [`spec/LENS_ENTRY_SPEC.md`](../spec/LENS_ENTRY_SPEC.md) §D's extraction half (issue [#24](https://github.com/halcyonic-systems/bert-lenses/issues/24)): §D says how the truth-table fixture and oracle are produced from SSF; this doc says which SSF, at which commit, and how to audit it. Issues [#128](https://github.com/halcyonic-systems/bert-lenses/issues/128), [#232](https://github.com/halcyonic-systems/bert-lenses/issues/232).*
+**Status: LIVE.**
+
+*This repo's "machine-checked" story rests on proofs that live in a separate repo, `systems-science-foundations` (SSF). This document is the pin: the exact SSF commit the current claims refer to, a per-claim map from each claim to the Lean declaration that proves it, and the commands an auditor starting from this repo alone runs to check every one. It is the provenance complement to [`spec/LENS_ENTRY_SPEC.md`](../spec/LENS_ENTRY_SPEC.md) §D's extraction half (issue [#24](https://github.com/halcyonic-systems/bert-lenses/issues/24)): §D says how the truth-table fixture and oracle are produced from SSF; this doc says which SSF, at which commit, and how to audit it. Issues [#128](https://github.com/halcyonic-systems/bert-lenses/issues/128), [#232](https://github.com/halcyonic-systems/bert-lenses/issues/232).*
 
 ## The pin
 

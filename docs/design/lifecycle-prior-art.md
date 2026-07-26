@@ -1,5 +1,7 @@
 # The life-cycle thread: consolidated prior art
 
+**Status: RESEARCH.**
+
 *2026-07-23. Consolidates work done 2025-02 → 2026-05 across three archive trees and two repos, most of it never reconciled with the others. Provenance record for [`mobus-lifecycle-formalization.md`](mobus-lifecycle-formalization.md), which is the position; this document is what already exists and what state it is in.*
 
 Every claim here was read at source. Citations were checked against CrossRef and the citing literature. Where an archived document is wrong, it is marked wrong rather than quietly corrected — several are still live on disk.

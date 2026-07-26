@@ -1,5 +1,7 @@
 # bert-lenses — Design System
 
+**Status: HISTORICAL.**
+
 > **⚠ ARCHIVED (egui-era).** This is the egui/Arc-2 visual grammar, superseded by
 > the web rebuild. The live face design entrypoint is [`web/DESIGN.md`](../../web/DESIGN.md)
 > (Halcyonic Frost) with the lens grounding in [`docs/design/lens-palettes.md`](../design/lens-palettes.md).

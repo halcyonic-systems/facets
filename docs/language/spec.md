@@ -1,6 +1,6 @@
 # SL — The bert-lenses System Language, v1.0
 
-**Status**: Specified from the working implementation (2026-07-18). Parser and serializer: `crates/bert-canvas/src/sl.rs`. Boundary: `compile_sl` / `emit_sl` (`crates/bert-lenses-kernel/API.md`, "SL surface"). Round-trip goldens: `crates/bert-canvas/tests/sl_roundtrip.rs` over `fixtures/sl/`. Design rationale and precedent research: `docs/design/sl2-authoring-language.md`. Issue: #82.
+**Status: LIVE.** Normative, and specified from the working implementation (2026-07-18). Parser and serializer: `crates/bert-canvas/src/sl.rs`. Boundary: `compile_sl` / `emit_sl` (`crates/bert-lenses-kernel/API.md`, "SL surface"). Round-trip goldens: `crates/bert-canvas/tests/sl_roundtrip.rs` over `fixtures/sl/`. Design rationale and precedent research: `docs/design/sl2-authoring-language.md`. Issue: #82.
 
 SL is a human-writable textual notation that compiles deterministically into a bert-lenses model. It is the third concrete syntax over the one neutral abstract spec the repo already holds — the canvas authors it by gesture, JSON serializes it, SL writes it as text. This document specifies the v1.0 language: its lexicon, grammar, semantics, the annotation layer, the round-trip contract, and the structure/dynamics boundary. Three worked examples (the golden corpus) and a lineage section close it.
 
@@ -59,7 +59,7 @@ SL is one unified language: the traditions *contributed* the words, and the lang
 | `domain` | the analyst's subject-area framing | Mobus (the generic lexicon translated into domain-specific terms, §4.4) | `SystemType.domain` |
 | `component` | a thing inside the boundary | **Bunge (composition C) and Mobus (C in the tuple)** — shared; Klir diverges (things/elements) | `Role::Component` |
 | `source`, `sink`, `environment` | a thing outside the boundary | Mobus (Src/Snk environment objects); `environment` shared with Bunge (E) | `Role::Environment` (§5.2 on the three words) |
-| `interface` | membership in the root membrane's I (flat I ⊆ C is the Lean's convention, Tuple.lean; the book makes interfaces components of the *boundary subsystem* — concordance row 9) | **Mobus (I in B) and Bunge ("interface points" = i/o terminals ∈ boundary, 1992)** — shared | `Thing.interface` |
+| `interface` | membership in the root membrane's I (flat I ⊆ C is the Lean's convention, Tuple.lean; the book makes interfaces components of the *boundary subsystem* — concordance row 9). The word is a **claim, not a label**: since #213/#225 an interface must carry a boundary-crossing flow or the kernel refuses the model at Operational — see §5.4. **CONTINGENT([#226](https://github.com/halcyonic-systems/bert-lenses/issues/226))**: whether the interface is stamped onto a component, as here, or placed on the boundary, is open | **Mobus (I in B) and Bunge ("interface points" = i/o terminals ∈ boundary, 1992)** — shared | `Thing.interface` |
 | `primitive` + one of `Combining`, `Splitting`, `Buffering`, `Impeding`, `Propelling`, `Copying`, `Sensing`, `Modulating`, `Amplifying`, `Inverting` | the work-process taxonomy | Mobus | `ProcessPrimitive` |
 | `decomposes` | a component carries a child model that realizes it, gated by the boundary contract (β) | **Mobus (Eq. 4.3, the word's primary source) and Bunge (every system a component of its next supersystem)** — shared; Klir least (his hierarchy is epistemological levels, not part-whole) | `System.child_model` (`ModelRef`), checked by `decomposition::check_decomposition` |
 | `flow` | a drawn connection (edge in N or G) | word: Mobus; the underlying relation is three-tradition (Klir dependency, Bunge connection/bond, Mobus flow) | `Relation` |
@@ -151,6 +151,8 @@ At most one per file: `time unit h`. The model's time-unit symbol (#94) — what
 
 Parsing collects **all** faults in one pass and reports each with its 1-indexed line — never a first-error-only bail, and never a guess. Fault classes: lexical (unterminated quote), unknown keyword, malformed clause, duplicate name, undeclared flow endpoint, redeclared singleton (`system`/`domain`/`time unit`/`boundary`), attribute on an environment thing, unstamped or malformed decomposition reference, `decomposes` on an interface component, duplicate `decomposes`, duplicate `stock`, out-of-range `@directed`, malformed known annotation. The ACE/Gherkin discipline — deterministic parse, fail loud on anything ambiguous — is inherited deliberately.
 
+**These are *parse* faults, and they are not the only way a model is refused.** A file can parse cleanly, compile to a model (§5.3), and still be refused by the kernel when a lens is entered — that refusal is the kernel's job, not SL's (§5.1), so it is deliberately absent from the list above. The list is complete for what the parser rejects and is not a map of every way a model can fail. §5.4 names the one class where a *word in this language* now carries an obligation the parser cannot check.
+
 ## 5. Semantics
 
 *Status: normative.*
@@ -166,6 +168,40 @@ All three words compile to `Role::Environment`. The distinction they express —
 ### 5.3 Compilation is total on parse success
 
 A file that parses always yields a model — including a structurally *illegal* one (e.g. a self-loop, which the Operational gate rejects). This is deliberate and matches the canvas: authoring states are routinely mid-thought, and the verdict pill / audit panel carry the kernel's issues live. SL does not gate compilation on validity; it gates nothing (C2).
+
+### 5.4 `interface` is a claim the kernel checks, not a label the parser accepts
+
+Most words in the lexicon (§3) name a distinction the parser can settle on its
+own. `interface` no longer does. Since the 7/25 interfaces sweep
+([#213](https://github.com/halcyonic-systems/bert-lenses/issues/213),
+[#223](https://github.com/halcyonic-systems/bert-lenses/pull/223),
+[#225](https://github.com/halcyonic-systems/bert-lenses/issues/225),
+[#228](https://github.com/halcyonic-systems/bert-lenses/pull/228)) a **flowless
+interface is ill-formed**, and two kernel checks enforce it — both **Error, at
+Operational and Full only**:
+
+- `check_interfaces_carry_flow` asks a **graph** question: does any
+  boundary-crossing flow touch this interface? Mobus's I is functional, not
+  positional — an interface is a component that *transports a flow across the
+  boundary* — so one that transports nothing is a mislabelled component. It
+  mirrors the Lean structure field `MobusSystem.interfaces_carry_flow` (SSF #31),
+  the converse of `bipartite`, which only ever quantified over edges.
+- `check_interface_declarations_match_flows` asks a **consistency** question:
+  does an interface's own declared `receives_from`/`exports_to` agree with the
+  interactions the model records? Neither check subsumes the other — a model
+  satisfies the first and violates the second whenever an interface with a real
+  crossing flow declares an `exports_to` naming a different sink than the flow
+  goes to.
+
+Core and Structural stay silent: Klir and Bunge carry no interface concept, so a
+stamp without its flow is not yet a claim either lens can read.
+
+**This changes nothing in the grammar.** `component X interface` parses exactly as
+before, compilation stays total on parse success (§5.3), and a half-drawn model
+that has stamped the interface before drawing its flow is a normal authoring
+state, not a parse error. What changed is that the word now *asserts* something
+checkable, and the assertion is checked where every other systemhood verdict is —
+in the kernel, on lens entry.
 
 ## 6. The annotation layer
 

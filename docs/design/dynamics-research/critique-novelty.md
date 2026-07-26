@@ -1,5 +1,7 @@
 # Adversarial Novelty Check — critique of synthesis.md
 
+**Status: RESEARCH.**
+
 *2026-07-18. Assignment: refute the novelty claim in `synthesis.md`, spot-check
 load-bearing citations against source files, and stress-test the taxonomy for whether
 it cuts engineering decisions or just re-labels. Default posture: skeptical. Citations

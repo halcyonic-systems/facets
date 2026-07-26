@@ -1,6 +1,6 @@
 # Educational model suite — a graded curriculum for learn-while-authoring
 
-**Status: RESEARCH** (2026-07-18). Curriculum planned for [#80](https://github.com/halcyonic-systems/bert-lenses/issues/80) (also serves #21); not yet in-tool.
+**Status: RESEARCH** (2026-07-18). Not in-tool, and **untracked**: the curriculum was planned against [#80](https://github.com/halcyonic-systems/bert-lenses/issues/80) and #21, and both closed in July 2026 having shipped narrower things — #80 the on-canvas pairing of every lens's edge names with its math (2026-07-20), #21 law comments on tests (2026-07-19). Neither carried this curriculum.
 
 *Planning doc, 2026-07-18. Ground truth for what the instrument can express today:
 README, `docs/theory-fidelity.md`, `docs/kernel-architecture.md`,

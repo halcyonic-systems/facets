@@ -1,6 +1,6 @@
 # On the word "ladder" (and "rung", and "climb")
 
-> **Status (2026-07-18): HISTORICAL — record, not current terminology.** The
+> **Status: HISTORICAL.** Record (2026-07-18), not current terminology. The
 > mode-entry hazard this doc named (Bucket A below) has been retired at the
 > source: LIVE docs and user-facing strings no longer call mode entry a
 > "ladder"/"rung"/"climb" — the modes are the **three lenses** (Klir→Core,

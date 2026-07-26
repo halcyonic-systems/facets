@@ -1,5 +1,7 @@
 # Mobus's account of dynamics — source read
 
+**Status: RESEARCH.**
+
 Corpus read: `operations/systems-science/mobus/` (chapters 2–5, 10–12) and
 `operations/systems-science/mobus-kalton-2015/` (chapters 10–11). All citations
 below are VERIFIED (I read the cited passage directly) unless marked UNVERIFIED.

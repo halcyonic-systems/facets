@@ -1,5 +1,7 @@
 # #154 plan — Klir source-system C table + phase-5 dynamics readouts
 
+**Status: RESEARCH.** A plan of record — an execution record, carrying no normative weight (see [`README.md`](README.md), "Plans and drafts").
+
 *2026-07-23 · plan of record. The honest continuation of #100 (per-lens registers, shipped/closed). Grounded in the code (`KlirRegister.tsx`, `RunPanel.tsx`, `BungeStateSpace.tsx`, `crates/bert-canvas/src/canvas.rs`) and the dynamics spine (`dynamics-coalgebra-halfa.md`, SSF `Transition.lean`).*
 
 ## The three pieces (distinct size and risk — do NOT lump them)

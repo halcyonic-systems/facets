@@ -1,5 +1,9 @@
 # docs/archive
 
+**Status: HISTORICAL.** Every document here except one — `gst-1968-full.md` is
+**RESEARCH**, a source text rather than a superseded document; see "Source
+material, not design history" below.
+
 egui-era design history, superseded by the web rebuild; see
 [`web/DESIGN.md`](../../web/DESIGN.md) + [`docs/design/`](../design/) for the live
 design surface. Kept for reference, not current truth. Nothing here is corrected in
@@ -15,4 +19,5 @@ of what was circulated.
 
 ## Source material, not design history
 
-- [`gst-1968-full.md`](gst-1968-full.md) — a verbatim OCR extraction of Von Bertalanffy, *General System Theory* (1968), read against by [`../design/dynamics-research/read-bertalanffy.md`](../design/dynamics-research/read-bertalanffy.md). Moved here from `docs/design/dynamics-research/` on 2026-07-26 ([#235](https://github.com/halcyonic-systems/bert-lenses/issues/235)): at 14,229 lines it is a source text, not a document this repo authored, and it dominated every doc-tree metric and grep while it sat in an active research folder.
+- [`gst-1968-full.md`](gst-1968-full.md) — **RESEARCH**, not HISTORICAL: nothing
+  superseded it, and it is still read against. A verbatim OCR extraction of Von Bertalanffy, *General System Theory* (1968), read against by [`../design/dynamics-research/read-bertalanffy.md`](../design/dynamics-research/read-bertalanffy.md). Moved here from `docs/design/dynamics-research/` on 2026-07-26 ([#235](https://github.com/halcyonic-systems/bert-lenses/issues/235)): at 14,229 lines it is a source text, not a document this repo authored, and it dominated every doc-tree metric and grep while it sat in an active research folder.

@@ -1,5 +1,7 @@
 # Theory fidelity — what each lens takes, drops, and why
 
+**Status: LIVE.**
+
 *For a reader already convinced the tool is useful and now assessing the quality of the theory underneath — independently, or with an LLM/expert's help. Claims about this repo's own code cite file:line, so they are checkable against the current source rather than taken on faith. Claims about the Lean cite a **`claim_id`** instead: a line number into another repository is a coincidence with a timestamp, so citations into `systems-science-foundations` are anchored by declaration name in a generated manifest — the pinned commit, the per-claim map, the declaration *kinds*, and the audit commands are in [`lean-provenance.md`](lean-provenance.md). A secondary, harder-nosed reading (a scholar looking for the weak points) is folded in where the two audiences ask the same question; where they diverge, this doc favors the assessing reader.*
 
 ## What the kernel actually is

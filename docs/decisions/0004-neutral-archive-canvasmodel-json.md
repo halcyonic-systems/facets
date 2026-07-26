@@ -1,6 +1,6 @@
 # ADR 0004 — The archive is the neutral model, encoded as CanvasModel JSON
 
-*2026-07-22 · issue #140 · status: **accepted***
+*2026-07-22 · issue #140 · status: **ADOPTED***
 
 ## Context
 

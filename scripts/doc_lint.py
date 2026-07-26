@@ -396,6 +396,102 @@ def ia_gates() -> tuple[list[str], list[str], list[str]]:
     return broken, orphans, unindexed
 
 
+# --- the status carrier gate (issue #234) -----------------------------------
+# CONTRIBUTING.md: "Every doc under docs/ carries exactly one status", one of six
+# words. Nothing checked it, and 36 of 56 files did not conform — including the
+# normative SL spec and the auditor's front door — because status was free prose
+# in four different shapes with no machine-readable carrier. This gives it one.
+#
+# WHY A FIXED LINE AND NOT FRONTMATTER. The defect being fixed is *invisibility*:
+# theory-fidelity.md carried its status only in the docs/README.md index, so a
+# reader who opened the file — the normal case, and how an agent reads — saw
+# none. YAML frontmatter is metadata: GitHub renders it as a detached table, a
+# plain editor shows a fence above the title, and several renderers hide it
+# outright. A carrier that can be hidden is the same bug with a parser attached.
+# A prose line also carries the sentence of context the status usually wants
+# ("**Status: LIVE.** A ten-minute path through the instrument…"), where
+# frontmatter would force that sentence to be said twice.
+#
+# TWO ACCEPTED SHAPES, both already in the tree:
+#   **Status: LIVE** …            — the prose form (may be blockquoted: "> **Status: …")
+#   *date · phase · status: **ADOPTED*** — the ADR byline, whose format CONTRIBUTING fixes
+#
+# SCOPE: every .md under docs/ and spec/. The carrier must sit in the HEADER
+# REGION — the lines before the first `## ` heading — so it is on screen when the
+# file opens, and exactly one must be there.
+STATUS_WORDS = ("LIVE", "ADOPTED", "PROPOSED", "RESEARCH", "HISTORICAL")
+STATUS_CARRIER = re.compile(
+    r"(?:\*\*Status:\s*|status:\s*\*\*)"
+    r"(" + "|".join(STATUS_WORDS) + r"|CONTINGENT\(#\d+\))\b"
+)
+# A line that is *trying* to be a status carrier but does not name one of the
+# six. Without this, "status: **accepted**" reads as "no status at all" and the
+# error names the wrong repair.
+STATUS_NEAR_MISS = re.compile(r"\*\*Status\*\*:|\*\*Status:|status:\s*\*\*|^\s*\*Status:")
+
+# Transient: issue-comment bodies staged for the #234 close sweep, not documents.
+# Deleted with the directory once the issues are closed. Printed on every clean
+# run so the exemption cannot quietly become permanent.
+STATUS_EXEMPT_DIRS = ("docs/parked-closing-comments",)
+
+
+def status_scope() -> list[Path]:
+    out = sorted((REPO / "docs").rglob("*.md")) + sorted((REPO / "spec").rglob("*.md"))
+    return [
+        p
+        for p in out
+        if p.is_file()
+        and not str(p.relative_to(REPO)).startswith(STATUS_EXEMPT_DIRS)
+    ]
+
+
+def header_region(text: str) -> list[tuple[int, str]]:
+    """(1-based line, text) for everything above the first `## ` heading, minus
+    fenced blocks — a doc that *documents* the carrier form (CONTRIBUTING does)
+    shows it in a fence, and a shown example is not a claim."""
+    out: list[tuple[int, str]] = []
+    in_fence = False
+    for line_no, line in enumerate(text.splitlines(), start=1):
+        if FENCE.match(line):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if line.startswith("## "):
+            break
+        out.append((line_no, line))
+    return out
+
+
+def status_gate() -> list[str]:
+    violations: list[str] = []
+    for path in status_scope():
+        rel = path.relative_to(REPO)
+        head = header_region(path.read_text(encoding="utf-8"))
+        found = [(n, STATUS_CARRIER.search(l).group(1)) for n, l in head if STATUS_CARRIER.search(l)]
+        if len(found) > 1:
+            where = ", ".join(f"line {n} ({w})" for n, w in found)
+            violations.append(f"{rel}: two status carriers in the header region — {where}")
+            continue
+        if found:
+            continue
+        near = [(n, l) for n, l in head if STATUS_NEAR_MISS.search(l)]
+        if near:
+            n, l = near[0]
+            violations.append(
+                f"{rel}:{n}: status line names no vocabulary word — one of "
+                f"LIVE / ADOPTED / PROPOSED / CONTINGENT(#N) / RESEARCH / HISTORICAL, "
+                f"uppercase: {l.strip()[:80]}"
+            )
+        else:
+            violations.append(
+                f"{rel}: no status carrier above the first `## ` heading "
+                f"(add e.g. `**Status: RESEARCH.**`, or an ADR byline "
+                f"`*date · phase · status: **ADOPTED***`)"
+            )
+    return violations
+
+
 def main() -> int:
     all_violations: list[str] = []
     for doc in live_docs():
@@ -404,7 +500,21 @@ def main() -> int:
     mode_violations = mode_entry_vocab()
     hedge_violations = hedge_vocab()
     provenance_violations = provenance_gates()
+    status_violations = status_gate()
     broken_links, orphans, unindexed = ia_gates()
+
+    if status_violations:
+        print("\ndoc-lint: status carrier (issue #234)\n", file=sys.stderr)
+        for v in status_violations:
+            print(f"  {v}", file=sys.stderr)
+        print(
+            "\nCONTRIBUTING.md: every doc under docs/ carries exactly one status. "
+            "The carrier is a line above the first `## ` heading, in one of two "
+            "shapes: `**Status: WORD**` (prose) or `status: **WORD**` (the ADR "
+            "byline). Six words, uppercase: LIVE, ADOPTED, PROPOSED, "
+            "CONTINGENT(#N), RESEARCH, HISTORICAL.",
+            file=sys.stderr,
+        )
 
     if broken_links:
         print("\ndoc-lint: broken relative links (issue #235)\n", file=sys.stderr)
@@ -448,6 +558,7 @@ def main() -> int:
         or mode_violations
         or hedge_violations
         or provenance_violations
+        or status_violations
         or broken_links
         or orphans
         or unindexed
@@ -472,10 +583,14 @@ def main() -> int:
         return 1
 
     gate_a = "Gate A resolving" if GATE_A_RAN else "Gate A SKIPPED (no SSF checkout)"
+    exempt = [d for d in STATUS_EXEMPT_DIRS if (REPO / d).is_dir()]
+    exempt_note = f"; status-exempt (transient): {', '.join(exempt)}" if exempt else ""
     print(
         f"doc-lint: OK — {len(live_docs())} LIVE docs clean; mode-entry and hedge "
         f"vocabulary clean; provenance tables match the manifest; {gate_a}; "
-        f"{len(indexed_docs())} indexed docs all reachable, linked, and link-resolving"
+        f"{len(indexed_docs())} indexed docs all reachable, linked, and link-resolving; "
+        f"{len(status_scope())} docs/ + spec/ files each carry exactly one "
+        f"status word{exempt_note}"
     )
     return 0
 

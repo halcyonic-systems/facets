@@ -1,6 +1,6 @@
 # ADR 0002 — Rebuild web-first: React + wasm kernel, retiring the egui app
 
-*2026-07-14 · Phase 0 (web-first rebuild) · status: **adopted***
+*2026-07-14 · Phase 0 (web-first rebuild) · status: **ADOPTED***
 
 > **Reconstructed retrospectively (2026-07-18).** No ADR was written when this
 > call was made; this record is rebuilt from the repo trail — the Phase 0 commit

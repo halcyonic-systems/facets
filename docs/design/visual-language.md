@@ -1,5 +1,7 @@
 # Visual language
 
+**Status: ADOPTED.** Adopted 2026-07-24 from a three-way treatment bake-off; subordinate to [`../../web/DESIGN.md`](../../web/DESIGN.md).
+
 The register is a **considered scientific instrument** — a ledger, a spec sheet,
 a plate in a monograph. Not a dashboard template, and not a blank page.
 

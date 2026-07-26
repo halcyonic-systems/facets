@@ -3,8 +3,9 @@
 **Status: LIVE.** A ten-minute path through the instrument: author a system as
 text, read the kernel's verdict on it, break it on purpose and watch the refusal
 hand you the repair, then open a model that runs against real data. Text only for
-now; an illustrated walkthrough is deferred to
-[#80](https://github.com/halcyonic-systems/bert-lenses/issues/80). New terms link
+now: the illustrated walkthrough is unbuilt and untracked — it was recorded in
+[`parked.md`](parked.md#i126) when #126 was retired, and the #80 this line used to
+defer to never covered it. New terms link
 to the [terminology concordance](language/terminology-concordance.md) on first
 use; the [glossary](glossary.md) is the fast reference.
 

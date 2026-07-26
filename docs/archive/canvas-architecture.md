@@ -1,5 +1,7 @@
 # bert-lenses Canvas — As-Built (egui era, pre-web-rebuild)
 
+**Status: HISTORICAL.**
+
 > **Status (2026-07-17): history, not current truth.** This doc describes the
 > standalone egui canvas (`src/main.rs`) that was the front door before the
 > web-first rebuild (React + wasm kernel; see the main README **Status**

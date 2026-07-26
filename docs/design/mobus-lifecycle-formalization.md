@@ -1,5 +1,7 @@
 # Formalizing the system life cycle
 
+**Status: PROPOSED (#144).** The tracking issue was retired into [`../parked.md`](../parked.md#i144) on 2026-07-26; the position still awaits adoption.
+
 *2026-07-23 · design position · specification and plan, no production code yet*
 
 George Mobus's paper *"Revising and extending the mathematical framework for defining a system"* revises his 7-tuple to the 8-tuple and then opens a life-cycle extension it does not finish: five stage headers with nothing under them. This document is the position on finishing it — what the kernel already answers, what is genuinely open, and what is not ours to decide.

@@ -1,5 +1,7 @@
 # bert-lenses roadmap
 
+**Status: HISTORICAL.**
+
 > **RETIRED 2026-07-18 — history, not a plan.** This was the pre-web-rebuild plan
 > of record (egui canvas, `src/main.rs`, in-process `generate()`). It is kept as a
 > record of how the project was thought about, and is no longer maintained.

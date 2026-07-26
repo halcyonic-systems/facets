@@ -1,5 +1,7 @@
 # The corpus contract (bert-lenses #132)
 
+**Status: RESEARCH.** A plan of record — an execution record, carrying no normative weight (see [`README.md`](README.md), "Plans and drafts").
+
 *2026-07-22 · design draft · specification only, no production code*
 
 What an author-grounded teaching corpus entry **is**, mechanically. This document

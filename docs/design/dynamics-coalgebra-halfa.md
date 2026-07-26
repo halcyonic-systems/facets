@@ -1,5 +1,7 @@
 # #112 Half A — the coalgebra classification (the buildable half)
 
+**Status: LIVE.**
+
 *2026-07-23 · architecture note · the low-risk, grounded half of #112. Companion to the frontier-council pass on Half B (heterogeneous open composition — the open frontier).*
 
 The dynamics work (#112) splits into two halves with opposite risk profiles, per the verified in-house survey `dynamics-research/read-category-theory.md`:

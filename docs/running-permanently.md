@@ -1,5 +1,7 @@
 # Running bert-lenses permanently
 
+**Status: LIVE.**
+
 Runs bert-lenses as a background service on `http://127.0.0.1:5190` instead of
 `npm run dev` on 5173. 5173 stays free for interactive dev.
 

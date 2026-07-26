@@ -1,6 +1,7 @@
 # Fidelity Audit — Klir & Bunge (2026-06-27)
 
-> **Status: completed egui-era audit; code pointers stale, findings live.** This
+> **Status: HISTORICAL.** A completed egui-era audit; code pointers are stale,
+> findings live. This
 > was a one-shot source-fidelity audit of the egui canvas (`src/bin/canvas.rs`),
 > resolved in the 2026-06-27 A-block + B8 pass. The code references predate the
 > web rebuild, but the "Still open" faithfulness items (interaction `⋈` +
