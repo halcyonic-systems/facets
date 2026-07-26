@@ -1,10 +1,10 @@
 [
   {
     "line": 1,
-    "message": "`Ghost` is not declared (declare things before flows)"
+    "message": "`Ghost` is not declared (declare things before flows) — fix: add `source Ghost` above this line, or `component Ghost` if it sits inside the boundary"
   },
   {
     "line": 2,
-    "message": "unknown keyword `widget` (system, domain, time, component, source, sink, environment, flow, boundary)"
+    "message": "unknown keyword `widget` (system, domain, time, component, source, sink, environment, flow, boundary) — fix: replace `widget` with one of those, or prefix the line with `#` to make it a comment"
   }
 ]

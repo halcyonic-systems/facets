@@ -17,4 +17,10 @@ flow Faucet -> Tub : matter "inflow"
 flow Tub -> Drain : matter "outflow"
 
 # Expected parse error (1-indexed):
-#   line 17: `Drain` is not declared (declare things before flows)
+#   line 17: `Drain` is not declared (declare things before flows) — fix: add
+#            `sink Drain` above this line, or `component Drain` if it sits
+#            inside the boundary
+#
+# Note what comes after the dash: the error names the rule AND the line to
+# write. A refusal that leaves you stuck is a critic; one that hands back a
+# repair is a modeling aid. Add `sink Drain` above the flows and it clears.

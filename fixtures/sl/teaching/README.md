@@ -14,6 +14,13 @@ them in order:
 Each error file states its expected error(s) — message and 1-indexed line — in
 a footer comment, so the file documents the diagnostic it exists to produce.
 
+Every message has two halves: the **rule** that was broken, and after the dash
+the **repair** — the line to write. The repair is part of the diagnostic, not
+part of the lesson text: a refusal that names only the rule leaves the author
+stuck, and the parser is meant to hand back a deterministic path to a model
+that compiles (#230). The one case that needs judgment is `04`'s second error,
+a knock-on whose repair is redundant once its cause is fixed; the file says so.
+
 ## Why this set exists (and why edits here are free)
 
 The three goldens in [`../`](..) (`process-m.sl`, `bathtub.sl`,

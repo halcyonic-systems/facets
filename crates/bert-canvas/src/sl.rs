@@ -174,7 +174,13 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         let keyword = match &tokens[0] {
             Tok::Word(w) => w.to_ascii_lowercase(),
             _ => {
-                fail("line must start with a keyword".into(), &mut errors);
+                fail(
+                    "line must start with a keyword — fix: begin it with one of system, \
+                     domain, time, component, source, sink, environment, flow, boundary, \
+                     or with `#` to make it a comment"
+                        .into(),
+                    &mut errors,
+                );
                 continue;
             }
         };
@@ -182,7 +188,12 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         match keyword.as_str() {
             "system" => {
                 if system_seen {
-                    fail("`system` already declared".into(), &mut errors);
+                    fail(
+                        "`system` already declared — fix: a model names its system once; \
+                         merge this line into the earlier `system` line or delete it"
+                            .into(),
+                        &mut errors,
+                    );
                     continue;
                 }
                 system_seen = true;
@@ -214,7 +225,12 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
             }
             "domain" => {
                 if domain_seen {
-                    fail("`domain` already declared".into(), &mut errors);
+                    fail(
+                        "`domain` already declared — fix: a model has one domain; merge \
+                         this line into the earlier `domain` line or delete it"
+                            .into(),
+                        &mut errors,
+                    );
                     continue;
                 }
                 domain_seen = true;
@@ -228,7 +244,12 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
             // intrinsic rate in the author's vocabulary (`kW` → `kW·h`).
             "time" => {
                 if time_unit.is_some() {
-                    fail("`time unit` already declared".into(), &mut errors);
+                    fail(
+                        "`time unit` already declared — fix: a model has one time unit; \
+                         delete this line or the earlier `time unit` line"
+                            .into(),
+                        &mut errors,
+                    );
                     continue;
                 }
                 match rest {
@@ -253,16 +274,34 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     Role::Environment
                 };
                 let Some((name, attrs)) = rest.split_first() else {
-                    fail(format!("{keyword} needs a name"), &mut errors);
+                    fail(
+                        format!(
+                            "{keyword} needs a name — fix: write `{keyword} <Name>`, \
+                             quoting the name if it contains spaces"
+                        ),
+                        &mut errors,
+                    );
                     continue;
                 };
                 if !name.is_name() {
-                    fail(format!("{keyword} needs a name"), &mut errors);
+                    fail(
+                        format!(
+                            "{keyword} needs a name — fix: write `{keyword} <Name>`, \
+                             quoting the name if it contains spaces"
+                        ),
+                        &mut errors,
+                    );
                     continue;
                 }
                 let name = name.name();
                 if by_name.contains_key(&name) {
-                    fail(format!("`{name}` is already declared"), &mut errors);
+                    fail(
+                        format!(
+                            "`{name}` is already declared — fix: give this one a different \
+                             name, or delete this line if it repeats the earlier declaration"
+                        ),
+                        &mut errors,
+                    );
                     continue;
                 }
                 let mut primitive: Option<ProcessPrimitive> = None;
@@ -454,9 +493,12 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         Tok::Word(w) if w.eq_ignore_ascii_case("interface") => {
                             if role == Role::Environment {
                                 fail(
-                                    "`interface` applies to components only (environment \
-                                     internals are opaque)"
-                                        .into(),
+                                    format!(
+                                        "`interface` applies to components only (environment \
+                                         internals are opaque) — fix: drop `interface` from \
+                                         this line, or declare it as `component` instead of \
+                                         `{keyword}` if it is inside the boundary"
+                                    ),
                                     &mut errors,
                                 );
                                 ok = false;
@@ -470,7 +512,12 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                     Ok(prim) => {
                                         if role == Role::Environment {
                                             fail(
-                                                "`primitive` applies to components only".into(),
+                                                format!(
+                                                    "`primitive` applies to components only — \
+                                                     fix: drop `primitive {p}` from this line, \
+                                                     or declare it as `component` instead of \
+                                                     `{keyword}` if it is inside the boundary"
+                                                ),
                                                 &mut errors,
                                             );
                                             ok = false;
@@ -495,7 +542,14 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         }
                         other => {
                             fail(
-                                format!("unexpected `{}` after {keyword} name", other.display()),
+                                format!(
+                                    "unexpected `{}` after {keyword} name — fix: quote it if it \
+                                     is part of the name, or remove it; after the name only \
+                                     `primitive <Name>`, `interface`, `stock \"<unit>\"`, \
+                                     `scale <Scale>`, `states {{…}}`, `kind <Basic|Support>` \
+                                     and `decomposes …` may follow",
+                                    other.display()
+                                ),
                                 &mut errors,
                             );
                             ok = false;
@@ -604,15 +658,33 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 }
                 if !tail.is_empty() {
                     fail(
-                        format!("unexpected `{}` at end of flow", tail[0].display()),
+                        format!(
+                            "unexpected `{}` at end of flow — fix: quote it if it is the flow's \
+                             label, or remove it; a flow reads \
+                             `flow <a> -> <b> [: <kind>] [\"label\"] [mere] [weight <n>]`",
+                            tail[0].display()
+                        ),
                         &mut errors,
                     );
                     continue;
                 }
                 let (Some(&ai), Some(&bi)) = (by_name.get(&a), by_name.get(&b)) else {
-                    let missing = if by_name.contains_key(&a) { &b } else { &a };
+                    // Which END is missing decides the repair: an undeclared TARGET is a
+                    // sink, an undeclared ORIGIN is a source. The rule alone leaves the
+                    // author to guess the line to write; naming it is what makes this a
+                    // modeling aid rather than a critic (#230).
+                    let (missing, keyword) = if by_name.contains_key(&a) {
+                        (&b, "sink")
+                    } else {
+                        (&a, "source")
+                    };
+                    let decl = as_name(missing);
                     fail(
-                        format!("`{missing}` is not declared (declare things before flows)"),
+                        format!(
+                            "`{missing}` is not declared (declare things before flows) — \
+                             fix: add `{keyword} {decl}` above this line, or \
+                             `component {decl}` if it sits inside the boundary"
+                        ),
                         &mut errors,
                     );
                     continue;
@@ -672,7 +744,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
             other => fail(
                 format!(
                     "unknown keyword `{other}` (system, domain, time, component, source, sink, \
-                     environment, flow, boundary)"
+                     environment, flow, boundary) — fix: replace `{other}` with one of those, \
+                     or prefix the line with `#` to make it a comment"
                 ),
                 &mut errors,
             ),
@@ -951,6 +1024,17 @@ fn quote(s: &str) -> Result<String, String> {
         return Err(format!("name/label {s:?} contains a quote or newline — not expressible in SL v1"));
     }
     Ok(format!("\"{s}\""))
+}
+
+/// Render a name the way a repair line must be typed: bare when it is a single
+/// word, quoted when it is not. A suggested fix the author cannot paste back is
+/// not a fix.
+fn as_name(name: &str) -> String {
+    if name.is_empty() || name.chars().any(|c| c.is_whitespace()) {
+        format!("\"{name}\"")
+    } else {
+        name.to_string()
+    }
 }
 
 fn parse_system_type(word: &str) -> Result<(Kingdom, Option<Genus>), String> {
@@ -1252,6 +1336,61 @@ boundary porosity 0.7 fuzziness 0.1
         assert!(err[1].message.contains("widget"));
         assert_eq!(err[2].line, 4);
         assert!(err[2].message.contains("components only"));
+    }
+
+    /// Law: a refusal names the repair, not only the rule (#230). A message
+    /// that says what is wrong but not what to write leaves the author stuck,
+    /// which makes the parser a critic rather than a modeling aid.
+    ///
+    /// The separating instance is the second half: the SUGGESTED LINE MUST
+    /// ACTUALLY COMPILE. A test that only grepped for the word "fix" would pass
+    /// on advice that does not work, so this applies the repair verbatim and
+    /// re-parses.
+    #[test]
+    fn the_undeclared_endpoint_refusal_names_a_line_that_compiles() {
+        let broken = "component Tub primitive Buffering interface\n\
+                      source Faucet\n\
+                      flow Faucet -> Tub : matter \"inflow\"\n\
+                      flow Tub -> Drain : matter \"outflow\"\n";
+        let err = parse_sl(broken).unwrap_err();
+        assert_eq!(err.len(), 1);
+        assert_eq!(err[0].line, 4);
+        // The rule, then the repair — and the repair is the SINK line, because
+        // `Drain` is the flow's target rather than its origin.
+        assert!(err[0].message.contains("is not declared"));
+        assert!(
+            err[0].message.contains("fix: add `sink Drain`"),
+            "the refusal must name the line to add, got: {}",
+            err[0].message
+        );
+
+        let repaired = broken.replace("flow Faucet", "sink Drain\nflow Faucet");
+        let model = parse_sl(&repaired).expect("the suggested repair must compile");
+        assert_eq!(model.relations.len(), 2);
+    }
+
+    /// The mirror case: an undeclared ORIGIN is a source, not a sink. The
+    /// repair is direction-sensitive, so both directions are pinned.
+    #[test]
+    fn an_undeclared_origin_is_repaired_with_source() {
+        let err = parse_sl("component Tub\nflow Spring -> Tub\n").unwrap_err();
+        assert!(
+            err[0].message.contains("fix: add `source Spring`"),
+            "got: {}",
+            err[0].message
+        );
+    }
+
+    /// A name with spaces has to come back quoted, or the suggested line is one
+    /// the author cannot paste.
+    #[test]
+    fn a_repair_quotes_a_multi_word_name() {
+        let err = parse_sl("component Tub\nflow Tub -> \"Storm Drain\"\n").unwrap_err();
+        assert!(
+            err[0].message.contains("fix: add `sink \"Storm Drain\"`"),
+            "got: {}",
+            err[0].message
+        );
     }
 
     /// Law: the grammar forbids two declarations sharing one name — a repeat

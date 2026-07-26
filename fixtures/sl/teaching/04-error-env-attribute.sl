@@ -16,7 +16,16 @@ flow Tank -> Outlet : matter "release"
 
 # Expected parse errors (1-indexed). SL collects EVERY fault in one pass
 # (spec §4.6), so you see two, and the second is a knock-on of the first:
-#   line 12: `primitive` applies to components only
-#   line 14: `Rain` is not declared (declare things before flows)
+#   line 12: `primitive` applies to components only — fix: drop
+#            `primitive Propelling` from this line, or declare it as
+#            `component` instead of `source` if it is inside the boundary
+#   line 14: `Rain` is not declared (declare things before flows) — fix: add
+#            `source Rain` above this line, or `component Rain` if it sits
+#            inside the boundary
 # Because line 12 fails, `Rain` never registers as a thing, so the flow on
 # line 14 has an unresolved endpoint. Fix line 12 and BOTH errors clear.
+#
+# This is the one place to read a repair with judgment: line 14's suggestion
+# is correct in isolation but redundant here, because `Rain` IS declared —
+# its line just failed. Each fault is repaired independently; a knock-on
+# clears when its cause does. Fix the first error first.

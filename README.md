@@ -95,7 +95,9 @@ and reading order: [`docs/language/`](docs/language/).
 *The newcomer* — anyone who wants to describe a system (a supply chain, a
 protocol, a cell, an organization), find out whether what they described actually
 *is* one, and watch it run. Start with [`docs/quickstart.md`](docs/quickstart.md):
-ten minutes from `just dev` to a judged, running model. You need no
+ten minutes from a clone to a model the kernel judges, a refusal you provoke on
+purpose, and a run over real data. (Install the [prerequisites](#prerequisites)
+first — it is one `brew install just` and one `just preflight`.) You need no
 systems-science background to begin — each lens's palette carries its tradition's
 own vocabulary as you author, so you pick it up in place. That is
 palette-vocabulary now; guided in-tool teaching is in progress
@@ -147,15 +149,25 @@ crates/                     # TRUTH — the kernel, self-contained + wasm-ready
   bert-tether/              #   boundary interface: CSV import, run manifest, forcing
   bert-lenses-kernel/       #   JS-facing wasm-bindgen boundary (marshaling only)
 web/                        # FACE — React 19 + TS + Vite 6 + Tailwind 4 (Halcyonic Frost)
+src-tauri/                  # the macOS host: the same web/dist in a window (own workspace)
 fixtures/                   # serde↔TS contract goldens (fixtures/contract/)
   sl/                       #   SL corpus: spec examples = round-trip goldens = teaching set
+  sl/teaching/              #   the graded teaching set, including two files that fail on purpose
 docs/                       # see docs/README.md for the indexed tour
   language/                 #   SL — the system language: spec, corpus, lineage
   design/                   #   research foundations + design positions
   decisions/                #   ADRs
   archive/                  #   superseded, kept as record
+spec/                       # the lens-entry spec the kernel's mode entry implements
+scripts/                    # gate + build tooling: doc_lint.py (the first step of `just check`),
+                            #   lean_provenance.py, wasm_exec.mjs, packaging helpers
 assets/models/              # sample BERT models (demos + blockchain examples)
+assets/demos/               # run bundles: the model + CSV + mapping a runnable example ships
+assets/examples/            # the structural examples (.sl) the library shelves are built from
+assets/corpus/              # models transcribed from the founding texts, each with its citation
 assets/fonts/               # STIX fonts for the formal face
+examples/                   # sample input data (the LLM-market CSV some demos are shaped around)
+launchd/                    # OPTIONAL macOS agent that keeps the app running (docs/running-permanently.md)
 pipeline/                   # OPTIONAL Python data-prep — off the product path, not in CI
 ```
 
@@ -168,6 +180,41 @@ dependency and compiles clean to `wasm32-unknown-unknown`. Node geometry uses
 `pipeline/` produces the LLM-market panel CSVs some demos are shaped around. It has
 its own venv and README and is **not** load-bearing for the product or the gates.
 
+## Prerequisites
+
+Every command below is a `just` recipe, so **`just` itself is the one thing you
+install by hand** — nothing in this repo can check for it:
+
+```bash
+brew install just          # macOS
+# Debian/Ubuntu: sudo apt install just   ·   anywhere with Rust: cargo install just
+```
+
+Then let the repo tell you what else is missing:
+
+```bash
+just preflight             # checks each prerequisite, prints the install line for whatever is absent
+```
+
+What it checks, and why each one is needed:
+
+| Tool | Needed by | If missing |
+|---|---|---|
+| **python3** | `scripts/doc_lint.py`, the **first** step of `just check` | macOS: `xcode-select --install` · Debian/Ubuntu: `sudo apt install python3` |
+| **Rust (stable) + rustup** | the kernel | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` |
+| **`wasm32-unknown-unknown` + clippy** | the browser build and the `-D warnings` gate | installed for you — [`rust-toolchain.toml`](rust-toolchain.toml) declares both |
+| **wasm-pack** | building the pkg `web/` imports | `cargo install wasm-pack` (or `brew install wasm-pack`) |
+| **Node ≥ 22** | the web face; the floor is pinned in [`.nvmrc`](.nvmrc) | `nvm install` (reads `.nvmrc`) or `brew install node` |
+| **web dependencies** | everything under `web/` | installed for you — `just dev` and `just check` both run `npm ci` on a cold clone |
+| **cargo-tauri** | `just desktop` **only** | `cargo install tauri-cli --version "^2"` |
+
+Rust is pinned to `stable`, matching CI (`dtolnay/rust-toolchain@stable`); no
+lower floor is tested. Nightly work such as fuzzing overrides the pin the normal
+way, with `cargo +nightly`.
+
+With `just` installed and `just preflight` clean, `just dev` works from a fresh
+clone with no further setup.
+
 ## Develop
 
 The `justfile` is the entry point. Rust is the brain (wasm), `web/` is the face; a
@@ -179,16 +226,22 @@ Claude-in-Chrome. `src-tauri/` hosts the *same* `web/dist` as a macOS app — a
 window, no second code path.
 
 ```bash
-just wasm     # rebuild the wasm pkg the web app consumes (run after any crate change)
-just dev      # rebuild wasm, then start the vite dev server (face sees fresh brain)
-just check    # the full gate suite — CI parity
-just desktop  # bundle the macOS .app (docs/running-permanently.md)
+just preflight  # check the prerequisites above, and name what is missing
+just wasm       # rebuild the wasm pkg the web app consumes (run after any crate change)
+just dev        # install web deps if needed, rebuild wasm, start the vite dev server
+just check      # the full gate suite — CI parity
+just desktop    # bundle the macOS .app (docs/running-permanently.md)
 ```
 
-`just check` runs exactly what CI enforces (`.github/workflows/ci.yml`): `cargo
-test --workspace`, `cargo clippy -D warnings`, the `wasm32-unknown-unknown` build,
-the wasm pkg build, then `tsc --noEmit`, `vitest`, `check:tokens`, and `vite build`
-in `web/`.
+`just check` runs exactly what CI enforces (`.github/workflows/ci.yml`), in this
+order: **`python3 scripts/doc_lint.py`**, `cargo test --workspace`, `cargo clippy
+-D warnings`, the `wasm32-unknown-unknown` build, the wasm pkg build, then
+`check:tokens`, `tsc --noEmit`, `vitest`, and `vite build` in `web/`. The doc-lint
+step is why `python3` is a prerequisite — it is the gate's first step, not an
+optional extra.
+
+`just dev` and `just check` both run `npm ci` in `web/` when `node_modules` is
+absent, so neither needs a separate install step on a cold clone.
 
 <details>
 <summary>Manual commands (what the recipes wrap)</summary>
@@ -196,9 +249,10 @@ in `web/`.
 ```bash
 cd crates/bert-lenses-kernel
 wasm-pack build --target web --out-dir pkg --dev     # --release for the shipped bundle
-cd ../../web && npm install && npm run dev            # http://localhost:5173
+cd ../../web && npm ci && npm run dev                 # prints the URL; 5173 unless taken
 cargo test --workspace
 cargo build --workspace --target wasm32-unknown-unknown
+python3 scripts/doc_lint.py
 ```
 </details>
 
