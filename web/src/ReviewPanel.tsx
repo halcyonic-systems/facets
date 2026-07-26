@@ -10,7 +10,12 @@
 // human, not a failure (#212).
 // No LLM sits anywhere in this path. Every line below is kernel output or fixed
 // copy; if a generated suggestion ever lands here it belongs in its own region,
-// visibly outside these.
+// visibly outside these. That used to be this comment and nothing else (#233
+// §4). It is now the type: `ValidationIssue` carries a provenance brand only
+// the wasm boundary can mint (`kernel/types.ts`), so an LLM-derived row cannot
+// be widened into `validation.issues` — it is a compile error, and
+// `verdictChannel.test.ts` type-checks the violation to prove the error is
+// still there.
 import type { IssueTarget, Severity, ValidationIssue, ValidationResult } from "./kernel/types";
 import type { CanvasModel } from "./kernel/types";
 import { MODE_SCOPE, SEVERITY_GLOSS, SEVERITY_HEADING, plainFirst, reviewCounts, summaryLine } from "./review";

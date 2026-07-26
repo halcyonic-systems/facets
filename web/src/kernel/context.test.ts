@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import type { CanvasModel, CanvasAnalysis, LensDescription } from "./types";
 import type { ModelContext } from "./context";
+import { kernelVerdict } from "./testVerdict";
 
 vi.mock("./index", () => ({
   analyzeCanvas: vi.fn(),
@@ -55,13 +56,13 @@ const mobusDescription: LensDescription = {
 const mobusAnalysis: CanvasAnalysis = {
   validation: {
     issues: [
-      {
+      kernelVerdict({
         severity: "Error",
         location: "interactions[2]",
         message: "Mobus §4.3: 'recycle' has the same endpoint as source and sink",
         suggestion: "Remove the self-loop; feedback as a first-class cycle is Cybernetic mode",
         doc: "docs/glossary.md#precondition",
-      },
+      }),
     ],
   },
   issue_targets: [{ thing: null, relation: 12 }],
@@ -149,13 +150,13 @@ const klirCtx = ctxOf(klirCanvas, klirAnalysis);
 const bungeAnalysis: CanvasAnalysis = {
   validation: {
     issues: [
-      {
+      kernelVerdict({
         severity: "Warning",
         location: "systems[0]",
         message: "'A' is unreachable from any entry point",
         suggestion: null,
         doc: null,
-      },
+      }),
     ],
   },
   issue_targets: [{ thing: 1, relation: null }],

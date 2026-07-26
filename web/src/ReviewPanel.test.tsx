@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ReviewPanel } from "./ReviewPanel";
 import type { CanvasModel, ValidationIssue } from "./kernel/types";
+import { kernelVerdict } from "./kernel/testVerdict";
 
 const model: CanvasModel = {
   lens: "Bunge",
@@ -16,22 +17,22 @@ const model: CanvasModel = {
   boundary: { porosity: 0, perceptive_fuzziness: 0 },
 };
 
-const aggregate: ValidationIssue = {
+const aggregate: ValidationIssue = kernelVerdict({
   severity: "Error",
   location: "mode/Structural",
   message:
     "Bunge Def 1.1: a system requires at least one bond between distinct components; an unbonded collection is an aggregate",
   suggestion: "Add an interaction between two distinct systems, or author in Core mode",
   doc: "docs/glossary.md#bond",
-};
+});
 
-const deadEnd: ValidationIssue = {
+const deadEnd: ValidationIssue = kernelVerdict({
   severity: "Warning",
   location: "systems[0]",
   message: "'Furnace' is terminal/absorbing: no flow leaves it",
   suggestion: null,
   doc: null,
-};
+});
 
 function render(m: CanvasModel, issues: ValidationIssue[], reviewedAt: string | null = null) {
   return renderToStaticMarkup(

@@ -44,6 +44,7 @@ export function InspectorDock({
   verdict,
   issueTargets,
   analysisError,
+  hostError,
   canvasModel,
   onNavigate,
   onSystemTypeChange,
@@ -63,6 +64,10 @@ export function InspectorDock({
   verdict: ValidationResult | null;
   issueTargets: IssueTarget[];
   analysisError: string | null;
+  /** A failure of the HOST, not a verdict (#233 §4) — model resolution dying
+   *  before the kernel judged anything. Rendered in its own region above the
+   *  review, never as a row inside it. */
+  hostError: string | null;
   canvasModel: CanvasModel | null;
   onNavigate: (target: IssueTarget) => void;
   onSystemTypeChange: (next: SystemType) => void;
@@ -222,6 +227,7 @@ export function InspectorDock({
                 verdict={verdict}
                 issueTargets={issueTargets}
                 analysisError={analysisError}
+                hostError={hostError}
                 reviewedAt={reviewedAt}
                 onReview={onReview}
                 onNavigate={onNavigate}
@@ -331,6 +337,7 @@ function ReviewTab({
   verdict,
   issueTargets,
   analysisError,
+  hostError,
   reviewedAt,
   onReview,
   onNavigate,
@@ -339,6 +346,7 @@ function ReviewTab({
   verdict: ValidationResult | null;
   issueTargets: IssueTarget[];
   analysisError: string | null;
+  hostError: string | null;
   reviewedAt: string | null;
   onReview: () => void;
   onNavigate: (target: IssueTarget) => void;
@@ -347,14 +355,34 @@ function ReviewTab({
   if (!verdict || !model)
     return <Placeholder>Open or import a model to review it against the kernel.</Placeholder>;
   return (
-    <ReviewPanel
-      model={model}
-      validation={verdict}
-      targets={issueTargets}
-      reviewedAt={reviewedAt}
-      onReview={onReview}
-      onNavigate={onNavigate}
-    />
+    <div className="grid gap-4">
+      {/* Outside the review, by construction: the kernel judged nothing here. */}
+      {hostError && <HostFailureCard message={hostError} />}
+      <ReviewPanel
+        model={model}
+        validation={verdict}
+        targets={issueTargets}
+        reviewedAt={reviewedAt}
+        onReview={onReview}
+        onNavigate={onNavigate}
+      />
+    </div>
+  );
+}
+
+/** A failure of the app around the kernel — storage, resolution, the network.
+ *  It is NOT a verdict and must never read as one: no severity, no citation, no
+ *  doc anchor, and its own card above the review (#233 §4). */
+function HostFailureCard({ message }: { message: string }) {
+  return (
+    <Card title="The app could not complete a check" source="app · not the kernel">
+      <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+        {message}
+      </p>
+      <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
+        This is the app failing, not the kernel refusing your model. Nothing below was affected by it.
+      </p>
+    </Card>
   );
 }
 
