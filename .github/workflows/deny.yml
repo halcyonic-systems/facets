@@ -38,10 +38,11 @@ jobs:
 
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
-          command: check
           # All four checks, explicitly. The default is the same set today, and
           # naming them means a change of default cannot quietly narrow the gate.
-          # No --all-features: deny.toml resolves the graph the way the artifact
-          # is built (wasm32, default features), and `panic-probe` is a test-only
-          # feature no release carries.
-          arguments: advisories bans licenses sources
+          # They ride on `command`, not `arguments` — `arguments` is appended as
+          # flags, so naming them there runs `cargo-deny advisories …` and dies
+          # with "unrecognized subcommand". No --all-features: deny.toml resolves
+          # the graph the way the artifact is built (wasm32, default features),
+          # and `panic-probe` is a test-only feature no release carries.
+          command: check advisories bans licenses sources
