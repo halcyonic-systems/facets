@@ -59,7 +59,6 @@ Research foundations — what others build on; not themselves decisions:
 ## The parked ledger
 
 - [`parked.md`](parked.md) — **LIVE** — the permanent record of work that was thought through, decided on, or found out, and then deliberately not scheduled. Eleven entries retired from the issue board in the W30 ratification audit ([#234](https://github.com/halcyonic-systems/bert-lenses/issues/234)), each carrying what it is, what was decided, the evidence that settled it, and whether it has a live unpark trigger. It exists because 8 of 11 parked issues recorded a *finding*, and an issue is the wrong container for a finding.
-- [`parked-closing-comments/`](parked-closing-comments/) — **LIVE**, and **transient**: the drafted closing comment for each issue retired into `parked.md`, staged as files because `gh ... --body "…"` runs prose through the shell. The directory is deleted once the issues are closed.
 
 ## Historical (pre-web-rebuild, kept as record)
 
