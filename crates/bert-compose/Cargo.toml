@@ -4,6 +4,13 @@ version = "0.1.0"
 edition = "2021"
 description = "The executable dynamical face: the conservation-faithful circuit engine + JSON seam, vendored engine-only and wasm-clean (no egui/eframe/ureq/rfd)"
 license = "Apache-2.0"
+# Not on crates.io. These five crates are vendored into this repository and
+# distributed only as the wasm kernel inside the app, never as separate
+# packages. Stated rather than implied so cargo-deny can read it: it is what
+# makes the `path` dependencies between them a fact about this tree instead of
+# an unpinned supply-chain surface. Also keeps a publish from going out ahead
+# of the licence decision in ../../LICENSE.
+publish = false
 
 [dependencies]
 bert-core = { path = "../bert-core" }

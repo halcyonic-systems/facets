@@ -1,0 +1,90 @@
+                    LICENCE — DECISION PENDING (issue #229)
+
+    This is NOT a licence grant. It is a placeholder recording an unresolved
+    decision, and it must be replaced before v0.1 is published to anyone.
+
+--------------------------------------------------------------------------------
+Current legal effect
+--------------------------------------------------------------------------------
+
+None. Absent a licence, the default is all rights reserved: a reader may look at
+this repository but has no permission to use, copy, modify, or redistribute it.
+
+That is a live contradiction, not a formality. `docs/lean-provenance.md` states
+"the commands an auditor starting from this repo alone runs", and the v0.1
+milestone is named "In Other Hands". The invitation is extended and the
+permission withheld — a reviewer at an institution with counsel may be *unable*
+to accept it.
+
+--------------------------------------------------------------------------------
+Why it is not already decided
+--------------------------------------------------------------------------------
+
+The repository currently says two things at once:
+
+  * All five crates under `crates/` declare `license = "Apache-2.0"` in their
+    Cargo.toml.
+  * `crates/bert-core` and `crates/bert-compose` are vendored copies of code
+    from the BERT repository, whose LICENSE file is MIT:
+    "Copyright (c) 2024 Halcyonic Systems / Original work by Joseph Ensminger".
+
+The contradiction is inherited — upstream's own crate metadata already declared
+Apache-2.0 against an MIT repository LICENSE — so it should be fixed upstream
+too, not only here.
+
+--------------------------------------------------------------------------------
+The two candidates
+--------------------------------------------------------------------------------
+
+MIT
+    What the vendored code already carries. Choosing it makes the root LICENSE
+    the upstream notice itself, so MIT's notice-retention condition is satisfied
+    by the same file that grants the licence, and no question arises about
+    whether Halcyonic Systems holds sufficient rights in Joseph Ensminger's
+    original work to relicense it under different terms.
+
+    Cost: no express patent grant, and no contribution clause.
+
+Apache-2.0
+    What the five crate manifests already declare. Adds an express patent grant
+    and explicit contribution terms, which reads better to an institutional
+    legal review and to downstream commercial users.
+
+    Cost: it is a relicence of MIT-licensed vendored work. That is permitted
+    (MIT allows sublicensing) but requires retaining the MIT notice for the
+    vendored portions regardless, and the patent grant can only be given for
+    contributions the licensor actually owns — Halcyonic cannot grant patent
+    rights on the original author's behalf. It also obliges a `NOTICE` file,
+    whose contents then travel with every redistribution.
+
+--------------------------------------------------------------------------------
+Recommendation: MIT
+--------------------------------------------------------------------------------
+
+For v0.1 the audience is auditors and reviewers, not commercial redistributors.
+MIT eliminates the only question in this file that needs a lawyer to answer,
+matches what the vendored kernel already carries, and is the shortest path
+through someone else's legal review — which is the whole point of the milestone.
+The thing Apache-2.0 buys (a patent grant) is the thing this project can least
+completely give, because two-fifths of the crates are someone else's work.
+
+If the project later needs Apache-2.0 for a commercial licensee, relicensing
+outward from MIT is straightforward. The reverse is not.
+
+--------------------------------------------------------------------------------
+To resolve
+--------------------------------------------------------------------------------
+
+1. Replace this entire file with the chosen licence text. If MIT, use the
+   upstream text verbatim, including both copyright lines — it is reproduced in
+   full in THIRD_PARTY_NOTICES.md §1.
+2. Set `license = "<choice>"` in all five `crates/*/Cargo.toml`.
+3. Update THIRD_PARTY_NOTICES.md §1, which currently records that the choice is
+   pending.
+4. If the choice is Apache-2.0, add a `NOTICE` file (Apache §4(d)) and add it to
+   the bundled resources in `src-tauri/tauri.conf.json` alongside this file.
+5. File the same correction upstream in the BERT repository.
+
+Third-party notices — for the vendored kernel, the bundled fonts, KaTeX, and
+every npm and Cargo dependency that reaches the artifact — are complete and
+independent of this decision. See THIRD_PARTY_NOTICES.md.

@@ -1,0 +1,64 @@
+# cargo-deny (#229) — what we are allowed to ship, and what we are known to be
+# exposed to.
+#
+# Two questions, one config, which is why this is the same task as the licence
+# work. `licenses` answers "may this crate be redistributed inside a binary we
+# hand to a stranger, and on what condition"; `advisories` answers "is anything
+# in the graph known to be broken". The npm half of both questions cannot be
+# asked here — see SECURITY.md, which records that triage by hand.
+#
+# Run: cargo deny check          (locally, and .github/workflows/deny.yml in CI)
+
+[graph]
+# The only target whose code is distributed. Native builds of these crates exist
+# (cargo test, the Tauri host), but nothing native ships in the artifact, so a
+# dependency that only appears off-wasm is not a redistribution question.
+targets = [{ triple = "wasm32-unknown-unknown" }]
+all-features = false
+
+[advisories]
+# Fail on anything the RustSec database knows about. There are no exceptions
+# today and adding one is a decision that belongs in SECURITY.md with a reason,
+# not a line here with a ticket number.
+ignore = []
+unmaintained = "workspace"
+yanked = "deny"
+
+[licenses]
+# Permissive licences only. Every entry below is present in the current graph —
+# an allow-list with aspirational entries is an allow-list nobody reads.
+#
+# Deliberately ABSENT: every copyleft licence. Not a philosophical position but
+# a distribution one — the artifact is a single linked wasm blob, so a copyleft
+# dependency's reciprocity would reach the whole kernel, and that is a decision
+# to make on purpose rather than discover in a build log.
+allow = [
+    "0BSD",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MIT",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+confidence-threshold = 0.9
+# Fail on a crate whose licence text cannot be found or read, rather than
+# passing it on the strength of a metadata string. A declared SPDX id is a
+# claim; the file is the evidence.
+unused-allowed-license = "allow"
+
+[bans]
+multiple-versions = "warn"
+# A version-less dependency on a registry crate takes whatever the index has;
+# `deny` is right for those. The five workspace crates depend on each other by
+# `path`, which resolves to the tree in front of you and can never be a
+# supply-chain surface — hence the exemption, which is scoped to paths alone.
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
