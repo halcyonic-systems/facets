@@ -156,17 +156,21 @@ fn force_and_run_refuses_without_panicking() {
             },
         ],
     };
-    // The Δt guard is load-bearing, not decorative: `record_over` derives the tick
-    // count as `round(t / dt)`, and `f64 as usize` saturates to `usize::MAX`, so a
-    // non-positive or non-finite Δt spins forever instead of failing. Assert the
-    // refusal *and* its reason — discarding the result here would let the guard be
-    // deleted without any test failing; the suite would hang, which is the worst
-    // available signal (bert-lenses#231).
+    // The Δt precondition is doctrinal, and it lives in the engine
+    // (`bert_compose::ticks_over`), not in this import path: a slice of zero is
+    // not a small step, it is not a step, so it defines no transition and there
+    // is no run to record. This path only *asks* the engine, so no door into a
+    // run is unguarded. Assert the refusal AND that it cites the precondition
+    // rather than the float property (bert-lenses#231).
     for dt in [0.0, -1.0, f64::NAN] {
         let Err(err) = force_and_run(reservoir(), csv, &shaped, dt, 12.0, "2026-01-01") else {
             panic!("a non-positive or non-finite Δt must be refused, not run (dt={dt})");
         };
         assert!(err.contains("Δt"), "the refusal must name Δt; got: {err}");
+        assert!(
+            err.contains("defines no transition"),
+            "the refusal must cite the precondition, not the float property; got: {err}"
+        );
     }
 
     // The horizon guard refuses only *non-finite* t, so witness it with inf/NaN.

@@ -245,7 +245,7 @@ the engine assumes.** The argument, post-critique:
 
 ---
 
-## 4. The dynamics contract (the two rules everything else hangs on)
+## 4. The dynamics contract (the rules everything else hangs on)
 
 1. **Semigroup axiom as the kernel's dynamics contract** (MT Def 2.7 β): for every
    mode bert-lenses ships, φ_{t′t″} ∘ φ_{tt′} = φ_{tt″}, checkable per engine
@@ -257,6 +257,23 @@ the engine assumes.** The argument, post-critique:
    conditionally independent), Bertalanffy (integro-differential deferral, p. 57), and
    MT: *any history-dependence must be folded into the carrier.* If T needs the past,
    the state was misidentified. (HIGH — three-tradition convergence)
+3. **A run advances over a positive, finite slice, or it is not a run.** Dynamics is a
+   family of state transitions over a linearly-ordered support; a slice of zero is not a
+   small step, it is not a step. Advancing by nothing yields no successor, so it defines
+   no transition and there is nothing to record — and the same holds for a non-finite
+   slice, and for a horizon that bounds no finite sequence of transitions. This is a
+   precondition on `(Δt, T)`, not a numerical safety check, so it is refused with a
+   verdict rather than clamped, defaulted, or repaired. **Where it lives:** in the engine,
+   at the point the run is constructed (`bert_compose::ticks_over`, which `RecordedRun::record_over`
+   calls to derive its tick count) — never in a particular caller, because every door
+   into a run must meet it. Callers may ask early for a legible refusal; they may not be
+   the only place that asks. (HIGH — direct consequence of the MT Def 2.7 account above)
+
+   *Corollary, engineering rather than doctrine:* a `(Δt, T)` pair that resolves to no
+   representable number of steps is refused for that reason, separately. Reachable with a
+   perfectly legitimate positive, finite Δt (a small enough one over a long enough
+   horizon), so it is its own refusal with its own witness, not a restatement of the
+   precondition.
 
 ---
 

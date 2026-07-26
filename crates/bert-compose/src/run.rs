@@ -61,14 +61,18 @@ impl RecordedRun {
     /// Run `circuit` over a horizon `total_time` at step size `dt`: the `(T, Δt)`
     /// form. The tick count is `round(total_time / dt)`, so halving Δt doubles
     /// the resolution of the same horizon.
+    ///
+    /// Refuses when `(Δt, T)` name no run — see [`ticks_over`], which is where
+    /// the precondition lives. This is the engine's own gate, so no caller can
+    /// construct a run that advances by nothing.
     pub fn record_over(
         circuit: &mut Circuit,
         spec: &OperationalSpec,
         dt: f64,
         total_time: f64,
-    ) -> Self {
-        let ticks = (total_time / dt).round().max(0.0) as usize;
-        Self::record(circuit, spec, dt, ticks)
+    ) -> Result<Self, String> {
+        let ticks = ticks_over(dt, total_time)?;
+        Ok(Self::record(circuit, spec, dt, ticks))
     }
 
     /// Does this trace still belong to `spec`? True iff the spec hashes to the
@@ -83,6 +87,48 @@ impl RecordedRun {
     pub fn history_for(&self, spec: &OperationalSpec) -> Option<&[Vec<f32>]> {
         self.is_valid_for(spec).then_some(self.history.as_slice())
     }
+}
+
+/// How many ticks a horizon `total_time` spans at step size `dt` — and, because
+/// the tick count is *derived* here, the one place a run's precondition on
+/// `(Δt, T)` is enforced.
+///
+/// The precondition is doctrinal, not defensive (`docs/design/dynamics-principled-position.md`
+/// §4 rule 3): dynamics is a state-transition family over a linearly-ordered support,
+/// and a slice of zero is not a small step — it is not a step. Advancing by
+/// nothing yields no successor, so it defines no transition and there is no run
+/// to record. The same holds for a non-finite slice, and for a horizon that
+/// bounds no finite sequence of transitions.
+///
+/// The third arm is representability rather than doctrine: `f64 as usize`
+/// saturates, so a step count that is not a representable count would silently
+/// become `usize::MAX` and the run would spin instead of finishing. A run whose
+/// length is not a count is refused, which is also what keeps a *deleted*
+/// precondition surfacing as a failure rather than as a hang (#231).
+pub fn ticks_over(dt: f64, total_time: f64) -> Result<usize, String> {
+    if !dt.is_finite() || dt <= 0.0 {
+        return Err(format!(
+            "run refused: Δt = {dt} is not a step — dynamics is a family of state \
+             transitions over a positive, finite slice of its support, so a zero or \
+             non-finite slice defines no transition and there is no run to record"
+        ));
+    }
+    if !total_time.is_finite() {
+        return Err(format!(
+            "run refused: the horizon T = {total_time} is not a span — a run composes \
+             finitely many transitions over its support, and a non-finite horizon \
+             bounds no such sequence"
+        ));
+    }
+    let steps = (total_time / dt).round().max(0.0);
+    if !steps.is_finite() || steps > usize::MAX as f64 {
+        return Err(format!(
+            "run refused: the run resolves to {steps} steps, which is not a count — \
+             a run is a finite sequence of transitions, so its length must be a \
+             representable count of them"
+        ));
+    }
+    Ok(steps as usize)
 }
 
 #[cfg(test)]
@@ -233,7 +279,8 @@ mod tests {
         assert_eq!(run.history.len(), 30);
 
         let mut c2 = from_spec(&spec);
-        let over = RecordedRun::record_over(&mut c2, &spec, 0.5, 15.0);
+        let over = RecordedRun::record_over(&mut c2, &spec, 0.5, 15.0)
+            .expect("a positive, finite Δt over a finite horizon names a run");
         assert_eq!(
             over.history.len(),
             30,
@@ -252,5 +299,48 @@ mod tests {
             driven.history, c4.history,
             "the Δt = 1 driver is exactly stepping the circuit"
         );
+    }
+
+    /// Law: a run advances over a positive, finite slice. A zero or non-finite
+    /// slice is not a small step — it is not a step, so it defines no transition
+    /// and no run exists to record. Enforced in the engine, where the run is
+    /// constructed, so no caller can bypass it (#231).
+    #[test]
+    fn a_slice_that_is_not_a_step_names_no_run() {
+        for dt in [0.0, -1.0, f64::NAN, f64::INFINITY] {
+            let Err(err) = ticks_over(dt, 12.0) else {
+                panic!("a zero, negative, or non-finite Δt defines no transition (dt={dt})");
+            };
+            assert!(err.contains("Δt"), "the refusal names Δt; got: {err}");
+            assert!(
+                err.contains("defines no transition"),
+                "the refusal cites the precondition, not the float property; got: {err}"
+            );
+        }
+
+        for t in [f64::INFINITY, f64::NAN] {
+            let Err(err) = ticks_over(1.0, t) else {
+                panic!("a non-finite horizon bounds no sequence of transitions (t={t})");
+            };
+            assert!(err.contains("horizon"), "the refusal names the horizon; got: {err}");
+        }
+
+        // Separating instances: each arm refuses something the others admit. A
+        // negative or NaN Δt would derive a *representable* zero tick count, so
+        // the third arm alone would let it through; and a legitimate positive,
+        // finite Δt over a finite horizon can still resolve to no representable
+        // count, which neither of the first two arms sees.
+        let Err(err) = ticks_over(f64::MIN_POSITIVE, 1.0) else {
+            panic!("a horizon that resolves to no representable step count names no run");
+        };
+        assert!(
+            err.contains("is not a count"),
+            "the unrepresentable-length refusal is its own reason; got: {err}"
+        );
+
+        // And the admitted case still runs: a horizon shorter than one step
+        // rounds to zero ticks, which is a run of zero transitions, not a refusal.
+        assert_eq!(ticks_over(1.0, 0.0), Ok(0), "a zero horizon is a finite span");
+        assert_eq!(ticks_over(0.5, 15.0), Ok(30), "T / Δt is the tick count");
     }
 }

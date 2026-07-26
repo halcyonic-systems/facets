@@ -29,5 +29,6 @@ pub use circuit::{Circuit, Node, NodeKind};
 /// The JSON seam (both directions) + the projection entry point.
 pub use export::{from_spec, from_world_model, model_name, to_world_model};
 
-/// The run recorder.
-pub use run::RecordedRun;
+/// The run recorder, and the precondition a `(Δt, T)` pair must meet to name a
+/// run at all.
+pub use run::{ticks_over, RecordedRun};

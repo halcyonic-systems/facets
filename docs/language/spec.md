@@ -226,10 +226,11 @@ SL v0.1's §4 made the complementary error at the spec level: it named its runti
 
 §8.2 adopts the declaration model of `docs/design/dynamics-principled-position.md` (ADOPTED); the position doc is the single source of truth for the dynamics-record definition. In brief: an SL model never contains a simulator — it **declares** a dynamics record per system whose fields are the support, the carrier (state space), the kind (transition functor), the invariants (conserved quantities and bounds — where conservation lives), and the rates/parameters of a named transfer-function family; engines interpret those declarations and are separately verified against the semigroup contract.
 
-Three consequences the position doc establishes, recorded here so future SL versions do not regress:
+Four consequences the position doc establishes, recorded here so future SL versions do not regress:
 
 - **Conservation is an invariant the model declares, not one the engine assumes** (axis D of the dynamics taxonomy). The compose conservation engine is the *first interpreter of one declarable kind* — Id-functor, ℝⁿ carrier, additive conserved invariant — not the meaning of Run. An SL dynamics record must therefore treat conservation as one optional declaration among several, or it bakes in exactly the special-case-as-category error the research dismantled.
 - **H is a record, never an input to T** (three-tradition convergence: Willems, Bertalanffy, Mesarovic–Takahara). Any history-dependence belongs in the carrier; SL will never grow syntax that feeds H back into a transformation.
+- **A run advances over a positive, finite slice, or it is not a run** (position doc §4 rule 3). A slice of zero is not a small step, it is not a step: it defines no transition, so there is nothing to record and the run is refused. If SL ever gains syntax for the support, a declared step of zero or a non-finite horizon is a refusal at the language level too, not a value an engine is expected to cope with.
 - In v1, dynamics reach a model exclusively through the existing tether/run-manifest path (data + forcing, separately authored); the run is the machine's job. What is lost, stated honestly: the expressiveness of arbitrary protocol logic per element. That loss is the price of a checkable language, and it is paid knowingly.
 
 ## 9. Worked examples (the golden corpus)
