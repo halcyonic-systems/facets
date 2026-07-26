@@ -17,3 +17,28 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 wasm-bindgen = "0.2"
 serde-wasm-bindgen = "0.6"
+
+# wasm-only: routes a panic message to console.error before the trap, so a
+# violation of API.md's no-panic contract is diagnosable instead of anonymous.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1"
+
+[features]
+# Off by default and never enabled for a shipped build — see `__trap_probe`.
+panic-probe = []
+
+# The panic hook's closure machinery emits a second function table — legal since
+# the reference-types proposal, and a parse error to an MVP-only wasm-opt:
+# "Only 1 table definition allowed in MVP". wasm-pack downloads its own wasm-opt
+# per platform, and the one it fetches on the macOS runner rejects the module
+# even when passed --enable-reference-types (tried; the flag reaches the binary
+# and the parse still fails). The Linux runner accepts it. Which binary runs is
+# not ours to choose, so the build cannot depend on it.
+#
+# Cost, measured rather than assumed: 1190 KB -> 1491 KB (+301 KB, +25%)
+# uncompressed. Taken deliberately to make the desktop gate deterministic across
+# runners; restoring optimization needs a pinned binaryen we invoke ourselves,
+# tracked separately. Found by the desktop gate on its first CI run — the local
+# build has a newer cached wasm-opt and never saw this.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

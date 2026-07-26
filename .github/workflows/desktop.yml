@@ -1,0 +1,108 @@
+# The desktop gate (#233) — its own file, per CONTRIBUTING's one-gate-one-file
+# rule.
+#
+# `src-tauri/` is the v0.1 deliverable and was gated by nothing: excluded from
+# the workspace (root `Cargo.toml:15`, correctly — it is a native host and
+# cannot compile to wasm), absent from `ci.yml`, carrying its own `Cargo.lock`,
+# and exercised only by a hand-run `just desktop`. The artifact demoed was the
+# one artifact CI never built.
+#
+# It runs on macOS because the bundle IS a macOS `.app` (`tauri.conf.json`
+# targets `["app"]`) — building the binary on Linux would be a different
+# artifact and would tell us nothing about the one that ships.
+#
+# NO SIGNING, and none is needed: the point is that the thing compiles and
+# bundles. What it also catches is the failure `justfile:33-34` warns about —
+# `cargo tauri dev` serves over `http://127.0.0.1:1430` and applies `devCsp`, so
+# wasm can pass there and die in the bundle. Only a real build tests the real
+# CSP, which is why this job does not use `dev` and never should.
+#
+# Locally: `just desktop`.
+
+name: desktop
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  bundle:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: wasm32-unknown-unknown
+
+      # src-tauri has its own Cargo.lock and its own target dir; both cache keys
+      # are separate from the workspace's on purpose.
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-tauri
+            target
+            src-tauri/target
+          key: ${{ runner.os }}-desktop-${{ hashFiles('Cargo.lock', 'src-tauri/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-desktop-
+
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: latest
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # The same three steps as `just desktop`, in the same order: the bundle
+      # wraps web/dist, and web/dist consumes the freshly built wasm pkg. A
+      # stale pkg here would ship a stale brain inside the desktop app.
+      - name: Build wasm pkg
+        run: wasm-pack build --target web --out-dir pkg
+        working-directory: crates/bert-lenses-kernel
+
+      - name: npm ci
+        run: npm ci
+        working-directory: web
+
+      - name: Build web/dist
+        run: npm run build
+        working-directory: web
+
+      # The host crate has never been linted by anything automated.
+      - name: cargo clippy (src-tauri)
+        run: cargo clippy --all-targets --manifest-path src-tauri/Cargo.toml -- -D warnings
+
+      # Idempotent on purpose: the cargo cache above restores ~/.cargo/bin/cargo-tauri
+      # from a previous run, and a bare `cargo install` then fails with "binary
+      # `cargo-tauri` already exists in destination". Skip when it is already there
+      # rather than --force, so a warm cache stays a saving instead of a reinstall.
+      - name: Install tauri-cli
+        run: command -v cargo-tauri >/dev/null 2>&1 || cargo install tauri-cli --version "^2" --locked
+
+      - name: Bundle the .app
+        run: cargo tauri build
+        working-directory: src-tauri
+
+      # A build step that "succeeds" without producing the artifact is the
+      # vacuity this gate exists to refuse.
+      - name: The bundle exists
+        run: test -d src-tauri/target/release/bundle/macos/bert-lenses.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bert-lenses-macos-app
+          path: src-tauri/target/release/bundle/macos/bert-lenses.app
+          if-no-files-found: error

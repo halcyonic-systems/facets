@@ -1,0 +1,84 @@
+# The wasm-exec gate (#233) — its own file, per CONTRIBUTING's one-gate-one-file
+# rule.
+#
+# WHAT WAS UNCOVERED. `ci.yml` runs `cargo test` (the NATIVE build — nothing
+# crosses the wasm edge) and `vitest` (node, against COMMITTED fixtures — Rust's
+# serialization to disk, not what JS receives). Between them sits
+# serde-wasm-bindgen and the generated glue: the only components with no
+# coverage at all, and the ones every verdict on screen passes through. Until
+# this file there were zero executions of the shipped wasm package anywhere in
+# CI, and zero `wasm_bindgen_test`s in the repo.
+#
+# WHAT THIS RUNS. `scripts/wasm_exec.mjs` loads
+# `crates/bert-lenses-kernel/pkg` under node exactly as the browser loads it —
+# same glue JS, same `.wasm` bytes, nothing stubbed — and drives real exports:
+# `analyze_canvas` / `lens_facts` / `describe` recomputed from the committed
+# canvas fixture and compared against the committed results; every shipped `.sl`
+# file through `compile_sl` → `analyze_canvas` → `write_archive` → `open_model`
+# → `emit_sl` → `compile_sl`; `validate` / `validate_operational` / `run` on the
+# runnable sample with a conservation assertion; and the four refusal paths,
+# asserting each throws a named `JsError` rather than trapping.
+#
+# It also builds a SECOND package with `--features panic-probe` — a build no
+# release has — and drives a deliberate Rust panic through it to prove the panic
+# hook surfaces the message, and to measure what the instance does afterwards.
+# The harness fails if that export is missing, so the panic section cannot
+# silently degrade into a skip.
+#
+# Locally: `just wasm-exec`.
+
+name: wasm-exec
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  wasm-exec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-wasmexec-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-wasmexec-
+
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: latest
+
+      # The package the app ships.
+      - name: Build wasm pkg
+        run: wasm-pack build --target web --out-dir pkg
+        working-directory: crates/bert-lenses-kernel
+
+      # The probe package — same kernel plus one deliberate panic export.
+      - name: Build wasm pkg (panic probe)
+        run: wasm-pack build --target web --out-dir pkg-probe --features panic-probe
+        working-directory: crates/bert-lenses-kernel
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # No npm install: the harness is dependency-free node, and depending on
+      # the web app's node_modules would make a face-side change able to break
+      # a boundary gate.
+      - name: Execute the boundary
+        run: node scripts/wasm_exec.mjs --probe crates/bert-lenses-kernel/pkg-probe

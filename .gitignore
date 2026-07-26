@@ -3,6 +3,8 @@
 
 # wasm-pack output (regenerated from the crate; never committed)
 crates/*/pkg/
+# the panic-probe package the wasm-exec gate builds (`just wasm-exec`)
+crates/*/pkg-probe/
 
 # web (React/Vite)
 web/node_modules/
