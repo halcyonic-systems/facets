@@ -1,6 +1,8 @@
 # The Neutral Interchange — CSV as a serialization of the kernel
 
-*Status: RESEARCH SEED, 2026-07-24. From the Q6/CSV conversation (delegation-boundary session). Not a build spec yet — the framing to design against. Companion to the dynamics program (`dynamics-principled-position.md`, `dynamics-halfb-open-composition.md`) and the kernel (`theory-fidelity.md`). The compose semantics are tracked in #112; a faithful read of Baez's cospan paper is being mapped in (`operations/sessions/2026-07-24/references/baez-cospan-map.md`).*
+**Status: RESEARCH.**
+
+*A seed, not a build spec — 2026-07-24, from the Q6/CSV conversation (delegation-boundary session). Not a build spec yet — the framing to design against. Companion to the dynamics program (`dynamics-principled-position.md`, `dynamics-halfb-open-composition.md`) and the kernel (`theory-fidelity.md`). The compose semantics are tracked in #112; a faithful read of Baez's cospan paper is being mapped in (`operations/sessions/2026-07-24/references/baez-cospan-map.md`).*
 
 ## The core claim
 The neutral interchange is **not "CSV for a domain." It is a serialization of the kernel** — `(T, R)` plus the coalgebraic dynamics layer. Everything domain-specific is a *lens over* that serialization, so "legible across many domains" falls out for free: a domain author reads/writes tables, the tool ingests them as a kernel object, and the **lenses do the domain interpretation on ingest**. (Lineage: Cliff's point that a pandas DataFrame is another view of Klir's things-and-relations — the same K≅2 discipline, pushed down to the file format.)

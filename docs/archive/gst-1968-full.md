@@ -1,5 +1,7 @@
 # Von_Bertalanffy_Ludwig_General_System_Theory_1968
 
+**Status: RESEARCH.** A primary-source extraction, not a superseded document — it is the text `docs/design/dynamics-research/read-bertalanffy.md` cites. It lives under `archive/` because of its size, not because anything replaced it.
+
 Extracted from: `/Users/home/Zotero/storage/GF2IPGGQ/Von_Bertalanffy_Ludwig_General_System_Theory_1968.pdf`
 Date: Sat Jul 18 10:00:27 EDT 2026
 PDF Analysis: TEXT-BASED: Good extractable text (  102788 words,   657275 chars)

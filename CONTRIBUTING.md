@@ -56,8 +56,9 @@ Research that others build on but that isn't itself a decision stays **RESEARCH*
 
 ## Status vocabulary
 
-Every doc under `docs/` carries exactly one status. The canonical definitions
-live in [`docs/README.md`](docs/README.md); in short:
+Every doc under `docs/` and `spec/` carries exactly one status, and
+`scripts/doc_lint.py` enforces it. The canonical definitions live in
+[`docs/README.md`](docs/README.md); in short:
 
 | Status | Meaning |
 |---|---|
@@ -70,6 +71,37 @@ live in [`docs/README.md`](docs/README.md); in short:
 
 New docs must be added to the `docs/README.md` index with their status; where one
 doc supersedes another, both say so.
+
+### Where the status goes
+
+The status lives **in the file**, above the first `## ` heading, so it is on
+screen when the document opens. Two shapes are accepted, both already in use:
+
+```markdown
+**Status: LIVE.** A ten-minute path through the instrument…
+```
+
+```markdown
+*2026-07-18 · dynamics doctrine (#86) · status: **ADOPTED***
+```
+
+The first is the prose form (a `> ` blockquote prefix is fine, as the archive
+banners use). The second is the ADR byline, whose format is fixed above. The word
+is uppercase and is one of the six; `CONTINGENT(#N)` carries its issue number.
+
+**A fixed line, not frontmatter.** The defect this rule fixes is *invisibility* —
+`theory-fidelity.md`, the auditor's front door, carried its status only in the
+`docs/README.md` index, so a reader who opened the file (the normal case, and how
+an agent reads) saw none. YAML frontmatter is metadata: GitHub renders it as a
+detached table, a plain editor shows a fence above the title, and some renderers
+hide it. A carrier that can be hidden is the same bug with a parser attached. A
+prose line also carries the sentence of context the status usually wants, which
+frontmatter would force you to write twice.
+
+A doc that is an execution record rather than a position — a plan, a draft — is
+**RESEARCH**: it is something later work builds on, and it is not itself a
+decision. `docs/design/README.md` groups those separately for readability; the
+status word is still one of the six.
 
 ## Definition of done
 

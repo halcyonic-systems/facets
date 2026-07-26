@@ -1,6 +1,6 @@
 # ADR 0001 — Canvas rendering: hand-rolled React+SVG, not xyflow
 
-*2026-07-14 · Phase 2 (canvas spike) · status: **accepted***
+*2026-07-14 · Phase 2 (canvas spike) · status: **ADOPTED***
 
 ## Context
 

@@ -1,10 +1,12 @@
 # docs/
 
+**Status: LIVE.** The canonical index for `docs/` and `spec/`.
+
 Start at the main [`README.md`](../README.md) and [`CLAUDE.md`](../CLAUDE.md) for the repo overview and working rules. This folder is the deeper reference layer.
 
 **This file is the canonical index.** Every document under `docs/` and `spec/` is reachable from here, either listed directly or through a folder's own `README.md` ([`language/`](language/), [`design/`](design/), [`design/dynamics-research/`](design/dynamics-research/), [`archive/`](archive/)). `scripts/doc_lint.py` enforces exactly that, plus "nothing is orphaned" and "every relative link resolves" ([#235](https://github.com/halcyonic-systems/bert-lenses/issues/235)). There is deliberately no second hand-maintained index: two of them drift, and the drift is invisible.
 
-**Status vocabulary.** Every document below carries one: **LIVE** (current, load-bearing) · **ADOPTED** (a decision in force) · **PROPOSED** (a position awaiting adoption — see its tracking issue) · **CONTINGENT(#N)** (normative content conditional on a pending decision — see issue #N) · **RESEARCH** (a foundation others build on; not itself a decision) · **HISTORICAL** (kept as record, superseded). Where one document supersedes another, both say so.
+**Status vocabulary.** Every document below carries one: **LIVE** (current, load-bearing) · **ADOPTED** (a decision in force) · **PROPOSED** (a position awaiting adoption — see its tracking issue) · **CONTINGENT(#N)** (normative content conditional on a pending decision — see issue #N) · **RESEARCH** (a foundation others build on; not itself a decision) · **HISTORICAL** (kept as record, superseded). Where one document supersedes another, both say so. The status lives **in the file**, above its first `## ` heading — a bolded `Status: <WORD>` line, or an ADR's bolded-word byline — and `scripts/doc_lint.py` fails the build on a file that carries none, carries two, or names a word outside the six ([#234](https://github.com/halcyonic-systems/bert-lenses/issues/234)). It was free prose in four different shapes until then, which is why nothing could check it. The carrier form and the reasoning are in [`../CONTRIBUTING.md`](../CONTRIBUTING.md#where-the-status-goes).
 
 **Invariant.** LIVE/normative sections may not contain verbatim lifts from PROPOSED documents.
 
@@ -43,7 +45,7 @@ Research foundations — what others build on; not themselves decisions:
 - [`design/dynamics-research/`](design/dynamics-research/) — **RESEARCH** — the research trail behind the adopted dynamics position: six primary-source reads (Mobus, Bunge, Klir, Bertalanffy, category theory, external general-systems literature), a synthesis, and two adversarial critiques (`critique-novelty.md`, `critique-coverage.md`). Start at its [`README.md`](design/dynamics-research/README.md) for the reading order.
 - [`design/llm-integration-research.md`](design/llm-integration-research.md) — **RESEARCH** — LLM context/authoring/analysis (rests on `kernel-architecture.md`). §11 is the lens-fidelity mechanism; §12 is the recommended-first-rung plan the 2026-07-17 analysis rung executed.
 - [`design/lens-palettes.md`](design/lens-palettes.md) — **LIVE** — the lens grounding for Phase 3/4 (Klir / Bunge / Mobus), and the two kernel primitives (boundary identity, edge classification) behind the faithful renderings.
-- [`design/educational-model-suite.md`](design/educational-model-suite.md) — **RESEARCH** — a 13-model graded curriculum teaching systems concepts through the instrument (primitive-first; refusals as lessons), plus a faculty-appeal appendix. Curriculum planned for [#80](https://github.com/halcyonic-systems/bert-lenses/issues/80); not yet in-tool.
+- [`design/educational-model-suite.md`](design/educational-model-suite.md) — **RESEARCH** — a 13-model graded curriculum teaching systems concepts through the instrument (primitive-first; refusals as lessons), plus a faculty-appeal appendix. Not in-tool, and untracked: the curriculum was planned against #80 and #21, both of which closed in July 2026 having shipped narrower things.
 - [`design/shape-vocabulary-research.md`](design/shape-vocabulary-research.md) — **RESEARCH** — notation precedents (Mobus's own icon set, Stella/Forrester, Odum, SysML ports, automata, Petri nets) for the palette shape vocabulary ([#81](https://github.com/halcyonic-systems/bert-lenses/issues/81)).
 - [`design/design-system-draft.md`](design/design-system-draft.md) — **RESEARCH** — visual design system draft.
 
@@ -54,12 +56,17 @@ Research foundations — what others build on; not themselves decisions:
 - [`decisions/0003-conservation-declared-not-assumed.md`](decisions/0003-conservation-declared-not-assumed.md) — **ADOPTED** — conservation is an invariant a model declares, never the engine's premise; the compose engine is the first interpreter of one dynamics-kind. Records the #86 position in force.
 - [`decisions/0004-neutral-archive-canvasmodel-json.md`](decisions/0004-neutral-archive-canvasmodel-json.md) — **ADOPTED** — the neutral archive format is `CanvasModel` JSON. Adopted, then indexed nowhere for four days; its only inbound link was from an orphan until [#235](https://github.com/halcyonic-systems/bert-lenses/issues/235).
 
+## The parked ledger
+
+- [`parked.md`](parked.md) — **LIVE** — the permanent record of work that was thought through, decided on, or found out, and then deliberately not scheduled. Eleven entries retired from the issue board in the W30 ratification audit ([#234](https://github.com/halcyonic-systems/bert-lenses/issues/234)), each carrying what it is, what was decided, the evidence that settled it, and whether it has a live unpark trigger. It exists because 8 of 11 parked issues recorded a *finding*, and an issue is the wrong container for a finding.
+- [`parked-closing-comments/`](parked-closing-comments/) — **LIVE**, and **transient**: the drafted closing comment for each issue retired into `parked.md`, staged as files because `gh ... --body "…"` runs prose through the shell. The directory is deleted once the issues are closed.
+
 ## Historical (pre-web-rebuild, kept as record)
 
 - [`archive/canvas-architecture.md`](archive/canvas-architecture.md) — **HISTORICAL** — the standalone egui canvas (`src/main.rs`). Superseded by the web rebuild; its kernel-seam semantics (mode stamping, audit-panel verdict-quoting) carried forward and are still accurate, but the UI mechanics it describes are gone. (A stub remains at the old `canvas-architecture.md` path.)
 - [`archive/on-the-word-ladder.md`](archive/on-the-word-ladder.md) — **HISTORICAL** — the concordance of the three senses of "ladder/rung/climb" in this repo. Its mode-entry hazard (Bucket A) is retired: mode entry now speaks **lens** vocabulary (see [`theory-fidelity.md`](theory-fidelity.md), gated by `scripts/doc_lint.py`); the doc survives as the record of the words that legitimately stay (compose dependency ladder, per-edge classification, project-phase "rung"). Issue [#90](https://github.com/halcyonic-systems/bert-lenses/issues/90). (A stub remains at the old `on-the-word-ladder.md` path.)
 - [`archive/fidelity-audit.md`](archive/fidelity-audit.md) — **HISTORICAL** — faithfulness verdicts from the egui-era canvas; the current fidelity assessment is [`theory-fidelity.md`](theory-fidelity.md).
-- [`archive/`](archive/) — **HISTORICAL** — superseded design docs and the one source-text extraction; [`archive/README.md`](archive/README.md) lists them all.
+- [`archive/`](archive/) — **HISTORICAL** — superseded design docs; [`archive/README.md`](archive/README.md) lists them all. One file there is **RESEARCH** rather than historical: `archive/gst-1968-full.md`, the Bertalanffy source extraction, which nothing superseded and which the dynamics research still reads against. It lives under `archive/` for its size.
 
 Three redirect stubs remain at the pre-move paths so old links do not rot. They are three lines each and carry no content: [`canvas-architecture.md`](canvas-architecture.md), [`fidelity-audit.md`](fidelity-audit.md), [`on-the-word-ladder.md`](on-the-word-ladder.md).
 

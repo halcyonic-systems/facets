@@ -1,5 +1,7 @@
 # Bertalanffy on Dynamics — GST 1968, primary-text read
 
+**Status: RESEARCH.**
+
 Source: Von Bertalanffy, L. *General System Theory: Foundations, Development, Applications* (1968), George Braziller. Full-text extraction at [`../../archive/gst-1968-full.md`](../../archive/gst-1968-full.md) (from `/Users/home/Zotero/storage/GF2IPGGQ/Von_Bertalanffy_Ludwig_General_System_Theory_1968.pdf`, OCR — some line-wrap/character garbling in equations, noted where relevant). All page numbers below are the printed page numbers as they appear inline in the OCR text (isolated numeral lines between paragraphs) — VERIFIED by direct read of that PDF's extracted text, not the vault's derivative notes files (`General System Theory-merged.md`, `bertalanffy-direct-quotes.md` — these are secondary notes/theses about GST, not GST itself, and do not contain the equations; checked, confirmed thin).
 
 Everything below is VERIFIED (I read the passage in the extracted PDF text) unless marked UNVERIFIED.

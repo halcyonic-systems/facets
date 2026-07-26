@@ -1,6 +1,8 @@
 # Decomposition Foundations — the 8-Tuple Math Under Option B
 
-*Status: RESEARCH, 2026-07-18. Tracking issue: #89. The mathematical layer beneath
+**Status: RESEARCH.**
+
+*2026-07-18. Tracking issue: #89. The mathematical layer beneath
 `hierarchical-decomposition-investigation.md` (PROPOSED), which surveyed the
 flat-by-construction ground truth and recommended Option B (decomposition by
 reference). That doc answers "which mechanism"; this one answers "what must be

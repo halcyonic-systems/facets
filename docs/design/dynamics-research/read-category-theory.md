@@ -1,5 +1,7 @@
 # Does category theory give a generic account of "dynamics"?
 
+**Status: RESEARCH.**
+
 *Research memo — 2026-07-18. Assesses Shingai's question ("Does category theory come into play here? Perhaps.") against bert-lenses' actual dynamics zoo: conservation flows (bert-compose), FSA/DLG transitions (#67), Boolean-network trajectories, agent-based trajectories, multi-timescale hierarchies.*
 
 **Epistemic key**: every claim tagged VERIFIED (I read the primary/secondary source directly) or UNVERIFIED (inferred, or read only an abstract/search-snippet summary, not the full argument). Where a source was fetched but returned only an abstract, I say so — that is a real evidentiary gap, not full verification of the paper's content.

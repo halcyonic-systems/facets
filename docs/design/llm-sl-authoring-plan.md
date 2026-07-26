@@ -1,5 +1,7 @@
 # LLM-authored SL: the draft→preview→assess→accept pipeline (plan of record)
 
+**Status: RESEARCH.** A plan of record — an execution record, carrying no normative weight (see [`README.md`](README.md), "Plans and drafts").
+
 *2026-07-23 · plan · serves #10 (resident co-author) AND #14 (real-system modeling queue) — they are one program. Builds on `llm-integration-research.md` (the first-principles foundation) and the SL/`compile_sl` flow that shipped after #10/#9 were written.*
 
 ## The reframe that unblocks #10

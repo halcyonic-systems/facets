@@ -1,6 +1,6 @@
 # ADR 0003 — Conservation is declared, not assumed
 
-*2026-07-18 · dynamics doctrine (#86) · status: **adopted***
+*2026-07-18 · dynamics doctrine (#86) · status: **ADOPTED***
 
 ## Context
 

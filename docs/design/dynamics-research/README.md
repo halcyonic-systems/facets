@@ -1,5 +1,7 @@
 # dynamics-research — index
 
+**Status: RESEARCH.**
+
 Research trail for "what counts as dynamics" (2026-07-18). The landed position is the
 sibling doc: [`../dynamics-principled-position.md`](../dynamics-principled-position.md) —
 read that first; this folder is evidence. Frozen 2026-07-18; the position supersedes

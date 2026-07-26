@@ -1,5 +1,7 @@
 # Lens-entry spec: the mechanical Lean↔Rust binding
 
+**Status: LIVE.**
+
 Entering a model *as* a lens (mode) is licensed by a precondition. Those
 preconditions are proved in `systems-science-foundations` (SSF), and enforced in
 `bert-core`. This document is the chain of custody between the two: which Lean

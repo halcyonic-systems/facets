@@ -1,5 +1,7 @@
 # Klir's Epistemological Hierarchy as a Theory of Dynamics
 
+**Status: RESEARCH.**
+
 *Source: George J. Klir, "Facets of Systems Science" (2nd ed.), OCR'd full text at
 `operations/systems-science/klir/klir-facets.md` in the vault (2,082,617 bytes,
 36,995 lines, poor OCR but legible in the load-bearing sections). All citations below

@@ -1,5 +1,7 @@
 # Arc 2 — In-Lens Authoring: Design Spec
 
+**Status: HISTORICAL.**
+
 > **⚠ SUPERSEDED (2026-06-26 pivot).** This spec describes a *lists + GSR `generate()` +
 > deterministic-spine* approach. We pivoted to a **direct-manipulation canvas** — see
 > [`docs/canvas-architecture.md`](../canvas-architecture.md) for what was actually built. Kept for

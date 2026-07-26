@@ -1,5 +1,7 @@
 # Coverage Critique of `synthesis.md`
 
+**Status: RESEARCH.**
+
 *Coverage-critic pass — 2026-07-18. Read `synthesis.md` in full plus all six
 `read-*.md` files. Every claim below is marked VERIFIED (I opened the cited
 file/line myself this pass) or UNVERIFIED. Gaps are ranked by how soon they will

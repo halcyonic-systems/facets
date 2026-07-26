@@ -1,5 +1,7 @@
 # External literature: what counts as "dynamics"?
 
+**Status: RESEARCH.**
+
 Research pass for bert-lenses dynamics generalization (issue #67 Markov/FSA sim, #54 porosity semantics,
 Boolean-network trajectory mode). Question: is there a substrate-neutral formal definition of "dynamical
 system" broad enough to cover conservation-flow ODEs (what bert-compose runs today), FSA/DLG state
