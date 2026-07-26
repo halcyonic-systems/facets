@@ -156,11 +156,33 @@ fn force_and_run_refuses_without_panicking() {
             },
         ],
     };
+    // The Δt guard is load-bearing, not decorative: `record_over` derives the tick
+    // count as `round(t / dt)`, and `f64 as usize` saturates to `usize::MAX`, so a
+    // non-positive or non-finite Δt spins forever instead of failing. Assert the
+    // refusal *and* its reason — discarding the result here would let the guard be
+    // deleted without any test failing; the suite would hang, which is the worst
+    // available signal (bert-lenses#231).
+    for dt in [0.0, -1.0, f64::NAN] {
+        let Err(err) = force_and_run(reservoir(), csv, &shaped, dt, 12.0, "2026-01-01") else {
+            panic!("a non-positive or non-finite Δt must be refused, not run (dt={dt})");
+        };
+        assert!(err.contains("Δt"), "the refusal must name Δt; got: {err}");
+    }
+
+    // The horizon guard refuses only *non-finite* t, so witness it with inf/NaN.
+    // A zero horizon is finite and legitimately runs to zero ticks — see below.
+    for t in [f64::INFINITY, f64::NAN] {
+        let Err(err) = force_and_run(reservoir(), csv, &shaped, 1.0, t, "2026-01-01") else {
+            panic!("a non-finite horizon must be refused, not run (t={t})");
+        };
+        assert!(err.contains("horizon"), "the refusal must name the horizon; got: {err}");
+    }
+
+    // Odd-but-ungated inputs: a zero horizon is finite, and `today` is carried as
+    // provenance text rather than parsed. No gate claims these, so the law here is
+    // only the original one — return a Result, never abort.
     for (dt, t, today) in [
-        (0.0, 12.0, "2026-01-01"), // zero Δt
-        (-1.0, 12.0, "2026-01-01"), // negative Δt
-        (1.0, 0.0, "2026-01-01"),  // zero horizon
-        (f64::NAN, 12.0, "2026-01-01"),
+        (1.0, 0.0, "2026-01-01"), // zero horizon — finite, so not gated
         (1.0, 12.0, "not-a-date"), // malformed today
         (1.0, 12.0, ""),           // empty today
     ] {
