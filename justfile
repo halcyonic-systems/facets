@@ -29,6 +29,17 @@ check:
     cd web && npx vitest run
     cd web && npx vite build
 
+# Execute the shipped wasm package (mirrors .github/workflows/wasm-exec.yml).
+# The boundary gate: `cargo test` is native and `vitest` reads committed
+# fixtures, so nothing else in this repo runs the marshaling layer the face
+# reads every verdict through. The second package carries the panic probe —
+# a deliberate panic no release build has — so the trap path is measured
+# rather than assumed.
+wasm-exec:
+    cd {{kernel}} && wasm-pack build --target web --out-dir pkg
+    cd {{kernel}} && wasm-pack build --target web --out-dir pkg-probe --features panic-probe
+    node scripts/wasm_exec.mjs --probe crates/bert-lenses-kernel/pkg-probe
+
 # Bundle the macOS .app. Builds the same web/dist the served version publishes,
 # then wraps it. NOTE: `cargo tauri dev` is a false positive — it serves over
 # http://127.0.0.1:1430 and applies devCsp, not the config CSP, so wasm can pass

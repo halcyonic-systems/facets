@@ -530,6 +530,48 @@ function must answer for a file read out of a bare directory, where there is no
 record to denormalize metadata into — the constraint that decided the archive is
 self-describing JSON rather than SL (ADR 0004, decision 2).
 
+## The error contract, executed (#233 — additive; no signature changes)
+
+Two things were true of the section above until #233: it was enforced by
+inspection, and the boundary it describes was never executed by any gate.
+`cargo test` runs the native build (nothing crosses the edge) and `vitest` runs
+in node against the committed fixtures (Rust's serialization to disk, not what
+JS receives). Three additions, none of which touch a signature:
+
+1. **The panic message survives.** The module installs
+   `console_error_panic_hook` from its own initializer
+   (`#[wasm_bindgen(start)]`, no new export). Mode 2 remains forbidden; what
+   changes is that a violation is now *diagnosable* — the panic's message and
+   Rust source location reach `console.error` immediately before the trap,
+   instead of being written to a hook that was never installed and discarded
+   while JS saw only `RuntimeError: unreachable`.
+2. **The face tells the two modes apart.** `web/src/kernel/index.ts` classifies
+   a `WebAssembly.RuntimeError` as a `KernelTrap` rather than a `KernelError`,
+   and the error boundary says different things about them. A trap is not a
+   verdict about the user's model and is no longer described as one.
+3. **The boundary is executed.** `scripts/wasm_exec.mjs`
+   (`.github/workflows/wasm-exec.yml`, `just wasm-exec`) loads the shipped `pkg`
+   under node as the browser loads it and drives real exports over the shipped
+   corpus, including the four refusal paths — each of which must throw a named
+   `JsError` and must NOT trap.
+
+**Two marshaling divergences that gate found**, both invisible to every other
+check, neither of which changes a documented shape:
+
+- **`f32` widens.** A fixture written natively records `0.35`; the face receives
+  `0.3499999940395355`. Same value, different text.
+- **`Option::None` arrives as `undefined`, not `null`.** The fixtures say
+  `"channel": null`; serde-wasm-bindgen hands the face `undefined`. The TS
+  mirrors declare `| null`, so a `=== null` test on an optional kernel field
+  would hold in the fixture suite and fail in the browser. No face code does
+  that today. Prefer `== null` / `?? ` over `=== null` on any optional field
+  from this boundary.
+
+**`__trap_probe(canvas_json)` is not part of this surface.** It exists only
+behind the off-by-default `panic-probe` feature, panics on purpose, and is built
+into a separate `pkg-probe/` the gate throws away. No release build has the
+symbol.
+
 ## Notes
 - The wasm is built with `wasm-pack build --target web` into `pkg/` (a build
   artifact, gitignored). `--release` for the shipped bundle; `--dev` while iterating.
