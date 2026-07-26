@@ -1,0 +1,49 @@
+cff-version: 1.2.0
+title: >-
+  bert-lenses: a systems-modeling instrument that refuses
+message: >-
+  If you use this software, please cite it. The machine-checked claims it makes
+  are pinned to a specific commit of systems-science-foundations; cite that
+  commit alongside this software when the proofs are what you are relying on.
+type: software
+authors:
+  - given-names: Shingai
+    family-names: Thornton
+    affiliation: Halcyonic Systems
+repository-code: https://github.com/halcyonic-systems/bert-lenses
+abstract: >-
+  A modeling instrument in which a formal kernel judges whether an authored
+  model holds as a system under three traditions of systems science (Klir,
+  Bunge, Mobus), citing the precondition behind every verdict. Models are
+  authored on a canvas or in SL, a deterministic line-oriented system language;
+  the two round-trip through one neutral model. Where a model holds it can be
+  run under a model-declared invariant. The kernel is Rust compiled to
+  WebAssembly and owns all formalism; the lens projections are grounded in
+  machine-checked Lean 4 proofs, pinned by commit and gated in CI.
+keywords:
+  - systems science
+  - systems modeling
+  - formal methods
+  - Lean 4
+  - Klir
+  - Bunge
+  - Mobus
+  - WebAssembly
+license: MIT
+
+references:
+  - type: software
+    title: >-
+      systems-science-foundations: a Lean 4 formalization of the Klir-Bunge-Mobus
+      common core
+    authors:
+      - given-names: Shingai
+        family-names: Thornton
+        affiliation: Halcyonic Systems
+    repository-code: https://github.com/halcyonic-systems/systems-science-foundations
+    notes: >-
+      The proof base. bert-lenses' machine-checked claims are pinned to commit
+      71a7883b3bbe15b91ad137b81bb80a77915e0da1; each claim resolves to a named
+      Lean declaration through docs/lean-manifest.json, and CI fails if a cited
+      symbol stops resolving with its declared kind. Cite this when the proofs
+      are what you are relying on, not the tool.

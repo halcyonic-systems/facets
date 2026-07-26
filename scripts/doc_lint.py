@@ -316,15 +316,32 @@ def indexed_docs() -> list[Path]:
 
 
 def doc_links(path: Path) -> list[tuple[int, str]]:
-    """(line, target) for every relative markdown link outside a fenced block."""
+    """(line, target) for every relative markdown link outside a fenced block.
+
+    HTML comments are skipped along with fences. A commented-out link is not a
+    live link — it is usually a worked example of the form a future link will
+    take (a screenshot slot, a template) — and failing the build on one makes it
+    impossible to leave that example where the next author will find it.
+    """
     out: list[tuple[int, str]] = []
     in_fence = False
+    in_comment = False
     for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         if FENCE.match(line):
             in_fence = not in_fence
             continue
         if in_fence:
             continue
+        # HTML comments, including single-line ones.
+        if in_comment:
+            if "-->" in line:
+                in_comment = False
+            continue
+        if "<!--" in line and "-->" not in line:
+            in_comment = True
+            continue
+        if "<!--" in line and "-->" in line:
+            line = re.sub(r"<!--.*?-->", "", line)
         for m in MD_LINK.finditer(line):
             target = m.group(1).split("#")[0]
             if not target or target.startswith(("http://", "https://", "mailto:", "#")):
