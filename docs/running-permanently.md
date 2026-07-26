@@ -88,8 +88,11 @@ Two things the custom protocol changes, both already handled in
 - **`connect-src` must name the reasoner origin.** The app's origin is
   `tauri://localhost`, so an unnamed origin is blocked and surfaces as a bare
   `TypeError: Load failed` that reads like "the reasoner is down." Named today:
-  `http://localhost:5010`, `http://127.0.0.1:5010`, and
-  `https://reasoner.halcyonic.systems`.
+  `http://localhost:5010` and `http://127.0.0.1:5010` — this machine, and
+  nothing else. No remote host is named in the bundle (#229): a URL compiled
+  into a distributed binary cannot be recalled once the binary is in someone's
+  hands, so a reasoner reached over the network needs a build whose CSP names
+  it.
 
 Fonts are self-hosted for the same reason — a bundle has no network. See
 `scripts/vendor-fonts.py`.

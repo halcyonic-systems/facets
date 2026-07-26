@@ -1,16 +1,14 @@
 // The one enable point (#199, decision 2026-07-25). Turning the co-author on
-// IS choosing where it runs — the choice is presented here, inline, in the
+// IS saying where it runs — the address is asked for here, inline, in the
 // moment the author reaches for the drafter, not in a settings pane. Once on,
 // this same strip says which reasoner is in use and turns it back off.
+//
+// #229: there is no longer a second, hosted option. v0.1 ships no remote
+// address, so the reasoner is one the user runs, and this is a field rather
+// than a pick.
 import { useState } from "react";
 import { isDesktop } from "./desktop";
-import {
-  DEFAULT_ENDPOINT,
-  HOSTED_ENDPOINT,
-  blockedOnDesktop,
-  endpointKind,
-  type ReasonerConfig,
-} from "./reasoner";
+import { DEFAULT_ENDPOINT, blockedOnDesktop, type ReasonerConfig } from "./reasoner";
 
 export function ReasonerGate({
   config,
@@ -44,12 +42,10 @@ function ReasonerStatus({
   onChange: (next: ReasonerConfig) => void;
   onChoose: () => void;
 }) {
-  const own = endpointKind(config.endpoint) === "own";
   return (
     <div className="mb-2 flex items-center justify-between gap-2 rounded p-2" style={panel}>
       <p className="min-w-0 text-[11px]" style={{ color: "var(--text-secondary)" }}>
-        Co-author is on, using{" "}
-        <strong>{own ? "your own reasoner" : "Halcyonic's hosted reasoner"}</strong> at{" "}
+        Co-author is on, using <strong>your reasoner</strong> at{" "}
         <span className="font-mono break-all">{config.endpoint}</span>
       </p>
       <div className="flex shrink-0 items-center gap-1">
@@ -77,10 +73,8 @@ function ReasonerChoice({
   onChange: (next: ReasonerConfig) => void;
   onCancel?: () => void;
 }) {
-  const startsHosted = config.enabled && endpointKind(config.endpoint) === "hosted";
-  const [hosted, setHosted] = useState(startsHosted);
-  const [url, setUrl] = useState(startsHosted ? DEFAULT_ENDPOINT : config.endpoint || DEFAULT_ENDPOINT);
-  const endpoint = hosted ? HOSTED_ENDPOINT : url.trim();
+  const [url, setUrl] = useState(config.endpoint || DEFAULT_ENDPOINT);
+  const endpoint = url.trim();
   const cspWarning = isDesktop() && blockedOnDesktop(endpoint);
 
   return (
@@ -90,42 +84,25 @@ function ReasonerChoice({
       </p>
       <p className="mt-1 text-[11px]" style={{ color: "var(--text-secondary)" }}>
         The co-author sends your description, and the model it is working on, to a
-        reasoner. It stays off until you say where that reasoner runs.
+        reasoner you run. It stays off until you say where that reasoner is.
       </p>
 
-      <label className="mt-3 flex cursor-pointer items-start gap-2">
-        <input type="radio" checked={!hosted} onChange={() => setHosted(false)} className="mt-0.5" />
-        <span className="min-w-0">
-          <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>
-            Your own reasoner
-          </span>
-          <span className="block text-[11px]" style={{ color: "var(--text-muted)" }}>
-            Your text goes only to the machine at this address. Nothing reaches Halcyonic.
-          </span>
-          <input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            onFocus={() => setHosted(false)}
-            spellCheck={false}
-            className="mt-1 w-full rounded p-1 font-mono text-[11px] outline-none"
-            style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: "1px solid var(--hairline)" }}
-            placeholder={DEFAULT_ENDPOINT}
-          />
+      <label className="mt-3 block">
+        <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>
+          The reasoner's address
         </span>
-      </label>
-
-      <label className="mt-3 flex cursor-pointer items-start gap-2">
-        <input type="radio" checked={hosted} onChange={() => setHosted(true)} className="mt-0.5" />
-        <span className="min-w-0">
-          <span className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>
-            Halcyonic's hosted reasoner
-          </span>
-          <span className="block text-[11px]" style={{ color: "var(--text-muted)" }}>
-            Your description and model text travel to a server Halcyonic runs, which
-            passes them to the model it is configured with. Nothing else on your
-            machine is read or sent.
-          </span>
+        <span className="block text-[11px]" style={{ color: "var(--text-muted)" }}>
+          Your text goes only to the machine at this address. This app ships no other
+          one — nothing reaches Halcyonic.
         </span>
+        <input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          spellCheck={false}
+          className="mt-1 w-full rounded p-1 font-mono text-[11px] outline-none"
+          style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: "1px solid var(--hairline)" }}
+          placeholder={DEFAULT_ENDPOINT}
+        />
       </label>
 
       {cspWarning && (

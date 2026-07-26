@@ -7,12 +7,11 @@
 // a filesystem is). The value is cached in memory after `initReasoner()` so
 // render paths and the fetch door can read it synchronously.
 
-/** The default seed. Flipping the shipped pre-fill is a change to THIS line.
- *  Local today (#199, 2026-07-25): the local path gets exercised first. */
+/** The default seed, and since #229 the only shipped one: a reasoner the user
+ *  runs. v0.1 names no remote endpoint anywhere in the artifact — a URL inside
+ *  a distributed binary cannot be recalled, so none is published. Flipping the
+ *  shipped pre-fill is a change to THIS line. */
 export const DEFAULT_ENDPOINT: string = import.meta.env.VITE_GSR_URL ?? "http://localhost:5010";
-
-/** Halcyonic's hosted reasoner — the other named option at the enable moment. */
-export const HOSTED_ENDPOINT = "https://reasoner.halcyonic.systems";
 
 export type ReasonerConfig = {
   /** Off until the user turns it on. Nothing leaves the machine before that. */
@@ -109,9 +108,19 @@ export function resetReasonerForTest(): void {
   listeners.clear();
 }
 
-/** How the endpoint reads in the UI: "your own reasoner" vs "Halcyonic's". */
-export function endpointKind(endpoint: string): "hosted" | "own" {
-  return endpoint.replace(/\/+$/, "") === HOSTED_ENDPOINT ? "hosted" : "own";
+/** True when the endpoint is this machine. Every reasoner is the user's own
+ *  since #229, so the remaining distinction is whether the text stays on the
+ *  machine — which is also the only case where the served model is known
+ *  (the documented local GSR default), so it is the only case we name one. */
+export function isLoopback(endpoint: string): boolean {
+  const host = (() => {
+    try {
+      return new URL(endpoint).hostname;
+    } catch {
+      return "";
+    }
+  })();
+  return host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host === "::1";
 }
 
 // The desktop shell's CSP names the origins it may reach (src-tauri/tauri.conf.json
@@ -121,7 +130,6 @@ export function endpointKind(endpoint: string): "hosted" | "own" {
 export const DESKTOP_ALLOWED_ORIGINS = [
   "http://localhost:5010",
   "http://127.0.0.1:5010",
-  HOSTED_ENDPOINT,
 ];
 
 export function originOf(endpoint: string): string {

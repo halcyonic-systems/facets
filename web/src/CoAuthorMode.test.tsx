@@ -36,7 +36,7 @@ describe("CoAuthorMode", () => {
     expect(m).toContain("Draft");
   });
 
-  it("offers the enable choice — and no drafting surface — while the reasoner is off", async () => {
+  it("asks for the reasoner's address — and offers no drafting surface — while it is off", async () => {
     resetReasonerForTest();
     setReasonerConfigBackend(memoryReasonerBackend(null));
     await initReasoner();
@@ -44,10 +44,12 @@ describe("CoAuthorMode", () => {
       <CoAuthorMode turns={[]} onDraft={noopDraft} onLoad={noopLoad} />,
     );
     expect(m).toContain("Turn on the co-author");
-    expect(m).toContain("Your own reasoner");
-    expect(m).toContain("Halcyonic&#x27;s hosted reasoner");
+    expect(m).toContain("The reasoner&#x27;s address");
     expect(m).toContain("http://localhost:5010");
     expect(m).not.toContain("Describe a system in plain language");
+    // #229 — the enable moment offers no hosted alternative, and names no host
+    // but this machine's. The gate is where a remote URL would be published.
+    expect(m).not.toMatch(/reasoner\.halcyonic\.systems|hosted/i);
   });
 
   it("says which reasoner is in use once it is on, and offers to turn it off", async () => {
@@ -56,7 +58,7 @@ describe("CoAuthorMode", () => {
       <CoAuthorMode turns={[]} onDraft={noopDraft} onLoad={noopLoad} />,
     );
     expect(m).toContain("Co-author is on");
-    expect(m).toContain("your own reasoner");
+    expect(m).toContain("your reasoner");
     expect(m).toContain("http://127.0.0.1:5010");
     expect(m).toContain("Turn off");
   });
@@ -113,7 +115,9 @@ describe("CoAuthorMode", () => {
 
 describe("stageLabel (#218 — naming the stage instead of a static 'Drafting…')", () => {
   const LOCAL = "http://localhost:5010";
-  const HOSTED = "https://reasoner.halcyonic.systems";
+  // A reasoner the user runs somewhere other than this machine. Since #229 this
+  // is the only non-loopback case there is — the app ships no remote address.
+  const REMOTE = "http://gsr.example.com:5010";
 
   it("falls back to the static label when no stage is known yet", () => {
     expect(stageLabel(null, LOCAL)).toBe("Drafting…");
@@ -123,9 +127,9 @@ describe("stageLabel (#218 — naming the stage instead of a static 'Drafting…
     expect(stageLabel({ kind: "asking" }, LOCAL)).toBe("Asking the local reasoner (gemma4)…");
   });
 
-  it("does not invent a model name for the hosted reasoner", () => {
-    const label = stageLabel({ kind: "asking" }, HOSTED);
-    expect(label).toBe("Asking Halcyonic's reasoner…");
+  it("does not invent a model name for a reasoner that is not on this machine", () => {
+    const label = stageLabel({ kind: "asking" }, REMOTE);
+    expect(label).toBe("Asking your reasoner…");
     expect(label).not.toMatch(/gemma|claude/i);
   });
 
