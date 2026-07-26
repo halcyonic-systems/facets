@@ -268,6 +268,134 @@ def provenance_gates() -> list[str]:
     return violations
 
 
+# --- documentation IA gates (issue #235) ------------------------------------
+# The checks above ask whether a doc is *honest*. These three ask whether it is
+# *findable* — the question the W30 audit never asked. Their scope is deliberately
+# WIDER than live_docs(): the provenance/vocabulary gates read 15 of 45 docs/
+# files by design (design notes and archives keep their own register), and every
+# orphan lives in exactly the directories that set excludes. A gate that cannot
+# see the problem area is not a gate.
+#
+#   4. broken-relative-link — every markdown link resolves on disk.
+#   5. zero-inbound-link    — every indexed doc is referenced by path from at
+#                             least one other markdown file. Source-comment
+#                             references do not count: a doc a reader can only
+#                             find by grepping Rust is not findable.
+#   6. index-reachability   — every docs/ and spec/ file is reachable from
+#                             docs/README.md, the single canonical index,
+#                             walking *only* through index files (README.md).
+#
+# On (6): the literal "present in docs/README.md" reading would force 45 flat
+# entries into one file. Walking through sub-indexes instead is what docs/language/
+# already does — a front-door README that the root index links once — and it
+# catches the same misses, because a file listed nowhere is unreachable either way.
+IA_SKIP_DIRS = {".git", "target", "node_modules", "dist", ".venv", "venv", "pkg"}
+MD_LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
+FENCE = re.compile(r"^\s*(?:```|~~~)")
+
+
+def repo_markdown() -> list[Path]:
+    """Every tracked-ish .md in the repo — the link *sources*."""
+    out = []
+    for p in REPO.rglob("*.md"):
+        if IA_SKIP_DIRS & set(p.relative_to(REPO).parts):
+            continue
+        out.append(p)
+    return sorted(out)
+
+
+def indexed_docs() -> list[Path]:
+    """The docs subject to the orphan check: the reference layer plus the two
+    package READMEs the issue found referenced only in prose."""
+    out = sorted((REPO / "docs").rglob("*.md")) + sorted((REPO / "spec").rglob("*.md"))
+    for extra in ("pipeline/README.md", "examples/README.md"):
+        p = REPO / extra
+        if p.is_file():
+            out.append(p)
+    return [p for p in out if p.is_file()]
+
+
+def doc_links(path: Path) -> list[tuple[int, str]]:
+    """(line, target) for every relative markdown link outside a fenced block."""
+    out: list[tuple[int, str]] = []
+    in_fence = False
+    for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if FENCE.match(line):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        for m in MD_LINK.finditer(line):
+            target = m.group(1).split("#")[0]
+            if not target or target.startswith(("http://", "https://", "mailto:", "#")):
+                continue
+            out.append((line_no, target))
+    return out
+
+
+def ia_gates() -> tuple[list[str], list[str], list[str]]:
+    sources = repo_markdown()
+    targets = set(indexed_docs())
+    inbound: dict[Path, set[Path]] = {p: set() for p in targets}
+    # adjacency for the reachability walk, keyed by resolved path
+    edges: dict[Path, set[Path]] = {}
+
+    broken: list[str] = []
+    for src in sources:
+        rel = src.relative_to(REPO)
+        edges.setdefault(src.resolve(), set())
+        for line_no, target in doc_links(src):
+            resolved = (src.parent / target).resolve()
+            if resolved.is_dir():
+                # a folder link is satisfied by the folder; it *indexes* via its README
+                readme = resolved / "README.md"
+                if readme.is_file():
+                    edges[src.resolve()].add(readme)
+                    if readme in inbound:
+                        inbound[readme].add(src)
+                continue
+            if not resolved.exists():
+                broken.append(f"{rel}:{line_no}: link does not resolve: {target}")
+                continue
+            edges[src.resolve()].add(resolved)
+            if resolved in inbound:
+                inbound[resolved].add(src)
+
+    orphans = [
+        f"{p.relative_to(REPO)}: no inbound link from any markdown file "
+        f"(index it, or link it from the doc it belongs to)"
+        for p in sorted(targets)
+        if not inbound[p]
+    ]
+
+    # (6) walk from the canonical index, traversing only docs/ index files
+    root = (REPO / "docs" / "README.md").resolve()
+    reached: set[Path] = set()
+    frontier = [root]
+    while frontier:
+        node = frontier.pop()
+        if node in reached:
+            continue
+        reached.add(node)
+        if node.name != "README.md":
+            continue  # only index files are traversed
+        try:
+            node.relative_to(REPO / "docs")
+        except ValueError:
+            continue  # only docs/ indexes are traversed
+        frontier += sorted(edges.get(node, ()))
+
+    unindexed = [
+        f"{p.relative_to(REPO)}: not reachable from docs/README.md "
+        f"(add it to that index, or to the README.md of its folder)"
+        for p in sorted(targets)
+        if p.resolve() not in reached
+        and (str(p.relative_to(REPO)).startswith("docs/") or str(p.relative_to(REPO)).startswith("spec/"))
+        and p.resolve() != root
+    ]
+    return broken, orphans, unindexed
+
+
 def main() -> int:
     all_violations: list[str] = []
     for doc in live_docs():
@@ -276,6 +404,30 @@ def main() -> int:
     mode_violations = mode_entry_vocab()
     hedge_violations = hedge_vocab()
     provenance_violations = provenance_gates()
+    broken_links, orphans, unindexed = ia_gates()
+
+    if broken_links:
+        print("\ndoc-lint: broken relative links (issue #235)\n", file=sys.stderr)
+        for v in broken_links:
+            print(f"  {v}", file=sys.stderr)
+    if orphans:
+        print("\ndoc-lint: orphaned docs — zero inbound links (issue #235)\n", file=sys.stderr)
+        for v in orphans:
+            print(f"  {v}", file=sys.stderr)
+        print(
+            "\nA document nothing points at is not published, it is stored. "
+            "Give it an inbound link or delete it.",
+            file=sys.stderr,
+        )
+    if unindexed:
+        print("\ndoc-lint: docs missing from the index (issue #235)\n", file=sys.stderr)
+        for v in unindexed:
+            print(f"  {v}", file=sys.stderr)
+        print(
+            "\ndocs/README.md is the one canonical index; sub-folder README.md files "
+            "extend it. CONTRIBUTING.md requires every new doc be indexed.",
+            file=sys.stderr,
+        )
 
     if hedge_violations:
         print("\ndoc-lint: hedged proof vocabulary in LIVE docs (issue #232)\n", file=sys.stderr)
@@ -291,7 +443,15 @@ def main() -> int:
         for v in provenance_violations:
             print(f"  {v}", file=sys.stderr)
 
-    if all_violations or mode_violations or hedge_violations or provenance_violations:
+    if (
+        all_violations
+        or mode_violations
+        or hedge_violations
+        or provenance_violations
+        or broken_links
+        or orphans
+        or unindexed
+    ):
         if all_violations:
             print("doc-lint: provenance drift in LIVE docs (issue #92)\n", file=sys.stderr)
             for v in all_violations:
@@ -314,7 +474,8 @@ def main() -> int:
     gate_a = "Gate A resolving" if GATE_A_RAN else "Gate A SKIPPED (no SSF checkout)"
     print(
         f"doc-lint: OK — {len(live_docs())} LIVE docs clean; mode-entry and hedge "
-        f"vocabulary clean; provenance tables match the manifest; {gate_a}"
+        f"vocabulary clean; provenance tables match the manifest; {gate_a}; "
+        f"{len(indexed_docs())} indexed docs all reachable, linked, and link-resolving"
     )
     return 0
 
