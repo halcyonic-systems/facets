@@ -1,9 +1,54 @@
 # bert-lenses
 
-**A modeling and simulation instrument for systems — powered by SL, a novel
-system language.**
+**Draw a system, or write it. The kernel tells you whether it *is* one — and cites the rule if it isn't.**
 
-You describe a system by drawing it on a canvas, or by writing it as text:
+[![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
+[![CI](https://github.com/halcyonic-systems/bert-lenses/actions/workflows/ci.yml/badge.svg)](https://github.com/halcyonic-systems/bert-lenses/actions/workflows/ci.yml)
+[![wasm boundary](https://github.com/halcyonic-systems/bert-lenses/actions/workflows/wasm-exec.yml/badge.svg)](https://github.com/halcyonic-systems/bert-lenses/actions/workflows/wasm-exec.yml)
+[![Lean provenance](https://github.com/halcyonic-systems/bert-lenses/actions/workflows/lean-provenance.yml/badge.svg)](https://github.com/halcyonic-systems/bert-lenses/actions/workflows/lean-provenance.yml)
+
+<!-- SCREENSHOT SLOT (#252) ────────────────────────────────────────────────
+     One image goes here, above the fold, before any prose a reader must
+     parse. It should show the thing no other modeling tool does: a REFUSAL
+     on screen, with the precondition it cites.
+
+     Not yet inserted — which model and which refusal to show is a judgment
+     call about what the tool is for, and that is the decision this whole
+     issue exists to get right. Capture procedure:
+     .claude/docs/desktop-app-automation.md
+
+     ![The kernel refusing a model, citing the precondition](assets/readme/refusal.png)
+──────────────────────────────────────────────────────────────────────── -->
+
+Most modeling tools render what you draw. This one **judges** it: it decides
+whether what you described actually holds as a *system* under three traditions of
+systems science — Klir, Bunge, and Mobus — and every verdict cites the
+precondition it rests on. Where a model holds, you can run it against your own
+data.
+
+The theory underneath is machine-checked in Lean 4, pinned by commit, and gated
+in CI. You can audit it rather than trust it.
+
+## Try it
+
+```bash
+brew install just     # the one thing you install by hand (apt / cargo also fine)
+just preflight        # names anything else that is missing, with the install line
+just dev              # builds the wasm kernel, installs web deps, opens the app
+```
+
+From a cold clone that is about 40 seconds to a running instrument. Full
+prerequisite table and the manual commands are under
+[Prerequisites](#prerequisites).
+
+Then take the [**ten-minute quickstart**](docs/quickstart.md): author a model,
+provoke a refusal on purpose, read what comes back, and run a model over real
+data.
+
+## What it looks like in text
+
+You describe a system by drawing it on a canvas, or by writing it in SL — a
+small, line-oriented language that compiles deterministically:
 
 ```
 system : Concrete
@@ -17,64 +62,47 @@ flow "Process M" -> "Sink 5" : matter "product Z"
 *(an excerpt of [`fixtures/sl/process-m.sl`](fixtures/sl/process-m.sl) — Mobus's
 own textbook system paragraph, written in SL)*
 
-A formal kernel then does what no drawing tool does: it **judges** the model —
-deciding whether what you described actually holds as a *system* under each of
-three traditions of systems science (Klir, Bunge, Mobus), with every verdict
-citing the precondition it rests on. Where the model holds, you can run it: a
-deterministic dynamics run under a model-declared invariant, driven by your own
-data. The current engine supports one dynamics-kind — an Id-functor over ℝⁿ
-stocks with an additive conservation invariant — and further kinds are
-declarable.
+## Who this is for
 
-Three things make this unlike other modeling tools:
+**The newcomer** — anyone who wants to describe a system (a supply chain, a
+protocol, a cell, an organization), find out whether what they described actually
+*is* one, and watch it run. Start with the
+[quickstart](docs/quickstart.md). No systems-science background needed: each
+lens's palette carries its tradition's own vocabulary as you author, so you pick
+it up in place.
+
+**The auditor** — someone assessing the quality of the theory underneath, alone
+or with an LLM or another expert. Start with
+[`docs/theory-fidelity.md`](docs/theory-fidelity.md), then the
+[terminology concordance](docs/language/terminology-concordance.md) for the cited
+Klir·Bunge·Mobus lineage of every word. Every claim about the Lean cites a
+`claim_id` resolved against a pinned commit — see
+[`docs/lean-provenance.md`](docs/lean-provenance.md).
+
+Either path can stop here. What follows is what the tool believes, then its
+mechanics. [`docs/README.md`](docs/README.md) indexes everything else.
+
+## Three things make it unlike other modeling tools
 
 - **One model, three lenses.** Klir, Bunge, and Mobus are not styles or skins —
   they are three mathematically faithful views the kernel *generates* from one
   neutral model, each entered through its own machine-checked precondition.
   Author once; read it as any tradition.
-- **A language, not just a canvas.** SL is human-writable, line-oriented, and
-  compiles deterministically — a compiler, never an LLM. Its lexicon is drawn
-  from the traditions themselves (`component` is Bunge's word *and* Mobus's;
-  `mere` is Bunge's alone; the flow kinds are Bunge verbatim), with every
-  word's lineage cited in the
+- **A language, not just a canvas.** SL is human-writable and compiles
+  deterministically — a compiler, never an LLM. Its lexicon is drawn from the
+  traditions themselves (`component` is Bunge's word *and* Mobus's; `mere` is
+  Bunge's alone; the flow kinds are Bunge verbatim), with every word's lineage
+  cited in the
   [terminology concordance](docs/language/terminology-concordance.md). Text and
   canvas round-trip through the same model; neither is privileged.
 - **The theory is checkable.** The kernel's core is grounded in machine-checked
   Lean 4 proofs, and the tool refuses loudly with a citable reason rather than
   guessing. You can audit the theory under the instrument, not just trust it.
 
-**Who this is for.** Two readers, two paths in.
-
-*The newcomer* — anyone who wants to describe a system (a supply chain, a
-protocol, a cell, an organization), find out whether what they described actually
-*is* one, and watch it run. Start with [`docs/quickstart.md`](docs/quickstart.md):
-ten minutes from a clone to a model the kernel judges, a refusal you provoke on
-purpose, and a run over real data. (Install the [prerequisites](#prerequisites)
-first — it is one `brew install just` and one `just preflight`.) You need no
-systems-science background to begin — each lens's palette carries its tradition's
-own vocabulary as you author, so you pick it up in place, and every lens pairs its
-edge names with the math on-canvas, with inline symbol explainers in the edge
-popover (shipped 2026-07-20). A graded curriculum and an illustrated walkthrough
-are neither built nor tracked; both are recorded in
-[`docs/parked.md`](docs/parked.md).
-
-*The auditor* — someone assessing the quality of the theory underneath the
-instrument, on their own or with an LLM or another expert (likely an engineer,
-scientist, or mathematician, often with a systems or complexity background,
-though neither is required). Start with
-[`docs/theory-fidelity.md`](docs/theory-fidelity.md), then the
-[terminology concordance](docs/language/terminology-concordance.md) for the
-cited Klir·Bunge·Mobus lineage of every word.
-
-Either path can stop here. What follows is the mechanics, then the positions the
-tool takes — "What this tool believes" below states them in short, and
-[`docs/theory-fidelity.md`](docs/theory-fidelity.md) is the full cited version.
-[`docs/README.md`](docs/README.md) indexes everything else.
-
 **Rust is the brain, React is the face.** The kernel is Rust compiled to
 WebAssembly, and it owns all the formalism: every systemhood verdict, all
-validation, the dynamics run under its declared invariant. The web layer renders what
-the kernel decides and nothing more. `crates/` = truth · `web/` = face; any
+validation, the dynamics run under its declared invariant. The web layer renders
+what the kernel decides and nothing more. `crates/` = truth · `web/` = face; any
 systems logic in JS is a bug.
 
 ## What this tool believes
@@ -95,6 +123,14 @@ The maps all live in `Klir/ViewGeneration.lean` (despite the filename).
 counts-hold invariant is **machine-tested at runtime**, not Lean-proven. The
 canonical scope of what's proven vs tested is
 [`docs/theory-fidelity.md`](docs/theory-fidelity.md).
+
+**One dynamics-kind, and it says so.** Where a model holds, you can run it: a
+deterministic run under a model-declared invariant, driven by your own data. The
+current engine implements exactly one dynamics-kind — an Id-functor over ℝⁿ
+stocks with an additive conservation invariant — and further kinds are
+*declarable*, not implemented. Conservation is a property the model declares, not
+one the engine assumes; the position of record is
+[`docs/design/dynamics-principled-position.md`](docs/design/dynamics-principled-position.md).
 
 **A lens is a commitment the kernel checks.** Klir asks only for
 things-in-relation. Bunge demands a bond between distinct components, or refuses
