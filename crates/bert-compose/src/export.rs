@@ -1005,4 +1005,33 @@ mod tests {
         }
         assert!(r.balance().abs() < 1e-3, "loaded circuit conserves");
     }
+
+    /// Law: a model that projects to nothing builds no circuit. An Operational
+    /// model with no environment terminals and no level-1 work processes passes
+    /// projection (the bond precondition is Structural mode's, not Operational's)
+    /// and yields an empty spec — so the loader, not the projector, is what says
+    /// there is nothing here to run. Reachable, therefore witnessed (#231).
+    #[test]
+    fn a_model_that_projects_to_nothing_builds_no_circuit() {
+        let empty: WorldModel = serde_json::from_str(EMPTY_OPERATIONAL).expect("parses");
+        let spec = bert_core::operational::validate_operational(&empty)
+            .expect("an empty Operational model projects — there is nothing to refuse");
+        assert!(
+            spec.sources.is_empty() && spec.sinks.is_empty() && spec.processes.is_empty(),
+            "the separating instance really is empty"
+        );
+        assert_eq!(
+            from_world_model(&empty).err().as_deref(),
+            Some("model has no sources, sinks, or primitive subsystems"),
+            "the loader refuses a circuit with no nodes"
+        );
+
+        // Separating instance: the sample model has nodes and loads.
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let sample: WorldModel = serde_json::from_str(json).unwrap();
+        assert!(from_world_model(&sample).is_ok(), "a populated model loads");
+    }
+
+    /// The smallest model that parses, projects, and yields an empty spec.
+    const EMPTY_OPERATIONAL: &str = r#"{"version":2,"mode":"Operational","environment":{"info":{"id":"E-1","level":-1,"name":"Environment","description":""},"sources":[],"sinks":[]},"systems":[],"interactions":[],"hidden_entities":[]}"#;
 }

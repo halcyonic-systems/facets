@@ -209,21 +209,14 @@ pub fn force_and_run(
     t: f64,
     today: &str,
 ) -> Result<RunReadout, String> {
-    // Guard the run horizon before anything else: `record_over` derives the tick
-    // count as `round(t / dt)`, so a zero/negative/non-finite dt or a non-finite
-    // t yields `inf` (→ `usize::MAX` ticks) and the run would spin the browser
-    // tab forever — a session failure as bad as a white screen. The wizard can
-    // produce dt=0 (an empty/degenerate Δt field), so refuse it with a legible
-    // reason instead. A non-finite/negative t collapses to 0 ticks except when
-    // it is `inf`, which also runs away; require both finite.
-    if !dt.is_finite() || dt <= 0.0 {
-        return Err(format!(
-            "run refused: Δt must be a positive, finite number (got {dt})"
-        ));
-    }
-    if !t.is_finite() {
-        return Err(format!("run refused: the horizon t must be finite (got {t})"));
-    }
+    // Check the run's precondition before doing any import work: `(Δt, T)` must
+    // name a run at all. The precondition itself belongs to dynamics, not to
+    // CSV import, so it is stated and enforced once in the engine
+    // (`bert_compose::ticks_over`) and only *asked* here — the wizard can produce
+    // dt=0 from an empty Δt field, and refusing early means a legible verdict
+    // instead of an import that only fails at the last step. Deleting this call
+    // does not open a door: `record_over` below refuses the same inputs.
+    bert_compose::ticks_over(dt, t)?;
 
     let (headers, rows) = crate::tether::parse_csv(csv_text).map_err(|e| format!("{e:?}"))?;
 
@@ -260,7 +253,7 @@ pub fn force_and_run(
     let spec = bert_core::operational::validate_operational(&model)
         .map_err(|errors| format!("model is not executable ({} reason(s))", errors.len()))?;
     let mut circuit = bert_compose::from_spec(&spec);
-    let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t);
+    let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)?;
     Ok(summarize(&model, &imported, &circuit, &run, dt))
 }
 
@@ -557,7 +550,8 @@ mod tests {
 
         let spec = bert_core::operational::validate_operational(&model).expect("projects");
         let mut circuit = bert_compose::from_spec(&spec);
-        let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0);
+        let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0)
+            .expect("Δt = 1 over T = 4 names a run");
         let readout = summarize(
             &model,
             &crate::tether::ImportedData::default(),
@@ -609,7 +603,8 @@ mod tests {
 
         let spec = bert_core::operational::validate_operational(&model).expect("projects");
         let mut circuit = bert_compose::from_spec(&spec);
-        let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0);
+        let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0)
+            .expect("Δt = 1 over T = 4 names a run");
         let readout = summarize(
             &model,
             &crate::tether::ImportedData::default(),
@@ -657,7 +652,8 @@ mod tests {
 
         let spec = bert_core::operational::validate_operational(&model).expect("projects");
         let mut circuit = bert_compose::from_spec(&spec);
-        let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0);
+        let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0)
+            .expect("Δt = 1 over T = 4 names a run");
         let readout = summarize(
             &model,
             &crate::tether::ImportedData::default(),
@@ -704,7 +700,8 @@ mod tests {
 
         let spec = bert_core::operational::validate_operational(&model).expect("projects");
         let mut circuit = bert_compose::from_spec(&spec);
-        let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0);
+        let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, 1.0, 4.0)
+            .expect("Δt = 1 over T = 4 names a run");
         let readout = summarize(
             &model,
             &crate::tether::ImportedData::default(),
@@ -819,9 +816,67 @@ mod tests {
         let manifest: RunManifest =
             serde_json::from_str(r#"{"model":"","data":"","t":2.0,"mapping":[{"column":"t","as":"time"}]}"#)
                 .unwrap();
+        // Pin WHICH gate fired. Four refusals sit on this path (manifest apply,
+        // draft totality, units, time-uniqueness) and `!e.is_empty()` was
+        // satisfied by any of them, so the test could not tell them apart — or
+        // notice if the one it means to witness stopped firing (#231). The gate
+        // that actually fires is manifest resolution: an unmapped CSV column is
+        // caught while applying the manifest, before the draft's own T1.
         match force_and_run(model, csv, &manifest, 1.0, 2.0, "2026-07-14") {
             Ok(_) => panic!("incomplete mapping should be refused"),
-            Err(e) => assert!(!e.is_empty()),
+            Err(e) => assert_eq!(
+                e,
+                "mapping is invalid: CSV column \"inflow\" is not in the manifest — every \
+                 column must be spoken for (map it, or mark it \"ignore\" explicitly)",
+                "manifest resolution is the gate that must fire here, and it must name the column"
+            ),
         }
+    }
+
+    /// Law: a model that does not project is refused before any run — the
+    /// forcing seam runs executable models only, and says how many reasons it
+    /// found rather than running a partial one (#231).
+    #[test]
+    fn a_model_that_does_not_project_is_refused_before_running() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let model: WorldModel = serde_json::from_str(json).unwrap();
+        let (csv, manifest) = trivial_mapping(&model);
+
+        // Separating instance: as authored, this same model + mapping runs.
+        force_and_run(model.clone(), &csv, &manifest, 1.0, 2.0, "2026-07-14")
+            .expect("the sample projects and runs as authored");
+
+        // Strip a work process's Mobus primitive — nothing states which process
+        // it is, so the model no longer projects.
+        let mut broken = model;
+        broken
+            .systems
+            .iter_mut()
+            .find(|s| s.info.level == 1)
+            .expect("the sample has a level-1 work process")
+            .agent
+            .as_mut()
+            .expect("it carries an agent model")
+            .primitive = None;
+
+        let Err(err) = force_and_run(broken, &csv, &manifest, 1.0, 2.0, "2026-07-14") else {
+            panic!("a model that does not project must be refused, not run");
+        };
+        assert!(
+            err.starts_with("model is not executable ("),
+            "the refusal names the projection gate; got: {err}"
+        );
+    }
+
+    /// A one-column time-only CSV and the manifest that maps it — the smallest
+    /// input that clears every mapping gate, so what a run refuses afterwards is
+    /// about the model rather than the import.
+    fn trivial_mapping(_model: &WorldModel) -> (String, RunManifest) {
+        let csv = "t\n0\n1\n2\n".to_string();
+        let manifest: RunManifest = serde_json::from_str(
+            r#"{"model":"","data":"","t":2.0,"mapping":[{"column":"t","as":"time"}]}"#,
+        )
+        .unwrap();
+        (csv, manifest)
     }
 }

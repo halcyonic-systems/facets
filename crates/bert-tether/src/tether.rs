@@ -267,10 +267,15 @@ pub struct MappingDraft {
 }
 
 /// A CSV parse error, named for the import failure message.
+///
+/// One variant, because there is one way this parse fails. A `NoColumns` arm
+/// used to sit beside `Empty` and could never fire: blank lines are filtered
+/// before the header is taken, and `split_csv_line` always pushes a final field,
+/// so the header vector is never empty. A check nothing can fail proves nothing,
+/// so it was deleted rather than witnessed (#231).
 #[derive(Debug, PartialEq)]
 pub enum CsvError {
     Empty,
-    NoColumns,
 }
 
 /// Parse CSV text into headers + rows. Minimal by design (contract §6: csv only,
@@ -282,9 +287,6 @@ pub fn parse_csv(text: &str) -> Result<(Vec<String>, Vec<Vec<String>>), CsvError
     let mut lines = text.lines().filter(|l| !l.trim().is_empty());
     let header_line = lines.next().ok_or(CsvError::Empty)?;
     let headers = split_csv_line(header_line);
-    if headers.is_empty() {
-        return Err(CsvError::NoColumns);
-    }
     let rows: Vec<Vec<String>> = lines.map(split_csv_line).collect();
     Ok((headers, rows))
 }
