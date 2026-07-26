@@ -25,22 +25,24 @@ exists, the kernel decides whether it holds as a system under three traditions o
 systems science — Klir, Bunge, and Mobus — and every verdict names the condition
 it rests on. Where a model holds, it runs against your own data.
 
-Three ways in, one model underneath. Notice that the LLM path runs *through* SL
-rather than around it: a draft is text the same deterministic compiler reads, and
-you accept or discard it. No generated text reaches a verdict.
+Three ways in, one model underneath — and the LLM path runs *through* SL rather
+than around it. A draft is text the same deterministic compiler reads, and you
+accept or discard it. No generated text reaches a verdict.
 
-```mermaid
-flowchart LR
-    LLM["LLM draft"] --> SL["SL text"]
-    CANVAS["canvas"] --> K
-    SL --> K
-    K["the kernel<br/><i>Rust, compiled to WebAssembly</i>"] --> V["verdict<br/><i>cites the precondition</i>"]
-    K --> RUN["run<br/><i>under a declared invariant</i>"]
+```
+  you author                                          you get back
+  ──────────                                          ────────────
+
+  canvas ─────┐
+              │                                  ┌──▶  verdict
+  SL text ────┼──▶  crates/ · Rust → WASM  ──────┤     cites the rule
+              │     owns every verdict,          │
+  LLM draft ──┘     all validation, the run      └──▶  run
+   (writes SL)                                          under a declared
+                    web/ renders it. Nothing more.      invariant
 ```
 
-The kernel owns all of the formalism — every verdict, all validation, the run.
-The interface renders what it decides and nothing more: `crates/` is truth,
-`web/` is face, and any systems logic in JS is a bug.
+`crates/` is truth, `web/` is face, and any systems logic in JS is a bug.
 
 ## Try it
 
