@@ -94,7 +94,9 @@ no contemporaneous alternatives memo.)*
 - **The vendored engine carries a small standing cost.** `bert-core` /
   `bert-compose` are vendored (no cross-repo path deps), so upstream engine
   changes are pulled in deliberately, not tracked live — the price of a
-  self-contained, wasm-ready kernel.
+  self-contained, wasm-ready kernel. The branch point, the drift, and what
+  "deliberately" means as a procedure are recorded in
+  [`../VENDORING.md`](../VENDORING.md).
 
 ## Status note
 
