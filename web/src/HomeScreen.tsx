@@ -34,6 +34,7 @@ import {
   type Shelf,
 } from "./home";
 import { openExternal } from "./desktop";
+import { buildInfo, provenanceLines } from "./buildInfo";
 
 const DOCS_URL = "https://github.com/halcyonic-systems/bert-lenses/tree/main/docs";
 
@@ -352,7 +353,56 @@ export function HomeMenu({ onCreate, onOpenLibrary }: { onCreate: () => void; on
             href={DOCS_URL}
           />
         </Ledger>
+        <About />
       </Column>
+    </div>
+  );
+}
+
+/** What this build is (#229). The instrument tells its users that every verdict
+ *  is machine-checked against Lean proofs in another repository; a person
+ *  holding the binary had no way to find out WHICH proofs. This is that way —
+ *  the version, the commit it was built from, the SSF commit the claims are
+ *  pinned to, and a hash of the kernel wasm they can recompute from the file in
+ *  their own bundle. It sits on the landing page rather than behind a menu
+ *  because the claim it substantiates is on the landing page too. */
+function About() {
+  return (
+    <div className="mt-10">
+      <BlockHeader label="This build" count={buildInfo.gitSha} />
+      <div className="border-x border-t" style={{ borderColor: "var(--border)" }}>
+        {provenanceLines().map((line) => (
+          <div
+            key={line.label}
+            className="grid grid-cols-[9rem_1fr] gap-3 border-b px-4 py-2"
+            style={{ borderColor: "var(--border)" }}
+          >
+            <span
+              className="text-[11px] uppercase tracking-[0.14em]"
+              style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+            >
+              {line.label}
+            </span>
+            <span className="min-w-0">
+              <span
+                className="block break-all text-[11px]"
+                style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}
+              >
+                {line.value}
+              </span>
+              {line.note && (
+                <span className="mt-1 block text-[11px]" style={{ color: "var(--text-muted)" }}>
+                  {line.note}
+                </span>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 max-w-2xl text-[11px]" style={{ color: "var(--text-muted)" }}>
+        Licence and third-party notices ship beside this app, in its{" "}
+        <span style={{ fontFamily: "var(--font-mono)" }}>Contents/Resources</span> folder.
+      </p>
     </div>
   );
 }

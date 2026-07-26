@@ -54,6 +54,20 @@ describe("home", () => {
     expect(html).not.toContain("Write SL");
     expect(html).not.toContain("Open a folder");
   });
+
+  // #229 — the landing page asserts the kernel judges under Klir, Bunge and
+  // Mobus, so the landing page is where a reader must be able to find out which
+  // proofs, at which commit. The values are injected by vite (absent here); the
+  // claim under test is that the surface exists and names the right facts.
+  it("carries the build's provenance, on the same page as the claim it backs", () => {
+    const html = renderToStaticMarkup(<HomeMenu onCreate={noop} onOpenLibrary={noop} />);
+    expect(html).toContain("This build");
+    expect(html).toContain("Built from");
+    expect(html).toContain("Proof base");
+    expect(html).toContain("systems-science-foundations");
+    expect(html).toContain("Kernel wasm SHA-256");
+    expect(html).toContain("shasum -a 256");
+  });
 });
 
 describe("library browser", () => {
