@@ -1,0 +1,51 @@
+# Gate A — the blocking provenance gate (#232). Its own file, per CONTRIBUTING's
+# one-gate-one-file rule.
+#
+# WHAT WAS UNCOVERED. `docs/lean-provenance.md` carried a sentence certifying
+# that every citation in it had been verified against the pinned SSF commit. One
+# row cited `externalFlows_within`, a field that exists at no commit of SSF (the
+# field is `externalFlows_nodes`). Nothing could have caught it: the citations
+# were prose, hand-edited, in a document that graded itself. The certification
+# line described a process that did not exist as a process.
+#
+# WHAT THIS RUNS. `docs/lean-manifest.json` is now the source of truth — one row
+# per claim, carrying the SSF symbol and the Lean keyword it is declared with.
+# This job clones SSF at the manifest's pin and resolves every row: the symbol
+# must exist, in the file the manifest names, with the kind the manifest
+# declares. The kind half is the one that earns its keep — it fails when a doc
+# says a Rust check "mirrors Lean theorems" over predicates that are Lean
+# `def`s. It also re-renders the doc's generated tables and fails if they differ
+# from the manifest, so a hand-edit to a table cannot survive a push.
+#
+# WHAT IT DOES NOT ESTABLISH. Resolution parses Lean source; it does not
+# elaborate it. Compilation, sorry-freeness, and the axiom footprint are the
+# audit path's job (`lake build`, `#print axioms`), not this gate's.
+#
+# The HEAD clock lives in lean-provenance-head.yml. Locally: `just provenance`.
+
+name: lean-provenance
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gate-a:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Full history: the pin is an arbitrary commit, not necessarily reachable
+      # from a shallow default-branch clone.
+      - name: Checkout systems-science-foundations
+        uses: actions/checkout@v4
+        with:
+          repository: halcyonic-systems/systems-science-foundations
+          path: .ssf
+          fetch-depth: 0
+
+      - name: Generated tables match the manifest
+        run: python3 scripts/lean_provenance.py check
+
+      - name: Gate A — every manifest symbol resolves, with its declared kind
+        run: python3 scripts/lean_provenance.py resolve --ssf .ssf

@@ -1,0 +1,47 @@
+# Gate B — the SSF HEAD clock (#232). Scheduled, loud, and deliberately
+# NON-BLOCKING: it does not run on push or pull_request, so it can never fail a
+# merge. Upstream moving is not a defect in someone's pull request.
+#
+# WHY IT EXISTS. The pin is allowed to be behind. It is not allowed to be behind
+# silently. Gate A proves the citations were true at the pin and will keep
+# proving that forever, including long after the pin has stopped describing
+# anything upstream still contains. Gate B is the other clock: the same
+# resolution against SSF HEAD, weekly.
+#
+# A FAILURE HERE IS THE UNPARK TRIGGER issue #127 is missing. It means a symbol
+# this repo cites has been renamed, deleted, or changed kind upstream. The
+# response is the "Update discipline" section of docs/lean-provenance.md, run
+# the same day: replay the pin, rewrite the staleness budget, repair any claim
+# the rename touched.
+#
+# WHAT IT CANNOT SEE. Additions. A new field on a structure this repo describes
+# breaks no citation and passes this gate cleanly, while falsifying any closed
+# enumeration in prose — which is exactly what `interfaces_carry_flow` did. That
+# is why the replay step reads the diff by hand and why closed counts are
+# flagged in the manifest as `shape`.
+#
+# Locally: `just provenance-head`.
+
+name: lean-provenance-head
+
+on:
+  schedule:
+    - cron: "0 13 * * 1"   # Mondays, 13:00 UTC
+  workflow_dispatch:
+
+jobs:
+  gate-b:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout systems-science-foundations at HEAD
+        uses: actions/checkout@v4
+        with:
+          repository: halcyonic-systems/systems-science-foundations
+          path: .ssf
+
+      - name: Gate B — every manifest symbol still resolves at SSF HEAD
+        run: |
+          python3 scripts/lean_provenance.py resolve \
+            --ssf .ssf --rev HEAD --label "Gate B (SSF HEAD)"

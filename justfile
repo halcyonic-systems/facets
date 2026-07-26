@@ -29,6 +29,21 @@ check:
     cd web && npx vitest run
     cd web && npx vite build
 
+# Re-render docs/lean-provenance.md's tables from docs/lean-manifest.json, then
+# run Gate A: every cited SSF symbol resolves at the pin WITH its declared kind.
+# The tables are generated — edit the manifest, never the doc. `just check` runs
+# the read-only half of this (render-check + Gate A when SSF is present) via
+# doc_lint; CI's lean-provenance.yml clones SSF so it can never skip.
+provenance:
+    python3 scripts/lean_provenance.py render
+    python3 scripts/lean_provenance.py resolve
+
+# Gate B (mirrors .github/workflows/lean-provenance-head.yml). Non-blocking by
+# design: it asks whether the citations still resolve against SSF HEAD, and a
+# failure is the trigger to replay the pin, not a reason to fail a PR.
+provenance-head:
+    python3 scripts/lean_provenance.py resolve --rev origin/main --label "Gate B (SSF HEAD)"
+
 # Execute the shipped wasm package (mirrors .github/workflows/wasm-exec.yml).
 # The boundary gate: `cargo test` is native and `vitest` reads committed
 # fixtures, so nothing else in this repo runs the marshaling layer the face

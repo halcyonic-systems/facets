@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Provenance drift-gate for LIVE docs (issue #92).
+"""Provenance drift-gate for LIVE docs (issues #92, #90, #232).
 
 The terminology concordance is the authoritative attribution source. LIVE docs
 must *cite* it, not re-assert Mobus/Bunge provenance on their own. Three checks:
@@ -22,6 +22,8 @@ Exit non-zero on any violation so `just check` / CI fail on drift.
 
 from __future__ import annotations
 
+import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -182,14 +184,114 @@ def mode_entry_vocab() -> list[str]:
     return violations
 
 
+# --- forbidden hedges (issue #232) -----------------------------------------
+# The ~470-occurrence proof-vocabulary census searched proof VERBS. It never
+# searched the softeners that carry the same load for a skimming reader — the
+# word that lets a sentence claim a proof's authority while remaining literally
+# defensible. Two rules, both with separating instances in the pre-#232 tree:
+#
+#   H1  a hedge adjacent to a proof word: "essentially machine-checked",
+#       "in the spirit of the Lean", "aligned with SSF", "as good as proven".
+#       Retired from LIVE docs by #232; this keeps it retired.
+#   H2  "mirrors Lean X" without saying what X *is*. Three LIVE lines said a
+#       Rust check "mirrors Lean theorems" or "Mirrors Lean `Kernel.HasBond`";
+#       `HasBond` and `Irreflexive` are Lean `def`s, so the first is false and
+#       the second is silent about the one fact that matters. The honest form
+#       names the kind and the symbol: "mirrors the Lean definition
+#       `Kernel.HasBond`". This rule requires exactly that.
+#
+# Scope: LIVE docs. Design docs and archives keep their own register.
+HEDGE = re.compile(
+    r"essentially\s+(?:machine-checked|proven|proved|verified)"
+    r"|effectively\s+(?:machine-checked|proven|proved)"
+    r"|basically\s+(?:machine-checked|proven|proved)"
+    r"|morally\s+(?:a\s+)?(?:theorem|proof|proven)"
+    r"|as good as\s+(?:proven|proved|machine-checked)"
+    r"|in the spirit of the Lean"
+    r"|aligned with (?:the )?(?:SSF|Lean)",
+    re.IGNORECASE,
+)
+MIRRORS_LEAN = re.compile(r"[Mm]irrors?\s+(?:the\s+)?Lean\b")
+KIND_WORD = re.compile(r"\b(?:def|definition|structure|field|class|theorem|lemma)\b")
+BACKTICKED = re.compile(r"`[^`]+`")
+
+
+def hedge_vocab() -> list[str]:
+    violations: list[str] = []
+    for path in live_docs():
+        rel = path.relative_to(REPO)
+        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if HEDGE.search(line):
+                violations.append(
+                    f"{rel}:{line_no}: hedged proof vocabulary — say what is proved "
+                    f"and where, or say the weaker true thing: {line.strip()[:90]}"
+                )
+            for m in MIRRORS_LEAN.finditer(line):
+                tail = line[m.end() : m.end() + 140]
+                if not (KIND_WORD.search(tail) and BACKTICKED.search(tail)):
+                    violations.append(
+                        f"{rel}:{line_no}: \"mirrors Lean …\" must name the declaration's "
+                        f"kind AND the symbol (e.g. \"mirrors the Lean definition "
+                        f"`Kernel.HasBond`\"): {line.strip()[:90]}"
+                    )
+    return violations
+
+
+# --- the provenance manifest gates (issue #232) -----------------------------
+# The tables in docs/lean-provenance.md are generated from docs/lean-manifest.json.
+# Two checks run here so `just check` carries them:
+#   - the generated blocks match the manifest (no SSF needed, always blocking);
+#   - Gate A: every manifest symbol resolves at the pin WITH its declared kind
+#     (needs an SSF checkout; skips loudly without one, like the Rust-side
+#     lean_citations_resolve_or_skip_gracefully). CI never skips — the
+#     lean-provenance.yml workflow clones SSF.
+GATE_A_RAN = False
+
+
+def provenance_gates() -> list[str]:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import lean_provenance as lp
+
+    manifest = json.loads(lp.MANIFEST.read_text(encoding="utf-8"))
+    violations: list[str] = []
+    if lp.cmd_check(manifest) != 0:
+        violations.append(
+            "docs/lean-provenance.md is out of date with docs/lean-manifest.json "
+            "(run `just provenance`)"
+        )
+    # SSF_DIR matches the convention the Rust-side oracle test uses.
+    ssf = Path(os.environ.get("SSF_DIR", REPO.parent / "systems-science-foundations"))
+    global GATE_A_RAN
+    GATE_A_RAN = (ssf / ".git").exists()
+    if lp.cmd_resolve(manifest, ssf, None, "  Gate A (pin)") != 0:
+        violations.append("Gate A failed — a manifest citation does not resolve at the pin")
+    return violations
+
+
 def main() -> int:
     all_violations: list[str] = []
     for doc in live_docs():
         all_violations += check_file(doc)
 
     mode_violations = mode_entry_vocab()
+    hedge_violations = hedge_vocab()
+    provenance_violations = provenance_gates()
 
-    if all_violations or mode_violations:
+    if hedge_violations:
+        print("\ndoc-lint: hedged proof vocabulary in LIVE docs (issue #232)\n", file=sys.stderr)
+        for v in hedge_violations:
+            print(f"  {v}", file=sys.stderr)
+        print(
+            "\nNever describe as verified, machine-checked, or proven anything argued "
+            "in prose. Name the Lean symbol and its kind, or state the weaker true thing.",
+            file=sys.stderr,
+        )
+    if provenance_violations:
+        print("\ndoc-lint: Lean provenance manifest (issue #232)\n", file=sys.stderr)
+        for v in provenance_violations:
+            print(f"  {v}", file=sys.stderr)
+
+    if all_violations or mode_violations or hedge_violations or provenance_violations:
         if all_violations:
             print("doc-lint: provenance drift in LIVE docs (issue #92)\n", file=sys.stderr)
             for v in all_violations:
@@ -209,7 +311,11 @@ def main() -> int:
             )
         return 1
 
-    print(f"doc-lint: OK — {len(live_docs())} LIVE docs clean, mode-entry vocabulary clean")
+    gate_a = "Gate A resolving" if GATE_A_RAN else "Gate A SKIPPED (no SSF checkout)"
+    print(
+        f"doc-lint: OK — {len(live_docs())} LIVE docs clean; mode-entry and hedge "
+        f"vocabulary clean; provenance tables match the manifest; {gate_a}"
+    )
     return 0
 
 

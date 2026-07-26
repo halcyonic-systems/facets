@@ -268,11 +268,17 @@ mod tests {
 
     /// Law: a lens is pure presentation — it must never change the
     /// simulation's dynamics, so every lens produces a byte-identical
-    /// trajectory (the K≅2 invariance, machine-checked).
-    /// THE artifact, as a test: a lens is pure presentation, so the universal
-    /// homeostat produces a byte-identical CSV under every lens. The dynamics
-    /// do not know which domain you're reading — that invariance IS the K≅2
-    /// claim, machine-checked.
+    /// trajectory. The universal homeostat is the artifact: the dynamics do
+    /// not know which domain you're reading.
+    ///
+    /// What this test is, exactly: one example circuit, run under every lens,
+    /// asserted byte-identical. It is a lens-purity regression test — a
+    /// demonstration of the K≅2 reading, not a proof of it. Nothing in this
+    /// crate touches Lean, and no Lean declaration is cited here. The
+    /// machine-checked half of K≅2 lives in `systems-science-foundations` and
+    /// is mapped claim by claim in `docs/lean-provenance.md`; purity here is
+    /// structural (`lens` never enters `circuit.rs`) and this test is what
+    /// keeps it that way.
     #[test]
     fn lens_does_not_touch_dynamics() {
         let baseline = {
