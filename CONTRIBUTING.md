@@ -66,10 +66,15 @@ doc supersedes another, both say so.
 
 Before a change lands, it must clear the gate and keep the docs honest:
 
-- **`just check` is green.** It runs exactly what CI enforces — `cargo test`,
-  clippy `-D warnings`, the wasm build, then `tsc`, `vitest`, `check:tokens`, and
-  `vite build`. A crate change must never silently serve stale wasm; rebuild with
+- **`just check` is green.** It runs exactly what CI enforces, in this order:
+  `doc_lint.py`, `cargo test`, clippy `-D warnings`, the wasm32 build,
+  `wasm-pack`, then `check:tokens`, `tsc --noEmit`, `vitest`, and `vite build`.
+  A crate change must never silently serve stale wasm; rebuild with
   `just wasm` / `just dev`.
+- **A new gate gets its own workflow file.** `.github/workflows/ci.yml` is the
+  core gate and mirrors `just check`; a new check (fuzzing, provenance, a
+  desktop build) lands as `.github/workflows/<gate>.yml` rather than a step
+  there. Independent gates land independently, and `ci.yml` stays readable.
 - **Boundary changes update the contract.** A change to the JS↔wasm surface
   updates [`crates/bert-lenses-kernel/API.md`](crates/bert-lenses-kernel/API.md)
   (frozen, append-only) **and** its serde↔TS contract fixture in

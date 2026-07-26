@@ -1,3 +1,11 @@
+# The core gate. Its steps mirror `just check` in order, so a green local `just
+# check` means a green CI — keep the two in lockstep when either changes.
+#
+# A NEW GATE GETS ITS OWN WORKFLOW FILE, not a step here. Four separate audit
+# bundles wanted to add a job to this file at once (#231 fuzz, #232 provenance,
+# #233 desktop + wasm-exec, #229 cargo-deny); one file per gate lets them land
+# independently and keeps this one readable. See CONTRIBUTING.md.
+
 name: CI
 
 on:
