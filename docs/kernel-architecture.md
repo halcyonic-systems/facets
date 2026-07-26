@@ -1,12 +1,21 @@
 # The bert-lenses Kernel as a System
 
-*What the kernel actually is, what it actually computes, and — honestly rated — how much of the LLM-integration story (`docs/design/llm-integration-research.md`) it can really bear. Written 2026-07-16 as a grounded verification pass: every claim below was checked against the source, with file:line, and rated by confidence. Read this when you want to trust (or distrust) the substrate before building on it.*
+*What the kernel actually is, what it actually computes, and — honestly rated — how much of the LLM-integration story (`docs/design/llm-integration-research.md`) it can really bear. Written 2026-07-16 as a source-reading pass over `crates/`. Read this when you want to trust (or distrust) the substrate before building on it.*
+
+## The two marks, and what each one is worth
+
+This document carries two grades, and they are **not** the same grade. Until 2026-07-26 the stronger sections were headed `— VERIFIED` while the same document used "machine-checked" separately, with no legend and one line of body text disambiguating four headers. In a repo whose value proposition *is* the distinction between proof and inspection, one word doing both jobs is the worst word available (issue [#232](https://github.com/halcyonic-systems/bert-lenses/issues/232)). So:
+
+- **CODE-READ** — a human read the Rust and reports what it does. That is all. It is defeasible by the next refactor and by a careless reading, and it is the mark on every section heading below. It is the same *strength* of claim as the concordance's source-verified **VERIFIED**, but about a different object (this repo's code, not a tradition's text), so it gets a different word rather than a second definition of the same one.
+- **MACHINE-CHECKED** — a named Lean declaration at the pinned SSF commit carries the weight, and [`lean-provenance.md`](lean-provenance.md) maps the claim to that declaration by `claim_id`. Nothing in this document is machine-checked on its own authority; where the word appears, it points there.
+
+The negative mark, borrowed from the concordance's `UNGROUNDED`: rows in the layered-guarantee table marked **Thin** or **Declared** are claims the kernel *does not* make good on, listed rather than omitted.
 
 ---
 
 ## What the kernel is (and isn't)
 
-The kernel is the Rust core in `crates/`, compiled to WASM, that **owns systemhood** — it is a *decision procedure*, not a database and not a renderer. Given a model, it decides what is well-formed, what counts as a system vs an aggregate, what each faithful lens says, and (via the compose engine) what a deterministic dynamics run under a model-declared invariant does (current engine: one supported dynamics-kind — Id-functor over ℝⁿ stocks with an additive conservation invariant; further kinds are declarable). Its verdicts are grounded in a machine-checked Lean formalization (`systems-science-foundations/`), not in house style. The React face computes **nothing** about systems — it renders kernel verdicts (`web/src` = face, `crates/` = truth).
+The kernel is the Rust core in `crates/`, compiled to WASM, that **owns systemhood** — it is a *decision procedure*, not a database and not a renderer. Given a model, it decides what is well-formed, what counts as a system vs an aggregate, what each faithful lens says, and (via the compose engine) what a deterministic dynamics run under a model-declared invariant does (current engine: one supported dynamics-kind — Id-functor over ℝⁿ stocks with an additive conservation invariant; further kinds are declarable). Its verdicts are grounded in a machine-checked Lean formalization (`systems-science-foundations/`), not in house style — claim by claim, by `claim_id`, in [`lean-provenance.md`](lean-provenance.md). The React face computes **nothing** about systems — it renders kernel verdicts (`web/src` = face, `crates/` = truth).
 
 Five crates:
 
@@ -22,9 +31,9 @@ Five crates:
 
 ## What it actually computes — the three things the LLM story rests on
 
-All three were verified by direct read. They are **richer than the research doc claimed**, not thinner.
+All four sections below are CODE-READ: a direct read of the named source, nothing more. On the three the LLM story rests on, the code is **richer than the research doc claimed**, not thinner.
 
-### 1. `describe(model, lens)` → the named per-lens formal object  — VERIFIED (rich)
+### 1. `describe(model, lens)` → the named per-lens formal object  — CODE-READ (rich)
 
 `lenses.rs:305-347`. Returns a `#[serde(tag="lens")]` discriminated union — the model typeset in **each lens's own formal notation, with the actual named structure**, not just counts:
 
@@ -34,22 +43,22 @@ All three were verified by direct read. They are **richer than the research doc 
 
 Counts are "read off the same kernel facts the canvas renders — never re-derived" (`lenses.rs:344`). **This is the load-bearing fact for lens-faithful LLM reasoning: the kernel literally hands you the model in Bunge's or Mobus's vocabulary, named. The LLM never has to *know* a lens — it's fed the lens's own object.**
 
-### 2. `lens_facts(model)` → faithful per-element facts  — VERIFIED
+### 2. `lens_facts(model)` → faithful per-element facts  — CODE-READ
 
 `lenses.rs:83-106` (struct), `:124` (fn). Everything the renderings + a critic need, keyed to canvas ids: `boundary_thing_ids` (components with an external flow), `environment_thing_ids`, `orphan_env_thing_ids`, `authored_interface_thing_ids`, `boundary_props` (porosity/fuzziness), `aggregate` (the Bunge Def 1.1 verdict, **surfaced verbatim from `validate_mode(Structural)`**), `edges: EdgeFact[]`, `ports: PortFact[]`. Each `EdgeFact` (`:33-48`) carries `bond`, `kind`, `locus` (endo ∈ N / exo ∈ G — kernel-computed), `self_loop`, and `mobus_ok` (false iff a self-loop with no Mobus preimage — a real cross-lens incompatibility the tool *states* rather than hides).
 
-### 3. `validate_mode(model, mode)` → Lean-grounded legality per lens  — VERIFIED
+### 3. `validate_mode(model, mode)` → per-lens legality, gated on Lean-named preconditions  — CODE-READ
 
-`validate.rs:122-139`. This is the hard guarantee. It never asks "is the model valid" — it asks "may this model be authored *as* this mode," each lens adding its own faithful-view hypothesis proven in `ViewGeneration.lean`:
+`validate.rs:122-139`. This is the hard guarantee. It never asks "is the model valid" — it asks "may this model be authored *as* this mode," each lens adding its own precondition — the named hypothesis its faithful-view theorem in `ViewGeneration.lean` is proved *under*:
 
 - **Core**: on-ness (every interaction endpoint resolves) — via `validate`'s reference checks.
-- **Structural (Bunge)**: `check_bond` (`:143`) — requires ≥1 bond between *distinct* components, else an "aggregate" error. Mirrors Lean `Kernel.HasBond`.
-- **Operational (Mobus)**: `check_self_loops` (`:158`) — no self-dependency (`k ≠ o`, Mobus §4.3), else error, canvas-navigable via `.with_subject`. Mirrors Lean `Kernel.Irreflexive`.
+- **Structural (Bunge)**: `check_bond` (`:143`) — requires ≥1 bond between *distinct* components, else an "aggregate" error. Mirrors the Lean *definition* `Kernel.HasBond` — a `Prop`-valued `def`, not a theorem (claim `kernel.bunge-gate`).
+- **Operational (Mobus)**: `check_self_loops` (`:158`) — no self-dependency (`k ≠ o`, Mobus §4.3), else error, canvas-navigable via `.with_subject`. Mirrors the Lean *definition* `Kernel.Irreflexive` — again a `def` (claim `kernel.mobus-gate`).
 - **Full**: self-loops + `check_dynamical_face` (warns if T/H/Δt nowhere populated).
 
-**Crucial subtlety (verified, `:107-116`): the modes are parallel lenses, not a tower.** Structural needs a bond, Operational needs irreflexivity, but *neither inherits the other* — they share only Core's on-ness. So "valid in Bunge" and "valid in Mobus" are independent, Lean-proven claims about the same model. This is precisely what makes cross-lens disagreement meaningful.
+**Crucial subtlety (CODE-READ, `:107-116`; the Lean side is claim `kernel.gates-independent`, which is checked by exhibition and *not* by a theorem): the modes are parallel lenses, not a tower.** Structural needs a bond, Operational needs irreflexivity, but *neither inherits the other* — they share only Core's on-ness. So "valid in Bunge" and "valid in Mobus" are separate claims about the same model, each gated on its own Lean-named precondition. Their independence is **exhibited** by the truth-table fixture's witness rows, not proved by any theorem — no entailment theorem exists in either direction, by design. That is what makes cross-lens disagreement meaningful.
 
-### 4. `analyze(model, lens)` → all three from ONE projection  — VERIFIED (this is the substrate)
+### 4. `analyze(model, lens)` → all three from ONE projection  — CODE-READ (this is the substrate)
 
 `lenses.rs:356-407`. Bundles `{validation, issue_targets, facts, description}` from a single projection. Its own doc comment: "the atomic canvas verdict … one round trip, not a three-call waterfall that re-projects the same model each time." `issue_targets` are resolved here to canvas `{thing, relation}` ids via the projection's id maps — so a critic's claim can point at the exact element. **This is the `ModelContext` substrate the research doc calls for, already built — it just isn't exposed to an LLM yet.**
 
@@ -59,7 +68,7 @@ Counts are "read off the same kernel facts the canvas renders — never re-deriv
 
 | Layer | What it covers | Confidence |
 |---|---|---|
-| **Hard / Lean-grounded** | Structural legality: reference integrity, the bond requirement (Bunge), irreflexivity (Mobus). The kernel **will reject** ill-formed or out-of-lens structure. | **Solid** — machine-checked; `check_bond`/`check_self_loops` mirror Lean theorems. |
+| **Hard / Lean-grounded** | Structural legality: reference integrity, the bond requirement (Bunge), irreflexivity (Mobus). The kernel **will reject** ill-formed or out-of-lens structure. | **Solid** — `check_bond`/`check_self_loops` mirror the Lean *definitions* `Kernel.HasBond` / `Kernel.Irreflexive` (`def`s, claims `kernel.bunge-gate`, `kernel.mobus-gate`). What is MACHINE-CHECKED is that the views those preconditions gate are faithful (`kernel.bunge-faithful`, `kernel.mobus-faithful`); that the Rust predicates agree with the Lean ones is checked by the truth-table fixture and the oracle, not proved. |
 | **Derived & translated** | Boundary identity set, endo/exo locus, aggregate verdict, ports, per-edge facts — computed from the projection, surfaced to canvas ids, never re-derived in the face. | **Solid** — verified in `lens_facts`; single source. |
 | **Declared & validated** *(honesty)* | Bond-vs-mere is **author-declared** (`is_bond`; Lean criterion `FlowInducesAction` = a flow that modifies history is a bond), checked for consistency — **not derived from dynamics**. An LLM proposing bonds proposes a *declaration*, checked for legality, not something the kernel infers from behavior. | Real but partial — the kernel validates the declaration; it doesn't compute bondhood from a run. |
 | **Noted / thin** *(honesty)* | The dynamical face T/H/Δt is **stringly-typed notes in v2.0** (`validate.rs:177` — typing deferred); `describe`'s `t_note`/`h_note`/`dt_note` are prose, and `check_dynamical_face` only *warns*. The structural tuple (C·N·E·G·B) is real; the dynamical slots are not yet typed structure. | Thin — do not over-trust the dynamical face as machine-checked. |
@@ -85,5 +94,5 @@ Counts are "read off the same kernel facts the canvas renders — never re-deriv
 
 - `crates/bert-lenses-kernel/API.md` — the frozen wasm boundary (every exported fn's shape + error contract).
 - `docs/archive/canvas-architecture.md` — the canvas/face side (HISTORICAL, egui-era).
-- `systems-science-foundations/Systems/` — the Lean proofs the verdicts mirror (`Klir/ViewGeneration.lean`, `Mobus/Tuple.lean`, `FlowNetwork.lean`).
+- [`lean-provenance.md`](lean-provenance.md) — the pinned SSF commit, the generated per-claim map (every `claim_id` cited above), and the two gates that keep those citations resolving. Every MACHINE-CHECKED mark in this document points there.
 - `docs/design/llm-integration-research.md` — the LLM story that rests on this kernel (its §4 substrate and §11 lens-fidelity claims are the ones this doc verifies).

@@ -1,0 +1,285 @@
+{
+  "_": [
+    "Source of truth for every claim this repo makes about systems-science-foundations (SSF).",
+    "docs/lean-provenance.md's pin block and per-claim tables are GENERATED from this file:",
+    "  python3 scripts/lean_provenance.py render   (rewrite the generated blocks)",
+    "  python3 scripts/lean_provenance.py check    (fail if the doc drifted — runs in doc_lint)",
+    "  python3 scripts/lean_provenance.py resolve  (Gate A: every symbol resolves, with its kind)",
+    "Prose cites claim_id and nothing else. Nobody hand-edits a citation string here or there.",
+    "'kind' is the Lean declaration keyword; 'shape' records the claim shape actually relied on,",
+    "because theorem/lemma are interchangeable and a def can be propositional (Kernel.HasBond is)."
+  ],
+  "pin": {
+    "repo": "https://github.com/halcyonic-systems/systems-science-foundations",
+    "commit": "71a7883b3bbe15b91ad137b81bb80a77915e0da1",
+    "date": "2026-07-20",
+    "toolchain": "leanprover/lean4:v4.28.0"
+  },
+  "staleness": {
+    "head_replayed": "2026-07-26",
+    "head_commit": "dbf4524",
+    "commits_ahead": 24,
+    "next_replay_due": "2026-08-26",
+    "material_deltas": [
+      "**One material addition: `MobusSystem.interfaces_carry_flow`** (SSF #31, proven non-redundant in SSF #35). At the pin, `MobusSystem` carries five coherence constraints; at HEAD it carries six. Every claim in the tables below still holds — no theorem weakened, `Kernel.toMobus` discharges the new field — but *the pinned description of the 8-tuple contract under-reports it by one constraint*, and any statement that the constraints contain no interface ⇒ flow requirement is **false at HEAD**, not merely stale. Corrected in `design/lens-palettes.md` §Q2.",
+      "`Systems/Category/` — the categorification machinery, including the eight faithfulness theorems and the maximality repair — **did not exist at the pin** and is outside this repo's citation set. See the K≅2 scope fence below.",
+      "`Systems/Mobus/Lifecycle.lean`, `Systems/Mobus/Interface.lean`, `Systems/Dynamics/Transition.lean` are new at HEAD. This repo cites none of them.",
+      "No symbol in the tables below was renamed, deleted, or changed kind between the pin and HEAD (Gate B, run 2026-07-26)."
+    ]
+  },
+  "tables": [
+    {
+      "id": "kernel-views",
+      "title": "The kernel and the three generated views",
+      "stated_in": "[`theory-fidelity.md`](theory-fidelity.md) (\"What the kernel actually is\"), [`spec/LENS_ENTRY_SPEC.md`](../spec/LENS_ENTRY_SPEC.md) §A/§C, `README.md`, `crates/bert-core/src/transition.rs` header table.",
+      "claims": [
+        {
+          "claim_id": "kernel.object",
+          "claim": "The kernel is Klir's `(T, R)` plus on-ness — the K ≅ **2** arrow",
+          "file": "Systems/Klir/ViewGeneration.lean",
+          "symbols": [
+            {"name": "Systems.Kernel", "kind": "structure"},
+            {"name": "Systems.Kernel.things", "kind": "field"},
+            {"name": "Systems.Kernel.dep", "kind": "field"},
+            {"name": "Systems.Kernel.dep_on", "kind": "field"}
+          ],
+          "gives": "A definition, not a theorem: `dep_on` is the field forcing every dependency endpoint to be a thing. This is the structure everything below is generated from."
+        },
+        {
+          "claim_id": "kernel.klir-free",
+          "claim": "The Klir view is free, and it round-trips",
+          "file": "Systems/Klir/ViewGeneration.lean",
+          "symbols": [
+            {"name": "Systems.Kernel.toKlir", "kind": "def"},
+            {"name": "Systems.KlirSystem.toKernel", "kind": "def"},
+            {"name": "Systems.Kernel.toKlir_toKernel", "kind": "theorem"},
+            {"name": "Systems.KlirSystem.toKernel_toKlir", "kind": "theorem"}
+          ],
+          "gives": "Generation with no hypothesis (the maps are `def`s), and both round-trip identities as proved equalities (`rfl`)."
+        },
+        {
+          "claim_id": "kernel.bunge-gate",
+          "claim": "Structural entry costs a bond",
+          "file": "Systems/Klir/ViewGeneration.lean",
+          "symbols": [
+            {"name": "Systems.Kernel.HasBond", "kind": "def"},
+            {"name": "Systems.Kernel.toBunge", "kind": "def"}
+          ],
+          "shape": "a `Prop`-valued `def` used as a hypothesis — `toBunge (k) (hb : k.HasBond)`. Rust's `check_bond` mirrors this **definition**; the theorems that make the generated view faithful are the separate rows below.",
+          "gives": "A kernel whose dependency contains a bonded pair of *distinct* relata generates a Bunge CES view (Def 1.1: unbonded collection = aggregate)."
+        },
+        {
+          "claim_id": "kernel.bunge-faithful",
+          "claim": "The Bunge view is faithful",
+          "file": "Systems/Klir/ViewGeneration.lean",
+          "symbols": [
+            {"name": "Systems.Kernel.toBunge_toKlir", "kind": "theorem"},
+            {"name": "Systems.Kernel.toBunge_injective", "kind": "theorem"},
+            {"name": "Systems.Kernel.toBunge_isClosed", "kind": "theorem"}
+          ],
+          "gives": "Projecting the generated view back fixes the kernel; distinct kernels generate distinct views; the generated system is closed."
+        },
+        {
+          "claim_id": "kernel.mobus-gate",
+          "claim": "Operational entry costs irreflexivity",
+          "file": "Systems/Klir/ViewGeneration.lean",
+          "symbols": [
+            {"name": "Systems.Kernel.Irreflexive", "kind": "def"},
+            {"name": "Systems.Kernel.toFlowNetwork", "kind": "def"},
+            {"name": "Systems.Kernel.toMobus", "kind": "def"}
+          ],
+          "shape": "as above — a `Prop`-valued `def` consumed as a hypothesis, `toMobus (k) (hi : k.Irreflexive)`. `check_self_loops` mirrors the **definition**.",
+          "gives": "A kernel with no self-dependency (§4.3, k ≠ o) generates a Mobus view via its flow network."
+        },
+        {
+          "claim_id": "kernel.mobus-faithful",
+          "claim": "The Mobus view is faithful",
+          "file": "Systems/Klir/ViewGeneration.lean",
+          "symbols": [
+            {"name": "Systems.Kernel.toMobus_totalRelation", "kind": "theorem"},
+            {"name": "Systems.Kernel.toMobus_toKlir", "kind": "theorem"},
+            {"name": "Systems.Kernel.toMobus_injective", "kind": "theorem"}
+          ],
+          "gives": "The generated view's total relation is exactly `dep`; projection fixes the kernel; distinct kernels generate distinct views."
+        },
+        {
+          "claim_id": "kernel.one-composite",
+          "claim": "Exactly one composite is proven",
+          "file": "Systems/Klir/ViewGeneration.lean",
+          "symbols": [
+            {"name": "Systems.Kernel.toMobus_toBunge", "kind": "theorem"},
+            {"name": "Systems.Kernel.DepActs", "kind": "def"},
+            {"name": "Systems.Kernel.toFlowNetwork_inducesAction", "kind": "theorem"},
+            {"name": "Systems.Kernel.toFlowNetwork_edges_nonempty", "kind": "theorem"}
+          ],
+          "shape": "a proved implication under **three** hypotheses — `HasBond`, `Irreflexive`, and `DepActs`. Drop any one and the triangle is not claimed; this is where a hostile reader pushes, so the hypotheses are named here rather than summarized as \"both preconditions\".",
+          "gives": "When all three hold, generating Mobus then projecting to Bunge equals generating Bunge directly — the commuting triangle with the kernel at the apex."
+        },
+        {
+          "claim_id": "kernel.gates-independent",
+          "claim": "`HasBond` and `Irreflexive` are independent — parallel lenses, no tower",
+          "file": "Systems/Klir/GatesTruthTable.lean",
+          "symbols": [],
+          "shape": "**a negative claim, checked by exhibition, not by a theorem.** No entailment theorem exists in either direction, by design; nothing here is proven, and this row must never be cited as proof of independence.",
+          "gives": "`fixtures/gates_truth_table.json` (this repo) contains rows passing each gate while failing the other — `n=2, dep=[[0,1],[1,1]]` bonded-but-reflexive; `n=1, dep=[]` irreflexive-but-unbonded — and those rows report the real predicates via the `_iff` bridges in `gates.iff-bridges`."
+        }
+      ]
+    },
+    {
+      "id": "gates",
+      "title": "The truth-table and oracle bindings (spec §D)",
+      "stated_in": "[`spec/LENS_ENTRY_SPEC.md`](../spec/LENS_ENTRY_SPEC.md) §C–§D, `fixtures/gates_truth_table.json` (`_generator`), `crates/bert-core/tests/gates_truth_table.rs`, `crates/bert-core/tests/gates_oracle.rs`.",
+      "claims": [
+        {
+          "claim_id": "gates.iff-bridges",
+          "claim": "The fixture's gate booleans report the real ViewGeneration predicates, not look-alikes",
+          "file": "Systems/Klir/GatesTruthTable.lean",
+          "symbols": [
+            {"name": "Systems.GatesTruthTable.hasBondB_iff", "kind": "theorem"},
+            {"name": "Systems.GatesTruthTable.irreflexiveB_iff", "kind": "theorem"}
+          ],
+          "shape": "two proved bi-implications. `hasBondB_iff` holds **under the total `ActsOn` instance** (the pinning of spec §C) — it is not instance-independent, and citing it without that hypothesis overstates it.",
+          "gives": "`hasBondB D = true ↔ (kernelOf D).HasBond` and `irreflexiveB D = true ↔ (kernelOf D).Irreflexive`."
+        },
+        {
+          "claim_id": "gates.one-definition-site",
+          "claim": "Fixture and oracle evaluate the SAME declarations",
+          "file": "Systems/Klir/Gates.lean",
+          "symbols": [
+            {"name": "Systems.GatesTruthTable.hasBondB", "kind": "def"},
+            {"name": "Systems.GatesTruthTable.irreflexiveB", "kind": "def"},
+            {"name": "Systems.GatesTruthTable.ModeVerdicts", "kind": "structure"},
+            {"name": "Systems.GatesTruthTable.modesOf", "kind": "def"}
+          ],
+          "gives": "One definition site for the boolean gates and the mode-verdict map both emitters import, so fixture and oracle cannot disagree with each other. Definitions, not theorems — the agreement is structural, not proved."
+        },
+        {
+          "claim_id": "gates.fixture-emitted",
+          "claim": "The fixture is Lean-emitted, not hand-written",
+          "file": "Systems/Klir/GatesTruthTable.lean",
+          "symbols": [
+            {"name": "Systems.GatesTruthTable.fixtureJson", "kind": "def"},
+            {"name": "Systems.GatesTruthTable.emit", "kind": "def"},
+            {"name": "main", "kind": "def"}
+          ],
+          "gives": "The enumerator over every `(T, R)` kernel on `Fin n`, `n ≤ 2` (19 rows) that prints `fixtures/gates_truth_table.json` verbatim. (`main` sits outside the namespace, as an executable entry point.)"
+        },
+        {
+          "claim_id": "gates.oracle",
+          "claim": "The subprocess oracle exists and speaks the documented contract",
+          "file": "Systems/Klir/GatesOracle.lean",
+          "symbols": [
+            {"name": "gates-oracle", "kind": "lean_exe", "file": "lakefile.lean"}
+          ],
+          "gives": "`lake exe gates-oracle` evaluates `hasBondB` / `irreflexiveB` on arbitrary stdin models — the unbounded cross-check above the fixture's 19 rows. A build target and a prose contract at the head of `GatesOracle.lean`, not a theorem."
+        }
+      ]
+    },
+    {
+      "id": "bond-tuple",
+      "title": "Bond semantics and the Mobus tuple",
+      "stated_in": "[`theory-fidelity.md`](theory-fidelity.md) (Bunge and Mobus sections), `crates/bert-canvas/src/lenses.rs` (bond criterion), this repo's `CLAUDE.md` §\"Semantic authority\". Tuple slot attribution is the terminology concordance's job ([`language/terminology-concordance.md`](language/terminology-concordance.md), row 1); this table maps only claim → proof.",
+      "claims": [
+        {
+          "claim_id": "bond.criterion",
+          "claim": "\"A flow that modifies history is a bond\" — the bond criterion the kernel validates against",
+          "file": "Systems/Mobus/Bridge.lean",
+          "symbols": [
+            {"name": "Systems.FlowInducesAction", "kind": "def"}
+          ],
+          "gives": "The predicate connecting a flow network to action pairs — the semantic side `check_bond`'s syntactic test is pinned to. A definition; nothing here proves that an author's `is_bond` declaration is *true* of the modeled world."
+        },
+        {
+          "claim_id": "bond.acts-on",
+          "claim": "Bondhood is action both ways",
+          "file": "Systems/Core/Bond.lean",
+          "symbols": [
+            {"name": "Systems.ActsOn", "kind": "class"},
+            {"name": "Systems.Bonded", "kind": "def"}
+          ],
+          "gives": "The action typeclass and the bonded-pair predicate `HasBond` quantifies over."
+        },
+        {
+          "claim_id": "tuple.structure",
+          "claim": "The tuple is a structure with E first-class, components and environment disjoint",
+          "file": "Systems/Mobus/Tuple.lean",
+          "symbols": [
+            {"name": "Systems.MobusSystem", "kind": "structure"},
+            {"name": "Systems.MobusSystem.environment", "kind": "field"},
+            {"name": "Systems.MobusSystem.disjoint", "kind": "field"},
+            {"name": "Systems.MobusSystem.bipartite", "kind": "field"},
+            {"name": "Systems.MobusSystem.externalFlows_nodes", "kind": "field"}
+          ],
+          "shape": "a `structure` whose coherence constraints are **fields**, discharged at construction — not standalone theorems. The named fields are the ones this repo relies on; **the list is not an enumeration of the tuple's constraints**, which is why the post-pin sixth constraint (`interfaces_carry_flow`) leaves every claim here intact.",
+          "gives": "The machine-checked tuple (concordance row 1: E first-class is a Lean improvement over the printed 7-tuple); environment is a field, not an afterthought, and cannot overlap components."
+        },
+        {
+          "claim_id": "tuple.boundary",
+          "claim": "Boundary completeness and the total relation",
+          "file": "Systems/Mobus/Tuple.lean",
+          "symbols": [
+            {"name": "Systems.MobusSystem.boundaryComplete", "kind": "theorem"},
+            {"name": "Systems.MobusSystem.totalRelation", "kind": "def"},
+            {"name": "Systems.MobusSystem.totalRelation_on", "kind": "theorem"},
+            {"name": "Systems.MobusSystem.internal_edges_in_components", "kind": "theorem"}
+          ],
+          "gives": "Every external flow crosses the boundary at an interface (**derived** from the bipartite field, not assumed); the system's total relation stays on its own furniture; internal edges connect components only."
+        }
+      ]
+    },
+    {
+      "id": "decomposition",
+      "title": "The decomposition seam (bert-lenses#89)",
+      "stated_in": "`crates/bert-core/src/decomposition.rs` (header transcription table — the Rust check is a literal transcription, row by row), [`design/decomposition-foundations.md`](design/decomposition-foundations.md).",
+      "claims": [
+        {
+          "claim_id": "decomp.contract",
+          "claim": "The boundary contract is the eight fields of a structure, not prose",
+          "file": "Systems/Core/Decomposition.lean",
+          "symbols": [
+            {"name": "Systems.Decomposition", "kind": "structure"},
+            {"name": "Systems.Decomposition.comp_mem", "kind": "field"},
+            {"name": "Systems.Decomposition.βsrc", "kind": "field"},
+            {"name": "Systems.Decomposition.βsnk", "kind": "field"},
+            {"name": "Systems.Decomposition.src_preserves_kind", "kind": "field"},
+            {"name": "Systems.Decomposition.snk_preserves_kind", "kind": "field"},
+            {"name": "Systems.Decomposition.src_lands", "kind": "field"},
+            {"name": "Systems.Decomposition.snk_lands", "kind": "field"},
+            {"name": "Systems.Decomposition.derived_env", "kind": "field"},
+            {"name": "Systems.inflows", "kind": "def"},
+            {"name": "Systems.outflows", "kind": "def"},
+            {"name": "Systems.childSources", "kind": "def"},
+            {"name": "Systems.childSinks", "kind": "def"}
+          ],
+          "shape": "the count *eight* is a closed enumeration of this structure's constraint fields, and Gate A holds it closed: adding a ninth field upstream does not fail resolution, so **this row's count is re-checked by hand at each replay** (the one number the gate cannot defend).",
+          "gives": "Child sources/sinks biject with the component's inflows/outflows, kind-preserving, landing on interfaces, with `E′` derived as the parent's interior neighborhood — the contract `check_decomposition` transcribes."
+        },
+        {
+          "claim_id": "decomp.seam",
+          "claim": "The seam is sound",
+          "file": "Systems/Core/Decomposition.lean",
+          "symbols": [
+            {"name": "Systems.Decomposition.seam", "kind": "def"},
+            {"name": "Systems.Decomposition.seam_bijective", "kind": "theorem"},
+            {"name": "Systems.Decomposition.inflow_continues", "kind": "theorem"},
+            {"name": "Systems.Decomposition.outflow_continues", "kind": "theorem"},
+            {"name": "Systems.Decomposition.seam_preserves_kind", "kind": "theorem"}
+          ],
+          "gives": "The combined source+sink correspondence is a bijection; every parent boundary flow continues into the child with its substance kind intact."
+        },
+        {
+          "claim_id": "decomp.substitution",
+          "claim": "Substitution is sound; depth-1 assembly is well-formed",
+          "file": "Systems/Core/Decomposition.lean",
+          "symbols": [
+            {"name": "Systems.Decomposition.substitution_sound", "kind": "theorem"},
+            {"name": "Systems.assembleDepth1", "kind": "def"},
+            {"name": "Systems.assembleDepth1_wellFormed", "kind": "theorem"},
+            {"name": "Systems.decompose_one_wellFormed", "kind": "theorem"}
+          ],
+          "gives": "Replacing the component by its child preserves the contract's guarantees; the depth-1 assembly of a decomposed model is itself a well-formed tuple."
+        }
+      ]
+    }
+  ]
+}

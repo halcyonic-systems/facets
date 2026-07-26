@@ -502,11 +502,23 @@ flows, never placed." **The authority says otherwise, in both the Lean and the
 prose:**
 
 - `B = ⟨P, I⟩` with `interfaces : Set α` an **author-supplied field** of the
-  boundary structure (`Boundary.lean:35–42`) — not a computed value. The 8-tuple's
-  coherence constraints (`Tuple.lean:86–107`) require `I ⊆ C` (`:97`) and
-  bipartite external flows (`:103`, `Interface.lean:33–36`), but contain **no
-  coverage constraint from flows onto interfaces: a flowless interface is
-  well-formed.**
+  boundary structure (`Boundary.lean`, `MobusBoundary`) — not a computed value.
+  The 8-tuple's coherence constraints (`Tuple.lean`, `MobusSystem`'s constraint
+  fields) require `I ⊆ C` (`interfaces_sub`) and bipartite external flows
+  (`bipartite`, `Interface.lean`).
+
+  **CORRECTED 2026-07-26 (#232).** This paragraph used to close the enumeration —
+  "…but contain **no** coverage constraint from flows onto interfaces: a flowless
+  interface is well-formed." That was true at the pinned commit and is **false at
+  SSF HEAD**: `interfaces_carry_flow` (SSF #31, proven non-redundant in SSF #35)
+  is exactly that coverage constraint, and `MobusSystem` now carries six
+  constraint fields rather than five. A closed enumeration missing a member is a
+  false claim, not a stale one, which is why the correction is made here rather
+  than left to the pin. The design consequence below survives — flowless
+  interfaces are refused at Operational (#219), audit-time only — but it survives
+  as a *lens* decision, not because the Lean permits them. The line-number
+  citations are also gone: a line number into another repository is a coincidence
+  with a timestamp (#127).
 - Mobus §4.3, Eq. 4.6: "B = ⟨P, I⟩ … the second set, I, is the set of interfaces"
   — I is a primitive element of the boundary tuple. (Quoted via the SSF
   transcription `systems-science-foundations/docs/reference/mobus-bunge-system-definitions-reference.md:165–177`;
@@ -515,9 +527,10 @@ prose:**
 - BERT's applied doc is already interface-first: "Subsystems MUST attach to
   existing interfaces" (`bert/docs/mobus-reference.md:82`).
 
-**The true asymmetry runs the other way: flow ⇒ interface** (every crossing flow
-passes through one — `bipartite_implies_boundary_complete`,
-`Interface.lean:47–63`), never interface ⇒ flow. Design consequences:
+**Both directions now hold in the Lean.** Flow ⇒ interface: every crossing flow
+passes through one (`bipartite_implies_boundary_complete`, `Interface.lean`).
+Interface ⇒ flow: every interface carries one (`interfaces_carry_flow`, added
+after this repo's pin — see the correction above). Design consequences:
 
 1. **The Mobus rail offers interface DESIGNATION** (arm → click a component →
    it joins I). Placing a new component pre-designated is the same verb composed
@@ -531,7 +544,11 @@ passes through one — `bipartite_implies_boundary_complete`,
    no flow is in Mobus's I but not in Bunge's derived ∂C (no environmental
    coupling) — so the § boundary-identity equation above holds exactly on the
    *flow-crossing* interfaces; authored-flowless ones are part of what the Bunge
-   lens is provably blind to (`toBunge` discards them with π).
+   lens is provably blind to (`toBunge` discards them with π). **Superseded in
+   part by the correction above:** at SSF HEAD a flowless interface is not a
+   well-formed `MobusSystem` at all, so this bullet and bullet 2's "honoring
+   authored flowless interfaces" describe a transient authoring state, not a
+   legal tuple. #219 already refuses it at Operational.
 4. This is **kernel-first work**: today `PortFact` is derived solely from exo
    bonds (`bert-canvas/src/lenses.rs`); authored designation needs the 8-step
    checklist from step 1 (bert-core carries authored I; `PortFact` gains
