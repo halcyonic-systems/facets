@@ -26,3 +26,12 @@ console_error_panic_hook = "0.1"
 [features]
 # Off by default and never enabled for a shipped build — see `__trap_probe`.
 panic-probe = []
+
+# wasm-opt runs as MVP by default, and the panic hook's closure machinery emits a
+# second function table — legal since the reference-types proposal, but a parse
+# error to an MVP-only wasm-opt ("Only 1 table definition allowed in MVP"). CI
+# caches its own wasm-opt binary, so which version runs is not ours to choose;
+# naming the feature makes the build independent of that. Found by the desktop
+# gate on its first run — the local build had a newer wasm-opt and never saw it.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ['-O', '--enable-reference-types']
