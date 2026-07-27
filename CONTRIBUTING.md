@@ -107,11 +107,28 @@ status word is still one of the six.
 
 Before a change lands, it must clear the gate and keep the docs honest:
 
-- **`just check` is green.** It runs exactly what CI enforces, in this order:
-  `doc_lint.py`, `cargo test`, clippy `-D warnings`, the wasm32 build,
-  `wasm-pack`, then `check:tokens`, `tsc --noEmit`, `vitest`, and `vite build`.
-  A crate change must never silently serve stale wasm; rebuild with
-  `just wasm` / `just dev`.
+- **`just check` is green.** It is the full local gate — everything CI enforces
+  that can run on this machine, in CI's order, now including the boundary gate.
+  What a green run means, which is more than "it compiled":
+
+  | | is checked by |
+  |---|---|
+  | the code compiles, the tests pass, clippy is clean under `-D warnings` | `cargo test` · `cargo clippy -D warnings` |
+  | **the wasm boundary still behaves** — the marshaling layer every verdict crosses | `just wasm-exec`, 189 checks against the real package |
+  | **no doc is unreachable** — nothing indexed is an orphan, nothing is missing from the index | `doc_lint.py` |
+  | **no relative link is broken** | `doc_lint.py` |
+  | **every doc declares exactly one status** from the six words | `doc_lint.py` |
+  | **no Lean citation has gone stale** — every `claim_id` resolves at the pin *with its declared kind* | `doc_lint.py` → Gate A (skipped when no SSF checkout is present) |
+  | provenance and hedge vocabulary hold in LIVE docs | `doc_lint.py` |
+  | the design tokens have not drifted; TS type-checks; the bundle builds | `check:tokens` · `tsc --noEmit` · `vite build` |
+
+  **Two gates run in CI only**, because they cannot run everywhere: `desktop.yml`
+  bundles the macOS `.app` (needs macOS), and `deny.yml` checks licences and
+  advisories (needs the advisory database). A green `just check` does not cover
+  those two — open the PR and let CI say.
+
+  A crate change must never silently serve stale wasm; `just check` and
+  `just dev` both rebuild the pkg first.
 - **A new gate gets its own workflow file.** `.github/workflows/ci.yml` is the
   core gate and mirrors `just check`; a new check (fuzzing, provenance, a
   desktop build) lands as `.github/workflows/<gate>.yml` rather than a step
