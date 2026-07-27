@@ -19,3 +19,8 @@ serde = { version = "1", features = ["derive"] }
 [dev-dependencies]
 serde_json = "1"
 bert-core = { path = "../bert-core" }
+# Test-only. `canvas_round_trip.rs` has to RUN a demo before and after a canvas
+# round-trip, because "still projects to an executable model" was the assertion
+# that let a 22% trajectory change ship green (#216). No cycle: bert-compose
+# depends on bert-core only.
+bert-compose = { path = "../bert-compose" }
