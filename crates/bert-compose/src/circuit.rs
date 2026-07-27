@@ -7,18 +7,27 @@
 //! Sensing crosses substance (physical in → signal out); Buffering is a
 //! conservative stock — the system's state/memory lives there.
 //!
-//! Update rule: synchronous discrete time. Each tick reads the previous
-//! tick's wire amounts and writes the next — so feedback loops are ordinary
-//! dynamics, no special cases. (Divergence from the Python, noted: the
-//! buffer's release is a knob here rather than demand-tracking — same
-//! conservative stock, simpler to touch.)
+//! Update rule (#259): **wires transmit, stocks remember.** Each step,
+//! activities are computed in same-step dependency order — a memoryless
+//! primitive relays what it receives within the step; wires carry no state
+//! and insert no delay. Memory lives only where it is declared: a stock's
+//! level, read at the step's opening state. That opening-state read (an
+//! observation tap or gradient) is the Moore anchor that makes feedback
+//! loops well-posed (VSL; Spivak–Tan eq. 11; SSV Defs 4.2.4/4.2.7). A loop
+//! with NO anchor — pure relays feeding each other — has no deterministic
+//! semantics (SSV Ex 4.2.9) and is REFUSED: `algebraic_cycle()` names it
+//! and `step_dt` is a no-op, rather than silently repairing it with a
+//! per-step delay nothing authored. An authored delay is a future modeled
+//! element (SSV's Delay Box D_ε), never a side effect of drawing a box.
+//! (Divergence from the Python, noted: the buffer's release is a knob here
+//! rather than demand-tracking — same conservative stock, simpler to touch.)
 //!
 //! # Conservation ledger
 //!
 //! Physical mass (Energy/Material) is fully accounted every tick:
 //!
 //! ```text
-//! emitted + initial stocks == stored + sunk + in-flight + dissipated
+//! emitted + initial stocks == stored + sunk + dissipated
 //! ```
 //!
 //! `dissipated` is not a fudge factor — it is Mobus's waste heat. Mobus 2022
@@ -43,8 +52,8 @@
 //!   consume nothing.
 //! - **Substance-mismatch shed** — flow a node can't use vanishes; surfaced
 //!   by the amber ⚠ and counted here.
-//! - **Dead ends** — activity with no pushed outwire evaporates next tick;
-//!   surfaced by `dead_ends()` and counted.
+//! - **Dead ends** — activity with no pushed outwire is carried by nothing
+//!   and dissipates the same step; surfaced by `dead_ends()` and counted.
 //! - **Overflow** — a bounded buffer (capacity > 0) clamps its stock at the
 //!   ceiling; the excess overflows and the ledger charges it (a tank running
 //!   over). The clamp alone does the accounting — see the Buffering arm.
@@ -521,10 +530,80 @@ impl Circuit {
     /// computable (#259). `None` = every loop is anchored and the circuit is
     /// well-posed.
     pub fn algebraic_cycle(&self) -> Option<Vec<usize>> {
-        // STUB (#259, intentionally wrong): the current engine gives every
-        // node a one-tick register, so it believes every diagram runs.
-        // Replaced by the real detector with the instantaneous-wire engine.
-        None
+        self.eval_order().err()
+    }
+
+    /// The same-step dependency order for the instantaneous-wire engine
+    /// (#259): node `i` before node `j` whenever `j`'s activity reads `i`'s
+    /// activity this step. Ok = a topological order; Err = the nodes of an
+    /// algebraic cycle (plus anything waiting on it).
+    ///
+    /// A dependency edge exists for every pushed wire EXCEPT where the
+    /// receiver reads state rather than input:
+    /// - observation taps read a stock's start-of-step LEVEL — no edge;
+    /// - gradient wires read start-of-step levels — no edge;
+    /// - a Buffering receiver's release reads start-of-step storage, so a
+    ///   physical inflow is no dependency (its Message gate still is);
+    /// - a Source's emission ignores inflow — no edge.
+    ///
+    /// Plus the back-pressure edges: a producer feeding a back-pressured
+    /// valve scales by that valve's demand gate, so it depends on the gate's
+    /// control senders.
+    fn eval_order(&self) -> Result<Vec<usize>, Vec<usize>> {
+        let n = self.nodes.len();
+        let mut out_edges: Vec<Vec<usize>> = vec![Vec::new(); n];
+        let mut indegree = vec![0usize; n];
+        let mut add = |from: usize, to: usize| {
+            out_edges[from].push(to);
+            indegree[to] += 1;
+        };
+        for w in &self.wires {
+            if w.mode != FlowMode::Pushed || self.is_observation(w) {
+                continue;
+            }
+            let receiver_reads_state = matches!(self.nodes[w.to].kind, NodeKind::Source)
+                || (matches!(
+                    self.nodes[w.to].kind,
+                    NodeKind::Process(ProcessPrimitive::Buffering)
+                ) && self.wire_substance(w) != SubstanceType::Message);
+            if !receiver_reads_state {
+                add(w.from, w.to);
+            }
+            // Back-pressure: the wire's SENDER scales by the receiving valve's
+            // demand gate, so it depends on that valve's control senders.
+            if self.wire_substance(w) != SubstanceType::Message
+                && matches!(
+                    self.nodes[w.to].kind,
+                    NodeKind::Process(ProcessPrimitive::Modulating)
+                )
+                && self.nodes[w.to].back_pressure
+            {
+                for c in &self.wires {
+                    if c.to == w.to
+                        && c.mode == FlowMode::Pushed
+                        && self.wire_substance(c) == SubstanceType::Message
+                    {
+                        add(c.from, w.from);
+                    }
+                }
+            }
+        }
+        let mut order = Vec::with_capacity(n);
+        let mut queue: VecDeque<usize> = (0..n).filter(|&i| indegree[i] == 0).collect();
+        while let Some(i) = queue.pop_front() {
+            order.push(i);
+            for &j in &out_edges[i] {
+                indegree[j] -= 1;
+                if indegree[j] == 0 {
+                    queue.push_back(j);
+                }
+            }
+        }
+        if order.len() == n {
+            Ok(order)
+        } else {
+            Err((0..n).filter(|&i| indegree[i] > 0).collect())
+        }
     }
 
     /// Σ stock across all nodes.
@@ -532,27 +611,16 @@ impl Circuit {
         self.nodes.iter().map(|n| n.storage).sum()
     }
 
-    /// Physical mass in transit: activity of process nodes that emit a
-    /// conserved substance — emitted last tick, delivered next.
-    pub fn in_flight(&self) -> f32 {
-        self.nodes
-            .iter()
-            .filter(|n| {
-                matches!(n.kind, NodeKind::Process(_))
-                    && n.out_substance.base != SubstanceType::Message
-            })
-            .map(|n| n.activity)
-            .sum()
-    }
-
     /// Conservation residual. ≈0 (float noise) means every unit of physical
     /// mass is accounted: emissions plus starting stocks equal what's stored,
-    /// sunk, in flight, or dissipated through declared channels. Anything
-    /// else is a leak — a bug by definition. (Editing a stock mid-run moves
-    /// the baseline; Reset re-baselines.)
+    /// sunk, or dissipated through declared channels. Nothing rides "in
+    /// flight" between steps — wires transmit within the step (#259); only
+    /// stocks carry mass across a step boundary. Anything else is a leak —
+    /// a bug by definition. (Editing a stock mid-run moves the baseline;
+    /// Reset re-baselines.)
     pub fn balance(&self) -> f32 {
         let baseline: f32 = self.nodes.iter().map(|n| n.initial_storage).sum();
-        self.emitted + baseline - (self.stored() + self.sunk + self.in_flight() + self.dissipated)
+        self.emitted + baseline - (self.stored() + self.sunk + self.dissipated)
     }
 
     /// Conserved kind carried by a wire: the wire's own declared substance
@@ -602,6 +670,9 @@ impl Circuit {
         }
     }
 
+    /// Display/inspection amount for wire `k`, from committed node state (the
+    /// last completed step's activities). The engine itself uses
+    /// `delivery_share` with the SAME-STEP activities (#259).
     pub fn wire_amount(&self, k: usize) -> f32 {
         let w = &self.wires[k];
         if w.mode == FlowMode::Gradient {
@@ -615,6 +686,15 @@ impl Circuit {
         if self.is_observation(w) {
             return self.nodes[w.from].storage; // non-draining level read
         }
+        self.delivery_share(k, self.nodes[self.wires[k].from].activity)
+    }
+
+    /// What pushed wire `k` delivers when its sender's activity this step is
+    /// `sender_activity` — the fanout rule (Message replicates; physical
+    /// splits, weighted or uniform; a source wire carries its declared rate's
+    /// share). Pushed, non-observation wires only.
+    fn delivery_share(&self, k: usize, sender_activity: f32) -> f32 {
+        let w = &self.wires[k];
         let sender = &self.nodes[w.from];
         if matches!(sender.kind, NodeKind::Sink) {
             return 0.0; // a sink is terminal — absorbed mass never re-emits
@@ -626,7 +706,7 @@ impl Circuit {
         // which is also why Copying relabeled to a physical substance
         // splits rather than duplicating.
         if self.wire_substance(w) == SubstanceType::Message {
-            return sender.activity;
+            return sender_activity;
         }
         if matches!(sender.kind, NodeKind::Source) {
             // Weighted fanout (bert#111): a source wire with a declared rate
@@ -636,7 +716,7 @@ impl Circuit {
             // is declared anywhere.
             let emission = self.source_emission(w.from);
             return if emission > 0.0 {
-                self.crossing_factor(w.from) * sender.activity * self.source_wire_rate(k) / emission
+                self.crossing_factor(w.from) * sender_activity * self.source_wire_rate(k) / emission
             } else {
                 0.0
             };
@@ -660,9 +740,9 @@ impl Circuit {
             .filter_map(|&j| self.wire_declared_rate(j))
             .sum();
         if total_weight > 0.0 {
-            return sender.activity * self.wire_declared_rate(k).unwrap_or(0.0) / total_weight;
+            return sender_activity * self.wire_declared_rate(k).unwrap_or(0.0) / total_weight;
         }
-        sender.activity / (outwires.len().max(1) as f32)
+        sender_activity / (outwires.len().max(1) as f32)
     }
 
     /// The outwires bert#111 quantifies: pushed, non-observation, physical
@@ -829,6 +909,14 @@ impl Circuit {
     /// checks DIMENSIONAL COHERENCE — that a rate means per-time — and should
     /// not be read as requiring numerical convergence.
     pub fn step_dt(&mut self, dt: f32) {
+        // Instantaneous wires (#259): activities are computed in same-step
+        // dependency order — wires transmit, stocks remember. A circuit with
+        // an anchorless loop has no deterministic step (SSV Ex 4.2.9), so the
+        // step is REFUSED — a no-op, surfaced via `algebraic_cycle()` — rather
+        // than silently repaired with a delay nothing authored.
+        let Ok(order) = self.eval_order() else {
+            return;
+        };
         let n = self.nodes.len();
         let nw = self.wires.len();
 
@@ -842,22 +930,9 @@ impl Circuit {
         let mut sunk_now = 0.0f32;
         let mut dissipated_now = 0.0f32;
 
-        // Dead ends: an activity with no pushed outwire is read by nothing —
-        // it evaporates this tick. Count it so the ledger stays exact.
-        // (Buffers never dangle: release is 0 without a pushed outlet.)
-        if ledger {
-            for i in 0..n {
-                if matches!(self.nodes[i].kind, NodeKind::Process(_))
-                    && self.nodes[i].out_substance.base != SubstanceType::Message
-                    && !self
-                        .wires
-                        .iter()
-                        .any(|w| w.from == i && w.mode == FlowMode::Pushed)
-                {
-                    dissipated_now += self.nodes[i].activity;
-                }
-            }
-        }
+        // (Dead ends need no pre-pass under instantaneous wires: an activity
+        // no pushed outwire carries is charged as dissipated by the per-node
+        // ledger rule below, same step.)
 
         // ── Gradient flows (Potential Fields): rate = conductance·(Δlevel),
         // forward-only, read from pre-tick levels (synchronous). Capped so a
@@ -906,36 +981,29 @@ impl Circuit {
             })
             .collect();
 
-        // Amount delivered over wire index k: pushed wires use the shared
-        // per-wire delivery rule (`wire_amount` — fanout split, observation
-        // taps, terminal sinks); gradient wires use this tick's CAPPED rates.
-        let amount_on = |k: usize| -> f32 {
-            if self.wires[k].mode == FlowMode::Gradient {
+        // Amount delivered over wire index k THIS step, given the same-step
+        // activities computed so far: pushed wires use the shared per-wire
+        // delivery rule (`delivery_share` — fanout split, observation taps,
+        // terminal sinks); gradient wires use this tick's CAPPED rates.
+        let amount_on = |k: usize, act: &[f32]| -> f32 {
+            let w = &self.wires[k];
+            if w.mode == FlowMode::Gradient {
                 grad[k]
+            } else if self.is_observation(w) {
+                self.nodes[w.from].storage // non-draining level read (state)
             } else {
-                self.wire_amount(k)
+                self.delivery_share(k, act[w.from])
             }
         };
 
-        // Emissions: physical mass actually delivered out of Sources this
-        // tick, over pushed and gradient wires alike.
-        if ledger {
-            for k in 0..nw {
-                let w = &self.wires[k];
-                if matches!(self.nodes[w.from].kind, NodeKind::Source)
-                    && self.wire_substance(w) != SubstanceType::Message
-                {
-                    emitted_now += amount_on(k);
-                }
-            }
-        }
-
         // Back-pressure: a throttled valve with `back_pressure` throttles its
-        // UPSTREAM instead of shedding. Each such valve has a demand gate (from
-        // last-tick control); a Source/Buffer feeding it scales its output by
+        // UPSTREAM instead of shedding. Each such valve has a demand gate
+        // (same-step control — the control chain hangs off a level read, so
+        // it is already computed when the producer evaluates; `eval_order`
+        // guarantees it); a Source/Buffer feeding it scales its output by
         // that gate, so the blocked flow is never produced/released (it stays
         // upstream) — nothing is shed, conservation holds by not creating it.
-        let valve_gate = |v: usize| -> f32 {
+        let valve_gate = |v: usize, act: &[f32]| -> f32 {
             let ctrl: Vec<usize> = (0..nw)
                 .filter(|&k| {
                     self.wires[k].to == v
@@ -947,40 +1015,39 @@ impl Circuit {
                 return 1.0; // no control = open
             }
             ctrl.iter()
-                .map(|&k| self.nodes[self.wires[k].from].activity)
+                .map(|&k| act[self.wires[k].from])
                 .sum::<f32>()
                 .clamp(0.0, 1.0)
         };
-        let bp_factor: Vec<f32> = (0..n)
-            .map(|i| {
-                (0..nw)
-                    .find_map(|k| {
-                        let w = &self.wires[k];
-                        let to_bp_valve = w.from == i
-                            && w.mode == FlowMode::Pushed
-                            && self.wire_substance(w) != SubstanceType::Message
-                            && matches!(
-                                self.nodes[w.to].kind,
-                                NodeKind::Process(ProcessPrimitive::Modulating)
-                            )
-                            && self.nodes[w.to].back_pressure;
-                        to_bp_valve.then(|| valve_gate(w.to))
-                    })
-                    .unwrap_or(1.0)
-            })
-            .collect();
+        let bp_factor_of = |i: usize, act: &[f32]| -> f32 {
+            (0..nw)
+                .find_map(|k| {
+                    let w = &self.wires[k];
+                    let to_bp_valve = w.from == i
+                        && w.mode == FlowMode::Pushed
+                        && self.wire_substance(w) != SubstanceType::Message
+                        && matches!(
+                            self.nodes[w.to].kind,
+                            NodeKind::Process(ProcessPrimitive::Modulating)
+                        )
+                        && self.nodes[w.to].back_pressure;
+                    to_bp_valve.then(|| valve_gate(w.to, act))
+                })
+                .unwrap_or(1.0)
+        };
 
-        let mut next_activity = vec![0.0f32; n];
+        let mut act = vec![0.0f32; n];
         let mut next_storage: Vec<f32> = self.nodes.iter().map(|x| x.storage).collect();
         let mut sink_add = vec![0.0f32; n];
 
-        for (i, node) in self.nodes.iter().enumerate() {
+        for &i in &order {
+            let node = &self.nodes[i];
             let incoming: Vec<(SubstanceType, f32, bool)> = (0..nw)
                 .filter(|&k| self.wires[k].to == i)
                 .map(|k| {
                     (
                         self.wire_substance(&self.wires[k]),
-                        amount_on(k),
+                        amount_on(k, &act),
                         self.is_observation(&self.wires[k]),
                     )
                 })
@@ -992,13 +1059,6 @@ impl Circuit {
                 .filter(|(s, _, _)| *s != SubstanceType::Message)
                 .map(|(_, a, _)| a)
                 .sum();
-            // What was actually DELIVERED — observation reads excluded; this
-            // is the mass the ledger holds the node accountable for.
-            let delivered_phys: f32 = incoming
-                .iter()
-                .filter(|(s, _, obs)| *s != SubstanceType::Message && !obs)
-                .map(|(_, a, _)| a)
-                .sum();
             let message: f32 = incoming
                 .iter()
                 .filter(|(s, _, _)| *s == SubstanceType::Message)
@@ -1006,13 +1066,13 @@ impl Circuit {
                 .sum();
             let a = node.param; // agency capacity 0..1
 
-            next_activity[i] = match node.kind {
+            act[i] = match node.kind {
                 // Emits its total rate — the sum of per-wire declared rates
                 // (bert#111), param when none are declared — throttled to what
                 // a downstream back-pressured valve will accept (the rest is
                 // simply not produced).
                 // × dt: a Source's param is a RATE per time unit (#258)
-                NodeKind::Source => dt * self.source_emission(i) * bp_factor[i],
+                NodeKind::Source => dt * self.source_emission(i) * bp_factor_of(i, &act),
                 NodeKind::Sink => {
                     sink_add[i] = physical + message;
                     physical + message
@@ -1022,7 +1082,11 @@ impl Circuit {
                     // out) −gradient_out (field-driven out). The gradient drain
                     // already left via its wires; subtract it from the stock.
                     ProcessPrimitive::Buffering => {
-                        let mut storage = next_storage[i] + physical - gradient_out[i];
+                        // Moore anchor (#259): release is computed from the
+                        // START-OF-STEP stock — the state that cuts every loop
+                        // through a buffer — and this step's inflow lands
+                        // after. Forward Euler of Q̇ = in − release(Q), both
+                        // sides evaluated at the step's opening state.
                         let gate = if self.wires.iter().any(|w| {
                             w.to == i
                                 && w.mode == FlowMode::Pushed
@@ -1042,12 +1106,12 @@ impl Circuit {
                                 && self.wires[k].mode == FlowMode::Pushed
                                 && !self.is_observation(&self.wires[k])
                         });
-                        let released = if has_pushed_outlet {
+                        if has_pushed_outlet {
                             // First-order drain (τ > 0): release ≈ stock/τ, an
                             // exponential decay / low-pass smoother. Else the
                             // fixed amount per tick. Either way capped by stock.
                             let base = if node.time_constant > 0.0 {
-                                storage.max(0.0) / node.time_constant
+                                node.storage.max(0.0) / node.time_constant
                             } else {
                                 node.release_rate
                             };
@@ -1059,29 +1123,17 @@ impl Circuit {
                             // is a first-order drain per time unit, and
                             // `release_rate` is per time unit by declaration. The
                             // cap stays OUTSIDE the scaling: you cannot release
-                            // more than you hold no matter how long the step is.
-                            (dt * base * gate * bp_factor[i]).min(storage.max(0.0))
+                            // more than the opening stock holds (net of this
+                            // step's gradient drain), however long the step.
+                            (dt * base * gate * bp_factor_of(i, &act))
+                                .min((node.storage - gradient_out[i]).max(0.0))
                         } else {
                             0.0
-                        };
-                        storage -= released;
-                        // Maintenance respiration: a constant upkeep loss from
-                        // the stock, dissipated (never delivered). The ledger
-                        // charges it automatically — the stock falls but no
-                        // outflow carries it. Odum depreciation / Mobus Fig 3.17.
-                        if node.maintenance > 0.0 {
-                            storage -= node.maintenance.min(storage.max(0.0));
                         }
-                        // Capacity: a bounded tank overflows. Clamping the
-                        // stock here makes the conservation ledger's per-node
-                        // rule charge the overflow as dissipated by itself
-                        // (dissipated = in − out − Δstorage, and Δstorage is
-                        // now the clamped change). 0.0 = unbounded.
-                        if node.capacity > 0.0 && storage > node.capacity {
-                            storage = node.capacity;
-                        }
-                        next_storage[i] = storage;
-                        released
+                        // Storage itself updates in the post-pass below: this
+                        // step's inflow may come from a node evaluated later
+                        // (inflow is no activity dependency — that is what
+                        // makes the stock the loop's anchor).
                     }
                     ProcessPrimitive::Combining => physical,
                     ProcessPrimitive::Splitting => physical, // fanout divides on wires
@@ -1129,25 +1181,87 @@ impl Circuit {
                 },
             };
 
-            // The ledger rule (one rule, every arm): whatever physical mass a
-            // node was delivered and neither re-emits, passes down a gradient,
-            // nor stores, it dissipated. Exact by construction — see module
-            // docs for why each channel is intended. Skipped wholesale when the
-            // model declines conservation (axis D) — the transition above stands
-            // on its own; only the accounting is optional.
-            if ledger {
+        }
+
+        // Deliveries against the FINISHED activity vector: a buffer's (or
+        // source's) physical inflow may come from a node evaluated after it —
+        // inflow is no activity dependency, that is what makes the stock the
+        // loop's anchor — so all accounting reads the final amounts, never
+        // the mid-loop ones. Observation reads excluded: a level read
+        // delivers nothing.
+        let delivered: Vec<f32> = (0..n)
+            .map(|i| {
+                (0..nw)
+                    .filter(|&k| {
+                        let w = &self.wires[k];
+                        w.to == i
+                            && self.wire_substance(w) != SubstanceType::Message
+                            && !self.is_observation(w)
+                    })
+                    .map(|k| amount_on(k, &act))
+                    .sum()
+            })
+            .collect();
+
+        // Stocks integrate: opening stock + this step's inflow − release −
+        // gradient drain − maintenance, clamped to capacity. The only place
+        // physical mass crosses a step boundary.
+        for i in 0..n {
+            let node = &self.nodes[i];
+            if !matches!(
+                node.kind,
+                NodeKind::Process(ProcessPrimitive::Buffering)
+            ) {
+                continue;
+            }
+            let mut storage = node.storage + delivered[i] - gradient_out[i] - act[i];
+            // Maintenance respiration: a constant upkeep loss from the stock,
+            // dissipated (never delivered). The ledger charges it
+            // automatically — the stock falls but no outflow carries it.
+            // Odum depreciation / Mobus Fig 3.17.
+            if node.maintenance > 0.0 {
+                storage -= node.maintenance.min(storage.max(0.0));
+            }
+            // Capacity: a bounded tank overflows. Clamping the stock makes
+            // the conservation ledger's per-node rule charge the overflow as
+            // dissipated by itself (dissipated = in − out − Δstorage, and
+            // Δstorage is now the clamped change). 0.0 = unbounded.
+            if node.capacity > 0.0 && storage > node.capacity {
+                storage = node.capacity;
+            }
+            next_storage[i] = storage;
+        }
+
+        // The ledger rule (one rule, every node): whatever physical mass a
+        // node was delivered and neither re-emits, passes down a gradient,
+        // nor stores, it dissipated. Exact by construction — see module
+        // docs for why each channel is intended. Skipped wholesale when the
+        // model declines conservation (axis D) — the transition above stands
+        // on its own; only the accounting is optional.
+        if ledger {
+            for i in 0..n {
+                let node = &self.nodes[i];
                 match node.kind {
                     // Inflow to a source has nowhere to go (the UI refuses these
                     // wires; ledgered defensively).
-                    NodeKind::Source => dissipated_now += delivered_phys,
-                    NodeKind::Sink => sunk_now += delivered_phys,
+                    NodeKind::Source => dissipated_now += delivered[i],
+                    NodeKind::Sink => sunk_now += delivered[i],
                     NodeKind::Process(_) => {
-                        let out_phys = if node.out_substance.base == SubstanceType::Message {
-                            0.0
-                        } else {
-                            next_activity[i]
-                        };
-                        dissipated_now += delivered_phys
+                        // Physical out only counts if a pushed, non-observation
+                        // outwire actually carries it — an activity nothing
+                        // reads is a dead end and dissipates this same step.
+                        let has_outlet = (0..nw).any(|k| {
+                            self.wires[k].from == i
+                                && self.wires[k].mode == FlowMode::Pushed
+                                && !self.is_observation(&self.wires[k])
+                        });
+                        let out_phys =
+                            if node.out_substance.base == SubstanceType::Message || !has_outlet {
+                                0.0
+                            } else {
+                                act[i]
+                            };
+                        dissipated_now += delivered[i]
                             - out_phys
                             - gradient_out[i]
                             - (next_storage[i] - node.storage);
@@ -1156,8 +1270,21 @@ impl Circuit {
             }
         }
 
+        // Emissions: physical mass actually delivered out of Sources this
+        // step, over pushed and gradient wires alike — same-step amounts.
+        if ledger {
+            for k in 0..nw {
+                let w = &self.wires[k];
+                if matches!(self.nodes[w.from].kind, NodeKind::Source)
+                    && self.wire_substance(w) != SubstanceType::Message
+                {
+                    emitted_now += amount_on(k, &act);
+                }
+            }
+        }
+
         for (i, node) in self.nodes.iter_mut().enumerate() {
-            node.activity = next_activity[i];
+            node.activity = act[i];
             node.storage = next_storage[i];
             node.total += sink_add[i];
             let signal = if matches!(node.kind, NodeKind::Process(ProcessPrimitive::Buffering)) {
@@ -1369,13 +1496,22 @@ mod tests {
             "stock accumulates: {}",
             c.nodes[1].storage
         );
-        // Conservation: everything emitted is in the stock, in transit, or in the sink.
-        let emitted = 2.0 * (c.tick as f32 - 1.0); // first tick's emission lands at t=2
-        let accounted = c.nodes[1].storage + c.nodes[1].activity + c.nodes[2].total;
+        // Conservation: everything emitted is in the stock or the sink —
+        // wires carry no state, so nothing is "in transit" between steps
+        // (#259). Step 1 releases nothing (the stock opens empty; release
+        // reads the opening state), steps 2–10 release 1 each: stock
+        // 2 + 9·(2−1) = 11, sunk 9, and 11 + 9 = 20 = 10 steps × 2. Exact.
         assert!(
-            (emitted - accounted).abs() <= 2.0 + f32::EPSILON,
-            "mass conserved: emitted {emitted}, accounted {accounted}"
+            (c.nodes[1].storage - 11.0).abs() < 1e-4,
+            "stock integrates in − out from its opening state: {}",
+            c.nodes[1].storage
         );
+        assert!(
+            (c.nodes[2].total - 9.0).abs() < 1e-4,
+            "sink holds the released mass: {}",
+            c.nodes[2].total
+        );
+        assert!(c.balance().abs() < 1e-4, "conserved: {}", c.balance());
     }
 
     /// Law: an undeclared wire's fallback rate never alters a sibling wire's
@@ -1495,16 +1631,19 @@ mod tests {
     /// relays within the step, so a source → splitter → sink chain delivers
     /// end-to-end on the FIRST step and the pipeline stores no phantom mass.
     /// Wires carry no state; only stocks remember (VSL; Spivak–Tan eq. 11).
+    /// The node indices deliberately REVERSE the flow direction: delivery
+    /// follows dependency order, never authoring order, so an engine that
+    /// merely evaluates by index (a hidden per-hop register) fails here.
     #[test]
     fn relay_is_instantaneous_within_a_step() {
         let mut c = Circuit::default();
-        c.nodes.push(node(NodeKind::Source)); // 0
-        c.nodes[0].param = 6.0;
+        c.nodes.push(node(NodeKind::Sink)); // 0
         c.nodes
             .push(node(NodeKind::Process(ProcessPrimitive::Splitting))); // 1
-        c.nodes.push(node(NodeKind::Sink)); // 2
-        c.wires.push(Wire::new(0, 1));
-        c.wires.push(Wire::new(1, 2));
+        c.nodes.push(node(NodeKind::Source)); // 2
+        c.nodes[2].param = 6.0;
+        c.wires.push(Wire::new(2, 1));
+        c.wires.push(Wire::new(1, 0));
         c.step();
         assert!(
             (c.sunk - 6.0).abs() < 1e-4,
@@ -2061,13 +2200,12 @@ mod tests {
         let scale = (c.emitted + c.nodes.iter().map(|n| n.initial_storage).sum::<f32>()).max(1.0);
         assert!(
             c.balance().abs() <= 1e-3 * scale,
-            "{ctx}: tick {} leaks {} (emitted {}, stored {}, sunk {}, in-flight {}, dissipated {})",
+            "{ctx}: tick {} leaks {} (emitted {}, stored {}, sunk {}, dissipated {})",
             c.tick,
             c.balance(),
             c.emitted,
             c.stored(),
             c.sunk,
-            c.in_flight(),
             c.dissipated,
         );
     }

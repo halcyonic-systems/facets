@@ -26,11 +26,33 @@ ROOT = Path(__file__).resolve().parent.parent
 # a defect spanning sibling assets (e.g. BOTH two-thing twins undirected) is
 # reproducible as it actually shipped.
 MUTATIONS = [
-    # OWED, blocked on the engine honoring Δt: a mutation reverting flux to
-    # per-tick consumption must turn dt_invariance.rs red. It cannot be added
-    # while that gate is BORN red (mutation coverage presupposes a green gate —
-    # against a red one, every mutation passes vacuously). Add it in the same
-    # commit that makes the engine scale flux by Δt.
+    # The formerly-owed Δt entries, paid in the commit that greened
+    # dt_invariance (#258/#259 — the debt was pre-declared here while the
+    # gate was born red, because mutation coverage presupposes a green gate).
+    (
+        "flux-per-tick",
+        [("crates/bert-compose/src/circuit.rs",
+          "NodeKind::Source => dt * self.source_emission(i) * bp_factor_of(i, &act),",
+          "NodeKind::Source => self.source_emission(i) * bp_factor_of(i, &act),")],
+        ["-p", "bert-canvas", "--test", "dt_invariance"],
+        "per-tick flux consumption — a rate applied once per step regardless of Δt (#258)",
+    ),
+    (
+        "series-per-tick",
+        [("crates/bert-compose/src/circuit.rs",
+          "let idx = ((self.time / stride) as usize).min(series.len() - 1);",
+          "let idx = ((self.tick as f32 / stride) as usize).min(series.len() - 1);")],
+        ["-p", "bert-compose", "--lib", "forced_series_is_anchored_to_model_time"],
+        "forced series consumed per tick instead of per time unit (#258)",
+    ),
+    (
+        "loop-silently-delayed",
+        [("crates/bert-compose/src/circuit.rs",
+          "        let Ok(order) = self.eval_order() else {\n            return;\n        };",
+          "        let order: Vec<usize> = (0..self.nodes.len()).collect();")],
+        ["-p", "bert-compose", "--lib", "relay_is_instantaneous_within_a_step"],
+        "index-order evaluation — the per-hop register delay wires never authored (#259)",
+    ),
     (
         "amount-hardcode",
         [("crates/bert-canvas/src/canvas.rs",
