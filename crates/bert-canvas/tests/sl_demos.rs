@@ -2,13 +2,13 @@
 //! SYSTEM LANGUAGE, and their gallery run bundles carry MACHINE PROJECTIONS
 //! of the `.sl` — never hand-authored JSON. This gate holds three things:
 //!
-//! 1. each `.sl` parses, projects, validates operational, and RUNS with mass
-//!    conserved and something actually reaching a sink;
+//! 1. each `.sl` parses, projects, validates operational, and RUNS with
+//!    mass conserved and something actually reaching a sink;
 //! 2. the run is Δt-invariant over a fixed horizon — the engine's rate
 //!    reading (#258/#259) holds end-to-end from SL text to trace;
-//! 3. the stored model in `assets/models/demos/` IS the current projection —
-//!    an `.sl` edit that forgets to re-mint fails here, so the diagram the
-//!    gallery opens and the model it runs can never drift apart.
+//! 3. the stored model in `assets/models/demos/` IS the current
+//!    projection — an `.sl` edit that forgets to re-mint fails here, so
+//!    the diagram the gallery opens and the model it runs never drift.
 //!
 //! Re-mint after editing an `.sl`:
 //! `BLESS_SL_DEMOS=1 cargo test -p bert-canvas --test sl_demos`
@@ -25,8 +25,8 @@ const DEMOS: &[&str] = &["watershed", "supply-chain"];
 // homeostat convergence gate in dt_invariance.rs pins for the engine.
 const HORIZON: f64 = 60.0;
 
-/// The gallery run path, end to end: each demo's ACTUAL bundle (CSV + mapping
-/// + horizon) forces its stored model through `force_and_run` — exactly the
+/// The gallery run path, end to end: each demo's ACTUAL bundle (CSV, mapping,
+/// horizon) forces its stored model through `force_and_run` — exactly the
 /// call the web app's Run button makes. A wrong element name, unit string, or
 /// unrunnable mapping fails here instead of at GUI runtime.
 #[test]
