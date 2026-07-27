@@ -37,6 +37,21 @@
 //! discretization drift between step sizes on the feedback paths (O(Δt)),
 //! narrow enough that the per-tick hypothesis — a factor of ≈2 — can never
 //! slip through. The discriminating gap is 2×, not ε.
+//!
+//! ## Status after the #258 fixes (2026-07-27)
+//!
+//! Generated fluxes now scale by Δt and forced series index by model time,
+//! and `reservoir` is green. The remaining reds (homeostat, allocation) are
+//! ONE defect, and it is not flux scaling: the synchronous update gives every
+//! node a one-STEP transport delay, and a step is Δt-sized (allocation's
+//! receipts: sunk = 6×28 = 168 at Δt=1.0 vs 3×58 = 174 at Δt=0.5 — a 2-hop
+//! pipeline delay measured in steps). #259 settled the semantics against
+//! VSL, Spivak–Tan eq. (11), and SSV (Defs 4.2.4/4.2.7, Exs 4.2.8/4.2.9):
+//! wires are instantaneous; feedback is anchored by state-determined (Moore)
+//! outputs; a delay is a MODELED element with a declared duration, never a
+//! per-hop artifact. This test greens when memoryless primitives relay
+//! within the step (topological order, level-read edges as the cut) — see
+//! #259's spec. Still: never widen the tolerance.
 
 use bert_canvas::canvas::{project, to_canvas};
 use bert_compose::{from_spec, run::RecordedRun};
