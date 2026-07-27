@@ -26,6 +26,11 @@ ROOT = Path(__file__).resolve().parent.parent
 # a defect spanning sibling assets (e.g. BOTH two-thing twins undirected) is
 # reproducible as it actually shipped.
 MUTATIONS = [
+    # OWED, blocked on the engine honoring Δt: a mutation reverting flux to
+    # per-tick consumption must turn dt_invariance.rs red. It cannot be added
+    # while that gate is BORN red (mutation coverage presupposes a green gate —
+    # against a red one, every mutation passes vacuously). Add it in the same
+    # commit that makes the engine scale flux by Δt.
     (
         "amount-hardcode",
         [("crates/bert-canvas/src/canvas.rs",

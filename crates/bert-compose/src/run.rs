@@ -59,7 +59,11 @@ impl RecordedRun {
     }
 
     /// Run `circuit` over a horizon `total_time` at step size `dt`: the `(T, Δt)`
-    /// form. The tick count is `round(total_time / dt)`, so halving Δt doubles
+    /// form — with a caveat this form currently overstates (#216-adjacent):
+    /// `dt` is metadata the dynamics never read (`step()` takes no Δt), so equal
+    /// horizons at different step sizes are NOT equivalent runs — fluxes scale
+    /// with the tick count. `dt_invariance.rs` is the standing record.
+    /// The tick count is `round(total_time / dt)`, so halving Δt doubles
     /// the resolution of the same horizon.
     ///
     /// Refuses when `(Δt, T)` name no run — see [`ticks_over`], which is where
