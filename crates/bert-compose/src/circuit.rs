@@ -512,6 +512,21 @@ impl Circuit {
         self.dissipated = 0.0;
     }
 
+    /// The wire graph's algebraic cycle, if it has one: a loop every element
+    /// of which computes its output from same-step input, with no
+    /// state-determined (Moore) anchor — no stock level read, no gradient, no
+    /// source — anywhere on it. Such a composite has no total deterministic
+    /// semantics (SSV, *Dynamical Systems and Sheaves*, Ex 4.2.9), so the
+    /// engine names it rather than silently inserting a delay to make it
+    /// computable (#259). `None` = every loop is anchored and the circuit is
+    /// well-posed.
+    pub fn algebraic_cycle(&self) -> Option<Vec<usize>> {
+        // STUB (#259, intentionally wrong): the current engine gives every
+        // node a one-tick register, so it believes every diagram runs.
+        // Replaced by the real detector with the instantaneous-wire engine.
+        None
+    }
+
     /// Σ stock across all nodes.
     pub fn stored(&self) -> f32 {
         self.nodes.iter().map(|n| n.storage).sum()
@@ -1474,6 +1489,79 @@ mod tests {
             );
         }
         assert!(c.balance().abs() < 1e-3, "slow channel conserves: {}", c.balance());
+    }
+
+    /// Law (#259): a wire transmits instantaneously — a memoryless process
+    /// relays within the step, so a source → splitter → sink chain delivers
+    /// end-to-end on the FIRST step and the pipeline stores no phantom mass.
+    /// Wires carry no state; only stocks remember (VSL; Spivak–Tan eq. 11).
+    #[test]
+    fn relay_is_instantaneous_within_a_step() {
+        let mut c = Circuit::default();
+        c.nodes.push(node(NodeKind::Source)); // 0
+        c.nodes[0].param = 6.0;
+        c.nodes
+            .push(node(NodeKind::Process(ProcessPrimitive::Splitting))); // 1
+        c.nodes.push(node(NodeKind::Sink)); // 2
+        c.wires.push(Wire::new(0, 1));
+        c.wires.push(Wire::new(1, 2));
+        c.step();
+        assert!(
+            (c.sunk - 6.0).abs() < 1e-4,
+            "the first step delivers end-to-end, got sunk = {}",
+            c.sunk
+        );
+        for _ in 1..30 {
+            c.step();
+        }
+        assert!(
+            (c.sunk - 180.0).abs() < 1e-3,
+            "a 2-hop pipeline stores no phantom mass over 30 steps: {}",
+            c.sunk
+        );
+        assert!(c.balance().abs() < 1e-3, "conserved: {}", c.balance());
+    }
+
+    /// Law (#259): a loop with no state-determined element has no
+    /// deterministic semantics (SSV Ex 4.2.9) — the engine NAMES it instead
+    /// of silently inserting a per-step delay. An anchored loop (through a
+    /// stock's level read, as in every real regulator) is well-posed.
+    /// This refusal is the separating instance the per-hop-delay reading
+    /// owes under the #258 design rule.
+    #[test]
+    fn all_memoryless_cycle_is_refused_anchored_loop_is_not() {
+        // Two Copying processes feeding each other: pure relays, no state.
+        let mut c = Circuit::default();
+        c.nodes.push(node(NodeKind::Process(ProcessPrimitive::Copying))); // 0
+        c.nodes.push(node(NodeKind::Process(ProcessPrimitive::Copying))); // 1
+        c.wires.push(Wire::new(0, 1));
+        c.wires.push(Wire::new(1, 0));
+        assert!(
+            c.algebraic_cycle().is_some(),
+            "a loop of pure relays must be refused, not silently delayed"
+        );
+
+        // The homeostat's loop: source → valve → stock ⌐obs→ sensor →
+        // comparator → valve control. Anchored at the stock's level read.
+        let mut h = Circuit::default();
+        h.nodes.push(node(NodeKind::Source)); // 0
+        h.nodes
+            .push(node(NodeKind::Process(ProcessPrimitive::Modulating))); // 1
+        h.nodes
+            .push(node(NodeKind::Process(ProcessPrimitive::Buffering))); // 2
+        h.nodes
+            .push(node(NodeKind::Process(ProcessPrimitive::Sensing))); // 3
+        h.nodes
+            .push(node(NodeKind::Process(ProcessPrimitive::Inverting))); // 4
+        h.wires.push(Wire::new(0, 1)); // supply → valve
+        h.wires.push(Wire::new(1, 2)); // valve → stock
+        h.wires.push(Wire::new(2, 3)); // stock → sensor (observation tap)
+        h.wires.push(Wire::new(3, 4)); // sensor → comparator
+        h.wires.push(Wire::new(4, 1)); // comparator closes the loop (gate)
+        assert!(
+            h.algebraic_cycle().is_none(),
+            "a loop anchored at a level read is well-posed"
+        );
     }
 
     /// Law: a forced series is data over MODEL TIME, not over ticks —
