@@ -375,18 +375,21 @@ pub struct Wire {
     /// Series forcing (bert-lenses#16): a forced source outwire emits an
     /// OBSERVED series tick by tick instead of a constant `rate` — Mobus's
     /// `o_Src(t) = f(q,t)` (ch6 §6.6.2.3), the 7-tuple's H entering the run
-    /// instead of being averaged to a mean. At tick `t` the wire delivers
-    /// `series[min(t, len-1)]`; past the series' end the last value is HELD
+    /// instead of being averaged to a mean. Each sample spans one time unit
+    /// (× `dt_stride`): at model time `t` the wire delivers
+    /// `series[min(⌊t⌋, len-1)]`; past the series' end the last value is HELD
     /// (data-horizon: projection, not error — #34). `None` = unforced, the
     /// constant-`rate` path is byte-for-byte unchanged. Takes precedence over
     /// `rate` when present.
     pub rate_series: Option<Vec<f32>>,
     /// Multi-timescale (rung 3): this wire's `rate_series` is sampled once every
-    /// `dt_stride` fast ticks and ZERO-ORDER-HELD between — the channel's own
-    /// Δt = `dt_stride × base Δt`, Mobus's per-node `Δt_{i,l}` as an integer
-    /// multiple (ch4 §4.3.3.6). A slow (e.g. annual) channel carries its real
-    /// data stream at index `tick / dt_stride`. `None`/`1` = every tick, the
-    /// single-clock case — byte-for-byte the pre-rung-3 behavior.
+    /// `dt_stride` time units and ZERO-ORDER-HELD between — the channel's own
+    /// Δt = `dt_stride ×` the model's time unit, Mobus's per-node `Δt_{i,l}` as
+    /// an integer multiple (ch4 §4.3.3.6). A slow (e.g. annual) channel carries
+    /// its real data stream at index `time / dt_stride` — anchored to model
+    /// time, not to the numerical step (#258). `None`/`1` = one sample per time
+    /// unit, the single-clock case — byte-for-byte the pre-rung-3 behavior at
+    /// the default dt = 1.0.
     pub dt_stride: Option<u32>,
     /// Per-wire substance when a sender's flows differ (bert#111 sibling: a
     /// multi-outflow source declares substance per flow, not per node).
@@ -465,6 +468,11 @@ pub struct Circuit {
     /// `reset` leaves it untouched.
     pub porosity: f32,
     pub tick: u64,
+    /// Model time elapsed, in the model's declared time unit — the sum of the
+    /// `dt`s stepped so far (equals `tick` while every step is the default
+    /// 1.0). Forced-series indexing reads THIS, never `tick`, so a channel's
+    /// data stays anchored to time under Δt refinement (#258).
+    pub time: f32,
     /// Per-tick data rows: [tick, n0.activity, n0.storage, n0.total, n1…].
     /// Cleared on Reset or when the topology changes mid-recording.
     pub history: Vec<Vec<f32>>,
@@ -496,6 +504,7 @@ impl Circuit {
             n.spark.clear();
         }
         self.tick = 0;
+        self.time = 0.0;
         self.history.clear();
         self.ledger_history.clear();
         self.emitted = 0.0;
@@ -655,20 +664,23 @@ impl Circuit {
     }
 
     /// A wire's declared emission for the CURRENT tick. A forced wire (#16)
-    /// reads its observed series at `self.tick`, holding the last value once
-    /// the tick passes the series' end (data horizon — projection, not error,
-    /// #34); an empty series is treated as no series. Otherwise the constant
-    /// `rate`. `None` = undeclared (the caller falls back to the param split).
+    /// reads its observed series at the current MODEL TIME, holding the last
+    /// value once time passes the series' end (data horizon — projection, not
+    /// error, #34); an empty series is treated as no series. Otherwise the
+    /// constant `rate`. `None` = undeclared (the caller falls back to the
+    /// param split).
     fn wire_declared_rate(&self, k: usize) -> Option<f32> {
         let w = &self.wires[k];
         if let Some(series) = &w.rate_series {
             if !series.is_empty() {
-                // Zero-order hold at the channel's own Δt (rung 3): one sample
-                // advances every `dt_stride` fast ticks, so a slow channel holds
-                // each real value between its (e.g. annual) updates. stride 1 is
-                // the single-clock case — index == tick, unchanged.
-                let stride = w.dt_stride.unwrap_or(1).max(1) as usize;
-                let idx = (self.tick as usize / stride).min(series.len() - 1);
+                // Zero-order hold at the channel's own Δt (rung 3): each sample
+                // spans `dt_stride` time units, so a slow channel holds each
+                // real value between its (e.g. annual) updates. Indexed by
+                // model time, never tick count — the series is data over time,
+                // and refining Δt must not consume it faster (#258). At the
+                // default dt = 1.0 this is `tick / stride`, unchanged.
+                let stride = w.dt_stride.unwrap_or(1).max(1) as f32;
+                let idx = ((self.time / stride) as usize).min(series.len() - 1);
                 return Some(series[idx]);
             }
         }
@@ -1149,6 +1161,7 @@ impl Circuit {
             self.dissipated += dissipated_now;
         }
         self.tick += 1;
+        self.time += dt;
 
         // Record the tick. A topology change invalidates prior columns.
         let width = 1 + self.nodes.len() * 3;
@@ -1432,13 +1445,14 @@ mod tests {
     }
 
     /// Law: a wire's own Δt (dt_stride) governs how often it samples its
-    /// series — it holds each value for `stride` ticks, independent of the
-    /// base clock.
+    /// series — it holds each value for `stride` time units, independent of
+    /// the numerical step.
     /// Rung 3 (multi-timescale): a forced wire with `dt_stride = s` samples its
-    /// series once every `s` ticks and holds the value between — the channel's
-    /// own Δt = s × base Δt (Mobus's per-node Δt_{i,l}, an integer multiple).
-    /// A slow (stride-3) series [10,20,30] holds each value for 3 ticks, then
-    /// held-last past the end; conservation holds throughout.
+    /// series once every `s` time units and holds the value between — the
+    /// channel's own Δt = s × the model's time unit (Mobus's per-node Δt_{i,l},
+    /// an integer multiple). A slow (stride-3) series [10,20,30] holds each
+    /// value for 3 time units, then held-last past the end; conservation holds
+    /// throughout.
     #[test]
     fn forced_wire_holds_series_at_its_own_dt() {
         let mut c = Circuit::default();
@@ -1476,6 +1490,11 @@ mod tests {
         w.rate_series = Some(vec![10.0, 20.0, 30.0]);
         c.wires.push(w);
         // Six half-steps cover the same 3-unit horizon as three whole steps.
+        // The law is the GENERATION sequence — the per-step flux each sample
+        // produces. Ledger totals over the same horizon are deliberately NOT
+        // asserted here: the wire's one-STEP transport delay is Δt-sized, so
+        // end-of-run in-transit mass differs by step size — that is #259's
+        // wire-semantics question, not this indexing law.
         let expected = [5.0f32, 5.0, 10.0, 10.0, 15.0, 15.0];
         for (t, want) in expected.iter().enumerate() {
             c.step_dt(0.5);
@@ -1485,11 +1504,7 @@ mod tests {
                 c.nodes[0].activity
             );
         }
-        assert!(
-            (c.emitted - 30.0).abs() < 1e-3,
-            "same horizon, same mass: {}",
-            c.emitted
-        );
+        assert!(c.balance().abs() < 1e-3, "conserved: {}", c.balance());
     }
 
     /// Law: an unset (or 1) dt_stride is the single-clock case — the series
