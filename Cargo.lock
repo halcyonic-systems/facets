@@ -31,6 +31,7 @@ version = "0.1.0"
 dependencies = [
  "bert-compose",
  "bert-core",
+ "bert-tether",
  "serde",
  "serde_json",
 ]
