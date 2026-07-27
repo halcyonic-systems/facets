@@ -66,6 +66,10 @@ SL is one unified language: the traditions *contributed* the words, and the lang
 | `->` | direction (from, to) | Mobus (flows carry direction); contrast the observer's `@directed` | `Relation.a` / `.b` |
 | `energy`, `matter`, `field`, `informational` | the connection-kind taxonomy | Bunge, **verbatim** ("flows — of energy, matter, or fields … informational", CES 1979), mapping 1:1 onto Mobus substances (Material/Energy/Message; `canvas.rs:64`) | `Kind` (the fifth value, `Unspecified`, is the *absence* of the clause) |
 | `mere` | bond vs mere-relation (B vs B̄) | Bunge | `Relation.is_bond = false` |
+| `substance` | what flows, named apart from what the flow is *called* — "F-1.1 — iron-input" is a label, `iron` is a substance (#216, C4) | Mobus (substances are what work processes transform); Bunge's flows are "of" something by construction | `Relation.substance` → `Substance.sub_type` |
+| `amount` | the flow's magnitude per Δt — a structural attribute of the edge (it does not vary during a run), whose absence capped every SL model at rate 1.0 (#216, C1). A non-positive value is a parse fault; on a `mere` relation it is a contradiction and refused. Omitted ≠ 1: unauthored survives as its own state, and only projection supplies the kernel default | Mobus (flows carry magnitude — §8.2's rate field, structural half) | `Relation.amount` → `Interaction.amount` |
+| `unit` (flow clause) | the magnitude's unit (#216, C1); same word as the `time unit` header line, disambiguated by position | Mobus (dimensional bookkeeping on flows) | `Relation.unit` → `Interaction.unit` |
+| `weight` | per-transition count for the DTMC read (#67) — a non-negative integer; absent reads as the uniform 1 | Klir (the directed-system observer's transition structure); SSF's `kindCodomain .markov` | `Relation.weight` |
 | `boundary`, `porosity`, `fuzziness` | B's properties P = ⟨porosity, perceptive_fuzziness⟩ | **Mobus (B = ⟨P, I⟩) and Bunge (topological boundary, 1992)** — shared concept; the property words are Mobus's | `CanvasBoundaryProps` |
 | `stock` | a Buffering stock's declared unit — the stock accumulates its inflow over Δt, so its dimension differs from the flow's and carries its own unit (#76/#94) | Mobus (stocks/buffers, the Buffering work process); the Stella/Vensim stock-flow convention | `Thing.stock_unit` → `AgentModel.stock_unit` |
 | `time unit` | the model's time-unit symbol — what one Δt is called, so an intrinsic rate integrates in the author's vocabulary (`kW` → `kW·h`, #94) | Mobus (Δt in the 8-tuple's time base); the symbol is display vocabulary, never a rescaling | `CanvasModel.time_unit` → `WorldModel.time_unit` |
@@ -95,7 +99,10 @@ thingword   = "component" | "source" | "sink" | "environment" ;
 attr        = "interface" | "primitive" primword
             | "stock" name                             (* declared stock unit *)
             | "decomposes" string modelid ;            (* component lines only *)
-flow        = "flow" name "->" name [ ":" kindword ] [ string ] [ "mere" ] ;
+flow        = "flow" name "->" name [ ":" kindword ] [ string ]
+              [ "substance" name ] [ "amount" decimal ] [ "unit" name ]
+              [ "mere" ] [ "weight" integer ] ;
+decimal     = positive decimal number ;                (* "1.5"; 0 and below refused *)
 boundary    = "boundary" { propword number } ;
 propword    = "porosity" | "fuzziness" ;
 
@@ -138,6 +145,8 @@ At most one per file. The free-text subject area that frames narration: `domain 
 ### 4.4 `flow`
 
 `flow "Iron Vendor" -> Furnace : matter "iron"` declares a directed connection. The kind clause is optional (absent = `Unspecified`); the quoted label is optional (the flow's name); trailing `mere` declares a mere relation — Bunge's B̄, a relation that is not a bond, which exists only in the editing model and never projects.
+
+The quantity clauses (#216, C1/C4) follow the label, in canonical order: `substance water amount 1.5 unit "ML/mo"`. Each is independently omittable; each is a structural attribute of the edge, not dynamics — the test is that none varies during a run. Three rules the parser enforces rather than defaulting around: a non-positive or unreadable `amount` is a parse fault (the language refuses what it cannot mean — the same rule that will govern the #112 `param` clause); a quantity clause on a `mere` relation is a contradiction and refused (a non-bond never projects, so a magnitude on it could never mean anything); and *omitted is not 1* — an unauthored amount stays unauthored in the model, and only projection conflates it with the kernel's default. `weight <n>` (#67) trails: a non-negative integer transition count for the Klir DTMC read, uniform 1 when absent.
 
 ### 4.5 `boundary`
 
@@ -240,7 +249,7 @@ Two guarantees, distinguished honestly (`tests/sl_roundtrip.rs`):
 
 ### 7.3 Unrepresentable shapes
 
-`emit_sl` refuses loudly rather than lose information silently: a name or label containing `"` or a newline, and a `system_type` with genus but no kingdom, are errors. Nothing else in `CanvasModel` is outside the language. One asymmetry is accepted knowingly: `primitive`/`interface` on an *environment* thing (expressible in JSON, semantically inert — the kernel ignores both) is dropped on emit rather than round-tripped.
+`emit_sl` refuses loudly rather than lose information silently: a name or label containing `"` or a newline, and a `system_type` with genus but no kingdom, are errors. A third refusal since #216: a thing carrying the opaque engine-parameter maps (`cognitive_params` / `initial_state`, which the canvas carries so a loaded model's dynamical content survives, but which SL has no production for until [#112](https://github.com/halcyonic-systems/bert-lenses/issues/112) chooses the transition functor) cannot be written down without narrowing, so emit refuses and names the JSON export as the lossless path. Nothing else in `CanvasModel` is outside the language. One asymmetry is accepted knowingly: `primitive`/`interface` on an *environment* thing (expressible in JSON, semantically inert — the kernel ignores both) is dropped on emit rather than round-tripped.
 
 ## 8. The structure/dynamics boundary
 
@@ -270,7 +279,7 @@ Four consequences the position doc establishes, recorded here so future SL versi
 - In v1, the sanctioned path for dynamics is the tether/run-manifest (data + forcing, separately authored); the run is the machine's job. What is lost, stated honestly: the expressiveness of arbitrary protocol logic per element. That loss is the price of a checkable language, and it is paid knowingly.
   - **Scope of that path, narrower than it reads.** The tether carries *forcing and comparison*, not parameterization. Only `Role::Flow` columns with `force: true` inject values into a run; `Role::Stock` and `Role::Param` columns are read for empirical-versus-simulated comparison and inject nothing. The manifest therefore cannot set an initial stock or a release rate, and was never able to. This is the right division of labour and should stay: a **parameter** is a property of the model's design and belongs inside it, while **forcing and empirical data** are facts about the world and belong outside it.
   - **A bypass exists, and it is a defect rather than a second path (#216).** `bert-compose`'s exporter writes `AgentModel.initial_state` and `cognitive_params` directly as JSON, around SL, around the canvas, and around the manifest. Every quantity in the three shipped demos arrives this way, and the canvas discards both maps on load — which is why a demo round-trips into a *different system* while still reporting `conserved=true`. It is named here because a spec describing a boundary the shipped artifacts cross is the silent failure: nothing breaks, the document just stops being true. It is **not** hereby sanctioned; closing it is a defect fix, not a spec revision.
-  - **What closes it.** Those two maps are untyped `HashMap`s because nothing has yet decided what the transition functor is, and a functor's parameters cannot be typed before the functor is chosen — that decision is [#112](https://github.com/halcyonic-systems/bert-lenses/issues/112)'s subject. Note the corollary, which cuts the other way: flow **amount**, **unit**, and **substance name** are already typed fields on `Interaction` and are *not* blocked by #112. They are structural attributes of an edge — they do not vary during a run — and their absence from §4's grammar is the reason no SL-authored model can emit at any rate but 1.0. They are owed under C3 today.
+  - **What closes it.** Those two maps are untyped `HashMap`s because nothing has yet decided what the transition functor is, and a functor's parameters cannot be typed before the functor is chosen — that decision is [#112](https://github.com/halcyonic-systems/bert-lenses/issues/112)'s subject. Note the corollary, which cuts the other way: flow **amount**, **unit**, and **substance name** are already typed fields on `Interaction` and are *not* blocked by #112. They are structural attributes of an edge — they do not vary during a run — and their absence from §4's grammar was the reason no SL-authored model could emit at any rate but 1.0. **Paid 2026-07-27 (#216 Wave 4):** §4's flow production now carries all three, the canvas relation keeps them, and the demo round-trip test (`canvas_round_trip.rs`) holds the seam closed — leaving `initial_state` / `cognitive_params` as exactly #112's remaining scope.
 
 ## 9. Worked examples (the golden corpus)
 
@@ -297,7 +306,7 @@ flow Work -> "Sink 5" : matter "product Z"
 flow Work -> "Sink 6" : matter "waste X"
 ```
 
-With v1.1 (#84), "Process M" is finally the *system's* name, as in Mobus's own sentence; the lone component is its combining work process. What the paragraph carries that SL still does not: the efficiency figure and the rate refinements ("one mass of delivery each 24 hours") — dynamics declarations in the §8.2 sense, deferred with the rest of the dynamical face.
+With v1.1 (#84), "Process M" is finally the *system's* name, as in Mobus's own sentence; the lone component is its combining work process. What the paragraph carries that SL still does not: the efficiency figure — a process parameter in the §8.2 sense, waiting on #112's `param` clause. The rate refinement ("one mass of delivery each 24 hours") stopped being an example on 2026-07-27: `amount 1 unit mass/day` is now a flow clause (#216, C1), because a rate that does not vary during a run is a structural attribute, not dynamics.
 
 ### 9.2 Bathtub (`bathtub.sl`) — the stock-and-flow first lesson
 

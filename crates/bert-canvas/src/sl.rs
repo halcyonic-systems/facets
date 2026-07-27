@@ -26,8 +26,12 @@
 //!                                      #   env lines too — env vars are the
 //!                                      #   input drivers Table 4.1 characterizes
 //! sink Customers                       # source|sink|environment: env things;
-//!                                      #   actual role is edge-derived in project()
+//!                                      #   the author's word is kept (#216) —
+//!                                      #   neutral `environment` gates nothing
 //! flow "Iron Vendor" -> Furnace : matter "iron"
+//! flow River -> Tank : matter "inflow" substance water amount 1.5 unit ML/mo
+//!                                      # quantity clauses (#216, C1/C4); omitted
+//!                                      #   amount ≠ 1 — unauthored is its own state
 //! flow Furnace -> Customers : matter "steel" mere   # mere = not a bond
 //! flow Even -> Odd : "flip" weight 3                 # weight = DTMC transition count (#67); default 1
 //! boundary porosity 0.7 fuzziness 0.1
