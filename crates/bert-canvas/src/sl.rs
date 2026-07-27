@@ -608,7 +608,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     }
                     _ => {
                         fail(
-                            "flow syntax: `flow <a> -> <b> [: <kind>] [\"label\"] [mere] [weight <n>]`".into(),
+                            "flow syntax: `flow <a> -> <b> [: <kind>] [\"label\"] \
+                             [substance <s>] [amount <n>] [unit <u>] [mere] [weight <n>]`"
+                                .into(),
                             &mut errors,
                         );
                         continue;
@@ -630,12 +632,105 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     name = label.clone();
                     tail = rest_tail;
                 }
+                // `substance <name>` — what flows, named apart from what the
+                // flow is *called* (#216, C4): "F-1.1 — iron-input" is a label,
+                // `iron` is a substance.
+                let mut substance = String::new();
+                if let [Tok::Word(w), s, rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("substance") {
+                        if !s.is_name() {
+                            fail(
+                                "substance syntax: `substance <name>` (bare or quoted)".into(),
+                                &mut errors,
+                            );
+                            continue;
+                        }
+                        substance = s.name().trim().to_string();
+                        tail = rest_tail;
+                    }
+                }
+                // `amount <positive decimal>` — the flow's magnitude (#216, C1),
+                // the kernel's `Interaction::amount`. Omitted ≠ 1: an unauthored
+                // amount stays None and only projection supplies the default.
+                let mut amount = None;
+                if let [Tok::Word(w), rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("amount") {
+                        match rest_tail {
+                            [Tok::Word(n), after @ ..] => {
+                                match n.parse::<bert_core::rust_decimal::Decimal>() {
+                                    Ok(v) if v > bert_core::rust_decimal::Decimal::ZERO => {
+                                        amount = Some(v);
+                                        tail = after;
+                                    }
+                                    Ok(_) => {
+                                        fail(
+                                            "a flow's amount is a positive magnitude — to \
+                                             model an absent flow, remove the line"
+                                                .into(),
+                                            &mut errors,
+                                        );
+                                        continue;
+                                    }
+                                    Err(_) => {
+                                        fail(
+                                            "amount syntax: `amount <positive decimal>` \
+                                             (e.g. `amount 1.5`)"
+                                                .into(),
+                                            &mut errors,
+                                        );
+                                        continue;
+                                    }
+                                }
+                            }
+                            _ => {
+                                fail(
+                                    "amount syntax: `amount <positive decimal>` \
+                                     (e.g. `amount 1.5`)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        }
+                    }
+                }
+                // `unit <name>` — the magnitude's unit (#216, C1), bare or
+                // quoted (`unit ML/mo`, `unit "kW·h"`).
+                let mut unit = String::new();
+                if let [Tok::Word(w), u, rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("unit") {
+                        if !u.is_name() {
+                            fail(
+                                "unit syntax: `unit <name>` (e.g. `unit ML/mo`, \
+                                 `unit \"kW·h\"`)"
+                                    .into(),
+                                &mut errors,
+                            );
+                            continue;
+                        }
+                        unit = u.name().trim().to_string();
+                        tail = rest_tail;
+                    }
+                }
                 let mut is_bond = true;
                 if let [Tok::Word(w), rest_tail @ ..] = tail {
                     if w.eq_ignore_ascii_case("mere") {
                         is_bond = false;
                         tail = rest_tail;
                     }
+                }
+                // A quantity on a `mere` relation is a contradiction, not an
+                // option to drop: a non-bond never projects, so a magnitude on
+                // it could never mean anything. Refuse rather than default.
+                if !is_bond && (amount.is_some() || !unit.is_empty() || !substance.is_empty()) {
+                    fail(
+                        "`substance`/`amount`/`unit` on a `mere` relation — a mere \
+                         relation never projects, so a quantity on it cannot mean \
+                         anything; remove the clause or the `mere`"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
                 }
                 // `weight <n>` — per-transition count for the #67 DTMC read
                 // (`markov_edges`); omit for the uniform default 1.
@@ -671,7 +766,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         format!(
                             "unexpected `{}` at end of flow — fix: quote it if it is the flow's \
                              label, or remove it; a flow reads \
-                             `flow <a> -> <b> [: <kind>] [\"label\"] [mere] [weight <n>]`",
+                             `flow <a> -> <b> [: <kind>] [\"label\"] [substance <s>] \
+                             [amount <n>] [unit <u>] [mere] [weight <n>]`",
                             tail[0].display()
                         ),
                         &mut errors,
@@ -708,6 +804,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     kind,
                     klir_directed: false,
                     weight,
+                    amount,
+                    unit,
+                    substance,
                 });
                 next_id += 1;
             }
@@ -955,6 +1054,18 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         if !r.name.is_empty() {
             write!(out, " {}", quote(&r.name)?).unwrap();
         }
+        // Quantity clauses (#216, C1/C4), echoed in parse order: substance,
+        // amount, unit — before `mere`/`weight`. Omitted where unauthored, so
+        // the declared-1 / undeclared distinction survives the round trip.
+        if !r.substance.is_empty() {
+            write!(out, " substance {}", name_token(&r.substance)?).unwrap();
+        }
+        if let Some(a) = r.amount {
+            write!(out, " amount {a}").unwrap();
+        }
+        if !r.unit.is_empty() {
+            write!(out, " unit {}", name_token(&r.unit)?).unwrap();
+        }
         if !r.is_bond {
             write!(out, " mere").unwrap();
         }
@@ -1012,6 +1123,8 @@ fn is_reserved(word: &str) -> bool {
             | "unit"
             | "mere"
             | "weight"
+            | "substance"
+            | "amount"
             | "porosity"
             | "fuzziness"
             | "energy"

@@ -46,6 +46,9 @@ fn rel(id: u64, a: u64, b: u64) -> Relation {
         kind: Kind::Unspecified,
         klir_directed: false,
         weight: None,
+        amount: None,
+        unit: String::new(),
+        substance: String::new(),
     }
 }
 

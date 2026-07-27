@@ -859,6 +859,9 @@ mod tests {
                 kind: Kind::Unspecified,
                 klir_directed: false,
                 weight: None,
+                amount: None,
+                unit: String::new(),
+                substance: String::new(),
             }
         }
         CanvasModel {

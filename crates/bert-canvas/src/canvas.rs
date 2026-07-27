@@ -223,6 +223,25 @@ pub struct Relation {
     /// authored before this field byte-identical on disk.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub weight: Option<u64>,
+    /// The flow's magnitude — [`bert_core::Interaction::amount`], which the
+    /// kernel has carried from the beginning and this struct dropped, capping
+    /// every canvas-authored model at emission rate 1.0 (#216, C1). A structural
+    /// attribute of the edge, not dynamics: it does not vary during a run.
+    /// `None` = unauthored — a different statement from "declared 1", and the
+    /// file keeps the difference; only [`project`] conflates them (declared
+    /// there). `skip` keeps pre-#216 models byte-identical on disk.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub amount: Option<bert_core::rust_decimal::Decimal>,
+    /// The magnitude's unit — [`bert_core::Interaction::unit`] (#216, C1).
+    /// Empty = undeclared.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub unit: String,
+    /// What flows, named separately from what the flow is *called* —
+    /// [`bert_core::Substance::sub_type`] (#216, C4). "F-1.1 — iron-input" is a
+    /// label; `iron` is a substance, and `check_stock_dimensions` reasons over
+    /// the latter. Empty = undeclared.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub substance: String,
 }
 
 fn default_true() -> bool {
@@ -582,7 +601,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
         interactions.push(Interaction {
             info: info(flow_id, 0, &r.name),
             substance: Substance {
-                sub_type: String::new(),
+                sub_type: r.substance.clone(),
                 ty: kind_to_substance(r.kind),
             },
             ty: InteractionType::Flow,
@@ -597,8 +616,11 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             sink_interface: (env_things.contains(&r.a))
                 .then(|| iface_of.get(&r.b).cloned())
                 .flatten(),
-            amount: bert_core::rust_decimal::Decimal::ONE,
-            unit: String::new(),
+            // A declared narrowing: the kernel has no "unauthored" amount, so
+            // None becomes the kernel default ONE here — and a model read back
+            // by `to_canvas` therefore returns Some(1), not None (#216).
+            amount: r.amount.unwrap_or(bert_core::rust_decimal::Decimal::ONE),
+            unit: r.unit.clone(),
             parameters: vec![],
             smart_parameters: vec![],
             endpoint_offset: None,
@@ -769,6 +791,12 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             kind: substance_to_kind(ix.substance.ty),
             klir_directed: false,
             weight: None,
+            // The kernel cannot say "unauthored", so a reloaded model reads
+            // every quantity as declared — Some even where the author wrote
+            // nothing. The inverse narrowing to project()'s, equally declared.
+            amount: Some(ix.amount),
+            unit: ix.unit.clone(),
+            substance: ix.substance.sub_type.clone(),
         });
     }
 
@@ -959,6 +987,9 @@ mod tests {
             kind: Kind::Unspecified,
             klir_directed: false,
             weight: None,
+            amount: None,
+            unit: String::new(),
+            substance: String::new(),
         }
     }
 

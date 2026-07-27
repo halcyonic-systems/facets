@@ -978,6 +978,9 @@ mod tests {
             kind: Kind::Unspecified,
             klir_directed: false,
             weight: None,
+            amount: None,
+            unit: String::new(),
+            substance: String::new(),
         }
     }
     fn model(things: Vec<Thing>, relations: Vec<Relation>) -> CanvasModel {
