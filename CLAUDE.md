@@ -86,6 +86,99 @@ exists to keep it true.
   a systems fact the kernel doesn't expose yet, extend `lenses.rs` — don't
   derive it in TS. Faithfulness cites live in code comments next to each rule.
 
+## Verifying your work (agents) — all verified 2026-07-27, none inferred
+
+Two paths. Use the headless one for anything a machine can decide; reserve the
+desktop one for what genuinely needs eyes. Choosing wrong is the common failure:
+driving the GUI to answer a kernel question produces a one-shot artifact that
+rots the next time the kernel moves.
+
+### Headless — kernel verdicts, including under a lens the model is not pinned to
+
+`bert_canvas::lenses::analyze(&CanvasModel, Lens)` (`crates/bert-canvas/src/lenses.rs`)
+takes the lens as an **explicit argument and ignores `model.lens`**. That is the
+cross-lens door: it answers "how does this model read under Klir / Bunge / Mobus"
+without a GUI, a browser, or a wasm build.
+
+```rust
+let parsed = bert_canvas::sl::parse_sl_full(&text)?;           // compile
+let verdict = bert_canvas::lenses::analyze(&parsed.model, Lens::Mobus);
+let refused = verdict.validation.issues.iter().any(|i| i.severity == Severity::Error);
+```
+
+Companion: `describe(&model, lens)` for the tradition's own formal object
+(Klir `(T,R)` / Bunge `⟨C,E,S,M⟩` / Mobus 8-tuple). A **refusal is not a distinct
+type** — it is a `ValidationIssue` with `Severity::Error` at the lens's mode
+(`Lens::mode()`: Klir→Core, Bunge→Structural, Mobus→Operational).
+
+There is **no CLI** — no `[[bin]]` target in any crate. Headless checking is
+`cargo test`, which is the right vehicle anyway: a new integration test in
+`crates/bert-canvas/tests/` is picked up free by `cargo test --workspace` and by
+`ci.yml`. Working example: `tests/cross_lens.rs`.
+
+**Know which set of `.sl` files you are touching. The names are not
+interchangeable:**
+
+| Path | Name | Holds | Obligation |
+|---|---|---|---|
+| `assets/corpus/**` | source corpus | what the **author** says | ships clean under its pinned lens; citations gated |
+| `assets/examples/**` | examples | what **we** say | no provenance obligation |
+| `fixtures/sl/**` | golden corpus | round-trip fidelity | out of the corpus suites by design |
+
+`source_corpus.rs` gates each corpus entry under **its own pinned lens only**.
+That is correct for a ship gate and it is why cross-lens claims need their own
+test: an entry's behaviour under the other two lenses is otherwise unexecuted.
+
+### Desktop — driving the real `.app`
+
+**Build the bundle. Never verify against `cargo tauri dev`.**
+
+```bash
+cargo tauri build     # → src-tauri/target/release/bundle/macos/bert-lenses.app
+open src-tauri/target/release/bundle/macos/bert-lenses.app
+lsappinfo info -only bundleid $(pgrep -f bert-lenses-desktop | head -1)
+#   built .app  → "systems.halcyonic.bert-lenses"   ← addressable
+#   tauri dev   → [ NULL ]                          ← invisible to Launch Services
+```
+
+`tauri dev` also serves `127.0.0.1:1430` under `devCsp`, so **every CSP or wasm
+claim made against it is a false positive.** No install to `/Applications` is
+needed; it runs in place from `target/`.
+
+The working mechanism is the **Accessibility API via AppleScript**, not
+computer-use MCP and not devtools. A WKWebView exposes its DOM to the a11y
+hierarchy, so elements come back **named** — the return value is the verification:
+
+```bash
+osascript -e 'tell application "System Events" to tell process "bert-lenses-desktop"
+  get name of every button of UI element 1 of scroll area 1 of group 1 of group 1 of window 1
+end tell'
+# → HOME, Klir, Bunge, Mobus, REVIEW, SL, ▶ Run, thing, ≡ PROCESSES, RUN, FORMAL, ANALYST, TYPE
+```
+
+The three lens buttons are addressable by name, so lens switching is deliberate
+rather than a coordinate guess.
+
+Gotchas, each hit in practice: `screencapture -x -o a.png b.png c.png` (it grabs
+only the current display set, and the window is often on another); divide
+screenshot coordinates by the backing scale factor before clicking (screenshots
+are 2× on Retina, `System Events` wants logical points); quit with
+`pkill -f bert-lenses-desktop` (`quit app` does not terminate it). Fuller
+treatment, including the devtools workaround: `~/.claude/docs/desktop-app-automation.md`.
+
+### The standard a new check has to meet
+
+**A check that cannot fail proves nothing.** Before claiming a gate works, make
+it go red on purpose: mutate the input so the property is genuinely violated,
+watch the test fail with the message you intended, then restore. `cross_lens.rs`
+was verified this way — deleting σ₃'s self-actions turns it red.
+
+This is the same rule the corpus states for itself (*"a model that cannot
+embarrass us is not testing anything"*), applied to tests. It exists because the
+σ₃ refusal — the corpus's one documented divergence between traditions — sat
+asserted only in an English `# note:` and a message string in `validate.rs`, with
+nothing binding them, until #216.
+
 ## Extending the palette (new node / port type)
 
 Adding a node or port type touches the kernel first and the face last — the
