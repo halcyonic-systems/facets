@@ -636,6 +636,13 @@ pub enum LensDescription {
         relations: usize,
         directed: usize,
         neutral: usize,
+        /// R itself, not merely |R| (#216): each couple rendered `x → y` where
+        /// the observer committed to direction (`@directed`), else `x — y` in
+        /// canonical name order — so two entries differing only in undeclared
+        /// lexical order are IDENTICAL here, and only an authored commitment
+        /// distinguishes them. A count alone made equal-count set siblings
+        /// indistinguishable to the instrument.
+        dependencies: Vec<String>,
         note: String,
         ladder: KlirLadder,
     },
@@ -648,6 +655,12 @@ pub enum LensDescription {
         environment: Vec<String>,
         endostructure: usize,
         exostructure: usize,
+        /// The structure as Bunge writes it — a SET of relations, not a number
+        /// (#216): `a ▷ b` where direction is asserted, `a — b` (canonical name
+        /// order) where it is not. Def 1.2's three conceivable structures
+        /// differ exactly here; counts collapsed them to two.
+        endo_bonds: Vec<String>,
+        exo_bonds: Vec<String>,
         bondage: usize,
         mere_relations: usize,
         boundary_components: Vec<String>,
@@ -827,6 +840,22 @@ fn check_mobus_openness(facts: &LensFacts, issues: &mut Vec<ValidationIssue>) {
 
 /// Typeset the model given already-computed lens facts — the shared body behind
 /// [`describe`] and [`analyze`], so the facts are read once, never twice.
+/// The bonds at one locus, rendered by `rendered` — Bunge's ▷ where asserted.
+fn bonds_at(
+    model: &CanvasModel,
+    facts: &LensFacts,
+    locus: EdgeLocus,
+    rendered: &dyn Fn(&crate::canvas::Relation, &str) -> String,
+) -> Vec<String> {
+    facts
+        .edges
+        .iter()
+        .filter(|e| e.bond && e.locus == locus)
+        .filter_map(|e| model.relations.iter().find(|r| r.id == e.id))
+        .map(|r| rendered(r, "▷"))
+        .collect()
+}
+
 fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensDescription {
     let name_of = |id: u64| -> String {
         model
@@ -835,6 +864,22 @@ fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> Le
             .find(|t| t.id == id)
             .map(|t| t.name.clone())
             .unwrap_or_else(|| format!("#{id}"))
+    };
+
+    // A relation rendered as the author's claim (#216): endpoint names with the
+    // asserted direction, or — when the observer committed to none — an
+    // undirected pair in canonical NAME order, so lexical declaration order can
+    // never fake a distinction (the A3 failure, where a rewritten line moved
+    // meaning). Only an authored `@directed` separates symmetric twins.
+    let rendered = |r: &crate::canvas::Relation, arrow: &str| -> String {
+        let (na, nb) = (name_of(r.a), name_of(r.b));
+        if r.klir_directed {
+            format!("{na} {arrow} {nb}")
+        } else if na <= nb {
+            format!("{na} — {nb}")
+        } else {
+            format!("{nb} — {na}")
+        }
     };
 
     match lens {
@@ -848,6 +893,7 @@ fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> Le
                 relations: model.relations.len(),
                 directed,
                 neutral: model.relations.len() - directed,
+                dependencies: model.relations.iter().map(|r| rendered(r, "→")).collect(),
                 note: "a system is what is distinguished as a system by the investigator; \
                        the distinction frame is the observer's act, not a boundary"
                     .to_string(),
@@ -877,6 +923,8 @@ fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> Le
                     .iter()
                     .filter(|e| e.bond && e.locus == EdgeLocus::Exo)
                     .count(),
+                endo_bonds: bonds_at(model, facts, EdgeLocus::Endo, &rendered),
+                exo_bonds: bonds_at(model, facts, EdgeLocus::Exo, &rendered),
                 bondage,
                 mere_relations: facts.edges.len() - bondage,
                 boundary_components: facts.boundary_thing_ids.iter().map(|&id| name_of(id)).collect(),

@@ -408,6 +408,8 @@ export type LensDescription =
       relations: number;
       directed: number;
       neutral: number;
+      /** R itself (#216): "x → y" when @directed, "x — y" (canonical order) when not. */
+      dependencies: string[];
       note: string;
       /** Where this model stands on the ladder — the register's opt-in
        *  complement (#100 harvest), collapsed until asked for. */
@@ -420,6 +422,10 @@ export type LensDescription =
       environment: string[];
       endostructure: number;
       exostructure: number;
+      /** The structure as a SET (#216): "a ▷ b" where direction is asserted,
+       *  "a — b" (canonical name order) where it is not. */
+      endo_bonds: string[];
+      exo_bonds: string[];
       bondage: number;
       mere_relations: number;
       boundary_components: string[];

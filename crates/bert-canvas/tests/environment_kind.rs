@@ -74,12 +74,15 @@ fn a_neutral_environment_thing_accepts_flow_in_both_directions() {
 /// Law: `emit_sl` echoes the word the author wrote, it does not re-derive one.
 ///
 /// Round-tripping must not silently relabel a thing. `goal-oriented-feedback.sl`
-/// declares `sink y` and gets `source y` back, which falsifies its own header claim
-/// that the set holds one composition fixed.
+/// once declared `sink y` and got `source y` back, falsifying its own header claim
+/// that the set holds one composition fixed. (Wave 5 then re-declared y as
+/// `environment` — the goal-implementing element writes it and the goal-seeking
+/// element reads it, so it terminates nothing; the law under test is unchanged:
+/// whatever word the file declares must come back.)
 #[test]
 fn emit_sl_preserves_the_declared_environment_word() {
     for (entry, declared) in [
-        ("corpus/klir/goal-oriented-feedback.sl", "sink y"),
+        ("corpus/klir/goal-oriented-feedback.sl", "environment y"),
         ("examples/predator-prey.sl", "environment Grass"),
     ] {
         let text = read(entry);
@@ -92,6 +95,20 @@ fn emit_sl_preserves_the_declared_environment_word() {
              (sl.rs:878-880) rather than remembered. Emitted:\n{emitted}"
         );
     }
+
+    // The corpus no longer ships a sink whose word disagrees with the flow
+    // derivation (Wave 5 fixed those models), so the Sink arm needs its own
+    // separating instance: a declared `sink` WITH an outgoing flow. emit echoes
+    // the word — judging the contradiction is the validators' job, not emit's.
+    let text = "component A primitive Combining\nsink Drain\n\
+                flow A -> Drain : matter \"out\"\nflow Drain -> A : matter \"back\"\n";
+    let parsed = parse_sl_full(text).expect("inline sink model parses");
+    let emitted = emit_sl(&parsed.model).expect("emit");
+    assert!(
+        emitted.lines().any(|l| l.trim() == "sink Drain"),
+        "a declared `sink Drain` with an outgoing flow must still emit as `sink` — \
+         re-deriving from direction would write `source Drain`. Emitted:\n{emitted}"
+    );
 }
 
 /// Law: the four examples blocked *solely* by the derived-direction defect now run.

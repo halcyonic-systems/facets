@@ -132,6 +132,7 @@ const klirAnalysis: CanvasAnalysis = {
     relations: 1,
     directed: 0,
     neutral: 1,
+    dependencies: [],
     note: "a system is what is distinguished as a system by the investigator",
     ladder: {
       position: "SE",
@@ -168,6 +169,8 @@ const bungeAnalysis: CanvasAnalysis = {
     environment: [],
     endostructure: 1,
     exostructure: 0,
+    endo_bonds: ["A — B"],
+    exo_bonds: [],
     bondage: 0,
     mere_relations: 1,
     boundary_components: [],
