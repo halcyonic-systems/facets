@@ -1462,6 +1462,36 @@ mod tests {
         assert!(c.balance().abs() < 1e-3, "slow channel conserves: {}", c.balance());
     }
 
+    /// Law: a forced series is data over MODEL TIME, not over ticks —
+    /// refining Δt must not make a channel consume its data faster (#258).
+    /// Each sample spans one time unit (× dt_stride), so at dt = 0.5 a
+    /// sample is held for two half-steps and the mass emitted over a fixed
+    /// horizon matches the dt = 1.0 run exactly.
+    #[test]
+    fn forced_series_is_anchored_to_model_time() {
+        let mut c = Circuit::default();
+        c.nodes.push(node(NodeKind::Source)); // 0
+        c.nodes.push(node(NodeKind::Sink)); // 1
+        let mut w = Wire::new(0, 1);
+        w.rate_series = Some(vec![10.0, 20.0, 30.0]);
+        c.wires.push(w);
+        // Six half-steps cover the same 3-unit horizon as three whole steps.
+        let expected = [5.0f32, 5.0, 10.0, 10.0, 15.0, 15.0];
+        for (t, want) in expected.iter().enumerate() {
+            c.step_dt(0.5);
+            assert!(
+                (c.nodes[0].activity - want).abs() < 1e-4,
+                "half-step {t}: sample held per time unit gives {want}, got {}",
+                c.nodes[0].activity
+            );
+        }
+        assert!(
+            (c.emitted - 30.0).abs() < 1e-3,
+            "same horizon, same mass: {}",
+            c.emitted
+        );
+    }
+
     /// Law: an unset (or 1) dt_stride is the single-clock case — the series
     /// advances every tick, identical to unstrided forcing.
     /// Rung 3 back-compat: `dt_stride` unset (or 1) is the single-clock case —
