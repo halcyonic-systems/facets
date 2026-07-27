@@ -124,3 +124,35 @@ fn a_fixed_horizon_is_invariant_under_dt_refinement() {
         survived
     );
 }
+
+/// Refinement CONVERGES: the gap between successive Δt-halvings shrinks.
+/// This is what separates honest forward-Euler drift from semantic
+/// Δt-dependence — discretization error is O(Δt) and halves as the step
+/// halves; a semantics that reads the step size would not converge at all.
+/// Run on the homeostat, the demo with the feedback path (the only place
+/// drift can accumulate).
+#[test]
+fn refinement_converges_on_the_feedback_path() {
+    let path = format!(
+        "{}/../../assets/models/demos/homeostat.json",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let text = std::fs::read_to_string(&path).expect("homeostat demo");
+    let model: WorldModel = serde_json::from_str(&text).expect("demo parses");
+    let model = project(&to_canvas(&model));
+
+    let stored_at = |dt: f64| final_ledger(&model, dt)[2];
+    let gaps: Vec<f32> = [1.0, 0.5, 0.25, 0.125]
+        .windows(2)
+        .map(|w| (stored_at(w[0]) - stored_at(w[1])).abs())
+        .collect();
+    for pair in gaps.windows(2) {
+        // Euler halving should roughly halve the gap; 0.75 leaves headroom
+        // for the piecewise-constant control law's kinks while still
+        // refuting non-convergence (which holds the gap constant).
+        assert!(
+            pair[1] <= 0.75 * pair[0] + 1e-6,
+            "refinement is not converging: successive gaps {gaps:?}"
+        );
+    }
+}

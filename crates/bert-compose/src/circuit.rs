@@ -1661,6 +1661,88 @@ mod tests {
         assert!(c.balance().abs() < 1e-3, "conserved: {}", c.balance());
     }
 
+    /// Law (#259, Spivak–Tan Prop 4.4): zooming in is description, not
+    /// dynamics — refining one relay into two chained relays leaves the
+    /// run identical, tick for tick. Under the old per-hop-register engine
+    /// this was FALSE (each drawn box added a step of delay), which is why
+    /// it is asserted exactly, not within a tolerance.
+    #[test]
+    fn refining_a_relay_does_not_change_the_run() {
+        let build = |hops: usize| {
+            let mut c = Circuit::default();
+            c.nodes.push(node(NodeKind::Source)); // 0
+            c.nodes[0].param = 4.0;
+            for _ in 0..hops {
+                c.nodes
+                    .push(node(NodeKind::Process(ProcessPrimitive::Splitting)));
+            }
+            c.nodes.push(node(NodeKind::Sink));
+            for i in 0..=hops {
+                c.wires.push(Wire::new(i, i + 1));
+            }
+            for _ in 0..15 {
+                c.step();
+            }
+            c
+        };
+        let coarse = build(1);
+        let fine = build(2);
+        assert_eq!(
+            coarse.ledger_history, fine.ledger_history,
+            "one relay vs two chained relays: same ledger, every tick"
+        );
+        assert!((coarse.sunk - 60.0).abs() < 1e-3, "15 × 4 delivered exactly");
+    }
+
+    /// Law (#259): behavior is a property of the WIRING, not the authoring
+    /// order — relabeling the nodes of a feedback circuit leaves the run
+    /// identical. Guards the dependency-ordered evaluator against any
+    /// index-order residue.
+    #[test]
+    fn node_numbering_is_not_dynamics() {
+        // A regulated tank, authored in two different node orders.
+        // perm maps role → index: [source, valve, stock, sensor, comparator]
+        let build = |perm: [usize; 5]| {
+            let [src, valve, stock, sensor, cmp] = perm;
+            let mut nodes: Vec<(usize, NodeKind)> = vec![
+                (src, NodeKind::Source),
+                (valve, NodeKind::Process(ProcessPrimitive::Modulating)),
+                (stock, NodeKind::Process(ProcessPrimitive::Buffering)),
+                (sensor, NodeKind::Process(ProcessPrimitive::Sensing)),
+                (cmp, NodeKind::Process(ProcessPrimitive::Inverting)),
+            ];
+            nodes.sort_by_key(|(i, _)| *i);
+            let mut c = Circuit::default();
+            for (_, kind) in nodes {
+                c.nodes.push(node(kind));
+            }
+            c.nodes[src].param = 2.0;
+            c.nodes[stock].release_rate = 0.5;
+            c.nodes[sensor].param = 1.0;
+            c.wires.push(Wire::new(src, valve));
+            c.wires.push(Wire::new(valve, stock));
+            c.wires.push(Wire::new(stock, sensor)); // observation tap
+            c.wires.push(Wire::new(sensor, cmp));
+            c.wires.push(Wire::new(cmp, valve)); // control closes the loop
+            for _ in 0..20 {
+                c.step();
+            }
+            (
+                c.nodes[stock].storage,
+                c.emitted,
+                c.sunk,
+                c.dissipated,
+                c.balance(),
+            )
+        };
+        let forward = build([0, 1, 2, 3, 4]);
+        let reversed = build([4, 3, 2, 1, 0]);
+        let shuffled = build([2, 4, 0, 3, 1]);
+        assert_eq!(forward, reversed, "reversed labels, same physics");
+        assert_eq!(forward, shuffled, "shuffled labels, same physics");
+        assert!(forward.4.abs() < 1e-3, "conserved: {}", forward.4);
+    }
+
     /// Law (#259): a loop with no state-determined element has no
     /// deterministic semantics (SSV Ex 4.2.9) — the engine NAMES it instead
     /// of silently inserting a per-step delay. An anchored loop (through a

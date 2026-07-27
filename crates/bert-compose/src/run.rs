@@ -76,6 +76,21 @@ impl RecordedRun {
         total_time: f64,
     ) -> Result<Self, String> {
         let ticks = ticks_over(dt, total_time)?;
+        // A loop of pure relays has no deterministic step (#259) — every
+        // step_dt would refuse and the trace would come back empty. Name the
+        // loop instead of recording nothing.
+        if let Some(cycle) = circuit.algebraic_cycle() {
+            let names: Vec<&str> = cycle
+                .iter()
+                .map(|&i| circuit.nodes[i].name.as_str())
+                .collect();
+            return Err(format!(
+                "run refused: the wiring contains a loop with no stock and no level \
+                 read on it ({}). A loop of pure relays has no deterministic step — \
+                 put a stock on the loop, or read a level instead of consuming a flow.",
+                names.join(" → ")
+            ));
+        }
         Ok(Self::record(circuit, spec, dt, ticks))
     }
 
