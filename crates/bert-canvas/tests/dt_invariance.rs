@@ -1,27 +1,24 @@
-//! Is `amount` a RATE (per unit time) or a PER-TICK QUANTITY? (#216-adjacent)
+//! `amount` is a RATE (per unit time), and this gate holds the engine to it.
 //!
-//! # EXPECTED TO FAIL — Δt is currently semantic, and this is the record of it
+//! # GREEN, and load-bearing — the standing record of Δt's semantics
 //!
-//! The claim everything else makes is "rate": flows carry units like `ML/mo`
-//! and `kW`; `ticks_over(dt, total_time)` exposes the `(T, Δt)` form and its
-//! doc says "halving Δt doubles [the tick count]" as though the horizon were
-//! the invariant; #94 derives a stock's display unit as inflow × Δt. If those
-//! claims are true, Δt is a NUMERICAL parameter: refining it while holding the
-//! horizon T fixed converges on the same totals.
+//! Flows carry units like `ML/mo` and `kW`; `ticks_over(dt, total_time)`
+//! exposes the `(T, Δt)` form with the horizon as the invariant; #94 derives
+//! a stock's display unit as inflow × Δt. Those claims make Δt a NUMERICAL
+//! parameter: refining it while holding the horizon T fixed converges on the
+//! same totals. The engine honors this via two commitments (#258, #259):
+//! generated fluxes scale by Δt and forced series index by model time, and
+//! wires transmit instantaneously — the one-STEP transport delay that made a
+//! step size a semantic claim is gone (only stocks carry mass across a step
+//! boundary, and a stock's integration is Δt-scaled like every other rate).
 //!
-//! The engine says "per-tick": `RecordedRun::record` stores `dt` as metadata
-//! and calls `Circuit::step()` — which takes no Δt, and no code path scales a
-//! flux by it. Halving Δt at fixed T just runs the same tick twice as often,
-//! so every cumulative flux doubles and the same file means a DIFFERENT system
-//! at each step size. The unit strings assert a dimension the engine ignores.
-//!
-//! This test asserts the RATE reading — the one the units and the `(T, Δt)`
-//! form already promise — and stands red until the engine honors it. Same
-//! family as `check_bond` and the demo round-trip: an invariance believed,
-//! relied on, and never asserted. **Do not "fix" this by widening the
-//! tolerance or by comparing per-Δt-normalized values** — normalizing away the
-//! factor of two is exactly the concealment this test exists to prevent. If it
-//! must be silenced temporarily, `#[ignore]` it with a reason.
+//! Born red 2026-07-27 and greened the same day in three commits, each
+//! closing the exact divergence this gate reported (flux scaling; series
+//! indexing; the wire delay). Refutability is standing, not historical:
+//! `scripts/mutation_check.py` (`flux-per-tick`, `loop-silently-delayed`)
+//! re-proves this gate can fail. **Do not widen the tolerance and do not
+//! compare per-Δt-normalized values** — normalizing away a factor of two is
+//! exactly the concealment this test exists to prevent.
 //!
 //! ## Compare the right things — they are not all the same kind of quantity
 //!
@@ -38,20 +35,14 @@
 //! narrow enough that the per-tick hypothesis — a factor of ≈2 — can never
 //! slip through. The discriminating gap is 2×, not ε.
 //!
-//! ## Status after the #258 fixes (2026-07-27)
+//! ## Scope caveat, pre-registered
 //!
-//! Generated fluxes now scale by Δt and forced series index by model time,
-//! and `reservoir` is green. The remaining reds (homeostat, allocation) are
-//! ONE defect, and it is not flux scaling: the synchronous update gives every
-//! node a one-STEP transport delay, and a step is Δt-sized (allocation's
-//! receipts: sunk = 6×28 = 168 at Δt=1.0 vs 3×58 = 174 at Δt=0.5 — a 2-hop
-//! pipeline delay measured in steps). #259 settled the semantics against
-//! VSL, Spivak–Tan eq. (11), and SSV (Defs 4.2.4/4.2.7, Exs 4.2.8/4.2.9):
-//! wires are instantaneous; feedback is anchored by state-determined (Moore)
-//! outputs; a delay is a MODELED element with a declared duration, never a
-//! per-hop artifact. This test greens when memoryless primitives relay
-//! within the step (topological order, level-read edges as the cut) — see
-//! #259's spec. Still: never widen the tolerance.
+//! This is a DIMENSIONAL-COHERENCE check, not numerical convergence: under
+//! Mobus §4.3.3.6, Δt is level-indexed, so if clock/quasi-clock structures
+//! or an authored Delay Box (SSV Ex 4.2.8) ever land, a model carrying one
+//! declares per-sample behavior and invariance under refinement stops being
+//! required FOR THAT MODEL — scope the exclusion to the declared construct,
+//! with the declaration as the license, never as a blanket exemption.
 
 use bert_canvas::canvas::{project, to_canvas};
 use bert_compose::{from_spec, run::RecordedRun};
