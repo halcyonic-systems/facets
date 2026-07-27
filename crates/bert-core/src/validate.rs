@@ -156,7 +156,6 @@ pub fn validate(model: &WorldModel) -> ValidationResult {
     check_duplicate_edges(model, &mut issues);
 
     check_environment_id(model, &mut issues);
-    check_source_sink_type_consistency(model, &mut issues);
     check_version(model, &mut issues);
     check_level_consistency(model, &mut issues);
     check_processor_flows(model, &mut issues);
@@ -1244,47 +1243,6 @@ fn check_environment_id(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     }
 }
 
-fn check_source_sink_type_consistency(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
-    let check = |sources: &[ExternalEntity],
-                 sinks: &[ExternalEntity],
-                 loc_prefix: &str,
-                 issues: &mut Vec<ValidationIssue>| {
-        for (i, src) in sources.iter().enumerate() {
-            if !matches!(src.ty, ExternalEntityType::Source) {
-                issues.push(ValidationIssue::warning(
-                    format!("{loc_prefix}.sources[{i}].type"),
-                    "entity in sources array has type 'Sink'".to_string(),
-                    Some("Entities in the sources array should have type 'Source'"),
-                ).with_doc(doc::ENVIRONMENT));
-            }
-        }
-        for (i, snk) in sinks.iter().enumerate() {
-            if !matches!(snk.ty, ExternalEntityType::Sink) {
-                issues.push(ValidationIssue::warning(
-                    format!("{loc_prefix}.sinks[{i}].type"),
-                    "entity in sinks array has type 'Source'".to_string(),
-                    Some("Entities in the sinks array should have type 'Sink'"),
-                ).with_doc(doc::ENVIRONMENT));
-            }
-        }
-    };
-
-    check(
-        &model.environment.sources,
-        &model.environment.sinks,
-        "environment",
-        issues,
-    );
-    for (i, system) in model.systems.iter().enumerate() {
-        check(
-            &system.sources,
-            &system.sinks,
-            &format!("systems[{i}]"),
-            issues,
-        );
-    }
-}
-
 fn check_version(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     if model.version != CURRENT_FILE_VERSION {
         issues.push(ValidationIssue::warning(
@@ -2009,60 +1967,6 @@ mod tests {
             "got: {:#?}",
             result.issues
         );
-    }
-
-    /// Firing witness for `check_source_sink_type_consistency`, both arrays. The
-    /// canvas derives the array from the type in one step, so this too is a
-    /// hand-authored net.
-    #[test]
-    fn misfiled_external_entity_is_warning() {
-        let external = |ty: ExternalEntityType, idx: i64| ExternalEntity {
-            info: Info {
-                id: Id {
-                    ty: if matches!(ty, ExternalEntityType::Source) {
-                        IdType::Source
-                    } else {
-                        IdType::Sink
-                    },
-                    indices: vec![-1, idx],
-                },
-                level: -1,
-                name: "Misfiled".to_string(),
-                description: String::new(),
-            },
-            ty,
-            transform: None,
-            equivalence: String::new(),
-            model: String::new(),
-            is_same_as_id: None,
-            authored_direction: true,
-        };
-
-        let mut model = minimal_model();
-        model
-            .environment
-            .sources
-            .push(external(ExternalEntityType::Sink, 0));
-        model
-            .environment
-            .sinks
-            .push(external(ExternalEntityType::Source, 1));
-        let result = validate(&model);
-        for (loc, msg) in [
-            ("environment.sources[0].type", "type 'Sink'"),
-            ("environment.sinks[0].type", "type 'Source'"),
-        ] {
-            assert!(
-                result
-                    .issues
-                    .iter()
-                    .any(|i| i.location == loc
-                        && i.severity == Severity::Warning
-                        && i.message.contains(msg)),
-                "{loc} must warn: {:#?}",
-                result.issues
-            );
-        }
     }
 
     #[test]
@@ -3696,12 +3600,6 @@ mod tests {
             witness: Some("env_id_wrong_is_warning"),
             canvas: false,
             note: "project() always writes the environment as E-1",
-        },
-        CheckAudit {
-            check: "check_source_sink_type_consistency",
-            witness: Some("misfiled_external_entity_is_warning"),
-            canvas: false,
-            note: "the array and the type are set together from one branch",
         },
         CheckAudit {
             check: "check_version",
