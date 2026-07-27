@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""Prove the gates can fail (#216, extending SSF #35 to existing checks).
+
+A check that nothing can fail proves nothing — `check_bond`'s extra conjunct sat
+invisible for a year because no fixture could trip it, and the demo round-trip
+test passed through a 22% trajectory change because its assertion was too weak
+to see it. This harness applies each declared mutation — a small, named
+reintroduction of a real defect — and asserts the named gate goes RED, then
+restores the tree and asserts green.
+
+Run: python3 scripts/mutation_check.py            (all mutations)
+     python3 scripts/mutation_check.py <name>     (one, by name)
+
+Add a mutation whenever a gate ships: the entry is the standing record of what
+the gate is FOR, in the form of the defect it must catch.
+"""
+
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+# (name, file, present-code, mutated-code, test args, what-this-reintroduces)
+MUTATIONS = [
+    (
+        "amount-hardcode",
+        "crates/bert-canvas/src/canvas.rs",
+        "amount: r.amount.unwrap_or(bert_core::rust_decimal::Decimal::ONE),",
+        "amount: bert_core::rust_decimal::Decimal::ONE,",
+        ["-p", "bert-canvas", "--test", "canvas_round_trip"],
+        "project() dropping the authored flow magnitude (#216 B2 — the rate-1.0 cap)",
+    ),
+    (
+        "bags-dropped",
+        "crates/bert-canvas/src/canvas.rs",
+        "agent.cognitive_params = t.cognitive_params.clone();",
+        "",
+        ["-p", "bert-canvas", "--test", "canvas_round_trip"],
+        "the canvas discarding engine params on projection (#216 — reservoir loses release_rate)",
+    ),
+    (
+        "agency-dropped",
+        "crates/bert-canvas/src/canvas.rs",
+        "agency_capacity: s.agent.as_ref().map(|a| a.agency_capacity),",
+        "agency_capacity: None,",
+        ["-p", "bert-canvas", "--test", "canvas_round_trip"],
+        "to_canvas() reverting a Modulating factor to the 0.5 default (#216 — homeostat)",
+    ),
+    (
+        "env-word-rederived",
+        "crates/bert-canvas/src/sl.rs",
+        '(Role::Environment, EnvKind::Sink) => "sink",',
+        '(Role::Environment, EnvKind::Sink) => "source",',
+        ["-p", "bert-canvas", "--test", "environment_kind"],
+        "emit_sl guessing the environment word from flow direction (#216 Wave 3 — `sink y` → `source y`)",
+    ),
+]
+
+
+def run_test(args):
+    return subprocess.run(
+        ["cargo", "test", *args], cwd=ROOT, capture_output=True, text=True
+    ).returncode
+
+
+def main() -> int:
+    only = sys.argv[1] if len(sys.argv) > 1 else None
+    failures = []
+    for name, rel, present, mutated, test, reintroduces in MUTATIONS:
+        if only and name != only:
+            continue
+        path = ROOT / rel
+        original = path.read_text()
+        if present not in original:
+            failures.append(f"{name}: anchor code not found in {rel} — table is stale")
+            continue
+        path.write_text(original.replace(present, mutated, 1))
+        try:
+            code = run_test(test)
+        finally:
+            path.write_text(original)
+        if code == 0:
+            failures.append(
+                f"{name}: gate stayed GREEN under mutation — it cannot see {reintroduces}"
+            )
+            print(f"  BLIND {name}")
+        else:
+            print(f"  ok    {name} (gate goes red)")
+    # Restore check runs only the gates the table names: the branch may carry
+    # OTHER intentional reds (a red test is this repo's standing record of an
+    # open defect), and this harness must not require the whole tree green.
+    for test in {tuple(m[4]) for m in MUTATIONS}:
+        if run_test(list(test)) != 0:
+            failures.append(f"{' '.join(test)}: not green after restore — restore logic is broken")
+    for f in failures:
+        print(f"FAIL {f}", file=sys.stderr)
+    print("mutation-check:", "FAILED" if failures else "OK —", len(MUTATIONS), "mutations, every gate refutable")
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

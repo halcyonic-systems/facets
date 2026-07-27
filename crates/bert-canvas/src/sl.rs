@@ -597,6 +597,11 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     scale,
                     states,
                     variable_kind,
+                    // SL has no production for the engine-parameter bags (#112),
+                    // so a parsed thing never carries them.
+                    cognitive_params: Default::default(),
+                    initial_state: Default::default(),
+                    agency_capacity: None,
                 });
                 next_id += 1;
             }
@@ -989,6 +994,18 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         // silently rewrote a declared `sink y` as `source y` whenever `y` happened to
         // have an outgoing flow, falsifying corpus headers that claim a fixed
         // composition. A round trip must return what was written.
+        // §7.3: refuse loudly rather than lose information silently. The canvas
+        // carries a loaded model's engine-parameter bags opaquely (#216); SL has
+        // no production for them until #112 chooses the transition functor, so a
+        // thing that carries them cannot be written down without narrowing.
+        if !t.cognitive_params.is_empty() || !t.initial_state.is_empty() {
+            return Err(format!(
+                "`{}` carries engine parameters (cognitive_params / initial_state) \
+                 SL cannot yet express (#112) — export the model as kernel JSON \
+                 instead of SL",
+                t.name
+            ));
+        }
         let keyword = match (t.role, t.env_kind) {
             (Role::Component, _) => "component",
             (Role::Environment, EnvKind::Source) => "source",

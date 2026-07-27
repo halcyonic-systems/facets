@@ -1,30 +1,24 @@
-//! What a canvas round-trip costs a runnable model (#216).
+//! A canvas round-trip preserves the RUN, not merely the runnability (#216).
 //!
-//! # EXPECTED TO FAIL until the canvas carries flow quantity (plan Wave 4)
+//! GREEN since Wave 4 (2026-07-27) — and it was authored RED, deliberately. The
+//! old `to_canvas_loads_a_demo_faithfully` asserted a reloaded demo "should
+//! still project to an executable model", and passed while the reservoir's
+//! trajectory changed 22%, its initial stock fell from 100 to 0, its release
+//! rate reverted to 1.0, and every unit went blank — *executable* and *the same
+//! model* are different predicates, and only the weaker one was checked. Both
+//! runs reported `conserved = true`: a run that conserves nothing at the wrong
+//! rate still conserves.
 //!
-//! `canvas.rs`'s `to_canvas_loads_a_demo_faithfully` asserts that a reloaded demo
-//! "should still project to an executable model". It passes. It has always passed.
-//! It passed while the reservoir's trajectory changed by 22%, its initial stock fell
-//! from 100 to 0, its release rate silently reverted to `Node::default()`'s 1.0, and
-//! every unit went blank — because *executable* and *the same model* are different
-//! predicates, and only the weaker one was ever checked. Both runs report
-//! `conserved = true, residual = 0`, so conservation does not catch it either: a run
-//! that conserves nothing at the wrong rate still conserves.
+//! What closed it: `CanvasModel::Relation` now carries `amount`/`unit`/
+//! `substance`, and `Thing` carries `cognitive_params`/`initial_state`/
+//! `agency_capacity` opaquely — everything the operational spec reads.
+//! `scripts/mutation_check.py` holds this gate refutable: reintroducing any of
+//! the three discards turns it red.
 //!
-//! The cause is not in this file and cannot be fixed from it. `CanvasModel::Relation`
-//! carries no `amount`, no `unit`, and no substance name, though `Interaction` in the
-//! kernel has carried `amount` and `unit` from the beginning, so `project()` hardcodes
-//! `Decimal::ONE`. `AgentModel::initial_state` and `cognitive_params` are untyped maps
-//! the canvas drops entirely. A demo's whole dynamical content is those fields.
-//!
-//! This test exists to make that loss **visible and standing** rather than latent. It
-//! is the separating instance for the canvas's dropped fields, and it goes green when
-//! the fields survive the round trip, not before.
-//!
-//! **Do not "fix" this by weakening the assertion.** Weakening it converts a
-//! separating instance back into a decoration, which is the failure that let the
-//! defect live this long. If it must be silenced before Wave 4, `#[ignore]` it with a
-//! reason — never relax what it compares.
+//! **Never weaken this assertion.** Weakening it converts a separating instance
+//! back into a decoration, which is the failure that let the defect live a
+//! year. If the canvas ever drops a new run-relevant field, this test is
+//! designed to go red again — that red is the finding, not a flake.
 
 use bert_canvas::canvas::{project, to_canvas};
 use bert_compose::{from_spec, run::RecordedRun};

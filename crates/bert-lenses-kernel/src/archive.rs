@@ -132,6 +132,9 @@ mod tests {
             scale: None,
             states: None,
             variable_kind: None,
+            cognitive_params: Default::default(),
+            initial_state: Default::default(),
+            agency_capacity: None,
             env_kind: Default::default(),
         });
         m.things.push(Thing {
@@ -147,6 +150,9 @@ mod tests {
             scale: None,
             states: None,
             variable_kind: None,
+            cognitive_params: Default::default(),
+            initial_state: Default::default(),
+            agency_capacity: None,
             env_kind: Default::default(),
         });
         m.relations.push(Relation {
@@ -312,6 +318,9 @@ mod decomposition_seam {
             scale: None,
             states: None,
             variable_kind: None,
+            cognitive_params: Default::default(),
+            initial_state: Default::default(),
+            agency_capacity: None,
             env_kind: Default::default(),
         }
     }

@@ -15,9 +15,11 @@ publish = false
 [dependencies]
 bert-core = { path = "../bert-core" }
 serde = { version = "1", features = ["derive"] }
+# `Thing` carries AgentModel's engine-parameter maps opaquely (#216), and
+# `initial_state` values are arbitrary JSON — same Value type bert-core uses.
+serde_json = "1"
 
 [dev-dependencies]
-serde_json = "1"
 bert-core = { path = "../bert-core" }
 # Test-only. `canvas_round_trip.rs` has to RUN a demo before and after a canvas
 # round-trip, because "still projects to an executable model" was the assertion

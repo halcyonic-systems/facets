@@ -73,6 +73,9 @@ fn canvas_born_model_canonicalizes() {
         scale: None,
         states: None,
         variable_kind: None,
+        cognitive_params: Default::default(),
+        initial_state: Default::default(),
+        agency_capacity: None,
     };
     let m = CanvasModel {
         lens: Lens::Klir,

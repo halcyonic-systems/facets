@@ -195,6 +195,27 @@ pub struct Thing {
     /// stay byte-identical on disk.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub variable_kind: Option<KlirVarKind>,
+    /// [`AgentModel::cognitive_params`], carried OPAQUELY (#216). The canvas
+    /// neither edits nor interprets these — they are an untyped bag because
+    /// nothing has yet chosen the transition functor, and a functor's parameters
+    /// cannot be typed before the functor is (#112, where their typed form is
+    /// scoped). What the canvas must not do is *discard* them: dropping the bag
+    /// on load is how a demo round-tripped into a different system while still
+    /// reporting `conserved=true`. SL cannot express them, and `emit_sl` refuses
+    /// rather than narrowing silently (§7.3). Empty = absent, `skip` on disk.
+    #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
+    pub cognitive_params: std::collections::HashMap<String, f64>,
+    /// [`AgentModel::initial_state`], carried OPAQUELY (#216) — same standing,
+    /// same #112 boundary, same emit refusal as `cognitive_params` above.
+    #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
+    pub initial_state: std::collections::HashMap<String, serde_json::Value>,
+    /// [`AgentModel::agency_capacity`], carried opaquely with the bags (#216):
+    /// the operational spec reads it as the process's engine parameter
+    /// (`node.param` in bert-compose), so dropping it changed a Modulating
+    /// valve's factor from an authored 0.2 to the 0.5 default and the run with
+    /// it. `None` = unauthored; only projection supplies the kernel default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agency_capacity: Option<f32>,
 }
 
 /// A drawn connection: `a → b`, a bond (or a mere relation), optionally typed.
@@ -475,6 +496,24 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                         .get_or_insert_with(AgentModel::default)
                         .stock_unit = t.stock_unit.clone();
                 }
+                // The opaque engine-parameter bags ride the same agent record
+                // (#216): the canvas carries them without interpreting them,
+                // so a loaded model's dynamical content survives projection.
+                if !t.cognitive_params.is_empty()
+                    || !t.initial_state.is_empty()
+                    || t.agency_capacity.is_some()
+                {
+                    let agent = systems
+                        .last_mut()
+                        .unwrap()
+                        .agent
+                        .get_or_insert_with(AgentModel::default);
+                    agent.cognitive_params = t.cognitive_params.clone();
+                    agent.initial_state = t.initial_state.clone();
+                    if let Some(ac) = t.agency_capacity {
+                        agent.agency_capacity = ac;
+                    }
+                }
                 if t.interface {
                     designated.push((systems.len() - 1, t.id, &t.name));
                 }
@@ -735,6 +774,21 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             scale: None,
             states: None,
             variable_kind: None,
+            // The engine-parameter bags cross the seam opaquely in both
+            // directions (#216). What this load still narrows, declared:
+            // `process_configs` and `network_config` are NOT carried — no
+            // shipped model uses them, and #112 owns their typed future.
+            cognitive_params: s
+                .agent
+                .as_ref()
+                .map(|a| a.cognitive_params.clone())
+                .unwrap_or_default(),
+            initial_state: s
+                .agent
+                .as_ref()
+                .map(|a| a.initial_state.clone())
+                .unwrap_or_default(),
+            agency_capacity: s.agent.as_ref().map(|a| a.agency_capacity),
         });
     }
 
@@ -772,6 +826,9 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             scale: None,
             states: None,
             variable_kind: None,
+            cognitive_params: Default::default(),
+            initial_state: Default::default(),
+            agency_capacity: None,
         });
     }
 
@@ -974,6 +1031,9 @@ mod tests {
             scale: None,
             states: None,
             variable_kind: None,
+            cognitive_params: Default::default(),
+            initial_state: Default::default(),
+            agency_capacity: None,
             env_kind: Default::default(),
         }
     }

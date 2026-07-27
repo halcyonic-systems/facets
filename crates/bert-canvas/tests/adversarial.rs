@@ -32,6 +32,9 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
         scale: None,
         states: None,
         variable_kind: None,
+        cognitive_params: Default::default(),
+        initial_state: Default::default(),
+        agency_capacity: None,
         env_kind: Default::default(),
     }
 }
