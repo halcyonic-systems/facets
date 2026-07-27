@@ -132,6 +132,7 @@ mod tests {
             scale: None,
             states: None,
             variable_kind: None,
+            env_kind: Default::default(),
         });
         m.things.push(Thing {
             id: 2,
@@ -146,6 +147,7 @@ mod tests {
             scale: None,
             states: None,
             variable_kind: None,
+            env_kind: Default::default(),
         });
         m.relations.push(Relation {
             id: 1,
@@ -304,6 +306,7 @@ mod decomposition_seam {
             scale: None,
             states: None,
             variable_kind: None,
+            env_kind: Default::default(),
         }
     }
 

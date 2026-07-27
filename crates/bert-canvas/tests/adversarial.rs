@@ -32,6 +32,7 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
         scale: None,
         states: None,
         variable_kind: None,
+        env_kind: Default::default(),
     }
 }
 

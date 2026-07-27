@@ -107,6 +107,8 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                     equivalence: String::new(),
                     model: String::new(),
                     is_same_as_id: None,
+                    // A compose circuit node's kind IS its direction (#216).
+                    authored_direction: true,
                 });
                 node_id.insert(i, eid);
             }
@@ -120,6 +122,8 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                     equivalence: String::new(),
                     model: String::new(),
                     is_same_as_id: None,
+                    // A compose circuit node's kind IS its direction (#216).
+                    authored_direction: true,
                 });
                 node_id.insert(i, eid);
             }

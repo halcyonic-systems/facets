@@ -245,8 +245,17 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
         .map(|s| s.boundary.porosity)
         .unwrap_or(0.0);
 
+    // Externals whose Source/Sink is a filing rather than the author's claim
+    // (#216). SL's `environment` word says "neither" — a mediator that both
+    // receives and gives — but a WorldModel keeps sources and sinks in separate
+    // arrays, so such a thing still has to be filed on one side. The direction
+    // gates below must not read that filing as a declaration.
+    let mut filed_only: HashSet<Id> = HashSet::new();
     for ext in &model.environment.sources {
         projected.insert(ext.info.id.clone());
+        if !ext.authored_direction {
+            filed_only.insert(ext.info.id.clone());
+        }
         spec.sources.push(OperationalTerminal {
             id: ext.info.id.clone(),
             name: ext.info.name.clone(),
@@ -254,6 +263,9 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
     }
     for ext in &model.environment.sinks {
         projected.insert(ext.info.id.clone());
+        if !ext.authored_direction {
+            filed_only.insert(ext.info.id.clone());
+        }
         spec.sinks.push(OperationalTerminal {
             id: ext.info.id.clone(),
             name: ext.info.name.clone(),
@@ -324,7 +336,7 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
         // a dangling interface id still errors there.)
         let interface_routing = (ix.source_interface.is_some() || ix.sink_interface.is_some())
             .then_some(InterfacePrimitive::Impeding);
-        if ix.source.ty == IdType::Sink {
+        if ix.source.ty == IdType::Sink && !filed_only.contains(&ix.source) {
             errors.push(OperationalError::new(
                 &loc,
                 format!(
@@ -336,7 +348,7 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
             ));
             flow_ok = false;
         }
-        if ix.sink.ty == IdType::Source {
+        if ix.sink.ty == IdType::Source && !filed_only.contains(&ix.sink) {
             errors.push(OperationalError::new(
                 &loc,
                 format!(
@@ -572,6 +584,7 @@ mod tests {
                     equivalence: String::new(),
                     model: String::new(),
                     is_same_as_id: None,
+                    authored_direction: true,
                 }],
                 sinks: vec![ExternalEntity {
                     info: info(snk.clone(), -1, "Drain"),
@@ -580,6 +593,7 @@ mod tests {
                     equivalence: String::new(),
                     model: String::new(),
                     is_same_as_id: None,
+                    authored_direction: true,
                 }],
             },
             systems: vec![

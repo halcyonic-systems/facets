@@ -1528,6 +1528,29 @@ pub struct ExternalEntity {
     pub model: String,
     #[serde(default)]
     pub is_same_as_id: Option<usize>,
+    /// Whether `ty` is the author's claim or merely a filing (#216).
+    ///
+    /// A `WorldModel` has no neutral external: sources and sinks are separate
+    /// arrays, so every environment thing must be filed on one side. SL, however,
+    /// gives the author three words, and `environment` says *neither* — a mediator
+    /// that both receives and gives. Such a thing still has to be filed, and the
+    /// filing carries no authored content.
+    ///
+    /// The distinction is load-bearing because the direction gates
+    /// (`check_flow_direction`) refuse a flow that contradicts `ty`. Against an
+    /// authored `source` that refusal is right and worth keeping: the author said
+    /// it originates, and a flow into it is a real contradiction. Against a filing
+    /// it was checking the projection's own guess, and it refused six legitimate
+    /// example models on that basis.
+    ///
+    /// Defaults to `true` so a `WorldModel` deserialized from JSON written before
+    /// this field existed keeps exactly its current gating.
+    #[serde(default = "default_true")]
+    pub authored_direction: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone)]

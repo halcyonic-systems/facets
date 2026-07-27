@@ -846,6 +846,7 @@ mod tests {
                 scale: None,
                 states: None,
                 variable_kind: None,
+                env_kind: Default::default(),
             }
         }
         fn edge(id: u64, a: u64, b: u64) -> Relation {

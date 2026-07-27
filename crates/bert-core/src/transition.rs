@@ -893,6 +893,7 @@ mod tests {
                     equivalence: String::new(),
                     model: String::new(),
                     is_same_as_id: None,
+                    authored_direction: true,
                 }],
                 sinks: vec![],
             },

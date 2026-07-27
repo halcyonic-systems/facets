@@ -44,8 +44,8 @@ use bert_core::model_id::{decode_uuid, encode_uuid};
 use bert_core::{ModelRef, ProcessPrimitive};
 
 use crate::canvas::{
-    CanvasBoundaryProps, CanvasModel, ChildRef, Genus, Kind, Kingdom, KlirVarKind, Lens, Relation,
-    Role, ScaleType, SystemType, Thing,
+    CanvasBoundaryProps, CanvasModel, ChildRef, EnvKind, Genus, Kind, Kingdom, KlirVarKind, Lens,
+    Relation, Role, ScaleType, SystemType, Thing,
 };
 
 /// A parse fault, anchored to its 1-indexed source line. All faults are
@@ -272,6 +272,15 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     Role::Component
                 } else {
                     Role::Environment
+                };
+                // Keep the author's word (#216). All four keywords used to collapse
+                // into `role` alone, and everything downstream re-derived the lost
+                // distinction from flow direction — which cannot recover it, and
+                // guessed wrong on exactly the models where it mattered.
+                let env_kind = match keyword.as_str() {
+                    "source" => EnvKind::Source,
+                    "sink" => EnvKind::Sink,
+                    _ => EnvKind::Neutral,
                 };
                 let Some((name, attrs)) = rest.split_first() else {
                     fail(
@@ -580,6 +589,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     x: 0.0,
                     y: 0.0,
                     role,
+                    env_kind,
                     primitive,
                     interface,
                     child_model,
@@ -870,14 +880,21 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
     }
 
     // things — env identity edge-derived from bonds, mirroring project()
-    let originates = |id: u64| model.relations.iter().any(|r| r.is_bond && r.a == id);
-    let touched = |id: u64| model.relations.iter().any(|r| r.is_bond && (r.a == id || r.b == id));
+    // Both retained: `emit_sl` no longer derives the env keyword (#216), but the
+    // helpers still serve the flow section below.
+    let _originates = |id: u64| model.relations.iter().any(|r| r.is_bond && r.a == id);
+    let _touched = |id: u64| model.relations.iter().any(|r| r.is_bond && (r.a == id || r.b == id));
     for t in &model.things {
-        let keyword = match t.role {
-            Role::Component => "component",
-            Role::Environment if originates(t.id) => "source",
-            Role::Environment if touched(t.id) => "sink",
-            Role::Environment => "environment",
+        // Echo the author's word, do not re-derive it (#216). This used to read the
+        // flow direction — `originates → "source"`, else `touched → "sink"` — which
+        // silently rewrote a declared `sink y` as `source y` whenever `y` happened to
+        // have an outgoing flow, falsifying corpus headers that claim a fixed
+        // composition. A round trip must return what was written.
+        let keyword = match (t.role, t.env_kind) {
+            (Role::Component, _) => "component",
+            (Role::Environment, EnvKind::Source) => "source",
+            (Role::Environment, EnvKind::Sink) => "sink",
+            (Role::Environment, EnvKind::Neutral) => "environment",
         };
         write!(out, "{keyword} {}", name_token(&t.name)?).unwrap();
         if t.role == Role::Component {

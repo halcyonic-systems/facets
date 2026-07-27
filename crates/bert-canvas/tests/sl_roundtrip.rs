@@ -65,6 +65,7 @@ fn canvas_born_model_canonicalizes() {
         x: 10.5,
         y: -3.25,
         role,
+        env_kind: Default::default(),
         primitive: None,
         interface: false,
         child_model: None,

@@ -1,12 +1,14 @@
-//! The author's environment word must survive (#216).
+//! The author's environment word must survive (#216). **GREEN — fixed 2026-07-27.**
 //!
-//! # EXPECTED TO FAIL until `Role` carries the authored declaration
+//! Kept as the standing record of a defect that had two symptoms filed as unrelated
+//! tickets, because the shape recurs: a distinction the author stated, discarded by
+//! one layer, then guessed at by the next.
 //!
 //! SL gives the author three words for a thing outside the boundary — `source`,
-//! `sink`, and `environment` — and they mean different things. `sl.rs:270` maps all
-//! three onto the single `Role::Environment`, so the distinction is destroyed at
-//! parse time. Everything downstream then tries to *recover* it by looking at which
-//! way the flows run:
+//! `sink`, and `environment` — and they mean different things. The parser used to map
+//! all three onto the single `Role::Environment`, destroying the distinction at parse
+//! time. Everything downstream then tried to *recover* it by looking at which way the
+//! flows run:
 //!
 //! - `sl.rs:878-880` re-derives the keyword for `emit_sl` (`originates → "source"`,
 //!   else `touched → "sink"`, else `"environment"`)
@@ -26,11 +28,13 @@
 //!    The entry's header claims one fixed composition across the set, and the encoding
 //!    contradicts it.
 //!
-//! The fix is not a wider `ExternalEntityType`. It is to stop discarding what the
-//! author said: carry the declaration on the thing, echo it in `emit_sl`, and let the
-//! operational rules judge *authored* claims instead of their own derivation. Those
-//! rules become true again once they do — a flow into a thing the author declared a
-//! `source` is a real error, where a flow into a neutral `environment` never was.
+//! The fix was not a wider `ExternalEntityType`. It was to stop discarding what the
+//! author said: `Thing::env_kind` carries the declaration, `emit_sl` echoes it, and
+//! `ExternalEntity::authored_direction` tells the operational rules whether `ty` is a
+//! claim or merely a filing (a `WorldModel` has no neutral external, so a mediator
+//! must still be filed on one side). **Those rules became true again**: a flow into a
+//! thing the author declared a `source` is a real error and is still refused, where a
+//! flow into a neutral `environment` never was.
 
 use std::fs;
 use std::path::PathBuf;
@@ -88,4 +92,34 @@ fn emit_sl_preserves_the_declared_environment_word() {
              (sl.rs:878-880) rather than remembered. Emitted:\n{emitted}"
         );
     }
+}
+
+/// Law: the four examples blocked *solely* by the derived-direction defect now run.
+///
+/// Named individually rather than counted, so a regression says which model broke.
+/// Each declares an `environment` thing that both receives and gives — the shape the
+/// projection used to refuse. `hal-harness` and `two-sided-market` are deliberately
+/// absent: they carry the same defect *plus* a Bunge lens-mode gate, so they stay
+/// structural for a reason that has nothing to do with this fix.
+#[test]
+fn the_examples_blocked_by_derived_direction_now_validate() {
+    let mut broken = Vec::new();
+    for name in [
+        "predator-prey",
+        "cell-metabolism",
+        "jung-functions",
+        "bank-run",
+    ] {
+        let text = read(&format!("examples/{name}.sl"));
+        let parsed = parse_sl_full(&text).unwrap_or_else(|e| panic!("{name}: {e:?}"));
+        if let Err(errs) = validate_operational(&project(&parsed.model)) {
+            broken.push(format!("  {name}: {errs:#?}"));
+        }
+    }
+    assert!(
+        broken.is_empty(),
+        "these examples are blocked by nothing but the derived-direction defect, so \
+         they must validate once the author's word is kept:\n{}",
+        broken.join("\n")
+    );
 }

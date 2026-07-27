@@ -1838,6 +1838,7 @@ mod tests {
             equivalence: String::new(),
             model: String::new(),
             is_same_as_id: None,
+            authored_direction: true,
         });
         let result = validate(&model);
         assert!(result.has_errors());
@@ -1866,6 +1867,7 @@ mod tests {
             equivalence: String::new(),
             model: String::new(),
             is_same_as_id: None,
+            authored_direction: true,
         });
         let result = validate(&model);
         assert!(result.has_errors());
@@ -2033,6 +2035,7 @@ mod tests {
             equivalence: String::new(),
             model: String::new(),
             is_same_as_id: None,
+            authored_direction: true,
         };
 
         let mut model = minimal_model();
@@ -2271,6 +2274,7 @@ mod tests {
             equivalence: String::new(),
             model: String::new(),
             is_same_as_id: None,
+            authored_direction: true,
         });
         model.interactions.push(Interaction {
             info: Info {
@@ -2390,6 +2394,7 @@ mod tests {
             equivalence: String::new(),
             model: String::new(),
             is_same_as_id: None,
+            authored_direction: true,
         });
         model.interactions.push(Interaction {
             info: Info {
@@ -2750,6 +2755,7 @@ mod tests {
             equivalence: String::new(),
             model: String::new(),
             is_same_as_id: None,
+            authored_direction: true,
         };
         let snk = ExternalEntity {
             info: Info {
@@ -2766,6 +2772,7 @@ mod tests {
             equivalence: String::new(),
             model: String::new(),
             is_same_as_id: None,
+            authored_direction: true,
         };
         let src_id = src.info.id.clone();
         let snk_id = snk.info.id.clone();
@@ -3426,6 +3433,7 @@ mod tests {
                 equivalence: String::new(),
                 model: String::new(),
                 is_same_as_id: None,
+                authored_direction: true,
             });
         }
         model.systems[0].boundary.interfaces.push(Interface {
@@ -3502,6 +3510,7 @@ mod tests {
             equivalence: String::new(),
             model: String::new(),
             is_same_as_id: None,
+            authored_direction: true,
         });
         model.systems[0].boundary.interfaces.push(Interface {
             info: Info {

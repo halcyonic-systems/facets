@@ -49,6 +49,33 @@ pub enum Role {
     Environment,
 }
 
+/// What the author declared an environment thing to be (#216).
+///
+/// SL gives three words for a thing outside the boundary and they are three
+/// different commitments: `source` says it originates, `sink` says it terminates,
+/// and `environment` says neither — it mediates, and flows may run both ways.
+///
+/// Before this existed, all three parsed to `Role::Environment` and the distinction
+/// was destroyed at parse time. Two places downstream then re-derived it from flow
+/// direction, and a derivation cannot recover what the parse discarded: `emit_sl`
+/// wrote `source y` back over an authored `sink y`, and `project` typed a neutral
+/// mediator as a `Source`, after which every flow *into* it was refused. The rules
+/// doing the refusing are correct — they were checking a guess.
+///
+/// `Neutral` is the serde default, so a `CanvasModel` deserialized from JSON written
+/// before this field existed loses any authored directional constraint rather than
+/// gaining a false one. That widens what validates; it never invents an error.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum EnvKind {
+    /// `source` — originates flow. A flow into it contradicts the author.
+    Source,
+    /// `sink` — terminates flow. A flow out of it contradicts the author.
+    Sink,
+    /// `environment` — neither, by the author's own word. Flows run both ways.
+    #[default]
+    Neutral,
+}
+
 /// The kind of a bond (Bunge's connection-flow taxonomy). Maps 1:1 onto Mobus
 /// substance; the flow-name axis, not the Mobus `InteractionType::Force`.
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -117,6 +144,12 @@ pub struct Thing {
     pub y: f32,
     #[serde(default)]
     pub role: Role,
+    /// The author's own word for an environment thing (#216). Meaningless on a
+    /// component, which is why it is a separate field rather than a `Role` variant:
+    /// inside-or-outside the boundary and what-the-author-declared are different
+    /// questions, and only the second one has a neutral answer.
+    #[serde(default)]
+    pub env_kind: EnvKind,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub primitive: Option<ProcessPrimitive>,
     /// Authored interface designation — this component is a member of the root
@@ -432,7 +465,18 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                 if !touched.contains(&t.id) {
                     continue; // an untouched env dot would be an orphan terminal
                 }
-                let is_source = originates.contains(&t.id);
+                // The author's word decides, with the derivation only as a fallback
+                // for a neutral thing (#216). A `WorldModel` has no neutral external
+                // — sources and sinks are separate arrays — so a mediator must still
+                // be filed on one side. Filing it is harmless; what was harmful was
+                // treating the filing as an authored claim and refusing flows that
+                // contradicted it. `check_flow_direction` in bert-core now gates on
+                // `authored_direction`, so a Neutral thing accepts both.
+                let is_source = match t.env_kind {
+                    EnvKind::Source => true,
+                    EnvKind::Sink => false,
+                    EnvKind::Neutral => originates.contains(&t.id),
+                };
                 let id = Id {
                     ty: if is_source { IdType::Source } else { IdType::Sink },
                     indices: vec![-1, env_idx],
@@ -449,6 +493,10 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     equivalence: String::new(),
                     model: String::new(),
                     is_same_as_id: None,
+                    // Only a `source`/`sink` declaration is the author's claim; a
+                    // neutral `environment` thing is merely filed on one side
+                    // because a WorldModel has no neutral external (#216).
+                    authored_direction: t.env_kind != EnvKind::Neutral,
                 };
                 if is_source {
                     sources.push(ext);
@@ -639,6 +687,8 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             x,
             y,
             role: Role::Component,
+            // Meaningless on a component; the field only speaks for env things.
+            env_kind: EnvKind::default(),
             primitive: s.agent.as_ref().and_then(|a| a.primitive),
             // parent_interface is the designation's inverse: a level-1 system
             // attached to a root-membrane interface IS a designated member of I.
@@ -686,6 +736,13 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             x,
             y,
             role: Role::Environment,
+            // Loading a WorldModel back: the kernel keeps sources and sinks in
+            // separate arrays, so a declared direction is recoverable here even
+            // though neutrality is not — a WorldModel cannot represent it (#216).
+            env_kind: match e.ty {
+                ExternalEntityType::Source => EnvKind::Source,
+                ExternalEntityType::Sink => EnvKind::Sink,
+            },
             primitive: None,
             interface: false,
             child_model: None,
@@ -889,6 +946,7 @@ mod tests {
             scale: None,
             states: None,
             variable_kind: None,
+            env_kind: Default::default(),
         }
     }
     fn bond(id: u64, a: u64, b: u64) -> Relation {

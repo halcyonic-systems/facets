@@ -352,6 +352,7 @@ mod tests {
             scale: None,
             states: None,
             variable_kind: None,
+            env_kind: Default::default(),
         }
     }
 
