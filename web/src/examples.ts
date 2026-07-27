@@ -57,10 +57,16 @@ function firstComment(lines: string[]): string {
 
 const structural: Demo[] = Object.entries(files).map(([path, text]) => parseExample(path, text));
 
+/** An `.sl` file that also ships a run bundle lists once, as the runnable
+ *  entry — the `.sl` stays its SOURCE (`sl_demos.rs` pins the bundled model
+ *  to the projection of the `.sl`), the gallery just must not show the same
+ *  system twice. */
+const demoTitles = new Set(DEMOS.map((d) => d.title));
+
 /** The merged library: runnable demos + structural examples, each carrying its
  *  genus. Order within the list is demos-first, then structural — the gallery
  *  regroups by genus, so this order only affects within-genus card order. */
-export const EXAMPLES: Demo[] = [...DEMOS, ...structural];
+export const EXAMPLES: Demo[] = [...DEMOS, ...structural.filter((s) => !demoTitles.has(s.title))];
 
 /** Group the library by genus in the canonical order, dropping empty genera.
  *  The shape the gallery renders (#148). */

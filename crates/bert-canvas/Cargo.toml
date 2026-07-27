@@ -26,3 +26,7 @@ bert-core = { path = "../bert-core" }
 # that let a 22% trajectory change ship green (#216). No cycle: bert-compose
 # depends on bert-core only.
 bert-compose = { path = "../bert-compose" }
+# Test-only. `sl_demos.rs` runs the SL-authored demos' ACTUAL gallery bundles
+# through the forced path, so a bad element name or unit in a bundle fails in
+# CI instead of at GUI runtime. No cycle: bert-tether depends on core+compose.
+bert-tether = { path = "../bert-tether" }

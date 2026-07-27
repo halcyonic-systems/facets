@@ -1,0 +1,274 @@
+{
+  "version": 1,
+  "mode": "Operational",
+  "environment": {
+    "info": {
+      "id": "E-1",
+      "level": -1,
+      "name": "Environment",
+      "description": ""
+    },
+    "sources": [
+      {
+        "info": {
+          "id": "Src-1.0",
+          "level": -1,
+          "name": "Rain",
+          "description": ""
+        },
+        "type": "Source",
+        "transform": {
+          "translation": [
+            479.99997,
+            -48.41632
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": true
+      }
+    ],
+    "sinks": [
+      {
+        "info": {
+          "id": "Snk-1.1",
+          "level": -1,
+          "name": "City",
+          "description": ""
+        },
+        "type": "Sink",
+        "transform": {
+          "translation": [
+            479.99997,
+            688.4163
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": true
+      }
+    ]
+  },
+  "systems": [
+    {
+      "info": {
+        "id": "S0",
+        "level": 0,
+        "name": "Watershed",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "E-1",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0",
+          "level": 0,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [
+          {
+            "info": {
+              "id": "I0.0",
+              "level": 0,
+              "name": "Reservoir",
+              "description": ""
+            },
+            "protocol": "rainfall",
+            "type": "Import",
+            "exports_to": [],
+            "receives_from": [
+              "Src-1.0"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.1",
+              "level": 0,
+              "name": "Treatment",
+              "description": ""
+            },
+            "protocol": "municipal supply",
+            "type": "Export",
+            "exports_to": [
+              "Snk-1.1"
+            ],
+            "receives_from": [],
+            "angle": null
+          }
+        ],
+        "parent_interface": null
+      },
+      "radius": 34.0,
+      "transform": null,
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": ""
+    },
+    {
+      "info": {
+        "id": "C0.0",
+        "level": 1,
+        "name": "Reservoir",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.0",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.0"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          310.0,
+          320.0
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Buffering",
+        "stock_unit": "ML"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.1",
+        "level": 1,
+        "name": "Treatment",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.1",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.1"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          650.0,
+          320.00003
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Propelling"
+      }
+    }
+  ],
+  "interactions": [
+    {
+      "info": {
+        "id": "F0",
+        "level": 0,
+        "name": "rainfall",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "water",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.0",
+      "source_interface": null,
+      "sink": "C0.0",
+      "sink_interface": "I0.0",
+      "amount": "3",
+      "unit": "ML/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F1",
+        "level": 0,
+        "name": "controlled release",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.1",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F2",
+        "level": 0,
+        "name": "municipal supply",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": "I0.1",
+      "sink": "Snk-1.1",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    }
+  ],
+  "hidden_entities": [],
+  "time_unit": "day"
+}

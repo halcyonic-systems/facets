@@ -1,0 +1,26 @@
+{
+  "title": "Watershed",
+  "blurb": "Rain fills a reservoir; treatment delivers to the city and loses some on the way. Drive the rainfall through a storm cycle and watch the ledger split into all four channels \u2014 emitted, stored, delivered, dissipated \u2014 while mass balances exactly.",
+  "model": "watershed",
+  "genus": "Physical",
+  "t": 30,
+  "csv": "day,rainfall\n1,2.0\n2,2.0\n3,1.5\n4,1.0\n5,0.5\n6,0.5\n7,0.1\n8,0.1\n9,1.0\n10,3.0\n11,6.0\n12,8.0\n13,7.0\n14,5.0\n15,3.0\n16,2.0\n17,1.5\n18,1.0\n19,1.0\n20,0.5\n21,0.5\n22,0.1\n23,0.1\n24,0.5\n25,1.0\n26,2.0\n27,3.0\n28,3.5\n29,3.0\n30,2.5\n",
+  "mapping": {
+    "model": "",
+    "data": "",
+    "t": 30,
+    "mapping": [
+      {
+        "column": "day",
+        "as": "time"
+      },
+      {
+        "column": "rainfall",
+        "as": "flow",
+        "element": "rainfall",
+        "unit": "ML/day",
+        "force": true
+      }
+    ]
+  }
+}
