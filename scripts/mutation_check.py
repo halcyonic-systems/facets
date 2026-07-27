@@ -48,6 +48,22 @@ MUTATIONS = [
         "to_canvas() reverting a Modulating factor to the 0.5 default (#216 — homeostat)",
     ),
     (
+        "env-ring-pinned",
+        "crates/bert-canvas/src/sl.rs",
+        "ENV_RADIUS.max(center_offset + membrane_max + NODE_R + CLEARANCE)",
+        "ENV_RADIUS",
+        ["-p", "bert-canvas", "--test", "layout_truthful"],
+        "the pinned env ring drawing environment nodes ON the membrane (#216 E1 — C ∩ E ≠ ∅ in pictures)",
+    ),
+    (
+        "two-comp-vertical",
+        "crates/bert-canvas/src/sl.rs",
+        "2 => ring(slot, 2, COMPONENT_RADIUS, PI),",
+        "2 => ring(slot, 2, COMPONENT_RADIUS, -FRAC_PI_2),",
+        ["-p", "bert-canvas", "--test", "layout_truthful"],
+        "two-component models collapsing to one vertical line (#216 E2)",
+    ),
+    (
         "env-word-rederived",
         "crates/bert-canvas/src/sl.rs",
         '(Role::Environment, EnvKind::Sink) => "sink",',

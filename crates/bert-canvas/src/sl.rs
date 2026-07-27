@@ -905,9 +905,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
 /// take the inner N-gon and environment things the outer ring, in declaration
 /// order. A lone component sits at the center.
 fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>) {
-    let ring = |i: usize, n: usize, radius: f32| -> (f32, f32) {
-        let angle = -std::f32::consts::FRAC_PI_2
-            + (i as f32) * std::f32::consts::TAU / (n.max(1) as f32);
+    use std::f32::consts::{FRAC_PI_2, PI, SQRT_2, TAU};
+    let ring = |i: usize, n: usize, radius: f32, start: f32| -> (f32, f32) {
+        let angle = start + (i as f32) * TAU / (n.max(1) as f32);
         (
             CENTER.0 + radius * angle.cos(),
             CENTER.1 + radius * angle.sin(),
@@ -920,16 +920,61 @@ fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>)
         .filter(|&i| model.things[i].role == Role::Environment && !positions.contains_key(&model.things[i].name))
         .collect();
     for (slot, &i) in components.iter().enumerate() {
-        let (x, y) = if components.len() == 1 {
-            CENTER
-        } else {
-            ring(slot, components.len(), COMPONENT_RADIUS)
+        let (x, y) = match components.len() {
+            1 => CENTER,
+            // Two components spread HORIZONTALLY (#216, E2). The generic ring
+            // starts at −π/2, which for n = 2 stacks both on one vertical line
+            // — every edge through both labels, destroying exactly what the
+            // sibling sets exist to show. First declared sits left.
+            2 => ring(slot, 2, COMPONENT_RADIUS, PI),
+            n => ring(slot, n, COMPONENT_RADIUS, -FRAC_PI_2),
         };
         model.things[i].x = x;
         model.things[i].y = y;
     }
+    // The env ring must CLEAR the Mobus membrane the face will draw (#216, E1).
+    // The face derives the membrane from the component extent (geometry.ts::
+    // componentRing: bbox halves × √2 + RING_PAD), while ENV_RADIUS was pinned —
+    // for any real spread the two collided, and an env node on the membrane is a
+    // picture of C ∩ E ≠ ∅. Mirror the face's math here (NODE_R = style.ts
+    // nodeR = canvas.rs RADIUS = 34; RING_PAD = NODE_R + 36) and push the ring
+    // outside it. Pinned components count: the membrane wraps them too.
+    const NODE_R: f32 = 34.0;
+    const RING_PAD: f32 = NODE_R + 36.0;
+    const CLEARANCE: f32 = 24.0;
+    let comp_pts: Vec<(f32, f32)> = model
+        .things
+        .iter()
+        .filter(|t| t.role == Role::Component)
+        .map(|t| positions.get(&t.name).copied().unwrap_or((t.x, t.y)))
+        .collect();
+    let env_radius = if comp_pts.is_empty() {
+        ENV_RADIUS
+    } else {
+        let (min_x, max_x) = comp_pts
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(lo, hi), p| (lo.min(p.0), hi.max(p.0)));
+        let (min_y, max_y) = comp_pts
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(lo, hi), p| (lo.min(p.1), hi.max(p.1)));
+        let membrane_max = (((max_x - min_x) / 2.0) * SQRT_2 + RING_PAD)
+            .max(((max_y - min_y) / 2.0) * SQRT_2 + RING_PAD);
+        let center_offset = (((min_x + max_x) / 2.0 - CENTER.0).powi(2)
+            + ((min_y + max_y) / 2.0 - CENTER.1).powi(2))
+        .sqrt();
+        ENV_RADIUS.max(center_offset + membrane_max + NODE_R + CLEARANCE)
+    };
+    // Interleave: for n ≥ 3 components the env ring starts half a component
+    // slot off −π/2, so env things do not stack radially over component slots.
+    // (For 1–2 components the axes already differ: 2 components lie horizontal,
+    // env starts at the top.)
+    let env_start = if comp_pts.len() >= 3 {
+        -FRAC_PI_2 + PI / comp_pts.len() as f32
+    } else {
+        -FRAC_PI_2
+    };
     for (slot, &i) in env.iter().enumerate() {
-        let (x, y) = ring(slot, env.len(), ENV_RADIUS);
+        let (x, y) = ring(slot, env.len(), env_radius, env_start);
         model.things[i].x = x;
         model.things[i].y = y;
     }
@@ -1577,7 +1622,22 @@ boundary porosity 0.7 fuzziness 0.1
         let a = m1.things.iter().find(|t| t.name == "A").unwrap();
         let s = m1.things.iter().find(|t| t.name == "S").unwrap();
         assert!((dist(a) - COMPONENT_RADIUS).abs() < 0.5);
-        assert!((dist(s) - ENV_RADIUS).abs() < 0.5);
+        // The invariant, not the coordinate (#216, E1): the env ring is no
+        // longer pinned at ENV_RADIUS — it is pushed outside the membrane the
+        // face derives from the component extent. What must hold: the env
+        // thing sits strictly beyond the component ring with real separation
+        // (the membrane's √2 · extent + RING_PAD lower bound), and never
+        // closer than the old pinned floor.
+        assert!(dist(s) >= ENV_RADIUS - 0.5, "env ring under the old floor");
+        assert!(
+            dist(s) > COMPONENT_RADIUS * std::f32::consts::SQRT_2 + 70.0,
+            "env ring does not clear the membrane bound: {}",
+            dist(s)
+        );
+        // E2: two components spread horizontally, never a shared vertical.
+        let b = m1.things.iter().find(|t| t.name == "B").unwrap();
+        assert!((a.y - b.y).abs() < 0.001);
+        assert!((a.x - b.x).abs() > COMPONENT_RADIUS);
     }
 
     /// The container label's rename round trip (bert-lenses#116): the canvas
