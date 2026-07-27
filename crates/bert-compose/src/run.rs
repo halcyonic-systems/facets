@@ -47,7 +47,7 @@ impl RecordedRun {
     pub fn record(circuit: &mut Circuit, spec: &OperationalSpec, dt: f64, ticks: usize) -> Self {
         circuit.reset();
         for _ in 0..ticks {
-            circuit.step();
+            circuit.step_dt(dt as f32);
         }
         Self {
             key: spec.content_hash(),

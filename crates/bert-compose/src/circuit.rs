@@ -772,7 +772,36 @@ impl Circuit {
         )
     }
 
+    /// One step at the model's own Δt (`dt = 1.0`, one time unit per step).
+    ///
+    /// Kept so the 60-odd call sites that mean "advance one tick of this level"
+    /// stay unchanged. Mobus §4.3.3.6: Δt is a property of the LEVEL — "a time
+    /// interval relevant to the level of the system of interest", generally an
+    /// integer multiple of the level's lowest relevant time constant — so
+    /// `dt = 1.0` is the ordinary case, not a default standing in for a missing
+    /// value.
     pub fn step(&mut self) {
+        self.step_dt(1.0);
+    }
+
+    /// One step advancing `dt` of the model's declared time unit (#258).
+    ///
+    /// Rates are per time unit, not per tick, so a flux GENERATED from a rate
+    /// scales by `dt`. Transport does not: a process passes on what it received,
+    /// and a level read reports a state. Scaling both would double-count. The
+    /// three generators are Source emission, Buffer release, and the gradient
+    /// term; everything downstream inherits their scaling.
+    ///
+    /// At `dt = 1.0` this is arithmetically identical to the previous behaviour,
+    /// so every existing trajectory is unchanged — the fix only shows where the
+    /// old code was wrong, which is any `dt != 1.0`.
+    ///
+    /// NB Δt is NOT a numerical refinement knob. Under Mobus it is level-indexed
+    /// (the same index `l` as C/N/G/B/T), so halving it asserts a different
+    /// level rather than integrating the same model more finely. `dt_invariance`
+    /// checks DIMENSIONAL COHERENCE — that a rate means per-time — and should
+    /// not be read as requiring numerical convergence.
+    pub fn step_dt(&mut self, dt: f32) {
         let n = self.nodes.len();
         let nw = self.wires.len();
 
@@ -814,7 +843,8 @@ impl Circuit {
                     // Boundary porosity scales a source-fed crossing gradient
                     // (bert-lenses#54), mirroring `wire_amount`'s gradient path
                     // so display and run agree.
-                    self.crossing_factor(w.from)
+                    // × dt: conductance × Δlevel is a rate (#258)
+                    dt * self.crossing_factor(w.from)
                         * (w.conductance * (self.level(w.from) - self.level(w.to))).max(0.0)
                 } else {
                     0.0
@@ -954,7 +984,8 @@ impl Circuit {
                 // (bert#111), param when none are declared — throttled to what
                 // a downstream back-pressured valve will accept (the rest is
                 // simply not produced).
-                NodeKind::Source => self.source_emission(i) * bp_factor[i],
+                // × dt: a Source's param is a RATE per time unit (#258)
+                NodeKind::Source => dt * self.source_emission(i) * bp_factor[i],
                 NodeKind::Sink => {
                     sink_add[i] = physical + message;
                     physical + message
@@ -996,7 +1027,13 @@ impl Circuit {
                             // Back-pressure: a downstream throttled valve holds
                             // the release back — the unspent part stays in the
                             // stock rather than draining and shedding.
-                            (base * gate * bp_factor[i]).min(storage.max(0.0))
+                            //
+                            // × dt (#258): `base` is a RATE either way — stock/τ
+                            // is a first-order drain per time unit, and
+                            // `release_rate` is per time unit by declaration. The
+                            // cap stays OUTSIDE the scaling: you cannot release
+                            // more than you hold no matter how long the step is.
+                            (dt * base * gate * bp_factor[i]).min(storage.max(0.0))
                         } else {
                             0.0
                         };
