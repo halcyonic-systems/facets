@@ -333,6 +333,7 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
             check_reachability_requirements(model, issues);
             check_stock_dimensions(model, issues);
             check_interfaces_carry_flow(model, issues);
+            check_crossing_flows_route_through_interface(model, issues);
             check_interface_declarations_match_flows(model, issues);
         }
         Mode::Full => {
@@ -342,6 +343,7 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
             check_reachability_requirements(model, issues);
             check_stock_dimensions(model, issues);
             check_interfaces_carry_flow(model, issues);
+            check_crossing_flows_route_through_interface(model, issues);
             check_interface_declarations_match_flows(model, issues);
             check_dynamical_face(model, issues);
         }
@@ -971,6 +973,70 @@ fn check_interface_references(
 /// The location is the interface's own path and carries no field suffix — see
 /// [`is_interface_flow_refusal`], which `bert_canvas` uses to keep this refusal
 /// out of the connection gesture (bert-lenses#213).
+/// The CONVERSE of [`check_interfaces_carry_flow`] (#216, A2): every
+/// boundary-crossing flow routes through a designated interface.
+///
+/// Until this check, Mobus's I was the one tuple element the instrument
+/// *inferred* rather than read: `lenses.rs` fabricated "effective I =
+/// flow-crossing ∪ authored", so a flow could enter the system anywhere and the
+/// membrane silently grew a port for it. If the claim is that this instrument
+/// **authors** the 8-tuple, I is where that claim was untrue.
+///
+/// Lean grounding, stated precisely: SSF's `MobusSystem` carries external flows
+/// as a bipartite graph between environment objects and interfaces, and
+/// `bipartite_implies_boundary_complete` (Systems/Mobus/Interface.lean) derives
+/// `BoundaryComplete` — the boundary mediates ALL external interaction — from
+/// that shape. In the Lean the property is structural (G cannot even be written
+/// with a non-interface endpoint); a `WorldModel` CAN say it, so the kernel
+/// must check what the Lean makes unwritable.
+///
+/// **Severity: Error (a refusal), Operational and Full only** — the same gating
+/// and the same reasoning as the forward check: Klir and Bunge carry no
+/// interface concept. An env→env flow has no system side and is not this
+/// check's subject (endpoint-direction checks own it).
+fn check_crossing_flows_route_through_interface(
+    model: &WorldModel,
+    issues: &mut Vec<ValidationIssue>,
+) {
+    let external = |id: &Id| matches!(id.ty, IdType::Source | IdType::Sink);
+    for (k, ix) in model.interactions.iter().enumerate() {
+        // A crossing flow has an external end AND a system end. Env→env flows
+        // (including a neutral mediator filed as Source, e.g. Sunlight→Grass)
+        // have no system side and are the direction checks' subject, not this
+        // one's; internal flows cross nothing.
+        let enters = external(&ix.source) && !external(&ix.sink);
+        let leaves = external(&ix.sink) && !external(&ix.source);
+        if !enters && !leaves {
+            continue;
+        }
+        let routed = if enters { &ix.sink_interface } else { &ix.source_interface };
+        if routed.is_some() {
+            continue;
+        }
+        let (verb, side) = if enters { ("enters", "sink") } else { ("leaves", "source") };
+        issues.push(
+            ValidationIssue::error(
+                format!("interactions[{k}].{side}_interface"),
+                format!(
+                    "flow '{}' {} the system but crosses the boundary without an \
+                     interface — in Mobus's tuple every external flow passes through \
+                     a member of I (SSF `bipartite_implies_boundary_complete`: G is \
+                     bipartite between environment objects and interfaces), so a \
+                     crossing flow with no interface is a hole in the membrane the \
+                     author never declared",
+                    ix.info.name, verb
+                ),
+                Some(
+                    "Designate the component this flow attaches to as an interface \
+                     (SL: add `interface` to its component line), or re-route the \
+                     flow through an existing one",
+                ),
+            )
+            .with_doc(doc::INTERFACE),
+        );
+    }
+}
+
 fn check_interfaces_carry_flow(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     let routed: HashSet<String> = model
         .interactions
@@ -3318,6 +3384,79 @@ mod tests {
         }
     }
 
+    /// Kernel-side firing witness for `check_crossing_flows_route_through_interface`
+    /// (#216, A2) — the CONVERSE of `check_interfaces_carry_flow`. A flow entering
+    /// from a source with no interface on its system side must refuse Operational;
+    /// routing it through an interface silences the refusal; Core and Structural
+    /// carry no interface concept and stay quiet.
+    #[test]
+    fn crossing_flow_without_interface_is_refused_at_operational() {
+        let mut model = minimal_model();
+        let src_id = Id { ty: IdType::Source, indices: vec![-1, 0] };
+        model.environment.sources.push(ExternalEntity {
+            info: Info { id: src_id.clone(), level: -1, name: "Feed".to_string(), description: String::new() },
+            ty: ExternalEntityType::Source,
+            transform: None,
+            equivalence: String::new(),
+            model: String::new(),
+            is_same_as_id: None,
+            authored_direction: true,
+        });
+        model.interactions.push(Interaction {
+            info: Info {
+                id: Id { ty: IdType::Flow, indices: vec![0] },
+                level: 0,
+                name: "unrouted".to_string(),
+                description: String::new(),
+            },
+            substance: Substance { sub_type: String::new(), ty: SubstanceType::Material },
+            ty: InteractionType::Flow,
+            usability: InteractionUsability::Resource,
+            source: src_id,
+            source_interface: None,
+            sink: model.systems[0].info.id.clone(),
+            sink_interface: None,
+            amount: Decimal::ONE,
+            unit: String::new(),
+            parameters: vec![],
+            smart_parameters: vec![],
+            endpoint_offset: None,
+        });
+
+        let hit = |r: &ValidationResult| {
+            r.issues
+                .iter()
+                .any(|i| i.message.contains("crosses the boundary without an interface"))
+        };
+        assert!(
+            hit(&validate_mode(&model, Mode::Operational)),
+            "Operational must refuse a crossing flow routed through no interface: {:#?}",
+            validate_mode(&model, Mode::Operational).issues
+        );
+        for quiet in [Mode::Core, Mode::Structural] {
+            assert!(
+                !hit(&validate_mode(&model, quiet)),
+                "{quiet:?} carries no interface concept"
+            );
+        }
+
+        // Routing the same flow through an interface silences exactly this refusal.
+        let iface_id = Id { ty: IdType::Interface, indices: vec![0, 0] };
+        model.systems[0].boundary.interfaces.push(Interface {
+            info: Info { id: iface_id.clone(), level: 1, name: "Inlet".to_string(), description: String::new() },
+            protocol: String::new(),
+            ty: InterfaceType::Import,
+            exports_to: vec![],
+            receives_from: vec![],
+            angle: None,
+        });
+        model.interactions[0].sink_interface = Some(iface_id);
+        assert!(
+            !hit(&validate_mode(&model, Mode::Operational)),
+            "a routed crossing flow must not refuse"
+        );
+    }
+
     /// Firing witness for `check_interface_declarations_match_flows` (#225), on
     /// the sharp case the issue names: an interface with a REAL crossing flow
     /// whose declared `exports_to` names a different sink than the flow goes to.
@@ -3600,6 +3739,13 @@ mod tests {
             witness: Some("env_id_wrong_is_warning"),
             canvas: false,
             note: "project() always writes the environment as E-1",
+        },
+        CheckAudit {
+            check: "check_crossing_flows_route_through_interface",
+            witness: Some("crossing_flow_without_interface_is_refused_at_operational"),
+            canvas: true,
+            note: "fires on any canvas model whose crossing flow attaches to a \
+                   component the author never designated `interface` (#216, A2)",
         },
         CheckAudit {
             check: "check_version",

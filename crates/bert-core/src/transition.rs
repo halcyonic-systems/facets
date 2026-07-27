@@ -878,7 +878,15 @@ mod tests {
             ..Default::default()
         });
 
-        let flow = minimal_flow(0, "src→A", src.clone(), a);
+        // The crossing flow routes through A's interface — a crossing flow may
+        // no longer ship un-routed (#216's converse gate refuses it at
+        // Operational AND Full), and this fixture is about the stray B, not
+        // about membrane holes.
+        let ifa = id(IdType::Interface, &[0, 0]);
+        root.boundary.interfaces.push(iface(ifa.clone(), InterfaceType::Import));
+        comp_a.boundary.parent_interface = Some(ifa.clone());
+        let mut flow = minimal_flow(0, "src→A", src.clone(), a);
+        flow.sink_interface = Some(ifa);
 
         WorldModel {
             version: CURRENT_FILE_VERSION,

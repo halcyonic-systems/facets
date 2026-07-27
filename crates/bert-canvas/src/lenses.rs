@@ -1492,7 +1492,11 @@ mod tests {
         // outward port with no inward twin): a boundary that emits without intake.
         let m = model(
             vec![
-                thing(1, "A", Role::Component),
+                // A is interface-designated: its A→Env flow crosses the
+                // boundary, and a crossing flow with no interface is refused
+                // since the converse gate (#216, A2) — this fixture is about
+                // openness, not about membrane holes.
+                Thing { interface: true, ..thing(1, "A", Role::Component) },
                 thing(2, "B", Role::Component),
                 thing(3, "Env", Role::Environment),
             ],

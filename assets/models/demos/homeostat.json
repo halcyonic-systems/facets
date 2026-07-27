@@ -77,7 +77,38 @@
         },
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
-        "interfaces": [],
+        "interfaces": [
+          {
+            "info": {
+              "id": "I0.0",
+              "level": 0,
+              "name": "Valve",
+              "description": ""
+            },
+            "protocol": "Furnace → Valve",
+            "type": "Import",
+            "exports_to": [],
+            "receives_from": [
+              "Src-1.0"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.1",
+              "level": 0,
+              "name": "Room",
+              "description": ""
+            },
+            "protocol": "Room → Heat loss",
+            "type": "Export",
+            "exports_to": [
+              "Snk-1.0"
+            ],
+            "receives_from": [],
+            "angle": null
+          }
+        ],
         "parent_interface": null
       },
       "radius": 400.0,
@@ -115,7 +146,7 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": null
+        "parent_interface": "I0.0"
       },
       "radius": 50.0,
       "transform": {
@@ -157,7 +188,7 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": null
+        "parent_interface": "I0.1"
       },
       "radius": 50.0,
       "transform": {
@@ -283,7 +314,7 @@
       "source": "Src-1.0",
       "source_interface": null,
       "sink": "C0.0",
-      "sink_interface": null,
+      "sink_interface": "I0.0",
       "amount": "3",
       "unit": "kW",
       "parameters": []
@@ -323,7 +354,7 @@
       "type": "Flow",
       "usability": "Product",
       "source": "C0.1",
-      "source_interface": null,
+      "source_interface": "I0.1",
       "sink": "Snk-1.0",
       "sink_interface": null,
       "amount": "1",

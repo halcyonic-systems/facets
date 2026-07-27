@@ -14,6 +14,13 @@
         "message": "interface 'Tank' carries no boundary-crossing flow — Mobus defines an interface as a component that transports a flow across the boundary, so one that transports nothing is a mislabelled component (Lean `MobusSystem.interfaces_carry_flow`)",
         "suggestion": "Draw the flow this interface gates between it and an environmental entity, or drop the interface designation",
         "doc": "docs/language/terminology-concordance.md#9-interface"
+      },
+      {
+        "severity": "Error",
+        "location": "interactions[1].sink_interface",
+        "message": "flow 'supply' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
+        "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+        "doc": "docs/language/terminology-concordance.md#9-interface"
       }
     ]
   },
@@ -24,6 +31,10 @@
     },
     {
       "thing": 2,
+      "relation": null
+    },
+    {
+      "thing": null,
       "relation": null
     }
   ],

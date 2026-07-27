@@ -174,6 +174,35 @@ pub fn concrete_model(mode: Mode, has_bond: bool, irreflexive: bool, executable:
     } else {
         flows.push(typed_flow(1, "C0.0", "Snk-1.0"));
     }
+
+    // Crossing flows route through root-membrane interfaces (#216, A2): the
+    // converse gate refuses an un-routed crossing flow at Operational/Full, and
+    // that constraint sits BELOW the mode-ladder spec's abstraction — the
+    // concretizer must produce well-formed membranes so the four spec knobs
+    // remain the only levers the replay moves.
+    let iface = |idx: usize, name: &str, ty: &str, exports: Vec<&str>, receives: Vec<&str>| {
+        json!({
+            "info": { "id": format!("I0.{idx}"), "level": 0, "name": name, "description": "" },
+            "protocol": "", "type": ty,
+            "exports_to": exports, "receives_from": receives, "angle": null
+        })
+    };
+    let root_ifaces = if has_bond {
+        flows[0]["sink_interface"] = json!("I0.0");
+        flows[2]["source_interface"] = json!("I0.1");
+        systems[1]["boundary"]["parent_interface"] = json!("I0.0");
+        systems[2]["boundary"]["parent_interface"] = json!("I0.1");
+        vec![
+            iface(0, "c0", "Import", vec![], vec!["Src-1.0"]),
+            iface(1, "c1", "Export", vec!["Snk-1.0"], vec![]),
+        ]
+    } else {
+        flows[0]["sink_interface"] = json!("I0.0");
+        flows[1]["source_interface"] = json!("I0.0");
+        systems[1]["boundary"]["parent_interface"] = json!("I0.0");
+        vec![iface(0, "c0", "Hybrid", vec!["Snk-1.0"], vec!["Src-1.0"])]
+    };
+    systems[0]["boundary"]["interfaces"] = json!(root_ifaces);
     if !irreflexive {
         let idx = flows.len() as u64;
         flows.push(typed_flow(idx, "C0.0", "C0.0")); // self-dependency: fails Irreflexive

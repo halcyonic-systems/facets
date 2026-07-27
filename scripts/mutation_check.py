@@ -73,6 +73,14 @@ MUTATIONS = [
         "BOTH two-thing twins undirected — a▷b and b▷a collapse to one describe() output (#216 D1/G2)",
     ),
     (
+        "membrane-hole-ignored",
+        [("crates/bert-core/src/validate.rs",
+          "if !enters && !leaves {",
+          "if true {")],
+        ["-p", "bert-core", "--lib", "crossing_flow_without_interface"],
+        "the pre-#216 kernel, where a crossing flow could enter anywhere and I was inferred, not authored (A2)",
+    ),
+    (
         "env-word-rederived",
         [("crates/bert-canvas/src/sl.rs",
           '(Role::Environment, EnvKind::Sink) => "sink",',
