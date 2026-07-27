@@ -352,7 +352,21 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
 }
 
 /// Structural precondition: at least one bond between two distinct system components.
-/// Mirrors Lean `Kernel.HasBond`.
+///
+/// **Stronger than the Lean, deliberately — do not describe this as mirroring it.**
+/// `Kernel.HasBond` is `∃ p ∈ k.dep, p.1 ≠ p.2 ∧ Bonded p.1 p.2`, quantified over
+/// relata with no type restriction, because the kernel has no composition/environment
+/// split to restrict against. The `is_system_relatum` conjunct below adds one: it
+/// admits only `System | Subsystem` endpoints, so a bond to a `Source` or `Sink`
+/// does not count. That restriction is a canvas-layer notion with no Lean counterpart,
+/// and nothing proved licenses it.
+///
+/// It is load-bearing rather than cosmetic. Under the Lean, `assets/corpus/mobus/
+/// steel-plant.sl` satisfies `HasBond` and generates a Bunge CES view; under this
+/// function it is refused as an aggregate. Two corpus entries turn on the difference
+/// (also `klir/cellular-array-cell.sl`), and no fixture in `tests/common` ever places
+/// a `Source` or `Sink` at an interaction endpoint, so the extra conjunct is invisible
+/// to the Lean-to-Rust bridge that is supposed to police exactly this (#216).
 fn check_bond(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     let bonded = model.interactions.iter().any(|ix| {
         is_system_relatum(&ix.source) && is_system_relatum(&ix.sink) && ix.source != ix.sink

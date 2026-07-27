@@ -75,9 +75,17 @@ exists to keep it true.
   wasm32 build + wasm pkg build + `tsc --noEmit` + `vite build`) — the same gates
   CI enforces (`.github/workflows/ci.yml`). `cargo build --workspace --target
   wasm32-unknown-unknown` must stay green.
-- Most asset models are STRUCTURAL (mode=Full but not executable) — they validate
-  but do not project to a runnable spec. Only genuinely parameterized models run.
-  Don't "fix" a structural model to make run() work; that's expected.
+- Many asset models are STRUCTURAL: they validate but do not project to a runnable
+  spec. **"Only genuinely parameterized models run" was false and is withdrawn** (#216):
+  *no* SL-authored model is parameterized, because `Relation` carries no `amount` or
+  `unit` and `project()` hardcodes `Decimal::ONE` — yet five of them run a conservation
+  trajectory today, and every `@lens klir` model runs as a DTMC in the shipped UI.
+  Parameterization decides whether a run is *meaningful*, not whether it happens; the
+  actual gates are lens mode, primitive presence, and endpoint typing.
+- The rule that replaces it, scoped by set: **don't add a primitive, rate, or stock to
+  a `corpus` entry to make run() work — the `omits` line is the answer. Do fix an
+  `examples` model that cannot run**, since examples hold what we say and have no source
+  to hide behind.
 - The prior egui app is on tag `pre-web-rebuild` / branch `archive/egui-app`.
 - Full phase plan: `~/.claude/plans/cold-start-prompt-scalable-galaxy.md`;
   GitHub issues #11 (plan) + #41/#42/#43/#44 (phases 0–3, all implemented).

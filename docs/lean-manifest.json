@@ -65,7 +65,7 @@
             {"name": "Systems.Kernel.HasBond", "kind": "def"},
             {"name": "Systems.Kernel.toBunge", "kind": "def"}
           ],
-          "shape": "a `Prop`-valued `def` used as a hypothesis — `toBunge (k) (hb : k.HasBond)`. Rust's `check_bond` mirrors this **definition**; the theorems that make the generated view faithful are the separate rows below.",
+          "shape": "a `Prop`-valued `def` used as a hypothesis — `toBunge (k) (hb : k.HasBond)`. Rust's `check_bond` is **strictly stronger than this definition, and the gap is unproved**: `HasBond` quantifies over relata with no type restriction (the kernel has no composition/environment split), while `check_bond` additionally requires both endpoints to be `System | Subsystem`. Two corpus entries turn on the difference — under the Lean, `mobus/steel-plant.sl` generates a Bunge view; under the Rust it is refused as an aggregate (#216). The theorems that make the generated view faithful are the separate rows below.",
           "gives": "A kernel whose dependency contains a bonded pair of *distinct* relata generates a Bunge CES view (Def 1.1: unbonded collection = aggregate)."
         },
         {
