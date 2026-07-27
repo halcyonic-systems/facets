@@ -415,10 +415,16 @@ function Workspace() {
   // deliberately omits, because compiling in the pane is the author's stated
   // intent) then the SL compile seam itself.
   //
-  // A corpus entry ships no CSV and no manifest, so the run path stays dark.
-  // That is the File → Import case exactly (see the comment there), not a new
-  // state: structure, lens, formal object and review still light up, because
-  // they read the canvas model.
+  // A corpus entry ships no CSV and no manifest, so the CSV-forced conservation
+  // run stays dark. That is the File → Import case exactly (see the comment
+  // there), not a new state: structure, lens, formal object and review still
+  // light up, because they read the canvas model.
+  //
+  // But "the run path stays dark" is NOT true of every corpus entry (#216). A
+  // Klir-pinned entry runs as a DTMC straight from the canvas via `klirRunnable`
+  // below, with no bundle at all, so all eight Klir corpus entries have a live
+  // Run button. Do not restate the blanket claim here; it was false for a third
+  // of the corpus while this comment asserted it.
   const pickCorpus = async (e: CorpusEntry) => {
     if (!guardDiscard() || !(await flushWalk())) return;
     const outcome = compileSl(e.sl);

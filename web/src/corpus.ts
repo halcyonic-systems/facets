@@ -1,6 +1,9 @@
 // The source corpus: author-grounded models a user opens from the gallery.
 // Mirrors demos.ts structurally and drops everything run-shaped from it —
-// a corpus entry ships no CSV and no manifest, because it does not run.
+// a corpus entry ships no CSV and no manifest, so it has no forced conservation
+// run. It does not follow that it does not run (#216): a Klir-pinned entry runs
+// as a DTMC straight from the canvas, so all eight Klir entries here are
+// runnable without a bundle.
 //
 // The text carries its own provenance header, which compile_sl discards
 // (CanvasModel has no comment field). That is the point: a user who copies an
