@@ -3,7 +3,7 @@
 // verdict drives which visual and hand the resolved styling + accents here.
 // `NodeBody` draws the shared node chrome; `EdgeScaffold` draws the shared edge
 // plumbing (hit-path, selection, segments, drive dot, sim readout).
-import type { ProcessPrimitive } from "../../kernel/types";
+import type { CanvasRole, EnvKind, ProcessPrimitive } from "../../kernel/types";
 import { primitiveGlyph } from "./primitive-glyphs";
 import { humanize } from "../../ui";
 import { NODE_R, type Pt } from "../geometry";
@@ -21,7 +21,9 @@ export interface EdgeStyle {
 }
 
 interface NodeBodyProps {
-  thing: { id: number; x: number; y: number; name: string };
+  /** role/env_kind feed the run-time role grammar (source = emitter, never a
+   *  fill); optional so glyph-only callers stay valid. */
+  thing: { id: number; x: number; y: number; name: string; role?: CanvasRole; env_kind?: EnvKind };
   hovered: boolean;
   sim?: { value: number; unit: string; frac: number };
   onPointerDown: (e: ReactPointerEvent) => void;
@@ -110,6 +112,12 @@ export function NodeBody({
   const frac = sim ? Math.max(0, Math.min(1, sim.frac)) : null;
   const clipId = `fill-clip-${thing.id}`;
   const [selfHover, setSelfHover] = useState(false);
+  // Run-time role grammar (walkthrough #8): a SOURCE emits, it never fills.
+  // The per-node min-max normalization renders a constant emitter as a
+  // half-full box and a forced one as a filling stock — both lies. Sources
+  // get an outward pulse instead; sinks and stocks keep the fill, which for
+  // them is the truth (accumulation / level).
+  const emitter = thing.role === "Environment" && thing.env_kind === "Source";
   // Vertical extents of the body shape — the sim fill's clip rises bottom-up
   // between them, so the triangle drains/fills over ITS height, not the circle's.
   const [shapeTop, shapeBot] = regulatorTriangle ? [-TRI_R, TRI_BOT] : [-NODE_R, NODE_R];
@@ -195,8 +203,33 @@ export function NodeBody({
         </g>
       )}
 
+      {/* An emitting source radiates — two staggered rings, the run-time face
+          of "this node produces flow; it holds nothing". */}
+      {emitter && frac !== null && !simPosition && (
+        <g data-export-ignore pointerEvents="none">
+          {[0, 1].map((i) => (
+            <circle key={i} r={NODE_R} fill="none" stroke="var(--accent)" strokeWidth={1.5}>
+              <animate
+                attributeName="r"
+                values={`${NODE_R};${NODE_R + 16}`}
+                dur="2.4s"
+                begin={`${i * 1.2}s`}
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="stroke-opacity"
+                values="0.55;0"
+                dur="2.4s"
+                begin={`${i * 1.2}s`}
+                repeatCount="indefinite"
+              />
+            </circle>
+          ))}
+        </g>
+      )}
+
       {/* the sim payoff: a stock's disc fills/drains as the scrubber indexes ticks */}
-      {!simPosition && frac !== null && (
+      {!simPosition && frac !== null && !emitter && (
         <>
           <clipPath id={clipId}>
             <rect x={-TRI_HALF_W} y={shapeBot - shapeH * frac} width={TRI_HALF_W * 2} height={shapeH * frac} />
@@ -232,7 +265,7 @@ export function NodeBody({
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
           strokeLinejoin="round"
-          fillOpacity={frac !== null && !simPosition ? 0 : 1}
+          fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
         >
           <title>decision ⁄ regulator — a modulating work process (Mobus Fig 4.17)</title>
         </path>
@@ -247,7 +280,7 @@ export function NodeBody({
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
-          fillOpacity={frac !== null && !simPosition ? 0 : 1}
+          fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
         />
       ) : (
         <circle
@@ -256,7 +289,7 @@ export function NodeBody({
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
-          fillOpacity={frac !== null && !simPosition ? 0 : 1}
+          fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
         />
       )}
 
