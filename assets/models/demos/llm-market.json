@@ -1,0 +1,1708 @@
+{
+  "version": 1,
+  "mode": "Operational",
+  "environment": {
+    "info": {
+      "id": "E-1",
+      "level": -1,
+      "name": "Environment",
+      "description": ""
+    },
+    "sources": [
+      {
+        "info": {
+          "id": "Src-1.0",
+          "level": -1,
+          "name": "Developer workload",
+          "description": ""
+        },
+        "type": "Source",
+        "transform": {
+          "translation": [
+            584.07544,
+            -34.448517
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": true
+      },
+      {
+        "info": {
+          "id": "Src-1.1",
+          "level": -1,
+          "name": "Enterprise workload",
+          "description": ""
+        },
+        "type": "Source",
+        "transform": {
+          "translation": [
+            772.53845,
+            94.41916
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": true
+      },
+      {
+        "info": {
+          "id": "Src-1.2",
+          "level": -1,
+          "name": "Anthropic",
+          "description": ""
+        },
+        "type": "Source",
+        "transform": {
+          "translation": [
+            849.26166,
+            309.45105
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": true
+      },
+      {
+        "info": {
+          "id": "Src-1.3",
+          "level": -1,
+          "name": "OpenAI",
+          "description": ""
+        },
+        "type": "Source",
+        "transform": {
+          "translation": [
+            784.93945,
+            528.51227
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": true
+      },
+      {
+        "info": {
+          "id": "Src-1.4",
+          "level": -1,
+          "name": "Google",
+          "description": ""
+        },
+        "type": "Source",
+        "transform": {
+          "translation": [
+            604.14075,
+            667.92896
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": true
+      },
+      {
+        "info": {
+          "id": "Src-1.5",
+          "level": -1,
+          "name": "Meta",
+          "description": ""
+        },
+        "type": "Source",
+        "transform": {
+          "translation": [
+            375.9245,
+            674.4485
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": true
+      },
+      {
+        "info": {
+          "id": "Src-1.6",
+          "level": -1,
+          "name": "Alibaba",
+          "description": ""
+        },
+        "type": "Source",
+        "transform": {
+          "translation": [
+            187.46152,
+            545.5808
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": true
+      },
+      {
+        "info": {
+          "id": "Src-1.7",
+          "level": -1,
+          "name": "DeepSeek (lab)",
+          "description": ""
+        },
+        "type": "Source",
+        "transform": {
+          "translation": [
+            110.73834,
+            330.54883
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": true
+      },
+      {
+        "info": {
+          "id": "Src-1.8",
+          "level": -1,
+          "name": "Open-weight field",
+          "description": ""
+        },
+        "type": "Source",
+        "transform": {
+          "translation": [
+            175.06055,
+            111.487686
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": true
+      }
+    ],
+    "sinks": [
+      {
+        "info": {
+          "id": "Snk-1.9",
+          "level": -1,
+          "name": "Applications served",
+          "description": ""
+        },
+        "type": "Sink",
+        "transform": {
+          "translation": [
+            355.85925,
+            -27.928925
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": true
+      }
+    ]
+  },
+  "systems": [
+    {
+      "info": {
+        "id": "S0",
+        "level": 0,
+        "name": "LLM Market",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "E-1",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0",
+          "level": 0,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [
+          {
+            "info": {
+              "id": "I0.0",
+              "level": 0,
+              "name": "Developer clearing",
+              "description": ""
+            },
+            "protocol": "dev inference compute",
+            "type": "Import",
+            "exports_to": [],
+            "receives_from": [
+              "Src-1.0"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.1",
+              "level": 0,
+              "name": "Enterprise clearing",
+              "description": ""
+            },
+            "protocol": "enterprise inference compute",
+            "type": "Import",
+            "exports_to": [],
+            "receives_from": [
+              "Src-1.1"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.2",
+              "level": 0,
+              "name": "Opus",
+              "description": ""
+            },
+            "protocol": "released weights & API · tokens served",
+            "type": "Hybrid",
+            "exports_to": [
+              "Snk-1.9"
+            ],
+            "receives_from": [
+              "Src-1.2"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.3",
+              "level": 0,
+              "name": "Fable",
+              "description": ""
+            },
+            "protocol": "released weights & API · tokens served",
+            "type": "Hybrid",
+            "exports_to": [
+              "Snk-1.9"
+            ],
+            "receives_from": [
+              "Src-1.2"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.4",
+              "level": 0,
+              "name": "GPT",
+              "description": ""
+            },
+            "protocol": "released weights & API · tokens served",
+            "type": "Hybrid",
+            "exports_to": [
+              "Snk-1.9"
+            ],
+            "receives_from": [
+              "Src-1.3"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.5",
+              "level": 0,
+              "name": "Gemini",
+              "description": ""
+            },
+            "protocol": "released weights & API · tokens served",
+            "type": "Hybrid",
+            "exports_to": [
+              "Snk-1.9"
+            ],
+            "receives_from": [
+              "Src-1.4"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.6",
+              "level": 0,
+              "name": "Gemma",
+              "description": ""
+            },
+            "protocol": "released weights & API · tokens served",
+            "type": "Hybrid",
+            "exports_to": [
+              "Snk-1.9"
+            ],
+            "receives_from": [
+              "Src-1.4"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.7",
+              "level": 0,
+              "name": "Llama",
+              "description": ""
+            },
+            "protocol": "released weights & API · tokens served",
+            "type": "Hybrid",
+            "exports_to": [
+              "Snk-1.9"
+            ],
+            "receives_from": [
+              "Src-1.5"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.8",
+              "level": 0,
+              "name": "Qwen",
+              "description": ""
+            },
+            "protocol": "released weights & API · tokens served",
+            "type": "Hybrid",
+            "exports_to": [
+              "Snk-1.9"
+            ],
+            "receives_from": [
+              "Src-1.6"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.9",
+              "level": 0,
+              "name": "DeepSeek",
+              "description": ""
+            },
+            "protocol": "released weights & API · tokens served",
+            "type": "Hybrid",
+            "exports_to": [
+              "Snk-1.9"
+            ],
+            "receives_from": [
+              "Src-1.7"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.10",
+              "level": 0,
+              "name": "Other open",
+              "description": ""
+            },
+            "protocol": "released weights & API · tokens served",
+            "type": "Hybrid",
+            "exports_to": [
+              "Snk-1.9"
+            ],
+            "receives_from": [
+              "Src-1.8"
+            ],
+            "angle": null
+          }
+        ],
+        "parent_interface": null
+      },
+      "radius": 34.0,
+      "transform": null,
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": ""
+    },
+    {
+      "info": {
+        "id": "C0.0",
+        "level": 1,
+        "name": "Developer clearing",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.0",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.0"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          480.0,
+          150.0
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Splitting"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.1",
+        "level": 1,
+        "name": "Enterprise clearing",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.1",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.1"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          571.90894,
+          176.98691
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Splitting"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.2",
+        "level": 1,
+        "name": "Opus",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.2",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.2"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          634.63745,
+          249.37946
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Amplifying"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.3",
+        "level": 1,
+        "name": "Fable",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.3",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.3"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          648.26965,
+          344.1935
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Amplifying"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.4",
+        "level": 1,
+        "name": "GPT",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.4",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.4"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          608.4774,
+          431.32632
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Amplifying"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.5",
+        "level": 1,
+        "name": "Gemini",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.5",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.5"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          527.89453,
+          483.11383
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Amplifying"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.6",
+        "level": 1,
+        "name": "Gemma",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.6",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.6"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          432.10547,
+          483.1138
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Amplifying"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.7",
+        "level": 1,
+        "name": "Llama",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.7",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.7"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          351.52252,
+          431.3263
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Amplifying"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.8",
+        "level": 1,
+        "name": "Qwen",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.8",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.8"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          311.73035,
+          344.1935
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Amplifying"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.9",
+        "level": 1,
+        "name": "DeepSeek",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.9",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.9"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          325.36255,
+          249.37946
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Amplifying"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.10",
+        "level": 1,
+        "name": "Other open",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.10",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.10"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          388.0911,
+          176.98688
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Amplifying"
+      }
+    }
+  ],
+  "interactions": [
+    {
+      "info": {
+        "id": "F0",
+        "level": 0,
+        "name": "dev inference compute",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "compute",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.0",
+      "source_interface": null,
+      "sink": "C0.0",
+      "sink_interface": "I0.0",
+      "amount": "6000",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F1",
+        "level": 0,
+        "name": "enterprise inference compute",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "compute",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.1",
+      "source_interface": null,
+      "sink": "C0.1",
+      "sink_interface": "I0.1",
+      "amount": "2000",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F2",
+        "level": 0,
+        "name": "released weights & API",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.2",
+      "source_interface": null,
+      "sink": "C0.2",
+      "sink_interface": "I0.2",
+      "amount": "100000",
+      "unit": "avail/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F3",
+        "level": 0,
+        "name": "released weights & API",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.2",
+      "source_interface": null,
+      "sink": "C0.3",
+      "sink_interface": "I0.3",
+      "amount": "100000",
+      "unit": "avail/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F4",
+        "level": 0,
+        "name": "released weights & API",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.3",
+      "source_interface": null,
+      "sink": "C0.4",
+      "sink_interface": "I0.4",
+      "amount": "100000",
+      "unit": "avail/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F5",
+        "level": 0,
+        "name": "released weights & API",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.4",
+      "source_interface": null,
+      "sink": "C0.5",
+      "sink_interface": "I0.5",
+      "amount": "100000",
+      "unit": "avail/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F6",
+        "level": 0,
+        "name": "released weights & API",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.4",
+      "source_interface": null,
+      "sink": "C0.6",
+      "sink_interface": "I0.6",
+      "amount": "100000",
+      "unit": "avail/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F7",
+        "level": 0,
+        "name": "released weights & API",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.5",
+      "source_interface": null,
+      "sink": "C0.7",
+      "sink_interface": "I0.7",
+      "amount": "100000",
+      "unit": "avail/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F8",
+        "level": 0,
+        "name": "released weights & API",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.6",
+      "source_interface": null,
+      "sink": "C0.8",
+      "sink_interface": "I0.8",
+      "amount": "100000",
+      "unit": "avail/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F9",
+        "level": 0,
+        "name": "released weights & API",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.7",
+      "source_interface": null,
+      "sink": "C0.9",
+      "sink_interface": "I0.9",
+      "amount": "100000",
+      "unit": "avail/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F10",
+        "level": 0,
+        "name": "released weights & API",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.8",
+      "source_interface": null,
+      "sink": "C0.10",
+      "sink_interface": "I0.10",
+      "amount": "100000",
+      "unit": "avail/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F11",
+        "level": 0,
+        "name": "dev serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.2",
+      "sink_interface": null,
+      "amount": "9",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F12",
+        "level": 0,
+        "name": "dev serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.3",
+      "sink_interface": null,
+      "amount": "6",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F13",
+        "level": 0,
+        "name": "dev serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.4",
+      "sink_interface": null,
+      "amount": "9",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F14",
+        "level": 0,
+        "name": "dev serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.5",
+      "sink_interface": null,
+      "amount": "11",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F15",
+        "level": 0,
+        "name": "dev serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.6",
+      "sink_interface": null,
+      "amount": "2",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F16",
+        "level": 0,
+        "name": "dev serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.7",
+      "sink_interface": null,
+      "amount": "3",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F17",
+        "level": 0,
+        "name": "dev serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.8",
+      "sink_interface": null,
+      "amount": "13",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F18",
+        "level": 0,
+        "name": "dev serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.9",
+      "sink_interface": null,
+      "amount": "16",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F19",
+        "level": 0,
+        "name": "dev serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.10",
+      "sink_interface": null,
+      "amount": "20",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F20",
+        "level": 0,
+        "name": "enterprise serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.2",
+      "sink_interface": null,
+      "amount": "30",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F21",
+        "level": 0,
+        "name": "enterprise serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.3",
+      "sink_interface": null,
+      "amount": "10",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F22",
+        "level": 0,
+        "name": "enterprise serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.4",
+      "sink_interface": null,
+      "amount": "27",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F23",
+        "level": 0,
+        "name": "enterprise serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.5",
+      "sink_interface": null,
+      "amount": "20",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F24",
+        "level": 0,
+        "name": "enterprise serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.6",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F25",
+        "level": 0,
+        "name": "enterprise serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.7",
+      "sink_interface": null,
+      "amount": "4",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F26",
+        "level": 0,
+        "name": "enterprise serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.8",
+      "sink_interface": null,
+      "amount": "3",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F27",
+        "level": 0,
+        "name": "enterprise serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.9",
+      "sink_interface": null,
+      "amount": "3",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F28",
+        "level": 0,
+        "name": "enterprise serving share",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.10",
+      "sink_interface": null,
+      "amount": "2",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F29",
+        "level": 0,
+        "name": "tokens served",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.2",
+      "source_interface": "I0.2",
+      "sink": "Snk-1.9",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F30",
+        "level": 0,
+        "name": "tokens served",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.3",
+      "source_interface": "I0.3",
+      "sink": "Snk-1.9",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F31",
+        "level": 0,
+        "name": "tokens served",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.4",
+      "source_interface": "I0.4",
+      "sink": "Snk-1.9",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F32",
+        "level": 0,
+        "name": "tokens served",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.5",
+      "source_interface": "I0.5",
+      "sink": "Snk-1.9",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F33",
+        "level": 0,
+        "name": "tokens served",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.6",
+      "source_interface": "I0.6",
+      "sink": "Snk-1.9",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F34",
+        "level": 0,
+        "name": "tokens served",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.7",
+      "source_interface": "I0.7",
+      "sink": "Snk-1.9",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F35",
+        "level": 0,
+        "name": "tokens served",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.8",
+      "source_interface": "I0.8",
+      "sink": "Snk-1.9",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F36",
+        "level": 0,
+        "name": "tokens served",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.9",
+      "source_interface": "I0.9",
+      "sink": "Snk-1.9",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F37",
+        "level": 0,
+        "name": "tokens served",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.10",
+      "source_interface": "I0.10",
+      "sink": "Snk-1.9",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    }
+  ],
+  "hidden_entities": [],
+  "time_unit": "day"
+}

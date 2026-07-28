@@ -1,109 +1,150 @@
-# ── The LLM market, frontier + open, Mobus lens ──────────────────────
-# A market is a clearing process, not a container of its producers. The
-# labs that release models sit OUTSIDE, as sources feeding capacity in;
-# demand sits OUTSIDE too, as the sinks that draw served tokens out.
-# What's actually INSIDE — the thing worth modeling as a system — is
-# the specific-model dynamics: eight models, each one a component that
-# splits its serving capacity across two demand channels, which combine
-# many models' supply into one stream per market segment. That
-# supply → split → combine → demand shape is Mobus's home ground: a
-# flow network, not a Bunge thing-in-environment cut, because there is
-# no single bounded "market thing" here to draw a boundary around — only
-# the flow-processing machinery a clearing market runs.
+# ── The LLM market as a serving fabric, Mobus lens ───────────────────
+# First-principles restructure (2026-07-28). The previous version drew
+# only the information layer — labs releasing capacity, models splitting
+# "token supply" across channels — and the engine refused to run it,
+# correctly: tokens are information, information copies, and you cannot
+# clear (divide, conserve) what copies freely. The rivalry that makes
+# this a MARKET lives in the layer that model omitted: compute. A token
+# served is compute spent. So the conserved backbone here is inference
+# compute (an energy kind, measured in Gtok/day of serving work — token
+# throughput is a work unit, like kWh), and the model output is what it
+# really is: information, powered by metered energy, shed as heat.
+#
+# Each model is an Amplifying work process — Mobus's signal + power
+# primitive: released weights (information — they DO copy freely, the
+# old typing was right about that) plus allocated compute in; served
+# tokens out; the entire compute feed dissipated as waste heat. That is
+# not a metaphor. It is what a GPU does.
+#
+# The two demand channels stay separate because measured reality
+# disagrees between them: open-weight models carry roughly a third of
+# developer-channel token volume but only about a tenth of enterprise
+# workload. Averaging them erases the market's main structural fact.
 
 system "LLM Market" : Concrete/Social
 
-domain "Frontier and open-weight LLM models clearing supply through two demand channels, sourced from six labs"
+domain "Inference compute cleared across frontier and open-weight models by two demand channels, tokens served out, heat shed"
 
-# ── Sources: the labs that release model capacity ────────────────────
-# Labs are producers, not participants in the clearing process itself —
-# once a lab ships a model, the lab's job in this system is done. That
-# is why they sit outside as sources rather than inside as components:
-# modeling lab internals (training, compute, roadmap) is a different
-# system than modeling how released models clear demand.
+time unit day
+
+# ── Sources: demand-side workload, the compute each channel mobilizes ─
+# The observatory's measured inputs. Developer workload is the
+# API-routed slice a router like OpenRouter actually sees (~6 Ttok/day
+# mid-2026); self-hosted serving is invisible to that sensor — a real
+# observability gap this model inherits from its data source, not a
+# modeling choice. Enterprise workload is DERIVED from spend surveys at
+# premium prices; treat its absolute level as a rough estimate.
+source "Developer workload"
+source "Enterprise workload"
+
+# ── Sources: the labs, releasing weights and API access ──────────────
+# Correctly informational in the old model and still informational
+# here: a released model copies freely to every server that runs it.
+# The lab's role in THIS system ends at release; training compute is a
+# different system's flow.
 source Anthropic
 source OpenAI
 source Google
 source Meta
 source Alibaba
 source "DeepSeek (lab)"
+source "Open-weight field"
 
-# ── Composition: the eight specific models, each a Splitting boundary ──
-# Each model is the thing we're actually modeling the dynamics of: one
-# serving capacity that gets divided across the two channels below —
-# the same `Splitting` primitive bank-run.sl uses for a flow forking
-# into two destinations. Every model here is boundary-facing (it
-# receives supply from its lab across the boundary and forwards supply
-# across the boundary again to both channels), so every one carries
-# `interface` — there is no purely-internal model in this thin
-# pass-through market.
-component Opus primitive Splitting interface
-component Fable primitive Splitting interface
-component GPT primitive Splitting interface
-component Gemini primitive Splitting interface
-component Gemma primitive Splitting interface
-component Llama primitive Splitting interface
-component Qwen primitive Splitting interface
-component DeepSeek primitive Splitting interface
+# ── Composition: the two clearing processes ──────────────────────────
+# The market mechanism itself: each channel's workload is one compute
+# inflow, divided across the models by their observed market share —
+# Splitting with relative weights on the outwires (Mobus Eq. 4.5).
+# This is what the old Combining "channels" wanted to be: a market
+# clears rival capacity, it does not merge copies of information.
+component "Developer clearing" primitive Splitting interface
+component "Enterprise clearing" primitive Splitting interface
 
-# The two demand channels are the market's clearing mechanisms — each
-# one `Combining` many models' supply into a single served stream per
-# segment (a router clears, it doesn't stock). They are also
-# boundary-facing: they receive supply from every model and deliver the
-# cleared stream out to demand, so they carry `interface` too.
-component "Developer channel" primitive Combining interface
-component "Enterprise channel" primitive Combining interface
+# ── Composition: the models, each an Amplifying serving process ──────
+# Signal (weights) + power (compute) in, tokens out, heat shed. Nine
+# processes: eight named models plus an aggregate for the open-weight
+# field (GLM, Kimi, Mistral and the rest) that mid-2026 data shows
+# carrying too much developer volume to omit.
+component Opus primitive Amplifying interface
+component Fable primitive Amplifying interface
+component GPT primitive Amplifying interface
+component Gemini primitive Amplifying interface
+component Gemma primitive Amplifying interface
+component Llama primitive Amplifying interface
+component Qwen primitive Amplifying interface
+component DeepSeek primitive Amplifying interface
+component "Other open" primitive Amplifying interface
 
-# ── Environment: demand, the two segments the channels clear into ────
-# Kept as two distinct sinks, never merged into one "demand" node,
-# because the load-bearing target-4 data lesson is that developer and
-# enterprise demand disagree when measured — open-weights are ~33% of
-# dev-channel volume but only ~11% of enterprise spend. Averaging the
-# two channels into one number erases the one fact this model exists
-# to show.
-sink "Developer apps & agents"
-sink "Enterprise deployments"
+# ── Environment: where served tokens land ────────────────────────────
+sink "Applications served"
 
-# ── Structure: lab supply fans into models, models fan into channels ──
-# Anthropic is the one lab that fans to two models — Opus and Fable —
-# both released model capacity from the same source. Google is the one
-# lab that fans to two models of DIFFERENT character: Gemini (frontier,
-# closed) and Gemma (open-weight) — the single lab in this market
-# producing both a closed and an open model, worth noting because it's
-# the one source node that straddles the frontier/open-weight split
-# that every other lab sits entirely on one side of.
-flow Anthropic -> Opus : informational "released model capacity"
-flow Anthropic -> Fable : informational "released model capacity"
-flow OpenAI -> GPT : informational "released model capacity"
-flow Google -> Gemini : informational "released model capacity"
-flow Google -> Gemma : informational "released model capacity"
-flow Meta -> Llama : informational "released model capacity"
-flow Alibaba -> Qwen : informational "released model capacity"
-flow "DeepSeek (lab)" -> DeepSeek : informational "released model capacity"
+# ── Driving flows: the two workloads, forced from data ───────────────
+# Absolute levels, Gtok/day. Developer ≈ 6,000 (OpenRouter-observed,
+# June 2026, ~6T tokens/day). Enterprise ≈ 2,000 (spend-derived
+# estimate — the weakest number here, flagged for replacement).
+flow "Developer workload" -> "Developer clearing" : energy "dev inference compute" substance compute amount 6000 unit Gtok/day
+flow "Enterprise workload" -> "Enterprise clearing" : energy "enterprise inference compute" substance compute amount 2000 unit Gtok/day
 
-# Every model bonds to BOTH channels — the bipartite supply graph that
-# makes this a clearing market rather than eight separate pipelines.
-# Sixteen flows: eight models × two channels.
-flow Opus -> "Developer channel" : informational "token supply"
-flow Opus -> "Enterprise channel" : informational "token supply"
-flow Fable -> "Developer channel" : informational "token supply"
-flow Fable -> "Enterprise channel" : informational "token supply"
-flow GPT -> "Developer channel" : informational "token supply"
-flow GPT -> "Enterprise channel" : informational "token supply"
-flow Gemini -> "Developer channel" : informational "token supply"
-flow Gemini -> "Enterprise channel" : informational "token supply"
-flow Gemma -> "Developer channel" : informational "token supply"
-flow Gemma -> "Enterprise channel" : informational "token supply"
-flow Llama -> "Developer channel" : informational "token supply"
-flow Llama -> "Enterprise channel" : informational "token supply"
-flow Qwen -> "Developer channel" : informational "token supply"
-flow Qwen -> "Enterprise channel" : informational "token supply"
-flow DeepSeek -> "Developer channel" : informational "token supply"
-flow DeepSeek -> "Enterprise channel" : informational "token supply"
+# ── Weights signals: ample by construction ───────────────────────────
+# Amplifying emits min(signal × gain, power): with the signal ample the
+# min always selects power, so each model's token output tracks its
+# metered compute exactly — availability of weights is never the
+# binding constraint in this market; compute allocation is.
+flow Anthropic -> Opus : informational "released weights & API" amount 100000 unit avail/day
+flow Anthropic -> Fable : informational "released weights & API" amount 100000 unit avail/day
+flow OpenAI -> GPT : informational "released weights & API" amount 100000 unit avail/day
+flow Google -> Gemini : informational "released weights & API" amount 100000 unit avail/day
+flow Google -> Gemma : informational "released weights & API" amount 100000 unit avail/day
+flow Meta -> Llama : informational "released weights & API" amount 100000 unit avail/day
+flow Alibaba -> Qwen : informational "released weights & API" amount 100000 unit avail/day
+flow "DeepSeek (lab)" -> DeepSeek : informational "released weights & API" amount 100000 unit avail/day
+flow "Open-weight field" -> "Other open" : informational "released weights & API" amount 100000 unit avail/day
 
-# Each channel clears its cleared supply out to its own demand segment —
-# the exostructure, never merged across channels.
-flow "Developer channel" -> "Developer apps & agents" : informational "tokens served"
-flow "Enterprise channel" -> "Enterprise deployments" : informational "tokens served"
+# ── Developer clearing: relative weights = observed dev-channel share ─
+# Calibration, June–July 2026, renormalized to this roster. Sources:
+# OpenRouter rankings via Dirac labs-market-share (≈6 Ttok/day, OSS
+# ≈60% of routed volume) and stockalarm/tech-insider digests (DeepSeek
+# ≈16%, Anthropic 12–24% — sources disagree; midpoint taken). Weights
+# are relative, so they need not sum to 100.
+flow "Developer clearing" -> Opus : energy "dev serving share" amount 9 unit Gtok/day
+flow "Developer clearing" -> Fable : energy "dev serving share" amount 6 unit Gtok/day
+flow "Developer clearing" -> GPT : energy "dev serving share" amount 9 unit Gtok/day
+flow "Developer clearing" -> Gemini : energy "dev serving share" amount 11 unit Gtok/day
+flow "Developer clearing" -> Gemma : energy "dev serving share" amount 2 unit Gtok/day
+flow "Developer clearing" -> Llama : energy "dev serving share" amount 3 unit Gtok/day
+flow "Developer clearing" -> Qwen : energy "dev serving share" amount 13 unit Gtok/day
+flow "Developer clearing" -> DeepSeek : energy "dev serving share" amount 16 unit Gtok/day
+flow "Developer clearing" -> "Other open" : energy "dev serving share" amount 20 unit Gtok/day
+
+# ── Enterprise clearing: relative weights = spend share as workload proxy ─
+# Menlo Ventures enterprise LLM API survey (2025→2026): Anthropic 40%
+# (split Opus 30 / Fable 10, in-lab split estimated), OpenAI 27%,
+# Google 21% (Gemini 20 / Gemma 1), open-weight roughly a tenth of
+# enterprise workload (Vercel AI Gateway: <4% of SPEND — spend
+# understates workload at one-tenth prices). Spend-as-workload is a
+# proxy with known bias; replace when a workload series exists.
+flow "Enterprise clearing" -> Opus : energy "enterprise serving share" amount 30 unit Gtok/day
+flow "Enterprise clearing" -> Fable : energy "enterprise serving share" amount 10 unit Gtok/day
+flow "Enterprise clearing" -> GPT : energy "enterprise serving share" amount 27 unit Gtok/day
+flow "Enterprise clearing" -> Gemini : energy "enterprise serving share" amount 20 unit Gtok/day
+flow "Enterprise clearing" -> Gemma : energy "enterprise serving share" amount 1 unit Gtok/day
+flow "Enterprise clearing" -> Llama : energy "enterprise serving share" amount 4 unit Gtok/day
+flow "Enterprise clearing" -> Qwen : energy "enterprise serving share" amount 3 unit Gtok/day
+flow "Enterprise clearing" -> DeepSeek : energy "enterprise serving share" amount 3 unit Gtok/day
+flow "Enterprise clearing" -> "Other open" : energy "enterprise serving share" amount 2 unit Gtok/day
+
+# ── Served output: information delivered, compute already spent ──────
+# Token output is Message — it lands, it is never ledgered; the ledger
+# instead shows every Gtok/day of compute dissipating as heat, which is
+# the thermodynamic truth of inference. Market share is read off each
+# model's activity in the trace.
+flow Opus -> "Applications served" : informational "tokens served"
+flow Fable -> "Applications served" : informational "tokens served"
+flow GPT -> "Applications served" : informational "tokens served"
+flow Gemini -> "Applications served" : informational "tokens served"
+flow Gemma -> "Applications served" : informational "tokens served"
+flow Llama -> "Applications served" : informational "tokens served"
+flow Qwen -> "Applications served" : informational "tokens served"
+flow DeepSeek -> "Applications served" : informational "tokens served"
+flow "Other open" -> "Applications served" : informational "tokens served"
 
 @lens mobus

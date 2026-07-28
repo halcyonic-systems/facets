@@ -1,0 +1,33 @@
+{
+  "title": "LLM Market",
+  "blurb": "The LLM market as a serving fabric: two demand channels push inference compute, clearing splits it across nine models by observed market share (OpenRouter / Menlo Ventures, mid-2026), and each model turns metered compute into served tokens — information out, every Gtok of work dissipated as heat, exactly as a GPU does. Developer volume grows through the window; the enterprise series is a spend-derived estimate, flagged for replacement by a measured feed.",
+  "model": "llm-market",
+  "genus": "Social",
+  "t": 30,
+  "csv": "day,dev_workload,ent_workload\n1,5400,1950\n2,5450,1950\n3,5500,1960\n4,5480,1970\n5,5550,1980\n6,5600,1970\n7,5580,1960\n8,5650,1980\n9,5700,2000\n10,5750,2000\n11,5800,2010\n12,5780,2000\n13,5850,2020\n14,5900,2030\n15,5950,2020\n16,6000,2040\n17,6050,2050\n18,6020,2040\n19,6100,2050\n20,6150,2060\n21,6200,2070\n22,6180,2060\n23,6250,2080\n24,6300,2080\n25,6350,2090\n26,6400,2100\n27,6380,2090\n28,6450,2100\n29,6500,2110\n30,6600,2120\n",
+  "mapping": {
+    "model": "",
+    "data": "",
+    "t": 30,
+    "mapping": [
+      {
+        "column": "day",
+        "as": "time"
+      },
+      {
+        "column": "dev_workload",
+        "as": "flow",
+        "element": "dev inference compute",
+        "unit": "Gtok/day",
+        "force": true
+      },
+      {
+        "column": "ent_workload",
+        "as": "flow",
+        "element": "enterprise inference compute",
+        "unit": "Gtok/day",
+        "force": true
+      }
+    ]
+  }
+}

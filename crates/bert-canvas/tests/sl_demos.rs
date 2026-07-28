@@ -18,7 +18,7 @@ use bert_canvas::sl::parse_sl;
 use bert_compose::{from_spec, run::RecordedRun};
 use bert_core::operational::validate_operational;
 
-const DEMOS: &[&str] = &["watershed", "supply-chain"];
+const DEMOS: &[&str] = &["watershed", "supply-chain", "llm-market"];
 // Long enough that O(Δt) startup transients (each fresh stock's first step
 // releases nothing — release reads the opening state) fall inside the 2%
 // tolerance; the drift is honest Euler error and halves with Δt, which the
@@ -86,9 +86,15 @@ fn sl_demos_run_conserve_and_are_dt_invariant() {
         );
         let last = coarse.ledger_history.last().unwrap();
         eprintln!("{name} over {HORIZON} days: [emitted, sunk, stored, dissipated] = {last:?}");
+        // Something must MOVE — into a sink, or out as heat. llm-market is
+        // the model that forced the second arm: its physical backbone is
+        // inference compute and its delivered product is Message, so the
+        // thermodynamically honest run sinks nothing and dissipates all of
+        // it (the ledger's Fig 3.17 channel), with information flowing out.
         assert!(
-            last[1] > 0.0,
-            "{name}: nothing reached a sink over {HORIZON} days — a runnable demo must move: {last:?}"
+            last[1] > 0.0 || last[3] > 0.0,
+            "{name}: nothing moved over {HORIZON} days — a runnable demo must \
+             deliver to a sink or dissipate work: {last:?}"
         );
 
         let mut fine_c = from_spec(&spec);
