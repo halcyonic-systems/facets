@@ -12,7 +12,8 @@ import { primitiveGlyph } from "./lenses/primitive-glyphs";
 import { STYLE } from "./style";
 
 // Canonical order = the `ProcessPrimitive` union order (kernel/types.ts).
-const PRIMITIVES: ReadonlyArray<readonly [ProcessPrimitive, string]> = [
+// Exported so the element inspector can deliver the same one-liner in context.
+export const PRIMITIVES: ReadonlyArray<readonly [ProcessPrimitive, string]> = [
   ["Combining", "two flows merge into one"],
   ["Splitting", "one flow forks into two"],
   ["Buffering", "a raw stock — holds, does not transform (Mobus's drum)"],

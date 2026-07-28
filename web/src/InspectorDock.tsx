@@ -16,6 +16,7 @@ import type {
   ValidationResult,
 } from "./kernel/types";
 import { NodeEditorRows, type DecomposeAffordance } from "./canvas/NodeEditor";
+import { ElementMechanism } from "./ElementMechanism";
 import { RunPanel } from "./RunPanel";
 import { FormalPanel } from "./FormalPanel";
 import { ReviewPanel } from "./ReviewPanel";
@@ -200,14 +201,21 @@ export function InspectorDock({
           <KernelErrorBoundary resetKeys={resetKeys}>
             {tab === "element" &&
               (element?.thing ? (
-                <NodeEditorRows
-                  thing={element.thing}
-                  lens={element.lens}
-                  decompose={element.decompose}
-                  onUpdateThing={element.onUpdate}
-                  onDelete={element.onDelete}
-                  onClose={element.onDeselect}
-                />
+                <>
+                  <NodeEditorRows
+                    thing={element.thing}
+                    lens={element.lens}
+                    decompose={element.decompose}
+                    onUpdateThing={element.onUpdate}
+                    onDelete={element.onDelete}
+                    onClose={element.onDeselect}
+                  />
+                  {/* What this node DOES (walkthrough #13) — flows, substance,
+                      declared magnitudes, and its recorded trajectory. */}
+                  {canvasModel && (
+                    <ElementMechanism thing={element.thing} model={canvasModel} result={result} tick={tick ?? 0} />
+                  )}
+                </>
               ) : (
                 <Placeholder>Click a component or environment thing to edit it here.</Placeholder>
               ))}
