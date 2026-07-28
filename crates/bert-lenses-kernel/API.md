@@ -44,7 +44,12 @@ crate). Throws only on unparseable input.
 
 ### `run(model_json: string, dt: number, ticks: number) → RunResult`
 Project → build circuit → record `ticks` steps of size `dt`. Throws if the model
-is not executable (call `validate_operational` for the reasons). Runs the model
+is not executable (call `validate_operational` for the reasons), and throws —
+with the loop named in the author's node names — if the wiring contains a loop
+with no stock and no level read on it: a loop of pure relays has no
+deterministic step (#259; `run_forced` refuses identically). `dt` is read by
+the dynamics: rates are per time unit, so equal horizons at different step
+sizes agree to within O(Δt) drift (`dt_invariance.rs`). Runs the model
 **as authored**; external CSV forcing is the Phase-1 extension below.
 ```ts
 type RunResult = {

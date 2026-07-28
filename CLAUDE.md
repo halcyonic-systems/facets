@@ -64,7 +64,11 @@ exists to keep it true.
   via the in-browser compose engine). They are structural, not executable. No
   model here is precious; all bert-lenses models to date were toy demos. Phase 1
   builds purpose-built bert-lenses-native samples (executable where run() needs
-  them). `models/runnable-sample.json` is a throwaway minted from the engine.
+  them) — the first two exist (2026-07-27): `examples/watershed.sl` and
+  `examples/supply-chain.sl`, SL-AUTHORED runnable demos whose bundled models
+  are machine projections of the `.sl` (never hand-edit the JSON; re-mint with
+  `BLESS_SL_DEMOS=1`, gated by `crates/bert-canvas/tests/sl_demos.rs`).
+  `models/runnable-sample.json` is a throwaway minted from the engine.
 
 ## Working rules
 

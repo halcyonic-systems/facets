@@ -115,10 +115,13 @@ fn a_fixed_horizon_is_invariant_under_dt_refinement() {
         diverged.is_empty(),
         "the same {HORIZON}-unit horizon produced different systems at different step \
          sizes for {} of 3 demos:\n{}\n  survived: {:?}\n\n  \
-         `amount` is being consumed per TICK while its units (ML/mo, kW, Mtok/mo) \
-         declare a rate per TIME — Δt is semantically load-bearing, and dt in \
-         RecordedRun is metadata the dynamics never read. Fix the engine to scale \
-         flux by Δt (or withdraw the unit claims); never widen this tolerance.",
+         Something reads the step size as semantics again. The three known ways \
+         (all closed 2026-07-27, #258/#259): a flux generated without × dt, a \
+         series indexed by tick instead of model time, a per-STEP delay or \
+         cadence on a wire or control path. A ratio near 2 is the per-tick \
+         signature; a few percent that shrinks at smaller Δt is honest Euler \
+         drift (see refinement_converges_on_the_feedback_path). Find which \
+         quantity varies and why; never widen this tolerance.",
         diverged.len(),
         diverged.join("\n"),
         survived

@@ -853,11 +853,11 @@ impl Circuit {
         }
     }
 
-    /// One synchronous step: all transfer functions read the previous tick's
-    /// wire amounts (sender activity at t-1) and write activity for t.
     /// A node's "level" (potential) for gradient-flow rate laws (Mobus Ch.4):
     /// a buffer's stock, a source's fixed potential (its rate), a sink's ground
-    /// (0), else a node's current activity.
+    /// (0), else the node's last completed step's activity — levels are STATE,
+    /// read at the step's opening, which is what lets gradient edges anchor
+    /// loops (#259).
     pub fn level(&self, i: usize) -> f32 {
         match self.nodes[i].kind {
             NodeKind::Source => self.nodes[i].param,

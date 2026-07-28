@@ -172,6 +172,12 @@ stocks with an additive conservation invariant — and further kinds are
 *declarable*, not implemented. Conservation is a property the model declares, not
 one the engine assumes; the position of record is
 [`docs/design/dynamics-principled-position.md`](docs/design/dynamics-principled-position.md).
+Time is honest too (#258/#259): rates are per unit time, **wires transmit and
+stocks remember** — a memoryless process relays within the step, memory lives
+only in declared stocks, and a loop with neither is refused by name rather than
+silently delayed. A run is therefore Δt-invariant over a fixed horizon
+(`dt_invariance.rs` holds it; the mutation harness proves the gate can fail),
+and refining a diagram — one relay into two — never changes its behavior.
 
 **A lens is a commitment the kernel checks.** Klir asks only for
 things-in-relation. Bunge demands a bond between distinct components, or refuses

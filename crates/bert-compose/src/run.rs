@@ -59,12 +59,11 @@ impl RecordedRun {
     }
 
     /// Run `circuit` over a horizon `total_time` at step size `dt`: the `(T, Δt)`
-    /// form — with a caveat this form currently overstates (#216-adjacent):
-    /// `dt` is metadata the dynamics never read (`step()` takes no Δt), so equal
-    /// horizons at different step sizes are NOT equivalent runs — fluxes scale
-    /// with the tick count. `dt_invariance.rs` is the standing record.
-    /// The tick count is `round(total_time / dt)`, so halving Δt doubles
-    /// the resolution of the same horizon.
+    /// form, and since #258/#259 the form is honest — the dynamics read `dt`
+    /// (fluxes scale by it, series index by model time), so equal horizons at
+    /// different step sizes are equivalent runs to within O(Δt) integration
+    /// drift. `dt_invariance.rs` holds that invariant green. The tick count is
+    /// `round(total_time / dt)`, so halving Δt refines the same horizon.
     ///
     /// Refuses when `(Δt, T)` name no run — see [`ticks_over`], which is where
     /// the precondition lives. This is the engine's own gate, so no caller can
