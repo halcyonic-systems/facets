@@ -328,6 +328,7 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
         Mode::Structural => check_bond(model, issues),
         Mode::Operational => {
             check_self_loops(model, issues);
+            check_flows_are_consumed(model, issues);
             check_dead_ends(model, issues);
             check_reachability(model, issues);
             check_reachability_requirements(model, issues);
@@ -338,6 +339,7 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
         }
         Mode::Full => {
             check_self_loops(model, issues);
+            check_flows_are_consumed(model, issues);
             check_dead_ends(model, issues);
             check_reachability(model, issues);
             check_reachability_requirements(model, issues);
@@ -471,6 +473,71 @@ fn check_duplicate_edges(model: &WorldModel, issues: &mut Vec<ValidationIssue>) 
 
 /// Operational/Full observation: a node with incoming flows but none outgoing.
 /// As often a legitimate terminal/absorbing state as a modeling gap, so it is a
+/// Can primitive `p` turn an incoming flow of substance `s` into output?
+/// The validate-side twin of `bert-compose`'s `NodeKind::consumes`
+/// (circuit.rs) — kept in lockstep by a full cartesian drift test there
+/// (`validate_consumes_table_matches_engine`). Grounded in Mobus Figs
+/// 3.18–3.19: signal processors read Message only; Sensing is the crossing
+/// from physical to signal; Amplifying meters Energy around a Message;
+/// Splitting/Combining divide and merge conserved matter.
+pub fn primitive_consumes(p: ProcessPrimitive, s: SubstanceType) -> bool {
+    use ProcessPrimitive::*;
+    let physical = s != SubstanceType::Message;
+    match p {
+        Copying | Inverting => s == SubstanceType::Message,
+        Sensing => physical,
+        Amplifying => s != SubstanceType::Material,
+        Splitting | Combining => physical,
+        _ => true,
+    }
+}
+
+/// **Severity: Warning (Operational/Full).** A flow must land where its
+/// substance is READ: delivered to a primitive that cannot consume it, the
+/// flow arrives every step and is ignored — Asserted-but-unhonored (#261,
+/// the #216 register's fourth row). Found in the wild as the supply-chain
+/// demo's original feedback: an informational order into a Combining
+/// factory, which validated, projected, and ran green while regulating
+/// nothing. Warning rather than Error: a delivered-and-ignored flow may be
+/// a stub mid-authoring; refusal is for holes, not inert couplings.
+fn check_flows_are_consumed(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
+    for (idx, ia) in model.interactions.iter().enumerate() {
+        let Some(receiver) = model.systems.iter().find(|s| s.info.id == ia.sink) else {
+            continue; // sinks/sources consume anything; dangling ids are check_interaction_references's job
+        };
+        let Some(p) = receiver.agent.as_ref().and_then(|a| a.primitive) else {
+            continue; // no declared primitive = nothing to contradict
+        };
+        if primitive_consumes(p, ia.substance.ty) {
+            continue;
+        }
+        let suggestion = match (p, ia.substance.ty) {
+            (ProcessPrimitive::Sensing, SubstanceType::Message) => {
+                "A sensor's coupling to a stock is matter — Sensing is the crossing \
+                 from physical to signal, and the signal is its OUTPUT. Declare the \
+                 level-read flow `: matter`"
+            }
+            (_, SubstanceType::Message) => {
+                "Route the signal to something that reads it — a Modulating valve's \
+                 control port consumes messages — or re-declare this flow's kind"
+            }
+            _ => {
+                "Signal processors read Message only; Sensing is the crossing from \
+                 physical to signal. Route the flow there, or re-declare its kind"
+            }
+        };
+        issues.push(ValidationIssue::warning(
+            format!("interactions[{idx}]"),
+            format!(
+                "'{}' ({:?}) flows into '{}' ({:?}), which does not consume {:?} — \
+                 the flow is delivered every step and ignored",
+                ia.info.name, ia.substance.ty, receiver.info.name, p, ia.substance.ty
+            ),
+            Some(suggestion),
+        ));
+    }
+}
+
 /// Warning phrased as a question — the kernel names it and leaves intent to a
 /// human (or an LLM critic); it never rejects an absorbing state.
 fn check_dead_ends(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
@@ -2499,6 +2566,37 @@ mod tests {
         m
     }
 
+    /// Law (#261): a flow delivered to a primitive that ignores its substance
+    /// warns at Operational — the supply-chain demo's original inert feedback
+    /// (informational order into a Combining factory), reduced to two nodes.
+    /// The full matrix and the matter-tap hint live in tests/flows_consumed.rs;
+    /// the engine-table lockstep is bert-compose's
+    /// `validate_consumes_table_matches_engine`.
+    #[test]
+    fn unconsumed_flow_is_warning() {
+        let mut m = two_component_model();
+        m.systems[1].agent = Some(AgentModel {
+            primitive: Some(ProcessPrimitive::Inverting),
+            ..AgentModel::default()
+        });
+        m.systems[2].agent = Some(AgentModel {
+            primitive: Some(ProcessPrimitive::Combining),
+            ..AgentModel::default()
+        });
+        let mut f = flow(0, "replenishment order", sys_id(vec![0, 0]), sys_id(vec![0, 1]));
+        f.substance.ty = SubstanceType::Message;
+        m.interactions.push(f);
+        let r = validate_mode(&m, Mode::Operational);
+        assert!(
+            r.issues
+                .iter()
+                .any(|i| i.severity == Severity::Warning
+                    && i.message.contains("does not consume")),
+            "the deaf receiver warns: {:#?}",
+            r.issues
+        );
+    }
+
     /// Law: Bunge Def 1.1 — an unbonded collection of components is a valid Core model but not a Structural system; entering Structural requires at least one bond.
     #[test]
     fn aggregate_enters_core_but_not_structural() {
@@ -3775,6 +3873,15 @@ mod tests {
                    Operational/Full check_interfaces_carry_flow also fires on \
                    every such model, so the two overlap there and only this one \
                    speaks in Core/Structural",
+        },
+        CheckAudit {
+            check: "check_flows_are_consumed",
+            witness: Some("unconsumed_flow_is_warning"),
+            canvas: true,
+            note: "the supply-chain demo's original feedback shipped exactly \
+                   this (informational order into a Combining factory) and ran \
+                   green while regulating nothing — #261; full matrix + hints \
+                   in tests/flows_consumed.rs",
         },
         CheckAudit {
             check: "check_s0_interface_processors",

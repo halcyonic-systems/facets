@@ -1661,6 +1661,32 @@ mod tests {
         assert!(c.balance().abs() < 1e-3, "conserved: {}", c.balance());
     }
 
+    /// Law (#261): the validate-side consumes table (bert-core) and the
+    /// engine's are ONE table — a warning about what a primitive ignores is
+    /// only true if the engine actually ignores it. Full cartesian check, so
+    /// the two cannot drift.
+    #[test]
+    fn validate_consumes_table_matches_engine() {
+        use bert_core::validate::primitive_consumes;
+        use ProcessPrimitive::*;
+        for p in [
+            Buffering, Combining, Splitting, Amplifying, Modulating, Sensing, Inverting, Copying,
+            Propelling, Impeding,
+        ] {
+            for s in [
+                SubstanceType::Energy,
+                SubstanceType::Material,
+                SubstanceType::Message,
+            ] {
+                assert_eq!(
+                    primitive_consumes(p, s),
+                    NodeKind::Process(p).consumes(s),
+                    "consumes tables drifted at {p:?} × {s:?}"
+                );
+            }
+        }
+    }
+
     /// Law (#259, Spivak–Tan Prop 4.4): zooming in is description, not
     /// dynamics — refining one relay into two chained relays leaves the
     /// run identical, tick for tick. Under the old per-hop-register engine
