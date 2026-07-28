@@ -40,6 +40,7 @@ export interface ElementSelection {
 
 export function InspectorDock({
   result,
+  ranEdited,
   runError,
   desc,
   verdict,
@@ -60,6 +61,9 @@ export function InspectorDock({
   onReview,
 }: {
   result: RunResultRich | null;
+  /** ADR run-seam-canvas-document: whether the last run executed the edited
+   *  canvas's projection rather than the shipped calibration artifact. */
+  ranEdited?: boolean;
   runError: string | null;
   desc: LensDescription | null;
   verdict: ValidationResult | null;
@@ -222,6 +226,7 @@ export function InspectorDock({
             {tab === "run" && (
               <RunTab
                 result={result}
+                ranEdited={ranEdited}
                 runError={runError}
                 lens={canvasModel?.lens ?? "Klir"}
                 onAcceptUnit={onAcceptUnit}
@@ -306,12 +311,14 @@ function Placeholder({ children }: { children: React.ReactNode }) {
 
 function RunTab({
   result,
+  ranEdited,
   runError,
   lens,
   onAcceptUnit,
   tick,
 }: {
   result: RunResultRich | null;
+  ranEdited?: boolean;
   runError: string | null;
   lens: CanvasModel["lens"];
   onAcceptUnit?: (name: string, unit: string) => void;
@@ -326,7 +333,8 @@ function RunTab({
       </Card>
     );
   }
-  if (result) return <RunPanel result={result} lens={lens} onAcceptUnit={onAcceptUnit} tick={tick} />;
+  if (result)
+    return <RunPanel result={result} ranEdited={ranEdited} lens={lens} onAcceptUnit={onAcceptUnit} tick={tick} />;
   return (
     <Placeholder>
       Run a demo bundle (model + CSV + mapping) to see the forced simulation here.
