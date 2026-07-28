@@ -407,6 +407,10 @@ function Workspace() {
     setHomeOpen(false);
     setDirty(false);
     setWalk([]);
+    // Frame the opened layout in the viewport — every open seam owes this fit
+    // (#83): the default pan covered small demos by luck until the 21-node
+    // llm-market opened to an empty corner.
+    setFitToken((n) => (n ?? 0) + 1);
     runWith(d.modelJson, d.csv, d.manifest, d.manifest.dt ?? 1, d.t); // one click → runs
   };
 
@@ -483,6 +487,7 @@ function Workspace() {
       setHomeOpen(false);
       setDirty(false);
       setWalk([]);
+      setFitToken((n) => (n ?? 0) + 1); // same fit debt as `pick`
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
@@ -759,6 +764,7 @@ function Workspace() {
       setHomeOpen(false);
       setDirty(false);
       setWalk([]);
+      setFitToken((n) => (n ?? 0) + 1); // same fit debt as `pick`
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }

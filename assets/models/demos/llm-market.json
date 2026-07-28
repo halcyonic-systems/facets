@@ -1521,7 +1521,7 @@
         "description": ""
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "tokens",
         "type": "Message"
       },
       "type": "Flow",
@@ -1531,7 +1531,7 @@
       "sink": "Snk-1.9",
       "sink_interface": null,
       "amount": "1",
-      "unit": "",
+      "unit": "Gtok/day",
       "parameters": []
     },
     {
@@ -1542,7 +1542,7 @@
         "description": ""
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "tokens",
         "type": "Message"
       },
       "type": "Flow",
@@ -1552,7 +1552,7 @@
       "sink": "Snk-1.9",
       "sink_interface": null,
       "amount": "1",
-      "unit": "",
+      "unit": "Gtok/day",
       "parameters": []
     },
     {
@@ -1563,7 +1563,7 @@
         "description": ""
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "tokens",
         "type": "Message"
       },
       "type": "Flow",
@@ -1573,7 +1573,7 @@
       "sink": "Snk-1.9",
       "sink_interface": null,
       "amount": "1",
-      "unit": "",
+      "unit": "Gtok/day",
       "parameters": []
     },
     {
@@ -1584,7 +1584,7 @@
         "description": ""
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "tokens",
         "type": "Message"
       },
       "type": "Flow",
@@ -1594,7 +1594,7 @@
       "sink": "Snk-1.9",
       "sink_interface": null,
       "amount": "1",
-      "unit": "",
+      "unit": "Gtok/day",
       "parameters": []
     },
     {
@@ -1605,7 +1605,7 @@
         "description": ""
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "tokens",
         "type": "Message"
       },
       "type": "Flow",
@@ -1615,7 +1615,7 @@
       "sink": "Snk-1.9",
       "sink_interface": null,
       "amount": "1",
-      "unit": "",
+      "unit": "Gtok/day",
       "parameters": []
     },
     {
@@ -1626,7 +1626,7 @@
         "description": ""
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "tokens",
         "type": "Message"
       },
       "type": "Flow",
@@ -1636,7 +1636,7 @@
       "sink": "Snk-1.9",
       "sink_interface": null,
       "amount": "1",
-      "unit": "",
+      "unit": "Gtok/day",
       "parameters": []
     },
     {
@@ -1647,7 +1647,7 @@
         "description": ""
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "tokens",
         "type": "Message"
       },
       "type": "Flow",
@@ -1657,7 +1657,7 @@
       "sink": "Snk-1.9",
       "sink_interface": null,
       "amount": "1",
-      "unit": "",
+      "unit": "Gtok/day",
       "parameters": []
     },
     {
@@ -1668,7 +1668,7 @@
         "description": ""
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "tokens",
         "type": "Message"
       },
       "type": "Flow",
@@ -1678,7 +1678,7 @@
       "sink": "Snk-1.9",
       "sink_interface": null,
       "amount": "1",
-      "unit": "",
+      "unit": "Gtok/day",
       "parameters": []
     },
     {
@@ -1689,7 +1689,7 @@
         "description": ""
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "tokens",
         "type": "Message"
       },
       "type": "Flow",
@@ -1699,7 +1699,7 @@
       "sink": "Snk-1.9",
       "sink_interface": null,
       "amount": "1",
-      "unit": "",
+      "unit": "Gtok/day",
       "parameters": []
     }
   ],

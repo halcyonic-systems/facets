@@ -137,14 +137,14 @@ flow "Enterprise clearing" -> "Other open" : energy "enterprise serving share" a
 # instead shows every Gtok/day of compute dissipating as heat, which is
 # the thermodynamic truth of inference. Market share is read off each
 # model's activity in the trace.
-flow Opus -> "Applications served" : informational "tokens served"
-flow Fable -> "Applications served" : informational "tokens served"
-flow GPT -> "Applications served" : informational "tokens served"
-flow Gemini -> "Applications served" : informational "tokens served"
-flow Gemma -> "Applications served" : informational "tokens served"
-flow Llama -> "Applications served" : informational "tokens served"
-flow Qwen -> "Applications served" : informational "tokens served"
-flow DeepSeek -> "Applications served" : informational "tokens served"
-flow "Other open" -> "Applications served" : informational "tokens served"
+flow Opus -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
+flow Fable -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
+flow GPT -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
+flow Gemini -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
+flow Gemma -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
+flow Llama -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
+flow Qwen -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
+flow DeepSeek -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
+flow "Other open" -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
 
 @lens mobus
