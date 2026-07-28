@@ -68,6 +68,9 @@ exists to keep it true.
   `examples/supply-chain.sl`, SL-AUTHORED runnable demos whose bundled models
   are machine projections of the `.sl` (never hand-edit the JSON; re-mint with
   `BLESS_SL_DEMOS=1`, gated by `crates/bert-canvas/tests/sl_demos.rs`).
+  **Authoring a new runnable model? Read `docs/authoring-models.md` FIRST** —
+  the full loop plus the five facts that bite (deaf receivers #261, the matter
+  tap, where `amount` acts, stocks start at zero, loops need memory).
   `models/runnable-sample.json` is a throwaway minted from the engine.
 
 ## Working rules

@@ -135,6 +135,7 @@ disagreement is information about your model.
 | You are here to… | Start at | Then |
 |---|---|---|
 | **model something** — a supply chain, a protocol, a cell, an org | [`docs/quickstart.md`](docs/quickstart.md) | [`docs/tour.md`](docs/tour.md), one model grown line by line |
+| **author a model that RUNS** — dynamics, forcing, the gallery | [`docs/authoring-models.md`](docs/authoring-models.md) — the `.sl` → mint → bundle loop, and the five facts that bite | [`assets/examples/watershed.sl`](assets/examples/watershed.sl), the smallest runnable source |
 | **assess the theory** — alone, with an expert, or with an LLM | [`docs/theory-fidelity.md`](docs/theory-fidelity.md) — take/drop/why per tradition | [`docs/lean-provenance.md`](docs/lean-provenance.md) for the pinned commit and the per-claim map |
 | **read the language** | [`docs/language/`](docs/language/) — spec, corpus, lineage | the [concordance](docs/language/terminology-concordance.md): every word's lineage cited |
 | **work on the code** | [`CLAUDE.md`](CLAUDE.md) — invariants and the crate layout | [`crates/bert-lenses-kernel/API.md`](crates/bert-lenses-kernel/API.md), the frozen JS↔wasm surface |
