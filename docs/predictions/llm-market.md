@@ -1,9 +1,11 @@
 # LLM-market prediction ledger
 
-**Status: SCAFFOLD — zero predictions recorded.** This file defines the
-format so that when the model starts making on-the-record claims, they land
-somewhere auditable. No rush: the bar for the first entry is a calibrated
-model plus a claim someone would actually check later.
+**Status: PROPOSED**
+
+Scaffold only — zero predictions recorded. This file defines the format so
+that when the model starts making on-the-record claims, they land somewhere
+auditable. No rush: the bar for the first entry is a calibrated model plus a
+claim someone would actually check later.
 
 ## Why a ledger
 

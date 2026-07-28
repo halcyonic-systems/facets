@@ -15,6 +15,7 @@ Start at the main [`README.md`](../README.md) and [`CLAUDE.md`](../CLAUDE.md) fo
 - [`quickstart.md`](quickstart.md) — **LIVE** — ten minutes from `just dev` to a judged, running model, using the two smallest corpus files (bathtub, then process-m). The newcomer on-ramp.
 - [`tour.md`](tour.md) — **LIVE** — the reader's tour: one running model (hal-projection) grown line by line, each step pairing SL with what the canvas and the three lenses render; three audience entry paths and the SL ↔ canvas ↔ JSON ↔ kernel notation table.
 - [`authoring-models.md`](authoring-models.md) — **LIVE** — the author's path from a description to a running, gated, gallery-visible model: the `.sl` → mint → bundle loop and the five facts that bite everyone once (deaf receivers, the matter tap, where `amount` acts, stocks-start-at-zero, loops need memory).
+- [`predictions/llm-market.md`](predictions/llm-market.md) — **PROPOSED** — the llm-market prediction ledger: append-only entry format keyed to the spec content hash, calibration provenance, zero predictions recorded yet.
 - [`glossary.md`](glossary.md) — **LIVE** — fast definitions of the ~15 load-bearing terms (system, lens, bond/mere, conservation invariant, WorldModel, Save vs Export, run ledger, SL, systemhood, mode/lens, neutral spec, golden, dynamics-kind, precondition, concordance), each grounded in a fuller doc.
 
 ## The language
