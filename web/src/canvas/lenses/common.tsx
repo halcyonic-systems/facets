@@ -9,6 +9,7 @@ import { humanize } from "../../ui";
 import { NODE_R, type Pt } from "../geometry";
 import { STYLE } from "../style";
 import type { ReactNode, PointerEvent as ReactPointerEvent } from "react";
+import { useState } from "react";
 
 /** Resolved per-lens stroke styling for a visible edge path. */
 export interface EdgeStyle {
@@ -108,6 +109,7 @@ export function NodeBody({
 }: NodeBodyProps) {
   const frac = sim ? Math.max(0, Math.min(1, sim.frac)) : null;
   const clipId = `fill-clip-${thing.id}`;
+  const [selfHover, setSelfHover] = useState(false);
   // Vertical extents of the body shape — the sim fill's clip rises bottom-up
   // between them, so the triangle drains/fills over ITS height, not the circle's.
   const [shapeTop, shapeBot] = regulatorTriangle ? [-TRI_R, TRI_BOT] : [-NODE_R, NODE_R];
@@ -117,12 +119,30 @@ export function NodeBody({
     <g
       transform={`translate(${thing.x}, ${thing.y})`}
       onPointerDown={onPointerDown}
+      onMouseEnter={() => setSelfHover(true)}
+      onMouseLeave={() => setSelfHover(false)}
       className="cursor-grab"
       opacity={pending ? 0.5 : 1}
     >
       {pending && <title>not yet in ℰ — no bond touches this thing (Bunge Def 1.2 ii); connect a flow to admit it</title>}
       {!pending && envHint && (
         <title>Environment role — membership is set by role, not position. Change it in the node editor.</title>
+      )}
+      {/* Invisible padded hit disc — the grab/click target extends past the
+          drawn glyph (walkthrough #14: bodies were exactly their ink, small at
+          fitted zoom). First child so every visible layer draws over it. */}
+      <circle data-export-ignore r={NODE_R + 10} fill="transparent" />
+      {/* Plain-hover halo — clickable-affordance feedback, softer than the
+          connect-drag target halo (`hovered`) so the two meanings stay apart. */}
+      {selfHover && !hovered && (
+        <circle
+          data-export-ignore
+          r={NODE_R + STYLE.hoverHalo.pad}
+          fill="none"
+          stroke="var(--lens-accent)"
+          strokeWidth={STYLE.hoverHalo.width}
+          strokeOpacity={0.35}
+        />
       )}
       {showHalo && (
         <circle r={NODE_R + STYLE.compHalo.pad} fill="var(--lens-accent-soft)" opacity={STYLE.compHalo.opacity} />
@@ -363,16 +383,24 @@ export function EdgeScaffold({
   label,
   title,
 }: EdgeScaffoldProps) {
+  const [hover, setHover] = useState(false);
   return (
     <g>
-      {/* invisible wide hit-path — the click target for "drive this flow" */}
+      {/* Invisible wide hit-path — the click target for "drive this flow".
+          non-scaling-stroke keeps the target 18 SCREEN px at any zoom: a fitted
+          big model halves the world scale, and a world-space target halves with
+          it, which is how flows got "hard to click" (walkthrough #14). Hit
+          testing follows the rendered stroke, so the effect applies to clicks. */}
       <path
         data-export-ignore
         d={d}
         fill="none"
         stroke="transparent"
-        strokeWidth={16}
+        strokeWidth={18}
+        vectorEffect="non-scaling-stroke"
         style={{ cursor: onSelect ? "pointer" : "default" }}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
         onClick={(e) => {
           e.stopPropagation();
           onSelect?.(relationId);
@@ -380,6 +408,20 @@ export function EdgeScaffold({
       >
         {title && <title>{title}</title>}
       </path>
+      {/* Hover feedback — the affordance that tells the reader this is
+          clickable BEFORE they commit; softer than selection so the two states
+          stay distinct. */}
+      {hover && !selected && onSelect && (
+        <path
+          data-export-ignore
+          d={d}
+          fill="none"
+          stroke="var(--lens-accent)"
+          strokeWidth={STYLE.selection.width}
+          strokeOpacity={STYLE.selection.opacity * 0.45}
+          pointerEvents="none"
+        />
+      )}
       {selected && (
         <path
           data-export-ignore
