@@ -49,11 +49,15 @@ const WORDING = {
 
 export function RunPanel({
   result,
+  ranEdited,
   lens,
   onAcceptUnit,
   tick,
 }: {
   result: RunResultRich;
+  /** ADR run-seam-canvas-document: true when this run executed the edited
+   *  canvas's projection; false/absent = the shipped calibration artifact. */
+  ranEdited?: boolean;
   lens: CanvasModel["lens"];
   /** #94: accept a derived stock unit as the component's DECLARED unit. The
    *  parent writes it into the authoring model; absent = no authoring surface
@@ -99,6 +103,11 @@ export function RunPanel({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-4">
+          {/* Which model ran (ADR run-seam-canvas-document) — the kernel hash
+              already knows; this is the plain-word version for the reader. */}
+          <Pill tone={ranEdited ? "warning" : "neutral"}>
+            {ranEdited ? "your edited model" : "shipped calibration"}
+          </Pill>
           <Pill tone={result.conserved ? "ok" : "error"}>
             {result.conserved ? WORDING.conservedPill : WORDING.leakPill}
           </Pill>

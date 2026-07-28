@@ -200,6 +200,10 @@ function Workspace() {
   const [dt, setDt] = useState(1);
   const [t, setT] = useState(12);
   const [result, setResult] = useState<RunResultRich | null>(null);
+  // ADR run-seam-canvas-document: which model the last run executed — the
+  // shipped calibration artifact, or the projection of an edited canvas. The
+  // kernel already hash-stamps the difference; this is the UI's plain word.
+  const [ranEdited, setRanEdited] = useState(false);
   // #67 J9: a Klir state machine's run is a distribution trajectory, not a
   // conservation ledger — held apart so its result never reaches for a
   // conservation `residual`/`conserved` field (and the conservation pill, driven
@@ -358,10 +362,11 @@ function Workspace() {
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedThingId, selectedRelationId, boundaryAnchor, armed]);
 
-  const runWith = (modelJson: string, csv: string, m: Manifest, dtv: number, tv: number) => {
+  const runWith = (modelJson: string, csv: string, m: Manifest, dtv: number, tv: number, edited = false) => {
     try {
       const r = runForced(modelJson, csv, m, dtv, tv, today());
       setResult(r);
+      setRanEdited(edited);
       setMarkovRun(null);
       setRunError(null);
       setTick(0);
@@ -369,6 +374,24 @@ function Workspace() {
       setResult(null);
       setRunError(e instanceof Error ? e.message : String(e));
     }
+  };
+
+  /** ADR run-seam-canvas-document — the canvas is the document. A dirty
+   *  canvas runs its PROJECTION through the same gate and forcing path (the
+   *  kernel's content hash marks it as a different model); a clean canvas
+   *  keeps the stored artifact, which sl_demos CI proves identical to the
+   *  projection for every shipped demo. Null = nothing runnable (projection
+   *  refused, or no bundle). */
+  const modelForRun = (): { json: string; edited: boolean } | null => {
+    if (dirty && canvasModel) {
+      try {
+        return { json: JSON.stringify(project(canvasModel)), edited: true };
+      } catch (e) {
+        setToast(e instanceof Error ? e.message : String(e));
+        return null;
+      }
+    }
+    return demo ? { json: demo.modelJson!, edited: false } : null;
   };
 
   // #67 J9: run a Klir state machine as a discrete-time Markov chain. The Run
@@ -631,8 +654,8 @@ function Workspace() {
 
   // File → Save / Export: project the canvas editing model back to a bert-core
   // WorldModel (the display-faithful inverse of toCanvas) and offer it as a
-  // download. This projected JSON is NEVER fed to the run path — runWith always
-  // runs off the original demo model + CSV + manifest.
+  // download. The run path uses the same projection when the canvas is dirty
+  // (ADR run-seam-canvas-document); a clean canvas runs the stored artifact.
   function exportModel(suffix: string) {
     if (!canvasModel) return;
     try {
@@ -992,7 +1015,10 @@ function Workspace() {
   function applyDrive(next: Manifest) {
     setManifest(next);
     setSelectedRelationId(null);
-    if (demo) runWith(demo.modelJson!, demo.csv!, next, dt, t);
+    if (demo) {
+      const m = modelForRun();
+      if (m) runWith(m.json, demo.csv!, next, dt, t, m.edited);
+    }
   }
 
   // A per-lens edge edit (kind / bond⇄mere / direction / klir toggle): update
@@ -1511,7 +1537,8 @@ function Workspace() {
                   if (isKlir) {
                     if (klirRunnable) runKlir(canvasModel, t);
                   } else if (demo) {
-                    runWith(demo.modelJson!, demo.csv!, manifest, dt, t);
+                    const m = modelForRun();
+                    if (m) runWith(m.json, demo.csv!, manifest, dt, t, m.edited);
                   }
                 };
                 const title = isKlir
@@ -1981,6 +2008,7 @@ function Workspace() {
           {canvasModel && (
             <InspectorDock
               result={result}
+              ranEdited={ranEdited}
               runError={runError}
               desc={desc}
               verdict={verdict}
