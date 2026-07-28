@@ -7,6 +7,19 @@ sibling doc: [`../dynamics-principled-position.md`](../dynamics-principled-posit
 read that first; this folder is evidence. Frozen 2026-07-18; the position supersedes
 step 7 below, which is kept as the pre-critique record.
 
+> **Dated-verification notice (added 2026-07-27).** Every VERIFIED tag in this folder
+> certifies a read of the **2026-07-18 tree**. The engine's TIME semantics changed on
+> 2026-07-27 (#258/#259): rates are now per unit time (fluxes scale by Δt; forced
+> series index by model time), **wires transmit and stocks remember** (a memoryless
+> process relays within the step — the old one-tick-per-hop register is gone), and a
+> loop with no stock or level read is refused, not silently delayed. Claims here about
+> *what the traditions say* are unaffected. Claims about `circuit.rs` mechanics or
+> line numbers must be re-verified before reuse; the current authorities are the
+> `circuit.rs` module header, `docs/language/spec.md` §8.2's Δt bullet, and
+> `crates/bert-canvas/tests/dt_invariance.rs`. (Notably, this folder's own warning at
+> `read-category-theory.md:13` — domain literature over vocabulary literature — is
+> what decided #259; the trail held up.)
+
 Reading order:
 
 1. [`read-mobus.md`](read-mobus.md) — T is formally implementation-neutral; conservation-flow is Ch.10 prose, embedded-JS an admitted "playful exploration"
