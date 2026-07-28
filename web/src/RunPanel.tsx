@@ -116,7 +116,7 @@ export function RunPanel({
         <Card title="Simulated vs actual" source="bert-compose · wasm">
           <div className="grid gap-6">
             {result.comparisons.map((c) => (
-              <ComparisonChart key={c.element} c={c} />
+              <ComparisonChart key={c.element} c={c} tick={tick} />
             ))}
           </div>
         </Card>
@@ -132,13 +132,20 @@ export function RunPanel({
       )}
 
       <Card title="Final levels" source="bert-core · wasm">
-        <Levels levels={result.levels} ticks={result.ticks} lens={lens} onAcceptUnit={onAcceptUnit} />
+        <Levels
+          levels={result.levels}
+          ticks={result.ticks}
+          lens={lens}
+          onAcceptUnit={onAcceptUnit}
+          trajectories={result.trajectories}
+          tick={tick}
+        />
       </Card>
     </div>
   );
 }
 
-function ComparisonChart({ c }: { c: Comparison }) {
+function ComparisonChart({ c, tick }: { c: Comparison; tick?: number }) {
   const n = Math.max(c.simulated.length, c.actual.length, c.declared?.length ?? 0);
   const data = Array.from({ length: n }, (_, i) => ({
     t: i,
@@ -180,6 +187,11 @@ function ComparisonChart({ c }: { c: Comparison }) {
           )}
           {forecastTicks > 0 && h != null && (
             <ReferenceLine x={h} stroke="var(--text-muted)" strokeDasharray="4 4" />
+          )}
+          {/* One tick state everywhere (walkthrough #10): the scrubber's
+              position draws on every chart, so playback moves the panel too. */}
+          {tick !== undefined && tick > 0 && tick < n && (
+            <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
           )}
           <XAxis dataKey="t" tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" />
           <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" width={44} />
@@ -254,13 +266,26 @@ function Levels({
   ticks,
   lens,
   onAcceptUnit,
+  trajectories,
+  tick,
 }: {
   levels: Level[];
   ticks: number;
   lens: CanvasModel["lens"];
   onAcceptUnit?: (name: string, unit: string) => void;
+  trajectories?: RunResultRich["trajectories"];
+  tick?: number;
 }) {
   const groups: Level["category"][] = ["product", "resource", "internal"];
+  // Mid-scrub, each row also shows its value AT the scrubbed tick (walkthrough
+  // #10) — the final stays primary, the at-tick value rides along, so the
+  // panel moves with playback instead of sitting frozen on run-end numbers.
+  const scrubbed = tick !== undefined && tick > 0 && tick < ticks - 1;
+  const atTick = (name: string): number | null => {
+    if (!scrubbed || !trajectories) return null;
+    const t = trajectories.find((tr) => tr.name === name);
+    return t ? (t.series[Math.min(tick, t.series.length - 1)] ?? null) : null;
+  };
   return (
     <div className="grid gap-4">
       {groups.map((cat) => {
@@ -282,7 +307,13 @@ function Levels({
               {rows.map((l) => (
                 // Keyed by name + unit so an accepted row's local state resets
                 // when a different model/run puts a different unit on the name.
-                <LevelRow key={`${l.name}·${l.unit}`} level={l} onAcceptUnit={onAcceptUnit} />
+                <LevelRow
+                  key={`${l.name}·${l.unit}`}
+                  level={l}
+                  onAcceptUnit={onAcceptUnit}
+                  atTickValue={atTick(l.name)}
+                  tick={tick}
+                />
               ))}
             </div>
           </div>
@@ -295,9 +326,15 @@ function Levels({
 function LevelRow({
   level: l,
   onAcceptUnit,
+  atTickValue,
+  tick,
 }: {
   level: Level;
   onAcceptUnit?: (name: string, unit: string) => void;
+  /** The row's trajectory value at the scrubbed tick; null = not scrubbed or
+   *  no matching trajectory (the final value stands alone). */
+  atTickValue?: number | null;
+  tick?: number;
 }) {
   // A whole-number source/process level renders as e.g. "3.0" — a magnitude cue
   // that reads it as a stock height, not a count of parts. Sinks keep humanize
@@ -316,6 +353,11 @@ function LevelRow({
     <div className="flex items-baseline justify-between text-sm">
       <span style={{ color: "var(--text-primary)" }}>{l.name}</span>
       <span className="tabular" style={{ color: "var(--text-secondary)" }}>
+        {atTickValue != null && (
+          <span className="mr-2 text-xs" style={{ color: "var(--accent)" }}>
+            {humanize(atTickValue)} <span style={{ color: "var(--text-muted)" }}>at {tick}</span> ·
+          </span>
+        )}
         {showsMagnitude ? l.value.toFixed(1) : humanize(l.value)}
         <span
           className={unit.abstract ? "italic" : undefined}
