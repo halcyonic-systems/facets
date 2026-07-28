@@ -47,7 +47,7 @@ impl RecordedRun {
     pub fn record(circuit: &mut Circuit, spec: &OperationalSpec, dt: f64, ticks: usize) -> Self {
         circuit.reset();
         for _ in 0..ticks {
-            circuit.step();
+            circuit.step_dt(dt as f32);
         }
         Self {
             key: spec.content_hash(),
@@ -59,7 +59,11 @@ impl RecordedRun {
     }
 
     /// Run `circuit` over a horizon `total_time` at step size `dt`: the `(T, Δt)`
-    /// form. The tick count is `round(total_time / dt)`, so halving Δt doubles
+    /// form — with a caveat this form currently overstates (#216-adjacent):
+    /// `dt` is metadata the dynamics never read (`step()` takes no Δt), so equal
+    /// horizons at different step sizes are NOT equivalent runs — fluxes scale
+    /// with the tick count. `dt_invariance.rs` is the standing record.
+    /// The tick count is `round(total_time / dt)`, so halving Δt doubles
     /// the resolution of the same horizon.
     ///
     /// Refuses when `(Δt, T)` name no run — see [`ticks_over`], which is where
@@ -72,6 +76,21 @@ impl RecordedRun {
         total_time: f64,
     ) -> Result<Self, String> {
         let ticks = ticks_over(dt, total_time)?;
+        // A loop of pure relays has no deterministic step (#259) — every
+        // step_dt would refuse and the trace would come back empty. Name the
+        // loop instead of recording nothing.
+        if let Some(cycle) = circuit.algebraic_cycle() {
+            let names: Vec<&str> = cycle
+                .iter()
+                .map(|&i| circuit.nodes[i].name.as_str())
+                .collect();
+            return Err(format!(
+                "run refused: the wiring contains a loop with no stock and no level \
+                 read on it ({}). A loop of pure relays has no deterministic step — \
+                 put a stock on the loop, or read a level instead of consuming a flow.",
+                names.join(" → ")
+            ));
+        }
         Ok(Self::record(circuit, spec, dt, ticks))
     }
 

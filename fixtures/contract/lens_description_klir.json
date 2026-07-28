@@ -5,6 +5,12 @@
   "relations": 4,
   "directed": 0,
   "neutral": 4,
+  "dependencies": [
+    "Pump — Tank",
+    "Grid — Pump",
+    "Tank — Tank",
+    "Pump — Tank"
+  ],
   "note": "a system is what is distinguished as a system by the investigator; the distinction frame is the observer's act, not a boundary",
   "ladder": {
     "position": "S²E",

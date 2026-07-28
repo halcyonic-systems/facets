@@ -127,7 +127,13 @@ function parseChildRef(v: unknown, where: string): ChildRef {
 }
 
 function parseThing(v: unknown, where: string): Thing {
-  const o = shape(v, where, ["id", "name", "x", "y", "role"], ["primitive", "interface", "child_model", "stock_unit"]);
+  const o = shape(v, where, ["id", "name", "x", "y", "role"], [
+    "primitive", "interface", "child_model", "stock_unit",
+    // #216: the author's env word (always serialized since Wave 3) + the
+    // opaque engine-parameter carriage; #154 Klir source metadata.
+    "env_kind", "scale", "states", "variable_kind",
+    "cognitive_params", "initial_state", "agency_capacity",
+  ]);
   return {
     id: num(o.id, `${where}.id`),
     name: str(o.name, `${where}.name`),
@@ -138,11 +144,30 @@ function parseThing(v: unknown, where: string): Thing {
     ...(o.interface === undefined ? {} : { interface: bool(o.interface, `${where}.interface`) }),
     ...(o.child_model === undefined ? {} : { child_model: parseChildRef(o.child_model, `${where}.child_model`) }),
     ...(o.stock_unit === undefined ? {} : { stock_unit: str(o.stock_unit, `${where}.stock_unit`) }),
+    ...(o.env_kind === undefined
+      ? {}
+      : { env_kind: oneOf(o.env_kind, `${where}.env_kind`, ["Source", "Sink", "Neutral"] as const) }),
+    ...(o.scale === undefined ? {} : { scale: str(o.scale, `${where}.scale`) as Thing["scale"] }),
+    ...(o.states === undefined ? {} : { states: arr(o.states, `${where}.states`).map((x, i) => str(x, `${where}.states[${i}]`)) }),
+    ...(o.variable_kind === undefined
+      ? {}
+      : { variable_kind: oneOf(o.variable_kind, `${where}.variable_kind`, ["Basic", "Support"] as const) }),
+    ...(o.cognitive_params === undefined
+      ? {}
+      : { cognitive_params: o.cognitive_params as Thing["cognitive_params"] }),
+    ...(o.initial_state === undefined ? {} : { initial_state: o.initial_state as Thing["initial_state"] }),
+    ...(o.agency_capacity === undefined
+      ? {}
+      : { agency_capacity: num(o.agency_capacity, `${where}.agency_capacity`) }),
   };
 }
 
 function parseRelation(v: unknown, where: string): Relation {
-  const o = shape(v, where, ["id", "a", "b", "name", "is_bond", "kind"], ["klir_directed"]);
+  const o = shape(v, where, ["id", "a", "b", "name", "is_bond", "kind"], [
+    "klir_directed", "weight",
+    // #216 C1/C4: flow quantity — amount is a decimal STRING on the wire.
+    "amount", "unit", "substance",
+  ]);
   return {
     id: num(o.id, `${where}.id`),
     a: num(o.a, `${where}.a`),
@@ -151,6 +176,10 @@ function parseRelation(v: unknown, where: string): Relation {
     is_bond: bool(o.is_bond, `${where}.is_bond`),
     kind: oneOf(o.kind, `${where}.kind`, KINDS),
     ...(o.klir_directed === undefined ? {} : { klir_directed: bool(o.klir_directed, `${where}.klir_directed`) }),
+    ...(o.weight === undefined ? {} : { weight: num(o.weight, `${where}.weight`) }),
+    ...(o.amount === undefined ? {} : { amount: str(o.amount, `${where}.amount`) }),
+    ...(o.unit === undefined ? {} : { unit: str(o.unit, `${where}.unit`) }),
+    ...(o.substance === undefined ? {} : { substance: str(o.substance, `${where}.substance`) }),
   };
 }
 
@@ -276,7 +305,7 @@ function parseLensDescription(v: unknown): LensDescription {
       // "ladder" here is Klir's GSPS epistemological hierarchy (the surviving
       // sense, #90) — the field name on the wire, not mode-entry vocabulary.
       const k = shape(v, "LensDescription(Klir)", [
-        "lens", "question", "things", "relations", "directed", "neutral", "note", "ladder", // GSPS
+        "lens", "question", "things", "relations", "directed", "neutral", "dependencies", "note", "ladder", // GSPS
       ]);
       const l = shape(k.ladder, "Klir.ladder", ["position", "claim", "to_climb", "decomposed"]); // GSPS
       return {
@@ -286,6 +315,7 @@ function parseLensDescription(v: unknown): LensDescription {
         relations: num(k.relations, "Klir.relations"),
         directed: num(k.directed, "Klir.directed"),
         neutral: num(k.neutral, "Klir.neutral"),
+        dependencies: strs(k.dependencies, "Klir.dependencies"),
         note: str(k.note, "Klir.note"),
         ladder: {
           position: str(l.position, "Klir.ladder.position"), // GSPS
@@ -298,7 +328,7 @@ function parseLensDescription(v: unknown): LensDescription {
     case "Bunge": {
       const b = shape(v, "LensDescription(Bunge)", [
         "lens", "question", "composition", "environment", "endostructure", "exostructure",
-        "bondage", "mere_relations", "boundary_components", "verdict", "mechanism_note",
+        "endo_bonds", "exo_bonds", "bondage", "mere_relations", "boundary_components", "verdict", "mechanism_note",
       ]);
       return {
         lens,
@@ -307,6 +337,8 @@ function parseLensDescription(v: unknown): LensDescription {
         environment: strs(b.environment, "Bunge.environment"),
         endostructure: num(b.endostructure, "Bunge.endostructure"),
         exostructure: num(b.exostructure, "Bunge.exostructure"),
+        endo_bonds: strs(b.endo_bonds, "Bunge.endo_bonds"),
+        exo_bonds: strs(b.exo_bonds, "Bunge.exo_bonds"),
         bondage: num(b.bondage, "Bunge.bondage"),
         mere_relations: num(b.mere_relations, "Bunge.mere_relations"),
         boundary_components: strs(b.boundary_components, "Bunge.boundary_components"),

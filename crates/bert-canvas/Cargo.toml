@@ -15,7 +15,18 @@ publish = false
 [dependencies]
 bert-core = { path = "../bert-core" }
 serde = { version = "1", features = ["derive"] }
+# `Thing` carries AgentModel's engine-parameter maps opaquely (#216), and
+# `initial_state` values are arbitrary JSON — same Value type bert-core uses.
+serde_json = "1"
 
 [dev-dependencies]
-serde_json = "1"
 bert-core = { path = "../bert-core" }
+# Test-only. `canvas_round_trip.rs` has to RUN a demo before and after a canvas
+# round-trip, because "still projects to an executable model" was the assertion
+# that let a 22% trajectory change ship green (#216). No cycle: bert-compose
+# depends on bert-core only.
+bert-compose = { path = "../bert-compose" }
+# Test-only. `sl_demos.rs` runs the SL-authored demos' ACTUAL gallery bundles
+# through the forced path, so a bad element name or unit in a bundle fails in
+# CI instead of at GUI runtime. No cycle: bert-tether depends on core+compose.
+bert-tether = { path = "../bert-tether" }

@@ -13,6 +13,8 @@
 # note: Klir labels the elements A and B; the names here are his own prose terms for them ("goal-implementing element", "goal-seeking element"). x, y and z are his.
 # note: Klir draws x and y as variables on wires, not as things. Rendering the wire's origin and destination as environment things is our construction — the block diagram has no other place to put them.
 # note: No ontological type is asserted. Klir asserts none; these are design frames, and the kingdom would be ours rather than his.
+# note: Direction is asserted on every relation (@directed): Fig. 10.1 is an arrowed block diagram and the teaches line above names who reads what — the direction is Klir's commitment, not ours. Without it the feedback and feedforward siblings are graph-isomorphic and the set collapses (#216).
+# note: y is declared `environment`, not `sink`: the goal-implementing element writes it AND the goal-seeking element reads it, so it terminates nothing. The earlier `sink y` was contradicted by the entry's own feedback tap — it once round-tripped as `source y` (#216).
 
 system "Goal-Oriented System — Full-information Paradigm"
 
@@ -20,7 +22,7 @@ component "Goal-Implementing Element"
 component "Goal-Seeking Element"
 
 source x
-sink y
+environment y
 
 flow x -> "Goal-Implementing Element" : informational "x"
 flow "Goal-Implementing Element" -> y : informational "y"
@@ -29,3 +31,8 @@ flow x -> "Goal-Seeking Element" : informational "x"
 flow y -> "Goal-Seeking Element" : informational "y"
 
 @lens klir
+@directed 1
+@directed 2
+@directed 3
+@directed 4
+@directed 5

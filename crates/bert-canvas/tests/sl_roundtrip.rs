@@ -65,6 +65,7 @@ fn canvas_born_model_canonicalizes() {
         x: 10.5,
         y: -3.25,
         role,
+        env_kind: Default::default(),
         primitive: None,
         interface: false,
         child_model: None,
@@ -72,6 +73,9 @@ fn canvas_born_model_canonicalizes() {
         scale: None,
         states: None,
         variable_kind: None,
+        cognitive_params: Default::default(),
+        initial_state: Default::default(),
+        agency_capacity: None,
     };
     let m = CanvasModel {
         lens: Lens::Klir,
@@ -90,6 +94,9 @@ fn canvas_born_model_canonicalizes() {
             kind: Kind::Field,
             klir_directed: true,
             weight: None,
+            amount: None,
+            unit: String::new(),
+            substance: String::new(),
         }],
         boundary: CanvasBoundaryProps { porosity: 0.33, perceptive_fuzziness: 0.0 },
         system_type: SystemType::default(),

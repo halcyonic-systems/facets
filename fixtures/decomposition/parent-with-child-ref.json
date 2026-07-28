@@ -20,7 +20,8 @@
         "transform": null,
         "equivalence": "",
         "model": "",
-        "is_same_as_id": null
+        "is_same_as_id": null,
+        "authored_direction": true
       }
     ],
     "sinks": [
@@ -35,7 +36,8 @@
         "transform": null,
         "equivalence": "",
         "model": "",
-        "is_same_as_id": null
+        "is_same_as_id": null,
+        "authored_direction": true
       }
     ]
   },

@@ -54,6 +54,10 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
         scale: None,
         states: None,
         variable_kind: None,
+        cognitive_params: Default::default(),
+        initial_state: Default::default(),
+        agency_capacity: None,
+        env_kind: Default::default(),
     }
 }
 
@@ -67,6 +71,9 @@ fn relation(id: u64, a: u64, b: u64, name: &str, is_bond: bool, kind: Kind) -> R
         kind,
         klir_directed: false,
         weight: None,
+        amount: None,
+        unit: String::new(),
+        substance: String::new(),
     }
 }
 

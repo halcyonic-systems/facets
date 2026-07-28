@@ -10,6 +10,13 @@
   ],
   "endostructure": 2,
   "exostructure": 1,
+  "endo_bonds": [
+    "Pump — Tank",
+    "Tank — Tank"
+  ],
+  "exo_bonds": [
+    "Grid — Pump"
+  ],
   "bondage": 3,
   "mere_relations": 1,
   "boundary_components": [

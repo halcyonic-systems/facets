@@ -11,6 +11,7 @@ default:
 # Check every tool `dev`, `check` and `desktop` need, and print the exact install
 # line for whatever is missing. Run this first on a cold clone: the one thing it
 # cannot check is `just` itself, and README's Prerequisites carries that line.
+# Check every prerequisite and print the install line for whatever is missing.
 preflight:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -78,19 +79,23 @@ preflight:
 # depend on this, so a cold clone can run either without a separate documented
 # step. Guarded rather than unconditional: `npm ci` deletes and reinstalls
 # node_modules, which is not what you want before every gate run.
+# Install web dependencies only when node_modules is absent.
 web-deps:
     @test -d web/node_modules || (cd web && npm ci)
 
 # Rebuild the wasm pkg the web app consumes (run after any crate change).
+# Rebuild the wasm pkg the web app consumes (after any crate change).
 wasm:
     cd {{kernel}} && wasm-pack build --target web --out-dir pkg
 
 # Rebuild wasm, then start the vite dev server (face sees the fresh brain).
+# Build the wasm kernel, install web deps if needed, start the dev server.
 dev: web-deps wasm
     cd web && npm run dev
 
 # The full gate suite — mirrors CI. Rust brain first, then the web face against
 # a freshly built pkg, so a stale-wasm mismatch can never pass silently.
+# The full gate: everything CI enforces that can run on this machine.
 check: web-deps
     python3 scripts/doc_lint.py
     cargo test --workspace
@@ -101,12 +106,14 @@ check: web-deps
     cd web && npx tsc --noEmit
     cd web && npx vitest run
     cd web && npx vite build
+    @just wasm-exec
 
 # Re-render docs/lean-provenance.md's tables from docs/lean-manifest.json, then
 # run Gate A: every cited SSF symbol resolves at the pin WITH its declared kind.
 # The tables are generated — edit the manifest, never the doc. `just check` runs
 # the read-only half of this (render-check + Gate A when SSF is present) via
 # doc_lint; CI's lean-provenance.yml clones SSF so it can never skip.
+# Gate A — every Lean citation resolves with its declared kind, at the pin.
 provenance:
     python3 scripts/lean_provenance.py render
     python3 scripts/lean_provenance.py resolve
@@ -114,6 +121,7 @@ provenance:
 # Gate B (mirrors .github/workflows/lean-provenance-head.yml). Non-blocking by
 # design: it asks whether the citations still resolve against SSF HEAD, and a
 # failure is the trigger to replay the pin, not a reason to fail a PR.
+# Gate B — the same check against SSF HEAD; failing is a signal, not a break.
 provenance-head:
     python3 scripts/lean_provenance.py resolve --rev origin/main --label "Gate B (SSF HEAD)"
 
@@ -123,6 +131,7 @@ provenance-head:
 # reads every verdict through. The second package carries the panic probe —
 # a deliberate panic no release build has — so the trap path is measured
 # rather than assumed.
+# Execute the shipped wasm package — the only thing that runs the boundary.
 wasm-exec:
     cd {{kernel}} && wasm-pack build --target web --out-dir pkg
     cd {{kernel}} && wasm-pack build --target web --out-dir pkg-probe --features panic-probe
@@ -132,6 +141,7 @@ wasm-exec:
 # then wraps it. NOTE: `cargo tauri dev` is a false positive — it serves over
 # http://127.0.0.1:1430 and applies devCsp, not the config CSP, so wasm can pass
 # there and die in the bundle. Verify with this recipe, never with dev.
+# Bundle the macOS .app — the real build, never `tauri dev` (CSP false positive).
 desktop: wasm
     cd web && npm run build
     cd src-tauri && cargo tauri build

@@ -26,8 +26,12 @@
 //!                                      #   env lines too — env vars are the
 //!                                      #   input drivers Table 4.1 characterizes
 //! sink Customers                       # source|sink|environment: env things;
-//!                                      #   actual role is edge-derived in project()
+//!                                      #   the author's word is kept (#216) —
+//!                                      #   neutral `environment` gates nothing
 //! flow "Iron Vendor" -> Furnace : matter "iron"
+//! flow River -> Tank : matter "inflow" substance water amount 1.5 unit ML/mo
+//!                                      # quantity clauses (#216, C1/C4); omitted
+//!                                      #   amount ≠ 1 — unauthored is its own state
 //! flow Furnace -> Customers : matter "steel" mere   # mere = not a bond
 //! flow Even -> Odd : "flip" weight 3                 # weight = DTMC transition count (#67); default 1
 //! boundary porosity 0.7 fuzziness 0.1
@@ -44,8 +48,8 @@ use bert_core::model_id::{decode_uuid, encode_uuid};
 use bert_core::{ModelRef, ProcessPrimitive};
 
 use crate::canvas::{
-    CanvasBoundaryProps, CanvasModel, ChildRef, Genus, Kind, Kingdom, KlirVarKind, Lens, Relation,
-    Role, ScaleType, SystemType, Thing,
+    CanvasBoundaryProps, CanvasModel, ChildRef, EnvKind, Genus, Kind, Kingdom, KlirVarKind, Lens,
+    Relation, Role, ScaleType, SystemType, Thing,
 };
 
 /// A parse fault, anchored to its 1-indexed source line. All faults are
@@ -272,6 +276,15 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     Role::Component
                 } else {
                     Role::Environment
+                };
+                // Keep the author's word (#216). All four keywords used to collapse
+                // into `role` alone, and everything downstream re-derived the lost
+                // distinction from flow direction — which cannot recover it, and
+                // guessed wrong on exactly the models where it mattered.
+                let env_kind = match keyword.as_str() {
+                    "source" => EnvKind::Source,
+                    "sink" => EnvKind::Sink,
+                    _ => EnvKind::Neutral,
                 };
                 let Some((name, attrs)) = rest.split_first() else {
                     fail(
@@ -580,6 +593,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     x: 0.0,
                     y: 0.0,
                     role,
+                    env_kind,
                     primitive,
                     interface,
                     child_model,
@@ -587,6 +601,11 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     scale,
                     states,
                     variable_kind,
+                    // SL has no production for the engine-parameter bags (#112),
+                    // so a parsed thing never carries them.
+                    cognitive_params: Default::default(),
+                    initial_state: Default::default(),
+                    agency_capacity: None,
                 });
                 next_id += 1;
             }
@@ -598,7 +617,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     }
                     _ => {
                         fail(
-                            "flow syntax: `flow <a> -> <b> [: <kind>] [\"label\"] [mere] [weight <n>]`".into(),
+                            "flow syntax: `flow <a> -> <b> [: <kind>] [\"label\"] \
+                             [substance <s>] [amount <n>] [unit <u>] [mere] [weight <n>]`"
+                                .into(),
                             &mut errors,
                         );
                         continue;
@@ -620,12 +641,105 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     name = label.clone();
                     tail = rest_tail;
                 }
+                // `substance <name>` — what flows, named apart from what the
+                // flow is *called* (#216, C4): "F-1.1 — iron-input" is a label,
+                // `iron` is a substance.
+                let mut substance = String::new();
+                if let [Tok::Word(w), s, rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("substance") {
+                        if !s.is_name() {
+                            fail(
+                                "substance syntax: `substance <name>` (bare or quoted)".into(),
+                                &mut errors,
+                            );
+                            continue;
+                        }
+                        substance = s.name().trim().to_string();
+                        tail = rest_tail;
+                    }
+                }
+                // `amount <positive decimal>` — the flow's magnitude (#216, C1),
+                // the kernel's `Interaction::amount`. Omitted ≠ 1: an unauthored
+                // amount stays None and only projection supplies the default.
+                let mut amount = None;
+                if let [Tok::Word(w), rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("amount") {
+                        match rest_tail {
+                            [Tok::Word(n), after @ ..] => {
+                                match n.parse::<bert_core::rust_decimal::Decimal>() {
+                                    Ok(v) if v > bert_core::rust_decimal::Decimal::ZERO => {
+                                        amount = Some(v);
+                                        tail = after;
+                                    }
+                                    Ok(_) => {
+                                        fail(
+                                            "a flow's amount is a positive magnitude — to \
+                                             model an absent flow, remove the line"
+                                                .into(),
+                                            &mut errors,
+                                        );
+                                        continue;
+                                    }
+                                    Err(_) => {
+                                        fail(
+                                            "amount syntax: `amount <positive decimal>` \
+                                             (e.g. `amount 1.5`)"
+                                                .into(),
+                                            &mut errors,
+                                        );
+                                        continue;
+                                    }
+                                }
+                            }
+                            _ => {
+                                fail(
+                                    "amount syntax: `amount <positive decimal>` \
+                                     (e.g. `amount 1.5`)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        }
+                    }
+                }
+                // `unit <name>` — the magnitude's unit (#216, C1), bare or
+                // quoted (`unit ML/mo`, `unit "kW·h"`).
+                let mut unit = String::new();
+                if let [Tok::Word(w), u, rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("unit") {
+                        if !u.is_name() {
+                            fail(
+                                "unit syntax: `unit <name>` (e.g. `unit ML/mo`, \
+                                 `unit \"kW·h\"`)"
+                                    .into(),
+                                &mut errors,
+                            );
+                            continue;
+                        }
+                        unit = u.name().trim().to_string();
+                        tail = rest_tail;
+                    }
+                }
                 let mut is_bond = true;
                 if let [Tok::Word(w), rest_tail @ ..] = tail {
                     if w.eq_ignore_ascii_case("mere") {
                         is_bond = false;
                         tail = rest_tail;
                     }
+                }
+                // A quantity on a `mere` relation is a contradiction, not an
+                // option to drop: a non-bond never projects, so a magnitude on
+                // it could never mean anything. Refuse rather than default.
+                if !is_bond && (amount.is_some() || !unit.is_empty() || !substance.is_empty()) {
+                    fail(
+                        "`substance`/`amount`/`unit` on a `mere` relation — a mere \
+                         relation never projects, so a quantity on it cannot mean \
+                         anything; remove the clause or the `mere`"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
                 }
                 // `weight <n>` — per-transition count for the #67 DTMC read
                 // (`markov_edges`); omit for the uniform default 1.
@@ -661,7 +775,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         format!(
                             "unexpected `{}` at end of flow — fix: quote it if it is the flow's \
                              label, or remove it; a flow reads \
-                             `flow <a> -> <b> [: <kind>] [\"label\"] [mere] [weight <n>]`",
+                             `flow <a> -> <b> [: <kind>] [\"label\"] [substance <s>] \
+                             [amount <n>] [unit <u>] [mere] [weight <n>]`",
                             tail[0].display()
                         ),
                         &mut errors,
@@ -698,6 +813,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     kind,
                     klir_directed: false,
                     weight,
+                    amount,
+                    unit,
+                    substance,
                 });
                 next_id += 1;
             }
@@ -787,9 +905,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
 /// take the inner N-gon and environment things the outer ring, in declaration
 /// order. A lone component sits at the center.
 fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>) {
-    let ring = |i: usize, n: usize, radius: f32| -> (f32, f32) {
-        let angle = -std::f32::consts::FRAC_PI_2
-            + (i as f32) * std::f32::consts::TAU / (n.max(1) as f32);
+    use std::f32::consts::{FRAC_PI_2, PI, SQRT_2, TAU};
+    let ring = |i: usize, n: usize, radius: f32, start: f32| -> (f32, f32) {
+        let angle = start + (i as f32) * TAU / (n.max(1) as f32);
         (
             CENTER.0 + radius * angle.cos(),
             CENTER.1 + radius * angle.sin(),
@@ -802,16 +920,61 @@ fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>)
         .filter(|&i| model.things[i].role == Role::Environment && !positions.contains_key(&model.things[i].name))
         .collect();
     for (slot, &i) in components.iter().enumerate() {
-        let (x, y) = if components.len() == 1 {
-            CENTER
-        } else {
-            ring(slot, components.len(), COMPONENT_RADIUS)
+        let (x, y) = match components.len() {
+            1 => CENTER,
+            // Two components spread HORIZONTALLY (#216, E2). The generic ring
+            // starts at −π/2, which for n = 2 stacks both on one vertical line
+            // — every edge through both labels, destroying exactly what the
+            // sibling sets exist to show. First declared sits left.
+            2 => ring(slot, 2, COMPONENT_RADIUS, PI),
+            n => ring(slot, n, COMPONENT_RADIUS, -FRAC_PI_2),
         };
         model.things[i].x = x;
         model.things[i].y = y;
     }
+    // The env ring must CLEAR the Mobus membrane the face will draw (#216, E1).
+    // The face derives the membrane from the component extent (geometry.ts::
+    // componentRing: bbox halves × √2 + RING_PAD), while ENV_RADIUS was pinned —
+    // for any real spread the two collided, and an env node on the membrane is a
+    // picture of C ∩ E ≠ ∅. Mirror the face's math here (NODE_R = style.ts
+    // nodeR = canvas.rs RADIUS = 34; RING_PAD = NODE_R + 36) and push the ring
+    // outside it. Pinned components count: the membrane wraps them too.
+    const NODE_R: f32 = 34.0;
+    const RING_PAD: f32 = NODE_R + 36.0;
+    const CLEARANCE: f32 = 24.0;
+    let comp_pts: Vec<(f32, f32)> = model
+        .things
+        .iter()
+        .filter(|t| t.role == Role::Component)
+        .map(|t| positions.get(&t.name).copied().unwrap_or((t.x, t.y)))
+        .collect();
+    let env_radius = if comp_pts.is_empty() {
+        ENV_RADIUS
+    } else {
+        let (min_x, max_x) = comp_pts
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(lo, hi), p| (lo.min(p.0), hi.max(p.0)));
+        let (min_y, max_y) = comp_pts
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(lo, hi), p| (lo.min(p.1), hi.max(p.1)));
+        let membrane_max = (((max_x - min_x) / 2.0) * SQRT_2 + RING_PAD)
+            .max(((max_y - min_y) / 2.0) * SQRT_2 + RING_PAD);
+        let center_offset = (((min_x + max_x) / 2.0 - CENTER.0).powi(2)
+            + ((min_y + max_y) / 2.0 - CENTER.1).powi(2))
+        .sqrt();
+        ENV_RADIUS.max(center_offset + membrane_max + NODE_R + CLEARANCE)
+    };
+    // Interleave: for n ≥ 3 components the env ring starts half a component
+    // slot off −π/2, so env things do not stack radially over component slots.
+    // (For 1–2 components the axes already differ: 2 components lie horizontal,
+    // env starts at the top.)
+    let env_start = if comp_pts.len() >= 3 {
+        -FRAC_PI_2 + PI / comp_pts.len() as f32
+    } else {
+        -FRAC_PI_2
+    };
     for (slot, &i) in env.iter().enumerate() {
-        let (x, y) = ring(slot, env.len(), ENV_RADIUS);
+        let (x, y) = ring(slot, env.len(), env_radius, env_start);
         model.things[i].x = x;
         model.things[i].y = y;
     }
@@ -870,14 +1033,33 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
     }
 
     // things — env identity edge-derived from bonds, mirroring project()
-    let originates = |id: u64| model.relations.iter().any(|r| r.is_bond && r.a == id);
-    let touched = |id: u64| model.relations.iter().any(|r| r.is_bond && (r.a == id || r.b == id));
+    // Both retained: `emit_sl` no longer derives the env keyword (#216), but the
+    // helpers still serve the flow section below.
+    let _originates = |id: u64| model.relations.iter().any(|r| r.is_bond && r.a == id);
+    let _touched = |id: u64| model.relations.iter().any(|r| r.is_bond && (r.a == id || r.b == id));
     for t in &model.things {
-        let keyword = match t.role {
-            Role::Component => "component",
-            Role::Environment if originates(t.id) => "source",
-            Role::Environment if touched(t.id) => "sink",
-            Role::Environment => "environment",
+        // Echo the author's word, do not re-derive it (#216). This used to read the
+        // flow direction — `originates → "source"`, else `touched → "sink"` — which
+        // silently rewrote a declared `sink y` as `source y` whenever `y` happened to
+        // have an outgoing flow, falsifying corpus headers that claim a fixed
+        // composition. A round trip must return what was written.
+        // §7.3: refuse loudly rather than lose information silently. The canvas
+        // carries a loaded model's engine-parameter bags opaquely (#216); SL has
+        // no production for them until #112 chooses the transition functor, so a
+        // thing that carries them cannot be written down without narrowing.
+        if !t.cognitive_params.is_empty() || !t.initial_state.is_empty() {
+            return Err(format!(
+                "`{}` carries engine parameters (cognitive_params / initial_state) \
+                 SL cannot yet express (#112) — export the model as kernel JSON \
+                 instead of SL",
+                t.name
+            ));
+        }
+        let keyword = match (t.role, t.env_kind) {
+            (Role::Component, _) => "component",
+            (Role::Environment, EnvKind::Source) => "source",
+            (Role::Environment, EnvKind::Sink) => "sink",
+            (Role::Environment, EnvKind::Neutral) => "environment",
         };
         write!(out, "{keyword} {}", name_token(&t.name)?).unwrap();
         if t.role == Role::Component {
@@ -938,6 +1120,18 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         if !r.name.is_empty() {
             write!(out, " {}", quote(&r.name)?).unwrap();
         }
+        // Quantity clauses (#216, C1/C4), echoed in parse order: substance,
+        // amount, unit — before `mere`/`weight`. Omitted where unauthored, so
+        // the declared-1 / undeclared distinction survives the round trip.
+        if !r.substance.is_empty() {
+            write!(out, " substance {}", name_token(&r.substance)?).unwrap();
+        }
+        if let Some(a) = r.amount {
+            write!(out, " amount {a}").unwrap();
+        }
+        if !r.unit.is_empty() {
+            write!(out, " unit {}", name_token(&r.unit)?).unwrap();
+        }
         if !r.is_bond {
             write!(out, " mere").unwrap();
         }
@@ -995,6 +1189,8 @@ fn is_reserved(word: &str) -> bool {
             | "unit"
             | "mere"
             | "weight"
+            | "substance"
+            | "amount"
             | "porosity"
             | "fuzziness"
             | "energy"
@@ -1426,7 +1622,22 @@ boundary porosity 0.7 fuzziness 0.1
         let a = m1.things.iter().find(|t| t.name == "A").unwrap();
         let s = m1.things.iter().find(|t| t.name == "S").unwrap();
         assert!((dist(a) - COMPONENT_RADIUS).abs() < 0.5);
-        assert!((dist(s) - ENV_RADIUS).abs() < 0.5);
+        // The invariant, not the coordinate (#216, E1): the env ring is no
+        // longer pinned at ENV_RADIUS — it is pushed outside the membrane the
+        // face derives from the component extent. What must hold: the env
+        // thing sits strictly beyond the component ring with real separation
+        // (the membrane's √2 · extent + RING_PAD lower bound), and never
+        // closer than the old pinned floor.
+        assert!(dist(s) >= ENV_RADIUS - 0.5, "env ring under the old floor");
+        assert!(
+            dist(s) > COMPONENT_RADIUS * std::f32::consts::SQRT_2 + 70.0,
+            "env ring does not clear the membrane bound: {}",
+            dist(s)
+        );
+        // E2: two components spread horizontally, never a shared vertical.
+        let b = m1.things.iter().find(|t| t.name == "B").unwrap();
+        assert!((a.y - b.y).abs() < 0.001);
+        assert!((a.x - b.x).abs() > COMPONENT_RADIUS);
     }
 
     /// The container label's rename round trip (bert-lenses#116): the canvas

@@ -53,6 +53,26 @@ pub fn validate_operational(model_json: &str) -> Result<JsValue, JsError> {
 ///
 /// Phase 0 runs the model as authored. External CSV forcing (the tether's
 /// forced-flow series) attaches in Phase 1 via the wizard surface — see API.md.
+/// A loop of pure relays has no deterministic step (#259) — running it would
+/// record an empty trace. Refuse before stepping, with the loop named in the
+/// author's own node names. (The forced path gets the same refusal from
+/// `RecordedRun::record_over`.)
+fn refuse_algebraic_cycle(circuit: &bert_compose::Circuit) -> Result<(), JsError> {
+    let Some(cycle) = circuit.algebraic_cycle() else {
+        return Ok(());
+    };
+    let names: Vec<&str> = cycle
+        .iter()
+        .map(|&i| circuit.nodes[i].name.as_str())
+        .collect();
+    Err(JsError::new(&format!(
+        "run refused: the wiring contains a loop with no stock and no level read \
+         on it ({}). A loop of pure relays has no deterministic step — put a \
+         stock on the loop, or read a level instead of consuming a flow.",
+        names.join(" → ")
+    )))
+}
+
 #[wasm_bindgen]
 pub fn run(model_json: &str, dt: f64, ticks: usize) -> Result<JsValue, JsError> {
     let model = parse_model(model_json)?;
@@ -63,6 +83,7 @@ pub fn run(model_json: &str, dt: f64, ticks: usize) -> Result<JsValue, JsError> 
         ))
     })?;
     let mut circuit = bert_compose::from_spec(&spec);
+    refuse_algebraic_cycle(&circuit)?;
     let recorded = bert_compose::RecordedRun::record(&mut circuit, &spec, dt, ticks);
     to_js(&RunResult {
         dt: recorded.dt,
@@ -846,6 +867,10 @@ mod tests {
                 scale: None,
                 states: None,
                 variable_kind: None,
+                cognitive_params: Default::default(),
+                initial_state: Default::default(),
+                agency_capacity: None,
+                env_kind: Default::default(),
             }
         }
         fn edge(id: u64, a: u64, b: u64) -> Relation {
@@ -858,6 +883,9 @@ mod tests {
                 kind: Kind::Unspecified,
                 klir_directed: false,
                 weight: None,
+                amount: None,
+                unit: String::new(),
+                substance: String::new(),
             }
         }
         CanvasModel {

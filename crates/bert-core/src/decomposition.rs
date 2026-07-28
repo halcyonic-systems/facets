@@ -466,6 +466,11 @@ pub fn derive_child(parent: &WorldModel, comp: &Id) -> Result<WorldModel, Vec<Va
             equivalence: String::new(),
             model: String::new(),
             is_same_as_id: None,
+            // A decomposition seam's direction IS derived — from whether the
+            // parent's flow was inbound or outbound — but it is derived from a
+            // real authored flow rather than guessed, so the gate should hold it
+            // to its direction (#216).
+            authored_direction: true,
         });
         of.insert(neighbor.clone(), id);
     };

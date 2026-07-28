@@ -245,8 +245,17 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
         .map(|s| s.boundary.porosity)
         .unwrap_or(0.0);
 
+    // Externals whose Source/Sink is a filing rather than the author's claim
+    // (#216). SL's `environment` word says "neither" — a mediator that both
+    // receives and gives — but a WorldModel keeps sources and sinks in separate
+    // arrays, so such a thing still has to be filed on one side. The direction
+    // gates below must not read that filing as a declaration.
+    let mut filed_only: HashSet<Id> = HashSet::new();
     for ext in &model.environment.sources {
         projected.insert(ext.info.id.clone());
+        if !ext.authored_direction {
+            filed_only.insert(ext.info.id.clone());
+        }
         spec.sources.push(OperationalTerminal {
             id: ext.info.id.clone(),
             name: ext.info.name.clone(),
@@ -254,6 +263,9 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
     }
     for ext in &model.environment.sinks {
         projected.insert(ext.info.id.clone());
+        if !ext.authored_direction {
+            filed_only.insert(ext.info.id.clone());
+        }
         spec.sinks.push(OperationalTerminal {
             id: ext.info.id.clone(),
             name: ext.info.name.clone(),
@@ -324,7 +336,7 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
         // a dangling interface id still errors there.)
         let interface_routing = (ix.source_interface.is_some() || ix.sink_interface.is_some())
             .then_some(InterfacePrimitive::Impeding);
-        if ix.source.ty == IdType::Sink {
+        if ix.source.ty == IdType::Sink && !filed_only.contains(&ix.source) {
             errors.push(OperationalError::new(
                 &loc,
                 format!(
@@ -336,7 +348,7 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
             ));
             flow_ok = false;
         }
-        if ix.sink.ty == IdType::Source {
+        if ix.sink.ty == IdType::Source && !filed_only.contains(&ix.sink) {
             errors.push(OperationalError::new(
                 &loc,
                 format!(
@@ -559,6 +571,13 @@ mod tests {
         root_sys.info.id = root.clone();
         root_sys.info.level = 0;
         root_sys.parent = env_id.clone();
+        // The converse gate (#216, A2): crossing flows route through a member
+        // of I, so the smallest well-formed Mobus model carries one interface.
+        let iface_id = id(IdType::Interface, &[0, 0]);
+        root_sys
+            .boundary
+            .interfaces
+            .push(iface(iface_id.clone(), InterfaceType::Hybrid));
         WorldModel {
             version: CURRENT_FILE_VERSION,
             model_id: None,
@@ -572,6 +591,7 @@ mod tests {
                     equivalence: String::new(),
                     model: String::new(),
                     is_same_as_id: None,
+                    authored_direction: true,
                 }],
                 sinks: vec![ExternalEntity {
                     info: info(snk.clone(), -1, "Drain"),
@@ -580,20 +600,30 @@ mod tests {
                     equivalence: String::new(),
                     model: String::new(),
                     is_same_as_id: None,
+                    authored_direction: true,
                 }],
             },
-            systems: vec![
-                root_sys,
-                system(
+            systems: vec![root_sys, {
+                let mut tank = system(
                     &[0, 0],
                     "Tank",
                     root,
                     Some(agent(ProcessPrimitive::Buffering)),
-                ),
-            ],
+                );
+                tank.boundary.parent_interface = Some(iface_id.clone());
+                tank
+            }],
             interactions: vec![
-                flow(0, "well → tank", src, buf.clone()),
-                flow(1, "tank → drain", buf, snk),
+                {
+                    let mut f = flow(0, "well → tank", src, buf.clone());
+                    f.sink_interface = Some(iface_id.clone());
+                    f
+                },
+                {
+                    let mut f = flow(1, "tank → drain", buf, snk);
+                    f.source_interface = Some(iface_id);
+                    f
+                },
             ],
             hidden_entities: vec![],
             reachability_requirements: vec![],
@@ -775,7 +805,24 @@ mod tests {
     /// Law: bert#108 — an interface-routed flow lowers to an Impeding work-process marker rather than being refused; an un-routed flow carries no marker.
     #[test]
     fn interface_routing_lowers_citing_108() {
-        let spec = validate_operational(&routed_mobus_model())
+        // The un-routed half of the law needs a flow that crosses nothing: a
+        // crossing flow may no longer ship un-routed (#216's converse gate
+        // refuses it), so the None witness is an INTERNAL bond — Tank ⇄ Pump,
+        // a cycle so neither component dead-ends.
+        let mut m = routed_mobus_model();
+        let root = id(IdType::System, &[0]);
+        let buf = id(IdType::Subsystem, &[0, 0]);
+        let pump = id(IdType::Subsystem, &[0, 1]);
+        m.systems.push(system(
+            &[0, 1],
+            "Pump",
+            root,
+            Some(agent(ProcessPrimitive::Impeding)),
+        ));
+        m.interactions.push(flow(2, "tank → pump", buf.clone(), pump.clone()));
+        m.interactions.push(flow(3, "pump → tank", pump, buf));
+
+        let spec = validate_operational(&m)
             .expect("bert#108: interface routing lowers, it no longer refuses");
         let routed = spec
             .flows
@@ -790,11 +837,11 @@ mod tests {
         let plain = spec
             .flows
             .iter()
-            .find(|f| f.name == "tank → drain")
+            .find(|f| f.name == "tank → pump")
             .unwrap();
         assert_eq!(
             plain.interface_routing, None,
-            "an un-routed flow carries no lowering"
+            "an un-routed internal flow carries no lowering"
         );
     }
 

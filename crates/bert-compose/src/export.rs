@@ -14,8 +14,8 @@
 use crate::circuit::{Circuit, DeclaredSubstance, FlowMode, Node, NodeKind, Wire};
 use bert_core::{
     AgentKind, AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType,
-    Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Parameter,
-    ProcessPrimitive, Substance, System, Transform2d, WorldModel,
+    Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Interface,
+    InterfaceType, Parameter, ProcessPrimitive, Substance, System, Transform2d, WorldModel,
 };
 use glam::vec2 as pos2;
 use std::collections::HashMap;
@@ -107,6 +107,8 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                     equivalence: String::new(),
                     model: String::new(),
                     is_same_as_id: None,
+                    // A compose circuit node's kind IS its direction (#216).
+                    authored_direction: true,
                 });
                 node_id.insert(i, eid);
             }
@@ -120,6 +122,8 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                     equivalence: String::new(),
                     model: String::new(),
                     is_same_as_id: None,
+                    // A compose circuit node's kind IS its direction (#216).
+                    authored_direction: true,
                 });
                 node_id.insert(i, eid);
             }
@@ -264,6 +268,72 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
             smart_parameters: Vec::new(),
             endpoint_offset: None,
         });
+    }
+
+    // Interfaces (#216, A2): every boundary-crossing wire routes through a
+    // member of I. Until this, the exporter wrote no interfaces at all, so its
+    // models carried crossing flows with a hole in the membrane the author
+    // never declared — refused by `check_crossing_flows_route_through_interface`
+    // once the kernel gained the converse gate. One interface per crossing
+    // component on the root membrane, the same shape the canvas projection
+    // builds: `receives_from` lists the sources feeding it, `exports_to` the
+    // sinks it feeds, the component attaches via `parent_interface`, and each
+    // interaction records its routing.
+    {
+        use std::collections::BTreeMap;
+        /// One crossing component's interface-in-the-making: what it receives,
+        /// what it exports, and the flow labels its protocol line reports.
+        #[derive(Default)]
+        struct Crossing {
+            receives_from: Vec<Id>,
+            exports_to: Vec<Id>,
+            labels: Vec<String>,
+        }
+        let mut per_comp: BTreeMap<usize, Crossing> = BTreeMap::new();
+        for (k, wire) in circuit.wires.iter().enumerate() {
+            let from_env = matches!(circuit.nodes[wire.from].kind, NodeKind::Source);
+            let to_env = matches!(circuit.nodes[wire.to].kind, NodeKind::Sink);
+            let label = interactions[k].info.name.clone();
+            if from_env && !to_env {
+                let e = per_comp.entry(wire.to).or_default();
+                e.receives_from.push(node_id[&wire.from].clone());
+                e.labels.push(label);
+            } else if to_env && !from_env {
+                let e = per_comp.entry(wire.from).or_default();
+                e.exports_to.push(node_id[&wire.to].clone());
+                e.labels.push(label);
+            }
+        }
+        let mut iface_of: BTreeMap<usize, Id> = BTreeMap::new();
+        for (seq, (node, x)) in per_comp.into_iter().enumerate() {
+            let iface_id = id(IdType::Interface, &[0, seq as i64]);
+            let ty = match (!x.receives_from.is_empty(), !x.exports_to.is_empty()) {
+                (true, false) => InterfaceType::Import,
+                (false, true) => InterfaceType::Export,
+                _ => InterfaceType::Hybrid,
+            };
+            systems[0].boundary.interfaces.push(Interface {
+                info: info(iface_id.clone(), 0, &circuit.nodes[node].name, ""),
+                protocol: x.labels.join(" · "),
+                ty,
+                exports_to: x.exports_to,
+                receives_from: x.receives_from,
+                angle: None,
+            });
+            if let Some(sys) = systems.iter_mut().find(|s| s.info.id == node_id[&node]) {
+                sys.boundary.parent_interface = Some(iface_id.clone());
+            }
+            iface_of.insert(node, iface_id);
+        }
+        for (k, wire) in circuit.wires.iter().enumerate() {
+            let from_env = matches!(circuit.nodes[wire.from].kind, NodeKind::Source);
+            let to_env = matches!(circuit.nodes[wire.to].kind, NodeKind::Sink);
+            if from_env && !to_env {
+                interactions[k].sink_interface = iface_of.get(&wire.to).cloned();
+            } else if to_env && !from_env {
+                interactions[k].source_interface = iface_of.get(&wire.from).cloned();
+            }
+        }
     }
 
     WorldModel {

@@ -313,12 +313,21 @@ just check      # the full gate suite — CI parity
 just desktop    # bundle the macOS .app (docs/running-permanently.md)
 ```
 
-`just check` runs exactly what CI enforces (`.github/workflows/ci.yml`), in this
-order: **`python3 scripts/doc_lint.py`**, `cargo test --workspace`, `cargo clippy
--D warnings`, the `wasm32-unknown-unknown` build, the wasm pkg build, then
-`check:tokens`, `tsc --noEmit`, `vitest`, and `vite build` in `web/`. The doc-lint
-step is why `python3` is a prerequisite — it is the gate's first step, not an
-optional extra.
+`just check` is the full local gate, in CI's order: **`python3 scripts/doc_lint.py`**
+(the reason `python3` is a prerequisite — it is the first step, not an optional
+extra), `cargo test --workspace`, `cargo clippy -D warnings`, the
+`wasm32-unknown-unknown` build, the wasm pkg build, then `check:tokens`,
+`tsc --noEmit`, `vitest`, `vite build`, and `just wasm-exec`.
+
+**A green run means more than "it compiled."** It also means no doc is
+unreachable, no relative link is broken, every doc declares exactly one status,
+no Lean citation has gone stale at the pinned commit, and the wasm boundary
+still does what the contract fixtures say. The full table is in
+[`CONTRIBUTING.md`](CONTRIBUTING.md#definition-of-done).
+
+**Two gates run in CI only** — the macOS bundle (`desktop.yml`) and licence +
+advisory checking (`deny.yml`) — because they need macOS and a network advisory
+database respectively.
 
 `just dev` and `just check` both run `npm ci` in `web/` when `node_modules` is
 absent, so neither needs a separate install step on a cold clone.

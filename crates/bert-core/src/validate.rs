@@ -156,7 +156,6 @@ pub fn validate(model: &WorldModel) -> ValidationResult {
     check_duplicate_edges(model, &mut issues);
 
     check_environment_id(model, &mut issues);
-    check_source_sink_type_consistency(model, &mut issues);
     check_version(model, &mut issues);
     check_level_consistency(model, &mut issues);
     check_processor_flows(model, &mut issues);
@@ -334,6 +333,7 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
             check_reachability_requirements(model, issues);
             check_stock_dimensions(model, issues);
             check_interfaces_carry_flow(model, issues);
+            check_crossing_flows_route_through_interface(model, issues);
             check_interface_declarations_match_flows(model, issues);
         }
         Mode::Full => {
@@ -343,6 +343,7 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
             check_reachability_requirements(model, issues);
             check_stock_dimensions(model, issues);
             check_interfaces_carry_flow(model, issues);
+            check_crossing_flows_route_through_interface(model, issues);
             check_interface_declarations_match_flows(model, issues);
             check_dynamical_face(model, issues);
         }
@@ -352,7 +353,21 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
 }
 
 /// Structural precondition: at least one bond between two distinct system components.
-/// Mirrors Lean `Kernel.HasBond`.
+///
+/// **Stronger than the Lean, deliberately — do not describe this as mirroring it.**
+/// `Kernel.HasBond` is `∃ p ∈ k.dep, p.1 ≠ p.2 ∧ Bonded p.1 p.2`, quantified over
+/// relata with no type restriction, because the kernel has no composition/environment
+/// split to restrict against. The `is_system_relatum` conjunct below adds one: it
+/// admits only `System | Subsystem` endpoints, so a bond to a `Source` or `Sink`
+/// does not count. That restriction is a canvas-layer notion with no Lean counterpart,
+/// and nothing proved licenses it.
+///
+/// It is load-bearing rather than cosmetic. Under the Lean, `assets/corpus/mobus/
+/// steel-plant.sl` satisfies `HasBond` and generates a Bunge CES view; under this
+/// function it is refused as an aggregate. Two corpus entries turn on the difference
+/// (also `klir/cellular-array-cell.sl`), and no fixture in `tests/common` ever places
+/// a `Source` or `Sink` at an interaction endpoint, so the extra conjunct is invisible
+/// to the Lean-to-Rust bridge that is supposed to police exactly this (#216).
 fn check_bond(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     let bonded = model.interactions.iter().any(|ix| {
         is_system_relatum(&ix.source) && is_system_relatum(&ix.sink) && ix.source != ix.sink
@@ -958,6 +973,70 @@ fn check_interface_references(
 /// The location is the interface's own path and carries no field suffix — see
 /// [`is_interface_flow_refusal`], which `bert_canvas` uses to keep this refusal
 /// out of the connection gesture (bert-lenses#213).
+/// The CONVERSE of [`check_interfaces_carry_flow`] (#216, A2): every
+/// boundary-crossing flow routes through a designated interface.
+///
+/// Until this check, Mobus's I was the one tuple element the instrument
+/// *inferred* rather than read: `lenses.rs` fabricated "effective I =
+/// flow-crossing ∪ authored", so a flow could enter the system anywhere and the
+/// membrane silently grew a port for it. If the claim is that this instrument
+/// **authors** the 8-tuple, I is where that claim was untrue.
+///
+/// Lean grounding, stated precisely: SSF's `MobusSystem` carries external flows
+/// as a bipartite graph between environment objects and interfaces, and
+/// `bipartite_implies_boundary_complete` (Systems/Mobus/Interface.lean) derives
+/// `BoundaryComplete` — the boundary mediates ALL external interaction — from
+/// that shape. In the Lean the property is structural (G cannot even be written
+/// with a non-interface endpoint); a `WorldModel` CAN say it, so the kernel
+/// must check what the Lean makes unwritable.
+///
+/// **Severity: Error (a refusal), Operational and Full only** — the same gating
+/// and the same reasoning as the forward check: Klir and Bunge carry no
+/// interface concept. An env→env flow has no system side and is not this
+/// check's subject (endpoint-direction checks own it).
+fn check_crossing_flows_route_through_interface(
+    model: &WorldModel,
+    issues: &mut Vec<ValidationIssue>,
+) {
+    let external = |id: &Id| matches!(id.ty, IdType::Source | IdType::Sink);
+    for (k, ix) in model.interactions.iter().enumerate() {
+        // A crossing flow has an external end AND a system end. Env→env flows
+        // (including a neutral mediator filed as Source, e.g. Sunlight→Grass)
+        // have no system side and are the direction checks' subject, not this
+        // one's; internal flows cross nothing.
+        let enters = external(&ix.source) && !external(&ix.sink);
+        let leaves = external(&ix.sink) && !external(&ix.source);
+        if !enters && !leaves {
+            continue;
+        }
+        let routed = if enters { &ix.sink_interface } else { &ix.source_interface };
+        if routed.is_some() {
+            continue;
+        }
+        let (verb, side) = if enters { ("enters", "sink") } else { ("leaves", "source") };
+        issues.push(
+            ValidationIssue::error(
+                format!("interactions[{k}].{side}_interface"),
+                format!(
+                    "flow '{}' {} the system but crosses the boundary without an \
+                     interface — in Mobus's tuple every external flow passes through \
+                     a member of I (SSF `bipartite_implies_boundary_complete`: G is \
+                     bipartite between environment objects and interfaces), so a \
+                     crossing flow with no interface is a hole in the membrane the \
+                     author never declared",
+                    ix.info.name, verb
+                ),
+                Some(
+                    "Designate the component this flow attaches to as an interface \
+                     (SL: add `interface` to its component line), or re-route the \
+                     flow through an existing one",
+                ),
+            )
+            .with_doc(doc::INTERFACE),
+        );
+    }
+}
+
 fn check_interfaces_carry_flow(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     let routed: HashSet<String> = model
         .interactions
@@ -1227,47 +1306,6 @@ fn check_environment_id(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
             format!("environment ID is '{env_id}', expected 'E-1'"),
             Some("The environment entity should always have ID 'E-1'"),
         ).with_doc(doc::WORLD_MODEL));
-    }
-}
-
-fn check_source_sink_type_consistency(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
-    let check = |sources: &[ExternalEntity],
-                 sinks: &[ExternalEntity],
-                 loc_prefix: &str,
-                 issues: &mut Vec<ValidationIssue>| {
-        for (i, src) in sources.iter().enumerate() {
-            if !matches!(src.ty, ExternalEntityType::Source) {
-                issues.push(ValidationIssue::warning(
-                    format!("{loc_prefix}.sources[{i}].type"),
-                    "entity in sources array has type 'Sink'".to_string(),
-                    Some("Entities in the sources array should have type 'Source'"),
-                ).with_doc(doc::ENVIRONMENT));
-            }
-        }
-        for (i, snk) in sinks.iter().enumerate() {
-            if !matches!(snk.ty, ExternalEntityType::Sink) {
-                issues.push(ValidationIssue::warning(
-                    format!("{loc_prefix}.sinks[{i}].type"),
-                    "entity in sinks array has type 'Source'".to_string(),
-                    Some("Entities in the sinks array should have type 'Sink'"),
-                ).with_doc(doc::ENVIRONMENT));
-            }
-        }
-    };
-
-    check(
-        &model.environment.sources,
-        &model.environment.sinks,
-        "environment",
-        issues,
-    );
-    for (i, system) in model.systems.iter().enumerate() {
-        check(
-            &system.sources,
-            &system.sinks,
-            &format!("systems[{i}]"),
-            issues,
-        );
     }
 }
 
@@ -1824,6 +1862,7 @@ mod tests {
             equivalence: String::new(),
             model: String::new(),
             is_same_as_id: None,
+            authored_direction: true,
         });
         let result = validate(&model);
         assert!(result.has_errors());
@@ -1852,6 +1891,7 @@ mod tests {
             equivalence: String::new(),
             model: String::new(),
             is_same_as_id: None,
+            authored_direction: true,
         });
         let result = validate(&model);
         assert!(result.has_errors());
@@ -1993,59 +2033,6 @@ mod tests {
             "got: {:#?}",
             result.issues
         );
-    }
-
-    /// Firing witness for `check_source_sink_type_consistency`, both arrays. The
-    /// canvas derives the array from the type in one step, so this too is a
-    /// hand-authored net.
-    #[test]
-    fn misfiled_external_entity_is_warning() {
-        let external = |ty: ExternalEntityType, idx: i64| ExternalEntity {
-            info: Info {
-                id: Id {
-                    ty: if matches!(ty, ExternalEntityType::Source) {
-                        IdType::Source
-                    } else {
-                        IdType::Sink
-                    },
-                    indices: vec![-1, idx],
-                },
-                level: -1,
-                name: "Misfiled".to_string(),
-                description: String::new(),
-            },
-            ty,
-            transform: None,
-            equivalence: String::new(),
-            model: String::new(),
-            is_same_as_id: None,
-        };
-
-        let mut model = minimal_model();
-        model
-            .environment
-            .sources
-            .push(external(ExternalEntityType::Sink, 0));
-        model
-            .environment
-            .sinks
-            .push(external(ExternalEntityType::Source, 1));
-        let result = validate(&model);
-        for (loc, msg) in [
-            ("environment.sources[0].type", "type 'Sink'"),
-            ("environment.sinks[0].type", "type 'Source'"),
-        ] {
-            assert!(
-                result
-                    .issues
-                    .iter()
-                    .any(|i| i.location == loc
-                        && i.severity == Severity::Warning
-                        && i.message.contains(msg)),
-                "{loc} must warn: {:#?}",
-                result.issues
-            );
-        }
     }
 
     #[test]
@@ -2257,6 +2244,7 @@ mod tests {
             equivalence: String::new(),
             model: String::new(),
             is_same_as_id: None,
+            authored_direction: true,
         });
         model.interactions.push(Interaction {
             info: Info {
@@ -2376,6 +2364,7 @@ mod tests {
             equivalence: String::new(),
             model: String::new(),
             is_same_as_id: None,
+            authored_direction: true,
         });
         model.interactions.push(Interaction {
             info: Info {
@@ -2736,6 +2725,7 @@ mod tests {
             equivalence: String::new(),
             model: String::new(),
             is_same_as_id: None,
+            authored_direction: true,
         };
         let snk = ExternalEntity {
             info: Info {
@@ -2752,6 +2742,7 @@ mod tests {
             equivalence: String::new(),
             model: String::new(),
             is_same_as_id: None,
+            authored_direction: true,
         };
         let src_id = src.info.id.clone();
         let snk_id = snk.info.id.clone();
@@ -3393,6 +3384,79 @@ mod tests {
         }
     }
 
+    /// Kernel-side firing witness for `check_crossing_flows_route_through_interface`
+    /// (#216, A2) — the CONVERSE of `check_interfaces_carry_flow`. A flow entering
+    /// from a source with no interface on its system side must refuse Operational;
+    /// routing it through an interface silences the refusal; Core and Structural
+    /// carry no interface concept and stay quiet.
+    #[test]
+    fn crossing_flow_without_interface_is_refused_at_operational() {
+        let mut model = minimal_model();
+        let src_id = Id { ty: IdType::Source, indices: vec![-1, 0] };
+        model.environment.sources.push(ExternalEntity {
+            info: Info { id: src_id.clone(), level: -1, name: "Feed".to_string(), description: String::new() },
+            ty: ExternalEntityType::Source,
+            transform: None,
+            equivalence: String::new(),
+            model: String::new(),
+            is_same_as_id: None,
+            authored_direction: true,
+        });
+        model.interactions.push(Interaction {
+            info: Info {
+                id: Id { ty: IdType::Flow, indices: vec![0] },
+                level: 0,
+                name: "unrouted".to_string(),
+                description: String::new(),
+            },
+            substance: Substance { sub_type: String::new(), ty: SubstanceType::Material },
+            ty: InteractionType::Flow,
+            usability: InteractionUsability::Resource,
+            source: src_id,
+            source_interface: None,
+            sink: model.systems[0].info.id.clone(),
+            sink_interface: None,
+            amount: Decimal::ONE,
+            unit: String::new(),
+            parameters: vec![],
+            smart_parameters: vec![],
+            endpoint_offset: None,
+        });
+
+        let hit = |r: &ValidationResult| {
+            r.issues
+                .iter()
+                .any(|i| i.message.contains("crosses the boundary without an interface"))
+        };
+        assert!(
+            hit(&validate_mode(&model, Mode::Operational)),
+            "Operational must refuse a crossing flow routed through no interface: {:#?}",
+            validate_mode(&model, Mode::Operational).issues
+        );
+        for quiet in [Mode::Core, Mode::Structural] {
+            assert!(
+                !hit(&validate_mode(&model, quiet)),
+                "{quiet:?} carries no interface concept"
+            );
+        }
+
+        // Routing the same flow through an interface silences exactly this refusal.
+        let iface_id = Id { ty: IdType::Interface, indices: vec![0, 0] };
+        model.systems[0].boundary.interfaces.push(Interface {
+            info: Info { id: iface_id.clone(), level: 1, name: "Inlet".to_string(), description: String::new() },
+            protocol: String::new(),
+            ty: InterfaceType::Import,
+            exports_to: vec![],
+            receives_from: vec![],
+            angle: None,
+        });
+        model.interactions[0].sink_interface = Some(iface_id);
+        assert!(
+            !hit(&validate_mode(&model, Mode::Operational)),
+            "a routed crossing flow must not refuse"
+        );
+    }
+
     /// Firing witness for `check_interface_declarations_match_flows` (#225), on
     /// the sharp case the issue names: an interface with a REAL crossing flow
     /// whose declared `exports_to` names a different sink than the flow goes to.
@@ -3412,6 +3476,7 @@ mod tests {
                 equivalence: String::new(),
                 model: String::new(),
                 is_same_as_id: None,
+                authored_direction: true,
             });
         }
         model.systems[0].boundary.interfaces.push(Interface {
@@ -3488,6 +3553,7 @@ mod tests {
             equivalence: String::new(),
             model: String::new(),
             is_same_as_id: None,
+            authored_direction: true,
         });
         model.systems[0].boundary.interfaces.push(Interface {
             info: Info {
@@ -3675,10 +3741,11 @@ mod tests {
             note: "project() always writes the environment as E-1",
         },
         CheckAudit {
-            check: "check_source_sink_type_consistency",
-            witness: Some("misfiled_external_entity_is_warning"),
-            canvas: false,
-            note: "the array and the type are set together from one branch",
+            check: "check_crossing_flows_route_through_interface",
+            witness: Some("crossing_flow_without_interface_is_refused_at_operational"),
+            canvas: true,
+            note: "fires on any canvas model whose crossing flow attaches to a \
+                   component the author never designated `interface` (#216, A2)",
         },
         CheckAudit {
             check: "check_version",

@@ -13,41 +13,43 @@
         "info": {
           "id": "Src-1.0",
           "level": -1,
-          "name": "Watershed",
-          "description": "bert-compose source"
+          "name": "Rain",
+          "description": ""
         },
         "type": "Source",
         "transform": {
           "translation": [
-            192.0,
-            192.0
+            479.99997,
+            -48.41632
           ],
           "rotation": 0.0
         },
         "equivalence": "",
         "model": "",
-        "is_same_as_id": null
+        "is_same_as_id": null,
+        "authored_direction": true
       }
     ],
     "sinks": [
       {
         "info": {
-          "id": "Snk-1.0",
+          "id": "Snk-1.1",
           "level": -1,
-          "name": "Release",
-          "description": "bert-compose sink"
+          "name": "City",
+          "description": ""
         },
         "type": "Sink",
         "transform": {
           "translation": [
-            432.00003,
-            192.0
+            479.99997,
+            688.4163
           ],
           "rotation": 0.0
         },
         "equivalence": "",
         "model": "",
-        "is_same_as_id": null
+        "is_same_as_id": null,
+        "authored_direction": true
       }
     ]
   },
@@ -56,18 +58,13 @@
       "info": {
         "id": "S0",
         "level": 0,
-        "name": "Reservoir",
-        "description": "Built in bert-compose: process primitives wired into a working circuit (composition is unconditional — Systems/Mobus/Composition.lean)."
+        "name": "Watershed",
+        "description": ""
       },
       "sources": [],
       "sinks": [],
       "parent": "E-1",
-      "complexity": {
-        "Complex": {
-          "adaptable": false,
-          "evolveable": false
-        }
-      },
+      "complexity": "Atomic",
       "boundary": {
         "info": {
           "id": "B0",
@@ -85,27 +82,34 @@
               "name": "Reservoir",
               "description": ""
             },
-            "protocol": "Watershed → Reservoir · Reservoir → Release",
-            "type": "Hybrid",
-            "exports_to": [
-              "Snk-1.0"
-            ],
+            "protocol": "rainfall",
+            "type": "Import",
+            "exports_to": [],
             "receives_from": [
               "Src-1.0"
             ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.1",
+              "level": 0,
+              "name": "Treatment",
+              "description": ""
+            },
+            "protocol": "municipal supply",
+            "type": "Export",
+            "exports_to": [
+              "Snk-1.1"
+            ],
+            "receives_from": [],
             "angle": null
           }
         ],
         "parent_interface": null
       },
-      "radius": 400.0,
-      "transform": {
-        "translation": [
-          0.0,
-          0.0
-        ],
-        "rotation": 0.0
-      },
+      "radius": 34.0,
+      "transform": null,
       "equivalence": "",
       "history": "",
       "transformation": "",
@@ -117,7 +121,7 @@
         "id": "C0.0",
         "level": 1,
         "name": "Reservoir",
-        "description": "Buffering work process (Mobus atomic primitive)"
+        "description": ""
       },
       "sources": [],
       "sinks": [],
@@ -135,11 +139,11 @@
         "interfaces": [],
         "parent_interface": "I0.0"
       },
-      "radius": 50.0,
+      "radius": 34.0,
       "transform": {
         "translation": [
-          312.0,
-          192.0
+          310.0,
+          320.0
         ],
         "rotation": 0.0
       },
@@ -148,25 +152,64 @@
       "transformation": "",
       "member_autonomy": 1.0,
       "time_constant": "",
+      "archetype": "Agent",
       "agent": {
         "kind": "Reactive",
         "agency_capacity": 0.5,
         "primitive": "Buffering",
-        "cognitive_params": {
-          "release_rate": 1.5
+        "stock_unit": "ML"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.1",
+        "level": 1,
+        "name": "Treatment",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.1",
+          "level": 1,
+          "name": "",
+          "description": ""
         },
-        "initial_state": {
-          "storage": 100.0
-        }
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.1"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          650.0,
+          320.00003
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Propelling"
       }
     }
   ],
   "interactions": [
     {
       "info": {
-        "id": "F-1.0",
-        "level": -1,
-        "name": "Watershed → Reservoir",
+        "id": "F0",
+        "level": 0,
+        "name": "rainfall",
         "description": ""
       },
       "substance": {
@@ -179,31 +222,53 @@
       "source_interface": null,
       "sink": "C0.0",
       "sink_interface": "I0.0",
-      "amount": "2",
-      "unit": "ML/mo",
+      "amount": "3",
+      "unit": "ML/day",
       "parameters": []
     },
     {
       "info": {
-        "id": "F-1.1",
-        "level": -1,
-        "name": "Reservoir → Release",
+        "id": "F1",
+        "level": 0,
+        "name": "controlled release",
         "description": ""
       },
       "substance": {
-        "sub_type": "water",
+        "sub_type": "",
         "type": "Material"
       },
       "type": "Flow",
-      "usability": "Product",
+      "usability": "Resource",
       "source": "C0.0",
-      "source_interface": "I0.0",
-      "sink": "Snk-1.0",
+      "source_interface": null,
+      "sink": "C0.1",
       "sink_interface": null,
       "amount": "1",
-      "unit": "ML/mo",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F2",
+        "level": 0,
+        "name": "municipal supply",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": "I0.1",
+      "sink": "Snk-1.1",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
       "parameters": []
     }
   ],
-  "hidden_entities": []
+  "hidden_entities": [],
+  "time_unit": "day"
 }

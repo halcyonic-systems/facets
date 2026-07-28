@@ -7,6 +7,7 @@
       "x": -9.7224,
       "y": 289.0316,
       "role": "Component",
+      "env_kind": "Neutral",
       "interface": false
     },
     {
@@ -15,6 +16,7 @@
       "x": 241.5155,
       "y": 377.67783,
       "role": "Component",
+      "env_kind": "Neutral",
       "interface": false
     },
     {
@@ -23,6 +25,7 @@
       "x": 593.0996,
       "y": 328.0423,
       "role": "Component",
+      "env_kind": "Neutral",
       "interface": false
     },
     {
@@ -31,6 +34,7 @@
       "x": 455.80127,
       "y": 601.50287,
       "role": "Component",
+      "env_kind": "Neutral",
       "interface": false
     },
     {
@@ -39,6 +43,7 @@
       "x": 877.45264,
       "y": 624.20074,
       "role": "Component",
+      "env_kind": "Neutral",
       "interface": false
     },
     {
@@ -47,6 +52,7 @@
       "x": 1295.0148,
       "y": 240.49193,
       "role": "Component",
+      "env_kind": "Neutral",
       "interface": false
     },
     {
@@ -55,6 +61,7 @@
       "x": 984.67834,
       "y": 28.785847,
       "role": "Component",
+      "env_kind": "Neutral",
       "interface": false
     },
     {
@@ -63,6 +70,7 @@
       "x": 646.2735,
       "y": 111.723495,
       "role": "Component",
+      "env_kind": "Neutral",
       "interface": false
     },
     {
@@ -71,6 +79,7 @@
       "x": 153.30983,
       "y": -45.440754,
       "role": "Component",
+      "env_kind": "Neutral",
       "interface": false
     },
     {
@@ -79,6 +88,7 @@
       "x": 693.1174,
       "y": 289.91678,
       "role": "Component",
+      "env_kind": "Neutral",
       "interface": false
     },
     {
@@ -87,6 +97,7 @@
       "x": 155.19478,
       "y": 668.7736,
       "role": "Component",
+      "env_kind": "Neutral",
       "interface": false
     },
     {
@@ -95,6 +106,7 @@
       "x": 652.65045,
       "y": 720.10187,
       "role": "Component",
+      "env_kind": "Neutral",
       "interface": false
     },
     {
@@ -103,6 +115,7 @@
       "x": 741.5191,
       "y": -483.98294,
       "role": "Component",
+      "env_kind": "Neutral",
       "interface": false
     },
     {
@@ -111,6 +124,7 @@
       "x": 657.6695,
       "y": -98.04804,
       "role": "Component",
+      "env_kind": "Neutral",
       "interface": false
     }
   ],
@@ -122,7 +136,8 @@
       "name": "referral",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false
+      "klir_directed": false,
+      "amount": "1"
     },
     {
       "id": 16,
@@ -131,7 +146,8 @@
       "name": "report out",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false
+      "klir_directed": false,
+      "amount": "1"
     },
     {
       "id": 17,
@@ -140,7 +156,8 @@
       "name": "discharge petition",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false
+      "klir_directed": false,
+      "amount": "1"
     },
     {
       "id": 18,
@@ -149,7 +166,8 @@
       "name": "scheduled",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false
+      "klir_directed": false,
+      "amount": "1"
     },
     {
       "id": 19,
@@ -158,7 +176,8 @@
       "name": "passage vote",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false
+      "klir_directed": false,
+      "amount": "1"
     },
     {
       "id": 20,
@@ -167,7 +186,8 @@
       "name": "cross-referral",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false
+      "klir_directed": false,
+      "amount": "1"
     },
     {
       "id": 21,
@@ -176,7 +196,8 @@
       "name": "if amended",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false
+      "klir_directed": false,
+      "amount": "1"
     },
     {
       "id": 22,
@@ -185,7 +206,8 @@
       "name": "enrolled",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false
+      "klir_directed": false,
+      "amount": "1"
     },
     {
       "id": 23,
@@ -194,7 +216,8 @@
       "name": "veto",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false
+      "klir_directed": false,
+      "amount": "1"
     },
     {
       "id": 24,
@@ -203,7 +226,8 @@
       "name": "signature",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false
+      "klir_directed": false,
+      "amount": "1"
     },
     {
       "id": 25,
@@ -212,7 +236,8 @@
       "name": "",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false
+      "klir_directed": false,
+      "amount": "1"
     },
     {
       "id": 26,
@@ -221,7 +246,8 @@
       "name": "no action",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false
+      "klir_directed": false,
+      "amount": "1"
     },
     {
       "id": 27,
@@ -230,7 +256,8 @@
       "name": "pocket",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false
+      "klir_directed": false,
+      "amount": "1"
     },
     {
       "id": 28,
@@ -239,7 +266,8 @@
       "name": "fail",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false
+      "klir_directed": false,
+      "amount": "1"
     },
     {
       "id": 29,
@@ -248,7 +276,8 @@
       "name": "scheduled (dup)",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false
+      "klir_directed": false,
+      "amount": "1"
     }
   ],
   "boundary": {

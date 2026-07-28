@@ -169,6 +169,11 @@ export interface RunResultRich {
 
 export type Lens = "Klir" | "Bunge" | "Mobus";
 export type CanvasRole = "Component" | "Environment";
+/** The author's own word for an environment thing (#216): `source` and `sink`
+ *  are directional claims the kernel gates on; `environment` (Neutral) says
+ *  neither, and flows may run both ways. serde default Neutral — absent in old
+ *  JSON reads as no claim, never a false one. */
+export type EnvKind = "Source" | "Sink" | "Neutral";
 export type Kind = "Unspecified" | "Energy" | "Matter" | "Field" | "Informational";
 
 export type ProcessPrimitive =
@@ -205,6 +210,9 @@ export interface Thing {
   x: number;
   y: number;
   role: CanvasRole;
+  /** What the author declared an environment thing to be (#216). Meaningless on
+   *  a component. Rust always serializes it; absent (old JSON) reads Neutral. */
+  env_kind?: EnvKind;
   primitive?: ProcessPrimitive;
   /** Authored interface designation (I ⊆ C). Must carry a boundary-crossing flow —
    *  flowless is refused at Operational (`interfaces_carry_flow`, SSF #31). */
@@ -224,6 +232,15 @@ export interface Thing {
   /** Klir's basic-vs-supporting standing (#154) — authored, not derived from R.
    *  Absent reads as Basic; serde skip-if-None keeps old models byte-identical. */
   variable_kind?: KlirVarKind;
+  /** AgentModel.cognitive_params, carried OPAQUELY through the canvas (#216).
+   *  The UI neither edits nor interprets these — an untyped bag until #112
+   *  chooses the transition functor; dropping it is what broke round trips. */
+  cognitive_params?: Record<string, number>;
+  /** AgentModel.initial_state — same opaque carriage, same #112 boundary. */
+  initial_state?: Record<string, unknown>;
+  /** AgentModel.agency_capacity — the process's engine parameter (a Modulating
+   *  valve's factor). Absent = unauthored; projection supplies the 0.5 default. */
+  agency_capacity?: number;
 }
 
 export interface Relation {
@@ -237,6 +254,14 @@ export interface Relation {
   klir_directed?: boolean;
   /** Per-transition DTMC count (#67); absent reads as the uniform default 1. */
   weight?: number;
+  /** The flow's magnitude (#216, C1) — Interaction.amount, serialized as a
+   *  decimal STRING ("1.5"). Absent = unauthored, a different statement from
+   *  "declared 1"; only projection conflates them. */
+  amount?: string;
+  /** The magnitude's unit (#216, C1). Absent = undeclared. */
+  unit?: string;
+  /** What flows, named apart from the flow's label (#216, C4). */
+  substance?: string;
 }
 
 /** Authored B properties for the root membrane — P = ⟨porosity, fuzziness⟩.
@@ -383,6 +408,8 @@ export type LensDescription =
       relations: number;
       directed: number;
       neutral: number;
+      /** R itself (#216): "x → y" when @directed, "x — y" (canonical order) when not. */
+      dependencies: string[];
       note: string;
       /** Where this model stands on the ladder — the register's opt-in
        *  complement (#100 harvest), collapsed until asked for. */
@@ -395,6 +422,10 @@ export type LensDescription =
       environment: string[];
       endostructure: number;
       exostructure: number;
+      /** The structure as a SET (#216): "a ▷ b" where direction is asserted,
+       *  "a — b" (canonical name order) where it is not. */
+      endo_bonds: string[];
+      exo_bonds: string[];
       bondage: number;
       mere_relations: number;
       boundary_components: string[];

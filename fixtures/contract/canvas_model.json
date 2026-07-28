@@ -8,6 +8,7 @@
       "x": 120.0,
       "y": 40.0,
       "role": "Component",
+      "env_kind": "Neutral",
       "interface": false,
       "child_model": {
         "name": "pump-interior",
@@ -20,6 +21,7 @@
       "x": 240.0,
       "y": 40.0,
       "role": "Component",
+      "env_kind": "Neutral",
       "interface": true
     },
     {
@@ -28,6 +30,7 @@
       "x": 360.0,
       "y": 40.0,
       "role": "Environment",
+      "env_kind": "Neutral",
       "interface": false
     }
   ],

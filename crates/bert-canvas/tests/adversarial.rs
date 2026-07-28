@@ -32,6 +32,10 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
         scale: None,
         states: None,
         variable_kind: None,
+        cognitive_params: Default::default(),
+        initial_state: Default::default(),
+        agency_capacity: None,
+        env_kind: Default::default(),
     }
 }
 
@@ -45,6 +49,9 @@ fn rel(id: u64, a: u64, b: u64) -> Relation {
         kind: Kind::Unspecified,
         klir_directed: false,
         weight: None,
+        amount: None,
+        unit: String::new(),
+        substance: String::new(),
     }
 }
 
