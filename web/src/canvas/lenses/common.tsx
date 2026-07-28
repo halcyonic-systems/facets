@@ -3,12 +3,13 @@
 // verdict drives which visual and hand the resolved styling + accents here.
 // `NodeBody` draws the shared node chrome; `EdgeScaffold` draws the shared edge
 // plumbing (hit-path, selection, segments, drive dot, sim readout).
-import type { ProcessPrimitive } from "../../kernel/types";
+import type { CanvasRole, EnvKind, ProcessPrimitive } from "../../kernel/types";
 import { primitiveGlyph } from "./primitive-glyphs";
 import { humanize } from "../../ui";
 import { NODE_R, type Pt } from "../geometry";
 import { STYLE } from "../style";
 import type { ReactNode, PointerEvent as ReactPointerEvent } from "react";
+import { useState } from "react";
 
 /** Resolved per-lens stroke styling for a visible edge path. */
 export interface EdgeStyle {
@@ -20,7 +21,9 @@ export interface EdgeStyle {
 }
 
 interface NodeBodyProps {
-  thing: { id: number; x: number; y: number; name: string };
+  /** role/env_kind feed the run-time role grammar (source = emitter, never a
+   *  fill); optional so glyph-only callers stay valid. */
+  thing: { id: number; x: number; y: number; name: string; role?: CanvasRole; env_kind?: EnvKind };
   hovered: boolean;
   sim?: { value: number; unit: string; frac: number };
   onPointerDown: (e: ReactPointerEvent) => void;
@@ -108,6 +111,13 @@ export function NodeBody({
 }: NodeBodyProps) {
   const frac = sim ? Math.max(0, Math.min(1, sim.frac)) : null;
   const clipId = `fill-clip-${thing.id}`;
+  const [selfHover, setSelfHover] = useState(false);
+  // Run-time role grammar (walkthrough #8): a SOURCE emits, it never fills.
+  // The per-node min-max normalization renders a constant emitter as a
+  // half-full box and a forced one as a filling stock — both lies. Sources
+  // get an outward pulse instead; sinks and stocks keep the fill, which for
+  // them is the truth (accumulation / level).
+  const emitter = thing.role === "Environment" && thing.env_kind === "Source";
   // Vertical extents of the body shape — the sim fill's clip rises bottom-up
   // between them, so the triangle drains/fills over ITS height, not the circle's.
   const [shapeTop, shapeBot] = regulatorTriangle ? [-TRI_R, TRI_BOT] : [-NODE_R, NODE_R];
@@ -117,12 +127,30 @@ export function NodeBody({
     <g
       transform={`translate(${thing.x}, ${thing.y})`}
       onPointerDown={onPointerDown}
+      onMouseEnter={() => setSelfHover(true)}
+      onMouseLeave={() => setSelfHover(false)}
       className="cursor-grab"
       opacity={pending ? 0.5 : 1}
     >
       {pending && <title>not yet in ℰ — no bond touches this thing (Bunge Def 1.2 ii); connect a flow to admit it</title>}
       {!pending && envHint && (
         <title>Environment role — membership is set by role, not position. Change it in the node editor.</title>
+      )}
+      {/* Invisible padded hit disc — the grab/click target extends past the
+          drawn glyph (walkthrough #14: bodies were exactly their ink, small at
+          fitted zoom). First child so every visible layer draws over it. */}
+      <circle data-export-ignore r={NODE_R + 10} fill="transparent" />
+      {/* Plain-hover halo — clickable-affordance feedback, softer than the
+          connect-drag target halo (`hovered`) so the two meanings stay apart. */}
+      {selfHover && !hovered && (
+        <circle
+          data-export-ignore
+          r={NODE_R + STYLE.hoverHalo.pad}
+          fill="none"
+          stroke="var(--lens-accent)"
+          strokeWidth={STYLE.hoverHalo.width}
+          strokeOpacity={0.35}
+        />
       )}
       {showHalo && (
         <circle r={NODE_R + STYLE.compHalo.pad} fill="var(--lens-accent-soft)" opacity={STYLE.compHalo.opacity} />
@@ -175,8 +203,33 @@ export function NodeBody({
         </g>
       )}
 
+      {/* An emitting source radiates — two staggered rings, the run-time face
+          of "this node produces flow; it holds nothing". */}
+      {emitter && frac !== null && !simPosition && (
+        <g data-export-ignore pointerEvents="none">
+          {[0, 1].map((i) => (
+            <circle key={i} r={NODE_R} fill="none" stroke="var(--accent)" strokeWidth={1.5}>
+              <animate
+                attributeName="r"
+                values={`${NODE_R};${NODE_R + 16}`}
+                dur="2.4s"
+                begin={`${i * 1.2}s`}
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="stroke-opacity"
+                values="0.55;0"
+                dur="2.4s"
+                begin={`${i * 1.2}s`}
+                repeatCount="indefinite"
+              />
+            </circle>
+          ))}
+        </g>
+      )}
+
       {/* the sim payoff: a stock's disc fills/drains as the scrubber indexes ticks */}
-      {!simPosition && frac !== null && (
+      {!simPosition && frac !== null && !emitter && (
         <>
           <clipPath id={clipId}>
             <rect x={-TRI_HALF_W} y={shapeBot - shapeH * frac} width={TRI_HALF_W * 2} height={shapeH * frac} />
@@ -212,7 +265,7 @@ export function NodeBody({
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
           strokeLinejoin="round"
-          fillOpacity={frac !== null && !simPosition ? 0 : 1}
+          fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
         >
           <title>decision ⁄ regulator — a modulating work process (Mobus Fig 4.17)</title>
         </path>
@@ -227,7 +280,7 @@ export function NodeBody({
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
-          fillOpacity={frac !== null && !simPosition ? 0 : 1}
+          fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
         />
       ) : (
         <circle
@@ -236,7 +289,7 @@ export function NodeBody({
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
-          fillOpacity={frac !== null && !simPosition ? 0 : 1}
+          fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
         />
       )}
 
@@ -363,16 +416,24 @@ export function EdgeScaffold({
   label,
   title,
 }: EdgeScaffoldProps) {
+  const [hover, setHover] = useState(false);
   return (
     <g>
-      {/* invisible wide hit-path — the click target for "drive this flow" */}
+      {/* Invisible wide hit-path — the click target for "drive this flow".
+          non-scaling-stroke keeps the target 18 SCREEN px at any zoom: a fitted
+          big model halves the world scale, and a world-space target halves with
+          it, which is how flows got "hard to click" (walkthrough #14). Hit
+          testing follows the rendered stroke, so the effect applies to clicks. */}
       <path
         data-export-ignore
         d={d}
         fill="none"
         stroke="transparent"
-        strokeWidth={16}
+        strokeWidth={18}
+        vectorEffect="non-scaling-stroke"
         style={{ cursor: onSelect ? "pointer" : "default" }}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
         onClick={(e) => {
           e.stopPropagation();
           onSelect?.(relationId);
@@ -380,6 +441,20 @@ export function EdgeScaffold({
       >
         {title && <title>{title}</title>}
       </path>
+      {/* Hover feedback — the affordance that tells the reader this is
+          clickable BEFORE they commit; softer than selection so the two states
+          stay distinct. */}
+      {hover && !selected && onSelect && (
+        <path
+          data-export-ignore
+          d={d}
+          fill="none"
+          stroke="var(--lens-accent)"
+          strokeWidth={STYLE.selection.width}
+          strokeOpacity={STYLE.selection.opacity * 0.45}
+          pointerEvents="none"
+        />
+      )}
       {selected && (
         <path
           data-export-ignore
