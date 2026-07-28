@@ -10,11 +10,14 @@ import type {
   IssueTarget,
   Lens,
   LensDescription,
+  Manifest,
+  Relation,
   RunResultRich,
   SystemType,
   Thing,
   ValidationResult,
 } from "./kernel/types";
+import { RunInputs } from "./RunInputs";
 import { NodeEditorRows, type DecomposeAffordance } from "./canvas/NodeEditor";
 import { ElementMechanism } from "./ElementMechanism";
 import { RunPanel } from "./RunPanel";
@@ -41,6 +44,8 @@ export interface ElementSelection {
 export function InspectorDock({
   result,
   ranEdited,
+  runManifest,
+  onInputEdit,
   runError,
   desc,
   verdict,
@@ -64,6 +69,11 @@ export function InspectorDock({
   /** ADR run-seam-canvas-document: whether the last run executed the edited
    *  canvas's projection rather than the shipped calibration artifact. */
   ranEdited?: boolean;
+  /** The active demo's manifest (null = no runnable bundle) — the inputs card
+   *  reads it to mark data-driven flows as such. */
+  runManifest?: Manifest | null;
+  /** Walkthrough #11: an inputs-card edit — update the relation and re-run. */
+  onInputEdit?: (next: Relation) => void;
   runError: string | null;
   desc: LensDescription | null;
   verdict: ValidationResult | null;
@@ -231,6 +241,9 @@ export function InspectorDock({
                 lens={canvasModel?.lens ?? "Klir"}
                 onAcceptUnit={onAcceptUnit}
                 tick={tick}
+                model={canvasModel}
+                manifest={runManifest ?? null}
+                onInputEdit={onInputEdit}
               />
             )}
             {tab === "formal" && <FormalTab desc={desc} analysisError={analysisError} />}
@@ -316,6 +329,9 @@ function RunTab({
   lens,
   onAcceptUnit,
   tick,
+  model,
+  manifest,
+  onInputEdit,
 }: {
   result: RunResultRich | null;
   ranEdited?: boolean;
@@ -323,18 +339,35 @@ function RunTab({
   lens: CanvasModel["lens"];
   onAcceptUnit?: (name: string, unit: string) => void;
   tick?: number;
+  model?: CanvasModel | null;
+  manifest?: Manifest | null;
+  onInputEdit?: (next: Relation) => void;
 }) {
+  // The inputs card renders above WHATEVER the run state is — including a
+  // refusal, since fix-the-number-and-rerun is exactly the loop it exists for.
+  const inputs =
+    model && manifest && onInputEdit ? (
+      <RunInputs model={model} manifest={manifest} onEdit={onInputEdit} />
+    ) : null;
   if (runError) {
     return (
-      <Card title="Result" source="bert-compose · wasm">
-        <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
-          {runError}
-        </p>
-      </Card>
+      <div className="grid gap-5">
+        {inputs}
+        <Card title="Result" source="bert-compose · wasm">
+          <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
+            {runError}
+          </p>
+        </Card>
+      </div>
     );
   }
   if (result)
-    return <RunPanel result={result} ranEdited={ranEdited} lens={lens} onAcceptUnit={onAcceptUnit} tick={tick} />;
+    return (
+      <div className="grid gap-5">
+        {inputs}
+        <RunPanel result={result} ranEdited={ranEdited} lens={lens} onAcceptUnit={onAcceptUnit} tick={tick} />
+      </div>
+    );
   return (
     <Placeholder>
       Run a demo bundle (model + CSV + mapping) to see the forced simulation here.
