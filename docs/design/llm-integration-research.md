@@ -129,6 +129,29 @@ Every surveyed category independently converged on bert-lenses' shape — *LLM p
 3. **The proposer layer is provider-agnostic almost for free** — because the checker lives *outside* any model boundary, the LLM (local vs frontier) swaps without touching the trust line. LiteLLM (which hal already runs at :4000) is the reference pattern; GSR already centralizes routing.
 4. **Closest large-scale validation of the thesis is Palantir's Ontology** ("tether the model to an explicit governed world model, not more training data") — proprietary/enterprise/closed, which is exactly the openness contrast `bert-world-models-positioning.md` is set up to make. Note: "world model" in the systems-science/Mobus sense appears closer to our own coinage than an established external category — don't over-claim external validation of the phrase.
 
+5. **The movement now has a name in the wider field, and its own advocates concede the gap this repo addresses.** Gary Marcus (CACM, 2026-04-13) reads Claude Code's leaked kernel — a 3,167-line `print.ts` that is "a big IF-THEN conditional, 486 branch points, 12 levels of nesting, inside a deterministic, symbolic loop" — and concludes *"Claude Code isn't better because of scaling. It's better because it is **neurosymbolic**."* Same reading for AlphaFold, AlphaProof, AlphaGeometry, Code Interpreter. That is §2's invariant arriving from AI research rather than from systems science.
+
+   **Take the footnote, not the headline.** Marcus concedes: *"the symbolic code part is a mess; we also need major advances in software engineering."* The neurosymbolic conversation is loud about *whether* to add a symbolic layer and nearly silent on **what makes one trustworthy** — which is the only question this repo has ever been answering. What it can put against that complaint, each checkable rather than asserted: the proposer's output is text a deterministic compiler reads, never a model the LLM constructs; a generated diagnostic **cannot enter the verdict channel** (enforced by a provenance brand on `ValidationIssue`, with the violation checked in at `web/src/kernel/mergeLlmIntoVerdict.violation.ts` and a test that fails if it compiles); refusals cite a named precondition; and those preconditions resolve to Lean declarations at a pinned commit, gated in CI.
+
+   **Positioning discipline:** the term is 25 years old and became fashionable this month. Position on the *problem* — trustworthy symbolic layers — never on the term, which will cycle. And note the tool does no AI: the LLM path is an optional convenience at the input, and everything works with it switched off, which is the shipped default.
+
+### 8a. The harder framing — Pattee via Joslyn, and the half this does not do
+
+Cliff Joslyn (2026-07-26, *"From Semantic to Neurosymbolic Closure: Pattee's Semiotics at the Singularity"*) asks a different question than Marcus, and a more demanding one:
+
+> Can we seek a **"neurosymbolic closure"** where artificial systems can construct *and interpret* their own symbols, including their interpretants?
+
+His frame: semiotics is not merely the symbol/matter distinction — joining syntax and semantics **with pragmatics** yields *"the requirement for an interpreter to pragmatically construct the meanings of symbol systems in terms of the consequences of those interpretants … towards itself as a physically embodied system."*
+
+**bert-lenses meets half of that, and the split is worth stating plainly rather than blurring:**
+
+- **Syntax and semantics — yes.** A formal symbol system with meaning-preserving projections into three traditions, each entered through a machine-checked precondition, with per-word lineage cited in the concordance.
+- **Pragmatics — no, by construction.** A human authors the symbols; the kernel checks them. The interpretant is human. The kernel is not embodied, holds no stake, and its verdicts are *toward* nothing in Peirce's sense.
+
+This is a scope statement, not a defect. The design deliberately keeps the interpretant human — §2's invariant and §3's "fallible proposer over a sound checker" are the same commitment read from the other side. A system that constructed *and* interpreted its own symbols would have no place to put the human-checks-meaning gate the co-author loop is built around.
+
+**The open question worth carrying, unresolved here:** a refusal *is* a consequence-bearing interpretation — the kernel interprets a model against a tradition's precondition and the consequence is admission or refusal. Whether that is a degenerate interpretant or not one at all turns on whether "toward itself" can be satisfied by anything short of embodiment. Recorded as a question, not a claim.
+
 ## 9. Risks to design against
 
 - **Automation bias scales *with* fluency, not against it.** Once a user sees several correct suggestions, scrutiny drops — and the effect is often *stronger in experts*. The verification problem shifts rather than disappears: a user modeling an unfamiliar domain is exactly the person least able to catch a plausible-but-wrong proposal. **Mitigation:** surface the validator's verdict as first-class UI signal; never silently auto-resolve; constrain generation up front rather than relying on post-hoc review; keep provenance so a rejected/edited proposal is auditable.
