@@ -115,6 +115,22 @@ MUTATIONS = [
         ["-p", "bert-canvas", "--test", "environment_kind"],
         "emit_sl guessing the environment word from flow direction (#216 Wave 3 — `sink Drain` → `source Drain`)",
     ),
+    (
+        "process-weights-dropped",
+        [("crates/bert-compose/src/export.rs",
+          "            // stay the uniform split, byte-for-byte.\n            wire.rate = Some(f.amount as f32);",
+          "            // stay the uniform split, byte-for-byte.\n            let _ = f.amount;")],
+        ["-p", "bert-canvas", "--test", "llm_market", "serving_shares_track_declared_weights"],
+        "from_spec dropping process-outflow amounts — declared Splitting shares silently run uniform (llm-market)",
+    ),
+    (
+        "signal-rate-ignored",
+        [("crates/bert-compose/src/circuit.rs",
+          "            if matches!(sender.kind, NodeKind::Source) {\n                if let Some(r) = self.wire_declared_rate(k) {\n                    return self.crossing_factor(w.from) * r;\n                }\n            }\n            return sender_activity;",
+          "            return sender_activity;")],
+        ["-p", "bert-canvas", "--test", "llm_market", "serving_shares_track_declared_weights"],
+        "a multi-outflow Message source signaling at the default rate — its declared emission ignored (llm-market)",
+    ),
 ]
 
 
