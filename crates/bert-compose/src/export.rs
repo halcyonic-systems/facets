@@ -498,6 +498,18 @@ pub fn from_spec(spec: &bert_core::operational::OperationalSpec) -> Circuit {
                 }
                 FlowMode::Gradient => c.nodes[from].param = f.amount as f32,
             }
+        } else if matches!(c.nodes[from].kind, NodeKind::Process(_))
+            && wire.mode == FlowMode::Pushed
+        {
+            // A process outflow's amount is its allocation WEIGHT — the scalar
+            // form of the series above, read by `delivery_share`'s weighted
+            // split (rung 2; Mobus Eq. 4.5). Until now only the series rode
+            // the wire and the scalar was dropped here, so a Splitting's
+            // declared shares ran uniform — the documented-but-unhonored gap
+            // the llm-market gate caught. The kernel's narrowing makes an
+            // unauthored amount 1.0 (canvas.rs), so all-unauthored fanouts
+            // stay the uniform split, byte-for-byte.
+            wire.rate = Some(f.amount as f32);
         }
         c.wires.push(wire);
     }

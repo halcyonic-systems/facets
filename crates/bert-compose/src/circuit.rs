@@ -706,6 +706,16 @@ impl Circuit {
         // which is also why Copying relabeled to a physical substance
         // splits rather than duplicating.
         if self.wire_substance(w) == SubstanceType::Message {
+            // A signal source with SEVERAL outflows carries each declared
+            // rate on its wire (bert#111, same as physical), but replication
+            // means each receiver gets its wire's full declared emission —
+            // nothing divides. Without a declared rate (or from a process,
+            // whose signal is computed), replication of the activity stands.
+            if matches!(sender.kind, NodeKind::Source) {
+                if let Some(r) = self.wire_declared_rate(k) {
+                    return self.crossing_factor(w.from) * r;
+                }
+            }
             return sender_activity;
         }
         if matches!(sender.kind, NodeKind::Source) {
