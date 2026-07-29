@@ -37,7 +37,7 @@
      tint strength. Character-matched: Klir = cold steel (data, the mask),
      Bunge = violet (ontology, mechanism), Mobus = green (living systems). */
   --world-klir: #5a6c85;
-  --world-bunge: #6f5fa8;
+  --world-bunge: #8a6a4d; /* bronze — materialism over mysticism (chosen over violet #6f5fa8, 7/29) */
   --world-mobus: #4e7d5b;
   --verdict-error: #c2352c;
   --verdict-warning: #8a5c08;
@@ -103,7 +103,7 @@
     --accent-indigo: #8b93cf;
     --accent-slate: #8ea1ad;
     --world-klir: #8fa2c0;
-    --world-bunge: #a89bd9;
+    --world-bunge: #c2a284; /* bronze (dark) */
     --world-mobus: #83b191;
     --verdict-error: #ef7a72;
     --verdict-warning: #dba448;
