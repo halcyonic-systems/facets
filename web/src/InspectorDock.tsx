@@ -18,6 +18,7 @@ import type {
   ValidationResult,
 } from "./kernel/types";
 import { RunInputs } from "./RunInputs";
+import { ModelAbout } from "./ModelAbout";
 import { NodeEditorRows, type DecomposeAffordance } from "./canvas/NodeEditor";
 import { ElementMechanism } from "./ElementMechanism";
 import { RunPanel } from "./RunPanel";
@@ -47,6 +48,7 @@ export function InspectorDock({
   runManifest,
   onInputEdit,
   onResetInputs,
+  blurb,
   runError,
   desc,
   verdict,
@@ -77,6 +79,8 @@ export function InspectorDock({
   onInputEdit?: (next: Relation) => void;
   /** Restore the model's declared amounts (derived from the demo's .sl). */
   onResetInputs?: () => void;
+  /** The demo bundle's description, shown on the model-level about (#15). */
+  blurb?: string;
   runError: string | null;
   desc: LensDescription | null;
   verdict: ValidationResult | null;
@@ -235,6 +239,11 @@ export function InspectorDock({
                     <ElementMechanism thing={element.thing} model={canvasModel} result={result} tick={tick ?? 0} />
                   )}
                 </>
+              ) : canvasModel ? (
+                /* The home slot (walkthrough #15): with nothing selected, the
+                   MODEL is the element — name, kind, domain, blurb,
+                   composition, and data provenance, all derived. */
+                <ModelAbout model={canvasModel} manifest={runManifest ?? null} blurb={blurb} />
               ) : (
                 <Placeholder>Click a component or environment thing to edit it here.</Placeholder>
               ))}

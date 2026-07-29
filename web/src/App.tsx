@@ -2062,6 +2062,7 @@ function Workspace() {
               runManifest={demo ? manifest : null}
               onInputEdit={applyInputEdit}
               onResetInputs={demo?.sl ? resetInputs : undefined}
+              blurb={demo?.blurb}
               runError={runError}
               desc={desc}
               verdict={verdict}
