@@ -1052,6 +1052,22 @@ function Workspace() {
     }
   }
 
+  // A run-deck time commit (Δt/T relocation): store the new values and, when
+  // a run is already on screen, re-run over the new slice immediately — the
+  // same edit-and-the-world-re-runs grammar as the inputs card. Values arrive
+  // as arguments so the re-run can never race the state update.
+  function applyTime(nextDt: number, nextT: number) {
+    setDt(nextDt);
+    setT(nextT);
+    if (result === null || !canvasModel) return;
+    if (canvasModel.lens === "Klir") {
+      if (canvasModel.things.length > 0) runKlir(canvasModel, nextT);
+    } else if (demo) {
+      const m = modelForRun();
+      if (m) runWith(m.json, demo.csv!, manifest, nextDt, nextT, m.edited);
+    }
+  }
+
   // Reset the inputs to the model's declared amounts. The baseline is not
   // stored state — it is DERIVED by recompiling the demo's `.sl` (the author's
   // document), so it can never go stale or leak across documents. Relation ids
@@ -1572,9 +1588,9 @@ function Workspace() {
             >
               SL
             </button>
+            {/* Δt/T moved into the run deck (walkthrough queue): the run's time
+                controls live with the run — RUN tab, above Inputs. */}
             <div className="ml-auto flex flex-wrap items-center gap-3">
-              <NumField label="Δt" value={dt} onChange={setDt} />
-              <NumField label="T" value={t} onChange={setT} />
               {(() => {
                 // #67 J9: under Klir the Run action is a Markov run — the model
                 // is a state machine, run straight from the canvas (no demo
@@ -2072,6 +2088,7 @@ function Workspace() {
               onInputEdit={applyInputEdit}
               onResetInputs={demo?.sl ? resetInputs : undefined}
               blurb={demo?.blurb}
+              time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}
               runError={runError}
               desc={desc}
               verdict={verdict}
@@ -2589,27 +2606,3 @@ function SaveDialog({
   );
 }
 
-function NumField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <label className="flex items-center gap-1.5 text-sm" style={{ color: "var(--text-secondary)" }}>
-      {label}
-      <input
-        type="number"
-        value={value}
-        min={0}
-        step="any"
-        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-        className="w-20 rounded-md px-2 py-1 text-sm tabular"
-        style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
-      />
-    </label>
-  );
-}
