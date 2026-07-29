@@ -31,9 +31,9 @@ SL compiles to `CanvasModel` (`crates/bert-canvas/src/canvas.rs:165`), the editi
 | Field | Layer | SL realization |
 |---|---|---|
 | `things` — id, name, `role` (Component/Environment), optional `primitive`, `interface` flag, optional `child_model` decomposition reference, optional `stock_unit` declared unit | model | `component` / `source` / `sink` / `environment` lines (§4.3) |
-| `time_unit` — the model's time-unit symbol | model | `time unit` line (§4.6) |
+| `time_unit` — the model's time-unit symbol | model | `time unit` line (§4.7) |
 | `relations` — a, b, name, `is_bond`, `kind` | model | `flow` lines (§4.4) |
-| `boundary` — porosity, perceptive_fuzziness | model | `boundary` line (§4.5) |
+| `boundary` — porosity, perceptive_fuzziness | model | `boundary` line (§4.6) |
 | `system_type` — kingdom, genus, domain | model | `system` / `domain` lines (§4.1–4.2) |
 | `things[].x, y` (pixel positions) | view | `@pos` annotations, else auto-layout (§6.1) |
 | `lens` (active reading) | view | `@lens` annotation, else caller-preserved (§6.2) |
@@ -90,7 +90,7 @@ SL is line-oriented. A file is a sequence of lines, each independently one of: b
 model       = { line } ;
 line        = blank | comment | structure | annotation ;
 
-structure   = system | domain | timeunit | thing | flow | boundary ;
+structure   = system | domain | timeunit | thing | flow | param | boundary ;
 system      = "system" [ string ] [ ":" kingdom [ "/" genus ] ] ;
 domain      = "domain" string ;
 timeunit    = "time" "unit" name ;                     (* the Δt symbol, #94 *)
@@ -103,6 +103,9 @@ flow        = "flow" name "->" name [ ":" kindword ] [ string ]
               [ "substance" name ] [ "amount" decimal ] [ "unit" name ]
               [ "mere" ] [ "weight" integer ] ;
 decimal     = positive decimal number ;                (* "1.5"; 0 and below refused *)
+param       = "param" string ":" "flow" name "->" name [ string ]
+              [ "range" number ".." number ]           (* walkthrough #18 *)
+            | "param" "shares" string ":" "from" name ;
 boundary    = "boundary" { propword number } ;
 propword    = "porosity" | "fuzziness" ;
 
@@ -148,17 +151,29 @@ At most one per file. The free-text subject area that frames narration: `domain 
 
 The quantity clauses (#216, C1/C4) follow the label, in canonical order: `substance water amount 1.5 unit "ML/mo"`. Each is independently omittable; each is a structural attribute of the edge, not dynamics — the test is that none varies during a run. **Where `amount` acts, stated once so nobody decorates:** on a flow originating at a `source` it is the absolute emission rate (per `time unit`); on a flow out of a component it is a *relative weight* for that node's fanout split — the absolute outflow of a stock is set by its release behavior, not by the edge. An amount on a single-outwire process edge is therefore inert, and authoring one is claiming something the run will not honor. Three rules the parser enforces rather than defaulting around: a non-positive or unreadable `amount` is a parse fault (the language refuses what it cannot mean — the same rule that will govern the #112 `param` clause); a quantity clause on a `mere` relation is a contradiction and refused (a non-bond never projects, so a magnitude on it could never mean anything); and *omitted is not 1* — an unauthored amount stays unauthored in the model, and only projection conflates it with the kernel's default. `weight <n>` (#67) trails: a non-negative integer transition count for the Klir DTMC read, uniform 1 when absent.
 
-### 4.5 `boundary`
+### 4.5 `param`
+
+A declared parameter (walkthrough #18): a domain name over an already-declared amount, so run surfaces can speak the model's own vocabulary ("Developer demand") instead of the kernel's mechanism taxonomy ("drivers · absolute rates"). Two forms:
+
+`param "Developer demand" : flow "Developer workload" -> "Developer clearing" range 0..12000` names one flow's declared amount. The optional quoted label after the endpoint pair disambiguates when several flows run between the same pair (naming an ambiguous pair without it is a fault, with the candidate labels listed). The optional `range <min>..<max>` declares inclusive slider bounds in the flow's own unit — the author's statement of the sensible span, never engine-enforced; `min` must satisfy `0 <= min < max`, and a declared amount lying outside the range is a parse-time contradiction and refused.
+
+`param shares "Developer market share" : from "Developer clearing"` names a component's whole out-fanout of declared amounts, to be presented as % shares. `from` must name a component (environment internals are opaque) with at least two outgoing declared amounts — a "split" of one thing is not a split. Normalization is presentation only: the model keeps raw weights (§4.4's fanout semantics are scale-free), and a share edit edits exactly one raw weight.
+
+**A param stores no value** — the value IS the anchored declared amount, which is why every anchor that resolves to nothing adjustable is a fault rather than a bag: an undeclared endpoint, a flow with no `amount` (the repair is named: add one), a `mere` relation (already excluded by §4.4 — a non-bond cannot carry an amount). Param names are unique per file — they are the stable references scenario overrides (#202) will hold. **Params never project**: `project()` ignores them entirely, so a model with and without its `param` lines projects byte-identically. They are presentation semantics carried by the canvas model, serialized skip-if-empty so pre-existing files are byte-identical. Params must appear after the flows they anchor (the single-pass discipline of §4.3 — declare before reference — applied to flows).
+
+This clause is **not** the #112 typed-parameter territory (§8.2): those are the transition functor's own parameters (initial state, process constants), whose *types* await the functor decision. A `param` names a structural amount the grammar already carries; it adds vocabulary, never dynamics.
+
+### 4.6 `boundary`
 
 At most one per file: `boundary porosity 0.7 fuzziness 0.1`. Key-value pairs in any order, either omittable; values are the root membrane's P. Absent line = unauthored (0.0, the kernel default).
 
-### 4.6 `time unit`
+### 4.7 `time unit`
 
 At most one per file: `time unit h`. The model's time-unit symbol (#94) — what one unit of model time is called, landing in `CanvasModel.time_unit` and projecting to `WorldModel.time_unit`. The symbol is a name token (bare or quoted). It is display vocabulary, never a rescaling: Δt stays the pure number the run surface supplies; the symbol names what that number counts, so an undeclared kW-fed stock displays `kW·h` instead of the abstract `kW·Δt`. Absent = undeclared (the kernel never invents a symbol). An empty symbol is a parse fault.
 
-### 4.7 Errors
+### 4.8 Errors
 
-Parsing collects **all** faults in one pass and reports each with its 1-indexed line — never a first-error-only bail, and never a guess. Fault classes: lexical (unterminated quote), unknown keyword, malformed clause, duplicate name, undeclared flow endpoint, redeclared singleton (`system`/`domain`/`time unit`/`boundary`), attribute on an environment thing, unstamped or malformed decomposition reference, `decomposes` on an interface component, duplicate `decomposes`, duplicate `stock`, out-of-range `@directed`, malformed known annotation. The ACE/Gherkin discipline — deterministic parse, fail loud on anything ambiguous — is inherited deliberately.
+Parsing collects **all** faults in one pass and reports each with its 1-indexed line — never a first-error-only bail, and never a guess. Fault classes: lexical (unterminated quote), unknown keyword, malformed clause, duplicate name, undeclared flow endpoint, redeclared singleton (`system`/`domain`/`time unit`/`boundary`), attribute on an environment thing, unstamped or malformed decomposition reference, `decomposes` on an interface component, duplicate `decomposes`, duplicate `stock`, out-of-range `@directed`, malformed known annotation, and the §4.5 param faults (unresolvable or ambiguous anchor, amountless anchor, degenerate or contradicted range, shares without a >=2 component fanout, duplicate param name). The ACE/Gherkin discipline — deterministic parse, fail loud on anything ambiguous — is inherited deliberately.
 
 **These are *parse* faults, and they are not the only way a model is refused.** A file can parse cleanly, compile to a model (§5.3), and still be refused by the kernel when a lens is entered — that refusal is the kernel's job, not SL's (§5.1), so it is deliberately absent from the list above. The list is complete for what the parser rejects and is not a map of every way a model can fail. §5.4 names the one class where a *word in this language* now carries an obligation the parser cannot check.
 
@@ -216,7 +231,7 @@ in the kernel, on lens entry.
 
 *Status: normative; the "why a section, not a second file" defense is rationale (argued, adopted).*
 
-Annotations are `@`-prefixed lines, conventionally last in the file. Three are defined; unknown annotations are *skipped, not errors* — the ignorable contract that lets future view-state vocabulary degrade softly in old parsers. Malformed instances of a *known* annotation fail loud (§4.7).
+Annotations are `@`-prefixed lines, conventionally last in the file. Three are defined; unknown annotations are *skipped, not errors* — the ignorable contract that lets future view-state vocabulary degrade softly in old parsers. Malformed instances of a *known* annotation fail loud (§4.8).
 
 **Why a section, not a second file.** The semantic requirement is only that presentation not contaminate meaning (C4), and a marked section satisfies it as fully as a separate file: the structure-lines diff is clean either way. Given that, one artifact wins — a model is one pasteable, reviewable, portable thing. Modelica made the same call (layout inline as `annotation(…)`, semantically null, preserved on save); SVG/HTML keep style separable but co-located. Decided for v1; recorded in the 2026-07-18 session log.
 

@@ -1032,19 +1032,41 @@ function Workspace() {
   // simulation-tool loop: change a number, see the world change.
   function applyInputEdit(next: import("./kernel/types").Relation) {
     if (!canvasModel) return;
-    const nextModel = {
+    commitInputModel({
       ...canvasModel,
       relations: canvasModel.relations.map((r) => (r.id === next.id ? next : r)),
-    };
+    });
+  }
+
+  // The shared tail of every inputs-panel commit: the edited document becomes
+  // the canvas model and the world re-runs from it synchronously.
+  function commitInputModel(nextModel: CanvasModel) {
     setCanvasModel(nextModel);
     setDirty(true);
-    if (demo && canvasModel.lens !== "Klir") {
+    if (demo && nextModel.lens !== "Klir") {
       try {
         runWith(JSON.stringify(project(nextModel)), demo.csv!, manifest, dt, t, true);
       } catch (e) {
         setToast(e instanceof Error ? e.message : String(e));
       }
     }
+  }
+
+  // Reset the inputs to the model's declared amounts. The baseline is not
+  // stored state — it is DERIVED by recompiling the demo's `.sl` (the author's
+  // document), so it can never go stale or leak across documents. Relation ids
+  // are deterministic per compile, so the map lands on the same flows.
+  function resetInputs() {
+    if (!canvasModel || !demo?.sl) return;
+    const compiled = compileSl(demo.sl);
+    if ("errors" in compiled) return;
+    const declared = new Map(compiled.ok.relations.map((r) => [r.id, r.amount]));
+    commitInputModel({
+      ...canvasModel,
+      relations: canvasModel.relations.map((r) =>
+        declared.has(r.id) ? { ...r, amount: declared.get(r.id) } : r,
+      ),
+    });
   }
 
   // A per-lens edge edit (kind / bond⇄mere / direction / klir toggle): update
@@ -2037,6 +2059,7 @@ function Workspace() {
               ranEdited={ranEdited}
               runManifest={demo ? manifest : null}
               onInputEdit={applyInputEdit}
+              onResetInputs={demo?.sl ? resetInputs : undefined}
               runError={runError}
               desc={desc}
               verdict={verdict}
