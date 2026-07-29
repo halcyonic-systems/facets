@@ -57,6 +57,15 @@ import type {
 } from "./types";
 import type { Lens } from "./types";
 
+// The wasm boundary cannot hot-swap (seen live, 2026-07-29): when Vite HMR
+// re-evaluates this module, the fresh glue instance has `wasm === undefined`
+// until init() runs again — and nothing re-runs it, since the app awaited
+// ready() once at boot from the OLD module instance. Every kernel call then
+// dies with "__wbindgen_malloc of undefined" and each click is silently dead.
+// Declaring the module non-updatable makes Vite full-reload instead of
+// serving a dead kernel. Dev-only; a production build never hot-swaps.
+if (import.meta.hot) import.meta.hot.accept(() => import.meta.hot?.invalidate());
+
 let readyPromise: Promise<void> | null = null;
 
 /** Instantiate the wasm kernel once. Await before any call below.

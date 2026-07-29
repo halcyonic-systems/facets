@@ -32,6 +32,13 @@
   --accent-soft: #d5e2e8;
   --accent-indigo: #545c93;
   --accent-slate: #5d6f7b;
+  /* Per-lens WORLD hues (#7 follow-on) — deliberately farther apart than the
+     accent trio, which are hue-neighbors and converge to the same gray at
+     tint strength. Character-matched: Klir = cold steel (data, the mask),
+     Bunge = violet (ontology, mechanism), Mobus = green (living systems). */
+  --world-klir: #5a6c85;
+  --world-bunge: #6f5fa8;
+  --world-mobus: #4e7d5b;
   --verdict-error: #c2352c;
   --verdict-warning: #8a5c08;
   --verdict-ok: #1f7351;
@@ -95,6 +102,9 @@
     --accent-soft: #1b2f39;
     --accent-indigo: #8b93cf;
     --accent-slate: #8ea1ad;
+    --world-klir: #8fa2c0;
+    --world-bunge: #a89bd9;
+    --world-mobus: #83b191;
     --verdict-error: #ef7a72;
     --verdict-warning: #dba448;
     --verdict-ok: #4fbc93;
@@ -117,22 +127,22 @@
      switch reads viscerally as entering a different reading. Chrome = toolbar
      + docks; wash = the canvas backdrop. The percentages here are the entire
      tuning surface — adjust them, nothing else moves. */
-  --lens-chrome: color-mix(in srgb, var(--accent-slate) 9%, var(--bg-secondary));
-  --lens-wash: color-mix(in srgb, var(--accent-slate) 5%, var(--bg-primary));
+  --lens-chrome: color-mix(in srgb, var(--world-klir) 22%, var(--bg-secondary));
+  --lens-wash: color-mix(in srgb, var(--world-klir) 11%, var(--bg-primary));
 }
 [data-lens="Bunge"] {
   --lens-accent: var(--accent-indigo);
   --lens-accent-soft: color-mix(in srgb, var(--accent-indigo) 24%, var(--bg-secondary));
   --lens-node-stroke: color-mix(in srgb, var(--accent-indigo) 50%, var(--accent-slate));
-  --lens-chrome: color-mix(in srgb, var(--accent-indigo) 9%, var(--bg-secondary));
-  --lens-wash: color-mix(in srgb, var(--accent-indigo) 5%, var(--bg-primary));
+  --lens-chrome: color-mix(in srgb, var(--world-bunge) 22%, var(--bg-secondary));
+  --lens-wash: color-mix(in srgb, var(--world-bunge) 11%, var(--bg-primary));
 }
 [data-lens="Mobus"] {
   --lens-accent: var(--accent);
   --lens-accent-soft: var(--accent-soft);
   --lens-node-stroke: color-mix(in srgb, var(--accent) 40%, var(--accent-slate));
-  --lens-chrome: color-mix(in srgb, var(--accent) 9%, var(--bg-secondary));
-  --lens-wash: color-mix(in srgb, var(--accent) 5%, var(--bg-primary));
+  --lens-chrome: color-mix(in srgb, var(--world-mobus) 22%, var(--bg-secondary));
+  --lens-wash: color-mix(in srgb, var(--world-mobus) 11%, var(--bg-primary));
 }
 
 * {
