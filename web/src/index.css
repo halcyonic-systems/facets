@@ -54,6 +54,8 @@
      base. Defaults = the instrument's home accent. */
   --lens-accent: var(--accent);
   --lens-accent-soft: var(--accent-soft);
+  --lens-chrome: var(--bg-secondary);
+  --lens-wash: var(--bg-primary);
   --lens-node-stroke: var(--accent-slate);
 
   --border: #d5dee4;
@@ -111,16 +113,26 @@
   --lens-accent: var(--accent-slate);
   --lens-accent-soft: color-mix(in srgb, var(--accent-slate) 24%, var(--bg-secondary));
   --lens-node-stroke: var(--text-secondary);
+  /* The lens WORLD (#7 follow-on): shell surfaces tint toward the lens so a
+     switch reads viscerally as entering a different reading. Chrome = toolbar
+     + docks; wash = the canvas backdrop. The percentages here are the entire
+     tuning surface — adjust them, nothing else moves. */
+  --lens-chrome: color-mix(in srgb, var(--accent-slate) 9%, var(--bg-secondary));
+  --lens-wash: color-mix(in srgb, var(--accent-slate) 5%, var(--bg-primary));
 }
 [data-lens="Bunge"] {
   --lens-accent: var(--accent-indigo);
   --lens-accent-soft: color-mix(in srgb, var(--accent-indigo) 24%, var(--bg-secondary));
   --lens-node-stroke: color-mix(in srgb, var(--accent-indigo) 50%, var(--accent-slate));
+  --lens-chrome: color-mix(in srgb, var(--accent-indigo) 9%, var(--bg-secondary));
+  --lens-wash: color-mix(in srgb, var(--accent-indigo) 5%, var(--bg-primary));
 }
 [data-lens="Mobus"] {
   --lens-accent: var(--accent);
   --lens-accent-soft: var(--accent-soft);
   --lens-node-stroke: color-mix(in srgb, var(--accent) 40%, var(--accent-slate));
+  --lens-chrome: color-mix(in srgb, var(--accent) 9%, var(--bg-secondary));
+  --lens-wash: color-mix(in srgb, var(--accent) 5%, var(--bg-primary));
 }
 
 * {
