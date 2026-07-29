@@ -426,7 +426,17 @@ function Workspace() {
     // carries what projection loses (declared params, #18). The bundle stays
     // the run's model: sl_demos.rs pins it to the projection of this same
     // text, so the two cannot disagree about the system.
-    const compiled = d.sl ? compileSl(d.sl) : null;
+    // A compile THROW (kernel trap — seen live when Vite HMR drops the wasm
+    // instance) must not dead-end the open; the bundle is the projection of
+    // the same text and remains a legitimate way in.
+    let compiled: ReturnType<typeof compileSl> | null = null;
+    if (d.sl) {
+      try {
+        compiled = compileSl(d.sl);
+      } catch {
+        compiled = null;
+      }
+    }
     setCanvasModel(compiled && "ok" in compiled ? compiled.ok : spaceOut(openModel(d.modelJson)));
     setManifest(d.manifest);
     setDt(d.manifest.dt ?? 1);
