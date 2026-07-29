@@ -31,6 +31,7 @@ export function EdgePopover({
   manifest,
   anchor,
   fact,
+  paramName,
   onApplyManifest,
   onUpdateRelation,
   onDelete,
@@ -44,6 +45,9 @@ export function EdgePopover({
   anchor: Pt;
   /** The kernel's edge-ladder reading — Bunge shows its coupling channel (F6). */
   fact?: EdgeFact;
+  /** The declared parameter naming this flow's amount, when one does (#13) —
+   *  resolved at the call site from `model.params`, shown for provenance. */
+  paramName?: string;
   onApplyManifest: (m: Manifest) => void;
   onUpdateRelation: (r: Relation) => void;
   onDelete: () => void;
@@ -65,6 +69,7 @@ export function EdgePopover({
           relation={relation}
           headers={headers}
           manifest={manifest}
+          paramName={paramName}
           onApplyManifest={onApplyManifest}
           onUpdate={onUpdateRelation}
           onClose={onClose}
@@ -254,6 +259,7 @@ function MobusBody({
   relation,
   headers,
   manifest,
+  paramName,
   onApplyManifest,
   onUpdate,
   onClose,
@@ -261,6 +267,7 @@ function MobusBody({
   relation: Relation;
   headers: string[];
   manifest: Manifest;
+  paramName?: string;
   onApplyManifest: (m: Manifest) => void;
   onUpdate: (r: Relation) => void;
   onClose: () => void;
@@ -307,6 +314,23 @@ function MobusBody({
           ))}
         </select>
       </Row>
+      {/* The declared quantity, for provenance (#13): the number the model
+          asserts, readable where the flow is clicked. Read-only here — the
+          editing surface with the re-run loop is RUN · Inputs, and one value
+          should not have two edit paths with different behaviors. */}
+      <Row>
+        <span style={{ color: "var(--text-secondary)" }} title="the model's declared amount — adjust it in RUN · Inputs">
+          declared
+        </span>
+        <span className="font-mono text-xs" style={{ color: relation.amount ? "var(--text-primary)" : "var(--text-muted)" }}>
+          {relation.amount ? `${relation.amount}${relation.unit ? ` ${relation.unit}` : ""}` : "unauthored"}
+        </span>
+      </Row>
+      {paramName && (
+        <p className="mb-2 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
+          named &ldquo;{paramName}&rdquo; in the inputs panel
+        </p>
+      )}
       <div className="mb-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
         drive with data
       </div>

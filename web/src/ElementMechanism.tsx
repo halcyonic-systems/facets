@@ -35,29 +35,39 @@ function Sparkline({ series, tick }: { series: number[]; tick: number }) {
 function FlowRow({
   flowName,
   otherEnd,
-  inbound,
   substance,
   amount,
   unit,
 }: {
   flowName: string;
   otherEnd: string;
-  inbound: boolean;
   substance?: string;
   amount?: string;
   unit?: string;
 }) {
+  // Legibility (#13 refinement): the counterparty and the number are the
+  // content — text-primary; the flow's label and substance are context —
+  // muted. Direction lives in the group header, not a per-row glyph.
   return (
     <div className="flex items-baseline gap-2 py-0.5 text-xs">
-      <span style={{ color: "var(--text-muted)" }}>{inbound ? "←" : "→"}</span>
-      <span className="min-w-0 flex-1 truncate">
-        {inbound ? `${otherEnd} · ` : `${otherEnd} · `}
-        <span style={{ color: "var(--text-muted)" }}>{flowName}</span>
+      <span className="min-w-0 flex-1 truncate" title={flowName}>
+        <span style={{ color: "var(--text-primary)" }}>{otherEnd}</span>
+        {flowName && <span style={{ color: "var(--text-muted)" }}> · {flowName}</span>}
       </span>
-      <span className="shrink-0 font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
-        {substance ? `${substance} · ` : ""}
-        {amount ? `${amount}${unit ? ` ${unit}` : ""}` : "—"}
+      <span className="shrink-0 font-mono text-[11px]">
+        {substance && <span style={{ color: "var(--text-muted)" }}>{substance} · </span>}
+        <span style={{ color: amount ? "var(--text-primary)" : "var(--text-muted)" }}>
+          {amount ? `${amount}${unit ? ` ${unit}` : ""}` : "—"}
+        </span>
       </span>
+    </div>
+  );
+}
+
+function FlowGroupHeader({ children }: { children: string }) {
+  return (
+    <div className="mb-0.5 mt-2 text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+      {children}
     </div>
   );
 }
@@ -95,28 +105,36 @@ export function ElementMechanism({
           {thing.primitive}: {line}
         </div>
       )}
-      {inflows.map((r) => (
-        <FlowRow
-          key={r.id}
-          flowName={r.name}
-          otherEnd={nameOf(r.a)}
-          inbound
-          substance={r.substance}
-          amount={r.amount}
-          unit={r.unit}
-        />
-      ))}
-      {outflows.map((r) => (
-        <FlowRow
-          key={r.id}
-          flowName={r.name}
-          otherEnd={nameOf(r.b)}
-          inbound={false}
-          substance={r.substance}
-          amount={r.amount}
-          unit={r.unit}
-        />
-      ))}
+      {inflows.length > 0 && (
+        <>
+          <FlowGroupHeader>flows in — from</FlowGroupHeader>
+          {inflows.map((r) => (
+            <FlowRow
+              key={r.id}
+              flowName={r.name}
+              otherEnd={nameOf(r.a)}
+              substance={r.substance}
+              amount={r.amount}
+              unit={r.unit}
+            />
+          ))}
+        </>
+      )}
+      {outflows.length > 0 && (
+        <>
+          <FlowGroupHeader>flows out — to</FlowGroupHeader>
+          {outflows.map((r) => (
+            <FlowRow
+              key={r.id}
+              flowName={r.name}
+              otherEnd={nameOf(r.b)}
+              substance={r.substance}
+              amount={r.amount}
+              unit={r.unit}
+            />
+          ))}
+        </>
+      )}
       {traj && at !== null && (
         <div className="mt-2 flex items-center gap-3">
           <Sparkline series={traj.series} tick={tick} />

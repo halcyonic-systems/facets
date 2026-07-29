@@ -1897,6 +1897,15 @@ function Workspace() {
                         manifest={manifest}
                         anchor={toScreen(popoverAnchor)}
                         fact={facts?.edges.find((e) => e.id === selectedRelation.id)}
+                        paramName={(canvasModel.params ?? [])
+                          .find((p) => {
+                            const a = p.anchor;
+                            return (
+                              ("Flow" in a && a.Flow.relation === selectedRelation.id) ||
+                              ("Shares" in a && a.Shares.thing === selectedRelation.a)
+                            );
+                          })
+                          ?.name}
                         onApplyManifest={applyDrive}
                         onUpdateRelation={updateRelation}
                         onDelete={() => deleteRelation(selectedRelation.id)}
