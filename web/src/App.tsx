@@ -43,7 +43,7 @@ import { NewModelTypePrompt } from "./NewModelTypePrompt";
 import { SlPane } from "./SlPane";
 import { draftSlWithRetry, newTurnId, loadCoauthorTurns, saveCoauthorTurns, type CoauthorTurn, type DraftStage } from "./coauthor";
 import type { SlError } from "./kernel/types";
-import { Banner, Pill, ToolButton } from "./ui";
+import { Banner, ConfirmDialog, Pill, ToolButton } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 import { isFolderSupported, pickDirectory, writeModel, type DirHandleLike } from "./fsAccess";
 import { library } from "./library";
@@ -198,6 +198,8 @@ function Workspace() {
   }, [coauthorTurns]);
   const [manifest, setManifest] = useState<Manifest>({ model: "", data: "", t: 12, mapping: [] });
   const [dt, setDt] = useState(1);
+  // The discard-confirm's parked resolver (in-app ConfirmDialog; see guardDiscard).
+  const [discardAsk, setDiscardAsk] = useState<{ resolve: (ok: boolean) => void } | null>(null);
   const [t, setT] = useState(12);
   const [result, setResult] = useState<RunResultRich | null>(null);
   // ADR run-seam-canvas-document: which model the last run executed — the
@@ -418,13 +420,23 @@ function Workspace() {
     // Runnable only — a structural entry has no run bundle and opens via
     // pickExample instead. The guard also narrows the optional fields (#148).
     if (d.modelJson == null || d.csv == null || d.manifest == null || d.t == null) return;
-    if (!guardDiscard() || !(await flushWalk())) return;
+    if (!(await guardDiscard()) || !(await flushWalk())) return;
     setDemo(d);
     // An SL-authored demo opens from its `.sl` — the author's document, which
     // carries what projection loses (declared params, #18). The bundle stays
     // the run's model: sl_demos.rs pins it to the projection of this same
     // text, so the two cannot disagree about the system.
-    const compiled = d.sl ? compileSl(d.sl) : null;
+    // A compile THROW (kernel trap — seen live when Vite HMR drops the wasm
+    // instance) must not dead-end the open; the bundle is the projection of
+    // the same text and remains a legitimate way in.
+    let compiled: ReturnType<typeof compileSl> | null = null;
+    if (d.sl) {
+      try {
+        compiled = compileSl(d.sl);
+      } catch {
+        compiled = null;
+      }
+    }
     setCanvasModel(compiled && "ok" in compiled ? compiled.ok : spaceOut(openModel(d.modelJson)));
     setManifest(d.manifest);
     setDt(d.manifest.dt ?? 1);
@@ -458,7 +470,7 @@ function Workspace() {
   // Run button. Do not restate the blanket claim here; it was false for a third
   // of the corpus while this comment asserted it.
   const pickCorpus = async (e: CorpusEntry) => {
-    if (!guardDiscard() || !(await flushWalk())) return;
+    if (!(await guardDiscard()) || !(await flushWalk())) return;
     const outcome = compileSl(e.sl);
     if ("errors" in outcome) {
       // Should be unreachable: the ship gate asserts every entry compiles with
@@ -482,7 +494,7 @@ function Workspace() {
       return;
     }
     if (!d.sl) return;
-    if (!guardDiscard() || !(await flushWalk())) return;
+    if (!(await guardDiscard()) || !(await flushWalk())) return;
     const outcome = compileSl(d.sl);
     if ("errors" in outcome) {
       setToast(outcome.errors[0]?.message ?? "example failed to compile");
@@ -498,7 +510,7 @@ function Workspace() {
   // manifest, so the run path stays dark for imports — structure, lens, formal
   // object, and review still light up (they read the canvas model).
   async function importModel(json: string) {
-    if (!guardDiscard() || !(await flushWalk())) return;
+    if (!(await guardDiscard()) || !(await flushWalk())) return;
     try {
       // Either generation may arrive here — a neutral archive, or a legacy
       // WorldModel someone exported before #140. The kernel decides which.
@@ -630,7 +642,7 @@ function Workspace() {
   // demo bundle, so the run stays dark until tethered; structure/lens/formal/review
   // read the empty model). Boundary defaults are neutral, editable via the popover.
   async function newModel() {
-    if (!guardDiscard() || !(await flushWalk())) return;
+    if (!(await guardDiscard()) || !(await flushWalk())) return;
     setDemo(null);
     setCanvasModel({ lens: "Mobus", things: [], relations: [], boundary: { porosity: 0, perceptive_fuzziness: 0 } });
     setManifest({ model: "", data: "", t: 12, mapping: [] });
@@ -776,7 +788,7 @@ function Workspace() {
   // re-save overwrites the same library slot. Guarded here (#111), so the
   // direct load never bypasses the gate.
   async function loadFromLibrary(name: string) {
-    if (!guardDiscard() || !(await flushWalk())) return;
+    if (!(await guardDiscard()) || !(await flushWalk())) return;
     try {
       const cm = openModel(await library.load(name));
       setDemo(null);
@@ -1194,10 +1206,13 @@ function Workspace() {
   // case prompts. A walk's dirty ancestors autosave on reset (flushWalk below),
   // so only a segment flushWalk cannot save — dirty with no name — still
   // counts as discardable work here.
-  function guardDiscard(): boolean {
+  // Async since the in-app ConfirmDialog replaced `window.confirm` (which
+  // cannot be themed and blocks browser automation cold). The dialog's
+  // resolver parks in state; Discard/Cancel settles the promise.
+  async function guardDiscard(): Promise<boolean> {
     const proceed =
       (!dirty && !walk.some((s) => s.dirty && !s.currentName)) ||
-      window.confirm("Discard unsaved changes to the current model?");
+      (await new Promise<boolean>((resolve) => setDiscardAsk({ resolve })));
     // Any load that proceeds past this gate leaves a live SL preview behind;
     // clear the stash so the banner doesn't linger over an unrelated model.
     if (proceed) setPreview(null);
@@ -1232,7 +1247,7 @@ function Workspace() {
   // model behind the open gallery, exactly the app's initial state. The one
   // route back out of a loaded model.
   async function goHome() {
-    if (!guardDiscard() || !(await flushWalk())) return;
+    if (!(await guardDiscard()) || !(await flushWalk())) return;
     setDemo(null);
     setCanvasModel(null);
     setManifest({ model: "", data: "", t: 12, mapping: [] });
@@ -1626,6 +1641,17 @@ function Workspace() {
               })()}
             </div>
           </div>
+        )}
+
+        {discardAsk && (
+          <ConfirmDialog
+            message="Discard unsaved changes to the current model?"
+            confirmLabel="Discard"
+            onResolve={(ok) => {
+              discardAsk.resolve(ok);
+              setDiscardAsk(null);
+            }}
+          />
         )}
 
         {/* Body: docked-left palette + the canvas viewport it authors onto. In

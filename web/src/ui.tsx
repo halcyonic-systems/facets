@@ -270,3 +270,70 @@ export function Popover({
     </>
   );
 }
+
+/** An in-app confirm — the styled, automation-friendly replacement for
+ *  `window.confirm`, which cannot be themed and blocks every browser-automation
+ *  event loop cold (the dialog is invisible to screenshots and unclickable by
+ *  CDP — found the hard way, 2026-07-29). Presentation only: the caller owns
+ *  the pending action; this just asks and resolves. Escape and the backdrop
+ *  cancel; the destructive verb is the explicit button. */
+export function ConfirmDialog({
+  message,
+  confirmLabel,
+  onResolve,
+}: {
+  message: string;
+  /** The destructive verb ("Discard"), never "OK". */
+  confirmLabel: string;
+  onResolve: (ok: boolean) => void;
+}) {
+  useLayoutEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onResolve(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center"
+      style={{ background: "color-mix(in srgb, var(--bg-primary) 55%, transparent)" }}
+      onPointerDown={() => onResolve(false)}
+    >
+      <div
+        className="w-80 p-5"
+        role="alertdialog"
+        aria-modal="true"
+        onPointerDown={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--bg-secondary)",
+          border: "1px solid var(--border)",
+          boxShadow: "var(--shadow-card-hover)",
+          borderRadius: "var(--radius-md)",
+        }}
+      >
+        <p className="mb-4 text-sm" style={{ color: "var(--text-primary)" }}>
+          {message}
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            autoFocus
+            onClick={() => onResolve(false)}
+            className="rounded-full px-4 py-1.5 text-sm"
+            style={{ color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onResolve(true)}
+            className="rounded-full px-4 py-1.5 text-sm font-semibold"
+            style={{ background: "var(--verdict-error)", color: "var(--text-on-accent)" }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
