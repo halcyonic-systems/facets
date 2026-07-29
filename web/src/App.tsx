@@ -1539,7 +1539,7 @@ function Workspace() {
         {canvasModel && (
           <div
             className="flex flex-wrap items-center gap-3 border-b px-4 py-2"
-            style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
+            style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
           >
             <div
               className="flex items-center gap-1 rounded-pill p-1"
@@ -1691,7 +1691,10 @@ function Workspace() {
               home screen loads a model in the same batch. */}
           {/* min-w-0: without it the canvas refuses to shrink (flex min-width:auto)
               and the whole shell row overflows the viewport at narrow widths (#17). */}
-          <main className={`min-h-0 min-w-0 flex-1 overflow-y-auto ${inspectorFocused && canvasModel ? "hidden" : ""}`}>
+          <main
+            className={`min-h-0 min-w-0 flex-1 overflow-y-auto ${inspectorFocused && canvasModel ? "hidden" : ""}`}
+            style={{ background: "var(--lens-wash)" }}
+          >
             {canvasModel && (
               <KernelErrorBoundary resetKeys={[canvasModel, demo?.key ?? "import"]}>
                 <div className="flex min-h-full flex-col p-4">
@@ -2524,7 +2527,7 @@ function PaletteDock({
     return (
       <div
         className="flex w-8 flex-col items-center border-r py-2"
-        style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
+        style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
       >
         <button
           onClick={onToggle}
@@ -2540,7 +2543,7 @@ function PaletteDock({
   return (
     <div
       className="relative w-48 shrink-0 overflow-y-auto border-r"
-      style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
+      style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
     >
       <div className="flex items-center justify-between px-3 pt-2">
         <span

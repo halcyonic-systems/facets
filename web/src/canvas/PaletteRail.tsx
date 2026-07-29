@@ -110,7 +110,7 @@ export function PaletteRail({
       <div
         className="absolute left-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-40 flex-col gap-3 overflow-y-auto p-3"
         style={{
-          background: "var(--bg-secondary)",
+          background: "var(--lens-chrome)",
           border: "1px solid var(--border)",
           boxShadow: "var(--shadow-card)",
           borderRadius: STYLE.dockRadius,
@@ -142,11 +142,14 @@ export function PaletteRail({
             </div>
           </Section>
         )}
-        {/* The process-vocabulary reference (#100): available in any lens, since the
-            primitives are the shared substrate the lenses read differently.
-            Rendered through the shared Popover (walkthrough #5): the old
-            absolute flyout was clipped invisible the day the rail moved into
-            an overflow dock, because its position assumed the parent's width. */}
+        {/* The process-vocabulary reference (#100), gated by the registry:
+            it renders exactly when this lens's palette OFFERS primitive
+            designation — Mobus today, and any future lens that adopts the
+            vocabulary inherits the reference for free. Under Klir and Bunge
+            the rail never speaks "primitive", so a reference for the ten
+            Mobus work processes was a leak against absence-is-ontology.
+            Rendered through the shared Popover (walkthrough #5). */}
+        {spec.designate.some((t) => t.verb === "designate" && t.designation.type === "primitive") && (
         <span className="relative">
           <button
             className="mt-1 text-left text-[10px] font-semibold uppercase tracking-wide"
@@ -171,6 +174,7 @@ export function PaletteRail({
             </Popover>
           )}
         </span>
+        )}
       </div>
     </>
   );

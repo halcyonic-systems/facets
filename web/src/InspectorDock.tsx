@@ -147,7 +147,7 @@ export function InspectorDock({
     return (
       <div
         className="flex w-8 flex-col items-center gap-3 border-l py-2"
-        style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
+        style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
       >
         <button
           onClick={() => setCollapsed(false)}
@@ -172,7 +172,7 @@ export function InspectorDock({
       // Shrinkable under pressure (#17): 24rem by preference, yielding down to
       // 18rem at narrow windows instead of pushing the row past the viewport.
       className={`flex flex-col border-l ${focused ? "min-h-0 flex-1" : "min-w-72 shrink basis-96"}`}
-      style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
+      style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
     >
       {/* Tab strip — the instrument's face selector. The active tab carries the
           lens accent (underline + text), the rest stay quiet. */}
