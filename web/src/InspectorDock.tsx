@@ -46,6 +46,7 @@ export function InspectorDock({
   ranEdited,
   runManifest,
   onInputEdit,
+  onResetInputs,
   runError,
   desc,
   verdict,
@@ -74,6 +75,8 @@ export function InspectorDock({
   runManifest?: Manifest | null;
   /** Walkthrough #11: an inputs-card edit — update the relation and re-run. */
   onInputEdit?: (next: Relation) => void;
+  /** Restore the model's declared amounts (derived from the demo's .sl). */
+  onResetInputs?: () => void;
   runError: string | null;
   desc: LensDescription | null;
   verdict: ValidationResult | null;
@@ -244,6 +247,7 @@ export function InspectorDock({
                 model={canvasModel}
                 manifest={runManifest ?? null}
                 onInputEdit={onInputEdit}
+                onResetInputs={onResetInputs}
               />
             )}
             {tab === "formal" && <FormalTab desc={desc} analysisError={analysisError} />}
@@ -332,6 +336,7 @@ function RunTab({
   model,
   manifest,
   onInputEdit,
+  onResetInputs,
 }: {
   result: RunResultRich | null;
   ranEdited?: boolean;
@@ -342,12 +347,13 @@ function RunTab({
   model?: CanvasModel | null;
   manifest?: Manifest | null;
   onInputEdit?: (next: Relation) => void;
+  onResetInputs?: () => void;
 }) {
   // The inputs card renders above WHATEVER the run state is — including a
   // refusal, since fix-the-number-and-rerun is exactly the loop it exists for.
   const inputs =
     model && manifest && onInputEdit ? (
-      <RunInputs model={model} manifest={manifest} onEdit={onInputEdit} />
+      <RunInputs model={model} manifest={manifest} onEdit={onInputEdit} onReset={onResetInputs} />
     ) : null;
   if (runError) {
     return (

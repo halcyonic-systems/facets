@@ -21,9 +21,22 @@
 // weight (the one you touched); the other rows' %s shift only because Σw
 // changed. The taxonomy groups below remain the floor for every undeclared
 // magnitude, so declaring params is enrichment, never a requirement.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CanvasModel, Manifest, ParamDecl, Relation } from "./kernel/types";
 import { Card } from "./ui";
+
+/** While a slider drag preview is live, ANY pointer release commits it — the
+ *  element's own events miss a release that lands outside it, and a missed
+ *  commit leaves a phantom preview value on screen (several rows can then show
+ *  impossible percentages at once, which is how this was caught). Re-registers
+ *  every render so the handler always closes over the current drag value. */
+function useCommitOnRelease(active: boolean, commit: () => void) {
+  useEffect(() => {
+    if (!active) return;
+    window.addEventListener("pointerup", commit);
+    return () => window.removeEventListener("pointerup", commit);
+  });
+}
 
 function AmountField({
   relation,
@@ -115,6 +128,7 @@ function ParamSlider({
     }
     setDrag(null);
   };
+  useCommitOnRelease(drag !== null, commit);
   return (
     <div className="py-0.5">
       <div className="flex items-center justify-between gap-2 text-xs">
@@ -146,6 +160,8 @@ function ParamSlider({
           value={value}
           onChange={(e) => setDrag(Number(e.target.value))}
           onPointerUp={commit}
+          onLostPointerCapture={commit}
+          onBlur={commit}
           onKeyUp={commit}
           aria-label={param.name}
         />
@@ -184,6 +200,7 @@ function ShareRow({
     }
     setDrag(null);
   };
+  useCommitOnRelease(drag !== null, commit);
   return (
     <div className="flex items-center gap-2 py-0.5 text-xs">
       <span className="w-24 min-w-0 shrink-0 truncate" style={{ color: "var(--text-primary)" }} title={relation.name}>
@@ -203,6 +220,8 @@ function ShareRow({
           value={share}
           onChange={(e) => setDrag(Number(e.target.value))}
           onPointerUp={commit}
+          onLostPointerCapture={commit}
+          onBlur={commit}
           onKeyUp={commit}
           aria-label={`share of ${label}`}
         />
@@ -228,10 +247,14 @@ export function RunInputs({
   model,
   manifest,
   onEdit,
+  onReset,
 }: {
   model: CanvasModel;
   manifest: Manifest | null;
   onEdit: (next: Relation) => void;
+  /** Restore every declared amount to the model's own declaration (derived
+   *  from the demo's `.sl`, never stored state). Absent = no reset baseline. */
+  onReset?: () => void;
 }) {
   const thing = (id: number) => model.things.find((t) => t.id === id);
   const declared = model.relations.filter((r) => r.is_bond && r.amount != null);
@@ -277,6 +300,16 @@ export function RunInputs({
 
   return (
     <Card title="Inputs" source="declared in the model · edits re-run">
+      {onReset && (
+        <button
+          onClick={onReset}
+          className="mb-1 text-[11px]"
+          style={{ color: "var(--text-muted)" }}
+          title="Restore every amount to what the model declares"
+        >
+          ↺ reset to declared
+        </button>
+      )}
       {paramRows.map(({ param, relation, group }) =>
         relation ? (
           <ParamSlider key={param.name} param={param} relation={relation} forcedBy={forcedBy(relation)} onEdit={onEdit} />
