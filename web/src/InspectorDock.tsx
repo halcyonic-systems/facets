@@ -161,7 +161,9 @@ export function InspectorDock({
 
   return (
     <div
-      className={`flex flex-col border-l ${focused ? "min-h-0 flex-1" : "w-96 shrink-0"}`}
+      // Shrinkable under pressure (#17): 24rem by preference, yielding down to
+      // 18rem at narrow windows instead of pushing the row past the viewport.
+      className={`flex flex-col border-l ${focused ? "min-h-0 flex-1" : "min-w-72 shrink basis-96"}`}
       style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
     >
       {/* Tab strip — the instrument's face selector. The active tab carries the

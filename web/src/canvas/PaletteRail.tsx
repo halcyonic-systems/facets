@@ -9,7 +9,7 @@ import { LensPalette, type PaletteHint, type PaletteTool } from "./lenses/regist
 import { primitiveGlyph } from "./lenses/primitive-glyphs";
 import { ProcessReference } from "./ProcessReference";
 import { STYLE } from "./style";
-import { ToolButton } from "../ui";
+import { Popover, ToolButton } from "../ui";
 
 /** The primitive's own glyph on its rail row (#100 phase 4): picking a
  *  primitive stamps this drawing as the component's face, so the rail shows
@@ -19,6 +19,36 @@ function GlyphChip({ primitive }: { primitive: ProcessPrimitive }) {
     <svg width={14} height={14} viewBox="-7.5 -7.5 15 15" aria-hidden className="mr-1 inline-block align-[-2px]">
       <g fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
         {primitiveGlyph(primitive)}
+      </g>
+    </svg>
+  );
+}
+
+/** Place-verb glyphs (walkthrough #1): the shape you are placing — a circle
+ *  for a component (inside the boundary), a square for an environment thing
+ *  (the ring's visual grammar). Keyed on the registry's `role`, so every lens
+ *  inherits icons-first rows without per-lens code. */
+function RoleChip({ role }: { role: "Component" | "Environment" }) {
+  return (
+    <svg width={14} height={14} viewBox="-7.5 -7.5 15 15" aria-hidden className="mr-1 inline-block align-[-2px]">
+      <g fill="none" stroke="currentColor" strokeWidth={1.4}>
+        {role === "Component" ? <circle r={5.2} /> : <rect x={-5} y={-5} width={10} height={10} rx={1.5} />}
+      </g>
+    </svg>
+  );
+}
+
+/** The connect gesture, illustrated (walkthrough #2): a node with its handle
+ *  dot and the drag arrow — the row teaches the gesture instead of naming a
+ *  verb it cannot arm. */
+function GestureGlyph() {
+  return (
+    <svg width={26} height={14} viewBox="0 0 26 14" aria-hidden className="mr-1 inline-block align-[-2px]">
+      <g fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round">
+        <circle cx={5} cy={7} r={3.6} />
+        <circle cx={9.2} cy={7} r={1.4} fill="currentColor" stroke="none" />
+        <path d="M11.5 7 H 21" strokeDasharray="2 2" />
+        <path d="M19 4.6 L 22.5 7 L 19 9.4" />
       </g>
     </svg>
   );
@@ -37,6 +67,11 @@ export function PaletteRail({
   const spec = LensPalette[lens];
   const [showRef, setShowRef] = useState(false);
 
+  // Three row KINDS, visually unmistakable (walkthrough #6): a TOOL is a
+  // button (icon-first, arms on click), a GESTURE is an illustrated hint (you
+  // do it on the canvas, not here), a FACT is flat text (the kernel computed
+  // it; there is nothing to do). The taxonomy was always the doctrine — the
+  // 1px solid-vs-dashed border was just too quiet to carry it.
   const toolRow = (t: PaletteTool) => (
     <ToolButton
       key={t.id}
@@ -44,6 +79,7 @@ export function PaletteRail({
       title={t.tip}
       onClick={() => onArm(armed?.id === t.id ? null : t)}
     >
+      {t.verb === "place" && <RoleChip role={t.role === "Environment" ? "Environment" : "Component"} />}
       {t.verb === "designate" && t.designation.type === "primitive" && (
         <GlyphChip primitive={t.designation.primitive} />
       )}
@@ -51,13 +87,20 @@ export function PaletteRail({
     </ToolButton>
   );
 
-  const hintRow = (h: PaletteHint) => (
+  const gestureRow = (h: PaletteHint) => (
     <div
       key={h.id}
       title={h.tip}
-      className="px-2.5 py-1 text-xs"
-      style={{ color: "var(--text-muted)", border: "1px dashed var(--border)", borderRadius: STYLE.chipRx }}
+      className="flex items-center px-1 py-0.5 text-xs"
+      style={{ color: "var(--text-muted)" }}
     >
+      <GestureGlyph />
+      {h.label}
+    </div>
+  );
+
+  const factRow = (h: PaletteHint) => (
+    <div key={h.id} title={h.tip} className="px-1 text-xs" style={{ color: "var(--text-muted)" }}>
       {h.label}
     </div>
   );
@@ -84,47 +127,51 @@ export function PaletteRail({
           </Section>
         )}
         {spec.connect.length > 0 && (
-          <Section label="connect">
-            {spec.connect.map(hintRow)}
+          <Section label="connect — a gesture">
+            {spec.connect.map(gestureRow)}
+            <div className="px-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)", opacity: 0.8 }}>
+              drag the handle dot off a node
+            </div>
           </Section>
         )}
         {spec.derived.length > 0 && (
-          <Section label="derived — computed">
-            {spec.derived.map(hintRow)}
+          <Section label="the kernel draws these">
+            {spec.derived.map(factRow)}
+            <div className="px-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)", opacity: 0.8 }}>
+              computed from your structure — nothing to place
+            </div>
           </Section>
         )}
         {/* The process-vocabulary reference (#100): available in any lens, since the
-            primitives are the shared substrate the lenses read differently. */}
-        <button
-          className="mt-1 text-left text-[10px] font-semibold uppercase tracking-wide"
-          style={{ color: "var(--text-muted)" }}
-          onClick={() => setShowRef((v) => !v)}
-          title="The ten process primitives, on one surface"
-        >
-          {showRef ? "× processes" : "≡ processes"}
-        </button>
-      </div>
-
-      {showRef && (
-        <div
-          className="absolute left-[11.5rem] top-3 z-10 w-72 overflow-y-auto p-3"
-          style={{
-            maxHeight: "calc(100% - 1.5rem)",
-            background: "var(--bg-secondary)",
-            border: "1px solid var(--border)",
-            boxShadow: "var(--shadow-card)",
-            borderRadius: STYLE.dockRadius,
-          }}
-        >
-          <div
-            className="mb-2 text-[10px] font-semibold uppercase tracking-wide"
-            style={{ color: "var(--lens-accent)" }}
+            primitives are the shared substrate the lenses read differently.
+            Rendered through the shared Popover (walkthrough #5): the old
+            absolute flyout was clipped invisible the day the rail moved into
+            an overflow dock, because its position assumed the parent's width. */}
+        <span className="relative">
+          <button
+            className="mt-1 text-left text-[10px] font-semibold uppercase tracking-wide"
+            style={{ color: "var(--text-muted)" }}
+            onClick={() => setShowRef((v) => !v)}
+            title="The ten process primitives, on one surface"
           >
-            processes — the vocabulary
-          </div>
-          <ProcessReference />
-        </div>
-      )}
+            {showRef ? "× process reference" : "≡ process reference"}
+          </button>
+          {showRef && (
+            /* x offset ≈ the rail's width: the reference opens BESIDE the rail
+               (its historical home), not over it — the primitive's zero-size
+               anchor sits at the button, inside the rail. */
+            <Popover x={150} y={0} width={288} prefer="right">
+              <div
+                className="mb-2 text-[10px] font-semibold uppercase tracking-wide"
+                style={{ color: "var(--lens-accent)" }}
+              >
+                processes — the vocabulary
+              </div>
+              <ProcessReference />
+            </Popover>
+          )}
+        </span>
+      </div>
     </>
   );
 }

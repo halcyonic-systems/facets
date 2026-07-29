@@ -1644,7 +1644,9 @@ function Workspace() {
           {/* No null-model empty state here: the workbench is display:none
               whenever the home screen is open, and every path that closes the
               home screen loads a model in the same batch. */}
-          <main className={`min-h-0 flex-1 overflow-y-auto ${inspectorFocused && canvasModel ? "hidden" : ""}`}>
+          {/* min-w-0: without it the canvas refuses to shrink (flex min-width:auto)
+              and the whole shell row overflows the viewport at narrow widths (#17). */}
+          <main className={`min-h-0 min-w-0 flex-1 overflow-y-auto ${inspectorFocused && canvasModel ? "hidden" : ""}`}>
             {canvasModel && (
               <KernelErrorBoundary resetKeys={[canvasModel, demo?.key ?? "import"]}>
                 <div className="flex min-h-full flex-col p-4">

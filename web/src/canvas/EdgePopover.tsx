@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ColumnMapping, EdgeFact, Kind, Lens, Manifest, Relation } from "../kernel/types";
 import { channelCopy } from "./lenses/bunge";
 import type { Pt } from "./geometry";
-import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
+import { InspectorRow as Row, InspectorTitle as Title, Popover, ToolButton as SmallButton } from "../ui";
 import {
   FormalismLine,
   SUBSTANCES,
@@ -49,19 +49,10 @@ export function EdgePopover({
   onDelete: () => void;
   onClose: () => void;
 }) {
+  // Shared viewport-clamped Popover (walkthrough #16): a mid-canvas wire's
+  // editor used to run past the canvas bottom with its fields unreachable.
   return (
-    <div
-      className="absolute z-10 -translate-x-1/2 rounded-md p-3"
-      style={{
-        left: anchor.x,
-        top: anchor.y + 20,
-        width: 230,
-        background: "var(--bg-secondary)",
-        border: "1px solid var(--lens-accent)",
-        boxShadow: "var(--shadow-card-hover)",
-        borderRadius: "var(--radius-md)",
-      }}
-    >
+    <Popover x={anchor.x} y={anchor.y} width={230} accent>
       {/* Flow name — shared across lenses. A flow's name is its identity (and the
           manifest key when tethered); an FSA transition IS a named trigger. */}
       <FlowNameField relation={relation} onUpdateRelation={onUpdateRelation} />
@@ -84,7 +75,7 @@ export function EdgePopover({
           delete flow
         </button>
       </div>
-    </div>
+    </Popover>
   );
 }
 
