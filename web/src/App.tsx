@@ -1021,6 +1021,27 @@ function Workspace() {
     }
   }
 
+  // An inputs-panel edit (walkthrough #11): update the relation and RE-RUN
+  // immediately from the edited document — the projection is computed from the
+  // next model synchronously, so the run can never race the state update. The
+  // simulation-tool loop: change a number, see the world change.
+  function applyInputEdit(next: import("./kernel/types").Relation) {
+    if (!canvasModel) return;
+    const nextModel = {
+      ...canvasModel,
+      relations: canvasModel.relations.map((r) => (r.id === next.id ? next : r)),
+    };
+    setCanvasModel(nextModel);
+    setDirty(true);
+    if (demo && canvasModel.lens !== "Klir") {
+      try {
+        runWith(JSON.stringify(project(nextModel)), demo.csv!, manifest, dt, t, true);
+      } catch (e) {
+        setToast(e instanceof Error ? e.message : String(e));
+      }
+    }
+  }
+
   // A per-lens edge edit (kind / bond⇄mere / direction / klir toggle): update
   // the editing model; the effect above re-projects + re-judges in Rust.
   function updateRelation(next: import("./kernel/types").Relation) {
@@ -2009,6 +2030,8 @@ function Workspace() {
             <InspectorDock
               result={result}
               ranEdited={ranEdited}
+              runManifest={demo ? manifest : null}
+              onInputEdit={applyInputEdit}
               runError={runError}
               desc={desc}
               verdict={verdict}
