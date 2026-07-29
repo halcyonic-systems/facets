@@ -261,8 +261,9 @@ body {
 .lens-question {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 1.05rem;
-  line-height: 1.2;
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1.25;
   color: var(--lens-accent);
   animation: lens-question-settle 0.45s ease-out;
 }
