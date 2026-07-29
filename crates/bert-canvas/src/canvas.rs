@@ -317,6 +317,44 @@ pub struct SystemType {
     pub domain: Option<String>,
 }
 
+/// What a declared parameter is anchored to. A param never stores a value —
+/// the value IS the anchored declared amount; the param names it in the
+/// model's own domain terms (walkthrough #18). Anchors are by id, so a rename
+/// of a thing or flow label cannot orphan a param mid-session; SL resolves
+/// names to ids at parse time and emits names back from ids.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ParamAnchor {
+    /// One declared flow amount (`Relation::amount`).
+    Flow { relation: u64 },
+    /// A process's whole out-fanout of declared amounts, presented as % shares.
+    /// Normalization is presentation: the engine keeps raw weights (Mobus
+    /// Eq. 4.5 is scale-free), and editing one share edits one raw weight.
+    Shares { thing: u64 },
+}
+
+/// An author-declared adjustable quantity, named in the model's domain
+/// vocabulary rather than the kernel's mechanism taxonomy. The #268 inputs
+/// panel remains the floor for undeclared magnitudes; a param enriches how a
+/// declared amount is presented, never what runs. Names are unique — they are
+/// the stable references scenario overrides (#202) will hold.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct ParamDecl {
+    pub name: String,
+    pub anchor: ParamAnchor,
+    /// Inclusive slider bounds for a `Flow` anchor. Declared, not enforced by
+    /// the engine: the range is the author's statement of the sensible span,
+    /// and a declared amount outside it is a parse-time contradiction.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<ParamRange>,
+}
+
+/// Inclusive bounds, in the anchored flow's own unit.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+pub struct ParamRange {
+    pub min: bert_core::rust_decimal::Decimal,
+    pub max: bert_core::rust_decimal::Decimal,
+}
+
 /// The canvas editing model — the JSON the React canvas holds and sends.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CanvasModel {
@@ -351,6 +389,12 @@ pub struct CanvasModel {
     /// pre-existing models serialize unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub time_unit: Option<String>,
+    /// Declared parameters (walkthrough #18) — domain names over declared
+    /// amounts. Presentation-layer semantics: `project` ignores them, the run
+    /// panel reads them. `skip` when empty so pre-existing models stay
+    /// byte-identical on disk (the #163 pattern).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub params: Vec<ParamDecl>,
 }
 
 fn info(id: Id, level: i32, name: &str) -> Info {
@@ -880,6 +924,9 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         system_type: SystemType::default(),
         name,
         time_unit: model.time_unit.clone(),
+        // Params are canvas-resident presentation semantics; a WorldModel
+        // never carried them, so a model born from kernel JSON starts bare.
+        params: vec![],
     }
 }
 
@@ -1079,6 +1126,7 @@ mod tests {
             system_type: Default::default(),
             name: None,
             time_unit: None,
+            params: vec![],
         };
         let (states, edges) = markov_edges(&model);
         assert_eq!(states, vec!["Even".to_string(), "Odd".to_string()]);
@@ -1106,6 +1154,7 @@ mod tests {
                 system_type: Default::default(),
                 name: None,
                 time_unit: None,
+                params: vec![],
             };
             let wm = project(&model);
             assert_eq!(wm.mode, Some(lens.mode()));
@@ -1134,6 +1183,7 @@ mod tests {
             system_type: Default::default(),
             name: None,
             time_unit: None,
+            params: vec![],
         };
         let loop_edge = bond(11, 1, 1); // A → A
         let issues = validate_connection(&model, &loop_edge);
@@ -1160,6 +1210,7 @@ mod tests {
             system_type: Default::default(),
             name: None,
             time_unit: None,
+            params: vec![],
         };
         let issues = validate_connection(&model, &bond(10, 1, 2));
         assert!(issues.is_empty(), "S → H must connect: {issues:?}");
@@ -1178,6 +1229,7 @@ mod tests {
             system_type: Default::default(),
             name: None,
             time_unit: None,
+            params: vec![],
         };
         let audit = crate::lenses::analyze(&model, Lens::Mobus);
         let hit = audit
@@ -1208,6 +1260,7 @@ mod tests {
             system_type: Default::default(),
             name: None,
             time_unit: None,
+            params: vec![],
         };
         let issues = validate_connection(&model, &bond(12, 1, 2));
         let dup = issues
@@ -1259,6 +1312,7 @@ mod tests {
             system_type: Default::default(),
             name: None,
             time_unit: None,
+            params: vec![],
         };
         let world = project(&model);
         let report = validate_mode(&world, bert_core::Mode::Operational);
@@ -1301,6 +1355,7 @@ mod tests {
             system_type: Default::default(),
             name: None,
             time_unit: None,
+            params: vec![],
         };
         let issues = validate_connection(&model, &bond(10, 1, 2));
         assert!(
@@ -1339,6 +1394,7 @@ mod tests {
             system_type: Default::default(),
             name: None,
             time_unit: None,
+            params: vec![],
         };
         let issues = validate_connection(&model, &bond(11, 3, 1));
         assert!(
@@ -1437,6 +1493,7 @@ mod tests {
             system_type: Default::default(),
             name: None,
             time_unit: None,
+            params: vec![],
         };
         let wm = project(&model);
         assert_eq!(wm.environment.sources.len(), 1);
@@ -1457,6 +1514,7 @@ mod tests {
             system_type: Default::default(),
             name: None,
             time_unit: None,
+            params: vec![],
         });
         assert!(world.model_id.is_none(), "the canvas never mints");
         let id = world.mint_id();
@@ -1487,6 +1545,7 @@ mod tests {
             system_type: Default::default(),
             name: None,
             time_unit: None,
+            params: vec![],
         };
         let child = decompose_thing(&model, 3).expect("interior component derives");
         assert!(child.model_id.is_some(), "the child is born nameable");

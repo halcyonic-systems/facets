@@ -34,10 +34,25 @@ const models = import.meta.glob("../../assets/models/demos/*.json", {
   import: "default",
 }) as Record<string, string>;
 
+// The demos' SL sources. An SL-authored demo carries its `.sl` text so the
+// open path can compile the author's document — the bundled model is its
+// projection (sl_demos.rs pins the two together), and projection is lossy
+// exactly where the canvas layer is richer (declared params, walkthrough #18).
+const slSources = import.meta.glob("../../assets/examples/*.sl", {
+  eager: true,
+  query: "?raw",
+  import: "default",
+}) as Record<string, string>;
+
 function modelByName(name: string): string {
   const key = Object.keys(models).find((k) => k.endsWith(`/${name}.json`));
   if (!key) throw new Error(`demo model not found: ${name}`);
   return models[key];
+}
+
+function slByName(name: string): string | undefined {
+  const key = Object.keys(slSources).find((k) => k.endsWith(`/${name}.sl`));
+  return key ? slSources[key] : undefined;
 }
 
 export const DEMOS: Demo[] = Object.values(bundles)
@@ -51,4 +66,5 @@ export const DEMOS: Demo[] = Object.values(bundles)
     csv: b.csv as string,
     manifest: b.mapping as Manifest,
     t: b.t as number,
+    sl: slByName(b.model as string),
   }));
