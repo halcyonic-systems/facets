@@ -420,7 +420,12 @@ function Workspace() {
     if (d.modelJson == null || d.csv == null || d.manifest == null || d.t == null) return;
     if (!guardDiscard() || !(await flushWalk())) return;
     setDemo(d);
-    setCanvasModel(spaceOut(openModel(d.modelJson))); // load the demo onto the canvas as a diagram
+    // An SL-authored demo opens from its `.sl` — the author's document, which
+    // carries what projection loses (declared params, #18). The bundle stays
+    // the run's model: sl_demos.rs pins it to the projection of this same
+    // text, so the two cannot disagree about the system.
+    const compiled = d.sl ? compileSl(d.sl) : null;
+    setCanvasModel(compiled && "ok" in compiled ? compiled.ok : spaceOut(openModel(d.modelJson)));
     setManifest(d.manifest);
     setDt(d.manifest.dt ?? 1);
     setT(d.t);

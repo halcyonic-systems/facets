@@ -897,6 +897,7 @@ mod tests {
             system_type: Default::default(),
             name: None,
             time_unit: None,
+            params: vec![],
         }
     }
 

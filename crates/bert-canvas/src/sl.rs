@@ -34,6 +34,10 @@
 //!                                      #   amount ≠ 1 — unauthored is its own state
 //! flow Furnace -> Customers : matter "steel" mere   # mere = not a bond
 //! flow Even -> Odd : "flip" weight 3                 # weight = DTMC transition count (#67); default 1
+//! param "Vendor supply" : flow "Iron Vendor" -> Furnace range 0..500
+//!                                      # a domain name over a declared amount
+//!                                      #   (walkthrough #18); stores no value
+//! param shares "Furnace split" : from Furnace   # a fanout presented as % shares
 //! boundary porosity 0.7 fuzziness 0.1
 //!
 //! @lens mobus                          # view layer, ignorable
@@ -86,6 +90,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     let mut errors: Vec<SlError> = Vec::new();
     let mut things: Vec<Thing> = Vec::new();
     let mut relations: Vec<Relation> = Vec::new();
+    let mut params: Vec<crate::canvas::ParamDecl> = Vec::new();
     let mut boundary: Option<CanvasBoundaryProps> = None;
     let mut system_type = SystemType::default();
     let mut system_name: Option<String> = None;
@@ -819,6 +824,232 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 });
                 next_id += 1;
             }
+            "param" => {
+                // param "Name" : flow <a> -> <b> ["label"] [range <min>..<max>]
+                // param shares "Name" : from <process>
+                //
+                // A declared parameter (walkthrough #18): a domain name over an
+                // already-declared amount. It stores no value — the value IS the
+                // anchored amount — so an anchor that resolves to nothing
+                // adjustable is a fault, never a bag (#112 register, rule 1).
+                let syntax = "param syntax: `param \"Name\" : flow <a> -> <b> \
+                              [\"label\"] [range <min>..<max>]` or `param shares \
+                              \"Name\" : from <process>`";
+                let is_shares = matches!(rest, [Tok::Word(w), ..] if w.eq_ignore_ascii_case("shares"));
+                let body = if is_shares { &rest[1..] } else { rest };
+                let (name_tok, after_colon) = match body {
+                    [n, Tok::Colon, tail @ ..] if n.is_name() => (n, tail),
+                    _ => {
+                        fail(syntax.into(), &mut errors);
+                        continue;
+                    }
+                };
+                let pname = name_tok.name().trim().to_string();
+                if pname.is_empty() {
+                    fail("a param needs a non-empty name".into(), &mut errors);
+                    continue;
+                }
+                if params.iter().any(|p: &crate::canvas::ParamDecl| p.name == pname) {
+                    fail(
+                        format!(
+                            "param `{pname}` already declared — param names are unique \
+                             (they are what scenarios will reference)"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                if is_shares {
+                    // shares form: `: from <process>`
+                    let process = match after_colon {
+                        [Tok::Word(f), p] if f.eq_ignore_ascii_case("from") && p.is_name() => {
+                            p.name()
+                        }
+                        _ => {
+                            fail(syntax.into(), &mut errors);
+                            continue;
+                        }
+                    };
+                    let Some(&pi) = by_name.get(&process) else {
+                        fail(
+                            format!("`{process}` is not declared (declare things and flows before params)"),
+                            &mut errors,
+                        );
+                        continue;
+                    };
+                    let thing = &things[pi];
+                    if thing.role != Role::Component {
+                        fail(
+                            format!(
+                                "`{process}` is an environment thing — shares present a \
+                                 process's out-fanout, so `from` must name a component"
+                            ),
+                            &mut errors,
+                        );
+                        continue;
+                    }
+                    let fanout = relations
+                        .iter()
+                        .filter(|r| r.a == thing.id && r.is_bond && r.amount.is_some())
+                        .count();
+                    if fanout < 2 {
+                        fail(
+                            format!(
+                                "`{process}` has {fanout} outgoing declared amount(s) — \
+                                 shares need a fanout of at least 2 to present as a split"
+                            ),
+                            &mut errors,
+                        );
+                        continue;
+                    }
+                    params.push(crate::canvas::ParamDecl {
+                        name: pname,
+                        anchor: crate::canvas::ParamAnchor::Shares { thing: thing.id },
+                        range: None,
+                    });
+                    continue;
+                }
+                // flow form: `: flow <a> -> <b> ["label"] [range <min>..<max>]`
+                let (a, b, mut tail) = match after_colon {
+                    [Tok::Word(f), a, Tok::Arrow, b, tail @ ..]
+                        if f.eq_ignore_ascii_case("flow") && a.is_name() && b.is_name() =>
+                    {
+                        (a.name(), b.name(), tail)
+                    }
+                    _ => {
+                        fail(syntax.into(), &mut errors);
+                        continue;
+                    }
+                };
+                let mut label: Option<String> = None;
+                if let [Tok::Str(l), rest_tail @ ..] = tail {
+                    label = Some(l.clone());
+                    tail = rest_tail;
+                }
+                let mut range = None;
+                if let [Tok::Word(w), rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("range") {
+                        let bounds = match rest_tail {
+                            [Tok::Word(spec), after @ ..] => {
+                                let parsed = spec.split_once("..").and_then(|(lo, hi)| {
+                                    let lo = lo.parse::<bert_core::rust_decimal::Decimal>().ok()?;
+                                    let hi = hi.parse::<bert_core::rust_decimal::Decimal>().ok()?;
+                                    Some((lo, hi, after))
+                                });
+                                match parsed {
+                                    Some(p) => p,
+                                    None => {
+                                        fail(
+                                            "range syntax: `range <min>..<max>` (e.g. `range 0..12000`)"
+                                                .into(),
+                                            &mut errors,
+                                        );
+                                        continue;
+                                    }
+                                }
+                            }
+                            _ => {
+                                fail(
+                                    "range syntax: `range <min>..<max>` (e.g. `range 0..12000`)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        };
+                        let (lo, hi, after) = bounds;
+                        if lo < bert_core::rust_decimal::Decimal::ZERO || lo >= hi {
+                            fail(
+                                "a range needs `0 <= min < max` — it bounds a positive magnitude"
+                                    .into(),
+                                &mut errors,
+                            );
+                            continue;
+                        }
+                        range = Some(crate::canvas::ParamRange { min: lo, max: hi });
+                        tail = after;
+                    }
+                }
+                if !tail.is_empty() {
+                    fail(format!("unexpected `{}` at end of param — {syntax}", tail[0].display()), &mut errors);
+                    continue;
+                }
+                let (Some(&ai), Some(&bi)) = (by_name.get(&a), by_name.get(&b)) else {
+                    let missing = if by_name.contains_key(&a) { &b } else { &a };
+                    fail(
+                        format!("`{missing}` is not declared (declare things and flows before params)"),
+                        &mut errors,
+                    );
+                    continue;
+                };
+                let (aid, bid) = (things[ai].id, things[bi].id);
+                let candidates: Vec<&Relation> = relations
+                    .iter()
+                    .filter(|r| r.a == aid && r.b == bid && r.is_bond)
+                    .filter(|r| label.as_deref().is_none_or(|l| r.name == l))
+                    .collect();
+                let rel = match candidates.as_slice() {
+                    [] => {
+                        let with = label
+                            .as_deref()
+                            .map(|l| format!(" labeled \"{l}\""))
+                            .unwrap_or_default();
+                        fail(
+                            format!(
+                                "no flow `{a} -> {b}`{with} is declared above this line — \
+                                 a param names an existing declared amount"
+                            ),
+                            &mut errors,
+                        );
+                        continue;
+                    }
+                    [one] => *one,
+                    many => {
+                        let labels = many
+                            .iter()
+                            .map(|r| format!("\"{}\"", r.name))
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        fail(
+                            format!(
+                                "{} flows run `{a} -> {b}` — disambiguate with the flow's \
+                                 label: {labels}",
+                                many.len()
+                            ),
+                            &mut errors,
+                        );
+                        continue;
+                    }
+                };
+                let Some(amount) = rel.amount else {
+                    fail(
+                        format!(
+                            "flow `{a} -> {b}` declares no amount — a param names an \
+                             adjustable declared magnitude; add `amount <n>` to the flow"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                };
+                if let Some(r) = &range {
+                    if amount < r.min || amount > r.max {
+                        fail(
+                            format!(
+                                "the flow's declared amount {amount} lies outside the param's \
+                                 range {}..{} — the range contradicts the model",
+                                r.min, r.max
+                            ),
+                            &mut errors,
+                        );
+                        continue;
+                    }
+                }
+                params.push(crate::canvas::ParamDecl {
+                    name: pname,
+                    anchor: crate::canvas::ParamAnchor::Flow { relation: rel.id },
+                    range,
+                });
+            }
             "boundary" => {
                 if boundary.is_some() {
                     fail("`boundary` already declared".into(), &mut errors);
@@ -893,6 +1124,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         system_type,
         name: system_name,
         time_unit,
+        params,
     };
     auto_layout(&mut model, &positions);
     Ok(SlParse {
@@ -1137,6 +1369,46 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         }
         if let Some(w) = r.weight {
             write!(out, " weight {w}").unwrap();
+        }
+        out.push('\n');
+    }
+
+    // params (walkthrough #18) — after flows (they reference them), before
+    // boundary. The flow's label is always emitted when present, so the
+    // canonical form never depends on whether the pair happens to be
+    // ambiguous today.
+    for p in &model.params {
+        match p.anchor {
+            crate::canvas::ParamAnchor::Flow { relation } => {
+                let r = model
+                    .relations
+                    .iter()
+                    .find(|r| r.id == relation)
+                    .ok_or_else(|| format!("param `{}` anchors relation {relation}, which names no flow", p.name))?;
+                write!(
+                    out,
+                    "param {} : flow {} -> {}",
+                    quote(&p.name)?,
+                    name_token(&name_of(r.a)?)?,
+                    name_token(&name_of(r.b)?)?
+                )
+                .unwrap();
+                if !r.name.is_empty() {
+                    write!(out, " {}", quote(&r.name)?).unwrap();
+                }
+                if let Some(range) = &p.range {
+                    write!(out, " range {}..{}", range.min, range.max).unwrap();
+                }
+            }
+            crate::canvas::ParamAnchor::Shares { thing } => {
+                write!(
+                    out,
+                    "param shares {} : from {}",
+                    quote(&p.name)?,
+                    name_token(&name_of(thing)?)?
+                )
+                .unwrap();
+            }
         }
         out.push('\n');
     }

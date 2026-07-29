@@ -102,6 +102,7 @@ fn canvas_born_model_canonicalizes() {
         system_type: SystemType::default(),
         name: None,
         time_unit: None,
+        params: vec![],
     };
     let t1 = emit_sl(&m).unwrap();
     let m2 = parse_sl(&t1).unwrap();

@@ -147,4 +147,16 @@ flow Qwen -> "Applications served" : informational "tokens served" substance tok
 flow DeepSeek -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
 flow "Other open" -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
 
+# ── Declared parameters: the model's own vocabulary for its knobs ────
+# What a user of this simulation actually wants to slide (walkthrough
+# #18): channel demand and market shares, not "relative weights". Each
+# param names an amount declared above; the % presentation of a shares
+# group is display-only — the engine keeps the raw weights. Cost/price
+# parameters are legitimately absent: they need the money counter-flow
+# plane this model deliberately defers.
+param "Developer demand" : flow "Developer workload" -> "Developer clearing" range 0..12000
+param "Enterprise demand" : flow "Enterprise workload" -> "Enterprise clearing" range 0..8000
+param shares "Developer market share" : from "Developer clearing"
+param shares "Enterprise market share" : from "Enterprise clearing"
+
 @lens mobus

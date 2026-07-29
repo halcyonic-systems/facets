@@ -304,6 +304,30 @@ export interface CanvasModel {
    *  reads it (kW → kW·h instead of kW·Δt). serde skip-if-None — absent =
    *  undeclared (the abstract ·Δt rendering). */
   time_unit?: string;
+  /** Declared parameters (walkthrough #18) — domain names over declared
+   *  amounts. Presentation semantics: project() ignores them, the run panel
+   *  reads them. serde skip-if-empty — absent on pre-existing models. */
+  params?: ParamDecl[];
+}
+
+/** What a declared parameter anchors: one flow's declared amount, or a
+ *  process's whole out-fanout presented as % shares. Externally-tagged serde
+ *  enum. Anchors are by id so renames cannot orphan a param. */
+export type ParamAnchor = { Flow: { relation: number } } | { Shares: { thing: number } };
+
+/** Inclusive slider bounds, decimal STRINGS in the flow's own unit. */
+export interface ParamRange {
+  min: string;
+  max: string;
+}
+
+/** An author-declared adjustable quantity, named in the model's domain
+ *  vocabulary. Stores no value — the value IS the anchored declared amount.
+ *  Names are unique: they are what scenario overrides (#202) will reference. */
+export interface ParamDecl {
+  name: string;
+  anchor: ParamAnchor;
+  range?: ParamRange;
 }
 
 // ---- SL: the textual authoring surface ---------------------------------------

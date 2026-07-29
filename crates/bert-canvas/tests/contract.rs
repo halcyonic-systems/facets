@@ -129,6 +129,7 @@ fn sample() -> CanvasModel {
         // Round-trip coverage of the declared case lives in sl_roundtrip.rs and
         // the canvas unit tests.
         time_unit: None,
+        params: vec![],
     }
 }
 
