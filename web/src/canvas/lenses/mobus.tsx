@@ -126,6 +126,7 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
       selected={selected}
       driven={driven}
       sim={sim}
+      ample={relation.ample}
       relationId={relation.id}
       onSelect={onSelect}
       label={label}

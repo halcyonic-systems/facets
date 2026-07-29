@@ -1580,6 +1580,16 @@ pub struct Interaction {
     pub sink_interface: Option<Id>,
     pub amount: Decimal,
     pub unit: String,
+    /// `ample` (bert-lenses#9): an AVAILABILITY assertion on an informational
+    /// flow — the signal is present and never the binding constraint. It
+    /// carries no magnitude: nothing is emitted, summed, or conserved through
+    /// it, and receivers that gate on signal availability see the gate held
+    /// open. Meaningful only for Message substance (information copies freely;
+    /// matter and energy are metered) — the SL parser refuses it elsewhere.
+    /// When true, `amount` is semantically void. `skip` keeps every model
+    /// authored before this field byte-identical on disk.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ample: bool,
     /// List of additional parameters
     pub parameters: Vec<Parameter>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

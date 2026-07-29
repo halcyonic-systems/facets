@@ -262,6 +262,9 @@ export interface Relation {
   unit?: string;
   /** What flows, named apart from the flow's label (#216, C4). */
   substance?: string;
+  /** Availability assertion (#9): the signal is present and never the binding
+   *  constraint — no magnitude. serde skip-if-false; absent on old models. */
+  ample?: boolean;
 }
 
 /** Authored B properties for the root membrane — P = ⟨porosity, fuzziness⟩.

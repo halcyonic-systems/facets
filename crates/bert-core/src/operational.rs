@@ -117,6 +117,11 @@ pub struct OperationalFlow {
     pub substance: SubstanceType,
     pub unit: String,
     pub amount: f64,
+    /// Availability assertion (bert-lenses#9) — see `Interaction::ample`.
+    /// When true, `amount` is semantically void and executors deliver no
+    /// quantity through this flow; gate-type receivers treat it as held open.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ample: bool,
     pub conductance: Option<f64>,
     /// `Some` iff this flow lowered from boundary-interface routing (bert#108),
     /// naming the work process the interface recapitulates. Unparameterized (the
@@ -436,6 +441,7 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
             substance: ix.substance.ty,
             unit: ix.unit.clone(),
             amount: ix.amount.to_string().parse::<f64>().unwrap_or(1.0),
+            ample: ix.ample,
             conductance,
             interface_routing,
             rate_series,
@@ -554,6 +560,7 @@ mod tests {
             sink_interface: None,
             amount: crate::rust_decimal::Decimal::ONE,
             unit: "L".to_string(),
+            ample: false,
             parameters: vec![],
             smart_parameters: vec![],
             endpoint_offset: None,

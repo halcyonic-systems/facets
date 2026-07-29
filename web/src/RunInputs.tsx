@@ -94,6 +94,14 @@ function InputRow({
         >
           driven by “{forcedBy}”
         </span>
+      ) : relation.ample ? (
+        <span
+          className="shrink-0 text-[11px] italic"
+          style={{ color: "var(--text-muted)" }}
+          title="Declared ample (#9): availability never binds — there is no number to adjust."
+        >
+          ample
+        </span>
       ) : (
         <AmountField relation={relation} onEdit={onEdit} />
       )}
@@ -257,7 +265,7 @@ export function RunInputs({
   onReset?: () => void;
 }) {
   const thing = (id: number) => model.things.find((t) => t.id === id);
-  const declared = model.relations.filter((r) => r.is_bond && r.amount != null);
+  const declared = model.relations.filter((r) => r.is_bond && (r.amount != null || r.ample));
   const forcedBy = (r: Relation): string | undefined =>
     manifest?.mapping.find((m) => m.as === "flow" && m.force && m.element === r.name)?.column;
 

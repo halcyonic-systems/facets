@@ -81,7 +81,11 @@ sources in comments.
 3. **`amount` is an absolute rate only on source-originating flows.** On flows
    out of processes it is a *relative weight* for the fanout split; the actual
    outflow of a stock is its `release`/time-constant behavior. Don't decorate
-   downstream flows with amounts and expect them to act.
+   downstream flows with amounts and expect them to act. And when a signal's
+   availability is simply *never the constraint* — released weights feeding an
+   Amplifying model, an always-on control line — say `ample` instead of
+   inventing a huge number (spec §4.4): informational flows only, no unit, the
+   gate reads held open and the diagram shows the word.
 4. **Stocks start at zero.** SL's `stock <unit>` declares a unit, not a value —
    an initial stock value is typed parameter territory, gated on
    [#112](https://github.com/halcyonic-systems/bert-lenses/issues/112) (C2).

@@ -263,6 +263,12 @@ pub struct Relation {
     /// the latter. Empty = undeclared.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub substance: String,
+    /// `ample` (#9) — see [`bert_core::Interaction::ample`]: an availability
+    /// assertion on an informational flow; no magnitude. The SL parser refuses
+    /// it with `amount`/`unit`, on `mere`, and on non-informational kinds.
+    /// `skip` keeps pre-existing models byte-identical on disk.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ample: bool,
 }
 
 fn default_true() -> bool {
@@ -704,6 +710,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             // by `to_canvas` therefore returns Some(1), not None (#216).
             amount: r.amount.unwrap_or(bert_core::rust_decimal::Decimal::ONE),
             unit: r.unit.clone(),
+            ample: r.ample,
             parameters: vec![],
             smart_parameters: vec![],
             endpoint_offset: None,
@@ -898,6 +905,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             amount: Some(ix.amount),
             unit: ix.unit.clone(),
             substance: ix.substance.sub_type.clone(),
+            ample: ix.ample,
         });
     }
 
@@ -1097,6 +1105,7 @@ mod tests {
             amount: None,
             unit: String::new(),
             substance: String::new(),
+            ample: false,
         }
     }
 

@@ -387,6 +387,9 @@ interface EdgeScaffoldProps {
   selected: boolean;
   driven: boolean;
   sim?: { value: number; unit: string };
+  /** Availability assertion (#9): the edge carries "enough", not a number —
+   *  the readout says the word instead of a quantity. */
+  ample?: boolean;
   relationId: number;
   onSelect?: (id: number) => void;
   /** Per-lens badge overlays (e.g. Bunge's ⊘M no-Mobus-preimage mark). */
@@ -410,6 +413,7 @@ export function EdgeScaffold({
   selected,
   driven,
   sim,
+  ample,
   relationId,
   onSelect,
   overlay,
@@ -494,17 +498,31 @@ export function EdgeScaffold({
       {driven && <circle cx={labelAt.x} cy={labelAt.y - 6} r={4} fill="var(--accent)" pointerEvents="none" />}
       {overlay}
       {label}
-      {sim && (
+      {ample ? (
         <text
           x={labelAt.x}
           y={labelAt.y + 14}
           textAnchor="middle"
           fontSize={10}
-          fill="var(--accent-strong)"
-          className="font-mono tabular pointer-events-none"
+          fill="var(--text-muted)"
+          fontStyle="italic"
+          className="font-body pointer-events-none"
         >
-          {humanize(sim.value)} {sim.unit}
+          ample
         </text>
+      ) : (
+        sim && (
+          <text
+            x={labelAt.x}
+            y={labelAt.y + 14}
+            textAnchor="middle"
+            fontSize={10}
+            fill="var(--accent-strong)"
+            className="font-mono tabular pointer-events-none"
+          >
+            {humanize(sim.value)} {sim.unit}
+          </text>
+        )
       )}
     </g>
   );

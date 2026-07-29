@@ -493,6 +493,7 @@ pub fn derive_child(parent: &WorldModel, comp: &Id) -> Result<WorldModel, Vec<Va
             description: String::new(),
         },
         substance: ix.substance.clone(),
+        ample: ix.ample,
         ty: ix.ty,
         usability: ix.usability,
         source: from,

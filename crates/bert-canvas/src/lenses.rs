@@ -1032,6 +1032,7 @@ mod tests {
             amount: None,
             unit: String::new(),
             substance: String::new(),
+            ample: false,
         }
     }
     fn model(things: Vec<Thing>, relations: Vec<Relation>) -> CanvasModel {

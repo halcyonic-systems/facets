@@ -886,6 +886,7 @@ mod tests {
                 amount: None,
                 unit: String::new(),
                 substance: String::new(),
+                ample: false,
             }
         }
         CanvasModel {

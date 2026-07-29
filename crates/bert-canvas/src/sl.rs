@@ -708,6 +708,38 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         }
                     }
                 }
+                // `ample` (#9) — an availability assertion in place of a
+                // magnitude: the signal is present and never the binding
+                // constraint. Discovered by llm-market, where "amount 100000"
+                // was the only way to say "never binding" and leaked a magic
+                // number into the diagram. Refusals below, each with a
+                // separating instance: ample is not a quantity, so everything
+                // quantity-shaped beside it is a contradiction.
+                let mut ample = false;
+                if let [Tok::Word(w), rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("ample") {
+                        ample = true;
+                        tail = rest_tail;
+                    }
+                }
+                if ample && amount.is_some() {
+                    fail(
+                        "a flow declares `amount <n>` or `ample`, not both — ample \
+                         asserts availability without a magnitude; remove one"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                if ample && kind != Kind::Informational {
+                    fail(
+                        "`ample` asserts signal availability — only an `: informational` \
+                         flow can be ample; matter and energy are metered"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
                 // `unit <name>` — the magnitude's unit (#216, C1), bare or
                 // quoted (`unit ML/mo`, `unit "kW·h"`).
                 let mut unit = String::new();
@@ -726,6 +758,15 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         tail = rest_tail;
                     }
                 }
+                if ample && !unit.is_empty() {
+                    fail(
+                        "`unit` on an `ample` flow — ample has no magnitude to \
+                         measure; remove one"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
                 let mut is_bond = true;
                 if let [Tok::Word(w), rest_tail @ ..] = tail {
                     if w.eq_ignore_ascii_case("mere") {
@@ -736,11 +777,11 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // A quantity on a `mere` relation is a contradiction, not an
                 // option to drop: a non-bond never projects, so a magnitude on
                 // it could never mean anything. Refuse rather than default.
-                if !is_bond && (amount.is_some() || !unit.is_empty() || !substance.is_empty()) {
+                if !is_bond && (amount.is_some() || !unit.is_empty() || !substance.is_empty() || ample) {
                     fail(
-                        "`substance`/`amount`/`unit` on a `mere` relation — a mere \
-                         relation never projects, so a quantity on it cannot mean \
-                         anything; remove the clause or the `mere`"
+                        "`substance`/`amount`/`unit`/`ample` on a `mere` relation — a \
+                         mere relation never projects, so a quantity (or availability) \
+                         on it cannot mean anything; remove the clause or the `mere`"
                             .into(),
                         &mut errors,
                     );
@@ -821,6 +862,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     amount,
                     unit,
                     substance,
+                    ample,
                 });
                 next_id += 1;
             }
@@ -1358,7 +1400,13 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         if !r.substance.is_empty() {
             write!(out, " substance {}", name_token(&r.substance)?).unwrap();
         }
-        if let Some(a) = r.amount {
+        if r.ample {
+            // Ample replaces the quantity clauses; a model carrying both (out
+            // of contract) canonicalizes to ample, matching the engine, where
+            // an ample wire's amount can never act.
+            write!(out, " ample").unwrap();
+        }
+        if let Some(a) = r.amount.filter(|_| !r.ample) {
             write!(out, " amount {a}").unwrap();
         }
         if !r.unit.is_empty() {

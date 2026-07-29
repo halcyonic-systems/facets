@@ -74,6 +74,7 @@ fn relation(id: u64, a: u64, b: u64, name: &str, is_bond: bool, kind: Kind) -> R
         amount: None,
         unit: String::new(),
         substance: String::new(),
+        ample: false,
     }
 }
 
