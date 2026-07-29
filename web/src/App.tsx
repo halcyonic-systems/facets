@@ -1568,11 +1568,7 @@ function Workspace() {
                 real presence (#7): display serif in the lens accent, settling
                 briefly on each switch — the key re-mounts the span so the
                 animation re-runs exactly when the question changes. */}
-            {desc && (
-              <span key={canvasModel.lens} className="lens-question min-w-0">
-                {desc.question}
-              </span>
-            )}
+            {/* placeholder — the question moved to its own display band below */}
             {/* #204: the review as an action. The pill beside it is the standing
                 reading; this button is the author asking for the report. */}
             <button
@@ -1643,6 +1639,16 @@ function Workspace() {
                 );
               })()}
             </div>
+            {/* The lens's stance, declared (#7, boldened on review): a
+                full-width display band under the controls — the strip is
+                flex-wrap, so basis-full lands the question on its own line,
+                where the display serif can run large without fighting the
+                buttons. */}
+            {desc && (
+              <div key={canvasModel.lens} className="lens-question basis-full pb-1 pt-0.5">
+                {desc.question}
+              </div>
+            )}
           </div>
         )}
 
