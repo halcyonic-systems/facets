@@ -49,6 +49,7 @@ export function InspectorDock({
   onInputEdit,
   onResetInputs,
   blurb,
+  time,
   runError,
   desc,
   verdict,
@@ -79,6 +80,9 @@ export function InspectorDock({
   onInputEdit?: (next: Relation) => void;
   /** Restore the model's declared amounts (derived from the demo's .sl). */
   onResetInputs?: () => void;
+  /** The run's time controls (Δt/T relocation): committed edits re-run over
+   *  the new slice via the same grammar as an inputs edit. */
+  time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
   /** The demo bundle's description, shown on the model-level about (#15). */
   blurb?: string;
   runError: string | null;
@@ -259,6 +263,7 @@ export function InspectorDock({
                 manifest={runManifest ?? null}
                 onInputEdit={onInputEdit}
                 onResetInputs={onResetInputs}
+                time={time}
               />
             )}
             {tab === "formal" && <FormalTab desc={desc} analysisError={analysisError} />}
@@ -348,6 +353,7 @@ function RunTab({
   manifest,
   onInputEdit,
   onResetInputs,
+  time,
 }: {
   result: RunResultRich | null;
   ranEdited?: boolean;
@@ -359,6 +365,7 @@ function RunTab({
   manifest?: Manifest | null;
   onInputEdit?: (next: Relation) => void;
   onResetInputs?: () => void;
+  time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
 }) {
   // The inputs card renders above WHATEVER the run state is — including a
   // refusal, since fix-the-number-and-rerun is exactly the loop it exists for.
@@ -366,9 +373,14 @@ function RunTab({
     model && manifest && onInputEdit ? (
       <RunInputs model={model} manifest={manifest} onEdit={onInputEdit} onReset={onResetInputs} />
     ) : null;
+  // The run's time slice, docked with the run (Δt/T relocation). Commit
+  // re-runs immediately; under Klir only the horizon means anything (a DTMC
+  // advances in steps, not Δt-sized slices).
+  const timeRow = time ? <TimeRow time={time} /> : null;
   if (runError) {
     return (
       <div className="grid gap-5">
+        {timeRow}
         {inputs}
         <Card title="Result" source="bert-compose · wasm">
           <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
@@ -381,14 +393,60 @@ function RunTab({
   if (result)
     return (
       <div className="grid gap-5">
+        {timeRow}
         {inputs}
         <RunPanel result={result} ranEdited={ranEdited} lens={lens} onAcceptUnit={onAcceptUnit} tick={tick} />
       </div>
     );
   return (
-    <Placeholder>
-      Run a demo bundle (model + CSV + mapping) to see the forced simulation here.
-    </Placeholder>
+    <div className="grid gap-5">
+      {timeRow}
+      {inputs}
+      <Placeholder>
+        Run a demo bundle (model + CSV + mapping) to see the forced simulation here.
+      </Placeholder>
+    </div>
+  );
+}
+
+/** The run's time slice (Δt/T relocation): step size and horizon, docked with
+ *  the run they govern. Commit (Enter/blur) re-runs over the new slice — the
+ *  inputs-card grammar. Under Klir only the horizon renders (a DTMC advances
+ *  in steps; Δt is not a Klir word). */
+function TimeRow({
+  time,
+}: {
+  time: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
+}) {
+  const field = (label: string, value: number, commit: (v: number) => void, title: string) => (
+    <label className="flex items-center gap-1.5 text-xs" title={title} style={{ color: "var(--text-secondary)" }}>
+      {label}
+      <input
+        key={value}
+        type="number"
+        defaultValue={value}
+        min={0}
+        step="any"
+        onBlur={(e) => {
+          const v = parseFloat(e.target.value);
+          if (Number.isFinite(v) && v > 0 && v !== value) commit(v);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        }}
+        className="w-16 rounded-md px-1.5 py-0.5 text-xs tabular"
+        style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+      />
+    </label>
+  );
+  return (
+    <Card title="Time" source="the run's slice · edits re-run">
+      <div className="flex items-center gap-4">
+        {!time.klir &&
+          field("Δt", time.dt, (v) => time.onCommit(v, time.t), "step size, in the model's time unit — totals are Δt-invariant (dt_invariance)")}
+        {field(time.klir ? "steps" : "T", time.t, (v) => time.onCommit(time.dt, v), "horizon — how far the run advances")}
+      </div>
+    </Card>
   );
 }
 
