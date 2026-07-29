@@ -1564,9 +1564,12 @@ function Workspace() {
             {/* Lens switching is question switching (#100): each tradition
                 answers a different guiding question, so the picker docks the
                 active lens's question as orientation copy. Kernel copy — the
-                same describe() string the contract fixtures pin. */}
+                same describe() string the contract fixtures pin. Rendered with
+                real presence (#7): display serif in the lens accent, settling
+                briefly on each switch — the key re-mounts the span so the
+                animation re-runs exactly when the question changes. */}
             {desc && (
-              <span className="min-w-0 text-xs italic" style={{ color: "var(--text-muted)" }}>
+              <span key={canvasModel.lens} className="lens-question min-w-0">
                 {desc.question}
               </span>
             )}

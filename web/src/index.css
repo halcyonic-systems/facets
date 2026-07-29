@@ -220,3 +220,27 @@ body {
     linear-gradient(to right, var(--grid-ink) 1px, transparent 1px),
     linear-gradient(to bottom, var(--grid-ink) 1px, transparent 1px);
 }
+
+/* The lens's guiding question (#7): arguably the most important copy on
+   screen for a first-time reader, so it gets the display voice — serif
+   italic, lens-accent, readable size — and a brief settle on lens switch
+   (lens switching IS question switching, #100). The animation re-triggers
+   via a key change on the element, not a class toggle. */
+@keyframes lens-question-settle {
+  from {
+    opacity: 0;
+    transform: translateX(-6px) scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+.lens-question {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.05rem;
+  line-height: 1.2;
+  color: var(--lens-accent);
+  animation: lens-question-settle 0.45s ease-out;
+}
