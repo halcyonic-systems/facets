@@ -183,3 +183,90 @@ export function humanize(v: number): string {
   if (a >= 1) return v.toLocaleString(undefined, { maximumFractionDigits: 1 });
   return v.toPrecision(2);
 }
+
+/** A viewport-clamped popover (walkthrough #5/#16). The chronic failure this
+ *  replaces: a flyout absolutely positioned inside a clipping parent is
+ *  invisible (the process reference died this way when the rail moved into an
+ *  `overflow-y-auto` dock), and a canvas popover near an edge runs off screen
+ *  with its fields unreachable. The primitive renders an invisible anchor at
+ *  the given CONTAINER-space point, measures its viewport rect, and portals
+ *  the content to <body>, clamped to the viewport — below the anchor by
+ *  preference (flipping above when short), or beside it (`prefer="right"`).
+ *  Presentation only: no dismiss logic, no focus theft — open/close stays the
+ *  caller's seam, exactly as before. */
+import { useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+
+export function Popover({
+  x,
+  y,
+  width,
+  prefer = "below",
+  accent = false,
+  children,
+}: {
+  /** Anchor point, in the coordinate space of the nearest positioned ancestor. */
+  x: number;
+  y: number;
+  width: number;
+  /** "below": centered under the anchor, flip above when short. "right": beside
+   *  the anchor, top-aligned, flip left when short. */
+  prefer?: "below" | "right";
+  /** Lens-accent border (edge/boundary editors) vs plain border (reference). */
+  accent?: boolean;
+  children: ReactNode;
+}) {
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const a = anchorRef.current;
+    const c = contentRef.current;
+    if (!a || !c) return;
+    const ar = a.getBoundingClientRect();
+    const cw = c.offsetWidth;
+    const ch = c.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let left: number;
+    let top: number;
+    if (prefer === "right") {
+      left = ar.left + 8;
+      if (left + cw > vw - 8) left = Math.max(8, ar.left - cw - 8);
+      top = ar.top;
+    } else {
+      left = ar.left - cw / 2;
+      top = ar.top + 20;
+      if (top + ch > vh - 8) top = ar.top - ch - 8;
+    }
+    left = Math.max(8, Math.min(left, vw - cw - 8));
+    top = Math.max(8, Math.min(top, vh - ch - 8));
+    setPos({ left, top });
+  }, [x, y, prefer, children]);
+
+  return (
+    <>
+      <div ref={anchorRef} className="pointer-events-none absolute h-0 w-0" style={{ left: x, top: y }} />
+      {createPortal(
+        <div
+          ref={contentRef}
+          className="fixed z-50 overflow-y-auto p-3"
+          style={{
+            left: pos?.left ?? -9999,
+            top: pos?.top ?? -9999,
+            width,
+            maxHeight: "calc(100vh - 1rem)",
+            background: "var(--bg-secondary)",
+            border: `1px solid ${accent ? "var(--lens-accent)" : "var(--border)"}`,
+            boxShadow: accent ? "var(--shadow-card-hover)" : "var(--shadow-card)",
+            borderRadius: "var(--radius-md)",
+          }}
+        >
+          {children}
+        </div>,
+        document.body,
+      )}
+    </>
+  );
+}
