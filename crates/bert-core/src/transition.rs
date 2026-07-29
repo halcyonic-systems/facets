@@ -587,6 +587,7 @@ mod tests {
             sink_interface: None,
             amount: Decimal::ZERO,
             unit: String::new(),
+            ample: false,
             parameters: vec![],
             smart_parameters: vec![],
             endpoint_offset: None,

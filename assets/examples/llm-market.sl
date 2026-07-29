@@ -84,20 +84,23 @@ sink "Applications served"
 flow "Developer workload" -> "Developer clearing" : energy "dev inference compute" substance compute amount 6000 unit Gtok/day
 flow "Enterprise workload" -> "Enterprise clearing" : energy "enterprise inference compute" substance compute amount 2000 unit Gtok/day
 
-# ── Weights signals: ample by construction ───────────────────────────
+# ── Weights signals: ample, and now the grammar can say so ───────────
 # Amplifying emits min(signal × gain, power): with the signal ample the
 # min always selects power, so each model's token output tracks its
 # metered compute exactly — availability of weights is never the
-# binding constraint in this market; compute allocation is.
-flow Anthropic -> Opus : informational "released weights & API" amount 100000 unit avail/day
-flow Anthropic -> Fable : informational "released weights & API" amount 100000 unit avail/day
-flow OpenAI -> GPT : informational "released weights & API" amount 100000 unit avail/day
-flow Google -> Gemini : informational "released weights & API" amount 100000 unit avail/day
-flow Google -> Gemma : informational "released weights & API" amount 100000 unit avail/day
-flow Meta -> Llama : informational "released weights & API" amount 100000 unit avail/day
-flow Alibaba -> Qwen : informational "released weights & API" amount 100000 unit avail/day
-flow "DeepSeek (lab)" -> DeepSeek : informational "released weights & API" amount 100000 unit avail/day
-flow "Open-weight field" -> "Other open" : informational "released weights & API" amount 100000 unit avail/day
+# binding constraint in this market; compute allocation is. This used
+# to be said with `amount 100000 unit avail/day`, a magic number the
+# diagram then displayed; `ample` (#9) is that engineering fact as a
+# word, and the engine holds the equivalence.
+flow Anthropic -> Opus : informational "released weights & API" ample
+flow Anthropic -> Fable : informational "released weights & API" ample
+flow OpenAI -> GPT : informational "released weights & API" ample
+flow Google -> Gemini : informational "released weights & API" ample
+flow Google -> Gemma : informational "released weights & API" ample
+flow Meta -> Llama : informational "released weights & API" ample
+flow Alibaba -> Qwen : informational "released weights & API" ample
+flow "DeepSeek (lab)" -> DeepSeek : informational "released weights & API" ample
+flow "Open-weight field" -> "Other open" : informational "released weights & API" ample
 
 # ── Developer clearing: relative weights = observed dev-channel share ─
 # Calibration, June–July 2026, renormalized to this roster. Sources:

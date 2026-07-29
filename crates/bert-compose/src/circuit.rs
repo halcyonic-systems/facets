@@ -391,6 +391,13 @@ pub struct Wire {
     /// constant-`rate` path is byte-for-byte unchanged. Takes precedence over
     /// `rate` when present.
     pub rate_series: Option<Vec<f32>>,
+    /// Availability assertion (bert-lenses#9): this informational wire carries
+    /// "enough", not a number. It delivers NO quantity (`amount_on` → 0) and
+    /// participates in no sum; instead, receivers that GATE on their signal —
+    /// Amplifying's min, Modulating's and Buffering's control gates, the
+    /// back-pressure demand gate — see the gate held open. Additive message
+    /// consumers ignore it (the validator warns; ample there is inert).
+    pub ample: bool,
     /// Multi-timescale (rung 3): this wire's `rate_series` is sampled once every
     /// `dt_stride` time units and ZERO-ORDER-HELD between — the channel's own
     /// Δt = `dt_stride ×` the model's time unit, Mobus's per-node `Δt_{i,l}` as
@@ -417,6 +424,7 @@ impl Wire {
             rate_series: None,
             dt_stride: None,
             substance_override: None,
+            ample: false,
         }
     }
     pub fn gradient(from: usize, to: usize, conductance: f32) -> Self {
@@ -429,6 +437,7 @@ impl Wire {
             rate_series: None,
             dt_stride: None,
             substance_override: None,
+            ample: false,
         }
     }
 }
@@ -675,6 +684,9 @@ impl Circuit {
     /// `delivery_share` with the SAME-STEP activities (#259).
     pub fn wire_amount(&self, k: usize) -> f32 {
         let w = &self.wires[k];
+        if w.ample {
+            return 0.0; // availability, not quantity (#9) — same as the engine
+        }
         if w.mode == FlowMode::Gradient {
             return if self.has_potential(w.from) {
                 self.crossing_factor(w.from)
@@ -997,6 +1009,9 @@ impl Circuit {
         // terminal sinks); gradient wires use this tick's CAPPED rates.
         let amount_on = |k: usize, act: &[f32]| -> f32 {
             let w = &self.wires[k];
+            if w.ample {
+                return 0.0; // ample asserts availability, never quantity (#9)
+            }
             if w.mode == FlowMode::Gradient {
                 grad[k]
             } else if self.is_observation(w) {
@@ -1023,6 +1038,9 @@ impl Circuit {
                 .collect();
             if ctrl.is_empty() {
                 return 1.0; // no control = open
+            }
+            if ctrl.iter().any(|&k| self.wires[k].ample) {
+                return 1.0; // ample control never binds — held open (#9)
             }
             ctrl.iter()
                 .map(|&k| act[self.wires[k].from])
@@ -1074,6 +1092,17 @@ impl Circuit {
                 .filter(|(s, _, _)| *s == SubstanceType::Message)
                 .map(|(_, a, _)| a)
                 .sum();
+            // Ample signal present (#9): some incoming informational wire
+            // asserts availability. Gate-type consumers below read this flag
+            // and hold their gate open / drop the availability limb; the
+            // wire itself delivered 0 above, so sums are untouched.
+            let ample_signal = (0..nw).any(|k| {
+                let w = &self.wires[k];
+                w.to == i
+                    && w.ample
+                    && w.mode == FlowMode::Pushed
+                    && self.wire_substance(w) == SubstanceType::Message
+            });
             let a = node.param; // agency capacity 0..1
 
             act[i] = match node.kind {
@@ -1097,7 +1126,9 @@ impl Circuit {
                         // through a buffer — and this step's inflow lands
                         // after. Forward Euler of Q̇ = in − release(Q), both
                         // sides evaluated at the step's opening state.
-                        let gate = if self.wires.iter().any(|w| {
+                        let gate = if ample_signal {
+                            1.0 // ample control never binds (#9)
+                        } else if self.wires.iter().any(|w| {
                             w.to == i
                                 && w.mode == FlowMode::Pushed
                                 && self.wire_substance(w) == SubstanceType::Message
@@ -1157,7 +1188,15 @@ impl Circuit {
                             .map(|(_, x, _)| x)
                             .sum();
                         let gain = 1.0 + 9.0 * a;
-                        (message * gain).min(power)
+                        if ample_signal {
+                            // The signal is declared ample (#9): availability
+                            // never binds, so output tracks metered power
+                            // exactly — the same selection min() makes when
+                            // the signal is huge, without the fake number.
+                            power
+                        } else {
+                            (message * gain).min(power)
+                        }
                     }
                     // physical → signal (crosses substance, never drains)
                     ProcessPrimitive::Sensing => physical * a,
@@ -1176,7 +1215,9 @@ impl Circuit {
                                     && w.mode == FlowMode::Pushed
                                     && self.wire_substance(w) == SubstanceType::Message
                             });
-                            let gate = if has_control {
+                            let gate = if ample_signal {
+                                1.0 // ample control never binds (#9)
+                            } else if has_control {
                                 message.clamp(0.0, 1.0)
                             } else {
                                 1.0

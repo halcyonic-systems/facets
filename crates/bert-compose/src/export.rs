@@ -256,6 +256,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
             .unwrap_or(bert_core::rust_decimal::Decimal::ONE),
             unit: from.out_substance.unit.clone(),
             // Gradient conductance (k) rides as a flow parameter.
+            ample: wire.ample,
             parameters: if wire.mode == FlowMode::Gradient {
                 vec![Parameter {
                     name: "conductance".to_string(),
@@ -458,6 +459,11 @@ pub fn from_spec(spec: &bert_core::operational::OperationalSpec) -> Circuit {
         // FIRST flow also names the sender's display substance; later flows
         // must not overwrite it (the old last-wire-wins).
         wire.substance_override = Some(f.substance);
+        // Availability assertion rides the wire (#9). Note the rate blocks
+        // below stay untouched for ample flows: `amount_on` short-circuits an
+        // ample wire to a 0 delivery, so whatever `amount` the lowering
+        // defaulted to can never act.
+        wire.ample = f.ample;
         if substance_named.insert(from) {
             c.nodes[from].out_substance = DeclaredSubstance {
                 name: f.substance_name.clone(),
@@ -595,6 +601,7 @@ mod tests {
             substance: SubstanceType::Material,
             unit: "tok/mo".into(),
             amount,
+            ample: false,
             conductance: None,
             interface_routing: None,
             rate_series: None,
@@ -642,6 +649,102 @@ mod tests {
         );
     }
 
+    /// Law (walkthrough #9): `ample` IS the huge-signal trick, without the
+    /// number. An Amplifying process with an ample signal produces exactly
+    /// what it produces with an absurdly large metered signal (min selects
+    /// power either way) — and NOT what it produces with a meager one (the
+    /// separating half: if ample were inert, output would collapse to the
+    /// signal-bound value). The ample wire itself delivers zero quantity.
+    #[test]
+    fn ample_signal_equals_huge_signal_and_beats_meager() {
+        use bert_core::operational::{
+            OperationalFlow, OperationalProcess, OperationalSpec, OperationalTerminal,
+        };
+        use bert_core::{Id, IdType, SubstanceType};
+
+        let id = |ty: IdType, n: i64| Id { ty, indices: vec![n] };
+        let rig = |signal_amount: f64, ample: bool| -> Circuit {
+            let flow = |name: &str,
+                        src: Id,
+                        snk: Id,
+                        substance: SubstanceType,
+                        amount: f64,
+                        ample: bool| OperationalFlow {
+                name: name.into(),
+                source: src,
+                sink: snk,
+                substance_name: name.into(),
+                substance,
+                unit: String::new(),
+                amount,
+                ample,
+                conductance: None,
+                interface_routing: None,
+                rate_series: None,
+                dt_stride: None,
+            };
+            let spec = OperationalSpec {
+                processes: vec![OperationalProcess {
+                    id: id(IdType::Subsystem, 0),
+                    name: "Model".into(),
+                    primitive: ProcessPrimitive::Amplifying,
+                    agency_capacity: 0.5,
+                    cognitive_params: Default::default(),
+                    initial_storage: None,
+                    stock_unit: String::new(),
+                }],
+                sources: vec![
+                    OperationalTerminal { id: id(IdType::Source, 0), name: "Lab".into() },
+                    OperationalTerminal { id: id(IdType::Source, 1), name: "Grid".into() },
+                ],
+                sinks: vec![OperationalTerminal { id: id(IdType::Sink, 0), name: "Served".into() }],
+                flows: vec![
+                    flow("weights", id(IdType::Source, 0), id(IdType::Subsystem, 0), SubstanceType::Message, signal_amount, ample),
+                    flow("compute", id(IdType::Source, 1), id(IdType::Subsystem, 0), SubstanceType::Energy, 100.0, false),
+                    flow("tokens", id(IdType::Subsystem, 0), id(IdType::Sink, 0), SubstanceType::Message, 1.0, false),
+                ],
+                porosity: 0.0,
+            };
+            let mut c = from_spec(&spec);
+            for _ in 0..5 {
+                c.step();
+            }
+            c
+        };
+
+        let amp_act = |c: &Circuit| {
+            let i = c
+                .nodes
+                .iter()
+                .position(|n| matches!(n.kind, NodeKind::Process(ProcessPrimitive::Amplifying)))
+                .unwrap();
+            c.nodes[i].activity
+        };
+
+        let ample = rig(1.0, true);
+        let huge = rig(100_000.0, false);
+        let meager = rig(0.001, false);
+
+        assert!(
+            (amp_act(&ample) - amp_act(&huge)).abs() < 1e-3,
+            "ample ≡ huge signal (power-bound): {} vs {}",
+            amp_act(&ample),
+            amp_act(&huge)
+        );
+        assert!(
+            amp_act(&ample) > amp_act(&meager) * 100.0,
+            "ample must NOT read as a meager signal: {} vs {}",
+            amp_act(&ample),
+            amp_act(&meager)
+        );
+        let ample_wire = ample.wires.iter().position(|w| w.ample).unwrap();
+        assert_eq!(
+            ample.wire_amount(ample_wire),
+            0.0,
+            "an ample wire asserts availability, it delivers no quantity"
+        );
+    }
+
     /// Law: a forced flow's observed rate series survives the spec→circuit
     /// seam and executes tick by tick, not just at rest in the spec.
     /// bert-lenses#16, the seam hop: a forced flow's observed series survives
@@ -672,6 +775,7 @@ mod tests {
                 substance: SubstanceType::Material,
                 unit: "tok/mo".into(),
                 amount: 999.0, // the mean must NOT govern — the series does
+                ample: false,
                 conductance: None,
                 interface_routing: None,
                 rate_series: Some(vec![4.0, 8.0, 0.5]),
@@ -720,6 +824,7 @@ mod tests {
             substance: SubstanceType::Material,
             unit: "tok/mo".into(),
             amount: 4.0,
+            ample: false,
             conductance: None,
             interface_routing: None,
             rate_series: weight,
@@ -791,6 +896,7 @@ mod tests {
                 substance: SubstanceType::Material,
                 unit: "tok/yr".into(),
                 amount: 1.0,
+                ample: false,
                 conductance: None,
                 interface_routing: None,
                 rate_series: Some(vec![10.0, 20.0]),

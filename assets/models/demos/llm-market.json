@@ -963,8 +963,9 @@
       "source_interface": null,
       "sink": "C0.2",
       "sink_interface": "I0.2",
-      "amount": "100000",
-      "unit": "avail/day",
+      "amount": "1",
+      "unit": "",
+      "ample": true,
       "parameters": []
     },
     {
@@ -984,8 +985,9 @@
       "source_interface": null,
       "sink": "C0.3",
       "sink_interface": "I0.3",
-      "amount": "100000",
-      "unit": "avail/day",
+      "amount": "1",
+      "unit": "",
+      "ample": true,
       "parameters": []
     },
     {
@@ -1005,8 +1007,9 @@
       "source_interface": null,
       "sink": "C0.4",
       "sink_interface": "I0.4",
-      "amount": "100000",
-      "unit": "avail/day",
+      "amount": "1",
+      "unit": "",
+      "ample": true,
       "parameters": []
     },
     {
@@ -1026,8 +1029,9 @@
       "source_interface": null,
       "sink": "C0.5",
       "sink_interface": "I0.5",
-      "amount": "100000",
-      "unit": "avail/day",
+      "amount": "1",
+      "unit": "",
+      "ample": true,
       "parameters": []
     },
     {
@@ -1047,8 +1051,9 @@
       "source_interface": null,
       "sink": "C0.6",
       "sink_interface": "I0.6",
-      "amount": "100000",
-      "unit": "avail/day",
+      "amount": "1",
+      "unit": "",
+      "ample": true,
       "parameters": []
     },
     {
@@ -1068,8 +1073,9 @@
       "source_interface": null,
       "sink": "C0.7",
       "sink_interface": "I0.7",
-      "amount": "100000",
-      "unit": "avail/day",
+      "amount": "1",
+      "unit": "",
+      "ample": true,
       "parameters": []
     },
     {
@@ -1089,8 +1095,9 @@
       "source_interface": null,
       "sink": "C0.8",
       "sink_interface": "I0.8",
-      "amount": "100000",
-      "unit": "avail/day",
+      "amount": "1",
+      "unit": "",
+      "ample": true,
       "parameters": []
     },
     {
@@ -1110,8 +1117,9 @@
       "source_interface": null,
       "sink": "C0.9",
       "sink_interface": "I0.9",
-      "amount": "100000",
-      "unit": "avail/day",
+      "amount": "1",
+      "unit": "",
+      "ample": true,
       "parameters": []
     },
     {
@@ -1131,8 +1139,9 @@
       "source_interface": null,
       "sink": "C0.10",
       "sink_interface": "I0.10",
-      "amount": "100000",
-      "unit": "avail/day",
+      "amount": "1",
+      "unit": "",
+      "ample": true,
       "parameters": []
     },
     {

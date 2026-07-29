@@ -322,8 +322,15 @@ function MobusBody({
         <span style={{ color: "var(--text-secondary)" }} title="the model's declared amount — adjust it in RUN · Inputs">
           declared
         </span>
-        <span className="font-mono text-xs" style={{ color: relation.amount ? "var(--text-primary)" : "var(--text-muted)" }}>
-          {relation.amount ? `${relation.amount}${relation.unit ? ` ${relation.unit}` : ""}` : "unauthored"}
+        <span
+          className={relation.ample ? "text-xs italic" : "font-mono text-xs"}
+          style={{ color: relation.amount || relation.ample ? "var(--text-primary)" : "var(--text-muted)" }}
+        >
+          {relation.ample
+            ? "ample — never binding"
+            : relation.amount
+              ? `${relation.amount}${relation.unit ? ` ${relation.unit}` : ""}`
+              : "unauthored"}
         </span>
       </Row>
       {paramName && (
