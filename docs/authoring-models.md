@@ -44,6 +44,28 @@ hand-written**:
 
 The web gallery picks all of this up by glob; no registration code.
 
+## Name the knobs (`param` — spec §4.5)
+
+Without params, the run tab's Inputs card speaks the kernel's taxonomy
+("drivers · absolute rates", "relative weights"). A `param` line names an
+adjustable quantity in **your model's own vocabulary**, and the panel renders
+it first — a bounded slider for a single amount, % shares for a fanout:
+
+```
+param "Developer demand" : flow "Developer workload" -> "Developer clearing" range 0..12000
+param shares "Developer market share" : from "Developer clearing"
+```
+
+The boundary to keep straight: **a param is presentation over a declared
+amount, never dynamics.** It stores no value (the flow's `amount` IS the
+value), it never projects (the engine cannot see it), and the % display of a
+shares group is derived — the model keeps raw weights, and a share edit edits
+exactly one of them. Declaring params is enrichment: undeclared magnitudes
+keep the taxonomy fallback, so nothing requires them. The gallery's
+"reset to declared" restores what your `.sl` declares — your declared amounts
+are the defaults, which is one more reason to calibrate them honestly and cite
+sources in comments.
+
 ## The five facts that bite
 
 1. **A flow must land where its substance is read.** Each primitive consumes
