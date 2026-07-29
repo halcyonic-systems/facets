@@ -93,8 +93,10 @@ export function ready(): Promise<void> {
 // exactly the init the app awaits, and wasm-pack's own `if (wasm !== undefined)
 // return` makes any later call a no-op. (An accept→invalidate HMR guard was
 // tried first and did NOT force the reload — an accepting importer swallows
-// the invalidation.)
-void ready();
+// the invalidation.) Guarded to the dev-serve context: under vitest's node
+// environment the wasm ?url fetch throws (no base URL), and production never
+// hot-swaps — the boot-time await covers both.
+if (typeof window !== "undefined" && import.meta.hot) void ready();
 
 /**
  * A typed failure from the kernel boundary. The Rust API (crates/bert-lenses-
