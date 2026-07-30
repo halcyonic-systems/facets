@@ -32,6 +32,8 @@ Start at the main [`README.md`](../README.md) and [`CLAUDE.md`](../CLAUDE.md) fo
 - `lean-manifest.json` — **LIVE** — the machine-readable source of truth behind `lean-provenance.md`: one row per claim, carrying the SSF symbol and the Lean keyword it is declared with. The doc's tables are generated from it (`just provenance`); nobody hand-edits a citation string.
 - [`theory-fidelity.md`](theory-fidelity.md) — **LIVE** — per-tradition (Klir/Bunge/Mobus) take/drop/where/why, the mode-stamp semantics, the perspectival-realist scope statement, and the #5 collapse as a worked example of the refuse-don't-truncate discipline. For a reader assessing the theory's quality, not just its UI.
 
+- [`216-cross-lens-findings.md`](216-cross-lens-findings.md) — **RESEARCH** — the first read of the [#216](https://github.com/halcyonic-systems/bert-lenses/issues/216) cross-lens matrix over all 35 entries: every measurable model is read differently by each lens that accepts it (34 of 34, zero aligned), the per-lens count of authored content left unrendered (Klir 371 · Bunge 181 · Mobus 49), and why an all-green Klir column is evidence about the projection rather than about the models. The empirical companion to [`theory-fidelity.md`](theory-fidelity.md); open questions at [#284](https://github.com/halcyonic-systems/bert-lenses/issues/284), [#285](https://github.com/halcyonic-systems/bert-lenses/issues/285), [#286](https://github.com/halcyonic-systems/bert-lenses/issues/286).
+
 ## Design positions and research
 
 [`design/README.md`](design/README.md) is the status-grouped index of this section (LIVE · ADOPTED · PROPOSED · RESEARCH). The highlights follow.
