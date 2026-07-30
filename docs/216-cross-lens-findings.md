@@ -12,9 +12,11 @@ The column added here is the **spread**: among the lenses that accept the model,
 
 ## What the read says
 
-**35 models × 3 lenses. 34 divergent, 0 aligned.**
+**35 models × 3 lenses. 34 measurable, 34 divergent, 0 aligned, 1 unmeasurable.**
 
-The one non-divergent row is `klir/cellular-array-cell.sl`, and only because two lenses refuse it, leaving nothing to compare. **No model in the library is read the same way by the lenses that accept it.**
+The unmeasurable row is `klir/cellular-array-cell.sl`: Klir accepts it with 5 facts unseen, Bunge refuses it (no bond between distinct components), Mobus refuses it (8 boundary crossings without interfaces). One accepting lens means no second reading to compare against — the spread is undefined, not zero.
+
+So the count to state is **34 of 34, not 34 of 35**. **Nothing in this library is read the same way by two lenses that both accept it.** Calling `cellular-array-cell` "non-divergent" would be the same error as reading an all-green Klir column as agreement: absence of a measurement is not a measurement of zero.
 
 This inverts the expectation in the task. The third outcome was framed as the rare and interesting case, the one worth hunting for. It is the default state of the corpus.
 
