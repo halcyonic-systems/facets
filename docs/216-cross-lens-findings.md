@@ -1,6 +1,8 @@
 # #216 — the cross-lens matrix, read
 
-*First full read of the matrix, 2026-07-29. Reproduce with `cargo test -p bert-canvas --test matrix_report -- --nocapture`.*
+**Status: RESEARCH.**
+
+*First full read of the matrix, 2026-07-29. Reproduce with `cargo test -p bert-canvas --test matrix_report -- --nocapture`. Raw run archived outside this repo; the command is the source of truth.*
 
 The matrix had been runnable for some time and was never read. Two things came out of reading it: the report was answering two of #216's three questions, and the third question — *travels but reads differently* — turns out to have an answer already computed on every call and thrown away.
 
@@ -22,7 +24,9 @@ This inverts the expectation in the task. The third outcome was framed as the ra
 
 **Authored facts unseen, by lens: Klir 371 · Bunge 181 · Mobus 49.**
 
-Monotone in the ladder, and in the order the ladder predicts. The convergence table says each tradition adds one ontological commitment on top of the shared fragment; these are the first numbers that say so over published models rather than over the abstract kernel.
+The ordering falls out in the direction the commitments predict. Each tradition asks for something beyond the shared fragment — Bunge for a bond and an environment, Mobus for a boundary and interfaces — so a lens that asks for more can render more, and leaves less of an authored model unsaid. These are the first numbers that measure that over published models rather than over the abstract kernel.
+
+Read this as three faces side by side. Nothing here says a model advances from Klir toward Mobus — only that the faces carry different amounts of what an author declared, which is a fact about the lenses and not a direction of travel through them (#90; see [`theory-fidelity.md`](theory-fidelity.md)).
 
 **Klir refuses nothing — 0 of 35 — because it cannot see most of what it is accepting.**
 
