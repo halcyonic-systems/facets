@@ -11,6 +11,15 @@
 //! `cross_lens.rs`. Keeping them apart means a survey run can never be mistaken
 //! for a passing gate, and the gate never has to be loosened to let a survey
 //! print.
+//!
+//! #216 asks for three outcomes, not two: clean, refused, and **travels but
+//! reads differently**. Validation alone can only answer the first two, which
+//! is why the third column stayed empty while the report looked complete. The
+//! third outcome is a claim about meaning, and the measure of it already exists
+//! per lens — `residue`, the count of authored content a lens cannot see. A
+//! model legal under two lenses that hides eleven declared facts from one of
+//! them travels, and reads differently. The spread across the lenses it passes
+//! is that difference, as a number.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -39,30 +48,75 @@ fn assets(rel: &str) -> PathBuf {
         .join(rel)
 }
 
-/// Errors and warnings a model raises when read under `lens`.
-fn cell(model: &bert_canvas::canvas::CanvasModel, lens: Lens) -> (String, Vec<String>) {
-    let v = analyze(model, lens).validation;
-    let errs: Vec<_> = v
+/// One cell: the verdict, the refusal reasons, and how much authored content
+/// this lens cannot see. `blind` is `None` for a refusal — residue describes
+/// what a legal reading omits, and there is no reading to describe.
+struct Cell {
+    verdict: String,
+    reasons: Vec<String>,
+    blind: Option<usize>,
+}
+
+fn cell(model: &bert_canvas::canvas::CanvasModel, lens: Lens) -> Cell {
+    let a = analyze(model, lens);
+    let errs: Vec<_> = a
+        .validation
         .issues
         .iter()
         .filter(|i| i.severity == Severity::Error)
         .map(|i| i.message.clone())
         .collect();
-    let warns = v
+    let warns = a
+        .validation
         .issues
         .iter()
         .filter(|i| i.severity == Severity::Warning)
         .count();
-    if errs.is_empty() {
-        let s = if warns > 0 {
+    if !errs.is_empty() {
+        return Cell {
+            verdict: format!("REFUSED({})", errs.len()),
+            reasons: errs,
+            blind: None,
+        };
+    }
+    let blind: usize = a
+        .residue
+        .hidden
+        .iter()
+        .chain(&a.residue.unspecified)
+        .map(|e| e.count)
+        .sum();
+    Cell {
+        verdict: if warns > 0 {
             format!("clean(w{warns})")
         } else {
             "clean".to_string()
-        };
-        (s, Vec::new())
-    } else {
-        (format!("REFUSED({})", errs.len()), errs)
+        },
+        reasons: Vec::new(),
+        blind: Some(blind),
     }
+}
+
+/// The third outcome, as a number. Among the lenses that accept the model, the
+/// gap between the most and least blind. Zero means every accepting lens sees
+/// the same amount of what the author wrote; large means the model is legal in
+/// places that cannot read most of it.
+fn divergence(cells: &[Cell]) -> String {
+    let mut seen: Vec<(usize, &str)> = cells
+        .iter()
+        .zip(["klir", "bunge", "mobus"])
+        .filter_map(|(c, name)| c.blind.map(|b| (b, name)))
+        .collect();
+    if seen.len() < 2 {
+        return "-".to_string();
+    }
+    seen.sort();
+    let (lo, lo_lens) = seen[0];
+    let (hi, hi_lens) = seen[seen.len() - 1];
+    if hi == lo {
+        return "aligned(0)".to_string();
+    }
+    format!("DIVERGENT({}) {hi_lens}>{lo_lens}", hi - lo)
 }
 
 #[test]
@@ -72,7 +126,7 @@ fn emit_cross_lens_matrix() {
     let corpus_count = files.len();
     sl_files(&assets("examples"), &mut files);
 
-    println!("\nSET\tENTRY\tPINNED\tKLIR\tBUNGE\tMOBUS\tREASONS");
+    println!("\nSET\tENTRY\tPINNED\tKLIR\tBUNGE\tMOBUS\tBLIND(k/b/m)\tTHIRD_OUTCOME\tREASONS");
 
     // The demos first, because they were the models this report used to skip.
     // The matrix read `.sl` and the demos are JSON, so the only three models with
@@ -94,24 +148,8 @@ fn emit_cross_lens_matrix() {
         };
         let cm = bert_canvas::canvas::to_canvas(&world);
         let pinned = format!("{:?}", cm.lens).to_lowercase();
-        let mut cells = Vec::new();
-        let mut reasons = Vec::new();
-        for (label, lens) in [
-            ("klir", Lens::Klir),
-            ("bunge", Lens::Bunge),
-            ("mobus", Lens::Mobus),
-        ] {
-            let (c, errs) = cell(&cm, lens);
-            cells.push(c);
-            reasons.extend(errs.into_iter().map(|e| format!("{label}: {e}")));
-        }
-        println!(
-            "demo\t{demo}\t{pinned}\t{}\t{}\t{}\t{}",
-            cells[0],
-            cells[1],
-            cells[2],
-            reasons.join(" || ")
-        );
+        let cells = read_all_lenses(&cm);
+        println!("demo\t{demo}\t{pinned}\t{}", row(&cells));
     }
     for (i, path) in files.iter().enumerate() {
         let set = if i < corpus_count { "corpus" } else { "example" };
@@ -135,46 +173,39 @@ fn emit_cross_lens_matrix() {
             }
         };
         let pinned = format!("{:?}", parsed.model.lens).to_lowercase();
-
-        let mut cells = Vec::new();
-        let mut reasons = Vec::new();
-        for (label, lens) in [
-            ("klir", Lens::Klir),
-            ("bunge", Lens::Bunge),
-            ("mobus", Lens::Mobus),
-        ] {
-            let v = analyze(&parsed.model, lens).validation;
-            let errs: Vec<_> = v
-                .issues
-                .iter()
-                .filter(|i| i.severity == Severity::Error)
-                .map(|i| i.message.clone())
-                .collect();
-            let warns = v
-                .issues
-                .iter()
-                .filter(|i| i.severity == Severity::Warning)
-                .count();
-            if errs.is_empty() {
-                cells.push(if warns > 0 {
-                    format!("clean(w{warns})")
-                } else {
-                    "clean".to_string()
-                });
-            } else {
-                cells.push(format!("REFUSED({})", errs.len()));
-                for e in &errs {
-                    reasons.push(format!("{label}: {e}"));
-                }
-            }
-        }
-        println!(
-            "{set}\t{name}\t{pinned}\t{}\t{}\t{}\t{}",
-            cells[0],
-            cells[1],
-            cells[2],
-            reasons.join(" || ")
-        );
+        let cells = read_all_lenses(&parsed.model);
+        println!("{set}\t{name}\t{pinned}\t{}", row(&cells));
     }
     println!();
+}
+
+fn read_all_lenses(model: &bert_canvas::canvas::CanvasModel) -> Vec<Cell> {
+    [Lens::Klir, Lens::Bunge, Lens::Mobus]
+        .into_iter()
+        .map(|lens| cell(model, lens))
+        .collect()
+}
+
+fn row(cells: &[Cell]) -> String {
+    let blind = cells
+        .iter()
+        .map(|c| match c.blind {
+            Some(b) => b.to_string(),
+            None => "-".to_string(),
+        })
+        .collect::<Vec<_>>()
+        .join("/");
+    let reasons = cells
+        .iter()
+        .zip(["klir", "bunge", "mobus"])
+        .flat_map(|(c, name)| c.reasons.iter().map(move |r| format!("{name}: {r}")))
+        .collect::<Vec<_>>()
+        .join(" || ");
+    format!(
+        "{}\t{}\t{}\t{blind}\t{}\t{reasons}",
+        cells[0].verdict,
+        cells[1].verdict,
+        cells[2].verdict,
+        divergence(cells)
+    )
 }
