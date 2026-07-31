@@ -30,7 +30,7 @@ SL compiles to `CanvasModel` (`crates/bert-canvas/src/canvas.rs:165`), the editi
 
 | Field | Layer | SL realization |
 |---|---|---|
-| `things` — id, name, `role` (Component/Environment), optional `primitive`, `interface` flag, optional `child_model` decomposition reference, optional `stock_unit` declared unit | model | `component` / `source` / `sink` / `environment` lines (§4.3) |
+| `things` — id, name, `role` (Component/Environment), optional `primitive`, `interface` flag, optional `child_model` decomposition reference, optional `stock_unit` declared unit, optional Klir source-system metadata (`scale`, `states`, `variable_kind`) | model | `component` / `source` / `sink` / `environment` lines (§4.3) |
 | `time_unit` — the model's time-unit symbol | model | `time unit` line (§4.7) |
 | `relations` — a, b, name, `is_bond`, `kind` | model | `flow` lines (§4.4) |
 | `boundary` — porosity, perceptive_fuzziness | model | `boundary` line (§4.6) |
@@ -73,12 +73,16 @@ SL is one unified language: the traditions *contributed* the words, and the lang
 | `weight` | per-transition count for the DTMC read (#67) — a non-negative integer; absent reads as the uniform 1 | Klir (the directed-system observer's transition structure); SSF's `kindCodomain .markov` | `Relation.weight` |
 | `boundary`, `porosity`, `fuzziness` | B's properties P = ⟨porosity, perceptive_fuzziness⟩ | **Mobus (B = ⟨P, I⟩) and Bunge (topological boundary, 1992)** — shared concept; the property words are Mobus's | `CanvasBoundaryProps` |
 | `stock` | a Buffering stock's declared unit — the stock accumulates its inflow over Δt, so its dimension differs from the flow's and carries its own unit (#76/#94) | Mobus (stocks/buffers, the Buffering work process); the Stella/Vensim stock-flow convention | `Thing.stock_unit` → `AgentModel.stock_unit` |
+| `scale` + one of `Nominal`, `Ordinal`, `Interval`, `Ratio` | the measurement scale of a variable's state set — the level at which its values are comparable (v1.2, #154) | Klir (the source-system characterization of a variable — §4, Table 4.1, the ground floor of his epistemological hierarchy) | `Thing.scale` (`ScaleType`) — authored canvas-side metadata, read in the Klir register only; never projects |
+| `states` | the variable's state set, in Klir's set notation — `{Green, Red}`; `{}` is the explicit empty set (v1.2, #154) | Klir (a source-system variable *is* characterized by its state set — §4, Table 4.1) | `Thing.states` — same register-only standing as `scale` |
+| `kind` (thing clause) + one of `Basic`, `Support` | the basic-vs-supporting partition of the source variables — a semantic role the modeler declares, never readable off R; omitted reads as `Basic`, so the clause declares the rare support variable (v1.2, #154) | Klir (basic variables are the observed quantities; supporting variables encode the support set — time, space, population — §4, Table 4.1) | `Thing.variable_kind` (`KlirVarKind`) — same register-only standing as `scale` |
 | `time unit` | the model's time-unit symbol — what one Δt is called, so an intrinsic rate integrates in the author's vocabulary (`kW` → `kW·h`, #94) | Mobus (Δt in the 8-tuple's time base); the symbol is display vocabulary, never a rescaling | `CanvasModel.time_unit` → `WorldModel.time_unit` |
 | `@pos`, `@lens`, `@directed` | view state (§6) | `@directed` is Klir's observer commitment (Facets Ch. 4); `@pos`/`@lens` are house words | `x`/`y`, `lens`, `klir_directed` |
 
-Two absences resolved:
+Three absences resolved:
 
 - **The system name landed (v1.1, #84 — closed 2026-07-18).** Mobus's paragraph names its subject ("Process M", "Steel-Plant"); the kernel gained `CanvasModel.name` and SL gained `system "Name" [: Kingdom[/Genus]]` the same day, exactly on the C3 schedule the v1 spec committed to: the word entered the lexicon only once the kernel carried the distinction. The name is a quoted string, projects into the root system's `info.name`, and round-trips both ways (concordance row 1, "the named referent").
+- **Klir source-system metadata landed (v1.2, #154 — 2026-07-24).** The Klir lens could name a thing and its relations but not *characterize its variables*: Table 4.1 fixes a variable by its state set, its measurement scale, and its basic-vs-supporting standing, and none of the three had a word. `scale`, `states`, and `kind` entered the lexicon the day the neutral spec gained the three fields (`ScaleType`, `Thing.states`, `KlirVarKind` — the C3 schedule again). Unlike every other thing attribute they ride environment lines too (a revision within #154: Table 4.1 most wants the *input* variables characterized, and those are frequently the environmental drivers). All three are authored metadata read in the Klir register only — none projects to the kernel, so no systemhood verdict reads them (C2 untouched).
 - **Decomposition by reference landed (#89 step 4 — merged 2026-07-20).** Mobus's sub-paragraphs (§4.3.1) needed the kernel to carry the part-whole distinction first; it did once `System.child_model` (a `ModelRef`) and the Lean decomposition contract merged (steps 2–3, same day), so `decomposes` entered the lexicon on exactly the C3 schedule the name waited on — the word earns its place only once the kernel names the distinction. SL takes the *reference* form (the child is its own flat model, keyed by a stamped id — §4.3, §6 of `decomposition-foundations.md`), never nested block text: each SL file stays one flat paragraph, the recursion living in the reference index and not the page layout. The block form is the road not taken.
 
 ## 4. Grammar
@@ -99,6 +103,9 @@ thing       = thingword name { attr } ;
 thingword   = "component" | "source" | "sink" | "environment" ;
 attr        = "interface" | "primitive" primword
             | "stock" name                             (* declared stock unit *)
+            | "scale" scaleword                        (* Klir source-system metadata, #154; *)
+            | "states" "{" [ name { "," name } ] "}"   (*   these three ride environment    *)
+            | "kind" varkindword                       (*   lines too — §4.3                *)
             | "decomposes" string modelid ;            (* component lines only *)
 flow        = "flow" name "->" name [ ":" kindword ] [ string ]
               [ "substance" name ] [ "amount" decimal | "ample" ] [ "unit" name ]
@@ -120,6 +127,8 @@ genus       = "Physical" | "Chemical" | "Biological" | "Social" | "Technical" ;
 kindword    = "energy" | "matter" | "field" | "informational" ;
 primword    = "Combining" | "Splitting" | "Buffering" | "Impeding" | "Propelling"
             | "Copying" | "Sensing" | "Modulating" | "Amplifying" | "Inverting" ;
+scaleword   = "Nominal" | "Ordinal" | "Interval" | "Ratio" ;
+varkindword = "Basic" | "Support" ;
 modelid     = "@" base58                              (* a stamped model id, model_id.rs *) ;
 
 name        = word | string ;
@@ -128,7 +137,7 @@ word        = run of non-whitespace characters excluding '"', ':', '#' ;
 comment     = "#" to end of line (outside strings; also trailing) ;
 ```
 
-Tokenization: whitespace separates tokens; `"…"` groups (no escape sequences — a name containing `"` or a newline is not expressible, §7.3); `:` is a standalone token; `->` is recognized as an arrow; `#` begins a comment outside strings.
+Tokenization: whitespace separates tokens; `"…"` groups (no escape sequences — a name containing `"` or a newline is not expressible, §7.3); `:` is a standalone token; `{`, `}`, and `,` are standalone tokens (the set-literal punctuation, #154); `->` is recognized as an arrow; `#` begins a comment outside strings.
 
 ### 4.1 `system`
 
@@ -145,6 +154,8 @@ At most one per file. The free-text subject area that frames narration: `domain 
 `component Furnace primitive Combining decomposes "furnace-interior" @Hrs6K91KnZZsiPcWzftv8U` designates the component as decomposed: it carries a child model that realizes it (`System.child_model`, the reference form of §6 in `decomposition-foundations.md` — Option B, the child is its own model). Both halves are mandatory. The quoted string is a human label (it may drift under renames — the toolchain re-stamps, the compiler never resolves it); the `@`-prefixed token is the child's stamped model id, base58 per `model_id.rs`, and is the key. A name with no `@id` is a fault (`unstamped reference — resolve via the library`; stamping is later tooling, not the compiler's job); an id that fails the base58 decoder is a fault; a second `decomposes` on one line is a fault; `decomposes` on an environment thing is a fault (its internals are opaque). `decomposes` and `interface` on the same component is a fault in v1: the Lean contract covers a component's internal network only, not flows crossing the parent membrane through an interface component (the gate-open narrowing, #89) — parent-side knowledge the store-free compiler rejects early rather than deferring. `decomposes` emits last, after `primitive` and `interface` (§7.1).
 
 `component Battery primitive Buffering stock "kW·h"` declares the stock's unit (#76/#94): a Buffering component's stock accumulates its inflow over Δt, so its dimension differs from the flow's, and the modeler declares the stock's own unit rather than the run copying the flow's. The unit is a name token — bare when identifier-shaped (`stock ML`), quoted otherwise (`stock "kW·h"`). A second `stock` on one line is a fault; `stock` on an environment thing is a fault (its internals are opaque). Undeclared, the run *derives* a display unit from the inflow and flags its provenance; the run panel's accept affordance writes the derived unit back as this clause.
+
+`component Light scale Nominal states {Green, Yellow, Red}` characterizes the thing as a Klir source-system variable (#154). Three clauses, each at most once per line, in any order among the attributes: `scale <Nominal|Ordinal|Interval|Ratio>` declares the measurement scale; `states {A, B, C}` declares the state set in Klir's set notation — a brace-enclosed, comma-separated list of value labels (bare or quoted; `{}` is a legal, explicit empty set; a trailing comma or a missing brace is a fault); `kind <Basic|Support>` declares the basic-vs-supporting standing (`Basic` is the default, so the clause exists to declare the rare support variable). The value words are keyword-case-insensitive like everything else and emit in the canonical capitalization shown. Unlike every other attribute, all three ride **environment lines too** — `source Battery kind Support scale Ratio` is legal — because Table 4.1 most wants the *input* variables characterized, and those are frequently the environmental drivers. A duplicate clause and an unknown scale or kind value are faults. The three are authored Klir metadata, read in the Klir register only: none projects to the kernel, so no systemhood verdict reads them (C2).
 
 ### 4.4 `flow`
 
@@ -176,7 +187,7 @@ At most one per file: `time unit h`. The model's time-unit symbol (#94) — what
 
 ### 4.8 Errors
 
-Parsing collects **all** faults in one pass and reports each with its 1-indexed line — never a first-error-only bail, and never a guess. Fault classes: lexical (unterminated quote), unknown keyword, malformed clause, duplicate name, undeclared flow endpoint, redeclared singleton (`system`/`domain`/`time unit`/`boundary`), attribute on an environment thing, unstamped or malformed decomposition reference, `decomposes` on an interface component, duplicate `decomposes`, duplicate `stock`, out-of-range `@directed`, malformed known annotation, the §4.5 param faults (unresolvable or ambiguous anchor, amountless anchor, degenerate or contradicted range, shares without a >=2 component fanout, duplicate param name), and the §4.4 ample faults (beside `amount`, with a `unit`, on a `mere` relation, on a non-informational kind). The ACE/Gherkin discipline — deterministic parse, fail loud on anything ambiguous — is inherited deliberately.
+Parsing collects **all** faults in one pass and reports each with its 1-indexed line — never a first-error-only bail, and never a guess. Fault classes: lexical (unterminated quote), unknown keyword, malformed clause, duplicate name, undeclared flow endpoint, redeclared singleton (`system`/`domain`/`time unit`/`boundary`), attribute on an environment thing, unstamped or malformed decomposition reference, `decomposes` on an interface component, duplicate `decomposes`, duplicate `stock`, duplicate or malformed Klir metadata clause (`scale`/`states`/`kind` — an unknown scale or kind value, a malformed state set), out-of-range `@directed`, malformed known annotation, the §4.5 param faults (unresolvable or ambiguous anchor, amountless anchor, degenerate or contradicted range, shares without a >=2 component fanout, duplicate param name), and the §4.4 ample faults (beside `amount`, with a `unit`, on a `mere` relation, on a non-informational kind). The ACE/Gherkin discipline — deterministic parse, fail loud on anything ambiguous — is inherited deliberately.
 
 **These are *parse* faults, and they are not the only way a model is refused.** A file can parse cleanly, compile to a model (§5.3), and still be refused by the kernel when a lens is entered — that refusal is the kernel's job, not SL's (§5.1), so it is deliberately absent from the list above. The list is complete for what the parser rejects and is not a map of every way a model can fail. §5.4 names the one class where a *word in this language* now carries an obligation the parser cannot check.
 
@@ -256,7 +267,7 @@ Marks the *n*-th declared flow (1-based) with Klir's observer orientation toggle
 
 ### 7.1 Canonical form
 
-`emit_sl` writes a model as: `system` / `domain` / `time unit` lines; thing lines in `things` order (environment words edge-derived per §5.2 — the emitted word is the kernel's reading); `flow` lines in `relations` order; `boundary` if authored; blank line; `@lens`; `@pos` per thing; `@directed` per directed flow. On a component thing line the attributes emit in a fixed order: `primitive`, then `interface`, then `stock`, then `decomposes` last (the reference, quoted label plus `@`-id). Names emit bare when they read as identifiers and shadow no keyword, quoted otherwise. Floats emit via shortest-round-trip decimal representation, so re-parsing recovers them bit-exactly.
+`emit_sl` writes a model as: `system` / `domain` / `time unit` lines; thing lines in `things` order (environment words edge-derived per §5.2 — the emitted word is the kernel's reading); `flow` lines in `relations` order; `boundary` if authored; blank line; `@lens`; `@pos` per thing; `@directed` per directed flow. On a thing line the attributes emit in a fixed order: `primitive`, then `interface`, then `stock` (component lines only), then the Klir metadata — `kind`, then `scale`, then `states` (#154; the one attribute group environment lines also carry), then `decomposes` last (component lines only; the reference, quoted label plus `@`-id). Names emit bare when they read as identifiers and shadow no *reserved* word, quoted otherwise. The reserved set (`RESERVED_WORDS`, `sl.rs`) is §4's position-free keywords; the five position-bound words — `param`, `ample`, `range`, `shares`, `from` — and the `@lens` values never occupy a slot a name can reach, so a name matching one of them stays bare and still re-parses as itself. That the two lists together are exactly §4's terminals is held by `tests/keyword_parity.rs`. Floats emit via shortest-round-trip decimal representation, so re-parsing recovers them bit-exactly.
 
 ### 7.2 The contract (golden-tested)
 
@@ -381,6 +392,7 @@ A three-component decomposition with two boundary interfaces, an authored membra
 |---|---|---|
 | ~~No root-system name~~ shipped as v1.1 | #84 (closed 2026-07-18) | `CanvasModel.name` → `system "Name" [: type]` — see §3, §4.1 |
 | ~~No decomposition / sub-paragraphs~~ decompose-by-reference shipped (step 4) | #89 (step 4 merged 2026-07-20) | `decomposes "label" @id` → `System.child_model` — see §3, §4.3, §7.1; the reference form keeps each file one flat paragraph, the recursion in the id index |
+| ~~No Klir source-system variable characterization~~ shipped as v1.2 | #154 (landed 2026-07-24; spec caught up 2026-07-31 — the words shipped ahead of this document, the drift the keyword-parity gate now makes impossible) | `scale` / `states` / `kind` → `Thing.scale` / `.states` / `.variable_kind` — see §3, §4.3, §7.1 |
 | `interface` + `decomposes` refused together (v1) | #89 | The Lean contract covers a component's internal network only; when it grows the membrane-crossing case (flows through an interface component) the co-occurrence becomes legal and the `interface`/`decomposes` emission order (§7.1) gets revisited |
 | No controlled systems-English tier (the verbal surface proper) | design doc §5 Rung 2 | Fixed-grammar system-paragraph parsing to the same neutral spec |
 | Compiled diagram can land partly off-viewport | #83 | Zoom-to-fit after compile (UI, not language) |

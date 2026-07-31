@@ -1487,37 +1487,49 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
 
 /// Words the tokenizer or line parsers claim — a thing name matching one must
 /// be quoted to stay a name.
+pub const RESERVED_WORDS: &[&str] = &[
+    "system",
+    "domain",
+    "component",
+    "source",
+    "sink",
+    "environment",
+    "flow",
+    "boundary",
+    "interface",
+    "primitive",
+    "decomposes",
+    "stock",
+    "scale",
+    "states",
+    "kind",
+    "time",
+    "unit",
+    "mere",
+    "weight",
+    "substance",
+    "amount",
+    "porosity",
+    "fuzziness",
+    "energy",
+    "matter",
+    "field",
+    "informational",
+];
+
+/// Grammar keywords deliberately absent from [`RESERVED_WORDS`]: each occupies
+/// a slot no name can reach. `param` opens its own line, and no emitted line
+/// ever begins with a bare name; `ample`, `range`, `shares`, and `from` sit
+/// behind clause heads or fixed positions the parser matches structurally;
+/// the lens words are `@lens` values on an annotation line. A thing named
+/// `ample` therefore emits bare and re-parses as itself — quoting it would be
+/// noise, not safety. Spec §7.1 records the same split; `keyword_parity.rs`
+/// holds the union of the two lists equal to §4's terminals.
+pub const POSITIONAL_KEYWORDS: &[&str] =
+    &["param", "ample", "range", "shares", "from", "klir", "bunge", "mobus"];
+
 fn is_reserved(word: &str) -> bool {
-    matches!(
-        word.to_ascii_lowercase().as_str(),
-        "system"
-            | "domain"
-            | "component"
-            | "source"
-            | "sink"
-            | "environment"
-            | "flow"
-            | "boundary"
-            | "interface"
-            | "primitive"
-            | "decomposes"
-            | "stock"
-            | "scale"
-            | "states"
-            | "kind"
-            | "time"
-            | "unit"
-            | "mere"
-            | "weight"
-            | "substance"
-            | "amount"
-            | "porosity"
-            | "fuzziness"
-            | "energy"
-            | "matter"
-            | "field"
-            | "informational"
-    )
+    RESERVED_WORDS.contains(&word.to_ascii_lowercase().as_str())
 }
 
 /// A name as a token: bare when it reads as an identifier and shadows nothing,
