@@ -23,7 +23,7 @@ import { ModelAbout } from "./ModelAbout";
 import { NodeEditorRows, type DecomposeAffordance } from "./canvas/NodeEditor";
 import { ElementMechanism } from "./ElementMechanism";
 import { LensPalette, type RunKind } from "./canvas/lenses/registry";
-import { DtmcPanel, RunPanel } from "./RunPanel";
+import { DtmcPanel, RunPanel, weightProvenance } from "./RunPanel";
 import { FormalPanel } from "./FormalPanel";
 import { ReviewPanel } from "./ReviewPanel";
 import { AnalystPanel } from "./AnalystPanel";
@@ -451,7 +451,11 @@ function RunTab({
             </p>
           </Card>
         ) : markovRun ? (
-          <DtmcPanel run={markovRun} tick={tick} />
+          <DtmcPanel
+            run={markovRun}
+            tick={tick}
+            weights={model ? weightProvenance(model.relations) : undefined}
+          />
         ) : (
           <Placeholder>
             Run evolves this state machine as a Markov chain — steps and state
