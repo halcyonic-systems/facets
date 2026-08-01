@@ -2,7 +2,7 @@
 
 **Status: RESEARCH.**
 
-*First full read of the matrix, 2026-07-29. Reproduce with `cargo test -p bert-canvas --test matrix_report -- --nocapture`. Raw run archived outside this repo; the command is the source of truth.*
+*First full read of the matrix, 2026-07-29; label-diff read 2026-08-01 (#285). Reproduce with `cargo test -p bert-canvas --test matrix_report -- --nocapture`. Raw run archived outside this repo; the command is the source of truth.*
 
 The matrix had been runnable for some time and was never read. Two things came out of reading it: the report was answering two of #216's three questions, and the third question — *travels but reads differently* — turns out to have an answer already computed on every call and thrown away.
 
@@ -44,8 +44,14 @@ Stated for the thesis: **legality travels, meaning does not.** All 35 models are
 
 This is a fact about the corpus, not about Mobus. The examples are authored in Mobus's own vocabulary, so they cannot test what Mobus loses. **The set needs Klir-native and Bunge-native examples before the Mobus column means anything.** That is the sharpest gap the read exposes, and it is a commissioning task, not a fix.
 
+## The labels, diffed (#285, 2026-08-01)
+
+Every divergent row now continues onto detail lines that diff the residue labels between the most- and least-blind accepting lenses, so `DIVERGENT(70) klir>mobus` on `llm-market` reads as: 10 environment roles, 38 connection kinds, 11 process primitives, 11 interfaces — the seventy facts, named.
+
+What the diff shows across the whole library: **the divergence is categorical, not idiosyncratic.** Every gap in the corpus decomposes into roughly eight recurring categories. Klir's blindness is always the same four structural ones — environment roles, connection kinds, process primitives, interfaces — which is the lossy-projection finding above, now itemized. Bunge rows add three of their own (directed annotations, interface designations, and the uncountable ⊘M line), and the few rows where Mobus is the blinder lens lose substances and unanswered process primitives. No model diverges for a reason outside this list. That means the third outcome is not thirty-four separate stories: it is a small set of question-mismatches between the traditions, instantiated thirty-four times.
+
 ## What this does not establish
 
-The spread is a count of unrendered items, not a semantic distance. Two models with the same spread can differ for unrelated reasons, and a low spread is not evidence that two lenses agree about meaning — only that they omit the same amount. Reading *what* differs still requires opening the residue labels, which the report prints per lens but does not diff item by item.
+The spread is a count of unrendered items, not a semantic distance. Two models with the same spread can differ for unrelated reasons, and a low spread is not evidence that two lenses agree about meaning — only that they omit the same amount. The label diff names which categories differ and by how much, but a matched category is matched by label, not by content — two lenses each hiding "4 connection kinds" may be hiding different kinds. The diff also compares only the two extreme lenses of a row; a middle lens's residue is printed nowhere.
 
 The refusal reasons also collapse harder than the counts suggest: 17 refused cells across 16 models, but only three distinct mechanisms — boundary-crossing without an interface (Mobus, ~11 models), self-dependency where `k = o` (Mobus, 2), and no bond between distinct components (Bunge, 4). Seventeen cells is not seventeen results.

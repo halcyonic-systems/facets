@@ -25,9 +25,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use bert_canvas::canvas::Lens;
-use bert_canvas::lenses::analyze;
+use bert_canvas::lenses::{analyze, ResidueEntry};
 use bert_canvas::sl::parse_sl_full;
 use bert_core::validate::Severity;
+
+const LENS_NAMES: [&str; 3] = ["klir", "bunge", "mobus"];
 
 fn sl_files(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(dir) else { return };
@@ -55,6 +57,9 @@ struct Cell {
     verdict: String,
     reasons: Vec<String>,
     blind: Option<usize>,
+    /// The residue lines behind `blind`, kept so a divergent row can say WHICH
+    /// facts differ, not just how many (#285). Empty for a refusal.
+    residue: Vec<ResidueEntry>,
 }
 
 fn cell(model: &bert_canvas::canvas::CanvasModel, lens: Lens) -> Cell {
@@ -77,15 +82,17 @@ fn cell(model: &bert_canvas::canvas::CanvasModel, lens: Lens) -> Cell {
             verdict: format!("REFUSED({})", errs.len()),
             reasons: errs,
             blind: None,
+            residue: Vec::new(),
         };
     }
-    let blind: usize = a
+    let residue: Vec<ResidueEntry> = a
         .residue
         .hidden
         .iter()
         .chain(&a.residue.unspecified)
-        .map(|e| e.count)
-        .sum();
+        .cloned()
+        .collect();
+    let blind: usize = residue.iter().map(|e| e.count).sum();
     Cell {
         verdict: if warns > 0 {
             format!("clean(w{warns})")
@@ -94,6 +101,7 @@ fn cell(model: &bert_canvas::canvas::CanvasModel, lens: Lens) -> Cell {
         },
         reasons: Vec::new(),
         blind: Some(blind),
+        residue,
     }
 }
 
@@ -101,22 +109,82 @@ fn cell(model: &bert_canvas::canvas::CanvasModel, lens: Lens) -> Cell {
 /// gap between the most and least blind. Zero means every accepting lens sees
 /// the same amount of what the author wrote; large means the model is legal in
 /// places that cannot read most of it.
-fn divergence(cells: &[Cell]) -> String {
-    let mut seen: Vec<(usize, &str)> = cells
+/// Among the accepting lenses, the least- and most-blind, as indices into the
+/// klir/bunge/mobus cell order. `None` unless at least two lenses accept.
+fn extremes(cells: &[Cell]) -> Option<(usize, usize)> {
+    let mut seen: Vec<(usize, usize)> = cells
         .iter()
-        .zip(["klir", "bunge", "mobus"])
-        .filter_map(|(c, name)| c.blind.map(|b| (b, name)))
+        .enumerate()
+        .filter_map(|(i, c)| c.blind.map(|b| (b, i)))
         .collect();
     if seen.len() < 2 {
-        return "-".to_string();
+        return None;
     }
     seen.sort();
-    let (lo, lo_lens) = seen[0];
-    let (hi, hi_lens) = seen[seen.len() - 1];
+    Some((seen[0].1, seen[seen.len() - 1].1))
+}
+
+fn divergence(cells: &[Cell]) -> String {
+    let Some((lo_i, hi_i)) = extremes(cells) else {
+        return "-".to_string();
+    };
+    let (lo, hi) = (cells[lo_i].blind.unwrap(), cells[hi_i].blind.unwrap());
     if hi == lo {
         return "aligned(0)".to_string();
     }
-    format!("DIVERGENT({}) {hi_lens}>{lo_lens}", hi - lo)
+    format!(
+        "DIVERGENT({}) {}>{}",
+        hi - lo,
+        LENS_NAMES[hi_i],
+        LENS_NAMES[lo_i]
+    )
+}
+
+/// Residue labels are number-agreed noun phrases, so the same category can
+/// surface as singular in one lens and plural in another. Two labels name the
+/// same category if they are equal or differ by a trailing `s`.
+fn same_category(a: &str, b: &str) -> bool {
+    a == b || a.strip_suffix('s') == Some(b) || b.strip_suffix('s') == Some(a)
+}
+
+fn entry_text(e: &ResidueEntry) -> String {
+    // count == 0 is the uncountable line (e.g. Bunge's ⊘M) — label alone.
+    if e.count == 0 {
+        e.label.clone()
+    } else {
+        format!("{} {}", e.count, e.label)
+    }
+}
+
+/// The #285 detail: for a divergent row, which residue categories differ
+/// between the most- and least-blind accepting lenses, and by how much. Empty
+/// when the row is not divergent or the extremes carry identical residue.
+fn residue_diff(cells: &[Cell]) -> Vec<String> {
+    let Some((lo_i, hi_i)) = extremes(cells) else {
+        return Vec::new();
+    };
+    if cells[lo_i].blind == cells[hi_i].blind {
+        return Vec::new();
+    }
+    let (lo_name, hi_name) = (LENS_NAMES[lo_i], LENS_NAMES[hi_i]);
+    let (lo, hi) = (&cells[lo_i].residue, &cells[hi_i].residue);
+    let mut lines = Vec::new();
+    for h in hi {
+        match lo.iter().find(|l| same_category(&l.label, &h.label)) {
+            None => lines.push(format!("only {hi_name}: {}", entry_text(h))),
+            Some(l) if l.count != h.count => lines.push(format!(
+                "{}: {hi_name} {} vs {lo_name} {}",
+                h.label, h.count, l.count
+            )),
+            Some(_) => {}
+        }
+    }
+    for l in lo {
+        if !hi.iter().any(|h| same_category(&h.label, &l.label)) {
+            lines.push(format!("only {lo_name}: {}", entry_text(l)));
+        }
+    }
+    lines
 }
 
 #[test]
@@ -197,15 +265,23 @@ fn row(cells: &[Cell]) -> String {
         .join("/");
     let reasons = cells
         .iter()
-        .zip(["klir", "bunge", "mobus"])
+        .zip(LENS_NAMES)
         .flat_map(|(c, name)| c.reasons.iter().map(move |r| format!("{name}: {r}")))
         .collect::<Vec<_>>()
         .join(" || ");
-    format!(
+    let mut out = format!(
         "{}\t{}\t{}\t{blind}\t{}\t{reasons}",
         cells[0].verdict,
         cells[1].verdict,
         cells[2].verdict,
         divergence(cells)
-    )
+    );
+    // Divergent rows continue onto indented detail lines: the categories that
+    // make up the spread, so the reader goes from the row to the reason
+    // without opening the model (#285).
+    for line in residue_diff(cells) {
+        out.push_str("\n    · ");
+        out.push_str(&line);
+    }
+    out
 }
