@@ -459,7 +459,12 @@ function RunTab({
         ) : (
           <Placeholder>
             Run evolves this state machine as a Markov chain — steps and state
-            occupancy, not Δt. Add at least one state and press Run.
+            occupancy, not Δt. Set the steps above and press ▶ Run, or ⏭ Step
+            one tick at a time.
+            {model &&
+              model.relations.length > 0 &&
+              weightProvenance(model.relations) === "defaulted" &&
+              " Transition weights are undeclared, so the chain will run uniform — add `weight <n>` to a flow to calibrate it."}
           </Placeholder>
         )}
       </div>
@@ -501,7 +506,11 @@ function RunTab({
       {timeRow}
       {inputs}
       <Placeholder>
-        Run a demo bundle (model + CSV + mapping) to see the forced simulation here.
+        {manifest
+          ? // #297: the model opens at zero — loaded, mapped, and waiting for
+            // the author's horizon. Nothing has run until Run is pressed.
+            "The model is loaded and nothing has run. Set the horizon in Time and press ▶ Run — or ⏭ Step one tick at a time."
+          : "Run needs a demo bundle (model + CSV + mapping) to force the simulation."}
       </Placeholder>
     </div>
   );
