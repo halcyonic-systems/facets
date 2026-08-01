@@ -33,6 +33,7 @@ import { BungeRegister } from "./canvas/BungeRegister";
 import { BoundaryPopover } from "./canvas/BoundaryPopover";
 import { PaletteRail } from "./canvas/PaletteRail";
 import type { PaletteTool } from "./canvas/lenses/registry";
+import { LensPalette } from "./canvas/lenses/registry";
 import { SimScrubber } from "./canvas/SimScrubber";
 import { MarkovReadout } from "./canvas/MarkovReadout";
 import { type SimFrame } from "./canvas/types";
@@ -1606,26 +1607,35 @@ function Workspace() {
                 controls live with the run — RUN tab, above Inputs. */}
             <div className="ml-auto flex flex-wrap items-center gap-3">
               {(() => {
-                // #67 J9: under Klir the Run action is a Markov run — the model
-                // is a state machine, run straight from the canvas (no demo
-                // bundle). Every other lens keeps the CSV-forced conservation run.
-                const klirRunnable = isKlir && !!canvasModel && canvasModel.things.length > 0;
-                const runnable = isKlir ? klirRunnable : !!demo;
+                // #282: the run wears its lens — the registry declares the run
+                // kind and this button renders from the declaration. Klir's
+                // behavior function runs as a DTMC straight from the canvas
+                // (#67 J9); Mobus's work processes run the CSV-forced
+                // conservation engine; Bunge declares no mechanism (⊘M), so
+                // Run has nothing to execute and says so.
+                const runKind = LensPalette[canvasModel.lens].run;
+                const dtmcRunnable =
+                  runKind === "dtmc" && !!canvasModel && canvasModel.things.length > 0;
+                const runnable =
+                  runKind === "dtmc" ? dtmcRunnable : runKind === "conservation" && !!demo;
                 const onRun = () => {
-                  if (isKlir) {
-                    if (klirRunnable) runKlir(canvasModel, t);
-                  } else if (demo) {
+                  if (runKind === "dtmc") {
+                    if (dtmcRunnable) runKlir(canvasModel, t);
+                  } else if (runKind === "conservation" && demo) {
                     const m = modelForRun();
                     if (m) runWith(m.json, demo.csv!, manifest, dt, t, m.edited);
                   }
                 };
-                const title = isKlir
-                  ? klirRunnable
-                    ? "Run the state machine as a Markov chain"
-                    : "Add at least one state to run"
-                  : demo
-                    ? "Run the forced simulation"
-                    : "Run needs a demo bundle (model + CSV + mapping)";
+                const title =
+                  runKind === "dtmc"
+                    ? dtmcRunnable
+                      ? "Run the state machine as a Markov chain"
+                      : "Add at least one state to run"
+                    : runKind === "conservation"
+                      ? demo
+                        ? "Run the forced simulation"
+                        : "Run needs a demo bundle (model + CSV + mapping)"
+                      : "no mechanism stated (⊘M) — structure alone gives Run nothing to execute";
                 return (
                   <button
                     onClick={onRun}
@@ -2121,6 +2131,7 @@ function Workspace() {
           {canvasModel && (
             <InspectorDock
               result={result}
+              markovRun={markovRun}
               ranEdited={ranEdited}
               runManifest={demo ? manifest : null}
               onInputEdit={applyInputEdit}

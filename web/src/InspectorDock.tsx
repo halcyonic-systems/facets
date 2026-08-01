@@ -11,6 +11,7 @@ import type {
   Lens,
   LensDescription,
   Manifest,
+  MarkovRunResult,
   Relation,
   RunResultRich,
   SystemType,
@@ -21,13 +22,14 @@ import { RunInputs } from "./RunInputs";
 import { ModelAbout } from "./ModelAbout";
 import { NodeEditorRows, type DecomposeAffordance } from "./canvas/NodeEditor";
 import { ElementMechanism } from "./ElementMechanism";
-import { RunPanel } from "./RunPanel";
+import { LensPalette, type RunKind } from "./canvas/lenses/registry";
+import { DtmcPanel, RunPanel } from "./RunPanel";
 import { FormalPanel } from "./FormalPanel";
 import { ReviewPanel } from "./ReviewPanel";
 import { AnalystPanel } from "./AnalystPanel";
 import { SystemTypeEditor } from "./SystemTypeEditor";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
-import { Card } from "./ui";
+import { Card, Verdict } from "./ui";
 
 type Tab = "element" | "run" | "formal" | "review" | "analyst" | "type";
 
@@ -44,6 +46,7 @@ export interface ElementSelection {
 
 export function InspectorDock({
   result,
+  markovRun,
   ranEdited,
   runManifest,
   onInputEdit,
@@ -70,6 +73,9 @@ export function InspectorDock({
   onReview,
 }: {
   result: RunResultRich | null;
+  /** #282: the DTMC run (#67) — the Run tab's result when the active lens
+   *  declares `run: "dtmc"`. App keeps result/markovRun mutually exclusive. */
+  markovRun: MarkovRunResult | null;
   /** ADR run-seam-canvas-document: whether the last run executed the edited
    *  canvas's projection rather than the shipped calibration artifact. */
   ranEdited?: boolean;
@@ -266,6 +272,8 @@ export function InspectorDock({
                 time={time}
                 focused={focused}
                 onToggleFocus={onToggleFocus}
+                runKind={canvasModel ? LensPalette[canvasModel.lens].run : "conservation"}
+                markovRun={markovRun}
               />
             )}
             {tab === "formal" && <FormalTab desc={desc} analysisError={analysisError} />}
@@ -358,6 +366,8 @@ function RunTab({
   time,
   focused,
   onToggleFocus,
+  runKind,
+  markovRun,
 }: {
   result: RunResultRich | null;
   ranEdited?: boolean;
@@ -373,6 +383,10 @@ function RunTab({
   /** #283: the dock's focus toggle, surfaced on the Result card too. */
   focused?: boolean;
   onToggleFocus?: () => void;
+  /** #282: the lens's declared run semantics — this tab renders from it. */
+  runKind: RunKind;
+  /** #282: the DTMC run (#67), when the declared kind is dtmc. */
+  markovRun: MarkovRunResult | null;
 }) {
   // The inputs card renders above WHATEVER the run state is — including a
   // refusal, since fix-the-number-and-rerun is exactly the loop it exists for.
@@ -404,6 +418,49 @@ function RunTab({
       </button>
     </div>
   ) : null;
+  // #282, decided 2026-08-01: Bunge does not run. The lens's own register says
+  // it — no mechanism stated (⊘M) — so executing Mobus's engine under this
+  // reading was a lens leak. The deck states the refusal instead of borrowing
+  // furniture; the conservation result (if a demo ran) waits under Mobus.
+  if (runKind === "none") {
+    return (
+      <div className="grid gap-5">
+        {expandRow}
+        <Card title="Result" source="bert-core · wasm">
+          <Verdict tone="warning">no mechanism stated (⊘M) — reads as a black box</Verdict>
+          <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
+            This lens declares composition, environment, and structure — never a
+            mechanism. There is nothing to run. Read the model under Mobus to
+            execute its declared dynamics, or under Klir to evolve it as a state
+            machine.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+  // #282: the DTMC deck — steps and occupancy, no Δt, no conservation chrome.
+  if (runKind === "dtmc") {
+    return (
+      <div className="grid gap-5">
+        {expandRow}
+        {timeRow}
+        {runError ? (
+          <Card title="Result" source="bert-compose · wasm">
+            <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
+              {runError}
+            </p>
+          </Card>
+        ) : markovRun ? (
+          <DtmcPanel run={markovRun} tick={tick} />
+        ) : (
+          <Placeholder>
+            Run evolves this state machine as a Markov chain — steps and state
+            occupancy, not Δt. Add at least one state and press Run.
+          </Placeholder>
+        )}
+      </div>
+    );
+  }
   if (runError) {
     return (
       <div className="grid gap-5">

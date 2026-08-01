@@ -97,11 +97,20 @@ export interface PaletteHint {
   tip: string;
 }
 
+/** #282: the lens's run semantics, declared. A run wears its lens — Klir's
+ *  behavior function executes as a DTMC over states (steps, occupancy, no Δt);
+ *  Mobus's work processes run the conservation engine; Bunge's structure
+ *  states no mechanism (⊘M), so there is nothing to run. The Run button and
+ *  the run deck render from this declaration, never from `lens ===`
+ *  conditionals. */
+export type RunKind = "conservation" | "dtmc" | "none";
+
 export interface LensPaletteSpec {
   place: PaletteTool[];
   designate: PaletteTool[];
   connect: PaletteHint[];
   derived: PaletteHint[];
+  run: RunKind;
 }
 
 const PRIMITIVES = Object.keys(PRIMITIVE_BADGE) as ProcessPrimitive[];
@@ -126,6 +135,9 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
       },
     ],
     derived: [],
+    // The mask/behavior-function reading HAS behavior: Run evolves the
+    // labeled directed graph as a discrete-time Markov chain (#67 J9).
+    run: "dtmc",
   },
   Bunge: {
     place: [
@@ -164,6 +176,10 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
         tip: "systemhood is earned: ≥1 bond among distinct components, else a heap (Def 1.1) — validate_mode(Structural)",
       },
     ],
+    // Bunge's own register says it: no mechanism stated (⊘M) — structure
+    // alone gives Run nothing to execute. Running Mobus's engine under this
+    // lens was a lens leak (#282, decided 2026-08-01).
+    run: "none",
   },
   Mobus: {
     place: [
@@ -230,5 +246,8 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
         tip: "derived from first-flow direction in project() — one place-tool, not two",
       },
     ],
+    // Work processes carry declared dynamics — the CSV-forced conservation
+    // run (bert-compose circuit.rs).
+    run: "conservation",
   },
 };
