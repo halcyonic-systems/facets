@@ -16,6 +16,7 @@ import type { CanvasModel, Comparison, Level, MarkovRunResult, RunResultRich } f
 import { Card, Pill, Stat, Verdict, humanize } from "./ui";
 import { horizonOf, unitLabel } from "./runViz";
 import { BungeStateSpace } from "./canvas/BungeStateSpace";
+import { evaluateMetrics, type MetricReading } from "./metrics";
 
 // Category labels are lens-faithful (K≅2 on the run panel): Klir and Bunge share
 // input/output/internal (both authors' own words — Klir ch.2 "input, output, and
@@ -53,12 +54,16 @@ export function RunPanel({
   lens,
   onAcceptUnit,
   tick,
+  model,
 }: {
   result: RunResultRich;
   /** ADR run-seam-canvas-document: true when this run executed the edited
    *  canvas's projection; false/absent = the shipped calibration artifact. */
   ranEdited?: boolean;
   lens: CanvasModel["lens"];
+  /** #203: the authoring model, read for its declared metrics. Absent = no
+   *  authoring surface, so no metrics card and no teach line. */
+  model?: CanvasModel | null;
   /** #94: accept a derived stock unit as the component's DECLARED unit. The
    *  parent writes it into the authoring model; absent = no authoring surface
    *  to write into, so no affordance is shown. */
@@ -77,9 +82,37 @@ export function RunPanel({
     .filter((r) => r.pct != null && r.pct > 0.5)
     .sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0))[0];
   const forecastTicks = lead ? lead.c.simulated.length - lead.c.actual.length : 0;
+  // #203: declared metrics lead the deck — the questions the author wrote
+  // into the model answer FIRST, in the author's words; the kernel-fidelity
+  // furniture follows. Null = no authoring model in reach.
+  const metrics = model ? evaluateMetrics(model, result) : null;
 
   return (
     <div className="grid gap-5">
+      {metrics && (metrics.readings.length > 0 || metrics.failures.length > 0) && (
+        <Card title="Declared metrics" source="declared in SL · computed from the run">
+          <div className="grid gap-5">
+            {metrics.readings.map((r) => (
+              <MetricRow key={r.name} r={r} tick={tick} />
+            ))}
+            {metrics.failures.map((f) => (
+              <p key={f.name} className="text-xs" style={{ color: "var(--verdict-warning)" }}>
+                {f.name}: {f.reason}
+              </p>
+            ))}
+          </div>
+        </Card>
+      )}
+      {metrics && metrics.readings.length === 0 && metrics.failures.length === 0 && (
+        // The capacity, surfaced (#203): a model with no declared metrics is
+        // told — quietly — that it can ask its own questions of a run.
+        <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+          No declared metrics — name the readouts you want to watch, in the
+          model's own words:{" "}
+          <code className="font-mono">metric "Opus tokens served" : sum into Opus</code> ·{" "}
+          <code className="font-mono">metric "DeepSeek dev share" : share of flow Clearing -&gt; DeepSeek</code>
+        </p>
+      )}
       <Card title="Result" source="bert-compose · wasm">
         <div className="mb-4">
           {lead ? (
@@ -150,6 +183,72 @@ export function RunPanel({
           tick={tick}
         />
       </Card>
+    </div>
+  );
+}
+
+/** One declared metric's reading (#203): the author's name and endpoint
+ *  number lead; the executed series rides below as a small chart. Same-verb
+ *  families arrive pre-sorted by endpoint — the leaderboard reading. */
+function MetricRow({ r, tick }: { r: MetricReading; tick?: number }) {
+  const n = r.series.length;
+  const data = r.series.map((v, t) => ({ t, v }));
+  const endpoint =
+    r.kind === "share"
+      ? `${(r.endpoint * 100).toFixed(1)}%`
+      : `${humanize(r.endpoint)}${r.unit ? ` ${r.unit}` : ""}`;
+  return (
+    <div>
+      <div className="mb-1 flex items-baseline justify-between gap-3">
+        <div>
+          <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+            {r.name}
+          </div>
+          <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+            {r.detail}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-xl font-semibold tabular" style={{ color: "var(--accent-strong)" }}>
+            {endpoint}
+          </div>
+          <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+            {r.kind === "share" ? "at run end" : "over the run"}
+          </div>
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={90}>
+        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
+          <CartesianGrid stroke="var(--hairline)" vertical={false} />
+          {tick !== undefined && tick > 0 && tick < n && (
+            <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
+          )}
+          <XAxis dataKey="t" tick={{ fontSize: 10, fill: "var(--text-muted)" }} stroke="var(--border)" />
+          <YAxis
+            domain={r.kind === "share" ? [0, 1] : undefined}
+            tick={{ fontSize: 10, fill: "var(--text-muted)" }}
+            stroke="var(--border)"
+            width={44}
+          />
+          <Tooltip
+            contentStyle={{
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              fontSize: 12,
+            }}
+          />
+          <Line
+            type="monotone"
+            dataKey="v"
+            name={r.name}
+            stroke="var(--accent)"
+            dot={false}
+            strokeWidth={2}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }

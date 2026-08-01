@@ -499,6 +499,17 @@ struct RunResultRich {
     levels: Vec<LevelDto>,
     comparisons: Vec<ComparisonDto>,
     trajectories: Vec<TrajDto>,
+    flows: Vec<FlowDto>,
+}
+/// One flow's executed per-tick delivery (#203) — the circuit's own recording
+/// (`wire_history`), domain-named. Declared metrics evaluate over these.
+#[derive(Serialize)]
+struct FlowDto {
+    name: String,
+    from: String,
+    to: String,
+    unit: String,
+    series: Vec<f32>,
 }
 #[derive(Serialize)]
 struct LevelDto {
@@ -568,6 +579,17 @@ impl From<bert_tether::forcing::RunReadout> for RunResultRich {
                     unit: t.unit,
                     unit_derived: t.unit_derived,
                     series: t.series,
+                })
+                .collect(),
+            flows: r
+                .flows
+                .into_iter()
+                .map(|f| FlowDto {
+                    name: f.name,
+                    from: f.from,
+                    to: f.to,
+                    unit: f.unit,
+                    series: f.series,
                 })
                 .collect(),
         }
@@ -899,6 +921,7 @@ mod tests {
             name: None,
             time_unit: None,
             params: vec![],
+            metrics: vec![],
         }
     }
 

@@ -119,6 +119,7 @@ mod tests {
             name: Some("two-thing".to_string()),
             time_unit: None,
             params: vec![],
+            metrics: vec![],
         };
         m.things.push(Thing {
             id: 1,
@@ -360,6 +361,7 @@ mod decomposition_seam {
             name: Some("Refinery".into()),
             time_unit: None,
             params: vec![],
+            metrics: vec![],
         };
         m.things[0].primitive = Some(bert_core::ProcessPrimitive::Combining);
 

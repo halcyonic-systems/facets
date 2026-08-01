@@ -31,9 +31,10 @@ SL compiles to `CanvasModel` (`crates/bert-canvas/src/canvas.rs:165`), the editi
 | Field | Layer | SL realization |
 |---|---|---|
 | `things` — id, name, `role` (Component/Environment), optional `primitive`, `interface` flag, optional `child_model` decomposition reference, optional `stock_unit` declared unit, optional Klir source-system metadata (`scale`, `states`, `variable_kind`) | model | `component` / `source` / `sink` / `environment` lines (§4.3) |
-| `time_unit` — the model's time-unit symbol | model | `time unit` line (§4.7) |
+| `time_unit` — the model's time-unit symbol | model | `time unit` line (§4.8) |
 | `relations` — a, b, name, `is_bond`, `kind` | model | `flow` lines (§4.4) |
-| `boundary` — porosity, perceptive_fuzziness | model | `boundary` line (§4.6) |
+| `params` / `metrics` — declared domain names over input knobs and computed readouts (walkthrough #18, #203) | model | `param` lines (§4.5), `metric` lines (§4.6) |
+| `boundary` — porosity, perceptive_fuzziness | model | `boundary` line (§4.7) |
 | `system_type` — kingdom, genus, domain | model | `system` / `domain` lines (§4.1–4.2) |
 | `things[].x, y` (pixel positions) | view | `@pos` annotations, else auto-layout (§6.1) |
 | `lens` (active reading) | view | `@lens` annotation, else caller-preserved (§6.2) |
@@ -77,6 +78,7 @@ SL is one unified language: the traditions *contributed* the words, and the lang
 | `states` | the variable's state set, in Klir's set notation — `{Green, Red}`; `{}` is the explicit empty set (v1.2, #154) | Klir (a source-system variable *is* characterized by its state set — §4, Table 4.1) | `Thing.states` — same register-only standing as `scale` |
 | `kind` (thing clause) + one of `Basic`, `Support` | the basic-vs-supporting partition of the source variables — a semantic role the modeler declares, never readable off R; omitted reads as `Basic`, so the clause declares the rare support variable (v1.2, #154) | Klir (basic variables are the observed quantities; supporting variables encode the support set — time, space, population — §4, Table 4.1) | `Thing.variable_kind` (`KlirVarKind`) — same register-only standing as `scale` |
 | `time unit` | the model's time-unit symbol — what one Δt is called, so an intrinsic rate integrates in the author's vocabulary (`kW` → `kW·h`, #94) | Mobus (Δt in the 8-tuple's time base); the symbol is display vocabulary, never a rescaling | `CanvasModel.time_unit` → `WorldModel.time_unit` |
+| `metric` + `share of flow` / `sum into` | a declared readout over the run — the output twin of `param` (#203): `share` reads composition (one flow as a fraction of its source's outflow), `sum` reads throughput (everything arriving at a thing); both evaluate over the recorder's executed per-flow series, never a free-floating number. The verb set is closed and grows one checkable verb at a time (ADR 0006) | house words (the distinction is the instrument's: declared observables over the trace); Mobus's H supplies the record they read | `MetricDecl` / `MetricExpr` — canvas-side; never projects |
 | `@pos`, `@lens`, `@directed` | view state (§6) | `@directed` is Klir's observer commitment (Facets Ch. 4); `@pos`/`@lens` are house words | `x`/`y`, `lens`, `klir_directed` |
 
 Three absences resolved:
@@ -95,7 +97,7 @@ SL is line-oriented. A file is a sequence of lines, each independently one of: b
 model       = { line } ;
 line        = blank | comment | structure | annotation ;
 
-structure   = system | domain | timeunit | thing | flow | param | boundary ;
+structure   = system | domain | timeunit | thing | flow | param | metric | boundary ;
 system      = "system" [ string ] [ ":" kingdom [ "/" genus ] ] ;
 domain      = "domain" string ;
 timeunit    = "time" "unit" name ;                     (* the Δt symbol, #94 *)
@@ -114,6 +116,8 @@ decimal     = positive decimal number ;                (* "1.5"; 0 and below ref
 param       = "param" string ":" "flow" name "->" name [ string ]
               [ "range" number ".." number ]           (* walkthrough #18 *)
             | "param" "shares" string ":" "from" name ;
+metric      = "metric" string ":" "share" "of" "flow" name "->" name [ string ]
+            | "metric" string ":" "sum" "into" name ;  (* #203; verb set closed, ADR 0006 *)
 boundary    = "boundary" { propword number } ;
 propword    = "porosity" | "fuzziness" ;
 
@@ -177,17 +181,29 @@ A declared parameter (walkthrough #18): a domain name over an already-declared a
 
 This clause is **not** the #112 typed-parameter territory (§8.2): those are the transition functor's own parameters (initial state, process constants), whose *types* await the functor decision. A `param` names a structural amount the grammar already carries; it adds vocabulary, never dynamics.
 
-### 4.6 `boundary`
+### 4.6 `metric`
+
+A declared metric (#203): a domain name over a computed **output** of the run — the output twin of §4.5. A param names an input knob in the model's vocabulary; a metric names what the author wants to watch come out, so a run answers the author's questions first ("DeepSeek dev share") and the kernel-fidelity readouts second. Two verbs:
+
+`metric "DeepSeek dev share" : share of flow "Developer clearing" -> DeepSeek` reads the anchored flow's executed per-tick delivery as a fraction of everything leaving its source that tick. The optional quoted label after the endpoint pair disambiguates same-pair flows, exactly as in §4.5. The source must have **at least two outgoing flows** — a share over a single outflow is identically 1, and a metric that cannot vary watches nothing (the separating-instance rule: a declaration nothing could falsify is refused, not rendered). Share is deliberately named as a *produced* observable: when an allocation becomes endogenous (#269), the same declaration reads the produced result with no rewrite.
+
+`metric "Opus tokens served" : sum into Opus` reads everything arriving at the named thing, per tick, plus the run-end cumulative. The thing must have **at least one inflow** — a sum over none names a value the run never produces. Inflows carrying mixed units refuse at evaluation (their sum names no quantity).
+
+**A metric is a derived reading, never a new source of truth.** Evaluation is arithmetic over the recorder's executed per-flow series (`RunResultRich.flows` — the circuit's own per-tick `wire_history`); a metric can state nothing the trace does not carry, and it carries the trace's provenance. Metric names are unique per file — they are the stable references scenario comparisons (#202) will hold. **Metrics never project**: like params they are presentation semantics on the canvas model, serialized skip-if-empty, appearing after the params block in canonical form. Declare after the things and flows they reference.
+
+**The verb set is closed, and grows one verb at a time** (ADR 0006). When a model asks a question these verbs cannot state, the answer is a new verb with its own separating instance and its own row here — never an open expression grammar. A ranking is deliberately not a verb: the run deck orders any same-verb family by endpoint, which delivers the leaderboard as a *view* of declared metrics rather than a third thing to specify.
+
+### 4.7 `boundary`
 
 At most one per file: `boundary porosity 0.7 fuzziness 0.1`. Key-value pairs in any order, either omittable; values are the root membrane's P. Absent line = unauthored (0.0, the kernel default).
 
-### 4.7 `time unit`
+### 4.8 `time unit`
 
 At most one per file: `time unit h`. The model's time-unit symbol (#94) — what one unit of model time is called, landing in `CanvasModel.time_unit` and projecting to `WorldModel.time_unit`. The symbol is a name token (bare or quoted). It is display vocabulary, never a rescaling: Δt stays the pure number the run surface supplies; the symbol names what that number counts, so an undeclared kW-fed stock displays `kW·h` instead of the abstract `kW·Δt`. Absent = undeclared (the kernel never invents a symbol). An empty symbol is a parse fault.
 
-### 4.8 Errors
+### 4.9 Errors
 
-Parsing collects **all** faults in one pass and reports each with its 1-indexed line — never a first-error-only bail, and never a guess. Fault classes: lexical (unterminated quote), unknown keyword, malformed clause, duplicate name, undeclared flow endpoint, redeclared singleton (`system`/`domain`/`time unit`/`boundary`), attribute on an environment thing, unstamped or malformed decomposition reference, `decomposes` on an interface component, duplicate `decomposes`, duplicate `stock`, duplicate or malformed Klir metadata clause (`scale`/`states`/`kind` — an unknown scale or kind value, a malformed state set), out-of-range `@directed`, malformed known annotation, the §4.5 param faults (unresolvable or ambiguous anchor, amountless anchor, degenerate or contradicted range, shares without a >=2 component fanout, duplicate param name), and the §4.4 ample faults (beside `amount`, with a `unit`, on a `mere` relation, on a non-informational kind). The ACE/Gherkin discipline — deterministic parse, fail loud on anything ambiguous — is inherited deliberately.
+Parsing collects **all** faults in one pass and reports each with its 1-indexed line — never a first-error-only bail, and never a guess. Fault classes: lexical (unterminated quote), unknown keyword, malformed clause, duplicate name, undeclared flow endpoint, redeclared singleton (`system`/`domain`/`time unit`/`boundary`), attribute on an environment thing, unstamped or malformed decomposition reference, `decomposes` on an interface component, duplicate `decomposes`, duplicate `stock`, duplicate or malformed Klir metadata clause (`scale`/`states`/`kind` — an unknown scale or kind value, a malformed state set), out-of-range `@directed`, malformed known annotation, the §4.5 param faults (unresolvable or ambiguous anchor, amountless anchor, degenerate or contradicted range, shares without a >=2 component fanout, duplicate param name), the §4.6 metric faults (unresolvable or ambiguous anchor, share over a single-outflow source, sum into a thing with no inflows, duplicate metric name), and the §4.4 ample faults (beside `amount`, with a `unit`, on a `mere` relation, on a non-informational kind). The ACE/Gherkin discipline — deterministic parse, fail loud on anything ambiguous — is inherited deliberately.
 
 **These are *parse* faults, and they are not the only way a model is refused.** A file can parse cleanly, compile to a model (§5.3), and still be refused by the kernel when a lens is entered — that refusal is the kernel's job, not SL's (§5.1), so it is deliberately absent from the list above. The list is complete for what the parser rejects and is not a map of every way a model can fail. §5.4 names the one class where a *word in this language* now carries an obligation the parser cannot check.
 
@@ -245,7 +261,7 @@ in the kernel, on lens entry.
 
 *Status: normative; the "why a section, not a second file" defense is rationale (argued, adopted).*
 
-Annotations are `@`-prefixed lines, conventionally last in the file. Three are defined; unknown annotations are *skipped, not errors* — the ignorable contract that lets future view-state vocabulary degrade softly in old parsers. Malformed instances of a *known* annotation fail loud (§4.8).
+Annotations are `@`-prefixed lines, conventionally last in the file. Three are defined; unknown annotations are *skipped, not errors* — the ignorable contract that lets future view-state vocabulary degrade softly in old parsers. Malformed instances of a *known* annotation fail loud (§4.9).
 
 **Why a section, not a second file.** The semantic requirement is only that presentation not contaminate meaning (C4), and a marked section satisfies it as fully as a separate file: the structure-lines diff is clean either way. Given that, one artifact wins — a model is one pasteable, reviewable, portable thing. Modelica made the same call (layout inline as `annotation(…)`, semantically null, preserved on save); SVG/HTML keep style separable but co-located. Decided for v1; recorded in the 2026-07-18 session log.
 
@@ -267,7 +283,7 @@ Marks the *n*-th declared flow (1-based) with Klir's observer orientation toggle
 
 ### 7.1 Canonical form
 
-`emit_sl` writes a model as: `system` / `domain` / `time unit` lines; thing lines in `things` order (environment words edge-derived per §5.2 — the emitted word is the kernel's reading); `flow` lines in `relations` order; `boundary` if authored; blank line; `@lens`; `@pos` per thing; `@directed` per directed flow. On a thing line the attributes emit in a fixed order: `primitive`, then `interface`, then `stock` (component lines only), then the Klir metadata — `kind`, then `scale`, then `states` (#154; the one attribute group environment lines also carry), then `decomposes` last (component lines only; the reference, quoted label plus `@`-id). Names emit bare when they read as identifiers and shadow no *reserved* word, quoted otherwise. The reserved set (`RESERVED_WORDS`, `sl.rs`) is §4's position-free keywords; the five position-bound words — `param`, `ample`, `range`, `shares`, `from` — and the `@lens` values never occupy a slot a name can reach, so a name matching one of them stays bare and still re-parses as itself. That the two lists together are exactly §4's terminals is held by `tests/keyword_parity.rs`. Floats emit via shortest-round-trip decimal representation, so re-parsing recovers them bit-exactly.
+`emit_sl` writes a model as: `system` / `domain` / `time unit` lines; thing lines in `things` order (environment words edge-derived per §5.2 — the emitted word is the kernel's reading); `flow` lines in `relations` order; `param` lines then `metric` lines in declaration order (the input/output twins read together, §4.5–4.6); `boundary` if authored; blank line; `@lens`; `@pos` per thing; `@directed` per directed flow. On a thing line the attributes emit in a fixed order: `primitive`, then `interface`, then `stock` (component lines only), then the Klir metadata — `kind`, then `scale`, then `states` (#154; the one attribute group environment lines also carry), then `decomposes` last (component lines only; the reference, quoted label plus `@`-id). Names emit bare when they read as identifiers and shadow no *reserved* word, quoted otherwise. The reserved set (`RESERVED_WORDS`, `sl.rs`) is §4's position-free keywords; the position-bound words — `param`, `metric`, `ample`, `range`, `shares`, `from`, and the metric verb words `share`/`of`/`sum`/`into` — and the `@lens` values never occupy a slot a name can reach, so a name matching one of them stays bare and still re-parses as itself. That the two lists together are exactly §4's terminals is held by `tests/keyword_parity.rs`. Floats emit via shortest-round-trip decimal representation, so re-parsing recovers them bit-exactly.
 
 ### 7.2 The contract (golden-tested)
 

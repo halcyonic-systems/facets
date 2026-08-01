@@ -91,6 +91,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     let mut things: Vec<Thing> = Vec::new();
     let mut relations: Vec<Relation> = Vec::new();
     let mut params: Vec<crate::canvas::ParamDecl> = Vec::new();
+    let mut metrics: Vec<crate::canvas::MetricDecl> = Vec::new();
     let mut boundary: Option<CanvasBoundaryProps> = None;
     let mut system_type = SystemType::default();
     let mut system_name: Option<String> = None;
@@ -1092,6 +1093,167 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     range,
                 });
             }
+            "metric" => {
+                // metric "Name" : share of flow <a> -> <b> ["label"]
+                // metric "Name" : sum into <thing>
+                //
+                // A declared metric (#203): a domain name over a computed
+                // OUTPUT of the trace — the output twin of `param`. The verb
+                // set is closed and grows one checkable verb at a time (ADR
+                // 0006); each verb owes a refusal a model can actually earn,
+                // so a metric that can only ever read one value is a fault,
+                // never a bag.
+                let syntax = "metric syntax: `metric \"Name\" : share of flow \
+                              <a> -> <b> [\"label\"]` or `metric \"Name\" : \
+                              sum into <thing>`";
+                let (name_tok, after_colon) = match rest {
+                    [n, Tok::Colon, tail @ ..] if n.is_name() => (n, tail),
+                    _ => {
+                        fail(syntax.into(), &mut errors);
+                        continue;
+                    }
+                };
+                let mname = name_tok.name().trim().to_string();
+                if mname.is_empty() {
+                    fail("a metric needs a non-empty name".into(), &mut errors);
+                    continue;
+                }
+                if metrics.iter().any(|m: &crate::canvas::MetricDecl| m.name == mname) {
+                    fail(
+                        format!(
+                            "metric `{mname}` already declared — metric names are unique \
+                             (they are what scenario comparisons will reference)"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                match after_colon {
+                    // share of flow <a> -> <b> ["label"]
+                    [Tok::Word(s), Tok::Word(o), Tok::Word(f), a, Tok::Arrow, b, tail @ ..]
+                        if s.eq_ignore_ascii_case("share")
+                            && o.eq_ignore_ascii_case("of")
+                            && f.eq_ignore_ascii_case("flow")
+                            && a.is_name()
+                            && b.is_name() =>
+                    {
+                        let (a, b) = (a.name(), b.name());
+                        let label: Option<String> = match tail {
+                            [] => None,
+                            [Tok::Str(l)] => Some(l.clone()),
+                            [t, ..] => {
+                                fail(
+                                    format!("unexpected `{}` at end of metric — {syntax}", t.display()),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        };
+                        let (Some(&ai), Some(&bi)) = (by_name.get(&a), by_name.get(&b)) else {
+                            let missing = if by_name.contains_key(&a) { &b } else { &a };
+                            fail(
+                                format!("`{missing}` is not declared (declare things and flows before metrics)"),
+                                &mut errors,
+                            );
+                            continue;
+                        };
+                        let (aid, bid) = (things[ai].id, things[bi].id);
+                        let candidates: Vec<&Relation> = relations
+                            .iter()
+                            .filter(|r| r.a == aid && r.b == bid && r.is_bond)
+                            .filter(|r| label.as_deref().is_none_or(|l| r.name == l))
+                            .collect();
+                        let rel = match candidates.as_slice() {
+                            [] => {
+                                let with = label
+                                    .as_deref()
+                                    .map(|l| format!(" labeled \"{l}\""))
+                                    .unwrap_or_default();
+                                fail(
+                                    format!(
+                                        "no flow `{a} -> {b}`{with} is declared above this line — \
+                                         a metric reads an existing flow"
+                                    ),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                            [one] => *one,
+                            many => {
+                                let labels = many
+                                    .iter()
+                                    .map(|r| format!("\"{}\"", r.name))
+                                    .collect::<Vec<_>>()
+                                    .join(", ");
+                                fail(
+                                    format!(
+                                        "{} flows run `{a} -> {b}` — disambiguate with the flow's \
+                                         label: {labels}",
+                                        many.len()
+                                    ),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        };
+                        // The separating instance (SSF #35): a share over a
+                        // source with one outflow is identically 1 — a metric
+                        // that cannot vary watches nothing, so it is refused,
+                        // not rendered.
+                        let fanout = relations.iter().filter(|r| r.a == aid && r.is_bond).count();
+                        if fanout < 2 {
+                            fail(
+                                format!(
+                                    "`{a}` has {fanout} outgoing flow(s) — a share over a single \
+                                     outflow is identically 1, nothing to watch"
+                                ),
+                                &mut errors,
+                            );
+                            continue;
+                        }
+                        metrics.push(crate::canvas::MetricDecl {
+                            name: mname,
+                            expr: crate::canvas::MetricExpr::ShareOfFlow { relation: rel.id },
+                        });
+                    }
+                    // sum into <thing>
+                    [Tok::Word(s), Tok::Word(i), t]
+                        if s.eq_ignore_ascii_case("sum")
+                            && i.eq_ignore_ascii_case("into")
+                            && t.is_name() =>
+                    {
+                        let target = t.name();
+                        let Some(&ti) = by_name.get(&target) else {
+                            fail(
+                                format!("`{target}` is not declared (declare things and flows before metrics)"),
+                                &mut errors,
+                            );
+                            continue;
+                        };
+                        let tid = things[ti].id;
+                        // The separating instance: a thing nothing flows into
+                        // names a value the recorder never writes.
+                        let inflows = relations.iter().filter(|r| r.b == tid && r.is_bond).count();
+                        if inflows == 0 {
+                            fail(
+                                format!(
+                                    "nothing flows into `{target}` — a sum over no inflows \
+                                     names a value the run never produces"
+                                ),
+                                &mut errors,
+                            );
+                            continue;
+                        }
+                        metrics.push(crate::canvas::MetricDecl {
+                            name: mname,
+                            expr: crate::canvas::MetricExpr::SumInto { thing: tid },
+                        });
+                    }
+                    _ => {
+                        fail(syntax.into(), &mut errors);
+                    }
+                }
+            }
             "boundary" => {
                 if boundary.is_some() {
                     fail("`boundary` already declared".into(), &mut errors);
@@ -1167,6 +1329,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         name: system_name,
         time_unit,
         params,
+        metrics,
     };
     auto_layout(&mut model, &positions);
     Ok(SlParse {
@@ -1461,6 +1624,44 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         out.push('\n');
     }
 
+    // metrics (#203) — after params (the input/output twins read together).
+    // Same canonical-form rule as params: the flow's label is always emitted
+    // when present, never only when the pair happens to be ambiguous today.
+    for m in &model.metrics {
+        match m.expr {
+            crate::canvas::MetricExpr::ShareOfFlow { relation } => {
+                let r = model
+                    .relations
+                    .iter()
+                    .find(|r| r.id == relation)
+                    .ok_or_else(|| {
+                        format!("metric `{}` anchors relation {relation}, which names no flow", m.name)
+                    })?;
+                write!(
+                    out,
+                    "metric {} : share of flow {} -> {}",
+                    quote(&m.name)?,
+                    name_token(&name_of(r.a)?)?,
+                    name_token(&name_of(r.b)?)?
+                )
+                .unwrap();
+                if !r.name.is_empty() {
+                    write!(out, " {}", quote(&r.name)?).unwrap();
+                }
+            }
+            crate::canvas::MetricExpr::SumInto { thing } => {
+                write!(
+                    out,
+                    "metric {} : sum into {}",
+                    quote(&m.name)?,
+                    name_token(&name_of(thing)?)?
+                )
+                .unwrap();
+            }
+        }
+        out.push('\n');
+    }
+
     // boundary (only when authored)
     if model.boundary != CanvasBoundaryProps::default() {
         writeln!(
@@ -1518,15 +1719,18 @@ pub const RESERVED_WORDS: &[&str] = &[
 ];
 
 /// Grammar keywords deliberately absent from [`RESERVED_WORDS`]: each occupies
-/// a slot no name can reach. `param` opens its own line, and no emitted line
-/// ever begins with a bare name; `ample`, `range`, `shares`, and `from` sit
+/// a slot no name can reach. `param` and `metric` open their own lines, and no
+/// emitted line ever begins with a bare name; `ample`, `range`, `shares`,
+/// `from`, and the metric verb words (`share`, `of`, `sum`, `into`) sit
 /// behind clause heads or fixed positions the parser matches structurally;
 /// the lens words are `@lens` values on an annotation line. A thing named
 /// `ample` therefore emits bare and re-parses as itself — quoting it would be
 /// noise, not safety. Spec §7.1 records the same split; `keyword_parity.rs`
 /// holds the union of the two lists equal to §4's terminals.
-pub const POSITIONAL_KEYWORDS: &[&str] =
-    &["param", "ample", "range", "shares", "from", "klir", "bunge", "mobus"];
+pub const POSITIONAL_KEYWORDS: &[&str] = &[
+    "param", "metric", "ample", "range", "shares", "from", "share", "of", "sum", "into", "klir",
+    "bunge", "mobus",
+];
 
 fn is_reserved(word: &str) -> bool {
     RESERVED_WORDS.contains(&word.to_ascii_lowercase().as_str())

@@ -162,4 +162,18 @@ param "Enterprise demand" : flow "Enterprise workload" -> "Enterprise clearing" 
 param shares "Developer market share" : from "Developer clearing"
 param shares "Enterprise market share" : from "Enterprise clearing"
 
+# ── Declared metrics: the model's own vocabulary for its readouts ────
+#
+# The output twin of the params above (#203): a metric names a computed
+# reading of the run, in market words. Shares are named as PRODUCED
+# observables of the run — today they echo the declared split, and when
+# the clearing becomes agent-chosen (#269) the same declarations read the
+# endogenous result with no rewrite.
+metric "DeepSeek dev share" : share of flow "Developer clearing" -> DeepSeek
+metric "Opus enterprise share" : share of flow "Enterprise clearing" -> Opus
+metric "Opus tokens served" : sum into Opus
+metric "Fable tokens served" : sum into Fable
+metric "DeepSeek tokens served" : sum into DeepSeek
+metric "Qwen tokens served" : sum into Qwen
+
 @lens mobus

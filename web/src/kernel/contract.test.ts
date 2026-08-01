@@ -575,7 +575,7 @@ function parseMarkovRunResult(v: unknown): MarkovRunResult {
 }
 
 function parseRunResultRich(v: unknown): RunResultRich {
-  const o = shape(v, "RunResultRich", ["ticks", "dt", "residual", "conserved", "levels", "comparisons", "trajectories"]);
+  const o = shape(v, "RunResultRich", ["ticks", "dt", "residual", "conserved", "levels", "comparisons", "trajectories", "flows"]);
   const nums = (x: unknown, w: string) => arr(x, w).map((n, i) => num(n, `${w}[${i}]`));
   return {
     ticks: num(o.ticks, "ticks"),
@@ -611,6 +611,16 @@ function parseRunResultRich(v: unknown): RunResultRich {
         unit: str(tt.unit, "traj.unit"),
         unit_derived: bool(tt.unit_derived, "traj.unit_derived"),
         series: nums(tt.series, "traj.series"),
+      };
+    }),
+    flows: arr(o.flows, "flows").map((f, i) => {
+      const ff = shape(f, `flows[${i}]`, ["name", "from", "to", "unit", "series"]);
+      return {
+        name: str(ff.name, "flow.name"),
+        from: str(ff.from, "flow.from"),
+        to: str(ff.to, "flow.to"),
+        unit: str(ff.unit, "flow.unit"),
+        series: nums(ff.series, "flow.series"),
       };
     }),
   };

@@ -254,7 +254,7 @@ pub fn force_and_run(
         .map_err(|errors| format!("model is not executable ({} reason(s))", errors.len()))?;
     let mut circuit = bert_compose::from_spec(&spec);
     let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)?;
-    Ok(summarize(&model, &imported, &circuit, &run, dt))
+    Ok(summarize(&model, &imported, &spec, &circuit, &run, dt))
 }
 
 /// A final level, purpose-ordered and domain-named.
@@ -284,10 +284,24 @@ pub struct RunReadout {
     pub levels: Vec<Level>,
     pub trajectories: Vec<Trajectory>,
     pub comparisons: Vec<Comparison>,
+    pub flows: Vec<FlowSeries>,
     pub residual: f32,
     pub conserved: bool,
     pub ticks: usize,
     pub dt: f64,
+}
+
+/// One flow's executed per-tick delivery (#203), domain-named. The series is
+/// the circuit's own recording (`Circuit::wire_history` — `wire_amount` per
+/// tick, captured inside the step), never a downstream re-derivation of the
+/// fanout rule. Declared metrics read these; so may any future readout.
+pub struct FlowSeries {
+    /// The flow's own label ("dev serving share · N"); may be empty.
+    pub name: String,
+    pub from: String,
+    pub to: String,
+    pub unit: String,
+    pub series: Vec<f32>,
 }
 
 fn category_order(cat: &str) -> u8 {
@@ -304,6 +318,7 @@ fn category_order(cat: &str) -> u8 {
 pub fn summarize(
     model: &WorldModel,
     imported: &crate::tether::ImportedData,
+    spec: &bert_core::operational::OperationalSpec,
     circuit: &Circuit,
     run: &RecordedRun,
     dt: f64,
@@ -403,6 +418,28 @@ pub fn summarize(
 
     let comparisons = build_comparisons(model, imported, &trajectories, &activities, ticks);
 
+    // Executed per-wire deliveries (#203), domain-named by zipping the spec's
+    // flows with the circuit's wires — `from_spec` builds one wire per spec
+    // flow in order, and `validate_operational` guarantees every endpoint
+    // resolves, so the zip is an identity pairing.
+    let flows: Vec<FlowSeries> = spec
+        .flows
+        .iter()
+        .zip(&circuit.wires)
+        .enumerate()
+        .map(|(k, (f, w))| FlowSeries {
+            name: f.name.clone(),
+            from: circuit.nodes[w.from].name.clone(),
+            to: circuit.nodes[w.to].name.clone(),
+            unit: f.unit.clone(),
+            series: run
+                .wire_history
+                .iter()
+                .map(|row| row.get(k).copied().unwrap_or(0.0))
+                .collect(),
+        })
+        .collect();
+
     // Conservation: scale-free — residual as a fraction of total emitted.
     let throughput: f32 = run.ledger_history.iter().map(|l| l[0]).sum();
     let residual = run.final_balance;
@@ -412,6 +449,7 @@ pub fn summarize(
         levels,
         trajectories,
         comparisons,
+        flows,
         residual,
         conserved,
         ticks,
@@ -555,6 +593,7 @@ mod tests {
         let readout = summarize(
             &model,
             &crate::tether::ImportedData::default(),
+            &spec,
             &circuit,
             &run,
             1.0,
@@ -608,6 +647,7 @@ mod tests {
         let readout = summarize(
             &model,
             &crate::tether::ImportedData::default(),
+            &spec,
             &circuit,
             &run,
             1.0,
@@ -657,6 +697,7 @@ mod tests {
         let readout = summarize(
             &model,
             &crate::tether::ImportedData::default(),
+            &spec,
             &circuit,
             &run,
             1.0,
@@ -705,6 +746,7 @@ mod tests {
         let readout = summarize(
             &model,
             &crate::tether::ImportedData::default(),
+            &spec,
             &circuit,
             &run,
             1.0,

@@ -134,5 +134,47 @@
         451.0
       ]
     }
+  ],
+  "flows": [
+    {
+      "name": "Watershed → Reservoir",
+      "from": "Watershed",
+      "to": "Reservoir",
+      "unit": "ML/mo",
+      "series": [
+        20.0,
+        35.0,
+        60.0,
+        45.0,
+        25.0,
+        15.0,
+        10.0,
+        12.0,
+        22.0,
+        40.0,
+        55.0,
+        30.0
+      ]
+    },
+    {
+      "name": "Reservoir → Release",
+      "from": "Reservoir",
+      "to": "Release",
+      "unit": "ML/mo",
+      "series": [
+        1.5,
+        1.5,
+        1.5,
+        1.5,
+        1.5,
+        1.5,
+        1.5,
+        1.5,
+        1.5,
+        1.5,
+        1.5,
+        1.5
+      ]
+    }
   ]
 }

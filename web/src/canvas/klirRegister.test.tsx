@@ -84,6 +84,7 @@ describe("Table 4.1 — the source-system register", () => {
 const run = (series0: number[], series1: number[]): RunResultRich => ({
   ticks: series0.length,
   dt: 1,
+  flows: [],
   residual: 0,
   conserved: true,
   levels: [],

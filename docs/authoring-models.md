@@ -44,7 +44,7 @@ hand-written**:
 
 The web gallery picks all of this up by glob; no registration code.
 
-## Name the knobs (`param` — spec §4.5)
+## Name the knobs and the readouts (`param`, `metric` — spec §4.5–4.6)
 
 Without params, the run tab's Inputs card speaks the kernel's taxonomy
 ("drivers · absolute rates", "relative weights"). A `param` line names an
@@ -65,6 +65,27 @@ keep the taxonomy fallback, so nothing requires them. The gallery's
 "reset to declared" restores what your `.sl` declares — your declared amounts
 are the defaults, which is one more reason to calibrate them honestly and cite
 sources in comments.
+
+A `metric` line is the same move on the way OUT (#203): where a param names
+an input knob, a metric names a readout you want every run to answer, in your
+words — and the run deck renders declared metrics **first**, above the
+kernel-fidelity furniture:
+
+```
+metric "DeepSeek dev share" : share of flow "Developer clearing" -> DeepSeek
+metric "Opus tokens served" : sum into Opus
+```
+
+`share of flow` reads one flow as a fraction of everything leaving its source
+(composition — refuse yourself the temptation to declare it on a
+single-outflow source; the parser will anyway, because that share is
+identically 1). `sum into` reads everything arriving at a thing (throughput),
+as a per-tick series and a run-end total. Declare several of one verb and the
+deck sorts them by endpoint — your leaderboard. A metric is a **derived
+reading of what the run executed**, never a number of its own: it computes
+from the recorder's per-flow series and can state nothing the trace does not
+carry. When your model wants a question these two verbs cannot ask, that is a
+new verb for the language, not a formula — see ADR 0006 for the growth rule.
 
 ## The five facts that bite
 
