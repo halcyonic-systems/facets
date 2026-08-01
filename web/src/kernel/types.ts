@@ -153,6 +153,15 @@ export interface Trajectory {
   unit_derived: boolean;
   series: number[];
 }
+/** One flow's executed per-tick delivery (#203) — the circuit's own recording
+ *  (`wire_history`), domain-named. Declared metrics evaluate over these. */
+export interface FlowSeries {
+  name: string;
+  from: string;
+  to: string;
+  unit: string;
+  series: number[];
+}
 export interface RunResultRich {
   ticks: number;
   dt: number;
@@ -161,6 +170,7 @@ export interface RunResultRich {
   levels: Level[];
   comparisons: Comparison[];
   trajectories: Trajectory[];
+  flows: FlowSeries[];
 }
 
 // ---- Phase 2: the canvas editing model --------------------------------------
@@ -311,6 +321,10 @@ export interface CanvasModel {
    *  amounts. Presentation semantics: project() ignores them, the run panel
    *  reads them. serde skip-if-empty — absent on pre-existing models. */
   params?: ParamDecl[];
+  /** Declared metrics (#203) — domain names over computed OUTPUTS of the
+   *  trace, the output twin of `params`. Evaluated over the run recorder
+   *  (`RunResultRich.flows`); serde skip-if-empty. */
+  metrics?: MetricDecl[];
 }
 
 /** What a declared parameter anchors: one flow's declared amount, or a
@@ -331,6 +345,18 @@ export interface ParamDecl {
   name: string;
   anchor: ParamAnchor;
   range?: ParamRange;
+}
+
+/** What a declared metric computes (#203). The verb set is CLOSED and grows
+ *  one checkable verb at a time (ADR 0006). Externally-tagged serde enum,
+ *  anchored by id like ParamAnchor. */
+export type MetricExpr = { ShareOfFlow: { relation: number } } | { SumInto: { thing: number } };
+
+/** An author-declared readout over the run — the output twin of ParamDecl.
+ *  A derived reading of kernel-executed values, never a new source of truth. */
+export interface MetricDecl {
+  name: string;
+  expr: MetricExpr;
 }
 
 // ---- SL: the textual authoring surface ---------------------------------------

@@ -487,6 +487,7 @@ function RunTab({
           lens={lens}
           onAcceptUnit={onAcceptUnit}
           tick={tick}
+          model={model}
         />
       </div>
     );
