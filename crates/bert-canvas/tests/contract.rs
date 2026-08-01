@@ -131,6 +131,7 @@ fn sample() -> CanvasModel {
         // the canvas unit tests.
         time_unit: None,
         params: vec![],
+        metrics: vec![],
     }
 }
 

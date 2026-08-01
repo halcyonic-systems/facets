@@ -1053,6 +1053,7 @@ mod tests {
             name: None,
             time_unit: None,
             params: vec![],
+            metrics: vec![],
         }
     }
 

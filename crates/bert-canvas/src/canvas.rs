@@ -361,6 +361,38 @@ pub struct ParamRange {
     pub max: bert_core::rust_decimal::Decimal,
 }
 
+/// What a declared metric computes over the run's trace (#203). The verb set
+/// is deliberately CLOSED and grows one checkable verb at a time — each new
+/// verb owes a separating instance a model can actually fail (ADR 0006), which
+/// is the repo's alternative to an open expression language nothing can
+/// refuse. Anchors are by id, like [`ParamAnchor`], so renames cannot orphan a
+/// metric mid-session; SL resolves names to ids at parse time and emits names
+/// back from ids.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MetricExpr {
+    /// This flow's per-tick value as a fraction of everything leaving its
+    /// source that tick. Composition, stated in the author's words — and
+    /// written to survive #269: when the split becomes agent-chosen, the same
+    /// declaration reads a PRODUCED share with no rewrite.
+    ShareOfFlow { relation: u64 },
+    /// Everything arriving at this thing, per tick, plus the run-end
+    /// cumulative. Throughput, stated in the author's words.
+    SumInto { thing: u64 },
+}
+
+/// An author-declared readout computed over a run — the OUTPUT twin of
+/// [`ParamDecl`] (#203): a param names an input in the model's domain
+/// vocabulary, a metric names what the author wants to watch come out. A
+/// metric is a derived reading of kernel-executed values, never a new source
+/// of truth: it carries the provenance of the trace it reads, and nothing
+/// else. Names are unique — they are the stable references the scenario
+/// comparison view (#202) will hold.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct MetricDecl {
+    pub name: String,
+    pub expr: MetricExpr,
+}
+
 /// The canvas editing model — the JSON the React canvas holds and sends.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CanvasModel {
@@ -401,6 +433,13 @@ pub struct CanvasModel {
     /// byte-identical on disk (the #163 pattern).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub params: Vec<ParamDecl>,
+    /// Declared metrics (#203) — domain names over computed OUTPUTS of the
+    /// trace, the output twin of `params`. Presentation-layer semantics:
+    /// `project` ignores them, the run deck evaluates them over the recorder.
+    /// `skip` when empty so pre-existing models stay byte-identical on disk
+    /// (the #163 pattern).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub metrics: Vec<MetricDecl>,
 }
 
 fn info(id: Id, level: i32, name: &str) -> Info {
@@ -932,9 +971,11 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         system_type: SystemType::default(),
         name,
         time_unit: model.time_unit.clone(),
-        // Params are canvas-resident presentation semantics; a WorldModel
-        // never carried them, so a model born from kernel JSON starts bare.
+        // Params and metrics are canvas-resident presentation semantics; a
+        // WorldModel never carried them, so a model born from kernel JSON
+        // starts bare.
         params: vec![],
+        metrics: vec![],
     }
 }
 
@@ -1136,6 +1177,7 @@ mod tests {
             name: None,
             time_unit: None,
             params: vec![],
+            metrics: vec![],
         };
         let (states, edges) = markov_edges(&model);
         assert_eq!(states, vec!["Even".to_string(), "Odd".to_string()]);
@@ -1164,6 +1206,7 @@ mod tests {
                 name: None,
                 time_unit: None,
                 params: vec![],
+                metrics: vec![],
             };
             let wm = project(&model);
             assert_eq!(wm.mode, Some(lens.mode()));
@@ -1193,6 +1236,7 @@ mod tests {
             name: None,
             time_unit: None,
             params: vec![],
+            metrics: vec![],
         };
         let loop_edge = bond(11, 1, 1); // A → A
         let issues = validate_connection(&model, &loop_edge);
@@ -1220,6 +1264,7 @@ mod tests {
             name: None,
             time_unit: None,
             params: vec![],
+            metrics: vec![],
         };
         let issues = validate_connection(&model, &bond(10, 1, 2));
         assert!(issues.is_empty(), "S → H must connect: {issues:?}");
@@ -1239,6 +1284,7 @@ mod tests {
             name: None,
             time_unit: None,
             params: vec![],
+            metrics: vec![],
         };
         let audit = crate::lenses::analyze(&model, Lens::Mobus);
         let hit = audit
@@ -1270,6 +1316,7 @@ mod tests {
             name: None,
             time_unit: None,
             params: vec![],
+            metrics: vec![],
         };
         let issues = validate_connection(&model, &bond(12, 1, 2));
         let dup = issues
@@ -1322,6 +1369,7 @@ mod tests {
             name: None,
             time_unit: None,
             params: vec![],
+            metrics: vec![],
         };
         let world = project(&model);
         let report = validate_mode(&world, bert_core::Mode::Operational);
@@ -1365,6 +1413,7 @@ mod tests {
             name: None,
             time_unit: None,
             params: vec![],
+            metrics: vec![],
         };
         let issues = validate_connection(&model, &bond(10, 1, 2));
         assert!(
@@ -1404,6 +1453,7 @@ mod tests {
             name: None,
             time_unit: None,
             params: vec![],
+            metrics: vec![],
         };
         let issues = validate_connection(&model, &bond(11, 3, 1));
         assert!(
@@ -1503,6 +1553,7 @@ mod tests {
             name: None,
             time_unit: None,
             params: vec![],
+            metrics: vec![],
         };
         let wm = project(&model);
         assert_eq!(wm.environment.sources.len(), 1);
@@ -1524,6 +1575,7 @@ mod tests {
             name: None,
             time_unit: None,
             params: vec![],
+            metrics: vec![],
         });
         assert!(world.model_id.is_none(), "the canvas never mints");
         let id = world.mint_id();
@@ -1555,6 +1607,7 @@ mod tests {
             name: None,
             time_unit: None,
             params: vec![],
+            metrics: vec![],
         };
         let child = decompose_thing(&model, 3).expect("interior component derives");
         assert!(child.model_id.is_some(), "the child is born nameable");
