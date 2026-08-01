@@ -500,13 +500,20 @@ fn lens_residue(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensResid
 //
 // The second sentence is the ⊘M consequence (#100 phase 2, F2-modified): with
 // no mechanism stated the model reads as a black box at this lens — a status
-// per Bunge's Mechanism Postulate (every system has one; naming it is what a
-// mechanismic account adds), never an error and never a gate. The mechanism
-// slot itself arrives from compose's declared dynamics (#97) — not built here.
+// per Bunge's Mechanism Postulate, never an error and never a gate. The
+// postulate is restricted and the restriction is load-bearing: "all concrete
+// systems are endowed with one or more mechanisms… Note the qualifier
+// concrete: it makes no sense to speak of mechanisms of conceptual objects
+// such as theories" (Bunge 1997 §I), and M(σ) is empty for conceptual and
+// semiotic systems (Bunge 2004, p. 189). So ⊘M on a conceptual model is
+// CORRECT, not a gap. The mechanism slot itself arrives from compose's
+// declared dynamics (#97) — not built here.
 pub const MECHANISM_NOTE: &str = "M (mechanism — Bunge 2004, CESM) is documented but formally \
 UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T). \
-⊘M: with no mechanism stated, this model reads as a black box at this lens — every system \
-has a mechanism (Mechanism Postulate); stating it is what remains. A status, not an error.";
+⊘M: with no mechanism stated, a concrete system reads as a black box at this lens — every \
+concrete system has one (Mechanism Postulate, Bunge 1997), so stating it is what remains. \
+Conceptual and semiotic systems have no mechanism at all; there ⊘M is correct, not a gap. \
+A status, not an error.";
 
 /// Each tradition is an answer to a different guiding question (#100 D batch);
 /// the switch moment is where the tool orients the user toward what the active

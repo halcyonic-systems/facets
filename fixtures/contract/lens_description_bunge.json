@@ -23,5 +23,5 @@
     "Pump"
   ],
   "verdict": "system",
-  "mechanism_note": "M (mechanism — Bunge 2004, CESM) is documented but formally UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T). ⊘M: with no mechanism stated, this model reads as a black box at this lens — every system has a mechanism (Mechanism Postulate); stating it is what remains. A status, not an error."
+  "mechanism_note": "M (mechanism — Bunge 2004, CESM) is documented but formally UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T). ⊘M: with no mechanism stated, a concrete system reads as a black box at this lens — every concrete system has one (Mechanism Postulate, Bunge 1997), so stating it is what remains. Conceptual and semiotic systems have no mechanism at all; there ⊘M is correct, not a gap. A status, not an error."
 }
