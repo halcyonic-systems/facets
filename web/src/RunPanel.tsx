@@ -12,7 +12,7 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import type { CanvasModel, Comparison, Level, RunResultRich } from "./kernel/types";
+import type { CanvasModel, Comparison, Level, MarkovRunResult, RunResultRich } from "./kernel/types";
 import { Card, Pill, Stat, Verdict, humanize } from "./ui";
 import { horizonOf, unitLabel } from "./runViz";
 import { BungeStateSpace } from "./canvas/BungeStateSpace";
@@ -302,6 +302,140 @@ const STROKES = {
   actual: { dash: "6 4" as string | undefined, width: 2 },
   declared: { dash: "1 4" as string | undefined, width: 1.5 },
 };
+
+// #282: the Klir deck — a DTMC run wears DTMC semantics. Steps, states, and
+// occupancy; no Δt, no conservation chrome (probability is the only mass here,
+// and MarkovReadout's rule holds: no conservation pill on a distribution run).
+const STATE_COLORS = [
+  "var(--accent)",
+  "var(--accent-indigo)",
+  "var(--accent-strong)",
+  "var(--accent-slate)",
+  "var(--verdict-warning)",
+  "var(--verdict-error)",
+];
+
+export function DtmcPanel({
+  run,
+  tick,
+  focused,
+  onToggleFocus,
+}: {
+  run: MarkovRunResult;
+  tick?: number;
+  focused?: boolean;
+  onToggleFocus?: () => void;
+}) {
+  const steps = run.history.length;
+  const data = run.history.map((row, i) => {
+    const d: Record<string, number> = { step: i };
+    run.states.forEach((s, j) => {
+      d[s] = row[j] ?? 0;
+    });
+    return d;
+  });
+  const at = tick !== undefined ? Math.max(0, Math.min(steps - 1, tick)) : steps - 1;
+  const shown = run.history[at] ?? [];
+  return (
+    <div className="grid gap-5">
+      <Card
+        title="Result"
+        source="bert-compose · wasm"
+        actions={
+          onToggleFocus && (
+            <button
+              onClick={onToggleFocus}
+              title={
+                focused ? "Exit focus (show canvas)" : "Focus — expand the run full-width"
+              }
+              aria-pressed={focused}
+              className="text-[11px]"
+              style={{ color: focused ? "var(--lens-accent)" : "var(--text-muted)" }}
+            >
+              {focused ? "⤡ shrink" : "⤢ expand"}
+            </button>
+          )
+        }
+      >
+        <div className="mb-4">
+          <Verdict tone="ok">Ran the state machine as a Markov chain</Verdict>
+        </div>
+        <div className="flex flex-wrap items-center gap-4">
+          <Pill tone="neutral">DTMC · distribution over states</Pill>
+          <Stat label="steps" value={String(steps)} />
+          <Stat label="states" value={String(run.states.length)} />
+        </div>
+      </Card>
+
+      <Card title="State occupancy" source="bert-compose · wasm">
+        <ResponsiveContainer width="100%" height={170}>
+          <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: -12 }}>
+            <CartesianGrid stroke="var(--hairline)" vertical={false} />
+            {tick !== undefined && tick > 0 && tick < steps && (
+              <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
+            )}
+            <XAxis
+              dataKey="step"
+              tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+              stroke="var(--border)"
+            />
+            <YAxis
+              domain={[0, 1]}
+              tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+              stroke="var(--border)"
+              width={44}
+            />
+            <Tooltip
+              contentStyle={{
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                fontSize: 12,
+              }}
+            />
+            {run.states.map((s, i) => (
+              <Line
+                key={s}
+                type="monotone"
+                dataKey={s}
+                stroke={STATE_COLORS[i % STATE_COLORS.length]}
+                dot={false}
+                strokeWidth={2}
+                isAnimationActive={false}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+        <div
+          className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px]"
+          style={{ color: "var(--text-muted)" }}
+        >
+          {run.states.map((s, i) => (
+            <LegendSwatch
+              key={s}
+              stroke={STROKES.executed}
+              color={STATE_COLORS[i % STATE_COLORS.length]}
+              label={s}
+            />
+          ))}
+        </div>
+      </Card>
+
+      <Card title={at === steps - 1 ? "Final distribution" : `Distribution at step ${at}`} source="bert-compose · wasm">
+        <div className="grid gap-1.5">
+          {run.states.map((s, i) => (
+            <div key={s} className="flex items-baseline justify-between gap-3 text-sm">
+              <span style={{ color: "var(--text-primary)" }}>{s}</span>
+              <span className="tabular" style={{ color: "var(--text-secondary)" }}>
+                {((shown[i] ?? 0) * 100).toFixed(0)}%
+              </span>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
 
 function LegendSwatch({
   stroke,
