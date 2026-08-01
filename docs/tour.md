@@ -109,7 +109,7 @@ They agree here in **one direction by enforcement and the other by the author's 
 boundary porosity 0.15 fuzziness 0.05
 ```
 
-The root membrane's properties P ([spec §4.6](language/spec.md#46-boundary)). Both `porosity` and `perceptive_fuzziness` are Mobus's, verbatim, as the property half of B = ⟨P, I⟩ ([concordance §8](language/terminology-concordance.md#8-the-boundary--bunge-formalized-it-too-correction-to-earlier-framing)); Bunge independently formalized the boundary as a set of boundary components (1992), which is the same object the lenses render from the interface set. Key-value pairs in any order, either omittable; an absent line means unauthored (0.0, the kernel default).
+The root membrane's properties P ([spec §4.7](language/spec.md#47-boundary)). Both `porosity` and `perceptive_fuzziness` are Mobus's, verbatim, as the property half of B = ⟨P, I⟩ ([concordance §8](language/terminology-concordance.md#8-the-boundary--bunge-formalized-it-too-correction-to-earlier-framing)); Bunge independently formalized the boundary as a set of boundary components (1992), which is the same object the lenses render from the interface set. Key-value pairs in any order, either omittable; an absent line means unauthored (0.0, the kernel default).
 
 ```json
 "boundary": { "porosity": 0.15, "perceptive_fuzziness": 0.05 }

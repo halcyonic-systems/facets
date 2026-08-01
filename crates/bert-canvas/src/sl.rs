@@ -1719,15 +1719,18 @@ pub const RESERVED_WORDS: &[&str] = &[
 ];
 
 /// Grammar keywords deliberately absent from [`RESERVED_WORDS`]: each occupies
-/// a slot no name can reach. `param` opens its own line, and no emitted line
-/// ever begins with a bare name; `ample`, `range`, `shares`, and `from` sit
+/// a slot no name can reach. `param` and `metric` open their own lines, and no
+/// emitted line ever begins with a bare name; `ample`, `range`, `shares`,
+/// `from`, and the metric verb words (`share`, `of`, `sum`, `into`) sit
 /// behind clause heads or fixed positions the parser matches structurally;
 /// the lens words are `@lens` values on an annotation line. A thing named
 /// `ample` therefore emits bare and re-parses as itself — quoting it would be
 /// noise, not safety. Spec §7.1 records the same split; `keyword_parity.rs`
 /// holds the union of the two lists equal to §4's terminals.
-pub const POSITIONAL_KEYWORDS: &[&str] =
-    &["param", "ample", "range", "shares", "from", "klir", "bunge", "mobus"];
+pub const POSITIONAL_KEYWORDS: &[&str] = &[
+    "param", "metric", "ample", "range", "shares", "from", "share", "of", "sum", "into", "klir",
+    "bunge", "mobus",
+];
 
 fn is_reserved(word: &str) -> bool {
     RESERVED_WORDS.contains(&word.to_ascii_lowercase().as_str())
