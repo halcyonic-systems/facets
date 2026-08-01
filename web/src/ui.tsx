@@ -5,10 +5,14 @@ import type { ReactNode } from "react";
 export function Card({
   title,
   source,
+  actions,
   children,
 }: {
   title?: string;
   source?: string;
+  /** Quiet header-right controls (after the source stamp), e.g. the run
+   *  deck's expand-to-focus affordance (#283). */
+  actions?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -21,18 +25,21 @@ export function Card({
         borderRadius: "var(--radius-md)",
       }}
     >
-      {(title || source) && (
+      {(title || source || actions) && (
         <div className="mb-4 flex items-baseline justify-between gap-3">
           {title && (
             <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
               {title}
             </h2>
           )}
-          {source && (
-            <span className="text-[11px] font-medium tabular" style={{ color: "var(--accent-strong)" }}>
-              {source}
-            </span>
-          )}
+          <span className="flex items-baseline gap-3">
+            {source && (
+              <span className="text-[11px] font-medium tabular" style={{ color: "var(--accent-strong)" }}>
+                {source}
+              </span>
+            )}
+            {actions}
+          </span>
         </div>
       )}
       {children}

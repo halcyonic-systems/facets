@@ -264,6 +264,8 @@ export function InspectorDock({
                 onInputEdit={onInputEdit}
                 onResetInputs={onResetInputs}
                 time={time}
+                focused={focused}
+                onToggleFocus={onToggleFocus}
               />
             )}
             {tab === "formal" && <FormalTab desc={desc} analysisError={analysisError} />}
@@ -354,6 +356,8 @@ function RunTab({
   onInputEdit,
   onResetInputs,
   time,
+  focused,
+  onToggleFocus,
 }: {
   result: RunResultRich | null;
   ranEdited?: boolean;
@@ -366,6 +370,9 @@ function RunTab({
   onInputEdit?: (next: Relation) => void;
   onResetInputs?: () => void;
   time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
+  /** #283: the dock's focus toggle, surfaced on the Result card too. */
+  focused?: boolean;
+  onToggleFocus?: () => void;
 }) {
   // The inputs card renders above WHATEVER the run state is — including a
   // refusal, since fix-the-number-and-rerun is exactly the loop it exists for.
@@ -377,9 +384,30 @@ function RunTab({
   // re-runs immediately; under Klir only the horizon means anything (a DTMC
   // advances in steps, not Δt-sized slices).
   const timeRow = time ? <TimeRow time={time} /> : null;
+  // #283 (placement per Shingai's review): the focus toggle sits at the very
+  // top of the run tab, above Time and outside every card — a real button,
+  // not a header ornament. Same #57 focus state the tab-strip ⤢ drives.
+  const expandRow = onToggleFocus ? (
+    <div className="flex justify-end">
+      <button
+        onClick={onToggleFocus}
+        title={focused ? "Exit focus (show canvas)" : "Focus — expand the run full-width"}
+        aria-pressed={focused}
+        className="rounded-full border px-3 py-1 text-xs font-medium"
+        style={{
+          borderColor: "var(--border)",
+          color: focused ? "var(--text-on-accent)" : "var(--lens-accent)",
+          background: focused ? "var(--lens-accent)" : "var(--bg-surface)",
+        }}
+      >
+        {focused ? "⤡ Exit focus" : "⤢ Expand run"}
+      </button>
+    </div>
+  ) : null;
   if (runError) {
     return (
       <div className="grid gap-5">
+        {expandRow}
         {timeRow}
         {inputs}
         <Card title="Result" source="bert-compose · wasm">
@@ -393,13 +421,21 @@ function RunTab({
   if (result)
     return (
       <div className="grid gap-5">
+        {expandRow}
         {timeRow}
         {inputs}
-        <RunPanel result={result} ranEdited={ranEdited} lens={lens} onAcceptUnit={onAcceptUnit} tick={tick} />
+        <RunPanel
+          result={result}
+          ranEdited={ranEdited}
+          lens={lens}
+          onAcceptUnit={onAcceptUnit}
+          tick={tick}
+        />
       </div>
     );
   return (
     <div className="grid gap-5">
+      {expandRow}
       {timeRow}
       {inputs}
       <Placeholder>
