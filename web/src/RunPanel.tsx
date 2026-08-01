@@ -287,12 +287,33 @@ const STATE_COLORS = [
   "var(--verdict-error)",
 ];
 
+/** Provenance of the chain's transition weights (#282 follow-up): `weight` on
+ *  a relation is the author's declared count; absent defaults to uniform 1.
+ *  A defaulted run and a declared run are different statements, and the deck
+ *  must say which one it executed — the trichotomy stays legible. */
+export type WeightProvenance = "declared" | "partial" | "defaulted";
+
+export function weightProvenance(relations: { weight?: number }[]): WeightProvenance {
+  const declared = relations.filter((r) => r.weight != null).length;
+  if (declared === 0) return "defaulted";
+  return declared === relations.length ? "declared" : "partial";
+}
+
+const WEIGHT_PILL: Record<WeightProvenance, { tone: "neutral" | "warning"; text: string }> = {
+  declared: { tone: "neutral", text: "declared transition weights" },
+  partial: { tone: "warning", text: "weights partially declared — the rest default to 1" },
+  defaulted: { tone: "warning", text: "weights defaulted — uniform 1, none declared" },
+};
+
 export function DtmcPanel({
   run,
   tick,
+  weights,
 }: {
   run: MarkovRunResult;
   tick?: number;
+  /** Absent = host had no model to read (never the same as "declared"). */
+  weights?: WeightProvenance;
 }) {
   const steps = run.history.length;
   const data = run.history.map((row, i) => {
@@ -312,6 +333,7 @@ export function DtmcPanel({
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <Pill tone="neutral">Markov chain · probability over states</Pill>
+          {weights && <Pill tone={WEIGHT_PILL[weights].tone}>{WEIGHT_PILL[weights].text}</Pill>}
           <Stat label="steps" value={String(steps)} />
           <Stat label="states" value={String(run.states.length)} />
         </div>
