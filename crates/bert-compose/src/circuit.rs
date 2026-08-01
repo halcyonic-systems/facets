@@ -511,6 +511,11 @@ pub struct Circuit {
     /// invariant is declared; empty when a model declines conservation (axis D
     /// = `None`), since there is then no mass ledger to plot.
     pub ledger_history: Vec<[f32; 4]>,
+    /// Per-tick executed wire deliveries (#203): row `t` holds `wire_amount(k)`
+    /// for every wire `k` as of tick `t`, captured inside the step before time
+    /// advances. The recorder-side source for declared metrics — cleared with
+    /// `history` on reset and topology change.
+    pub wire_history: Vec<Vec<f32>>,
 }
 
 impl Circuit {
@@ -525,6 +530,7 @@ impl Circuit {
         self.time = 0.0;
         self.history.clear();
         self.ledger_history.clear();
+        self.wire_history.clear();
         self.emitted = 0.0;
         self.sunk = 0.0;
         self.dissipated = 0.0;
@@ -1353,6 +1359,11 @@ impl Circuit {
             self.sunk += sunk_now;
             self.dissipated += dissipated_now;
         }
+        // Per-wire executed deliveries (#203), captured BEFORE time advances
+        // so a series-forced wire reads the rate this step actually applied —
+        // the engine's own fanout read (`wire_amount`), recorded here and
+        // never re-derived downstream.
+        let wire_row: Vec<f32> = (0..self.wires.len()).map(|k| self.wire_amount(k)).collect();
         self.tick += 1;
         self.time += dt;
 
@@ -1361,7 +1372,9 @@ impl Circuit {
         if self.history.last().map(|r| r.len()) != Some(width) {
             self.history.clear();
             self.ledger_history.clear();
+            self.wire_history.clear();
         }
+        self.wire_history.push(wire_row);
         let mut row = Vec::with_capacity(width);
         row.push(self.tick as f32);
         for node in &self.nodes {

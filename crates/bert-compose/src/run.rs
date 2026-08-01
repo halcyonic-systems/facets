@@ -36,6 +36,10 @@ pub struct RecordedRun {
     pub history: Vec<Vec<f32>>,
     /// Per-tick conservation ledger `[emitted, sunk, stored, dissipated]`.
     pub ledger_history: Vec<[f32; 4]>,
+    /// Per-tick executed wire deliveries (#203): row `t` holds every wire's
+    /// delivered amount at tick `t` in circuit wire order — the recorder-side
+    /// source declared metrics read.
+    pub wire_history: Vec<Vec<f32>>,
     /// The conservation residual at the end of the run (≈0 = mass conserved).
     pub final_balance: f32,
 }
@@ -54,6 +58,7 @@ impl RecordedRun {
             dt,
             history: circuit.history.clone(),
             ledger_history: circuit.ledger_history.clone(),
+            wire_history: circuit.wire_history.clone(),
             final_balance: circuit.balance(),
         }
     }
