@@ -264,6 +264,8 @@ export function InspectorDock({
                 onInputEdit={onInputEdit}
                 onResetInputs={onResetInputs}
                 time={time}
+                focused={focused}
+                onToggleFocus={onToggleFocus}
               />
             )}
             {tab === "formal" && <FormalTab desc={desc} analysisError={analysisError} />}
@@ -354,6 +356,8 @@ function RunTab({
   onInputEdit,
   onResetInputs,
   time,
+  focused,
+  onToggleFocus,
 }: {
   result: RunResultRich | null;
   ranEdited?: boolean;
@@ -366,6 +370,9 @@ function RunTab({
   onInputEdit?: (next: Relation) => void;
   onResetInputs?: () => void;
   time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
+  /** #283: the dock's focus toggle, surfaced on the Result card too. */
+  focused?: boolean;
+  onToggleFocus?: () => void;
 }) {
   // The inputs card renders above WHATEVER the run state is — including a
   // refusal, since fix-the-number-and-rerun is exactly the loop it exists for.
@@ -395,7 +402,15 @@ function RunTab({
       <div className="grid gap-5">
         {timeRow}
         {inputs}
-        <RunPanel result={result} ranEdited={ranEdited} lens={lens} onAcceptUnit={onAcceptUnit} tick={tick} />
+        <RunPanel
+          result={result}
+          ranEdited={ranEdited}
+          lens={lens}
+          onAcceptUnit={onAcceptUnit}
+          tick={tick}
+          focused={focused}
+          onToggleFocus={onToggleFocus}
+        />
       </div>
     );
   return (

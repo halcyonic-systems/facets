@@ -53,6 +53,8 @@ export function RunPanel({
   lens,
   onAcceptUnit,
   tick,
+  focused,
+  onToggleFocus,
 }: {
   result: RunResultRich;
   /** ADR run-seam-canvas-document: true when this run executed the edited
@@ -66,6 +68,12 @@ export function RunPanel({
   /** #154 P1: the SimScrubber's current tick, so the Bunge state-space readout
    *  marks where the system is on its path. Absent = no live marker. */
   tick?: number;
+  /** #283: focus mode (#57) already gives the run the full work region — the
+   *  dock compresses these charts, and the ⤢ in the tab strip is easy to miss.
+   *  This surfaces the same toggle on the Result card. Absent = no host focus
+   *  to offer (e.g. a surface that is already full-width). */
+  focused?: boolean;
+  onToggleFocus?: () => void;
 }) {
   // Lead with the sharpest MEANINGFUL divergence. A forced flow trivially
   // matches its own data (~0% off) — that's a tautology, not a finding, so it
@@ -80,7 +88,27 @@ export function RunPanel({
 
   return (
     <div className="grid gap-5">
-      <Card title="Result" source="bert-compose · wasm">
+      <Card
+        title="Result"
+        source="bert-compose · wasm"
+        actions={
+          onToggleFocus && (
+            <button
+              onClick={onToggleFocus}
+              title={
+                focused
+                  ? "Exit focus (show canvas)"
+                  : "Focus — expand the run full-width"
+              }
+              aria-pressed={focused}
+              className="text-[11px]"
+              style={{ color: focused ? "var(--lens-accent)" : "var(--text-muted)" }}
+            >
+              {focused ? "⤡ shrink" : "⤢ expand"}
+            </button>
+          )
+        }
+      >
         <div className="mb-4">
           {lead ? (
             <>
@@ -218,9 +246,10 @@ function ComparisonChart({ c, tick }: { c: Comparison; tick?: number }) {
               dataKey="declared"
               name="declared (mean)"
               stroke="var(--text-muted)"
-              strokeDasharray="3 3"
+              strokeDasharray={STROKES.declared.dash}
+              strokeLinecap="round"
               dot={false}
-              strokeWidth={1}
+              strokeWidth={STROKES.declared.width}
               isAnimationActive={false}
             />
           )}
@@ -230,7 +259,7 @@ function ComparisonChart({ c, tick }: { c: Comparison; tick?: number }) {
             name="executed"
             stroke="var(--accent)"
             dot={false}
-            strokeWidth={2}
+            strokeWidth={STROKES.executed.width}
             isAnimationActive={false}
           />
           <Line
@@ -238,19 +267,23 @@ function ComparisonChart({ c, tick }: { c: Comparison; tick?: number }) {
             dataKey="actual"
             name="actual"
             stroke="var(--accent-indigo)"
+            strokeDasharray={STROKES.actual.dash}
             dot={false}
-            strokeWidth={2}
+            strokeWidth={STROKES.actual.width}
             isAnimationActive={false}
           />
         </LineChart>
       </ResponsiveContainer>
-      <div className="mt-1 flex gap-4 text-[11px]" style={{ color: "var(--text-muted)" }}>
-        <LegendDot color="var(--accent)" label="executed (the run, model units)" />
-        <LegendDot
+      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
+        <LegendSwatch stroke={STROKES.executed} color="var(--accent)" label="executed (the run, model units)" />
+        <LegendSwatch
+          stroke={STROKES.actual}
           color="var(--accent-indigo)"
           label={`actual (your data${c.unit ? `, ${c.unit}` : ""})`}
         />
-        {c.declared && <LegendDot color="var(--text-muted)" label="declared mean" />}
+        {c.declared && (
+          <LegendSwatch stroke={STROKES.declared} color="var(--text-muted)" label="declared mean" />
+        )}
       </div>
       {forecastTicks > 0 && h != null && (
         <p className="mt-0.5 text-[11px] italic" style={{ color: "var(--text-muted)" }}>
@@ -261,10 +294,38 @@ function ComparisonChart({ c, tick }: { c: Comparison; tick?: number }) {
   );
 }
 
-function LegendDot({ color, label }: { color: string; label: string }) {
+// The three series wear three strokes, not three shades (#283): executed
+// solid, actual dashed, declared dotted. Declared here, drawn identically in
+// the chart and in the legend swatches — the legend shows the line itself.
+const STROKES = {
+  executed: { dash: undefined as string | undefined, width: 2 },
+  actual: { dash: "6 4" as string | undefined, width: 2 },
+  declared: { dash: "1 4" as string | undefined, width: 1.5 },
+};
+
+function LegendSwatch({
+  stroke,
+  color,
+  label,
+}: {
+  stroke: { dash: string | undefined; width: number };
+  color: string;
+  label: string;
+}) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className="inline-block h-2 w-2 rounded-full" style={{ background: color }} />
+      <svg width="24" height="8" aria-hidden="true" className="shrink-0">
+        <line
+          x1="1"
+          y1="4"
+          x2="23"
+          y2="4"
+          stroke={color}
+          strokeWidth={stroke.width}
+          strokeDasharray={stroke.dash}
+          strokeLinecap="round"
+        />
+      </svg>
       {label}
     </span>
   );
