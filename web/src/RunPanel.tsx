@@ -150,7 +150,7 @@ export function RunPanel({
             tone={result.conserved ? "ok" : "error"}
           />
           <Stat label="ticks" value={String(result.ticks)} />
-          <Stat label="Δt" value={result.dt.toFixed(1)} />
+          <Stat label="step size (Δt)" value={result.dt.toFixed(1)} />
         </div>
       </Card>
 

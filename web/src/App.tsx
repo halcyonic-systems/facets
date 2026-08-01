@@ -452,7 +452,15 @@ function Workspace() {
     // (#83): the default pan covered small demos by luck until the 21-node
     // llm-market opened to an empty corner.
     setFitToken((n) => (n ?? 0) + 1);
-    runWith(d.modelJson, d.csv, d.manifest, d.manifest.dt ?? 1, d.t); // one click → runs
+    // #297: opening is not executing. The model arrives at zero — Time is the
+    // author's first decision, ▶ Run the authored act. Nothing is lost by
+    // dropping the old auto-run: runs are deterministic and declared amounts
+    // ARE the defaults, so Run on an untouched model reproduces the shipped
+    // calibration exactly.
+    setResult(null);
+    setMarkovRun(null);
+    setRunError(null);
+    setTick(0);
   };
 
   // Source corpus → open: an author's own model, shipped as SL text. Reuses the
@@ -1072,7 +1080,10 @@ function Workspace() {
   function applyTime(nextDt: number, nextT: number) {
     setDt(nextDt);
     setT(nextT);
-    if (result === null || !canvasModel) return;
+    // No run on screen yet = nothing to re-run (#297: zero-start honors this).
+    // Both run kinds count — the guard read only `result`, so a Klir steps
+    // edit never re-ran the DTMC despite the Time card's stated grammar.
+    if ((result === null && markovRun === null) || !canvasModel) return;
     if (canvasModel.lens === "Klir") {
       if (canvasModel.things.length > 0) runKlir(canvasModel, nextT);
     } else if (demo) {
@@ -1636,16 +1647,54 @@ function Workspace() {
                         ? "Run the forced simulation"
                         : "Run needs a demo bundle (model + CSV + mapping)"
                       : "no mechanism stated (⊘M) — structure alone gives Run nothing to execute";
+                // #297: advance by one tick — a deterministic re-run one step
+                // longer, scrubber landed on the new final tick. No incremental
+                // engine state: the recorded-run architecture makes T+1 exact.
+                const onStep = () => {
+                  if (runKind === "dtmc") {
+                    if (!dtmcRunnable) return;
+                    // The Markov history carries the t0 row, so the current
+                    // step count is history.length - 1; one more is length.
+                    const next = markovRun ? markovRun.history.length : 1;
+                    setT(next);
+                    runKlir(canvasModel, next);
+                    setTick(next);
+                  } else if (runKind === "conservation" && demo) {
+                    const m = modelForRun();
+                    if (!m) return;
+                    const nextT = result ? (result.ticks + 1) * dt : dt;
+                    setT(nextT);
+                    runWith(m.json, demo.csv!, manifest, dt, nextT, m.edited);
+                    setTick(result ? result.ticks : 0);
+                  }
+                };
                 return (
-                  <button
-                    onClick={onRun}
-                    disabled={!runnable}
-                    title={title}
-                    className="rounded-full px-5 py-2 text-sm font-semibold transition-colors"
-                    style={{ background: "var(--accent)", color: "var(--text-on-accent)", opacity: runnable ? 1 : 0.45, cursor: runnable ? "pointer" : "not-allowed" }}
-                  >
-                    ▶ Run
-                  </button>
+                  <>
+                    <button
+                      onClick={onStep}
+                      disabled={!runnable}
+                      title="Advance the run by one tick (starts one if none has run)"
+                      className="rounded-full border px-4 py-2 text-sm font-semibold transition-colors"
+                      style={{
+                        borderColor: "var(--accent)",
+                        color: "var(--accent)",
+                        background: "transparent",
+                        opacity: runnable ? 1 : 0.45,
+                        cursor: runnable ? "pointer" : "not-allowed",
+                      }}
+                    >
+                      ⏭ Step
+                    </button>
+                    <button
+                      onClick={onRun}
+                      disabled={!runnable}
+                      title={title}
+                      className="rounded-full px-5 py-2 text-sm font-semibold transition-colors"
+                      style={{ background: "var(--accent)", color: "var(--text-on-accent)", opacity: runnable ? 1 : 0.45, cursor: runnable ? "pointer" : "not-allowed" }}
+                    >
+                      ▶ Run
+                    </button>
+                  </>
                 );
               })()}
             </div>
