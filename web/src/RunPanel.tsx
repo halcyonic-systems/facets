@@ -53,8 +53,6 @@ export function RunPanel({
   lens,
   onAcceptUnit,
   tick,
-  focused,
-  onToggleFocus,
 }: {
   result: RunResultRich;
   /** ADR run-seam-canvas-document: true when this run executed the edited
@@ -68,12 +66,6 @@ export function RunPanel({
   /** #154 P1: the SimScrubber's current tick, so the Bunge state-space readout
    *  marks where the system is on its path. Absent = no live marker. */
   tick?: number;
-  /** #283: focus mode (#57) already gives the run the full work region — the
-   *  dock compresses these charts, and the ⤢ in the tab strip is easy to miss.
-   *  This surfaces the same toggle on the Result card. Absent = no host focus
-   *  to offer (e.g. a surface that is already full-width). */
-  focused?: boolean;
-  onToggleFocus?: () => void;
 }) {
   // Lead with the sharpest MEANINGFUL divergence. A forced flow trivially
   // matches its own data (~0% off) — that's a tautology, not a finding, so it
@@ -88,27 +80,7 @@ export function RunPanel({
 
   return (
     <div className="grid gap-5">
-      <Card
-        title="Result"
-        source="bert-compose · wasm"
-        actions={
-          onToggleFocus && (
-            <button
-              onClick={onToggleFocus}
-              title={
-                focused
-                  ? "Exit focus (show canvas)"
-                  : "Focus — expand the run full-width"
-              }
-              aria-pressed={focused}
-              className="text-[11px]"
-              style={{ color: focused ? "var(--lens-accent)" : "var(--text-muted)" }}
-            >
-              {focused ? "⤡ shrink" : "⤢ expand"}
-            </button>
-          )
-        }
-      >
+      <Card title="Result" source="bert-compose · wasm">
         <div className="mb-4">
           {lead ? (
             <>
@@ -318,13 +290,9 @@ const STATE_COLORS = [
 export function DtmcPanel({
   run,
   tick,
-  focused,
-  onToggleFocus,
 }: {
   run: MarkovRunResult;
   tick?: number;
-  focused?: boolean;
-  onToggleFocus?: () => void;
 }) {
   const steps = run.history.length;
   const data = run.history.map((row, i) => {
@@ -338,30 +306,12 @@ export function DtmcPanel({
   const shown = run.history[at] ?? [];
   return (
     <div className="grid gap-5">
-      <Card
-        title="Result"
-        source="bert-compose · wasm"
-        actions={
-          onToggleFocus && (
-            <button
-              onClick={onToggleFocus}
-              title={
-                focused ? "Exit focus (show canvas)" : "Focus — expand the run full-width"
-              }
-              aria-pressed={focused}
-              className="text-[11px]"
-              style={{ color: focused ? "var(--lens-accent)" : "var(--text-muted)" }}
-            >
-              {focused ? "⤡ shrink" : "⤢ expand"}
-            </button>
-          )
-        }
-      >
+      <Card title="Result" source="bert-compose · wasm">
         <div className="mb-4">
           <Verdict tone="ok">Ran the state machine as a Markov chain</Verdict>
         </div>
         <div className="flex flex-wrap items-center gap-4">
-          <Pill tone="neutral">DTMC · distribution over states</Pill>
+          <Pill tone="neutral">Markov chain · probability over states</Pill>
           <Stat label="steps" value={String(steps)} />
           <Stat label="states" value={String(run.states.length)} />
         </div>

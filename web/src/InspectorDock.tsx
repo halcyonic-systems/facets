@@ -398,6 +398,26 @@ function RunTab({
   // re-runs immediately; under Klir only the horizon means anything (a DTMC
   // advances in steps, not Δt-sized slices).
   const timeRow = time ? <TimeRow time={time} /> : null;
+  // #283 (placement per Shingai's review): the focus toggle sits at the very
+  // top of the run tab, above Time and outside every card — a real button,
+  // not a header ornament. Same #57 focus state the tab-strip ⤢ drives.
+  const expandRow = onToggleFocus ? (
+    <div className="flex justify-end">
+      <button
+        onClick={onToggleFocus}
+        title={focused ? "Exit focus (show canvas)" : "Focus — expand the run full-width"}
+        aria-pressed={focused}
+        className="rounded-full border px-3 py-1 text-xs font-medium"
+        style={{
+          borderColor: "var(--border)",
+          color: focused ? "var(--text-on-accent)" : "var(--lens-accent)",
+          background: focused ? "var(--lens-accent)" : "var(--bg-surface)",
+        }}
+      >
+        {focused ? "⤡ Exit focus" : "⤢ Expand run"}
+      </button>
+    </div>
+  ) : null;
   // #282, decided 2026-08-01: Bunge does not run. The lens's own register says
   // it — no mechanism stated (⊘M) — so executing Mobus's engine under this
   // reading was a lens leak. The deck states the refusal instead of borrowing
@@ -405,6 +425,7 @@ function RunTab({
   if (runKind === "none") {
     return (
       <div className="grid gap-5">
+        {expandRow}
         <Card title="Result" source="bert-core · wasm">
           <Verdict tone="warning">no mechanism stated (⊘M) — reads as a black box</Verdict>
           <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -421,6 +442,7 @@ function RunTab({
   if (runKind === "dtmc") {
     return (
       <div className="grid gap-5">
+        {expandRow}
         {timeRow}
         {runError ? (
           <Card title="Result" source="bert-compose · wasm">
@@ -429,7 +451,7 @@ function RunTab({
             </p>
           </Card>
         ) : markovRun ? (
-          <DtmcPanel run={markovRun} tick={tick} focused={focused} onToggleFocus={onToggleFocus} />
+          <DtmcPanel run={markovRun} tick={tick} />
         ) : (
           <Placeholder>
             Run evolves this state machine as a Markov chain — steps and state
@@ -442,6 +464,7 @@ function RunTab({
   if (runError) {
     return (
       <div className="grid gap-5">
+        {expandRow}
         {timeRow}
         {inputs}
         <Card title="Result" source="bert-compose · wasm">
@@ -455,6 +478,7 @@ function RunTab({
   if (result)
     return (
       <div className="grid gap-5">
+        {expandRow}
         {timeRow}
         {inputs}
         <RunPanel
@@ -463,13 +487,12 @@ function RunTab({
           lens={lens}
           onAcceptUnit={onAcceptUnit}
           tick={tick}
-          focused={focused}
-          onToggleFocus={onToggleFocus}
         />
       </div>
     );
   return (
     <div className="grid gap-5">
+      {expandRow}
       {timeRow}
       {inputs}
       <Placeholder>
