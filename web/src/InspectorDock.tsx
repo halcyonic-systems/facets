@@ -509,7 +509,7 @@ function RunTab({
         {manifest
           ? // #297: the model opens at zero — loaded, mapped, and waiting for
             // the author's horizon. Nothing has run until Run is pressed.
-            "The model is loaded and nothing has run. Set the horizon in Time and press ▶ Run — or ⏭ Step one tick at a time."
+            "The model is loaded and nothing has run. Set the run length in Time and press ▶ Run — or ⏭ Step one tick at a time."
           : "Run needs a demo bundle (model + CSV + mapping) to force the simulation."}
       </Placeholder>
     </div>
@@ -525,9 +525,22 @@ function TimeRow({
 }: {
   time: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
 }) {
-  const field = (label: string, value: number, commit: (v: number) => void, title: string) => (
+  // Plain words lead, the formal symbol rides muted beside them (#297 review:
+  // Δt and T alone assume the reader arrives knowing Mobus's time base).
+  const field = (
+    label: string,
+    symbol: string | null,
+    value: number,
+    commit: (v: number) => void,
+    title: string,
+  ) => (
     <label className="flex items-center gap-1.5 text-xs" title={title} style={{ color: "var(--text-secondary)" }}>
       {label}
+      {symbol && (
+        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+          {symbol}
+        </span>
+      )}
       <input
         key={value}
         type="number"
@@ -548,10 +561,24 @@ function TimeRow({
   );
   return (
     <Card title="Time" source="the run's slice · edits re-run">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         {!time.klir &&
-          field("Δt", time.dt, (v) => time.onCommit(v, time.t), "step size, in the model's time unit — totals are Δt-invariant (dt_invariance)")}
-        {field(time.klir ? "steps" : "T", time.t, (v) => time.onCommit(time.dt, v), "horizon — how far the run advances")}
+          field(
+            "step size",
+            "Δt",
+            time.dt,
+            (v) => time.onCommit(v, time.t),
+            "how much model time passes each tick, in the model's time unit — totals are Δt-invariant (dt_invariance)",
+          )}
+        {field(
+          time.klir ? "steps" : "run length",
+          time.klir ? null : "T",
+          time.t,
+          (v) => time.onCommit(time.dt, v),
+          time.klir
+            ? "how many transitions the chain takes"
+            : "total model time the run covers — run length ÷ step size = ticks",
+        )}
       </div>
     </Card>
   );
