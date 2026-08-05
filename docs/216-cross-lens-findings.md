@@ -40,9 +40,14 @@ For the Mobus corpus and the examples, Klir is blindest (`klir>mobus`). For the 
 
 Stated for the thesis: **legality travels, meaning does not.** All 35 models are legal under the root, which is the existence half of K≅2 holding empirically over real entries for the first time. And every one of them means something different in each lens that accepts it, which is the part the abstract proof was always silent about.
 
-**Mobus is blind to nothing in any example it accepts — 0 across all fifteen.**
+**Mobus is blind to nothing in any example it accepts — 0 across all fifteen.** *(Historical as of 2026-08-05; kept because the gap it named shaped #284.)*
 
-This is a fact about the corpus, not about Mobus. The examples are authored in Mobus's own vocabulary, so they cannot test what Mobus loses. **The set needs Klir-native and Bunge-native examples before the Mobus column means anything.** That is the sharpest gap the read exposes, and it is a commissioning task, not a fix.
+That was a fact about the corpus, not about Mobus: every example was authored in his own vocabulary, so there was no authored content for him to fail to render. **Resolved by #284 (2026-08-05)** — two foreign-native entries now put authored meaning where Mobus cannot see it:
+
+- `examples/lake-observation.sl` (Klir-native source system): Mobus blind **10** — 2 directed annotations (hidden), 4 substances + 4 process primitives (unspecified).
+- `examples/workshop-crew.sl` (Bunge-native CES triple): Mobus blind **7** — 2 mere relations (hidden; Bunge's B̄), the rest unspecified.
+
+The Mobus residue column is now load-bearing: "legality travels, meaning does not" rests on all three columns.
 
 ## The labels, diffed (#285, 2026-08-01)
 
@@ -52,6 +57,6 @@ What the diff shows across the whole library: **the divergence is categorical, n
 
 ## What this does not establish
 
-The spread is a count of unrendered items, not a semantic distance. Two models with the same spread can differ for unrelated reasons, and a low spread is not evidence that two lenses agree about meaning — only that they omit the same amount. The label diff names which categories differ and by how much, but a matched category is matched by label, not by content — two lenses each hiding "4 connection kinds" may be hiding different kinds. The diff also compares only the two extreme lenses of a row; a middle lens's residue is printed nowhere.
+The spread is a count of unrendered items, not a semantic distance. Two models with the same spread can differ for unrelated reasons, and a low spread is not evidence that two lenses agree about meaning — only that they omit the same amount. The label diff names which categories differ and by how much, but a matched category is matched by label, not by content — two lenses each hiding "4 connection kinds" may be hiding different kinds. The extremes diff misses the middle lens, so since #284 a divergent row also prints the middle lens's *hidden* entries ("also hidden from …") — hidden only, because unspecified is a declined question rather than a loss; the middle lens's unspecified residue is still printed nowhere.
 
 The refusal reasons also collapse harder than the counts suggest: 17 refused cells across 16 models, but only three distinct mechanisms — boundary-crossing without an interface (Mobus, ~11 models), self-dependency where `k = o` (Mobus, 2), and no bond between distinct components (Bunge, 4). Seventeen cells is not seventeen results.
