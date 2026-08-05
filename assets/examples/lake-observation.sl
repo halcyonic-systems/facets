@@ -1,4 +1,3 @@
-# STRAWMAN 2026-08-04 — raw material for #284, rework or reject.
 # ── A Klir-native entry: a source system of observed variables ───────
 # Klir's lens asks: which variables, on which scales, with which state
 # sets, and which relations does the investigator define among them?
@@ -9,9 +8,11 @@
 # lake asserts. In Klir's hierarchy this sits at the SOURCE level:
 # variables and observation channels, no generating rule declared.
 #
-# The kingdom/genus names the observed thing (a lake), though the
-# source system itself is the investigator's construct — a tension
-# worth an authorial decision, not a default.
+# The kingdom/genus names the observed thing (a lake). The source
+# system itself is the investigator's construct — decided 2026-08-05:
+# name the object, state the construct here. The genus vocabulary has
+# no Conceptual-friendly entry, and resolving that belongs to the
+# level work (#288), not to this entry.
 
 system "Lake Observation Study" : Concrete/Biological
 domain "Seasonal monitoring of a lake: four variables an ecologist measures and the relations she defines among them"

@@ -60,6 +60,10 @@ struct Cell {
     /// The residue lines behind `blind`, kept so a divergent row can say WHICH
     /// facts differ, not just how many (#285). Empty for a refusal.
     residue: Vec<ResidueEntry>,
+    /// The hidden subset of `residue` alone. The extremes diff misses the
+    /// middle lens entirely, and hidden is the load-bearing signal — authored
+    /// meaning a lens cannot render, not a question it left unanswered (#284).
+    hidden: Vec<ResidueEntry>,
 }
 
 fn cell(model: &bert_canvas::canvas::CanvasModel, lens: Lens) -> Cell {
@@ -83,6 +87,7 @@ fn cell(model: &bert_canvas::canvas::CanvasModel, lens: Lens) -> Cell {
             reasons: errs,
             blind: None,
             residue: Vec::new(),
+            hidden: Vec::new(),
         };
     }
     let residue: Vec<ResidueEntry> = a
@@ -102,6 +107,7 @@ fn cell(model: &bert_canvas::canvas::CanvasModel, lens: Lens) -> Cell {
         reasons: Vec::new(),
         blind: Some(blind),
         residue,
+        hidden: a.residue.hidden.clone(),
     }
 }
 
@@ -185,6 +191,27 @@ fn residue_diff(cells: &[Cell]) -> Vec<String> {
         }
     }
     lines
+}
+
+/// The middle lens's hidden entries. The extremes diff compares only the
+/// most- and least-blind lenses, so when three lenses accept, the middle
+/// lens's losses are computed but never shown — which broke the #284 rule
+/// that residue labels must name what a lens loses in the report itself.
+/// Only hidden prints: unspecified is a declined question, not a loss.
+fn middle_hidden(cells: &[Cell]) -> Vec<String> {
+    let Some((lo_i, hi_i)) = extremes(cells) else {
+        return Vec::new();
+    };
+    cells
+        .iter()
+        .enumerate()
+        .filter(|(i, c)| *i != lo_i && *i != hi_i && c.blind.is_some())
+        .flat_map(|(i, c)| {
+            c.hidden
+                .iter()
+                .map(move |e| format!("also hidden from {}: {}", LENS_NAMES[i], entry_text(e)))
+        })
+        .collect()
 }
 
 #[test]
@@ -279,7 +306,7 @@ fn row(cells: &[Cell]) -> String {
     // Divergent rows continue onto indented detail lines: the categories that
     // make up the spread, so the reader goes from the row to the reason
     // without opening the model (#285).
-    for line in residue_diff(cells) {
+    for line in residue_diff(cells).into_iter().chain(middle_hidden(cells)) {
         out.push_str("\n    · ");
         out.push_str(&line);
     }

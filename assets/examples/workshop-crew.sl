@@ -1,4 +1,3 @@
-# STRAWMAN 2026-08-04 — raw material for #284, rework or reject.
 # ── A Bunge-native entry: a CES triple with bonds AND mere relations ─
 # Bunge's lens asks for the triple (Treatise Vol. 4, Ch. 1 §1.2):
 # Composition (the crew), Environment (firm and customer), Structure —
@@ -12,8 +11,10 @@
 # No component carries a work-process primitive: Bunge has no process
 # taxonomy, and leaving Mobus's question unanswered is part of what
 # this entry tests. The `interface` on Foreman is a concession to
-# Mobus's membrane (every crossing flow needs an interface) — an
-# authorial judgment call, flagged, not a Bunge commitment.
+# Mobus's membrane (every crossing flow needs an interface) — kept by
+# decision 2026-08-05, not a Bunge commitment: a refused model has
+# blind = undefined, and the entry exists to measure what an
+# *accepting* Mobus cannot see.
 
 system "Workshop Crew" : Concrete/Social
 domain "A three-person fabrication crew inside a firm: who is bonded to whom, and which relations make no difference"
