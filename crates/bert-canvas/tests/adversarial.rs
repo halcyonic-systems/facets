@@ -88,12 +88,12 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
         // Empty model — no things, no relations.
         (
             "empty",
-            CanvasModel { lens: Lens::Mobus, model_id: None, things: vec![], relations: vec![], boundary: Default::default(), system_type: Default::default(), name: None, time_unit: None, params: vec![], metrics: vec![] },
+            CanvasModel { lens: Lens::Mobus, model_id: None, things: vec![], relations: vec![], boundary: Default::default(), system_type: Default::default(), name: None, time_unit: None, params: vec![], metrics: vec![], klir_level: None },
         ),
         // A relation but NO things — every endpoint dangles.
         (
             "relation-without-things",
-            CanvasModel { lens: Lens::Bunge, model_id: None, things: vec![], relations: vec![rel(1, 1, 2)], boundary: Default::default(), system_type: Default::default(), name: None, time_unit: None, params: vec![], metrics: vec![] },
+            CanvasModel { lens: Lens::Bunge, model_id: None, things: vec![], relations: vec![rel(1, 1, 2)], boundary: Default::default(), system_type: Default::default(), name: None, time_unit: None, params: vec![], metrics: vec![], klir_level: None },
         ),
         // Self-loop only.
         (
@@ -109,6 +109,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 time_unit: None,
                 params: vec![],
                 metrics: vec![],
+                klir_level: None,
             },
         ),
         // Dangling relation endpoints (reference ids that no thing has).
@@ -125,6 +126,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 time_unit: None,
                 params: vec![],
                 metrics: vec![],
+                klir_level: None,
             },
         ),
         // Duplicate thing ids and duplicate relation ids.
@@ -145,6 +147,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 time_unit: None,
                 params: vec![],
                 metrics: vec![],
+                klir_level: None,
             },
         ),
         // Huge and negative coordinates + non-finite ones.
@@ -165,6 +168,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 time_unit: None,
                 params: vec![],
                 metrics: vec![],
+                klir_level: None,
             },
         ),
         // Empty strings everywhere (names) + a mere relation (is_bond=false).
@@ -184,6 +188,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 time_unit: None,
                 params: vec![],
                 metrics: vec![],
+                klir_level: None,
             },
         ),
         // All-environment things (no components at all) with bonds among them.
@@ -203,6 +208,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 time_unit: None,
                 params: vec![],
                 metrics: vec![],
+                klir_level: None,
             },
         ),
         // Every kind represented, mixed bond/mere, plus a self-loop, at Mobus.
@@ -229,6 +235,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 time_unit: None,
                 params: vec![],
                 metrics: vec![],
+                klir_level: None,
             },
         ),
     ]

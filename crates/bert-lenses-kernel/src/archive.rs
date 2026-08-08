@@ -120,6 +120,7 @@ mod tests {
             time_unit: None,
             params: vec![],
             metrics: vec![],
+            klir_level: None,
         };
         m.things.push(Thing {
             id: 1,
@@ -362,6 +363,7 @@ mod decomposition_seam {
             time_unit: None,
             params: vec![],
             metrics: vec![],
+            klir_level: None,
         };
         m.things[0].primitive = Some(bert_core::ProcessPrimitive::Combining);
 

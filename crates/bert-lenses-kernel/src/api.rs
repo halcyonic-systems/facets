@@ -922,6 +922,7 @@ mod tests {
             time_unit: None,
             params: vec![],
             metrics: vec![],
+            klir_level: None,
         }
     }
 

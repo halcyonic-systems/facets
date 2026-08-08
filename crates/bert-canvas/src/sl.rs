@@ -19,6 +19,7 @@
 //! system "Steel-Plant" : Concrete/Technical   # optional SOI name + type assertion
 //! domain "steel manufacturing"         # optional framing
 //! time unit h                          # optional: the model's time-unit symbol (#94)
+//! level Structure                      # optional: the declared Klir epistemological level (#288)
 //! component Furnace primitive Combining interface
 //! component Battery primitive Buffering stock "kW·h"   # declared stock unit (#76/#94)
 //! component Light scale Nominal states {Green, Yellow, Red}  # Klir source-system (#154)
@@ -52,8 +53,8 @@ use bert_core::model_id::{decode_uuid, encode_uuid};
 use bert_core::{ModelRef, ProcessPrimitive};
 
 use crate::canvas::{
-    CanvasBoundaryProps, CanvasModel, ChildRef, EnvKind, Genus, Kind, Kingdom, KlirVarKind, Lens,
-    Relation, Role, ScaleType, SystemType, Thing,
+    CanvasBoundaryProps, CanvasModel, ChildRef, EnvKind, Genus, Kind, Kingdom, KlirLevel,
+    KlirVarKind, Lens, Relation, Role, ScaleType, SystemType, Thing,
 };
 
 /// A parse fault, anchored to its 1-indexed source line. All faults are
@@ -98,6 +99,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     let mut system_seen = false;
     let mut domain_seen = false;
     let mut time_unit: Option<String> = None;
+    let mut klir_level: Option<KlirLevel> = None;
     let mut lens = Lens::Mobus;
     let mut lens_explicit = false;
     // name → thing index; names are the text surface's identifiers.
@@ -186,8 +188,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
             _ => {
                 fail(
                     "line must start with a keyword — fix: begin it with one of system, \
-                     domain, time, component, source, sink, environment, flow, boundary, \
-                     or with `#` to make it a comment"
+                     domain, time, level, component, source, sink, environment, flow, \
+                     boundary, or with `#` to make it a comment"
                         .into(),
                     &mut errors,
                 );
@@ -273,6 +275,35 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     }
                     _ => fail(
                         "time syntax: `time unit <symbol>` (e.g. `time unit h`)".into(),
+                        &mut errors,
+                    ),
+                }
+            }
+            // `level <Source|Data|Generative|Structure|Metasystem>` — the
+            // model's declared Klir epistemological level (#288): the author's
+            // claim about where on the §4.5 hierarchy the model stands. The
+            // modeling relation holds only within a level (Klir §5.4), so the
+            // claim is what the cross-level refusal reads. Undeclared gates
+            // nothing.
+            "level" => {
+                if klir_level.is_some() {
+                    fail(
+                        "`level` already declared — fix: a model stands at one \
+                         epistemological level; delete this line or the earlier \
+                         `level` line"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                match rest {
+                    [Tok::Word(l)] => match parse_level(l) {
+                        Ok(lv) => klir_level = Some(lv),
+                        Err(msg) => fail(msg, &mut errors),
+                    },
+                    _ => fail(
+                        "level syntax: `level <Source|Data|Generative|Structure|Metasystem>`"
+                            .into(),
                         &mut errors,
                     ),
                 }
@@ -1296,9 +1327,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
             }
             other => fail(
                 format!(
-                    "unknown keyword `{other}` (system, domain, time, component, source, sink, \
-                     environment, flow, boundary) — fix: replace `{other}` with one of those, \
-                     or prefix the line with `#` to make it a comment"
+                    "unknown keyword `{other}` (system, domain, time, level, component, source, \
+                     sink, environment, flow, boundary) — fix: replace `{other}` with one of \
+                     those, or prefix the line with `#` to make it a comment"
                 ),
                 &mut errors,
             ),
@@ -1330,6 +1361,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         time_unit,
         params,
         metrics,
+        klir_level,
     };
     auto_layout(&mut model, &positions);
     Ok(SlParse {
@@ -1467,6 +1499,10 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
     // The model's time-unit symbol (#94) — header block, with system/domain.
     if let Some(tu) = model.time_unit.as_deref().map(str::trim).filter(|t| !t.is_empty()) {
         writeln!(out, "time unit {}", name_token(tu)?).unwrap();
+    }
+    // The declared Klir epistemological level (#288) — header block, last.
+    if let Some(lv) = model.klir_level {
+        writeln!(out, "level {lv:?}").unwrap();
     }
 
     // things — env identity edge-derived from bonds, mirroring project()
@@ -1706,6 +1742,7 @@ pub const RESERVED_WORDS: &[&str] = &[
     "kind",
     "time",
     "unit",
+    "level",
     "mere",
     "weight",
     "substance",
@@ -1837,6 +1874,19 @@ fn parse_scale(word: &str) -> Result<ScaleType, String> {
         "ratio" => Ok(ScaleType::Ratio),
         other => Err(format!(
             "unknown scale `{other}` (Nominal, Ordinal, Interval, Ratio)"
+        )),
+    }
+}
+
+fn parse_level(word: &str) -> Result<KlirLevel, String> {
+    match word.to_ascii_lowercase().as_str() {
+        "source" => Ok(KlirLevel::Source),
+        "data" => Ok(KlirLevel::Data),
+        "generative" => Ok(KlirLevel::Generative),
+        "structure" => Ok(KlirLevel::Structure),
+        "metasystem" => Ok(KlirLevel::Metasystem),
+        other => Err(format!(
+            "unknown level `{other}` (Source, Data, Generative, Structure, Metasystem)"
         )),
     }
 }

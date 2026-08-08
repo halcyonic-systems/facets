@@ -105,6 +105,7 @@ fn canvas_born_model_canonicalizes() {
         time_unit: None,
         params: vec![],
         metrics: vec![],
+        klir_level: None,
     };
     let t1 = emit_sl(&m).unwrap();
     let m2 = parse_sl(&t1).unwrap();

@@ -26,7 +26,7 @@ use std::collections::{HashMap, HashSet};
 use bert_core::validate::{validate_mode, Severity, ValidationIssue, ValidationResult};
 use bert_core::{EdgeLocus, Id, Interaction, Mode};
 
-use crate::canvas::{project_with_map, CanvasModel, Kind, Lens, Role};
+use crate::canvas::{project_with_map, CanvasModel, Kind, KlirLevel, Lens, Role};
 
 /// Bunge's three coupling channels — his own matrix notation's row/column
 /// grammar (M₀ᵣ / Mₛ₀ / Mᵣₛ): the environment acting on a component is an
@@ -627,6 +627,30 @@ pub fn klir_ladder(model: &CanvasModel) -> KlirLadder {
     }
 }
 
+/// The one sentence the refusal prints — Klir, *Facets of Systems Science*
+/// 2nd ed., §5.4, verbatim. His words, not ours: comparing models across
+/// epistemological levels is undefined in his framework, so the refusal is
+/// faithfulness rather than strictness (#288).
+pub const KLIR_MODELING_RELATION: &str =
+    "the modeling relation can be defined only within each particular \
+     epistemological category of systems";
+
+/// Whether the modeling relation is defined between two models, by declared
+/// level (#288). Refuses ONLY when both models declare a level and the levels
+/// differ — Klir §5.4 makes the comparison undefined, and the printed reason
+/// is his sentence. A model with no declared level compares as it always did:
+/// the check gates a claim, never an absence, so the pre-#288 corpus earns no
+/// new failures from it.
+pub fn check_cross_level(a: &CanvasModel, b: &CanvasModel) -> Result<(), String> {
+    match (a.klir_level, b.klir_level) {
+        (Some(la), Some(lb)) if la != lb => Err(format!(
+            "cross-level comparison refused: one model declares level {la:?}, the \
+             other {lb:?}, and \"{KLIR_MODELING_RELATION}\" (Klir §5.4)"
+        )),
+        _ => Ok(()),
+    }
+}
+
 /// One model, typeset in the active lens's own formal notation. Every variant
 /// leads with `question` — the tradition's guiding question, the orientation
 /// line the face shows at lens switch.
@@ -652,6 +676,12 @@ pub enum LensDescription {
         dependencies: Vec<String>,
         note: String,
         ladder: KlirLadder,
+        /// The DECLARED epistemological level (#288) — the author's §4.5 claim,
+        /// distinct from the `ladder`'s derived position: the ladder reads what
+        /// the model honestly contains, this reports what the author asserts it
+        /// to be. `None` = undeclared, and undeclared gates nothing.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        level: Option<KlirLevel>,
     },
     /// Bunge `σ = ⟨C, E, S⟩` delivered (the Lean-bridged CES); M carried only as
     /// the untyped `mechanism_note` prose — see `MECHANISM_NOTE` and the
@@ -905,6 +935,7 @@ fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> Le
                        the distinction frame is the observer's act, not a boundary"
                     .to_string(),
                 ladder: klir_ladder(model),
+                level: model.klir_level,
             }
         }
         Lens::Bunge => {
@@ -1054,6 +1085,7 @@ mod tests {
             time_unit: None,
             params: vec![],
             metrics: vec![],
+            klir_level: None,
         }
     }
 

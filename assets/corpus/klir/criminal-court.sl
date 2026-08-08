@@ -14,6 +14,7 @@
 # note: The fifth element, EXIT, is Klir's; the PDF-to-markdown conversion of Fig. 4.7 preserved only four block labels while the text says five. It was recovered by reading the figure in the source PDF, not inferred from the variable list.
 
 system "Criminal Courts and Probation, New York State"
+level Structure
 
 component COMPLAINT
 component "TRIAL PHASE"

@@ -5,6 +5,6 @@
   },
   {
     "line": 2,
-    "message": "unknown keyword `widget` (system, domain, time, component, source, sink, environment, flow, boundary) — fix: replace `widget` with one of those, or prefix the line with `#` to make it a comment"
+    "message": "unknown keyword `widget` (system, domain, time, level, component, source, sink, environment, flow, boundary) — fix: replace `widget` with one of those, or prefix the line with `#` to make it a comment"
   }
 ]

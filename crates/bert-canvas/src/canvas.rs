@@ -114,6 +114,23 @@ pub enum KlirVarKind {
     Support,
 }
 
+/// Klir's epistemological hierarchy (§4.5): the level at which a model claims
+/// to stand — source (variables and observation channels), data (observed
+/// states over a support), generative (a rule producing the data), structure
+/// (coupled subsystems), metasystem (a rule for how the rule changes). The
+/// modeling relation is defined only WITHIN a level (§5.4), which is what the
+/// cross-level refusal in `lenses::check_cross_level` enforces (#288). A
+/// declared claim, never derived — the ladder ([`crate::lenses::klir_ladder`])
+/// reads the honest position off the model; this is what the author asserts.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum KlirLevel {
+    Source,
+    Data,
+    Generative,
+    Structure,
+    Metasystem,
+}
+
 fn kind_to_substance(k: Kind) -> SubstanceType {
     match k {
         Kind::Matter => SubstanceType::Material,
@@ -440,6 +457,13 @@ pub struct CanvasModel {
     /// (the #163 pattern).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub metrics: Vec<MetricDecl>,
+    /// The model's declared Klir epistemological level (#288) — the author's
+    /// claim about where on the §4.5 hierarchy this model stands. Authored
+    /// metadata read in the Klir register only; `project` never reads it, so
+    /// no systemhood verdict depends on it (C2). `None` = undeclared, which
+    /// gates nothing; `skip` so pre-existing models serialize unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub klir_level: Option<KlirLevel>,
 }
 
 fn info(id: Id, level: i32, name: &str) -> Info {
@@ -976,6 +1000,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         // starts bare.
         params: vec![],
         metrics: vec![],
+        klir_level: None,
     }
 }
 
@@ -1178,6 +1203,7 @@ mod tests {
             time_unit: None,
             params: vec![],
             metrics: vec![],
+            klir_level: None,
         };
         let (states, edges) = markov_edges(&model);
         assert_eq!(states, vec!["Even".to_string(), "Odd".to_string()]);
@@ -1207,6 +1233,7 @@ mod tests {
                 time_unit: None,
                 params: vec![],
                 metrics: vec![],
+                klir_level: None,
             };
             let wm = project(&model);
             assert_eq!(wm.mode, Some(lens.mode()));
@@ -1237,6 +1264,7 @@ mod tests {
             time_unit: None,
             params: vec![],
             metrics: vec![],
+            klir_level: None,
         };
         let loop_edge = bond(11, 1, 1); // A → A
         let issues = validate_connection(&model, &loop_edge);
@@ -1265,6 +1293,7 @@ mod tests {
             time_unit: None,
             params: vec![],
             metrics: vec![],
+            klir_level: None,
         };
         let issues = validate_connection(&model, &bond(10, 1, 2));
         assert!(issues.is_empty(), "S → H must connect: {issues:?}");
@@ -1285,6 +1314,7 @@ mod tests {
             time_unit: None,
             params: vec![],
             metrics: vec![],
+            klir_level: None,
         };
         let audit = crate::lenses::analyze(&model, Lens::Mobus);
         let hit = audit
@@ -1317,6 +1347,7 @@ mod tests {
             time_unit: None,
             params: vec![],
             metrics: vec![],
+            klir_level: None,
         };
         let issues = validate_connection(&model, &bond(12, 1, 2));
         let dup = issues
@@ -1370,6 +1401,7 @@ mod tests {
             time_unit: None,
             params: vec![],
             metrics: vec![],
+            klir_level: None,
         };
         let world = project(&model);
         let report = validate_mode(&world, bert_core::Mode::Operational);
@@ -1414,6 +1446,7 @@ mod tests {
             time_unit: None,
             params: vec![],
             metrics: vec![],
+            klir_level: None,
         };
         let issues = validate_connection(&model, &bond(10, 1, 2));
         assert!(
@@ -1454,6 +1487,7 @@ mod tests {
             time_unit: None,
             params: vec![],
             metrics: vec![],
+            klir_level: None,
         };
         let issues = validate_connection(&model, &bond(11, 3, 1));
         assert!(
@@ -1554,6 +1588,7 @@ mod tests {
             time_unit: None,
             params: vec![],
             metrics: vec![],
+            klir_level: None,
         };
         let wm = project(&model);
         assert_eq!(wm.environment.sources.len(), 1);
@@ -1576,6 +1611,7 @@ mod tests {
             time_unit: None,
             params: vec![],
             metrics: vec![],
+            klir_level: None,
         });
         assert!(world.model_id.is_none(), "the canvas never mints");
         let id = world.mint_id();
@@ -1608,6 +1644,7 @@ mod tests {
             time_unit: None,
             params: vec![],
             metrics: vec![],
+            klir_level: None,
         };
         let child = decompose_thing(&model, 3).expect("interior component derives");
         assert!(child.model_id.is_some(), "the child is born nameable");

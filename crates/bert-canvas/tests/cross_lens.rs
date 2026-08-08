@@ -22,8 +22,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use bert_canvas::canvas::Lens;
-use bert_canvas::lenses::{analyze, describe};
+use bert_canvas::canvas::{CanvasModel, Lens};
+use bert_canvas::lenses::{analyze, check_cross_level, describe};
 use bert_canvas::sl::parse_sl_full;
 use bert_core::validate::Severity;
 
@@ -159,6 +159,10 @@ fn entries_sharing_a_set_are_distinguishable() {
 
     // set name -> (rendered description under the pinned lens) -> [entry names]
     let mut sets: BTreeMap<String, BTreeMap<String, Vec<String>>> = BTreeMap::new();
+    // set name -> first member carrying a declared level (name, model), for the
+    // #288 gate below: set members are compared, so the comparison must be
+    // DEFINED before distinguishability is even a question.
+    let mut leveled: BTreeMap<String, (String, CanvasModel)> = BTreeMap::new();
 
     for path in &files {
         let text = match fs::read_to_string(path) {
@@ -175,6 +179,21 @@ fn entries_sharing_a_set_are_distinguishable() {
             .unwrap_or(path)
             .display()
             .to_string();
+        // The #288 refusal: a set spanning declared epistemological levels is
+        // not a comparison Klir defines, so it is refused before it is scored.
+        // Undeclared members compare as they always did.
+        if parsed.model.klir_level.is_some() {
+            match leveled.get(&set) {
+                Some((first_name, first_model)) => {
+                    if let Err(reason) = check_cross_level(first_model, &parsed.model) {
+                        panic!("set {set:?} ({first_name} vs {name}): {reason}");
+                    }
+                }
+                None => {
+                    leveled.insert(set.clone(), (name.clone(), parsed.model.clone()));
+                }
+            }
+        }
         sets.entry(set)
             .or_default()
             .entry(rendered)
