@@ -11,6 +11,7 @@ import {
   checkDecompositionsCanvas,
   decomposeComponent,
   compileSl,
+  emitSl,
 } from "./kernel";
 import type {
   CanvasModel,
@@ -415,6 +416,25 @@ function Workspace() {
     }
   };
 
+  // The SL pane follows the open model: every explicit open seam hands the
+  // pane the model's text — the authored .sl document where one exists
+  // (corpus, examples, demos: comments and provenance survive), the canonical
+  // emit_sl serialization where none does (imports, library loads). Opening a
+  // model is the author's stated intent, so pane text is replaced without a
+  // confirm — the same discipline these seams already apply to the canvas.
+  function syncSlPane(source: string | null, cm: CanvasModel) {
+    if (source != null) {
+      setSlText(source);
+    } else {
+      try {
+        setSlText(emitSl(cm));
+      } catch {
+        return; // pane keeps its text — the serialization is a courtesy, not the open
+      }
+    }
+    setSlErrors([]);
+  }
+
   // Guarded + flushed at the seam itself (#111), so every caller — the Switch
   // menu AND the OpenDialog gallery — gets the same discard discipline.
   const pick = async (d: Demo) => {
@@ -438,7 +458,9 @@ function Workspace() {
         compiled = null;
       }
     }
-    setCanvasModel(compiled && "ok" in compiled ? compiled.ok : spaceOut(openModel(d.modelJson)));
+    const opened = compiled && "ok" in compiled ? compiled.ok : spaceOut(openModel(d.modelJson));
+    setCanvasModel(opened);
+    syncSlPane(d.sl ?? null, opened);
     setManifest(d.manifest);
     setDt(d.manifest.dt ?? 1);
     setT(d.t);
@@ -489,6 +511,7 @@ function Workspace() {
       return;
     }
     await onSlCompiled(outcome.ok, outcome.lens_explicit);
+    syncSlPane(e.sl, outcome.ok);
     setHomeOpen(false);
     setDirty(false);
   };
@@ -510,6 +533,7 @@ function Workspace() {
       return;
     }
     await onSlCompiled(outcome.ok, outcome.lens_explicit);
+    syncSlPane(d.sl, outcome.ok);
     setHomeOpen(false);
     setDirty(false);
   };
@@ -526,6 +550,7 @@ function Workspace() {
       const cm = openModel(json);
       setDemo(null);
       setCanvasModel(cm);
+      syncSlPane(null, cm);
       setManifest({ model: "", data: "", t: 12, mapping: [] });
       setResult(null);
       setRunError(null);
@@ -654,6 +679,8 @@ function Workspace() {
     if (!(await guardDiscard()) || !(await flushWalk())) return;
     setDemo(null);
     setCanvasModel({ lens: "Mobus", things: [], relations: [], boundary: { porosity: 0, perceptive_fuzziness: 0 } });
+    setSlText(""); // blank canvas, blank page — the seed is for first launch, not File → New
+    setSlErrors([]);
     setManifest({ model: "", data: "", t: 12, mapping: [] });
     setResult(null);
     setRunError(null);
@@ -802,6 +829,7 @@ function Workspace() {
       const cm = openModel(await library.load(name));
       setDemo(null);
       setCanvasModel(cm);
+      syncSlPane(null, cm);
       setManifest({ model: "", data: "", t: 12, mapping: [] });
       setResult(null);
       setRunError(null);
