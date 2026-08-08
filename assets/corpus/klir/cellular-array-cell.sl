@@ -13,6 +13,7 @@
 # note: No kind of flow is declared. The couplings carry state variables over a two-state alphabet; guessing matter, energy or message would add a commitment Klir does not make.
 
 system "A Cell in a Cellular Array"
+level Structure
 
 component c
 

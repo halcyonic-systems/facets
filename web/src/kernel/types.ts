@@ -214,6 +214,11 @@ export type ScaleType = "Nominal" | "Ordinal" | "Interval" | "Ratio";
  *  SEMANTIC role the modeler declares — NOT read off R. Absent reads as Basic. */
 export type KlirVarKind = "Basic" | "Support";
 
+/** Klir's epistemological hierarchy (§4.5): the level a model DECLARES itself
+ *  to stand at (#288). The modeling relation is defined only within a level
+ *  (§5.4), which is what the kernel's cross-level refusal enforces. */
+export type KlirLevel = "Source" | "Data" | "Generative" | "Structure" | "Metasystem";
+
 export interface Thing {
   id: number;
   name: string;
@@ -325,6 +330,10 @@ export interface CanvasModel {
    *  trace, the output twin of `params`. Evaluated over the run recorder
    *  (`RunResultRich.flows`); serde skip-if-empty. */
   metrics?: MetricDecl[];
+  /** The declared Klir epistemological level (#288) — authored metadata read
+   *  in the Klir register only; never projects. serde skip-if-None — absent =
+   *  undeclared, which gates nothing. */
+  klir_level?: KlirLevel;
 }
 
 /** What a declared parameter anchors: one flow's declared amount, or a
@@ -467,6 +476,9 @@ export type LensDescription =
       /** Where this model stands on the ladder — the register's opt-in
        *  complement (#100 harvest), collapsed until asked for. */
       ladder: KlirLadder;
+      /** The DECLARED level (#288) — the author's §4.5 claim, distinct from
+       *  the ladder's derived position. serde skip-if-None; absent = undeclared. */
+      level?: KlirLevel;
     }
   | {
       lens: "Bunge";

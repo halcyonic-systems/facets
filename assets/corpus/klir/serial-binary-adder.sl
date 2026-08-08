@@ -13,6 +13,7 @@
 # note: No kind of flow is declared. The variables are encoded binary digits under an encoding Klir explicitly sets aside, so matter, energy and message would all be guesses.
 
 system "A Serial Binary Adder"
+level Structure
 
 component SUM
 component CARRY
