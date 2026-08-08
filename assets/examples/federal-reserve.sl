@@ -15,11 +15,11 @@ system "Federal Reserve" : Concrete/Social
 
 domain "Central banking — the balance sheet as the instrument of monetary policy"
 
-# The decider. The FOMC reads the economy and issues the directive; it
-# moves no money itself. No work-process primitive is declared — its
-# work is deciding, and forcing it into Combining/Splitting/Buffering
-# would be a reading, not a fact (fork 4).
-component FOMC interface
+# The decider. The FOMC reads the instrument panel and issues the
+# directive; it moves no money itself. Modulating: it regulates the
+# desk's operation — the sensing is done upstream by the statistical
+# agencies, the work downstream by the desk.
+component FOMC primitive Modulating interface
 
 # The work process. The desk executes the directive by buying and
 # selling in the open market — the one place policy touches the flows.
@@ -83,23 +83,41 @@ flow "Balance Sheet" -> "Banking System" : matter "interest on reserves"
 # What the portfolio earns, net of expenses, goes back to the fisc.
 flow "Balance Sheet" -> "U.S. Treasury" : matter "remittances — net income returned"
 
-# ── Open forks (ratify before this leaves strawman) ──────────────────
-# 1. Discount window and standing facilities (ON RRP): lender-of-last-
-#    resort as a level-1 flow pair, or a mode of the same balance sheet?
-# 2. Currency: Federal Reserve notes reach the public through the banks.
-#    A matter flow Balance Sheet -> Banking System -> beyond, or out of
-#    scope at level 1?
-# 3. Treasury General Account: the Treasury banks AT the Fed, which
-#    would make "U.S. Treasury" two-way and the remittance one flow of
-#    several. Kept one-way here for minimality.
-# 4. FOMC carries no primitive. If a decider must be a work process,
-#    which one — and does Mobus's ch. 7 precedent (no primitives
-#    declared) govern editorial entries too?
-# 5. Aggregation: the twelve regional Reserve Banks are one SOI here,
-#    on the HSS precedent ("aggregating all inputs and outputs of each
-#    type into single arrows"). Norfolk's Richmond Fed would disagree.
+# The window: a standing channel, structurally present even when
+# dormant — the channel is structure, its activation rate is dynamics.
+flow "Banking System" -> "Balance Sheet" : matter "collateral pledged at the discount window"
+flow "Balance Sheet" -> "Banking System" : matter "reserves lent at the window"
+
+# Currency: notes reach the public only through the banks — a swap,
+# reserves debited as notes ship. The public stays behind the banks,
+# as households stay behind the markets.
+flow "Balance Sheet" -> "Banking System" : matter "currency — notes issued against reserves"
+
+# The fisc's checking account: TGA drawdowns and rebuilds move the
+# same reserve stock policy steers, with no policy decision anywhere.
+flow "U.S. Treasury" -> "Balance Sheet" : matter "TGA deposits — the Treasury's checking account"
+
+# ── Open forks ───────────────────────────────────────────────────────
+# 1. ON RRP: its counterparties are money-market funds, not banks — a
+#    new environmental entity, deferred rather than drawn wrong.
+# 2. Decomposition (future): the twelve district banks + the Board,
+#    with Interdistrict Settlement Account flows between them — the
+#    U.S. TARGET2, settling annually through reallocated SOMA shares.
+#    A walk-down demo in the steel-plant-walkthrough vein.
 #
 # ── Ratified ─────────────────────────────────────────────────────────
+# ✓ (2026-08-08) Discount window IS level-1 structure: a standing
+#   channel is a channel; dormancy is a fact about rates, not shape.
+# ✓ (2026-08-08) Currency flows to the Banking System, nowhere else —
+#   the public is reached only through banks at this level.
+# ✓ (2026-08-08) TGA drawn: the Treasury banks at the Fed, so the
+#   fiscal side jostles the same reserve stock policy steers.
+# ✓ (2026-08-08) FOMC is Modulating. The corpus's no-primitive rule is
+#   fidelity discipline for transcribed entries; this entry is ours,
+#   and the kernel's ten primitives include the right word.
+# ✓ (2026-08-08) The twelve Reserve Banks stay aggregated into the SOI
+#   (Mobus's HSS aggregation license). See fork 2 for what opening
+#   them up would mean.
 # ✓ (2026-08-08) No aggregate "economy" actor. The former environment
 #   "The Economy" split into source "Statistical Agencies" (the Fed
 #   steers by an instrument panel — published measurements, not the
