@@ -35,6 +35,7 @@ import {
 } from "./home";
 import { openExternal } from "./desktop";
 import { buildInfo, provenanceLines } from "./buildInfo";
+import type { Pin, WorkbenchEntry } from "./workbench";
 
 const DOCS_URL = "https://github.com/halcyonic-systems/bert-lenses/tree/main/docs";
 
@@ -45,6 +46,10 @@ export type HomeRoute =
 
 interface HomeProps {
   initialRoute?: HomeRoute;
+  /** The workbench (workbench.ts): resolved pins, listed above "Start here". */
+  workbench?: WorkbenchEntry[];
+  onOpenPin?: (pin: Pin) => void;
+  onUnpin?: (pin: Pin) => void;
   onCreate: () => void;
   onOpenExample: (d: Demo) => void;
   onOpenCorpus: (e: CorpusEntry) => void;
@@ -68,7 +73,13 @@ export function HomeScreen(props: HomeProps) {
           and the reading column is re-established under it by Column. */}
       <div className="w-full flex-1">
         {route.view === "home" && (
-          <HomeMenu onCreate={props.onCreate} onOpenLibrary={() => setRoute({ view: "library" })} />
+          <HomeMenu
+            onCreate={props.onCreate}
+            onOpenLibrary={() => setRoute({ view: "library" })}
+            workbench={props.workbench ?? []}
+            onOpenPin={props.onOpenPin}
+            onUnpin={props.onUnpin}
+          />
         )}
         {route.view === "library" && (
           <LibraryBrowser
@@ -327,7 +338,19 @@ function LedgerRow({
 const LEDE =
   "A modeling and simulation instrument for systems. Draw a system on the canvas or write it in SL; the kernel judges it under Klir, Bunge, and Mobus.";
 
-export function HomeMenu({ onCreate, onOpenLibrary }: { onCreate: () => void; onOpenLibrary: () => void }) {
+export function HomeMenu({
+  onCreate,
+  onOpenLibrary,
+  workbench = [],
+  onOpenPin,
+  onUnpin,
+}: {
+  onCreate: () => void;
+  onOpenLibrary: () => void;
+  workbench?: WorkbenchEntry[];
+  onOpenPin?: (pin: Pin) => void;
+  onUnpin?: (pin: Pin) => void;
+}) {
   return (
     <div>
       <Masthead
@@ -338,6 +361,41 @@ export function HomeMenu({ onCreate, onOpenLibrary }: { onCreate: () => void; on
         statLabel="models on the shelves"
       />
       <Column className="pb-16 pt-10">
+        {/* The workbench: what is being worked on right now, pinned by hand
+            from the menu bar. Absent entirely until something is pinned — an
+            empty block would put furniture where the first-run reader starts. */}
+        {workbench.length > 0 && onOpenPin && onUnpin && (
+          <div className="mb-10">
+            <BlockHeader label="Workbench" count={`${workbench.length} pinned`} />
+            <Ledger>
+              {workbench.map((w, i) => (
+                <div
+                  key={`${w.pin.kind}:${w.pin.ref}`}
+                  className="grid w-full grid-cols-[3.25rem_1fr_auto] items-stretch border-b"
+                  style={{ borderColor: "var(--border)" }}
+                >
+                  <Gutter index={i + 1} />
+                  <button onClick={() => onOpenPin(w.pin)} className="py-2.5 pl-5 pr-4 text-left">
+                    <span className="block text-sm font-semibold" style={nameStyle}>
+                      {w.title}
+                    </span>
+                    <span className="mt-0.5 block text-xs" style={{ color: "var(--text-muted)" }}>
+                      {w.detail}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => onUnpin(w.pin)}
+                    className="px-4 text-xs"
+                    style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+                    title="Remove from the workbench"
+                  >
+                    unpin
+                  </button>
+                </div>
+              ))}
+            </Ledger>
+          </div>
+        )}
         <BlockHeader label="Start here" />
         <Ledger>
           <LedgerRow name="Create a model" description="Start from a blank canvas." onClick={onCreate} />

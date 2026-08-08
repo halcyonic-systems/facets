@@ -51,6 +51,17 @@ import { isFolderSupported, pickDirectory, writeModel, type DirHandleLike } from
 import { library } from "./library";
 import { HomeScreen, type HomeRoute } from "./HomeScreen";
 import { buildLibraryTree, flattenLibraryTree, type LibraryNode } from "./libraryTree";
+import {
+  loadPins,
+  savePins,
+  togglePin,
+  resolvePins,
+  samePin,
+  findExample,
+  findCorpus,
+  type Pin,
+  type WorkbenchEntry,
+} from "./workbench";
 import { mintLibraryName, parentSlotName } from "./libraryNames";
 import { resolveModelRefs } from "./modelResolve";
 import { diagramFilename, exportDiagramSvg, exportDiagramPng } from "./canvas/exportDiagram";
@@ -300,6 +311,40 @@ function Workspace() {
   const [saveTarget, setSaveTarget] = useState<"folder" | "library">("folder");
   const [libraryTree, setLibraryTree] = useState<LibraryNode[]>([]);
   const libraryList = useMemo(() => flattenLibraryTree(libraryTree), [libraryTree]);
+  // The workbench (workbench.ts): hand-pinned quick access to the models being
+  // worked on. `openRef` is the open model's pinnable identity, set at the same
+  // open seams that sync the SL pane — null for imports and blank canvases,
+  // which have no address a pin could name.
+  const [pins, setPins] = useState<Pin[]>(loadPins);
+  const [openRef, setOpenRef] = useState<Pin | null>(null);
+  const workbench = useMemo<WorkbenchEntry[]>(
+    () =>
+      resolvePins(
+        pins,
+        libraryList.map((m) => m.name),
+      ),
+    [pins, libraryList],
+  );
+  const openPinned = openRef != null && pins.some((p) => samePin(p, openRef));
+  function setPinsPersisted(next: Pin[]) {
+    setPins(next);
+    savePins(next);
+  }
+  const toggleOpenPin = () => {
+    if (openRef) setPinsPersisted(togglePin(pins, openRef));
+  };
+  const unpin = (pin: Pin) => setPinsPersisted(pins.filter((p) => !samePin(p, pin)));
+  const openPin = (pin: Pin) => {
+    if (pin.kind === "example") {
+      const d = findExample(pin.ref);
+      if (d) void pickExample(d);
+    } else if (pin.kind === "corpus") {
+      const e = findCorpus(pin.ref);
+      if (e) void pickCorpus(e);
+    } else {
+      void loadFromLibrary(pin.ref);
+    }
+  };
   async function refreshLibrary() {
     setLibraryTree(buildLibraryTree(await library.list()));
   }
@@ -461,6 +506,7 @@ function Workspace() {
     const opened = compiled && "ok" in compiled ? compiled.ok : spaceOut(openModel(d.modelJson));
     setCanvasModel(opened);
     syncSlPane(d.sl ?? null, opened);
+    setOpenRef({ kind: "example", ref: d.key });
     setManifest(d.manifest);
     setDt(d.manifest.dt ?? 1);
     setT(d.t);
@@ -512,6 +558,7 @@ function Workspace() {
     }
     await onSlCompiled(outcome.ok, outcome.lens_explicit);
     syncSlPane(e.sl, outcome.ok);
+    setOpenRef({ kind: "corpus", ref: e.file });
     setHomeOpen(false);
     setDirty(false);
   };
@@ -534,6 +581,7 @@ function Workspace() {
     }
     await onSlCompiled(outcome.ok, outcome.lens_explicit);
     syncSlPane(d.sl, outcome.ok);
+    setOpenRef({ kind: "example", ref: d.key });
     setHomeOpen(false);
     setDirty(false);
   };
@@ -551,6 +599,7 @@ function Workspace() {
       setDemo(null);
       setCanvasModel(cm);
       syncSlPane(null, cm);
+      setOpenRef(null);
       setManifest({ model: "", data: "", t: 12, mapping: [] });
       setResult(null);
       setRunError(null);
@@ -583,6 +632,9 @@ function Workspace() {
     const nextModel = prior && !lensExplicit ? { ...cm, lens: prior.lens } : cm;
     setDemo(null);
     setCanvasModel(nextModel);
+    // A pane compile authors a new model with no gallery address; the corpus
+    // and example openers restore theirs right after this call returns.
+    setOpenRef(null);
     setManifest({ model: "", data: "", t: 12, mapping: [] });
     setResult(null);
     setRunError(null);
@@ -681,6 +733,7 @@ function Workspace() {
     setCanvasModel({ lens: "Mobus", things: [], relations: [], boundary: { porosity: 0, perceptive_fuzziness: 0 } });
     setSlText(""); // blank canvas, blank page — the seed is for first launch, not File → New
     setSlErrors([]);
+    setOpenRef(null);
     setManifest({ model: "", data: "", t: 12, mapping: [] });
     setResult(null);
     setRunError(null);
@@ -803,6 +856,7 @@ function Workspace() {
         await library.save(stem, json);
         await refreshLibrary();
         setCurrentName(stem);
+        setOpenRef({ kind: "library", ref: stem }); // now addressable — pinnable
         setSaveDialogOpen(false);
         setDirty(false);
         setNotice(`saved to library → ${stem}`);
@@ -830,6 +884,7 @@ function Workspace() {
       setDemo(null);
       setCanvasModel(cm);
       syncSlPane(null, cm);
+      setOpenRef({ kind: "library", ref: name });
       setManifest({ model: "", data: "", t: 12, mapping: [] });
       setResult(null);
       setRunError(null);
@@ -871,6 +926,10 @@ function Workspace() {
       await library.rename(from, target);
       if (currentName === from) setCurrentName(target);
       setWalk((w) => w.map((s) => (s.currentName === from ? { ...s, currentName: target } : s)));
+      // Pins address saves by name, so a rename migrates them (workbench.ts).
+      const renamed = { kind: "library", ref: target } as const;
+      setPinsPersisted(pins.map((p) => (p.kind === "library" && p.ref === from ? renamed : p)));
+      setOpenRef((r) => (r && r.kind === "library" && r.ref === from ? renamed : r));
       await refreshLibrary();
       return true;
     } catch (e) {
@@ -1517,6 +1576,11 @@ function Workspace() {
         onSwitchDemo={switchToDemo}
         onSwitchLibrary={switchToLibrary}
         onOpenFull={() => openHomeAt({ view: "library" })}
+        workbench={workbench}
+        canPin={openRef !== null}
+        pinned={openPinned}
+        onTogglePin={toggleOpenPin}
+        onOpenPin={openPin}
       />
       <input
         ref={importInputRef}
@@ -2295,6 +2359,9 @@ function Workspace() {
       {homeOpen && (
         <HomeScreen
           initialRoute={homeRoute}
+          workbench={workbench}
+          onOpenPin={openPin}
+          onUnpin={unpin}
           onCreate={newModel}
           onOpenExample={pickExample}
           onOpenCorpus={pickCorpus}
@@ -2355,6 +2422,11 @@ function MenuBar({
   onSwitchDemo,
   onSwitchLibrary,
   onOpenFull,
+  workbench = [],
+  canPin = false,
+  pinned = false,
+  onTogglePin,
+  onOpenPin,
 }: {
   loaded: boolean;
   onNew: () => void;
@@ -2374,6 +2446,14 @@ function MenuBar({
   onSwitchDemo: (d: Demo) => void;
   onSwitchLibrary: (name: string) => void;
   onOpenFull: () => void;
+  /** The workbench (workbench.ts): resolved pins for the Switch menu, plus the
+   *  open model's pin state. `canPin` is false when the open model has no
+   *  gallery or library address (imports, blank canvases). */
+  workbench?: WorkbenchEntry[];
+  canPin?: boolean;
+  pinned?: boolean;
+  onTogglePin?: () => void;
+  onOpenPin?: (pin: Pin) => void;
 }) {
   const [fileOpen, setFileOpen] = useState(false);
   const [switchOpen, setSwitchOpen] = useState(false);
@@ -2495,6 +2575,35 @@ function MenuBar({
                 borderRadius: "var(--radius-md)",
               }}
             >
+              {workbench.length > 0 && onOpenPin && (
+                <>
+                  <div
+                    className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Workbench
+                  </div>
+                  {workbench.map((w) => {
+                    const active = currentLabel === w.title;
+                    return (
+                      <button
+                        key={`${w.pin.kind}:${w.pin.ref}`}
+                        onClick={() => {
+                          setSwitchOpen(false);
+                          onOpenPin(w.pin);
+                        }}
+                        className="block w-full truncate px-3 py-1.5 text-left text-xs"
+                        style={{ color: active ? "var(--accent-strong)" : "var(--text-secondary)" }}
+                        title={w.detail || w.title}
+                      >
+                        {active ? "• " : ""}
+                        {w.title}
+                      </button>
+                    );
+                  })}
+                  <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
+                </>
+              )}
               <div
                 className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide"
                 style={{ color: "var(--text-muted)" }}
@@ -2588,6 +2697,22 @@ function MenuBar({
           {currentLabel}
           {dirty ? " •" : ""}
         </span>
+      )}
+
+      {/* Pin the open model to the workbench — only shown when the model has
+          an address a pin could name. */}
+      {canPin && onTogglePin && (
+        <button
+          onClick={onTogglePin}
+          className="text-[11px]"
+          style={{
+            fontFamily: "var(--font-mono)",
+            color: pinned ? "var(--accent-strong)" : "var(--text-muted)",
+          }}
+          title={pinned ? "On the workbench — click to remove" : "Pin to the workbench (Home and Switch menus)"}
+        >
+          {pinned ? "pinned ✓" : "pin"}
+        </button>
       )}
 
       <span
