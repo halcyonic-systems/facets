@@ -2,66 +2,19 @@
   "version": 1,
   "entries": [
     {
-      "file": "bunge/coupling-sigma1.sl",
-      "tradition": "bunge",
-      "title": "Coupling graph σ₁ — a symmetric chain",
-      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §2.1, Coupling Graphs and Matrices",
-      "teaches": "The first of Bunge's three coupling examples: a system given as a graph and, equivalently, as a matrix. Every coupling is mutual and excitatory, so the matrix is symmetric and the graph is an undirected chain.",
-      "set": "Coupling graphs"
-    },
-    {
-      "file": "bunge/coupling-sigma2.sl",
-      "tradition": "bunge",
-      "title": "Coupling graph σ₂ — a cycle with inhibition",
-      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §2.1, Coupling Graphs and Matrices",
-      "teaches": "Bunge's second coupling example: four components in a directed cycle where two of the four couplings are inhibitory rather than excitatory, entered in the matrix as −1 against +1.",
-      "set": "Coupling graphs"
-    },
-    {
-      "file": "bunge/coupling-sigma3.sl",
-      "tradition": "bunge",
-      "title": "Coupling graph σ₃ — self-action and feedback",
-      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §2.1, Coupling Graphs and Matrices",
-      "teaches": "Bunge's third coupling example, and the one that reads differently in two traditions: components 2 and 3 each act on themselves, and act on each other. His caption — \"the loops indicate self action or feedback\" — names both at once, and both are legal Bunge structure.",
-      "set": "Coupling graphs"
-    },
-    {
-      "file": "bunge/two-thing-ab.sl",
-      "tradition": "bunge",
-      "title": "The two-thing system — a acts on b",
-      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §1.2, Definition 1.2, Example, Fig. 1.2",
-      "teaches": "The simplest possible system in Bunge's words: two connected things in an environment lumped into a single thing, with the internal structure a▷b — a acts on b, and not conversely.",
-      "set": "Two-thing structures"
-    },
-    {
-      "file": "bunge/two-thing-ba.sl",
-      "tradition": "bunge",
-      "title": "The two-thing system — b acts on a",
-      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §1.2, Definition 1.2, Example, Fig. 1.2",
-      "teaches": "The same composition and environment as its siblings, with the internal structure reversed to b▷a — showing that structure, not composition, is what distinguishes these systems.",
-      "set": "Two-thing structures"
-    },
-    {
-      "file": "bunge/two-thing-bidirectional.sl",
-      "tradition": "bunge",
-      "title": "The two-thing system — a and b act on each other",
-      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §1.2, Definition 1.2, Example, Fig. 1.2",
-      "teaches": "The same composition and environment again, with the reciprocal internal structure a⋈b — the third and last of the conceivable internal structures on two things.",
-      "set": "Two-thing structures"
-    },
-    {
-      "file": "klir/cellular-array-cell.sl",
+      "file": "klir/students-in-a-course.sl",
       "tradition": "klir",
-      "title": "A cell in a cellular array",
-      "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 4, book pp. 83–84, Fig. 4.11",
-      "teaches": "That the environment is placed by the observer, not found in the world. This cell's environment is four OTHER CELLS OF THE SAME ARRAY — nothing distinguishes inside from outside except where the investigator drew the boundary, and the same 5×5 array admits 2²⁵ different structure systems depending on which subset of cells is chosen."
+      "title": "Students in a course",
+      "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 2, Table 2.1 and Table 2.2, Fig. 2.2a",
+      "teaches": "An equivalence relation on a named set, given by Klir as a set, as a matrix, and as a node-edge diagram — the same system in three registers, with the relation partitioning the set into equivalence classes."
     },
     {
-      "file": "klir/criminal-court.sl",
+      "file": "klir/goal-oriented-informationless.sl",
       "tradition": "klir",
-      "title": "Criminal courts and probation, New York State",
-      "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 4, book pp. 77–78, Fig. 4.7",
-      "teaches": "A structure system in Klir's own sense: five elements, ten directed variables, and a feedback edge, over an institutional domain rather than a physical one. Each variable is an output of exactly one element — Klir's own legality rule for structure systems, checkable against this model."
+      "title": "Goal-oriented systems — the Informationless paradigm",
+      "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 10 §10.2, Fig. 10.1",
+      "teaches": "The most restrictive of Klir's four goal-oriented paradigms: the goal-seeking element emits its variable blind, receiving neither the input nor the output it is trying to influence.",
+      "set": "Goal-oriented paradigms"
     },
     {
       "file": "klir/goal-oriented-feedback.sl",
@@ -88,12 +41,59 @@
       "set": "Goal-oriented paradigms"
     },
     {
-      "file": "klir/goal-oriented-informationless.sl",
+      "file": "bunge/two-thing-ab.sl",
+      "tradition": "bunge",
+      "title": "The two-thing system — a acts on b",
+      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §1.2, Definition 1.2, Example, Fig. 1.2",
+      "teaches": "The simplest possible system in Bunge's words: two connected things in an environment lumped into a single thing, with the internal structure a▷b — a acts on b, and not conversely.",
+      "set": "Two-thing structures"
+    },
+    {
+      "file": "bunge/two-thing-ba.sl",
+      "tradition": "bunge",
+      "title": "The two-thing system — b acts on a",
+      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §1.2, Definition 1.2, Example, Fig. 1.2",
+      "teaches": "The same composition and environment as its siblings, with the internal structure reversed to b▷a — showing that structure, not composition, is what distinguishes these systems.",
+      "set": "Two-thing structures"
+    },
+    {
+      "file": "bunge/two-thing-bidirectional.sl",
+      "tradition": "bunge",
+      "title": "The two-thing system — a and b act on each other",
+      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §1.2, Definition 1.2, Example, Fig. 1.2",
+      "teaches": "The same composition and environment again, with the reciprocal internal structure a⋈b — the third and last of the conceivable internal structures on two things.",
+      "set": "Two-thing structures"
+    },
+    {
+      "file": "bunge/coupling-sigma1.sl",
+      "tradition": "bunge",
+      "title": "Coupling graph σ₁ — a symmetric chain",
+      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §2.1, Coupling Graphs and Matrices",
+      "teaches": "The first of Bunge's three coupling examples: a system given as a graph and, equivalently, as a matrix. Every coupling is mutual and excitatory, so the matrix is symmetric and the graph is an undirected chain.",
+      "set": "Coupling graphs"
+    },
+    {
+      "file": "bunge/coupling-sigma2.sl",
+      "tradition": "bunge",
+      "title": "Coupling graph σ₂ — a cycle with inhibition",
+      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §2.1, Coupling Graphs and Matrices",
+      "teaches": "Bunge's second coupling example: four components in a directed cycle where two of the four couplings are inhibitory rather than excitatory, entered in the matrix as −1 against +1.",
+      "set": "Coupling graphs"
+    },
+    {
+      "file": "bunge/coupling-sigma3.sl",
+      "tradition": "bunge",
+      "title": "Coupling graph σ₃ — self-action and feedback",
+      "citation": "Mario Bunge, Treatise on Basic Philosophy, Vol. 4: A World of Systems (1979), Ch. 1 §2.1, Coupling Graphs and Matrices",
+      "teaches": "Bunge's third coupling example, and the one that reads differently in two traditions: components 2 and 3 each act on themselves, and act on each other. His caption — \"the loops indicate self action or feedback\" — names both at once, and both are legal Bunge structure.",
+      "set": "Coupling graphs"
+    },
+    {
+      "file": "klir/cellular-array-cell.sl",
       "tradition": "klir",
-      "title": "Goal-oriented systems — the Informationless paradigm",
-      "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 10 §10.2, Fig. 10.1",
-      "teaches": "The most restrictive of Klir's four goal-oriented paradigms: the goal-seeking element emits its variable blind, receiving neither the input nor the output it is trying to influence.",
-      "set": "Goal-oriented paradigms"
+      "title": "A cell in a cellular array",
+      "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 4, book pp. 83–84, Fig. 4.11",
+      "teaches": "That the environment is placed by the observer, not found in the world. This cell's environment is four OTHER CELLS OF THE SAME ARRAY — nothing distinguishes inside from outside except where the investigator drew the boundary, and the same 5×5 array admits 2²⁵ different structure systems depending on which subset of cells is chosen."
     },
     {
       "file": "klir/serial-binary-adder.sl",
@@ -103,11 +103,11 @@
       "teaches": "A cycle as pure structure. The carry leaves CARRY, is held one discrete time by MEMORY, and returns as the previous carry that both SUM and CARRY depend on — a loop that exists in the wiring, with no dynamics run and no state stored anywhere in this model."
     },
     {
-      "file": "klir/students-in-a-course.sl",
+      "file": "klir/criminal-court.sl",
       "tradition": "klir",
-      "title": "Students in a course",
-      "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 2, Table 2.1 and Table 2.2, Fig. 2.2a",
-      "teaches": "An equivalence relation on a named set, given by Klir as a set, as a matrix, and as a node-edge diagram — the same system in three registers, with the relation partitioning the set into equivalence classes."
+      "title": "Criminal courts and probation, New York State",
+      "citation": "George Klir, Facets of Systems Science, 2nd ed. (2001), Ch. 4, book pp. 77–78, Fig. 4.7",
+      "teaches": "A structure system in Klir's own sense: five elements, ten directed variables, and a feedback edge, over an institutional domain rather than a physical one. Each variable is an output of exactly one element — Klir's own legality rule for structure systems, checkable against this model."
     },
     {
       "file": "mobus/steel-plant.sl",
