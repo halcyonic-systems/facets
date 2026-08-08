@@ -15,7 +15,7 @@
 // seam; manual authoring (textarea + Compile) is always present underneath and
 // never gated on the drafter.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { compileSl, emitSl } from "./kernel";
 import type { CanvasModel, SlError } from "./kernel/types";
 import { CoAuthorMode } from "./CoAuthorMode";
@@ -49,6 +49,12 @@ interface SlPaneProps {
 
 export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel, coauthor }: SlPaneProps) {
   const [mode, setMode] = useState<Mode>("sl");
+  // Faults describe the text as of their compile; once the author types past
+  // them they are history, not the present — dimmed and labeled, never
+  // silently persisted as if still true. Cleared whenever a fresh fault list
+  // arrives (any compile path: button, ⌘⏎, co-author).
+  const [editedSinceCompile, setEditedSinceCompile] = useState(false);
+  useEffect(() => setEditedSinceCompile(false), [errors]);
 
   // Canvas → text: serialize the live model into the pane (kernel emit_sl —
   // canonical, round-trip-golden-tested). Replaces the pane text; the author
@@ -127,7 +133,10 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
         <>
           <textarea
             value={text}
-            onChange={(e) => onTextChange(e.target.value)}
+            onChange={(e) => {
+              onTextChange(e.target.value);
+              setEditedSinceCompile(true);
+            }}
             onKeyDown={(e) => {
               if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                 e.preventDefault();
@@ -142,8 +151,17 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
           {errors.length > 0 && (
             <div
               className="max-h-40 overflow-y-auto border-t px-3 py-2 text-xs"
-              style={{ borderColor: "var(--hairline)", color: "var(--verdict-error)" }}
+              style={{
+                borderColor: "var(--hairline)",
+                color: "var(--verdict-error)",
+                opacity: editedSinceCompile ? 0.45 : 1,
+              }}
             >
+              {editedSinceCompile && (
+                <div className="pb-1" style={{ color: "var(--text-muted)" }}>
+                  edited since last compile — ⌘⏎ to re-check
+                </div>
+              )}
               {errors.map((e, i) => (
                 <div key={i} className="py-0.5 font-mono">
                   line {e.line}: {e.message}

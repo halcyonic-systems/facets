@@ -117,3 +117,61 @@ fn duplicate_quantity_clauses_are_refused() {
                 flow A -> B : matter amount 2 amount 3\n";
     assert!(parse_sl(text).is_err(), "duplicate amount must be refused");
 }
+
+/// Law (#262): a clause keyword sitting where a value belongs is a named
+/// fault, never a garbage parse. Before this check, `unit mere` silently read
+/// `mere` as the unit's NAME and the mere clause vanished from the relation.
+#[test]
+fn orphan_clause_keyword_is_a_named_fault() {
+    for orphan in [
+        "substance amount 2",
+        "amount unit t",
+        "unit mere",
+        "weight mere",
+    ] {
+        let text =
+            format!("component A primitive Combining\nsink B\nflow A -> B : matter {orphan}\n");
+        let errs = parse_sl(&text).expect_err("an orphan clause keyword must be refused");
+        assert!(
+            errs.iter().any(|e| e.message.contains("missing its value")),
+            "`{orphan}` should name the orphan, got: {errs:?}"
+        );
+    }
+}
+
+/// The separating instance for the orphan check: a value genuinely SPELLED
+/// like a clause keyword arrives quoted (reserved words always emit quoted)
+/// and passes untouched — the check refuses accidents, not names.
+#[test]
+fn quoted_keyword_lookalike_values_still_parse() {
+    let text = "component A primitive Combining\nsink B\n\
+                flow A -> B : matter substance \"amount\" amount 2 unit \"mere\"\n";
+    let m = parse_sl(text).expect("quoted lookalikes are names, not orphans");
+    assert_eq!(m.relations[0].substance, "amount");
+    assert_eq!(m.relations[0].unit, "mere");
+}
+
+/// Law (#262): the kernel's projection default must not round-trip as if
+/// authored — a WorldModel amount of ONE reads back unauthored (None), so a
+/// reloaded model never emits `amount 1` the author didn't type. The trade:
+/// a genuinely authored 1 also reads back None, and projection resupplies it.
+#[test]
+fn projected_default_one_reads_back_unauthored() {
+    let m = parse_sl(
+        "component A primitive Combining\nsink B\n\
+         flow A -> B : matter \"out\"\nflow A -> B : matter \"more\" amount 2\n",
+    )
+    .unwrap();
+    let back = bert_canvas::canvas::to_canvas(&project(&m));
+    assert_eq!(back.relations[0].amount, None, "default ONE must read back unauthored");
+    assert_eq!(
+        back.relations[1].amount,
+        Some(Decimal::from(2)),
+        "an authored non-ONE amount survives the reload"
+    );
+    let text = emit_sl(&back).expect("emit");
+    assert!(
+        !text.contains("amount 1\n") && !text.ends_with("amount 1"),
+        "reload must not emit an unauthored `amount 1`:\n{text}"
+    );
+}

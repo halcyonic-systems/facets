@@ -653,6 +653,19 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut substance = String::new();
                 if let [Tok::Word(w), s, rest_tail @ ..] = tail {
                     if w.eq_ignore_ascii_case("substance") {
+                        if let Tok::Word(v) = s {
+                            if clause_head(v) {
+                                fail(
+                                    format!(
+                                        "`substance` is missing its value — `{v}` starts the \
+                                         next clause; name the substance or remove the orphan \
+                                         keyword"
+                                    ),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        }
                         if !s.is_name() {
                             fail(
                                 "substance syntax: `substance <name>` (bare or quoted)".into(),
@@ -688,9 +701,17 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                     }
                                     Err(_) => {
                                         fail(
-                                            "amount syntax: `amount <positive decimal>` \
-                                             (e.g. `amount 1.5`)"
-                                                .into(),
+                                            if clause_head(n) {
+                                                format!(
+                                                    "`amount` is missing its value — `{n}` \
+                                                     starts the next clause; give a magnitude \
+                                                     (`amount 1.5`) or remove the orphan keyword"
+                                                )
+                                            } else {
+                                                "amount syntax: `amount <positive decimal>` \
+                                                 (e.g. `amount 1.5`)"
+                                                    .into()
+                                            },
                                             &mut errors,
                                         );
                                         continue;
@@ -746,6 +767,18 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut unit = String::new();
                 if let [Tok::Word(w), u, rest_tail @ ..] = tail {
                     if w.eq_ignore_ascii_case("unit") {
+                        if let Tok::Word(v) = u {
+                            if clause_head(v) {
+                                fail(
+                                    format!(
+                                        "`unit` is missing its value — `{v}` starts the next \
+                                         clause; name the unit or remove the orphan keyword"
+                                    ),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        }
                         if !u.is_name() {
                             fail(
                                 "unit syntax: `unit <name>` (e.g. `unit ML/mo`, \
@@ -801,7 +834,15 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                 }
                                 Err(_) => {
                                     fail(
-                                        "weight syntax: `weight <non-negative integer>`".into(),
+                                        if clause_head(n) {
+                                            format!(
+                                                "`weight` is missing its value — `{n}` starts \
+                                                 the next clause; give a count or remove the \
+                                                 orphan keyword"
+                                            )
+                                        } else {
+                                            "weight syntax: `weight <non-negative integer>`".into()
+                                        },
                                         &mut errors,
                                     );
                                     continue;
@@ -1717,6 +1758,19 @@ pub const RESERVED_WORDS: &[&str] = &[
     "field",
     "informational",
 ];
+
+/// The flow-tail clause heads, for orphan detection: one of these sitting
+/// where a value belongs means the author deleted the value mid-edit, not
+/// named something after a keyword. All five are [`RESERVED_WORDS`], so a
+/// bare occurrence in a value slot can never be an authored name — a name
+/// spelled like one arrives quoted (`Tok::Str`) and passes untouched.
+/// `ample` stays out: it is positional, and a bare thing or substance named
+/// `ample` must keep re-parsing as itself.
+fn clause_head(w: &str) -> bool {
+    ["substance", "amount", "unit", "mere", "weight"]
+        .iter()
+        .any(|k| w.eq_ignore_ascii_case(k))
+}
 
 /// Grammar keywords deliberately absent from [`RESERVED_WORDS`]: each occupies
 /// a slot no name can reach. `param` and `metric` open their own lines, and no

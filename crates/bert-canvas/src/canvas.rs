@@ -938,10 +938,13 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             kind: substance_to_kind(ix.substance.ty),
             klir_directed: false,
             weight: None,
-            // The kernel cannot say "unauthored", so a reloaded model reads
-            // every quantity as declared — Some even where the author wrote
-            // nothing. The inverse narrowing to project()'s, equally declared.
-            amount: Some(ix.amount),
+            // The kernel cannot say "unauthored", and project() writes ONE
+            // wherever the author wrote nothing — so a reloaded ONE reads back
+            // as unauthored rather than emitting `amount 1` the author never
+            // typed (#262). A genuinely authored 1 is indistinguishable and
+            // also reads back None: the same trade the placeholder root name
+            // makes below, and projection resupplies the ONE either way.
+            amount: Some(ix.amount).filter(|a| *a != bert_core::rust_decimal::Decimal::ONE),
             unit: ix.unit.clone(),
             substance: ix.substance.sub_type.clone(),
             ample: ix.ample,

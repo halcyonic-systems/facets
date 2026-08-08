@@ -136,8 +136,7 @@
       "name": "referral",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false,
-      "amount": "1"
+      "klir_directed": false
     },
     {
       "id": 16,
@@ -146,8 +145,7 @@
       "name": "report out",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false,
-      "amount": "1"
+      "klir_directed": false
     },
     {
       "id": 17,
@@ -156,8 +154,7 @@
       "name": "discharge petition",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false,
-      "amount": "1"
+      "klir_directed": false
     },
     {
       "id": 18,
@@ -166,8 +163,7 @@
       "name": "scheduled",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false,
-      "amount": "1"
+      "klir_directed": false
     },
     {
       "id": 19,
@@ -176,8 +172,7 @@
       "name": "passage vote",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false,
-      "amount": "1"
+      "klir_directed": false
     },
     {
       "id": 20,
@@ -186,8 +181,7 @@
       "name": "cross-referral",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false,
-      "amount": "1"
+      "klir_directed": false
     },
     {
       "id": 21,
@@ -196,8 +190,7 @@
       "name": "if amended",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false,
-      "amount": "1"
+      "klir_directed": false
     },
     {
       "id": 22,
@@ -206,8 +199,7 @@
       "name": "enrolled",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false,
-      "amount": "1"
+      "klir_directed": false
     },
     {
       "id": 23,
@@ -216,8 +208,7 @@
       "name": "veto",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false,
-      "amount": "1"
+      "klir_directed": false
     },
     {
       "id": 24,
@@ -226,8 +217,7 @@
       "name": "signature",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false,
-      "amount": "1"
+      "klir_directed": false
     },
     {
       "id": 25,
@@ -236,8 +226,7 @@
       "name": "",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false,
-      "amount": "1"
+      "klir_directed": false
     },
     {
       "id": 26,
@@ -246,8 +235,7 @@
       "name": "no action",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false,
-      "amount": "1"
+      "klir_directed": false
     },
     {
       "id": 27,
@@ -256,8 +244,7 @@
       "name": "pocket",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false,
-      "amount": "1"
+      "klir_directed": false
     },
     {
       "id": 28,
@@ -266,8 +253,7 @@
       "name": "fail",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false,
-      "amount": "1"
+      "klir_directed": false
     },
     {
       "id": 29,
@@ -276,8 +262,7 @@
       "name": "scheduled (dup)",
       "is_bond": true,
       "kind": "Energy",
-      "klir_directed": false,
-      "amount": "1"
+      "klir_directed": false
     }
   ],
   "boundary": {
