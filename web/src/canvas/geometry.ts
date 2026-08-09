@@ -88,6 +88,11 @@ export function thingById(model: CanvasModel, id: number): Thing | undefined {
  *  offset so two flows on the same pair fan apart instead of overlapping. */
 const PARALLEL_BOW = 30;
 
+/** #306: an on-membrane interface renders at a fraction of a component's body —
+ *  Mobus draws interfaces as pass-ways in the boundary, smaller than the
+ *  processes they serve. Shared by NodeBody, edge rims, and notch placement. */
+export const INTERFACE_SCALE = 0.65;
+
 /** This relation's centered rank among siblings on the same unordered pair
  *  (…-1, 0, 1…) — the shared fan index for both the rim-to-rim bow and the
  *  exo crossing spread, so one flow occupies the same slot in both drawings. */
@@ -108,6 +113,9 @@ export function edgeGeometry(
   model: CanvasModel,
   relation: Relation,
   curved: boolean,
+  /** Per-endpoint rim radii — an on-membrane interface (#306) has a smaller
+   *  body, so its edges must land on the smaller rim, not float off NODE_R. */
+  rr?: { a?: number; b?: number },
 ): { d: string; labelAt: Pt } | null {
   const from = thingById(model, relation.a);
   const to = thingById(model, relation.b);
@@ -116,8 +124,8 @@ export function edgeGeometry(
     const loop = selfLoopPath(from, NODE_R);
     return { d: loop.d, labelAt: loop.labelAt };
   }
-  const a = rimPoint(from, to, NODE_R);
-  const b = rimPoint(to, from, NODE_R);
+  const a = rimPoint(from, to, rr?.a ?? NODE_R);
+  const b = rimPoint(to, from, rr?.b ?? NODE_R);
 
   // Parallel edges between the same pair of nodes would draw the identical path
   // and stack into one indistinguishable, unclickable line. Rank this relation

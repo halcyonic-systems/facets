@@ -10,6 +10,7 @@ import type { CanvasModel, EdgeFact, Lens, LensFacts, PortFact, Thing } from "..
 import { KIND_COLOR, type SimFrame } from "./types";
 import {
   bungeHull,
+  INTERFACE_SCALE,
   membraneRing,
   rimPoint,
   ringPoint,
@@ -116,12 +117,11 @@ export default function Canvas({
   // presentation: the authored position survives in the model and dragging an
   // interface slides it along the ring (the constraint teaches the ontology).
   const authoredInterfaceIds = new Set(facts?.authored_interface_thing_ids ?? []);
-  const ringSource =
-    lens === "Mobus" && authoredInterfaceIds.size > 0 &&
-    model.things.some((t) => t.role === "Component" && !authoredInterfaceIds.has(t.id))
-      ? model.things.filter((t) => !(t.role === "Component" && authoredInterfaceIds.has(t.id)))
-      : model.things;
-  const ring: Ring | null = lens === "Mobus" ? membraneRing(ringSource) : null;
+  // Ring extent comes from ALL components at their AUTHORED positions — the
+  // projection below reads authored coords, so it cannot move the ring it
+  // targets (no circularity). Excluding interfaces here was the first cut and
+  // collapsed the Fed membrane to a bubble around its one plain component.
+  const ring: Ring | null = lens === "Mobus" ? membraneRing(model.things) : null;
   // The display model — identical to the authored model except interface
   // components snap to the ring. Every consumer below (gestures, edges, nodes,
   // ports, fit) reads THIS, so pixels and hit-tests always agree.
@@ -151,7 +151,7 @@ export default function Canvas({
           if (authoredInterfaceIds.has(port.component)) {
             const comp = thingById(dModel, port.component);
             if (!comp) return [];
-            const at = rimPoint(comp, env, NODE_R);
+            const at = rimPoint(comp, env, NODE_R * INTERFACE_SCALE);
             return [{ port, at, angle: Math.atan2(env.y - comp.y, env.x - comp.x), tetherTo: null, compact: true }];
           }
           const at = ringPoint(ring, env);
@@ -171,7 +171,8 @@ export default function Canvas({
             const comp = thingById(dModel, id);
             if (!comp) return [];
             const angle = outwardNormal(ring, comp);
-            const at = { x: comp.x + Math.cos(angle) * NODE_R, y: comp.y + Math.sin(angle) * NODE_R };
+            const r = NODE_R * INTERFACE_SCALE;
+            const at = { x: comp.x + Math.cos(angle) * r, y: comp.y + Math.sin(angle) * r };
             return [
               {
                 port: {

@@ -8,7 +8,7 @@
 // (Tuple.lean): the crossing is env-object ↔ port, never straight to interior.
 import type { PortFact, Relation } from "../../kernel/types";
 import { KIND_COLOR } from "../types";
-import { edgeGeometry, rimPoint, ringPoint, siblingStep, straightPath, thingById, NODE_R, type Pt } from "../geometry";
+import { edgeGeometry, INTERFACE_SCALE, rimPoint, ringPoint, siblingStep, straightPath, thingById, NODE_R, type Pt } from "../geometry";
 import { STYLE } from "../style";
 import { EdgeScaffold, NodeBody, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
@@ -20,6 +20,10 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
   // see primitive-glyphs.tsx). Components only — a primitive on an env object
   // is dead state project() ignores, so it never earns the shape.
   const regulator = thing.role === "Component" && thing.primitive === "Modulating";
+  // #306: an authored interface sits ON the membrane, so it renders compact —
+  // a pass-way, not a peer of the interior processes — and drops the
+  // composition halo (the C/E wash is wrong for a thing straddling the cut).
+  const iface = thing.role === "Component" && thing.interface === true;
   return (
     <NodeBody
       pending={isOrphan}
@@ -29,7 +33,8 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
       onPointerDown={onPointerDown}
       onHandlePointerDown={onHandlePointerDown}
       isSquare={thing.role === "Environment"}
-      showHalo={thing.role === "Component"}
+      showHalo={thing.role === "Component" && !iface}
+      bodyScale={iface ? INTERFACE_SCALE : undefined}
       envOpen={thing.role === "Environment"}
       sphere={thing.role === "Component" && !regulator}
       regulatorTriangle={regulator}
@@ -73,7 +78,7 @@ function edgeStyle(relation: Relation): EdgeStyle {
 function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect }: LensEdgeProps) {
   const geo = edgeGeometry(model, relation, true);
   if (!geo) return null;
-  const { d, labelAt } = geo;
+  let { d, labelAt } = geo;
   const style = edgeStyle(relation);
 
   // Exo flows render as TWO segments — G is bipartite (Tuple.lean): the crossing
@@ -102,6 +107,16 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
         title = `${relation.name ? `"${relation.name}"` : "flow"} · ${relation.kind.toLowerCase()} — ${
           from.role === "Environment" ? "enters" : "exits"
         } the system at ${comp.name} (interface)`;
+        // The compact body's rim is closer in — recompute so heads touch it.
+        const rr =
+          relation.a === comp.id
+            ? { a: NODE_R * INTERFACE_SCALE }
+            : { b: NODE_R * INTERFACE_SCALE };
+        const geoI = edgeGeometry(model, relation, true, rr);
+        if (geoI) {
+          d = geoI.d;
+          labelAt = geoI.labelAt;
+        }
       } else {
         // The dashed interior segment finally says what it means on hover —
         // "which component the interface serves" lived only in a code comment

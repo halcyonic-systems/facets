@@ -2,7 +2,7 @@
 // capsule opened the BOUNDARY editor — it now opens the interface inspector
 // (onSelectInterface with the PortFact); the boundary editor belongs to the
 // membrane stroke alone. (2) #306, ratified: an authored interface component
-// renders ON the membrane ring (computed from the non-interface components),
+// renders ON the membrane ring (extent from ALL components' authored spots),
 // and an interface carrying several protocols says so instead of hiding it.
 // Same pure-render harness as canvasFlowlessPort.test.tsx.
 import { describe, expect, it, vi } from "vitest";
@@ -91,14 +91,18 @@ describe("flow-carrying interface capsule click (2026-08-09)", () => {
     renderToStaticMarkup(
       <Canvas model={model} lens="Mobus" facts={facts} onModelChange={() => {}} onReject={() => {}} />,
     );
-    // Ring is computed from the NON-interface component (Ledger Core) alone, so
-    // its center is Ledger Core's position; Balance Sheet renders projected onto
-    // that ellipse, not at its authored interior spot.
+    // Ring extent comes from ALL components at their AUTHORED positions
+    // (excluding interfaces collapsed the Fed membrane to a bubble); Balance
+    // Sheet renders projected onto that ellipse, not at its interior spot.
     const bs = nodes.find((n) => n.id === 1)!;
     expect(bs).toBeDefined();
     expect({ x: bs.x, y: bs.y }).not.toEqual({ x: 200, y: 260 });
-    const r = NODE_R + 36; // componentRing pad over a single-point bbox
-    const onRing = ((bs.x - 300) / r) ** 2 + ((bs.y - 200) / r) ** 2;
+    // componentRing over the two components' bbox: center (250, 230),
+    // half-extents (50, 30) · √2 + pad.
+    const pad = NODE_R + 36;
+    const rx = 50 * Math.SQRT2 + pad;
+    const ry = 30 * Math.SQRT2 + pad;
+    const onRing = ((bs.x - 250) / rx) ** 2 + ((bs.y - 230) / ry) ** 2;
     expect(onRing).toBeCloseTo(1, 5);
     // The non-interface component stays where it was authored.
     const core = nodes.find((n) => n.id === 3)!;

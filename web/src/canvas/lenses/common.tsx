@@ -74,6 +74,11 @@ interface NodeBodyProps {
    *  as the tank-level disc fill (a Mobus stock metaphor). Default false, so
    *  Klir/Mobus output is unchanged. */
   simPosition?: boolean;
+  /** #306: an on-membrane interface renders at a fraction of the body size —
+   *  a pass-way in the boundary, not a peer of the interior processes. Scales
+   *  the drawn body (shapes, halos, glyph); the hit disc, label text size, and
+   *  connect handle stay full-size for usability. */
+  bodyScale?: number;
 }
 
 // The regulator triangle (Mobus Fig 4.17), apex up, circumradius optically
@@ -112,6 +117,7 @@ export function NodeBody({
   pending = false,
   simPosition = false,
   envHint = false,
+  bodyScale = 1,
 }: NodeBodyProps) {
   const frac = sim ? Math.max(0, Math.min(1, sim.frac)) : null;
   const clipId = `fill-clip-${thing.id}`;
@@ -144,6 +150,9 @@ export function NodeBody({
           drawn glyph (walkthrough #14: bodies were exactly their ink, small at
           fitted zoom). First child so every visible layer draws over it. */}
       <circle data-export-ignore r={NODE_R + 10} fill="transparent" />
+      {/* #306: everything DRAWN scales down for an on-membrane interface; the
+          group scales strokes with it, which reads right for a smaller body. */}
+      <g transform={bodyScale !== 1 ? `scale(${bodyScale})` : undefined}>
       {/* Plain-hover halo — clickable-affordance feedback, softer than the
           connect-drag target halo (`hovered`) so the two meanings stay apart. */}
       {selfHover && !hovered && (
@@ -342,9 +351,11 @@ export function NodeBody({
         </g>
       )}
 
+      </g>
+
       {sim && (
         <text
-          y={-NODE_R - 10}
+          y={-NODE_R * bodyScale - 10}
           textAnchor="middle"
           fontSize={STYLE.simReadoutSize}
           fill="var(--accent-strong)"
@@ -355,7 +366,7 @@ export function NodeBody({
       )}
 
       <text
-        y={NODE_R + 16}
+        y={NODE_R * bodyScale + 16}
         textAnchor="middle"
         fontSize={labelSmall ? STYLE.label.smallSize : STYLE.label.size}
         fill={labelSmall ? "var(--text-muted)" : STYLE.label.fill}
@@ -366,8 +377,8 @@ export function NodeBody({
       </text>
 
       <circle
-        cx={NODE_R * 0.75}
-        cy={NODE_R * 0.75}
+        cx={NODE_R * 0.75 * bodyScale}
+        cy={NODE_R * 0.75 * bodyScale}
         r={STYLE.handle.r}
         fill="var(--bg-primary)"
         stroke="var(--lens-accent)"
