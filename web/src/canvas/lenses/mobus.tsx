@@ -8,7 +8,7 @@
 // (Tuple.lean): the crossing is env-object ↔ port, never straight to interior.
 import type { PortFact, Relation } from "../../kernel/types";
 import { KIND_COLOR } from "../types";
-import { edgeGeometry, rimPoint, ringPoint, straightPath, thingById, NODE_R, type Pt } from "../geometry";
+import { edgeGeometry, rimPoint, ringPoint, siblingStep, straightPath, thingById, NODE_R, type Pt } from "../geometry";
 import { STYLE } from "../style";
 import { EdgeScaffold, NodeBody, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
@@ -51,20 +51,22 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
 }
 
 function edgeStyle(relation: Relation): EdgeStyle {
+  const marker = `arrow-${relation.kind}`;
   switch (relation.kind) {
     case "Matter":
-      return { color: KIND_COLOR[relation.kind], width: STYLE.edge.matter, opacity: 0.9 };
+      return { color: KIND_COLOR[relation.kind], width: STYLE.edge.matter, opacity: 0.9, marker };
     case "Energy":
       return {
         color: KIND_COLOR[relation.kind],
         width: STYLE.edge.energy,
         opacity: 0.9,
         filter: STYLE.energyGlow.enabled ? "url(#energy-glow)" : undefined,
+        marker,
       };
     case "Informational":
-      return { color: KIND_COLOR[relation.kind], width: STYLE.edge.info, dash: "1 4", opacity: 0.95 };
+      return { color: KIND_COLOR[relation.kind], width: STYLE.edge.info, dash: "1 4", opacity: 0.95, marker };
     default:
-      return { color: KIND_COLOR[relation.kind], width: STYLE.edge.energy, opacity: 0.85 };
+      return { color: KIND_COLOR[relation.kind], width: STYLE.edge.energy, opacity: 0.85, marker };
   }
 }
 
@@ -77,21 +79,43 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
   // Exo flows render as TWO segments — G is bipartite (Tuple.lean): the crossing
   // happens env-object ↔ port, never straight to an interior component. The
   // interior routing stays visible but muted so which component the port serves
-  // is not lost.
+  // is not lost. Siblings on one coupling share the interface but must not share
+  // a stroke — all five Fed Balance-Sheet↔Banking flows once drew the identical
+  // segment and read as ONE bold line. They converge AT the interface (that is
+  // the semantics) but spread at the env rim and nudge apart at the capsule.
   let visible: { d: string; markered: boolean }[] = [{ d, markered: true }];
   let interior: string | null = null;
+  let title: string | undefined;
   if (ring && fact?.locus === "Exo" && relation.a !== relation.b) {
     const from = thingById(model, relation.a);
     const to = thingById(model, relation.b);
     if (from && to) {
       const [env, comp] = from.role === "Environment" ? [from, to] : [to, from];
+      // The dashed interior segment finally says what it means on hover —
+      // "which component the interface serves" lived only in a code comment
+      // until the 2026-08-09 field report asked what the dotted line was.
+      title = `${relation.name ? `"${relation.name}"` : "flow"} · ${relation.kind.toLowerCase()} — ${
+        from.role === "Environment" ? "enters" : "exits"
+      } at ${comp.name}'s interface; the dashed segment shows the interface serves ${comp.name}`;
+      const step = siblingStep(model, relation);
       const portPt = ringPoint(ring, env);
-      const envRim = rimPoint(env, portPt, NODE_R);
+      // Env-side spread: rotate this flow's rim contact around the env node.
+      const baseAngle = Math.atan2(portPt.y - env.y, portPt.x - env.x);
+      const angle = baseAngle + step * 0.42;
+      const envRim = { x: env.x + Math.cos(angle) * NODE_R, y: env.y + Math.sin(angle) * NODE_R };
+      // Capsule-side nudge, perpendicular to the segment — heads stay distinct.
+      const len = Math.hypot(portPt.x - envRim.x, portPt.y - envRim.y) || 1;
+      const ux = (portPt.x - envRim.x) / len;
+      const uy = (portPt.y - envRim.y) / len;
+      const portEnd = { x: portPt.x - uy * step * 8, y: portPt.y + ux * step * 8 };
+      // Inbound heads end CLEAR of the capsule (24×14, opaque) — it paints
+      // after the edges, so a marker at the capsule center is never seen.
+      const inboundEnd = { x: portEnd.x - ux * 14, y: portEnd.y - uy * 14 };
       const compRim = rimPoint(comp, portPt, NODE_R);
       const crossing =
         from.role === "Environment"
-          ? straightPath(envRim, portPt) // env → port (flow enters at the interface)
-          : straightPath(portPt, envRim); // port → env (flow exits at the interface)
+          ? straightPath(envRim, inboundEnd) // env → interface (flow enters)
+          : straightPath(portEnd, envRim); // interface → env (flow exits)
       visible = [{ d: crossing, markered: true }];
       interior = straightPath(compRim, portPt);
     }
@@ -118,7 +142,6 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
 
   return (
     <EdgeScaffold
-      d={d}
       labelAt={labelAt}
       style={style}
       interior={interior}
@@ -130,6 +153,7 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
       relationId={relation.id}
       onSelect={onSelect}
       label={label}
+      title={title}
     />
   );
 }

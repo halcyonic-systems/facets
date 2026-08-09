@@ -62,7 +62,6 @@ function EdgeView({ model, relation, sigIndex, selected, driven, sim, onSelect }
   );
   return (
     <EdgeScaffold
-      d={d}
       labelAt={labelAt}
       style={KLIR_STYLE}
       interior={null}

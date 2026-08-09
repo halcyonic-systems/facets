@@ -18,6 +18,10 @@ export interface EdgeStyle {
   dash?: string;
   opacity: number;
   filter?: string;
+  /** Marker def id (e.g. `arrow-Matter`) so the head carries the stroke's
+   *  substance color — a slate head on a green line reads as a terminus, not a
+   *  direction. Omit for the neutral `arrow` (Klir's substance-blind line). */
+  marker?: string;
 }
 
 interface NodeBodyProps {
@@ -376,8 +380,6 @@ export function NodeBody({
 }
 
 interface EdgeScaffoldProps {
-  /** The full-length path `d` — the click target and the selection halo. */
-  d: string;
   labelAt: Pt;
   style: EdgeStyle;
   /** Mobus routes exo flows through a muted interior segment; other lenses pass null. */
@@ -405,7 +407,6 @@ interface EdgeScaffoldProps {
  *  interior, drawn segments, drive dot, and sim readout. The per-lens views
  *  supply the resolved style, routing, label, and any badge overlays. */
 export function EdgeScaffold({
-  d,
   labelAt,
   style,
   interior,
@@ -421,55 +422,67 @@ export function EdgeScaffold({
   title,
 }: EdgeScaffoldProps) {
   const [hover, setHover] = useState(false);
+  // Hit, hover, and selection must trace the strokes the reader can SEE. An exo
+  // flow's `d` is the rim-to-rim curve, but its drawn geometry is the crossing
+  // segment + muted interior — anchoring the hit path on `d` left the visible
+  // line unclickable and lit phantom highlights on empty canvas (2026-08-09).
+  const feltPaths = [...visible.map((seg) => seg.d), ...(interior ? [interior] : [])];
   return (
     <g>
-      {/* Invisible wide hit-path — the click target for "drive this flow".
+      {/* Invisible wide hit-paths — the click target for "drive this flow".
           non-scaling-stroke keeps the target 18 SCREEN px at any zoom: a fitted
           big model halves the world scale, and a world-space target halves with
           it, which is how flows got "hard to click" (walkthrough #14). Hit
           testing follows the rendered stroke, so the effect applies to clicks. */}
-      <path
-        data-export-ignore
-        d={d}
-        fill="none"
-        stroke="transparent"
-        strokeWidth={18}
-        vectorEffect="non-scaling-stroke"
-        style={{ cursor: onSelect ? "pointer" : "default" }}
-        onMouseEnter={() => setHover(true)}
-        onMouseLeave={() => setHover(false)}
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect?.(relationId);
-        }}
-      >
-        {title && <title>{title}</title>}
-      </path>
+      {feltPaths.map((fp, i) => (
+        <path
+          key={i}
+          data-export-ignore
+          d={fp}
+          fill="none"
+          stroke="transparent"
+          strokeWidth={18}
+          vectorEffect="non-scaling-stroke"
+          style={{ cursor: onSelect ? "pointer" : "default" }}
+          onMouseEnter={() => setHover(true)}
+          onMouseLeave={() => setHover(false)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect?.(relationId);
+          }}
+        >
+          {title && <title>{title}</title>}
+        </path>
+      ))}
       {/* Hover feedback — the affordance that tells the reader this is
           clickable BEFORE they commit; softer than selection so the two states
           stay distinct. */}
-      {hover && !selected && onSelect && (
-        <path
-          data-export-ignore
-          d={d}
-          fill="none"
-          stroke="var(--lens-accent)"
-          strokeWidth={STYLE.selection.width}
-          strokeOpacity={STYLE.selection.opacity * 0.45}
-          pointerEvents="none"
-        />
-      )}
-      {selected && (
-        <path
-          data-export-ignore
-          d={d}
-          fill="none"
-          stroke="var(--lens-accent)"
-          strokeWidth={STYLE.selection.width}
-          strokeOpacity={STYLE.selection.opacity}
-          pointerEvents="none"
-        />
-      )}
+      {hover && !selected && onSelect &&
+        feltPaths.map((fp, i) => (
+          <path
+            key={i}
+            data-export-ignore
+            d={fp}
+            fill="none"
+            stroke="var(--lens-accent)"
+            strokeWidth={STYLE.selection.width}
+            strokeOpacity={STYLE.selection.opacity * 0.45}
+            pointerEvents="none"
+          />
+        ))}
+      {selected &&
+        feltPaths.map((fp, i) => (
+          <path
+            key={i}
+            data-export-ignore
+            d={fp}
+            fill="none"
+            stroke="var(--lens-accent)"
+            strokeWidth={STYLE.selection.width}
+            strokeOpacity={STYLE.selection.opacity}
+            pointerEvents="none"
+          />
+        ))}
       {interior && (
         <path
           d={interior}
@@ -491,7 +504,7 @@ export function EdgeScaffold({
           strokeWidth={style.width}
           strokeDasharray={style.dash}
           filter={style.filter}
-          markerEnd={seg.markered ? "url(#arrow)" : undefined}
+          markerEnd={seg.markered ? `url(#${style.marker ?? "arrow"})` : undefined}
           pointerEvents="none"
         />
       ))}

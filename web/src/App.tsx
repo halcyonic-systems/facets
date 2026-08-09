@@ -18,6 +18,7 @@ import type {
   IssueTarget,
   Manifest,
   MarkovRunResult,
+  PortFact,
   ResidueEntry,
   RunResultRich,
   Thing,
@@ -32,6 +33,7 @@ import type { DecomposeAffordance } from "./canvas/NodeEditor";
 import { KlirRegister } from "./canvas/KlirRegister";
 import { BungeRegister } from "./canvas/BungeRegister";
 import { BoundaryPopover } from "./canvas/BoundaryPopover";
+import { InterfacePopover } from "./canvas/InterfacePopover";
 import { PaletteRail } from "./canvas/PaletteRail";
 import type { PaletteTool } from "./canvas/lenses/registry";
 import { LensPalette } from "./canvas/lenses/registry";
@@ -229,6 +231,10 @@ function Workspace() {
   const [selectedRelationId, setSelectedRelationId] = useState<number | null>(null);
   const [selectedThingId, setSelectedThingId] = useState<number | null>(null);
   const [boundaryAnchor, setBoundaryAnchor] = useState<Pt | null>(null);
+  // The interface inspector's target — a flow-carrying capsule (r = (S, φ)).
+  // Cleared on any model identity change: the PortFact is a snapshot, and a
+  // swap (walk enter/exit, open) or an edit can orphan it.
+  const [interfaceSel, setInterfaceSel] = useState<{ port: PortFact; at: Pt } | null>(null);
   const [armed, setArmed] = useState<PaletteTool | null>(null);
   const [canvasPan, setCanvasPan] = useState<Pt>({ x: 0, y: 0 });
   const [canvasScale, setCanvasScale] = useState(1);
@@ -385,10 +391,12 @@ function Workspace() {
           setArmed(null);
           return;
         }
-        const hadSelection = selectedThingId !== null || selectedRelationId !== null || boundaryAnchor !== null;
+        const hadSelection =
+          selectedThingId !== null || selectedRelationId !== null || boundaryAnchor !== null || interfaceSel !== null;
         setSelectedThingId(null);
         setSelectedRelationId(null);
         setBoundaryAnchor(null);
+        setInterfaceSel(null);
         if (hadSelection) return;
         const el = document.activeElement as HTMLElement | null;
         if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
@@ -409,7 +417,11 @@ function Workspace() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selectedThingId, selectedRelationId, boundaryAnchor, armed]);
+  }, [selectedThingId, selectedRelationId, boundaryAnchor, interfaceSel, armed]);
+
+  // A PortFact is a snapshot of the open model — any model identity change
+  // (walk enter/exit, open, edit) may orphan it, so the inspector closes.
+  useEffect(() => setInterfaceSel(null), [canvasModel]);
 
   const runWith = (modelJson: string, csv: string, m: Manifest, dtv: number, tv: number, edited = false) => {
     try {
@@ -2015,7 +2027,10 @@ function Workspace() {
                       armed={armed}
                       onSelectThing={(id) => {
                         setSelectedThingId(id);
-                        if (id !== null) setBoundaryAnchor(null);
+                        if (id !== null) {
+                          setBoundaryAnchor(null);
+                          setInterfaceSel(null);
+                        }
                       }}
                       onEnterThing={(t) => {
                         if (t.child_model) enterThingChild(t);
@@ -2027,6 +2042,16 @@ function Workspace() {
                       onExitUp={walk.length > 0 ? () => void exitTo(walk.length - 1) : null}
                       onSelectBoundary={(at) => {
                         setBoundaryAnchor(at);
+                        setInterfaceSel(null);
+                        setSelectedThingId(null);
+                        setSelectedRelationId(null);
+                      }}
+                      // Clicking a flow-carrying capsule asks about THE
+                      // INTERFACE — list its crossing flows, don't answer
+                      // with the boundary editor (2026-08-09 field report).
+                      onSelectInterface={(port, at) => {
+                        setInterfaceSel({ port, at });
+                        setBoundaryAnchor(null);
                         setSelectedThingId(null);
                         setSelectedRelationId(null);
                       }}
@@ -2094,6 +2119,15 @@ function Workspace() {
                         anchor={toScreen(boundaryAnchor)}
                         onUpdateBoundary={updateBoundary}
                         onClose={() => setBoundaryAnchor(null)}
+                      />
+                    )}
+                    {interfaceSel && (
+                      <InterfacePopover
+                        port={interfaceSel.port}
+                        model={canvasModel}
+                        anchor={toScreen(interfaceSel.at)}
+                        onSelectRelation={setSelectedRelationId}
+                        onClose={() => setInterfaceSel(null)}
                       />
                     )}
                     {selectedRelation && popoverAnchor && !registerActive && (

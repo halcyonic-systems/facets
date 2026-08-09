@@ -7,7 +7,7 @@
 // stage: backdrops, the render loop, and the node-name draft input.
 import { useEffect, useRef, useState } from "react";
 import type { CanvasModel, EdgeFact, Lens, LensFacts, PortFact, Thing } from "../kernel/types";
-import type { SimFrame } from "./types";
+import { KIND_COLOR, type SimFrame } from "./types";
 import {
   bungeHull,
   membraneRing,
@@ -52,9 +52,15 @@ interface Props {
    *  double-click keeps its node-draft meaning. The shell owns the exit
    *  (same autosaving exitTo path as the breadcrumb). */
   onExitUp?: (() => void) | null;
-  /** Click the Mobus membrane (or a port — interfaces belong to B) to open the
-   *  boundary inspector; the anchor is a world-space point on the ring. */
+  /** Click the Mobus membrane STROKE to open the boundary inspector; the
+   *  anchor is a world-space point on the ring. Capsules no longer route here —
+   *  clicking an interface used to answer a different question ("the boundary")
+   *  than the one asked (2026-08-09 field report). */
   onSelectBoundary?: (at: Pt) => void;
+  /** Click a flow-carrying capsule to open the INTERFACE inspector — the
+   *  crossing flows at that r = (S, φ), each clickable through to the flow.
+   *  UI word is "interface" (Mobus's term); "port" stays code-internal. */
+  onSelectInterface?: (port: PortFact, at: Pt) => void;
   driven?: Set<string>;
   sim?: SimFrame | null;
   /** Probability mass per state name at the scrubbed tick (#67 J9). Present for
@@ -87,6 +93,7 @@ export default function Canvas({
   onEnterThing,
   onExitUp = null,
   onSelectBoundary,
+  onSelectInterface,
   driven,
   sim,
   mass = null,
@@ -246,6 +253,12 @@ export default function Canvas({
   // verdicts; only their pixel placement is computed here.
   const boundarySet = new Set(facts?.boundary_thing_ids ?? []);
   const orphanSet = new Set(facts?.orphan_env_thing_ids ?? []);
+  // Authored `interface` components (kernel fact). Until now only the FLOWLESS
+  // ones got any mark (the tethered notch) — an interface that actually carries
+  // flows looked like an ordinary component, so the SL keyword was invisible
+  // exactly where it mattered (Fed model, 2026-08-09). Every authored interface
+  // now wears a membrane-colored outer ring: it is boundary apparatus.
+  const interfaceSet = new Set(facts?.authored_interface_thing_ids ?? []);
   const edgeFactById = new Map<number, EdgeFact>((facts?.edges ?? []).map((e) => [e.id, e]));
 
   // The per-lens container (#100 phase 0) — one mechanism, three honest
@@ -298,6 +311,23 @@ export default function Canvas({
         >
           <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-slate)" />
         </marker>
+        {/* Substance-colored heads for the kind-colored lenses (Mobus, Bunge) —
+            the head is part of the stroke, not a neutral terminus. Klir keeps
+            the slate `arrow`: its line is deliberately substance-blind. */}
+        {Object.entries(KIND_COLOR).map(([k, color]) => (
+          <marker
+            key={k}
+            id={`arrow-${k}`}
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth={STYLE.arrowSize}
+            markerHeight={STYLE.arrowSize}
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
+          </marker>
+        ))}
         {/* the "work sphere" sheen of the house drawings (Fig. 4.5) — a neutral
             top-left highlight, never a substance color. */}
         <radialGradient id="mobus-sphere" cx="38%" cy="34%" r="72%">
@@ -485,6 +515,32 @@ export default function Canvas({
               onPointerDown={(e) => gestures.onNodePointerDown(e, t)}
               onHandlePointerDown={(e) => gestures.onHandlePointerDown(e, t)}
             />
+            {/* Authored-interface ring — same slate as the membrane, because an
+                interface IS boundary apparatus (I ⊆ C at the membrane). Drawn
+                over the node chrome; purely a read, never a hit target. */}
+            {interfaceSet.has(t.id) && (
+              <g transform={`translate(${t.x}, ${t.y})`} pointerEvents="none">
+                <title>interface component (SL: `interface`) — gates flows at the membrane; it does not transform them</title>
+                <circle
+                  r={NODE_R + 5}
+                  fill="none"
+                  stroke="var(--accent-slate)"
+                  strokeWidth={1.5}
+                  strokeOpacity={0.8}
+                />
+                {/* Above the body — the name label owns NODE_R + 16 below. */}
+                <text
+                  y={-(NODE_R + 11)}
+                  textAnchor="middle"
+                  fontSize={8}
+                  fill="var(--accent-slate)"
+                  className="font-mono"
+                  letterSpacing={1}
+                >
+                  INTERFACE
+                </text>
+              </g>
+            )}
           </g>
         ))}
 
@@ -497,7 +553,7 @@ export default function Canvas({
             port={port}
             at={at}
             angle={angle}
-            onSelect={onSelectBoundary ? () => onSelectBoundary(at) : undefined}
+            onSelect={onSelectInterface ? () => onSelectInterface(port, at) : undefined}
           />
         ))}
         {/* A flowless port has no membrane crossing to inspect — it names one

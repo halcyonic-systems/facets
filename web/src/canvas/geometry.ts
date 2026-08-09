@@ -88,6 +88,19 @@ export function thingById(model: CanvasModel, id: number): Thing | undefined {
  *  offset so two flows on the same pair fan apart instead of overlapping. */
 const PARALLEL_BOW = 30;
 
+/** This relation's centered rank among siblings on the same unordered pair
+ *  (…-1, 0, 1…) — the shared fan index for both the rim-to-rim bow and the
+ *  exo crossing spread, so one flow occupies the same slot in both drawings. */
+export function siblingStep(model: CanvasModel, relation: Relation): number {
+  const siblings = model.relations
+    .filter(
+      (r) =>
+        (r.a === relation.a && r.b === relation.b) || (r.a === relation.b && r.b === relation.a),
+    )
+    .sort((r1, r2) => r1.id - r2.id);
+  return siblings.findIndex((r) => r.id === relation.id) - (siblings.length - 1) / 2;
+}
+
 /** The `d` + label anchor for a drawn relation, shared by every lens's EdgeView
  *  and the DrivePopover anchor (App reads it to place the popover at the same
  *  point the edge renders its name) — pure pixel math, no systems meaning. */
@@ -110,13 +123,7 @@ export function edgeGeometry(
   // and stack into one indistinguishable, unclickable line. Rank this relation
   // among its siblings on the same unordered pair (stable, by id) and bow it by a
   // symmetric perpendicular offset so they fan apart.
-  const siblings = model.relations
-    .filter(
-      (r) =>
-        (r.a === relation.a && r.b === relation.b) || (r.a === relation.b && r.b === relation.a),
-    )
-    .sort((r1, r2) => r1.id - r2.id);
-  const step = siblings.findIndex((r) => r.id === relation.id) - (siblings.length - 1) / 2;
+  const step = siblingStep(model, relation);
 
   if (step !== 0) {
     const mid = midpoint(a, b);
