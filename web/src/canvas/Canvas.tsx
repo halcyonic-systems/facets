@@ -107,32 +107,71 @@ export default function Canvas({
   // The Mobus membrane and its ports are computed BEFORE the gesture hook: a
   // port is a drop target for a flow drag (#213), and the hook hit-tests
   // against these pixels. Ring math is pure and reads only props.
-  const ring: Ring | null = lens === "Mobus" ? membraneRing(model.things) : null;
+  //
+  // #306 (ratified 2026-08-09): an authored `interface` component lives ON the
+  // membrane — Mobus's interfaces are boundary subsystems (Fig 4.9), not
+  // interior nodes tethered to a capsule. So the ring is computed from the
+  // NON-interface components (breaking the ring←components circularity), and
+  // interface components are PROJECTED onto it for rendering. The projection is
+  // presentation: the authored position survives in the model and dragging an
+  // interface slides it along the ring (the constraint teaches the ontology).
+  const authoredInterfaceIds = new Set(facts?.authored_interface_thing_ids ?? []);
+  const ringSource =
+    lens === "Mobus" && authoredInterfaceIds.size > 0 &&
+    model.things.some((t) => t.role === "Component" && !authoredInterfaceIds.has(t.id))
+      ? model.things.filter((t) => !(t.role === "Component" && authoredInterfaceIds.has(t.id)))
+      : model.things;
+  const ring: Ring | null = lens === "Mobus" ? membraneRing(ringSource) : null;
+  // The display model — identical to the authored model except interface
+  // components snap to the ring. Every consumer below (gestures, edges, nodes,
+  // ports, fit) reads THIS, so pixels and hit-tests always agree.
+  const dModel: CanvasModel =
+    ring && authoredInterfaceIds.size > 0
+      ? {
+          ...model,
+          things: model.things.map((t) =>
+            t.role === "Component" && authoredInterfaceIds.has(t.id) ? { ...t, ...ringPoint(ring, t) } : t,
+          ),
+        }
+      : model;
   const outwardNormal = (r: Ring, p: Pt) => Math.atan2(p.y - r.cy, p.x - r.cx);
-  const portsAt: { port: PortFact; at: Pt; angle: number; tetherTo: Pt | null }[] =
+  // A port owned by an authored interface rides ITS component's rim (the
+  // component is on the membrane; the crossing happens at the component) —
+  // a small chevron notch toward its environment, label suppressed (the flow
+  // names live on the edges and in the interface inspector). A port on a
+  // NON-interface component keeps the classic membrane capsule + interior
+  // tether — visibly second-class, which is the point: the drawing shows
+  // which crossings have declared boundary apparatus and which do not.
+  type PortAt = { port: PortFact; at: Pt; angle: number; tetherTo: Pt | null; compact: boolean };
+  const portsAt: PortAt[] =
     ring && facts
-      ? facts.ports.flatMap((port) => {
-          const env = thingById(model, port.env);
+      ? facts.ports.flatMap((port): PortAt[] => {
+          const env = thingById(dModel, port.env);
           if (!env) return [];
+          if (authoredInterfaceIds.has(port.component)) {
+            const comp = thingById(dModel, port.component);
+            if (!comp) return [];
+            const at = rimPoint(comp, env, NODE_R);
+            return [{ port, at, angle: Math.atan2(env.y - comp.y, env.x - comp.x), tetherTo: null, compact: true }];
+          }
           const at = ringPoint(ring, env);
-          // A flow-carrying port is already tied to its component by the exo
-          // edge's muted interior segment (EdgeView) — no second tether.
-          return [{ port, at, angle: outwardNormal(ring, at), tetherTo: null }];
+          return [{ port, at, angle: outwardNormal(ring, at), tetherTo: null, compact: false }];
         })
       : [];
 
-  // Authored-flowless interfaces (kernel fact: authored ∖ flow-crossing) get a
-  // notch too — placed at the ring point toward the designated component itself
-  // (the membrane meets the component; no env object exists to aim at). The
-  // display attrs are presentation; membership in I is the kernel's.
-  const flowlessAt: { port: PortFact; at: Pt; angle: number; tetherTo: Pt | null }[] =
+  // Authored-flowless interfaces (kernel fact: authored ∖ flow-crossing) still
+  // get a notch — the component sits on the membrane already (#306 snap), so
+  // the notch rides its outward rim and the #213 tether is gone: position now
+  // says what the dashed line used to.
+  const flowlessAt: PortAt[] =
     ring && facts
       ? facts.authored_interface_thing_ids
           .filter((id) => !facts.ports.some((p) => p.component === id))
           .flatMap((id) => {
-            const comp = thingById(model, id);
+            const comp = thingById(dModel, id);
             if (!comp) return [];
-            const at = ringPoint(ring, comp);
+            const angle = outwardNormal(ring, comp);
+            const at = { x: comp.x + Math.cos(angle) * NODE_R, y: comp.y + Math.sin(angle) * NODE_R };
             return [
               {
                 port: {
@@ -145,8 +184,9 @@ export default function Canvas({
                   protocol: `${comp.name} · no flow`,
                 },
                 at,
-                angle: outwardNormal(ring, at),
-                tetherTo: rimPoint(comp, at, NODE_R),
+                angle,
+                tetherTo: null,
+                compact: true,
               },
             ];
           })
@@ -158,7 +198,7 @@ export default function Canvas({
   }));
 
   const gestures = useCanvasGestures({
-    model,
+    model: dModel,
     svgRef,
     onModelChange,
     onReject,
@@ -246,19 +286,13 @@ export default function Canvas({
   }, [onStageWheel]);
 
   const views = LensRegistry[lens];
-  const containerBox = boundingBox(model.things);
+  const containerBox = boundingBox(dModel.things);
 
   // Kernel facts, indexed for the render loop. WHICH nodes are boundary, WHICH
   // edges are endo/exo/bond/self-loop, and WHICH ports exist are all Rust
   // verdicts; only their pixel placement is computed here.
   const boundarySet = new Set(facts?.boundary_thing_ids ?? []);
   const orphanSet = new Set(facts?.orphan_env_thing_ids ?? []);
-  // Authored `interface` components (kernel fact). Until now only the FLOWLESS
-  // ones got any mark (the tethered notch) — an interface that actually carries
-  // flows looked like an ordinary component, so the SL keyword was invisible
-  // exactly where it mattered (Fed model, 2026-08-09). Every authored interface
-  // now wears a membrane-colored outer ring: it is boundary apparatus.
-  const interfaceSet = new Set(facts?.authored_interface_thing_ids ?? []);
   const edgeFactById = new Map<number, EdgeFact>((facts?.edges ?? []).map((e) => [e.id, e]));
 
   // The per-lens container (#100 phase 0) — one mechanism, three honest
@@ -270,7 +304,7 @@ export default function Canvas({
   // walked child's G′ stand-ins sit outside both containers by construction
   // (they follow Components only; an env thing dragged inside is a layout
   // artifact, not a semantic error: C ∩ E = ∅ is enforced by the kernel's roles).
-  const hull: Hull | null = lens === "Bunge" ? bungeHull(model.things) : null;
+  const hull: Hull | null = lens === "Bunge" ? bungeHull(dModel.things) : null;
 
   return (
     <svg
@@ -465,14 +499,14 @@ export default function Canvas({
           </>
         )}
 
-        {model.relations.map((r) => (
+        {dModel.relations.map((r) => (
           <views.EdgeView
             key={r.id}
-            model={model}
+            model={dModel}
             relation={r}
             fact={edgeFactById.get(r.id)}
             ring={ring}
-            sigIndex={model.relations.indexOf(r)}
+            sigIndex={dModel.relations.indexOf(r)}
             selected={selectedRelationId === r.id}
             driven={driven?.has(r.name) ?? false}
             sim={sim?.edges[r.name]}
@@ -483,8 +517,8 @@ export default function Canvas({
         {connectFrom !== null && connectPos && (
           <line
             data-export-ignore
-            x1={thingById(model, connectFrom)?.x}
-            y1={thingById(model, connectFrom)?.y}
+            x1={thingById(dModel, connectFrom)?.x}
+            y1={thingById(dModel, connectFrom)?.y}
             x2={connectPos.x}
             y2={connectPos.y}
             stroke="var(--lens-accent)"
@@ -496,9 +530,9 @@ export default function Canvas({
 
         {/* #67 J9: probability mass rides UNDER the nodes — the state-transition
             structure stays the primary read, the distribution is the overlay. */}
-        {mass && <MassOverlay things={model.things} mass={mass} />}
+        {mass && <MassOverlay things={dModel.things} mass={mass} />}
 
-        {model.things.map((t) => (
+        {dModel.things.map((t) => (
           <g
             key={t.id}
             onDoubleClick={(e) => {
@@ -515,44 +549,42 @@ export default function Canvas({
               onPointerDown={(e) => gestures.onNodePointerDown(e, t)}
               onHandlePointerDown={(e) => gestures.onHandlePointerDown(e, t)}
             />
-            {/* Authored-interface ring — same slate as the membrane, because an
-                interface IS boundary apparatus (I ⊆ C at the membrane). Drawn
-                over the node chrome; purely a read, never a hit target. */}
-            {interfaceSet.has(t.id) && (
-              <g transform={`translate(${t.x}, ${t.y})`} pointerEvents="none">
-                <title>interface component (SL: `interface`) — gates flows at the membrane; it does not transform them</title>
-                <circle
-                  r={NODE_R + 5}
-                  fill="none"
-                  stroke="var(--accent-slate)"
-                  strokeWidth={1.5}
-                  strokeOpacity={0.8}
-                />
-                {/* Above the body — the name label owns NODE_R + 16 below. */}
-                <text
-                  y={-(NODE_R + 11)}
-                  textAnchor="middle"
-                  fontSize={8}
-                  fill="var(--accent-slate)"
-                  className="font-mono"
-                  letterSpacing={1}
-                >
-                  INTERFACE
-                </text>
-              </g>
-            )}
+            {/* #306: position now carries the interface meaning (the component
+                sits ON the membrane), so the interim ring/tag is gone. What
+                remains is the multi-protocol notice — one interface carrying
+                couplings to several environments is drawable but coarser than
+                Mobus's one-protocol interfaces. State it, don't hide it (the
+                Bunge ⊘M pattern); the remedy lives in the title. */}
+            {authoredInterfaceIds.has(t.id) &&
+              (facts?.ports.filter((p) => p.component === t.id).length ?? 0) >= 2 && (
+                <g transform={`translate(${t.x}, ${t.y - NODE_R - 11})`} pointerEvents="all">
+                  <title>
+                    {`one interface carrying ${facts!.ports.filter((p) => p.component === t.id).length} protocols — decompose it when the seam contract supports interface decomposition (SSF #43); or split into sibling interfaces now`}
+                  </title>
+                  <text
+                    textAnchor="middle"
+                    fontSize={8}
+                    fill="var(--verdict-warning)"
+                    className="font-mono"
+                    letterSpacing={0.5}
+                  >
+                    {facts!.ports.filter((p) => p.component === t.id).length} protocols
+                  </text>
+                </g>
+              )}
           </g>
         ))}
 
         {/* Mobus interface ports — pill notches in the membrane, one per kernel
             PortFact (r = (S, φ): existence, direction, and protocol are kernel
             facts; only the pixel position is computed here). */}
-        {portsAt.map(({ port, at, angle }) => (
+        {portsAt.map(({ port, at, angle, compact }) => (
           <views.PortView
             key={`${port.component}-${port.env}`}
             port={port}
             at={at}
             angle={angle}
+            compact={compact}
             onSelect={onSelectInterface ? () => onSelectInterface(port, at) : undefined}
           />
         ))}
@@ -568,7 +600,7 @@ export default function Canvas({
             tether borrows the exo edge's muted interior treatment (dashed,
             0.3 opacity) so the same line means the same thing in both cases:
             "this port serves that component." */}
-        {flowlessAt.map(({ port, at, angle, tetherTo }) => (
+        {flowlessAt.map(({ port, at, angle, tetherTo, compact }) => (
           <g
             key={`authored-${port.component}`}
             data-port-owner={port.component}
@@ -593,6 +625,7 @@ export default function Canvas({
               port={port}
               at={at}
               angle={angle}
+              compact={compact}
               onSelect={onSelectThing ? () => onSelectThing(port.component) : undefined}
             />
           </g>

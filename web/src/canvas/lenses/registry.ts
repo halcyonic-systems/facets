@@ -53,8 +53,10 @@ export interface LensPortProps {
   at: Pt;
   /** Outward normal of the membrane at `at` (rad) — orients the penetrating capsule. */
   angle?: number;
-  /** Ports belong to B — clicking one opens the boundary inspector. */
+  /** Clicking opens the interface inspector (flow-carrying) or selects the owning thing (flowless). */
   onSelect?: () => void;
+  /** #306: notch riding an on-membrane interface component's rim — smaller, unlabelled. */
+  compact?: boolean;
 }
 
 export interface LensViews {

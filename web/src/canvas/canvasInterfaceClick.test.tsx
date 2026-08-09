@@ -1,20 +1,26 @@
-// 2026-08-09 field report: clicking a flow-carrying interface capsule opened
-// the BOUNDARY editor — it now opens the interface inspector (onSelectInterface
-// with the PortFact), and the boundary editor belongs to the membrane stroke
-// alone. Same pure-render harness as canvasFlowlessPort.test.tsx. Also the
-// separating instance for the authored-interface ring: a marked component WITH
-// flows renders the INTERFACE tag (it was invisible exactly there before).
+// 2026-08-09 field reports, both halves. (1) Clicking a flow-carrying interface
+// capsule opened the BOUNDARY editor — it now opens the interface inspector
+// (onSelectInterface with the PortFact); the boundary editor belongs to the
+// membrane stroke alone. (2) #306, ratified: an authored interface component
+// renders ON the membrane ring (computed from the non-interface components),
+// and an interface carrying several protocols says so instead of hiding it.
+// Same pure-render harness as canvasFlowlessPort.test.tsx.
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { CanvasModel, LensFacts, PortFact } from "../kernel/types";
+import { NODE_R } from "./geometry";
 
-const { captured } = vi.hoisted(() => ({
+const { captured, nodes } = vi.hoisted(() => ({
   captured: [] as { component: number; env: number; onSelect?: () => void }[],
+  nodes: [] as { id: number; x: number; y: number }[],
 }));
 
 vi.mock("./lenses/mobus", () => ({
   Mobus: {
-    NodeView: () => null,
+    NodeView: (props: { thing: { id: number; x: number; y: number } }) => {
+      nodes.push({ id: props.thing.id, x: props.thing.x, y: props.thing.y });
+      return null;
+    },
     EdgeView: () => null,
     PortView: (props: { port: PortFact; onSelect?: () => void }) => {
       captured.push({ component: props.port.component, env: props.port.env, onSelect: props.onSelect });
@@ -28,22 +34,30 @@ import Canvas from "./Canvas";
 const model: CanvasModel = {
   lens: "Mobus",
   things: [
-    { id: 1, name: "Balance Sheet", x: 200, y: 200, role: "Component", interface: true },
+    { id: 1, name: "Balance Sheet", x: 200, y: 260, role: "Component", interface: true },
     { id: 2, name: "Banking System", x: 500, y: 200, role: "Environment" },
+    { id: 3, name: "Ledger Core", x: 300, y: 200, role: "Component" },
+    { id: 4, name: "U.S. Treasury", x: 300, y: 520, role: "Environment" },
   ],
-  relations: [{ id: 10, a: 2, b: 1, name: "reserves", kind: "Matter", is_bond: true }],
+  relations: [
+    { id: 10, a: 2, b: 1, name: "reserves", kind: "Matter", is_bond: true },
+    { id: 11, a: 4, b: 1, name: "TGA deposits", kind: "Matter", is_bond: true },
+  ],
   boundary: { porosity: 0, perceptive_fuzziness: 0 },
 };
 
 const facts: LensFacts = {
   boundary_thing_ids: [1],
-  environment_thing_ids: [2],
+  environment_thing_ids: [2, 4],
   orphan_env_thing_ids: [],
   authored_interface_thing_ids: [1],
   boundary_props: { porosity: 0, perceptive_fuzziness: 0 },
   aggregate: false,
   edges: [],
-  ports: [{ component: 1, env: 2, relation_ids: [10], direction: "Receives", protocol: "reserves" }],
+  ports: [
+    { component: 1, env: 2, relation_ids: [10], direction: "Receives", protocol: "reserves" },
+    { component: 1, env: 4, relation_ids: [11], direction: "Receives", protocol: "TGA deposits" },
+  ],
 };
 
 describe("flow-carrying interface capsule click (2026-08-09)", () => {
@@ -72,10 +86,30 @@ describe("flow-carrying interface capsule click (2026-08-09)", () => {
     expect(onSelectBoundary).not.toHaveBeenCalled();
   });
 
-  it("marks a flow-carrying authored interface on the node itself", () => {
+  it("snaps the authored interface onto the membrane ring (#306)", () => {
+    nodes.length = 0;
+    renderToStaticMarkup(
+      <Canvas model={model} lens="Mobus" facts={facts} onModelChange={() => {}} onReject={() => {}} />,
+    );
+    // Ring is computed from the NON-interface component (Ledger Core) alone, so
+    // its center is Ledger Core's position; Balance Sheet renders projected onto
+    // that ellipse, not at its authored interior spot.
+    const bs = nodes.find((n) => n.id === 1)!;
+    expect(bs).toBeDefined();
+    expect({ x: bs.x, y: bs.y }).not.toEqual({ x: 200, y: 260 });
+    const r = NODE_R + 36; // componentRing pad over a single-point bbox
+    const onRing = ((bs.x - 300) / r) ** 2 + ((bs.y - 200) / r) ** 2;
+    expect(onRing).toBeCloseTo(1, 5);
+    // The non-interface component stays where it was authored.
+    const core = nodes.find((n) => n.id === 3)!;
+    expect({ x: core.x, y: core.y }).toEqual({ x: 300, y: 200 });
+  });
+
+  it("states the multi-protocol coarseness instead of hiding it (ratified b)", () => {
     const html = renderToStaticMarkup(
       <Canvas model={model} lens="Mobus" facts={facts} onModelChange={() => {}} onReject={() => {}} />,
     );
-    expect(html).toContain("INTERFACE");
+    expect(html).toContain("2 protocols");
+    expect(html).toContain("SSF #43");
   });
 });

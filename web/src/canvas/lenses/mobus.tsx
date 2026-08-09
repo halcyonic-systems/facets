@@ -86,38 +86,51 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
   let visible: { d: string; markered: boolean }[] = [{ d, markered: true }];
   let interior: string | null = null;
   let title: string | undefined;
+  let exoAtInterface = false;
   if (ring && fact?.locus === "Exo" && relation.a !== relation.b) {
     const from = thingById(model, relation.a);
     const to = thingById(model, relation.b);
     if (from && to) {
       const [env, comp] = from.role === "Environment" ? [from, to] : [to, from];
-      // The dashed interior segment finally says what it means on hover —
-      // "which component the interface serves" lived only in a code comment
-      // until the 2026-08-09 field report asked what the dotted line was.
-      title = `${relation.name ? `"${relation.name}"` : "flow"} · ${relation.kind.toLowerCase()} — ${
-        from.role === "Environment" ? "enters" : "exits"
-      } at ${comp.name}'s interface; the dashed segment shows the interface serves ${comp.name}`;
-      const step = siblingStep(model, relation);
-      const portPt = ringPoint(ring, env);
-      // Env-side spread: rotate this flow's rim contact around the env node.
-      const baseAngle = Math.atan2(portPt.y - env.y, portPt.x - env.x);
-      const angle = baseAngle + step * 0.42;
-      const envRim = { x: env.x + Math.cos(angle) * NODE_R, y: env.y + Math.sin(angle) * NODE_R };
-      // Capsule-side nudge, perpendicular to the segment — heads stay distinct.
-      const len = Math.hypot(portPt.x - envRim.x, portPt.y - envRim.y) || 1;
-      const ux = (portPt.x - envRim.x) / len;
-      const uy = (portPt.y - envRim.y) / len;
-      const portEnd = { x: portPt.x - uy * step * 8, y: portPt.y + ux * step * 8 };
-      // Inbound heads end CLEAR of the capsule (24×14, opaque) — it paints
-      // after the edges, so a marker at the capsule center is never seen.
-      const inboundEnd = { x: portEnd.x - ux * 14, y: portEnd.y - uy * 14 };
-      const compRim = rimPoint(comp, portPt, NODE_R);
-      const crossing =
-        from.role === "Environment"
-          ? straightPath(envRim, inboundEnd) // env → interface (flow enters)
-          : straightPath(portEnd, envRim); // interface → env (flow exits)
-      visible = [{ d: crossing, markered: true }];
-      interior = straightPath(compRim, portPt);
+      // #306: an authored-interface component sits ON the membrane, so the
+      // ordinary rim-to-rim edge IS the crossing — no synthetic crossing
+      // segment, no dashed interior, nothing to explain away. The two-segment
+      // machinery below survives only for crossings WITHOUT declared boundary
+      // apparatus (a non-interface component reached through a bare capsule).
+      if (comp.interface) {
+        exoAtInterface = true;
+        title = `${relation.name ? `"${relation.name}"` : "flow"} · ${relation.kind.toLowerCase()} — ${
+          from.role === "Environment" ? "enters" : "exits"
+        } the system at ${comp.name} (interface)`;
+      } else {
+        // The dashed interior segment finally says what it means on hover —
+        // "which component the interface serves" lived only in a code comment
+        // until the 2026-08-09 field report asked what the dotted line was.
+        title = `${relation.name ? `"${relation.name}"` : "flow"} · ${relation.kind.toLowerCase()} — ${
+          from.role === "Environment" ? "enters" : "exits"
+        } at ${comp.name}'s interface; the dashed segment shows the interface serves ${comp.name}`;
+        const step = siblingStep(model, relation);
+        const portPt = ringPoint(ring, env);
+        // Env-side spread: rotate this flow's rim contact around the env node.
+        const baseAngle = Math.atan2(portPt.y - env.y, portPt.x - env.x);
+        const angle = baseAngle + step * 0.42;
+        const envRim = { x: env.x + Math.cos(angle) * NODE_R, y: env.y + Math.sin(angle) * NODE_R };
+        // Capsule-side nudge, perpendicular to the segment — heads stay distinct.
+        const len = Math.hypot(portPt.x - envRim.x, portPt.y - envRim.y) || 1;
+        const ux = (portPt.x - envRim.x) / len;
+        const uy = (portPt.y - envRim.y) / len;
+        const portEnd = { x: portPt.x - uy * step * 8, y: portPt.y + ux * step * 8 };
+        // Inbound heads end CLEAR of the capsule (24×14, opaque) — it paints
+        // after the edges, so a marker at the capsule center is never seen.
+        const inboundEnd = { x: portEnd.x - ux * 14, y: portEnd.y - uy * 14 };
+        const compRim = rimPoint(comp, portPt, NODE_R);
+        const crossing =
+          from.role === "Environment"
+            ? straightPath(envRim, inboundEnd) // env → interface (flow enters)
+            : straightPath(portEnd, envRim); // interface → env (flow exits)
+        visible = [{ d: crossing, markered: true }];
+        interior = straightPath(compRim, portPt);
+      }
     }
   }
 
@@ -125,6 +138,8 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
   // the edge doubles the text right at the membrane.
   // Pair the name with its flow-set (#80): an internal flow lives in N. Exo flows
   // (interior set) carry their name at the port φ and stay in G, so they skip this.
+  // #306 exception: a crossing at an on-membrane interface has no capsule label
+  // (compact notch), so the edge carries the name — tagged G, its actual set.
   const label =
     relation.name && interior === null ? (
       <text
@@ -136,7 +151,7 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
         className="font-mono pointer-events-none"
       >
         {relation.name}
-        <tspan fill="var(--text-secondary)">{" · N"}</tspan>
+        <tspan fill="var(--text-secondary)">{exoAtInterface ? " · G" : " · N"}</tspan>
       </text>
     ) : null;
 
@@ -168,11 +183,16 @@ function PortView({
   at,
   angle = 0,
   onSelect,
+  compact = false,
 }: {
   port: PortFact;
   at: Pt;
   angle?: number;
   onSelect?: () => void;
+  /** #306: a notch riding an on-membrane interface component's rim — smaller
+   *  capsule, no protocol label (the flow names live on the edges and in the
+   *  interface inspector; the title keeps φ for hover). */
+  compact?: boolean;
 }) {
   const chevron =
     port.direction === "Receives"
@@ -182,6 +202,8 @@ function PortView({
         : "M1-3 L4 0 L1 3 M-1-3 L-4 0 L-1 3"; // ⇄ hybrid
   const label = port.protocol.length > 22 ? `${port.protocol.slice(0, 21)}…` : port.protocol;
   const out = { x: Math.cos(angle), y: Math.sin(angle) };
+  const hw = compact ? 8 : 12; // capsule half-width along the normal
+  const hh = compact ? 5 : 7;
   return (
     <g
       transform={`translate(${at.x}, ${at.y})`}
@@ -198,11 +220,11 @@ function PortView({
       {/* long axis along the normal → half inside, half outside the membrane */}
       <g transform={`rotate(${(angle * 180) / Math.PI})`}>
         <rect
-          x={-12}
-          y={-7}
-          width={24}
-          height={14}
-          rx={STYLE.portRx + 4}
+          x={-hw}
+          y={-hh}
+          width={hw * 2}
+          height={hh * 2}
+          rx={STYLE.portRx + (compact ? 2 : 4)}
           fill="var(--bg-primary)"
           stroke="var(--lens-accent)"
           strokeWidth={STYLE.portStrokeWidth}
@@ -212,17 +234,19 @@ function PortView({
       {/* The label sits OUTSIDE the capsule, anchored away from it — centering
           it on the outward normal put half the string back across the notch and
           the interior, which is how `T1 · no flow` printed as `no flow`. */}
-      <text
-        x={out.x * 16}
-        y={out.y * 16}
-        textAnchor={out.x > 0.25 ? "start" : out.x < -0.25 ? "end" : "middle"}
-        dominantBaseline="central"
-        fontSize={9}
-        fill="var(--text-muted)"
-        className="font-mono pointer-events-none"
-      >
-        {label}
-      </text>
+      {!compact && (
+        <text
+          x={out.x * 16}
+          y={out.y * 16}
+          textAnchor={out.x > 0.25 ? "start" : out.x < -0.25 ? "end" : "middle"}
+          dominantBaseline="central"
+          fontSize={9}
+          fill="var(--text-muted)"
+          className="font-mono pointer-events-none"
+        >
+          {label}
+        </text>
+      )}
     </g>
   );
 }

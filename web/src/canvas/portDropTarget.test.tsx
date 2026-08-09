@@ -75,8 +75,11 @@ describe("the port reads as its component's (#213)", () => {
       <Canvas model={model} lens="Mobus" facts={facts} onModelChange={() => {}} onReject={() => {}} />,
     );
 
-  it("draws a tether from the component to its notch", () => {
-    expect(markup()).toContain('data-port-tether="1"');
+  it("rides the component's rim with no tether — position says it now (#306)", () => {
+    // The #213 dashed tether existed to stitch an interior node to its membrane
+    // notch. Under the #306 snap the interface component IS on the membrane,
+    // so the notch rides its rim and the tether is gone by design.
+    expect(markup()).not.toContain("data-port-tether");
   });
 
   it("names the owning component on the notch instead of leaving it anonymous", () => {
