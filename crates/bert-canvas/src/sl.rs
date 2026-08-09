@@ -607,19 +607,13 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         }
                     }
                 }
-                // Parent-side-only knowledge the store-free compiler can and must
-                // reject early: v1's Lean contract covers a component's internal
-                // network only, not flows crossing the parent membrane through an
-                // interface component (issue #89 gate-open narrowing).
-                if interface && child_model.is_some() {
-                    fail(
-                        "v1 refuses to decompose interface components — membrane-crossing \
-                         flows not yet in the Lean contract; see #89"
-                            .into(),
-                        &mut errors,
-                    );
-                    ok = false;
-                }
+                // The v1 interface-decomposition refusal that lived here was
+                // LIFTED 2026-08-09: SSF #43 (InterfaceDecomposition.lean,
+                // merged) covers membrane-crossing flows through the
+                // decomposed component, and the seam check carries the
+                // crossing half (γsrc/γsnk + counterparty preservation) in
+                // bert-core::decomposition. `interface` + `decomposes` on one
+                // component is now a legal, checked authoring move.
                 if !ok {
                     continue;
                 }

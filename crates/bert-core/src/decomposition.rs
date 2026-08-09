@@ -18,7 +18,14 @@
 //! | Lean field | meaning | Rust check | refusal cites |
 //! |---|---|---|---|
 //! | `comp_mem` | `comp ∈ parent.components` | `comp` resolves to a parent system relatum | `Decomposition.comp_mem` |
-//! | *(v1 narrowing)* | `comp` is not a parent interface (membrane-crossing flows through `c` are outside the Lean contract) | `parent.boundary_components()` membership | v1 interface-component refusal |
+//! | `comp_interface` *(when it holds)* | `comp` may be a parent interface — its membrane crossings get the crossing half below (SSF #43, merged 2026-08-09; the v1 refusal is LIFTED) | `parent.boundary_components()` membership selects the crossing partition | — |
+//! | `γsrc` | `crossingSources ≃ exoInflows(c)` (bijection) | equal cardinality of crossing child sources / parent exo inflows | `InterfaceDecomposition.γsrc` |
+//! | `xsrc_preserves_kind` | `γsrc` preserves substance kind | equal substance-kind multisets | `InterfaceDecomposition.xsrc_preserves_kind` |
+//! | `xsrc_env_preserved` | refine, don't absorb: same environmental counterparty | per-counterparty-name kind multisets equal | `InterfaceDecomposition.xsrc_env_preserved` |
+//! | `γsnk` | `crossingSinks ≃ exoOutflows(c)` (bijection) | equal cardinality of crossing child sinks / parent exo outflows | `InterfaceDecomposition.γsnk` |
+//! | `xsnk_preserves_kind` | `γsnk` preserves substance kind | equal substance-kind multisets | `InterfaceDecomposition.xsnk_preserves_kind` |
+//! | `xsnk_env_preserved` | refine, don't absorb: same environmental counterparty | per-counterparty-name kind multisets equal | `InterfaceDecomposition.xsnk_env_preserved` |
+//! | `derived_env` *(widened)* | `E′` additionally holds the external neighbourhood of `c` | counterparty stand-ins required and accepted by name | `InterfaceDecomposition.derived_env` |
 //! | `βsrc` | `childSources ≃ inflows(c)` (bijection) | equal cardinality of `child_sources` / `inflows` | `Decomposition.βsrc` |
 //! | `src_preserves_kind` | `βsrc` preserves substance kind | equal substance-kind multisets | `Decomposition.src_preserves_kind` |
 //! | `βsnk` | `childSinks ≃ outflows(c)` (bijection) | equal cardinality of `child_sinks` / `outflows` | `Decomposition.βsnk` |
@@ -129,6 +136,58 @@ fn outflows<'a>(parent: &'a WorldModel, comp: &Id) -> Vec<&'a Interaction> {
         .iter()
         .filter(|ix| is_system_relatum(&ix.source) && is_system_relatum(&ix.sink) && &ix.source == comp)
         .collect()
+}
+
+/// `exoIn(c)`: parent membrane crossings INTO `comp` (source is a parent
+/// environmental object). The crossing half's parent-side carrier (SSF #43).
+fn exo_inflows<'a>(parent: &'a WorldModel, comp: &Id, env: &HashSet<Id>) -> Vec<&'a Interaction> {
+    parent
+        .interactions
+        .iter()
+        .filter(|ix| env.contains(&ix.source) && &ix.sink == comp)
+        .collect()
+}
+
+/// `exoOut(c)`: parent membrane crossings OUT of `comp` (sink is environmental).
+fn exo_outflows<'a>(parent: &'a WorldModel, comp: &Id, env: &HashSet<Id>) -> Vec<&'a Interaction> {
+    parent
+        .interactions
+        .iter()
+        .filter(|ix| &ix.source == comp && env.contains(&ix.sink))
+        .collect()
+}
+
+/// Name of an environment entity (source/sink), by id — the nominal identity
+/// key the crossing half matches counterparties on (same rule as
+/// [`env_identity_map`]: empty names identify nothing).
+fn env_entity_name(model: &WorldModel, id: &Id) -> String {
+    model
+        .environment
+        .sources
+        .iter()
+        .chain(model.environment.sinks.iter())
+        .find(|e| &e.info.id == id)
+        .map(|e| e.info.name.clone())
+        .unwrap_or_default()
+}
+
+/// Per-counterparty-name substance-kind multisets — the transcription of the
+/// Lean's `x*_env_preserved` + `x*_preserves_kind` pair: a crossing keeps its
+/// kind AND its environmental counterparty, so grouping by counterparty name
+/// and comparing kind multisets checks both at once (nominal identity).
+fn kinds_by_counterparty(
+    edges: &[&Interaction],
+    name_of: impl Fn(&Interaction) -> String,
+) -> HashMap<String, HashMap<SubstanceType, usize>> {
+    let mut map: HashMap<String, HashMap<SubstanceType, usize>> = HashMap::new();
+    for ix in edges {
+        let name = name_of(ix);
+        if name.is_empty() {
+            continue;
+        }
+        *map.entry(name).or_default().entry(ix.substance.ty).or_insert(0) += 1;
+    }
+    map
 }
 
 /// `Src′`: child boundary flows inbound from the child's environment (source ∈ E′).
@@ -294,14 +353,13 @@ fn interior_neighbors(parent: &WorldModel, comp: &Id) -> Vec<Id> {
     neighbors
 }
 
-/// The eligibility gate the door and the seam check share. Row `comp_mem`
-/// (`comp ∈ parent.components` — everything downstream is defined in terms of a
-/// genuine parent component, so a failure short-circuits) plus the v1 binding
-/// narrowing (gate comment, 2026-07-20): REFUSE to decompose a component that is
-/// itself a parent interface. Flows crossing the parent membrane THROUGH `comp`
-/// are not yet in the Lean contract (`inflows`/`outflows` cover the internal
-/// network only) — refuse loudly rather than check a seam the mathematics does
-/// not yet underwrite.
+/// The eligibility gate the door and the seam check share — row `comp_mem`
+/// only (`comp ∈ parent.components`; everything downstream is defined in terms
+/// of a genuine parent component, so a failure short-circuits). The v1
+/// interface-component refusal that lived here was LIFTED 2026-08-09: SSF #43
+/// (`InterfaceDecomposition.lean`, merged) covers membrane-crossing flows
+/// through `comp`, so a boundary component now gets the crossing half of the
+/// contract instead of a refusal.
 fn decomposability(parent: &WorldModel, comp: &Id) -> Result<(), Box<ValidationIssue>> {
     let comp_is_component =
         is_system_relatum(comp) && parent.systems.iter().any(|s| &s.info.id == comp);
@@ -314,21 +372,6 @@ fn decomposability(parent: &WorldModel, comp: &Id) -> Result<(), Box<ValidationI
                 id_str(comp)
             ),
             "Reference a component that exists in the parent model's systems",
-            Some(comp.clone()),
-        )));
-    }
-    if parent.boundary_components().contains(comp) {
-        return Err(Box::new(refuse(
-            id_str(comp),
-            format!(
-                "v1 refuses to decompose \"{}\": it is an interface component of the \
-                 parent (it couples to the environment). The boundary contract in \
-                 SSF Decomposition.lean covers the parent's INTERNAL network only; \
-                 membrane-crossing flows through an interface component are not yet \
-                 formalized, so decomposing one has no checked seam",
-                comp_name(parent, comp)
-            ),
-            "Decompose an interior component, or wait for the external-flow case to land in the Lean contract",
             Some(comp.clone()),
         )));
     }
@@ -424,6 +467,13 @@ pub fn derive_child(parent: &WorldModel, comp: &Id) -> Result<WorldModel, Vec<Va
 
     let in_c = inflows(parent, comp);
     let out_c = outflows(parent, comp);
+    // The crossing half (SSF #43): membrane crossings through `comp` also get
+    // stand-ins — a Source per external counterparty feeding it, a Sink per
+    // counterparty it exports to — so a decomposed INTERFACE is born refining
+    // its crossings, never absorbing them.
+    let parent_env = env_object_ids(parent);
+    let x_in = exo_inflows(parent, comp, &parent_env);
+    let x_out = exo_outflows(parent, comp, &parent_env);
 
     // One Source stand-in per inflow neighbor, one Sink per outflow neighbor,
     // first-appearance order; the shared env index space mirrors the canvas
@@ -434,6 +484,7 @@ pub fn derive_child(parent: &WorldModel, comp: &Id) -> Result<WorldModel, Vec<Va
     let mut source_of: HashMap<Id, Id> = HashMap::new();
     let mut sink_of: HashMap<Id, Id> = HashMap::new();
     let stand_in = |neighbor: &Id,
+                        name: String,
                         inbound: bool,
                         idx: &mut i64,
                         entities: &mut Vec<ExternalEntity>,
@@ -451,7 +502,7 @@ pub fn derive_child(parent: &WorldModel, comp: &Id) -> Result<WorldModel, Vec<Va
             info: Info {
                 id: id.clone(),
                 level: -1,
-                name: raw_name(parent, neighbor),
+                name,
                 description: String::new(),
             },
             ty: if inbound {
@@ -475,10 +526,16 @@ pub fn derive_child(parent: &WorldModel, comp: &Id) -> Result<WorldModel, Vec<Va
         of.insert(neighbor.clone(), id);
     };
     for ix in &in_c {
-        stand_in(&ix.source, true, &mut env_idx, &mut sources, &mut source_of);
+        stand_in(&ix.source, raw_name(parent, &ix.source), true, &mut env_idx, &mut sources, &mut source_of);
     }
     for ix in &out_c {
-        stand_in(&ix.sink, false, &mut env_idx, &mut sinks, &mut sink_of);
+        stand_in(&ix.sink, raw_name(parent, &ix.sink), false, &mut env_idx, &mut sinks, &mut sink_of);
+    }
+    for ix in &x_in {
+        stand_in(&ix.source, env_entity_name(parent, &ix.source), true, &mut env_idx, &mut sources, &mut source_of);
+    }
+    for ix in &x_out {
+        stand_in(&ix.sink, env_entity_name(parent, &ix.sink), false, &mut env_idx, &mut sinks, &mut sink_of);
     }
 
     let mut interactions: Vec<Interaction> = Vec::new();
@@ -506,11 +563,11 @@ pub fn derive_child(parent: &WorldModel, comp: &Id) -> Result<WorldModel, Vec<Va
         smart_parameters: vec![],
         endpoint_offset: None,
     };
-    for ix in &in_c {
+    for ix in in_c.iter().chain(x_in.iter()) {
         let from = source_of[&ix.source].clone();
         interactions.push(flow(interactions.len(), from, root_id.clone(), ix));
     }
-    for ix in &out_c {
+    for ix in out_c.iter().chain(x_out.iter()) {
         let to = sink_of[&ix.sink].clone();
         interactions.push(flow(interactions.len(), root_id.clone(), to, ix));
     }
@@ -563,9 +620,132 @@ pub fn check_decomposition_contract(
     let env = env_object_ids(child);
     let in_c = inflows(parent, comp);
     let out_c = outflows(parent, comp);
-    let src = child_sources(child, &env);
-    let snk = child_sinks(child, &env);
+    let all_src = child_sources(child, &env);
+    let all_snk = child_sinks(child, &env);
     let child_boundary = child.boundary_components();
+
+    // The crossing half's parent-side carriers (SSF #43): membrane crossings
+    // through `comp`, and the names of their environmental counterparties —
+    // the nominal identity the child's crossing stand-ins are matched on.
+    let parent_env = env_object_ids(parent);
+    let exo_in = exo_inflows(parent, comp, &parent_env);
+    let exo_out = exo_outflows(parent, comp, &parent_env);
+    let counterparty_names: HashSet<String> = exo_in
+        .iter()
+        .map(|ix| env_entity_name(parent, &ix.source))
+        .chain(exo_out.iter().map(|ix| env_entity_name(parent, &ix.sink)))
+        .filter(|n| !n.is_empty())
+        .collect();
+
+    // Partition the child's boundary flows: a flow whose env endpoint stands
+    // for an external counterparty (by name) is a CROSSING; the rest are the
+    // interior half, checked exactly as before. The partition is the theorem
+    // the Lean proves from `disjoint` (`childSources_partition`); here it is
+    // a computation the same nominal identity performs.
+    let child_env_name =
+        |id: &Id| -> String { env_entity_name(child, id) };
+    let (x_src, src): (Vec<&Interaction>, Vec<&Interaction>) = all_src
+        .iter()
+        .copied()
+        .partition(|ix| counterparty_names.contains(&child_env_name(&ix.source)));
+    let (x_snk, snk): (Vec<&Interaction>, Vec<&Interaction>) = all_snk
+        .iter()
+        .copied()
+        .partition(|ix| counterparty_names.contains(&child_env_name(&ix.sink)));
+
+    // Row `γsrc`: crossing child sources biject `comp`'s exo inflows.
+    if x_src.len() != exo_in.len() {
+        issues.push(refuse(
+            loc.clone(),
+            format!(
+                "InterfaceDecomposition.γsrc: the child exposes {} crossing inbound \
+                 flow(s) but {} membrane crossing(s) enter the parent through \"{}\"; \
+                 the crossing contract requires a bijection γ : XSrc′ ≅ exoIn(c) — the \
+                 child's boundary must REFINE the parent's crossings, never absorb or \
+                 invent one",
+                x_src.len(),
+                exo_in.len(),
+                comp_name(parent, comp)
+            ),
+            "Give the child exactly one inbound crossing (from a stand-in named after the external counterparty) per membrane crossing entering the decomposed interface",
+            Some(comp.clone()),
+        ));
+    } else if kind_multiset(&x_src) != kind_multiset(&exo_in) {
+        issues.push(refuse(
+            loc.clone(),
+            format!(
+                "InterfaceDecomposition.xsrc_preserves_kind: the child's inbound \
+                 crossings and the parent's exo inflows at \"{}\" have the same count \
+                 but different substance kinds — a crossing may not be re-kinded on \
+                 the way through the finer boundary",
+                comp_name(parent, comp)
+            ),
+            "Match each inbound crossing's substance kind to the parent crossing it refines",
+            Some(comp.clone()),
+        ));
+    } else if kinds_by_counterparty(&x_src, |ix| child_env_name(&ix.source))
+        != kinds_by_counterparty(&exo_in, |ix| env_entity_name(parent, &ix.source))
+    {
+        issues.push(refuse(
+            loc.clone(),
+            format!(
+                "InterfaceDecomposition.xsrc_env_preserved: the child's inbound \
+                 crossings do not preserve their environmental counterparties at \
+                 \"{}\" — refine, don't absorb: each crossing must originate at the \
+                 very same external object as the parent crossing it answers for",
+                comp_name(parent, comp)
+            ),
+            "Keep each crossing on its own counterparty stand-in (matched by name), with its original substance kind",
+            Some(comp.clone()),
+        ));
+    }
+
+    // Row `γsnk`: crossing child sinks biject `comp`'s exo outflows.
+    if x_snk.len() != exo_out.len() {
+        issues.push(refuse(
+            loc.clone(),
+            format!(
+                "InterfaceDecomposition.γsnk: the child exposes {} crossing outbound \
+                 flow(s) but {} membrane crossing(s) leave the parent through \"{}\"; \
+                 the crossing contract requires a bijection γ : XSnk′ ≅ exoOut(c) — the \
+                 child's boundary must REFINE the parent's crossings, never absorb or \
+                 invent one",
+                x_snk.len(),
+                exo_out.len(),
+                comp_name(parent, comp)
+            ),
+            "Give the child exactly one outbound crossing (to a stand-in named after the external counterparty) per membrane crossing leaving the decomposed interface",
+            Some(comp.clone()),
+        ));
+    } else if kind_multiset(&x_snk) != kind_multiset(&exo_out) {
+        issues.push(refuse(
+            loc.clone(),
+            format!(
+                "InterfaceDecomposition.xsnk_preserves_kind: the child's outbound \
+                 crossings and the parent's exo outflows at \"{}\" have the same count \
+                 but different substance kinds — a crossing may not be re-kinded on \
+                 the way through the finer boundary",
+                comp_name(parent, comp)
+            ),
+            "Match each outbound crossing's substance kind to the parent crossing it refines",
+            Some(comp.clone()),
+        ));
+    } else if kinds_by_counterparty(&x_snk, |ix| child_env_name(&ix.sink))
+        != kinds_by_counterparty(&exo_out, |ix| env_entity_name(parent, &ix.sink))
+    {
+        issues.push(refuse(
+            loc.clone(),
+            format!(
+                "InterfaceDecomposition.xsnk_env_preserved: the child's outbound \
+                 crossings do not preserve their environmental counterparties at \
+                 \"{}\" — refine, don't absorb: each crossing must reach the very \
+                 same external object as the parent crossing it answers for",
+                comp_name(parent, comp)
+            ),
+            "Keep each crossing on its own counterparty stand-in (matched by name), with its original substance kind",
+            Some(comp.clone()),
+        ));
+    }
 
     // Row `βsrc`: child sources biject `comp`'s inflows (source half of β).
     if src.len() != in_c.len() {
@@ -630,9 +810,10 @@ pub fn check_decomposition_contract(
         ));
     }
 
-    // Row `src_lands`: each child source lands on a child interface member
-    // (its non-env terminal is a component in `child.boundary_components()`).
-    for ix in &src {
+    // Row `src_lands`: each child boundary inflow — interior OR crossing —
+    // lands on a child interface member (this is what makes a crossing land
+    // somewhere NAMED, the point of decomposing an interface at all).
+    for ix in &all_src {
         if !child_boundary.contains(&ix.sink) {
             issues.push(refuse(
                 format!("{loc}/child_sources"),
@@ -648,8 +829,9 @@ pub fn check_decomposition_contract(
         }
     }
 
-    // Row `snk_lands`: each child sink's non-env terminal is an interface member.
-    for ix in &snk {
+    // Row `snk_lands`: each child boundary outflow's non-env terminal is an
+    // interface member — interior or crossing alike.
+    for ix in &all_snk {
         if !child_boundary.contains(&ix.source) {
             issues.push(refuse(
                 format!("{loc}/child_sinks"),
@@ -719,7 +901,9 @@ pub fn check_decomposition_contract(
         .iter()
         .chain(child.environment.sinks.iter())
     {
-        if !neighbor_names.contains(e.info.name.as_str()) {
+        if !neighbor_names.contains(e.info.name.as_str())
+            && !counterparty_names.contains(e.info.name.as_str())
+        {
             let label = if e.info.name.is_empty() {
                 id_str(&e.info.id)
             } else {
@@ -729,12 +913,32 @@ pub fn check_decomposition_contract(
                 format!("{loc}/derived_env"),
                 format!(
                     "Decomposition.derived_env: child environment object \"{label}\" does \
-                     not stand for any interior neighbor of \"{}\" — E′ is exactly the \
-                     parent's interior neighborhood of the decomposed component, and a \
+                     not stand for any interior neighbor or external counterparty of \
+                     \"{}\" — E′ is exactly the parent's neighborhood (interior and, \
+                     for an interface, external) of the decomposed component, and a \
                      stand-in carries its neighbor's name",
                     comp_name(parent, comp)
                 ),
-                "Name the environment object after the parent neighbor it stands for, or remove it",
+                "Name the environment object after the parent neighbor or counterparty it stands for, or remove it",
+                Some(comp.clone()),
+            ));
+        }
+    }
+    // Widened `derived_env` (SSF #43): every external counterparty of an
+    // interface `comp` must have a stand-in too — a crossing with no stand-in
+    // is the dropped-crossing case γ already refuses, but the missing STAND-IN
+    // is its own nameable fact with its own fix.
+    for name in &counterparty_names {
+        if !env_names.contains(name.as_str()) {
+            issues.push(refuse(
+                format!("{loc}/derived_env"),
+                format!(
+                    "InterfaceDecomposition.derived_env: external counterparty \"{name}\" \
+                     of \"{}\" has no stand-in in the child's environment — E′ must \
+                     contain the external neighborhood of a decomposed interface",
+                    comp_name(parent, comp)
+                ),
+                "Add an environment object named after the external counterparty, carrying its crossing flow(s)",
                 Some(comp.clone()),
             ));
         }
@@ -935,34 +1139,109 @@ mod tests {
         assert!(messages(&issues).contains("comp_mem"), "must name the property: {}", messages(&issues));
     }
 
-    // ── v1 interface-component refusal ──
+    // ── the crossing half (SSF #43 — the v1 refusal is lifted) ──
+    // Transcribed separating instances: the Lean file proves `fedSplit` passes
+    // while `droppedChild` and `childWith 9` are refused; the fixtures below
+    // are the same three shapes in kernel dress.
 
     #[test]
     fn interior_component_is_not_refused_as_interface() {
-        // C0.0 touches no environment object in parent_model → interior → allowed.
+        // C0.0 touches no environment object in parent_model → interior → the
+        // crossing half is vacuous and the old contract runs unchanged.
         let issues =
             check_decomposition_contract(&parent_model(), &comp(), &child_model("Energy", "Material", false, false));
-        assert!(!messages(&issues).contains("interface component"));
+        assert!(!messages(&issues).contains("InterfaceDecomposition"));
     }
 
-    #[test]
-    fn interface_component_is_refused() {
-        // Add an exo edge coupling C0.0 to an environment sink → C0.0 becomes a
-        // parent interface component → v1 must refuse to decompose it.
+    /// Parent where C0.0 is an interface: one membrane crossing C0.0 → "Grid"
+    /// (Material) alongside the two interior flows.
+    fn interface_parent() -> WorldModel {
         let mut parent = parent_model();
         let value = json!({
             "info": { "id": "E-1", "level": -1, "name": "", "description": "" },
-            "sources": [], "sinks": [ ext("Snk-1.0", "Snk-1.0", "Sink") ]
+            "sources": [], "sinks": [ ext("Snk-1.0", "Grid", "Sink") ]
         });
         parent.environment = serde_json::from_value(value).unwrap();
         parent.interactions.push(
             serde_json::from_value(exo_flow("F2", "leak", "C0.0", "Snk-1.0", "Material")).unwrap(),
         );
+        parent
+    }
+
+    /// The passing child: the interior seam of `child_model` PLUS a crossing
+    /// stand-in named "Grid" carrying the Material crossing out of the burner.
+    fn refining_child(crossing_kind: &str, standin_name: &str) -> WorldModel {
+        let mut child = child_model("Energy", "Material", false, false);
+        let standin: ExternalEntity =
+            serde_json::from_value(ext("Snk-1.1", standin_name, "Sink")).unwrap();
+        child.environment.sinks.push(standin);
+        child.interactions.push(
+            serde_json::from_value(exo_flow("F2", "child-leak", "C0.0", "Snk-1.1", crossing_kind))
+                .unwrap(),
+        );
+        child
+    }
+
+    #[test]
+    fn crossing_seam_passes_when_child_refines_it() {
+        // The fedSplit shape: same counterparty (by name), same kind, landing
+        // on a child component. An interface component is now decomposable.
         let issues =
-            check_decomposition_contract(&parent, &comp(), &child_model("Energy", "Material", false, false));
+            check_decomposition_contract(&interface_parent(), &comp(), &refining_child("Material", "Grid"));
+        assert!(issues.is_empty(), "a refining crossing seam must be clean: {}", messages(&issues));
+    }
+
+    #[test]
+    fn dropped_crossing_is_refused() {
+        // The droppedChild shape: the child absorbs the crossing (no stand-in,
+        // no crossing flow). γsnk cannot exist — and the widened derived_env
+        // names the missing stand-in.
+        let issues = check_decomposition_contract(
+            &interface_parent(),
+            &comp(),
+            &child_model("Energy", "Material", false, false),
+        );
+        let m = messages(&issues);
+        assert!(m.contains("InterfaceDecomposition.γsnk"), "must cite γsnk: {m}");
+        assert!(m.contains("InterfaceDecomposition.derived_env"), "must name the missing stand-in: {m}");
+    }
+
+    #[test]
+    fn rekinded_crossing_is_refused() {
+        // The childWith-9 shape: crossing kept, counterparty kept, substance
+        // re-kinded Material → Energy on the way through the finer boundary.
+        let issues =
+            check_decomposition_contract(&interface_parent(), &comp(), &refining_child("Energy", "Grid"));
         assert!(
-            messages(&issues).contains("v1 refuses") && messages(&issues).contains("interface component"),
-            "interface refusal must be loud and say why: {}",
+            messages(&issues).contains("InterfaceDecomposition.xsnk_preserves_kind"),
+            "must cite the kind preservation: {}",
+            messages(&issues)
+        );
+    }
+
+    #[test]
+    fn swapped_counterparties_are_refused() {
+        // Two crossings whose kinds swap counterparties: global kind multisets
+        // match, so only the per-counterparty check (xsnk_env_preserved —
+        // refine, don't absorb) can catch the re-termination.
+        let mut parent = interface_parent();
+        let extra: ExternalEntity = serde_json::from_value(ext("Snk-1.1", "Vent", "Sink")).unwrap();
+        parent.environment.sinks.push(extra);
+        parent.interactions.push(
+            serde_json::from_value(exo_flow("F3", "exhaust", "C0.0", "Snk-1.1", "Energy")).unwrap(),
+        );
+        // Child crossings: Grid gets Energy, Vent gets Material — swapped.
+        let mut child = refining_child("Energy", "Grid");
+        let vent: ExternalEntity = serde_json::from_value(ext("Snk-1.2", "Vent", "Sink")).unwrap();
+        child.environment.sinks.push(vent);
+        child.interactions.push(
+            serde_json::from_value(exo_flow("F3", "child-exhaust", "C0.0", "Snk-1.2", "Material"))
+                .unwrap(),
+        );
+        let issues = check_decomposition_contract(&parent, &comp(), &child);
+        assert!(
+            messages(&issues).contains("InterfaceDecomposition.xsnk_env_preserved"),
+            "must cite counterparty preservation: {}",
             messages(&issues)
         );
     }
@@ -1360,17 +1639,17 @@ mod tests {
     }
 
     #[test]
-    fn derive_child_refuses_an_interface_component() {
-        let mut parent = parent_model();
-        let value = json!({
-            "info": { "id": "E-1", "level": -1, "name": "", "description": "" },
-            "sources": [], "sinks": [ ext("Snk-1.0", "Snk-1.0", "Sink") ]
-        });
-        parent.environment = serde_json::from_value(value).unwrap();
-        parent.interactions.push(
-            serde_json::from_value(exo_flow("F2", "leak", "C0.0", "Snk-1.0", "Material")).unwrap(),
+    fn derive_child_births_an_interface_component_refining_its_crossings() {
+        // The door now opens on an interface component (SSF #43): the newborn
+        // carries a stand-in per external counterparty and passes the FULL
+        // contract — crossing half included — from birth.
+        let parent = interface_parent();
+        let child = derive_child(&parent, &comp()).expect("interface is now decomposable");
+        assert!(
+            child.environment.sinks.iter().any(|e| e.info.name == "Grid"),
+            "the external counterparty gets a stand-in"
         );
-        let issues = derive_child(&parent, &comp()).err().expect("interface must refuse");
-        assert!(messages(&issues).contains("v1 refuses"), "{}", messages(&issues));
+        let issues = check_decomposition_contract(&parent, &comp(), &child);
+        assert!(issues.is_empty(), "newborn must pass from birth: {}", messages(&issues));
     }
 }

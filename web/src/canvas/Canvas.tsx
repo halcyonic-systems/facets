@@ -131,7 +131,14 @@ export default function Canvas({
       ? {
           ...model,
           things: model.things.map((t) =>
-            t.role === "Component" && authoredInterfaceIds.has(t.id) ? { ...t, ...ringPoint(ring, t) } : t,
+            t.role === "Component" &&
+            authoredInterfaceIds.has(t.id) &&
+            // Degenerate guard: a sole-component interface (the walk's opaque
+            // L0 box) IS the ring's center — projecting it would throw it onto
+            // an arbitrary rim point. The box stays put; it is the system.
+            Math.hypot(t.x - ring.cx, t.y - ring.cy) > 1
+              ? { ...t, ...ringPoint(ring, t) }
+              : t,
           ),
         }
       : model;

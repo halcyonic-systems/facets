@@ -344,13 +344,13 @@ fn decomposes_faults_are_caught_one_pass() {
         parse_sl("source S decomposes \"child\" @Hrs6K91KnZZsiPcWzftv8U\n").unwrap_err();
     assert!(on_env[0].message.contains("components only"), "{on_env:?}");
 
+    // SSF #43 (2026-08-09): `interface` + `decomposes` is now a LEGAL authoring
+    // move — the crossing half of the seam contract covers it, so the parser
+    // accepts what it used to refuse.
     let with_iface = parse_sl(
         "component F interface decomposes \"child\" @Hrs6K91KnZZsiPcWzftv8U\n",
-    )
-    .unwrap_err();
-    assert!(
-        with_iface[0].message.contains("interface components") && with_iface[0].message.contains("#89"),
-        "{with_iface:?}");
+    );
+    assert!(with_iface.is_ok(), "interface decomposition parses now: {with_iface:?}");
 
     let dup = parse_sl(
         "component F decomposes \"a\" @Hrs6K91KnZZsiPcWzftv8U decomposes \"b\" @Hrs6K91KnZZsiPcWzftv8U\n",

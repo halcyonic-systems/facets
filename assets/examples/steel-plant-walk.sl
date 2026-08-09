@@ -12,16 +12,15 @@
 # Fig. 4.17's inventory room. Editorial, not corpus — grounded in the figures
 # but free to draw what the chapter reveals across all four of them.
 #
-# One departure from Fig. 4.14, made so the walk has a checked seam. The
-# figure draws the six level(-1) entities as environmental sources and sinks;
-# here they are things, and the opaque SOI sits among them as an interior
-# component. v1's boundary contract covers a component's internal network
-# only, so a walkable box must not touch the model's own membrane — and the
-# promotion is licensed, not smuggled: Mobus's environment entities are other
-# systems (each vendor has its own delivery schedule in Listing 4.1), and his
-# own recursion carries them down a level, where Listing 4.4 cites Src-1.1,
-# the iron vendor, inside Iron-Inventory's environment. Promoting them to
-# residents of the level-0 model is the same move made one level earlier.
+# The boundary is Fig. 4.14's own, honestly drawn (2026-08-09). An earlier
+# revision promoted the six level(-1) entities to interior components — the
+# v1 seam contract covered a component's internal network only, so a walkable
+# box could not touch the membrane, and the drawing paid the price: the
+# environment rendered INSIDE the boundary. SSF #43 (InterfaceDecomposition,
+# merged) extends the contract to membrane crossings — the child's boundary
+# must REFINE each crossing (same counterparty, same substance kind, landing
+# on a named child interface) — so the SOI can now be a boundary-crossing
+# walkable box and the sources and sinks can stand where Mobus drew them.
 
 system "Steel-Plant — Deep Systems Analysis" : Concrete/Technical
 
@@ -39,19 +38,27 @@ level Structure
 
 # S0, the SOI. Combining, because the plant's transformation takes iron, coke
 # and electric energy together and yields steel — Listing 4.1's type=PROCESS.
+# `interface` because at this resolution the opaque box IS its own boundary
+# apparatus — every crossing lands on it, and I ⊆ C admits exactly one member
+# until the child opens it into Fig. 4.15's six (the same reading the
+# decomposition door gives a newborn: the root is the one interface member).
 # The `decomposes` reference is the walk's first door: the child model is
-# Fig. 4.16's interior, and the seam between the two is the boundary contract,
-# checked against the flows drawn here.
-component "Steel-Plant" primitive Combining decomposes "Steel-Plant" @WVv2pzPHybekS7U3ewwVxx
+# Fig. 4.16's interior, and the seam between the two is the boundary
+# contract — interior AND crossing halves (SSF #43) — checked against the
+# flows drawn here.
+component "Steel-Plant" primitive Combining interface decomposes "Steel-Plant" @WVv2pzPHybekS7U3ewwVxx
 
 # The six transaction partners of Fig. 4.14 — Src-1.0/1.1/1.2 and
-# Snk-1.0/1.1/1.2 by their own names, each a system in its own right.
-component Energy-Source
-component Iron-Source
-component Coke-Source
-component Steel-Sink
-component Garbage-Sink
-component ATMOSPHERE
+# Snk-1.0/1.1/1.2 by their own names, environmental as the figure draws them.
+# The material vendors are Mobus's hybrids (matter out, purchase orders back
+# in); the words are author intent — the kernel reads each thing's role from
+# the drawn flows, exactly as level 1 declares the same six.
+source Energy-Source
+source Iron-Source
+source Coke-Source
+sink Steel-Sink
+sink Garbage-Sink
+sink ATMOSPHERE
 
 # The six flows of Fig. 4.14, F-numbers in the labels, substances from
 # Listing 4.1's own subtype attributes.
