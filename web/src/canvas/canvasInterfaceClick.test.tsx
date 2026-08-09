@@ -8,7 +8,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { CanvasModel, LensFacts, PortFact } from "../kernel/types";
-import { NODE_R } from "./geometry";
+import { NODE_R, unprojectWrite } from "./geometry";
 
 const { captured, nodes } = vi.hoisted(() => ({
   captured: [] as { component: number; env: number; onSelect?: () => void }[],
@@ -107,6 +107,26 @@ describe("flow-carrying interface capsule click (2026-08-09)", () => {
     // The non-interface component stays where it was authored.
     const core = nodes.find((n) => n.id === 3)!;
     expect({ x: core.x, y: core.y }).toEqual({ x: 300, y: 200 });
+  });
+
+  it("gesture writes restore authored coords for untouched things (no ring runaway)", () => {
+    // The 2026-08-09 drag bug: gestures hold the PROJECTED model, and a drag
+    // writes untouched things through by reference — persisting projected
+    // interface positions, whose bbox inflates the next ring, every frame.
+    const projected: CanvasModel = {
+      ...model,
+      things: model.things.map((t) => (t.id === 1 ? { ...t, x: 999, y: 999 } : t)),
+    };
+    // A drag of Ledger Core (id 3): fresh object for it, references for the rest.
+    const outgoing: CanvasModel = {
+      ...projected,
+      things: projected.things.map((t) => (t.id === 3 ? { ...t, x: 310, y: 210 } : t)),
+    };
+    const clean = unprojectWrite(model, projected, outgoing);
+    const bs = clean.things.find((t) => t.id === 1)!;
+    expect({ x: bs.x, y: bs.y }).toEqual({ x: 200, y: 260 }); // authored survives
+    const core = clean.things.find((t) => t.id === 3)!;
+    expect({ x: core.x, y: core.y }).toEqual({ x: 310, y: 210 }); // the drag lands
   });
 
   it("states the multi-protocol coarseness instead of hiding it (ratified b)", () => {

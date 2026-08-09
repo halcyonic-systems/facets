@@ -93,6 +93,25 @@ const PARALLEL_BOW = 30;
  *  processes they serve. Shared by NodeBody, edge rims, and notch placement. */
 export const INTERFACE_SCALE = 0.65;
 
+/** #306 write-back guard. Gestures hit-test against the PROJECTED model, so
+ *  their writes carry projected interface positions for every thing they did
+ *  not touch (untouched things pass through by reference). Persisting those
+ *  positions feeds the next ring computation a bbox that includes points on
+ *  the previous ring — the membrane inflates every drag frame (runaway
+ *  stretch, 2026-08-09). Restore the AUTHORED thing wherever the outgoing
+ *  object IS the projected one; anything the gesture actually changed is a
+ *  fresh object and passes through untouched. */
+export function unprojectWrite(authored: CanvasModel, projected: CanvasModel, outgoing: CanvasModel): CanvasModel {
+  if (projected === authored) return outgoing;
+  const restore = new Map<Thing, Thing>();
+  projected.things.forEach((pt, i) => {
+    const at = authored.things[i];
+    if (at && pt !== at && pt.id === at.id) restore.set(pt, at);
+  });
+  if (restore.size === 0) return outgoing;
+  return { ...outgoing, things: outgoing.things.map((t) => restore.get(t) ?? t) };
+}
+
 /** This relation's centered rank among siblings on the same unordered pair
  *  (…-1, 0, 1…) — the shared fan index for both the rim-to-rim bow and the
  *  exo crossing spread, so one flow occupies the same slot in both drawings. */

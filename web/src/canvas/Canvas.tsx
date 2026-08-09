@@ -14,6 +14,7 @@ import {
   membraneRing,
   rimPoint,
   ringPoint,
+  unprojectWrite,
   straightPath,
   thingById,
   NODE_R,
@@ -200,8 +201,11 @@ export default function Canvas({
 
   const gestures = useCanvasGestures({
     model: dModel,
+    // #306 write-back guard: gestures see the projected model, but writes must
+    // land in AUTHORED coordinates for everything they didn't touch — else the
+    // projection persists and the ring inflates every drag frame.
+    onModelChange: (m) => onModelChange(unprojectWrite(model, dModel, m)),
     svgRef,
-    onModelChange,
     onReject,
     onNotice,
     armed,
