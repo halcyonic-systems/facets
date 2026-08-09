@@ -14,7 +14,12 @@
 # small transactions — drawn here as flows, so the hypothesis has a
 # structural referent before it has a statistical one.
 
-system "Bitcoin" : Concrete/Technical
+# Social, ratified with recorded reluctance (2026-08-08): the blend is
+# genuinely tough — a machine whose behavior is a fee market, a use
+# case Bunge did not anticipate. Social wins because the loops this
+# model exists to draw run through people's decisions; the machinery
+# below them is Technical and says so in every flow label.
+system "Bitcoin" : Concrete/Social
 
 domain "Proof-of-work settlement — energy in, ordered history out, a fee market clearing queue position"
 
@@ -57,8 +62,19 @@ flow Mining -> "Chain State" : informational "blocks appended"
 # Confirmation: settled history reported back.
 flow "Chain State" -> Transactors : informational "confirmations"
 
-# The sensing leg of the congestion loop: queue depth becomes a price.
-# This is the flow the fee_percentiles extraction measures.
+# ── Two feedback loops, of different epistemic rank ──────────────────
+# The DIFFICULTY loop is feedback BY CONSTRUCTION: written into the
+# protocol, retargeted every 2016 blocks, provable from the rules.
+# The DISPLACEMENT loop is feedback BY CONJECTURE: hypothesized, and
+# testable only in data (the SegWit-era hypothesis). One model, both
+# loops, rank declared — that distinction is the point of drawing them.
+
+# By construction: the chain observes its own block pace and adjusts
+# the work required — the protocol's thermostat.
+flow "Chain State" -> Mining : informational "difficulty — retargeted from observed block pace"
+
+# By conjecture, the sensing leg: queue depth becomes a price. This is
+# the flow the fee_percentiles extraction measures.
 flow Mempool -> Transactors : informational "the feerate signal — the price of queue position"
 
 # Issuance: the subsidy plus collected fees, minted to the miner by
@@ -81,17 +97,22 @@ flow "Asset Market" -> Transactors : informational "the price — bitcoin as an 
 # the same machinery llm-market uses. Until then this entry is
 # structure only, and says so rather than carrying invented numbers.
 #
-# ── Open forks (ratify before this leaves strawman) ──────────────────
-# 1. Kingdom/Genus: Concrete/Technical here, but the system is socio-
-#    technical and the Social shelf holds its nearest neighbors.
-# 2. Difficulty adjustment — the protocol's own thermostat (hashrate ->
-#    difficulty) — is a second feedback loop, omitted at level 1.
-# 3. The development/governance cluster (the legacy model's whole
-#    second half) is deferred, not denied.
-# 4. Is "Asset Market" an environment or a subsystem? Keeping it
-#    outside IS the bridge claim; moving it inside dissolves it.
-# 5. The displacement response (small transactions leaving when fees
-#    spike) happens inside Transactors, which this level cannot open.
-#    The SegWit-era hypothesis tests exactly that hidden mechanism.
+# ── Open forks ───────────────────────────────────────────────────────
+# 1. The development/governance cluster (the legacy model's whole
+#    second half) — deferred until the governance lane needs it.
+#
+# ── Ratified (2026-08-08) ────────────────────────────────────────────
+# ✓ Concrete/Social, with recorded reluctance — see the system line.
+# ✓ Both loops drawn, epistemic rank declared: difficulty is feedback
+#   by construction, displacement is feedback by conjecture.
+# ✓ Asset Market stays an environment — the market for "bitcoin"
+#   genuinely exists outside Bitcoin. No consensus rule consumes a
+#   price; the price re-enters only through participants' decisions
+#   (miners selling and entering/exiting, transactors weighing fees),
+#   and both re-entry paths are already flows above. Two-way coupling
+#   without membership: that IS the bridge claim.
+# ✓ The displacement response stays hidden inside Transactors: the
+#   model declares a mechanism it cannot see, and the ML work is the
+#   test of exactly that mechanism.
 
 @lens mobus
