@@ -1469,7 +1469,10 @@ function Workspace() {
       setWalk((w) => [
         ...w,
         {
-          label: currentLabel ?? "untitled",
+          // A compiled example has no library slot (currentLabel falls to
+          // "untitled"), but the model names itself — the breadcrumb should
+          // read "Steel-Plant …" when the walk starts from the gallery.
+          label: demo?.title ?? currentName ?? canvasModel.name ?? "untitled",
           modelId: canvasModel.model_id ?? null,
           clean: decomposition.issues.length === 0 && decomposition.error === null,
           canvas: canvasModel,
