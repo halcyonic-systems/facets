@@ -18,6 +18,8 @@ domain "Steel manufacturing"
 
 time unit month
 
+level Structure
+
 # E′ — the interior neighborhood of the level-0 component, one stand-in per
 # neighbor, names carried exactly. Iron-Source and Coke-Source are Mobus's
 # hybrids (matter out, purchase orders back in); the words here are author

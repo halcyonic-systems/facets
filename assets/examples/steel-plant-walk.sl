@@ -31,6 +31,12 @@ domain "Steel manufacturing"
 # @monthly_steel_production, with the month as its unit.
 time unit month
 
+# The corpus steel-plant is Source — an opaque box, boundary variables only.
+# This walk opens the box: coupled residents and a checked decomposition
+# seam, which is exactly Klir's step up from source to structure
+# (ratified test, 2026-08-08, #288). Each walk level declares its own.
+level Structure
+
 # S0, the SOI. Combining, because the plant's transformation takes iron, coke
 # and electric energy together and yields steel — Listing 4.1's type=PROCESS.
 # The `decomposes` reference is the walk's first door: the child model is

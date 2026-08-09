@@ -12,6 +12,7 @@
 
 system "Transformer Block" : Concrete/Technical
 domain "One decoder-only transformer block: attention and a per-position feed-forward network operating on a shared residual stream"
+level Structure
 
 # ── Composition ───────────────────────────────────────────────────────
 # Token Embedding is the boundary transducer: it reads discrete token

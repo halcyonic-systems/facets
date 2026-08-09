@@ -9,6 +9,8 @@ system "Bank Run" : Concrete/Social
 
 domain "Depositor withdrawals draining a fractional reserve, amplified by panic feedback"
 
+level Structure
+
 # The bank takes deposits in and, each time, splits the flow: some stays
 # as reserve, most goes out as loans. `Splitting` is the primitive for a
 # work process that divides one inflow into multiple outflows.

@@ -16,6 +16,7 @@
 # note: Direction is asserted on every relation (@directed): Fig. 10.1 is an arrowed block diagram and the teaches line above names who reads what — the direction is Klir's commitment, not ours. Without it the feedback and feedforward siblings are graph-isomorphic and the set collapses (#216).
 
 system "Goal-Oriented System — Informationless Paradigm"
+level Structure
 
 component "Goal-Implementing Element"
 component "Goal-Seeking Element"

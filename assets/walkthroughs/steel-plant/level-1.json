@@ -378,5 +378,6 @@
     "domain": "Steel manufacturing"
   },
   "name": "Steel-Plant",
-  "time_unit": "month"
+  "time_unit": "month",
+  "klir_level": "Structure"
 }

@@ -11,6 +11,11 @@
 system "Parity Automaton" : Conceptual/Technical
 domain "Parity of the number of 1s read from a binary string"
 
+# The four labeled flows ARE the complete transition table — the rule is
+# authored in full, in the file, which is the ratified test for this level
+# (2026-08-08, #288). The one generative entry in the library.
+level Generative
+
 component Even
 component Odd
 

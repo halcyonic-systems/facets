@@ -8,6 +8,8 @@ system "Predator-Prey Ecosystem" : Concrete/Biological
 
 domain "Population dynamics of rabbits and foxes in a grassland"
 
+level Structure
+
 # Rabbits and Foxes are the two accumulating stocks in this system —
 # their numbers rise and fall as biomass flows in and out. Both sit on
 # the boundary because grazing/predation/death cross it directly.

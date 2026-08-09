@@ -6,6 +6,7 @@
 
 system "Home Thermostat System" : Concrete/Technical
 domain "Residential climate control"
+level Structure
 
 # The sensor perceives room temperature and turns it into a signal.
 component Sensor primitive Sensing

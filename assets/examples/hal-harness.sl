@@ -22,6 +22,8 @@
 system "hal" : Concrete/Technical
 domain "Sovereign-AI harness: routes, deliberates, measures, fine-tunes, and self-regulates local models"
 
+level Structure
+
 # ── Composition: hal's internal subsystems, one level down ───────────
 
 # Proxy fans a caller's request out to whichever local model backend

@@ -19,6 +19,12 @@ system "Steel-Plant" : Concrete/Technical
 
 domain "Steel manufacturing"
 
+# The one opaque box, only its boundary variables characterized — verbatim
+# Klir's lowest level: Mobus's stage-one environment-and-boundary pass and
+# Klir's source system are the same object seen through two traditions
+# (ratified 2026-08-08, #288; pairs with examples/lake-observation.sl).
+level Source
+
 time unit month
 
 # S0 as Fig. 4.14 draws it: one opaque box. Combining, because the plant's

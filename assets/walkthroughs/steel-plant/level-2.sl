@@ -24,6 +24,8 @@ domain "Steel manufacturing"
 # down, a faster clock — Mobus's level-indexed Δt in one line.
 time unit week
 
+level Structure
+
 # E′: the three level-1 neighbors. The loading dock delivers, Production
 # draws batches, and the purchasing office receives the decider's requests.
 source Iron-LoadingDock

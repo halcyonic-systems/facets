@@ -12,6 +12,11 @@ domain "Manufacturing and retail distribution, regulated by stock-based reorderi
 
 time unit day
 
+# The reorder loop is authored as wiring; its logic lives in comments and
+# the stepping in the engine — the generating rule is not in the file
+# (ratified 2026-08-08, #288 — the same call as watershed and llm-market).
+level Structure
+
 # The factory is the production line, modeled as a throttled work
 # process (Modulating): raw materials pass through it at a rate set by
 # the replenishment signal. No signal = wide open; a strong "shelves

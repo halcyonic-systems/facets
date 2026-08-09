@@ -27,6 +27,11 @@ domain "Inference compute cleared across frontier and open-weight models by two 
 
 time unit day
 
+# Declared amounts feed a run, but the stepping that generates the series is
+# the engine's, not this file's — meaning once, mechanics machine. The
+# complete generating rule is not authored here (ratified 2026-08-08, #288).
+level Structure
+
 # ── Sources: demand-side workload, the compute each channel mobilizes ─
 # The observatory's measured inputs. Developer workload is the
 # API-routed slice a router like OpenRouter actually sees (~6 Ttok/day

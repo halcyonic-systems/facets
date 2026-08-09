@@ -8,6 +8,8 @@ system "Cell Energy Metabolism" : Concrete/Biological
 
 domain "Aerobic cellular respiration and ATP storage"
 
+level Structure
+
 # The mitochondria is the work process: it combines two inputs
 # (glucose, oxygen) into two outputs (ATP, CO2). It carries `interface`
 # because every boundary-crossing flow in this model terminates on it —

@@ -12,6 +12,7 @@
 # note: The kingdom is ours, not Klir's. He asserts no ontological type; students are concrete social things, so Concrete/Social is the honest reading of T. The relation Rg is the investigator's, which is Klir's whole point.
 
 system "Students in a Course" : Concrete/Social
+level Structure
 
 component Alan
 component Bob

@@ -17,6 +17,7 @@
 # note: y is declared `environment`, not `sink`: the goal-implementing element writes it AND the goal-seeking element reads it, so it terminates nothing. The earlier `sink y` was contradicted by the entry's own feedback tap — it once round-tripped as `source y` (#216).
 
 system "Goal-Oriented System — Full-information Paradigm"
+level Structure
 
 component "Goal-Implementing Element"
 component "Goal-Seeking Element"

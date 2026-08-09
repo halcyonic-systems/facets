@@ -8,6 +8,7 @@
 
 system "Two-Sided Marketplace" : Concrete/Social
 domain "Digital platform economy: matching buyers and sellers for a fee"
+level Structure
 
 # ── Composition: the platform's internal mechanisms ──────────────────
 # Platform itself is the aggregator/boundary component that all outside

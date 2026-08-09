@@ -15,6 +15,11 @@ system "Federal Reserve" : Concrete/Social
 
 domain "Central banking — the balance sheet as the instrument of monetary policy"
 
+# Coupled subsystems, no authored rule — and note the contrast with the
+# corpus steel-plant: THIS entry opens its box, so it stands a level up
+# from a source-system characterization (ratified test, 2026-08-08, #288).
+level Structure
+
 # The decider. The FOMC reads the instrument panel and issues the
 # directive; it moves no money itself. Modulating: it regulates the
 # desk's operation — the sensing is done upstream by the statistical

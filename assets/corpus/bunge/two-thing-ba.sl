@@ -14,6 +14,7 @@
 # note: Direction is asserted on every relation (@directed): ▷ is Bunge's asymmetric action — "a acts on b, and not conversely" — and ⋈ is two such actions. Without the assertion a▷b and b▷a are graph-isomorphic and Def 1.2's three conceivable structures collapse to two (#216).
 
 system "The Simplest Possible System"
+level Structure
 
 component a
 component b

@@ -12,6 +12,7 @@
 # note: Bunge fixes no kind of connection for these examples, so the kind clause is left unspecified.
 
 system "Coupling Graph σ₂"
+level Structure
 
 component "1"
 component "2"

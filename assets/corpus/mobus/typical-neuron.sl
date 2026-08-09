@@ -15,6 +15,11 @@
 system "A Typical Neuron" : Concrete/Biological
 domain "Neurobiology"
 
+# The lesson is adaptation — a metasystem claim — but what is AUTHORED is
+# one structural feedback edge; the changing rule lives in prose only, and
+# the declaration follows the artifact (ratified 2026-08-08, #288).
+level Structure
+
 component "Synaptic Compartments" interface
 component "Cell Membrane"
 component "Axonal Hillock" interface

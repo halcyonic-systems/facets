@@ -180,5 +180,6 @@
     "domain": "Steel manufacturing"
   },
   "name": "Iron-Inventory",
-  "time_unit": "week"
+  "time_unit": "week",
+  "klir_level": "Structure"
 }

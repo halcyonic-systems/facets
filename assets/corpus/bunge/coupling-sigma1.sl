@@ -12,6 +12,7 @@
 # note: Bunge does not fix a kind of connection for these examples; he generalizes afterwards to "n different kinds of connection (e.g. mechanical, chemical, informational, social)". The kind clause is therefore left unspecified rather than guessed.
 
 system "Coupling Graph σ₁"
+level Structure
 
 component "1"
 component "2"

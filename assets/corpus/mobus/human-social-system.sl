@@ -15,6 +15,7 @@
 
 system "The Human Social System" : Concrete/Social
 domain "The human social system in the Earth supra-system"
+level Structure
 
 component "Governance" interface
 component "Work Processes" interface

@@ -18,6 +18,7 @@
 
 system "Workshop Crew" : Concrete/Social
 domain "A three-person fabrication crew inside a firm: who is bonded to whom, and which relations make no difference"
+level Structure
 
 component Foreman interface
 component Welder

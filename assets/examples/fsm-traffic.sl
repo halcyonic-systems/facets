@@ -7,6 +7,11 @@
 system "Traffic Light Controller" : Concrete/Technical
 domain "Intersection signal control: Green/Yellow/Red cycle, pedestrian-interruptible"
 
+# The wiring is authored, the transition rule is not — the states live in a
+# comment and no table is in the file. Its own header says it: the STRUCTURE
+# that generates. Contrast parity-automaton (ratified 2026-08-08, #288).
+level Structure
+
 # The Controller is the state machine itself: it holds the current state
 # (Green/Yellow/Red) and modulates its output based on incoming signals.
 # `interface` marks it as touching the system boundary (it emits to the

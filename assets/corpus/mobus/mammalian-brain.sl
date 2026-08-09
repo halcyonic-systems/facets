@@ -15,6 +15,7 @@
 
 system "The Mammalian Brain" : Concrete/Biological
 domain "Brain science"
+level Structure
 
 component "Thalamic Relay Nucleus" interface
 component "Primary Visual Cortex"

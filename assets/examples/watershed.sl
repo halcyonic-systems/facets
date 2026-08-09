@@ -11,6 +11,11 @@ domain "Rainfall captured by a reservoir and delivered to a city through lossy t
 
 time unit day
 
+# The rainfall amount parameterizes a run; the conservation stepping that
+# generates the series belongs to the engine, not this file (ratified
+# 2026-08-08, #288 — the same call as llm-market and supply-chain).
+level Structure
+
 # The reservoir is the system's memory: a Buffering stock measured in
 # megaliters. It fills faster than it drains, so the level climbs —
 # storage is what a watershed IS.

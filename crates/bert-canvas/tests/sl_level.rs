@@ -116,8 +116,8 @@ fn the_modeling_relation_is_refused_across_levels_and_defined_within_one() {
 }
 
 /// The three corpus entries whose prose names a level now declare it in-file —
-/// the census's only ratified declarations (#288). The other entries carry
-/// none until the census draft is reviewed.
+/// the first declarations ratified (#288). Since the 2026-08-08 census
+/// ratification, every shipped entry declares one.
 #[test]
 fn the_three_prose_named_corpus_entries_declare_structure() {
     for rel in [
@@ -136,4 +136,32 @@ fn the_three_prose_named_corpus_entries_declare_structure() {
             "{rel} names its level in prose and must declare it"
         );
     }
+}
+
+/// The refusal, live on SHIPPED entries — not only on synthetic models. The
+/// ratified census (2026-08-08) put the corpus steel-plant at Source and the
+/// criminal court at Structure, so the library itself now carries a pair the
+/// modeling relation is undefined between; and it carries a same-level pair
+/// reached from two traditions (Mobus's opaque box, Klir's lake observation)
+/// that compares fine. Both halves asserted, on real files.
+#[test]
+fn the_shipped_corpus_carries_a_live_cross_level_refusal() {
+    let read = |rel: &str| {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets").join(rel);
+        let text = fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+        parse_sl(&text).unwrap_or_else(|e| panic!("{rel} did not compile: {e:?}"))
+    };
+    let steel_plant = read("corpus/mobus/steel-plant.sl");
+    let criminal_court = read("corpus/klir/criminal-court.sl");
+    let lake = read("examples/lake-observation.sl");
+
+    assert_eq!(steel_plant.klir_level, Some(KlirLevel::Source));
+    let reason = check_cross_level(&steel_plant, &criminal_court)
+        .expect_err("a Source/Structure comparison is undefined in Klir's framework");
+    assert!(reason.contains(KLIR_MODELING_RELATION), "{reason}");
+
+    // The cross-tradition rhyme: Mobus's stage-one pass and Klir's lowest
+    // level are the same object, so these two compare within one level.
+    assert_eq!(lake.klir_level, Some(KlirLevel::Source));
+    assert_eq!(check_cross_level(&steel_plant, &lake), Ok(()));
 }

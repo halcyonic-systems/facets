@@ -15,6 +15,7 @@
 
 system "A Digital Computing System" : Concrete/Technical
 domain "Digital computing"
+level Structure
 
 component Hardware interface
 component Firmware

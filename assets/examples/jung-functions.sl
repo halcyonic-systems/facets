@@ -10,6 +10,8 @@ system "Jungian Cognitive Function Stack" : Conceptual/Social
 
 domain "Jung's model of dominant/auxiliary/tertiary/inferior functions regulating psychic energy exchange with the outer world"
 
+level Structure
+
 # The reservoir of undifferentiated psychic energy (libido) that the
 # dominant function claims first and most fully.
 source "Libido Reservoir"

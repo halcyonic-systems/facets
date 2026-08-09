@@ -17,6 +17,11 @@
 system "Lake Observation Study" : Concrete/Biological
 domain "Seasonal monitoring of a lake: four variables an ecologist measures and the relations she defines among them"
 
+# The header already names it: variables and observation channels, no
+# generating rule declared (ratified 2026-08-08, #288; pairs with the
+# corpus steel-plant, the same level reached from Mobus's side).
+level Source
+
 # The measured variables, with Klir's source-system metadata (#154):
 # measurement scale and, for the support variable, its state set.
 component WaterTemp kind Basic scale Interval

@@ -23,6 +23,11 @@ system "Bitcoin" : Concrete/Social
 
 domain "Proof-of-work settlement — energy in, ordered history out, a fee market clearing queue position"
 
+# Its own pass-2 note says it: until the tether arrives this entry is
+# structure only. Two loops drawn as flows, no rule in the file — the
+# ratified test applied (2026-08-08, #288).
+level Structure
+
 # The congestion queue. Unconfirmed transactions wait here, and the
 # depth of the queue IS the fee market's state — Buffering, exactly as
 # a reservoir or a bank reserve.
