@@ -852,6 +852,31 @@ impl Circuit {
             }
     }
 
+    /// The READOUT value for a source's resource level (#263). `level()`
+    /// reads `param`, but since bert#111 a multi-pushed source carries its
+    /// rates on the wires and `param` stays at the default — the dynamics
+    /// honor the declared rates while the readout shows the orphan. Physical
+    /// outwires: [`source_emission`] (per-wire declared sum, undeclared share
+    /// carrying `param` — reduces to `param` byte-for-byte when nothing rides
+    /// the wires). Message-only: replication does not sum, so the largest
+    /// per-wire declared rate is what a receiver sees; none declared, `param`.
+    pub fn source_readout(&self, i: usize) -> f32 {
+        if self.source_outwires(i).next().is_some() {
+            return self.source_emission(i);
+        }
+        let msg_declared = (0..self.wires.len())
+            .filter(|&k| {
+                let w = &self.wires[k];
+                w.from == i
+                    && w.mode == FlowMode::Pushed
+                    && !self.is_observation(w)
+                    && self.wire_substance(w) == SubstanceType::Message
+            })
+            .filter_map(|k| self.wire_declared_rate(k))
+            .fold(None::<f32>, |m, r| Some(m.map_or(r, |x| x.max(r))));
+        msg_declared.unwrap_or(self.nodes[i].param)
+    }
+
     /// Flow the Source-chosen substance forward: a pass-through node
     /// (`inherits_substance`) takes the substance of its physical inflow, so
     /// you declare "water" once at the Source and the tank/valve/splitter

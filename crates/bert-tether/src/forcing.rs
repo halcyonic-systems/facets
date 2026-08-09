@@ -363,7 +363,10 @@ pub fn summarize(
         .map(|(i, node)| {
             let (category, value) = match node.kind {
                 NodeKind::Sink => ("product", node.total),
-                NodeKind::Source => ("resource", circuit.level(i)),
+                // #263: a multi-pushed source's rates ride its wires and its
+                // `param` is an orphaned default — the readout must present
+                // the DECLARED emission the dynamics actually honor.
+                NodeKind::Source => ("resource", circuit.source_readout(i)),
                 NodeKind::Process(_) => ("internal", circuit.level(i)),
             };
             let (unit, unit_derived) = unit_of(node);

@@ -647,6 +647,20 @@ mod tests {
             "sibling keeps its own rate: {}",
             c.wire_amount(1)
         );
+
+        // #263 separating pair: the READOUT presents the declared emission the
+        // dynamics honor (12 + 1), not the orphaned default param — which is
+        // what `level()` still reads, so the two must differ here.
+        assert!(
+            (c.source_readout(0) - 13.0).abs() < 1e-3,
+            "readout = declared per-wire sum: {}",
+            c.source_readout(0)
+        );
+        assert!(
+            (c.level(0) - c.source_readout(0)).abs() > 1.0,
+            "param ({}) is the orphaned default the old readout showed",
+            c.level(0)
+        );
     }
 
     /// Law (walkthrough #9): `ample` IS the huge-signal trick, without the
