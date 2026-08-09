@@ -33,6 +33,7 @@ import type { DecomposeAffordance } from "./canvas/NodeEditor";
 import { KlirRegister } from "./canvas/KlirRegister";
 import { BungeRegister } from "./canvas/BungeRegister";
 import { BoundaryPopover } from "./canvas/BoundaryPopover";
+import { DataMode } from "./DataMode";
 import { InterfacePopover } from "./canvas/InterfacePopover";
 import { PaletteRail } from "./canvas/PaletteRail";
 import type { PaletteTool } from "./canvas/lenses/registry";
@@ -231,6 +232,10 @@ function Workspace() {
   const [selectedRelationId, setSelectedRelationId] = useState<number | null>(null);
   const [selectedThingId, setSelectedThingId] = useState<number | null>(null);
   const [boundaryAnchor, setBoundaryAnchor] = useState<Pt | null>(null);
+  // #304: Structure vs Data — a MODE, not a dock tab. Data mode is the model's
+  // Klir data-level face (rows = support, columns = declared flows); the
+  // canvas deliberately does not render there. Ratified 2026-08-09.
+  const [workMode, setWorkMode] = useState<"structure" | "data">("structure");
   // The interface inspector's target — a flow-carrying capsule (r = (S, φ)).
   // Cleared on any model identity change: the PortFact is a snapshot, and a
   // swap (walk enter/exit, open) or an edit can orphan it.
@@ -1660,6 +1665,34 @@ function Workspace() {
             className="flex flex-wrap items-center gap-3 border-b px-4 py-2"
             style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
           >
+            {/* #304: the mode switch — sibling of the lens pills, left of
+                them. A lens is a reading and reads at either rung; the mode
+                decides which rung's face fills the stage. */}
+            <div
+              className="flex items-center gap-1 rounded-pill p-1"
+              style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
+            >
+              {(["structure", "data"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setWorkMode(m)}
+                  className="rounded-pill px-3 py-1.5 text-sm font-body transition-colors"
+                  style={{
+                    borderRadius: "var(--radius-pill)",
+                    background: workMode === m ? "var(--accent-strong)" : "transparent",
+                    color: workMode === m ? "var(--text-on-accent)" : "var(--text-secondary)",
+                    transition: "var(--transition-base)",
+                  }}
+                  title={
+                    m === "structure"
+                      ? "Structure — author the model (the canvas asserts)"
+                      : "Data — the model's data-level face (rows = time, columns = declared flows; observes, never asserts)"
+                  }
+                >
+                  {m === "structure" ? "Structure" : "Data"}
+                </button>
+              ))}
+            </div>
             <div
               className="flex items-center gap-1 rounded-pill p-1"
               style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
@@ -1886,6 +1919,14 @@ function Workspace() {
                         The "in" phases clear themselves on animation end. It
                         encloses the whole per-lens view, so under Klir the
                         register dives with its locator. */}
+                    {workMode === "data" ? (
+                      <DataMode
+                        model={canvasModel}
+                        modelName={canvasModel.name?.trim() || currentLabel || "untitled"}
+                        csv={demo?.csv ?? null}
+                        manifest={manifest}
+                      />
+                    ) : (
                     <div
                       className={`absolute inset-0${walkFx ? ` walk-fx-${walkFx.phase}` : ""}`}
                       style={walkFx ? { transformOrigin: walkFx.origin } : undefined}
@@ -2113,6 +2154,7 @@ function Workspace() {
                       )}
                     </div>
                     </div>
+                    )}
                     {boundaryAnchor && (
                       <BoundaryPopover
                         boundary={canvasModel.boundary}
