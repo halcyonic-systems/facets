@@ -59,6 +59,7 @@ function edgeStyle(relation: Relation, fact: EdgeFact | undefined): EdgeStyle {
     width: exo ? STYLE.edge.exo : STYLE.edge.bond,
     dash: exo ? (fact?.channel === "Input" ? "4 5" : "12 4") : undefined,
     opacity: 0.85,
+    marker: `arrow-${relation.kind}`,
   };
 }
 
@@ -115,7 +116,6 @@ function EdgeView({ model, relation, fact, selected, driven, sim, onSelect }: Le
 
   return (
     <EdgeScaffold
-      d={d}
       labelAt={labelAt}
       style={style}
       interior={null}

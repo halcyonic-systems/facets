@@ -7,7 +7,7 @@
 // stage: backdrops, the render loop, and the node-name draft input.
 import { useEffect, useRef, useState } from "react";
 import type { CanvasModel, EdgeFact, Lens, LensFacts, PortFact, Thing } from "../kernel/types";
-import type { SimFrame } from "./types";
+import { KIND_COLOR, type SimFrame } from "./types";
 import {
   bungeHull,
   membraneRing,
@@ -298,6 +298,23 @@ export default function Canvas({
         >
           <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-slate)" />
         </marker>
+        {/* Substance-colored heads for the kind-colored lenses (Mobus, Bunge) —
+            the head is part of the stroke, not a neutral terminus. Klir keeps
+            the slate `arrow`: its line is deliberately substance-blind. */}
+        {Object.entries(KIND_COLOR).map(([k, color]) => (
+          <marker
+            key={k}
+            id={`arrow-${k}`}
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth={STYLE.arrowSize}
+            markerHeight={STYLE.arrowSize}
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
+          </marker>
+        ))}
         {/* the "work sphere" sheen of the house drawings (Fig. 4.5) — a neutral
             top-left highlight, never a substance color. */}
         <radialGradient id="mobus-sphere" cx="38%" cy="34%" r="72%">
