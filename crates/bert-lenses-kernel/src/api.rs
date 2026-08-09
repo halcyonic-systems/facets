@@ -237,6 +237,9 @@ pub fn check_decompositions(model_json: &str, resolved_json: &str) -> Result<JsV
     let model = parse_model(model_json)?;
     let resolved: std::collections::HashMap<String, String> = serde_json::from_str(resolved_json)
         .map_err(|e| JsError::new(&format!("invalid resolved-referents map: {e}")))?;
+    // Referents may be archive-format (#140); the projection layer normalizes
+    // them to the WorldModel text the core contract parses.
+    let resolved = bert_canvas::lenses::normalize_referents(&resolved);
     to_js(&bert_core::validate::ValidationResult {
         issues: bert_core::decomposition::check_decompositions(&model, &resolved),
     })

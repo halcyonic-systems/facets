@@ -811,6 +811,28 @@ pub struct DecompositionReport {
     pub issue_targets: Vec<IssueTarget>,
 }
 
+/// A resolved referent may belong to either storage generation (#140, ADR
+/// 0004): the neutral archive keys its elements `things`, the legacy WorldModel
+/// keys them `systems`, and both sit in one library. The core contract parses a
+/// referent as a `WorldModel` — the kernel's own vocabulary — so an archive
+/// referent must be PROJECTED before it is judged, exactly as the parent on the
+/// canvas is. Shape decides, as in the archive reader: a `things` text projects,
+/// anything else passes through untouched so the core's own defined issues
+/// (missing, unparseable) keep firing on exactly the text the store resolved.
+pub fn normalize_referents(resolved: &HashMap<String, String>) -> HashMap<String, String> {
+    resolved
+        .iter()
+        .map(|(id, text)| {
+            let projected = serde_json::from_str::<serde_json::Value>(text)
+                .ok()
+                .filter(|v| v.get("things").is_some())
+                .and_then(|_| serde_json::from_str::<CanvasModel>(text).ok())
+                .and_then(|cm| serde_json::to_string(&crate::canvas::project(&cm)).ok());
+            (id.clone(), projected.unwrap_or_else(|| text.clone()))
+        })
+        .collect()
+}
+
 /// Judge every decomposition seam in the canvas model against its store-resolved
 /// referents (canonical base58 id → child model JSON), and resolve each issue's
 /// kernel subject back to its canvas thing. Projection and judgment both happen
@@ -820,7 +842,8 @@ pub fn check_decompositions_canvas(
     resolved: &HashMap<String, String>,
 ) -> DecompositionReport {
     let p = project_with_map(model);
-    let issues = bert_core::decomposition::check_decompositions(&p.world, resolved);
+    let resolved = normalize_referents(resolved);
+    let issues = bert_core::decomposition::check_decompositions(&p.world, &resolved);
     let thing_of: HashMap<&Id, u64> = p.thing_ids.iter().map(|(k, v)| (v, *k)).collect();
     let issue_targets = issues
         .iter()
