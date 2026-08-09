@@ -85,11 +85,18 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
   // the semantics) but spread at the env rim and nudge apart at the capsule.
   let visible: { d: string; markered: boolean }[] = [{ d, markered: true }];
   let interior: string | null = null;
+  let title: string | undefined;
   if (ring && fact?.locus === "Exo" && relation.a !== relation.b) {
     const from = thingById(model, relation.a);
     const to = thingById(model, relation.b);
     if (from && to) {
       const [env, comp] = from.role === "Environment" ? [from, to] : [to, from];
+      // The dashed interior segment finally says what it means on hover —
+      // "which component the interface serves" lived only in a code comment
+      // until the 2026-08-09 field report asked what the dotted line was.
+      title = `${relation.name ? `"${relation.name}"` : "flow"} · ${relation.kind.toLowerCase()} — ${
+        from.role === "Environment" ? "enters" : "exits"
+      } at ${comp.name}'s interface; the dashed segment shows the interface serves ${comp.name}`;
       const step = siblingStep(model, relation);
       const portPt = ringPoint(ring, env);
       // Env-side spread: rotate this flow's rim contact around the env node.
@@ -146,6 +153,7 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
       relationId={relation.id}
       onSelect={onSelect}
       label={label}
+      title={title}
     />
   );
 }
