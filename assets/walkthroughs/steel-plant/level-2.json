@@ -1,0 +1,184 @@
+{
+  "format": "bert-lenses/canvas@1",
+  "lens": "Mobus",
+  "model_id": "VjCKBe5psWuHcmW2yE8nXM",
+  "things": [
+    {
+      "id": 1,
+      "name": "Iron-LoadingDock",
+      "x": 699.1752,
+      "y": 18.331238,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+    },
+    {
+      "id": 2,
+      "name": "Production",
+      "x": 631.6652,
+      "y": 660.6456,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+    },
+    {
+      "id": 3,
+      "name": "Material-Purchasing",
+      "x": 109.15961,
+      "y": 281.023,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+    },
+    {
+      "id": 4,
+      "name": "Move-In",
+      "x": 480.0,
+      "y": 150.0,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Propelling",
+      "interface": true
+    },
+    {
+      "id": 5,
+      "name": "Move-Out",
+      "x": 641.6796,
+      "y": 267.4671,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Propelling",
+      "interface": true
+    },
+    {
+      "id": 6,
+      "name": "Iron-Stock",
+      "x": 579.92346,
+      "y": 457.5329,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Buffering",
+      "interface": false,
+      "stock_unit": "tons"
+    },
+    {
+      "id": 7,
+      "name": "Level-Sensor",
+      "x": 380.0765,
+      "y": 457.5329,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Sensing",
+      "interface": false
+    },
+    {
+      "id": 8,
+      "name": "Inventory-Decider",
+      "x": 318.32037,
+      "y": 267.4671,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+    }
+  ],
+  "relations": [
+    {
+      "id": 9,
+      "a": 1,
+      "b": 4,
+      "name": "shipment arriving",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "iron"
+    },
+    {
+      "id": 10,
+      "a": 4,
+      "b": 6,
+      "name": "moved into stock",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "iron"
+    },
+    {
+      "id": 11,
+      "a": 6,
+      "b": 5,
+      "name": "withdrawn in batches",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "iron"
+    },
+    {
+      "id": 12,
+      "a": 5,
+      "b": 2,
+      "name": "F0.1 — iron in batches",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "unit": "tons",
+      "substance": "iron"
+    },
+    {
+      "id": 13,
+      "a": 6,
+      "b": 7,
+      "name": "stock level reading",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "iron"
+    },
+    {
+      "id": 14,
+      "a": 7,
+      "b": 8,
+      "name": "measured inventory level",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 15,
+      "a": 8,
+      "b": 4,
+      "name": "receiving instructions",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 16,
+      "a": 8,
+      "b": 5,
+      "name": "batching instructions",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 17,
+      "a": 8,
+      "b": 3,
+      "name": "purchase request",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    }
+  ],
+  "boundary": {
+    "porosity": 0.0,
+    "perceptive_fuzziness": 0.0
+  },
+  "system_type": {
+    "kingdom": "Concrete",
+    "genus": "Technical",
+    "domain": "Steel manufacturing"
+  },
+  "name": "Iron-Inventory",
+  "time_unit": "week"
+}
