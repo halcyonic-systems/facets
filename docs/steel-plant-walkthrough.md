@@ -1,5 +1,7 @@
 # The Steel-Plant walk — demo script
 
+**Status: LIVE.**
+
 A live-demo companion for showing George Mobus his own ch. 4 procedure running
 end to end: open the Steel-Plant, decompose it, and walk the hierarchy —
 Fig. 4.14's opaque box, Fig. 4.16's transparent box, Fig. 4.17's inventory
