@@ -88,6 +88,11 @@ export function thingById(model: CanvasModel, id: number): Thing | undefined {
  *  offset so two flows on the same pair fan apart instead of overlapping. */
 const PARALLEL_BOW = 30;
 
+/** #264: an endpoint with at least this many edges is a fanout hub — labels on
+ *  its wires slide toward the other (lower-degree) end, where the wires have
+ *  spread apart, instead of piling at the clustered midpoints. */
+const FANOUT_DEGREE = 4;
+
 /** #306: an on-membrane interface renders at a fraction of a component's body —
  *  Mobus draws interfaces as pass-ways in the boundary, smaller than the
  *  processes they serve. Shared by NodeBody, edge rims, and notch placement. */
@@ -152,6 +157,18 @@ export function edgeGeometry(
   // symmetric perpendicular offset so they fan apart.
   const step = siblingStep(model, relation);
 
+  // #264: in a fanout, every wire's midpoint clusters at the hub side and the
+  // labels pile into an unreadable stack. When one endpoint is a hub (degree ≥
+  // FANOUT_DEGREE), slide the label along the wire toward the LOWER-degree end,
+  // where the wires have spread apart. Symmetric edges keep the midpoint.
+  const degree = (id: number) =>
+    model.relations.filter((r) => r.a === id || r.b === id).length;
+  const degA = degree(relation.a);
+  const degB = degree(relation.b);
+  const labelT =
+    Math.max(degA, degB) >= FANOUT_DEGREE && degA !== degB ? (degA > degB ? 0.72 : 0.28) : 0.5;
+  const lerp = (p: Pt, q: Pt, t: number): Pt => ({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t });
+
   if (step !== 0) {
     const mid = midpoint(a, b);
     // #180: the normal must come from a direction CANONICAL to the unordered
@@ -168,13 +185,14 @@ export function edgeGeometry(
     const peak = step * PARALLEL_BOW;
     const cx = mid.x + px * peak * 2;
     const cy = mid.y + py * peak * 2;
+    const at = lerp(a, b, labelT);
     return {
       d: `M ${a.x} ${a.y} Q ${cx} ${cy}, ${b.x} ${b.y}`,
-      labelAt: { x: mid.x + px * peak, y: mid.y + py * peak },
+      labelAt: { x: at.x + px * peak, y: at.y + py * peak },
     };
   }
 
-  return { d: curved ? bezierPath(a, b) : straightPath(a, b), labelAt: midpoint(a, b) };
+  return { d: curved ? bezierPath(a, b) : straightPath(a, b), labelAt: lerp(a, b, labelT) };
 }
 
 // ---- The Mobus membrane (Phase 3) -------------------------------------------
