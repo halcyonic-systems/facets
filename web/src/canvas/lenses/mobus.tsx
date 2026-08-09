@@ -94,13 +94,13 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
       const portPt = ringPoint(ring, env);
       // Env-side spread: rotate this flow's rim contact around the env node.
       const baseAngle = Math.atan2(portPt.y - env.y, portPt.x - env.x);
-      const angle = baseAngle + step * 0.3;
+      const angle = baseAngle + step * 0.42;
       const envRim = { x: env.x + Math.cos(angle) * NODE_R, y: env.y + Math.sin(angle) * NODE_R };
       // Capsule-side nudge, perpendicular to the segment — heads stay distinct.
       const len = Math.hypot(portPt.x - envRim.x, portPt.y - envRim.y) || 1;
       const ux = (portPt.x - envRim.x) / len;
       const uy = (portPt.y - envRim.y) / len;
-      const portEnd = { x: portPt.x - uy * step * 5, y: portPt.y + ux * step * 5 };
+      const portEnd = { x: portPt.x - uy * step * 8, y: portPt.y + ux * step * 8 };
       // Inbound heads end CLEAR of the capsule (24×14, opaque) — it paints
       // after the edges, so a marker at the capsule center is never seen.
       const inboundEnd = { x: portEnd.x - ux * 14, y: portEnd.y - uy * 14 };
