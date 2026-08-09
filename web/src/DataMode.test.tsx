@@ -54,6 +54,7 @@ describe("Data mode (#304 M1)", () => {
     expect(html).toContain("forces the flow");
     expect(html).toContain("536.2");
     expect(html).toContain("2 observations");
+    expect(html).toContain("2 rows × 3 columns"); // console graft: shape on open
     expect(html).toContain("model declares level Structure");
   });
 

@@ -75,22 +75,30 @@ export function DataMode({
   /** CSV index a grid column reads from; -1 means row index / missing. */
   const csvIndexOf = (col: number) => (col === 0 ? timeIndex : columns[col - 1]?.csvIndex ?? -1);
 
-  const sortedRows = useMemo(() => {
+  const sortedAll = useMemo(() => {
     if (!parsed) return [] as string[][];
     const all = parsed.rows;
-    if (!sort) return all.slice(0, ROW_CAP);
+    if (!sort) return all;
     const idx = sort.col === 0 ? timeIndex : columns[sort.col - 1]?.csvIndex ?? -1;
-    if (idx < 0 && sort.col !== 0) return all.slice(0, ROW_CAP);
+    if (idx < 0 && sort.col !== 0) return all;
     const sign = sort.dir === "asc" ? 1 : -1;
     const decorated = all.map((row, i) => ({ row, i }));
     decorated.sort((x, y) => {
       const c = idx < 0 ? x.i - y.i : cellCompare(x.row[idx], y.row[idx]);
       return sign * (c || x.i - y.i);
     });
-    return decorated.slice(0, ROW_CAP).map((d) => d.row);
+    return decorated.map((d) => d.row);
     // columns is rebuilt each render, but its csvIndex values derive from
     // parsed + manifest, both listed here.
   }, [parsed, sort, timeIndex, manifest]);
+
+  // The console graft: past the cap, elide the middle (head … tail) instead of
+  // truncating the tail — the last observations are usually the live ones.
+  const HEAD = ROW_CAP - 20;
+  const elided = sortedAll.length > ROW_CAP;
+  const sortedRows = elided ? sortedAll.slice(0, HEAD) : sortedAll;
+  const tailRows = elided ? sortedAll.slice(-20) : [];
+  const hiddenCount = elided ? sortedAll.length - HEAD - 20 : 0;
 
   const clickHeader = (col: number) =>
     setSort((s) =>
@@ -209,6 +217,12 @@ export function DataMode({
             {modelName}
           </span>
           <Pill tone="neutral">Data level</Pill>
+          {/* The console graft: the shape, stated the moment the sheet opens. */}
+          {parsed && (
+            <span className="font-mono text-xs" style={{ color: "var(--text-primary)" }}>
+              {parsed.rows.length} rows × {columns.length + 1} columns
+            </span>
+          )}
           <span className="font-mono text-xs" style={{ color: "var(--text-secondary)" }}>
             {parsed
               ? `support: ${timeMapping ? timeMapping.column : "row index"}${
@@ -294,8 +308,16 @@ export function DataMode({
                           </div>
                         </div>
                       ) : (
+                        // The instrument graft: a broken binding reads as a
+                        // DEAD CHANNEL — red bar where a kind bar would be,
+                        // struck values below. Unmistakable, never dropped.
                         <div title="this column names no declared flow — the binding is broken (renamed flow?)">
                           <div className="whitespace-nowrap">
+                            <span
+                              aria-hidden
+                              className="mr-1 inline-block h-[3px] w-3 align-middle"
+                              style={{ background: "var(--verdict-error)" }}
+                            />
                             <span style={{ color: "var(--verdict-error)" }}>
                               ⚠ {c.mapping.element ?? "(no target)"}
                             </span>
@@ -314,8 +336,13 @@ export function DataMode({
                 </tr>
               </thead>
               <tbody>
-                {sortedRows.map((row, ri) => (
-                  <tr key={ri}>
+                {[...sortedRows, ...tailRows].map((row, ri) => (
+                  <tr key={ri} data-tail={elided && ri >= sortedRows.length ? "" : undefined}
+                      style={
+                        elided && ri === sortedRows.length
+                          ? { borderTop: "3px double var(--border)" }
+                          : undefined
+                      }>
                     <td
                       className="px-2 py-0.5 font-mono"
                       style={{
@@ -350,6 +377,8 @@ export function DataMode({
                           borderRight: HAIRLINE,
                           borderBottom: HAIRLINE,
                           color: c.relation ? "var(--text-primary)" : "var(--text-muted)",
+                          textDecoration: c.relation ? undefined : "line-through",
+                          opacity: c.relation ? undefined : 0.55,
                           cursor: "default",
                           boxShadow:
                             selected && selected.row === ri && selected.col === ci + 1
@@ -390,8 +419,9 @@ export function DataMode({
       >
         <span>
           {parsed
-            ? `${sortedRows.length} of ${parsed.rows.length} rows` +
-              (parsed.rows.length > ROW_CAP ? ` (first ${ROW_CAP})` : "") +
+            ? (elided
+                ? `${sortedRows.length} + ${tailRows.length} of ${parsed.rows.length} rows (⋮ ${hiddenCount} elided)`
+                : `${sortedRows.length} of ${parsed.rows.length} rows`) +
               ` · ${columns.length} bound column${columns.length === 1 ? "" : "s"}`
             : "0 rows · structural entry"}
         </span>
