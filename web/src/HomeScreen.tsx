@@ -51,6 +51,9 @@ interface HomeProps {
   onOpenPin?: (pin: Pin) => void;
   onUnpin?: (pin: Pin) => void;
   onCreate: () => void;
+  /** #309: the Klir lens's data-first front door — author a data system before
+   *  (or instead of) any structure. */
+  onStartFromData: () => void;
   onOpenExample: (d: Demo) => void;
   onOpenCorpus: (e: CorpusEntry) => void;
   onOpenFile: () => void;
@@ -75,6 +78,7 @@ export function HomeScreen(props: HomeProps) {
         {route.view === "home" && (
           <HomeMenu
             onCreate={props.onCreate}
+            onStartFromData={props.onStartFromData}
             onOpenLibrary={() => setRoute({ view: "library" })}
             workbench={props.workbench ?? []}
             onOpenPin={props.onOpenPin}
@@ -340,12 +344,14 @@ const LEDE =
 
 export function HomeMenu({
   onCreate,
+  onStartFromData,
   onOpenLibrary,
   workbench = [],
   onOpenPin,
   onUnpin,
 }: {
   onCreate: () => void;
+  onStartFromData?: () => void;
   onOpenLibrary: () => void;
   workbench?: WorkbenchEntry[];
   onOpenPin?: (pin: Pin) => void;
@@ -399,6 +405,13 @@ export function HomeMenu({
         <BlockHeader label="Start here" />
         <Ledger>
           <LedgerRow name="Create a model" description="Start from a blank canvas." onClick={onCreate} />
+          {onStartFromData && (
+            <LedgerRow
+              name="Start from data"
+              description="Bring a CSV or type observations — author a Klir data system; structure can come later."
+              onClick={onStartFromData}
+            />
+          )}
           <LedgerRow
             name="Open a model"
             description="The standard library, your own saved models, or a file from disk."

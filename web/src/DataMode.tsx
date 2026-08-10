@@ -79,6 +79,17 @@ export function DataMode({
 
   const timeIndex = parsed && timeMapping ? parsed.headers.indexOf(timeMapping.column) : -1;
 
+  // #309: a data-first entry has variables (things) and no bound flows — its
+  // columns ARE the variables, matched to headers by name (the same name-keyed
+  // contract as flow binding: a rename loses the column visibly, never silently).
+  const variableCols = useMemo(() => {
+    if (!parsed || flowMappings.length > 0) return [];
+    return model.things
+      .map((t) => ({ thing: t, csvIndex: parsed.headers.indexOf(t.name) }))
+      .filter((v) => v.csvIndex >= 0 && v.csvIndex !== timeIndex);
+    // flowMappings/timeIndex derive from manifest + parsed, both listed.
+  }, [parsed, manifest, model.things, timeIndex]);
+
   /** CSV index a grid column reads from; -1 means row index / missing. */
   const csvIndexOf = (col: number) => (col === 0 ? timeIndex : columns[col - 1]?.csvIndex ?? -1);
 
@@ -316,7 +327,7 @@ export function DataMode({
           {/* The console graft: the shape, stated the moment the sheet opens. */}
           {parsed && (
             <span className="font-mono text-xs" style={{ color: "var(--text-primary)" }}>
-              {parsed.rows.length} rows × {columns.length + 1} columns
+              {parsed.rows.length} rows × {(columns.length || variableCols.length) + 1} columns
             </span>
           )}
           <span className="font-mono text-xs" style={{ color: "var(--text-secondary)" }}>
@@ -350,10 +361,125 @@ export function DataMode({
               {onAttachCsv && <div className="mt-3">{importButton}</div>}
             </div>
           )}
-          {parsed && columns.length === 0 && (
+          {parsed && columns.length === 0 && variableCols.length === 0 && (
             <p className="max-w-md p-4 text-xs" style={{ color: "var(--text-secondary)" }}>
               Data is attached but no column is bound to a declared flow yet.
             </p>
+          )}
+          {/* #309: the variable sheet — a data-system entry whose columns are
+              its declared variables. Read-only; kind and scale ride the header
+              so the source-system declaration is visible where the data lives. */}
+          {parsed && columns.length === 0 && variableCols.length > 0 && (
+            <table
+              className="text-xs"
+              style={{ borderCollapse: "separate", borderSpacing: 0, fontVariantNumeric: "tabular-nums" }}
+            >
+              <thead>
+                <tr>
+                  <th
+                    className="px-2 py-1.5 text-left font-mono text-[11px] font-normal"
+                    style={{ ...headerCellStyle(0, true), color: "var(--text-secondary)" }}
+                    onClick={() => clickHeader(0)}
+                    title="sort by the support column"
+                  >
+                    {timeMapping ? timeMapping.column : "t"}
+                    {caret(0)}
+                  </th>
+                  {variableCols.map((v) => (
+                    <th
+                      key={v.thing.id}
+                      className="px-2 py-1.5 text-left font-mono text-[11px] font-normal"
+                      style={{
+                        position: "sticky",
+                        top: 0,
+                        zIndex: 2,
+                        background: "var(--bg-surface)",
+                        borderRight: HAIRLINE,
+                        borderBottom: "1px solid var(--border)",
+                        verticalAlign: "bottom",
+                      }}
+                    >
+                      <div style={{ color: "var(--text-primary)" }}>{v.thing.name}</div>
+                      <div className="text-[10px] font-normal" style={{ color: "var(--text-muted)" }}>
+                        {(v.thing.variable_kind ?? "Basic").toLowerCase()}
+                        {v.thing.scale ? ` · ${v.thing.scale.toLowerCase()}` : ""}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sortedRows.map((row, ri) => (
+                  <tr key={ri}>
+                    <td
+                      className="px-2 py-0.5 font-mono"
+                      style={{
+                        borderRight: HAIRLINE,
+                        borderBottom: HAIRLINE,
+                        background: ri % 2 === 1 ? "var(--bg-primary)" : "var(--bg-secondary)",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      {timeIndex >= 0 ? row[timeIndex] : ri}
+                    </td>
+                    {variableCols.map((v) => (
+                      <td
+                        key={v.thing.id}
+                        className="px-2 py-0.5 font-mono"
+                        style={{
+                          borderRight: HAIRLINE,
+                          borderBottom: HAIRLINE,
+                          background: ri % 2 === 1 ? "var(--bg-primary)" : "var(--bg-secondary)",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        {row[v.csvIndex]}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+                {elided && (
+                  <tr>
+                    <td
+                      colSpan={variableCols.length + 1}
+                      className="px-2 py-1 text-center font-mono text-[10px]"
+                      style={{ color: "var(--text-muted)", borderBottom: HAIRLINE }}
+                    >
+                      … {hiddenCount} rows elided …
+                    </td>
+                  </tr>
+                )}
+                {tailRows.map((row, ri) => (
+                  <tr key={`tail-${ri}`}>
+                    <td
+                      className="px-2 py-0.5 font-mono"
+                      style={{
+                        borderRight: HAIRLINE,
+                        borderBottom: HAIRLINE,
+                        background: "var(--bg-secondary)",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      {timeIndex >= 0 ? row[timeIndex] : "…"}
+                    </td>
+                    {variableCols.map((v) => (
+                      <td
+                        key={v.thing.id}
+                        className="px-2 py-0.5 font-mono"
+                        style={{
+                          borderRight: HAIRLINE,
+                          borderBottom: HAIRLINE,
+                          background: "var(--bg-secondary)",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        {row[v.csvIndex]}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
           {parsed && columns.length > 0 && (
             <table

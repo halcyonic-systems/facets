@@ -45,6 +45,7 @@ import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
 import { MODE_BY_LENS } from "./review";
 import { NewModelTypePrompt } from "./NewModelTypePrompt";
+import { StartFromData } from "./StartFromData";
 import { SlPane } from "./SlPane";
 import { draftSlWithRetry, newTurnId, loadCoauthorTurns, saveCoauthorTurns, type CoauthorTurn, type DraftStage } from "./coauthor";
 import type { SlError } from "./kernel/types";
@@ -240,6 +241,10 @@ function Workspace() {
   // the document acquires data without a demo bundle. Cleared wherever the
   // open document changes (same sites that clear `demo`).
   const [attachedCsv, setAttachedCsv] = useState<string | null>(null);
+  // #309 M1: the data-first front door — a full-screen authoring surface that
+  // creates a Klir-lens entry from observations (CSV or typed) before any
+  // structure exists.
+  const [startFromDataOpen, setStartFromDataOpen] = useState(false);
   // The interface inspector's target — a flow-carrying capsule (r = (S, φ)).
   // Cleared on any model identity change: the PortFact is a snapshot, and a
   // swap (walk enter/exit, open) or an edit can orphan it.
@@ -767,6 +772,38 @@ function Workspace() {
     setWalk([]);
     setFitToken((n) => (n ?? 0) + 1); // frame the newborn membrane (#100 phase 0)
     setTypePromptOpen(true); // #77: offer the kind/name first step (skippable)
+  }
+
+  // #309 M1: open the data-first door. Same discard/walk guards as File → New;
+  // the reset itself waits until the surface commits.
+  async function startFromData() {
+    if (!(await guardDiscard()) || !(await flushWalk())) return;
+    setStartFromDataOpen(true);
+  }
+
+  // The authored entry arrives whole: a Klir-lens model whose things are the
+  // variables (source system), the observations as attached CSV, and a manifest
+  // naming the support column. Lands in Data mode — the face the entry earned.
+  function commitStartFromData(model: CanvasModel, csvText: string, m: Manifest) {
+    setDemo(null);
+    setCanvasModel(model);
+    setSlText("");
+    setSlErrors([]);
+    setOpenRef(null);
+    setAttachedCsv(csvText);
+    setManifest(m);
+    setResult(null);
+    setRunError(null);
+    setSelectedRelationId(null);
+    setSelectedThingId(null);
+    setBoundaryAnchor(null);
+    setArmed(null);
+    setWalk([]);
+    setWorkMode("data");
+    setStartFromDataOpen(false);
+    setHomeOpen(false);
+    setDirty(true); // authored content, nowhere saved yet
+    setFitToken((n) => (n ?? 0) + 1);
   }
 
   function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -2459,6 +2496,7 @@ function Workspace() {
           onOpenPin={openPin}
           onUnpin={unpin}
           onCreate={newModel}
+          onStartFromData={startFromData}
           onOpenExample={pickExample}
           onOpenCorpus={pickCorpus}
           onOpenFile={() => importInputRef.current?.click()}
@@ -2468,6 +2506,10 @@ function Workspace() {
           onRenameInLibrary={renameInLibrary}
           onClose={canvasModel !== null ? () => setHomeOpen(false) : null}
         />
+      )}
+
+      {startFromDataOpen && (
+        <StartFromData onCommit={commitStartFromData} onCancel={() => setStartFromDataOpen(false)} />
       )}
 
       {saveDialogOpen && (
