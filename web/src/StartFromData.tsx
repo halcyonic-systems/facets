@@ -237,9 +237,27 @@ export function StartFromData({
 
   const variablePanel = grid && (
     <section className="w-80 shrink-0 overflow-y-auto p-3" style={{ borderLeft: "1px solid var(--border)", background: "var(--bg-secondary)" }}>
-      <h2 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
-        Variables — the source system
-      </h2>
+      <div className="mb-1.5 flex items-baseline justify-between">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
+          Variables — the source system
+        </h2>
+        {/* A wide CSV (HMDA is ~99 columns) starts from none-included just as
+            often as from all: both sweeps, support column always kept. */}
+        <span className="flex gap-2 font-mono text-[10px]">
+          <button
+            onClick={() => setCfg((cs) => cs.map((x) => ({ ...x, include: true })))}
+            style={{ color: "var(--accent-strong)" }}
+          >
+            all
+          </button>
+          <button
+            onClick={() => setCfg((cs) => cs.map((x, k) => ({ ...x, include: k === supportIdx })))}
+            style={{ color: "var(--accent-strong)" }}
+          >
+            none
+          </button>
+        </span>
+      </div>
       <p className="mb-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
         Scale and standing are declarations, not readings of the data. The guesses below are
         proposals; each one is yours to ratify or correct.
