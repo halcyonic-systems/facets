@@ -74,6 +74,45 @@ describe("Data mode (#304 M1)", () => {
     expect(html).toContain("remittances");
   });
 
+  it("offers acquisition and binding when the callbacks are present (M2 slice 1)", () => {
+    const html = renderToStaticMarkup(
+      <DataMode
+        model={model}
+        modelName="Federal Reserve"
+        csv={csv}
+        manifest={manifest}
+        onAttachCsv={() => {}}
+        onManifestChange={() => {}}
+      />,
+    );
+    expect(html).toContain("replace CSV…"); // data present → replace wording
+    expect(html).toContain("Column bindings");
+    expect(html).toContain("time (support)");
+    expect(html).toContain("→ remittances"); // every declared flow is a bind target
+  });
+
+  it("offers import from the empty state when no data is attached", () => {
+    const html = renderToStaticMarkup(
+      <DataMode
+        model={model}
+        modelName="Federal Reserve"
+        csv={null}
+        manifest={null}
+        onAttachCsv={() => {}}
+        onManifestChange={() => {}}
+      />,
+    );
+    expect(html).toContain("import CSV…");
+  });
+
+  it("stays read-only when the callbacks are absent", () => {
+    const html = renderToStaticMarkup(
+      <DataMode model={model} modelName="Federal Reserve" csv={csv} manifest={manifest} />,
+    );
+    expect(html).not.toContain("import CSV");
+    expect(html).not.toContain("Column bindings");
+  });
+
   it("states the structural-only condition when no data is attached", () => {
     const html = renderToStaticMarkup(
       <DataMode model={model} modelName="Federal Reserve" csv={null} manifest={null} />,

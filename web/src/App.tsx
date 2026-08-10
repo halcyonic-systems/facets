@@ -236,6 +236,10 @@ function Workspace() {
   // Klir data-level face (rows = support, columns = declared flows); the
   // canvas deliberately does not render there. Ratified 2026-08-09.
   const [workMode, setWorkMode] = useState<"structure" | "data">("structure");
+  // #304 M2 slice 1: a CSV attached to the OPEN model from the Data tab —
+  // the document acquires data without a demo bundle. Cleared wherever the
+  // open document changes (same sites that clear `demo`).
+  const [attachedCsv, setAttachedCsv] = useState<string | null>(null);
   // The interface inspector's target — a flow-carrying capsule (r = (S, φ)).
   // Cleared on any model identity change: the PortFact is a snapshot, and a
   // swap (walk enter/exit, open) or an edit can orphan it.
@@ -504,7 +508,7 @@ function Workspace() {
     // pickExample instead. The guard also narrows the optional fields (#148).
     if (d.modelJson == null || d.csv == null || d.manifest == null || d.t == null) return;
     if (!(await guardDiscard()) || !(await flushWalk())) return;
-    setDemo(d);
+    setDemo(d); setAttachedCsv(null);
     // An SL-authored demo opens from its `.sl` — the author's document, which
     // carries what projection loses (declared params, #18). The bundle stays
     // the run's model: sl_demos.rs pins it to the projection of this same
@@ -613,7 +617,7 @@ function Workspace() {
       // Either generation may arrive here — a neutral archive, or a legacy
       // WorldModel someone exported before #140. The kernel decides which.
       const cm = openModel(json);
-      setDemo(null);
+      setDemo(null); setAttachedCsv(null);
       setCanvasModel(cm);
       syncSlPane(null, cm);
       setOpenRef(null);
@@ -647,7 +651,7 @@ function Workspace() {
     if (!(await flushWalk())) return;
     const prior = canvasModel;
     const nextModel = prior && !lensExplicit ? { ...cm, lens: prior.lens } : cm;
-    setDemo(null);
+    setDemo(null); setAttachedCsv(null);
     setCanvasModel(nextModel);
     // A pane compile authors a new model with no gallery address; the corpus
     // and example openers restore theirs right after this call returns.
@@ -746,7 +750,7 @@ function Workspace() {
   // read the empty model). Boundary defaults are neutral, editable via the popover.
   async function newModel() {
     if (!(await guardDiscard()) || !(await flushWalk())) return;
-    setDemo(null);
+    setDemo(null); setAttachedCsv(null);
     setCanvasModel({ lens: "Mobus", things: [], relations: [], boundary: { porosity: 0, perceptive_fuzziness: 0 } });
     setSlText(""); // blank canvas, blank page — the seed is for first launch, not File → New
     setSlErrors([]);
@@ -898,7 +902,7 @@ function Workspace() {
     if (!(await guardDiscard()) || !(await flushWalk())) return;
     try {
       const cm = openModel(await library.load(name));
-      setDemo(null);
+      setDemo(null); setAttachedCsv(null);
       setCanvasModel(cm);
       syncSlPane(null, cm);
       setOpenRef({ kind: "library", ref: name });
@@ -1067,14 +1071,19 @@ function Workspace() {
     refreshLibrary().catch((e) => setToast(e instanceof Error ? e.message : String(e)));
   }, [homeOpen]);
 
+  // Attached data beats the bundle for READING surfaces (Data mode, the
+  // per-flow column picker). The run path still runs the bundle only —
+  // Run-from-attached is the next M2 slice, deliberately not smuggled in here.
+  const activeCsv = attachedCsv ?? demo?.csv ?? null;
+
   const csvHeaders = useMemo(() => {
-    if (!demo) return [];
+    if (!activeCsv) return [];
     try {
-      return parseCsv(demo.csv!).headers;
+      return parseCsv(activeCsv).headers;
     } catch {
       return [];
     }
-  }, [demo]);
+  }, [activeCsv]);
 
   // Which flows are currently driven — a structural fact read off the manifest,
   // independent of whether a run has happened yet.
@@ -1364,7 +1373,7 @@ function Workspace() {
   // route back out of a loaded model.
   async function goHome() {
     if (!(await guardDiscard()) || !(await flushWalk())) return;
-    setDemo(null);
+    setDemo(null); setAttachedCsv(null);
     setCanvasModel(null);
     setManifest({ model: "", data: "", t: 12, mapping: [] });
     setResult(null);
@@ -1501,7 +1510,7 @@ function Workspace() {
           dirty,
         },
       ]);
-      setDemo(null);
+      setDemo(null); setAttachedCsv(null);
       setCanvasModel(cm);
       setManifest({ model: "", data: "", t: 12, mapping: [] });
       setResult(null);
@@ -1553,7 +1562,7 @@ function Workspace() {
       await Promise.all([saves, animate ? delay(WALK_OUT_MS) : undefined]);
       const target = walk[index];
       setWalk(walk.slice(0, index));
-      setDemo(target.demo);
+      setDemo(target.demo); setAttachedCsv(null);
       setCanvasModel(target.canvas);
       setManifest(target.manifest);
       setDt(target.dt);
@@ -1923,8 +1932,16 @@ function Workspace() {
                       <DataMode
                         model={canvasModel}
                         modelName={canvasModel.name?.trim() || currentLabel || "untitled"}
-                        csv={demo?.csv ?? null}
+                        csv={activeCsv}
                         manifest={manifest}
+                        onAttachCsv={(text) => {
+                          setAttachedCsv(text);
+                          // A fresh attachment resets the mapping — bindings
+                          // are per-dataset, and stale ones would silently
+                          // misread the new columns.
+                          setManifest({ model: "", data: "attached.csv", t: 12, mapping: [] });
+                        }}
+                        onManifestChange={(m) => setManifest(m)}
                       />
                     ) : (
                     <div

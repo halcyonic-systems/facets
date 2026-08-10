@@ -37,11 +37,18 @@ export function DataMode({
   modelName,
   csv,
   manifest,
+  onAttachCsv,
+  onManifestChange,
 }: {
   model: CanvasModel;
   modelName: string;
   csv: string | null;
   manifest: Manifest | null;
+  /** #304 M2 slice 1: the Data tab acquires data — a CSV attached to the open
+   *  model without a demo bundle. Absent = read-only presentation contexts. */
+  onAttachCsv?: (text: string) => void;
+  /** Binding moves into the table: role/target edits write the manifest. */
+  onManifestChange?: (m: Manifest) => void;
 }) {
   const parsed = useMemo(() => (csv ? parseCsv(csv) : null), [csv]);
 
@@ -152,11 +159,100 @@ export function DataMode({
     verticalAlign: "bottom",
   });
 
+  // The Data tab's own acquisition affordance — a file picker, no bundle
+  // needed. Reads as text; parsing and every judgment stay downstream.
+  const importButton = onAttachCsv && (
+    <label
+      className="cursor-pointer px-2 py-1 font-mono text-[11px] uppercase tracking-wide"
+      style={{
+        border: "1px solid var(--accent)",
+        color: "var(--accent-strong)",
+        background: "var(--bg-surface)",
+      }}
+    >
+      {csv ? "replace CSV…" : "import CSV…"}
+      <input
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = () => onAttachCsv(String(reader.result));
+          reader.readAsText(file);
+        }}
+      />
+    </label>
+  );
+
+  /** Write one column's role/target into the manifest (append or replace). */
+  const setBinding = (column: string, value: string) => {
+    if (!onManifestChange) return;
+    const base: Manifest = manifest ?? { model: "", data: "attached.csv", t: 12, mapping: [] };
+    const rest = base.mapping.filter((m) => m.column !== column);
+    let entry: ColumnMapping | null = null;
+    if (value === "time") entry = { column, as: "time" };
+    else if (value !== "ignore") entry = { column, as: "flow", element: value, force: true };
+    onManifestChange({ ...base, mapping: entry ? [...rest, entry] : rest });
+  };
+
+  const currentBinding = (column: string): string => {
+    const m = manifest?.mapping.find((x) => x.column === column);
+    if (!m || m.as === "ignore") return "ignore";
+    return m.as === "time" ? "time" : (m.element ?? "ignore");
+  };
+
+  // The binding panel — every CSV column with a role dropdown. This IS the
+  // mapping surface (fork 2 of M2): binding by declaration, edited where the
+  // data lives, name-keyed like everything else in M1.
+  const bindingPanel = onManifestChange && parsed && (
+    <div className="p-3" style={{ borderBottom: HAIRLINE }}>
+      <h2
+        className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide"
+        style={{ color: "var(--text-secondary)" }}
+      >
+        Column bindings
+      </h2>
+      <ul className="text-xs">
+        {parsed.headers.map((h) => (
+          <li key={h} className="flex items-center justify-between gap-2 py-0.5">
+            <span className="truncate font-mono" style={{ color: "var(--text-secondary)" }}>
+              {h}
+            </span>
+            <select
+              value={currentBinding(h)}
+              onChange={(e) => setBinding(h, e.target.value)}
+              className="max-w-[9rem] border px-1 py-0.5 font-mono text-[11px]"
+              style={{
+                borderColor: "var(--hairline)",
+                background: "var(--bg-primary)",
+                color: "var(--text-primary)",
+              }}
+            >
+              <option value="ignore">— ignore —</option>
+              <option value="time">time (support)</option>
+              {model.relations
+                .filter((r) => r.name)
+                .map((r) => (
+                  <option key={r.id} value={r.name}>
+                    → {r.name}
+                  </option>
+                ))}
+            </select>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+
   const flowsRail = (
     <section
       className="w-60 shrink-0 overflow-y-auto"
       style={{ borderLeft: "1px solid var(--border)", background: "var(--bg-secondary)" }}
     >
+      {bindingPanel}
       {/* The unbound rail — a declared flow with no data is a fact worth
           showing; an empty column would read as missing data instead. */}
       {unbound.length > 0 && (
@@ -233,6 +329,7 @@ export function DataMode({
           <span className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>
             model declares level {model.klir_level ?? "— undeclared"}
           </span>
+          <span className="ml-auto">{importButton}</span>
         </div>
         <p className="mt-1 max-w-3xl text-xs" style={{ color: "var(--text-muted)" }}>
           A column is a declared flow — the binding is by declaration, never invention. Structure
@@ -244,11 +341,14 @@ export function DataMode({
       <div className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1 overflow-auto" onMouseLeave={() => setHoverCol(null)}>
           {!parsed && (
-            <p className="max-w-md p-4 text-xs" style={{ color: "var(--text-secondary)" }}>
-              This model ships structure only — every declared flow is unbound. Attaching data
-              (CSV + mapping) gives this sheet its rows; the declared flows on the right are the
-              columns it is waiting to grow.
-            </p>
+            <div className="max-w-md p-4">
+              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                This model ships structure only — every declared flow is unbound. Attaching data
+                (CSV + mapping) gives this sheet its rows; the declared flows on the right are the
+                columns it is waiting to grow.
+              </p>
+              {onAttachCsv && <div className="mt-3">{importButton}</div>}
+            </div>
           )}
           {parsed && columns.length === 0 && (
             <p className="max-w-md p-4 text-xs" style={{ color: "var(--text-secondary)" }}>
@@ -404,7 +504,7 @@ export function DataMode({
           )}
         </div>
 
-        {(unbound.length > 0 || otherMappings.length > 0) && flowsRail}
+        {(bindingPanel || unbound.length > 0 || otherMappings.length > 0) && flowsRail}
       </div>
 
       {/* Status bar — the spreadsheet's bottom strip: rows shown on the left,
