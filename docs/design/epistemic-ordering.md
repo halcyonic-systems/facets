@@ -1,14 +1,14 @@
 # The epistemic ordering — research direction, not doctrine
 
-**Status: RESEARCH DIRECTION.** Nothing here is Lean-proven, and nothing here changes the kernel. This note exists so the repo states, in one place and with its scope fenced, the reading that motivates data-first entry (#309) and the Data mode (#304). For the proven statements about the three lenses, read [`theory-fidelity.md`](theory-fidelity.md) — that document wins every conflict with this one.
+**Status: RESEARCH**. Nothing here is Lean-proven, and nothing here changes the kernel. This note exists so the repo states, in one place and with its scope fenced, the reading that motivates data-first entry (#309) and the Data mode (#304). For the proven statements about the three lenses, read [`theory-fidelity.md`](../theory-fidelity.md) — that document wins every conflict with this one.
 
 ## Two axes, kept distinct
 
 The repo carries two orthogonal structures over the same three traditions:
 
-1. **The lens lattice** (proven). One kernel, three faithful views: `toKlir` unconditional, `toBunge` behind `HasBond`, `toMobus` behind `Irreflexive`, one proven composite, neither gate entailing the other. A meet-semilattice of parallel readings — not a tower, not a ladder ([`archive/on-the-word-ladder.md`](archive/on-the-word-ladder.md) records the retirement of climb vocabulary here).
+1. **The lens lattice** (proven). One kernel, three faithful views: `toKlir` unconditional, `toBunge` behind `HasBond`, `toMobus` behind `Irreflexive`, one proven composite, neither gate entailing the other. A meet-semilattice of parallel readings — not a tower, not a ladder ([`archive/on-the-word-ladder.md`](../archive/on-the-word-ladder.md) records the retirement of climb vocabulary here).
 
-2. **Klir's epistemological levels** (adopted doctrine, censused). source → data → generative → structure → metasystem, per *Facets* §4.5; every shipped entry declares its level ([`288-level-census.md`](288-level-census.md)); the kernel refuses cross-level comparison (`check_cross_level`, per Facets §5.4).
+2. **Klir's epistemological levels** (adopted doctrine, censused). source → data → generative → structure → metasystem, per *Facets* §4.5; every shipped entry declares its level ([`288-level-census.md`](../288-level-census.md)); the kernel refuses cross-level comparison (`check_cross_level`, per Facets §5.4).
 
 The research direction concerns the second axis only: **what the three traditions each say about moving along it** — how an investigator gets from observations to asserted structure.
 
