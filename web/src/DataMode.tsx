@@ -217,8 +217,10 @@ export function DataMode({
 
   // The binding panel — every CSV column with a role dropdown. This IS the
   // mapping surface (fork 2 of M2): binding by declaration, edited where the
-  // data lives, name-keyed like everything else in M1.
-  const bindingPanel = onManifestChange && parsed && (
+  // data lives, name-keyed like everything else in M1. A model with no
+  // declared flows has nothing to bind (#309's variable sheet binds by name),
+  // so the panel would be 99 rows of "— ignore —" noise: suppressed.
+  const bindingPanel = onManifestChange && parsed && model.relations.length > 0 && (
     <div className="p-3" style={{ borderBottom: HAIRLINE }}>
       <h2
         className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide"
@@ -343,9 +345,9 @@ export function DataMode({
           <span className="ml-auto">{importButton}</span>
         </div>
         <p className="mt-1 max-w-3xl text-xs" style={{ color: "var(--text-muted)" }}>
-          A column is a declared flow — the binding is by declaration, never invention. Structure
-          mode asserts; this sheet observes. Inducing structure from these columns is inference,
-          not reading.
+          {variableCols.length > 0
+            ? "A column is a declared variable — matched by name, never invention. No relation is asserted here; inducing structure from these columns is inference, not reading."
+            : "A column is a declared flow — the binding is by declaration, never invention. Structure mode asserts; this sheet observes. Inducing structure from these columns is inference, not reading."}
         </p>
       </div>
 
@@ -648,7 +650,9 @@ export function DataMode({
             ? (elided
                 ? `${sortedRows.length} + ${tailRows.length} of ${parsed.rows.length} rows (⋮ ${hiddenCount} elided)`
                 : `${sortedRows.length} of ${parsed.rows.length} rows`) +
-              ` · ${columns.length} bound column${columns.length === 1 ? "" : "s"}`
+              (variableCols.length > 0
+                ? ` · ${variableCols.length} variable column${variableCols.length === 1 ? "" : "s"}`
+                : ` · ${columns.length} bound column${columns.length === 1 ? "" : "s"}`)
             : "0 rows · structural entry"}
         </span>
         <span style={{ color: stats ? "var(--text-primary)" : "var(--text-muted)" }}>

@@ -1912,7 +1912,10 @@ function Workspace() {
             inspector-focus mode (#57) the palette and SL pane fold away and the
             canvas <main> is hidden (not unmounted) so the dock can fill the row. */}
         <div className="flex min-h-0 flex-1">
-          {canvasModel && !inspectorFocused && (
+          {/* The palette authors onto the CANVAS; Data mode has no canvas, so
+              the rail folds away with the mode (#309 — it was overlapping the
+              sheet's left edge). */}
+          {canvasModel && !inspectorFocused && workMode !== "data" && (
             <PaletteDock collapsed={paletteCollapsed} onToggle={() => setPaletteCollapsed((c) => !c)}>
               <PaletteRail lens={canvasModel.lens} armed={armed} onArm={setArmed} />
             </PaletteDock>
@@ -2320,12 +2323,14 @@ function Workspace() {
                           .join(" · ")}
                       </div>
                     )}
-                    <div
-                      className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-mono"
-                      style={{ color: "var(--text-muted)" }}
-                    >
-                      arm a tool to stamp (Esc disarms) · click a node to edit it in the Element tab · double-click to enter it · drag the handle dot to connect · click a flow to drive it
-                    </div>
+                    {workMode !== "data" && (
+                      <div
+                        className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-mono"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        arm a tool to stamp (Esc disarms) · click a node to edit it in the Element tab · double-click to enter it · drag the handle dot to connect · click a flow to drive it
+                      </div>
+                    )}
                     {toast && (
                       <Banner tone="error" className="absolute bottom-3 left-3">
                         rejected — {toast}
