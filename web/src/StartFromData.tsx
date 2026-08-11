@@ -335,15 +335,16 @@ export function StartFromData({
 
   const sheet = grid && (
     <div className="min-w-0 flex-1 overflow-auto p-3">
-      {/* The rung the sheet is: the same frame, filled. Until a cell holds an
-          observed state the entry has authored only the frame — and says so. */}
+      {/* Pre-commit honesty: a raw CSV is NOT yet a data system — it becomes
+          one only through a chosen frame. This sheet is the quarry; the panel
+          is the chisel; the data system is what "create entry" commits. */}
       <div className="mb-1.5">
         <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
-          Data system — the frame, filled
+          Raw material — observations read through the frame
         </span>
         <span className="ml-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
           {hasObservations
-            ? "each row is one observation: the variables' states at one point of the support"
+            ? "each row is a candidate observation — the data system is what “create entry” commits"
             : "no observed states yet — the entry stands at Source until a row is filled"}
         </span>
       </div>
@@ -466,10 +467,10 @@ export function StartFromData({
           </span>
         </div>
         <p className="mt-1 max-w-3xl text-xs" style={{ color: "var(--text-muted)" }}>
-          Two rungs, one page: the panel on the right is the <em>source system</em> — the frame,
-          with no observations in it; the sheet is the <em>data system</em> — that same frame,
-          filled. Choosing columns authors the frame; rows fill it. No relation is asserted at
-          either rung.
+          The panel on the right is the <em>source system</em> — the frame, with no observations in
+          it. The sheet is raw material read through that frame: choosing columns carves the frame,
+          rows fill it, and <em>create entry</em> commits the <em>data system</em>. No relation is
+          asserted at any point.
         </p>
       </div>
       <div className="flex min-h-0 flex-1">
