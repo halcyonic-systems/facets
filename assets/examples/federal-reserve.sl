@@ -89,7 +89,7 @@ flow "Balance Sheet" -> "Banking System" : matter "reserve balances minted in pa
 flow "Balance Sheet" -> "Banking System" : matter "interest on reserves" substance interest
 
 # What the portfolio earns, net of expenses, goes back to the fisc.
-flow "Balance Sheet" -> "U.S. Treasury" : matter "remittances — net income returned"
+flow "Balance Sheet" -> "U.S. Treasury" : matter "remittances — net income returned" unit "USD millions"
 
 # The window: a standing channel, structurally present even when
 # dormant — the channel is structure, its activation rate is dynamics.
@@ -103,7 +103,7 @@ flow "Balance Sheet" -> "Banking System" : matter "currency — notes issued aga
 
 # The fisc's checking account: TGA drawdowns and rebuilds move the
 # same reserve stock policy steers, with no policy decision anywhere.
-flow "U.S. Treasury" -> "Balance Sheet" : matter "TGA deposits — the Treasury's checking account"
+flow "U.S. Treasury" -> "Balance Sheet" : matter "TGA deposits — the Treasury's checking account" unit "USD millions"
 
 # ── Open forks ───────────────────────────────────────────────────────
 # 1. ON RRP: its counterparties are money-market funds, not banks — a
