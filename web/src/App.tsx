@@ -1811,8 +1811,14 @@ function Workspace() {
                 // conservation engine; Bunge declares no mechanism (⊘M), so
                 // Run has nothing to execute and says so.
                 const runKind = LensPalette[canvasModel.lens].run;
+                // #309/#288: the level is earned, and so is Run. A Source- or
+                // Data-level entry authors no generating rule (the census's
+                // cross-cutting test), so there is nothing to evolve — same
+                // shape as Bunge's ⊘M refusal, stated in the title.
+                const subGenerative =
+                  canvasModel.klir_level === "Source" || canvasModel.klir_level === "Data";
                 const dtmcRunnable =
-                  runKind === "dtmc" && !!canvasModel && canvasModel.things.length > 0;
+                  runKind === "dtmc" && !!canvasModel && canvasModel.things.length > 0 && !subGenerative;
                 const runnable =
                   runKind === "dtmc" ? dtmcRunnable : runKind === "conservation" && !!demo;
                 const onRun = () => {
@@ -1827,7 +1833,9 @@ function Workspace() {
                   runKind === "dtmc"
                     ? dtmcRunnable
                       ? "Run the state machine as a Markov chain"
-                      : "Add at least one state to run"
+                      : subGenerative
+                        ? `declared level ${canvasModel.klir_level} — no generating rule is authored, so Run has nothing to execute`
+                        : "Add at least one state to run"
                     : runKind === "conservation"
                       ? demo
                         ? "Run the forced simulation"
@@ -1890,8 +1898,18 @@ function Workspace() {
                 where the display serif can run large without fighting the
                 buttons. */}
             {desc && (
-              <div key={canvasModel.lens} className="lens-question basis-full pb-1 pt-0.5">
-                {desc.question}
+              <div
+                key={`${canvasModel.lens}-${workMode}`}
+                className="lens-question basis-full pb-1 pt-0.5"
+              >
+                {/* #309: the registry's question speaks from the generative
+                    rung (the behavior function). A Source/Data-level entry in
+                    Data mode hasn't earned that question yet — it gets the
+                    data rung's own. */}
+                {workMode === "data" &&
+                (canvasModel.klir_level === "Source" || canvasModel.klir_level === "Data")
+                  ? "what did I observe? — variables over a support, their states recorded; nothing behind them is asserted"
+                  : desc.question}
               </div>
             )}
           </div>
