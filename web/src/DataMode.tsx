@@ -55,6 +55,13 @@ export function DataMode({
   // View state only — the sheet is read-only. col 0 = the time column,
   // col i+1 = the i-th bound flow column.
   const [sort, setSort] = useState<SortState>(null);
+  // #309: two readings of one data system — the observations (rows over the
+  // support) and the observed states (distinct combinations of the basic
+  // variables, with frequencies). Both are reading, not inference: counting
+  // asserts nothing. Collapsing the support away is the first gesture toward
+  // support-invariance — the climb toward the generative rung starts here,
+  // but this view does not take it.
+  const [dataView, setDataView] = useState<"observations" | "states">("observations");
   const [hoverCol, setHoverCol] = useState<number | null>(null);
   const [selected, setSelected] = useState<{ row: number; col: number } | null>(null);
 
@@ -89,6 +96,22 @@ export function DataMode({
       .filter((v) => v.csvIndex >= 0 && v.csvIndex !== timeIndex);
     // flowMappings/timeIndex derive from manifest + parsed, both listed.
   }, [parsed, manifest, model.things, timeIndex]);
+
+  // The observed states: one entry per distinct combination of the variable
+  // columns' values, counted over ALL observations, most frequent first.
+  const observedStates = useMemo(() => {
+    if (!parsed || variableCols.length === 0) return null;
+    const idxs = variableCols.map((v) => v.csvIndex);
+    const seen = new Map<string, { vals: string[]; n: number }>();
+    for (const row of parsed.rows) {
+      const vals = idxs.map((i) => row[i] ?? "");
+      const key = vals.join("\u0000");
+      const entry = seen.get(key);
+      if (entry) entry.n += 1;
+      else seen.set(key, { vals, n: 1 });
+    }
+    return [...seen.values()].sort((a, b) => b.n - a.n);
+  }, [parsed, variableCols]);
 
   /** CSV index a grid column reads from; -1 means row index / missing. */
   const csvIndexOf = (col: number) => (col === 0 ? timeIndex : columns[col - 1]?.csvIndex ?? -1);
@@ -342,11 +365,38 @@ export function DataMode({
           <span className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>
             model declares level {model.klir_level ?? "— undeclared"}
           </span>
-          <span className="ml-auto">{importButton}</span>
+          <span className="ml-auto flex items-center gap-2">
+            {/* #309: the two readings of one data system, a toggle apart. */}
+            {observedStates && (
+              <span className="flex font-mono text-[11px]" style={{ border: HAIRLINE }}>
+                {(["observations", "states"] as const).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setDataView(v)}
+                    className="px-2 py-1 uppercase tracking-wide"
+                    style={{
+                      background: dataView === v ? "var(--accent-soft)" : "var(--bg-surface)",
+                      color: dataView === v ? "var(--accent-strong)" : "var(--text-muted)",
+                    }}
+                    title={
+                      v === "observations"
+                        ? "rows over the support — one row per observation"
+                        : "distinct states of the variables, with frequencies — the support collapsed away"
+                    }
+                  >
+                    {v === "observations" ? "observations" : "observed states"}
+                  </button>
+                ))}
+              </span>
+            )}
+            {importButton}
+          </span>
         </div>
         <p className="mt-1 max-w-3xl text-xs" style={{ color: "var(--text-muted)" }}>
           {variableCols.length > 0
-            ? "A column is a declared variable — matched by name, never invention. No relation is asserted here; inducing structure from these columns is inference, not reading."
+            ? dataView === "states"
+              ? "One row per distinct state of the variables, most frequent first — the support collapsed away. Frequencies are observed, nothing is generated: the climb toward a generating rule starts from this table, and is not taken here."
+              : "A column is a declared variable — matched by name, never invention. No relation is asserted here; inducing structure from these columns is inference, not reading."
             : "A column is a declared flow — the binding is by declaration, never invention. Structure mode asserts; this sheet observes. Inducing structure from these columns is inference, not reading."}
         </p>
       </div>
@@ -368,10 +418,125 @@ export function DataMode({
               Data is attached but no column is bound to a declared flow yet.
             </p>
           )}
+          {/* #309: the observed-states reading — one row per distinct
+              combination of the variables' values, most frequent first, the
+              support collapsed away. Counting asserts nothing; this is still
+              reading. It is also byte-for-byte what RA and entropy consume. */}
+          {parsed && columns.length === 0 && variableCols.length > 0 && dataView === "states" && observedStates && (
+            <div className="p-0">
+              <table
+                className="text-xs"
+                style={{ borderCollapse: "separate", borderSpacing: 0, fontVariantNumeric: "tabular-nums" }}
+              >
+                <thead>
+                  <tr>
+                    {variableCols.map((v) => (
+                      <th
+                        key={v.thing.id}
+                        className="px-2 py-1.5 text-left font-mono text-[11px] font-normal"
+                        style={{
+                          position: "sticky",
+                          top: 0,
+                          zIndex: 2,
+                          background: "var(--bg-surface)",
+                          borderRight: HAIRLINE,
+                          borderBottom: "1px solid var(--border)",
+                          verticalAlign: "bottom",
+                        }}
+                      >
+                        <div style={{ color: "var(--text-primary)" }}>{v.thing.name}</div>
+                        <div className="text-[10px] font-normal" style={{ color: "var(--text-muted)" }}>
+                          {(v.thing.variable_kind ?? "Basic").toLowerCase()}
+                          {v.thing.scale ? ` · ${v.thing.scale.toLowerCase()}` : ""}
+                        </div>
+                      </th>
+                    ))}
+                    <th
+                      className="px-2 py-1.5 text-right font-mono text-[11px] font-normal"
+                      style={{
+                        position: "sticky",
+                        top: 0,
+                        zIndex: 2,
+                        background: "var(--bg-surface)",
+                        borderRight: HAIRLINE,
+                        borderBottom: "1px solid var(--border)",
+                        color: "var(--text-secondary)",
+                        verticalAlign: "bottom",
+                      }}
+                      title="observations in this state"
+                    >
+                      n
+                    </th>
+                    <th
+                      className="px-2 py-1.5 text-right font-mono text-[11px] font-normal"
+                      style={{
+                        position: "sticky",
+                        top: 0,
+                        zIndex: 2,
+                        background: "var(--bg-surface)",
+                        borderBottom: "1px solid var(--border)",
+                        color: "var(--text-secondary)",
+                        verticalAlign: "bottom",
+                      }}
+                      title="share of all observations"
+                    >
+                      share
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {observedStates.slice(0, ROW_CAP).map((s, ri) => (
+                    <tr key={ri}>
+                      {s.vals.map((val, ci) => (
+                        <td
+                          key={ci}
+                          className="px-2 py-0.5 font-mono"
+                          style={{
+                            borderRight: HAIRLINE,
+                            borderBottom: HAIRLINE,
+                            background: ri % 2 === 1 ? "var(--bg-primary)" : "var(--bg-secondary)",
+                            color: "var(--text-primary)",
+                          }}
+                        >
+                          {val === "" ? "∅" : val}
+                        </td>
+                      ))}
+                      <td
+                        className="px-2 py-0.5 text-right font-mono"
+                        style={{
+                          borderRight: HAIRLINE,
+                          borderBottom: HAIRLINE,
+                          background: ri % 2 === 1 ? "var(--bg-primary)" : "var(--bg-secondary)",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        {s.n.toLocaleString()}
+                      </td>
+                      <td
+                        className="px-2 py-0.5 text-right font-mono"
+                        style={{
+                          borderBottom: HAIRLINE,
+                          background: ri % 2 === 1 ? "var(--bg-primary)" : "var(--bg-secondary)",
+                          color: "var(--text-secondary)",
+                        }}
+                      >
+                        {((s.n / parsed.rows.length) * 100).toFixed(1)}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {observedStates.length > ROW_CAP && (
+                <p className="mt-1 px-2 font-mono text-[10px]" style={{ color: "var(--text-muted)" }}>
+                  … {observedStates.length - ROW_CAP} rarer states not shown (all are counted)
+                </p>
+              )}
+            </div>
+          )}
           {/* #309: the variable sheet — a data-system entry whose columns are
               its declared variables. Read-only; kind and scale ride the header
               so the source-system declaration is visible where the data lives. */}
-          {parsed && columns.length === 0 && variableCols.length > 0 && (
+          {parsed && columns.length === 0 && variableCols.length > 0 && dataView === "observations" && (
             <table
               className="text-xs"
               style={{ borderCollapse: "separate", borderSpacing: 0, fontVariantNumeric: "tabular-nums" }}
@@ -647,12 +812,14 @@ export function DataMode({
       >
         <span>
           {parsed
-            ? (elided
-                ? `${sortedRows.length} + ${tailRows.length} of ${parsed.rows.length} rows (⋮ ${hiddenCount} elided)`
-                : `${sortedRows.length} of ${parsed.rows.length} rows`) +
-              (variableCols.length > 0
-                ? ` · ${variableCols.length} variable column${variableCols.length === 1 ? "" : "s"}`
-                : ` · ${columns.length} bound column${columns.length === 1 ? "" : "s"}`)
+            ? dataView === "states" && observedStates
+              ? `${observedStates.length.toLocaleString()} distinct state${observedStates.length === 1 ? "" : "s"} of ${variableCols.length} variable${variableCols.length === 1 ? "" : "s"} · ${parsed.rows.length.toLocaleString()} observations`
+              : (elided
+                  ? `${sortedRows.length} + ${tailRows.length} of ${parsed.rows.length} rows (⋮ ${hiddenCount} elided)`
+                  : `${sortedRows.length} of ${parsed.rows.length} rows`) +
+                (variableCols.length > 0
+                  ? ` · ${variableCols.length} variable column${variableCols.length === 1 ? "" : "s"}`
+                  : ` · ${columns.length} bound column${columns.length === 1 ? "" : "s"}`)
             : "0 rows · structural entry"}
         </span>
         <span style={{ color: stats ? "var(--text-primary)" : "var(--text-muted)" }}>

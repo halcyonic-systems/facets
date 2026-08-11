@@ -239,7 +239,7 @@ export function StartFromData({
     <section className="w-80 shrink-0 overflow-y-auto p-3" style={{ borderLeft: "1px solid var(--border)", background: "var(--bg-secondary)" }}>
       <div className="mb-1.5 flex items-baseline justify-between">
         <h2 className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
-          Variables — the source system
+          Source system — the frame
         </h2>
         {/* A wide CSV (HMDA is ~99 columns) starts from none-included just as
             often as from all: both sweeps, support column always kept. */}
@@ -259,8 +259,9 @@ export function StartFromData({
         </span>
       </div>
       <p className="mb-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
-        Scale and standing are declarations, not readings of the data. The guesses below are
-        proposals; each one is yours to ratify or correct.
+        Which variables exist, their scales, their standing, the support — decided here, complete
+        before any row exists. No observation lives in this panel. The guesses below are proposals;
+        each one is yours to ratify or correct.
       </p>
       <ul className="text-xs">
         {grid.headers.map((h, i) => {
@@ -334,6 +335,18 @@ export function StartFromData({
 
   const sheet = grid && (
     <div className="min-w-0 flex-1 overflow-auto p-3">
+      {/* The rung the sheet is: the same frame, filled. Until a cell holds an
+          observed state the entry has authored only the frame — and says so. */}
+      <div className="mb-1.5">
+        <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
+          Data system — the frame, filled
+        </span>
+        <span className="ml-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
+          {hasObservations
+            ? "each row is one observation: the variables' states at one point of the support"
+            : "no observed states yet — the entry stands at Source until a row is filled"}
+        </span>
+      </div>
       <table className="text-xs" style={{ borderCollapse: "separate", borderSpacing: 0, fontVariantNumeric: "tabular-nums" }}>
         <thead>
           <tr>
@@ -416,9 +429,10 @@ export function StartFromData({
           <Pill tone="neutral">Klir lens</Pill>
           {grid && (
             <span className="font-mono text-xs" style={{ color: "var(--text-secondary)" }}>
-              this entry stands at level <strong style={{ color: "var(--text-primary)" }}>{level}</strong>
-              {" · "}support: {grid.headers[supportIdx] ?? "—"} · {grid.rows.length} rows ·{" "}
-              {includedCount} variables
+              source system: {includedCount} variable{includedCount === 1 ? "" : "s"} · support:{" "}
+              {grid.headers[supportIdx] ?? "—"} — data system: {grid.rows.length} row
+              {grid.rows.length === 1 ? "" : "s"} → level{" "}
+              <strong style={{ color: "var(--text-primary)" }}>{level}</strong>
             </span>
           )}
           <span className="ml-auto flex items-center gap-2">
@@ -452,9 +466,10 @@ export function StartFromData({
           </span>
         </div>
         <p className="mt-1 max-w-3xl text-xs" style={{ color: "var(--text-muted)" }}>
-          Variables and their state sets are the source system; observations over the support make
-          it a data system. No relation is asserted here — inducing structure from these columns is
-          inference, not reading.
+          Two rungs, one page: the panel on the right is the <em>source system</em> — the frame,
+          with no observations in it; the sheet is the <em>data system</em> — that same frame,
+          filled. Choosing columns authors the frame; rows fill it. No relation is asserted at
+          either rung.
         </p>
       </div>
       <div className="flex min-h-0 flex-1">
