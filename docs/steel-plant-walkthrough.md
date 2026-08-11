@@ -29,9 +29,15 @@ fresh browser with an empty library. Both seams are held clean in CI by
    among the six entities of level −1, F-numbers on every flow, substances
    from Listing 4.1's own subtype attributes.
 
-   *Say:* this is the SOI as an opaque box. The one departure from the figure
-   is that the sources and sinks are drawn as residents, because each is a
-   system in its own right — the same promotion his Listing 4.4 makes when it
+   *Say:* this is the SOI as an opaque box. Two departures from the figure,
+   both owned aloud. First: S0 appears twice over — as the frame that names
+   the model and as the single work process carrying every flow. Listing 4.1
+   declares the SOI itself as `type=PROCESS`, so "the whole plant is one
+   work process" is Mobus's own declaration; Fig. 4.14 draws one box where
+   we draw the declaration and its frame (#308 tracks collapsing the two).
+   The box inside the frame is also the door the walk needs — it is what
+   carries `decomposes`. Second: the sources and sinks are drawn as
+   residents, because each is a system in its own right — the same promotion his Listing 4.4 makes when it
    writes Src-1.1 into Iron-Inventory's environment. The message traffic
    (purchase orders out, shipping documents in) is Listing 4.1's
    `subtype=MESSAGE` announcement, cashed early so the seam below can carry it.
@@ -88,10 +94,11 @@ fresh browser with an empty library. Both seams are held clean in CI by
 - **The verdict pill** on the control strip folds seam issues into the same
   list as every other validation verdict; a broken referent is as loud as a
   dangling flow.
-- **The node inspector** on a decomposed component names its child; on an
-  interface component it explains v1's refusal instead (the Lean contract
-  covers the internal network only — which is why the walkable boxes at
-  levels 0 and 1 are interior components).
+- **The node inspector** on a decomposed component names its child. Interface
+  components decompose too since #307 lifted the v1 refusal (the crossing
+  contract transcribed from SSF #43) — the walkable boxes at levels 0 and 1
+  being interior components is a fact about these models, not a limit of the
+  contract.
 
 ## If something looks wrong
 
