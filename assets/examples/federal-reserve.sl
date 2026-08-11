@@ -28,7 +28,10 @@ component FOMC primitive Modulating interface
 
 # The work process. The desk executes the directive by buying and
 # selling in the open market — the one place policy touches the flows.
-component "Open Market Desk" primitive Combining
+# Interface because the purchase crosses the boundary here: securities
+# arrive from the Banking System at the desk, and a crossing must land
+# on the membrane (kernel precondition; QA 8/11).
+component "Open Market Desk" primitive Combining interface
 
 # The stock. Assets accumulate on one side, and the reserves and
 # remittances they generate leave from the other.
@@ -79,11 +82,11 @@ flow "Open Market Desk" -> "Balance Sheet" : matter "securities held"
 
 # The purchase, side two: the reserves that pay for it — created, not
 # transferred. This is the money-creation flow.
-flow "Balance Sheet" -> "Banking System" : matter "reserve balances minted in payment"
+flow "Balance Sheet" -> "Banking System" : matter "reserve balances minted in payment" substance reserves
 
 # What holding the reserves earns the banks — the rate the Fed
 # administers directly.
-flow "Balance Sheet" -> "Banking System" : matter "interest on reserves"
+flow "Balance Sheet" -> "Banking System" : matter "interest on reserves" substance interest
 
 # What the portfolio earns, net of expenses, goes back to the fisc.
 flow "Balance Sheet" -> "U.S. Treasury" : matter "remittances — net income returned"
@@ -91,12 +94,12 @@ flow "Balance Sheet" -> "U.S. Treasury" : matter "remittances — net income ret
 # The window: a standing channel, structurally present even when
 # dormant — the channel is structure, its activation rate is dynamics.
 flow "Banking System" -> "Balance Sheet" : matter "collateral pledged at the discount window"
-flow "Balance Sheet" -> "Banking System" : matter "reserves lent at the window"
+flow "Balance Sheet" -> "Banking System" : matter "reserves lent at the window" substance credit
 
 # Currency: notes reach the public only through the banks — a swap,
 # reserves debited as notes ship. The public stays behind the banks,
 # as households stay behind the markets.
-flow "Balance Sheet" -> "Banking System" : matter "currency — notes issued against reserves"
+flow "Balance Sheet" -> "Banking System" : matter "currency — notes issued against reserves" substance banknotes
 
 # The fisc's checking account: TGA drawdowns and rebuilds move the
 # same reserve stock policy steers, with no policy decision anywhere.
