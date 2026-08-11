@@ -442,13 +442,15 @@ fn system_name(model: &WorldModel, id_str: &str) -> String {
 /// usability, so identical edges are almost always an accidental double-draw.
 /// Warned, never blocked.
 fn check_duplicate_edges(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
-    let mut seen: HashMap<(String, String, InteractionType, SubstanceType), String> = HashMap::new();
+    let mut seen: HashMap<(String, String, InteractionType, SubstanceType, String), String> =
+        HashMap::new();
     for (i, ix) in model.interactions.iter().enumerate() {
         let key = (
             serialize_id(&ix.source),
             serialize_id(&ix.sink),
             ix.ty,
             ix.substance.ty,
+            ix.substance.sub_type.clone(),
         );
         let loc = format!("interactions[{i}]");
         match seen.get(&key) {
