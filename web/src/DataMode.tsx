@@ -228,7 +228,15 @@ export function DataMode({
     const rest = base.mapping.filter((m) => m.column !== column);
     let entry: ColumnMapping | null = null;
     if (value === "time") entry = { column, as: "time" };
-    else if (value !== "ignore") entry = { column, as: "flow", element: value, force: true };
+    else if (value !== "ignore") {
+      // The kernel's T2 gate requires a unit on every flow column, and the
+      // author already has one place to say it — the flow's own `unit`
+      // clause — so the binding inherits it rather than asking twice. A
+      // unitless flow yields a unitless mapping, and Run refuses with the
+      // kernel's own reason (declare the unit in SL, not here).
+      const unit = model.relations.find((r) => r.name === value)?.unit;
+      entry = { column, as: "flow", element: value, force: true, ...(unit ? { unit } : {}) };
+    }
     onManifestChange({ ...base, mapping: entry ? [...rest, entry] : rest });
   };
 

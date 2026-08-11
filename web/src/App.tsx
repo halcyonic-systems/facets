@@ -458,9 +458,11 @@ function Workspace() {
    *  projection for every shipped demo. Null = nothing runnable (projection
    *  refused, or no bundle). */
   const modelForRun = (): { json: string; edited: boolean } | null => {
-    if (dirty && canvasModel) {
+    // No bundle = no stored artifact to prefer, so a clean canvas projects
+    // too (#304 run-from-attached) — `edited` still means dirty-since-open.
+    if (canvasModel && (dirty || !demo)) {
       try {
-        return { json: JSON.stringify(project(canvasModel)), edited: true };
+        return { json: JSON.stringify(project(canvasModel)), edited: dirty };
       } catch (e) {
         setToast(e instanceof Error ? e.message : String(e));
         return null;
@@ -1112,6 +1114,11 @@ function Workspace() {
   // per-flow column picker). The run path still runs the bundle only —
   // Run-from-attached is the next M2 slice, deliberately not smuggled in here.
   const activeCsv = attachedCsv ?? demo?.csv ?? null;
+  // #304 run-from-attached: what the conservation engine may be fed. A demo
+  // bundle's pinned CSV always qualifies; an author's attachment qualifies
+  // once at least one column is bound — an unmapped sheet forces nothing,
+  // and the kernel would refuse it with a wall of unbound-flow reasons.
+  const runCsv = demo?.csv ?? (attachedCsv && manifest.mapping.length > 0 ? attachedCsv : null);
 
   const csvHeaders = useMemo(() => {
     if (!activeCsv) return [];
@@ -1191,9 +1198,11 @@ function Workspace() {
   function applyDrive(next: Manifest) {
     setManifest(next);
     setSelectedRelationId(null);
-    if (demo) {
+    // Judge against NEXT's mapping, not state — this call is the bind.
+    const csv = demo?.csv ?? (attachedCsv && next.mapping.length > 0 ? attachedCsv : null);
+    if (csv) {
       const m = modelForRun();
-      if (m) runWith(m.json, demo.csv!, next, dt, t, m.edited);
+      if (m) runWith(m.json, csv, next, dt, t, m.edited);
     }
   }
 
@@ -1214,9 +1223,9 @@ function Workspace() {
   function commitInputModel(nextModel: CanvasModel) {
     setCanvasModel(nextModel);
     setDirty(true);
-    if (demo && nextModel.lens !== "Klir") {
+    if (runCsv && nextModel.lens !== "Klir") {
       try {
-        runWith(JSON.stringify(project(nextModel)), demo.csv!, manifest, dt, t, true);
+        runWith(JSON.stringify(project(nextModel)), runCsv, manifest, dt, t, true);
       } catch (e) {
         setToast(e instanceof Error ? e.message : String(e));
       }
@@ -1236,9 +1245,9 @@ function Workspace() {
     if ((result === null && markovRun === null) || !canvasModel) return;
     if (canvasModel.lens === "Klir") {
       if (canvasModel.things.length > 0) runKlir(canvasModel, nextT);
-    } else if (demo) {
+    } else if (runCsv) {
       const m = modelForRun();
-      if (m) runWith(m.json, demo.csv!, manifest, nextDt, nextT, m.edited);
+      if (m) runWith(m.json, runCsv, manifest, nextDt, nextT, m.edited);
     }
   }
 
@@ -1820,13 +1829,13 @@ function Workspace() {
                 const dtmcRunnable =
                   runKind === "dtmc" && !!canvasModel && canvasModel.things.length > 0 && !subGenerative;
                 const runnable =
-                  runKind === "dtmc" ? dtmcRunnable : runKind === "conservation" && !!demo;
+                  runKind === "dtmc" ? dtmcRunnable : runKind === "conservation" && !!runCsv;
                 const onRun = () => {
                   if (runKind === "dtmc") {
                     if (dtmcRunnable) runKlir(canvasModel, t);
-                  } else if (runKind === "conservation" && demo) {
+                  } else if (runKind === "conservation" && runCsv) {
                     const m = modelForRun();
-                    if (m) runWith(m.json, demo.csv!, manifest, dt, t, m.edited);
+                    if (m) runWith(m.json, runCsv, manifest, dt, t, m.edited);
                   }
                 };
                 const title =
@@ -1837,9 +1846,11 @@ function Workspace() {
                         ? `declared level ${canvasModel.klir_level} — no generating rule is authored, so Run has nothing to execute`
                         : "Add at least one state to run"
                     : runKind === "conservation"
-                      ? demo
+                      ? runCsv
                         ? "Run the forced simulation"
-                        : "Run needs a demo bundle (model + CSV + mapping)"
+                        : attachedCsv
+                          ? "Bind at least one column in Data mode to drive the run"
+                          : "Run needs data — a demo bundle, or a CSV attached and bound in Data mode"
                       : "no mechanism stated (⊘M) — structure alone gives Run nothing to execute";
                 // #297: advance by one tick — a deterministic re-run one step
                 // longer, scrubber landed on the new final tick. No incremental
@@ -1853,12 +1864,12 @@ function Workspace() {
                     setT(next);
                     runKlir(canvasModel, next);
                     setTick(next);
-                  } else if (runKind === "conservation" && demo) {
+                  } else if (runKind === "conservation" && runCsv) {
                     const m = modelForRun();
                     if (!m) return;
                     const nextT = result ? (result.ticks + 1) * dt : dt;
                     setT(nextT);
-                    runWith(m.json, demo.csv!, manifest, dt, nextT, m.edited);
+                    runWith(m.json, runCsv, manifest, dt, nextT, m.edited);
                     setTick(result ? result.ticks : 0);
                   }
                 };
