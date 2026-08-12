@@ -2646,11 +2646,11 @@ function MenuBar({
   return (
     <div
       className="relative z-30 flex items-center gap-4 border-b px-3 py-1.5"
-      style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
+      style={{ borderColor: "var(--rule-soft)", background: "var(--paper-edge)" }}
     >
       <span
         className="text-xs font-semibold uppercase tracking-wider"
-        style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}
+        style={{ fontFamily: "var(--font-mono)", color: "var(--ink)" }}
       >
         bert&#8202;·&#8202;lenses
       </span>

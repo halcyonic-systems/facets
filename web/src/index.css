@@ -88,13 +88,18 @@
    * journal is set. These tokens are consumed ONLY by HomeScreen.tsx, applied
    * at its root, so the workspace keeps the Frost surface unchanged.
    * ------------------------------------------------------------------- */
-  --paper: #f7f5f0;
-  --paper-edge: #efece4;
-  --ink: #1b1a17;
-  --ink-secondary: #4b4a45;
-  --ink-muted: #837f76;
-  --rule: #1b1a17;
-  --rule-soft: #d8d3c8;
+  /* The sheet is white and the ground behind it is a neutral step darker, so
+     the content has an edge without needing a border, a shadow, or a tint.
+     Neutral, not warm: the first setting was beige and read as plain rather
+     than as paper. */
+  --paper: #ffffff;
+  --paper-ground: #eaecee;
+  --paper-edge: #f4f5f6;
+  --ink: #17181a;
+  --ink-secondary: #45484c;
+  --ink-muted: #7c8084;
+  --rule: #17181a;
+  --rule-soft: #e0e3e5;
   --seal: #8a3324;
 
   --font-display: "Cormorant Garamond", Georgia, serif;
@@ -133,13 +138,16 @@
     /* The printed record in dark: not an inverted page but a dark plate —
        warm cream ink on a near-black ground, the rubric warmed to terracotta
        so it stays a stroke of colour rather than a stain. */
-    --paper: #131317;
-    --paper-edge: #1b1b20;
-    --ink: #ece7dd;
-    --ink-secondary: #b3ada2;
-    --ink-muted: #83807a;
-    --rule: #ece7dd;
-    --rule-soft: #33333a;
+    /* Dark keeps the same relationship, inverted: the sheet is a step LIGHTER
+       than the ground it sits on, so the edge reads the same way. */
+    --paper: #17191c;
+    --paper-ground: #0e0f11;
+    --paper-edge: #1c1f22;
+    --ink: #e8eaec;
+    --ink-secondary: #b0b4b8;
+    --ink-muted: #7d8286;
+    --rule: #e8eaec;
+    --rule-soft: #2c3034;
     --seal: #c9705c;
 
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.25);

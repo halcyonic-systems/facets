@@ -70,12 +70,21 @@ export function HomeScreen(props: HomeProps) {
   return (
     <div
       className="flex min-h-0 flex-1 flex-col overflow-y-auto"
-      style={{ backgroundColor: "var(--paper)", color: "var(--ink)" }}
+      style={{ backgroundColor: "var(--paper-ground)", color: "var(--ink)" }}
     >
       {/* One page, one measure. Every level sets inside the same reading column
           — there is no full-bleed device, because the page ground IS the
-          identity and a band would interrupt it. */}
-      <div className="w-full flex-1">
+          identity and a band would interrupt it.
+
+          The sheet: the content sits on --paper against a --paper-ground that
+          is one neutral step away, so the page has an edge without a border,
+          a shadow, or a tint doing the work. Its measure is wider than the
+          reading column's, so the type keeps real margins rather than running
+          to the paper's edge. */}
+      <div
+        className="mx-auto w-full max-w-4xl flex-1 border-x"
+        style={{ backgroundColor: "var(--paper)", borderColor: "var(--rule-soft)" }}
+      >
         {route.view === "home" && (
           <HomeMenu
             onCreate={props.onCreate}
