@@ -293,6 +293,10 @@ function Workspace() {
   // whole work region. Presentation-only — the canvas <main> stays mounted (just
   // display:none'd), so its pan/zoom viewport survives the round trip untouched.
   const [inspectorFocused, setInspectorFocused] = useState(false);
+  // Presentation-only: has the author touched the lens picker yet this session?
+  // A new model opens on Mobus by decision, not by accident, so the strip names
+  // the reason once and retires the note the moment the picker gets used.
+  const [lensTouched, setLensTouched] = useState(false);
   // Unsaved-work tracking (presentation-only): true once the loaded model has
   // been edited on the canvas or via a popover, cleared on every load/new/save
   // seam. The nav affordances (Home, Switch model) confirm-before-discard only
@@ -1185,6 +1189,10 @@ function Workspace() {
   }, [canvasModel, selectedRelation]);
 
   function setLens(lens: CanvasModel["lens"]) {
+    // First-run legibility: the standing default is Mobus and the strip says
+    // why (see the note beside the pills). Once the author has worked the
+    // picker at all, the note has done its job and stands down.
+    setLensTouched(true);
     // The armed tool belongs to the outgoing lens's verb list — disarm. The
     // canvas itself never resets (accretion pattern).
     setArmed(null);
@@ -1767,6 +1775,14 @@ function Workspace() {
                 </button>
               ))}
             </div>
+            {/* The default is a decision, so it says so. A model opens on Mobus
+                because that lens asks the most of a model; the pills beside this
+                note are how you leave. Retires once the picker has been used. */}
+            {!lensTouched && canvasModel.lens === "Mobus" && (
+              <span className="text-xs font-body" style={{ color: "var(--text-muted)" }}>
+                Mobus by default: the fullest reading. Switch any time.
+              </span>
+            )}
             {/* Lens switching is question switching (#100): each tradition
                 answers a different guiding question, so the picker docks the
                 active lens's question as orientation copy. Kernel copy — the
@@ -1837,20 +1853,25 @@ function Workspace() {
                     if (m) runWith(m.json, runCsv, manifest, dt, t, m.edited);
                   }
                 };
+                // The unrunnable branches are now VISIBLE copy, not tooltips
+                // (the deck stands down and this sentence takes its place), so
+                // they read as sentences: no em dashes, plain and short. Each
+                // claim is preserved exactly — the level is declared and
+                // authors no rule, Bunge states no mechanism (⊘M).
                 const title =
                   runKind === "dtmc"
                     ? dtmcRunnable
                       ? "Run the state machine as a Markov chain"
                       : subGenerative
-                        ? `declared level ${canvasModel.klir_level} — no generating rule is authored, so Run has nothing to execute`
-                        : "Add at least one state to run"
+                        ? `Declared level ${canvasModel.klir_level} authors no generating rule, so Run has nothing to execute.`
+                        : "Add at least one state to run."
                     : runKind === "conservation"
                       ? runCsv
                         ? "Run the forced simulation"
                         : attachedCsv
-                          ? "Bind at least one column in Data mode to drive the run"
-                          : "Run needs data — a demo bundle, or a CSV attached and bound in Data mode"
-                      : "no mechanism stated (⊘M) — structure alone gives Run nothing to execute";
+                          ? "Bind at least one column in Data mode to drive the run."
+                          : "Run needs data: a demo bundle, or a CSV attached and bound in Data mode."
+                      : "No mechanism stated (⊘M), so structure alone gives Run nothing to execute.";
                 // #297: advance by one tick — a deterministic re-run one step
                 // longer, scrubber landed on the new final tick. No incremental
                 // engine state: the recorded-run architecture makes T+1 exact.
@@ -1872,29 +1893,43 @@ function Workspace() {
                     setTick(result ? result.ticks : 0);
                   }
                 };
+                // A dead primary action is worse than no action: on a model
+                // that cannot run, the deck is not rendered at all, so its
+                // ARRIVAL is the signal that the model became runnable. The
+                // kernel-side meaning of `runnable` is untouched — only whether
+                // the control is drawn. The reason a run is unavailable is
+                // demoted, not deleted: same sentence the disabled button used
+                // to carry in its tooltip, now a quiet line in the deck's place.
+                if (!runnable) {
+                  return (
+                    <span
+                      className="max-w-md text-right text-xs font-body"
+                      style={{ color: "var(--text-muted)" }}
+                      title={title}
+                    >
+                      {title}
+                    </span>
+                  );
+                }
                 return (
                   <>
                     <button
                       onClick={onStep}
-                      disabled={!runnable}
                       title="Advance the run by one tick (starts one if none has run)"
                       className="rounded-full border px-4 py-2 text-sm font-semibold transition-colors"
                       style={{
                         borderColor: "var(--accent)",
                         color: "var(--accent)",
                         background: "transparent",
-                        opacity: runnable ? 1 : 0.45,
-                        cursor: runnable ? "pointer" : "not-allowed",
                       }}
                     >
                       ⏭ Step
                     </button>
                     <button
                       onClick={onRun}
-                      disabled={!runnable}
                       title={title}
                       className="rounded-full px-5 py-2 text-sm font-semibold transition-colors"
-                      style={{ background: "var(--accent)", color: "var(--text-on-accent)", opacity: runnable ? 1 : 0.45, cursor: runnable ? "pointer" : "not-allowed" }}
+                      style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
                     >
                       ▶ Run
                     </button>
@@ -2501,6 +2536,18 @@ function Workspace() {
                       onDeselect: () => setSelectedThingId(null),
                     }
                   : null
+              }
+              // Ephemeral: what the author has selected right now, as one key.
+              // The dock stands collapsed on a blank model and opens when this
+              // goes non-null, so the inspector arrives with something to say.
+              selectionKey={
+                selectedThingId !== null
+                  ? `thing:${selectedThingId}`
+                  : selectedRelationId !== null
+                    ? `relation:${selectedRelationId}`
+                    : interfaceSel
+                      ? `port:${interfaceSel.port.component}:${interfaceSel.port.env}`
+                      : null
               }
               focused={inspectorFocused}
               onToggleFocus={() => setInspectorFocused((f) => !f)}

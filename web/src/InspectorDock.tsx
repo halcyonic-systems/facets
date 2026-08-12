@@ -64,6 +64,7 @@ export function InspectorDock({
   onSystemTypeChange,
   onAcceptUnit,
   element,
+  selectionKey,
   resetKeys,
   focused,
   onToggleFocus,
@@ -113,6 +114,11 @@ export function InspectorDock({
    *  pointer. Null in a surface that carries its own inline editor (the Klir
    *  and Bunge registers), which then owns the element face itself. */
   element: ElementSelection | null;
+  /** An opaque key for "the author has something selected right now" — thing,
+   *  relation, or interface capsule — or null for nothing. Ephemeral interaction
+   *  state only: the dock reads it to decide whether to stand open, never to
+   *  decide anything about the model. */
+  selectionKey: string | null;
   // #57: focus mode. When on, the parent hides the palette + canvas and this
   // dock fills the whole work region so the active tab reads as a full screen.
   focused: boolean;
@@ -125,9 +131,28 @@ export function InspectorDock({
   reviewedAt: string | null;
   onReview: () => void;
 }) {
+  // Whether the dock stands open follows the MODEL until the author says
+  // otherwise. A blank model has nothing to inspect, so a full instrument column
+  // standing over an empty canvas is noise and the dock starts as a rail; a
+  // model that already carries content has plenty to read, so opening a worked
+  // example lands ready. Null = follow the model. A boolean = the author's own
+  // word, which stands until a different model loads.
   const [tab, setTab] = useState<Tab>("run");
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapseChoice, setCollapseChoice] = useState<boolean | null>(null);
+  const modelIsEmpty =
+    !canvasModel || (canvasModel.things.length === 0 && canvasModel.relations.length === 0);
+  const collapsed = collapseChoice ?? modelIsEmpty;
+  const setCollapsed = setCollapseChoice;
   const issueCount = verdict?.issues.length ?? 0;
+
+  // A different model is a fresh start: the author's collapse choice was about
+  // the last one, so it lapses and the dock follows the new model again. Model
+  // IDENTITY, not the model object — an edit must never re-open a dock the
+  // author just shut.
+  const modelKey = canvasModel?.model_id ?? canvasModel?.name ?? null;
+  useEffect(() => {
+    setCollapseChoice(null);
+  }, [modelKey]);
 
   // Selecting a thing on the canvas raises its editor here — the docked
   // replacement for the popover that used to mount under the pointer. An
@@ -140,6 +165,15 @@ export function InspectorDock({
     setCollapsed(false);
   }, [selectedId]);
 
+  // Any selection at all opens the dock, not just a thing: an edge or an
+  // interface capsule is equally something to inspect, and a click that
+  // produced no visible response reads as a dead click. Only the element
+  // selection above claims the tab; this one just opens the column.
+  useEffect(() => {
+    if (selectionKey === null) return;
+    setCollapsed(false);
+  }, [selectionKey]);
+
   // An invoked review raises its own report — otherwise the action fires into a
   // tab the author never opens.
   useEffect(() => {
@@ -151,25 +185,37 @@ export function InspectorDock({
   // Focus wins over the thin collapse rail — a full-width dock can't be a sliver.
   if (collapsed && !focused) {
     return (
-      <div
-        className="flex w-8 flex-col items-center gap-3 border-l py-2"
+      // The whole rail is the affordance, not just the caret: it is the only
+      // way back to the instrument column by hand, so it takes the full edge.
+      <button
+        onClick={() => setCollapsed(false)}
+        title="Show inspector (Run, Formal, Review, Element)"
+        aria-expanded={false}
+        className="flex w-8 shrink-0 flex-col items-center gap-3 border-l py-2 transition-colors"
         style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
       >
-        <button
-          onClick={() => setCollapsed(false)}
-          title="Show inspector"
-          className="text-xs"
-          style={{ color: "var(--text-muted)" }}
-        >
+        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
           ◂
-        </button>
+        </span>
         <span
           className="text-[10px] font-semibold uppercase tracking-wide"
           style={{ color: "var(--text-muted)", writingMode: "vertical-rl" }}
         >
           inspector
         </span>
-      </div>
+        {issueCount > 0 && (
+          <span
+            className="rounded-pill px-1 text-[10px] font-semibold"
+            style={{
+              borderRadius: "var(--radius-pill)",
+              background: "var(--lens-accent)",
+              color: "var(--text-on-accent)",
+            }}
+          >
+            {issueCount}
+          </span>
+        )}
+      </button>
     );
   }
 
