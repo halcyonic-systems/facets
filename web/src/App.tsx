@@ -52,6 +52,14 @@ import { StartFromData } from "./StartFromData";
 import { SlPane } from "./SlPane";
 import { draftSlWithRetry, newTurnId, loadCoauthorTurns, saveCoauthorTurns, type CoauthorTurn, type DraftStage } from "./coauthor";
 import { drafterModel } from "./drafterModel";
+import {
+  THEME_LABEL,
+  nextThemeChoice,
+  setThemeChoice,
+  subscribeTheme,
+  themeChoice,
+  type ThemeChoice,
+} from "./theme";
 import type { SlError } from "./kernel/types";
 import { Banner, ConfirmDialog, Pill, ToolButton } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
@@ -2698,6 +2706,43 @@ function SeamGlyph({ clean }: { clean: boolean }) {
   );
 }
 
+// The theme control (#309 follow-on). It lives in the menu bar's far-right
+// chrome cluster, next to the kernel-status chip, because that end of the bar
+// is where the facts about the INSTRUMENT sit — is the kernel up, how is it
+// being displayed — while the left end is about the MODEL (Home, File, Switch,
+// the model's name and type). Theme is not a reading of the model, so it must
+// not sit anywhere near the Structure / Data / Run axis; that axis is about
+// what is being looked at, this is about the lamp.
+//
+// One cycling word rather than a menu or three segments: three states is short
+// enough to cycle, and a fourth control with a disclosure arrow would make the
+// bar read as if the display mattered as much as the model does. The label
+// always states the CURRENT state, and the tooltip states what a click does and
+// what "auto" is currently resolving to.
+function ThemeControl() {
+  const [choice, setChoice] = useState<ThemeChoice>(() => themeChoice());
+  useEffect(() => subscribeTheme(setChoice), []);
+  const next = nextThemeChoice(choice);
+  return (
+    <button
+      onClick={() => setThemeChoice(next)}
+      className="ml-auto text-[11px]"
+      style={{
+        fontFamily: "var(--font-mono)",
+        color: choice === "system" ? "var(--text-muted)" : "var(--text-secondary)",
+      }}
+      aria-label={`Theme: ${THEME_LABEL[choice]}`}
+      title={
+        choice === "system"
+          ? `Theme: following the system — click for ${THEME_LABEL[next]}`
+          : `Theme: ${THEME_LABEL[choice]}, overriding the system — click for ${THEME_LABEL[next]}`
+      }
+    >
+      {THEME_LABEL[choice]}
+    </button>
+  );
+}
+
 // The thin top menu bar — Frost chrome, quiet, mono/small-caps. The File menu
 // carries the working Open / Save / Export seams. Opening a disk file folds into
 // Open…'s "From a file" section rather than a separate Import item.
@@ -3058,8 +3103,10 @@ export function MenuBar({
         </button>
       )}
 
+      <ThemeControl />
+
       <span
-        className="ml-auto inline-flex items-center gap-1.5 text-[11px]"
+        className="inline-flex items-center gap-1.5 text-[11px]"
         style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
         title="crates/ = truth · web/ = face"
       >
