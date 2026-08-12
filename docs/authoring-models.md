@@ -10,13 +10,80 @@ For *using* the app, start at [`quickstart.md`](quickstart.md). For the
 language itself, [`language/spec.md`](language/spec.md) is normative. This doc
 is the working loop between them.
 
+## What actually makes a model run
+
+Excavated in the #318 library consolidation by putting every bundled model
+through `bert run` and sorting the answers. Eighteen examples, eight of which
+ran; the ten that did not stopped at one of exactly **three** gates, in this
+order. Nothing else stops a model, and one thing widely assumed to stop one does
+not.
+
+**Gate 1 — the lens, before anything about the contents is read.** `@lens`
+selects the representational mode (`Lens::mode()`): Klir → Core, Bunge →
+Structural, Mobus → Operational. Only Operational carries flow semantics, so
+**only a Mobus-pinned model can reach `run` at all.** Six of the ten stopped
+here, and all six were every non-Mobus model in the library — three Klir, three
+Bunge, no exceptions either way. This is not a defect in those files. It is a
+statement about which tradition they are written in, and the fix is a modelling
+decision, not a repair. (The one door around it is `run_markov`, which reads a
+Klir canvas as a DTMC. Different call, different meaning: it conserves
+probability, not substance.)
+
+**Gate 2 — the operational projection.** Under Mobus, `validate_operational`
+must yield a spec: every component needs a `primitive`, every boundary-crossing
+flow needs an `interface`, and endpoints must be typed in the *declared*
+direction. The steel-plant walk stopped here on one line — its purchase-order
+flows run **into** `source Iron-Source`, and a source originates flow.
+
+**Gate 3 — no algebraic cycle** (#259). `Circuit::eval_order` topologically
+sorts same-step dependencies, and a pushed wire adds a dependency edge *unless
+the receiver reads state instead of input*: an observation tap, a gradient wire,
+a `Source`'s emission, or a **non-Message inflow into a `Buffering` receiver**.
+So a loop is well-posed exactly when it passes through a stock read as a level.
+Three stopped here.
+
+The last clause of gate 3 is the sharp part, and it is easy to get wrong:
+
+> **The substance on the loop's return leg decides it, not the presence of a
+> stock.** A `Buffering` component fed `informational` around the loop is still
+> an algebraic cycle. Only a *physical* inflow (matter or energy) lets the
+> receiver read start-of-step storage instead of this step's input.
+
+Verified with a separating pair — identical topology, identical stock, one word
+different: `flow Valve -> Store : matter "return"` runs; `flow Valve -> Store :
+informational "return"` is refused, naming `Store → Valve`.
+
+**And what is NOT a gate: quantities.** `archive/respiring-cell.sl` declares no
+`time unit`, no `amount`, no `stock`, and no parameter of any kind, and it runs
+— because its flow graph is acyclic, so gate 3 has nothing to fail on.
+Parameterization decides whether a run is *meaningful*; it has never decided
+whether one *happens* (#216, already withdrawn once).
+
+Which leaves two shapes, and among the eight that ran there were only these two:
+
+- **acyclic** — the component flow graph is a DAG. Nothing further is needed.
+- **cyclic with a `Buffering` on every cycle**, taking its loop inflow as
+  matter or energy.
+
+The clearest way to see gate 3 is the pair the archive keeps deliberately:
+`archive/thermostat.sl` is the textbook control loop and it is **refused**,
+because `Furnace → Sensor → Thermostat → Furnace` is a loop of pure relays. The
+repair is not a parameter — it is a **missing thing**. The room is the regulated
+variable and it is not in the model, so the loop has nowhere to remember.
+`assets/demos/homeostat.json` is the same system with the room present as a
+`Buffering` component between the valve and the thermostat, and it runs and
+converges. If a loop refuses, the first question is not "which stock do I add"
+but **"what is the regulated variable, and did I forget to draw it?"**
+
 ## The short path (a structural model)
 
 Write a `.sl` file. The grammar is small and the parser's error messages state
 the exact clause syntax whenever you miss — lean on them; they are the
 documentation. Crib from [`../assets/examples/`](../assets/examples/)
-(`watershed.sl` is the smallest runnable one; `predator-prey.sl` shows
-environment mediation). Drop the file in `assets/examples/` and it self-sorts
+(`predator-prey.sl` shows environment mediation; `archive/respiring-cell.sl` is
+the smallest thing in the repo that runs, and `archive/watershed.sl` is the one
+that separates the conservation ledger into all four channels at once). Drop the
+file in `assets/examples/` and it self-sorts
 into the gallery by its `system "…" : Kingdom/Genus` line. That's it — it opens
 as a diagram under all three lenses.
 
@@ -116,6 +183,33 @@ new verb for the language, not a formula — see ADR 0006 for the growth rule.
    loop of pure relays has no deterministic step and the run **refuses with the
    loop named**. Time is honest everywhere else too: rates are per `time unit`,
    and a run's totals don't depend on Δt (`dt_invariance.rs` holds this).
+
+## The three pre-SL demos, and why they cannot be ported
+
+`allocation`, `homeostat` and `reservoir` (`assets/demos/` + their models in
+`assets/models/demos/`) predate System Language. They are bundled JSON with no
+`.sl` source, and the #318 pass asked whether to port them. The answer for two
+of them is that **the language cannot say what they say**, and that is worth
+knowing before anyone tries again:
+
+| demo | carries | portable? |
+|---|---|---|
+| `reservoir` | `initial_state.storage = 100` and `cognitive_params.release_rate = 1.5` on its Buffering component. The only model in the repo that **starts with a stock already full** — everywhere else stocks start at zero. | **no** |
+| `homeostat` | `release_rate` on the Room. A closed regulatory loop that actually runs and converges — see the thermostat pair above. | **no** |
+| `allocation` | nothing but structure: one `Splitting` component fanning a forced total across three weighted sinks, all four columns driven from CSV. | yes, but its fact already lives in `llm-market.sl`, richer, with `param shares` |
+
+The blocker is not effort. `emit_sl` **refuses** a thing carrying
+`cognitive_params` or `initial_state` and names the JSON export as the lossless
+path, because SL has no production for either until
+[#112](https://github.com/halcyonic-systems/bert-lenses/issues/112) chooses the
+transition functor. `language/spec.md` §8.2 already names the exporter's
+direct-to-JSON write as a **defect rather than a second authoring path**, and
+these three demos are the artifacts that cross it. So they stay as they are:
+they are the live evidence that #112 is open, and deleting them would delete
+both the evidence and three working demos while gaining nothing.
+
+The two things to take from them into SL when #112 lands: a nonzero opening
+stock, and a stock's release rate.
 
 ## Where the semantics live
 

@@ -144,7 +144,15 @@ interface WalkSegment {
 
 // The SL pane's seed text — Mobus's steel plant (Ch.4 §4.3.1) as a system
 // paragraph, so the pane's first Compile produces a live model.
-const SL_SEED = `# Mobus's steel plant — a system paragraph in SL
+// The SL pane's starter text. Deliberately NOT the corpus steel-plant (#318):
+// this is a hand-cut four-flow paraphrase whose job is to be small enough to
+// read at a glance and edit without fear, and quoting the corpus entry would
+// open the pane on forty lines of provenance header. The citable Steel-Plant —
+// Mobus's own, Fig. 4.14, F-numbers and substances intact — is
+// assets/corpus/mobus/steel-plant.sl, and the walk that opens its box is
+// assets/walkthroughs/steel-plant/. Nothing here should be cited as his.
+const SL_SEED = `# A steel plant, after Mobus — a system paragraph in SL
+# (a paraphrase for editing; the citable entry is corpus/mobus/steel-plant.sl)
 system : Concrete/Technical
 domain "steel manufacturing"
 component "Steel Plant" primitive Combining interface

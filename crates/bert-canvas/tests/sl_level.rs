@@ -153,7 +153,11 @@ fn the_shipped_corpus_carries_a_live_cross_level_refusal() {
     };
     let steel_plant = read("corpus/mobus/steel-plant.sl");
     let criminal_court = read("corpus/klir/criminal-court.sl");
-    let lake = read("examples/lake-observation.sl");
+    // Archived out of the shipped gallery in the #318 consolidation, kept in the
+    // repo, and still read here: it is the library's only other Source-level
+    // model, so without it the §5.4 refusal has no same-level pair to contrast
+    // against and stops being a distinction. The path moved; the witness did not.
+    let lake = read("archive/lake-observation.sl");
 
     assert_eq!(steel_plant.klir_level, Some(KlirLevel::Source));
     let reason = check_cross_level(&steel_plant, &criminal_court)

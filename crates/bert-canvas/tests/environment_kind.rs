@@ -118,16 +118,20 @@ fn emit_sl_preserves_the_declared_environment_word() {
 /// projection used to refuse. `hal-harness` and `two-sided-market` are deliberately
 /// absent: they carry the same defect *plus* a Bunge lens-mode gate, so they stay
 /// structural for a reason that has nothing to do with this fix.
+///
+/// Two of the four moved to `assets/archive/` in the #318 consolidation, and the
+/// paths moved with them rather than the witnesses being dropped: a fix is proved
+/// by the models that actually exercised it, wherever those models now live.
 #[test]
 fn the_examples_blocked_by_derived_direction_now_validate() {
     let mut broken = Vec::new();
     for name in [
-        "predator-prey",
-        "cell-metabolism",
-        "jung-functions",
-        "bank-run",
+        "examples/predator-prey",
+        "archive/respiring-cell",
+        "examples/jung-functions",
+        "archive/bank-run",
     ] {
-        let text = read(&format!("examples/{name}.sl"));
+        let text = read(&format!("{name}.sl"));
         let parsed = parse_sl_full(&text).unwrap_or_else(|e| panic!("{name}: {e:?}"));
         if let Err(errs) = validate_operational(&project(&parsed.model)) {
             broken.push(format!("  {name}: {errs:#?}"));

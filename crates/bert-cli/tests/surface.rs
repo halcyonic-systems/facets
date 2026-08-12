@@ -10,7 +10,7 @@ mod support;
 
 use support::{bert, code, stderr, stdout_json};
 
-const CLEAN: &str = "assets/examples/watershed.sl";
+const CLEAN: &str = "assets/examples/predator-prey.sl";
 /// σ₃ is the corpus's one documented divergence: legal Bunge structure, refused
 /// Mobus structure. It is the separating instance for the whole `--lens` flag.
 const SIGMA3: &str = "assets/corpus/bunge/coupling-sigma3.sl";
@@ -162,7 +162,7 @@ fn a_run_is_a_trajectory_or_a_stated_refusal() {
 
     // Separating instance: a model that compiles and validates but does not
     // project to anything executable. Same subcommand, different code.
-    let refused = bert(&["run", "assets/examples/fsm-traffic.sl"]);
+    let refused = bert(&["run", "assets/archive/fsm-traffic.sl"]);
     assert_eq!(
         code(&refused),
         4,

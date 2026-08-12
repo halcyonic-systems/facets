@@ -186,7 +186,7 @@ fn the_weak_check_catches_a_crash_and_a_broken_answer() {
     // and not only against my idea of it.
     let bad_args = bert(&[
         "verdict",
-        "assets/examples/watershed.sl",
+        "assets/examples/predator-prey.sl",
         "--lens",
         "phlogiston",
     ]);
@@ -228,7 +228,7 @@ fn the_weak_check_catches_a_crash_and_a_broken_answer() {
     );
 
     // And the passing half, so the two halves are the same check.
-    let clean = bert(&["compile", "assets/examples/watershed.sl"]);
+    let clean = bert(&["compile", "assets/examples/predator-prey.sl"]);
     assert!(
         within_contract(
             "compile",
