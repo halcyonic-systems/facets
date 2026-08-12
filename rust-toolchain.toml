@@ -14,5 +14,9 @@
 
 [toolchain]
 channel = "stable"
-components = ["clippy"]
+# rustfmt is pinned here for the same reason clippy is: without it, `cargo fmt`
+# falls back to whatever rustfmt the machine's default toolchain carries, and the
+# versions disagree. That drift is why `cargo fmt --all` rewrote 55 untouched
+# files on 2026-08-12.
+components = ["clippy", "rustfmt"]
 targets = ["wasm32-unknown-unknown"]
