@@ -19,8 +19,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            479.99997,
-            -48.41632
+            111.58368,
+            319.99997
           ],
           "rotation": 0.0
         },
@@ -41,8 +41,8 @@
         "type": "Sink",
         "transform": {
           "translation": [
-            479.99997,
-            688.4163
+            848.4163,
+            320.0
           ],
           "rotation": 0.0
         },
