@@ -86,10 +86,11 @@ describe("the run is a mode, not a tab (#312 move 2)", () => {
 });
 
 describe("the inspector dock's tab strip at 24rem (#312)", () => {
-  // What the classes declare. `px-3.5` is 14px a side; the pinned controls cell
+  // What the classes declare. `px-2.5` is 10px a side (it was `px-3.5`/14px
+  // until the width lever landed); the pinned controls cell
   // is two `px-3` glyph buttons; the dock prefers `basis-96` (24rem) and yields
   // to `min-w-72` (18rem) under pressure, less the 1px `border-l`.
-  const TAB_PADDING = 28;
+  const TAB_PADDING = 20;
   const CONTROLS = 2 * (12 + 12 + 10);
   const BADGE = 6 + 17.6; // gap-1.5 + the min-w-[1.1rem] issue count
   // Inter, 12px, semibold, uppercase, tracking-wide (0.025em). MEASURED, not
@@ -115,16 +116,18 @@ describe("the inspector dock's tab strip at 24rem (#312)", () => {
     expect(shown).not.toContain("Type");
     expect(shown).not.toContain("Run");
     // What the two departed tabs cost the strip, for the record.
-    expect(strip([...shown, "Type"]) - strip(shown)).toBeCloseTo(61.6, 1);
-    expect(strip([...shown, "Run"]) - strip(shown)).toBeCloseTo(53.2, 1);
+    expect(strip([...shown, "Type"]) - strip(shown)).toBeCloseTo(53.6, 1);
+    expect(strip([...shown, "Run"]) - strip(shown)).toBeCloseTo(45.2, 1);
   });
 
-  it("still overflows 24rem with an element selected, so the count was never the whole story", () => {
-    // Stated so it cannot be mistaken for a fitting claim: moving Run out is an
-    // ARCHITECTURAL move, and at the measured advance four tabs plus a selection
-    // still scroll. A third lever (tab padding, dock basis, or the controls
-    // cell) is owed, and this line is what will go green when it lands.
-    expect(strip(shown)).toBeGreaterThan(room(384));
+  it("fits at 24rem with an element selected — the count was never the whole story", () => {
+    // The line that was owed. Removing Type and then Run were ARCHITECTURAL
+    // moves and neither one stopped the scrolling: four tabs plus a selection
+    // measured 331px against 311px of room in the running app. Tightening the
+    // tab padding from 14px a side to 10px is the third lever, and it is what
+    // closes the gap. Kept as an assertion rather than a comment so the strip
+    // cannot silently start scrolling again.
+    expect(strip(shown)).toBeLessThan(room(384));
   });
 
   it("fits at 24rem with nothing selected, which six tabs did not", () => {
