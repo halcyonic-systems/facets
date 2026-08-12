@@ -6,8 +6,8 @@
     {
       "id": 1,
       "name": "Iron-LoadingDock",
-      "x": 699.1752,
-      "y": 18.331238,
+      "x": 107.11691,
+      "y": 319.99997,
       "role": "Environment",
       "env_kind": "Source",
       "interface": false
@@ -15,8 +15,8 @@
     {
       "id": 2,
       "name": "Production",
-      "x": 631.6652,
-      "y": 660.6456,
+      "x": 666.4415,
+      "y": -2.926239,
       "role": "Environment",
       "env_kind": "Sink",
       "interface": false
@@ -24,8 +24,8 @@
     {
       "id": 3,
       "name": "Material-Purchasing",
-      "x": 109.15961,
-      "y": 281.023,
+      "x": 666.4415,
+      "y": 642.9263,
       "role": "Environment",
       "env_kind": "Sink",
       "interface": false
