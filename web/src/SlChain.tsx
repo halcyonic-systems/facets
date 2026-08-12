@@ -125,7 +125,7 @@ export function SlChain({ text, model, desc, verdict, onShowFormal }: SlChainPro
       </div>
 
       <Step n={1} call="SL text">
-        {lines} line{lines === 1 ? "" : "s"} — a declarative notation, not a script
+        {lines} line{lines === 1 ? "" : "s"}: a declarative notation, not a script
       </Step>
 
       <Step
@@ -146,7 +146,7 @@ export function SlChain({ text, model, desc, verdict, onShowFormal }: SlChainPro
       >
         {model ? (
           <>
-            CanvasModel — {model.things.length} thing{model.things.length === 1 ? "" : "s"},{" "}
+            CanvasModel: {model.things.length} thing{model.things.length === 1 ? "" : "s"},{" "}
             {model.relations.length} relation{model.relations.length === 1 ? "" : "s"}
           </>
         ) : (
@@ -177,7 +177,7 @@ export function SlChain({ text, model, desc, verdict, onShowFormal }: SlChainPro
               onClick={onShowFormal}
               className="px-1 text-[10px] underline"
               style={{ color: "var(--text-muted)" }}
-              title="open the Formal tab — the same object, typeset in full"
+              title="open the Formal tab: the same object, typeset in full"
             >
               open Formal
             </button>
@@ -206,7 +206,7 @@ export function SlChain({ text, model, desc, verdict, onShowFormal }: SlChainPro
       >
         {lens && verdict ? (
           <>
-            <span style={{ fontFamily: "var(--font-mono)" }}>{MODE_BY_LENS[lens]}</span> mode —{" "}
+            <span style={{ fontFamily: "var(--font-mono)" }}>{MODE_BY_LENS[lens]}</span> mode,{" "}
             <span style={{ color: errors.length ? "var(--verdict-error)" : "var(--verdict-ok)" }}>
               {verdict.issues.length === 0
                 ? "clean"
@@ -228,7 +228,7 @@ export function SlChain({ text, model, desc, verdict, onShowFormal }: SlChainPro
           copy below must never say otherwise. Provenance and its caveats:
           docs/lean-provenance.md. */}
       <p className="pt-1.5 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
-        Steps 2–4 all run in the Rust kernel. The compiler is deterministic — same text, same model,
+        Steps 2 to 4 all run in the Rust kernel. The compiler is deterministic: same text, same model,
         no LLM between them. Step 4's mode-entry gate is checked against a Lean-emitted truth table
         over every kernel of ≤ 2 things, 19 rows, both directions:{" "}
         <DocLink href={PROVENANCE_URL} title="which Lean, at which commit, and what it does not establish">
