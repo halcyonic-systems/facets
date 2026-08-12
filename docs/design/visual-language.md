@@ -28,8 +28,14 @@ file is the spec; `web/scripts/check-tokens.mjs` is the gate that keeps it.
 5. **Flat.** Panels sit on a rule. The only permitted lift is the near-flat
    `--shadow-card` / `--shadow-card-hover`.
 6. **The identity device is the band.** Any page with a name opens on a filled
-   full-bleed masthead carrying back-link, eyebrow, title, and the page's one
-   number. Home, the library browser, and every shelf share it.
+   full-bleed masthead carrying back-link, title, and — where a count is the
+   reason to be on the page — the page's one number. Home, the library browser,
+   and every shelf share it. The eyebrow and the number are OPTIONAL, and home
+   carries neither (2026-08-12): an org eyebrow above the product's own name is
+   branding a first-run reader did not ask for, and "40 models on the shelves"
+   advertises an inventory on the one page whose job is to offer three doors.
+   Counts still earn their place where the page IS the inventory — the library
+   browser and the shelves keep theirs.
 7. **Authored case survives.** Names are data. The ledger sets them in
    `font-variant-caps: small-caps` for an even column; `text-transform:
    uppercase` is forbidden on any name, because it prints `hal` as `HAL` and the

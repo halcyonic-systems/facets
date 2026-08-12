@@ -353,7 +353,6 @@ function Workspace() {
   const toggleOpenPin = () => {
     if (openRef) setPinsPersisted(togglePin(pins, openRef));
   };
-  const unpin = (pin: Pin) => setPinsPersisted(pins.filter((p) => !samePin(p, pin)));
   const openPin = (pin: Pin) => {
     if (pin.kind === "example") {
       const d = findExample(pin.ref);
@@ -2526,9 +2525,6 @@ function Workspace() {
       {homeOpen && (
         <HomeScreen
           initialRoute={homeRoute}
-          workbench={workbench}
-          onOpenPin={openPin}
-          onUnpin={unpin}
           onCreate={newModel}
           onStartFromData={startFromData}
           onOpenExample={pickExample}

@@ -35,21 +35,17 @@ import {
 } from "./home";
 import { openExternal } from "./desktop";
 import { buildInfo, provenanceLines } from "./buildInfo";
-import type { Pin, WorkbenchEntry } from "./workbench";
 
 const DOCS_URL = "https://github.com/halcyonic-systems/bert-lenses/tree/main/docs";
 
 export type HomeRoute =
   | { view: "home" }
   | { view: "library" }
+  | { view: "about" }
   | { view: "shelf"; area: "examples" | "corpus"; id: string };
 
 interface HomeProps {
   initialRoute?: HomeRoute;
-  /** The workbench (workbench.ts): resolved pins, listed above "Start here". */
-  workbench?: WorkbenchEntry[];
-  onOpenPin?: (pin: Pin) => void;
-  onUnpin?: (pin: Pin) => void;
   onCreate: () => void;
   /** #309: the Klir lens's data-first front door — author a data system before
    *  (or instead of) any structure. */
@@ -80,11 +76,10 @@ export function HomeScreen(props: HomeProps) {
             onCreate={props.onCreate}
             onStartFromData={props.onStartFromData}
             onOpenLibrary={() => setRoute({ view: "library" })}
-            workbench={props.workbench ?? []}
-            onOpenPin={props.onOpenPin}
-            onUnpin={props.onUnpin}
+            onAbout={() => setRoute({ view: "about" })}
           />
         )}
+        {route.view === "about" && <AboutPage onBack={() => setRoute({ view: "home" })} />}
         {route.view === "library" && (
           <LibraryBrowser
             tree={props.libraryTree}
@@ -163,7 +158,7 @@ function Masthead({
   statLabel,
   back,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: ReactNode;
   lede?: string;
   note?: string;
@@ -185,12 +180,14 @@ function Masthead({
         )}
         <div className="flex items-end justify-between gap-8">
           <div>
-            <div
-              className="text-[10px] font-semibold uppercase tracking-[0.3em]"
-              style={{ color: "var(--accent-soft)" }}
-            >
-              {eyebrow}
-            </div>
+            {eyebrow && (
+              <div
+                className="text-[10px] font-semibold uppercase tracking-[0.3em]"
+                style={{ color: "var(--accent-soft)" }}
+              >
+                {eyebrow}
+              </div>
+            )}
             <h1
               className="mt-2 text-4xl font-semibold tracking-tight"
               style={{ color: "var(--text-on-accent)" }}
@@ -346,62 +343,18 @@ export function HomeMenu({
   onCreate,
   onStartFromData,
   onOpenLibrary,
-  workbench = [],
-  onOpenPin,
-  onUnpin,
+  onAbout,
 }: {
   onCreate: () => void;
   onStartFromData?: () => void;
   onOpenLibrary: () => void;
-  workbench?: WorkbenchEntry[];
-  onOpenPin?: (pin: Pin) => void;
-  onUnpin?: (pin: Pin) => void;
+  /** Open the provenance page (#229). Optional so the menu renders standalone. */
+  onAbout?: () => void;
 }) {
   return (
     <div>
-      <Masthead
-        eyebrow="Halcyonic Systems"
-        title={<span>bert&#8202;·&#8202;lenses</span>}
-        lede={LEDE}
-        stat={standardLibraryCount()}
-        statLabel="models on the shelves"
-      />
+      <Masthead title={<span>bert&#8202;·&#8202;lenses</span>} lede={LEDE} />
       <Column className="pb-16 pt-10">
-        {/* The workbench: what is being worked on right now, pinned by hand
-            from the menu bar. Absent entirely until something is pinned — an
-            empty block would put furniture where the first-run reader starts. */}
-        {workbench.length > 0 && onOpenPin && onUnpin && (
-          <div className="mb-10">
-            <BlockHeader label="Workbench" count={`${workbench.length} pinned`} />
-            <Ledger>
-              {workbench.map((w, i) => (
-                <div
-                  key={`${w.pin.kind}:${w.pin.ref}`}
-                  className="grid w-full grid-cols-[3.25rem_1fr_auto] items-stretch border-b"
-                  style={{ borderColor: "var(--border)" }}
-                >
-                  <Gutter index={i + 1} />
-                  <button onClick={() => onOpenPin(w.pin)} className="py-2.5 pl-5 pr-4 text-left">
-                    <span className="block text-sm font-semibold" style={nameStyle}>
-                      {w.title}
-                    </span>
-                    <span className="mt-0.5 block text-xs" style={{ color: "var(--text-muted)" }}>
-                      {w.detail}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => onUnpin(w.pin)}
-                    className="px-4 text-xs"
-                    style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-                    title="Remove from the workbench"
-                  >
-                    unpin
-                  </button>
-                </div>
-              ))}
-            </Ledger>
-          </div>
-        )}
         <BlockHeader label="Start here" />
         <Ledger>
           <LedgerRow name="Create a model" description="Start from a blank canvas." onClick={onCreate} />
@@ -423,8 +376,14 @@ export function HomeMenu({
             tag="external"
             href={DOCS_URL}
           />
+          {onAbout && (
+            <LedgerRow
+              name="This build"
+              description="The version, the commit, and the proofs every verdict is checked against."
+              onClick={onAbout}
+            />
+          )}
         </Ledger>
-        <About />
       </Column>
     </div>
   );
@@ -435,12 +394,18 @@ export function HomeMenu({
  *  holding the binary had no way to find out WHICH proofs. This is that way —
  *  the version, the commit it was built from, the SSF commit the claims are
  *  pinned to, and a hash of the kernel wasm they can recompute from the file in
- *  their own bundle. It sits on the landing page rather than behind a menu
- *  because the claim it substantiates is on the landing page too. */
-function About() {
+ *  their own bundle. It is one click from the landing page, which is where the
+ *  claim it substantiates is made. */
+export function AboutPage({ onBack }: { onBack: () => void }) {
   return (
-    <div className="mt-10">
-      <BlockHeader label="This build" count={buildInfo.gitSha} />
+    <div>
+      <Masthead
+        title="This build"
+        lede="Every verdict is machine-checked against Lean proofs in another repository. These are the ones."
+        back={{ label: "Home", onClick: onBack }}
+      />
+      <Column className="pb-16 pt-10">
+        <BlockHeader label="Provenance" count={buildInfo.gitSha} />
       <div className="border-x border-t" style={{ borderColor: "var(--border)" }}>
         {provenanceLines().map((line) => (
           <div
@@ -474,6 +439,7 @@ function About() {
         Licence and third-party notices ship beside this app, in its{" "}
         <span style={{ fontFamily: "var(--font-mono)" }}>Contents/Resources</span> folder.
       </p>
+      </Column>
     </div>
   );
 }

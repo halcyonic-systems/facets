@@ -11,7 +11,7 @@
 //      rule; a shared citation hoists to the sibling-set header.
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { HomeMenu, LibraryBrowser, ShelfPage, sharedCitation } from "./HomeScreen";
+import { AboutPage, HomeMenu, LibraryBrowser, ShelfPage, sharedCitation } from "./HomeScreen";
 import { corpusShelves, exampleShelfEntries, exampleShelves, corpusShelfEntries } from "./home";
 import { CORPUS } from "./corpus";
 import { isRunnable } from "./demos";
@@ -56,11 +56,21 @@ describe("home", () => {
   });
 
   // #229 — the landing page asserts the kernel judges under Klir, Bunge and
-  // Mobus, so the landing page is where a reader must be able to find out which
-  // proofs, at which commit. The values are injected by vite (absent here); the
-  // claim under test is that the surface exists and names the right facts.
-  it("carries the build's provenance, on the same page as the claim it backs", () => {
-    const html = renderToStaticMarkup(<HomeMenu onCreate={noop} onOpenLibrary={noop} />);
+  // Mobus, so a reader must be able to find out which proofs, at which commit.
+  // The provenance moved off the landing page to its own page (it was a whole
+  // table of machine facts in front of a first-run reader); the reachability
+  // claim survives the move, so the door is what home has to carry.
+  it("offers a door to the build's provenance", () => {
+    const html = renderToStaticMarkup(
+      <HomeMenu onCreate={noop} onOpenLibrary={noop} onAbout={noop} />,
+    );
+    expect(html).toContain("This build");
+  });
+
+  // The values are injected by vite (absent here); the claim under test is that
+  // the surface exists and names the right facts.
+  it("names the right facts on the provenance page", () => {
+    const html = renderToStaticMarkup(<AboutPage onBack={noop} />);
     expect(html).toContain("This build");
     expect(html).toContain("Built from");
     expect(html).toContain("Proof base");
