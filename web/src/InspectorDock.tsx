@@ -64,6 +64,7 @@ export function InspectorDock({
   onSystemTypeChange,
   onAcceptUnit,
   element,
+  selectionKey,
   resetKeys,
   focused,
   onToggleFocus,
@@ -113,6 +114,11 @@ export function InspectorDock({
    *  pointer. Null in a surface that carries its own inline editor (the Klir
    *  and Bunge registers), which then owns the element face itself. */
   element: ElementSelection | null;
+  /** An opaque key for "the author has something selected right now" — thing,
+   *  relation, or interface capsule — or null for nothing. Ephemeral interaction
+   *  state only: the dock reads it to decide whether to stand open, never to
+   *  decide anything about the model. */
+  selectionKey: string | null;
   // #57: focus mode. When on, the parent hides the palette + canvas and this
   // dock fills the whole work region so the active tab reads as a full screen.
   focused: boolean;
@@ -126,7 +132,11 @@ export function InspectorDock({
   onReview: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("run");
-  const [collapsed, setCollapsed] = useState(false);
+  // The dock opens closed. On a fresh model there is nothing selected and so
+  // nothing to inspect, and a full instrument column standing open over a blank
+  // canvas reads as noise. A selection opens it (below), and the edge rail opens
+  // it by hand — once open, it stays open until the author collapses it again.
+  const [collapsed, setCollapsed] = useState(true);
   const issueCount = verdict?.issues.length ?? 0;
 
   // Selecting a thing on the canvas raises its editor here — the docked
@@ -140,6 +150,15 @@ export function InspectorDock({
     setCollapsed(false);
   }, [selectedId]);
 
+  // Any selection at all opens the dock, not just a thing: an edge or an
+  // interface capsule is equally something to inspect, and a click that
+  // produced no visible response reads as a dead click. Only the element
+  // selection above claims the tab; this one just opens the column.
+  useEffect(() => {
+    if (selectionKey === null) return;
+    setCollapsed(false);
+  }, [selectionKey]);
+
   // An invoked review raises its own report — otherwise the action fires into a
   // tab the author never opens.
   useEffect(() => {
@@ -151,25 +170,37 @@ export function InspectorDock({
   // Focus wins over the thin collapse rail — a full-width dock can't be a sliver.
   if (collapsed && !focused) {
     return (
-      <div
-        className="flex w-8 flex-col items-center gap-3 border-l py-2"
+      // The whole rail is the affordance, not just the caret: it is the only
+      // way back to the instrument column by hand, so it takes the full edge.
+      <button
+        onClick={() => setCollapsed(false)}
+        title="Show inspector (Run, Formal, Review, Element)"
+        aria-expanded={false}
+        className="flex w-8 shrink-0 flex-col items-center gap-3 border-l py-2 transition-colors"
         style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
       >
-        <button
-          onClick={() => setCollapsed(false)}
-          title="Show inspector"
-          className="text-xs"
-          style={{ color: "var(--text-muted)" }}
-        >
+        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
           ◂
-        </button>
+        </span>
         <span
           className="text-[10px] font-semibold uppercase tracking-wide"
           style={{ color: "var(--text-muted)", writingMode: "vertical-rl" }}
         >
           inspector
         </span>
-      </div>
+        {issueCount > 0 && (
+          <span
+            className="rounded-pill px-1 text-[10px] font-semibold"
+            style={{
+              borderRadius: "var(--radius-pill)",
+              background: "var(--lens-accent)",
+              color: "var(--text-on-accent)",
+            }}
+          >
+            {issueCount}
+          </span>
+        )}
+      </button>
     );
   }
 
