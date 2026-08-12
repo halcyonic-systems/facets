@@ -46,4 +46,25 @@ describe("SlPane — manual authoring is preserved", () => {
     expect(m).toContain("system Y");
     expect(m).toContain("Compile");
   });
+
+  // The compile chain is an addition beside the authoring surface, on the same
+  // terms as the co-author mode: absent without the prop, and never replacing
+  // the textarea when present.
+  it("shows the compile chain only when the parent supplies the kernel outputs", () => {
+    const base = {
+      text: "system Z",
+      errors: [],
+      onTextChange: noop,
+      onErrors: noop,
+      onCompiled: noop,
+      onClose: noop,
+      canvasModel: null,
+    };
+    expect(renderToStaticMarkup(<SlPane {...base} />)).not.toContain("the compile chain");
+    const withChain = renderToStaticMarkup(
+      <SlPane {...base} chain={{ desc: null, verdict: null, onShowFormal: noop }} />,
+    );
+    expect(withChain).toContain("the compile chain");
+    expect(withChain).toContain("Compile");
+  });
 });

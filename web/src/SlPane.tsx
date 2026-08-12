@@ -19,6 +19,8 @@ import { useEffect, useState } from "react";
 import { compileSl, emitSl } from "./kernel";
 import type { CanvasModel, SlError } from "./kernel/types";
 import { CoAuthorMode } from "./CoAuthorMode";
+import { SlChain } from "./SlChain";
+import type { SlChainProps } from "./SlChain";
 import type { CoauthorTurn, DraftStage } from "./coauthor";
 
 type Mode = "sl" | "coauthor";
@@ -39,6 +41,12 @@ interface SlPaneProps {
    *  never ambient. The parent owns the whole draft->compile->preview->record
    *  sequence (onDraft); this pane only switches back to the SL view once it
    *  resolves, so the compiled/faulty text is visible either way. */
+  /** The compile chain strip (text → model → formal object → verdict). The
+   *  parent owns the analysis, so it hands the kernel's `describe`/verdict down
+   *  rather than this pane re-asking. Optional: the pane is usable without it,
+   *  and a pane with no model to analyze has no chain to show. `text` and
+   *  `model` come from the props above — only the kernel outputs are passed. */
+  chain?: Omit<SlChainProps, "text" | "model">;
   coauthor?: {
     turns: CoauthorTurn[];
     /** `onStage` is #218's progress feed — the parent's draft call reports
@@ -47,7 +55,7 @@ interface SlPaneProps {
   };
 }
 
-export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel, coauthor }: SlPaneProps) {
+export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel, chain, coauthor }: SlPaneProps) {
   const [mode, setMode] = useState<Mode>("sl");
   // Faults describe the text as of their compile; once the author types past
   // them they are history, not the present — dimmed and labeled, never
@@ -199,6 +207,11 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
               ⌘⏎ · deterministic compile, kernel verdicts
             </span>
           </div>
+          {/* What that compile produced, named step by step. It sits under the
+              buttons because it reads as the RESULT of pressing them — and it
+              stays visible with the dock's Formal tab, which is where step 3's
+              object is typeset in full. */}
+          {chain && <SlChain text={text} model={canvasModel} {...chain} />}
         </>
       )}
     </aside>
