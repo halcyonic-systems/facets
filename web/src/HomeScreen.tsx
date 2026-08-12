@@ -25,12 +25,16 @@
 // sized to take a diagram thumbnail later (#311) without the rest of the row
 // moving.
 //
-// Visual language: docs/design/visual-language.md, "printed record" variant.
-// This surface is set as a printed page rather than as software chrome: paper
-// ground, ink text, the serif carrying the title, hairline rules for structure,
-// and ONE rubric stroke (--seal) as the only colour. Identity comes from type —
-// scale, family, and rhythm — not from a filled band. The tokens are scoped to
-// this file's root, so the workspace surface is untouched.
+// Visual language: docs/design/visual-language.md. A white sheet on a neutral
+// ground, hairline rules for structure, and colour ONLY where it names
+// something: --seal marks a selected filter and the one exception tag, and
+// --world-* names a tradition. These tokens are scoped to this file's root, so
+// the workspace surface is untouched.
+//
+// The printed-page devices this surface briefly carried (a rubric rule opening
+// every title block, a display serif on the masthead, roman folios, a narrow
+// measure) came from a design brief, not from a stated preference, and were
+// withdrawn 2026-08-12 when asked about directly.
 //
 // Names keep their authored case — small caps, never text-transform (the model
 // is named `hal`, not `HAL`).
@@ -145,11 +149,9 @@ function countLibrary(tree: LibraryNode[]): number {
 // ---------------------------------------------------------------------------
 // The language: measure, title block, section rule, table, entry.
 //
-// Everything here is set, not painted. Structure is carried by two weights of
-// rule (a near-ink head rule at 1px, a soft hairline between entries), by the
-// serif/sans opposition (a NAME is serif, a gloss is sans, a machine fact is
-// mono), and by vertical rhythm. The single rubric stroke opens a title block
-// and marks a folio under the cursor; nothing else takes colour.
+// Structure is carried by two weights of rule (a near-ink head rule at 1px, a
+// soft hairline between entries), by the serif/sans opposition (a NAME is
+// serif, a gloss is sans, a machine fact is mono), and by vertical rhythm.
 // ---------------------------------------------------------------------------
 
 /** The measure. One width for every region. There was briefly a narrower
@@ -205,7 +207,6 @@ function Masthead({
   stat,
   statLabel,
   back,
-  hue,
 }: {
   eyebrow?: string;
   title: ReactNode;
@@ -216,10 +217,6 @@ function Masthead({
   stat?: number;
   statLabel?: string;
   back?: { label: string; onClick: () => void };
-  /** A world hue rule above the title, naming the tradition this page belongs
-   *  to. Absent on every page that does not belong to one — the rule earns its
-   *  place by meaning something, so there is no default stroke. */
-  hue?: string;
 }) {
   return (
     <Column className="pt-12">
@@ -232,7 +229,6 @@ function Masthead({
           ‹ {back.label}
         </button>
       )}
-      {hue && <div style={{ borderTop: `2px solid ${hue}` }} />}
       <div className="flex items-start justify-between gap-10 pt-6">
         <div className="min-w-0">
           {eyebrow && (
