@@ -37,7 +37,7 @@ describe("SlPane — manual authoring is preserved", () => {
         onCompiled={noop}
         onClose={noop}
         canvasModel={null}
-        coauthor={{ turns: [], onDraft: async () => {} }}
+        coauthor={{ turns: [], onDraft: async () => {}, onCorrect: async () => {} }}
       />,
     );
     // Both the mode switch AND the manual textarea/Compile are present —

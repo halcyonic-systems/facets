@@ -4,7 +4,7 @@
 // and content faithfully.
 import { beforeEach, describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { CoAuthorMode, drafterLine, drafterMismatch, stageLabel } from "./CoAuthorMode";
+import { CoAuthorMode, correctionLines, drafterLine, drafterMismatch, stageLabel } from "./CoAuthorMode";
 import { resetDrafterModelForTest, setDrafterModel } from "./drafterModel";
 import type { CoauthorTurn, DraftStage } from "./coauthor";
 import {
@@ -15,6 +15,7 @@ import {
 } from "./reasoner";
 
 const noopDraft = async () => {};
+const noopCorrect = async () => {};
 const noopLoad = () => {};
 
 /** #199: the drafting surface only exists once the reasoner is on. */
@@ -31,7 +32,7 @@ describe("CoAuthorMode", () => {
 
   it("renders an empty state with no drafts yet", () => {
     const m = renderToStaticMarkup(
-      <CoAuthorMode turns={[]} onDraft={noopDraft} onLoad={noopLoad} />,
+      <CoAuthorMode turns={[]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
     );
     expect(m).toContain("No drafts yet");
     expect(m).toContain("Draft");
@@ -42,7 +43,7 @@ describe("CoAuthorMode", () => {
     setReasonerConfigBackend(memoryReasonerBackend(null));
     await initReasoner();
     const m = renderToStaticMarkup(
-      <CoAuthorMode turns={[]} onDraft={noopDraft} onLoad={noopLoad} />,
+      <CoAuthorMode turns={[]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
     );
     expect(m).toContain("Turn on the co-author");
     expect(m).toContain("The reasoner&#x27;s address");
@@ -56,7 +57,7 @@ describe("CoAuthorMode", () => {
   it("says which reasoner is in use once it is on, and offers to turn it off", async () => {
     await reasonerOn("http://127.0.0.1:5010");
     const m = renderToStaticMarkup(
-      <CoAuthorMode turns={[]} onDraft={noopDraft} onLoad={noopLoad} />,
+      <CoAuthorMode turns={[]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
     );
     expect(m).toContain("Co-author is on");
     expect(m).toContain("your reasoner");
@@ -75,7 +76,7 @@ describe("CoAuthorMode", () => {
       },
     ];
     const m = renderToStaticMarkup(
-      <CoAuthorMode turns={turns} onDraft={noopDraft} onLoad={noopLoad} />,
+      <CoAuthorMode turns={turns} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
     );
     expect(m).toContain("a home thermostat with a sensor and a furnace");
     expect(m).toContain("component Sensor interface");
@@ -95,7 +96,7 @@ describe("CoAuthorMode", () => {
       },
     ];
     const m = renderToStaticMarkup(
-      <CoAuthorMode turns={turns} onDraft={noopDraft} onLoad={noopLoad} />,
+      <CoAuthorMode turns={turns} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
     );
     expect(m).toContain("kernel rejected");
     expect(m).toContain("unknown keyword");
@@ -107,7 +108,7 @@ describe("CoAuthorMode", () => {
       { id: "b", description: "discarded one", sl: "system B", at: new Date().toISOString(), status: "discarded" },
     ];
     const m = renderToStaticMarkup(
-      <CoAuthorMode turns={turns} onDraft={noopDraft} onLoad={noopLoad} />,
+      <CoAuthorMode turns={turns} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
     );
     expect(m).toContain("accepted");
     expect(m).toContain("discarded");
@@ -203,7 +204,7 @@ describe("the answering model is what gets shown", () => {
         requestedModel: "claude-sonnet-4-6",
       },
     ];
-    const m = renderToStaticMarkup(<CoAuthorMode turns={turns} onDraft={noopDraft} onLoad={noopLoad} />);
+    const m = renderToStaticMarkup(<CoAuthorMode turns={turns} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />);
     expect(m).toContain("Asked for claude-sonnet-4-6");
     expect(m).toContain("Answered by gemma4:12b");
     expect(m).toContain("var(--verdict-warning)");
@@ -213,7 +214,7 @@ describe("the answering model is what gets shown", () => {
   it("offers the model choice, saying where each one runs, once the reasoner is on", async () => {
     await reasonerOn();
     resetDrafterModelForTest();
-    const m = renderToStaticMarkup(<CoAuthorMode turns={[]} onDraft={noopDraft} onLoad={noopLoad} />);
+    const m = renderToStaticMarkup(<CoAuthorMode turns={[]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />);
     expect(m).toContain("Drafts with");
     expect(m).toContain("claude-sonnet-4-6");
     expect(m).toContain("on the reasoner&#x27;s machine");
@@ -223,7 +224,7 @@ describe("the answering model is what gets shown", () => {
     await reasonerOn();
     resetDrafterModelForTest();
     setDrafterModel("claude-sonnet-4-6");
-    const m = renderToStaticMarkup(<CoAuthorMode turns={[]} onDraft={noopDraft} onLoad={noopLoad} />);
+    const m = renderToStaticMarkup(<CoAuthorMode turns={[]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />);
     expect(m).toContain("through the reasoner&#x27;s cloud path");
     resetDrafterModelForTest();
   });
@@ -264,7 +265,91 @@ describe("the turn keeps its model time", () => {
         modelCalls: 1,
       },
     ];
-    const m = renderToStaticMarkup(<CoAuthorMode turns={turns} onDraft={noopDraft} onLoad={noopLoad} />);
+    const m = renderToStaticMarkup(<CoAuthorMode turns={turns} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />);
     expect(m).toContain("Drafted by claude-sonnet-4-6 in 8.2s.");
+  });
+});
+
+// #314 — the transcript. A demo is watched once and the history is read
+// afterwards, so a correction turn has to say what was asked, what it was
+// asked about, what moved, and who answered, without the reader reconstructing
+// any of it.
+describe("a correction turn reads as a transcript afterwards", () => {
+  beforeEach(async () => {
+    await reasonerOn();
+  });
+
+  const correctionTurn: CoauthorTurn = {
+    id: "c1",
+    kind: "correction",
+    description: "a ribosome translating mRNA into a polypeptide",
+    correction: "this is good as far as it goes, but you have identified flows as sources and sinks",
+    correctsTurnId: "t1",
+    slBefore: 'system Ribosome\nsink "Polypeptide"',
+    sl: 'system Ribosome\nflow "PTC" -> "Chaperones" : matter "polypeptide"',
+    priorFindings: "The kernel reads this model under Mobus, Operational mode. 1 error.",
+    at: new Date().toISOString(),
+    status: "previewing",
+    model: "gemma4:12b",
+    requestedModel: "",
+    modelMs: 31000,
+    modelCalls: 2,
+  };
+
+  it("leads with the correction as the author wrote it", () => {
+    const m = renderToStaticMarkup(
+      <CoAuthorMode turns={[correctionTurn]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
+    );
+    expect(m).toContain("you have identified flows as sources and sinks");
+    expect(m).toContain("correction");
+  });
+
+  it("names the draft it corrected and how much of it moved", () => {
+    const c = correctionLines(correctionTurn);
+    expect(c?.about).toBe("Correcting the draft for: a ribosome translating mRNA into a polypeptide");
+    expect(c?.changed).toBe("1 line added, 1 line removed.");
+  });
+
+  it("says whether the drafter also saw the kernel's findings, and shows them", () => {
+    const m = renderToStaticMarkup(
+      <CoAuthorMode turns={[correctionTurn]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
+    );
+    expect(m).toContain("shown the kernel&#x27;s current reading");
+    expect(m).toContain("Operational mode. 1 error.");
+  });
+
+  it("says so when the drafter was shown the draft alone", () => {
+    const c = correctionLines({ ...correctionTurn, priorFindings: undefined });
+    expect(c?.sawFindings).toContain("shown the draft alone");
+  });
+
+  it("keeps the answering model and the turn's model time, like any other turn", () => {
+    const m = renderToStaticMarkup(
+      <CoAuthorMode turns={[correctionTurn]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
+    );
+    expect(m).toContain("Drafted by gemma4:12b in 31.0s of model time over 2 calls.");
+  });
+
+  it("leaves a plain draft turn reading exactly as before", () => {
+    const draftTurn: CoauthorTurn = {
+      id: "t1",
+      description: "a ribosome translating mRNA into a polypeptide",
+      sl: "system Ribosome",
+      at: new Date().toISOString(),
+      status: "accepted",
+    };
+    expect(correctionLines(draftTurn)).toBeNull();
+    const m = renderToStaticMarkup(
+      <CoAuthorMode turns={[draftTurn]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
+    );
+    expect(m).toContain("a ribosome translating mRNA into a polypeptide");
+    expect(m).not.toContain("Correcting the draft for");
+  });
+
+  it("offers a Correct affordance on any turn that produced SL", () => {
+    const m = renderToStaticMarkup(
+      <CoAuthorMode turns={[correctionTurn]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
+    );
+    expect(m).toContain(">Correct<");
   });
 });

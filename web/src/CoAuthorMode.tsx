@@ -7,7 +7,7 @@
 // deliberately deferred); history persists across reloads (coauthor.ts,
 // localStorage, no cap).
 import { useEffect, useRef, useState } from "react";
-import type { CoauthorTurn, DraftStage } from "./coauthor";
+import { slChangeSummary, type CoauthorTurn, type DraftStage } from "./coauthor";
 import { ReasonerGate } from "./ReasonerGate";
 import { isLoopback, reasonerConfig, setReasonerConfig, subscribeReasoner } from "./reasoner";
 import { DRAFTER_MODELS, drafterModel, drafterModelWhere, setDrafterModel, subscribeDrafterModel } from "./drafterModel";
@@ -76,6 +76,32 @@ export function drafterMismatch(turn: Pick<CoauthorTurn, "model" | "requestedMod
   );
 }
 
+/** #314. How a correction turn reads on re-read, which is the point: a demo is
+ *  watched once and the transcript is read afterwards. Three facts, in the
+ *  order a reader wants them — what was asked, what it was asked about, and
+ *  how much of the draft moved.
+ *
+ *  The last line is the honest one about provenance: a correction turn either
+ *  showed the drafter the kernel's own reading of the model or it did not, and
+ *  which of the two happened is not something a reader should have to guess. */
+export function correctionLines(
+  turn: Pick<CoauthorTurn, "kind" | "correction" | "description" | "slBefore" | "sl" | "priorFindings" | "status">,
+): { asked: string; about: string; changed: string | null; sawFindings: string } | null {
+  if (turn.kind !== "correction") return null;
+  const changed =
+    turn.status === "previewing" || turn.status === "accepted" || turn.status === "discarded"
+      ? slChangeSummary(turn.slBefore ?? "", turn.sl)
+      : null;
+  return {
+    asked: turn.correction ?? "",
+    about: turn.description ? `Correcting the draft for: ${turn.description}` : "Correcting an earlier draft.",
+    changed,
+    sawFindings: turn.priorFindings
+      ? "The drafter was shown the kernel's current reading of the model alongside this correction."
+      : "The drafter was shown the draft alone. The canvas was showing a different model, so the kernel's findings would not have been about this draft.",
+  };
+}
+
 function statusTone(status: CoauthorTurn["status"]): Tone {
   switch (status) {
     case "accepted":
@@ -107,6 +133,7 @@ function statusLabel(status: CoauthorTurn["status"]): string {
 export function CoAuthorMode({
   turns,
   onDraft,
+  onCorrect,
   onLoad,
 }: {
   turns: CoauthorTurn[];
@@ -115,6 +142,10 @@ export function CoAuthorMode({
    *  can update the SAME turn's status. `onStage` (#218) reports the drafter
    *  loop's real progress — asking / compiling / retrying — as it happens. */
   onDraft: (description: string, onStage?: (stage: DraftStage) => void) => Promise<void>;
+  /** #314: say what is wrong with a past turn's draft and get a revision. The
+   *  parent runs the same ask/compile/preview sequence a first draft runs, so
+   *  the correction changes what the drafter writes and nothing else. */
+  onCorrect: (turnId: string, correction: string, onStage?: (stage: DraftStage) => void) => Promise<void>;
   /** Load a past turn's SL back into the pane's text (manual editing, or
    *  retrying an old draft) — switches the pane back to the SL view. */
   onLoad: (sl: string) => void;
@@ -123,6 +154,11 @@ export function CoAuthorMode({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stage, setStage] = useState<DraftStage | null>(null);
+  // #314: which turn's correction box is open, and what is in it. Ephemeral
+  // interaction state only — the correction itself is not kept anywhere until
+  // the turn it produces is recorded.
+  const [correctingId, setCorrectingId] = useState<string | null>(null);
+  const [correction, setCorrection] = useState("");
   const [elapsedMs, setElapsedMs] = useState(0);
   const startedAtRef = useRef(0);
   // Off by default (#199). The gate below is the only enable point, and
@@ -153,6 +189,26 @@ export function CoAuthorMode({
     try {
       await onDraft(description.trim(), setStage);
       setDescription("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+      setStage(null);
+    }
+  }
+
+  // #314. Same call shape as `draft`, aimed at a turn instead of a blank page.
+  async function sendCorrection(turnId: string) {
+    if (!correction.trim() || busy) return;
+    startedAtRef.current = Date.now();
+    setElapsedMs(0);
+    setStage(null);
+    setBusy(true);
+    setError(null);
+    try {
+      await onCorrect(turnId, correction.trim(), setStage);
+      setCorrection("");
+      setCorrectingId(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -257,14 +313,54 @@ export function CoAuthorMode({
                 style={{ background: "var(--bg-primary)", border: "1px solid var(--hairline)" }}
               >
                 <div className="mb-1 flex items-center justify-between gap-2">
-                  <Pill tone={statusTone(t.status)}>{statusLabel(t.status)}</Pill>
+                  <span className="flex items-center gap-1">
+                    {t.kind === "correction" && <Pill tone="neutral">correction</Pill>}
+                    <Pill tone={statusTone(t.status)}>{statusLabel(t.status)}</Pill>
+                  </span>
                   <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
                     {new Date(t.at).toLocaleTimeString()}
                   </span>
                 </div>
-                <p className="mb-1" style={{ color: "var(--text-secondary)" }}>
-                  {t.description}
-                </p>
+                {/* #314. A correction turn leads with what the author said,
+                    because that is the sentence a re-reader is looking for.
+                    The original ask, what moved, and whether the drafter also
+                    saw the kernel's findings follow it as record. */}
+                {(() => {
+                  const c = correctionLines(t);
+                  if (!c) {
+                    return (
+                      <p className="mb-1" style={{ color: "var(--text-secondary)" }}>
+                        {t.description}
+                      </p>
+                    );
+                  }
+                  return (
+                    <>
+                      <p className="mb-1" style={{ color: "var(--text-secondary)" }}>
+                        {c.asked}
+                      </p>
+                      <p className="mb-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                        {c.about}
+                      </p>
+                      {c.changed && (
+                        <p className="mb-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                          {c.changed}
+                        </p>
+                      )}
+                      <p className="mb-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                        {c.sawFindings}
+                      </p>
+                      {t.priorFindings && (
+                        <pre
+                          className="mb-1 max-h-20 overflow-y-auto whitespace-pre-wrap p-1 text-[10px]"
+                          style={{ background: "var(--bg-secondary)", color: "var(--text-muted)" }}
+                        >
+                          {t.priorFindings}
+                        </pre>
+                      )}
+                    </>
+                  );
+                })()}
                 {/* The answering model, never the requested one. When they
                     differ the turn says so in full: the request succeeded, so
                     this line is the only thing standing between the author and
@@ -298,14 +394,83 @@ export function CoAuthorMode({
                     >
                       {t.sl}
                     </pre>
-                    <button
-                      onClick={() => onLoad(t.sl)}
-                      className="rounded-full px-2 py-0.5 text-[10px]"
-                      style={{ border: "1px solid var(--hairline)", color: "var(--text-secondary)" }}
-                      title="Load this draft's SL into the pane"
-                    >
-                      Load
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => onLoad(t.sl)}
+                        className="rounded-full px-2 py-0.5 text-[10px]"
+                        style={{ border: "1px solid var(--hairline)", color: "var(--text-secondary)" }}
+                        title="Load this draft's SL into the pane"
+                      >
+                        Load
+                      </button>
+                      {/* #314. Say what is wrong, get a revision. The revision
+                          goes through the compiler and the kernel judges it
+                          like anything else, so this button changes what the
+                          drafter writes and nothing else. */}
+                      <button
+                        onClick={() => {
+                          setCorrection("");
+                          setError(null);
+                          setCorrectingId((id) => (id === t.id ? null : t.id));
+                        }}
+                        disabled={busy}
+                        className="rounded-full px-2 py-0.5 text-[10px]"
+                        style={{
+                          border: "1px solid var(--hairline)",
+                          color: "var(--text-secondary)",
+                          opacity: busy ? 0.5 : 1,
+                          cursor: busy ? "not-allowed" : "pointer",
+                        }}
+                        title="Tell the drafter what is wrong with this draft"
+                      >
+                        {correctingId === t.id ? "Cancel" : "Correct"}
+                      </button>
+                    </div>
+                    {correctingId === t.id && (
+                      <div className="mt-1">
+                        <textarea
+                          value={correction}
+                          onChange={(e) => setCorrection(e.target.value)}
+                          onKeyDown={(e) => {
+                            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                              e.preventDefault();
+                              sendCorrection(t.id);
+                            }
+                          }}
+                          disabled={busy}
+                          spellCheck
+                          rows={3}
+                          autoFocus
+                          className="w-full resize-none rounded p-2 text-[11px] outline-none"
+                          style={{
+                            background: "var(--bg-primary)",
+                            color: "var(--text-secondary)",
+                            border: "1px solid var(--hairline)",
+                          }}
+                          placeholder="e.g. this is good as far as it goes, but you have identified flows as sources and sinks"
+                          data-testid={`correction-input-${t.id}`}
+                        />
+                        <div className="mt-1 flex items-center gap-2">
+                          <button
+                            onClick={() => sendCorrection(t.id)}
+                            disabled={busy || !correction.trim()}
+                            className="rounded-full px-3 py-0.5 text-[10px] font-semibold"
+                            style={{
+                              background: "var(--accent)",
+                              color: "var(--text-on-accent)",
+                              opacity: busy || !correction.trim() ? 0.5 : 1,
+                              cursor: busy || !correction.trim() ? "not-allowed" : "pointer",
+                            }}
+                            title="Send the correction and redraft (⌘⏎)"
+                          >
+                            {busy ? "Redrafting…" : "Send correction"}
+                          </button>
+                          <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                            The revision compiles and the kernel judges it, same as any draft.
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </li>
