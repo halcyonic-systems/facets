@@ -189,6 +189,7 @@ function Masthead({
   stat,
   statLabel,
   back,
+  hue,
 }: {
   eyebrow?: string;
   title: ReactNode;
@@ -197,6 +198,9 @@ function Masthead({
   stat?: number;
   statLabel?: string;
   back?: { label: string; onClick: () => void };
+  /** Overrides the rubric rule with a world hue, so a corpus shelf opens in the
+   *  colour of the tradition it belongs to. Defaults to the seal. */
+  hue?: string;
 }) {
   return (
     <Column className="pt-12">
@@ -209,7 +213,7 @@ function Masthead({
           ‹ {back.label}
         </button>
       )}
-      <div style={{ borderTop: "2px solid var(--seal)" }} />
+      <div style={{ borderTop: `2px solid ${hue ?? "var(--seal)"}` }} />
       <div className="flex items-start justify-between gap-10 pt-6">
         <div className="min-w-0">
           {eyebrow && (
@@ -392,13 +396,19 @@ export function HomeMenu({
       <Column className="pb-20 pt-12">
         <BlockHeader label="Contents" />
         <Ledger>
-          <LedgerRow door folio={next()} name="Create a model" description="Start from a blank canvas." onClick={onCreate} />
+          <LedgerRow
+            door
+            folio={next()}
+            name="Create a model"
+            description="Start from a blank canvas and draw the structure."
+            onClick={onCreate}
+          />
           {onStartFromData && (
             <LedgerRow
               door
               folio={next()}
               name="Start from data"
-              description="Bring a CSV or type observations — author a Klir data system; structure can come later."
+              description="Create one the other way instead: bring a CSV or type observations, and let the structure come later."
               onClick={onStartFromData}
             />
           )}
@@ -417,16 +427,22 @@ export function HomeMenu({
             tag="external"
             href={DOCS_URL}
           />
-          {onAbout && (
-            <LedgerRow
-              door
-              folio={next()}
-              name="This build"
-              description="The version, the commit, and the proofs every verdict is checked against."
-              onClick={onAbout}
-            />
-          )}
         </Ledger>
+        {/* The colophon. A printed record states its edition at the foot of the
+            page, not in its table of contents — and the provenance is what this
+            page's claim rests on, so it belongs on the page, quietly, rather
+            than among the doors. */}
+        {onAbout && (
+          <div className="mt-14 border-t pt-4" style={{ borderColor: "var(--rule-soft)" }}>
+            <button
+              onClick={onAbout}
+              className="record-folio text-[11px] uppercase tracking-[0.2em]"
+              style={folioStyle}
+            >
+              This build · {buildInfo.gitSha}
+            </button>
+          </div>
+        )}
       </Column>
     </div>
   );
@@ -494,15 +510,29 @@ export function AboutPage({ onBack }: { onBack: () => void }) {
 /** A shelf entry, set as a line of an index: the shelf's name in the serif, a
  *  leader running out to the margin, the count as a folio numeral at the right.
  *  Counts are derived (home.ts). */
+/** The WORLD hue of a corpus shelf — the reading it belongs to. This is the one
+ *  colour channel on the library page, and it is semantic: `--world-*` already
+ *  means "which tradition" across the instrument (index.css), so a reader who
+ *  learns it here reads it unchanged on the canvas. An examples shelf is ours
+ *  and carries no tradition, so it takes no hue — the absence is the fact. */
+const WORLD_HUE: Record<string, string> = {
+  klir: "var(--world-klir)",
+  bunge: "var(--world-bunge)",
+  mobus: "var(--world-mobus)",
+};
+
 function ShelfButton({
   label,
   count,
   note,
+  hue,
   onClick,
 }: {
   label: string;
   count: number;
   note?: string;
+  /** The tradition's world hue, for corpus shelves. Absent on examples. */
+  hue?: string;
   onClick: () => void;
 }) {
   return (
@@ -512,11 +542,21 @@ function ShelfButton({
       className="record-row flex flex-1 basis-64 items-baseline gap-3 border-b py-2.5 text-left"
       style={{ borderColor: "var(--rule-soft)" }}
     >
+      {hue && (
+        <span
+          aria-hidden
+          className="h-2.5 w-0.5 shrink-0 self-center"
+          style={{ background: hue }}
+        />
+      )}
       <span className="truncate text-lg leading-tight" style={nameStyle}>
         {label}
       </span>
       <span className="h-px min-w-5 flex-1" style={{ background: "var(--rule-soft)" }} />
-      <span className="record-folio shrink-0 text-[11px] tabular" style={{ color: "var(--ink-muted)" }}>
+      <span
+        className="record-folio shrink-0 text-[11px] tabular"
+        style={{ color: hue ?? "var(--ink-muted)" }}
+      >
         {count}
       </span>
     </button>
@@ -593,7 +633,14 @@ export function LibraryBrowser({
             </p>
             <ShelfGrid>
               {corpus.map((s) => (
-                <ShelfButton key={s.id} label={s.label} count={s.count} note={s.note} onClick={() => onShelf(s)} />
+                <ShelfButton
+                  key={s.id}
+                  label={s.label}
+                  count={s.count}
+                  note={s.note}
+                  hue={WORLD_HUE[s.id]}
+                  onClick={() => onShelf(s)}
+                />
               ))}
             </ShelfGrid>
           </div>
@@ -754,6 +801,7 @@ export function ShelfPage({
         stat={count}
         statLabel={`model${count === 1 ? "" : "s"}`}
         back={{ label: "Open a model", onClick: onBack }}
+        hue={area === "corpus" ? WORLD_HUE[id] : undefined}
       />
 
       <Column className="pb-20 pt-12">
