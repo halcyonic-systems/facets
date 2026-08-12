@@ -12,10 +12,11 @@ faintly indigo-tinted surface (never flat grey) with one restrained accent.
 bert-lenses takes **teal** as its accent to distinguish the instrument within the
 Frost family (slate / teal / indigo).
 
-- **Tokens** live in `src/index.css` as CSS custom properties (`:root`, with a
-  `prefers-color-scheme: dark` block). Components consume them via `var(--x)` in
-  inline styles; `src/tokens.ts` mirrors the few needed as JS strings for SVG /
-  numeric props. Change tokens in one place; keep this file in sync.
+- **Tokens** live in `src/index.css` as CSS custom properties on `:root`, each
+  themed one written **once** as `light-dark(<light>, <dark>)`. Components consume
+  them via `var(--x)` in inline styles; `src/tokens.ts` mirrors the few needed as
+  JS strings for SVG / numeric props. Change tokens in one place; keep this file
+  in sync.
 - **Type:** Cormorant Garamond (display / wordmark) · Inter (body) · JetBrains
   Mono (the kernel's numbers, `.tabular`).
 - **Accent:** teal (`--accent`), with indigo + slate support. Verdicts use
@@ -28,9 +29,20 @@ Frost family (slate / teal / indigo).
   color is the reserved `--kind-*` channel, constant across lenses and themes.
 - **Surfaces:** soft cards (`--radius-card`, `--shadow-card`) on a radial-tinted
   stage. Generous whitespace; legibility over decoration.
-- Light + dark are both first-class (the smoke slice renders in either).
-- **Ink on filled accents:** `--text-on-accent` (white in both themes) — never a
-  raw `#fff` in a component.
+- **Theme is three states — system / light / dark.** System is the default and is
+  the ABSENCE of a stamped attribute, so `color-scheme: light dark` follows
+  `prefers-color-scheme` natively; an explicit choice sets
+  `data-theme="light" | "dark"` on `<html>`, which narrows `color-scheme` and
+  therefore flips every `light-dark()` pair at once. `src/theme.ts` owns the
+  attribute and the stored choice (`bert-lenses.theme`); the control is the one
+  quiet word in the menu bar's right-hand chrome cluster, beside the kernel chip.
+  Bound by `src/theme.test.ts`, which also holds "the palette is stated once".
+- Light + dark are both first-class — and since 2026-08-12 dark has actually been
+  looked at, which it never had been before the toggle existed.
+- **Ink on filled accents:** `--text-on-accent` — never a raw `#fff` in a
+  component. It is **themed**, because dark lightens the accents and verdicts: a
+  fixed white put the selected mode, the active lens, ▶ Run and every primary
+  button at 1.9–2.7:1 in dark.
 
 ## Fitness functions (#131)
 

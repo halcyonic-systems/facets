@@ -9,6 +9,28 @@
  * bert-lenses takes TEAL as its accent to distinguish the instrument within the
  * Frost family (slate / teal / indigo). Components consume these via var(--x);
  * the JS mirror lives in src/tokens.ts. Any change is mirrored in web/DESIGN.md.
+ *
+ * THEME (2026-08-12, #309 follow-on). Three states — system / light / dark —
+ * and the palette is stated ONCE. Every themed token is a single
+ * `light-dark(<light>, <dark>)` declaration; which half resolves is decided by
+ * the `color-scheme` property in force on :root. That makes the whole switch
+ * one line per explicit choice, at the bottom of this block:
+ *
+ *   :root                    color-scheme: light dark   → follows the OS
+ *   :root[data-theme=light]  color-scheme: light        → light, on a dark OS
+ *   :root[data-theme=dark]   color-scheme: dark         → dark, on a light OS
+ *
+ * The rejected alternative was the usual pair of blocks —
+ * `@media (prefers-color-scheme: dark) :root:not([data-theme=light])` plus
+ * `:root[data-theme=dark]` — which cannot share a selector across the media
+ * boundary and so needs the dark palette written twice. Two copies drift; a
+ * token added to one and missed in the other is invisible until someone with
+ * the other setting opens the app. `light-dark()` removes the second copy
+ * rather than trying to keep it honest.
+ *
+ * Non-themed tokens (--kind-*, --text-on-accent, radii, fonts) stay plain: a
+ * value that does not change with the theme must not be written as if it might.
+ * `src/theme.ts` owns the attribute; nothing else sets it.
  */
 :root {
   color-scheme: light dark;
@@ -16,35 +38,44 @@
   /* surface + text — NEUTRAL (2026-08-12). Was a cool, faintly indigo tint;
      that cast is what read as "green-blue" next to the paper register and what
      made the canvas feel coloured before any lens touched it. The workspace
-     ground is now plain, and hue on it means a lens. */
-  --bg-primary: #f1f2f3;
-  --bg-secondary: #fafafb;
-  --bg-surface: #e6e7e9;
-  --stage-from: #f5f6f7;
-  --stage-to: #eceded;
-  --text-primary: #17181a;
-  --text-secondary: #45484c;
-  --text-muted: #6d7175;
-  /* ink on a filled accent/verdict surface — constant across themes (the fill
-     itself carries the theme; the ink on it stays white in both) */
-  --text-on-accent: #ffffff;
+     ground is now plain, and hue on it means a lens. Dark is neutral too, for
+     the same reason. */
+  --bg-primary: light-dark(#f1f2f3, #16181a);
+  --bg-secondary: light-dark(#fafafb, #1d2022);
+  --bg-surface: light-dark(#e6e7e9, #24282a);
+  --stage-from: light-dark(#f5f6f7, #191c1e);
+  --stage-to: light-dark(#eceded, #121415);
+  --text-primary: light-dark(#17181a, #e8eaec);
+  --text-secondary: light-dark(#45484c, #b0b4b8);
+  --text-muted: light-dark(#6d7175, #82868a);
+  /* Ink on a FILLED accent/verdict surface — the mode axis's selected tab, the
+     lens toggle's active lens, ▶ Run, every primary button, the error banner.
+     It was `#ffffff` in both themes on the reasoning that "the fill carries the
+     theme; the ink on it stays white in both". That reasoning was wrong for
+     dark, and nobody had looked: dark LIGHTENS the accents and verdicts
+     (--accent #3d6373 → #6fa5b8, --accent-strong → #95c3d3, --verdict-warning
+     → #dba448), so white ink landed at 1.9–2.7:1 on ~25 call sites — the
+     selected mode was the least readable text on screen. The ink follows the
+     lightness of the fill, so it has to be themed with it: 6.1–9.4:1 in dark. */
+  --text-on-accent: light-dark(#ffffff, #16181a);
 
   /* accents — teal leads; indigo + slate support; red/amber for verdicts */
-  --accent: #3d6373;
-  --accent-strong: #2a4b59;
-  --accent-soft: #d5e2e8;
-  --accent-indigo: #545c93;
-  --accent-slate: #5d6f7b;
+  --accent: light-dark(#3d6373, #6fa5b8);
+  --accent-strong: light-dark(#2a4b59, #95c3d3);
+  --accent-soft: light-dark(#d5e2e8, #1b2f39);
+  --accent-indigo: light-dark(#545c93, #8b93cf);
+  --accent-slate: light-dark(#5d6f7b, #8ea1ad);
   /* Per-lens WORLD hues (#7 follow-on) — deliberately farther apart than the
      accent trio, which are hue-neighbors and converge to the same gray at
      tint strength. Character-matched: Klir = cold steel (data, the mask),
-     Bunge = violet (ontology, mechanism), Mobus = green (living systems). */
-  --world-klir: #5a6c85;
-  --world-bunge: #8a6a4d; /* bronze — materialism over mysticism (chosen over violet #6f5fa8, 7/29) */
-  --world-mobus: #4e7d5b;
-  --verdict-error: #c2352c;
-  --verdict-warning: #8a5c08;
-  --verdict-ok: #1f7351;
+     Bunge = bronze (materialism over mysticism, chosen over violet #6f5fa8,
+     7/29), Mobus = green (living systems). */
+  --world-klir: light-dark(#5a6c85, #8fa2c0);
+  --world-bunge: light-dark(#8a6a4d, #c2a284);
+  --world-mobus: light-dark(#4e7d5b, #83b191);
+  --verdict-error: light-dark(#c2352c, #ef7a72);
+  --verdict-warning: light-dark(#8a5c08, #dba448);
+  --verdict-ok: light-dark(#1f7351, #4fbc93);
 
   /* reserved KIND channel — substance identity (Matter / Energy / Informational
      / Field). Contractual: means substance type, never decorative, and constant
@@ -68,8 +99,8 @@
   --lens-wash: var(--bg-primary);
   --lens-node-stroke: var(--accent-slate);
 
-  --border: #d5dee4;
-  --hairline: #e5ecf0;
+  --border: light-dark(#d5dee4, #33383b);
+  --hairline: light-dark(#e5ecf0, #2a2f3260);
 
   --radius-sm: 4px;
   --radius-md: 8px;
@@ -78,9 +109,15 @@
   --radius-pill: 9999px;
 
   /* Instrument register (#56): panels sit flat on a hairline, not floating
-     on a soft web-card shadow. Base is a near-flat 1px lift; hover stays subtle. */
-  --shadow-card: 0 1px 2px rgba(22, 35, 43, 0.05);
-  --shadow-card-hover: 0 2px 8px rgba(22, 35, 43, 0.09);
+     on a soft web-card shadow. Base is a near-flat 1px lift; hover stays subtle.
+     `light-dark()` takes a <color>, not a shadow, so the theming happens on the
+     ink and the geometry is shared — which is also the honest reading: the lift
+     is the same lift in both themes, only the ink under it changes. (Dark's
+     hover blur was 10px before this pass and is now 8px, matching light.) */
+  --shadow-ink: light-dark(rgba(22, 35, 43, 0.05), rgba(0, 0, 0, 0.25));
+  --shadow-ink-hover: light-dark(rgba(22, 35, 43, 0.09), rgba(0, 0, 0, 0.34));
+  --shadow-card: 0 1px 2px var(--shadow-ink);
+  --shadow-card-hover: 0 2px 8px var(--shadow-ink-hover);
 
   /* ---------------------------------------------------------------------
    * The PRINTED RECORD register (home surface only).
@@ -94,16 +131,17 @@
   /* The sheet is white and the ground behind it is a neutral step darker, so
      the content has an edge without needing a border, a shadow, or a tint.
      Neutral, not warm: the first setting was beige and read as plain rather
-     than as paper. */
-  --paper: #ffffff;
-  --paper-ground: #eaecee;
-  --paper-edge: #f4f5f6;
-  --ink: #17181a;
-  --ink-secondary: #45484c;
-  --ink-muted: #7c8084;
-  --rule: #17181a;
-  --rule-soft: #e0e3e5;
-  --seal: #8a3324;
+     than as paper. Dark keeps the same relationship, inverted: the sheet is a
+     step LIGHTER than the ground it sits on, so the edge reads the same way. */
+  --paper: light-dark(#ffffff, #17191c);
+  --paper-ground: light-dark(#eaecee, #0e0f11);
+  --paper-edge: light-dark(#f4f5f6, #1c1f22);
+  --ink: light-dark(#17181a, #e8eaec);
+  --ink-secondary: light-dark(#45484c, #b0b4b8);
+  --ink-muted: light-dark(#7c8084, #7d8286);
+  --rule: light-dark(#17181a, #e8eaec);
+  --rule-soft: light-dark(#e0e3e5, #2c3034);
+  --seal: light-dark(#8a3324, #c9705c);
 
   --font-display: "Cormorant Garamond", Georgia, serif;
   --font-body: "Inter", system-ui, -apple-system, sans-serif;
@@ -112,48 +150,17 @@
   --transition-base: 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* neutral in dark too (2026-08-12), same reason as light */
-    --bg-primary: #16181a;
-    --bg-secondary: #1d2022;
-    --bg-surface: #24282a;
-    --stage-from: #191c1e;
-    --stage-to: #121415;
-    --text-primary: #e8eaec;
-    --text-secondary: #b0b4b8;
-    --text-muted: #82868a;
-
-    --accent: #6fa5b8;
-    --accent-strong: #95c3d3;
-    --accent-soft: #1b2f39;
-    --accent-indigo: #8b93cf;
-    --accent-slate: #8ea1ad;
-    --world-klir: #8fa2c0;
-    --world-bunge: #c2a284; /* bronze (dark) */
-    --world-mobus: #83b191;
-    --verdict-error: #ef7a72;
-    --verdict-warning: #dba448;
-    --verdict-ok: #4fbc93;
-
-    --border: #33383b;
-    --hairline: #2a2f3260;
-
-    /* Dark keeps the same relationship, inverted: the sheet is a step LIGHTER
-       than the ground it sits on, so the edge reads the same way. */
-    --paper: #17191c;
-    --paper-ground: #0e0f11;
-    --paper-edge: #1c1f22;
-    --ink: #e8eaec;
-    --ink-secondary: #b0b4b8;
-    --ink-muted: #7d8286;
-    --rule: #e8eaec;
-    --rule-soft: #2c3034;
-    --seal: #c9705c;
-
-    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.25);
-    --shadow-card-hover: 0 2px 10px rgba(0, 0, 0, 0.34);
-  }
+/* The explicit theme choice — the ONLY place a theme is decided, and one
+   declaration each. `color-scheme` narrows what `light-dark()` above resolves
+   to, so every themed token follows without a second copy of the palette.
+   Absent attribute = system, which is the default and stays CSS-native: a user
+   who never touches the control gets `prefers-color-scheme` with no JS.
+   The attribute is written by src/theme.ts; nothing else writes it. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 /* the seam bindings — pure indirection over existing Frost tokens, so light
