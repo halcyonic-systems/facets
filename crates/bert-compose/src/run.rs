@@ -18,8 +18,28 @@
 //! A run is therefore `(T, Δt) →` a recorded trace, which carries the Δt it ran
 //! under.
 
+use serde::Serialize;
+
 use crate::circuit::Circuit;
 use bert_core::operational::OperationalSpec;
+
+/// A recorded run, flattened to the part a *reader* gets: the Δt it ran under,
+/// the trace, the conservation ledger, and the closing residual. The spec key
+/// stays behind — it is the recorder's own bookkeeping (`is_valid_for`), not a
+/// fact about the trajectory.
+///
+/// This exists so the trace has ONE serialized shape with one owner. It was
+/// previously re-declared, field for field, inside the wasm boundary's `api.rs`;
+/// a second reader (the `bert` CLI) would have made that two parallel copies of
+/// a shape nobody owns. The engine records the run, so the engine names it.
+/// `API.md`'s `RunResult` documents this shape and the field names are its.
+#[derive(Serialize, Clone, Debug)]
+pub struct RunReport {
+    pub dt: f64,
+    pub history: Vec<Vec<f32>>,
+    pub ledger_history: Vec<[f32; 4]>,
+    pub final_balance: f32,
+}
 
 /// One recorded run: the trace a circuit traced, the Δt it advanced under, and
 /// the spec-hash key that says which model the trace belongs to.
@@ -96,6 +116,18 @@ impl RecordedRun {
             ));
         }
         Ok(Self::record(circuit, spec, dt, ticks))
+    }
+
+    /// This run as its serializable report — the shape every reader (the wasm
+    /// boundary, the CLI) hands on. Clones the trace; a report is a snapshot,
+    /// and the recorder stays the owner.
+    pub fn report(&self) -> RunReport {
+        RunReport {
+            dt: self.dt,
+            history: self.history.clone(),
+            ledger_history: self.ledger_history.clone(),
+            final_balance: self.final_balance,
+        }
     }
 
     /// Does this trace still belong to `spec`? True iff the spec hashes to the

@@ -53,8 +53,13 @@ jobs:
       - name: cargo clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+      # `--exclude bert-cli` is the one package outside the browser build: the
+      # `bert` binary is argv and the filesystem, which wasm32-unknown-unknown
+      # has no use for. Nothing the gate covered before it existed left the
+      # gate, and crates/bert-cli/tests/wasm_gate.rs (run by `cargo test` above)
+      # fails if this list ever grows — the exclusion is checked, not commented.
       - name: cargo build (wasm32)
-        run: cargo build --workspace --target wasm32-unknown-unknown
+        run: cargo build --workspace --exclude bert-cli --target wasm32-unknown-unknown
 
       # --- Build the wasm pkg the web app consumes ---
       - name: Install wasm-pack

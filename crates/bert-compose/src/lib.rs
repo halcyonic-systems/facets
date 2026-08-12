@@ -31,4 +31,4 @@ pub use export::{from_spec, from_world_model, model_name, to_world_model};
 
 /// The run recorder, and the precondition a `(Δt, T)` pair must meet to name a
 /// run at all.
-pub use run::{ticks_over, RecordedRun};
+pub use run::{ticks_over, RecordedRun, RunReport};

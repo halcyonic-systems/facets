@@ -55,6 +55,10 @@ exists to keep it true.
   (`api.rs`): deserialize JS input → call bert-core / bert-compose / bert-canvas /
   bert-tether (the truth) → serialize. Zero domain logic. Built to `pkg/` via
   wasm-pack (gitignored). Frozen surface: `API.md` (append-only).
+- `crates/bert-cli` — the `bert` binary, the workspace's only `[[bin]]`. A
+  headless door onto the same library calls the wasm boundary marshals: compile,
+  verdict (under any lens), describe, run, layout. Native only — the ONE package
+  excluded from the wasm build, and the exclusion is gated by its own test.
 - `web/` — React 19 + TS + Vite 6 + Tailwind 4. `src/kernel/` is the only place the
   face touches the wasm; `src/kernel/types.ts` mirrors the API.md shapes.
 - `assets/` — sample models. `models/examples/*.json` (blockchain models) are the
@@ -126,10 +130,44 @@ Companion: `describe(&model, lens)` for the tradition's own formal object
 type** — it is a `ValidationIssue` with `Severity::Error` at the lens's mode
 (`Lens::mode()`: Klir→Core, Bunge→Structural, Mobus→Operational).
 
-There is **no CLI** — no `[[bin]]` target in any crate. Headless checking is
-`cargo test`, which is the right vehicle anyway: a new integration test in
-`crates/bert-canvas/tests/` is picked up free by `cargo test --workspace` and by
-`ci.yml`. Working example: `tests/cross_lens.rs`.
+**Reach for the CLI before the browser and before a throwaway test.** `bert`
+(`crates/bert-cli`, the workspace's only `[[bin]]`) is that same call from a
+shell. It is a CONSUMER of the crates — it parses arguments, calls the library,
+and serializes; a verdict computed there is the same bug as a verdict computed
+in JS.
+
+```bash
+just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens bunge   # 0
+just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus   # 4 — §4.3
+```
+
+```
+bert compile  <file.sl>                 the canvas model the text becomes
+bert verdict  <file> [--lens L]         CanvasAnalysis; exits 4 on a refusal
+bert describe <file> [--lens L]         the tradition's formal object
+bert run      <file> [--t T] [--dt D]   the trajectory, or why there is none
+bert layout   <file>                    node positions (id/name/role/env_kind/x/y)
+```
+
+stdout is JSON and only JSON; diagnostics go to stderr. Exit codes: `0` ok ·
+`1` internal · `2` usage · `3` the input did not compile · `4` the kernel
+refused. **3 against 4 is the split that matters** — a mistyped keyword and a
+model that is not a system are different findings. A file argument is a path or
+`-` for stdin; `.sl` compiles, anything else opens through `archive::read`.
+Full treatment: README, "The `bert` CLI".
+
+`bert-cli` is the ONE package excluded from `cargo build --workspace --target
+wasm32-unknown-unknown` (argv + filesystem have no browser meaning). The
+exclusion is executed, not asserted: `crates/bert-cli/tests/wasm_gate.rs` goes
+red if the list grows, so the wasm gate cannot widen into one that skips things.
+
+**Still write the test when the finding is a law.** The CLI is for asking; a
+`cargo test` integration test in `crates/bert-canvas/tests/` is for making the
+answer stay true, and it is picked up free by `cargo test --workspace` and
+`ci.yml`. Working example: `tests/cross_lens.rs`. The CLI's own goldens
+(`crates/bert-cli/tests/`, `fixtures/cli/examples.json`) hold the door open the
+same way — that golden is a full cross-lens reading of every bundled example,
+so a kernel change that moves any of them has to be seen and accepted.
 
 **Know which set of `.sl` files you are touching. The names are not
 interchangeable:**
