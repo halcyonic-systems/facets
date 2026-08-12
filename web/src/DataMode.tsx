@@ -403,7 +403,7 @@ export function DataMode({
         <p className="mt-1 max-w-3xl text-xs" style={{ color: "var(--text-muted)" }}>
           {variableCols.length > 0
             ? dataView === "states"
-              ? "One row per distinct state of the variables, most frequent first — the support collapsed away. Frequencies are observed, nothing is generated: the climb toward a generating rule starts from this table, and is not taken here."
+              ? "One row per distinct state of the variables, most frequent first, with the support collapsed away. Frequencies are observed and nothing is generated: a generating rule would be stated against this table, and none is stated here."
               : "A column is a declared variable — matched by name, never invention. No relation is asserted here; inducing structure from these columns is inference, not reading."
             : "A column is a declared flow — the binding is by declaration, never invention. Structure mode asserts; this sheet observes. Inducing structure from these columns is inference, not reading."}
         </p>
