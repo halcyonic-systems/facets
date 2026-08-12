@@ -24,6 +24,13 @@ export type DrafterModelOption = {
 export const DRAFTER_MODELS: DrafterModelOption[] = [
   { value: "", label: "Local default (gemma4:12b)", where: "on the reasoner's machine" },
   { value: "qwen3:32b", label: "qwen3:32b", where: "on the reasoner's machine" },
+  // The Claude 5 family first, then the 4-series names GSR was carrying. GSR
+  // routes on the substring "claude", not on a fixed list, so a new name needs
+  // no reasoner change — /author-sl passes the model straight through to
+  // resolve_llm_model. (Its /model route DOES hold an allowlist, but that governs
+  // the ask route, not authoring.)
+  { value: "claude-opus-5", label: "claude-opus-5", where: "through the reasoner's cloud path" },
+  { value: "claude-sonnet-5", label: "claude-sonnet-5", where: "through the reasoner's cloud path" },
   { value: "claude-sonnet-4-6", label: "claude-sonnet-4-6", where: "through the reasoner's cloud path" },
   {
     value: "claude-haiku-4-5-20251001",

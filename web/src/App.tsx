@@ -2997,11 +2997,17 @@ function PaletteDock({
     );
   }
   return (
+    // The head does NOT scroll. It used to sit inside the scrolling column, so
+    // the label slid under the top edge as soon as the rail was scrolled and
+    // read as an unreachable smudge behind the first section heading.
     <div
-      className="relative w-48 shrink-0 overflow-y-auto border-r"
+      className="relative flex w-48 shrink-0 flex-col border-r"
       style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
     >
-      <div className="flex items-center justify-between px-3 pt-2">
+      <div
+        className="flex shrink-0 items-center justify-between border-b px-3 py-1.5"
+        style={{ borderColor: "var(--hairline)" }}
+      >
         <span
           className="text-[10px] font-semibold uppercase tracking-wide"
           style={{ color: "var(--text-muted)" }}
@@ -3012,7 +3018,7 @@ function PaletteDock({
           ◂
         </button>
       </div>
-      {children}
+      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
     </div>
   );
 }
