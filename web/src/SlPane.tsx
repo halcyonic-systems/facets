@@ -52,6 +52,10 @@ interface SlPaneProps {
     /** `onStage` is #218's progress feed — the parent's draft call reports
      *  which phase it is in (asking / compiling / retrying) as it happens. */
     onDraft: (description: string, onStage?: (stage: DraftStage) => void) => Promise<void>;
+    /** #314: correct a past turn's draft in plain language. Same seam as
+     *  `onDraft` — the parent asks the drafter, compiles the result, and
+     *  previews it; this pane only returns to the SL view afterwards. */
+    onCorrect: (turnId: string, correction: string, onStage?: (stage: DraftStage) => void) => Promise<void>;
   };
 }
 
@@ -97,6 +101,15 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
     setMode("sl");
   }
 
+  // The correction action, the same shape: the parent owns the ask, the
+  // compile, and the preview; the pane returns to the SL view so the revised
+  // text (or its faults) is where the author expects to look.
+  async function handleCorrect(turnId: string, correction: string, onStage?: (stage: DraftStage) => void) {
+    if (!coauthor) return;
+    await coauthor.onCorrect(turnId, correction, onStage);
+    setMode("sl");
+  }
+
   function handleLoad(sl: string) {
     onTextChange(sl);
     setMode("sl");
@@ -136,7 +149,7 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
       </div>
 
       {mode === "coauthor" && coauthor ? (
-        <CoAuthorMode turns={coauthor.turns} onDraft={handleDraft} onLoad={handleLoad} />
+        <CoAuthorMode turns={coauthor.turns} onDraft={handleDraft} onCorrect={handleCorrect} onLoad={handleLoad} />
       ) : (
         <>
           <textarea

@@ -50,7 +50,16 @@ import { NewModelTypePrompt } from "./NewModelTypePrompt";
 import { SystemTypeEditor } from "./SystemTypeEditor";
 import { StartFromData } from "./StartFromData";
 import { SlPane } from "./SlPane";
-import { draftSlWithRetry, newTurnId, loadCoauthorTurns, saveCoauthorTurns, type CoauthorTurn, type DraftStage } from "./coauthor";
+import {
+  draftSlWithRetry,
+  kernelFindingsBrief,
+  newTurnId,
+  loadCoauthorTurns,
+  runCorrectionTurn,
+  saveCoauthorTurns,
+  type CoauthorTurn,
+  type DraftStage,
+} from "./coauthor";
 import { drafterModel } from "./drafterModel";
 import {
   THEME_LABEL,
@@ -803,6 +812,57 @@ function Workspace() {
     setSlErrors([]);
     await onSlCompiled(outcome.ok, outcome.lens_explicit, true, id);
     setCoauthorTurns((ts) => [{ id, description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls }, ...ts]);
+  }
+
+  // #314 the correction turn — "this is good as far as it goes, but you've
+  // identified flows as sources and sinks" (George Mobus, 2026-08-12).
+  //
+  // A redraft, not an in-place edit: the drafter is shown the SL it wrote, the
+  // kernel's current reading of it, and the author's correction, and it writes
+  // a new draft. That draft lands in exactly the channel a first draft lands
+  // in — compile, preview, accept or discard — so the human's words never
+  // reach the kernel except as a description on a request. `runCorrectionTurn`
+  // (coauthor.ts) owns the sequence and the invariant; this function is the
+  // React binding around it.
+  async function coauthorCorrect(
+    turnId: string,
+    correction: string,
+    onStage?: (stage: DraftStage) => void,
+  ) {
+    const target = coauthorTurns.find((t) => t.id === turnId);
+    if (!target || !target.sl.trim() || !correction.trim()) return;
+    // The findings are shown to the drafter only when the model on the canvas
+    // IS this turn's SL. Correcting an older turn while a different model is
+    // compiled would otherwise hand the drafter complaints about something
+    // else, which is worse than handing it none. The transcript records which
+    // of the two happened.
+    const onCanvas = canvasModel !== null && slText.trim() === target.sl.trim();
+    const findings =
+      onCanvas && canvasModel
+        ? kernelFindingsBrief(canvasModel.lens, verdict?.issues ?? [])
+        : undefined;
+    const outcome = await runCorrectionTurn({
+      id: newTurnId(),
+      target,
+      correction,
+      findings,
+      lens: canvasModel?.lens,
+      requestedModel: drafterModel(),
+      onStage,
+    });
+    if (outcome.kind === "network-error") {
+      setCoauthorTurns((ts) => [outcome.turn, ...ts]);
+      return;
+    }
+    setSlText(outcome.sl);
+    if (outcome.kind === "compile-error") {
+      setSlErrors(outcome.errors);
+      setCoauthorTurns((ts) => [outcome.turn, ...ts]);
+      return;
+    }
+    setSlErrors([]);
+    await onSlCompiled(outcome.model, outcome.lensExplicit, true, outcome.turn.id);
+    setCoauthorTurns((ts) => [outcome.turn, ...ts]);
   }
 
   // File → New: a blank canvas to author a model from scratch (the #14 path — no
@@ -2094,7 +2154,7 @@ function Workspace() {
               // 2026-07-24) — not a dock tab. coauthorDraft owns the whole
               // draft->compile->preview->record sequence; the pane just
               // switches back to the SL view once it resolves.
-              coauthor={{ turns: coauthorTurns, onDraft: coauthorDraft }}
+              coauthor={{ turns: coauthorTurns, onDraft: coauthorDraft, onCorrect: coauthorCorrect }}
             />
           )}
 
