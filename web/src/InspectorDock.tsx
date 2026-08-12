@@ -14,7 +14,6 @@ import type {
   MarkovRunResult,
   Relation,
   RunResultRich,
-  SystemType,
   Thing,
   ValidationResult,
 } from "./kernel/types";
@@ -27,11 +26,26 @@ import { DtmcPanel, RunPanel, weightProvenance } from "./RunPanel";
 import { FormalPanel } from "./FormalPanel";
 import { ReviewPanel } from "./ReviewPanel";
 import { AnalystPanel } from "./AnalystPanel";
-import { SystemTypeEditor } from "./SystemTypeEditor";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 import { Card, Verdict } from "./ui";
 
-type Tab = "element" | "run" | "formal" | "review" | "analyst" | "type";
+/** The dock's faces, in strip order — the single source for both the rendered
+ *  tab strip and the width gate in InspectorDock.test.tsx, so a tab cannot be
+ *  added to one without the other seeing it. `element` shows only when the
+ *  author has a selection; `review` is the one that carries an issue badge.
+ *
+ *  #312 move 1: `type` is gone from this list. The model's asserted kind is
+ *  authoring metadata, not a live reading, and it now opens from the model's
+ *  name in the menu bar. */
+export const DOCK_TABS = [
+  { id: "element", label: "Element" },
+  { id: "run", label: "Run" },
+  { id: "formal", label: "Formal" },
+  { id: "review", label: "Review" },
+  { id: "analyst", label: "Analyst" },
+] as const;
+
+type Tab = (typeof DOCK_TABS)[number]["id"];
 
 /** The selected element's editing surface, as the shell hands it over (#122).
  *  Null thing = nothing selected; the face says so rather than vanishing. */
@@ -61,7 +75,6 @@ export function InspectorDock({
   hostError,
   canvasModel,
   onNavigate,
-  onSystemTypeChange,
   onAcceptUnit,
   element,
   selectionKey,
@@ -104,7 +117,6 @@ export function InspectorDock({
   hostError: string | null;
   canvasModel: CanvasModel | null;
   onNavigate: (target: IssueTarget) => void;
-  onSystemTypeChange: (next: SystemType) => void;
   /** #94: run panel's accept-derived-unit affordance — writes a derived stock
    *  unit into the authoring model as declared. Placement only; App owns it. */
   onAcceptUnit?: (name: string, unit: string) => void;
@@ -244,29 +256,32 @@ export function InspectorDock({
       {/* Tab strip — the instrument's face selector. The active tab carries the
           lens accent (underline + text), the rest stay quiet.
 
-          Two cells, and the split is load-bearing: six tabs plus two controls
-          do not fit a 24rem dock, and when they all shared one non-shrinking
-          row the overflow pushed the LAST tabs and BOTH controls past the right
-          edge — so the dock had no visible way to close and Analyst ran off the
-          screen. The tabs now scroll under pressure; the controls are pinned. */}
+          Two cells, and the split is load-bearing: when tabs and controls
+          shared one non-shrinking row the overflow pushed the LAST tabs and
+          BOTH controls past the right edge — so the dock had no visible way to
+          close and Analyst ran off the screen. The tabs scroll under pressure;
+          the controls are pinned.
+
+          #312 move 1: Type left this strip for the model name in the menu bar.
+          It was model metadata, set once at authoring time, competing with live
+          readings for a slot. Every remaining tab is a reading of the model or
+          of the selection. Tab widths are bound by InspectorDock.test.tsx. */}
       <div
         className="flex items-stretch border-b"
         style={{ borderColor: "var(--hairline)" }}
       >
         <div className="flex min-w-0 flex-1 items-stretch overflow-x-auto">
-        {element && (
-          <TabButton label="Element" active={tab === "element"} onClick={() => setTab("element")} />
+        {DOCK_TABS.map(({ id, label }) =>
+          id === "element" && !element ? null : (
+            <TabButton
+              key={id}
+              label={label}
+              active={tab === id}
+              onClick={() => setTab(id)}
+              badge={id === "review" && issueCount > 0 ? issueCount : undefined}
+            />
+          ),
         )}
-        <TabButton label="Run" active={tab === "run"} onClick={() => setTab("run")} />
-        <TabButton label="Formal" active={tab === "formal"} onClick={() => setTab("formal")} />
-        <TabButton
-          label="Review"
-          active={tab === "review"}
-          onClick={() => setTab("review")}
-          badge={issueCount > 0 ? issueCount : undefined}
-        />
-        <TabButton label="Analyst" active={tab === "analyst"} onClick={() => setTab("analyst")} />
-        <TabButton label="Type" active={tab === "type"} onClick={() => setTab("type")} />
         </div>
         <div className="flex shrink-0 items-stretch">
           {/* Focus toggle — pops the active tab full-width (hides the canvas) and
@@ -363,12 +378,6 @@ export function InspectorDock({
                 <AnalystPanel canvasModel={canvasModel} onNavigate={onNavigate} />
               ) : (
                 <Placeholder>Open or import a model to analyze it.</Placeholder>
-              ))}
-            {tab === "type" &&
-              (canvasModel ? (
-                <SystemTypeEditor value={canvasModel.system_type} onChange={onSystemTypeChange} />
-              ) : (
-                <Placeholder>Open or import a model to assert its system type.</Placeholder>
               ))}
           </KernelErrorBoundary>
         </div>
