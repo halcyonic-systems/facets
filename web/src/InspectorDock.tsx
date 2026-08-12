@@ -1,9 +1,14 @@
-// The inspector dock — the workbench's right-edge instrument panel. The three
-// analysis faces (Run / Formal / Review) share one docked column and show one at
-// a time behind a tab strip, so the canvas keeps the viewport while the active
-// reading sits beside it. Placement only: each tab hosts the existing panel
-// unchanged (same props, same kernel-fed data). The dock decides nothing — it
-// arranges. Frost chrome, lens-tinted active tab (rides the --lens-* seam).
+// The inspector dock — the workbench's right-edge instrument panel. Every face
+// it carries is a READING: the selection (Element), and three readings of the
+// whole model (Formal / Review / Analyst). They share one docked column and show
+// one at a time behind a tab strip, so the canvas keeps the viewport while the
+// active reading sits beside it. Placement only: each tab hosts the existing
+// panel unchanged (same props, same kernel-fed data). The dock decides nothing —
+// it arranges. Frost chrome, lens-tinted active tab (rides the --lens-* seam).
+//
+// #312 move 2: Run is NOT here. A run is an activity with a timeline, inputs and
+// results, not a reading, and it now lives on the mode axis (RunMode.tsx) where
+// it has a full width to draw a trajectory across.
 import { useEffect, useState } from "react";
 import type {
   CanvasModel,
@@ -11,23 +16,18 @@ import type {
   Lens,
   LensDescription,
   Manifest,
-  MarkovRunResult,
-  Relation,
   RunResultRich,
   Thing,
   ValidationResult,
 } from "./kernel/types";
-import { RunInputs } from "./RunInputs";
 import { ModelAbout } from "./ModelAbout";
 import { NodeEditorRows, type DecomposeAffordance } from "./canvas/NodeEditor";
 import { ElementMechanism } from "./ElementMechanism";
-import { LensPalette, type RunKind } from "./canvas/lenses/registry";
-import { DtmcPanel, RunPanel, weightProvenance } from "./RunPanel";
 import { FormalPanel } from "./FormalPanel";
 import { ReviewPanel } from "./ReviewPanel";
 import { AnalystPanel } from "./AnalystPanel";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
-import { Card, Verdict } from "./ui";
+import { Card } from "./ui";
 
 /** The dock's faces, in strip order — the single source for both the rendered
  *  tab strip and the width gate in InspectorDock.test.tsx, so a tab cannot be
@@ -36,10 +36,12 @@ import { Card, Verdict } from "./ui";
  *
  *  #312 move 1: `type` is gone from this list. The model's asserted kind is
  *  authoring metadata, not a live reading, and it now opens from the model's
- *  name in the menu bar. */
+ *  name in the menu bar.
+ *
+ *  #312 move 2: `run` is gone too, to the mode axis. What is left is exactly the
+ *  readings — which is the claim this list now makes. */
 export const DOCK_TABS = [
   { id: "element", label: "Element" },
-  { id: "run", label: "Run" },
   { id: "formal", label: "Formal" },
   { id: "review", label: "Review" },
   { id: "analyst", label: "Analyst" },
@@ -60,14 +62,8 @@ export interface ElementSelection {
 
 export function InspectorDock({
   result,
-  markovRun,
-  ranEdited,
   runManifest,
-  onInputEdit,
-  onResetInputs,
   blurb,
-  time,
-  runError,
   desc,
   verdict,
   issueTargets,
@@ -75,7 +71,6 @@ export function InspectorDock({
   hostError,
   canvasModel,
   onNavigate,
-  onAcceptUnit,
   element,
   selectionKey,
   resetKeys,
@@ -87,26 +82,15 @@ export function InspectorDock({
   onReview,
   formalRequest,
 }: {
+  /** The recorded run, read by the element face's mechanism readout (#13) —
+   *  what THIS node did on the last run. The run itself is not here (#312 move
+   *  2): the dock reads its trace, it does not stage it. */
   result: RunResultRich | null;
-  /** #282: the DTMC run (#67) — the Run tab's result when the active lens
-   *  declares `run: "dtmc"`. App keeps result/markovRun mutually exclusive. */
-  markovRun: MarkovRunResult | null;
-  /** ADR run-seam-canvas-document: whether the last run executed the edited
-   *  canvas's projection rather than the shipped calibration artifact. */
-  ranEdited?: boolean;
-  /** The active demo's manifest (null = no runnable bundle) — the inputs card
-   *  reads it to mark data-driven flows as such. */
+  /** The active demo's manifest (null = no runnable bundle) — the model-level
+   *  about reads it for data provenance. */
   runManifest?: Manifest | null;
-  /** Walkthrough #11: an inputs-card edit — update the relation and re-run. */
-  onInputEdit?: (next: Relation) => void;
-  /** Restore the model's declared amounts (derived from the demo's .sl). */
-  onResetInputs?: () => void;
-  /** The run's time controls (Δt/T relocation): committed edits re-run over
-   *  the new slice via the same grammar as an inputs edit. */
-  time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
   /** The demo bundle's description, shown on the model-level about (#15). */
   blurb?: string;
-  runError: string | null;
   desc: LensDescription | null;
   verdict: ValidationResult | null;
   issueTargets: IssueTarget[];
@@ -117,10 +101,7 @@ export function InspectorDock({
   hostError: string | null;
   canvasModel: CanvasModel | null;
   onNavigate: (target: IssueTarget) => void;
-  /** #94: run panel's accept-derived-unit affordance — writes a derived stock
-   *  unit into the authoring model as declared. Placement only; App owns it. */
-  onAcceptUnit?: (name: string, unit: string) => void;
-  /** #154 P1: SimScrubber tick, forwarded to RunPanel's state-space marker. */
+  /** #154 P1: SimScrubber tick, forwarded to the element mechanism readout. */
   tick?: number;
   resetKeys: unknown[];
   /** #122: the canvas's element editor lives HERE, not in a popover at the
@@ -155,7 +136,7 @@ export function InspectorDock({
   // model that already carries content has plenty to read, so opening a worked
   // example lands ready. Null = follow the model. A boolean = the author's own
   // word, which stands until a different model loads.
-  const [tab, setTab] = useState<Tab>("run");
+  const [tab, setTab] = useState<Tab>("element");
   const [collapseChoice, setCollapseChoice] = useState<boolean | null>(null);
   const modelIsEmpty =
     !canvasModel || (canvasModel.things.length === 0 && canvasModel.relations.length === 0);
@@ -216,7 +197,7 @@ export function InspectorDock({
       // way back to the instrument column by hand, so it takes the full edge.
       <button
         onClick={() => setCollapsed(false)}
-        title="Show inspector (Run, Formal, Review, Element)"
+        title="Show inspector (Element, Formal, Review, Analyst)"
         aria-expanded={false}
         className="flex w-8 shrink-0 flex-col items-center gap-3 border-l py-2 transition-colors"
         style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
@@ -262,10 +243,10 @@ export function InspectorDock({
           close and Analyst ran off the screen. The tabs scroll under pressure;
           the controls are pinned.
 
-          #312 move 1: Type left this strip for the model name in the menu bar.
-          It was model metadata, set once at authoring time, competing with live
-          readings for a slot. Every remaining tab is a reading of the model or
-          of the selection. Tab widths are bound by InspectorDock.test.tsx. */}
+          #312: Type left this strip for the model name in the menu bar (move
+          1), and Run left it for the mode axis (move 2). Every remaining tab is
+          a reading of the model or of the selection. Tab widths are bound by
+          InspectorDock.test.tsx. */}
       <div
         className="flex items-stretch border-b"
         style={{ borderColor: "var(--hairline)" }}
@@ -341,25 +322,6 @@ export function InspectorDock({
               ) : (
                 <Placeholder>Click a component or environment thing to edit it here.</Placeholder>
               ))}
-            {tab === "run" && (
-              <RunTab
-                result={result}
-                ranEdited={ranEdited}
-                runError={runError}
-                lens={canvasModel?.lens ?? "Klir"}
-                onAcceptUnit={onAcceptUnit}
-                tick={tick}
-                model={canvasModel}
-                manifest={runManifest ?? null}
-                onInputEdit={onInputEdit}
-                onResetInputs={onResetInputs}
-                time={time}
-                focused={focused}
-                onToggleFocus={onToggleFocus}
-                runKind={canvasModel ? LensPalette[canvasModel.lens].run : "conservation"}
-                markovRun={markovRun}
-              />
-            )}
             {tab === "formal" && <FormalTab desc={desc} analysisError={analysisError} />}
             {tab === "review" && (
               <ReviewTab
@@ -427,238 +389,6 @@ function Placeholder({ children }: { children: React.ReactNode }) {
     <p className="px-1 py-6 text-sm" style={{ color: "var(--text-muted)" }}>
       {children}
     </p>
-  );
-}
-
-function RunTab({
-  result,
-  ranEdited,
-  runError,
-  lens,
-  onAcceptUnit,
-  tick,
-  model,
-  manifest,
-  onInputEdit,
-  onResetInputs,
-  time,
-  focused,
-  onToggleFocus,
-  runKind,
-  markovRun,
-}: {
-  result: RunResultRich | null;
-  ranEdited?: boolean;
-  runError: string | null;
-  lens: CanvasModel["lens"];
-  onAcceptUnit?: (name: string, unit: string) => void;
-  tick?: number;
-  model?: CanvasModel | null;
-  manifest?: Manifest | null;
-  onInputEdit?: (next: Relation) => void;
-  onResetInputs?: () => void;
-  time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
-  /** #283: the dock's focus toggle, surfaced on the Result card too. */
-  focused?: boolean;
-  onToggleFocus?: () => void;
-  /** #282: the lens's declared run semantics — this tab renders from it. */
-  runKind: RunKind;
-  /** #282: the DTMC run (#67), when the declared kind is dtmc. */
-  markovRun: MarkovRunResult | null;
-}) {
-  // The inputs card renders above WHATEVER the run state is — including a
-  // refusal, since fix-the-number-and-rerun is exactly the loop it exists for.
-  const inputs =
-    model && manifest && onInputEdit ? (
-      <RunInputs model={model} manifest={manifest} onEdit={onInputEdit} onReset={onResetInputs} />
-    ) : null;
-  // The run's time slice, docked with the run (Δt/T relocation). Commit
-  // re-runs immediately; under Klir only the horizon means anything (a DTMC
-  // advances in steps, not Δt-sized slices).
-  const timeRow = time ? <TimeRow time={time} /> : null;
-  // #283 (placement per Shingai's review): the focus toggle sits at the very
-  // top of the run tab, above Time and outside every card — a real button,
-  // not a header ornament. Same #57 focus state the tab-strip ⤢ drives.
-  const expandRow = onToggleFocus ? (
-    <div className="flex justify-end">
-      <button
-        onClick={onToggleFocus}
-        title={focused ? "Exit focus (show canvas)" : "Focus — expand the run full-width"}
-        aria-pressed={focused}
-        className="rounded-full border px-3 py-1 text-xs font-medium"
-        style={{
-          borderColor: "var(--border)",
-          color: focused ? "var(--text-on-accent)" : "var(--lens-accent)",
-          background: focused ? "var(--lens-accent)" : "var(--bg-surface)",
-        }}
-      >
-        {focused ? "⤡ Exit focus" : "⤢ Expand run"}
-      </button>
-    </div>
-  ) : null;
-  // #282, decided 2026-08-01: Bunge does not run. The lens's own register says
-  // it — no mechanism stated (⊘M) — so executing Mobus's engine under this
-  // reading was a lens leak. The deck states the refusal instead of borrowing
-  // furniture; the conservation result (if a demo ran) waits under Mobus.
-  if (runKind === "none") {
-    return (
-      <div className="grid gap-5">
-        {expandRow}
-        <Card title="Result" source="bert-core · wasm">
-          <Verdict tone="warning">no mechanism stated (⊘M) — reads as a black box</Verdict>
-          <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-            This lens declares composition, environment, and structure — never a
-            mechanism. There is nothing to run. Read the model under Mobus to
-            execute its declared dynamics, or under Klir to evolve it as a state
-            machine.
-          </p>
-        </Card>
-      </div>
-    );
-  }
-  // #282: the DTMC deck — steps and occupancy, no Δt, no conservation chrome.
-  if (runKind === "dtmc") {
-    return (
-      <div className="grid gap-5">
-        {expandRow}
-        {timeRow}
-        {runError ? (
-          <Card title="Result" source="bert-compose · wasm">
-            <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
-              {runError}
-            </p>
-          </Card>
-        ) : markovRun ? (
-          <DtmcPanel
-            run={markovRun}
-            tick={tick}
-            weights={model ? weightProvenance(model.relations) : undefined}
-          />
-        ) : (
-          <Placeholder>
-            Run evolves this state machine as a Markov chain — steps and state
-            occupancy, not Δt. Set the steps above and press ▶ Run, or ⏭ Step
-            one tick at a time.
-            {model &&
-              model.relations.length > 0 &&
-              weightProvenance(model.relations) === "defaulted" &&
-              " Transition weights are undeclared, so the chain will run uniform — add `weight <n>` to a flow to calibrate it."}
-          </Placeholder>
-        )}
-      </div>
-    );
-  }
-  if (runError) {
-    return (
-      <div className="grid gap-5">
-        {expandRow}
-        {timeRow}
-        {inputs}
-        <Card title="Result" source="bert-compose · wasm">
-          <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
-            {runError}
-          </p>
-        </Card>
-      </div>
-    );
-  }
-  if (result)
-    return (
-      <div className="grid gap-5">
-        {expandRow}
-        {timeRow}
-        {inputs}
-        <RunPanel
-          result={result}
-          ranEdited={ranEdited}
-          lens={lens}
-          onAcceptUnit={onAcceptUnit}
-          tick={tick}
-          model={model}
-        />
-      </div>
-    );
-  return (
-    <div className="grid gap-5">
-      {expandRow}
-      {timeRow}
-      {inputs}
-      <Placeholder>
-        {manifest
-          ? // #297: the model opens at zero — loaded, mapped, and waiting for
-            // the author's horizon. Nothing has run until Run is pressed.
-            "The model is loaded and nothing has run. Set the run length in Time and press ▶ Run — or ⏭ Step one tick at a time."
-          : "Run needs a demo bundle (model + CSV + mapping) to force the simulation."}
-      </Placeholder>
-    </div>
-  );
-}
-
-/** The run's time slice (Δt/T relocation): step size and horizon, docked with
- *  the run they govern. Commit (Enter/blur) re-runs over the new slice — the
- *  inputs-card grammar. Under Klir only the horizon renders (a DTMC advances
- *  in steps; Δt is not a Klir word). */
-function TimeRow({
-  time,
-}: {
-  time: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
-}) {
-  // Plain words lead, the formal symbol rides muted beside them (#297 review:
-  // Δt and T alone assume the reader arrives knowing Mobus's time base).
-  const field = (
-    label: string,
-    symbol: string | null,
-    value: number,
-    commit: (v: number) => void,
-    title: string,
-  ) => (
-    <label className="flex items-center gap-1.5 text-xs" title={title} style={{ color: "var(--text-secondary)" }}>
-      {label}
-      {symbol && (
-        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-          {symbol}
-        </span>
-      )}
-      <input
-        key={value}
-        type="number"
-        defaultValue={value}
-        min={0}
-        step="any"
-        onBlur={(e) => {
-          const v = parseFloat(e.target.value);
-          if (Number.isFinite(v) && v > 0 && v !== value) commit(v);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-        }}
-        className="w-16 rounded-md px-1.5 py-0.5 text-xs tabular"
-        style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
-      />
-    </label>
-  );
-  return (
-    <Card title="Time" source="the run's slice · edits re-run">
-      <div className="flex flex-wrap items-center gap-4">
-        {!time.klir &&
-          field(
-            "step size",
-            "Δt",
-            time.dt,
-            (v) => time.onCommit(v, time.t),
-            "how much model time passes each tick, in the model's time unit — totals are Δt-invariant (dt_invariance)",
-          )}
-        {field(
-          time.klir ? "steps" : "run length",
-          time.klir ? null : "T",
-          time.t,
-          (v) => time.onCommit(time.dt, v),
-          time.klir
-            ? "how many transitions the chain takes"
-            : "total model time the run covers — run length ÷ step size = ticks",
-        )}
-      </div>
-    </Card>
   );
 }
 
