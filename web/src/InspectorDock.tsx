@@ -131,13 +131,28 @@ export function InspectorDock({
   reviewedAt: string | null;
   onReview: () => void;
 }) {
+  // Whether the dock stands open follows the MODEL until the author says
+  // otherwise. A blank model has nothing to inspect, so a full instrument column
+  // standing over an empty canvas is noise and the dock starts as a rail; a
+  // model that already carries content has plenty to read, so opening a worked
+  // example lands ready. Null = follow the model. A boolean = the author's own
+  // word, which stands until a different model loads.
   const [tab, setTab] = useState<Tab>("run");
-  // The dock opens closed. On a fresh model there is nothing selected and so
-  // nothing to inspect, and a full instrument column standing open over a blank
-  // canvas reads as noise. A selection opens it (below), and the edge rail opens
-  // it by hand — once open, it stays open until the author collapses it again.
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapseChoice, setCollapseChoice] = useState<boolean | null>(null);
+  const modelIsEmpty =
+    !canvasModel || (canvasModel.things.length === 0 && canvasModel.relations.length === 0);
+  const collapsed = collapseChoice ?? modelIsEmpty;
+  const setCollapsed = setCollapseChoice;
   const issueCount = verdict?.issues.length ?? 0;
+
+  // A different model is a fresh start: the author's collapse choice was about
+  // the last one, so it lapses and the dock follows the new model again. Model
+  // IDENTITY, not the model object — an edit must never re-open a dock the
+  // author just shut.
+  const modelKey = canvasModel?.model_id ?? canvasModel?.name ?? null;
+  useEffect(() => {
+    setCollapseChoice(null);
+  }, [modelKey]);
 
   // Selecting a thing on the canvas raises its editor here — the docked
   // replacement for the popover that used to mount under the pointer. An

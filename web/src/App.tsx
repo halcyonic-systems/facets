@@ -1853,20 +1853,25 @@ function Workspace() {
                     if (m) runWith(m.json, runCsv, manifest, dt, t, m.edited);
                   }
                 };
+                // The unrunnable branches are now VISIBLE copy, not tooltips
+                // (the deck stands down and this sentence takes its place), so
+                // they read as sentences: no em dashes, plain and short. Each
+                // claim is preserved exactly — the level is declared and
+                // authors no rule, Bunge states no mechanism (⊘M).
                 const title =
                   runKind === "dtmc"
                     ? dtmcRunnable
                       ? "Run the state machine as a Markov chain"
                       : subGenerative
-                        ? `declared level ${canvasModel.klir_level} — no generating rule is authored, so Run has nothing to execute`
-                        : "Add at least one state to run"
+                        ? `Declared level ${canvasModel.klir_level} authors no generating rule, so Run has nothing to execute.`
+                        : "Add at least one state to run."
                     : runKind === "conservation"
                       ? runCsv
                         ? "Run the forced simulation"
                         : attachedCsv
-                          ? "Bind at least one column in Data mode to drive the run"
-                          : "Run needs data — a demo bundle, or a CSV attached and bound in Data mode"
-                      : "no mechanism stated (⊘M) — structure alone gives Run nothing to execute";
+                          ? "Bind at least one column in Data mode to drive the run."
+                          : "Run needs data: a demo bundle, or a CSV attached and bound in Data mode."
+                      : "No mechanism stated (⊘M), so structure alone gives Run nothing to execute.";
                 // #297: advance by one tick — a deterministic re-run one step
                 // longer, scrubber landed on the new final tick. No incremental
                 // engine state: the recorded-run architecture makes T+1 exact.
