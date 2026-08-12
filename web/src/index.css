@@ -13,15 +13,18 @@
 :root {
   color-scheme: light dark;
 
-  /* surface + text — cool, faintly indigo, not flat grey */
-  --bg-primary: #eef2f5;
-  --bg-secondary: #f9fbfc;
-  --bg-surface: #e0e7ec;
-  --stage-from: #f2f6f8;
-  --stage-to: #e8eef2;
-  --text-primary: #16232b;
-  --text-secondary: #3d5460;
-  --text-muted: #5a707e;
+  /* surface + text — NEUTRAL (2026-08-12). Was a cool, faintly indigo tint;
+     that cast is what read as "green-blue" next to the paper register and what
+     made the canvas feel coloured before any lens touched it. The workspace
+     ground is now plain, and hue on it means a lens. */
+  --bg-primary: #f1f2f3;
+  --bg-secondary: #fafafb;
+  --bg-surface: #e6e7e9;
+  --stage-from: #f5f6f7;
+  --stage-to: #eceded;
+  --text-primary: #17181a;
+  --text-secondary: #45484c;
+  --text-muted: #6d7175;
   /* ink on a filled accent/verdict surface — constant across themes (the fill
      itself carries the theme; the ink on it stays white in both) */
   --text-on-accent: #ffffff;
@@ -111,14 +114,15 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-primary: #101820;
-    --bg-secondary: #17222b;
-    --bg-surface: #1e2b35;
-    --stage-from: #141d25;
-    --stage-to: #0d141b;
-    --text-primary: #e6eef3;
-    --text-secondary: #a9bcc6;
-    --text-muted: #758794;
+    /* neutral in dark too (2026-08-12), same reason as light */
+    --bg-primary: #16181a;
+    --bg-secondary: #1d2022;
+    --bg-surface: #24282a;
+    --stage-from: #191c1e;
+    --stage-to: #121415;
+    --text-primary: #e8eaec;
+    --text-secondary: #b0b4b8;
+    --text-muted: #82868a;
 
     --accent: #6fa5b8;
     --accent-strong: #95c3d3;
@@ -132,12 +136,9 @@
     --verdict-warning: #dba448;
     --verdict-ok: #4fbc93;
 
-    --border: #2a3944;
-    --hairline: #202d3660;
+    --border: #33383b;
+    --hairline: #2a2f3260;
 
-    /* The printed record in dark: not an inverted page but a dark plate —
-       warm cream ink on a near-black ground, the rubric warmed to terracotta
-       so it stays a stroke of colour rather than a stain. */
     /* Dark keeps the same relationship, inverted: the sheet is a step LIGHTER
        than the ground it sits on, so the edge reads the same way. */
     --paper: #17191c;
@@ -164,23 +165,27 @@
   /* The lens WORLD (#7 follow-on): shell surfaces tint toward the lens so a
      switch reads viscerally as entering a different reading. Chrome = toolbar
      + docks; wash = the canvas backdrop. The percentages here are the entire
-     tuning surface — adjust them, nothing else moves. */
-  --lens-chrome: color-mix(in srgb, var(--world-klir) 22%, var(--bg-secondary));
-  --lens-wash: color-mix(in srgb, var(--world-klir) 11%, var(--bg-primary));
+     tuning surface — adjust them, nothing else moves.
+     Retuned 2026-08-12: the wash was 11% and read as "swimming in green" on
+     Mobus — the canvas ground is where a modeller looks all day, so it stays
+     plain and the lens lives in the CHROME (12%, was 22%). A trace of wash is
+     kept rather than zero so the lens is still confirmable at a glance. */
+  --lens-chrome: color-mix(in srgb, var(--world-klir) 12%, var(--bg-secondary));
+  --lens-wash: color-mix(in srgb, var(--world-klir) 2.5%, var(--bg-primary));
 }
 [data-lens="Bunge"] {
   --lens-accent: var(--accent-indigo);
   --lens-accent-soft: color-mix(in srgb, var(--accent-indigo) 24%, var(--bg-secondary));
   --lens-node-stroke: color-mix(in srgb, var(--accent-indigo) 50%, var(--accent-slate));
-  --lens-chrome: color-mix(in srgb, var(--world-bunge) 22%, var(--bg-secondary));
-  --lens-wash: color-mix(in srgb, var(--world-bunge) 11%, var(--bg-primary));
+  --lens-chrome: color-mix(in srgb, var(--world-bunge) 12%, var(--bg-secondary));
+  --lens-wash: color-mix(in srgb, var(--world-bunge) 2.5%, var(--bg-primary));
 }
 [data-lens="Mobus"] {
   --lens-accent: var(--accent);
   --lens-accent-soft: var(--accent-soft);
   --lens-node-stroke: color-mix(in srgb, var(--accent) 40%, var(--accent-slate));
-  --lens-chrome: color-mix(in srgb, var(--world-mobus) 22%, var(--bg-secondary));
-  --lens-wash: color-mix(in srgb, var(--world-mobus) 11%, var(--bg-primary));
+  --lens-chrome: color-mix(in srgb, var(--world-mobus) 12%, var(--bg-secondary));
+  --lens-wash: color-mix(in srgb, var(--world-mobus) 2.5%, var(--bg-primary));
 }
 
 * {
