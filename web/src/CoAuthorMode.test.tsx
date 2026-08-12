@@ -4,7 +4,8 @@
 // and content faithfully.
 import { beforeEach, describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { CoAuthorMode, stageLabel } from "./CoAuthorMode";
+import { CoAuthorMode, drafterLine, drafterMismatch, stageLabel } from "./CoAuthorMode";
+import { resetDrafterModelForTest, setDrafterModel } from "./drafterModel";
 import type { CoauthorTurn, DraftStage } from "./coauthor";
 import {
   initReasoner,
@@ -145,5 +146,125 @@ describe("stageLabel (#218 — naming the stage instead of a static 'Drafting…
   it("reflects the final attempt distinctly from the first retry", () => {
     const stage: DraftStage = { kind: "retrying", attempt: 3, maxAttempts: 3 };
     expect(stageLabel(stage, LOCAL)).toBe("Draft did not compile, retrying (3 of 3)…");
+  });
+
+  it("states a chosen model as an ASK, since who answered is not known yet", () => {
+    expect(stageLabel({ kind: "asking" }, LOCAL, "claude-sonnet-4-6")).toBe(
+      "Asking the reasoner for claude-sonnet-4-6…",
+    );
+  });
+});
+
+// The model choice, and the hazard it carries. GSR falls back to a local model
+// when it holds no key for the Claude one asked for, and the call SUCCEEDS —
+// the draft arrives, nothing errors. These bind the only thing that stops a
+// demo audience being told Claude wrote a draft a local 12B wrote.
+describe("the answering model is what gets shown", () => {
+  it("names the model that answered, not the one requested", () => {
+    expect(drafterLine({ model: "gemma4:12b" })).toBe("Drafted by gemma4:12b.");
+  });
+
+  it("says nothing about a model for a turn that never reached one", () => {
+    expect(drafterLine({})).toBeNull();
+  });
+
+  it("does not borrow the requested name when the reasoner named no model", () => {
+    const line = drafterLine({ model: "" });
+    expect(line).toBe("The reasoner did not name the model that answered.");
+    expect(line).not.toContain("claude");
+  });
+
+  it("reports no mismatch when the model that answered is the one asked for", () => {
+    expect(drafterMismatch({ model: "claude-sonnet-4-6", requestedModel: "claude-sonnet-4-6" })).toBeNull();
+  });
+
+  it("reports no mismatch against the reasoner's own default, which asks for whatever it serves", () => {
+    expect(drafterMismatch({ model: "gemma4:12b", requestedModel: "" })).toBeNull();
+  });
+
+  it("names both models when a Claude ask was answered by a local one", () => {
+    const notice = drafterMismatch({ model: "gemma4:12b", requestedModel: "claude-sonnet-4-6" });
+    expect(notice).toContain("claude-sonnet-4-6");
+    expect(notice).toContain("gemma4:12b");
+    expect(notice).toContain("key");
+    expect(notice).not.toContain("—");
+  });
+
+  it("surfaces the mismatch in the turn itself, not in a tooltip", async () => {
+    await reasonerOn();
+    const turns: CoauthorTurn[] = [
+      {
+        id: "m1",
+        description: "a thermostat",
+        sl: "system Thermostat",
+        at: new Date().toISOString(),
+        status: "previewing",
+        model: "gemma4:12b",
+        requestedModel: "claude-sonnet-4-6",
+      },
+    ];
+    const m = renderToStaticMarkup(<CoAuthorMode turns={turns} onDraft={noopDraft} onLoad={noopLoad} />);
+    expect(m).toContain("Asked for claude-sonnet-4-6");
+    expect(m).toContain("Answered by gemma4:12b");
+    expect(m).toContain("var(--verdict-warning)");
+    expect(m).not.toContain("title=\"Asked for");
+  });
+
+  it("offers the model choice, saying where each one runs, once the reasoner is on", async () => {
+    await reasonerOn();
+    resetDrafterModelForTest();
+    const m = renderToStaticMarkup(<CoAuthorMode turns={[]} onDraft={noopDraft} onLoad={noopLoad} />);
+    expect(m).toContain("Drafts with");
+    expect(m).toContain("claude-sonnet-4-6");
+    expect(m).toContain("on the reasoner&#x27;s machine");
+  });
+
+  it("shows the chosen model's home once a frontier model is picked", async () => {
+    await reasonerOn();
+    resetDrafterModelForTest();
+    setDrafterModel("claude-sonnet-4-6");
+    const m = renderToStaticMarkup(<CoAuthorMode turns={[]} onDraft={noopDraft} onLoad={noopLoad} />);
+    expect(m).toContain("through the reasoner&#x27;s cloud path");
+    resetDrafterModelForTest();
+  });
+});
+
+// The final runtime, which used to vanish with the live counter.
+describe("the turn keeps its model time", () => {
+  it("shows a single ask's time beside the model", () => {
+    expect(drafterLine({ model: "gemma4:12b", modelMs: 12400, modelCalls: 1 })).toBe(
+      "Drafted by gemma4:12b in 12.4s.",
+    );
+  });
+
+  it("says the number covers several calls when the draft had to heal", () => {
+    expect(drafterLine({ model: "gemma4:12b", modelMs: 31000, modelCalls: 3 })).toBe(
+      "Drafted by gemma4:12b in 31.0s of model time over 3 calls.",
+    );
+  });
+
+  it("prints no time at all rather than a zero when the reasoner reported none", () => {
+    const line = drafterLine({ model: "gemma4:12b", modelCalls: 1 });
+    expect(line).toBe("Drafted by gemma4:12b.");
+    expect(line).not.toContain("0");
+  });
+
+  it("renders the completed turn's runtime in the history", async () => {
+    await reasonerOn();
+    const turns: CoauthorTurn[] = [
+      {
+        id: "t9",
+        description: "a thermostat",
+        sl: "system Thermostat",
+        at: new Date().toISOString(),
+        status: "accepted",
+        model: "claude-sonnet-4-6",
+        requestedModel: "claude-sonnet-4-6",
+        modelMs: 8200,
+        modelCalls: 1,
+      },
+    ];
+    const m = renderToStaticMarkup(<CoAuthorMode turns={turns} onDraft={noopDraft} onLoad={noopLoad} />);
+    expect(m).toContain("Drafted by claude-sonnet-4-6 in 8.2s.");
   });
 });

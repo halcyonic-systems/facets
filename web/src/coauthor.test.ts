@@ -75,7 +75,7 @@ describe("draftSlWithRetry stage reporting (#218)", () => {
     authorSlMock.mockResolvedValueOnce({ sl: "system X", model: "gemma4:12b" });
     compileSlMock.mockReturnValueOnce({ ok: {}, lens_explicit: false });
     const stages: DraftStage[] = [];
-    const sl = await draftSlWithRetry("a thermostat", undefined, (s) => stages.push(s));
+    const { sl } = await draftSlWithRetry("a thermostat", undefined, (s) => stages.push(s));
     expect(sl).toBe("system X");
     expect(stages).toEqual([{ kind: "asking" }, { kind: "compiling" }]);
     expect(authorSlMock).toHaveBeenCalledTimes(1);
@@ -89,7 +89,7 @@ describe("draftSlWithRetry stage reporting (#218)", () => {
       .mockReturnValueOnce({ errors: [{ line: 1, message: "unknown keyword" }] })
       .mockReturnValueOnce({ ok: {}, lens_explicit: false });
     const stages: DraftStage[] = [];
-    const sl = await draftSlWithRetry("a thermostat", undefined, (s) => stages.push(s));
+    const { sl } = await draftSlWithRetry("a thermostat", undefined, (s) => stages.push(s));
     expect(sl).toBe("system X (fixed)");
     expect(stages).toEqual([
       { kind: "asking" },
@@ -109,7 +109,7 @@ describe("draftSlWithRetry stage reporting (#218)", () => {
       .mockReturnValueOnce({ errors: [{ line: 1, message: "bad" }] })
       .mockReturnValueOnce({ errors: [{ line: 1, message: "still bad" }] });
     const stages: DraftStage[] = [];
-    const sl = await draftSlWithRetry("a thermostat", undefined, (s) => stages.push(s));
+    const { sl } = await draftSlWithRetry("a thermostat", undefined, (s) => stages.push(s));
     // The loop caps at 2 kernel-reported heals (3 total asks); the 3rd draft's
     // compile is the caller's job, not this function's — it is returned as-is.
     expect(sl).toBe("v3");
@@ -126,6 +126,118 @@ describe("draftSlWithRetry stage reporting (#218)", () => {
   it("works with no onStage callback at all (manual/legacy callers)", async () => {
     authorSlMock.mockResolvedValueOnce({ sl: "system X", model: "gemma4:12b" });
     compileSlMock.mockReturnValueOnce({ ok: {}, lens_explicit: false });
-    await expect(draftSlWithRetry("a thermostat")).resolves.toBe("system X");
+    await expect(draftSlWithRetry("a thermostat")).resolves.toMatchObject({ sl: "system X" });
+  });
+});
+
+// The model choice. GSR routes on the model name and reports the model that
+// actually answered; when it holds no key for a Claude model the request still
+// SUCCEEDS on a local one, so the answering model is the only trustworthy fact
+// here and it has to survive the heal loop intact.
+describe("draftSlWithRetry model choice", () => {
+  beforeEach(() => {
+    authorSlMock.mockReset();
+    compileSlMock.mockReset();
+  });
+
+  it("asks for the reasoner's default when no model is chosen", async () => {
+    authorSlMock.mockResolvedValueOnce({ sl: "system X", model: "gemma4:12b" });
+    compileSlMock.mockReturnValueOnce({ ok: {}, lens_explicit: false });
+    const out = await draftSlWithRetry("a thermostat");
+    expect(authorSlMock).toHaveBeenCalledWith(expect.objectContaining({ model: "" }));
+    expect(out.requestedModel).toBe("");
+    expect(out.answeredModel).toBe("gemma4:12b");
+  });
+
+  it("sends the chosen model and reports the model that answered", async () => {
+    authorSlMock.mockResolvedValueOnce({ sl: "system X", model: "claude-sonnet-4-6" });
+    compileSlMock.mockReturnValueOnce({ ok: {}, lens_explicit: false });
+    const out = await draftSlWithRetry("a thermostat", undefined, undefined, "claude-sonnet-4-6");
+    expect(authorSlMock).toHaveBeenCalledWith(expect.objectContaining({ model: "claude-sonnet-4-6" }));
+    expect(out).toMatchObject({ requestedModel: "claude-sonnet-4-6", answeredModel: "claude-sonnet-4-6" });
+  });
+
+  // THE HAZARD: no key at the reasoner, so the Claude ask falls through to a
+  // local model and the call succeeds. Nothing throws. The returned pair is
+  // what keeps the author from believing Claude wrote this.
+  it("returns the local model that actually answered when the Claude ask falls through", async () => {
+    authorSlMock.mockResolvedValueOnce({ sl: "system X", model: "gemma4:12b" });
+    compileSlMock.mockReturnValueOnce({ ok: {}, lens_explicit: false });
+    const out = await draftSlWithRetry("a thermostat", undefined, undefined, "claude-sonnet-4-6");
+    expect(out.requestedModel).toBe("claude-sonnet-4-6");
+    expect(out.answeredModel).toBe("gemma4:12b");
+    expect(out.answeredModel).not.toBe(out.requestedModel);
+  });
+
+  it("carries the chosen model through every heal, and reports the model that wrote the returned draft", async () => {
+    authorSlMock
+      .mockResolvedValueOnce({ sl: "broken", model: "claude-sonnet-4-6" })
+      .mockResolvedValueOnce({ sl: "fixed", model: "claude-sonnet-4-6" });
+    compileSlMock
+      .mockReturnValueOnce({ errors: [{ line: 1, message: "unknown keyword" }] })
+      .mockReturnValueOnce({ ok: {}, lens_explicit: false });
+    const out = await draftSlWithRetry("a thermostat", undefined, undefined, "claude-sonnet-4-6");
+    expect(authorSlMock).toHaveBeenCalledTimes(2);
+    for (const call of authorSlMock.mock.calls) {
+      expect(call[0]).toMatchObject({ model: "claude-sonnet-4-6" });
+    }
+    expect(out).toMatchObject({ sl: "fixed", answeredModel: "claude-sonnet-4-6" });
+  });
+
+  it("reports the model that answered the LAST ask, not the first, when a retry lands elsewhere", async () => {
+    authorSlMock
+      .mockResolvedValueOnce({ sl: "broken", model: "claude-sonnet-4-6" })
+      .mockResolvedValueOnce({ sl: "fixed", model: "gemma4:12b" });
+    compileSlMock
+      .mockReturnValueOnce({ errors: [{ line: 1, message: "bad" }] })
+      .mockReturnValueOnce({ ok: {}, lens_explicit: false });
+    const out = await draftSlWithRetry("a thermostat", undefined, undefined, "claude-sonnet-4-6");
+    expect(out).toMatchObject({ sl: "fixed", answeredModel: "gemma4:12b" });
+  });
+});
+
+// The reasoner times its own call (`latency_ms`) and that number was being
+// dropped. A turn keeps the TOTAL across its asks, or nothing at all.
+describe("draftSlWithRetry model time", () => {
+  beforeEach(() => {
+    authorSlMock.mockReset();
+    compileSlMock.mockReset();
+  });
+
+  it("carries a single ask's reported time through as the turn's total", async () => {
+    authorSlMock.mockResolvedValueOnce({ sl: "system X", model: "gemma4:12b", latencyMs: 12400 });
+    compileSlMock.mockReturnValueOnce({ ok: {}, lens_explicit: false });
+    const out = await draftSlWithRetry("a thermostat");
+    expect(out).toMatchObject({ modelMs: 12400, modelCalls: 1 });
+  });
+
+  it("sums the heal loop's asks and says how many they were", async () => {
+    authorSlMock
+      .mockResolvedValueOnce({ sl: "broken", model: "gemma4:12b", latencyMs: 10000 })
+      .mockResolvedValueOnce({ sl: "fixed", model: "gemma4:12b", latencyMs: 21000 });
+    compileSlMock
+      .mockReturnValueOnce({ errors: [{ line: 1, message: "bad" }] })
+      .mockReturnValueOnce({ ok: {}, lens_explicit: false });
+    const out = await draftSlWithRetry("a thermostat");
+    expect(out).toMatchObject({ modelMs: 31000, modelCalls: 2 });
+  });
+
+  it("reports no time at all when the reasoner reported none", async () => {
+    authorSlMock.mockResolvedValueOnce({ sl: "system X", model: "gemma4:12b" });
+    compileSlMock.mockReturnValueOnce({ ok: {}, lens_explicit: false });
+    const out = await draftSlWithRetry("a thermostat");
+    expect(out.modelMs).toBeUndefined();
+    expect(out.modelCalls).toBe(1);
+  });
+
+  it("reports no total when only some of the turn's asks were timed", async () => {
+    authorSlMock
+      .mockResolvedValueOnce({ sl: "broken", model: "gemma4:12b", latencyMs: 10000 })
+      .mockResolvedValueOnce({ sl: "fixed", model: "gemma4:12b" });
+    compileSlMock
+      .mockReturnValueOnce({ errors: [{ line: 1, message: "bad" }] })
+      .mockReturnValueOnce({ ok: {}, lens_explicit: false });
+    const out = await draftSlWithRetry("a thermostat");
+    expect(out.modelMs).toBeUndefined();
   });
 });
