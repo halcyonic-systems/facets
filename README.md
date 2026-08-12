@@ -235,6 +235,7 @@ crates/                     # TRUTH — the kernel, self-contained + wasm-ready
   bert-canvas/              #   canvas/lens domain: CanvasModel, lens_facts, describe
   bert-tether/              #   boundary interface: CSV import, run manifest, forcing
   bert-lenses-kernel/       #   JS-facing wasm-bindgen boundary (marshaling only)
+  bert-cli/                 #   the `bert` binary: the same truth, from a shell (native only)
 web/                        # FACE — React 19 + TS + Vite 6 + Tailwind 4 (Halcyonic Frost)
 src-tauri/                  # the macOS host: the same web/dist in a window (own workspace)
 fixtures/                   # serde↔TS contract goldens (fixtures/contract/)
@@ -316,6 +317,7 @@ window, no second code path.
 just preflight  # check the prerequisites above, and name what is missing
 just wasm       # rebuild the wasm pkg the web app consumes (run after any crate change)
 just dev        # install web deps if needed, rebuild wasm, start the vite dev server
+just bert ARGS  # the headless CLI — ask the kernel about a model without a browser
 just check      # the full gate suite — CI parity
 just desktop    # bundle the macOS .app (docs/running-permanently.md)
 ```
@@ -351,6 +353,85 @@ cargo build --workspace --target wasm32-unknown-unknown
 python3 scripts/doc_lint.py
 ```
 </details>
+
+## The `bert` CLI — the same kernel, from a shell
+
+Every verdict the app shows is a library call, and until #315 the only door onto
+those calls was a browser. `bert` is the door. It decides nothing: it parses
+arguments, calls `bert-canvas` / `bert-core` / `bert-compose`, and prints what
+comes back. A verdict computed in the CLI would be the same bug as a verdict
+computed in JS.
+
+```bash
+just bert verdict assets/examples/watershed.sl        # via cargo, no install
+cargo install --path crates/bert-cli                  # or put `bert` on PATH
+```
+
+```
+bert compile  <file.sl>                 the canvas model the text becomes
+bert verdict  <file> [--lens L]         what the kernel says; exits 4 on a refusal
+bert describe <file> [--lens L]         the formal object the tradition writes
+bert run      <file> [--t T] [--dt D]   the trajectory, or why there is none
+bert layout   <file>                    where the nodes sit
+```
+
+A file argument is a path or `-` for stdin. `.sl` compiles; anything else opens
+as a stored model — neutral archive or legacy `WorldModel`, shape decides, the
+same `archive::read` the app uses. For stdin the first non-blank character
+decides.
+
+**stdout carries JSON and only JSON**, so a pipeline never has to skip a banner
+line; human diagnostics (line-anchored parse faults, the refusal summary) go to
+stderr. The shapes are the kernel's own serde types, the same ones
+[`API.md`](crates/bert-lenses-kernel/API.md) documents: `compile` prints a
+`CanvasModel`, `verdict` a `CanvasAnalysis`, `describe` a `LensDescription`,
+`run` a `RunResult`. `layout` is the one CLI-shaped answer — a straight
+selection of `id`/`name`/`role`/`env_kind`/`x`/`y` off the model, no derivation.
+
+**The exit code carries the kind of failure**, so a check branches without
+parsing anything:
+
+| Code | Meaning |
+|---|---|
+| `0` | the answer is on stdout |
+| `1` | internal — the answer could not be written |
+| `2` | usage — bad arguments (clap's own) |
+| `3` | the input did not compile, or is not a model file |
+| `4` | the kernel refused: a validation error at the lens's mode, no executable projection, or a run with no step |
+
+The split between 3 and 4 is the one that matters: a mistyped keyword and a
+model that is not a system are different findings.
+
+**`--lens` is the point.** `lenses::analyze` takes the lens as an explicit
+argument and **ignores `model.lens`**, so the CLI can read a model under a
+tradition it was never pinned to. The corpus's one documented divergence is a
+two-line shell check:
+
+```bash
+bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens bunge   # 0 — legal Bunge structure
+bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus   # 4 — Mobus §4.3 forbids the diagonal
+```
+
+And the layout regression that cost a browser-JavaScript measurement session on
+2026-08-12 is one line:
+
+```bash
+bert layout assets/examples/watershed.sl \
+  | jq '[.nodes[] | select(.env_kind=="Source") | .x] | max
+        < ([.nodes[] | select(.env_kind=="Sink") | .x] | min)'
+```
+
+`fixtures/cli/examples.json` is a golden reading of every bundled example
+through this door — what it compiles to, its error count under **each** of the
+three lenses, whether it runs, and where its nodes sit. Regenerate with
+`BLESS_CLI_GOLDEN=1 cargo test -p bert-cli` and read the diff: an unexplained
+row change is the finding.
+
+`bert-cli` is the one package excluded from the workspace `wasm32-unknown-unknown`
+build (`--exclude bert-cli` in `justfile` and `ci.yml`) — a native binary of argv
+and the filesystem has nothing to do in a browser. The exclusion is *checked*,
+not merely commented: `crates/bert-cli/tests/wasm_gate.rs` fails if the list ever
+grows, so the wasm gate cannot quietly widen into one that skips things.
 
 ## Where to look
 

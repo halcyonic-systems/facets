@@ -1,0 +1,48 @@
+[package]
+name = "bert-cli"
+version = "0.1.0"
+edition = "2021"
+description = "The `bert` binary: a headless door onto the kernel. Compile SL, ask for a verdict under any lens, typeset the formal object, run the trajectory, read the layout — all from a shell, all as JSON. A consumer of the crates, never a second implementation of them."
+license = "MIT"
+# Not on crates.io. See the sibling crates' manifests — the whole vendored set
+# is distributed only as the wasm kernel inside the app. This one is not
+# distributed at all: it is a developer and CI door, built natively.
+publish = false
+
+# The binary is `bert`, not `bert-cli`. The crate name carries the -cli suffix
+# because `--exclude bert-cli` in the wasm build has to name a PACKAGE, and a
+# package called `bert` would read as the kernel rather than the door.
+[[bin]]
+name = "bert"
+path = "src/main.rs"
+
+[dependencies]
+bert-core = { path = "../bert-core" }
+bert-compose = { path = "../bert-compose" }
+bert-canvas = { path = "../bert-canvas" }
+# For `archive::read` — the total model-open (neutral archive OR legacy
+# WorldModel, shape decides). The CLI must open every file the app ever wrote,
+# and that totality is already implemented once, there. Re-deciding format by
+# shape in the CLI would be a second implementation of the archive seam.
+# Depended on as a plain rlib; nothing here touches the wasm-bindgen exports.
+bert-lenses-kernel = { path = "../bert-lenses-kernel" }
+# The only third-party dependency, and the only one this crate has any business
+# adding: argument parsing, `--help`, and usage errors. `default-features =
+# false` drops the colour/terminal stack (anstream, anstyle-query, colorchoice)
+# — a machine-readable CLI has no use for it, and every dropped crate is one
+# less thing in the graph. `derive` costs only clap_derive + heck: syn, quote
+# and proc-macro2 are already in the lock via serde_derive.
+clap = { version = "4", default-features = false, features = [
+    "std",
+    "derive",
+    "help",
+    "usage",
+    "error-context",
+] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+# The tests drive the built binary as a process, so they link none of the
+# crate's own code — they need their own JSON reader to check what came back.
+serde_json = "1"
