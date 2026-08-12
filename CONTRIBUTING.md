@@ -121,7 +121,8 @@ Before a change lands, it must clear the gate and keep the docs honest:
   | **no Lean citation has gone stale** — every `claim_id` resolves at the pin *with its declared kind* | `doc_lint.py` → Gate A (skipped when no SSF checkout is present) |
   | provenance and hedge vocabulary hold in LIVE docs | `doc_lint.py` |
   | the design tokens have not drifted; TS type-checks; the bundle builds | `check:tokens` · `tsc --noEmit` · `vite build` |
-  | **every bundled example still reads the same way through the CLI** — what it compiles to, its error count under each of the three lenses, whether it runs, where its nodes sit | `cargo test -p bert-cli`, against `fixtures/cli/examples.json` |
+  | **the canonical six still read the same way through the CLI** — every word of the verdict under each of the three lenses, the formal object, the layout, the trajectory | `cargo test -p bert-cli`, against `fixtures/cli/canonical.json` |
+  | **every other bundled model still parses and the door still answers** — exit code and shape only, no content snapshot, so a rename costs no re-bless | `crates/bert-cli/tests/library_survey.rs` |
   | **the wasm gate has not widened** — `bert-cli` is the only package excluded from the workspace `wasm32` build, in both `justfile` and `ci.yml` | `crates/bert-cli/tests/wasm_gate.rs` |
 
   **Two gates run in CI only**, because they cannot run everywhere: `desktop.yml`

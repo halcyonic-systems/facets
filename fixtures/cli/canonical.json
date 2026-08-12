@@ -1,0 +1,6185 @@
+{
+  "assets/corpus/bunge/coupling-sigma3.sl": {
+    "layout": [
+      {
+        "env_kind": "Neutral",
+        "name": "1",
+        "role": "Component",
+        "x": 480.0,
+        "y": 150.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "2",
+        "role": "Component",
+        "x": 627.0,
+        "y": 405.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "3",
+        "role": "Component",
+        "x": 333.0,
+        "y": 405.0
+      }
+    ],
+    "pins": "Bunge",
+    "relations": 5,
+    "run": {
+      "answer": {
+        "errors": [
+          {
+            "hint": "Author the model in the Operational mode, or export from compose",
+            "location": "mode",
+            "reason": "Structural (Bunge) commits to bonded composition, not typed flows — a representational mode with no flow semantics to execute"
+          },
+          {
+            "hint": "Remove the self-loop; feedback as a first-class cycle is Cybernetic mode (not yet available)",
+            "location": "interactions[1]",
+            "reason": "Mobus §4.3: flow edges require k ≠ o; 'self action' has the same endpoint as source and sink, and self-dependency is not representable in the 8-tuple"
+          },
+          {
+            "hint": "Remove the self-loop; feedback as a first-class cycle is Cybernetic mode (not yet available)",
+            "location": "interactions[4]",
+            "reason": "Mobus §4.3: flow edges require k ≠ o; 'self action' has the same endpoint as source and sink, and self-dependency is not representable in the 8-tuple"
+          },
+          {
+            "hint": "Attach an AgentModel carrying a Mobus primitive",
+            "location": "systems[1]",
+            "reason": "\"1\" has no agent model — nothing states which work process it is"
+          },
+          {
+            "hint": "Attach an AgentModel carrying a Mobus primitive",
+            "location": "systems[2]",
+            "reason": "\"2\" has no agent model — nothing states which work process it is"
+          },
+          {
+            "hint": "Attach an AgentModel carrying a Mobus primitive",
+            "location": "systems[3]",
+            "reason": "\"3\" has no agent model — nothing states which work process it is"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[0]",
+            "reason": "flow \"excitation\" source does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[0]",
+            "reason": "flow \"excitation\" sink does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[1]",
+            "reason": "flow \"self action\" source does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[1]",
+            "reason": "flow \"self action\" sink does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[2]",
+            "reason": "flow \"excitation\" source does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[2]",
+            "reason": "flow \"excitation\" sink does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[3]",
+            "reason": "flow \"excitation\" source does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[3]",
+            "reason": "flow \"excitation\" sink does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[4]",
+            "reason": "flow \"self action\" source does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[4]",
+            "reason": "flow \"self action\" sink does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          }
+        ]
+      },
+      "outcome": "not-executable"
+    },
+    "things": 3,
+    "verdict_under": {
+      "bunge": {
+        "description": {
+          "bondage": 5,
+          "boundary_components": [],
+          "composition": [
+            "1",
+            "2",
+            "3"
+          ],
+          "endo_bonds": [
+            "1 — 2",
+            "2 — 2",
+            "2 — 3",
+            "2 — 3",
+            "3 — 3"
+          ],
+          "endostructure": 5,
+          "environment": [],
+          "exo_bonds": [],
+          "exostructure": 0,
+          "lens": "Bunge",
+          "mechanism_note": "M (mechanism — Bunge 2004, CESM) is documented but formally UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T). ⊘M: with no mechanism stated, a concrete system reads as a black box at this lens — every concrete system has one (Mechanism Postulate, Bunge 1997), so stating it is what remains. Conceptual and semiotic systems have no mechanism at all; there ⊘M is correct, not a gap. A status, not an error.",
+          "mere_relations": 0,
+          "question": "what is the thing, and by what mechanism does it change? — a behavior function without its M is not yet knowledge",
+          "verdict": "system"
+        },
+        "facts": {
+          "aggregate": false,
+          "authored_interface_thing_ids": [],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [],
+          "edges": [
+            {
+              "a": 1,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 4,
+              "kind": "Unspecified",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 5,
+              "kind": "Unspecified",
+              "locus": "Endo",
+              "mobus_ok": false,
+              "self_loop": true
+            },
+            {
+              "a": 2,
+              "b": 3,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 6,
+              "kind": "Unspecified",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 7,
+              "kind": "Unspecified",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 3,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 8,
+              "kind": "Unspecified",
+              "locus": "Endo",
+              "mobus_ok": false,
+              "self_loop": true
+            }
+          ],
+          "environment_thing_ids": [],
+          "orphan_env_thing_ids": [],
+          "ports": []
+        },
+        "issue_targets": [],
+        "residue": {
+          "hidden": [],
+          "unspecified": [
+            {
+              "count": 5,
+              "label": "connection kinds"
+            },
+            {
+              "count": 0,
+              "label": "no mechanism stated (⊘M — reads as a black box)"
+            }
+          ]
+        },
+        "validation": {
+          "issues": []
+        }
+      },
+      "klir": {
+        "description": {
+          "dependencies": [
+            "1 — 2",
+            "2 — 2",
+            "2 — 3",
+            "2 — 3",
+            "3 — 3"
+          ],
+          "directed": 0,
+          "ladder": {
+            "claim": "a structure system over source systems — couplings named among the distinguished things, each r ⊆ T×T",
+            "decomposed": [],
+            "position": "SE",
+            "to_climb": "sideways: decompose an element into its own (T, R) for S²E · upward: D needs observed states over a named support — not authorable here; arrives with the compose seam"
+          },
+          "lens": "Klir",
+          "level": "Structure",
+          "neutral": 5,
+          "note": "a system is what is distinguished as a system by the investigator; the distinction frame is the observer's act, not a boundary",
+          "question": "what does the data commit me to? — the behavior function answers, and deliberately refuses to say what is behind it",
+          "relations": 5,
+          "things": 3
+        },
+        "facts": {
+          "aggregate": false,
+          "authored_interface_thing_ids": [],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [],
+          "edges": [
+            {
+              "a": 1,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 4,
+              "kind": "Unspecified",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 5,
+              "kind": "Unspecified",
+              "locus": "Endo",
+              "mobus_ok": false,
+              "self_loop": true
+            },
+            {
+              "a": 2,
+              "b": 3,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 6,
+              "kind": "Unspecified",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 7,
+              "kind": "Unspecified",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 3,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 8,
+              "kind": "Unspecified",
+              "locus": "Endo",
+              "mobus_ok": false,
+              "self_loop": true
+            }
+          ],
+          "environment_thing_ids": [],
+          "orphan_env_thing_ids": [],
+          "ports": []
+        },
+        "issue_targets": [],
+        "residue": {
+          "hidden": [],
+          "unspecified": []
+        },
+        "validation": {
+          "issues": []
+        }
+      },
+      "mobus": {
+        "description": {
+          "b_interfaces": [],
+          "c": [
+            "1",
+            "2",
+            "3"
+          ],
+          "dt_note": "Δt: time scale — a parametric field on the system",
+          "e_objects": [],
+          "g": 0,
+          "h_note": "H: history (accumulated state conditioning T) — NOT hierarchy",
+          "lens": "Mobus",
+          "milieu_note": "μ (milieu) is parametric/opaque — the one element with no cross-lens preimage (milieuOnly_bunge_empty)",
+          "n": 5,
+          "perceptive_fuzziness": 0.0,
+          "porosity": 0.0,
+          "question": "how is the mechanism built, and what happens when it runs?",
+          "self_loop_conflicts": [
+            "self action",
+            "self action"
+          ],
+          "t_note": "T: transforms — parametric by intent; bert-compose fills the slot"
+        },
+        "facts": {
+          "aggregate": false,
+          "authored_interface_thing_ids": [],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [],
+          "edges": [
+            {
+              "a": 1,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 4,
+              "kind": "Unspecified",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 5,
+              "kind": "Unspecified",
+              "locus": "Endo",
+              "mobus_ok": false,
+              "self_loop": true
+            },
+            {
+              "a": 2,
+              "b": 3,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 6,
+              "kind": "Unspecified",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 7,
+              "kind": "Unspecified",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 3,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 8,
+              "kind": "Unspecified",
+              "locus": "Endo",
+              "mobus_ok": false,
+              "self_loop": true
+            }
+          ],
+          "environment_thing_ids": [],
+          "orphan_env_thing_ids": [],
+          "ports": []
+        },
+        "issue_targets": [
+          {
+            "relation": 5,
+            "thing": null
+          },
+          {
+            "relation": 8,
+            "thing": null
+          }
+        ],
+        "residue": {
+          "hidden": [],
+          "unspecified": [
+            {
+              "count": 5,
+              "label": "substances"
+            },
+            {
+              "count": 3,
+              "label": "process primitives"
+            }
+          ]
+        },
+        "validation": {
+          "issues": [
+            {
+              "doc": "docs/glossary.md#precondition",
+              "location": "interactions[1]",
+              "message": "Mobus §4.3: flow edges require k ≠ o; 'self action' has the same endpoint as source and sink, and self-dependency is not representable in the 8-tuple",
+              "severity": "Error",
+              "suggestion": "Remove the self-loop; feedback as a first-class cycle is Cybernetic mode (not yet available)"
+            },
+            {
+              "doc": "docs/glossary.md#precondition",
+              "location": "interactions[4]",
+              "message": "Mobus §4.3: flow edges require k ≠ o; 'self action' has the same endpoint as source and sink, and self-dependency is not representable in the 8-tuple",
+              "severity": "Error",
+              "suggestion": "Remove the self-loop; feedback as a first-class cycle is Cybernetic mode (not yet available)"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "assets/corpus/klir/cellular-array-cell.sl": {
+    "layout": [
+      {
+        "env_kind": "Neutral",
+        "name": "c",
+        "role": "Component",
+        "x": 480.0,
+        "y": 320.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "c-n",
+        "role": "Environment",
+        "x": 320.0,
+        "y": 43.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "c-1",
+        "role": "Environment",
+        "x": 179.0,
+        "y": 211.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "c+1",
+        "role": "Environment",
+        "x": 179.0,
+        "y": 429.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "c+n",
+        "role": "Environment",
+        "x": 320.0,
+        "y": 597.0
+      }
+    ],
+    "pins": "Klir",
+    "relations": 8,
+    "run": {
+      "answer": {
+        "errors": [
+          {
+            "hint": "Author the model in the Operational mode, or export from compose",
+            "location": "mode",
+            "reason": "Core (Klir) commits to things and dependency only — a representational mode with no flow semantics to execute"
+          },
+          {
+            "hint": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+            "location": "interactions[0].sink_interface",
+            "reason": "flow 'v(c-n) — input from the cell above' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared"
+          },
+          {
+            "hint": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+            "location": "interactions[1].sink_interface",
+            "reason": "flow 'v(c-1) — input from the cell to the left' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared"
+          },
+          {
+            "hint": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+            "location": "interactions[2].sink_interface",
+            "reason": "flow 'v(c+1) — input from the cell to the right' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared"
+          },
+          {
+            "hint": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+            "location": "interactions[3].sink_interface",
+            "reason": "flow 'v(c+n) — input from the cell below' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared"
+          },
+          {
+            "hint": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+            "location": "interactions[4].source_interface",
+            "reason": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared"
+          },
+          {
+            "hint": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+            "location": "interactions[5].source_interface",
+            "reason": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared"
+          },
+          {
+            "hint": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+            "location": "interactions[6].source_interface",
+            "reason": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared"
+          },
+          {
+            "hint": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+            "location": "interactions[7].source_interface",
+            "reason": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared"
+          },
+          {
+            "hint": "Attach an AgentModel carrying a Mobus primitive",
+            "location": "systems[1]",
+            "reason": "\"c\" has no agent model — nothing states which work process it is"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[0]",
+            "reason": "flow \"v(c-n) — input from the cell above\" sink does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[1]",
+            "reason": "flow \"v(c-1) — input from the cell to the left\" sink does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[2]",
+            "reason": "flow \"v(c+1) — input from the cell to the right\" sink does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[3]",
+            "reason": "flow \"v(c+n) — input from the cell below\" sink does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[4]",
+            "reason": "flow \"v(c) — the one output, coupled to every adjacent cell\" source does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[5]",
+            "reason": "flow \"v(c) — the one output, coupled to every adjacent cell\" source does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[6]",
+            "reason": "flow \"v(c) — the one output, coupled to every adjacent cell\" source does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[7]",
+            "reason": "flow \"v(c) — the one output, coupled to every adjacent cell\" source does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          }
+        ]
+      },
+      "outcome": "not-executable"
+    },
+    "things": 5,
+    "verdict_under": {
+      "bunge": {
+        "description": {
+          "bondage": 8,
+          "boundary_components": [
+            "c"
+          ],
+          "composition": [
+            "c"
+          ],
+          "endo_bonds": [],
+          "endostructure": 0,
+          "environment": [
+            "c-n",
+            "c-1",
+            "c+1",
+            "c+n"
+          ],
+          "exo_bonds": [
+            "c-n ▷ c",
+            "c-1 ▷ c",
+            "c+1 ▷ c",
+            "c+n ▷ c",
+            "c ▷ c-n",
+            "c ▷ c-1",
+            "c ▷ c+1",
+            "c ▷ c+n"
+          ],
+          "exostructure": 8,
+          "lens": "Bunge",
+          "mechanism_note": "M (mechanism — Bunge 2004, CESM) is documented but formally UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T). ⊘M: with no mechanism stated, a concrete system reads as a black box at this lens — every concrete system has one (Mechanism Postulate, Bunge 1997), so stating it is what remains. Conceptual and semiotic systems have no mechanism at all; there ⊘M is correct, not a gap. A status, not an error.",
+          "mere_relations": 0,
+          "question": "what is the thing, and by what mechanism does it change? — a behavior function without its M is not yet knowledge",
+          "verdict": "aggregate"
+        },
+        "facts": {
+          "aggregate": true,
+          "authored_interface_thing_ids": [],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [
+            1
+          ],
+          "edges": [
+            {
+              "a": 2,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 6,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 7,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 8,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 5,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 9,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 2,
+              "bond": true,
+              "channel": "Output",
+              "id": 10,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 3,
+              "bond": true,
+              "channel": "Output",
+              "id": 11,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 4,
+              "bond": true,
+              "channel": "Output",
+              "id": 12,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 5,
+              "bond": true,
+              "channel": "Output",
+              "id": 13,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            }
+          ],
+          "environment_thing_ids": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "orphan_env_thing_ids": [],
+          "ports": [
+            {
+              "component": 1,
+              "direction": "Hybrid",
+              "env": 2,
+              "protocol": "v(c-n) — input from the cell above · v(c) — the one output, coupled to every adjacent cell",
+              "relation_ids": [
+                6,
+                10
+              ]
+            },
+            {
+              "component": 1,
+              "direction": "Hybrid",
+              "env": 3,
+              "protocol": "v(c-1) — input from the cell to the left · v(c) — the one output, coupled to every adjacent cell",
+              "relation_ids": [
+                7,
+                11
+              ]
+            },
+            {
+              "component": 1,
+              "direction": "Hybrid",
+              "env": 4,
+              "protocol": "v(c+1) — input from the cell to the right · v(c) — the one output, coupled to every adjacent cell",
+              "relation_ids": [
+                8,
+                12
+              ]
+            },
+            {
+              "component": 1,
+              "direction": "Hybrid",
+              "env": 5,
+              "protocol": "v(c+n) — input from the cell below · v(c) — the one output, coupled to every adjacent cell",
+              "relation_ids": [
+                9,
+                13
+              ]
+            }
+          ]
+        },
+        "issue_targets": [
+          {
+            "relation": null,
+            "thing": null
+          }
+        ],
+        "residue": {
+          "hidden": [
+            {
+              "count": 8,
+              "label": "directed annotations"
+            }
+          ],
+          "unspecified": [
+            {
+              "count": 8,
+              "label": "connection kinds"
+            },
+            {
+              "count": 0,
+              "label": "no mechanism stated (⊘M — reads as a black box)"
+            }
+          ]
+        },
+        "validation": {
+          "issues": [
+            {
+              "doc": "docs/glossary.md#bond--mere",
+              "location": "mode/Structural",
+              "message": "Bunge Def 1.1: a system requires at least one bond between distinct components; an unbonded collection is an aggregate",
+              "severity": "Error",
+              "suggestion": "Add an interaction between two distinct systems, or author in Core mode"
+            }
+          ]
+        }
+      },
+      "klir": {
+        "description": {
+          "dependencies": [
+            "c-n → c",
+            "c-1 → c",
+            "c+1 → c",
+            "c+n → c",
+            "c → c-n",
+            "c → c-1",
+            "c → c+1",
+            "c → c+n"
+          ],
+          "directed": 8,
+          "ladder": {
+            "claim": "a structure system over source systems — couplings named among the distinguished things, each r ⊆ T×T",
+            "decomposed": [],
+            "position": "SE",
+            "to_climb": "sideways: decompose an element into its own (T, R) for S²E · upward: D needs observed states over a named support — not authorable here; arrives with the compose seam"
+          },
+          "lens": "Klir",
+          "level": "Structure",
+          "neutral": 0,
+          "note": "a system is what is distinguished as a system by the investigator; the distinction frame is the observer's act, not a boundary",
+          "question": "what does the data commit me to? — the behavior function answers, and deliberately refuses to say what is behind it",
+          "relations": 8,
+          "things": 5
+        },
+        "facts": {
+          "aggregate": true,
+          "authored_interface_thing_ids": [],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [
+            1
+          ],
+          "edges": [
+            {
+              "a": 2,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 6,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 7,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 8,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 5,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 9,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 2,
+              "bond": true,
+              "channel": "Output",
+              "id": 10,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 3,
+              "bond": true,
+              "channel": "Output",
+              "id": 11,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 4,
+              "bond": true,
+              "channel": "Output",
+              "id": 12,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 5,
+              "bond": true,
+              "channel": "Output",
+              "id": 13,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            }
+          ],
+          "environment_thing_ids": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "orphan_env_thing_ids": [],
+          "ports": [
+            {
+              "component": 1,
+              "direction": "Hybrid",
+              "env": 2,
+              "protocol": "v(c-n) — input from the cell above · v(c) — the one output, coupled to every adjacent cell",
+              "relation_ids": [
+                6,
+                10
+              ]
+            },
+            {
+              "component": 1,
+              "direction": "Hybrid",
+              "env": 3,
+              "protocol": "v(c-1) — input from the cell to the left · v(c) — the one output, coupled to every adjacent cell",
+              "relation_ids": [
+                7,
+                11
+              ]
+            },
+            {
+              "component": 1,
+              "direction": "Hybrid",
+              "env": 4,
+              "protocol": "v(c+1) — input from the cell to the right · v(c) — the one output, coupled to every adjacent cell",
+              "relation_ids": [
+                8,
+                12
+              ]
+            },
+            {
+              "component": 1,
+              "direction": "Hybrid",
+              "env": 5,
+              "protocol": "v(c+n) — input from the cell below · v(c) — the one output, coupled to every adjacent cell",
+              "relation_ids": [
+                9,
+                13
+              ]
+            }
+          ]
+        },
+        "issue_targets": [],
+        "residue": {
+          "hidden": [
+            {
+              "count": 4,
+              "label": "environment roles"
+            },
+            {
+              "count": 1,
+              "label": "interface"
+            }
+          ],
+          "unspecified": []
+        },
+        "validation": {
+          "issues": []
+        }
+      },
+      "mobus": {
+        "description": {
+          "b_interfaces": [
+            "c",
+            "c",
+            "c",
+            "c"
+          ],
+          "c": [
+            "c"
+          ],
+          "dt_note": "Δt: time scale — a parametric field on the system",
+          "e_objects": [
+            "c-n",
+            "c-1",
+            "c+1",
+            "c+n"
+          ],
+          "g": 8,
+          "h_note": "H: history (accumulated state conditioning T) — NOT hierarchy",
+          "lens": "Mobus",
+          "milieu_note": "μ (milieu) is parametric/opaque — the one element with no cross-lens preimage (milieuOnly_bunge_empty)",
+          "n": 0,
+          "perceptive_fuzziness": 0.0,
+          "porosity": 0.0,
+          "question": "how is the mechanism built, and what happens when it runs?",
+          "self_loop_conflicts": [],
+          "t_note": "T: transforms — parametric by intent; bert-compose fills the slot"
+        },
+        "facts": {
+          "aggregate": true,
+          "authored_interface_thing_ids": [],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [
+            1
+          ],
+          "edges": [
+            {
+              "a": 2,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 6,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 7,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 8,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 5,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 9,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 2,
+              "bond": true,
+              "channel": "Output",
+              "id": 10,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 3,
+              "bond": true,
+              "channel": "Output",
+              "id": 11,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 4,
+              "bond": true,
+              "channel": "Output",
+              "id": 12,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 5,
+              "bond": true,
+              "channel": "Output",
+              "id": 13,
+              "kind": "Unspecified",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            }
+          ],
+          "environment_thing_ids": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "orphan_env_thing_ids": [],
+          "ports": [
+            {
+              "component": 1,
+              "direction": "Hybrid",
+              "env": 2,
+              "protocol": "v(c-n) — input from the cell above · v(c) — the one output, coupled to every adjacent cell",
+              "relation_ids": [
+                6,
+                10
+              ]
+            },
+            {
+              "component": 1,
+              "direction": "Hybrid",
+              "env": 3,
+              "protocol": "v(c-1) — input from the cell to the left · v(c) — the one output, coupled to every adjacent cell",
+              "relation_ids": [
+                7,
+                11
+              ]
+            },
+            {
+              "component": 1,
+              "direction": "Hybrid",
+              "env": 4,
+              "protocol": "v(c+1) — input from the cell to the right · v(c) — the one output, coupled to every adjacent cell",
+              "relation_ids": [
+                8,
+                12
+              ]
+            },
+            {
+              "component": 1,
+              "direction": "Hybrid",
+              "env": 5,
+              "protocol": "v(c+n) — input from the cell below · v(c) — the one output, coupled to every adjacent cell",
+              "relation_ids": [
+                9,
+                13
+              ]
+            }
+          ]
+        },
+        "issue_targets": [
+          {
+            "relation": null,
+            "thing": null
+          },
+          {
+            "relation": null,
+            "thing": null
+          },
+          {
+            "relation": null,
+            "thing": null
+          },
+          {
+            "relation": null,
+            "thing": null
+          },
+          {
+            "relation": null,
+            "thing": null
+          },
+          {
+            "relation": null,
+            "thing": null
+          },
+          {
+            "relation": null,
+            "thing": null
+          },
+          {
+            "relation": null,
+            "thing": null
+          }
+        ],
+        "residue": {
+          "hidden": [
+            {
+              "count": 8,
+              "label": "directed annotations"
+            }
+          ],
+          "unspecified": [
+            {
+              "count": 8,
+              "label": "substances"
+            },
+            {
+              "count": 1,
+              "label": "process primitive"
+            }
+          ]
+        },
+        "validation": {
+          "issues": [
+            {
+              "doc": "docs/language/terminology-concordance.md#9-interface",
+              "location": "interactions[0].sink_interface",
+              "message": "flow 'v(c-n) — input from the cell above' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
+              "severity": "Error",
+              "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
+            },
+            {
+              "doc": "docs/language/terminology-concordance.md#9-interface",
+              "location": "interactions[1].sink_interface",
+              "message": "flow 'v(c-1) — input from the cell to the left' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
+              "severity": "Error",
+              "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
+            },
+            {
+              "doc": "docs/language/terminology-concordance.md#9-interface",
+              "location": "interactions[2].sink_interface",
+              "message": "flow 'v(c+1) — input from the cell to the right' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
+              "severity": "Error",
+              "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
+            },
+            {
+              "doc": "docs/language/terminology-concordance.md#9-interface",
+              "location": "interactions[3].sink_interface",
+              "message": "flow 'v(c+n) — input from the cell below' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
+              "severity": "Error",
+              "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
+            },
+            {
+              "doc": "docs/language/terminology-concordance.md#9-interface",
+              "location": "interactions[4].source_interface",
+              "message": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
+              "severity": "Error",
+              "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
+            },
+            {
+              "doc": "docs/language/terminology-concordance.md#9-interface",
+              "location": "interactions[5].source_interface",
+              "message": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
+              "severity": "Error",
+              "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
+            },
+            {
+              "doc": "docs/language/terminology-concordance.md#9-interface",
+              "location": "interactions[6].source_interface",
+              "message": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
+              "severity": "Error",
+              "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
+            },
+            {
+              "doc": "docs/language/terminology-concordance.md#9-interface",
+              "location": "interactions[7].source_interface",
+              "message": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
+              "severity": "Error",
+              "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "assets/corpus/mobus/typical-neuron.sl": {
+    "layout": [
+      {
+        "env_kind": "Neutral",
+        "name": "Synaptic Compartments",
+        "role": "Component",
+        "x": 480.0,
+        "y": 150.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Cell Membrane",
+        "role": "Component",
+        "x": 627.0,
+        "y": 405.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Axonal Hillock",
+        "role": "Component",
+        "x": 333.0,
+        "y": 405.0
+      },
+      {
+        "env_kind": "Source",
+        "name": "Source Neurons",
+        "role": "Environment",
+        "x": 291.0,
+        "y": -8.0
+      },
+      {
+        "env_kind": "Source",
+        "name": "Neuromodulatory Sources",
+        "role": "Environment",
+        "x": 291.0,
+        "y": 648.0
+      },
+      {
+        "env_kind": "Sink",
+        "name": "Target Neurons",
+        "role": "Environment",
+        "x": 859.0,
+        "y": 320.0
+      }
+    ],
+    "pins": "Mobus",
+    "relations": 6,
+    "run": {
+      "answer": {
+        "errors": [
+          {
+            "hint": "Attach an AgentModel carrying a Mobus primitive",
+            "location": "systems[1]",
+            "reason": "\"Synaptic Compartments\" has no agent model — nothing states which work process it is"
+          },
+          {
+            "hint": "Attach an AgentModel carrying a Mobus primitive",
+            "location": "systems[2]",
+            "reason": "\"Cell Membrane\" has no agent model — nothing states which work process it is"
+          },
+          {
+            "hint": "Attach an AgentModel carrying a Mobus primitive",
+            "location": "systems[3]",
+            "reason": "\"Axonal Hillock\" has no agent model — nothing states which work process it is"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[0]",
+            "reason": "flow \"action potentials on afferent axonal terminals\" sink does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[1]",
+            "reason": "flow \"the secondary signal — that this burst is meaningful\" sink does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[2]",
+            "reason": "flow \"depolarization state\" source does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[2]",
+            "reason": "flow \"depolarization state\" sink does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[3]",
+            "reason": "flow \"internal feedback on the temporal correlation of inputs\" source does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[3]",
+            "reason": "flow \"internal feedback on the temporal correlation of inputs\" sink does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[4]",
+            "reason": "flow \"the summed depolarization state, Σ\" source does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[4]",
+            "reason": "flow \"the summed depolarization state, Σ\" sink does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          },
+          {
+            "hint": "Point the flow at a level-1 work process, a Source, or a Sink — or fix the endpoint that failed to project (see the errors above for why it was skipped)",
+            "location": "interactions[5]",
+            "reason": "flow \"the outgoing action potential, if threshold is reached\" source does not resolve to a projected node (a level-1 work process or an environment terminal)"
+          }
+        ]
+      },
+      "outcome": "not-executable"
+    },
+    "things": 6,
+    "verdict_under": {
+      "bunge": {
+        "description": {
+          "bondage": 6,
+          "boundary_components": [
+            "Synaptic Compartments",
+            "Axonal Hillock"
+          ],
+          "composition": [
+            "Synaptic Compartments",
+            "Cell Membrane",
+            "Axonal Hillock"
+          ],
+          "endo_bonds": [
+            "Cell Membrane — Synaptic Compartments",
+            "Cell Membrane — Synaptic Compartments",
+            "Axonal Hillock — Cell Membrane"
+          ],
+          "endostructure": 3,
+          "environment": [
+            "Source Neurons",
+            "Neuromodulatory Sources",
+            "Target Neurons"
+          ],
+          "exo_bonds": [
+            "Source Neurons — Synaptic Compartments",
+            "Neuromodulatory Sources — Synaptic Compartments",
+            "Axonal Hillock — Target Neurons"
+          ],
+          "exostructure": 3,
+          "lens": "Bunge",
+          "mechanism_note": "M (mechanism — Bunge 2004, CESM) is documented but formally UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T). ⊘M: with no mechanism stated, a concrete system reads as a black box at this lens — every concrete system has one (Mechanism Postulate, Bunge 1997), so stating it is what remains. Conceptual and semiotic systems have no mechanism at all; there ⊘M is correct, not a gap. A status, not an error.",
+          "mere_relations": 0,
+          "question": "what is the thing, and by what mechanism does it change? — a behavior function without its M is not yet knowledge",
+          "verdict": "system"
+        },
+        "facts": {
+          "aggregate": false,
+          "authored_interface_thing_ids": [
+            1,
+            3
+          ],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [
+            1,
+            3
+          ],
+          "edges": [
+            {
+              "a": 4,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 7,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 5,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 8,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 9,
+              "kind": "Informational",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 1,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 10,
+              "kind": "Informational",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 3,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 11,
+              "kind": "Informational",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 6,
+              "bond": true,
+              "channel": "Output",
+              "id": 12,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            }
+          ],
+          "environment_thing_ids": [
+            4,
+            5,
+            6
+          ],
+          "orphan_env_thing_ids": [],
+          "ports": [
+            {
+              "component": 1,
+              "direction": "Receives",
+              "env": 4,
+              "protocol": "action potentials on afferent axonal terminals",
+              "relation_ids": [
+                7
+              ]
+            },
+            {
+              "component": 1,
+              "direction": "Receives",
+              "env": 5,
+              "protocol": "the secondary signal — that this burst is meaningful",
+              "relation_ids": [
+                8
+              ]
+            },
+            {
+              "component": 3,
+              "direction": "Exports",
+              "env": 6,
+              "protocol": "the outgoing action potential, if threshold is reached",
+              "relation_ids": [
+                12
+              ]
+            }
+          ]
+        },
+        "issue_targets": [],
+        "residue": {
+          "hidden": [
+            {
+              "count": 2,
+              "label": "interface designations"
+            }
+          ],
+          "unspecified": [
+            {
+              "count": 0,
+              "label": "no mechanism stated (⊘M — reads as a black box)"
+            }
+          ]
+        },
+        "validation": {
+          "issues": []
+        }
+      },
+      "klir": {
+        "description": {
+          "dependencies": [
+            "Source Neurons — Synaptic Compartments",
+            "Neuromodulatory Sources — Synaptic Compartments",
+            "Cell Membrane — Synaptic Compartments",
+            "Cell Membrane — Synaptic Compartments",
+            "Axonal Hillock — Cell Membrane",
+            "Axonal Hillock — Target Neurons"
+          ],
+          "directed": 0,
+          "ladder": {
+            "claim": "a structure system over source systems — couplings named among the distinguished things, each r ⊆ T×T",
+            "decomposed": [],
+            "position": "SE",
+            "to_climb": "sideways: decompose an element into its own (T, R) for S²E · upward: D needs observed states over a named support — not authorable here; arrives with the compose seam"
+          },
+          "lens": "Klir",
+          "level": "Structure",
+          "neutral": 6,
+          "note": "a system is what is distinguished as a system by the investigator; the distinction frame is the observer's act, not a boundary",
+          "question": "what does the data commit me to? — the behavior function answers, and deliberately refuses to say what is behind it",
+          "relations": 6,
+          "things": 6
+        },
+        "facts": {
+          "aggregate": false,
+          "authored_interface_thing_ids": [
+            1,
+            3
+          ],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [
+            1,
+            3
+          ],
+          "edges": [
+            {
+              "a": 4,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 7,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 5,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 8,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 9,
+              "kind": "Informational",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 1,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 10,
+              "kind": "Informational",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 3,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 11,
+              "kind": "Informational",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 6,
+              "bond": true,
+              "channel": "Output",
+              "id": 12,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            }
+          ],
+          "environment_thing_ids": [
+            4,
+            5,
+            6
+          ],
+          "orphan_env_thing_ids": [],
+          "ports": [
+            {
+              "component": 1,
+              "direction": "Receives",
+              "env": 4,
+              "protocol": "action potentials on afferent axonal terminals",
+              "relation_ids": [
+                7
+              ]
+            },
+            {
+              "component": 1,
+              "direction": "Receives",
+              "env": 5,
+              "protocol": "the secondary signal — that this burst is meaningful",
+              "relation_ids": [
+                8
+              ]
+            },
+            {
+              "component": 3,
+              "direction": "Exports",
+              "env": 6,
+              "protocol": "the outgoing action potential, if threshold is reached",
+              "relation_ids": [
+                12
+              ]
+            }
+          ]
+        },
+        "issue_targets": [],
+        "residue": {
+          "hidden": [
+            {
+              "count": 3,
+              "label": "environment roles"
+            },
+            {
+              "count": 6,
+              "label": "connection kinds"
+            },
+            {
+              "count": 2,
+              "label": "interfaces"
+            }
+          ],
+          "unspecified": []
+        },
+        "validation": {
+          "issues": []
+        }
+      },
+      "mobus": {
+        "description": {
+          "b_interfaces": [
+            "Synaptic Compartments",
+            "Synaptic Compartments",
+            "Axonal Hillock"
+          ],
+          "c": [
+            "Synaptic Compartments",
+            "Cell Membrane",
+            "Axonal Hillock"
+          ],
+          "dt_note": "Δt: time scale — a parametric field on the system",
+          "e_objects": [
+            "Source Neurons",
+            "Neuromodulatory Sources",
+            "Target Neurons"
+          ],
+          "g": 3,
+          "h_note": "H: history (accumulated state conditioning T) — NOT hierarchy",
+          "lens": "Mobus",
+          "milieu_note": "μ (milieu) is parametric/opaque — the one element with no cross-lens preimage (milieuOnly_bunge_empty)",
+          "n": 3,
+          "perceptive_fuzziness": 0.0,
+          "porosity": 0.0,
+          "question": "how is the mechanism built, and what happens when it runs?",
+          "self_loop_conflicts": [],
+          "t_note": "T: transforms — parametric by intent; bert-compose fills the slot"
+        },
+        "facts": {
+          "aggregate": false,
+          "authored_interface_thing_ids": [
+            1,
+            3
+          ],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [
+            1,
+            3
+          ],
+          "edges": [
+            {
+              "a": 4,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 7,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 5,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 8,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 9,
+              "kind": "Informational",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 1,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 10,
+              "kind": "Informational",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 3,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 11,
+              "kind": "Informational",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 6,
+              "bond": true,
+              "channel": "Output",
+              "id": 12,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            }
+          ],
+          "environment_thing_ids": [
+            4,
+            5,
+            6
+          ],
+          "orphan_env_thing_ids": [],
+          "ports": [
+            {
+              "component": 1,
+              "direction": "Receives",
+              "env": 4,
+              "protocol": "action potentials on afferent axonal terminals",
+              "relation_ids": [
+                7
+              ]
+            },
+            {
+              "component": 1,
+              "direction": "Receives",
+              "env": 5,
+              "protocol": "the secondary signal — that this burst is meaningful",
+              "relation_ids": [
+                8
+              ]
+            },
+            {
+              "component": 3,
+              "direction": "Exports",
+              "env": 6,
+              "protocol": "the outgoing action potential, if threshold is reached",
+              "relation_ids": [
+                12
+              ]
+            }
+          ]
+        },
+        "issue_targets": [],
+        "residue": {
+          "hidden": [],
+          "unspecified": [
+            {
+              "count": 3,
+              "label": "process primitives"
+            }
+          ]
+        },
+        "validation": {
+          "issues": []
+        }
+      }
+    }
+  },
+  "assets/examples/federal-reserve.sl": {
+    "layout": [
+      {
+        "env_kind": "Neutral",
+        "name": "FOMC",
+        "role": "Component",
+        "x": 480.0,
+        "y": 150.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Open Market Desk",
+        "role": "Component",
+        "x": 627.0,
+        "y": 405.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Balance Sheet",
+        "role": "Component",
+        "x": 333.0,
+        "y": 405.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Banking System",
+        "role": "Environment",
+        "x": 291.0,
+        "y": -8.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "U.S. Treasury",
+        "role": "Environment",
+        "x": 124.0,
+        "y": 190.0
+      },
+      {
+        "env_kind": "Source",
+        "name": "Statistical Agencies",
+        "role": "Environment",
+        "x": 124.0,
+        "y": 450.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Financial Markets",
+        "role": "Environment",
+        "x": 291.0,
+        "y": 648.0
+      }
+    ],
+    "pins": "Mobus",
+    "relations": 13,
+    "run": {
+      "answer": {
+        "dt": 1.0,
+        "final_balance": 0.0,
+        "history": [
+          [
+            1.0,
+            2.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            -0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            3.0,
+            0.0
+          ],
+          [
+            2.0,
+            2.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            -0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            5.0,
+            0.0
+          ],
+          [
+            3.0,
+            2.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            -0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            7.0,
+            0.0
+          ],
+          [
+            4.0,
+            2.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            -0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            9.0,
+            0.0
+          ]
+        ],
+        "ledger_history": [
+          [
+            3.0,
+            0.0,
+            3.0,
+            0.0
+          ],
+          [
+            6.0,
+            0.0,
+            5.0,
+            1.0
+          ],
+          [
+            9.0,
+            0.0,
+            7.0,
+            2.0
+          ],
+          [
+            12.0,
+            0.0,
+            9.0,
+            3.0
+          ]
+        ]
+      },
+      "outcome": "runs"
+    },
+    "things": 7,
+    "verdict_under": {
+      "bunge": {
+        "description": {
+          "bondage": 13,
+          "boundary_components": [
+            "FOMC",
+            "Open Market Desk",
+            "Balance Sheet"
+          ],
+          "composition": [
+            "FOMC",
+            "Open Market Desk",
+            "Balance Sheet"
+          ],
+          "endo_bonds": [
+            "FOMC — Open Market Desk",
+            "Balance Sheet — Open Market Desk"
+          ],
+          "endostructure": 2,
+          "environment": [
+            "Banking System",
+            "U.S. Treasury",
+            "Statistical Agencies",
+            "Financial Markets"
+          ],
+          "exo_bonds": [
+            "FOMC — Statistical Agencies",
+            "FOMC — Financial Markets",
+            "FOMC — Financial Markets",
+            "Banking System — Open Market Desk",
+            "Balance Sheet — Banking System",
+            "Balance Sheet — Banking System",
+            "Balance Sheet — U.S. Treasury",
+            "Balance Sheet — Banking System",
+            "Balance Sheet — Banking System",
+            "Balance Sheet — Banking System",
+            "Balance Sheet — U.S. Treasury"
+          ],
+          "exostructure": 11,
+          "lens": "Bunge",
+          "mechanism_note": "M (mechanism — Bunge 2004, CESM) is documented but formally UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T). ⊘M: with no mechanism stated, a concrete system reads as a black box at this lens — every concrete system has one (Mechanism Postulate, Bunge 1997), so stating it is what remains. Conceptual and semiotic systems have no mechanism at all; there ⊘M is correct, not a gap. A status, not an error.",
+          "mere_relations": 0,
+          "question": "what is the thing, and by what mechanism does it change? — a behavior function without its M is not yet knowledge",
+          "verdict": "system"
+        },
+        "facts": {
+          "aggregate": false,
+          "authored_interface_thing_ids": [
+            1,
+            2,
+            3
+          ],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [
+            1,
+            2,
+            3
+          ],
+          "edges": [
+            {
+              "a": 6,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 8,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 9,
+              "kind": "Informational",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 7,
+              "bond": true,
+              "channel": "Output",
+              "id": 10,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 7,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 11,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 2,
+              "bond": true,
+              "channel": "Input",
+              "id": 12,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 3,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 13,
+              "kind": "Matter",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 4,
+              "bond": true,
+              "channel": "Output",
+              "id": 14,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 4,
+              "bond": true,
+              "channel": "Output",
+              "id": 15,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 5,
+              "bond": true,
+              "channel": "Output",
+              "id": 16,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 3,
+              "bond": true,
+              "channel": "Input",
+              "id": 17,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 4,
+              "bond": true,
+              "channel": "Output",
+              "id": 18,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 4,
+              "bond": true,
+              "channel": "Output",
+              "id": 19,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 5,
+              "b": 3,
+              "bond": true,
+              "channel": "Input",
+              "id": 20,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            }
+          ],
+          "environment_thing_ids": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "orphan_env_thing_ids": [],
+          "ports": [
+            {
+              "component": 1,
+              "direction": "Receives",
+              "env": 6,
+              "protocol": "published measurements — PCE inflation, payrolls, unemployment",
+              "relation_ids": [
+                8
+              ]
+            },
+            {
+              "component": 1,
+              "direction": "Hybrid",
+              "env": 7,
+              "protocol": "the announced decision — rates as forward guidance · market-implied expectations — breakevens, the futures-implied path",
+              "relation_ids": [
+                10,
+                11
+              ]
+            },
+            {
+              "component": 2,
+              "direction": "Receives",
+              "env": 4,
+              "protocol": "securities sold to the desk",
+              "relation_ids": [
+                12
+              ]
+            },
+            {
+              "component": 3,
+              "direction": "Hybrid",
+              "env": 4,
+              "protocol": "reserve balances minted in payment · interest on reserves · collateral pledged at the discount window · reserves lent at the window · currency — notes issued against reserves",
+              "relation_ids": [
+                14,
+                15,
+                17,
+                18,
+                19
+              ]
+            },
+            {
+              "component": 3,
+              "direction": "Hybrid",
+              "env": 5,
+              "protocol": "remittances — net income returned · TGA deposits — the Treasury's checking account",
+              "relation_ids": [
+                16,
+                20
+              ]
+            }
+          ]
+        },
+        "issue_targets": [],
+        "residue": {
+          "hidden": [
+            {
+              "count": 3,
+              "label": "process primitives"
+            },
+            {
+              "count": 3,
+              "label": "interface designations"
+            }
+          ],
+          "unspecified": [
+            {
+              "count": 0,
+              "label": "no mechanism stated (⊘M — reads as a black box)"
+            }
+          ]
+        },
+        "validation": {
+          "issues": []
+        }
+      },
+      "klir": {
+        "description": {
+          "dependencies": [
+            "FOMC — Statistical Agencies",
+            "FOMC — Open Market Desk",
+            "FOMC — Financial Markets",
+            "FOMC — Financial Markets",
+            "Banking System — Open Market Desk",
+            "Balance Sheet — Open Market Desk",
+            "Balance Sheet — Banking System",
+            "Balance Sheet — Banking System",
+            "Balance Sheet — U.S. Treasury",
+            "Balance Sheet — Banking System",
+            "Balance Sheet — Banking System",
+            "Balance Sheet — Banking System",
+            "Balance Sheet — U.S. Treasury"
+          ],
+          "directed": 0,
+          "ladder": {
+            "claim": "a structure system over source systems — couplings named among the distinguished things, each r ⊆ T×T",
+            "decomposed": [],
+            "position": "SE",
+            "to_climb": "sideways: decompose an element into its own (T, R) for S²E · upward: D needs observed states over a named support — not authorable here; arrives with the compose seam"
+          },
+          "lens": "Klir",
+          "level": "Structure",
+          "neutral": 13,
+          "note": "a system is what is distinguished as a system by the investigator; the distinction frame is the observer's act, not a boundary",
+          "question": "what does the data commit me to? — the behavior function answers, and deliberately refuses to say what is behind it",
+          "relations": 13,
+          "things": 7
+        },
+        "facts": {
+          "aggregate": false,
+          "authored_interface_thing_ids": [
+            1,
+            2,
+            3
+          ],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [
+            1,
+            2,
+            3
+          ],
+          "edges": [
+            {
+              "a": 6,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 8,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 9,
+              "kind": "Informational",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 7,
+              "bond": true,
+              "channel": "Output",
+              "id": 10,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 7,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 11,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 2,
+              "bond": true,
+              "channel": "Input",
+              "id": 12,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 3,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 13,
+              "kind": "Matter",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 4,
+              "bond": true,
+              "channel": "Output",
+              "id": 14,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 4,
+              "bond": true,
+              "channel": "Output",
+              "id": 15,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 5,
+              "bond": true,
+              "channel": "Output",
+              "id": 16,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 3,
+              "bond": true,
+              "channel": "Input",
+              "id": 17,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 4,
+              "bond": true,
+              "channel": "Output",
+              "id": 18,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 4,
+              "bond": true,
+              "channel": "Output",
+              "id": 19,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 5,
+              "b": 3,
+              "bond": true,
+              "channel": "Input",
+              "id": 20,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            }
+          ],
+          "environment_thing_ids": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "orphan_env_thing_ids": [],
+          "ports": [
+            {
+              "component": 1,
+              "direction": "Receives",
+              "env": 6,
+              "protocol": "published measurements — PCE inflation, payrolls, unemployment",
+              "relation_ids": [
+                8
+              ]
+            },
+            {
+              "component": 1,
+              "direction": "Hybrid",
+              "env": 7,
+              "protocol": "the announced decision — rates as forward guidance · market-implied expectations — breakevens, the futures-implied path",
+              "relation_ids": [
+                10,
+                11
+              ]
+            },
+            {
+              "component": 2,
+              "direction": "Receives",
+              "env": 4,
+              "protocol": "securities sold to the desk",
+              "relation_ids": [
+                12
+              ]
+            },
+            {
+              "component": 3,
+              "direction": "Hybrid",
+              "env": 4,
+              "protocol": "reserve balances minted in payment · interest on reserves · collateral pledged at the discount window · reserves lent at the window · currency — notes issued against reserves",
+              "relation_ids": [
+                14,
+                15,
+                17,
+                18,
+                19
+              ]
+            },
+            {
+              "component": 3,
+              "direction": "Hybrid",
+              "env": 5,
+              "protocol": "remittances — net income returned · TGA deposits — the Treasury's checking account",
+              "relation_ids": [
+                16,
+                20
+              ]
+            }
+          ]
+        },
+        "issue_targets": [],
+        "residue": {
+          "hidden": [
+            {
+              "count": 4,
+              "label": "environment roles"
+            },
+            {
+              "count": 13,
+              "label": "connection kinds"
+            },
+            {
+              "count": 3,
+              "label": "process primitives"
+            },
+            {
+              "count": 3,
+              "label": "interfaces"
+            }
+          ],
+          "unspecified": []
+        },
+        "validation": {
+          "issues": []
+        }
+      },
+      "mobus": {
+        "description": {
+          "b_interfaces": [
+            "FOMC",
+            "FOMC",
+            "Open Market Desk",
+            "Balance Sheet",
+            "Balance Sheet"
+          ],
+          "c": [
+            "FOMC",
+            "Open Market Desk",
+            "Balance Sheet"
+          ],
+          "dt_note": "Δt: time scale — a parametric field on the system",
+          "e_objects": [
+            "Banking System",
+            "U.S. Treasury",
+            "Statistical Agencies",
+            "Financial Markets"
+          ],
+          "g": 11,
+          "h_note": "H: history (accumulated state conditioning T) — NOT hierarchy",
+          "lens": "Mobus",
+          "milieu_note": "μ (milieu) is parametric/opaque — the one element with no cross-lens preimage (milieuOnly_bunge_empty)",
+          "n": 2,
+          "perceptive_fuzziness": 0.0,
+          "porosity": 0.0,
+          "question": "how is the mechanism built, and what happens when it runs?",
+          "self_loop_conflicts": [],
+          "t_note": "T: transforms — parametric by intent; bert-compose fills the slot"
+        },
+        "facts": {
+          "aggregate": false,
+          "authored_interface_thing_ids": [
+            1,
+            2,
+            3
+          ],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [
+            1,
+            2,
+            3
+          ],
+          "edges": [
+            {
+              "a": 6,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 8,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 9,
+              "kind": "Informational",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 7,
+              "bond": true,
+              "channel": "Output",
+              "id": 10,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 7,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 11,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 2,
+              "bond": true,
+              "channel": "Input",
+              "id": 12,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 3,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 13,
+              "kind": "Matter",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 4,
+              "bond": true,
+              "channel": "Output",
+              "id": 14,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 4,
+              "bond": true,
+              "channel": "Output",
+              "id": 15,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 5,
+              "bond": true,
+              "channel": "Output",
+              "id": 16,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 3,
+              "bond": true,
+              "channel": "Input",
+              "id": 17,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 4,
+              "bond": true,
+              "channel": "Output",
+              "id": 18,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 4,
+              "bond": true,
+              "channel": "Output",
+              "id": 19,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 5,
+              "b": 3,
+              "bond": true,
+              "channel": "Input",
+              "id": 20,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            }
+          ],
+          "environment_thing_ids": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "orphan_env_thing_ids": [],
+          "ports": [
+            {
+              "component": 1,
+              "direction": "Receives",
+              "env": 6,
+              "protocol": "published measurements — PCE inflation, payrolls, unemployment",
+              "relation_ids": [
+                8
+              ]
+            },
+            {
+              "component": 1,
+              "direction": "Hybrid",
+              "env": 7,
+              "protocol": "the announced decision — rates as forward guidance · market-implied expectations — breakevens, the futures-implied path",
+              "relation_ids": [
+                10,
+                11
+              ]
+            },
+            {
+              "component": 2,
+              "direction": "Receives",
+              "env": 4,
+              "protocol": "securities sold to the desk",
+              "relation_ids": [
+                12
+              ]
+            },
+            {
+              "component": 3,
+              "direction": "Hybrid",
+              "env": 4,
+              "protocol": "reserve balances minted in payment · interest on reserves · collateral pledged at the discount window · reserves lent at the window · currency — notes issued against reserves",
+              "relation_ids": [
+                14,
+                15,
+                17,
+                18,
+                19
+              ]
+            },
+            {
+              "component": 3,
+              "direction": "Hybrid",
+              "env": 5,
+              "protocol": "remittances — net income returned · TGA deposits — the Treasury's checking account",
+              "relation_ids": [
+                16,
+                20
+              ]
+            }
+          ]
+        },
+        "issue_targets": [
+          {
+            "relation": null,
+            "thing": null
+          }
+        ],
+        "residue": {
+          "hidden": [],
+          "unspecified": []
+        },
+        "validation": {
+          "issues": [
+            {
+              "doc": null,
+              "location": "interactions[1]",
+              "message": "'policy directive — the target range' (Message) flows into 'Open Market Desk' (Combining), which does not consume Message — the flow is delivered every step and ignored",
+              "severity": "Warning",
+              "suggestion": "Route the signal to something that reads it — a Modulating valve's control port consumes messages — or re-declare this flow's kind"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "assets/examples/llm-market.sl": {
+    "layout": [
+      {
+        "env_kind": "Source",
+        "name": "Developer workload",
+        "role": "Environment",
+        "x": 288.0,
+        "y": -12.0
+      },
+      {
+        "env_kind": "Source",
+        "name": "Enterprise workload",
+        "role": "Environment",
+        "x": 209.0,
+        "y": 49.0
+      },
+      {
+        "env_kind": "Source",
+        "name": "Anthropic",
+        "role": "Environment",
+        "x": 148.0,
+        "y": 128.0
+      },
+      {
+        "env_kind": "Source",
+        "name": "OpenAI",
+        "role": "Environment",
+        "x": 110.0,
+        "y": 221.0
+      },
+      {
+        "env_kind": "Source",
+        "name": "Google",
+        "role": "Environment",
+        "x": 97.0,
+        "y": 320.0
+      },
+      {
+        "env_kind": "Source",
+        "name": "Meta",
+        "role": "Environment",
+        "x": 110.0,
+        "y": 419.0
+      },
+      {
+        "env_kind": "Source",
+        "name": "Alibaba",
+        "role": "Environment",
+        "x": 148.0,
+        "y": 512.0
+      },
+      {
+        "env_kind": "Source",
+        "name": "DeepSeek (lab)",
+        "role": "Environment",
+        "x": 209.0,
+        "y": 591.0
+      },
+      {
+        "env_kind": "Source",
+        "name": "Open-weight field",
+        "role": "Environment",
+        "x": 288.0,
+        "y": 652.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Developer clearing",
+        "role": "Component",
+        "x": 480.0,
+        "y": 150.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Enterprise clearing",
+        "role": "Component",
+        "x": 572.0,
+        "y": 177.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Opus",
+        "role": "Component",
+        "x": 635.0,
+        "y": 249.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Fable",
+        "role": "Component",
+        "x": 648.0,
+        "y": 344.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "GPT",
+        "role": "Component",
+        "x": 608.0,
+        "y": 431.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Gemini",
+        "role": "Component",
+        "x": 528.0,
+        "y": 483.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Gemma",
+        "role": "Component",
+        "x": 432.0,
+        "y": 483.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Llama",
+        "role": "Component",
+        "x": 352.0,
+        "y": 431.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Qwen",
+        "role": "Component",
+        "x": 312.0,
+        "y": 344.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "DeepSeek",
+        "role": "Component",
+        "x": 325.0,
+        "y": 249.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Other open",
+        "role": "Component",
+        "x": 388.0,
+        "y": 177.0
+      },
+      {
+        "env_kind": "Sink",
+        "name": "Applications served",
+        "role": "Environment",
+        "x": 863.0,
+        "y": 320.0
+      }
+    ],
+    "pins": "Mobus",
+    "relations": 38,
+    "run": {
+      "answer": {
+        "dt": 1.0,
+        "final_balance": 0.0,
+        "history": [
+          [
+            1.0,
+            6000.0,
+            0.0,
+            0.0,
+            2000.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            8000.0,
+            0.0,
+            8000.0,
+            6000.0,
+            0.0,
+            0.0,
+            2000.0,
+            0.0,
+            0.0,
+            1206.7416,
+            0.0,
+            0.0,
+            604.4944,
+            0.0,
+            0.0,
+            1146.7416,
+            0.0,
+            0.0,
+            1141.573,
+            0.0,
+            0.0,
+            154.83147,
+            0.0,
+            0.0,
+            282.2472,
+            0.0,
+            0.0,
+            936.4045,
+            0.0,
+            0.0,
+            1138.6517,
+            0.0,
+            0.0,
+            1388.3146,
+            0.0,
+            0.0
+          ],
+          [
+            2.0,
+            6000.0,
+            0.0,
+            0.0,
+            2000.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            8000.0,
+            0.0,
+            16000.0,
+            6000.0,
+            0.0,
+            0.0,
+            2000.0,
+            0.0,
+            0.0,
+            1206.7416,
+            0.0,
+            0.0,
+            604.4944,
+            0.0,
+            0.0,
+            1146.7416,
+            0.0,
+            0.0,
+            1141.573,
+            0.0,
+            0.0,
+            154.83147,
+            0.0,
+            0.0,
+            282.2472,
+            0.0,
+            0.0,
+            936.4045,
+            0.0,
+            0.0,
+            1138.6517,
+            0.0,
+            0.0,
+            1388.3146,
+            0.0,
+            0.0
+          ],
+          [
+            3.0,
+            6000.0,
+            0.0,
+            0.0,
+            2000.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            8000.0,
+            0.0,
+            24000.0,
+            6000.0,
+            0.0,
+            0.0,
+            2000.0,
+            0.0,
+            0.0,
+            1206.7416,
+            0.0,
+            0.0,
+            604.4944,
+            0.0,
+            0.0,
+            1146.7416,
+            0.0,
+            0.0,
+            1141.573,
+            0.0,
+            0.0,
+            154.83147,
+            0.0,
+            0.0,
+            282.2472,
+            0.0,
+            0.0,
+            936.4045,
+            0.0,
+            0.0,
+            1138.6517,
+            0.0,
+            0.0,
+            1388.3146,
+            0.0,
+            0.0
+          ],
+          [
+            4.0,
+            6000.0,
+            0.0,
+            0.0,
+            2000.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            8000.0,
+            0.0,
+            32000.0,
+            6000.0,
+            0.0,
+            0.0,
+            2000.0,
+            0.0,
+            0.0,
+            1206.7416,
+            0.0,
+            0.0,
+            604.4944,
+            0.0,
+            0.0,
+            1146.7416,
+            0.0,
+            0.0,
+            1141.573,
+            0.0,
+            0.0,
+            154.83147,
+            0.0,
+            0.0,
+            282.2472,
+            0.0,
+            0.0,
+            936.4045,
+            0.0,
+            0.0,
+            1138.6517,
+            0.0,
+            0.0,
+            1388.3146,
+            0.0,
+            0.0
+          ]
+        ],
+        "ledger_history": [
+          [
+            8000.0,
+            0.0,
+            0.0,
+            8000.0
+          ],
+          [
+            16000.0,
+            0.0,
+            0.0,
+            16000.0
+          ],
+          [
+            24000.0,
+            0.0,
+            0.0,
+            24000.0
+          ],
+          [
+            32000.0,
+            0.0,
+            0.0,
+            32000.0
+          ]
+        ]
+      },
+      "outcome": "runs"
+    },
+    "things": 21,
+    "verdict_under": {
+      "bunge": {
+        "description": {
+          "bondage": 38,
+          "boundary_components": [
+            "Developer clearing",
+            "Enterprise clearing",
+            "Opus",
+            "Fable",
+            "GPT",
+            "Gemini",
+            "Gemma",
+            "Llama",
+            "Qwen",
+            "DeepSeek",
+            "Other open"
+          ],
+          "composition": [
+            "Developer clearing",
+            "Enterprise clearing",
+            "Opus",
+            "Fable",
+            "GPT",
+            "Gemini",
+            "Gemma",
+            "Llama",
+            "Qwen",
+            "DeepSeek",
+            "Other open"
+          ],
+          "endo_bonds": [
+            "Developer clearing — Opus",
+            "Developer clearing — Fable",
+            "Developer clearing — GPT",
+            "Developer clearing — Gemini",
+            "Developer clearing — Gemma",
+            "Developer clearing — Llama",
+            "Developer clearing — Qwen",
+            "DeepSeek — Developer clearing",
+            "Developer clearing — Other open",
+            "Enterprise clearing — Opus",
+            "Enterprise clearing — Fable",
+            "Enterprise clearing — GPT",
+            "Enterprise clearing — Gemini",
+            "Enterprise clearing — Gemma",
+            "Enterprise clearing — Llama",
+            "Enterprise clearing — Qwen",
+            "DeepSeek — Enterprise clearing",
+            "Enterprise clearing — Other open"
+          ],
+          "endostructure": 18,
+          "environment": [
+            "Developer workload",
+            "Enterprise workload",
+            "Anthropic",
+            "OpenAI",
+            "Google",
+            "Meta",
+            "Alibaba",
+            "DeepSeek (lab)",
+            "Open-weight field",
+            "Applications served"
+          ],
+          "exo_bonds": [
+            "Developer clearing — Developer workload",
+            "Enterprise clearing — Enterprise workload",
+            "Anthropic — Opus",
+            "Anthropic — Fable",
+            "GPT — OpenAI",
+            "Gemini — Google",
+            "Gemma — Google",
+            "Llama — Meta",
+            "Alibaba — Qwen",
+            "DeepSeek — DeepSeek (lab)",
+            "Open-weight field — Other open",
+            "Applications served — Opus",
+            "Applications served — Fable",
+            "Applications served — GPT",
+            "Applications served — Gemini",
+            "Applications served — Gemma",
+            "Applications served — Llama",
+            "Applications served — Qwen",
+            "Applications served — DeepSeek",
+            "Applications served — Other open"
+          ],
+          "exostructure": 20,
+          "lens": "Bunge",
+          "mechanism_note": "M (mechanism — Bunge 2004, CESM) is documented but formally UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T). ⊘M: with no mechanism stated, a concrete system reads as a black box at this lens — every concrete system has one (Mechanism Postulate, Bunge 1997), so stating it is what remains. Conceptual and semiotic systems have no mechanism at all; there ⊘M is correct, not a gap. A status, not an error.",
+          "mere_relations": 0,
+          "question": "what is the thing, and by what mechanism does it change? — a behavior function without its M is not yet knowledge",
+          "verdict": "system"
+        },
+        "facts": {
+          "aggregate": false,
+          "authored_interface_thing_ids": [
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ],
+          "edges": [
+            {
+              "a": 1,
+              "b": 10,
+              "bond": true,
+              "channel": "Input",
+              "id": 22,
+              "kind": "Energy",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 11,
+              "bond": true,
+              "channel": "Input",
+              "id": 23,
+              "kind": "Energy",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 12,
+              "bond": true,
+              "channel": "Input",
+              "id": 24,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 13,
+              "bond": true,
+              "channel": "Input",
+              "id": 25,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 14,
+              "bond": true,
+              "channel": "Input",
+              "id": 26,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 5,
+              "b": 15,
+              "bond": true,
+              "channel": "Input",
+              "id": 27,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 5,
+              "b": 16,
+              "bond": true,
+              "channel": "Input",
+              "id": 28,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 6,
+              "b": 17,
+              "bond": true,
+              "channel": "Input",
+              "id": 29,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 7,
+              "b": 18,
+              "bond": true,
+              "channel": "Input",
+              "id": 30,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 8,
+              "b": 19,
+              "bond": true,
+              "channel": "Input",
+              "id": 31,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 9,
+              "b": 20,
+              "bond": true,
+              "channel": "Input",
+              "id": 32,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 12,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 33,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 13,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 34,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 14,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 35,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 15,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 36,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 16,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 37,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 17,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 38,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 18,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 39,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 19,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 40,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 20,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 41,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 12,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 42,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 13,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 43,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 14,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 44,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 15,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 45,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 16,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 46,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 17,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 47,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 18,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 48,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 19,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 49,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 20,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 50,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 12,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 51,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 13,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 52,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 14,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 53,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 15,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 54,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 16,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 55,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 17,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 56,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 18,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 57,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 19,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 58,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 20,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 59,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            }
+          ],
+          "environment_thing_ids": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            21
+          ],
+          "orphan_env_thing_ids": [],
+          "ports": [
+            {
+              "component": 10,
+              "direction": "Receives",
+              "env": 1,
+              "protocol": "dev inference compute",
+              "relation_ids": [
+                22
+              ]
+            },
+            {
+              "component": 11,
+              "direction": "Receives",
+              "env": 2,
+              "protocol": "enterprise inference compute",
+              "relation_ids": [
+                23
+              ]
+            },
+            {
+              "component": 12,
+              "direction": "Receives",
+              "env": 3,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                24
+              ]
+            },
+            {
+              "component": 12,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                51
+              ]
+            },
+            {
+              "component": 13,
+              "direction": "Receives",
+              "env": 3,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                25
+              ]
+            },
+            {
+              "component": 13,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                52
+              ]
+            },
+            {
+              "component": 14,
+              "direction": "Receives",
+              "env": 4,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                26
+              ]
+            },
+            {
+              "component": 14,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                53
+              ]
+            },
+            {
+              "component": 15,
+              "direction": "Receives",
+              "env": 5,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                27
+              ]
+            },
+            {
+              "component": 15,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                54
+              ]
+            },
+            {
+              "component": 16,
+              "direction": "Receives",
+              "env": 5,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                28
+              ]
+            },
+            {
+              "component": 16,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                55
+              ]
+            },
+            {
+              "component": 17,
+              "direction": "Receives",
+              "env": 6,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                29
+              ]
+            },
+            {
+              "component": 17,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                56
+              ]
+            },
+            {
+              "component": 18,
+              "direction": "Receives",
+              "env": 7,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                30
+              ]
+            },
+            {
+              "component": 18,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                57
+              ]
+            },
+            {
+              "component": 19,
+              "direction": "Receives",
+              "env": 8,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                31
+              ]
+            },
+            {
+              "component": 19,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                58
+              ]
+            },
+            {
+              "component": 20,
+              "direction": "Receives",
+              "env": 9,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                32
+              ]
+            },
+            {
+              "component": 20,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                59
+              ]
+            }
+          ]
+        },
+        "issue_targets": [],
+        "residue": {
+          "hidden": [
+            {
+              "count": 11,
+              "label": "process primitives"
+            },
+            {
+              "count": 11,
+              "label": "interface designations"
+            }
+          ],
+          "unspecified": [
+            {
+              "count": 0,
+              "label": "no mechanism stated (⊘M — reads as a black box)"
+            }
+          ]
+        },
+        "validation": {
+          "issues": []
+        }
+      },
+      "klir": {
+        "description": {
+          "dependencies": [
+            "Developer clearing — Developer workload",
+            "Enterprise clearing — Enterprise workload",
+            "Anthropic — Opus",
+            "Anthropic — Fable",
+            "GPT — OpenAI",
+            "Gemini — Google",
+            "Gemma — Google",
+            "Llama — Meta",
+            "Alibaba — Qwen",
+            "DeepSeek — DeepSeek (lab)",
+            "Open-weight field — Other open",
+            "Developer clearing — Opus",
+            "Developer clearing — Fable",
+            "Developer clearing — GPT",
+            "Developer clearing — Gemini",
+            "Developer clearing — Gemma",
+            "Developer clearing — Llama",
+            "Developer clearing — Qwen",
+            "DeepSeek — Developer clearing",
+            "Developer clearing — Other open",
+            "Enterprise clearing — Opus",
+            "Enterprise clearing — Fable",
+            "Enterprise clearing — GPT",
+            "Enterprise clearing — Gemini",
+            "Enterprise clearing — Gemma",
+            "Enterprise clearing — Llama",
+            "Enterprise clearing — Qwen",
+            "DeepSeek — Enterprise clearing",
+            "Enterprise clearing — Other open",
+            "Applications served — Opus",
+            "Applications served — Fable",
+            "Applications served — GPT",
+            "Applications served — Gemini",
+            "Applications served — Gemma",
+            "Applications served — Llama",
+            "Applications served — Qwen",
+            "Applications served — DeepSeek",
+            "Applications served — Other open"
+          ],
+          "directed": 0,
+          "ladder": {
+            "claim": "a structure system over source systems — couplings named among the distinguished things, each r ⊆ T×T",
+            "decomposed": [],
+            "position": "SE",
+            "to_climb": "sideways: decompose an element into its own (T, R) for S²E · upward: D needs observed states over a named support — not authorable here; arrives with the compose seam"
+          },
+          "lens": "Klir",
+          "level": "Structure",
+          "neutral": 38,
+          "note": "a system is what is distinguished as a system by the investigator; the distinction frame is the observer's act, not a boundary",
+          "question": "what does the data commit me to? — the behavior function answers, and deliberately refuses to say what is behind it",
+          "relations": 38,
+          "things": 21
+        },
+        "facts": {
+          "aggregate": false,
+          "authored_interface_thing_ids": [
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ],
+          "edges": [
+            {
+              "a": 1,
+              "b": 10,
+              "bond": true,
+              "channel": "Input",
+              "id": 22,
+              "kind": "Energy",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 11,
+              "bond": true,
+              "channel": "Input",
+              "id": 23,
+              "kind": "Energy",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 12,
+              "bond": true,
+              "channel": "Input",
+              "id": 24,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 13,
+              "bond": true,
+              "channel": "Input",
+              "id": 25,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 14,
+              "bond": true,
+              "channel": "Input",
+              "id": 26,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 5,
+              "b": 15,
+              "bond": true,
+              "channel": "Input",
+              "id": 27,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 5,
+              "b": 16,
+              "bond": true,
+              "channel": "Input",
+              "id": 28,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 6,
+              "b": 17,
+              "bond": true,
+              "channel": "Input",
+              "id": 29,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 7,
+              "b": 18,
+              "bond": true,
+              "channel": "Input",
+              "id": 30,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 8,
+              "b": 19,
+              "bond": true,
+              "channel": "Input",
+              "id": 31,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 9,
+              "b": 20,
+              "bond": true,
+              "channel": "Input",
+              "id": 32,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 12,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 33,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 13,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 34,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 14,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 35,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 15,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 36,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 16,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 37,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 17,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 38,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 18,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 39,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 19,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 40,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 20,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 41,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 12,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 42,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 13,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 43,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 14,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 44,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 15,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 45,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 16,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 46,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 17,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 47,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 18,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 48,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 19,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 49,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 20,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 50,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 12,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 51,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 13,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 52,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 14,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 53,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 15,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 54,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 16,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 55,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 17,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 56,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 18,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 57,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 19,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 58,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 20,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 59,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            }
+          ],
+          "environment_thing_ids": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            21
+          ],
+          "orphan_env_thing_ids": [],
+          "ports": [
+            {
+              "component": 10,
+              "direction": "Receives",
+              "env": 1,
+              "protocol": "dev inference compute",
+              "relation_ids": [
+                22
+              ]
+            },
+            {
+              "component": 11,
+              "direction": "Receives",
+              "env": 2,
+              "protocol": "enterprise inference compute",
+              "relation_ids": [
+                23
+              ]
+            },
+            {
+              "component": 12,
+              "direction": "Receives",
+              "env": 3,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                24
+              ]
+            },
+            {
+              "component": 12,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                51
+              ]
+            },
+            {
+              "component": 13,
+              "direction": "Receives",
+              "env": 3,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                25
+              ]
+            },
+            {
+              "component": 13,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                52
+              ]
+            },
+            {
+              "component": 14,
+              "direction": "Receives",
+              "env": 4,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                26
+              ]
+            },
+            {
+              "component": 14,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                53
+              ]
+            },
+            {
+              "component": 15,
+              "direction": "Receives",
+              "env": 5,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                27
+              ]
+            },
+            {
+              "component": 15,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                54
+              ]
+            },
+            {
+              "component": 16,
+              "direction": "Receives",
+              "env": 5,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                28
+              ]
+            },
+            {
+              "component": 16,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                55
+              ]
+            },
+            {
+              "component": 17,
+              "direction": "Receives",
+              "env": 6,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                29
+              ]
+            },
+            {
+              "component": 17,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                56
+              ]
+            },
+            {
+              "component": 18,
+              "direction": "Receives",
+              "env": 7,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                30
+              ]
+            },
+            {
+              "component": 18,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                57
+              ]
+            },
+            {
+              "component": 19,
+              "direction": "Receives",
+              "env": 8,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                31
+              ]
+            },
+            {
+              "component": 19,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                58
+              ]
+            },
+            {
+              "component": 20,
+              "direction": "Receives",
+              "env": 9,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                32
+              ]
+            },
+            {
+              "component": 20,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                59
+              ]
+            }
+          ]
+        },
+        "issue_targets": [],
+        "residue": {
+          "hidden": [
+            {
+              "count": 10,
+              "label": "environment roles"
+            },
+            {
+              "count": 38,
+              "label": "connection kinds"
+            },
+            {
+              "count": 11,
+              "label": "process primitives"
+            },
+            {
+              "count": 11,
+              "label": "interfaces"
+            }
+          ],
+          "unspecified": []
+        },
+        "validation": {
+          "issues": []
+        }
+      },
+      "mobus": {
+        "description": {
+          "b_interfaces": [
+            "Developer clearing",
+            "Enterprise clearing",
+            "Opus",
+            "Opus",
+            "Fable",
+            "Fable",
+            "GPT",
+            "GPT",
+            "Gemini",
+            "Gemini",
+            "Gemma",
+            "Gemma",
+            "Llama",
+            "Llama",
+            "Qwen",
+            "Qwen",
+            "DeepSeek",
+            "DeepSeek",
+            "Other open",
+            "Other open"
+          ],
+          "c": [
+            "Developer clearing",
+            "Enterprise clearing",
+            "Opus",
+            "Fable",
+            "GPT",
+            "Gemini",
+            "Gemma",
+            "Llama",
+            "Qwen",
+            "DeepSeek",
+            "Other open"
+          ],
+          "dt_note": "Δt: time scale — a parametric field on the system",
+          "e_objects": [
+            "Developer workload",
+            "Enterprise workload",
+            "Anthropic",
+            "OpenAI",
+            "Google",
+            "Meta",
+            "Alibaba",
+            "DeepSeek (lab)",
+            "Open-weight field",
+            "Applications served"
+          ],
+          "g": 20,
+          "h_note": "H: history (accumulated state conditioning T) — NOT hierarchy",
+          "lens": "Mobus",
+          "milieu_note": "μ (milieu) is parametric/opaque — the one element with no cross-lens preimage (milieuOnly_bunge_empty)",
+          "n": 18,
+          "perceptive_fuzziness": 0.0,
+          "porosity": 0.0,
+          "question": "how is the mechanism built, and what happens when it runs?",
+          "self_loop_conflicts": [],
+          "t_note": "T: transforms — parametric by intent; bert-compose fills the slot"
+        },
+        "facts": {
+          "aggregate": false,
+          "authored_interface_thing_ids": [
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ],
+          "edges": [
+            {
+              "a": 1,
+              "b": 10,
+              "bond": true,
+              "channel": "Input",
+              "id": 22,
+              "kind": "Energy",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 11,
+              "bond": true,
+              "channel": "Input",
+              "id": 23,
+              "kind": "Energy",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 12,
+              "bond": true,
+              "channel": "Input",
+              "id": 24,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 13,
+              "bond": true,
+              "channel": "Input",
+              "id": 25,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 14,
+              "bond": true,
+              "channel": "Input",
+              "id": 26,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 5,
+              "b": 15,
+              "bond": true,
+              "channel": "Input",
+              "id": 27,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 5,
+              "b": 16,
+              "bond": true,
+              "channel": "Input",
+              "id": 28,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 6,
+              "b": 17,
+              "bond": true,
+              "channel": "Input",
+              "id": 29,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 7,
+              "b": 18,
+              "bond": true,
+              "channel": "Input",
+              "id": 30,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 8,
+              "b": 19,
+              "bond": true,
+              "channel": "Input",
+              "id": 31,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 9,
+              "b": 20,
+              "bond": true,
+              "channel": "Input",
+              "id": 32,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 12,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 33,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 13,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 34,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 14,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 35,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 15,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 36,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 16,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 37,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 17,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 38,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 18,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 39,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 19,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 40,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 10,
+              "b": 20,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 41,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 12,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 42,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 13,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 43,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 14,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 44,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 15,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 45,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 16,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 46,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 17,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 47,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 18,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 48,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 19,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 49,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 11,
+              "b": 20,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 50,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 12,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 51,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 13,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 52,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 14,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 53,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 15,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 54,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 16,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 55,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 17,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 56,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 18,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 57,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 19,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 58,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 20,
+              "b": 21,
+              "bond": true,
+              "channel": "Output",
+              "id": 59,
+              "kind": "Informational",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            }
+          ],
+          "environment_thing_ids": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            21
+          ],
+          "orphan_env_thing_ids": [],
+          "ports": [
+            {
+              "component": 10,
+              "direction": "Receives",
+              "env": 1,
+              "protocol": "dev inference compute",
+              "relation_ids": [
+                22
+              ]
+            },
+            {
+              "component": 11,
+              "direction": "Receives",
+              "env": 2,
+              "protocol": "enterprise inference compute",
+              "relation_ids": [
+                23
+              ]
+            },
+            {
+              "component": 12,
+              "direction": "Receives",
+              "env": 3,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                24
+              ]
+            },
+            {
+              "component": 12,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                51
+              ]
+            },
+            {
+              "component": 13,
+              "direction": "Receives",
+              "env": 3,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                25
+              ]
+            },
+            {
+              "component": 13,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                52
+              ]
+            },
+            {
+              "component": 14,
+              "direction": "Receives",
+              "env": 4,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                26
+              ]
+            },
+            {
+              "component": 14,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                53
+              ]
+            },
+            {
+              "component": 15,
+              "direction": "Receives",
+              "env": 5,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                27
+              ]
+            },
+            {
+              "component": 15,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                54
+              ]
+            },
+            {
+              "component": 16,
+              "direction": "Receives",
+              "env": 5,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                28
+              ]
+            },
+            {
+              "component": 16,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                55
+              ]
+            },
+            {
+              "component": 17,
+              "direction": "Receives",
+              "env": 6,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                29
+              ]
+            },
+            {
+              "component": 17,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                56
+              ]
+            },
+            {
+              "component": 18,
+              "direction": "Receives",
+              "env": 7,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                30
+              ]
+            },
+            {
+              "component": 18,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                57
+              ]
+            },
+            {
+              "component": 19,
+              "direction": "Receives",
+              "env": 8,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                31
+              ]
+            },
+            {
+              "component": 19,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                58
+              ]
+            },
+            {
+              "component": 20,
+              "direction": "Receives",
+              "env": 9,
+              "protocol": "released weights & API",
+              "relation_ids": [
+                32
+              ]
+            },
+            {
+              "component": 20,
+              "direction": "Exports",
+              "env": 21,
+              "protocol": "tokens served",
+              "relation_ids": [
+                59
+              ]
+            }
+          ]
+        },
+        "issue_targets": [],
+        "residue": {
+          "hidden": [],
+          "unspecified": []
+        },
+        "validation": {
+          "issues": []
+        }
+      }
+    }
+  },
+  "assets/examples/predator-prey.sl": {
+    "layout": [
+      {
+        "env_kind": "Neutral",
+        "name": "Rabbits",
+        "role": "Component",
+        "x": 310.0,
+        "y": 320.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Foxes",
+        "role": "Component",
+        "x": 650.0,
+        "y": 320.0
+      },
+      {
+        "env_kind": "Source",
+        "name": "Sunlight",
+        "role": "Environment",
+        "x": 296.0,
+        "y": 1.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Grass",
+        "role": "Environment",
+        "x": 296.0,
+        "y": 639.0
+      },
+      {
+        "env_kind": "Sink",
+        "name": "Decomposition",
+        "role": "Environment",
+        "x": 848.0,
+        "y": 320.0
+      }
+    ],
+    "pins": "Mobus",
+    "relations": 4,
+    "run": {
+      "answer": {
+        "dt": 1.0,
+        "final_balance": 0.0,
+        "history": [
+          [
+            1.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            2.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            3.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            1.0,
+            1.0,
+            1.0,
+            0.0,
+            1.0,
+            1.0,
+            0.0
+          ],
+          [
+            4.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            2.0,
+            1.0,
+            1.0,
+            0.0,
+            1.0,
+            1.0,
+            0.0
+          ]
+        ],
+        "ledger_history": [
+          [
+            2.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          [
+            4.0,
+            0.0,
+            2.0,
+            2.0
+          ],
+          [
+            6.0,
+            1.0,
+            2.0,
+            3.0
+          ],
+          [
+            8.0,
+            2.0,
+            2.0,
+            4.0
+          ]
+        ]
+      },
+      "outcome": "runs"
+    },
+    "things": 5,
+    "verdict_under": {
+      "bunge": {
+        "description": {
+          "bondage": 4,
+          "boundary_components": [
+            "Rabbits",
+            "Foxes"
+          ],
+          "composition": [
+            "Rabbits",
+            "Foxes"
+          ],
+          "endo_bonds": [
+            "Foxes — Rabbits"
+          ],
+          "endostructure": 1,
+          "environment": [
+            "Sunlight",
+            "Grass",
+            "Decomposition"
+          ],
+          "exo_bonds": [
+            "Grass — Sunlight",
+            "Grass — Rabbits",
+            "Decomposition — Foxes"
+          ],
+          "exostructure": 3,
+          "lens": "Bunge",
+          "mechanism_note": "M (mechanism — Bunge 2004, CESM) is documented but formally UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T). ⊘M: with no mechanism stated, a concrete system reads as a black box at this lens — every concrete system has one (Mechanism Postulate, Bunge 1997), so stating it is what remains. Conceptual and semiotic systems have no mechanism at all; there ⊘M is correct, not a gap. A status, not an error.",
+          "mere_relations": 0,
+          "question": "what is the thing, and by what mechanism does it change? — a behavior function without its M is not yet knowledge",
+          "verdict": "system"
+        },
+        "facts": {
+          "aggregate": false,
+          "authored_interface_thing_ids": [
+            1,
+            2
+          ],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [
+            1,
+            2
+          ],
+          "edges": [
+            {
+              "a": 3,
+              "b": 4,
+              "bond": true,
+              "channel": null,
+              "id": 6,
+              "kind": "Energy",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 7,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 8,
+              "kind": "Matter",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 5,
+              "bond": true,
+              "channel": "Output",
+              "id": 9,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            }
+          ],
+          "environment_thing_ids": [
+            3,
+            4,
+            5
+          ],
+          "orphan_env_thing_ids": [],
+          "ports": [
+            {
+              "component": 1,
+              "direction": "Receives",
+              "env": 4,
+              "protocol": "grazing",
+              "relation_ids": [
+                7
+              ]
+            },
+            {
+              "component": 2,
+              "direction": "Exports",
+              "env": 5,
+              "protocol": "mortality",
+              "relation_ids": [
+                9
+              ]
+            }
+          ]
+        },
+        "issue_targets": [],
+        "residue": {
+          "hidden": [
+            {
+              "count": 2,
+              "label": "process primitives"
+            },
+            {
+              "count": 2,
+              "label": "interface designations"
+            }
+          ],
+          "unspecified": [
+            {
+              "count": 0,
+              "label": "no mechanism stated (⊘M — reads as a black box)"
+            }
+          ]
+        },
+        "validation": {
+          "issues": []
+        }
+      },
+      "klir": {
+        "description": {
+          "dependencies": [
+            "Grass — Sunlight",
+            "Grass — Rabbits",
+            "Foxes — Rabbits",
+            "Decomposition — Foxes"
+          ],
+          "directed": 0,
+          "ladder": {
+            "claim": "a structure system over source systems — couplings named among the distinguished things, each r ⊆ T×T",
+            "decomposed": [],
+            "position": "SE",
+            "to_climb": "sideways: decompose an element into its own (T, R) for S²E · upward: D needs observed states over a named support — not authorable here; arrives with the compose seam"
+          },
+          "lens": "Klir",
+          "level": "Structure",
+          "neutral": 4,
+          "note": "a system is what is distinguished as a system by the investigator; the distinction frame is the observer's act, not a boundary",
+          "question": "what does the data commit me to? — the behavior function answers, and deliberately refuses to say what is behind it",
+          "relations": 4,
+          "things": 5
+        },
+        "facts": {
+          "aggregate": false,
+          "authored_interface_thing_ids": [
+            1,
+            2
+          ],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [
+            1,
+            2
+          ],
+          "edges": [
+            {
+              "a": 3,
+              "b": 4,
+              "bond": true,
+              "channel": null,
+              "id": 6,
+              "kind": "Energy",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 7,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 8,
+              "kind": "Matter",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 5,
+              "bond": true,
+              "channel": "Output",
+              "id": 9,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            }
+          ],
+          "environment_thing_ids": [
+            3,
+            4,
+            5
+          ],
+          "orphan_env_thing_ids": [],
+          "ports": [
+            {
+              "component": 1,
+              "direction": "Receives",
+              "env": 4,
+              "protocol": "grazing",
+              "relation_ids": [
+                7
+              ]
+            },
+            {
+              "component": 2,
+              "direction": "Exports",
+              "env": 5,
+              "protocol": "mortality",
+              "relation_ids": [
+                9
+              ]
+            }
+          ]
+        },
+        "issue_targets": [],
+        "residue": {
+          "hidden": [
+            {
+              "count": 3,
+              "label": "environment roles"
+            },
+            {
+              "count": 4,
+              "label": "connection kinds"
+            },
+            {
+              "count": 2,
+              "label": "process primitives"
+            },
+            {
+              "count": 2,
+              "label": "interfaces"
+            }
+          ],
+          "unspecified": []
+        },
+        "validation": {
+          "issues": []
+        }
+      },
+      "mobus": {
+        "description": {
+          "b_interfaces": [
+            "Rabbits",
+            "Foxes"
+          ],
+          "c": [
+            "Rabbits",
+            "Foxes"
+          ],
+          "dt_note": "Δt: time scale — a parametric field on the system",
+          "e_objects": [
+            "Sunlight",
+            "Grass",
+            "Decomposition"
+          ],
+          "g": 3,
+          "h_note": "H: history (accumulated state conditioning T) — NOT hierarchy",
+          "lens": "Mobus",
+          "milieu_note": "μ (milieu) is parametric/opaque — the one element with no cross-lens preimage (milieuOnly_bunge_empty)",
+          "n": 1,
+          "perceptive_fuzziness": 0.0,
+          "porosity": 0.0,
+          "question": "how is the mechanism built, and what happens when it runs?",
+          "self_loop_conflicts": [],
+          "t_note": "T: transforms — parametric by intent; bert-compose fills the slot"
+        },
+        "facts": {
+          "aggregate": false,
+          "authored_interface_thing_ids": [
+            1,
+            2
+          ],
+          "boundary_props": {
+            "perceptive_fuzziness": 0.0,
+            "porosity": 0.0
+          },
+          "boundary_thing_ids": [
+            1,
+            2
+          ],
+          "edges": [
+            {
+              "a": 3,
+              "b": 4,
+              "bond": true,
+              "channel": null,
+              "id": 6,
+              "kind": "Energy",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 1,
+              "bond": true,
+              "channel": "Input",
+              "id": 7,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 1,
+              "b": 2,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 8,
+              "kind": "Matter",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 2,
+              "b": 5,
+              "bond": true,
+              "channel": "Output",
+              "id": 9,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            }
+          ],
+          "environment_thing_ids": [
+            3,
+            4,
+            5
+          ],
+          "orphan_env_thing_ids": [],
+          "ports": [
+            {
+              "component": 1,
+              "direction": "Receives",
+              "env": 4,
+              "protocol": "grazing",
+              "relation_ids": [
+                7
+              ]
+            },
+            {
+              "component": 2,
+              "direction": "Exports",
+              "env": 5,
+              "protocol": "mortality",
+              "relation_ids": [
+                9
+              ]
+            }
+          ]
+        },
+        "issue_targets": [],
+        "residue": {
+          "hidden": [],
+          "unspecified": []
+        },
+        "validation": {
+          "issues": []
+        }
+      }
+    }
+  }
+}

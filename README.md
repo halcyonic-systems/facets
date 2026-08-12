@@ -421,11 +421,22 @@ bert layout assets/examples/watershed.sl \
         < ([.nodes[] | select(.env_kind=="Sink") | .x] | min)'
 ```
 
-`fixtures/cli/examples.json` is a golden reading of every bundled example
-through this door — what it compiles to, its error count under **each** of the
-three lenses, whether it runs, and where its nodes sit. Regenerate with
-`BLESS_CLI_GOLDEN=1 cargo test -p bert-cli` and read the diff: an unexplained
-row change is the finding.
+The door's own tests come in two strengths, and the split is deliberate (#317).
+`fixtures/cli/canonical.json` is a **full** reading of six models through this
+door — every word of the verdict under each of the three lenses, the formal
+object, the layout, the whole trajectory. It covers the three keep-set models
+that run and carry claims plus one corpus entry per tradition, so the cross-lens
+door stays covered. Regenerate with `BLESS_CLI_GOLDEN=1 cargo test -p bert-cli`
+and read the diff: an unexplained change is the finding.
+
+Every other bundled model gets the **weak** check instead
+(`crates/bert-cli/tests/library_survey.rs`): it parses, and the door answers
+with a code from the table and JSON on stdout. No content is snapshotted, so a
+model can be renamed, merged or repaired without re-blessing anything. The
+survey still *prints* what it will not assert — a model refused under its own
+pinned lens shows up in the test output, which is how `bitcoin` was found (#316)
+— because freezing a refusal as expected behaviour would make its repair look
+like a regression.
 
 `bert-cli` is the one package excluded from the workspace `wasm32-unknown-unknown`
 build (`--exclude bert-cli` in `justfile` and `ci.yml`) — a native binary of argv

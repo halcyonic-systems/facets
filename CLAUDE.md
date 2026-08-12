@@ -164,10 +164,15 @@ red if the list grows, so the wasm gate cannot widen into one that skips things.
 **Still write the test when the finding is a law.** The CLI is for asking; a
 `cargo test` integration test in `crates/bert-canvas/tests/` is for making the
 answer stay true, and it is picked up free by `cargo test --workspace` and
-`ci.yml`. Working example: `tests/cross_lens.rs`. The CLI's own goldens
-(`crates/bert-cli/tests/`, `fixtures/cli/examples.json`) hold the door open the
-same way — that golden is a full cross-lens reading of every bundled example,
-so a kernel change that moves any of them has to be seen and accepted.
+`ci.yml`. Working example: `tests/cross_lens.rs`. The CLI's own tests
+(`crates/bert-cli/tests/`) hold the door open the same way, at two strengths
+(#317): `fixtures/cli/canonical.json` is a **full** cross-lens reading of six
+named models — three keep-set examples plus one corpus entry per tradition — so
+a kernel change that moves any of them has to be seen and accepted; every other
+bundled model gets the **weak** check (`library_survey.rs`: it parses, the door
+answers, no content snapshotted), so renaming or repairing one costs no
+re-bless. Adding a model to the canonical set is a claim that we would defend
+its verdict; observing a refusal is not — the survey prints those instead.
 
 **Know which set of `.sl` files you are touching. The names are not
 interchangeable:**

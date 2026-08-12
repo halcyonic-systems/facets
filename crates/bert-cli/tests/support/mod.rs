@@ -46,16 +46,50 @@ pub fn stderr(out: &Output) -> String {
     String::from_utf8_lossy(&out.stderr).into_owned()
 }
 
-/// Every `.sl` under `assets/examples`, sorted — the set the goldens cover.
-pub fn examples() -> Vec<PathBuf> {
-    let dir = repo_root().join("assets/examples");
-    let mut paths: Vec<PathBuf> = std::fs::read_dir(&dir)
-        .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
-        .filter_map(|e| e.ok())
-        .map(|e| e.path())
-        .filter(|p| p.extension().and_then(|x| x.to_str()) == Some("sl"))
+/// Every bundled `.sl` the CLI is pointed at — `assets/examples` plus the
+/// author corpus — as repo-root-relative slash paths, sorted.
+///
+/// This is the *library*, not the golden set. The golden speaks for a named few
+/// (`canonical_golden.rs`, `CANONICAL`); everything bundled gets the weak check
+/// instead (`library_survey.rs`), so a rename or an edit under these
+/// directories forces no re-bless. Discovered from disk rather than listed,
+/// because a model added and never checked is the failure mode a list has.
+pub fn library() -> Vec<String> {
+    let root = repo_root();
+    let mut paths: Vec<String> = ["assets/examples", "assets/corpus"]
+        .iter()
+        .flat_map(|dir| sl_under(dir))
+        .map(|p| {
+            p.strip_prefix(&root)
+                .expect("a path under the repo root")
+                .to_string_lossy()
+                .replace('\\', "/")
+        })
         .collect();
     paths.sort();
-    assert!(!paths.is_empty(), "assets/examples holds .sl files");
+    assert!(
+        paths.len() > 10,
+        "the bundled library is more than a handful of files; found {}",
+        paths.len()
+    );
+    paths
+}
+
+/// Every `.sl` at or below `rel`, sorted.
+fn sl_under(rel: &str) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    let mut stack = vec![repo_root().join(rel)];
+    while let Some(dir) = stack.pop() {
+        let entries = std::fs::read_dir(&dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display()));
+        for entry in entries.filter_map(|e| e.ok()) {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+            } else if path.extension().and_then(|x| x.to_str()) == Some("sl") {
+                paths.push(path);
+            }
+        }
+    }
+    paths.sort();
     paths
 }
