@@ -163,29 +163,32 @@
   --lens-accent-soft: color-mix(in srgb, var(--accent-slate) 24%, var(--bg-secondary));
   --lens-node-stroke: var(--text-secondary);
   /* The lens WORLD (#7 follow-on): shell surfaces tint toward the lens so a
-     switch reads viscerally as entering a different reading. Chrome = toolbar
-     + docks; wash = the canvas backdrop. The percentages here are the entire
-     tuning surface — adjust them, nothing else moves.
-     Retuned 2026-08-12: the wash was 11% and read as "swimming in green" on
-     Mobus — the canvas ground is where a modeller looks all day, so it stays
-     plain and the lens lives in the CHROME (12%, was 22%). A trace of wash is
-     kept rather than zero so the lens is still confirmable at a glance. */
-  --lens-chrome: color-mix(in srgb, var(--world-klir) 12%, var(--bg-secondary));
-  --lens-wash: color-mix(in srgb, var(--world-klir) 2.5%, var(--bg-primary));
+     switch reads viscerally as entering a different reading.
+     WITHDRAWN 2026-08-12. The world-tint is off for every lens: chrome and wash
+     both resolve to the plain Frost surface, and node strokes are ink. Tinting
+     whole surfaces by lens was tried at 22%/11%, retuned to 12%/2.5%, and still
+     read as too much — "I want something a bit more professional, like a normal
+     modeling canvas app... this would apply to all lenses." The active lens is
+     signalled by the lens toggle and by --lens-accent on interactive chrome
+     (armed tools, rims, handles), not by colouring the work surface. The
+     --world-* hues survive where they label a tradition in the library.
+     The tokens stay in place, so restoring a tint is a value change here. */
+  --lens-chrome: var(--bg-secondary);
+  --lens-wash: var(--bg-primary);
 }
 [data-lens="Bunge"] {
   --lens-accent: var(--accent-indigo);
   --lens-accent-soft: color-mix(in srgb, var(--accent-indigo) 24%, var(--bg-secondary));
-  --lens-node-stroke: color-mix(in srgb, var(--accent-indigo) 50%, var(--accent-slate));
-  --lens-chrome: color-mix(in srgb, var(--world-bunge) 12%, var(--bg-secondary));
-  --lens-wash: color-mix(in srgb, var(--world-bunge) 2.5%, var(--bg-primary));
+  --lens-node-stroke: var(--text-secondary);
+  --lens-chrome: var(--bg-secondary);
+  --lens-wash: var(--bg-primary);
 }
 [data-lens="Mobus"] {
   --lens-accent: var(--accent);
   --lens-accent-soft: var(--accent-soft);
-  --lens-node-stroke: color-mix(in srgb, var(--accent) 40%, var(--accent-slate));
-  --lens-chrome: color-mix(in srgb, var(--world-mobus) 12%, var(--bg-secondary));
-  --lens-wash: color-mix(in srgb, var(--world-mobus) 2.5%, var(--bg-primary));
+  --lens-node-stroke: var(--text-secondary);
+  --lens-chrome: var(--bg-secondary);
+  --lens-wash: var(--bg-primary);
 }
 
 * {
@@ -315,12 +318,13 @@ body {
     transform: translateX(0) scale(1);
   }
 }
+/* Quieted 2026-08-12 with the world-tint withdrawal: this was 1.45rem display
+   italic in the lens accent, which made it the loudest thing above the canvas
+   and most of the colour a modeller saw. It is orientation, not a headline. */
 .lens-question {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 1.45rem;
-  font-weight: 600;
-  line-height: 1.25;
-  color: var(--lens-accent);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--text-secondary);
   animation: lens-question-settle 0.45s ease-out;
 }
