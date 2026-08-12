@@ -152,22 +152,13 @@ function countLibrary(tree: LibraryNode[]): number {
 // and marks a folio under the cursor; nothing else takes colour.
 // ---------------------------------------------------------------------------
 
-/** The measure. Two widths, chosen by what the region is for. The default is a
- *  reading column — narrow enough that a prose line stays under ~75 characters.
- *  `wide` is for the LIBRARY, which is not prose: a list of forty models is
- *  scanned, not read, and the extra width buys a row that carries its name, its
- *  gloss, and its tags on one line instead of stacking them. */
-function Column({
-  children,
-  className = "",
-  wide = false,
-}: {
-  children: ReactNode;
-  className?: string;
-  wide?: boolean;
-}) {
+/** The measure. One width for every region. There was briefly a narrower
+ *  reading column for the prose pages, on the theory that these were pages to
+ *  be read; they are not, they are a menu and a list, and the narrow column was
+ *  a page-margin habit rather than a legibility need. */
+function Column({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`mx-auto w-full ${wide ? "max-w-4xl px-8" : "max-w-3xl px-10"} ${className}`}>
+    <div className={`mx-auto w-full max-w-4xl px-8 ${className}`}>
       {children}
     </div>
   );
@@ -204,7 +195,7 @@ const doorStyle: CSSProperties = {
 
 /** The title block. A page opens the way a title page opens: a rubric rule, the
  *  name in the serif at a size nothing else on the page approaches, the count
- *  set as a display numeral in the outer margin, and an italic lede beneath.
+ *  set as a numeral in the outer margin, and a lede beneath.
  *  It closes on a head rule — the block ends, and the table begins under it. */
 function Masthead({
   eyebrow,
@@ -215,24 +206,23 @@ function Masthead({
   statLabel,
   back,
   hue,
-  wide = false,
 }: {
   eyebrow?: string;
   title: ReactNode;
-  /** An italic serif lede reads as an essay's opening line. It belongs on a
-   *  page someone reads; the library gets a plain sans note instead (see
-   *  `note`, rendered alone). */
+  /** The page's opening line. Plain sans; the library's shorter `note` is the
+   *  same object at a smaller size. */
   lede?: string;
   note?: string;
   stat?: number;
   statLabel?: string;
   back?: { label: string; onClick: () => void };
-  /** Overrides the rubric rule with a world hue. Defaults to the seal. */
+  /** A world hue rule above the title, naming the tradition this page belongs
+   *  to. Absent on every page that does not belong to one — the rule earns its
+   *  place by meaning something, so there is no default stroke. */
   hue?: string;
-  wide?: boolean;
 }) {
   return (
-    <Column className="pt-12" wide={wide}>
+    <Column className="pt-12">
       {back && (
         <button
           onClick={back.onClick}
@@ -242,7 +232,7 @@ function Masthead({
           ‹ {back.label}
         </button>
       )}
-      <div style={{ borderTop: `2px solid ${hue ?? "var(--seal)"}` }} />
+      {hue && <div style={{ borderTop: `2px solid ${hue}` }} />}
       <div className="flex items-start justify-between gap-10 pt-6">
         <div className="min-w-0">
           {eyebrow && (
@@ -252,7 +242,7 @@ function Masthead({
           )}
           <h1
             className="text-6xl leading-[0.95] tracking-tight"
-            style={{ fontFamily: display, fontWeight: 500, color: "var(--ink)" }}
+            style={{ fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em" }}
           >
             {title}
           </h1>
@@ -261,7 +251,7 @@ function Masthead({
           <div className="shrink-0 pt-1 text-right">
             <div
               className="text-5xl leading-none"
-              style={{ fontFamily: display, fontWeight: 500, color: "var(--ink)" }}
+              style={{ fontWeight: 600, color: "var(--ink)" }}
             >
               {stat}
             </div>
@@ -274,7 +264,7 @@ function Masthead({
       {lede && (
         <p
           className="mt-6 max-w-xl text-xl leading-snug"
-          style={{ fontFamily: display, fontStyle: "italic", color: "var(--ink-secondary)" }}
+          style={{ color: "var(--ink-secondary)" }}
         >
           {lede}
           {note ? ` — ${note}` : ""}
@@ -419,20 +409,14 @@ export function HomeMenu({
   /** Open the provenance page (#229). Optional so the menu renders standalone. */
   onAbout?: () => void;
 }) {
-  // Presentation only: the contents of a printed page are numbered in roman,
-  // and the doors are a contents list. Nothing downstream reads these.
-  const folios = ["i", "ii", "iii", "iv", "v"];
-  let f = 0;
-  const next = () => folios[f++] ?? "·";
   return (
     <div>
       <Masthead title={<span>bert&#8202;·&#8202;lenses</span>} lede={LEDE} />
       <Column className="pb-20 pt-12">
-        <BlockHeader label="Contents" />
+        <BlockHeader label="Start here" />
         <Ledger>
           <LedgerRow
             door
-            folio={next()}
             name="Create a model"
             description="Start from a blank canvas and draw the structure."
             onClick={onCreate}
@@ -440,7 +424,6 @@ export function HomeMenu({
           {onStartFromData && (
             <LedgerRow
               door
-              folio={next()}
               name="Start from data"
               description="Create one the other way instead: bring a CSV or type observations, and let the structure come later."
               onClick={onStartFromData}
@@ -448,14 +431,12 @@ export function HomeMenu({
           )}
           <LedgerRow
             door
-            folio={next()}
             name="Open a model"
             description="The standard library, your own saved models, or a file from disk."
             onClick={onOpenLibrary}
           />
           <LedgerRow
             door
-            folio={next()}
             name="Documentation"
             description="The language, the kernel, and the traditions behind them."
             tag="external"
@@ -661,7 +642,6 @@ export function LibraryBrowser({
   return (
     <div>
       <Masthead
-        wide
         eyebrow="Library"
         title="Open a model"
         note={`${EXAMPLES_NOTE} ${CORPUS_NOTE}`}
@@ -670,7 +650,7 @@ export function LibraryBrowser({
         back={{ label: "Home", onClick: onBack }}
       />
 
-      <Column wide className="pb-20 pt-6">
+      <Column className="pb-20 pt-6">
         {/* The filter, immediately under the masthead and immediately above the
             models — genus and tradition are facts about a model, not places a
             model lives, so they narrow the list in place. Counts come off the
