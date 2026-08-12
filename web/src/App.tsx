@@ -21,6 +21,7 @@ import type {
   PortFact,
   ResidueEntry,
   RunResultRich,
+  SystemType,
   Thing,
   ValidationIssue,
 } from "./kernel/types";
@@ -45,6 +46,7 @@ import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
 import { MODE_BY_LENS } from "./review";
 import { NewModelTypePrompt } from "./NewModelTypePrompt";
+import { SystemTypeEditor } from "./SystemTypeEditor";
 import { StartFromData } from "./StartFromData";
 import { SlPane } from "./SlPane";
 import { draftSlWithRetry, newTurnId, loadCoauthorTurns, saveCoauthorTurns, type CoauthorTurn, type DraftStage } from "./coauthor";
@@ -1668,6 +1670,8 @@ function Workspace() {
         canExport={canvasModel !== null}
         hasModel={canvasModel !== null}
         currentLabel={currentLabel}
+        systemType={canvasModel?.system_type}
+        onSystemTypeChange={(st) => setCanvasModel((m) => (m ? { ...m, system_type: st } : m))}
         dirty={dirty}
         onHome={goHome}
         libraryModels={libraryList}
@@ -2518,7 +2522,6 @@ function Workspace() {
                 setSelectedThingId(t.thing);
                 setSelectedRelationId(t.relation);
               }}
-              onSystemTypeChange={(st) => setCanvasModel((m) => (m ? { ...m, system_type: st } : m))}
               // #94: accept a run-derived stock unit as DECLARED — write it onto
               // the matching component (run nodes carry the components' own
               // names). An authoring edit like any other: dirty, saved via the
@@ -2640,7 +2643,7 @@ function SeamGlyph({ clean }: { clean: boolean }) {
 // The thin top menu bar — Frost chrome, quiet, mono/small-caps. The File menu
 // carries the working Open / Save / Export seams. Opening a disk file folds into
 // Open…'s "From a file" section rather than a separate Import item.
-function MenuBar({
+export function MenuBar({
   loaded,
   onNew,
   onOpen,
@@ -2653,6 +2656,8 @@ function MenuBar({
   canExport,
   hasModel,
   currentLabel,
+  systemType,
+  onSystemTypeChange,
   dirty,
   onHome,
   libraryModels,
@@ -2677,6 +2682,12 @@ function MenuBar({
   canExport: boolean;
   hasModel: boolean;
   currentLabel: string | null;
+  /** #312 move 1: the model's asserted kind, edited from the name itself. The
+   *  name already stands for "which model is this"; kingdom / genus / domain
+   *  are the same class of fact, so they hang off it rather than holding a slot
+   *  in the inspector dock beside live readings. Undefined = unasserted. */
+  systemType?: SystemType;
+  onSystemTypeChange?: (next: SystemType) => void;
   dirty: boolean;
   onHome: () => void;
   libraryModels: { name: string; savedAt: number; depth: number }[];
@@ -2694,6 +2705,11 @@ function MenuBar({
 }) {
   const [fileOpen, setFileOpen] = useState(false);
   const [switchOpen, setSwitchOpen] = useState(false);
+  const [typeOpen, setTypeOpen] = useState(false);
+  // Display only: the asserted kind, read back into the name's tooltip so the
+  // declaration is legible without opening it. No verdict is computed here.
+  const typeLabel =
+    [systemType?.kingdom, systemType?.genus, systemType?.domain].filter(Boolean).join(" / ") || "unasserted";
   const item = (label: string, onClick: () => void, disabled = false) => (
     <button
       onClick={() => {
@@ -2924,16 +2940,48 @@ function MenuBar({
       </div>
 
       {/* The model now on the canvas — a quiet mono label, dot-marked when it
-          carries unsaved edits. */}
+          carries unsaved edits, and the handle for the model's asserted type
+          (#312 move 1). The name answers "which model is this"; kingdom /
+          genus / domain answer "what is it", so the declaration opens from the
+          name instead of holding a tab in the inspector dock. A dropdown, not
+          a modal: the canvas stays visible and the editor is one click away. */}
       {currentLabel && (
-        <span
-          className="max-w-[16rem] truncate text-[11px]"
-          style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-          title={dirty ? `${currentLabel} — unsaved changes` : currentLabel}
-        >
-          {currentLabel}
-          {dirty ? " •" : ""}
-        </span>
+        <div className="relative">
+          <button
+            onClick={() => onSystemTypeChange && setTypeOpen((o) => !o)}
+            disabled={!onSystemTypeChange}
+            aria-expanded={typeOpen}
+            aria-label={`${currentLabel} — system type`}
+            className="max-w-[16rem] truncate rounded px-1.5 py-0.5 text-[11px]"
+            style={{
+              fontFamily: "var(--font-mono)",
+              color: typeOpen ? "var(--text-secondary)" : "var(--text-muted)",
+              background: typeOpen ? "var(--bg-surface)" : "transparent",
+              cursor: onSystemTypeChange ? "pointer" : "default",
+            }}
+            title={
+              onSystemTypeChange
+                ? `${currentLabel}${dirty ? " — unsaved changes" : ""} · system type: ${typeLabel} (click to declare)`
+                : dirty
+                  ? `${currentLabel} — unsaved changes`
+                  : currentLabel
+            }
+          >
+            {currentLabel}
+            {dirty ? " •" : ""}
+          </button>
+          {typeOpen && onSystemTypeChange && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setTypeOpen(false)} />
+              {/* No frame of its own: SystemTypeEditor's Card is the frame, so
+                  the panel does not double-border. Same component, same
+                  value/onChange contract it carried in the dock. */}
+              <div className="absolute left-0 top-full z-20 mt-1 w-72">
+                <SystemTypeEditor value={systemType} onChange={onSystemTypeChange} />
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       {/* Pin the open model to the workbench — only shown when the model has
