@@ -79,6 +79,24 @@
   --shadow-card: 0 1px 2px rgba(22, 35, 43, 0.05);
   --shadow-card-hover: 0 2px 8px rgba(22, 35, 43, 0.09);
 
+  /* ---------------------------------------------------------------------
+   * The PRINTED RECORD register (home surface only).
+   *
+   * The landing surface is not chrome around a canvas; it is the instrument's
+   * title page and its table of contents. It is set on paper, in ink, with
+   * hairline rules and one rubric stroke — the way a monograph or a plate in a
+   * journal is set. These tokens are consumed ONLY by HomeScreen.tsx, applied
+   * at its root, so the workspace keeps the Frost surface unchanged.
+   * ------------------------------------------------------------------- */
+  --paper: #f7f5f0;
+  --paper-edge: #efece4;
+  --ink: #1b1a17;
+  --ink-secondary: #4b4a45;
+  --ink-muted: #837f76;
+  --rule: #1b1a17;
+  --rule-soft: #d8d3c8;
+  --seal: #8a3324;
+
   --font-display: "Cormorant Garamond", Georgia, serif;
   --font-body: "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
@@ -111,6 +129,18 @@
 
     --border: #2a3944;
     --hairline: #202d3660;
+
+    /* The printed record in dark: not an inverted page but a dark plate —
+       warm cream ink on a near-black ground, the rubric warmed to terracotta
+       so it stays a stroke of colour rather than a stain. */
+    --paper: #131317;
+    --paper-edge: #1b1b20;
+    --ink: #ece7dd;
+    --ink-secondary: #b3ada2;
+    --ink-muted: #83807a;
+    --rule: #ece7dd;
+    --rule-soft: #33333a;
+    --seal: #c9705c;
 
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.25);
     --shadow-card-hover: 0 2px 10px rgba(0, 0, 0, 0.34);
@@ -164,6 +194,20 @@ body {
     var(--bg-primary);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* The printed record's interaction: a row of a printed table cannot light up,
+   so the hover is the faintest possible tint of the page itself and the rubric
+   arriving on the folio numeral. No lift, no border change, no motion. */
+.record-row {
+  transition: background-color var(--transition-base);
+}
+.record-row:hover,
+.record-row:focus-visible {
+  background-color: var(--paper-edge);
+}
+.record-row:hover .record-folio {
+  color: var(--seal);
 }
 
 /* faint tabular figures for all the numbers the kernel returns */
