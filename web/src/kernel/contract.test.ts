@@ -272,10 +272,13 @@ function parseLensFacts(v: unknown): LensFacts {
 }
 
 function parseValidationIssue(v: unknown, where: string): ValidationIssue {
-  // `doc` is optional on the wire (serde default): absent means no doc link.
-  const o = shape(v, where, ["severity", "location", "message", "suggestion"], ["doc"]);
+  // `doc` and `code` are optional on the wire (serde default): an absent `doc`
+  // means no doc link, an absent `code` means an unnamed defect kind, which the
+  // face degrades to an ungroupable singleton rather than guessing from text.
+  const o = shape(v, where, ["severity", "location", "message", "suggestion"], ["doc", "code"]);
   return kernelVerdict({
     severity: oneOf(o.severity, `${where}.severity`, SEVERITIES),
+    code: "code" in o ? str(o.code, `${where}.code`) : "",
     location: str(o.location, `${where}.location`),
     message: str(o.message, `${where}.message`),
     suggestion: nullableStr(o.suggestion, `${where}.suggestion`),
@@ -474,10 +477,11 @@ function parseCanvasAnalysis(v: unknown): CanvasAnalysis {
   const o = shape(v, "CanvasAnalysis", ["validation", "issue_targets", "facts", "description", "residue"]);
   const validation = parseValidationResult(o.validation);
   const issue_targets = arr(o.issue_targets, "CanvasAnalysis.issue_targets").map((t, i) => {
-    const tt = shape(t, `issue_targets[${i}]`, ["thing", "relation"]);
+    const tt = shape(t, `issue_targets[${i}]`, ["thing", "relation", "disregarded_relations"]);
     return {
       thing: nullableNum(tt.thing, `issue_targets[${i}].thing`),
       relation: nullableNum(tt.relation, `issue_targets[${i}].relation`),
+      disregarded_relations: num(tt.disregarded_relations, `issue_targets[${i}].disregarded_relations`),
     };
   });
   if (issue_targets.length !== validation.issues.length) {
@@ -498,10 +502,11 @@ function parseDecompositionReport(v: unknown): DecompositionReport {
     parseValidationIssue(x, `issues[${i}]`),
   );
   const issue_targets = arr(o.issue_targets, "DecompositionReport.issue_targets").map((t, i) => {
-    const tt = shape(t, `issue_targets[${i}]`, ["thing", "relation"]);
+    const tt = shape(t, `issue_targets[${i}]`, ["thing", "relation", "disregarded_relations"]);
     return {
       thing: nullableNum(tt.thing, `issue_targets[${i}].thing`),
       relation: nullableNum(tt.relation, `issue_targets[${i}].relation`),
+      disregarded_relations: num(tt.disregarded_relations, `issue_targets[${i}].disregarded_relations`),
     };
   });
   if (issue_targets.length !== issues.length) {

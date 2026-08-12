@@ -26,6 +26,11 @@ declare const KERNEL_VERDICT: unique symbol;
  *  `ValidationIssue` may enter a `ValidationResult`. */
 export interface VerdictFields {
   severity: Severity;
+  /** The defect KIND this issue is one instance of, named by the kernel
+   *  (`bert_core::validate::ValidationIssue::code`, #319). Two issues share a
+   *  code iff the kernel says they are the same defect, which is what makes
+   *  grouping repeats safe: the face groups on this and never on message text. */
+  code: string;
   location: string;
   message: string;
   suggestion: string | null;
@@ -522,6 +527,11 @@ export type LensDescription =
 export interface IssueTarget {
   thing: number | null;
   relation: number | null;
+  /** How many canvas relations touch `thing` that this verdict did not consider,
+   *  because the author drew them `mere` and mere relations do not bond (#320).
+   *  Kernel-computed in `bert_canvas::lenses::analyze` off the same predicate
+   *  `EdgeFact.bond` carries; the face only says the number out loud. */
+  disregarded_relations: number;
 }
 
 /** decompose_component: the newborn child as the store layer needs it — the

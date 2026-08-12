@@ -18,6 +18,13 @@ The 4-layer systemhood report. Delegates to `bert_core::validate::validate`.
 type ValidationResult = { issues: ValidationIssue[] }
 type ValidationIssue = {
   severity: "Error" | "Warning",
+  // #319, additive: the DEFECT KIND this issue is one instance of, named
+  // kernel-side (`bert_core::validate`, a required argument at every issue
+  // construction site). Two issues share a code iff the kernel says they are
+  // the same defect, which is what lets a surface group repeats without
+  // matching message text. Optional on the wire; absent = unnamed kind, which
+  // a surface must degrade to a singleton rather than guess at.
+  code?: string,
   location: string,
   message: string,
   suggestion: string | null,
@@ -199,13 +206,30 @@ stamping before drawing the crossing flow does not block the gesture.
 
 `CanvasAnalysis` gains one additive field (#51 slice 3, wire-compatible):
 ```ts
-type CanvasAnalysis = { ..., issue_targets: { thing: number|null, relation: number|null }[] }
+type CanvasAnalysis = {
+  ...,
+  issue_targets: {
+    thing: number|null,
+    relation: number|null,
+    disregarded_relations: number,  // #320, additive
+  }[],
+}
 ```
 Index-parallel with `validation.issues`: kernel-resolved canvas navigation
 targets for the audit panel (from `ValidationIssue`'s in-process `subject`
 handle — `serde(skip)`, so `ValidationIssue`'s own wire shape is unchanged —
-mapped through the projection's id bridges). Both fields null when an issue
-has no canvas subject (e.g. the mode-level aggregate verdict).
+mapped through the projection's id bridges). `thing`/`relation` are null when an
+issue has no canvas subject (e.g. the mode-level aggregate verdict).
+
+`disregarded_relations` (#320) counts the canvas relations touching `thing` that
+the verdict did NOT consider, because the author drew them `mere` and mere
+relations do not bond. It is zero for every other issue. It exists because a
+refusal whose subject visibly carries lines reads as contradicted by the canvas:
+the reader counts relations, the kernel counts bonds, and nothing on screen
+separates them. Computed off the same `bond` predicate `EdgeFact` publishes, so
+a surface states the count rather than deriving it. `DecompositionReport`'s
+targets carry the same field, always zero: a seam refusal is about the child's
+contract, not about which parent lines act.
 
 ### `lens_facts(canvas_json: string) → LensFacts`
 The two lens primitives, canvas-keyed — everything the three lens renderings

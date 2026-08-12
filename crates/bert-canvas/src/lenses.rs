@@ -756,6 +756,19 @@ pub struct CanvasAnalysis {
 pub struct IssueTarget {
     pub thing: Option<u64>,
     pub relation: Option<u64>,
+    /// How many canvas relations touch `thing` that the judgement did NOT
+    /// consider — relations the author drew `mere`, which Bunge's Def 1.2 says
+    /// do not act and which therefore never reach the kernel's bond graph
+    /// (bert-lenses#320).
+    ///
+    /// Zero for every other issue, and zero when the subject's relations are
+    /// all bonds. It exists because a refusal whose subject visibly carries
+    /// lines reads as contradicted by the canvas: the reader counts relations,
+    /// the kernel counts bonds, and nothing on screen separates them. A surface
+    /// may say how many were disregarded; the count is kernel-computed from the
+    /// same `bond` predicate `EdgeFact` carries, never re-derived.
+    #[serde(default)]
+    pub disregarded_relations: u32,
 }
 
 /// Compute the lens gate, facts, and formal object together. The facts are
@@ -775,14 +788,30 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
     // Kernel subject → canvas element, via the projection's id maps reversed.
     let thing_of: HashMap<&Id, u64> = p.thing_ids.iter().map(|(k, v)| (v, *k)).collect();
     let relation_of: HashMap<&Id, u64> = p.interaction_of.iter().map(|(k, v)| (v, *k)).collect();
+    // Mere relations never enter the bond graph the kernel judges, so a subject
+    // can carry lines on the canvas and still be refused for carrying nothing.
+    // Count them here, off the same `bond` predicate `facts.edges` publishes,
+    // so a surface can name what the verdict left out (#320).
+    let mere_touching = |thing: Option<u64>| -> u32 {
+        let Some(t) = thing else { return 0 };
+        facts
+            .edges
+            .iter()
+            .filter(|e| !e.bond && (e.a == t || e.b == t))
+            .count() as u32
+    };
     let issue_targets: Vec<IssueTarget> = validation
         .issues
         .iter()
         .map(|issue| match &issue.subject {
-            Some(id) => IssueTarget {
-                thing: thing_of.get(id).copied(),
-                relation: relation_of.get(id).copied(),
-            },
+            Some(id) => {
+                let thing = thing_of.get(id).copied();
+                IssueTarget {
+                    thing,
+                    relation: relation_of.get(id).copied(),
+                    disregarded_relations: mere_touching(thing),
+                }
+            }
             None => IssueTarget::default(),
         })
         .collect();
@@ -851,6 +880,9 @@ pub fn check_decompositions_canvas(
             Some(id) => IssueTarget {
                 thing: thing_of.get(id).copied(),
                 relation: None,
+                // A seam refusal is about the child model's contract, not about
+                // which parent lines act; nothing here is disregarded.
+                disregarded_relations: 0,
             },
             None => IssueTarget::default(),
         })
@@ -882,6 +914,7 @@ fn check_mobus_openness(facts: &LensFacts, issues: &mut Vec<ValidationIssue>) {
     if !gates_inward {
         issues.push(ValidationIssue {
             severity: Severity::Warning,
+            code: "mobus_openness".to_string(),
             location: "mode/Operational".to_string(),
             message: "Mobus: a system is open — it receives from its environment; this \
                       model's boundary gates only outward (exports-only), so it emits \

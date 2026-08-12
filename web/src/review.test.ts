@@ -30,10 +30,10 @@ const rel = (id: number): CanvasModel["relations"][number] => ({
 });
 
 const result = (...issues: ValidationResult["issues"]): ValidationResult => ({ issues });
-const warn = (message: string): ValidationResult["issues"][number] =>
-  kernelVerdict({ severity: "Warning", location: "x", message, suggestion: null, doc: null });
-const err = (message: string): ValidationResult["issues"][number] =>
-  kernelVerdict({ severity: "Error", location: "x", message, suggestion: null, doc: null });
+const warn = (message: string, code = "observed"): ValidationResult["issues"][number] =>
+  kernelVerdict({ severity: "Warning", code, location: "x", message, suggestion: null, doc: null });
+const err = (message: string, code = "refused"): ValidationResult["issues"][number] =>
+  kernelVerdict({ severity: "Error", code, location: "x", message, suggestion: null, doc: null });
 
 describe("summaryLine", () => {
   it("names the counts, the lens, and the mode", () => {

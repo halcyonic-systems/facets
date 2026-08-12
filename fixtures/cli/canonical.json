@@ -424,10 +424,12 @@
         },
         "issue_targets": [
           {
+            "disregarded_relations": 0,
             "relation": 5,
             "thing": null
           },
           {
+            "disregarded_relations": 0,
             "relation": 8,
             "thing": null
           }
@@ -448,6 +450,7 @@
         "validation": {
           "issues": [
             {
+              "code": "self_loop_flow",
               "doc": "docs/glossary.md#precondition",
               "location": "interactions[1]",
               "message": "Mobus §4.3: flow edges require k ≠ o; 'self action' has the same endpoint as source and sink, and self-dependency is not representable in the 8-tuple",
@@ -455,6 +458,7 @@
               "suggestion": "Remove the self-loop; feedback as a first-class cycle is Cybernetic mode (not yet available)"
             },
             {
+              "code": "self_loop_flow",
               "doc": "docs/glossary.md#precondition",
               "location": "interactions[4]",
               "message": "Mobus §4.3: flow edges require k ≠ o; 'self action' has the same endpoint as source and sink, and self-dependency is not representable in the 8-tuple",
@@ -791,6 +795,7 @@
         },
         "issue_targets": [
           {
+            "disregarded_relations": 0,
             "relation": null,
             "thing": null
           }
@@ -816,6 +821,7 @@
         "validation": {
           "issues": [
             {
+              "code": "aggregate_no_bond",
               "doc": "docs/glossary.md#bond--mere",
               "location": "mode/Structural",
               "message": "Bunge Def 1.1: a system requires at least one bond between distinct components; an unbonded collection is an aggregate",
@@ -1201,34 +1207,42 @@
         },
         "issue_targets": [
           {
+            "disregarded_relations": 0,
             "relation": null,
             "thing": null
           },
           {
+            "disregarded_relations": 0,
             "relation": null,
             "thing": null
           },
           {
+            "disregarded_relations": 0,
             "relation": null,
             "thing": null
           },
           {
+            "disregarded_relations": 0,
             "relation": null,
             "thing": null
           },
           {
+            "disregarded_relations": 0,
             "relation": null,
             "thing": null
           },
           {
+            "disregarded_relations": 0,
             "relation": null,
             "thing": null
           },
           {
+            "disregarded_relations": 0,
             "relation": null,
             "thing": null
           },
           {
+            "disregarded_relations": 0,
             "relation": null,
             "thing": null
           }
@@ -1254,6 +1268,7 @@
         "validation": {
           "issues": [
             {
+              "code": "crossing_flow_without_interface",
               "doc": "docs/language/terminology-concordance.md#9-interface",
               "location": "interactions[0].sink_interface",
               "message": "flow 'v(c-n) — input from the cell above' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
@@ -1261,6 +1276,7 @@
               "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
             },
             {
+              "code": "crossing_flow_without_interface",
               "doc": "docs/language/terminology-concordance.md#9-interface",
               "location": "interactions[1].sink_interface",
               "message": "flow 'v(c-1) — input from the cell to the left' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
@@ -1268,6 +1284,7 @@
               "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
             },
             {
+              "code": "crossing_flow_without_interface",
               "doc": "docs/language/terminology-concordance.md#9-interface",
               "location": "interactions[2].sink_interface",
               "message": "flow 'v(c+1) — input from the cell to the right' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
@@ -1275,6 +1292,7 @@
               "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
             },
             {
+              "code": "crossing_flow_without_interface",
               "doc": "docs/language/terminology-concordance.md#9-interface",
               "location": "interactions[3].sink_interface",
               "message": "flow 'v(c+n) — input from the cell below' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
@@ -1282,6 +1300,7 @@
               "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
             },
             {
+              "code": "crossing_flow_without_interface",
               "doc": "docs/language/terminology-concordance.md#9-interface",
               "location": "interactions[4].source_interface",
               "message": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
@@ -1289,6 +1308,7 @@
               "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
             },
             {
+              "code": "crossing_flow_without_interface",
               "doc": "docs/language/terminology-concordance.md#9-interface",
               "location": "interactions[5].source_interface",
               "message": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
@@ -1296,6 +1316,7 @@
               "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
             },
             {
+              "code": "crossing_flow_without_interface",
               "doc": "docs/language/terminology-concordance.md#9-interface",
               "location": "interactions[6].source_interface",
               "message": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
@@ -1303,6 +1324,7 @@
               "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
             },
             {
+              "code": "crossing_flow_without_interface",
               "doc": "docs/language/terminology-concordance.md#9-interface",
               "location": "interactions[7].source_interface",
               "message": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
@@ -2942,6 +2964,7 @@
         },
         "issue_targets": [
           {
+            "disregarded_relations": 0,
             "relation": null,
             "thing": null
           }
@@ -2953,6 +2976,7 @@
         "validation": {
           "issues": [
             {
+              "code": "flow_not_consumed",
               "doc": null,
               "location": "interactions[1]",
               "message": "'policy directive — the target range' (Message) flows into 'Open Market Desk' (Combining), which does not consume Message — the flow is delivered every step and ignored",

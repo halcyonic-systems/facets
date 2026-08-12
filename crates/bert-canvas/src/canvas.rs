@@ -1023,6 +1023,7 @@ pub fn decompose_thing(
         Some(comp) => bert_core::decomposition::derive_child(&p.world, comp),
         None => Err(vec![ValidationIssue {
             severity: bert_core::validate::Severity::Error,
+            code: "not_a_relatum".to_string(),
             location: format!("thing {thing_id}"),
             message: "nothing to decompose here: the selected element does not project as a \
                       model relatum"
@@ -1368,6 +1369,7 @@ mod tests {
     fn a_node_located_error_still_belongs_at_the_gesture() {
         let at = |severity, location: &str| ValidationIssue {
             severity,
+            code: "test".to_string(),
             location: location.to_string(),
             message: String::new(),
             suggestion: None,
@@ -1518,6 +1520,7 @@ mod tests {
     fn the_interface_refusal_is_dropped_at_the_gesture_by_rule() {
         let at = |location: &str| ValidationIssue {
             severity: Severity::Error,
+            code: "test".to_string(),
             location: location.to_string(),
             message: String::new(),
             suggestion: None,

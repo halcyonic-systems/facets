@@ -16,9 +16,20 @@
 // be widened into `validation.issues` — it is a compile error, and
 // `verdictChannel.test.ts` type-checks the violation to prove the error is
 // still there.
-import type { IssueTarget, Severity, ValidationIssue, ValidationResult } from "./kernel/types";
+import type { IssueTarget, Severity, ValidationResult } from "./kernel/types";
 import type { CanvasModel } from "./kernel/types";
-import { MODE_SCOPE, SEVERITY_GLOSS, SEVERITY_HEADING, plainFirst, reviewCounts, summaryLine } from "./review";
+import type { IssueGroup, IssueRow as IssueRowData } from "./review";
+import {
+  MODE_SCOPE,
+  SEVERITY_GLOSS,
+  SEVERITY_HEADING,
+  groupIssues,
+  plainFirst,
+  reviewCounts,
+  shapePhrase,
+  splitRationale,
+  summaryLine,
+} from "./review";
 import { openExternal } from "./desktop";
 
 // Where the linked docs live. The anchors are repo-relative
@@ -82,20 +93,76 @@ function Citation({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** The doc anchor, as a link. Demoted (#204), never dropped (#129). */
+function DocLink({ doc }: { doc: string }) {
+  return (
+    <a
+      href={DOCS_BASE + doc}
+      target="_blank"
+      rel="noreferrer"
+      onClick={(e) => {
+        e.stopPropagation();
+        openExternal(e);
+      }}
+      title="read the precondition this issue cites"
+      style={{ color: "var(--lens-accent)", textDecoration: "underline", textDecorationStyle: "dotted" }}
+    >
+      {docLabel(doc)}
+    </a>
+  );
+}
+
+/** Why the kernel says so, folded away.
+ *
+ *  The citation is the product's central claim and it is also the thing that was
+ *  read six times before the fix was read once (#319). It stays one click away
+ *  and on the page, never removed: a verdict that cannot be checked is not what
+ *  this panel is for. `<details>` and not state, so it survives a server render
+ *  and a printed page. */
+function Rationale({
+  citation,
+  rationale,
+  doc,
+}: {
+  citation: string | null;
+  rationale: string | null;
+  doc: string | null;
+}) {
+  if (!citation && !rationale && !doc) return null;
+  return (
+    <details className="px-3 py-2 text-xs" style={{ color: "var(--text-muted)" }}>
+      <summary className="cursor-pointer select-none" style={{ color: "var(--text-muted)" }}>
+        Why the kernel says so
+      </summary>
+      <span className="mt-2 flex flex-wrap items-baseline gap-2">
+        {citation && <Citation>{citation}</Citation>}
+        {rationale && <span className="basis-full">{rationale}</span>}
+        {doc && <DocLink doc={doc} />}
+      </span>
+    </details>
+  );
+}
+
 function IssueRow({
-  issue,
-  index,
-  target,
+  row,
+  group,
   onNavigate,
 }: {
-  issue: ValidationIssue;
-  index: number;
-  target: IssueTarget | undefined;
+  row: IssueRowData;
+  /** What the group already said once, so the row does not repeat it. */
+  group: IssueGroup;
   onNavigate: (target: IssueTarget) => void;
 }) {
+  const { issue, target, index } = row;
   const navigable = !!target && (target.thing !== null || target.relation !== null);
   const tone = issue.severity === "Error" ? "var(--verdict-error)" : "var(--verdict-warning)";
   const { plain, citation } = plainFirst(issue.message);
+  const { claim, rationale } = splitRationale(plain);
+  const ownCitation = group.citation === null ? citation : null;
+  const ownRationale = group.rationale === null ? rationale : null;
+  const ownDoc = group.doc === null ? issue.doc : null;
+  const ownRepair = group.repair === null ? issue.suggestion : null;
+  const disregarded = target?.disregarded_relations ?? 0;
   return (
     <div
       onClick={navigable ? () => onNavigate(target!) : undefined}
@@ -107,35 +174,64 @@ function IssueRow({
       <span className="block py-3 pl-3 pr-3">
         {/* The verdict, as a sentence. */}
         <span className="block text-sm" style={{ color: "var(--text-primary)" }}>
-          {plain}
+          {claim}
         </span>
-        {/* Second line: where to read why, and what the kernel suggests. */}
-        {(citation || issue.doc || issue.suggestion) && (
-          <span className="mt-1.5 flex flex-wrap items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
-            {citation && <Citation>{citation}</Citation>}
-            {issue.doc && (
-              <a
-                href={DOCS_BASE + issue.doc}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openExternal(e);
-                }}
-                title="read the precondition this issue cites"
-                style={{
-                  color: "var(--lens-accent)",
-                  textDecoration: "underline",
-                  textDecorationStyle: "dotted",
-                }}
-              >
-                {docLabel(issue.doc)}
-              </a>
-            )}
-            {issue.suggestion && <span>{issue.suggestion}</span>}
+        {/* #320: the subject is drawn with lines this verdict did not count.
+            Saying so is the difference between a refusal that reads as wrong and
+            one that teaches Bunge's bond/mere distinction where it bites. */}
+        {disregarded > 0 && (
+          <span className="mt-1.5 block text-xs" style={{ color: "var(--verdict-warning)" }}>
+            {disregarded === 1
+              ? "1 relation drawn here is mere, so this reading does not count it as a bond."
+              : `${disregarded} relations drawn here are mere, so this reading does not count them as bonds.`}
+          </span>
+        )}
+        {ownRepair && (
+          <span className="mt-1.5 block text-xs" style={{ color: "var(--text-muted)" }}>
+            {ownRepair}
+          </span>
+        )}
+        {(ownCitation || ownRationale || ownDoc) && (
+          <span className="mt-1.5 flex flex-wrap items-baseline gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
+            {ownCitation && <Citation>{ownCitation}</Citation>}
+            {ownRationale && <span className="basis-full">{ownRationale}</span>}
+            {ownDoc && <DocLink doc={ownDoc} />}
           </span>
         )}
       </span>
+    </div>
+  );
+}
+
+/** One defect kind: what it is, how many times, how to repair it, then its
+ *  instances. The repair leads because it is what the reader acts on; the
+ *  provenance follows, once. */
+function GroupBlock({ group, onNavigate }: { group: IssueGroup; onNavigate: (target: IssueTarget) => void }) {
+  const n = group.rows.length;
+  return (
+    <div className="border-x border-t" style={{ borderColor: "var(--border)" }}>
+      <div
+        className="flex items-baseline justify-between gap-4 border-b px-3 py-2"
+        style={{ borderColor: "var(--border)" }}
+      >
+        <span className="text-xs" style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
+          {group.label || "unnamed check"}
+        </span>
+        <span className="shrink-0 text-[11px] tabular" style={{ color: "var(--text-muted)" }}>
+          {n === 1 ? "1 instance" : `${n} instances`}
+        </span>
+      </div>
+      {group.repair && (
+        <p className="border-b px-3 py-2 text-sm" style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}>
+          {group.repair}
+        </p>
+      )}
+      <div>
+        {group.rows.map((row) => (
+          <IssueRow key={row.index} row={row} group={group} onNavigate={onNavigate} />
+        ))}
+      </div>
+      <Rationale citation={group.citation} rationale={group.rationale} doc={group.doc} />
     </div>
   );
 }
@@ -147,23 +243,22 @@ function SeverityRegion({
   onNavigate,
 }: {
   severity: Severity;
-  rows: { issue: ValidationIssue; target: IssueTarget | undefined }[];
+  rows: IssueRowData[];
   onNavigate: (target: IssueTarget) => void;
 }) {
   if (rows.length === 0) return null;
+  const groups = groupIssues(rows);
   return (
     <div>
-      <BlockHeader label={SEVERITY_HEADING[severity]} count={String(rows.length)} />
+      <BlockHeader label={SEVERITY_HEADING[severity]} count={shapePhrase(groups)} />
       <div className="border-x border-t px-3 py-2 text-xs" style={{ borderColor: "var(--border)" }}>
         <span style={{ color: severity === "Error" ? "var(--verdict-error)" : "var(--verdict-warning)" }}>
           {SEVERITY_GLOSS[severity]}
         </span>
       </div>
-      <div className="border-x border-t" style={{ borderColor: "var(--border)" }}>
-        {rows.map((r, i) => (
-          <IssueRow key={i} issue={r.issue} index={i + 1} target={r.target} onNavigate={onNavigate} />
-        ))}
-      </div>
+      {groups.map((g) => (
+        <GroupBlock key={g.code || `singleton-${g.rows[0].index}`} group={g} onNavigate={onNavigate} />
+      ))}
     </div>
   );
 }
@@ -186,7 +281,14 @@ export function ReviewPanel({
   onNavigate: (target: IssueTarget) => void;
 }) {
   const counts = reviewCounts(model, validation);
-  const rows = validation.issues.map((issue, i) => ({ issue, target: targets[i] }));
+  // Numbering is per region and assigned before grouping, so a grouped list
+  // still names each verdict by the position the kernel gave it: grouping
+  // rearranges the reading, never the set.
+  const rowsOf = (severity: Severity): IssueRowData[] =>
+    validation.issues
+      .map((issue, i) => ({ issue, target: targets[i] }))
+      .filter((r) => r.issue.severity === severity)
+      .map((r, i) => ({ ...r, index: i + 1 }));
   const clean = validation.issues.length === 0;
   return (
     <div className="grid gap-4">
@@ -228,16 +330,8 @@ export function ReviewPanel({
           </div>
         </div>
       </div>
-      <SeverityRegion
-        severity="Error"
-        rows={rows.filter((r) => r.issue.severity === "Error")}
-        onNavigate={onNavigate}
-      />
-      <SeverityRegion
-        severity="Warning"
-        rows={rows.filter((r) => r.issue.severity === "Warning")}
-        onNavigate={onNavigate}
-      />
+      <SeverityRegion severity="Error" rows={rowsOf("Error")} onNavigate={onNavigate} />
+      <SeverityRegion severity="Warning" rows={rowsOf("Warning")} onNavigate={onNavigate} />
       <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
         Every line above is a machine-checked verdict from the kernel. Nothing here is generated prose.
       </p>

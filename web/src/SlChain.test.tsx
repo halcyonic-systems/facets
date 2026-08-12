@@ -37,6 +37,7 @@ const desc: LensDescription = {
 
 const refusal: ValidationIssue = kernelVerdict({
   severity: "Error",
+  code: "dead_end",
   location: "mode/Operational",
   message: "'Plant' is terminal/absorbing: no flow leaves it",
   suggestion: null,
