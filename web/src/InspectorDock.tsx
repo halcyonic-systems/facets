@@ -72,6 +72,7 @@ export function InspectorDock({
   reviewRequest,
   reviewedAt,
   onReview,
+  formalRequest,
 }: {
   result: RunResultRich | null;
   /** #282: the DTMC run (#67) — the Run tab's result when the active lens
@@ -130,6 +131,11 @@ export function InspectorDock({
   /** Wall-clock stamp of the last invoked review, null before the first. */
   reviewedAt: string | null;
   onReview: () => void;
+  /** The SL pane's compile chain pointing at step 3 (`describe`). Same bump
+   *  contract as `reviewRequest`: each increment raises the Formal tab, so the
+   *  chain's "open Formal" lands somewhere visible instead of firing into a
+   *  tab the author never opened. */
+  formalRequest: number;
 }) {
   // Whether the dock stands open follows the MODEL until the author says
   // otherwise. A blank model has nothing to inspect, so a full instrument column
@@ -181,6 +187,15 @@ export function InspectorDock({
     setTab("review");
     setCollapsed(false);
   }, [reviewRequest]);
+
+  // The SL pane's compile chain asking for step 3. Same shape as the review
+  // bump above: the chain names the formal object, this puts it on screen
+  // beside the text that produced it.
+  useEffect(() => {
+    if (formalRequest === 0) return;
+    setTab("formal");
+    setCollapsed(false);
+  }, [formalRequest]);
 
   // Focus wins over the thin collapse rail — a full-width dock can't be a sliver.
   if (collapsed && !focused) {

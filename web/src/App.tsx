@@ -1346,6 +1346,13 @@ function Workspace() {
     setReviewedAt(new Date().toLocaleTimeString());
   }, []);
 
+  // The SL pane's compile chain asking the dock for the Formal tab — the same
+  // bump contract as the review above. Nothing is computed here: `describe`
+  // already ran with the rest of the analysis; this only decides what is on
+  // screen next to the text.
+  const [formalRequest, setFormalRequest] = useState(0);
+  const showFormal = useCallback(() => setFormalRequest((n) => n + 1), []);
+
   // The math-panel-first Klir register (#100): under Klir the set listings are
   // the primary surface and the node-and-edge picture demotes to a locator, so
   // the container composes differently — Mobus is untouched.
@@ -1995,6 +2002,11 @@ function Workspace() {
               onCompiled={(cm, lensExplicit) => onSlCompiled(cm, lensExplicit, true)}
               onClose={() => setSlOpen(false)}
               canvasModel={canvasModel}
+              // The compile chain (text → model → formal object → verdict):
+              // the kernel outputs the pane needs to name what its own Compile
+              // just produced. Same `desc`/`verdict` the dock reads — one
+              // analysis, two places it is legible.
+              chain={{ desc, verdict, onShowFormal: showFormal }}
               // #10: the co-author, folded into the pane as a mode (locked
               // 2026-07-24) — not a dock tab. coauthorDraft owns the whole
               // draft->compile->preview->record sequence; the pane just
@@ -2489,6 +2501,7 @@ function Workspace() {
               canvasModel={canvasModel}
               tick={tick}
               reviewRequest={reviewRequest}
+              formalRequest={formalRequest}
               reviewedAt={reviewedAt}
               onReview={invokeReview}
               onNavigate={(t) => {
