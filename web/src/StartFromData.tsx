@@ -207,10 +207,16 @@ export function StartFromData({
 
   const gate = (
     <div className="max-w-xl">
+      {/* Why Klir, said plainly. The lens is not a default we picked: Klir's
+          epistemological hierarchy is the one that begins at data and puts
+          structure on a higher rung, which is exactly the order a user who
+          arrives with observations and no model is working in. */}
       <p className="mb-4 text-sm" style={{ color: "var(--text-secondary)" }}>
-        Bring observations first; structure can come later or never. Klir&rsquo;s hierarchy starts
-        here — variables and their state sets are a <em>source system</em>, observed states over a
-        support are a <em>data system</em>. This surface authors those two rungs and nothing more.
+        You arrived with observations and no structure. Klir&rsquo;s hierarchy starts in that same
+        place, which is why this screen works in the Klir lens. Variables and their state sets are a{" "}
+        <em>source system</em>. Observed states over a support are a <em>data system</em>. Structure
+        is a higher rung in Klir, so it can come later or never. This screen authors the first two
+        rungs and nothing more.
       </p>
       <div className="flex gap-3">
         <label
@@ -239,7 +245,7 @@ export function StartFromData({
     <section className="w-80 shrink-0 overflow-y-auto p-3" style={{ borderLeft: "1px solid var(--border)", background: "var(--bg-secondary)" }}>
       <div className="mb-1.5 flex items-baseline justify-between">
         <h2 className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
-          Source system — the frame
+          Source system: the frame
         </h2>
         {/* A wide CSV (HMDA is ~99 columns) starts from none-included just as
             often as from all: both sweeps, support column always kept. */}
@@ -259,9 +265,9 @@ export function StartFromData({
         </span>
       </div>
       <p className="mb-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
-        Which variables exist, their scales, their standing, the support — decided here, complete
-        before any row exists. No observation lives in this panel. The guesses below are proposals;
-        each one is yours to ratify or correct.
+        Which variables exist, their scales, their standing, the support. All of it is decided
+        here, before any row exists. No observation lives in this panel. The guesses below are
+        proposals. Ratify or correct each one.
       </p>
       <ul className="text-xs">
         {grid.headers.map((h, i) => {
@@ -291,7 +297,7 @@ export function StartFromData({
                   }
                   className="px-1 py-0.5 font-mono text-[11px]"
                   style={selectStyle}
-                  title="Klir's basic-vs-supporting standing — declared, not derived"
+                  title="Klir's basic-vs-supporting standing: declared, not derived"
                 >
                   <option value="Basic">basic</option>
                   <option value="Support">support</option>
@@ -324,7 +330,7 @@ export function StartFromData({
                   ? "no observed states yet"
                   : states.length <= MAX_STATES
                     ? `states {${states.join(", ")}}`
-                    : `${states.length} distinct values — measured, not enumerated`}
+                    : `${states.length} distinct values: measured, not enumerated`}
               </div>
             </li>
           );
@@ -340,12 +346,12 @@ export function StartFromData({
           is the chisel; the data system is what "create entry" commits. */}
       <div className="mb-1.5">
         <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>
-          Raw material — observations read through the frame
+          Raw material: observations read through the frame
         </span>
         <span className="ml-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
           {hasObservations
-            ? "each row is a candidate observation — the data system is what “create entry” commits"
-            : "no observed states yet — the entry stands at Source until a row is filled"}
+            ? "each row is a candidate observation. “create entry” is what commits the data system"
+            : "no observed states yet, so the entry stands at Source until a row is filled"}
         </span>
       </div>
       <table className="text-xs" style={{ borderCollapse: "separate", borderSpacing: 0, fontVariantNumeric: "tabular-nums" }}>
@@ -404,7 +410,7 @@ export function StartFromData({
       </table>
       {!handMode && grid.rows.length > 40 && (
         <p className="mt-1 font-mono text-[10px]" style={{ color: "var(--text-muted)" }}>
-          … {grid.rows.length - 40} more rows (all are kept; the preview shows 40)
+          … {grid.rows.length - 40} more rows (all are kept, the preview shows 40)
         </p>
       )}
       {handMode && (
@@ -424,6 +430,18 @@ export function StartFromData({
     <div className="fixed inset-0 z-40 flex flex-col" style={{ background: "var(--bg-primary)" }}>
       <div className="px-4 pt-3 pb-2" style={{ borderBottom: "1px solid var(--border)" }}>
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          {/* The way out, where a way out is looked for. This screen opens over
+              the start screen, so leaving it lands there: one bordered control
+              reading as a control, rather than muted text at the far end of the
+              row. Same handler as the old cancel. */}
+          <button
+            onClick={onCancel}
+            title="Leave without creating an entry and return to the start screen"
+            className="self-center px-2 py-1 font-mono text-xs uppercase tracking-wide"
+            style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+          >
+            ← home
+          </button>
           <span className="font-display text-lg" style={{ color: "var(--text-primary)" }}>
             Start from data
           </span>
@@ -431,8 +449,8 @@ export function StartFromData({
           {grid && (
             <span className="font-mono text-xs" style={{ color: "var(--text-secondary)" }}>
               source system: {includedCount} variable{includedCount === 1 ? "" : "s"} · support:{" "}
-              {grid.headers[supportIdx] ?? "—"} — data system: {grid.rows.length} row
-              {grid.rows.length === 1 ? "" : "s"} → level{" "}
+              {grid.headers[supportIdx] ?? "—"} · data system: {grid.rows.length} row
+              {grid.rows.length === 1 ? "" : "s"} · level{" "}
               <strong style={{ color: "var(--text-primary)" }}>{level}</strong>
             </span>
           )}
@@ -461,16 +479,13 @@ export function StartFromData({
                 create entry
               </button>
             )}
-            <button onClick={onCancel} className="px-2 py-1 text-xs" style={{ color: "var(--text-muted)" }}>
-              cancel
-            </button>
           </span>
         </div>
         <p className="mt-1 max-w-3xl text-xs" style={{ color: "var(--text-muted)" }}>
-          The panel on the right is the <em>source system</em> — the frame, with no observations in
-          it. The sheet is raw material read through that frame: choosing columns carves the frame,
+          The panel on the right is the <em>source system</em>: the frame, with no observations in
+          it. The sheet is raw material read through that frame. Choosing columns carves the frame,
           rows fill it, and <em>create entry</em> commits the <em>data system</em>. No relation is
-          asserted at any point.
+          asserted at any point, which is what keeps the entry inside Klir&rsquo;s lower rungs.
         </p>
       </div>
       <div className="flex min-h-0 flex-1">
