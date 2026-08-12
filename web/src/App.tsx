@@ -35,6 +35,7 @@ import { KlirRegister } from "./canvas/KlirRegister";
 import { BungeRegister } from "./canvas/BungeRegister";
 import { BoundaryPopover } from "./canvas/BoundaryPopover";
 import { DataMode } from "./DataMode";
+import { RunMode } from "./RunMode";
 import { InterfacePopover } from "./canvas/InterfacePopover";
 import { PaletteRail } from "./canvas/PaletteRail";
 import type { PaletteTool } from "./canvas/lenses/registry";
@@ -80,6 +81,24 @@ const residueLine = (e: ResidueEntry) => (e.count === 0 ? e.label : `${e.count} 
 
 const today = () => new Date().toISOString().slice(0, 10);
 const LENSES: CanvasModel["lens"][] = ["Klir", "Bunge", "Mobus"];
+
+/** The mode axis (#304, extended by #312 move 2), in switch order. Three things
+ *  to be DOING with the open model — asserting, observing, executing — not three
+ *  readings of it. The readings are the inspector dock's tabs, and Run is no
+ *  longer one of them: a run has a timeline, inputs and results, and it now gets
+ *  the whole stage to show them on. */
+export const WORK_MODES = ["structure", "data", "run"] as const;
+export type WorkMode = (typeof WORK_MODES)[number];
+const WORK_MODE_LABEL: Record<WorkMode, string> = {
+  structure: "Structure",
+  data: "Data",
+  run: "Run",
+};
+const WORK_MODE_TITLE: Record<WorkMode, string> = {
+  structure: "Structure — author the model (the canvas asserts)",
+  data: "Data — the model's data-level face (rows = time, columns = declared flows; observes, never asserts)",
+  run: "Run — the model executing: its time slice, what forces it, and the trajectory that came back",
+};
 
 // #109 walk choreography — the enter/exit transition's OUT phase length. Must
 // match the walk-*-out animation durations in index.css: the model swap waits
@@ -236,10 +255,14 @@ function Workspace() {
   const [selectedRelationId, setSelectedRelationId] = useState<number | null>(null);
   const [selectedThingId, setSelectedThingId] = useState<number | null>(null);
   const [boundaryAnchor, setBoundaryAnchor] = useState<Pt | null>(null);
-  // #304: Structure vs Data — a MODE, not a dock tab. Data mode is the model's
-  // Klir data-level face (rows = support, columns = declared flows); the
-  // canvas deliberately does not render there. Ratified 2026-08-09.
-  const [workMode, setWorkMode] = useState<"structure" | "data">("structure");
+  // #304: the MODE axis, not dock tabs. Three values, and each one is a
+  // different thing to be doing with the open model rather than a different
+  // reading of it: STRUCTURE asserts (the canvas), DATA observes (the model's
+  // Klir data-level face — rows = support, columns = declared flows), RUN
+  // executes (#312 move 2 — the run is an activity with a timeline, inputs and
+  // results, and Run = a mode transition is doctrine, Arc 4). Only Structure
+  // renders the canvas. Structure/Data ratified 2026-08-09; Run 2026-08-12.
+  const [workMode, setWorkMode] = useState<WorkMode>("structure");
   // #304 M2 slice 1: a CSV attached to the OPEN model from the Data tab —
   // the document acquires data without a demo bundle. Cleared wherever the
   // open document changes (same sites that clear `demo`).
@@ -1273,6 +1296,27 @@ function Workspace() {
   // stored state — it is DERIVED by recompiling the demo's `.sl` (the author's
   // document), so it can never go stale or leak across documents. Relation ids
   // are deterministic per compile, so the map lands on the same flows.
+  // #94: accept a run-derived stock unit as DECLARED — write it onto the
+  // matching component (run nodes carry the components' own names). An
+  // authoring edit like any other: dirty, saved via the normal save path. It
+  // rides with the run panel, so #312 move 2 moved it from the dock's prop site
+  // to here, unchanged.
+  function acceptDerivedUnit(name: string, unit: string) {
+    setCanvasModel((m) =>
+      m
+        ? {
+            ...m,
+            things: m.things.map((t) =>
+              t.role === "Component" && t.name.trim() === name.trim()
+                ? { ...t, stock_unit: unit }
+                : t,
+            ),
+          }
+        : m,
+    );
+    setDirty(true);
+  }
+
   function resetInputs() {
     if (!canvasModel || !demo?.sl) return;
     const compiled = compileSl(demo.sl);
@@ -1749,12 +1793,15 @@ function Workspace() {
           >
             {/* #304: the mode switch — sibling of the lens pills, left of
                 them. A lens is a reading and reads at either rung; the mode
-                decides which rung's face fills the stage. */}
+                decides which rung's face fills the stage. #312 move 2 put Run
+                on this axis: it is the one control that says the run exists, so
+                it is always visible while a model is open, and pressing ▶ Run
+                arrives here on its own. */}
             <div
               className="flex items-center gap-1 rounded-pill p-1"
               style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
             >
-              {(["structure", "data"] as const).map((m) => (
+              {WORK_MODES.map((m) => (
                 <button
                   key={m}
                   onClick={() => setWorkMode(m)}
@@ -1765,13 +1812,9 @@ function Workspace() {
                     color: workMode === m ? "var(--text-on-accent)" : "var(--text-secondary)",
                     transition: "var(--transition-base)",
                   }}
-                  title={
-                    m === "structure"
-                      ? "Structure — author the model (the canvas asserts)"
-                      : "Data — the model's data-level face (rows = time, columns = declared flows; observes, never asserts)"
-                  }
+                  title={WORK_MODE_TITLE[m]}
                 >
-                  {m === "structure" ? "Structure" : "Data"}
+                  {WORK_MODE_LABEL[m]}
                 </button>
               ))}
             </div>
@@ -1844,8 +1887,9 @@ function Workspace() {
             >
               SL
             </button>
-            {/* Δt/T moved into the run deck (walkthrough queue): the run's time
-                controls live with the run — RUN tab, above Inputs. */}
+            {/* Δt/T live with the run they govern, in Run mode beside Inputs.
+                The controls below stay HERE, on the axis-wide strip, so the run
+                can be started from whichever mode the author is in. */}
             <div className="ml-auto flex flex-wrap items-center gap-3">
               {(() => {
                 // #282: the run wears its lens — the registry declares the run
@@ -1865,7 +1909,13 @@ function Workspace() {
                   runKind === "dtmc" && !!canvasModel && canvasModel.things.length > 0 && !subGenerative;
                 const runnable =
                   runKind === "dtmc" ? dtmcRunnable : runKind === "conservation" && !!runCsv;
+                // #312 move 2: pressing Run is a MODE TRANSITION, so it makes
+                // one. The results left the dock, and a primary action whose
+                // output lands somewhere the author is not looking is how a
+                // feature becomes findable only by people who knew where it
+                // used to be. Nothing about the run itself changes here.
                 const onRun = () => {
+                  setWorkMode("run");
                   if (runKind === "dtmc") {
                     if (dtmcRunnable) runKlir(canvasModel, t);
                   } else if (runKind === "conservation" && runCsv) {
@@ -1896,6 +1946,7 @@ function Workspace() {
                 // longer, scrubber landed on the new final tick. No incremental
                 // engine state: the recorded-run architecture makes T+1 exact.
                 const onStep = () => {
+                  setWorkMode("run");
                   if (runKind === "dtmc") {
                     if (!dtmcRunnable) return;
                     // The Markov history carries the t0 row, so the current
@@ -1995,10 +2046,13 @@ function Workspace() {
             inspector-focus mode (#57) the palette and SL pane fold away and the
             canvas <main> is hidden (not unmounted) so the dock can fill the row. */}
         <div className="flex min-h-0 flex-1">
-          {/* The palette authors onto the CANVAS; Data mode has no canvas, so
-              the rail folds away with the mode (#309 — it was overlapping the
-              sheet's left edge). */}
-          {canvasModel && !inspectorFocused && workMode !== "data" && (
+          {/* The palette authors onto the CANVAS, and only Structure mode has
+              one — Data and Run both take the stage, so the rail folds away with
+              the mode (#309: it was overlapping the sheet's left edge). Written
+              as "is structure", never "is not data": with three modes on the
+              axis, a negation would have left the palette standing over the
+              run. */}
+          {canvasModel && !inspectorFocused && workMode === "structure" && (
             <PaletteDock collapsed={paletteCollapsed} onToggle={() => setPaletteCollapsed((c) => !c)}>
               <PaletteRail lens={canvasModel.lens} armed={armed} onArm={setArmed} />
             </PaletteDock>
@@ -2056,7 +2110,27 @@ function Workspace() {
                         The "in" phases clear themselves on animation end. It
                         encloses the whole per-lens view, so under Klir the
                         register dives with its locator. */}
-                    {workMode === "data" ? (
+                    {workMode === "run" ? (
+                      /* #312 move 2: the run takes the stage. Same state, same
+                         kernel outputs, same cards the dock's Run tab hosted —
+                         re-parented into the mode, which is the width they were
+                         starved of. */
+                      <RunMode
+                        result={result}
+                        markovRun={markovRun}
+                        ranEdited={ranEdited}
+                        runError={runError}
+                        lens={canvasModel.lens}
+                        onAcceptUnit={acceptDerivedUnit}
+                        tick={tick}
+                        model={canvasModel}
+                        manifest={demo ? manifest : null}
+                        onInputEdit={applyInputEdit}
+                        onResetInputs={demo?.sl ? resetInputs : undefined}
+                        time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}
+                        runKind={LensPalette[canvasModel.lens].run}
+                      />
+                    ) : workMode === "data" ? (
                       <DataMode
                         model={canvasModel}
                         modelName={canvasModel.name?.trim() || currentLabel || "untitled"}
@@ -2411,7 +2485,10 @@ function Workspace() {
                           .join(" · ")}
                       </div>
                     )}
-                    {workMode !== "data" && (
+                    {/* The stage is the canvas here by construction (this is
+                        the Structure branch), but the guard says which mode it
+                        means rather than which one it is not. */}
+                    {workMode === "structure" && (
                       <div
                         className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-mono"
                         style={{ color: "var(--text-muted)" }}
@@ -2461,9 +2538,10 @@ function Workspace() {
                     )}
                   </div>
 
-                  {/* Canvas-adjacent sim controls: the scrubber animates the
-                      canvas frame, so it stays attached to the canvas (not one
-                      of the forked panels). */}
+                  {/* The run's transport, under the stage in every mode: the
+                      scrubber animates the canvas frame in Structure and marks
+                      where the system is on its path in Run, so it sits below
+                      the stage rather than inside either one. */}
                   {result && (
                     <div className="mt-3 grid gap-3">
                       <SimScrubber steps={result.ticks} tick={tick} onTick={setTick} />
@@ -2492,20 +2570,15 @@ function Workspace() {
             )}
           </main>
 
-          {/* Right-edge instrument dock: Run / Formal / Review as tabs, one
-              visible at a time, full height of the work region. Only mounts once
-              a model is loaded. */}
+          {/* Right-edge instrument dock: the READINGS as tabs (Element /
+              Formal / Review / Analyst), one visible at a time, full height of
+              the work region. Only mounts once a model is loaded. The run is
+              not among them (#312 move 2) — it is a mode. */}
           {canvasModel && (
             <InspectorDock
               result={result}
-              markovRun={markovRun}
-              ranEdited={ranEdited}
               runManifest={demo ? manifest : null}
-              onInputEdit={applyInputEdit}
-              onResetInputs={demo?.sl ? resetInputs : undefined}
               blurb={demo?.blurb}
-              time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}
-              runError={runError}
               desc={desc}
               verdict={verdict}
               issueTargets={issueTargets}
@@ -2522,29 +2595,6 @@ function Workspace() {
                 setSelectedThingId(t.thing);
                 setSelectedRelationId(t.relation);
               }}
-              // #94: accept a run-derived stock unit as DECLARED — write it onto
-              // the matching component (run nodes carry the components' own
-              // names). An authoring edit like any other: dirty, saved via the
-              // normal save path. Absent canvas = nothing to write into.
-              onAcceptUnit={
-                canvasModel
-                  ? (name, unit) => {
-                      setCanvasModel((m) =>
-                        m
-                          ? {
-                              ...m,
-                              things: m.things.map((t) =>
-                                t.role === "Component" && t.name.trim() === name.trim()
-                                  ? { ...t, stock_unit: unit }
-                                  : t,
-                              ),
-                            }
-                          : m,
-                      );
-                      setDirty(true);
-                    }
-                  : undefined
-              }
               resetKeys={[canvasModel, demo?.key ?? "import"]}
               // #122: on the canvas the element editor is DOCKED, so the first
               // click of a double-click can no longer flash a menu into the

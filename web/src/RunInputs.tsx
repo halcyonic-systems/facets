@@ -249,7 +249,7 @@ function GroupHeader({ children }: { children: string }) {
   );
 }
 
-/** Inputs card for the RUN tab. Renders nothing when the model declares no
+/** Inputs card for Run mode. Renders nothing when the model declares no
  *  magnitudes (nothing to adjust is a fact, not an empty box). */
 export function RunInputs({
   model,
