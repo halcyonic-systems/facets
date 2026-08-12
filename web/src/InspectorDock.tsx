@@ -227,11 +227,18 @@ export function InspectorDock({
       style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
     >
       {/* Tab strip — the instrument's face selector. The active tab carries the
-          lens accent (underline + text), the rest stay quiet. */}
+          lens accent (underline + text), the rest stay quiet.
+
+          Two cells, and the split is load-bearing: six tabs plus two controls
+          do not fit a 24rem dock, and when they all shared one non-shrinking
+          row the overflow pushed the LAST tabs and BOTH controls past the right
+          edge — so the dock had no visible way to close and Analyst ran off the
+          screen. The tabs now scroll under pressure; the controls are pinned. */}
       <div
         className="flex items-stretch border-b"
         style={{ borderColor: "var(--hairline)" }}
       >
+        <div className="flex min-w-0 flex-1 items-stretch overflow-x-auto">
         {element && (
           <TabButton label="Element" active={tab === "element"} onClick={() => setTab("element")} />
         )}
@@ -245,7 +252,8 @@ export function InspectorDock({
         />
         <TabButton label="Analyst" active={tab === "analyst"} onClick={() => setTab("analyst")} />
         <TabButton label="Type" active={tab === "type"} onClick={() => setTab("type")} />
-        <div className="ml-auto flex items-stretch">
+        </div>
+        <div className="flex shrink-0 items-stretch">
           {/* Focus toggle — pops the active tab full-width (hides the canvas) and
               back. Same quiet glyph-button chrome as the collapse control. */}
           <button
@@ -368,7 +376,7 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide transition-colors"
+      className="flex shrink-0 items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold uppercase tracking-wide transition-colors"
       style={{
         color: active ? "var(--text-primary)" : "var(--text-muted)",
         borderBottom: `2px solid ${active ? "var(--lens-accent)" : "transparent"}`,
