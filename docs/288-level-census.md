@@ -4,11 +4,21 @@
 
 The hierarchy (*Facets* §4.5): **source → data → generative → structure → metasystem.** A source system is variables and observation channels with no relations among them yet; data adds observations; generative adds a rule that produces them; structure adds coupled subsystems; metasystem adds a rule for how the rule changes. Why the level matters (§5.4): "the modeling relation can be defined only within each particular epistemological category of systems" — which is the sentence the kernel's cross-level refusal prints (`lenses::check_cross_level`).
 
+**Paths updated 2026-08-12 (#318).** The census's *decisions* are untouched — no
+entry changed level, and none was deleted. What changed is where eleven of them
+live: the shipped examples library was curated down to a keep set, so the rest
+moved to `assets/archive/` and the steel-plant walk's level 0 moved to
+`assets/walkthroughs/steel-plant/level-0.sl`. `cell-metabolism.sl` is now
+`respiring-cell.sl` (a system is a thing, not a process). Both Source entries
+and the single Generative entry are among the moved, which is why they are named
+here: the counts below are still 39, and the library's whole level spread now
+depends on files outside `assets/examples/`.
+
 ## Final counts (39 entries: 19 corpus · 18 examples · 2 walkthrough levels)
 
-- **source**: 2 — `corpus/mobus/steel-plant.sl`, `examples/lake-observation.sl`
+- **source**: 2 — `corpus/mobus/steel-plant.sl`, `archive/lake-observation.sl`
 - **data**: 0
-- **generative**: 1 — `examples/parity-automaton.sl`
+- **generative**: 1 — `archive/parity-automaton.sl`
 - **structure**: 36 — everything else
 - **metasystem**: 0
 
@@ -54,24 +64,24 @@ The draft censused 34 entries; five landed between draft and ratification (`fede
 | `corpus/bunge/two-thing-ab.sl` | structure | Def 1.2's C/E/S triple is a structure claim. |
 | `corpus/bunge/two-thing-ba.sl` | structure | Same set. |
 | `corpus/bunge/two-thing-bidirectional.sl` | structure | Same set. |
-| `examples/bank-run.sl` | structure | Coupled components with a declared feedback loop; no amounts, no rule. |
-| `examples/two-sided-market.sl` | structure | Coupled mechanisms; bonds and mere relations, no rule. |
-| `examples/thermostat.sl` | structure | The control loop as coupled components; no transfer function authored. |
+| `archive/bank-run.sl` | structure | Coupled components with a declared feedback loop; no amounts, no rule. |
+| `archive/two-sided-market.sl` | structure | Coupled mechanisms; bonds and mere relations, no rule. |
+| `archive/thermostat.sl` | structure | The control loop as coupled components; no transfer function authored. |
 | `examples/predator-prey.sl` | structure | Two stocks + food-chain flows, no quantities or rule. |
-| `examples/parity-automaton.sl` | **generative** | **Decision 1.** The four labeled flows ARE the complete transition table — the rule is authored, in full. The library's one generative entry. |
-| `examples/fsm-traffic.sl` | structure | **Decision 1.** Wiring authored, rule not (states in a comment); its own header: "the STRUCTURE that generates." |
+| `archive/parity-automaton.sl` | **generative** | **Decision 1.** The four labeled flows ARE the complete transition table — the rule is authored, in full. The library's one generative entry. |
+| `archive/fsm-traffic.sl` | structure | **Decision 1.** Wiring authored, rule not (states in a comment); its own header: "the STRUCTURE that generates." |
 | `examples/hal-harness.sl` | structure | Five coupled subsystems; the endo/exo split is the lesson. |
-| `examples/cell-metabolism.sl` | structure | Two coupled components + environment; no rule. |
+| `archive/respiring-cell.sl` | structure | Two coupled components + environment; no rule. |
 | `examples/llm-market.sl` | structure | **Decision 1.** Declared amounts parameterize a run; the stepping is the engine's — the complete rule is not in the file. |
-| `examples/transformer-block.sl` | structure | Five coupled components around a stock; no rule. |
-| `examples/watershed.sl` | structure | **Decision 1.** Same call as llm-market. |
-| `examples/workshop-crew.sl` | structure | Bunge CES triple with B and B̄ as content; no rule. |
+| `archive/transformer-block.sl` | structure | Five coupled components around a stock; no rule. |
+| `archive/watershed.sl` | structure | **Decision 1.** Same call as llm-market. |
+| `archive/workshop-crew.sl` | structure | Bunge CES triple with B and B̄ as content; no rule. |
 | `examples/jung-functions.sl` | structure | Four coupled functions cascading energy; no rule. |
-| `examples/lake-observation.sl` | **source** | Named in prose (#284): "variables and observation channels, no generating rule declared" — the tension with its declared relations was weighed and the named level ratified; the relations are the investigator's, which is Klir's whole point. Pairs with steel-plant (decision 2). |
-| `examples/supply-chain.sl` | structure | **Decision 1.** The reorder loop is wiring; its logic lives in comments, the stepping in the engine. |
+| `archive/lake-observation.sl` | **source** | Named in prose (#284): "variables and observation channels, no generating rule declared" — the tension with its declared relations was weighed and the named level ratified; the relations are the investigator's, which is Klir's whole point. Pairs with steel-plant (decision 2). |
+| `archive/supply-chain.sl` | structure | **Decision 1.** The reorder loop is wiring; its logic lives in comments, the stepping in the engine. |
 | `examples/bitcoin.sl` | structure | Ratified test applied post-draft: two loops drawn as flows, no rule; its own note says "structure only" until the tether. |
 | `examples/federal-reserve.sl` | structure | Ratified test applied post-draft: coupled subsystems, no authored rule; opens its box where steel-plant keeps it shut. |
-| `examples/steel-plant-walk.sl` | structure | Ratified test applied post-draft: the walk opens the corpus entry's box — coupled residents and a checked seam are the step up from source. |
+| `walkthroughs/steel-plant/level-0.sl` | structure | Ratified test applied post-draft: the walk opens the corpus entry's box — coupled residents and a checked seam are the step up from source. |
 | `walkthroughs/steel-plant/level-1.sl` | structure | Fig. 4.16's four subsystems + six interfaces, coupled; no rule. |
 | `walkthroughs/steel-plant/level-2.sl` | structure | Fig. 4.17's pumps, stock, sensor and decider, coupled; no rule. |
 

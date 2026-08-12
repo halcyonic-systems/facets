@@ -66,14 +66,19 @@ exists to keep it true.
   reference and future revamp (old bert peaked as a structure visual tool; its
   sim bolt-ons never landed — that executable frontier is what this rebuild cracks
   via the in-browser compose engine). They are structural, not executable. No
-  model here is precious; all bert-lenses models to date were toy demos. Phase 1
-  builds purpose-built bert-lenses-native samples (executable where run() needs
-  them) — the first two exist (2026-07-27): `examples/watershed.sl` and
-  `examples/supply-chain.sl`, SL-AUTHORED runnable demos whose bundled models
-  are machine projections of the `.sl` (never hand-edit the JSON; re-mint with
-  `BLESS_SL_DEMOS=1`, gated by `crates/bert-canvas/tests/sl_demos.rs`).
+  model here is precious; all bert-lenses models to date were toy demos.
+  **The shipped library is a curated KEEP SET since #318** (2026-08-12):
+  `examples/` holds six entries and nothing else, `corpus/**` holds the 19
+  author exemplars, and everything the library grew as a by-product of building
+  is in `assets/archive/` — out of the gallery, out of the CLI survey, still
+  compiling and still read by three gates that need it. Read
+  `assets/archive/README.md` before adding to `examples/` or concluding a model
+  is gone. An SL-authored runnable demo's bundled model is a machine projection
+  of its `.sl` (never hand-edit the JSON; re-mint with `BLESS_SL_DEMOS=1`, gated
+  by `crates/bert-canvas/tests/sl_demos.rs`, one resident: `llm-market`).
   **Authoring a new runnable model? Read `docs/authoring-models.md` FIRST** —
-  the full loop plus the five facts that bite (deaf receivers #261, the matter
+  what actually makes a model run (three gates in order; quantities are not one
+  of them) plus the five facts that bite (deaf receivers #261, the matter
   tap, where `amount` acts, stocks start at zero, loops need memory).
   `models/runnable-sample.json` is a throwaway minted from the engine.
 

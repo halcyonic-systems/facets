@@ -1,0 +1,61 @@
+# The archive — models retired from the shipped library (#318)
+
+These are not deleted and they are not broken. They are the record of how the
+language was learned: nearly every one was written to find out whether SL could
+say something, and the answer it gave is the reason the file still exists.
+
+They are here rather than in `../examples/` because the shipped library was
+curated down to a keep set in August 2026. Being here means three things:
+
+- **out of the gallery** — the web app globs `assets/examples/*.sl`, so nothing
+  in this directory appears as a library card;
+- **out of the CLI survey** — `crates/bert-cli/tests/support/mod.rs::library()`
+  discovers `assets/examples` and `assets/corpus` only, so a file here is not
+  held to the door's contract;
+- **still in the repo, still compiling, still runnable from the CLI.**
+  `bert run assets/archive/watershed.sl --t 12` works exactly as it did.
+
+Three of these files are still read by gates, by path, because they carry a fact
+no shipped model carries. Those are marked **HELD** below; moving or editing one
+of them turns a test red, which is the intended arrangement.
+
+## What is here, and what each one settled
+
+| file | lens | runs? | why it was written, and what it settled |
+|---|---|---|---|
+| `bank-run.sl` | mobus | **runs** | Reserve level read as information, information becoming panic, panic draining the reserve — a social system whose feedback is entirely informational except at the sensing tap. Second witness (with `predator-prey`) for the derived-direction fix in `environment_kind.rs`. **HELD** by that test. |
+| `respiring-cell.sl` | mobus | **runs** | Formerly `cell-metabolism.sl`; renamed here (see below). The smallest runnable model in the repo, and the proof that *running needs no quantities at all*: no `time unit`, no `amount`, no `stock`, no parameter of any kind. It runs because its flow graph is acyclic. **HELD** by `environment_kind.rs`. |
+| `fsm-traffic.sl` | klir | no | A finite-state machine authored under the Klir lens. Settled that a Klir-pinned model cannot reach `run` at all — Core mode has no flow semantics — which is a statement about the mode, not a defect in the file. **HELD** by `crates/bert-cli/tests/surface.rs` as the CLI's refusal instance. |
+| `lake-observation.sl` | klir | no | Klir's source system reached from Klir's own side: variables and observation channels, no generating rule. One of only two `level Source` models, and the Klir half of the cross-tradition rhyme with `corpus/mobus/steel-plant.sl` (#288 decision 2). **HELD** by `crates/bert-canvas/tests/sl_level.rs` — it is the same-level comparison that must succeed for the §5.4 refusal to be a real distinction rather than a blanket one. |
+| `parity-automaton.sl` | klir | no | The library's **only** `level Generative` model: its four labelled flows are the complete transition table, so the generating rule is authored in full. Also carries a self-loop that Mobus refuses under §4.3, for the same reason Bunge's σ₃ is refused — cited from `assets/corpus/README.md`. |
+| `supply-chain.sl` | mobus | **runs** | With `watershed.sl`, one of the first two SL-authored runnable demos (2026-07-27). Its original feedback loop was the *discovery* of the deaf-receiver defect (#261): an informational flow into a component that does not consume messages, delivered every step and ignored. That finding is now permanent in `bert-core` (`check_flows_are_consumed`) and in `crates/bert-core/tests/flows_consumed.rs`, which quotes this model's original wiring. Its run bundle is in `demos/`. |
+| `thermostat.sl` | mobus | refused | The textbook control loop, and the model that *cannot run* — `Furnace → Sensor → Thermostat → Furnace` is a loop of pure relays, refused by #259. The repair is not a parameter: it is a **missing thing**. The room is the regulated variable and it is not in the model, so the loop has nowhere to remember. `assets/demos/homeostat.json` is the same system with the room present, and it runs. Keep the pair; the diff is the lesson. |
+| `transformer-block.sl` | mobus | refused | The second algebraic-cycle refusal, on a residual stream. Shows the refusal is not a quirk of small control loops — a five-node computational loop fails the same way and for the same reason. |
+| `two-sided-market.sl` | bunge | no | Bunge-native: bonds and `mere` relations, no typed flows. Second-worst Klir residue in the cross-lens sweep (25 declared facts Klir cannot see, `docs/216-cross-lens-findings.md`). |
+| `watershed.sl` | mobus | **runs** | The first SL-authored runnable model, and the one that separates the conservation ledger into all four channels at once — emitted, stored, sunk, dissipated. Was the doc's crib for "smallest runnable source"; that role passes to `respiring-cell.sl` here (smaller) and `predator-prey.sl` in the shipped set (still there). Its run bundle is in `demos/`. |
+| `workshop-crew.sl` | bunge | no | Bunge's CES triple written out as content, `mere` relations included — the B̄ half that Mobus is structurally blind to (7 facts). |
+
+## `demos/` — two retired run bundles
+
+`supply-chain.json` and `watershed.json` are the gallery bundles (title, blurb,
+genus, horizon, forcing CSV, mapping); `*-model.json` are the machine
+projections of the `.sl` files beside them. They were minted by
+`BLESS_SL_DEMOS=1` and are **frozen at the moment of archiving** — nothing
+re-mints them now, because `crates/bert-canvas/tests/sl_demos.rs` no longer
+lists these two. Editing either `.sl` will silently make its projection stale.
+If one of these ever comes back to the shipped library, put its name back in
+`DEMOS`, move the four files back, and re-bless.
+
+## The rename
+
+`cell-metabolism.sl` → `respiring-cell.sl`, `system "Cell Energy Metabolism"` →
+`system "Respiring Cell"`. "Cell metabolism" is a **process**; a system is a
+**thing**. The file's own contents were always about the thing — two residents
+(mitochondria, ATP pool) inside a boundary, with a bloodstream outside it — so
+the name was the only part that was wrong. This is #313's source/process/system
+confusion appearing in our own library rather than in someone's draft, which is
+the reason it is worth recording rather than quietly fixing.
+
+The name claims nothing the file does not contain. It does not say *what kind*
+of cell, because the model does not say: the only evidence is a bloodstream in
+the environment, which narrows it to an animal cell and no further.

@@ -1,10 +1,13 @@
-# ── Cellular Energy Metabolism ───────────────────────────────────────
-# Every cell is a small energy-conversion system: raw materials cross
-# the boundary, get combined into usable energy, and byproducts leave.
-# This fixture shows a Combining component feeding a Buffering stock —
-# the metabolic engine and its energy reservoir.
+# ── Respiring Cell ───────────────────────────────────────────────────
+# The thing here is a CELL, not the metabolism it performs. Metabolism
+# is what this system does; the system is the cell that does it, and it
+# is drawn by exactly two residents — the mitochondria that respire and
+# the ATP pool that holds what they make — sitting in a bloodstream.
+# Renamed from "Cell Energy Metabolism" (#318): a process name on a
+# system is the same source/process/system confusion as #313, and it
+# had come to rest in our own library.
 
-system "Cell Energy Metabolism" : Concrete/Biological
+system "Respiring Cell" : Concrete/Biological
 
 domain "Aerobic cellular respiration and ATP storage"
 

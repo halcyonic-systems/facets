@@ -60,15 +60,39 @@ describe("the shipped library", () => {
     expect(EXAMPLES.some((e) => !isRunnable(e) && e.sl)).toBe(true); // the structural examples
   });
 
-  it("sorts the known examples into the expected genera", () => {
+  // The keep set after the #318 consolidation, named one by one so a regression
+  // says which file stopped self-sorting. The claim is unchanged — genus comes
+  // from each file's own `system "…" : Kingdom/Genus` line and nothing else —
+  // and it still spans three genera and both kingdoms, which is what makes the
+  // assertion capable of failing rather than a restatement of one case.
+  it("sorts the shipped examples into the expected genera", () => {
     const genusOf = (title: string) => EXAMPLES.find((e) => e.title === title)?.genus;
-    expect(genusOf("Cell Energy Metabolism")).toBe("Biological");
     expect(genusOf("Predator-Prey Ecosystem")).toBe("Biological");
-    expect(genusOf("Two-Sided Marketplace")).toBe("Social");
-    expect(genusOf("Bank Run")).toBe("Social");
-    expect(genusOf("Home Thermostat System")).toBe("Technical");
-    expect(genusOf("Traffic Light Controller")).toBe("Technical");
-    expect(genusOf("Parity Automaton")).toBe("Technical");
+    expect(genusOf("LLM Market")).toBe("Social");
+    expect(genusOf("Federal Reserve")).toBe("Social");
+    expect(genusOf("Bitcoin")).toBe("Social");
+    expect(genusOf("Jungian Cognitive Function Stack")).toBe("Social"); // Conceptual/
+    expect(genusOf("hal")).toBe("Technical");
+  });
+
+  // The consolidation is load-bearing, so it is asserted rather than assumed:
+  // the gallery shows the keep set plus the three pre-SL JSON demos, and
+  // nothing that was archived out of it. `Allocation`, `Homeostat` and
+  // `Reservoir` have no `.sl` — they predate the language and cannot be ported
+  // (see docs/authoring-models.md, "The three pre-SL demos"), so they list here
+  // as run bundles rather than as example sources.
+  it("ships the keep set and the pre-SL demos, and nothing that was archived", () => {
+    expect(EXAMPLES.map((e) => e.title).sort()).toEqual([
+      "Allocation",
+      "Bitcoin",
+      "Federal Reserve",
+      "Homeostat",
+      "Jungian Cognitive Function Stack",
+      "LLM Market",
+      "Predator-Prey Ecosystem",
+      "Reservoir",
+      "hal",
+    ]);
   });
 });
 

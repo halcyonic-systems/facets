@@ -69,7 +69,7 @@ fn assert_no_errors(rel: &str, cm: &CanvasModel) {
 
 #[test]
 fn walkthrough_levels_parse_and_validate() {
-    assert_no_errors("assets/examples/steel-plant-walk.sl", &compile("assets/examples/steel-plant-walk.sl"));
+    assert_no_errors("assets/walkthroughs/steel-plant/level-0.sl", &compile("assets/walkthroughs/steel-plant/level-0.sl"));
     assert_no_errors(
         "assets/walkthroughs/steel-plant/level-1.sl",
         &child("assets/walkthroughs/steel-plant/level-1.sl", LEVEL_1_ID),
@@ -115,7 +115,7 @@ fn walkthrough_seams_are_clean() {
     let stored_1 = fs::read_to_string(repo_path("assets/walkthroughs/steel-plant/level-1.json")).unwrap();
     let stored_2 = fs::read_to_string(repo_path("assets/walkthroughs/steel-plant/level-2.json")).unwrap();
 
-    let parent = compile("assets/examples/steel-plant-walk.sl");
+    let parent = compile("assets/walkthroughs/steel-plant/level-0.sl");
     let refs: Vec<String> = parent
         .things
         .iter()
