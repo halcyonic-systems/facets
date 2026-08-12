@@ -1,40 +1,40 @@
-// The home screen's three levels, rendered to static markup.
+// The home screen's two levels, rendered to static markup.
 //
 // The load-bearing claims:
-//   1. HOME is a menu of three doors, not a list of models.
-//   2. the library browser's shelf counts are DERIVED — they equal the entries
-//      the corresponding shelf page actually lists, so a new example or a new
-//      corpus tradition can never drift from its button.
-//   3. the citation line IS the examples/corpus separator: a corpus row renders
+//   1. HOME is a menu of doors, not a list of models.
+//   2. the LIBRARY is one flat list — every model that ships is on the page,
+//      openable, with no drill-down between the reader and it.
+//   3. the list is partitioned by PROVENANCE (ships / yours), and genus and
+//      tradition survive as TAGS plus a filter rather than as places.
+//   4. the filter's facet counts are DERIVED — a facet's number equals the
+//      number of rows carrying that tag, so a new example or a new corpus
+//      tradition can never drift from its facet.
+//   5. the citation line IS the examples/corpus separator: a corpus row renders
 //      its entry's citation, an example row renders none.
-//   4. a tag on a shelf row marks the EXCEPTION (carries dynamics), never the
-//      rule; a shared citation hoists to the sibling-set header.
+//   6. a tag on a model row marks the EXCEPTION (carries dynamics), never the
+//      rule.
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { AboutPage, HomeMenu, LibraryBrowser, ShelfPage, sharedCitation } from "./HomeScreen";
-import { corpusShelves, exampleShelfEntries, exampleShelves, corpusShelfEntries } from "./home";
+import { AboutPage, HomeMenu, LibraryBrowser } from "./HomeScreen";
+import { facets, matchesFacet, shippedModels, type Tag } from "./home";
 import { CORPUS } from "./corpus";
-import { isRunnable } from "./demos";
-import type { CorpusEntry } from "./corpus";
 import type { LibraryNode } from "./libraryTree";
 
 const noop = () => {};
 const asyncTrue = async () => true;
-const browser = (tree: LibraryNode[] = []) =>
+const browser = (tree: LibraryNode[] = [], initialFacet: Tag | null = null) =>
   renderToStaticMarkup(
     <LibraryBrowser
       tree={tree}
       onBack={noop}
-      onShelf={noop}
+      onOpenExample={noop}
+      onOpenCorpus={noop}
       onOpenFile={noop}
       onLoad={noop}
       onDelete={noop}
       onRename={asyncTrue}
+      initialFacet={initialFacet}
     />,
-  );
-const shelfPage = (area: "examples" | "corpus", id: string) =>
-  renderToStaticMarkup(
-    <ShelfPage area={area} id={id} onBack={noop} onOpenExample={noop} onOpenCorpus={noop} />,
   );
 
 describe("home", () => {
@@ -80,32 +80,31 @@ describe("home", () => {
   });
 });
 
-describe("library browser", () => {
+describe("the library is one flat list", () => {
   const html = browser();
 
-  it("names both standard-library shelves and My library", () => {
-    expect(html).toContain("Standard library");
-    expect(html).toContain("Examples — by genus");
-    expect(html).toContain("Source corpus — by author");
-    expect(html).toContain("My library");
+  // The whole point of the rebuild: opening the library puts openable models on
+  // the page. Nothing may sit between the reader and a model.
+  it("lists every shipped model, with no shelf in between", () => {
+    const all = shippedModels();
+    expect(all.length).toBeGreaterThan(0);
+    for (const m of all) expect(html).toContain(escapeHtml(m.name));
+    expect(html).toContain(`${all.length} model${all.length === 1 ? "" : "s"}`);
+    // The browsing hierarchy is gone: no shelf sections, no per-author page.
+    expect(html).not.toContain("Examples — by genus");
+    expect(html).not.toContain("Source corpus — by author");
+  });
+
+  it("partitions by provenance, ships and yours", () => {
+    expect(html).toContain("Ships with the app");
+    expect(html).toContain("Yours");
     expect(html).not.toContain("Saved in this browser");
   });
 
-  it("shows a count on every shelf button, derived from the shelf itself", () => {
-    for (const s of exampleShelves()) {
-      expect(s.count).toBe(exampleShelfEntries(s.id).length);
-      expect(html).toContain(s.label);
+  it("renders each model's description alongside its name", () => {
+    for (const m of shippedModels()) {
+      if (m.description) expect(html).toContain(escapeHtml(m.description));
     }
-    for (const s of corpusShelves()) {
-      const { sets, loose } = corpusShelfEntries(s.id);
-      expect(s.count).toBe(sets.reduce((n, x) => n + x.entries.length, 0) + loose.length);
-      expect(html).toContain(s.label);
-    }
-  });
-
-  it("carries no traditions of its own — the corpus shelves come from the data", () => {
-    const traditions = new Set(CORPUS.map((e) => e.tradition));
-    expect(new Set(corpusShelves().map((s) => s.id))).toEqual(traditions);
   });
 
   it("offers the file picker and no folder picker", () => {
@@ -114,109 +113,109 @@ describe("library browser", () => {
   });
 });
 
-describe("shelf page", () => {
-  it("lists that shelf's models with their descriptions", () => {
-    const shelf = exampleShelves()[0];
-    const html = shelfPage("examples", shelf.id);
-    const entries = exampleShelfEntries(shelf.id);
-    expect(entries.length).toBeGreaterThan(0);
-    for (const d of entries) expect(html).toContain(d.title);
-    // The count is the masthead's one number: numeral and unit are separate
-    // cells of the band, not one "N models" string.
-    expect(html).toContain(`>${entries.length}<`);
-    expect(html).toContain(`model${entries.length === 1 ? "" : "s"}<`);
+describe("genus and tradition are tags, not places", () => {
+  const html = browser();
+
+  // The claim the old shelf-count test made, restated for the flat list: a
+  // facet's number is counted off the same rows the page renders, so it cannot
+  // drift from what selecting it shows.
+  it("shows a facet for every tag, counted off the rows themselves", () => {
+    const rows = shippedModels();
+    const all = facets(rows);
+    expect(all.length).toBeGreaterThan(0);
+    for (const f of all) {
+      expect(f.count).toBe(rows.filter((r) => matchesFacet(r, f)).length);
+      expect(html).toContain(escapeHtml(f.label));
+    }
+  });
+
+  it("carries no traditions of its own — they come from the data", () => {
+    const traditions = new Set(CORPUS.map((e) => e.tradition));
+    const facetIds = new Set(facets().filter((f) => f.kind === "tradition").map((f) => f.id));
+    expect(facetIds).toEqual(traditions);
+  });
+
+  it("tags every row with its genus or its tradition", () => {
+    for (const m of shippedModels()) {
+      expect(m.tags.length).toBeGreaterThan(0);
+      for (const t of m.tags) expect(html).toContain(escapeHtml(t.label));
+    }
+  });
+
+  it("narrows the list to the rows carrying the selected tag", () => {
+    const genus = facets().find((f) => f.kind === "genus");
+    expect(genus).toBeDefined();
+    const kept = shippedModels().filter((m) => matchesFacet(m, genus!));
+    const dropped = shippedModels().filter((m) => !matchesFacet(m, genus!));
+    expect(kept.length).toBeGreaterThan(0);
+    expect(dropped.length).toBeGreaterThan(0);
+    const filtered = browser([], genus!);
+    for (const m of kept) expect(filtered).toContain(escapeHtml(m.name));
+    expect(filtered).toContain(`${kept.length} model${kept.length === 1 ? "" : "s"}`);
+  });
+});
+
+describe("the citation is the separator", () => {
+  // Every corpus row carries its own citation. On the shelves a set's shared
+  // citation was hoisted to a set header; a flat list has no set header, so the
+  // line lives on the row — which is the distinction the corpus file's own
+  // header comment says has to survive.
+  it("renders a citation on every corpus row", () => {
+    const html = browser();
+    const corpusRows = shippedModels().filter((m) => m.open.kind === "corpus");
+    expect(corpusRows.length).toBe(CORPUS.length);
+    for (const m of corpusRows) {
+      expect(m.citation).toBeTruthy();
+      expect(html).toContain(escapeHtml(m.citation!));
+    }
+  });
+
+  it("renders no citation on an example row", () => {
+    for (const m of shippedModels()) {
+      if (m.open.kind === "example") expect(m.citation).toBeUndefined();
+    }
+    // …and on the page: filtered to a genus, the list is examples only, so no
+    // corpus citation may appear anywhere on it.
+    const genus = facets().find((f) => f.kind === "genus");
+    const filtered = browser([], genus!);
+    for (const e of CORPUS) expect(filtered).not.toContain(escapeHtml(e.citation));
+  });
+
+  // #148's sibling-sets were a shelf-page cluster. The FACT (this model teaches
+  // by diff over one fixed composition) is a property of the entry, so it
+  // survives as a note on the row.
+  it("keeps a sibling-set's name on its members' rows", () => {
+    const html = browser();
+    const sets = new Set(CORPUS.flatMap((e) => (e.set ? [e.set] : [])));
+    expect(sets.size).toBeGreaterThan(0);
+    for (const s of sets) expect(html).toContain(escapeHtml(s));
+  });
+});
+
+describe("the runs mark is the exception", () => {
+  // Every model in the library is structural, so a label saying so on every row
+  // is noise; only the ones that also carry dynamics are marked.
+  it("marks the models that carry dynamics and nothing else", () => {
+    const html = browser();
+    const runnable = shippedModels().filter((m) => m.runs);
+    expect(runnable.length).toBeGreaterThan(0);
+    expect(runnable.length).toBeLessThan(shippedModels().length);
+    expect(occurrences(html, ">runs<")).toBe(runnable.length);
+    expect(html).not.toContain(">diagram<");
   });
 
   // A model's name is data. The ledger sets it in small caps for an even
   // column, but never text-transform: `hal` is named `hal`.
   it("keeps a model's authored case", () => {
-    const shelf = exampleShelves().find((s) =>
-      exampleShelfEntries(s.id).some((d) => d.title === "hal"),
-    );
-    expect(shelf).toBeDefined();
-    const html = shelfPage("examples", shelf!.id);
+    expect(shippedModels().some((m) => m.name === "hal")).toBe(true);
+    const html = browser();
     expect(html).toContain(">hal<");
     expect(html).not.toContain("HAL");
-    expect(html).not.toContain("uppercase\" style=\"font-variant-caps");
     expect(html).not.toContain("text-transform");
   });
-
-  it("renders a citation on every corpus row", () => {
-    const shelf = corpusShelves()[0];
-    const html = shelfPage("corpus", shelf.id);
-    const { sets, loose } = corpusShelfEntries(shelf.id);
-    const entries = [...sets.flatMap((s) => s.entries), ...loose];
-    expect(entries.length).toBeGreaterThan(0);
-    for (const e of entries) {
-      expect(html).toContain(e.title);
-      expect(html).toContain(escapeHtml(e.citation));
-    }
-  });
-
-  it("renders no citation on an example row", () => {
-    const html = shelfPage("examples", exampleShelves()[0].id);
-    for (const e of CORPUS) expect(html).not.toContain(escapeHtml(e.citation));
-  });
-
-  // The tag marks the exception. Every shelf model is structural, so a label
-  // that says so on every row is noise; only the ones that also run are tagged.
-  it("tags the models that carry dynamics and nothing else", () => {
-    for (const shelf of exampleShelves()) {
-      const html = shelfPage("examples", shelf.id);
-      const entries = exampleShelfEntries(shelf.id);
-      expect(html).not.toContain("diagram");
-      if (entries.some(isRunnable)) expect(html).toContain("runs");
-      else expect(html).not.toContain(">runs<");
-    }
-    // …and the shelves do carry runnable models, or the claim is vacuous.
-    expect(exampleShelves().some((s) => exampleShelfEntries(s.id).some(isRunnable))).toBe(true);
-  });
 });
 
-describe("sibling-set citations", () => {
-  const entry = (title: string, citation: string): CorpusEntry => ({
-    file: `x/${title}.sl`,
-    tradition: "klir",
-    title,
-    citation,
-    teaches: "A sentence.",
-    sl: "",
-  });
-
-  it("hoists only when every member cites the same source", () => {
-    expect(sharedCitation([entry("a", "Ch. 10"), entry("b", "Ch. 10")])).toBe("Ch. 10");
-    expect(sharedCitation([entry("a", "Ch. 10"), entry("b", "Ch. 11")])).toBeNull();
-    expect(sharedCitation([entry("a", "Ch. 10")])).toBeNull();
-  });
-
-  // Derived, not hardcoded: Klir's four goal-oriented paradigms share one
-  // figure, so the shelf prints that citation once rather than four times.
-  it("prints a set's shared citation once on the shelf", () => {
-    for (const shelf of corpusShelves()) {
-      const html = shelfPage("corpus", shelf.id);
-      for (const s of corpusShelfEntries(shelf.id).sets) {
-        const shared = sharedCitation(s.entries);
-        if (!shared) continue;
-        expect(occurrences(html, escapeHtml(shared))).toBe(1);
-      }
-    }
-  });
-
-  it("keeps the per-row citation when members cite differently", () => {
-    const differing = [entry("a", "Ch. 10"), entry("b", "Ch. 11")];
-    expect(sharedCitation(differing)).toBeNull();
-    // The corpus shelves prove the fallback still renders: every loose entry
-    // (no set, so never hoisted) keeps its own citation line.
-    for (const shelf of corpusShelves()) {
-      const html = shelfPage("corpus", shelf.id);
-      for (const e of corpusShelfEntries(shelf.id).loose) {
-        expect(html).toContain(escapeHtml(e.citation));
-      }
-    }
-  });
-});
-
-describe("my library", () => {
+describe("yours", () => {
   it("lists saved models inline in the browser, or says there are none", () => {
     expect(browser()).toContain("no saved models yet");
     const filled = browser([
@@ -249,13 +248,32 @@ describe("my library", () => {
     expect(html).not.toContain("model 12");
     expect(html).toContain("show all 15 saved models");
   });
+
+  // Saved models carry no genus and no tradition, so a facet selection must
+  // empty this section rather than silently ignore the filter.
+  it("says so when a filter excludes every saved model", () => {
+    const genus = facets().find((f) => f.kind === "genus");
+    const html = browser(
+      [{ name: "steel plant", savedAt: Date.now(), missingReferents: 0, children: [] }],
+      genus!,
+    );
+    expect(html).not.toContain("steel plant");
+    expect(html).toContain("clear the filter");
+  });
 });
 
 function occurrences(haystack: string, needle: string): number {
   return haystack.split(needle).length - 1;
 }
 
-// react-dom/server escapes text; compare against the same escaping.
+// react-dom/server escapes text; compare against the same escaping. The
+// apostrophe matters now that whole descriptions are compared, not just
+// citations — react writes it as &#x27;.
 function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
 }

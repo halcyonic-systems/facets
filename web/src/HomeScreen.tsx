@@ -1,18 +1,29 @@
 // The home screen — a menu with three doors, not a modal stacked on an empty
-// canvas. Three levels, one surface:
+// canvas. Two levels, one surface:
 //
-//   home     Create a model · Open a model · Documentation
-//   library  the shelves: examples by genus, corpus by author, your saved
-//            models listed inline, a file from disk
-//   shelf    one shelf's models, name + description (+ citation, corpus only)
+//   home     Create a model · Start from data · Open a model · Documentation
+//   library  ONE FLAT LIST of every model, partitioned by provenance —
+//            Ships with the app / Yours — plus a file from disk
 //
-// Counts on the shelf buttons are derived (home.ts) — a new example or a new
-// corpus tradition lights up its button with no edit here.
+// The library is not a browsing hierarchy any more. Genus and tradition are
+// facts ABOUT a model, not places a model lives, so they ride the row as tags
+// and narrow the list through a filter; the page opens on openable models.
+// The partition that survives is PROVENANCE, because it is the one that will
+// matter on release: a bundle ships a handful of models and everything else is
+// the user's own.
 //
-// The examples/corpus separation is the point of the two-section library: an
-// example is ours, a corpus entry is an author's. The CITATION LINE is what
-// tells them apart on the page — identical row layout, corpus rows render a
-// citation and example rows do not.
+// Rows and facets are both derived (home.ts) from the same groupings the
+// gallery has always read — a new example or a new corpus tradition appears
+// with no edit here.
+//
+// The examples/corpus separation is still the point: an example is ours, a
+// corpus entry is an author's. The CITATION LINE is what tells them apart on
+// the page — identical row layout, corpus rows render a citation and example
+// rows do not.
+//
+// The row's left cell is a fixed 3rem gutter holding the folio numeral. It is
+// sized to take a diagram thumbnail later (#311) without the rest of the row
+// moving.
 //
 // Visual language: docs/design/visual-language.md, "printed record" variant.
 // This surface is set as a printed page rather than as software chrome: paper
@@ -24,29 +35,28 @@
 // Names keep their authored case — small caps, never text-transform (the model
 // is named `hal`, not `HAL`).
 import { useState, useRef, type CSSProperties, type ReactNode } from "react";
-import { isRunnable, type Demo } from "./demos";
-import { firstSentence, type CorpusEntry } from "./corpus";
+import type { Demo } from "./demos";
+import type { CorpusEntry } from "./corpus";
 import type { LibraryNode } from "./libraryTree";
 import {
-  corpusShelfEntries,
-  corpusShelves,
-  exampleShelfEntries,
-  exampleShelves,
-  standardLibraryCount,
+  facets,
+  matchesFacet,
+  shippedModels,
   CORPUS_NOTE,
   EXAMPLES_NOTE,
-  type Shelf,
+  type Facet,
+  type ShippedModel,
+  type Tag,
 } from "./home";
 import { openExternal } from "./desktop";
 import { buildInfo, provenanceLines } from "./buildInfo";
 
 const DOCS_URL = "https://github.com/halcyonic-systems/bert-lenses/tree/main/docs";
 
-export type HomeRoute =
-  | { view: "home" }
-  | { view: "library" }
-  | { view: "about" }
-  | { view: "shelf"; area: "examples" | "corpus"; id: string };
+// The `shelf` view is gone: with the list flat and a filter over it, a shelf
+// was a page that showed a subset the library already shows. Nothing in
+// App.tsx ever constructed one, so no caller changes.
+export type HomeRoute = { view: "home" } | { view: "library" } | { view: "about" };
 
 interface HomeProps {
   initialRoute?: HomeRoute;
@@ -98,20 +108,12 @@ export function HomeScreen(props: HomeProps) {
           <LibraryBrowser
             tree={props.libraryTree}
             onBack={() => setRoute({ view: "home" })}
-            onShelf={(s) => setRoute({ view: "shelf", area: s.area, id: s.id })}
+            onOpenExample={props.onOpenExample}
+            onOpenCorpus={props.onOpenCorpus}
             onOpenFile={props.onOpenFile}
             onLoad={props.onLoadFromLibrary}
             onDelete={props.onDeleteFromLibrary}
             onRename={props.onRenameInLibrary}
-          />
-        )}
-        {route.view === "shelf" && (
-          <ShelfPage
-            area={route.area}
-            id={route.id}
-            onBack={() => setRoute({ view: "library" })}
-            onOpenExample={props.onOpenExample}
-            onOpenCorpus={props.onOpenCorpus}
           />
         )}
         {props.onClose && (
@@ -150,11 +152,25 @@ function countLibrary(tree: LibraryNode[]): number {
 // and marks a folio under the cursor; nothing else takes colour.
 // ---------------------------------------------------------------------------
 
-/** The measure. A reading column, not a layout container — narrow enough that
- *  a gloss line stays under ~75 characters, with margins wide enough to read
- *  as page margins rather than padding. */
-function Column({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`mx-auto w-full max-w-3xl px-10 ${className}`}>{children}</div>;
+/** The measure. Two widths, chosen by what the region is for. The default is a
+ *  reading column — narrow enough that a prose line stays under ~75 characters.
+ *  `wide` is for the LIBRARY, which is not prose: a list of forty models is
+ *  scanned, not read, and the extra width buys a row that carries its name, its
+ *  gloss, and its tags on one line instead of stacking them. */
+function Column({
+  children,
+  className = "",
+  wide = false,
+}: {
+  children: ReactNode;
+  className?: string;
+  wide?: boolean;
+}) {
+  return (
+    <div className={`mx-auto w-full ${wide ? "max-w-4xl px-8" : "max-w-3xl px-10"} ${className}`}>
+      {children}
+    </div>
+  );
 }
 
 const mono = "var(--font-mono)";
@@ -199,20 +215,24 @@ function Masthead({
   statLabel,
   back,
   hue,
+  wide = false,
 }: {
   eyebrow?: string;
   title: ReactNode;
+  /** An italic serif lede reads as an essay's opening line. It belongs on a
+   *  page someone reads; the library gets a plain sans note instead (see
+   *  `note`, rendered alone). */
   lede?: string;
   note?: string;
   stat?: number;
   statLabel?: string;
   back?: { label: string; onClick: () => void };
-  /** Overrides the rubric rule with a world hue, so a corpus shelf opens in the
-   *  colour of the tradition it belongs to. Defaults to the seal. */
+  /** Overrides the rubric rule with a world hue. Defaults to the seal. */
   hue?: string;
+  wide?: boolean;
 }) {
   return (
-    <Column className="pt-12">
+    <Column className="pt-12" wide={wide}>
       {back && (
         <button
           onClick={back.onClick}
@@ -260,7 +280,12 @@ function Masthead({
           {note ? ` — ${note}` : ""}
         </p>
       )}
-      <div className="mt-9" style={{ borderTop: "1px solid var(--rule)" }} />
+      {!lede && note && (
+        <p className="mt-5 max-w-2xl text-sm leading-relaxed" style={{ color: "var(--ink-secondary)" }}>
+          {note}
+        </p>
+      )}
+      <div className="mt-8" style={{ borderTop: "1px solid var(--rule)" }} />
     </Column>
   );
 }
@@ -516,67 +541,81 @@ export function AboutPage({ onBack }: { onBack: () => void }) {
 // library browser
 // ---------------------------------------------------------------------------
 
-/** A shelf entry, set as a line of an index: the shelf's name in the serif, a
- *  leader running out to the margin, the count as a folio numeral at the right.
- *  Counts are derived (home.ts). */
-/** The WORLD hue of a corpus shelf — the reading it belongs to. This is the one
- *  colour channel on the library page, and it is semantic: `--world-*` already
- *  means "which tradition" across the instrument (index.css), so a reader who
- *  learns it here reads it unchanged on the canvas. An examples shelf is ours
- *  and carries no tradition, so it takes no hue — the absence is the fact. */
+/** The WORLD hue of a tradition — the reading a corpus model belongs to. This
+ *  is the one colour channel on the library page, and it is semantic:
+ *  `--world-*` already means "which tradition" across the instrument
+ *  (index.css), so a reader who learns it here reads it unchanged on the
+ *  canvas. An example is ours and carries no tradition, so it takes no hue —
+ *  the absence is the fact. */
 const WORLD_HUE: Record<string, string> = {
   klir: "var(--world-klir)",
   bunge: "var(--world-bunge)",
   mobus: "var(--world-mobus)",
 };
 
-function ShelfButton({
-  label,
-  count,
-  note,
-  hue,
+function hueOf(tag: Tag): string | undefined {
+  return tag.kind === "tradition" ? WORLD_HUE[tag.id] : undefined;
+}
+
+/** One facet in the filter line: the tag's name and how many models carry it.
+ *  Selecting it narrows the list in place — it is not a door to another page.
+ *  The selected facet is underscored by the rubric (or, for a tradition, by
+ *  that tradition's hue); an unselected one sits on the soft rule. */
+function FacetButton({
+  facet,
+  selected,
   onClick,
 }: {
-  label: string;
-  count: number;
-  note?: string;
-  /** The tradition's world hue, for corpus shelves. Absent on examples. */
-  hue?: string;
+  facet: Facet;
+  selected: boolean;
   onClick: () => void;
 }) {
+  const hue = hueOf(facet);
   return (
     <button
       onClick={onClick}
-      title={note || undefined}
-      className="record-row flex flex-1 basis-64 items-baseline gap-3 border-b py-2.5 text-left"
-      style={{ borderColor: "var(--rule-soft)" }}
+      title={facet.note || undefined}
+      aria-pressed={selected}
+      className="record-row flex items-baseline gap-2 pb-1.5 pt-1 text-left"
+      style={{
+        borderBottom: selected
+          ? `2px solid ${hue ?? "var(--seal)"}`
+          : "1px solid var(--rule-soft)",
+      }}
     >
-      {hue && (
-        <span
-          aria-hidden
-          className="h-2.5 w-0.5 shrink-0 self-center"
-          style={{ background: hue }}
-        />
-      )}
-      <span className="truncate text-lg leading-tight" style={nameStyle}>
-        {label}
-      </span>
-      <span className="h-px min-w-5 flex-1" style={{ background: "var(--rule-soft)" }} />
+      {hue && <span aria-hidden className="h-2 w-0.5 shrink-0 self-center" style={{ background: hue }} />}
       <span
-        className="record-folio shrink-0 text-[11px] tabular"
-        style={{ color: hue ?? "var(--ink-muted)" }}
+        className="text-base leading-none"
+        style={{ ...nameStyle, color: selected ? "var(--ink)" : "var(--ink-secondary)" }}
       >
-        {count}
+        {facet.label}
+      </span>
+      <span className="shrink-0 text-[10px] tabular" style={{ color: "var(--ink-muted)" }}>
+        {facet.count}
       </span>
     </button>
   );
 }
 
-/** The shelves as one index: two columns of ruled lines, each ending on its
- *  count. Column gap is real white space — the rules under the entries are what
- *  hold the set together, so no cell needs an outline. */
-function ShelfGrid({ children }: { children: ReactNode }) {
-  return <div className="flex flex-wrap gap-x-10">{children}</div>;
+/** The filter line: a label, then the facets, wrapping. Two runs — the genera
+ *  (ours) and the traditions (the authors') — separated by white space rather
+ *  than by a box, because they are two kinds of fact about the same rows and
+ *  not two places to go. */
+function FilterLine({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 py-1">
+      <span className="w-24 shrink-0 text-[11px] uppercase tracking-[0.22em]" style={folioStyle}>
+        {label}
+      </span>
+      {children}
+    </div>
+  );
 }
 
 /** How many saved roots list inline before the browser folds the rest behind a
@@ -586,86 +625,125 @@ const INLINE_LIBRARY_ROOTS = 12;
 export function LibraryBrowser({
   tree,
   onBack,
-  onShelf,
+  onOpenExample,
+  onOpenCorpus,
   onOpenFile,
   onLoad,
   onDelete,
   onRename,
+  /** Opens with a facet already selected. Presentation-only; nothing in the app
+   *  passes it today, and it exists so a caller (or a test) can enter the
+   *  library on a narrowed view without a page of its own. */
+  initialFacet,
 }: {
   tree: LibraryNode[];
   onBack: () => void;
-  onShelf: (s: Shelf) => void;
+  onOpenExample: (d: Demo) => void;
+  onOpenCorpus: (e: CorpusEntry) => void;
   onOpenFile: () => void;
   onLoad: (name: string) => void;
   onDelete: (name: string) => void;
   onRename: (from: string, to: string) => Promise<boolean>;
+  initialFacet?: Tag | null;
 }) {
-  const examples = exampleShelves();
-  const corpus = corpusShelves();
-  const standard = standardLibraryCount();
+  const all = shippedModels();
+  const allFacets = facets(all);
+  const [facet, setFacet] = useState<Tag | null>(initialFacet ?? null);
+  const shown = all.filter((m) => matchesFacet(m, facet));
   const savedCount = countLibrary(tree);
   const [showAllSaved, setShowAllSaved] = useState(false);
   const shownRoots = showAllSaved ? tree : tree.slice(0, INLINE_LIBRARY_ROOTS);
   const foldedRoots = tree.length - shownRoots.length;
+  const genera = allFacets.filter((f) => f.kind === "genus");
+  const traditions = allFacets.filter((f) => f.kind === "tradition");
+  const isSelected = (f: Facet) => facet?.kind === f.kind && facet?.id === f.id;
+  const toggle = (f: Facet) => setFacet(isSelected(f) ? null : f);
   return (
     <div>
       <Masthead
+        wide
         eyebrow="Library"
         title="Open a model"
-        lede="The standard library ships with the app and is maintained in the repository; My library is yours."
-        stat={standard + savedCount}
+        note={`${EXAMPLES_NOTE} ${CORPUS_NOTE}`}
+        stat={all.length + savedCount}
         statLabel="models"
         back={{ label: "Home", onClick: onBack }}
       />
 
-      <Column className="pb-20 pt-12">
-        <section>
-          <BlockHeader label="Standard library" count={`${standard} models`} />
-          <div style={{ borderTop: "1px solid var(--rule)" }} className="pt-6">
-            <div className="text-xl leading-tight" style={{ fontFamily: display, color: "var(--ink)" }}>
-              Examples — by genus
-            </div>
-            <p className="mb-4 mt-1 max-w-xl text-sm leading-relaxed" style={{ color: "var(--ink-secondary)" }}>
-              {EXAMPLES_NOTE}
-            </p>
-            <ShelfGrid>
-              {examples.map((s) => (
-                <ShelfButton key={s.id} label={s.label} count={s.count} onClick={() => onShelf(s)} />
-              ))}
-            </ShelfGrid>
-
-            <div className="mt-10 text-xl leading-tight" style={{ fontFamily: display, color: "var(--ink)" }}>
-              Source corpus — by author
-            </div>
-            <p className="mb-4 mt-1 max-w-xl text-sm leading-relaxed" style={{ color: "var(--ink-secondary)" }}>
-              {CORPUS_NOTE}
-            </p>
-            <ShelfGrid>
-              {corpus.map((s) => (
-                <ShelfButton
-                  key={s.id}
-                  label={s.label}
-                  count={s.count}
-                  note={s.note}
-                  hue={WORLD_HUE[s.id]}
-                  onClick={() => onShelf(s)}
-                />
-              ))}
-            </ShelfGrid>
-          </div>
+      <Column wide className="pb-20 pt-6">
+        {/* The filter, immediately under the masthead and immediately above the
+            models — genus and tradition are facts about a model, not places a
+            model lives, so they narrow the list in place. Counts come off the
+            same list the section below renders (home.ts), so a facet's number
+            cannot drift from what selecting it shows. */}
+        <section className="pb-2">
+          <FilterLine label="Genus">
+            {genera.map((f) => (
+              <FacetButton key={`genus:${f.id}`} facet={f} selected={isSelected(f)} onClick={() => toggle(f)} />
+            ))}
+          </FilterLine>
+          <FilterLine label="Tradition">
+            {traditions.map((f) => (
+              <FacetButton
+                key={`tradition:${f.id}`}
+                facet={f}
+                selected={isSelected(f)}
+                onClick={() => toggle(f)}
+              />
+            ))}
+            {facet && (
+              <button
+                onClick={() => setFacet(null)}
+                className="record-folio pb-1.5 pt-1 text-[11px] uppercase tracking-[0.2em]"
+                style={folioStyle}
+              >
+                clear · show all {all.length}
+              </button>
+            )}
+          </FilterLine>
         </section>
 
-        {/* Saved models list HERE, not behind a shelf-of-one: there was never a
-            branch to take, so the drill-in was a click that bought nothing. */}
+        {/* Ships. One flat list — every model that comes with the app, opened
+            from the row it is listed on. */}
+        <section className="mt-8">
+          <BlockHeader label="Ships with the app" count={`${shown.length} model${shown.length === 1 ? "" : "s"}`} />
+          {shown.length === 0 ? (
+            <div
+              className="border-t py-3 text-sm"
+              style={{ borderColor: "var(--rule-soft)", color: "var(--ink-muted)", fontFamily: display, fontStyle: "italic" }}
+            >
+              no model carries that tag
+            </div>
+          ) : (
+            <Ledger>
+              {shown.map((m, i) => (
+                <ModelRow
+                  key={m.key}
+                  model={m}
+                  index={i + 1}
+                  onClick={() =>
+                    m.open.kind === "example" ? onOpenExample(m.open.demo) : onOpenCorpus(m.open.entry)
+                  }
+                />
+              ))}
+            </Ledger>
+          )}
+        </section>
+
+        {/* Yours. The other half of the partition, and the half that grows:
+            a release ships a handful of models and everything else is the
+            user's own. Saved models carry no genus or tradition, so a facet
+            selection empties this section rather than silently ignoring it. */}
         <section className="mt-16">
-          <BlockHeader label="My library" count={`${savedCount} model${savedCount === 1 ? "" : "s"}`} />
-          <div style={{ borderTop: "1px solid var(--rule)" }} className="py-4">
-            <p className="max-w-xl text-sm leading-relaxed" style={{ color: "var(--ink-secondary)" }}>
-              Models you have saved from this app. A model reached by a decomposition
-              reference nests under the system of interest that reaches it.
-            </p>
-          </div>
-          {tree.length === 0 ? (
+          <BlockHeader label="Yours" count={`${savedCount} model${savedCount === 1 ? "" : "s"}`} />
+          {facet ? (
+            <div
+              className="border-t py-3 text-sm"
+              style={{ borderColor: "var(--rule-soft)", color: "var(--ink-muted)", fontFamily: display, fontStyle: "italic" }}
+            >
+              your models carry no genus or tradition tag — clear the filter to see them
+            </div>
+          ) : tree.length === 0 ? (
             <div
               className="border-t py-3 text-sm"
               style={{ borderColor: "var(--rule-soft)", color: "var(--ink-muted)", fontFamily: display, fontStyle: "italic" }}
@@ -673,7 +751,7 @@ export function LibraryBrowser({
               no saved models yet
             </div>
           ) : (
-            <div style={{ borderTop: "1px solid var(--rule-soft)" }}>
+            <div style={{ borderTop: "1px solid var(--rule)" }}>
               {shownRoots.map((root, i) => (
                 <div
                   key={root.name}
@@ -723,170 +801,97 @@ export function LibraryBrowser({
 }
 
 // ---------------------------------------------------------------------------
-// shelf page
+// the model row
 // ---------------------------------------------------------------------------
 
-/** One model on a shelf: a ledger row, plus — corpus only — the citation
- *  beneath the gloss. Same row on both shelves; the citation is the separator.
+/** One model in the flat list. Three cells, and the row is two lines tall so a
+ *  list of forty scans:
  *
- *  `tag` marks the EXCEPTION, never the rule: every model on a shelf is
- *  structural, so a per-row "diagram" label repeats identically down the whole
- *  column and says nothing. Only the models that also carry dynamics are
- *  tagged. */
-function ShelfRow({
-  name,
-  description,
-  citation,
-  tag,
+ *    [ gutter ] [ NAME + gloss ]                      [ tags / citation ]
+ *
+ *  The gutter is a fixed 3rem cell holding the folio numeral. It is sized to
+ *  take a diagram thumbnail later (#311) — the thumbnail swaps into this cell
+ *  and nothing else on the row moves.
+ *
+ *  Identical row for an example and a corpus entry; the CITATION is the
+ *  separator, and it is per-row now that there are no shelves to hoist a shared
+ *  one onto. The `runs` mark is the EXCEPTION, never the rule: every model here
+ *  is structural, so a label saying so on every row says nothing. */
+function ModelRow({
+  model,
   index,
   onClick,
 }: {
-  name: string;
-  description: string;
-  citation?: string;
-  tag?: string;
-  index?: number;
+  model: ShippedModel;
+  index: number;
   onClick: () => void;
 }) {
   return (
-    <LedgerRow
-      index={index}
-      name={name}
-      description={description}
-      tag={tag}
+    <button
       onClick={onClick}
-      trailing={
-        citation ? (
+      className="record-row grid w-full grid-cols-[3rem_minmax(0,1fr)_auto] items-start gap-x-4 border-b py-3 text-left"
+      style={{ borderColor: "var(--rule-soft)" }}
+    >
+      <span
+        className="record-folio flex items-start justify-end pr-1 pt-1 text-[11px] tabular"
+        style={{ color: "var(--ink-muted)", transition: "color var(--transition-base)" }}
+      >
+        {String(index).padStart(2, "0")}
+      </span>
+      <span className="block min-w-0">
+        <span className="flex items-baseline gap-3">
+          <span className="truncate text-2xl leading-tight" style={nameStyle}>
+            {model.name}
+          </span>
+          {model.runs && (
+            <span
+              className="shrink-0 text-xs"
+              style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--seal)" }}
+            >
+              runs
+            </span>
+          )}
+        </span>
+        <span className="mt-0.5 block truncate text-sm" style={{ color: "var(--ink-secondary)" }}>
+          {model.description}
+        </span>
+      </span>
+      <span className="block max-w-[16rem] shrink-0 pt-1 text-right">
+        <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+          {model.tags.map((t) => (
+            <span
+              key={`${t.kind}:${t.id}`}
+              className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.14em]"
+              style={{ fontFamily: mono, color: "var(--ink-muted)" }}
+            >
+              {hueOf(t) && (
+                <span aria-hidden className="h-2.5 w-0.5 shrink-0" style={{ background: hueOf(t) }} />
+              )}
+              {t.label}
+            </span>
+          ))}
+          {model.set && (
+            <span
+              className="text-[10px] tracking-[0.14em]"
+              style={{ fontFamily: mono, color: "var(--ink-muted)" }}
+            >
+              {model.set}
+            </span>
+          )}
+        </span>
+        {model.citation && (
           <span
-            className="mt-2 block text-[10px] tracking-[0.08em]"
+            className="mt-1 block text-[10px] leading-snug tracking-[0.04em]"
             style={{ fontFamily: mono, color: "var(--ink-muted)" }}
           >
-            {citation}
+            {model.citation}
           </span>
-        ) : undefined
-      }
-    />
+        )}
+      </span>
+    </button>
   );
 }
 
-/** The citation every member of a sibling-set shares, or null if they differ.
- *  Derived from the entries themselves — no set is named here. */
-export function sharedCitation(entries: CorpusEntry[]): string | null {
-  const first = entries[0]?.citation;
-  if (!first || entries.length < 2) return null;
-  return entries.every((e) => e.citation === first) ? first : null;
-}
-
-export function ShelfPage({
-  area,
-  id,
-  onBack,
-  onOpenExample,
-  onOpenCorpus,
-}: {
-  area: "examples" | "corpus";
-  id: string;
-  onBack: () => void;
-  onOpenExample: (d: Demo) => void;
-  onOpenCorpus: (e: CorpusEntry) => void;
-}) {
-  const shelf =
-    area === "examples"
-      ? exampleShelves().find((s) => s.id === id)
-      : corpusShelves().find((s) => s.id === id);
-  const entries = area === "examples" ? exampleShelfEntries(id) : [];
-  const corpus = area === "corpus" ? corpusShelfEntries(id) : { sets: [], loose: [] };
-  const count = shelf?.count ?? 0;
-  // Corpus rows number continuously across the sibling-sets and the loose
-  // entries: one shelf, one run of numerals.
-  let n = 0;
-  return (
-    <div>
-      <Masthead
-        eyebrow={area === "examples" ? "Examples" : "Source corpus"}
-        title={shelf?.label ?? id}
-        lede={area === "examples" ? EXAMPLES_NOTE : CORPUS_NOTE}
-        note={area === "corpus" ? shelf?.note : undefined}
-        stat={count}
-        statLabel={`model${count === 1 ? "" : "s"}`}
-        back={{ label: "Open a model", onClick: onBack }}
-        hue={area === "corpus" ? WORLD_HUE[id] : undefined}
-      />
-
-      <Column className="pb-20 pt-12">
-        <Ledger>
-          {area === "examples" &&
-            entries.map((d, i) => (
-              <ShelfRow
-                key={d.key}
-                name={d.title}
-                description={d.blurb}
-                index={i + 1}
-                tag={isRunnable(d) ? "runs" : undefined}
-                onClick={() => onOpenExample(d)}
-              />
-            ))}
-          {area === "corpus" && (
-            <>
-              {corpus.sets.map((s) => {
-                // A set that teaches by diff over one figure cites that one
-                // figure; repeating the line on every variant is the citation
-                // saying nothing. Hoist it to the header when it is shared, and
-                // fall back to per-row when the members actually cite differently.
-                const shared = sharedCitation(s.entries);
-                return (
-                  <div key={s.name}>
-                    <div className="border-b pb-2 pt-6" style={{ borderColor: "var(--rule)" }}>
-                      <div className="flex items-baseline gap-3">
-                        <span className="text-base" style={nameStyle}>
-                          {s.name}
-                        </span>
-                        <span
-                          className="text-sm"
-                          style={{ fontFamily: display, fontStyle: "italic", color: "var(--ink-secondary)" }}
-                        >
-                          {s.entries.length} variants · one lesson by diff
-                        </span>
-                      </div>
-                      {shared && (
-                        <div
-                          className="mt-1 text-[10px] tracking-[0.08em]"
-                          style={{ fontFamily: mono, color: "var(--seal)" }}
-                        >
-                          {shared}
-                        </div>
-                      )}
-                    </div>
-                    {s.entries.map((e) => (
-                      <ShelfRow
-                        key={e.file}
-                        name={e.title}
-                        description={firstSentence(e.teaches)}
-                        citation={shared ? undefined : e.citation}
-                        index={(n += 1)}
-                        onClick={() => onOpenCorpus(e)}
-                      />
-                    ))}
-                  </div>
-                );
-              })}
-              {corpus.loose.map((e) => (
-                <ShelfRow
-                  key={e.file}
-                  name={e.title}
-                  description={firstSentence(e.teaches)}
-                  citation={e.citation}
-                  index={(n += 1)}
-                  onClick={() => onOpenCorpus(e)}
-                />
-              ))}
-            </>
-          )}
-        </Ledger>
-      </Column>
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // my library rows (rendered inline in the library browser)
