@@ -18,8 +18,8 @@ const canvas: CanvasModel = {
 
 const analysis = {
   issue_targets: [
-    { thing: 2, relation: null }, // issue:0 → thing 2
-    { thing: null, relation: null }, // issue:1 → no subject, not navigable
+    { thing: 2, relation: null, disregarded_relations: 0 }, // issue:0 → thing 2
+    { thing: null, relation: null, disregarded_relations: 0 }, // issue:1 → no subject, not navigable
   ],
 } as unknown as CanvasAnalysis;
 
@@ -30,8 +30,8 @@ describe("parseCitations", () => {
     const segs = parseCitations("[thing:1] drives [relation:10].", resolver);
     const cites = segs.filter((s) => s.kind === "cite");
     expect(cites).toHaveLength(2);
-    expect(cites[0]).toMatchObject({ text: "[thing:1]", label: "A", target: { thing: 1, relation: null } });
-    expect(cites[1]).toMatchObject({ text: "[relation:10]", label: "flow", target: { thing: null, relation: 10 } });
+    expect(cites[0]).toMatchObject({ text: "[thing:1]", label: "A", target: { thing: 1, relation: null, disregarded_relations: 0 } });
+    expect(cites[1]).toMatchObject({ text: "[relation:10]", label: "flow", target: { thing: null, relation: 10, disregarded_relations: 0 } });
     // the interstitial prose survives as text runs
     expect(segs.map((s) => s.kind)).toEqual(["cite", "text", "cite", "text"]);
   });
@@ -47,7 +47,7 @@ describe("parseCitations", () => {
   it("resolves issue:N through issue_targets, dropping out-of-range and subjectless issues", () => {
     const ok = parseCitations("[issue:0]", resolver).filter((s) => s.kind === "cite");
     expect(ok).toHaveLength(1);
-    expect(ok[0]).toMatchObject({ label: "B", target: { thing: 2, relation: null } });
+    expect(ok[0]).toMatchObject({ label: "B", target: { thing: 2, relation: null, disregarded_relations: 0 } });
 
     // issue:1 has both-null subject → not navigable → dropped
     expect(parseCitations("[issue:1]", resolver).every((s) => s.kind === "text")).toBe(true);

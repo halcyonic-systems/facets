@@ -62,6 +62,14 @@ pub mod doc {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ValidationIssue {
     pub severity: Severity,
+    /// The DEFECT KIND this issue is one instance of — a stable name the kernel
+    /// chooses for the check that produced it (bert-lenses#319). Two issues
+    /// share a code iff the kernel says they are the same defect; a surface may
+    /// therefore group on it, and must never group by matching message text.
+    /// The message stays per-instance (it names the flow, the stock, the
+    /// component); the code names the rule that was violated.
+    #[serde(default)]
+    pub code: String,
     pub location: String,
     pub message: String,
     pub suggestion: Option<String>,
@@ -91,13 +99,18 @@ impl ValidationIssue {
         self
     }
 
+    /// `code` leads both constructors deliberately: it is a required argument,
+    /// so a new check cannot be written without naming the defect kind it finds,
+    /// and the grouping key can never be missing at a surface.
     fn error(
+        code: &str,
         location: impl Into<String>,
         message: impl Into<String>,
         suggestion: Option<&str>,
     ) -> Self {
         Self {
             severity: Severity::Error,
+            code: code.to_string(),
             location: location.into(),
             message: message.into(),
             suggestion: suggestion.map(|s| s.to_string()),
@@ -107,12 +120,14 @@ impl ValidationIssue {
     }
 
     fn warning(
+        code: &str,
         location: impl Into<String>,
         message: impl Into<String>,
         suggestion: Option<&str>,
     ) -> Self {
         Self {
             severity: Severity::Warning,
+            code: code.to_string(),
             location: location.into(),
             message: message.into(),
             suggestion: suggestion.map(|s| s.to_string()),
@@ -191,6 +206,7 @@ fn check_stock_units(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
         };
         if parsed.per_time {
             issues.push(ValidationIssue::warning(
+                "stock_unit_rate_like",
                 format!("systems[{i}].agent.stock_unit"),
                 format!(
                     "stock \"{}\" declares a rate-like unit '{unit}' — a stock \
@@ -256,6 +272,7 @@ fn check_stock_dimensions(model: &WorldModel, issues: &mut Vec<ValidationIssue>)
             if !candidates.contains(&declared.dimension) {
                 issues.push(
                     ValidationIssue::error(
+                        "stock_unit_dimension_mismatch",
                         format!("systems[{i}].agent.stock_unit"),
                         format!(
                             "stock \"{}\" declares unit '{}', but its inflow '{}' \
@@ -376,6 +393,7 @@ fn check_bond(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     });
     if !bonded {
         issues.push(ValidationIssue::error(
+            "aggregate_no_bond",
             "mode/Structural",
             "Bunge Def 1.1: a system requires at least one bond between distinct \
              components; an unbonded collection is an aggregate",
@@ -389,6 +407,7 @@ fn check_self_loops(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     for (i, ix) in model.interactions.iter().enumerate() {
         if ix.source == ix.sink {
             issues.push(ValidationIssue::error(
+                "self_loop_flow",
                 format!("interactions[{i}]"),
                 format!(
                     "Mobus §4.3: flow edges require k ≠ o; '{}' has the same endpoint as \
@@ -417,6 +436,7 @@ fn check_dynamical_face(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     });
     if !any_face {
         issues.push(ValidationIssue::warning(
+            "dynamical_face_empty",
             "mode/Full",
             "Full mode shows the dynamical face, but no system has a transformation, \
              history, or time constant",
@@ -456,6 +476,7 @@ fn check_duplicate_edges(model: &WorldModel, issues: &mut Vec<ValidationIssue>) 
         match seen.get(&key) {
             Some(prior) => issues.push(
                 ValidationIssue::warning(
+                    "duplicate_edge",
                     &loc,
                     format!(
                         "duplicate edge {}→{} (same type and substance as {prior})",
@@ -529,6 +550,7 @@ fn check_flows_are_consumed(model: &WorldModel, issues: &mut Vec<ValidationIssue
             }
         };
         issues.push(ValidationIssue::warning(
+            "flow_not_consumed",
             format!("interactions[{idx}]"),
             format!(
                 "'{}' ({:?}) flows into '{}' ({:?}), which does not consume {:?} — \
@@ -558,6 +580,7 @@ fn check_dead_ends(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
         if has_in.contains(&id_str) && !has_out.contains(&id_str) {
             issues.push(
                 ValidationIssue::warning(
+                    "dead_end",
                     format!("systems[{i}]"),
                     format!(
                         "'{}' has no outgoing transitions — intended as a terminal/absorbing state?",
@@ -623,6 +646,7 @@ fn check_reachability(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
         if nodes.contains(&id_str) && !seen.contains(&id_str) {
             issues.push(
                 ValidationIssue::warning(
+                    "unreachable",
                     format!("systems[{i}]"),
                     format!(
                         "'{}' is not reachable from any entry node",
@@ -674,6 +698,7 @@ fn check_reachability_requirements(model: &WorldModel, issues: &mut Vec<Validati
                 if !path_exists(&adj, &from_s, &to_s, None) {
                     issues.push(
                         ValidationIssue::error(
+                            "reachability_requirement_unmet",
                             &loc,
                             format!(
                                 "required reachability violated: no flow path runs from \
@@ -703,6 +728,7 @@ fn check_reachability_requirements(model: &WorldModel, issues: &mut Vec<Validati
                 if !path_exists(&adj, &from_s, &to_s, Some(&avoid_s)) {
                     issues.push(
                         ValidationIssue::error(
+                            "alternative_path_unmet",
                             &loc,
                             format!(
                                 "required alternative path violated: every flow path from \
@@ -738,6 +764,7 @@ fn unresolved<'a>(
 
 fn unresolved_requirement(loc: &str, id: &str) -> ValidationIssue {
     ValidationIssue::error(
+        "reachability_requirement_unresolved",
         loc,
         format!("reachability requirement references '{id}', which resolves to no known entity"),
         Some("Point the requirement at an existing system, source, or sink id"),
@@ -895,6 +922,7 @@ fn check_orphan_sources(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
             let id_str = serialize_id(&src.info.id);
             if !referenced_sources.contains(&id_str) {
                 issues.push(ValidationIssue::error(
+                    "orphan_source",
                     format!("{loc_prefix}.sources[{i}]"),
                     format!(
                         "orphan source '{id_str}' is not referenced by any interaction — \
@@ -926,6 +954,7 @@ fn check_orphan_sinks(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
             let id_str = serialize_id(&snk.info.id);
             if !referenced_sinks.contains(&id_str) {
                 issues.push(ValidationIssue::error(
+                    "orphan_sink",
                     format!("{loc_prefix}.sinks[{i}]"),
                     format!(
                         "orphan sink '{id_str}' is not referenced by any interaction — \
@@ -953,6 +982,7 @@ fn check_interaction_references(
         let src = serialize_id(&ix.source);
         if !known.contains(&src) {
             issues.push(ValidationIssue::error(
+                "interaction_endpoint_unresolved",
                 format!("interactions[{i}].source"),
                 format!("source '{src}' does not resolve to any known entity"),
                 Some("Check the source ID matches an existing system, source, or sink"),
@@ -961,6 +991,7 @@ fn check_interaction_references(
         let snk = serialize_id(&ix.sink);
         if !known.contains(&snk) {
             issues.push(ValidationIssue::error(
+                "interaction_endpoint_unresolved",
                 format!("interactions[{i}].sink"),
                 format!("sink '{snk}' does not resolve to any known entity"),
                 Some("Check the sink ID matches an existing system, source, or sink"),
@@ -979,6 +1010,7 @@ fn check_interface_references(
             let id_str = serialize_id(src_iface);
             if !interfaces.contains(&id_str) {
                 issues.push(ValidationIssue::error(
+                    "interface_reference_unresolved",
                     format!("interactions[{i}].source_interface"),
                     format!("source_interface '{id_str}' does not resolve to any known interface"),
                     Some("Check the interface ID exists on the source system's boundary"),
@@ -989,6 +1021,7 @@ fn check_interface_references(
             let id_str = serialize_id(snk_iface);
             if !interfaces.contains(&id_str) {
                 issues.push(ValidationIssue::error(
+                    "interface_reference_unresolved",
                     format!("interactions[{i}].sink_interface"),
                     format!("sink_interface '{id_str}' does not resolve to any known interface"),
                     Some("Check the interface ID exists on the sink system's boundary"),
@@ -1085,6 +1118,7 @@ fn check_crossing_flows_route_through_interface(
         let (verb, side) = if enters { ("enters", "sink") } else { ("leaves", "source") };
         issues.push(
             ValidationIssue::error(
+                "crossing_flow_without_interface",
                 format!("interactions[{k}].{side}_interface"),
                 format!(
                     "flow '{}' {} the system but crosses the boundary without an \
@@ -1134,6 +1168,7 @@ fn check_interfaces_carry_flow(model: &WorldModel, issues: &mut Vec<ValidationIs
                 .map_or(&iface.info.id, |s| &s.info.id);
             issues.push(
                 ValidationIssue::error(
+                    "interface_carries_no_flow",
                     format!("systems[{i}].boundary.interfaces[{j}]"),
                     format!(
                         "interface '{}' carries no boundary-crossing flow — Mobus defines \
@@ -1249,6 +1284,7 @@ fn check_interface_declarations_match_flows(model: &WorldModel, issues: &mut Vec
                 let entity_id = serialize_id(entity);
                 issues.push(
                     ValidationIssue::error(
+                        "interface_declaration_contradicts_flows",
                         format!("systems[{i}].boundary.interfaces[{j}].{field}"),
                         format!(
                             "interface '{}' declares it {verb} '{entity_id}', but no \
@@ -1295,6 +1331,7 @@ fn check_parent_references(
         let parent = serialize_id(&system.parent);
         if !known.contains(&parent) {
             issues.push(ValidationIssue::error(
+                "parent_unresolved",
                 format!("systems[{i}].parent"),
                 format!("parent '{parent}' does not resolve to any known entity"),
                 Some("Parent must be 'E-1' (environment) or an existing system ID"),
@@ -1309,6 +1346,7 @@ fn check_duplicate_ids(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     let mut record = |id_str: String, location: String, issues: &mut Vec<ValidationIssue>| {
         if let Some(prior) = seen.insert(id_str.clone(), location.clone()) {
             issues.push(ValidationIssue::error(
+                "duplicate_id",
                 &location,
                 format!("duplicate ID '{id_str}' (first seen at {prior})"),
                 Some("Each entity must have a unique ID"),
@@ -1371,6 +1409,7 @@ fn check_environment_id(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     let env_id = serialize_id(&model.environment.info.id);
     if env_id != "E-1" {
         issues.push(ValidationIssue::warning(
+            "environment_id_unexpected",
             "environment.info.id",
             format!("environment ID is '{env_id}', expected 'E-1'"),
             Some("The environment entity should always have ID 'E-1'"),
@@ -1381,6 +1420,7 @@ fn check_environment_id(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
 fn check_version(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
     if model.version != CURRENT_FILE_VERSION {
         issues.push(ValidationIssue::warning(
+            "model_version_stale",
             "version",
             format!(
                 "model version is {}, current is {CURRENT_FILE_VERSION}",
@@ -1396,6 +1436,7 @@ fn check_level_consistency(model: &WorldModel, issues: &mut Vec<ValidationIssue>
         let expected = (system.info.id.indices.len() as i32) - 1;
         if system.info.level != expected {
             issues.push(ValidationIssue::warning(
+                "level_id_mismatch",
                 format!("systems[{i}].info.level"),
                 format!(
                     "level is {} but ID '{}' implies level {}",
@@ -1453,6 +1494,7 @@ fn check_required_fields(
         for &field in required {
             if !map.contains_key(field) {
                 issues.push(ValidationIssue::error(
+                    "required_field_missing",
                     location,
                     format!("Missing required field '{field}'"),
                     Some(&format!("Add the '{field}' field to {location}")),
@@ -1461,6 +1503,7 @@ fn check_required_fields(
         }
     } else {
         issues.push(ValidationIssue::error(
+            "field_not_an_object",
             location,
             format!("Expected an object, found {}", json_type_name(obj)),
             Some(&format!(
@@ -1583,6 +1626,7 @@ fn check_processor_flows(model: &WorldModel, issues: &mut Vec<ValidationIssue>) 
             .any(|f| serialize_id(&f.sink) == sys_id);
         if !is_source && !is_sink {
             issues.push(ValidationIssue::warning(
+                "interface_processor_without_flows",
                 format!("systems.{name}", name = system.info.name),
                 format!(
                     "Processor '{}' has parent_interface but no connecting flows",
@@ -1622,6 +1666,7 @@ fn check_s0_interface_processors(model: &WorldModel, issues: &mut Vec<Validation
         let id_str = serialize_id(&iface.info.id);
         if !claimed.contains(&id_str) {
             issues.push(ValidationIssue::warning(
+                "interface_without_processor",
                 format!("systems[{s0_idx}].boundary.interfaces[{j}]"),
                 format!(
                     "Interface '{}' has no processor — external flows won't trace to internal subsystems",

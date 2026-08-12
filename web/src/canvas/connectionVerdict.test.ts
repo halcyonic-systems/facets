@@ -9,8 +9,12 @@ import type { Severity, ValidationIssue, ValidationResult } from "../kernel/type
 import { kernelVerdict } from "../kernel/testVerdict";
 import { observations, refusal } from "./connectionVerdict";
 
-const issue = (severity: Severity, message: string, location = "interactions[0]"): ValidationIssue =>
-  kernelVerdict({ severity, location, message, suggestion: null, doc: null });
+const issue = (
+  severity: Severity,
+  message: string,
+  location = "interactions[0]",
+  code = "test_defect",
+): ValidationIssue => kernelVerdict({ severity, code, location, message, suggestion: null, doc: null });
 
 const verdict = (...issues: ValidationIssue[]): ValidationResult => ({ issues });
 

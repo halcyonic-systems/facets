@@ -58,6 +58,7 @@ const mobusAnalysis: CanvasAnalysis = {
     issues: [
       kernelVerdict({
         severity: "Error",
+        code: "self_loop_flow",
         location: "interactions[2]",
         message: "Mobus §4.3: 'recycle' has the same endpoint as source and sink",
         suggestion: "Remove the self-loop; feedback as a first-class cycle is Cybernetic mode",
@@ -65,7 +66,7 @@ const mobusAnalysis: CanvasAnalysis = {
       }),
     ],
   },
-  issue_targets: [{ thing: null, relation: 12 }],
+  issue_targets: [{ thing: null, relation: 12, disregarded_relations: 0 }],
   facts: {
     boundary_thing_ids: [1],
     environment_thing_ids: [3],
@@ -153,6 +154,7 @@ const bungeAnalysis: CanvasAnalysis = {
     issues: [
       kernelVerdict({
         severity: "Warning",
+        code: "unreachable",
         location: "systems[0]",
         message: "'A' is unreachable from any entry point",
         suggestion: null,
@@ -160,7 +162,7 @@ const bungeAnalysis: CanvasAnalysis = {
       }),
     ],
   },
-  issue_targets: [{ thing: 1, relation: null }],
+  issue_targets: [{ thing: 1, relation: null, disregarded_relations: 0 }],
   facts: klirAnalysis.facts,
   description: {
     lens: "Bunge",
