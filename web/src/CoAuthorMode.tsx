@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import type { CoauthorTurn, DraftStage } from "./coauthor";
 import { ReasonerGate } from "./ReasonerGate";
 import { isLoopback, reasonerConfig, setReasonerConfig, subscribeReasoner } from "./reasoner";
+import { DRAFTER_MODELS, drafterModel, drafterModelWhere, setDrafterModel, subscribeDrafterModel } from "./drafterModel";
 import { Pill } from "./ui";
 
 type Tone = "neutral" | "ok" | "warning" | "error";
@@ -21,16 +22,58 @@ type Tone = "neutral" | "ok" | "warning" | "error";
 // "not the hosted endpoint" to "on this machine": a reasoner the user runs
 // elsewhere serves whatever they configured, so its model is NOT named here
 // rather than invented.
-export function stageLabel(stage: DraftStage | null, endpoint: string): string {
+export function stageLabel(stage: DraftStage | null, endpoint: string, requested = ""): string {
   if (!stage) return "Drafting…";
   switch (stage.kind) {
     case "asking":
+      // A named choice is stated as an ASK, never as a fact about who answered:
+      // which model answered is known only once the response is in hand, and
+      // the two differ whenever the reasoner cannot reach the named one.
+      if (requested) return `Asking the reasoner for ${requested}…`;
       return isLoopback(endpoint) ? "Asking the local reasoner (gemma4)…" : "Asking your reasoner…";
     case "compiling":
       return "Compiling the draft…";
     case "retrying":
       return `Draft did not compile, retrying (${stage.attempt} of ${stage.maxAttempts})…`;
   }
+}
+
+/** Who wrote this draft and how long it took, taken from the reasoner's own
+ *  response. A turn that never reached a model has nothing to report; a
+ *  response that named no model says so rather than borrowing the requested
+ *  name; a reasoner that reported no time gets no time printed, since 0 s
+ *  would be a lie about a call that took a minute.
+ *
+ *  The time is the TURN's total model time, so a retried turn's number is not
+ *  read as one call — the label names the call count whenever it is above one.
+ *  The elapsed clock beside the Draft button is wall time and disappears when
+ *  the turn lands; this is what remains in the record. */
+export function drafterLine(
+  turn: Pick<CoauthorTurn, "model" | "modelMs" | "modelCalls">,
+): string | null {
+  if (turn.model === undefined) return null;
+  const who = turn.model ? `Drafted by ${turn.model}` : "The reasoner did not name the model that answered";
+  if (turn.modelMs === undefined) return `${who}.`;
+  const secs = (turn.modelMs / 1000).toFixed(1);
+  if ((turn.modelCalls ?? 1) > 1) return `${who} in ${secs}s of model time over ${turn.modelCalls} calls.`;
+  return `${who} in ${secs}s.`;
+}
+
+/** The honesty gate. GSR takes its cloud path only when it holds a key for the
+ *  model asked for; without one the request still succeeds, on a model it can
+ *  run. Nothing errors, so nothing but this line tells the author that the
+ *  model they picked is not the model that wrote the draft in front of them.
+ *  "" as the requested model is the reasoner's own default, which is a request
+ *  for whatever it serves, so there is no mismatch to report. */
+export function drafterMismatch(turn: Pick<CoauthorTurn, "model" | "requestedModel">): string | null {
+  const answered = turn.model;
+  const requested = turn.requestedModel;
+  if (!answered || !requested || answered === requested) return null;
+  return (
+    `Asked for ${requested}. Answered by ${answered}. ` +
+    `The reasoner takes its cloud path only when it holds a key for the model asked for, ` +
+    `so ${answered} wrote this draft.`
+  );
 }
 
 function statusTone(status: CoauthorTurn["status"]): Tone {
@@ -86,6 +129,11 @@ export function CoAuthorMode({
   // enabling is the same act as choosing the endpoint.
   const [reasoner, setReasoner] = useState(reasonerConfig);
   useEffect(() => subscribeReasoner(setReasoner), []);
+  // The drafting model is a stored preference (drafterModel.ts), not pane
+  // state: App reads the same value when it fires the draft, so the pane and
+  // the request cannot disagree about what was asked for.
+  const [model, setModel] = useState(drafterModel);
+  useEffect(() => subscribeDrafterModel(setModel), []);
 
   // Ticks once a second only while a draft call is in flight — a bounded
   // "38s" reads as progress, an unmoving label reads as a hang (#218 item 3).
@@ -150,6 +198,23 @@ export function CoAuthorMode({
                 {error}
               </div>
             )}
+            <label className="mt-2 flex flex-wrap items-center gap-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
+              <span>Drafts with</span>
+              <select
+                value={model}
+                onChange={(e) => setDrafterModel(e.target.value)}
+                disabled={busy}
+                className="rounded px-1 py-0.5 text-[11px]"
+                style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: "1px solid var(--hairline)" }}
+              >
+                {DRAFTER_MODELS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <span>{drafterModelWhere(model) ?? ""}</span>
+            </label>
             <div className="mt-2 flex items-center gap-2">
               <button
                 onClick={draft}
@@ -167,7 +232,7 @@ export function CoAuthorMode({
               </button>
               <span className="text-[11px]" style={{ color: "var(--text-muted)" }} data-testid="coauthor-stage">
                 {busy
-                  ? `${stageLabel(stage, reasoner.endpoint)} (${Math.floor(elapsedMs / 1000)}s)`
+                  ? `${stageLabel(stage, reasoner.endpoint, model)} (${Math.floor(elapsedMs / 1000)}s)`
                   : "LLM proposes · kernel checks · you accept"}
               </span>
             </div>
@@ -200,6 +265,23 @@ export function CoAuthorMode({
                 <p className="mb-1" style={{ color: "var(--text-secondary)" }}>
                   {t.description}
                 </p>
+                {/* The answering model, never the requested one. When they
+                    differ the turn says so in full: the request succeeded, so
+                    this line is the only thing standing between the author and
+                    believing a model that never ran wrote this. */}
+                {drafterMismatch(t) && (
+                  <p
+                    className="mb-1 p-1 text-[10px]"
+                    style={{ color: "var(--verdict-warning)", border: "1px solid var(--verdict-warning)" }}
+                  >
+                    {drafterMismatch(t)}
+                  </p>
+                )}
+                {drafterLine(t) && (
+                  <p className="mb-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                    {drafterLine(t)}
+                  </p>
+                )}
                 {t.errorText && (
                   <pre
                     className="mb-1 whitespace-pre-wrap p-1 text-[10px]"

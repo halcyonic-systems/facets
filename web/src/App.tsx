@@ -48,6 +48,7 @@ import { NewModelTypePrompt } from "./NewModelTypePrompt";
 import { StartFromData } from "./StartFromData";
 import { SlPane } from "./SlPane";
 import { draftSlWithRetry, newTurnId, loadCoauthorTurns, saveCoauthorTurns, type CoauthorTurn, type DraftStage } from "./coauthor";
+import { drafterModel } from "./drafterModel";
 import type { SlError } from "./kernel/types";
 import { Banner, ConfirmDialog, Pill, ToolButton } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
@@ -729,12 +730,20 @@ function Workspace() {
   async function coauthorDraft(description: string, onStage?: (stage: DraftStage) => void) {
     const id = newTurnId();
     const lens = canvasModel?.lens;
+    // The author's standing choice, read at draft time (drafterModel.ts, the
+    // same runtime-preference shape as the reasoner's address). Recorded on
+    // every turn beside the model that answered — the pane names the answering
+    // one and, when they differ, says so.
+    const requestedModel = drafterModel();
     let sl = "";
+    let answeredModel = "";
+    let modelMs: number | undefined;
+    let modelCalls = 0;
     try {
-      sl = await draftSlWithRetry(description, lens, onStage);
+      ({ sl, answeredModel, modelMs, modelCalls } = await draftSlWithRetry(description, lens, onStage, requestedModel));
     } catch (e) {
       setCoauthorTurns((ts) => [
-        { id, description, sl: "", at: new Date().toISOString(), status: "network-error", errorText: e instanceof Error ? e.message : String(e) },
+        { id, description, sl: "", at: new Date().toISOString(), status: "network-error", errorText: e instanceof Error ? e.message : String(e), requestedModel },
         ...ts,
       ]);
       return;
@@ -745,14 +754,14 @@ function Workspace() {
       const errorText = outcome.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
       setSlErrors(outcome.errors);
       setCoauthorTurns((ts) => [
-        { id, description, sl, at: new Date().toISOString(), status: "compile-error", errorText },
+        { id, description, sl, at: new Date().toISOString(), status: "compile-error", errorText, model: answeredModel, requestedModel, modelMs, modelCalls },
         ...ts,
       ]);
       return;
     }
     setSlErrors([]);
     await onSlCompiled(outcome.ok, outcome.lens_explicit, true, id);
-    setCoauthorTurns((ts) => [{ id, description, sl, at: new Date().toISOString(), status: "previewing" }, ...ts]);
+    setCoauthorTurns((ts) => [{ id, description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls }, ...ts]);
   }
 
   // File → New: a blank canvas to author a model from scratch (the #14 path — no
