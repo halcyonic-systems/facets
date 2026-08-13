@@ -117,12 +117,38 @@ desktop one for what genuinely needs eyes. Choosing wrong is the common failure:
 driving the GUI to answer a kernel question produces a one-shot artifact that
 rots the next time the kernel moves.
 
-### Headless — kernel verdicts, including under a lens the model is not pinned to
+### Headless — START HERE. `bert`, the CLI, is the first door for any model question
 
-`bert_canvas::lenses::analyze(&CanvasModel, Lens)` (`crates/bert-canvas/src/lenses.rs`)
-takes the lens as an **explicit argument and ignores `model.lens`**. That is the
-cross-lens door: it answers "how does this model read under Klir / Bunge / Mobus"
-without a GUI, a browser, or a wasm build.
+**Reach for the CLI before the browser, before a throwaway test, and before
+reasoning about what a model probably does.** `bert` (`crates/bert-cli`, the
+workspace's only `[[bin]]`) answers compile / verdict / describe / run / layout
+from a shell, in JSON, with an exit code that means something.
+
+```bash
+just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens bunge   # 0
+just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus   # 4 — §4.3
+just bert compile <f> | jq '.things[] | {id,name,role,interface}'      # what it became
+just bert layout  <f>                                                  # node positions
+just bert run     <f> --t 30                                           # or why it cannot
+```
+
+Exit 0 = the answer is on stdout · 3 = did not compile · 4 = the kernel refused.
+`--lens` is the **cross-lens door**: it reads a model under a tradition it is not
+pinned to. It is a CONSUMER of the crates — a verdict computed there is the same
+verdict, and the same bug, as one computed anywhere else.
+
+**Why this is stated so bluntly** (2026-08-12): five wrong claims were made in one
+day by describing a model instead of opening it — a verdict declared correct from
+a meeting transcript, a canvas measured by arithmetic that was a fifth off, a
+service blamed for an error whose cause was in its own log. Every one was settled
+in one command. If a question is about what a model IS, run `bert` rather than
+argue.
+
+### The same truth from inside Rust
+
+When you are already writing Rust, `bert_canvas::lenses::analyze(&CanvasModel, Lens)`
+(`crates/bert-canvas/src/lenses.rs`) takes the lens as an **explicit argument and
+ignores `model.lens`** — the same cross-lens door the CLI's `--lens` exposes.
 
 ```rust
 let parsed = bert_canvas::sl::parse_sl_full(&text)?;           // compile
@@ -133,18 +159,8 @@ let refused = verdict.validation.issues.iter().any(|i| i.severity == Severity::E
 Companion: `describe(&model, lens)` for the tradition's own formal object
 (Klir `(T,R)` / Bunge `⟨C,E,S,M⟩` / Mobus 8-tuple). A **refusal is not a distinct
 type** — it is a `ValidationIssue` with `Severity::Error` at the lens's mode
-(`Lens::mode()`: Klir→Core, Bunge→Structural, Mobus→Operational).
-
-**Reach for the CLI before the browser and before a throwaway test.** `bert`
-(`crates/bert-cli`, the workspace's only `[[bin]]`) is that same call from a
-shell. It is a CONSUMER of the crates — it parses arguments, calls the library,
-and serializes; a verdict computed there is the same bug as a verdict computed
-in JS.
-
-```bash
-just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens bunge   # 0
-just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus   # 4 — §4.3
-```
+(`Lens::mode()`: Klir→Core, Bunge→Structural, Mobus→Operational), carrying a
+`code` naming the defect kind (#319) that groups instances without regex.
 
 ```
 bert compile  <file.sl>                 the canvas model the text becomes
