@@ -50,7 +50,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use bert_core::model_id::{decode_uuid, encode_uuid};
-use bert_core::{ModelRef, ProcessPrimitive};
+use bert_core::{InteractionUsability, ModelRef, ProcessPrimitive};
 
 use crate::canvas::{
     CanvasBoundaryProps, CanvasModel, ChildRef, EnvKind, Genus, Kind, Kingdom, KlirLevel,
@@ -901,6 +901,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // (`markov_edges`); omit for the uniform default 1.
                 let mut weight = None;
                 let mut description = String::new();
+                let mut usability: Option<InteractionUsability> = None;
                 if let [Tok::Word(w), rest_tail @ ..] = tail {
                     if w.eq_ignore_ascii_case("weight") {
                         match rest_tail {
@@ -928,6 +929,44 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             _ => {
                                 fail(
                                     "weight syntax: `weight <non-negative integer>`".into(),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        }
+                    }
+                }
+                // `usability <Resource|Disruption|Product|Waste>` — Mobus's
+                // reading of what this crossing IS to the system (#331): a 2x2
+                // of direction against value. Undeclared says nothing; only
+                // projection supplies a default.
+                if let [Tok::Word(w), rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("usability") {
+                        match rest_tail {
+                            [Tok::Word(v), after @ ..] => {
+                                usability = match v.to_ascii_lowercase().as_str() {
+                                    "resource" => Some(InteractionUsability::Resource),
+                                    "disruption" => Some(InteractionUsability::Disruption),
+                                    "product" => Some(InteractionUsability::Product),
+                                    "waste" => Some(InteractionUsability::Waste),
+                                    other => {
+                                        fail(
+                                            format!(
+                                                "unknown usability `{other}` \
+                                                 (Resource | Disruption | Product | Waste)"
+                                            ),
+                                            &mut errors,
+                                        );
+                                        continue;
+                                    }
+                                };
+                                tail = after;
+                            }
+                            _ => {
+                                fail(
+                                    "usability syntax: `usability \
+                                     <Resource|Disruption|Product|Waste>`"
+                                        .into(),
                                     &mut errors,
                                 );
                                 continue;
@@ -963,6 +1002,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                              label, or remove it; a flow reads \
                              `flow <a> -> <b> [: <kind>] [\"label\"] [substance <s>] \
                              [amount <n>] [unit <u>] [mere] [weight <n>] \
+                             [usability <Resource|Disruption|Product|Waste>] \
                              [description \"<prose>\"]`",
                             tail[0].display()
                         ),
@@ -997,6 +1037,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     b: things[bi].id,
                     name,
                     description,
+                    usability,
                     is_bond,
                     kind,
                     klir_directed: false,
@@ -1794,6 +1835,9 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         if let Some(w) = r.weight {
             write!(out, " weight {w}").unwrap();
         }
+        if let Some(u) = r.usability {
+            write!(out, " usability {u:?}").unwrap();
+        }
         if !r.description.is_empty() {
             write!(out, " description {}", quote(&r.description)?).unwrap();
         }
@@ -2008,7 +2052,7 @@ pub const RESERVED_WORDS: &[&str] = &[
 /// `ample` stays out: it is positional, and a bare thing or substance named
 /// `ample` must keep re-parsing as itself.
 fn clause_head(w: &str) -> bool {
-    ["substance", "amount", "unit", "mere", "weight", "description"]
+    ["substance", "amount", "unit", "mere", "weight", "description", "usability"]
         .iter()
         .any(|k| w.eq_ignore_ascii_case(k))
 }
@@ -2775,6 +2819,69 @@ flow S -> A : matter \"in\"
     #[test]
     fn an_unquoted_description_is_a_fault() {
         assert!(parse_sl("component A description bare\n").is_err());
+    }
+
+
+    // ── usability: what a crossing IS to the system (#331) ──────────────
+
+    #[test]
+    fn usability_parses_all_four_and_is_case_insensitive() {
+        let m = parse_sl(
+            "component A\nsource S\nsink K\n\
+             flow S -> A : matter \"in\" usability Resource\n\
+             flow S -> A : matter \"bad\" usability disruption\n\
+             flow A -> K : matter \"out\" usability PRODUCT\n\
+             flow A -> K : matter \"heat\" usability Waste\n",
+        )
+        .unwrap();
+        let got: Vec<_> = m.relations.iter().map(|r| r.usability).collect();
+        assert_eq!(
+            got,
+            vec![
+                Some(InteractionUsability::Resource),
+                Some(InteractionUsability::Disruption),
+                Some(InteractionUsability::Product),
+                Some(InteractionUsability::Waste),
+            ]
+        );
+    }
+
+    /// Undeclared says NOTHING. It must not read back as `Resource`, or the
+    /// model would claim an assertion the author never made — the same trap
+    /// `amount` documents (omitted is not 1).
+    #[test]
+    fn undeclared_usability_is_none_not_resource() {
+        let m = parse_sl("component A\nsource S\nflow S -> A : matter \"in\"\n").unwrap();
+        assert_eq!(m.relations[0].usability, None);
+    }
+
+    #[test]
+    fn usability_round_trips_and_absent_emits_nothing() {
+        let src = "component A\nsink K\nflow A -> K : matter \"heat\" usability Waste\n";
+        let once = emit_sl(&parse_sl(src).unwrap()).unwrap();
+        assert!(once.contains("usability Waste"));
+        assert_eq!(emit_sl(&parse_sl(&once).unwrap()).unwrap(), once);
+
+        let bare = emit_sl(&parse_sl("component A\nsource S\nflow S -> A : matter \"in\"\n").unwrap()).unwrap();
+        assert!(!bare.contains("usability"));
+    }
+
+    #[test]
+    fn an_unknown_usability_is_a_fault() {
+        assert!(parse_sl("component A\nsource S\nflow S -> A usability Helpful\n").is_err());
+    }
+
+    #[test]
+    fn usability_sits_before_the_prose_and_after_the_quantities() {
+        let m = parse_sl(
+            "component A\nsink K\n\
+             flow A -> K : matter \"x\" amount 2 unit ML usability Waste description \"the tailings\"\n",
+        )
+        .unwrap();
+        let r = &m.relations[0];
+        assert_eq!(r.usability, Some(InteractionUsability::Waste));
+        assert_eq!(r.description, "the tailings");
+        assert_eq!(r.unit, "ML");
     }
 
 }

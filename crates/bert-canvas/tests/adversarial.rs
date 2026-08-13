@@ -47,6 +47,7 @@ fn rel(id: u64, a: u64, b: u64) -> Relation {
         b,
         name: String::new(),
         description: String::new(),
+        usability: None,
         is_bond: true,
         kind: Kind::Unspecified,
         klir_directed: false,

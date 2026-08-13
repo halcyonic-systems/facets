@@ -5,6 +5,7 @@
 # year: 2022
 # locus: Ch. 7 §7.6.3
 # figure: Fig. 7.17
+# note: The outward flows now carry `usability` (#331), so the lesson is a FACT the model records rather than an instruction to the reader — count the outward flows that are not Waste and there are none. Before the clause existed this file could only tell you to count something it did not mark. The disturbance carries `usability Disruption`: Mobus's fourth quadrant is the harmful INPUT, which is what a disturbance is and what no kind clause could say — hence the flow that was deliberately left untyped above.
 # teaches: The last rung — the whole human enterprise as one SOI inside the Earth, and the only entry in the set whose lesson is an ABSENCE. Resources enter, wastes and heat leave, governance reads the environment and directs the work processes. What is missing is a product: "Notice what is not shown in the figure. There is no 'product' or 'service' output from the HSS returning something of value back to entities in the environment." Every subsystem of a supra-system owes it a function; open this model and count the outward flows that are not waste. There are none, and that is Mobus's finding, not a gap in the drawing.
 # omits: The decomposition of the HSS, which Mobus defers to Ch. 9 ("we will decompose the HSS SOI into a few fuzzy subsystems. One of those systems is the economic system"). Also omitted is the individuation Mobus himself flags as the next step: "the stored energy source would be divided into, say, the three major fossil fuels", and each aggregated interface into the several real ones. And omitted is the Ecos as an SOI in its own right (Fig. 7.15, the whole Earth system) — here it survives only as the environmental entities the HSS draws on.
 # note: Mobus states plainly that this figure is an aggregation, so the coarseness is his: "The figure is a cartoon representation of an environment and boundary analysis aggregating all inputs and outputs of each type into single arrows as well as sources and sinks being aggregated."
@@ -27,15 +28,15 @@ source "Global Climate Change"
 sink "Waste Dumps"
 sink "Heat Dump"
 
-flow "Flow-Limited Biological Resources" -> "Work Processes" : matter "food, wood, fiber — renewed by solar energy, and only at its rate"
-flow "Stock-Limited Energy Resources" -> "Work Processes" : energy "hydrocarbon and carbonaceous fuels, drawn from a fixed stock"
-flow "Stock-Limited Material Resources" -> "Work Processes" : matter "ores and minerals, concentrated on geological time scales"
-flow "Work Processes" -> "Waste Dumps" : matter "wastes, many of them completely foreign — including the CO₂ put into the atmosphere"
-flow "Work Processes" -> "Heat Dump" : energy "heat, radiated back into space"
+flow "Flow-Limited Biological Resources" -> "Work Processes" : matter "food, wood, fiber — renewed by solar energy, and only at its rate" usability Resource
+flow "Stock-Limited Energy Resources" -> "Work Processes" : energy "hydrocarbon and carbonaceous fuels, drawn from a fixed stock" usability Resource
+flow "Stock-Limited Material Resources" -> "Work Processes" : matter "ores and minerals, concentrated on geological time scales" usability Resource
+flow "Work Processes" -> "Waste Dumps" : matter "wastes, many of them completely foreign — including the CO₂ put into the atmosphere" usability Waste
+flow "Work Processes" -> "Heat Dump" : energy "heat, radiated back into space" usability Waste
 flow "Flow-Limited Biological Resources" -> "Governance" : informational "messages on the quality and capacity of the biological resource and its flow"
 flow "Stock-Limited Energy Resources" -> "Governance" : informational "messages on the quality and capacity of the energy stock"
 flow "Stock-Limited Material Resources" -> "Governance" : informational "messages on the quality and capacity of the material stock"
 flow "Governance" -> "Work Processes" : informational "decisions on what the internal work processes should be doing"
-flow "Global Climate Change" -> "Work Processes" "the disturbance — global climate change, returning from the HSS's own waste disposal"
+flow "Global Climate Change" -> "Work Processes" "the disturbance — global climate change, returning from the HSS's own waste disposal" usability Disruption
 
 @lens mobus

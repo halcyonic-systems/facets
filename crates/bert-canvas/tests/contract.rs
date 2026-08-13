@@ -69,6 +69,7 @@ fn relation(id: u64, a: u64, b: u64, name: &str, is_bond: bool, kind: Kind) -> R
         b,
         name: name.to_string(),
         description: String::new(),
+        usability: None,
         is_bond,
         kind,
         klir_directed: false,

@@ -5,7 +5,7 @@
         "severity": "Warning",
         "code": "duplicate_edge",
         "location": "interactions[14]",
-        "message": "duplicate edge C0.2→C0.3 (same type and substance as interactions[3])",
+        "message": "duplicate edge C0.2→C0.3 (same type, substance and usability as interactions[3])",
         "suggestion": "Remove the duplicate, or distinguish it by substance or usability",
         "doc": "docs/language/terminology-concordance.md#4-a-connection-between-parts"
       },
