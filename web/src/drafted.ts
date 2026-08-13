@@ -41,6 +41,10 @@ export interface DraftedModel {
   at: string;
   /** The SL this turn produced. Opening the row hands this to the kernel. */
   sl: string;
+  /** The human's verdict, or null when nobody has ruled (#325). Unruled is the
+   *  common case in any ledger older than the feature, so a surface must show
+   *  it as "not asked" and never as a rejection. */
+  status: "accepted" | "discarded" | null;
 }
 
 /** How long a description may run before the row truncates it. A prompt is a
@@ -66,6 +70,7 @@ function toRow(turn: AuthoringTurn): DraftedModel | null {
     model: String(turn.model ?? ""),
     at: String(turn.at ?? ""),
     sl: turn.sl,
+    status: turn.status === "accepted" || turn.status === "discarded" ? turn.status : null,
   };
 }
 
