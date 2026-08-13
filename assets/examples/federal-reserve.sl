@@ -29,7 +29,7 @@ component FOMC primitive Modulating interface
 # The work process. The desk executes the directive by buying and
 # selling in the open market — the one place policy touches the flows.
 # Interface because the purchase crosses the boundary here: securities
-# arrive from the Banking System at the desk, and a crossing must land
+# arrive from the Primary Dealers at the desk, and a crossing must land
 # on the membrane (kernel precondition; QA 8/11).
 component "Open Market Desk" primitive Modulating interface
 
@@ -82,7 +82,7 @@ flow FOMC -> "Financial Markets" : informational "the announced decision — rat
 # And the markets answer: what the path is now expected to be.
 flow "Financial Markets" -> FOMC : informational "market-implied expectations — breakevens, the futures-implied path"
 
-# The purchase, side one: securities move from the banks to the desk...
+# The purchase, side one: securities move from the dealers to the desk...
 flow "Primary Dealers" -> "Open Market Desk" : matter "securities bought by the desk" substance securities
 
 # ...and onto the asset side of the balance sheet.
