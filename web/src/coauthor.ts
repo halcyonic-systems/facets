@@ -64,8 +64,22 @@ export function newTurnId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-// History persists across reloads (localStorage) — no cap. A generous soft
-// cap is a cheap later addition if the list grows unwieldy; not needed yet.
+// History persists across reloads (localStorage) — no cap.
+//
+// #325 DEMOTED this store rather than retiring it, and the distinction matters.
+// The SL, description, model and timing are the ledger's (GSR #40) and are read
+// from there; `status` moved to the ledger too, because the accept/discard
+// verdict is the one field worth durable storage and it used to die with the
+// browser profile. What CANNOT move stays here, because no server can know it:
+//
+//   - a `network-error` turn never reached GSR, so there is no row to attach to
+//   - `requestedModel` is what was ASKED for; the ledger records what answered
+//   - `modelCalls` counts retries inside one turn; GSR sees N unrelated rows
+//   - the correction linkage (`slBefore`, `correctsTurnId`, `priorFindings`)
+//     has no server-side edge, and `priorFindings` is a kernel verdict computed
+//     in the browser
+//
+// So this is an OVERLAY of client-only facts, not a duplicate of the ledger.
 const TURNS_KEY = "bert-lenses.coauthor-turns";
 
 export function loadCoauthorTurns(): CoauthorTurn[] {

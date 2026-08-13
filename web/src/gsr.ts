@@ -97,6 +97,33 @@ export async function authorSl(req: {
   };
 }
 
+/** Record the human's ruling on a drafted turn (#325). The kernel judges
+ *  legality; whether the SL MEANT what was asked is a fact only a person has,
+ *  and it is the one field worth moving off the browser — everything else the
+ *  client knows about a turn either lives in the ledger already or cannot leave
+ *  the client (a turn that never reached GSR has no row to rule on).
+ *
+ *  Resolves false rather than throwing on every failure, for the same reason
+ *  the read does: recording a verdict is an enhancement, and a reasoner that is
+ *  off, unreachable, or shared must not turn accepting a draft into an error. */
+export async function setTurnStatus(
+  id: number,
+  status: "accepted" | "discarded",
+): Promise<boolean> {
+  const { enabled, endpoint } = reasonerConfig();
+  if (!enabled) return false;
+  try {
+    const res = await fetch(`${endpoint}/authoring-history/${encodeURIComponent(id)}/status`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** One drafting turn as the reasoner recorded it (GSR #40). The wire shape,
  *  snake_case and all — `drafted.ts` is where it becomes a library row. */
 export type AuthoringTurn = {
@@ -107,6 +134,10 @@ export type AuthoringTurn = {
   lens: string;
   latency_ms?: number;
   at: string;
+  /** The human-checks-meaning verdict, once someone has ruled (#325). `null`
+   *  means UNRULED, which is not the same as discarded and must never render as
+   *  one — most turns in an old ledger have simply never been asked about. */
+  status?: "accepted" | "discarded" | null;
 };
 
 /** The turns this reasoner has recorded, newest first — the durable side of the

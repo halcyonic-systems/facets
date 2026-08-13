@@ -61,6 +61,28 @@ describe("a turn becomes a row", () => {
   });
 });
 
+describe("the human's verdict (#325)", () => {
+  it("carries a recorded verdict through to the row", async () => {
+    authoringHistoryMock.mockResolvedValue([turn({ status: "accepted" })]);
+    expect((await draftedModels())[0].status).toBe("accepted");
+  });
+
+  /// The load-bearing one. Most turns in any ledger older than the feature have
+  /// never been ruled on, and rendering that as a rejection would misreport the
+  /// whole corpus — which is the exact thing this column exists to be honest about.
+  it("reads an absent verdict as UNRULED, never as discarded", async () => {
+    authoringHistoryMock.mockResolvedValue([turn(), turn({ id: 2, status: null })]);
+    const rows = await draftedModels();
+    expect(rows.map((r) => r.status)).toEqual([null, null]);
+    expect(rows.some((r) => r.status === "discarded")).toBe(false);
+  });
+
+  it("refuses a value the server had no business sending", async () => {
+    authoringHistoryMock.mockResolvedValue([turn({ status: "lgtm" })]);
+    expect((await draftedModels())[0].status).toBeNull();
+  });
+});
+
 describe("a description becomes a line", () => {
   it("leaves a short prompt exactly as written", () => {
     expect(draftedName("a coffee shop")).toBe("a coffee shop");
