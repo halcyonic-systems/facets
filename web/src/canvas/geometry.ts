@@ -129,6 +129,79 @@ function siblingRank(model: CanvasModel, relation: Relation): { i: number; n: nu
   return { i: siblings.findIndex((r) => r.id === relation.id), n: siblings.length };
 }
 
+/** Minimum angular gap, in radians, between two edges' contact points on one
+ *  node's rim. At NODE_R this is roughly a 10px arc — enough that two
+ *  arrowheads read as two.
+ *
+ *  Do not raise this without re-measuring a DENSE model. Widening the gap makes
+ *  a resolved run wider, and a wider run walks into the edges on either side of
+ *  it, which are not part of the run and do not move. Measured closest-pair on
+ *  `llm-market.sl`: 2.91 world px at 0.3, but 1.64 at 0.42 — the wider gap made
+ *  the crowded model WORSE while helping the sparse ones. Removing the tension
+ *  needs the run to yield to its neighbours (an iterative relaxation) rather
+ *  than a bigger constant. */
+export const MIN_RIM_GAP = 0.3;
+
+/** The contact ANGLE on `endpointId`'s rim for `relation`, or null if the
+ *  relation does not touch that node.
+ *
+ *  This is what stops arrowheads landing on one pixel. A rim point is computed
+ *  from the two node centres alone, so parallel siblings — which share both
+ *  centres — contact the rim at *exactly* the same place. PARALLEL_BOW bows the
+ *  middles of those curves apart and then delivers every arrowhead back to the
+ *  identical point. Measured on `federal-reserve.sl`: 15 heads on 11 distinct
+ *  points, three of them stacked on BANKING SYSTEM.
+ *
+ *  It spreads only what is ALREADY TOO CLOSE, and leaves everything else on its
+ *  natural bearing. That restraint is the whole design, learned the hard way: an
+ *  unconditional per-edge fan (rotate every contact by its rank) fixed the
+ *  sibling case and REGRESSED `llm-market.sl`, whose 38 heads were already
+ *  distinct — rotating edges that had room pushed some of them into each other.
+ *  So the rule is not "fan the edges", it is "resolve the ties".
+ *
+ *  Self-loops are excluded: one draws its own bowed path and takes no rim point,
+ *  so a slot for it would open a gap where no line arrives. */
+export function rimAngleFor(
+  model: CanvasModel,
+  relation: Relation,
+  endpointId: number,
+): number | null {
+  const node = thingById(model, endpointId);
+  if (!node) return null;
+  const incident = model.relations
+    .filter((r) => r.a !== r.b && (r.a === endpointId || r.b === endpointId))
+    .map((r) => {
+      const other = thingById(model, r.a === endpointId ? r.b : r.a);
+      return {
+        id: r.id,
+        ang: other ? Math.atan2(other.y - node.y, other.x - node.x) : 0,
+      };
+    })
+    // Sorted by bearing, ties broken by id so the assignment is stable across
+    // renders — an unstable order would make arrowheads swap places on a drag.
+    .sort((x, y) => x.ang - y.ang || x.id - y.id);
+
+  const idx = incident.findIndex((e) => e.id === relation.id);
+  if (idx < 0) return null;
+
+  // Walk the sorted bearings and find RUNS that crowd each other, then
+  // redistribute each run at MIN_RIM_GAP about its own midpoint. A lone edge,
+  // or one with room on both sides, is returned exactly as authored.
+  const resolved = incident.map((e) => e.ang);
+  let i = 0;
+  while (i < incident.length) {
+    let j = i;
+    while (j + 1 < incident.length && incident[j + 1].ang - incident[j].ang < MIN_RIM_GAP) j++;
+    if (j > i) {
+      const n = j - i + 1;
+      const mid = (incident[i].ang + incident[j].ang) / 2;
+      for (let k = 0; k < n; k++) resolved[i + k] = mid + (k - (n - 1) / 2) * MIN_RIM_GAP;
+    }
+    i = j + 1;
+  }
+  return resolved[idx];
+}
+
 /** This relation's centered rank among siblings on the same unordered pair
  *  (…-1, 0, 1…) — the shared fan index for both the rim-to-rim bow and the
  *  exo crossing spread, so one flow occupies the same slot in both drawings. */
@@ -164,8 +237,20 @@ export function edgeGeometry(
     const loop = selfLoopPath(from, NODE_R);
     return { d: loop.d, labelAt: loop.labelAt };
   }
-  const a = rimPoint(from, to, rr?.a ?? NODE_R);
-  const b = rimPoint(to, from, rr?.b ?? NODE_R);
+  // Contact points come from the resolved rim ANGLE, so edges that would land on
+  // one pixel are separated while every edge with room keeps its true bearing.
+  const ra = rr?.a ?? NODE_R;
+  const rb = rr?.b ?? NODE_R;
+  const angA = rimAngleFor(model, relation, relation.a);
+  const angB = rimAngleFor(model, relation, relation.b);
+  const a =
+    angA === null
+      ? rimPoint(from, to, ra)
+      : { x: from.x + Math.cos(angA) * ra, y: from.y + Math.sin(angA) * ra };
+  const b =
+    angB === null
+      ? rimPoint(to, from, rb)
+      : { x: to.x + Math.cos(angB) * rb, y: to.y + Math.sin(angB) * rb };
 
   // Parallel edges between the same pair of nodes would draw the identical path
   // and stack into one indistinguishable, unclickable line. Rank this relation
