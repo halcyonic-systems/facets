@@ -77,6 +77,82 @@ Colour is a **signal channel**, never a surface treatment:
 
 Everything else is ink, paper, and two weights of rule.
 
+## Reserved channels
+
+A **reserved channel** is a visual dimension the instrument has spent on one
+meaning and may not spend again. Two are reserved.
+
+| Channel | Carried by | Says |
+|---|---|---|
+| KIND | `--kind-*` hue, on the stroke and its arrowhead | which substance |
+| BONDHOOD | the **arrowhead**: present or absent | whether the relation bonds |
+
+### Why bondhood earned one (#320)
+
+On 2026-08-12 the kernel refused a drafted ribosome model — `interface 'Large
+Subunit' carries no boundary-crossing flow` — while the canvas plainly showed two
+lines touching that component. A domain expert and the assistant both concluded
+the kernel was wrong. It was right: both lines were authored `mere`, and a mere
+relation does not bond.
+
+The canvas drew relations, the kernel reasoned about bonds, and nothing on
+screen told them apart. Colour had a whole contractual channel for *substance
+kind*, which is descriptive, and bondhood — which in Bunge is what separates a
+system from an aggregate — had none. That inversion was the defect.
+
+### The rule, per lens
+
+**An arrowhead asserts a bond.** A `mere` relation stays fully visible (it was
+authored deliberately) and terminates instead in an open `coupling` cap at both
+ends — adjacency, with no end that is the receiving one. What that rule means
+differs by tradition, and it is left differing on purpose: the traditions
+disagree about bondhood, so a uniform chrome would be the flattening this
+instrument exists to avoid.
+
+- **Mobus — arrowhead ≡ bond, no exception.** N *is* the flow set, a bond is a
+  flow, a flow is transport. A mere relation additionally loses its substance
+  colour, because `mere` is Bunge's construct and *never projects* under Mobus
+  (`docs/language/spec.md` §4.4): it lands in neither N nor G, so naming a
+  substance on it would name something this lens cannot see. Its label reads
+  `∉ N ∪ G` rather than the flow-set tag a bond carries.
+- **Bunge — arrowhead ≡ bond, but the arrow means less.** A bond is a *coupling*;
+  it says which thing acts on which, and it need carry nothing. A bond that
+  transports nothing is coherent here and incoherent under Mobus. Mere relations
+  keep their muted hairline and lose the head.
+- **Klir — exempt, deliberately.** `(T, R)` draws no bond/non-bond line; every
+  authored relation is in R and `describe` counts them all. Encoding bondhood
+  here would import a Bunge construct into Klir's chrome. So under Klir a mere
+  relation renders *exactly* like a bond, and the arrowhead means something else
+  entirely — that the observer toggled the relation directed. **The rule is
+  lens-relative, not global.**
+
+Counts are stated before any refusal exists: the compile chain's step 2 reads
+`14 relations (12 bond · 2 mere)`, and the model's About block names the split in
+the active lens's own vocabulary (flows / bonds / relations).
+
+### The meta-rule this produced
+
+**A channel is specified by its PURPOSE and bound by a CHECK — never by a
+mechanism standing in for the purpose.**
+
+The KIND channel's contract reads "identical hex across themes" when what it
+means is *"a substance is recognisable as the same substance anywhere."* In dark
+the stated mechanism defeats the stated purpose (#321): a hue held constant
+against an inverted ground is not the same colour to a reader. A contract
+written as a mechanism cannot notice that, because the mechanism is satisfied.
+
+So a channel spec owes three things:
+
+1. **The purpose**, in a sentence about what a reader can tell.
+2. **The mechanism**, marked as an implementation of that purpose and revisable
+   whenever it stops serving it.
+3. **A check with a separating instance** — a model where the distinction is
+   genuinely present, made to fail on purpose once. Bondhood's is
+   `web/src/canvas/bondhood.test.tsx` over the 2026-08-12 ribosome shape, with
+   the fixture's own bond/mere split asserted in
+   `crates/bert-canvas/tests/issue_codes.rs` so the check cannot be defanged by
+   repairing the model out from under it.
+
 ## Rules
 
 1. **Straight edges.** Corner radius is capped at 8px (`--radius-md`). The
@@ -133,6 +209,13 @@ arbitrary value, or `borderRadius` string), any `boxShadow` outside the two
 `linear/radial/conic-gradient` in `web/src/**`. Authored case is held by a test in
 `web/src/HomeScreen.test.tsx` rather than a grep — it is a claim about data, not
 about a token.
+
+**Bondhood is held the same way**, by `web/src/canvas/bondhood.test.tsx`, and
+deliberately not by `check:tokens`. The gate reads tokens and utility classes; a
+grep for "no arrowhead on a mere relation" would have to guess at a render
+decision spread over three files and would pass on markup that violates the rule.
+The test reads the rendered SVG and counts arrow-terminated paths, so it fails on
+the thing the reader actually sees. Same precedent, same reason.
 
 Tokens themselves live in `web/src/index.css` and are mirrored in
 `web/src/tokens.ts`; this language adds no colours.

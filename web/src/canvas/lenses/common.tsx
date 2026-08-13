@@ -22,6 +22,10 @@ export interface EdgeStyle {
    *  substance color — a slate head on a green line reads as a terminus, not a
    *  direction. Omit for the neutral `arrow` (Klir's substance-blind line). */
   marker?: string;
+  /** The BONDHOOD channel (#320): a start-side marker, set only where the edge
+   *  must NOT read as directed transport. A `mere` relation caps both ends with
+   *  `coupling` so no end is the arrow end. Bonds leave this unset. */
+  markerStart?: string;
 }
 
 interface NodeBodyProps {
@@ -516,6 +520,7 @@ export function EdgeScaffold({
           strokeDasharray={style.dash}
           filter={style.filter}
           markerEnd={seg.markered ? `url(#${style.marker ?? "arrow"})` : undefined}
+          markerStart={seg.markered && style.markerStart ? `url(#${style.markerStart})` : undefined}
           pointerEvents="none"
         />
       ))}

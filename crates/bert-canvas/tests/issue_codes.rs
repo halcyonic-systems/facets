@@ -123,3 +123,49 @@ fn a_refusal_reports_the_mere_relations_its_judgement_left_out() {
          refusal is right and the canvas looks like it disagrees"
     );
 }
+
+/// The premise the FACE's bondhood channel rests on (#320): this fixture really
+/// does hold relations of both kinds, and the component the reader pointed at is
+/// touched by nothing but mere ones. The rule the canvas now draws — an
+/// arrowhead asserts a bond — separates only if a model can separate, and
+/// `web/src/canvas/bondhood.test.tsx` renders this shape to show the marks
+/// differ. Repairing the fixture by promoting those two relations to bonds would
+/// leave that test passing over a model with nothing left to distinguish, so the
+/// split is asserted here rather than assumed there.
+#[test]
+fn the_fixture_separates_bonds_from_mere_relations() {
+    let parsed = parse_sl_full(RIBOSOME).expect("the fixture compiles");
+    let model = &parsed.model;
+
+    let mere: Vec<&str> = model
+        .relations
+        .iter()
+        .filter(|r| !r.is_bond)
+        .map(|r| r.name.as_str())
+        .collect();
+    assert_eq!(
+        mere.len(),
+        2,
+        "the 2026-08-12 shape is two mere relations among bonds; got {mere:?}"
+    );
+    assert!(
+        model.relations.iter().filter(|r| r.is_bond).count() >= 2,
+        "a model with no bonds cannot separate the two markings"
+    );
+
+    let large = model
+        .things
+        .iter()
+        .find(|t| t.name == "Large Subunit")
+        .expect("the refused component is in the fixture");
+    let touching = model
+        .relations
+        .iter()
+        .filter(|r| r.a == large.id || r.b == large.id)
+        .collect::<Vec<_>>();
+    assert_eq!(touching.len(), 2, "two lines are drawn at it");
+    assert!(
+        touching.iter().all(|r| !r.is_bond),
+        "and neither bonds it — which is why the correct refusal read as wrong"
+    );
+}

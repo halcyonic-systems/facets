@@ -374,6 +374,15 @@ export default function Canvas({
             <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
           </marker>
         ))}
+        {/* The BONDHOOD channel (#320). An arrowhead asserts a bond; a relation
+            authored `mere` must stay visible and must not read as transport, so
+            it terminates in an open coupling cap at BOTH ends — adjacency, with
+            no end that is the receiving one. Hollow and unfilled on purpose: a
+            filled terminus reads as a stop, and a mere relation does not stop
+            anything, it simply holds. Klir never uses it (see klir.tsx). */}
+        <marker id="coupling" viewBox="0 0 10 10" refX="5" refY="5" markerWidth={STYLE.arrowSize} markerHeight={STYLE.arrowSize} orient="auto">
+          <circle cx="5" cy="5" r="3" fill="none" stroke="var(--text-muted)" strokeWidth="1.4" />
+        </marker>
         {/* the "work sphere" sheen of the house drawings (Fig. 4.5) — a neutral
             top-left highlight, never a substance color. */}
         <radialGradient id="mobus-sphere" cx="38%" cy="34%" r="72%">

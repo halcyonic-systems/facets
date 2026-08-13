@@ -56,6 +56,25 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
 }
 
 function edgeStyle(relation: Relation): EdgeStyle {
+  // BONDHOOD (#320), stated at its strongest here. Under Mobus N IS the flow
+  // set, a bond is a flow, and a flow is transport — so an arrowhead means a
+  // bond with NO exception, and a `mere` relation gets none. It also loses its
+  // substance colour: `mere` is Bunge's construct and never projects (spec
+  // §4.4), so under this reading the relation is in neither N nor G and no
+  // substance moves along it. Drawing it kind-coloured would name a substance
+  // that this lens does not see. Muted ink, coupling caps, still visible: the
+  // author wrote it, and the 2026-08-12 ribosome case is what happens when the
+  // reader cannot tell it apart from a flow.
+  if (!relation.is_bond) {
+    return {
+      color: "var(--text-muted)",
+      width: STYLE.edge.mere,
+      dash: "2 6",
+      opacity: 0.5,
+      marker: "coupling",
+      markerStart: "coupling",
+    };
+  }
   const marker = `arrow-${relation.kind}`;
   switch (relation.kind) {
     case "Matter":
@@ -90,9 +109,14 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
   // the semantics) but spread at the env rim and nudge apart at the capsule.
   let visible: { d: string; markered: boolean }[] = [{ d, markered: true }];
   let interior: string | null = null;
-  let title: string | undefined;
+  let title: string | undefined = relation.is_bond
+    ? undefined
+    : "mere relation — Bunge's bond/non-bond distinction. It never projects under Mobus (spec §4.4), so it is in neither N nor G and moves no substance in this reading.";
   let exoAtInterface = false;
-  if (ring && fact?.locus === "Exo" && relation.a !== relation.b) {
+  // `is_bond` gates the crossing routing too (#320): a mere relation crosses
+  // nothing, so it never earns the port/interior two-segment treatment — that
+  // machinery is the picture of a flow entering the system.
+  if (ring && relation.is_bond && fact?.locus === "Exo" && relation.a !== relation.b) {
     const from = thingById(model, relation.a);
     const to = thingById(model, relation.b);
     if (from && to) {
@@ -166,7 +190,12 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
         className="font-mono pointer-events-none"
       >
         {relation.name}
-        <tspan fill="var(--text-secondary)">{exoAtInterface ? " · G" : " · N"}</tspan>
+        {/* The set tag has to be true (#320): a mere relation is in NEITHER N
+            nor G, and tagging it `· N` printed a flow-set membership the lens
+            does not grant. */}
+        <tspan fill="var(--text-secondary)">
+          {!relation.is_bond ? " ∉ N ∪ G" : exoAtInterface ? " · G" : " · N"}
+        </tspan>
       </text>
     ) : null;
 
