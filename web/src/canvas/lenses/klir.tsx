@@ -30,7 +30,7 @@ function NodeView({ thing, hovered, sim, onPointerDown, onHandlePointerDown }: L
 // The relation is neutral, substance-blind: no material/energy/message coloring.
 const KLIR_STYLE: EdgeStyle = { color: "var(--text-secondary)", width: STYLE.edge.klir, opacity: 0.9 };
 
-function EdgeView({ model, relation, sigIndex, selected, driven, sim, onSelect }: LensEdgeProps) {
+function EdgeView({ model, relation, sigIndex, selected, driven, sim, crowded, onSelect }: LensEdgeProps) {
   const geo = edgeGeometry(model, relation, false);
   if (!geo) return null;
   const { d, labelAt } = geo;
@@ -82,6 +82,7 @@ function EdgeView({ model, relation, sigIndex, selected, driven, sim, onSelect }
       relationId={relation.id}
       onSelect={onSelect}
       label={label}
+      crowded={crowded}
     />
   );
 }

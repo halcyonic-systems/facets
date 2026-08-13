@@ -93,7 +93,7 @@ export function channelCopy(fact: EdgeFact | undefined, isBond: boolean): string
   }
 }
 
-function EdgeView({ model, relation, fact, selected, driven, sim, onSelect }: LensEdgeProps) {
+function EdgeView({ model, relation, fact, selected, driven, sim, crowded, onSelect }: LensEdgeProps) {
   const geo = edgeGeometry(model, relation, true);
   if (!geo) return null;
   const { d, labelAt } = geo;
@@ -142,6 +142,7 @@ function EdgeView({ model, relation, fact, selected, driven, sim, onSelect }: Le
       onSelect={onSelect}
       overlay={overlay}
       label={label}
+      crowded={crowded}
       title={channelCopy(fact, relation.is_bond)}
     />
   );

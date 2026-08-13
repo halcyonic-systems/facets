@@ -45,6 +45,10 @@ export interface LensEdgeProps {
   selected: boolean;
   driven: boolean;
   sim?: { value: number; unit: string };
+  /** #335: this edge's label overlaps another one, so it defers to hover or
+   *  selection. A LAYOUT fact measured off the rendered boxes by Canvas, not a
+   *  systems fact — every lens passes it straight to EdgeScaffold. */
+  crowded?: boolean;
   onSelect?: (id: number) => void;
 }
 

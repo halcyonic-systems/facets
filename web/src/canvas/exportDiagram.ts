@@ -104,6 +104,16 @@ function serializeDiagram(live: SVGSVGElement, model: CanvasModel): Serialized |
     }
   }
 
+  // #335: a crowded edge label is quieted on the stage because hover gives it
+  // back. A still has no hover, so restore every label to full strength here.
+  // The export therefore keeps the pre-#335 reading — names that overlap — and
+  // that is the right trade: a reader can pick apart two overlapping names, and
+  // can do nothing at all with a name that was never drawn. Runs AFTER the bake
+  // loop, which would otherwise write the live `opacity: 0` straight in.
+  clone.querySelectorAll<SVGElement>("[data-edge-label]").forEach((el) => {
+    el.style.setProperty("opacity", "1");
+  });
+
   // Drop interactive-only chrome: elements the source marks with
   // data-export-ignore (invisible hit paths, hover/selection outlines) and any
   // foreignObject (the in-canvas name-draft input) — none belong in a diagram.

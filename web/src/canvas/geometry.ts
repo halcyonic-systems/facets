@@ -391,3 +391,71 @@ export function fitToBox(
   const cy = (box.minY + box.maxY) / 2;
   return { pan: { x: vw / 2 - scale * cx, y: vh / 2 - scale * cy }, scale };
 }
+
+// ---- #335 detail-on-demand: which labels are crowded -------------------------
+//
+// The three findings that shaped this. (1) Crowding is ZOOM-INVARIANT — every
+// label lives inside the one `scale()` group and nothing counter-scales, so
+// text and separation grow together and a zoom threshold changes only WHEN
+// labels vanish, never whether they collide. Boxes are therefore compared in
+// world space, and the answer holds at every zoom. (2) Placement cannot fix the
+// remainder — siblings on a short edge want ~80px of text in the ~45px
+// `SIBLING_LABEL_SPREAD` can offer, and two unrelated edges can simply share a
+// midpoint. (3) So the surviving move is deferral, not tuning: a colliding
+// cluster goes quiet and gives its name back on hover or selection.
+//
+// Boxes come from the DOM's own `getBBox`, never from an estimate — a
+// monospace character-count guess drifts per lens (Klir stacks a signature
+// line, Bunge and Mobus append a set/bond tag) and would have to restate the
+// per-lens label logic to stay true. Measuring the rendered text keeps one
+// source of truth: the lens draws it, this reads what was drawn.
+
+/** A rendered label's box, tagged with the relation it names. Boxes arrive in
+ *  SCREEN space (`getBoundingClientRect`), not world space, for two reasons: a
+ *  node's name is nested inside its own transformed group while an edge's label
+ *  sits on the stage, so only screen space compares them without unwinding
+ *  transforms; and the pad below then buys real perceived air rather than world
+ *  px that shrink under the reader's zoom. Overlap itself is unaffected — the
+ *  stage transform is a uniform scale plus a translate, which preserves whether
+ *  two boxes intersect. */
+export interface LabelBox {
+  id: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** A box that collides but can never yield — a node's NAME. It has no hover
+   *  gesture of its own to give it back, and identity outranks a flow's label,
+   *  so the flow label is the one that defers. */
+  fixed?: boolean;
+}
+
+/** Slack, in world px, before two labels count as colliding. Text that merely
+ *  touches is already unreadable, so the pad buys a little air rather than
+ *  waiting for a true overlap. */
+export const LABEL_COLLISION_PAD = 2;
+
+/** Every id in a colliding cluster — BOTH members of each overlapping pair, not
+ *  a winner and a loser. Keeping one of a pair visible would only re-collide
+ *  the moment its neighbour is hovered back in, so the cluster goes quiet
+ *  together and hover picks exactly one to speak. `fixed` boxes are the
+ *  exception: they collide but never yield. */
+export function crowdedLabelIds(boxes: LabelBox[], pad: number = LABEL_COLLISION_PAD): Set<number> {
+  const out = new Set<number>();
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = i + 1; j < boxes.length; j++) {
+      const p = boxes[i];
+      const q = boxes[j];
+      const apart =
+        p.x + p.w + pad <= q.x ||
+        q.x + q.w + pad <= p.x ||
+        p.y + p.h + pad <= q.y ||
+        q.y + q.h + pad <= p.y;
+      if (!apart) {
+        if (!p.fixed) out.add(p.id);
+        if (!q.fixed) out.add(q.id);
+      }
+    }
+  }
+  return out;
+}

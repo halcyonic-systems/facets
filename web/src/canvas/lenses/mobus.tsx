@@ -94,7 +94,7 @@ function edgeStyle(relation: Relation): EdgeStyle {
   }
 }
 
-function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect }: LensEdgeProps) {
+function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded, onSelect }: LensEdgeProps) {
   const geo = edgeGeometry(model, relation, true);
   if (!geo) return null;
   let { d, labelAt } = geo;
@@ -215,6 +215,7 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
       relationId={relation.id}
       onSelect={onSelect}
       label={label}
+      crowded={crowded}
       title={title}
     />
   );
