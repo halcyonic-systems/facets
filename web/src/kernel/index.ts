@@ -25,6 +25,7 @@ import init, {
   analyze_canvas as wasmAnalyzeCanvas,
   compile_sl as wasmCompileSl,
   emit_sl as wasmEmitSl,
+  splice_positions as wasmSplicePositions,
   model_identity as wasmModelIdentity,
   check_decompositions as wasmCheckDecompositions,
   decompose_component as wasmDecomposeComponent,
@@ -333,6 +334,18 @@ export function compileSl(text: string): SlOutcome {
  *  kernel-side. */
 export function emitSl(model: CanvasModel): string {
   return call("emit_sl", () => wasmEmitSl(JSON.stringify(model)));
+}
+
+/** Rewrite only the `@pos` lines of an SL source, leaving every other byte
+ *  alone (#327) — how a canvas drag gets saved back into a file someone wrote.
+ *
+ *  `emitSl` is the wrong call for that: it reproduces the MODEL, and a model
+ *  carries no comments, so saving a moved node through it trades a documented
+ *  file for its four position numbers (#262). Positions are the one part of an
+ *  SL text purely derived from the model, so they alone are safe to replace in
+ *  place. Everything else in `source` comes back untouched. */
+export function splicePositions(source: string, model: CanvasModel): string {
+  return call("splice_positions", () => wasmSplicePositions(source, JSON.stringify(model)));
 }
 
 // ---- Decomposition: store-layer resolution (#89 step 5a) -----------------------

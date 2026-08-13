@@ -1814,6 +1814,70 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
     Ok(out)
 }
 
+/// Rewrite only the `@pos` lines of an SL source, leaving every other byte of
+/// it alone — the layout half of a round-trip, without the round-trip.
+///
+/// [`emit_sl`] is canonicalizing, which is the right behaviour for producing
+/// text from a model and the wrong one for *updating* text an author wrote.
+/// Emit reproduces the model, and a model does not carry comments, blank lines,
+/// or the order the author chose to explain things in; re-emitting a documented
+/// file to save a drag therefore trades every word of its prose for four
+/// numbers. That loss is #262's subject. This function exists so that moving a
+/// node does not have to wait for it: positions are the one part of the text
+/// that is *purely* derived from the model, so they can be replaced in place
+/// while nothing else is touched.
+///
+/// A line counts as a position line exactly when the parser would read it as
+/// one — `tokenize` decides, so a `#` inside a quoted name and a `@pos` inside
+/// a comment are both handled the way the parser handles them, rather than by
+/// a second guess at its rules. A line that fails to tokenize is left ALONE
+/// rather than dropped: it is already a parse fault, and deleting text on the
+/// way past would turn a diagnosable error into a silent edit.
+///
+/// The new block lands where the first old position line was, so a file that
+/// grouped them at the end keeps them at the end. A source with no `@pos` at
+/// all gets the block appended. Things absent from `model` lose their line;
+/// things missing one gain it.
+///
+/// Line endings normalize to `\n` (SL sources in this repo are LF); a trailing
+/// newline is preserved if the source had one and not invented if it did not.
+pub fn splice_positions(source: &str, model: &CanvasModel) -> Result<String, String> {
+    let mut block = Vec::with_capacity(model.things.len());
+    for t in &model.things {
+        block.push(format!("@pos {} {} {}", name_token(&t.name)?, t.x, t.y));
+    }
+
+    let is_pos_line = |line: &str| match tokenize(line) {
+        Ok(toks) => matches!(toks.first(), Some(Tok::Word(w)) if w.strip_prefix('@') == Some("pos")),
+        Err(_) => false,
+    };
+
+    let mut out: Vec<String> = Vec::new();
+    let mut placed = false;
+    for line in source.lines() {
+        if is_pos_line(line) {
+            if !placed {
+                out.extend(block.iter().cloned());
+                placed = true;
+            }
+            continue;
+        }
+        out.push(line.to_string());
+    }
+    if !placed && !block.is_empty() {
+        if out.last().is_some_and(|l| !l.trim().is_empty()) {
+            out.push(String::new());
+        }
+        out.extend(block);
+    }
+
+    let mut text = out.join("\n");
+    if source.ends_with('\n') {
+        text.push('\n');
+    }
+    Ok(text)
+}
+
 /// Words the tokenizer or line parsers claim — a thing name matching one must
 /// be quoted to stay a name.
 pub const RESERVED_WORDS: &[&str] = &[
@@ -2437,4 +2501,122 @@ boundary porosity 0.7 fuzziness 0.1
         let model = parse_sl("\ncomponent A  # the core\n\n# whole-line comment\n").unwrap();
         assert_eq!(model.things.len(), 1);
     }
+
+    // ── splice_positions: the layout half of a round-trip (#327) ─────────
+
+    /// The property the whole function exists for. `emit_sl` on this source
+    /// would return four lines; the splice must return all of it but the
+    /// positions.
+    #[test]
+    fn splice_keeps_every_line_that_is_not_a_position() {
+        let src = "\
+# ── A documented model ───────────────────────────────────────
+# The comment block is the reason this function exists: it is not
+# in the model, so an emit cannot give it back.
+#   https://example.org/a-source-worth-keeping
+
+system \"Doc\" : Concrete/Social
+
+# why this component is here
+component A primitive Combining interface
+
+source S
+
+flow S -> A : matter \"in\"
+
+@lens mobus
+@pos A 10 20
+@pos S 30 40
+";
+        let mut m = parse_sl(src).unwrap();
+        m.things[0].x = 111.0;
+        m.things[0].y = 222.0;
+        let out = splice_positions(src, &m).unwrap();
+
+        assert!(out.contains("https://example.org/a-source-worth-keeping"));
+        assert!(out.contains("# why this component is here"));
+        assert!(out.contains("@lens mobus"));
+        assert!(out.contains("@pos A 111 222"));
+        assert!(!out.contains("@pos A 10 20"));
+        // every non-position line of the original survives, in order
+        let kept: Vec<&str> = src.lines().filter(|l| !l.trim_start().starts_with("@pos")).collect();
+        let got: Vec<&str> = out.lines().filter(|l| !l.trim_start().starts_with("@pos")).collect();
+        assert_eq!(kept, got);
+    }
+
+    /// Re-parsing the spliced text must yield the moved model — the splice is
+    /// only worth anything if the kernel reads the new positions back.
+    #[test]
+    fn splice_round_trips_through_the_parser() {
+        let src = "component A\nsource S\nflow S -> A : matter \"in\"\n@pos A 1 2\n@pos S 3 4\n";
+        let mut m = parse_sl(src).unwrap();
+        m.things[0].x = 900.5;
+        m.things[0].y = -12.25;
+        let back = parse_sl(&splice_positions(src, &m).unwrap()).unwrap();
+        assert_eq!((back.things[0].x, back.things[0].y), (900.5, -12.25));
+        assert_eq!((back.things[1].x, back.things[1].y), (m.things[1].x, m.things[1].y));
+    }
+
+    /// A source that never pinned a position gains the block rather than
+    /// silently keeping auto-layout.
+    #[test]
+    fn splice_appends_when_the_source_pinned_nothing() {
+        let src = "component A\n";
+        let mut m = parse_sl(src).unwrap();
+        m.things[0].x = 7.0;
+        m.things[0].y = 8.0;
+        let out = splice_positions(src, &m).unwrap();
+        assert!(out.starts_with("component A\n"));
+        assert!(out.contains("@pos A 7 8"));
+        assert_eq!(parse_sl(&out).unwrap().things[0].x, 7.0);
+    }
+
+    /// The block lands where the old one was, so a file that put positions in
+    /// the middle keeps its shape.
+    #[test]
+    fn splice_places_the_block_at_the_first_old_position_line() {
+        let src = "component A\n@pos A 1 2\nsource S\nflow S -> A : matter \"in\"\n";
+        let m = parse_sl(src).unwrap();
+        let out = splice_positions(src, &m).unwrap();
+        let lines: Vec<&str> = out.lines().collect();
+        assert_eq!(lines[0], "component A");
+        assert!(lines[1].starts_with("@pos "));
+        assert!(lines.contains(&"source S"));
+    }
+
+    /// `#` inside a quoted name must not be read as a comment, and `@pos`
+    /// inside a comment must not be read as a position — both fall out of
+    /// using the parser's own tokenizer rather than a second guess at it.
+    #[test]
+    fn splice_classifies_lines_the_way_the_parser_does() {
+        let src = "component \"A#B\"\n# @pos A 1 2 -- this is prose, not a position\n@pos \"A#B\" 5 6\n";
+        let mut m = parse_sl(src).unwrap();
+        m.things[0].x = 50.0;
+        let out = splice_positions(src, &m).unwrap();
+        assert!(out.contains("# @pos A 1 2 -- this is prose, not a position"));
+        assert!(out.contains("@pos \"A#B\" 50 6"));
+        assert_eq!(out.matches("@pos \"A#B\"").count(), 1);
+    }
+
+    /// A line that will not tokenize is a parse fault the author needs to see.
+    /// Passing over it must not delete it.
+    #[test]
+    fn splice_leaves_an_untokenizable_line_alone() {
+        // The model comes from text that parses; the SOURCE being spliced is
+        // the broken one, which is the situation a mid-edit buffer is in.
+        let m = parse_sl("component A\n@pos A 3 4\n").unwrap();
+        let broken = "component A\n@pos \"unterminated\n@pos A 1 2\n";
+        let out = splice_positions(broken, &m).unwrap();
+        assert!(out.contains("@pos \"unterminated"));
+        assert!(out.contains("@pos A 3 4"));
+    }
+
+    /// Trailing newline is preserved, not invented and not dropped.
+    #[test]
+    fn splice_preserves_the_trailing_newline_either_way() {
+        let m = parse_sl("component A\n@pos A 1 2\n").unwrap();
+        assert!(splice_positions("component A\n@pos A 1 2\n", &m).unwrap().ends_with('\n'));
+        assert!(!splice_positions("component A\n@pos A 1 2", &m).unwrap().ends_with('\n'));
+    }
+
 }

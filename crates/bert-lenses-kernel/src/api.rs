@@ -360,6 +360,21 @@ pub fn emit_sl(canvas_json: &str) -> Result<String, JsError> {
     bert_canvas::sl::emit_sl(&model).map_err(|e| JsError::new(&e))
 }
 
+/// Rewrite only the `@pos` lines of an SL source, leaving every other byte
+/// alone — how a canvas drag is saved back into a file the author wrote.
+///
+/// `emit_sl` above is the wrong call for that: it reproduces the model, and a
+/// model carries no comments, so saving a moved node through it would trade a
+/// documented file for its four position numbers (#262). Positions are the one
+/// part of the text purely derived from the model, so they alone can be
+/// replaced in place.
+#[wasm_bindgen]
+pub fn splice_positions(source: &str, canvas_json: &str) -> Result<String, JsError> {
+    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    bert_canvas::sl::splice_positions(source, &model).map_err(|e| JsError::new(&e))
+}
+
 /// Validate a proposed connection at the model's current lens. Returns the issues
 /// the candidate edge INTRODUCED (empty = legal). The per-drag "React asks Rust"
 /// call — the canvas rejects an edge iff the kernel says so.

@@ -375,6 +375,27 @@ digit; arbitrary canvas models canonicalize (`emit∘parse∘emit == emit`).
 Throws (JsError) on the shapes SL v1 cannot express: a name/label containing
 `"` or a newline, a genus asserted without a kingdom.
 
+### `splice_positions(source: string, canvas_json: string) → string`
+Rewrite only the `@pos` lines of an SL source, leaving every other byte alone.
+Additive (#327); no existing signature changed.
+
+The layout half of a round-trip, without the round-trip. `emit_sl` reproduces
+the *model*, and a model carries no comments, blank lines, or authored ordering
+— so saving a canvas drag through it trades a documented file for its position
+numbers (that loss is #262). Positions are the one part of an SL text purely
+derived from the model, so they alone can be replaced in place.
+
+A line is a position line exactly when the parser's own `tokenize` reads it as
+one, so a `#` inside a quoted name and a `@pos` inside a comment behave the way
+the parser makes them behave. A line that will not tokenize is left ALONE, not
+dropped — it is already a parse fault, and deleting it would turn a diagnosable
+error into a silent edit. The new block lands where the first old position line
+was; a source with none gets it appended. Things absent from the model lose
+their line, things missing one gain it. Line endings normalize to `\n`; a
+trailing newline is preserved if present and not invented if absent.
+
+Throws (JsError) on the same name shapes `emit_sl` rejects.
+
 **v1.1 (#84):** `CanvasModel` gained an optional `name` field — the author-given
 SOI name. SL grew the matching form `system "Name" [: Kingdom[/Genus]]` (name
 is a quoted string, before the colon-clause). No signature changed; old models
