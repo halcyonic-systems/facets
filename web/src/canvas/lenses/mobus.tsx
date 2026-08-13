@@ -9,7 +9,7 @@
 import type { PortFact, Relation } from "../../kernel/types";
 import { KIND_COLOR } from "../types";
 import { edgeGeometry, INTERFACE_SCALE, rimPoint, ringPoint, siblingStep, straightPath, thingById, NODE_R, type Pt } from "../geometry";
-import { STYLE } from "../style";
+import { STYLE, elideEdgeLabel } from "../style";
 import { EdgeScaffold, NodeBody, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
 
@@ -189,7 +189,10 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
         fill="var(--text-muted)"
         className="font-mono pointer-events-none"
       >
-        {relation.name}
+        {/* #335: the drawn label is the NAME, elided to a budget. The full
+            text is never lost — it is on hover here and in the inspector. */}
+        <title>{relation.name}</title>
+        {elideEdgeLabel(relation.name)}
         {/* The set tag has to be true (#320): a mere relation is in NEITHER N
             nor G, and tagging it `· N` printed a flow-set membership the lens
             does not grant. */}

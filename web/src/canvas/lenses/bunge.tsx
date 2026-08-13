@@ -8,7 +8,7 @@
 import { KIND_COLOR } from "../types";
 import type { EdgeFact, Relation } from "../../kernel/types";
 import { edgeGeometry } from "../geometry";
-import { STYLE } from "../style";
+import { STYLE, elideEdgeLabel } from "../style";
 import { EdgeScaffold, NodeBody, NullPortView, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
 
@@ -121,9 +121,10 @@ function EdgeView({ model, relation, fact, selected, driven, sim, onSelect }: Le
       textAnchor={driven ? "start" : "middle"}
       fontSize={10}
       fill="var(--text-muted)"
-      className="font-mono pointer-events-none"
+      className="font-mono"
     >
-      {relation.name}
+      <title>{relation.name}</title>
+      {elideEdgeLabel(relation.name)}
       <tspan fill="var(--text-secondary)">{` ${relation.is_bond ? "▷" : "∼"}`}</tspan>
     </text>
   ) : null;

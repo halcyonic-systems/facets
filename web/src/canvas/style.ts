@@ -172,3 +172,28 @@ function pick(): StyleSpec {
 }
 
 export const STYLE: StyleSpec = pick();
+
+/** How many characters of a flow's NAME the canvas will draw before eliding it
+ *  (#335). A label is an identifier; a sentence belongs in `description`.
+ *
+ *  Measured on `federal-reserve.sl`: 23 labels, 7 overlapping pairs, the widest
+ *  420 model px against a parallel-sibling fan of 30 (`PARALLEL_BOW`). The fan
+ *  is an order of magnitude smaller than the text, so no amount of fanning
+ *  separates sentence-length labels — the text has to get shorter. Full text
+ *  stays reachable on hover and in the inspector; nothing is hidden, only
+ *  deferred.
+ *
+ *  28 keeps a real name ("reserve balances minted") whole while cutting the
+ *  clauses that made labels into prose. */
+export const EDGE_LABEL_MAX = 28;
+
+/** Elide a flow name to the drawing budget, breaking on a word so the ellipsis
+ *  reads as a truncation rather than as damage. Returns the name unchanged when
+ *  it already fits, so a well-named flow is never decorated. */
+export function elideEdgeLabel(name: string, max: number = EDGE_LABEL_MAX): string {
+  const one = name.replace(/\s+/g, " ").trim();
+  if (one.length <= max) return one;
+  const cut = one.slice(0, max);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > max / 2 ? cut.slice(0, space) : cut).trimEnd()}…`;
+}

@@ -117,18 +117,34 @@ export function unprojectWrite(authored: CanvasModel, projected: CanvasModel, ou
   return { ...outgoing, things: outgoing.things.map((t) => restore.get(t) ?? t) };
 }
 
-/** This relation's centered rank among siblings on the same unordered pair
- *  (…-1, 0, 1…) — the shared fan index for both the rim-to-rim bow and the
- *  exo crossing spread, so one flow occupies the same slot in both drawings. */
-export function siblingStep(model: CanvasModel, relation: Relation): number {
+/** This relation's rank among siblings on the same unordered pair, and how many
+ *  there are. Ordered by id so the assignment is stable across renders. */
+function siblingRank(model: CanvasModel, relation: Relation): { i: number; n: number } {
   const siblings = model.relations
     .filter(
       (r) =>
         (r.a === relation.a && r.b === relation.b) || (r.a === relation.b && r.b === relation.a),
     )
     .sort((r1, r2) => r1.id - r2.id);
-  return siblings.findIndex((r) => r.id === relation.id) - (siblings.length - 1) / 2;
+  return { i: siblings.findIndex((r) => r.id === relation.id), n: siblings.length };
 }
+
+/** This relation's centered rank among siblings on the same unordered pair
+ *  (…-1, 0, 1…) — the shared fan index for both the rim-to-rim bow and the
+ *  exo crossing spread, so one flow occupies the same slot in both drawings. */
+export function siblingStep(model: CanvasModel, relation: Relation): number {
+  const { i, n } = siblingRank(model, relation);
+  return i - (n - 1) / 2;
+}
+
+/** #335: how far apart siblings' labels sit ALONG the wire, as a fraction of
+ *  its length. The perpendicular fan (`PARALLEL_BOW`, 30px) cannot separate
+ *  labels — measured on `federal-reserve.sl`, an elided label is still ~100px
+ *  wide against a 30px fan, and the gap shrinks further with zoom because the
+ *  fan is model-space while the reader's eye is not. Staggering along the wire
+ *  scales with the edge instead of fighting it, so two labels on one pair are
+ *  as far apart as the wire is long. */
+const SIBLING_LABEL_SPREAD = 0.46;
 
 /** The `d` + label anchor for a drawn relation, shared by every lens's EdgeView
  *  and the DrivePopover anchor (App reads it to place the popover at the same
@@ -185,7 +201,12 @@ export function edgeGeometry(
     const peak = step * PARALLEL_BOW;
     const cx = mid.x + px * peak * 2;
     const cy = mid.y + py * peak * 2;
-    const at = lerp(a, b, labelT);
+    // Siblings share endpoints, so they share `labelT` and their labels would
+    // pile at one point on the wire however far the curves bow apart. Spread
+    // them along it instead, centred on labelT.
+    const { i, n } = siblingRank(model, relation);
+    const spread = n > 1 ? (i / (n - 1) - 0.5) * SIBLING_LABEL_SPREAD : 0;
+    const at = lerp(a, b, Math.min(0.88, Math.max(0.12, labelT + spread)));
     return {
       d: `M ${a.x} ${a.y} Q ${cx} ${cy}, ${b.x} ${b.y}`,
       labelAt: { x: at.x + px * peak, y: at.y + py * peak },
