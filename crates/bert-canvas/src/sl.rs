@@ -1406,8 +1406,11 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
 }
 
 /// Place things deterministically: explicit `@pos` wins; otherwise components
-/// take the inner N-gon and environment things the outer ring, in declaration
-/// order. A lone component sits at the center.
+/// take the inner N-gon in declaration order, and environment things the outer
+/// ring **by role, not by declaration index** — sources on the left arc, sinks
+/// on the right arc, so the picture reads left to right the way the flows run
+/// (bert-lenses#309). Declaration order is the tie-break *within* a role, top to
+/// bottom. A lone component sits at the center.
 fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>) {
     use std::f32::consts::{FRAC_PI_2, PI, SQRT_2, TAU};
     let ring = |i: usize, n: usize, radius: f32, start: f32| -> (f32, f32) {
@@ -1468,19 +1471,73 @@ fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>)
         .sqrt();
         ENV_RADIUS.max(center_offset + membrane_max + NODE_R + CLEARANCE)
     };
-    // Interleave: for n ≥ 3 components the env ring starts half a component
-    // slot off −π/2, so env things do not stack radially over component slots.
-    // (For 1–2 components the axes already differ: 2 components lie horizontal,
-    // env starts at the top.)
-    let env_start = if comp_pts.len() >= 3 {
-        -FRAC_PI_2 + PI / comp_pts.len() as f32
-    } else {
-        -FRAC_PI_2
-    };
-    for (slot, &i) in env.iter().enumerate() {
-        let (x, y) = ring(slot, env.len(), env_radius, env_start);
-        model.things[i].x = x;
-        model.things[i].y = y;
+    // Placement by ROLE, not by declaration index (#309). The ring used to be
+    // indexed by declaration order alone, so whether an input landed left or
+    // right was an accident of the order the author typed things in — a model
+    // could render with its sources right of its sinks and read backwards.
+    // Sources take the left arc (centered on π), sinks the right arc (centered
+    // on 0), so flow runs left to right. Untouched neutrals — things the author
+    // declared `environment` and never wired — are ambient, not a stage of the
+    // flow, so they take the top gap. A neutral that IS wired resolves the same
+    // way `project()` resolves it: originates a bond → source side, else sink.
+    //
+    // The arcs are capped at ±SIDE_SPAN/2 so a side can never wrap into the
+    // other side's territory, and the ring radius grows if a crowded side would
+    // otherwise pack its nodes closer than MIN_SEP. One source and six sinks
+    // therefore still reads as one-in / six-out rather than as a scatter, and a
+    // model with only sources (or only sinks) fans out along its own arc instead
+    // of collapsing onto one point.
+    const SIDE_SPAN: f32 = TAU / 3.0; // 120°: left arc 120°–240°, right −60°–60°
+    const AMBIENT_SPAN: f32 = PI / 4.0; // 45° in the 60° gap above the two sides
+    const MIN_SEP: f32 = 2.0 * NODE_R + 32.0;
+    let bonds: Vec<&crate::canvas::Relation> =
+        model.relations.iter().filter(|r| r.is_bond).collect();
+    let originates: std::collections::HashSet<u64> = bonds.iter().map(|r| r.a).collect();
+    let touched: std::collections::HashSet<u64> =
+        bonds.iter().flat_map(|r| [r.a, r.b]).collect();
+    // (center angle, direction of increasing declaration index, span cap)
+    // `dir` is chosen so the first-declared member of a group sits topmost
+    // (y grows downward, so sin > 0 is below the centre).
+    let mut sources: Vec<usize> = Vec::new();
+    let mut sinks: Vec<usize> = Vec::new();
+    let mut ambient: Vec<usize> = Vec::new();
+    for &i in &env {
+        let t = &model.things[i];
+        match t.env_kind {
+            EnvKind::Source => sources.push(i),
+            EnvKind::Sink => sinks.push(i),
+            EnvKind::Neutral => {
+                if !touched.contains(&t.id) {
+                    ambient.push(i);
+                } else if originates.contains(&t.id) {
+                    sources.push(i);
+                } else {
+                    sinks.push(i);
+                }
+            }
+        }
+    }
+    let groups: [(&Vec<usize>, f32, f32, f32); 3] = [
+        (&sources, PI, -1.0, SIDE_SPAN),
+        (&sinks, 0.0, 1.0, SIDE_SPAN),
+        (&ambient, -FRAC_PI_2, 1.0, AMBIENT_SPAN),
+    ];
+    // One radius for the whole ring: the largest any group needs to hold MIN_SEP.
+    let mut radius = env_radius;
+    for (members, _, _, span) in &groups {
+        if members.len() >= 2 {
+            let step = span / (members.len() - 1) as f32;
+            radius = radius.max(MIN_SEP / (2.0 * (step / 2.0).sin()));
+        }
+    }
+    for (members, center, dir, span) in groups {
+        let k = members.len();
+        let step = if k >= 2 { span / (k - 1) as f32 } else { 0.0 };
+        for (slot, &i) in members.iter().enumerate() {
+            let angle = center + dir * (slot as f32 - (k - 1) as f32 / 2.0) * step;
+            model.things[i].x = CENTER.0 + radius * angle.cos();
+            model.things[i].y = CENTER.1 + radius * angle.sin();
+        }
     }
     for thing in &mut model.things {
         if let Some(&(x, y)) = positions.get(&thing.name) {
@@ -2272,6 +2329,89 @@ boundary porosity 0.7 fuzziness 0.1
         let b = m1.things.iter().find(|t| t.name == "B").unwrap();
         assert!((a.y - b.y).abs() < 0.001);
         assert!((a.x - b.x).abs() > COMPONENT_RADIUS);
+    }
+
+    /// Law (#309): the picture reads left to right — every source sits left of
+    /// every sink, whatever order the author declared them in. The regression
+    /// this pins is real: under declaration-order placement this model put both
+    /// sources right of its sink and the factory ran backwards.
+    #[test]
+    fn sources_sit_left_of_sinks() {
+        let text = "system \"Car Factory\"\n\
+                    source \"Raw Materials\"\n\
+                    component \"Parts Buffer\"\n\
+                    source Electricity\n\
+                    component \"Robotic Arm\"\n\
+                    component \"Assembly Line\"\n\
+                    sink \"Finished Car\"\n\
+                    flow \"Raw Materials\" -> \"Parts Buffer\"\n\
+                    flow \"Parts Buffer\" -> \"Assembly Line\"\n\
+                    flow Electricity -> \"Robotic Arm\"\n\
+                    flow \"Assembly Line\" -> \"Finished Car\"\n";
+        let m = parse_sl(text).unwrap();
+        let x = |name: &str| m.things.iter().find(|t| t.name == name).unwrap().x;
+        let right_of_every_source = [x("Raw Materials"), x("Electricity")]
+            .iter()
+            .cloned()
+            .fold(f32::MIN, f32::max);
+        assert!(
+            x("Finished Car") > right_of_every_source,
+            "sink at {} is not right of every source (max {})",
+            x("Finished Car"),
+            right_of_every_source
+        );
+        // The sink is also right of the whole component ring, and the sources
+        // left of it — the ring is not merely ordered, it is a left-to-right read.
+        let comps: Vec<f32> = m
+            .things
+            .iter()
+            .filter(|t| t.role == Role::Component)
+            .map(|t| t.x)
+            .collect();
+        assert!(comps.iter().all(|&c| c > right_of_every_source));
+        assert!(comps.iter().all(|&c| c < x("Finished Car")));
+        // Two sources on one arc stay apart, in declaration order, top first.
+        let a = m.things.iter().find(|t| t.name == "Raw Materials").unwrap();
+        let b = m.things.iter().find(|t| t.name == "Electricity").unwrap();
+        assert!(a.y < b.y, "declaration order is the tie-break, top down");
+        assert!((a.x - b.x).hypot(a.y - b.y) > 2.0 * 34.0);
+    }
+
+    /// A model of only sinks must fan out along its own arc, not collapse.
+    #[test]
+    fn a_one_sided_model_still_spreads() {
+        let text = "component A\nsink S1\nsink S2\nsink S3\n\
+                    flow A -> S1\nflow A -> S2\nflow A -> S3\n";
+        let m = parse_sl(text).unwrap();
+        let sinks: Vec<&Thing> = m
+            .things
+            .iter()
+            .filter(|t| t.role == Role::Environment)
+            .collect();
+        for (i, p) in sinks.iter().enumerate() {
+            for q in &sinks[i + 1..] {
+                assert!(
+                    (p.x - q.x).hypot(p.y - q.y) > 2.0 * 34.0,
+                    "{} and {} overlap",
+                    p.name,
+                    q.name
+                );
+            }
+            assert!(p.x > CENTER.0, "a sink belongs right of centre");
+        }
+    }
+
+    /// Explicit `@pos` still wins over the role-based ring (#309 must not
+    /// disturb the annotation layer, which is applied after layout).
+    #[test]
+    fn explicit_positions_survive_role_layout() {
+        let text = "component A\nsource S\nsink K\nflow S -> A\nflow A -> K\n\
+                    @pos S 900 40\n";
+        let m = parse_sl(text).unwrap();
+        let s = m.things.iter().find(|t| t.name == "S").unwrap();
+        assert_eq!((s.x, s.y), (900.0, 40.0));
+        // …and the unpinned sink is still placed by role.
+        assert!(m.things.iter().find(|t| t.name == "K").unwrap().x > CENTER.0);
     }
 
     /// The container label's rename round trip (bert-lenses#116): the canvas

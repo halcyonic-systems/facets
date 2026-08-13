@@ -6,8 +6,8 @@
     {
       "id": 1,
       "name": "Energy-Source",
-      "x": 593.8469,
-      "y": -30.384766,
+      "x": 295.79187,
+      "y": 0.94207764,
       "role": "Environment",
       "env_kind": "Source",
       "interface": false
@@ -15,8 +15,8 @@
     {
       "id": 2,
       "name": "Iron-Source",
-      "x": 840.36554,
-      "y": 243.40195,
+      "x": 111.58368,
+      "y": 319.99997,
       "role": "Environment",
       "env_kind": "Source",
       "interface": false
@@ -24,8 +24,8 @@
     {
       "id": 3,
       "name": "Coke-Source",
-      "x": 726.5186,
-      "y": 593.78674,
+      "x": 295.7918,
+      "y": 639.05786,
       "role": "Environment",
       "env_kind": "Source",
       "interface": false
@@ -33,8 +33,8 @@
     {
       "id": 4,
       "name": "Steel-Sink",
-      "x": 366.15308,
-      "y": 670.38477,
+      "x": 664.2081,
+      "y": 0.94207764,
       "role": "Environment",
       "env_kind": "Sink",
       "interface": false
@@ -42,8 +42,8 @@
     {
       "id": 5,
       "name": "Garbage-Sink",
-      "x": 119.63446,
-      "y": 396.59802,
+      "x": 848.4163,
+      "y": 320.0,
       "role": "Environment",
       "env_kind": "Sink",
       "interface": false
@@ -51,8 +51,8 @@
     {
       "id": 6,
       "name": "ATMOSPHERE",
-      "x": 233.48146,
-      "y": 46.213226,
+      "x": 664.2081,
+      "y": 639.0579,
       "role": "Environment",
       "env_kind": "Sink",
       "interface": false

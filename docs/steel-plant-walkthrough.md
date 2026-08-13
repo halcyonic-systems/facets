@@ -13,7 +13,7 @@ on purpose):
 
 | Level | Model | Where it ships |
 |---|---|---|
-| 0 | Steel-Plant — Deep Systems Analysis (opaque SOI among its six transaction partners) | `assets/examples/steel-plant-walk.sl` — the examples gallery, genus Technical |
+| 0 | Steel-Plant — Deep Systems Analysis (opaque SOI among its six transaction partners) | `assets/walkthroughs/steel-plant/level-0.sl` — beside the levels it opens onto |
 | 1 | Steel-Plant (Figs. 4.15 + 4.16: six boundary interfaces, four subsystems) | `assets/walkthroughs/steel-plant/level-1.{sl,json}` — bundled shelf |
 | 2 | Iron-Inventory (Fig. 4.17: pumps, stock, sensor, decider) | `assets/walkthroughs/steel-plant/level-2.{sl,json}` — bundled shelf |
 
@@ -24,8 +24,13 @@ fresh browser with an empty library. Both seams are held clean in CI by
 
 ## The click path
 
-1. **Home → Examples → Technical → "Steel-Plant — Deep Systems Analysis".**
-   The card opens Fig. 4.14 at the chapter's own pause: one Combining process
+1. **Home → Open a model → Open a file… → `assets/walkthroughs/steel-plant/level-0.sl`.**
+   (Until #318, level 0 was a gallery card. The consolidation curated the
+   shipped examples down to a named keep set, and a second steel plant was the
+   duplication it was called to remove — the citation-gated corpus entry is now
+   the library's only steel-plant card. Level 0 moved beside the two levels it
+   opens onto; putting it back on a shelf is one glob, if the demo wants it.)
+   It opens Fig. 4.14 at the chapter's own pause: one Combining process
    among the six entities of level −1, F-numbers on every flow, substances
    from Listing 4.1's own subtype attributes.
 

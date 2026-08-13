@@ -1,55 +1,69 @@
 // The home screen — a menu with three doors, not a modal stacked on an empty
-// canvas. Three levels, one surface:
+// canvas. Two levels, one surface:
 //
-//   home     Create a model · Open a model · Documentation
-//   library  the shelves: examples by genus, corpus by author, your saved
-//            models listed inline, a file from disk
-//   shelf    one shelf's models, name + description (+ citation, corpus only)
+//   home     Create a model · Start from data · Open a model · Documentation
+//   library  ONE FLAT LIST of every model, partitioned by provenance —
+//            Ships with the app / Yours — plus a file from disk
 //
-// Counts on the shelf buttons are derived (home.ts) — a new example or a new
-// corpus tradition lights up its button with no edit here.
+// The library is not a browsing hierarchy any more. Genus and tradition are
+// facts ABOUT a model, not places a model lives, so they ride the row as tags
+// and narrow the list through a filter; the page opens on openable models.
+// The partition that survives is PROVENANCE, because it is the one that will
+// matter on release: a bundle ships a handful of models and everything else is
+// the user's own.
 //
-// The examples/corpus separation is the point of the two-section library: an
-// example is ours, a corpus entry is an author's. The CITATION LINE is what
-// tells them apart on the page — identical row layout, corpus rows render a
-// citation and example rows do not.
+// Rows and facets are both derived (home.ts) from the same groupings the
+// gallery has always read — a new example or a new corpus tradition appears
+// with no edit here.
 //
-// Visual language: docs/design/visual-language.md. Every page with an identity
-// opens on a FILLED band that carries it; below the band the page is modular
-// blocks of ledger rows, straight-edged, separated by real rules. Names keep
-// their authored case — small caps, never text-transform (the model is named
-// `hal`, not `HAL`).
+// The examples/corpus separation is still the point: an example is ours, a
+// corpus entry is an author's. The CITATION LINE is what tells them apart on
+// the page — identical row layout, corpus rows render a citation and example
+// rows do not.
+//
+// The row's left cell is a fixed 3rem gutter holding the folio numeral. It is
+// sized to take a diagram thumbnail later (#311) without the rest of the row
+// moving.
+//
+// Visual language: docs/design/visual-language.md. A white sheet on a neutral
+// ground, hairline rules for structure, and colour ONLY where it names
+// something: --seal marks a selected filter and the one exception tag, and
+// --world-* names a tradition. These tokens are scoped to this file's root, so
+// the workspace surface is untouched.
+//
+// The printed-page devices this surface briefly carried (a rubric rule opening
+// every title block, a display serif on the masthead, roman folios, a narrow
+// measure) came from a design brief, not from a stated preference, and were
+// withdrawn 2026-08-12 when asked about directly.
+//
+// Names keep their authored case — small caps, never text-transform (the model
+// is named `hal`, not `HAL`).
 import { useState, useRef, type CSSProperties, type ReactNode } from "react";
-import { isRunnable, type Demo } from "./demos";
-import { firstSentence, type CorpusEntry } from "./corpus";
+import type { Demo } from "./demos";
+import type { CorpusEntry } from "./corpus";
 import type { LibraryNode } from "./libraryTree";
 import {
-  corpusShelfEntries,
-  corpusShelves,
-  exampleShelfEntries,
-  exampleShelves,
-  standardLibraryCount,
+  facets,
+  matchesFacet,
+  shippedModels,
   CORPUS_NOTE,
   EXAMPLES_NOTE,
-  type Shelf,
+  type Facet,
+  type ShippedModel,
+  type Tag,
 } from "./home";
 import { openExternal } from "./desktop";
 import { buildInfo, provenanceLines } from "./buildInfo";
-import type { Pin, WorkbenchEntry } from "./workbench";
 
 const DOCS_URL = "https://github.com/halcyonic-systems/bert-lenses/tree/main/docs";
 
-export type HomeRoute =
-  | { view: "home" }
-  | { view: "library" }
-  | { view: "shelf"; area: "examples" | "corpus"; id: string };
+// The `shelf` view is gone: with the list flat and a filter over it, a shelf
+// was a page that showed a subset the library already shows. Nothing in
+// App.tsx ever constructed one, so no caller changes.
+export type HomeRoute = { view: "home" } | { view: "library" } | { view: "about" };
 
 interface HomeProps {
   initialRoute?: HomeRoute;
-  /** The workbench (workbench.ts): resolved pins, listed above "Start here". */
-  workbench?: WorkbenchEntry[];
-  onOpenPin?: (pin: Pin) => void;
-  onUnpin?: (pin: Pin) => void;
   onCreate: () => void;
   /** #309: the Klir lens's data-first front door — author a data system before
    *  (or instead of) any structure. */
@@ -70,47 +84,48 @@ export function HomeScreen(props: HomeProps) {
   return (
     <div
       className="flex min-h-0 flex-1 flex-col overflow-y-auto"
-      style={{ backgroundColor: "var(--bg-primary)" }}
+      style={{ backgroundColor: "var(--paper-ground)", color: "var(--ink)" }}
     >
-      {/* All three levels are full-bleed: the masthead band runs edge to edge,
-          and the reading column is re-established under it by Column. */}
-      <div className="w-full flex-1">
+      {/* One page, one measure. Every level sets inside the same reading column
+          — there is no full-bleed device, because the page ground IS the
+          identity and a band would interrupt it.
+
+          The sheet: the content sits on --paper against a --paper-ground that
+          is one neutral step away, so the page has an edge without a border,
+          a shadow, or a tint doing the work. Its measure is wider than the
+          reading column's, so the type keeps real margins rather than running
+          to the paper's edge. */}
+      <div
+        className="mx-auto w-full max-w-4xl flex-1 border-x"
+        style={{ backgroundColor: "var(--paper)", borderColor: "var(--rule-soft)" }}
+      >
         {route.view === "home" && (
           <HomeMenu
             onCreate={props.onCreate}
             onStartFromData={props.onStartFromData}
             onOpenLibrary={() => setRoute({ view: "library" })}
-            workbench={props.workbench ?? []}
-            onOpenPin={props.onOpenPin}
-            onUnpin={props.onUnpin}
+            onAbout={() => setRoute({ view: "about" })}
           />
         )}
+        {route.view === "about" && <AboutPage onBack={() => setRoute({ view: "home" })} />}
         {route.view === "library" && (
           <LibraryBrowser
             tree={props.libraryTree}
             onBack={() => setRoute({ view: "home" })}
-            onShelf={(s) => setRoute({ view: "shelf", area: s.area, id: s.id })}
+            onOpenExample={props.onOpenExample}
+            onOpenCorpus={props.onOpenCorpus}
             onOpenFile={props.onOpenFile}
             onLoad={props.onLoadFromLibrary}
             onDelete={props.onDeleteFromLibrary}
             onRename={props.onRenameInLibrary}
           />
         )}
-        {route.view === "shelf" && (
-          <ShelfPage
-            area={route.area}
-            id={route.id}
-            onBack={() => setRoute({ view: "library" })}
-            onOpenExample={props.onOpenExample}
-            onOpenCorpus={props.onOpenCorpus}
-          />
-        )}
         {props.onClose && (
-          <Column className="pb-10">
+          <Column className="pb-12">
             <button
               onClick={props.onClose}
-              className="text-xs"
-              style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+              className="text-[11px] uppercase tracking-[0.2em]"
+              style={{ fontFamily: "var(--font-mono)", color: "var(--ink-muted)" }}
             >
               ‹ back to the model on the canvas
             </button>
@@ -132,28 +147,58 @@ function countLibrary(tree: LibraryNode[]): number {
 }
 
 // ---------------------------------------------------------------------------
-// The language: band, column, block, ledger row. Straight edges, real rules,
-// colour with surface area.
+// The language: measure, title block, section rule, table, entry.
+//
+// Structure is carried by two weights of rule (a near-ink head rule at 1px, a
+// soft hairline between entries), by the serif/sans opposition (a NAME is
+// serif, a gloss is sans, a machine fact is mono), and by vertical rhythm.
 // ---------------------------------------------------------------------------
 
-/** The reading column each block re-establishes under the full-bleed band. */
+/** The measure. One width for every region. There was briefly a narrower
+ *  reading column for the prose pages, on the theory that these were pages to
+ *  be read; they are not, they are a menu and a list, and the narrow column was
+ *  a page-margin habit rather than a legibility need. */
 function Column({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`mx-auto w-full max-w-5xl px-6 ${className}`}>{children}</div>;
+  return (
+    <div className={`mx-auto w-full max-w-4xl px-8 ${className}`}>
+      {children}
+    </div>
+  );
 }
+
+const mono = "var(--font-mono)";
+const display = "var(--font-display)";
+
+/** A folio: the small letterspaced mono line that sits above a title block and
+ *  under a table. Back links and kickers are the same object. */
+const folioStyle: CSSProperties = {
+  fontFamily: mono,
+  color: "var(--ink-muted)",
+};
 
 /** A name as this instrument sets names: letterspaced small caps with the
  *  AUTHORED case intact. text-transform would print `hal` as `HAL` and lie
  *  about the model's name; small caps buys the same even ledger colour without
  *  touching the string. */
 const nameStyle: CSSProperties = {
+  fontFamily: display,
   fontVariantCaps: "small-caps",
-  letterSpacing: "0.06em",
-  color: "var(--text-primary)",
+  letterSpacing: "0.045em",
+  color: "var(--ink)",
 };
 
-/** The identity device. A page with a name opens on a filled accent band that
- *  carries it — back link, eyebrow, title, and the page's one number — instead
- *  of a line of dark text floating on the page ground. */
+/** UI copy that names a door rather than a record — set in the serif at full
+ *  case, so a DOOR ("Create a model") and a NAME (`hal`) are visibly different
+ *  kinds of thing on the same page. */
+const doorStyle: CSSProperties = {
+  fontFamily: display,
+  color: "var(--ink)",
+};
+
+/** The title block. A page opens the way a title page opens: a rubric rule, the
+ *  name in the serif at a size nothing else on the page approaches, the count
+ *  set as a numeral in the outer margin, and a lede beneath.
+ *  It closes on a head rule — the block ends, and the table begins under it. */
 function Masthead({
   eyebrow,
   title,
@@ -163,8 +208,10 @@ function Masthead({
   statLabel,
   back,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: ReactNode;
+  /** The page's opening line. Plain sans; the library's shorter `note` is the
+   *  same object at a smaller size. */
   lede?: string;
   note?: string;
   stat?: number;
@@ -172,70 +219,75 @@ function Masthead({
   back?: { label: string; onClick: () => void };
 }) {
   return (
-    <div className="w-full px-6 pb-8 pt-8" style={{ background: "var(--accent-strong)" }}>
-      <div className="mx-auto max-w-5xl">
-        {back && (
-          <button
-            onClick={back.onClick}
-            className="mb-7 text-[11px] uppercase tracking-[0.2em]"
-            style={{ fontFamily: "var(--font-mono)", color: "var(--accent-soft)" }}
-          >
-            ‹ {back.label}
-          </button>
-        )}
-        <div className="flex items-end justify-between gap-8">
-          <div>
-            <div
-              className="text-[10px] font-semibold uppercase tracking-[0.3em]"
-              style={{ color: "var(--accent-soft)" }}
-            >
+    <Column className="pt-12">
+      {back && (
+        <button
+          onClick={back.onClick}
+          className="mb-10 block text-[11px] uppercase tracking-[0.22em]"
+          style={folioStyle}
+        >
+          ‹ {back.label}
+        </button>
+      )}
+      <div className="flex items-start justify-between gap-10 pt-6">
+        <div className="min-w-0">
+          {eyebrow && (
+            <div className="mb-3 text-[11px] uppercase tracking-[0.3em]" style={folioStyle}>
               {eyebrow}
             </div>
-            <h1
-              className="mt-2 text-4xl font-semibold tracking-tight"
-              style={{ color: "var(--text-on-accent)" }}
-            >
-              {title}
-            </h1>
-          </div>
-          {stat !== undefined && (
-            <div className="shrink-0 text-right">
-              <div className="text-3xl tabular" style={{ color: "var(--text-on-accent)" }}>
-                {stat}
-              </div>
-              <div className="text-[10px] uppercase tracking-[0.24em]" style={{ color: "var(--accent-soft)" }}>
-                {statLabel}
-              </div>
-            </div>
           )}
+          <h1
+            className="text-6xl leading-[0.95] tracking-tight"
+            style={{ fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em" }}
+          >
+            {title}
+          </h1>
         </div>
-        {lede && (
-          <p className="mt-4 max-w-lg text-sm" style={{ color: "var(--accent-soft)" }}>
-            {lede}
-            {note ? ` — ${note}` : ""}
-          </p>
+        {stat !== undefined && (
+          <div className="shrink-0 pt-1 text-right">
+            <div
+              className="text-5xl leading-none"
+              style={{ fontWeight: 600, color: "var(--ink)" }}
+            >
+              {stat}
+            </div>
+            <div className="mt-2 text-[10px] uppercase tracking-[0.24em]" style={folioStyle}>
+              {statLabel}
+            </div>
+          </div>
         )}
       </div>
-    </div>
+      {lede && (
+        <p
+          className="mt-6 max-w-xl text-xl leading-snug"
+          style={{ color: "var(--ink-secondary)" }}
+        >
+          {lede}
+          {note ? ` — ${note}` : ""}
+        </p>
+      )}
+      {!lede && note && (
+        <p className="mt-5 max-w-2xl text-sm leading-relaxed" style={{ color: "var(--ink-secondary)" }}>
+          {note}
+        </p>
+      )}
+      <div className="mt-8" style={{ borderTop: "1px solid var(--rule)" }} />
+    </Column>
   );
 }
 
-/** A block's header: a tinted strip, not a floating label. What follows is one
- *  region and the strip is where the region starts. */
+/** A section mark: a letterspaced label, a hairline running out to the margin,
+ *  and — where the section has one — its count at the right. A printed section
+ *  head, not a tinted strip. */
 function BlockHeader({ label, count }: { label: string; count?: string }) {
   return (
-    <div
-      className="flex items-baseline justify-between gap-4 border-x border-t px-4 py-2"
-      style={{ background: "var(--accent-soft)", borderColor: "var(--border)" }}
-    >
-      <span
-        className="text-[11px] font-semibold uppercase tracking-[0.2em]"
-        style={{ fontFamily: "var(--font-mono)", color: "var(--accent-strong)" }}
-      >
+    <div className="flex items-baseline gap-4 pb-3">
+      <span className="text-[11px] uppercase tracking-[0.28em]" style={folioStyle}>
         {label}
       </span>
+      <span className="h-px min-w-6 flex-1" style={{ background: "var(--rule-soft)" }} />
       {count && (
-        <span className="shrink-0 text-[11px] tabular" style={{ color: "var(--accent-strong)" }}>
+        <span className="shrink-0 text-[11px] tabular" style={{ color: "var(--ink-muted)" }}>
           {count}
         </span>
       )}
@@ -243,87 +295,86 @@ function BlockHeader({ label, count }: { label: string; count?: string }) {
   );
 }
 
-/** The ledger frame: rows live inside real edges, so the block ends somewhere. */
+/** The table. It opens on a head rule; its entries close on hairlines. */
 function Ledger({ children }: { children: ReactNode }) {
-  return (
-    <div className="border-x border-t" style={{ borderColor: "var(--border)" }}>
-      {children}
-    </div>
-  );
+  return <div style={{ borderTop: "1px solid var(--rule)" }}>{children}</div>;
 }
 
-/** The gutter numeral — a continuous tinted column down a ledger's left edge,
- *  not a rim. It is what makes the rows read as discrete entries. */
-function Gutter({ index }: { index?: number }) {
+/** The folio column: a numeral in the left margin of the entry, in mono so the
+ *  column stays true, separated from the entry by nothing but space. It takes
+ *  the rubric under the cursor (see .record-row in index.css). */
+function Gutter({ index, folio }: { index?: number; folio?: string }) {
   return (
     <span
-      className="flex items-start justify-end py-3 pr-3 tabular text-[11px]"
-      style={{
-        background: "var(--accent-soft)",
-        color: "var(--accent-strong)",
-        borderRight: "1px solid var(--border)",
-      }}
+      className="record-folio flex items-start justify-end pr-5 pt-5 text-[11px] tabular"
+      style={{ color: "var(--ink-muted)", transition: "color var(--transition-base)" }}
     >
-      {index === undefined ? "·" : String(index).padStart(2, "0")}
+      {folio ?? (index === undefined ? "·" : String(index).padStart(2, "0"))}
     </span>
   );
 }
 
-/** A filled chip. The exception gets a solid mark with real surface area,
- *  never a 1px rim. */
+/** The exception mark. Not a chip — a printed marginal note: the rubric, in the
+ *  serif italic, set small beside the name. */
 function Chip({ children }: { children: ReactNode }) {
   return (
     <span
-      className="ml-auto shrink-0 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-      style={{
-        background: "var(--accent)",
-        color: "var(--text-on-accent)",
-        borderRadius: "var(--radius-sm)",
-      }}
+      className="ml-auto shrink-0 self-baseline text-sm"
+      style={{ fontFamily: display, fontStyle: "italic", color: "var(--seal)" }}
     >
       {children}
     </span>
   );
 }
 
-const ROW_GRID = "grid w-full grid-cols-[3.25rem_1fr] items-stretch border-b text-left";
+const ROW_GRID =
+  "record-row grid w-full grid-cols-[3rem_1fr] items-stretch border-b text-left";
 
-/** One ledger row: numbered gutter, name, gloss, optional trailing line. */
+/** One entry in a table: folio numeral, name, gloss, optional trailing line.
+ *  `door` sets the name as UI copy (full case) rather than as a record name
+ *  (small caps) — the two are different kinds of thing and are set differently. */
 function LedgerRow({
   index,
+  folio,
   name,
   description,
   trailing,
   tag,
+  door,
   onClick,
   href,
 }: {
   index?: number;
+  folio?: string;
   name: string;
   description: string;
   trailing?: ReactNode;
   tag?: string;
+  door?: boolean;
   onClick?: () => void;
   href?: string;
 }) {
   const body = (
     <>
-      <Gutter index={index} />
-      <span className="block py-3 pl-5 pr-4">
-        <span className="flex items-center gap-3">
-          <span className="text-base font-semibold" style={nameStyle}>
+      <Gutter index={index} folio={folio} />
+      <span className="block py-4 pr-2">
+        <span className="flex items-baseline gap-4">
+          <span className={door ? "text-2xl leading-tight" : "text-xl leading-tight"} style={door ? doorStyle : nameStyle}>
             {name}
           </span>
           {tag && <Chip>{tag}</Chip>}
         </span>
-        <span className="mt-1 block max-w-2xl text-sm" style={{ color: "var(--text-secondary)" }}>
+        <span
+          className="mt-1.5 block max-w-xl text-sm leading-relaxed"
+          style={{ color: "var(--ink-secondary)" }}
+        >
           {description}
         </span>
         {trailing}
       </span>
     </>
   );
-  const style = { borderColor: "var(--border)" };
+  const style = { borderColor: "var(--rule-soft)" };
   return href ? (
     <a href={href} target="_blank" rel="noreferrer" onClick={openExternal} className={ROW_GRID} style={style}>
       {body}
@@ -346,85 +397,63 @@ export function HomeMenu({
   onCreate,
   onStartFromData,
   onOpenLibrary,
-  workbench = [],
-  onOpenPin,
-  onUnpin,
+  onAbout,
 }: {
   onCreate: () => void;
   onStartFromData?: () => void;
   onOpenLibrary: () => void;
-  workbench?: WorkbenchEntry[];
-  onOpenPin?: (pin: Pin) => void;
-  onUnpin?: (pin: Pin) => void;
+  /** Open the provenance page (#229). Optional so the menu renders standalone. */
+  onAbout?: () => void;
 }) {
   return (
     <div>
-      <Masthead
-        eyebrow="Halcyonic Systems"
-        title={<span>bert&#8202;·&#8202;lenses</span>}
-        lede={LEDE}
-        stat={standardLibraryCount()}
-        statLabel="models on the shelves"
-      />
-      <Column className="pb-16 pt-10">
-        {/* The workbench: what is being worked on right now, pinned by hand
-            from the menu bar. Absent entirely until something is pinned — an
-            empty block would put furniture where the first-run reader starts. */}
-        {workbench.length > 0 && onOpenPin && onUnpin && (
-          <div className="mb-10">
-            <BlockHeader label="Workbench" count={`${workbench.length} pinned`} />
-            <Ledger>
-              {workbench.map((w, i) => (
-                <div
-                  key={`${w.pin.kind}:${w.pin.ref}`}
-                  className="grid w-full grid-cols-[3.25rem_1fr_auto] items-stretch border-b"
-                  style={{ borderColor: "var(--border)" }}
-                >
-                  <Gutter index={i + 1} />
-                  <button onClick={() => onOpenPin(w.pin)} className="py-2.5 pl-5 pr-4 text-left">
-                    <span className="block text-sm font-semibold" style={nameStyle}>
-                      {w.title}
-                    </span>
-                    <span className="mt-0.5 block text-xs" style={{ color: "var(--text-muted)" }}>
-                      {w.detail}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => onUnpin(w.pin)}
-                    className="px-4 text-xs"
-                    style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-                    title="Remove from the workbench"
-                  >
-                    unpin
-                  </button>
-                </div>
-              ))}
-            </Ledger>
-          </div>
-        )}
+      <Masthead title={<span>bert&#8202;·&#8202;lenses</span>} lede={LEDE} />
+      <Column className="pb-20 pt-12">
         <BlockHeader label="Start here" />
         <Ledger>
-          <LedgerRow name="Create a model" description="Start from a blank canvas." onClick={onCreate} />
+          <LedgerRow
+            door
+            name="Create a model"
+            description="Start from a blank canvas and draw the structure."
+            onClick={onCreate}
+          />
           {onStartFromData && (
             <LedgerRow
+              door
               name="Start from data"
-              description="Bring a CSV or type observations — author a Klir data system; structure can come later."
+              description="Create one the other way instead: bring a CSV or type observations, and let the structure come later."
               onClick={onStartFromData}
             />
           )}
           <LedgerRow
+            door
             name="Open a model"
             description="The standard library, your own saved models, or a file from disk."
             onClick={onOpenLibrary}
           />
           <LedgerRow
+            door
             name="Documentation"
             description="The language, the kernel, and the traditions behind them."
             tag="external"
             href={DOCS_URL}
           />
         </Ledger>
-        <About />
+        {/* The colophon. A printed record states its edition at the foot of the
+            page, not in its table of contents — and the provenance is what this
+            page's claim rests on, so it belongs on the page, quietly, rather
+            than among the doors. */}
+        {onAbout && (
+          <div className="mt-14 border-t pt-4" style={{ borderColor: "var(--rule-soft)" }}>
+            <button
+              onClick={onAbout}
+              className="record-folio text-[11px] uppercase tracking-[0.2em]"
+              style={folioStyle}
+            >
+              This build · {buildInfo.gitSha}
+            </button>
+          </div>
+        )}
       </Column>
     </div>
   );
@@ -435,45 +464,52 @@ export function HomeMenu({
  *  holding the binary had no way to find out WHICH proofs. This is that way —
  *  the version, the commit it was built from, the SSF commit the claims are
  *  pinned to, and a hash of the kernel wasm they can recompute from the file in
- *  their own bundle. It sits on the landing page rather than behind a menu
- *  because the claim it substantiates is on the landing page too. */
-function About() {
+ *  their own bundle. It is one click from the landing page, which is where the
+ *  claim it substantiates is made. */
+export function AboutPage({ onBack }: { onBack: () => void }) {
   return (
-    <div className="mt-10">
-      <BlockHeader label="This build" count={buildInfo.gitSha} />
-      <div className="border-x border-t" style={{ borderColor: "var(--border)" }}>
-        {provenanceLines().map((line) => (
-          <div
-            key={line.label}
-            className="grid grid-cols-[9rem_1fr] gap-3 border-b px-4 py-2"
-            style={{ borderColor: "var(--border)" }}
-          >
-            <span
-              className="text-[11px] uppercase tracking-[0.14em]"
-              style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
+    <div>
+      <Masthead
+        title="This build"
+        lede="Every verdict is machine-checked against Lean proofs in another repository. These are the ones."
+        back={{ label: "Home", onClick: onBack }}
+      />
+      <Column className="pb-20 pt-12">
+        <BlockHeader label="Provenance" count={buildInfo.gitSha} />
+        <div style={{ borderTop: "1px solid var(--rule)" }}>
+          {provenanceLines().map((line) => (
+            <div
+              key={line.label}
+              className="grid grid-cols-[10rem_1fr] gap-5 border-b py-3"
+              style={{ borderColor: "var(--rule-soft)" }}
             >
-              {line.label}
-            </span>
-            <span className="min-w-0">
               <span
-                className="block break-all text-[11px]"
-                style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}
+                className="text-[11px] uppercase tracking-[0.18em]"
+                style={folioStyle}
               >
-                {line.value}
+                {line.label}
               </span>
-              {line.note && (
-                <span className="mt-1 block text-[11px]" style={{ color: "var(--text-muted)" }}>
-                  {line.note}
+              <span className="min-w-0">
+                <span
+                  className="block break-all text-[11px]"
+                  style={{ fontFamily: mono, color: "var(--ink)" }}
+                >
+                  {line.value}
                 </span>
-              )}
-            </span>
-          </div>
-        ))}
-      </div>
-      <p className="mt-3 max-w-2xl text-[11px]" style={{ color: "var(--text-muted)" }}>
-        Licence and third-party notices ship beside this app, in its{" "}
-        <span style={{ fontFamily: "var(--font-mono)" }}>Contents/Resources</span> folder.
-      </p>
+                {line.note && (
+                  <span className="mt-1 block text-[11px]" style={{ color: "var(--ink-muted)" }}>
+                    {line.note}
+                  </span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-5 max-w-xl text-sm leading-relaxed" style={{ color: "var(--ink-muted)" }}>
+          Licence and third-party notices ship beside this app, in its{" "}
+          <span style={{ fontFamily: mono }}>Contents/Resources</span> folder.
+        </p>
+      </Column>
     </div>
   );
 }
@@ -482,53 +518,78 @@ function About() {
 // library browser
 // ---------------------------------------------------------------------------
 
-/** A shelf tile: the shelf's name against a filled count cell. Counts are
- *  derived (home.ts). */
-function ShelfButton({
-  label,
-  count,
-  note,
+/** The WORLD hue of a tradition — the reading a corpus model belongs to. This
+ *  is the one colour channel on the library page, and it is semantic:
+ *  `--world-*` already means "which tradition" across the instrument
+ *  (index.css), so a reader who learns it here reads it unchanged on the
+ *  canvas. An example is ours and carries no tradition, so it takes no hue —
+ *  the absence is the fact. */
+const WORLD_HUE: Record<string, string> = {
+  klir: "var(--world-klir)",
+  bunge: "var(--world-bunge)",
+  mobus: "var(--world-mobus)",
+};
+
+function hueOf(tag: Tag): string | undefined {
+  return tag.kind === "tradition" ? WORLD_HUE[tag.id] : undefined;
+}
+
+/** One facet in the filter line: the tag's name and how many models carry it.
+ *  Selecting it narrows the list in place — it is not a door to another page.
+ *  The selected facet is underscored by the rubric (or, for a tradition, by
+ *  that tradition's hue); an unselected one sits on the soft rule. */
+function FacetButton({
+  facet,
+  selected,
   onClick,
 }: {
-  label: string;
-  count: number;
-  note?: string;
+  facet: Facet;
+  selected: boolean;
   onClick: () => void;
 }) {
+  const hue = hueOf(facet);
   return (
     <button
       onClick={onClick}
-      title={note || undefined}
-      className="grid flex-1 basis-52 grid-cols-[2.75rem_1fr] items-stretch text-left"
-      style={{ background: "var(--bg-secondary)" }}
+      title={facet.note || undefined}
+      aria-pressed={selected}
+      className="record-row flex items-baseline gap-2 pb-1.5 pt-1 text-left"
+      style={{
+        borderBottom: selected
+          ? `2px solid ${hue ?? "var(--seal)"}`
+          : "1px solid var(--rule-soft)",
+      }}
     >
+      {hue && <span aria-hidden className="h-2 w-0.5 shrink-0 self-center" style={{ background: hue }} />}
       <span
-        className="flex items-center justify-center py-2.5 tabular text-[11px]"
-        style={{
-          background: "var(--accent-soft)",
-          color: "var(--accent-strong)",
-          borderRight: "1px solid var(--border)",
-        }}
+        className="text-base leading-none"
+        style={{ ...nameStyle, color: selected ? "var(--ink)" : "var(--ink-secondary)" }}
       >
-        {count}
+        {facet.label}
       </span>
-      <span className="truncate px-3 py-2.5 text-sm font-semibold" style={nameStyle}>
-        {label}
+      <span className="shrink-0 text-[10px] tabular" style={{ color: "var(--ink-muted)" }}>
+        {facet.count}
       </span>
     </button>
   );
 }
 
-/** The shelf tiles as one region: a 1px gap over the border colour draws the
- *  rules BETWEEN cells, so a set of shelves is one ruled block of discrete
- *  cells rather than a scatter of outlined boxes. The tiles flex so a row is
- *  always full — an empty grid slot would show as a dead cell. */
-function ShelfGrid({ children }: { children: ReactNode }) {
+/** The filter line: a label, then the facets, wrapping. Two runs — the genera
+ *  (ours) and the traditions (the authors') — separated by white space rather
+ *  than by a box, because they are two kinds of fact about the same rows and
+ *  not two places to go. */
+function FilterLine({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
   return (
-    <div
-      className="flex flex-wrap gap-px border"
-      style={{ background: "var(--border)", borderColor: "var(--border)" }}
-    >
+    <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 py-1">
+      <span className="w-24 shrink-0 text-[11px] uppercase tracking-[0.22em]" style={folioStyle}>
+        {label}
+      </span>
       {children}
     </div>
   );
@@ -541,95 +602,145 @@ const INLINE_LIBRARY_ROOTS = 12;
 export function LibraryBrowser({
   tree,
   onBack,
-  onShelf,
+  onOpenExample,
+  onOpenCorpus,
   onOpenFile,
   onLoad,
   onDelete,
   onRename,
+  /** Opens with a facet already selected. Presentation-only; nothing in the app
+   *  passes it today, and it exists so a caller (or a test) can enter the
+   *  library on a narrowed view without a page of its own. */
+  initialFacet,
 }: {
   tree: LibraryNode[];
   onBack: () => void;
-  onShelf: (s: Shelf) => void;
+  onOpenExample: (d: Demo) => void;
+  onOpenCorpus: (e: CorpusEntry) => void;
   onOpenFile: () => void;
   onLoad: (name: string) => void;
   onDelete: (name: string) => void;
   onRename: (from: string, to: string) => Promise<boolean>;
+  initialFacet?: Tag | null;
 }) {
-  const examples = exampleShelves();
-  const corpus = corpusShelves();
-  const standard = standardLibraryCount();
+  const all = shippedModels();
+  const allFacets = facets(all);
+  const [facet, setFacet] = useState<Tag | null>(initialFacet ?? null);
+  const shown = all.filter((m) => matchesFacet(m, facet));
   const savedCount = countLibrary(tree);
   const [showAllSaved, setShowAllSaved] = useState(false);
   const shownRoots = showAllSaved ? tree : tree.slice(0, INLINE_LIBRARY_ROOTS);
   const foldedRoots = tree.length - shownRoots.length;
+  const genera = allFacets.filter((f) => f.kind === "genus");
+  const traditions = allFacets.filter((f) => f.kind === "tradition");
+  const isSelected = (f: Facet) => facet?.kind === f.kind && facet?.id === f.id;
+  const toggle = (f: Facet) => setFacet(isSelected(f) ? null : f);
   return (
     <div>
       <Masthead
         eyebrow="Library"
         title="Open a model"
-        lede="The standard library ships with the app and is maintained in the repository; My library is yours."
-        stat={standard + savedCount}
+        note={`${EXAMPLES_NOTE} ${CORPUS_NOTE}`}
+        stat={all.length + savedCount}
         statLabel="models"
         back={{ label: "Home", onClick: onBack }}
       />
 
-      <Column className="pb-16 pt-10">
-        <section>
-          <BlockHeader label="Standard library" count={`${standard} models`} />
-          <div className="border-x border-b px-4 py-5" style={{ borderColor: "var(--border)" }}>
-            <div className="text-sm font-semibold" style={nameStyle}>
-              Examples — by genus
-            </div>
-            <p className="mb-3 mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
-              {EXAMPLES_NOTE}
-            </p>
-            <ShelfGrid>
-              {examples.map((s) => (
-                <ShelfButton key={s.id} label={s.label} count={s.count} onClick={() => onShelf(s)} />
-              ))}
-            </ShelfGrid>
-
-            <div className="mt-7 text-sm font-semibold" style={nameStyle}>
-              Source corpus — by author
-            </div>
-            <p className="mb-3 mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
-              {CORPUS_NOTE}
-            </p>
-            <ShelfGrid>
-              {corpus.map((s) => (
-                <ShelfButton key={s.id} label={s.label} count={s.count} note={s.note} onClick={() => onShelf(s)} />
-              ))}
-            </ShelfGrid>
-          </div>
+      <Column className="pb-20 pt-6">
+        {/* The filter, immediately under the masthead and immediately above the
+            models — genus and tradition are facts about a model, not places a
+            model lives, so they narrow the list in place. Counts come off the
+            same list the section below renders (home.ts), so a facet's number
+            cannot drift from what selecting it shows. */}
+        <section className="pb-2">
+          <FilterLine label="Genus">
+            {genera.map((f) => (
+              <FacetButton key={`genus:${f.id}`} facet={f} selected={isSelected(f)} onClick={() => toggle(f)} />
+            ))}
+          </FilterLine>
+          <FilterLine label="Tradition">
+            {traditions.map((f) => (
+              <FacetButton
+                key={`tradition:${f.id}`}
+                facet={f}
+                selected={isSelected(f)}
+                onClick={() => toggle(f)}
+              />
+            ))}
+            {facet && (
+              <button
+                onClick={() => setFacet(null)}
+                className="record-folio pb-1.5 pt-1 text-[11px] uppercase tracking-[0.2em]"
+                style={folioStyle}
+              >
+                clear · show all {all.length}
+              </button>
+            )}
+          </FilterLine>
         </section>
 
-        {/* Saved models list HERE, not behind a shelf-of-one: there was never a
-            branch to take, so the drill-in was a click that bought nothing. */}
-        <section className="mt-10">
-          <BlockHeader label="My library" count={`${savedCount} model${savedCount === 1 ? "" : "s"}`} />
-          <div className="border-x border-b px-4 py-3" style={{ borderColor: "var(--border)" }}>
-            <p className="max-w-2xl text-sm" style={{ color: "var(--text-secondary)" }}>
-              Models you have saved from this app. A model reached by a decomposition
-              reference nests under the system of interest that reaches it.
-            </p>
-          </div>
-          {tree.length === 0 ? (
+        {/* Ships. One flat list — every model that comes with the app, opened
+            from the row it is listed on. */}
+        <section className="mt-8">
+          <BlockHeader label="Ships with the app" count={`${shown.length} model${shown.length === 1 ? "" : "s"}`} />
+          {shown.length === 0 ? (
             <div
-              className="border-x border-b px-4 py-3 text-sm"
-              style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+              className="border-t py-3 text-sm"
+              style={{ borderColor: "var(--rule-soft)", color: "var(--ink-muted)", fontFamily: display, fontStyle: "italic" }}
+            >
+              no model carries that tag
+            </div>
+          ) : (
+            <Ledger>
+              {shown.map((m, i) => (
+                <ModelRow
+                  key={m.key}
+                  model={m}
+                  index={i + 1}
+                  onClick={() =>
+                    m.open.kind === "example" ? onOpenExample(m.open.demo) : onOpenCorpus(m.open.entry)
+                  }
+                />
+              ))}
+            </Ledger>
+          )}
+        </section>
+
+        {/* Yours. The other half of the partition, and the half that grows:
+            a release ships a handful of models and everything else is the
+            user's own. Saved models carry no genus or tradition, so a facet
+            selection empties this section rather than silently ignoring it. */}
+        <section className="mt-16">
+          <BlockHeader label="Yours" count={`${savedCount} model${savedCount === 1 ? "" : "s"}`} />
+          {facet ? (
+            <div
+              className="border-t py-3 text-sm"
+              style={{ borderColor: "var(--rule-soft)", color: "var(--ink-muted)", fontFamily: display, fontStyle: "italic" }}
+            >
+              your models carry no genus or tradition tag — clear the filter to see them
+            </div>
+          ) : tree.length === 0 ? (
+            <div
+              className="border-t py-3 text-sm"
+              style={{ borderColor: "var(--rule-soft)", color: "var(--ink-muted)", fontFamily: display, fontStyle: "italic" }}
             >
               no saved models yet
             </div>
           ) : (
-            <Ledger>
+            <div style={{ borderTop: "1px solid var(--rule)" }}>
               {shownRoots.map((root, i) => (
                 <div
                   key={root.name}
-                  className="grid w-full grid-cols-[3.25rem_1fr] items-stretch border-b"
-                  style={{ borderColor: "var(--border)" }}
+                  className="grid w-full grid-cols-[3rem_1fr] items-stretch border-b"
+                  style={{ borderColor: "var(--rule-soft)" }}
                 >
-                  <Gutter index={i + 1} />
-                  <div className="py-2.5 pl-5 pr-4">
+                  <span
+                    className="flex items-start justify-end pr-5 pt-3 text-[11px] tabular"
+                    style={{ color: "var(--ink-muted)" }}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <div className="py-2.5 pr-2">
                     <LibraryRow node={root} depth={0} onLoad={onLoad} onDelete={onDelete} onRename={onRename} />
                   </div>
                 </div>
@@ -637,24 +748,22 @@ export function LibraryBrowser({
               {foldedRoots > 0 && (
                 <button
                   onClick={() => setShowAllSaved(true)}
-                  className="block w-full border-b px-5 py-2 text-left text-xs"
-                  style={{
-                    borderColor: "var(--border)",
-                    fontFamily: "var(--font-mono)",
-                    color: "var(--text-muted)",
-                  }}
+                  className="block w-full border-b py-2.5 text-left text-[11px] uppercase tracking-[0.18em]"
+                  style={{ borderColor: "var(--rule-soft)", ...folioStyle }}
                 >
                   show all {tree.length} saved models
                 </button>
               )}
-            </Ledger>
+            </div>
           )}
         </section>
 
-        <section className="mt-10">
+        <section className="mt-16">
           <BlockHeader label="From a file" />
           <Ledger>
             <LedgerRow
+              door
+              folio="·"
               name="Open a file…"
               description="a model .json from your computer"
               tag="disk"
@@ -668,169 +777,97 @@ export function LibraryBrowser({
 }
 
 // ---------------------------------------------------------------------------
-// shelf page
+// the model row
 // ---------------------------------------------------------------------------
 
-/** One model on a shelf: a ledger row, plus — corpus only — the citation
- *  beneath the gloss. Same row on both shelves; the citation is the separator.
+/** One model in the flat list. Three cells, and the row is two lines tall so a
+ *  list of forty scans:
  *
- *  `tag` marks the EXCEPTION, never the rule: every model on a shelf is
- *  structural, so a per-row "diagram" label repeats identically down the whole
- *  column and says nothing. Only the models that also carry dynamics are
- *  tagged. */
-function ShelfRow({
-  name,
-  description,
-  citation,
-  tag,
+ *    [ gutter ] [ NAME + gloss ]                      [ tags / citation ]
+ *
+ *  The gutter is a fixed 3rem cell holding the folio numeral. It is sized to
+ *  take a diagram thumbnail later (#311) — the thumbnail swaps into this cell
+ *  and nothing else on the row moves.
+ *
+ *  Identical row for an example and a corpus entry; the CITATION is the
+ *  separator, and it is per-row now that there are no shelves to hoist a shared
+ *  one onto. The `runs` mark is the EXCEPTION, never the rule: every model here
+ *  is structural, so a label saying so on every row says nothing. */
+function ModelRow({
+  model,
   index,
   onClick,
 }: {
-  name: string;
-  description: string;
-  citation?: string;
-  tag?: string;
-  index?: number;
+  model: ShippedModel;
+  index: number;
   onClick: () => void;
 }) {
   return (
-    <LedgerRow
-      index={index}
-      name={name}
-      description={description}
-      tag={tag}
+    <button
       onClick={onClick}
-      trailing={
-        citation ? (
-          <span
-            className="mt-1 block text-[10px]"
-            style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-          >
-            {citation}
+      className="record-row grid w-full grid-cols-[3rem_minmax(0,1fr)_auto] items-start gap-x-4 border-b py-3 text-left"
+      style={{ borderColor: "var(--rule-soft)" }}
+    >
+      <span
+        className="record-folio flex items-start justify-end pr-1 pt-1 text-[11px] tabular"
+        style={{ color: "var(--ink-muted)", transition: "color var(--transition-base)" }}
+      >
+        {String(index).padStart(2, "0")}
+      </span>
+      <span className="block min-w-0">
+        <span className="flex items-baseline gap-3">
+          <span className="truncate text-2xl leading-tight" style={nameStyle}>
+            {model.name}
           </span>
-        ) : undefined
-      }
-    />
-  );
-}
-
-/** The citation every member of a sibling-set shares, or null if they differ.
- *  Derived from the entries themselves — no set is named here. */
-export function sharedCitation(entries: CorpusEntry[]): string | null {
-  const first = entries[0]?.citation;
-  if (!first || entries.length < 2) return null;
-  return entries.every((e) => e.citation === first) ? first : null;
-}
-
-export function ShelfPage({
-  area,
-  id,
-  onBack,
-  onOpenExample,
-  onOpenCorpus,
-}: {
-  area: "examples" | "corpus";
-  id: string;
-  onBack: () => void;
-  onOpenExample: (d: Demo) => void;
-  onOpenCorpus: (e: CorpusEntry) => void;
-}) {
-  const shelf =
-    area === "examples"
-      ? exampleShelves().find((s) => s.id === id)
-      : corpusShelves().find((s) => s.id === id);
-  const entries = area === "examples" ? exampleShelfEntries(id) : [];
-  const corpus = area === "corpus" ? corpusShelfEntries(id) : { sets: [], loose: [] };
-  const count = shelf?.count ?? 0;
-  // Corpus rows number continuously across the sibling-sets and the loose
-  // entries: one shelf, one run of numerals.
-  let n = 0;
-  return (
-    <div>
-      <Masthead
-        eyebrow={area === "examples" ? "Examples" : "Source corpus"}
-        title={shelf?.label ?? id}
-        lede={area === "examples" ? EXAMPLES_NOTE : CORPUS_NOTE}
-        note={area === "corpus" ? shelf?.note : undefined}
-        stat={count}
-        statLabel={`model${count === 1 ? "" : "s"}`}
-        back={{ label: "Open a model", onClick: onBack }}
-      />
-
-      <Column className="pb-16 pt-10">
-        <Ledger>
-          {area === "examples" &&
-            entries.map((d, i) => (
-              <ShelfRow
-                key={d.key}
-                name={d.title}
-                description={d.blurb}
-                index={i + 1}
-                tag={isRunnable(d) ? "runs" : undefined}
-                onClick={() => onOpenExample(d)}
-              />
-            ))}
-          {area === "corpus" && (
-            <>
-              {corpus.sets.map((s) => {
-                // A set that teaches by diff over one figure cites that one
-                // figure; repeating the line on every variant is the citation
-                // saying nothing. Hoist it to the header when it is shared, and
-                // fall back to per-row when the members actually cite differently.
-                const shared = sharedCitation(s.entries);
-                return (
-                  <div key={s.name}>
-                    <div
-                      className="border-b px-4 py-2"
-                      style={{ background: "var(--accent-soft)", borderColor: "var(--border)" }}
-                    >
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-xs font-semibold" style={nameStyle}>
-                          {s.name}
-                        </span>
-                        <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
-                          {s.entries.length} variants · one lesson by diff
-                        </span>
-                      </div>
-                      {shared && (
-                        <div
-                          className="mt-0.5 text-[10px]"
-                          style={{ fontFamily: "var(--font-mono)", color: "var(--accent-strong)" }}
-                        >
-                          {shared}
-                        </div>
-                      )}
-                    </div>
-                    {s.entries.map((e) => (
-                      <ShelfRow
-                        key={e.file}
-                        name={e.title}
-                        description={firstSentence(e.teaches)}
-                        citation={shared ? undefined : e.citation}
-                        index={(n += 1)}
-                        onClick={() => onOpenCorpus(e)}
-                      />
-                    ))}
-                  </div>
-                );
-              })}
-              {corpus.loose.map((e) => (
-                <ShelfRow
-                  key={e.file}
-                  name={e.title}
-                  description={firstSentence(e.teaches)}
-                  citation={e.citation}
-                  index={(n += 1)}
-                  onClick={() => onOpenCorpus(e)}
-                />
-              ))}
-            </>
+          {model.runs && (
+            <span
+              className="shrink-0 text-xs"
+              style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--seal)" }}
+            >
+              runs
+            </span>
           )}
-        </Ledger>
-      </Column>
-    </div>
+        </span>
+        <span className="mt-0.5 block truncate text-sm" style={{ color: "var(--ink-secondary)" }}>
+          {model.description}
+        </span>
+      </span>
+      <span className="block max-w-[16rem] shrink-0 pt-1 text-right">
+        <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+          {model.tags.map((t) => (
+            <span
+              key={`${t.kind}:${t.id}`}
+              className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.14em]"
+              style={{ fontFamily: mono, color: "var(--ink-muted)" }}
+            >
+              {hueOf(t) && (
+                <span aria-hidden className="h-2.5 w-0.5 shrink-0" style={{ background: hueOf(t) }} />
+              )}
+              {t.label}
+            </span>
+          ))}
+          {model.set && (
+            <span
+              className="text-[10px] tracking-[0.14em]"
+              style={{ fontFamily: mono, color: "var(--ink-muted)" }}
+            >
+              {model.set}
+            </span>
+          )}
+        </span>
+        {model.citation && (
+          <span
+            className="mt-1 block text-[10px] leading-snug tracking-[0.04em]"
+            style={{ fontFamily: mono, color: "var(--ink-muted)" }}
+          >
+            {model.citation}
+          </span>
+        )}
+      </span>
+    </button>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // my library rows (rendered inline in the library browser)
@@ -888,7 +925,7 @@ function LibraryRow({
         style={{ paddingLeft: depth === 0 ? 0 : (depth - 1) * 14 }}
       >
         {depth > 0 && (
-          <span aria-hidden className="shrink-0 text-xs" style={{ color: "var(--text-muted)" }}>
+          <span aria-hidden className="shrink-0 text-xs" style={{ color: "var(--ink-muted)" }}>
             └
           </span>
         )}
@@ -907,19 +944,19 @@ function LibraryRow({
             onBlur={() => void commit()}
             className={depth === 0 ? "min-w-0 flex-1 px-1 text-sm" : "min-w-0 flex-1 px-1 text-xs"}
             style={{
-              background: "var(--bg-primary)",
-              border: "1px solid var(--border)",
+              background: "var(--paper-edge)",
+              border: "1px solid var(--rule-soft)",
               borderRadius: "var(--radius-sm)",
-              color: "var(--text-primary)",
+              color: "var(--ink)",
             }}
             aria-label={`Rename ${node.name}`}
           />
         ) : (
           <button onClick={() => onLoad(node.name)} className="min-w-0 flex-1 text-left" title={node.name}>
-            <div className={depth === 0 ? "truncate text-sm font-semibold" : "truncate text-xs"} style={nameStyle}>
+            <div className={depth === 0 ? "truncate text-lg leading-tight" : "truncate text-sm"} style={nameStyle}>
               {node.name}
             </div>
-            <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+            <div className="text-[10px]" style={{ fontFamily: mono, color: "var(--ink-muted)" }}>
               saved {relTime(node.savedAt)}
               {node.missingReferents > 0 &&
                 ` · ${node.missingReferents} referent${node.missingReferents === 1 ? "" : "s"} missing`}
@@ -934,7 +971,7 @@ function LibraryRow({
             }}
             title={`Rename ${node.name} — same model, new library name`}
             className="shrink-0 px-1.5 text-sm"
-            style={{ color: "var(--text-muted)" }}
+            style={{ color: "var(--ink-muted)" }}
           >
             ✎
           </button>
@@ -943,7 +980,7 @@ function LibraryRow({
           onClick={() => onDelete(node.name)}
           title={`Delete ${node.name}`}
           className="shrink-0 px-1.5 text-sm"
-          style={{ color: "var(--text-muted)" }}
+          style={{ color: "var(--ink-muted)" }}
         >
           ×
         </button>

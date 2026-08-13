@@ -19,6 +19,8 @@ import { useEffect, useState } from "react";
 import { compileSl, emitSl } from "./kernel";
 import type { CanvasModel, SlError } from "./kernel/types";
 import { CoAuthorMode } from "./CoAuthorMode";
+import { SlChain } from "./SlChain";
+import type { SlChainProps } from "./SlChain";
 import type { CoauthorTurn, DraftStage } from "./coauthor";
 
 type Mode = "sl" | "coauthor";
@@ -39,15 +41,25 @@ interface SlPaneProps {
    *  never ambient. The parent owns the whole draft->compile->preview->record
    *  sequence (onDraft); this pane only switches back to the SL view once it
    *  resolves, so the compiled/faulty text is visible either way. */
+  /** The compile chain strip (text → model → formal object → verdict). The
+   *  parent owns the analysis, so it hands the kernel's `describe`/verdict down
+   *  rather than this pane re-asking. Optional: the pane is usable without it,
+   *  and a pane with no model to analyze has no chain to show. `text` and
+   *  `model` come from the props above — only the kernel outputs are passed. */
+  chain?: Omit<SlChainProps, "text" | "model">;
   coauthor?: {
     turns: CoauthorTurn[];
     /** `onStage` is #218's progress feed — the parent's draft call reports
      *  which phase it is in (asking / compiling / retrying) as it happens. */
     onDraft: (description: string, onStage?: (stage: DraftStage) => void) => Promise<void>;
+    /** #314: correct a past turn's draft in plain language. Same seam as
+     *  `onDraft` — the parent asks the drafter, compiles the result, and
+     *  previews it; this pane only returns to the SL view afterwards. */
+    onCorrect: (turnId: string, correction: string, onStage?: (stage: DraftStage) => void) => Promise<void>;
   };
 }
 
-export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel, coauthor }: SlPaneProps) {
+export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel, chain, coauthor }: SlPaneProps) {
   const [mode, setMode] = useState<Mode>("sl");
   // Faults describe the text as of their compile; once the author types past
   // them they are history, not the present — dimmed and labeled, never
@@ -86,6 +98,15 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
   async function handleDraft(description: string, onStage?: (stage: DraftStage) => void) {
     if (!coauthor) return;
     await coauthor.onDraft(description, onStage);
+    setMode("sl");
+  }
+
+  // The correction action, the same shape: the parent owns the ask, the
+  // compile, and the preview; the pane returns to the SL view so the revised
+  // text (or its faults) is where the author expects to look.
+  async function handleCorrect(turnId: string, correction: string, onStage?: (stage: DraftStage) => void) {
+    if (!coauthor) return;
+    await coauthor.onCorrect(turnId, correction, onStage);
     setMode("sl");
   }
 
@@ -128,7 +149,7 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
       </div>
 
       {mode === "coauthor" && coauthor ? (
-        <CoAuthorMode turns={coauthor.turns} onDraft={handleDraft} onLoad={handleLoad} />
+        <CoAuthorMode turns={coauthor.turns} onDraft={handleDraft} onCorrect={handleCorrect} onLoad={handleLoad} />
       ) : (
         <>
           <textarea
@@ -199,6 +220,11 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
               ⌘⏎ · deterministic compile, kernel verdicts
             </span>
           </div>
+          {/* What that compile produced, named step by step. It sits under the
+              buttons because it reads as the RESULT of pressing them — and it
+              stays visible with the dock's Formal tab, which is where step 3's
+              object is typeset in full. */}
+          {chain && <SlChain text={text} model={canvasModel} {...chain} />}
         </>
       )}
     </aside>

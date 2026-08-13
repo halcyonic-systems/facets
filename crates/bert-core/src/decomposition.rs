@@ -85,9 +85,20 @@ fn id_str(id: &Id) -> String {
         .unwrap_or_else(|| format!("{id:?}"))
 }
 
-fn refuse(location: String, message: String, suggestion: &str, subject: Option<Id>) -> ValidationIssue {
+/// `code` is the seam ROW this refusal transcribes — the same name the message
+/// leads with (`Decomposition.betasrc`, `InterfaceDecomposition.gamma_src`), in
+/// a form a surface can group on without reading the sentence (#319). Required,
+/// so a new row cannot ship anonymous.
+fn refuse(
+    code: &str,
+    location: String,
+    message: String,
+    suggestion: &str,
+    subject: Option<Id>,
+) -> ValidationIssue {
     ValidationIssue {
         severity: Severity::Error,
+        code: code.to_string(),
         location,
         message,
         suggestion: Some(suggestion.to_string()),
@@ -98,9 +109,16 @@ fn refuse(location: String, message: String, suggestion: &str, subject: Option<I
     }
 }
 
-fn warn(location: String, message: String, suggestion: String, subject: Option<Id>) -> ValidationIssue {
+fn warn(
+    code: &str,
+    location: String,
+    message: String,
+    suggestion: String,
+    subject: Option<Id>,
+) -> ValidationIssue {
     ValidationIssue {
         severity: Severity::Warning,
+        code: code.to_string(),
         location,
         message,
         suggestion: Some(suggestion),
@@ -230,6 +248,7 @@ pub fn check_decomposition(
 ) -> Vec<ValidationIssue> {
     match resolved {
         None => vec![refuse(
+            "child_model_unresolved",
             id_str(comp),
             format!(
                 "component \"{}\" declares child_model {} but the referent could not \
@@ -276,6 +295,7 @@ pub fn check_decompositions(
                 issues.extend(check_decomposition(parent, &comp, &child_ref, Some(&child)));
             }
             Some(Err(e)) => issues.push(refuse(
+                "child_model_unloadable",
                 id_str(&comp),
                 format!(
                     "component \"{}\" declares child_model {key} and the store resolved \
@@ -365,6 +385,7 @@ fn decomposability(parent: &WorldModel, comp: &Id) -> Result<(), Box<ValidationI
         is_system_relatum(comp) && parent.systems.iter().any(|s| &s.info.id == comp);
     if !comp_is_component {
         return Err(Box::new(refuse(
+            "decomposition.comp_mem",
             id_str(comp),
             format!(
                 "Decomposition.comp_mem: \"{}\" is not a component of the parent model — \
@@ -656,6 +677,7 @@ pub fn check_decomposition_contract(
     // Row `γsrc`: crossing child sources biject `comp`'s exo inflows.
     if x_src.len() != exo_in.len() {
         issues.push(refuse(
+            "interface_decomposition.gamma_src",
             loc.clone(),
             format!(
                 "InterfaceDecomposition.γsrc: the child exposes {} crossing inbound \
@@ -672,6 +694,7 @@ pub fn check_decomposition_contract(
         ));
     } else if kind_multiset(&x_src) != kind_multiset(&exo_in) {
         issues.push(refuse(
+            "interface_decomposition.xsrc_preserves_kind",
             loc.clone(),
             format!(
                 "InterfaceDecomposition.xsrc_preserves_kind: the child's inbound \
@@ -687,6 +710,7 @@ pub fn check_decomposition_contract(
         != kinds_by_counterparty(&exo_in, |ix| env_entity_name(parent, &ix.source))
     {
         issues.push(refuse(
+            "interface_decomposition.xsrc_env_preserved",
             loc.clone(),
             format!(
                 "InterfaceDecomposition.xsrc_env_preserved: the child's inbound \
@@ -703,6 +727,7 @@ pub fn check_decomposition_contract(
     // Row `γsnk`: crossing child sinks biject `comp`'s exo outflows.
     if x_snk.len() != exo_out.len() {
         issues.push(refuse(
+            "interface_decomposition.gamma_snk",
             loc.clone(),
             format!(
                 "InterfaceDecomposition.γsnk: the child exposes {} crossing outbound \
@@ -719,6 +744,7 @@ pub fn check_decomposition_contract(
         ));
     } else if kind_multiset(&x_snk) != kind_multiset(&exo_out) {
         issues.push(refuse(
+            "interface_decomposition.xsnk_preserves_kind",
             loc.clone(),
             format!(
                 "InterfaceDecomposition.xsnk_preserves_kind: the child's outbound \
@@ -734,6 +760,7 @@ pub fn check_decomposition_contract(
         != kinds_by_counterparty(&exo_out, |ix| env_entity_name(parent, &ix.sink))
     {
         issues.push(refuse(
+            "interface_decomposition.xsnk_env_preserved",
             loc.clone(),
             format!(
                 "InterfaceDecomposition.xsnk_env_preserved: the child's outbound \
@@ -750,6 +777,7 @@ pub fn check_decomposition_contract(
     // Row `βsrc`: child sources biject `comp`'s inflows (source half of β).
     if src.len() != in_c.len() {
         issues.push(refuse(
+            "decomposition.beta_src",
             loc.clone(),
             format!(
                 "Decomposition.βsrc: the child exposes {} inbound boundary flow(s) but \
@@ -766,6 +794,7 @@ pub fn check_decomposition_contract(
         // Row `src_preserves_kind`: equal cardinality, but no kind-preserving
         // bijection exists (the substance-kind multisets differ).
         issues.push(refuse(
+            "decomposition.src_preserves_kind",
             loc.clone(),
             format!(
                 "Decomposition.src_preserves_kind: the child's inbound boundary flows \
@@ -782,6 +811,7 @@ pub fn check_decomposition_contract(
     // Row `βsnk`: child sinks biject `comp`'s outflows (sink half of β).
     if snk.len() != out_c.len() {
         issues.push(refuse(
+            "decomposition.beta_snk",
             loc.clone(),
             format!(
                 "Decomposition.βsnk: the child exposes {} outbound boundary flow(s) but \
@@ -797,6 +827,7 @@ pub fn check_decomposition_contract(
     } else if kind_multiset(&snk) != kind_multiset(&out_c) {
         // Row `snk_preserves_kind`.
         issues.push(refuse(
+            "decomposition.snk_preserves_kind",
             loc.clone(),
             format!(
                 "Decomposition.snk_preserves_kind: the child's outbound boundary flows \
@@ -816,6 +847,7 @@ pub fn check_decomposition_contract(
     for ix in &all_src {
         if !child_boundary.contains(&ix.sink) {
             issues.push(refuse(
+                "decomposition.src_lands",
                 format!("{loc}/child_sources"),
                 format!(
                     "Decomposition.src_lands: inbound boundary flow \"{}\" does not land \
@@ -834,6 +866,7 @@ pub fn check_decomposition_contract(
     for ix in &all_snk {
         if !child_boundary.contains(&ix.source) {
             issues.push(refuse(
+                "decomposition.snk_lands",
                 format!("{loc}/child_sinks"),
                 format!(
                     "Decomposition.snk_lands: outbound boundary flow \"{}\" does not \
@@ -857,6 +890,7 @@ pub fn check_decomposition_contract(
             .any(|ix| &ix.source == e || &ix.sink == e);
         if !used {
             issues.push(refuse(
+                "decomposition.derived_env_unused",
                 format!("{loc}/derived_env"),
                 format!(
                     "Decomposition.derived_env: child environment object \"{}\" carries no \
@@ -910,6 +944,7 @@ pub fn check_decomposition_contract(
                 e.info.name.clone()
             };
             issues.push(refuse(
+                "decomposition.derived_env_foreign",
                 format!("{loc}/derived_env"),
                 format!(
                     "Decomposition.derived_env: child environment object \"{label}\" does \
@@ -931,6 +966,7 @@ pub fn check_decomposition_contract(
     for name in &counterparty_names {
         if !env_names.contains(name.as_str()) {
             issues.push(refuse(
+                "interface_decomposition.derived_env_missing_counterparty",
                 format!("{loc}/derived_env"),
                 format!(
                     "InterfaceDecomposition.derived_env: external counterparty \"{name}\" \
@@ -952,6 +988,7 @@ pub fn check_decomposition_contract(
             .unwrap_or("");
         if name.is_empty() || !env_names.contains(name) {
             issues.push(refuse(
+                "decomposition.derived_env_missing_neighbor",
                 format!("{loc}/derived_env"),
                 format!(
                     "Decomposition.derived_env: parent interior neighbor \"{}\" of \"{}\" \
@@ -982,6 +1019,7 @@ pub fn check_decomposition_contract(
         .unwrap_or("");
     if !comp_raw.is_empty() && !root_raw.is_empty() && comp_raw != root_raw {
         issues.push(warn(
+            "child_root_name_drift",
             format!("{loc}/child_root"),
             format!(
                 "component \"{comp_raw}\" decomposes into a model that calls itself \

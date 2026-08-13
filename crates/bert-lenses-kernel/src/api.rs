@@ -85,12 +85,7 @@ pub fn run(model_json: &str, dt: f64, ticks: usize) -> Result<JsValue, JsError> 
     let mut circuit = bert_compose::from_spec(&spec);
     refuse_algebraic_cycle(&circuit)?;
     let recorded = bert_compose::RecordedRun::record(&mut circuit, &spec, dt, ticks);
-    to_js(&RunResult {
-        dt: recorded.dt,
-        history: recorded.history,
-        ledger_history: recorded.ledger_history,
-        final_balance: recorded.final_balance,
-    })
+    to_js(&recorded.report())
 }
 
 /// Run a CANVAS model as a discrete-time Markov chain (#67) — the state-machine
@@ -622,17 +617,12 @@ enum SlOutcome {
     },
 }
 
-/// A recorded run, flattened to its public trace for the face to chart.
-#[derive(Serialize)]
-struct RunResult {
-    dt: f64,
-    history: Vec<Vec<f32>>,
-    ledger_history: Vec<[f32; 4]>,
-    final_balance: f32,
-}
-
+/// The conservation run's shape is [`bert_compose::RunReport`] — owned by the
+/// engine that records it, not re-declared here. `API.md` documents it as
+/// `RunResult`; the field names are unchanged, only the owner is.
+///
 /// A Markov run (#67), flattened for the face. The `kind` tag discriminates it
-/// from a conservation [`RunResult`] so the face never reaches for a
+/// from a conservation `RunReport` so the face never reaches for a
 /// `residual`/`conserved` field that a distribution run does not have. `history`
 /// is the shared H shape: row `t` = the state distribution after `t` steps,
 /// one column per `states` entry.
@@ -845,15 +835,7 @@ mod tests {
         let spec = core_validate_operational(&model).expect("sample is executable");
         let mut circuit = bert_compose::from_spec(&spec);
         let recorded = bert_compose::RecordedRun::record(&mut circuit, &spec, 1.0, 4);
-        check_fixture(
-            "run_result",
-            &RunResult {
-                dt: recorded.dt,
-                history: recorded.history,
-                ledger_history: recorded.ledger_history,
-                final_balance: recorded.final_balance,
-            },
-        );
+        check_fixture("run_result", &recorded.report());
     }
 
     #[test]

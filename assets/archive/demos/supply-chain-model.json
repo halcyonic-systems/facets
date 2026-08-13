@@ -13,14 +13,14 @@
         "info": {
           "id": "Src-1.0",
           "level": -1,
-          "name": "Rain",
+          "name": "Suppliers",
           "description": ""
         },
         "type": "Source",
         "transform": {
           "translation": [
-            479.99997,
-            -48.41632
+            111.58368,
+            319.99997
           ],
           "rotation": 0.0
         },
@@ -35,14 +35,14 @@
         "info": {
           "id": "Snk-1.1",
           "level": -1,
-          "name": "City",
+          "name": "Customers",
           "description": ""
         },
         "type": "Sink",
         "transform": {
           "translation": [
-            479.99997,
-            688.4163
+            848.4163,
+            320.0
           ],
           "rotation": 0.0
         },
@@ -58,7 +58,7 @@
       "info": {
         "id": "S0",
         "level": 0,
-        "name": "Watershed",
+        "name": "Supply Chain",
         "description": ""
       },
       "sources": [],
@@ -79,10 +79,10 @@
             "info": {
               "id": "I0.0",
               "level": 0,
-              "name": "Reservoir",
+              "name": "Factory",
               "description": ""
             },
-            "protocol": "rainfall",
+            "protocol": "raw materials",
             "type": "Import",
             "exports_to": [],
             "receives_from": [
@@ -94,10 +94,10 @@
             "info": {
               "id": "I0.1",
               "level": 0,
-              "name": "Treatment",
+              "name": "Warehouse",
               "description": ""
             },
-            "protocol": "municipal supply",
+            "protocol": "retail sale",
             "type": "Export",
             "exports_to": [
               "Snk-1.1"
@@ -120,7 +120,7 @@
       "info": {
         "id": "C0.0",
         "level": 1,
-        "name": "Reservoir",
+        "name": "Factory",
         "description": ""
       },
       "sources": [],
@@ -142,8 +142,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          310.0,
-          320.0
+          480.0,
+          150.0
         ],
         "rotation": 0.0
       },
@@ -156,15 +156,14 @@
       "agent": {
         "kind": "Reactive",
         "agency_capacity": 0.5,
-        "primitive": "Buffering",
-        "stock_unit": "ML"
+        "primitive": "Modulating"
       }
     },
     {
       "info": {
         "id": "C0.1",
         "level": 1,
-        "name": "Treatment",
+        "name": "Warehouse",
         "description": ""
       },
       "sources": [],
@@ -187,6 +186,93 @@
       "transform": {
         "translation": [
           650.0,
+          320.0
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Buffering",
+        "stock_unit": "pallets"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.2",
+        "level": 1,
+        "name": "Ordering System",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.2",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": null
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          480.0,
+          490.0
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Sensing"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.3",
+        "level": 1,
+        "name": "Reorder Logic",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.3",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": null
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          310.0,
           320.00003
         ],
         "rotation": 0.0
@@ -200,7 +286,7 @@
       "agent": {
         "kind": "Reactive",
         "agency_capacity": 0.5,
-        "primitive": "Propelling"
+        "primitive": "Inverting"
       }
     }
   ],
@@ -209,11 +295,11 @@
       "info": {
         "id": "F0",
         "level": 0,
-        "name": "rainfall",
+        "name": "raw materials",
         "description": ""
       },
       "substance": {
-        "sub_type": "water",
+        "sub_type": "goods",
         "type": "Material"
       },
       "type": "Flow",
@@ -222,15 +308,15 @@
       "source_interface": null,
       "sink": "C0.0",
       "sink_interface": "I0.0",
-      "amount": "3",
-      "unit": "ML/day",
+      "amount": "2",
+      "unit": "pallets/day",
       "parameters": []
     },
     {
       "info": {
         "id": "F1",
         "level": 0,
-        "name": "controlled release",
+        "name": "finished goods",
         "description": ""
       },
       "substance": {
@@ -251,7 +337,7 @@
       "info": {
         "id": "F2",
         "level": 0,
-        "name": "municipal supply",
+        "name": "retail sale",
         "description": ""
       },
       "substance": {
@@ -263,6 +349,69 @@
       "source": "C0.1",
       "source_interface": "I0.1",
       "sink": "Snk-1.1",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F3",
+        "level": 0,
+        "name": "stock level reading",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.2",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F4",
+        "level": 0,
+        "name": "measured inventory",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.2",
+      "source_interface": null,
+      "sink": "C0.3",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F5",
+        "level": 0,
+        "name": "replenishment order",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.3",
+      "source_interface": null,
+      "sink": "C0.0",
       "sink_interface": null,
       "amount": "1",
       "unit": "",

@@ -19,8 +19,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            584.07544,
-            -34.448517
+            288.4676,
+            -11.7438965
           ],
           "rotation": 0.0
         },
@@ -39,8 +39,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            772.53845,
-            94.41916
+            209.1323,
+            49.132202
           ],
           "rotation": 0.0
         },
@@ -59,8 +59,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            849.26166,
-            309.45105
+            148.25616,
+            128.46751
           ],
           "rotation": 0.0
         },
@@ -79,8 +79,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            784.93945,
-            528.51227
+            109.98776,
+            220.8555
           ],
           "rotation": 0.0
         },
@@ -99,8 +99,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            604.14075,
-            667.92896
+            96.93515,
+            319.99997
           ],
           "rotation": 0.0
         },
@@ -119,8 +119,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            375.9245,
-            674.4485
+            109.98776,
+            419.14444
           ],
           "rotation": 0.0
         },
@@ -139,8 +139,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            187.46152,
-            545.5808
+            148.2561,
+            511.53244
           ],
           "rotation": 0.0
         },
@@ -159,8 +159,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            110.73834,
-            330.54883
+            209.13226,
+            590.86774
           ],
           "rotation": 0.0
         },
@@ -179,8 +179,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            175.06055,
-            111.487686
+            288.46756,
+            651.7439
           ],
           "rotation": 0.0
         },
@@ -201,8 +201,8 @@
         "type": "Sink",
         "transform": {
           "translation": [
-            355.85925,
-            -27.928925
+            863.0648,
+            320.0
           ],
           "rotation": 0.0
         },

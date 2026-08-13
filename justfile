@@ -88,6 +88,15 @@ web-deps:
 wasm:
     cd {{kernel}} && wasm-pack build --target web --out-dir pkg
 
+# The headless door onto the kernel — compile, verdict, describe, run, layout.
+# Answers on stdout as JSON; the exit code carries the kind of failure (0 ok,
+# 2 usage, 3 the input did not compile, 4 the kernel refused). `cargo run`
+# rather than a built binary so it always matches the tree you are editing;
+# `cargo install --path crates/bert-cli` puts `bert` on PATH for shell work.
+#   just bert verdict assets/corpus/bunge/coupling-sigma3.sl --lens mobus
+bert *ARGS:
+    @cargo run --quiet -p bert-cli --bin bert -- {{ARGS}}
+
 # Rebuild wasm, then start the vite dev server (face sees the fresh brain).
 # Build the wasm kernel, install web deps if needed, start the dev server.
 dev: web-deps wasm
@@ -100,7 +109,12 @@ check: web-deps
     python3 scripts/doc_lint.py
     cargo test --workspace
     cargo clippy --workspace --all-targets -- -D warnings
-    cargo build --workspace --target wasm32-unknown-unknown
+    # `--exclude bert-cli` is the ONE package outside the browser build: the
+    # `bert` binary is argv and the filesystem, which wasm32-unknown-unknown has
+    # no use for. Everything the gate covered before it existed, it still
+    # covers, and `crates/bert-cli/tests/wasm_gate.rs` fails if this list ever
+    # grows — the exclusion is checked, not merely commented.
+    cargo build --workspace --exclude bert-cli --target wasm32-unknown-unknown
     cd {{kernel}} && wasm-pack build --target web --out-dir pkg
     cd web && npm run check:tokens
     cd web && npx tsc --noEmit

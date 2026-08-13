@@ -1,6 +1,6 @@
-//! SL-authored runnable demos: `watershed` and `supply-chain` are authored in
-//! SYSTEM LANGUAGE, and their gallery run bundles carry MACHINE PROJECTIONS
-//! of the `.sl` — never hand-authored JSON. This gate holds three things:
+//! SL-authored runnable demos: a demo listed here is authored in SYSTEM
+//! LANGUAGE, and its gallery run bundle carries a MACHINE PROJECTION of the
+//! `.sl` — never hand-authored JSON. This gate holds three things:
 //!
 //! 1. each `.sl` parses, projects, validates operational, and RUNS with
 //!    mass conserved and something actually reaching a sink;
@@ -18,7 +18,12 @@ use bert_canvas::sl::parse_sl;
 use bert_compose::{from_spec, run::RecordedRun};
 use bert_core::operational::validate_operational;
 
-const DEMOS: &[&str] = &["watershed", "supply-chain", "llm-market"];
+// One resident since the #318 consolidation. `watershed` and `supply-chain`
+// were the other two; both were archived out of the shipped library, and their
+// bundles + projections went with them to `assets/archive/demos/` — frozen
+// there rather than re-minted, because nothing lists them any more. Restoring
+// either is: name here, four files back, re-bless.
+const DEMOS: &[&str] = &["llm-market"];
 // Long enough that O(Δt) startup transients (each fresh stock's first step
 // releases nothing — release reads the opening state) fall inside the 2%
 // tolerance; the drift is honest Euler error and halves with Δt, which the

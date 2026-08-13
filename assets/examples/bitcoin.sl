@@ -35,7 +35,15 @@ component Mempool primitive Buffering interface
 
 # The work process. Miners combine waiting transactions with energy and
 # produce blocks; feerate decides what gets combined first.
-component Mining primitive Combining
+#
+# Also an INTERFACE, by the same rule Mempool and Chain State already
+# follow here: it is the component two external flows cross the boundary
+# through. Miners buy electricity from the Energy Market and sell coins
+# to the Asset Market, so the membrane passes through the work process
+# rather than beside it. Without the designation the kernel refuses the
+# model — a crossing flow with no interface is a hole in the membrane
+# the author never declared (#316).
+component Mining primitive Combining interface
 
 # The stock the whole system exists to grow: settled, ordered history.
 component "Chain State" primitive Buffering interface

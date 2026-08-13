@@ -36,8 +36,10 @@ export function makeResolver(model: CanvasModel, analysis: CanvasAnalysis): Cita
 }
 
 function resolveToken(kind: string, n: number, r: CitationResolver): IssueTarget | null {
-  if (kind === "thing") return r.thingIds.has(n) ? { thing: n, relation: null } : null;
-  if (kind === "relation") return r.relationIds.has(n) ? { thing: null, relation: n } : null;
+  if (kind === "thing")
+    return r.thingIds.has(n) ? { thing: n, relation: null, disregarded_relations: 0 } : null;
+  if (kind === "relation")
+    return r.relationIds.has(n) ? { thing: null, relation: n, disregarded_relations: 0 } : null;
   if (kind === "issue") {
     const t = r.issueTargets[n];
     return t && (t.thing !== null || t.relation !== null) ? t : null;

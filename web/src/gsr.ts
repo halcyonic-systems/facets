@@ -78,7 +78,7 @@ export async function authorSl(req: {
    *  drafter heals near-misses instead of the human hand-fixing them. */
   priorSl?: string;
   errors?: string;
-}): Promise<{ sl: string; model: string }> {
+}): Promise<{ sl: string; model: string; latencyMs?: number }> {
   const data = await post("/author-sl", {
     description: req.description,
     lens: req.lens ? req.lens.toLowerCase() : undefined,
@@ -86,5 +86,13 @@ export async function authorSl(req: {
     prior_sl: req.priorSl,
     errors: req.errors,
   });
-  return { sl: String(data.sl ?? ""), model: String(data.model ?? "") };
+  // The reasoner times its own call and reports it. Absent or unparseable
+  // stays undefined: a turn that shows no time is honest, a turn that shows
+  // 0 ms is a lie about a call that took a minute.
+  const latency = Number(data.latency_ms);
+  return {
+    sl: String(data.sl ?? ""),
+    model: String(data.model ?? ""),
+    latencyMs: Number.isFinite(latency) && latency >= 0 ? latency : undefined,
+  };
 }

@@ -1,12 +1,81 @@
 # Visual language
 
-**Status: ADOPTED.** Adopted 2026-07-24 from a three-way treatment bake-off; subordinate to [`../../web/DESIGN.md`](../../web/DESIGN.md).
+**Status: ADOPTED**, substantially revised 2026-08-12; subordinate to [`../../web/DESIGN.md`](../../web/DESIGN.md).
 
 The register is a **considered scientific instrument** — a ledger, a spec sheet,
 a plate in a monograph. Not a dashboard template, and not a blank page.
 
 Adopted 2026-07-24 from a three-way treatment bake-off on the shelf page. This
 file is the spec; `web/scripts/check-tokens.mjs` is the gate that keeps it.
+
+## The 2026-08-12 pass
+
+A walk through all four doors, logged impression by impression, then acted on.
+Two things changed at the level of this document.
+
+### 1. Colour stopped being a surface treatment
+
+The finding, on the landing page: the accent hue was doing three structural jobs
+at three lightnesses — identity (a filled band), ground (a tinted page),
+structure (tinted header strips) — so nothing on screen was neutral and the hue
+signalled nothing. The verdict was *"does not look professional."*
+
+The same finding then repeated on the workspace, where the per-lens **world
+tint** put a wash on the canvas and a tint on the chrome: *"I land on Mobus and,
+like, swimming in green, it's overwhelming."* It was retuned once (22%/11% →
+12%/2.5%) and that was still too much. It is now **withdrawn for every lens**:
+chrome and wash resolve to the plain surface, and node strokes are ink.
+
+What replaced it, everywhere:
+
+- A white sheet on a neutral ground, one step apart, so content has an edge
+  without a border, a shadow, or a tint doing the work.
+- Surface tokens with **no hue cast**. The old faintly-indigo Frost surfaces read
+  as blue-green next to the sheet, and made the canvas look coloured before any
+  lens touched it.
+- Colour only where it names something. If a colour cannot say what it means, it
+  is a bug.
+
+### 2. A withdrawn doctrine, recorded so it is not re-derived
+
+A second bake-off ran on the landing page, and the winning arm was built on a
+**printed-page brief** — paper ground, display serif carrying the title, roman
+folios, a narrow measure, a rubric rule opening every title block. That brief was
+written by Claude for the blind pick. The owner picked the **artifact**; he never
+saw or endorsed the thesis behind it.
+
+It was then written up here as adopted doctrine and used as a constraint on
+further work. Asked directly, the owner did not recognise any of its devices as
+something he wanted: *"I'm not aware that I necessarily cared about any of
+those."* All of them were removed the same day.
+
+**The lesson, which is the reason this section exists:** a blind pick licenses
+the artifact, not the brief behind it. Do not promote a winning arm's rationale
+into a rule the owner never stated. What a pick supports is exactly what the
+judge said about it, and no more.
+
+The withdrawn devices: the rubric rule above every title block, the display serif
+on mastheads, the italic serif lede, roman folios on contents rows, and the
+narrow reading column. What survived is what was independently confirmed: the
+white sheet, the neutral ground, and meaningful colour.
+
+## Where colour is allowed
+
+Colour is a **signal channel**, never a surface treatment:
+
+- `--seal` — the underline on a **selected filter facet**, and the `runs` tag
+  that marks the models which actually execute. Both name something.
+- `--world-klir` / `--world-bunge` / `--world-mobus` — the **tradition** a corpus
+  model belongs to, in the library. Contractual across the instrument, so a
+  reader learns it once. An example is ours and belongs to no tradition, so it
+  carries **no** hue; the absence is the fact.
+- `--lens-accent` — the **active lens**, on interactive chrome only: the lens
+  toggle, armed tools, rims, handles. Never a surface.
+- `--verdict-*` and `--kind-*` — unchanged, and still reserved. `--kind-*` in
+  particular is constant across lenses AND themes, because substance identity
+  must not shift with a theme.
+
+Everything else is ink, paper, and two weights of rule.
 
 ## Rules
 
@@ -15,52 +84,68 @@ file is the spec; `web/scripts/check-tokens.mjs` is the gate that keeps it.
    popovers round at all. Pill geometry (`--radius-pill`) is a different thing
    and stays allowed.
 2. **Modular regions.** A page is blocks with edges, not text floating on one
-   ground. Every region opens on a header strip and closes on a rule. A block
-   that ends nowhere is not a block.
-3. **Discrete rows.** Rows are separated by real rules (`--border`, not
-   `--hairline`) and carry a continuous tinted gutter with a numeral. The
-   runner-up treatment failed on exactly this: "the model list blends into each
-   other a bit too much."
-4. **Colour with surface area.** Accent arrives as a filled region — the
-   masthead band (`--accent-strong` + `--text-on-accent`), the gutter and
-   header strips (`--accent-soft`), the chips (`--accent`) — never as a 1px rim
-   on an otherwise white card. No gradients: colour has an edge, not a fade.
+   ground. Every region opens on a header and closes on a rule. A block that ends
+   nowhere is not a block. The header is a label over a rule, not a tinted fill.
+3. **Discrete rows.** Rows are separated by real rules, never by whitespace
+   alone. The runner-up treatment failed on exactly this: "the model list blends
+   into each other a bit too much." The gutter numeral stays, untinted; the rule
+   does the separating, and the tint never was what did it.
+4. **Colour names something or it is absent.** Supersedes the former "colour with
+   surface area." Accent no longer arrives as a filled region on any surface, and
+   there are still no gradients.
 5. **Flat.** Panels sit on a rule. The only permitted lift is the near-flat
    `--shadow-card` / `--shadow-card-hover`.
-6. **The identity device is the band.** Any page with a name opens on a filled
-   full-bleed masthead carrying back-link, eyebrow, title, and the page's one
-   number. Home, the library browser, and every shelf share it.
+6. **The identity device is the title block.** A page with a name opens on its
+   title, in the body face, with a lede beneath and a head rule closing the
+   block — no filled band, no eyebrow above the product's own name, and a number
+   only where a count is the reason to be on the page. Home carries no count;
+   the library does, because there the page IS the inventory.
 7. **Authored case survives.** Names are data. The ledger sets them in
    `font-variant-caps: small-caps` for an even column; `text-transform:
    uppercase` is forbidden on any name, because it prints `hal` as `HAL` and the
-   model is named `hal`. Uppercase is for fixed UI copy (eyebrows, section
-   labels) only.
+   model is named `hal`. Uppercase is for fixed UI copy (section labels) only.
+8. **Navigation is not a hierarchy when a list will do.** The library was two
+   sections of shelves, drilled into by genus and by author. It is now one flat
+   list partitioned by **provenance** (ships with the app / yours), with genus and
+   tradition as tags plus a filter. The reason is durable: on release a bundle
+   ships a handful of models and everything else is the user's own, so provenance
+   is the split that will still matter.
 
 ## Rejected, and why
 
 - **Rounded elevated cards** (treatment 2) — "just looks like an LLM made it."
   Big radii plus drop shadows is the generic web-app default; it reads as
   unconsidered regardless of what is on the card.
-- **Flat and white** (the baseline) — "too boring." Restraint is not the same as
-  flatness. Hairlines and unfilled text on one ground gives the page nothing to
-  hold, and reads as unfinished rather than austere.
+- **Flat and white** (the baseline) — "too boring." **Read this one carefully:**
+  it was cited in 2026-08-12's briefs as evidence that restraint would lose, and
+  it did not. The rejection was of the UNDECORATED, not of the RESTRAINED, and
+  conflating those two cost a design pass. A quiet page can still be authored.
+- **The per-lens world tint** — "swimming in green." Tinting a work surface by
+  lens was tried at two strengths and withdrawn at both. The tokens survive in
+  `index.css`, so restoring it is a value change in one block, but the finding is
+  that a modeller looks at the canvas all day and it should not argue a position.
 
 ## The gate
 
 `npm run check:tokens` fails the build on: radius above 8px (Tailwind class,
 arbitrary value, or `borderRadius` string), any `boxShadow` outside the two
 `--shadow-card*` tokens, any Tailwind `shadow-*` utility, and any
-`linear/radial/conic-gradient` in `web/src/**`. The page-ground wash in
-`index.css` `body` is the one sanctioned gradient and lives outside the scanned
-tree. Authored case is held by a test in `web/src/HomeScreen.test.tsx` rather
-than a grep — it is a claim about data, not about a token.
+`linear/radial/conic-gradient` in `web/src/**`. Authored case is held by a test in
+`web/src/HomeScreen.test.tsx` rather than a grep — it is a claim about data, not
+about a token.
 
 Tokens themselves live in `web/src/index.css` and are mirrored in
 `web/src/tokens.ts`; this language adds no colours.
 
-## Known gap
+## Open
 
-The masthead band fills with `--accent-strong` and inks with `--text-on-accent`
-(constant white). In the dark theme `--accent-strong` inverts to a light tint,
-so white-on-band loses contrast. A theme-stable inverse-surface token would fix
-it; none exists yet.
+- **Dark theme is unverified by eye.** Every token is declared for both schemes,
+  but every judgment this pass was made in light.
+- **The reading pages and the workspace still differ in typography.** Mastheads
+  are set in the body face; model names and door labels are still serif. That
+  mix is undecided, not intended.
+- **The inspector dock's contents clip** at the right edge on a narrow window.
+  Separate from the tab-strip overflow already fixed.
+- **No test binds the inspector dock's collapse behaviour**, which is now the
+  most conditional layout logic in the app — and it regressed once already, on
+  the same day it was written.
