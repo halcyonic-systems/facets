@@ -134,4 +134,33 @@ flow "U.S. Treasury" -> "Balance Sheet" : matter "TGA deposits — the Treasury'
 #   are deliberately unreachable at level 1: every path to them is
 #   mediated through banks or markets.
 
+# ── Sources ──────────────────────────────────────────────────────────
+# Retrieved and checked 2026-08-13. Every structural claim below is
+# either on one of these pages or listed as a fork above.
+#
+# The four stated responsibilities — this model draws the FIRST ONLY
+# ("conducting the nation's monetary policy"); supervision, financial
+# stability, and payment services are outside its boundary:
+#   https://www.federalreserve.gov/faqs.htm
+#
+# The instruments. Nine named policy tools, which is the countable form
+# of "a limited number of levers" — interest on reserve balances, open
+# market operations, the discount window, overnight reverse repo (fork
+# 1 above), the standing repo facility, central bank liquidity swaps,
+# the FIMA repo facility, term deposits, reserve requirements:
+#   https://www.federalreserve.gov/monetarypolicy/policytools.htm
+#
+# The balance sheet in 2020, for the flows drawn here. Treasury holdings
+# +$2.36 trillion mid-March to 12 Aug 2020 (15% -> 22% of outstanding
+# Treasury debt); traditional repo peaked at $496 billion in mid-March
+# and reached zero by early July. The Fed's own stated purpose was
+# "to restore market functioning in Treasury and agency MBS markets and
+# to promote effective transmission of monetary policy":
+#   https://www.federalreserve.gov/monetarypolicy/bsd-recent-developments-202008.htm
+#
+# Companion model: `policy-channels.sl` stays OUTSIDE this boundary and
+# asks who can pay whom, drawing Congress beside the Fed. Where this
+# model opens the Fed, that one compares its channel with the fiscal
+# one. Read together they separate credit from transfer.
+
 @lens mobus

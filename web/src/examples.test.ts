@@ -92,6 +92,7 @@ describe("the shipped library", () => {
       "Predator-Prey Ecosystem",
       "Reservoir",
       "Ribosome",
+      "U.S. Federal Economic Policy",
       "hal",
     ]);
   });
