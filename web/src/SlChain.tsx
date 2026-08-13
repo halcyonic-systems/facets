@@ -35,6 +35,21 @@ const SIGNATURE: Record<Lens, string> = {
   Mobus: "S = ⟨C, N, E, G, B, T, H, Δt⟩",
 };
 
+/** The bond/mere split of the compiled relations (#320). A reader who counts
+ *  fourteen lines on the canvas and reads "12 bond · 2 mere" is handed the
+ *  discrepancy BEFORE any refusal exists — which is the whole failure of
+ *  2026-08-12, where two `mere` relations were pointed at as evidence that a
+ *  correct verdict was wrong. Counting, not judging: `is_bond` is the kernel's.
+ *  Klir gets the plain count, because `(T, R)` has no bond/non-bond split and a
+ *  split reported under that lens would be a construct it does not own. */
+function bondSplit(model: CanvasModel): string {
+  const total = model.relations.length;
+  if (model.lens === "Klir") return `all in R`;
+  const bonds = model.relations.filter((r) => r.is_bond).length;
+  const mere = total - bonds;
+  return mere === 0 ? "all bonds" : `${bonds} bond · ${mere} mere`;
+}
+
 /** "docs/glossary.md#precondition" → "glossary § precondition" (same reduction
  *  ReviewPanel makes; the anchor itself is the kernel's). */
 function docLabel(doc: string): string {
@@ -147,7 +162,7 @@ export function SlChain({ text, model, desc, verdict, onShowFormal }: SlChainPro
         {model ? (
           <>
             CanvasModel: {model.things.length} thing{model.things.length === 1 ? "" : "s"},{" "}
-            {model.relations.length} relation{model.relations.length === 1 ? "" : "s"}
+            {model.relations.length} relation{model.relations.length === 1 ? "" : "s"} ({bondSplit(model)})
           </>
         ) : (
           "not compiled yet"

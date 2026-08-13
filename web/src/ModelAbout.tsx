@@ -42,13 +42,21 @@ export function ModelAbout({
   const kind = [model.system_type?.kingdom, model.system_type?.genus].filter(Boolean).join(" / ");
   const forced = manifest?.mapping.filter((m) => m.as === "flow" && m.force) ?? [];
 
+  // Bondhood is named in the lens's own vocabulary (#320): Mobus counts FLOWS
+  // (a bond is a flow is transport), Bunge counts BONDS (couplings, which need
+  // carry nothing), and Klir counts RELATIONS — `(T, R)` draws no bond/non-bond
+  // line, so reporting a split there would import a construct it does not own.
+  const klir = model.lens === "Klir";
+  const bondWord = model.lens === "Bunge" ? "bond" : "flow";
   const composition = [
     `${components.length} component${components.length === 1 ? "" : "s"}`,
     sources > 0 && `${sources} source${sources === 1 ? "" : "s"}`,
     sinks > 0 && `${sinks} sink${sinks === 1 ? "" : "s"}`,
     neutral > 0 && `${neutral} neutral environment thing${neutral === 1 ? "" : "s"}`,
-    `${bonds} flow${bonds === 1 ? "" : "s"}`,
-    mere > 0 && `${mere} mere relation${mere === 1 ? "" : "s"}`,
+    klir
+      ? `${model.relations.length} relation${model.relations.length === 1 ? "" : "s"}`
+      : `${bonds} ${bondWord}${bonds === 1 ? "" : "s"}`,
+    !klir && mere > 0 && `${mere} mere relation${mere === 1 ? "" : "s"} (no bond)`,
     params > 0 && `${params} declared parameter${params === 1 ? "" : "s"}`,
   ]
     .filter(Boolean)

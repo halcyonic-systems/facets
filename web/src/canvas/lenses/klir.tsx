@@ -35,6 +35,15 @@ function EdgeView({ model, relation, sigIndex, selected, driven, sim, onSelect }
   if (!geo) return null;
   const { d, labelAt } = geo;
   // Direction is the observer's explicit per-relation toggle; default undirected.
+  //
+  // BONDHOOD (#320): Klir is EXEMPT, deliberately. `(T, R)` has no bond/non-bond
+  // split — every authored relation is a member of R and counts the same — so
+  // `is_bond` names nothing this lens can see, and drawing a distinction here
+  // would encode a Bunge construct in Klir's chrome. Which also means the rule
+  // "an arrowhead asserts a bond" is LENS-RELATIVE, not global: under Klir this
+  // head asserts that the observer toggled the relation directed, and nothing
+  // more. The head is the neutral slate `arrow` for the same reason the line is
+  // substance-blind.
   const marker = relation.klir_directed === true;
   // Pair the name with the signature (#80): the name to anchor on, the formalism
   // to read. Without a name the relation was pure notation — the bounce-off case.

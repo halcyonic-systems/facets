@@ -43,9 +43,23 @@ function NodeView({ thing, isBoundary, isOrphan, hovered, sim, onPointerDown, on
 }
 
 function edgeStyle(relation: Relation, fact: EdgeFact | undefined): EdgeStyle {
-  // Mere relations ("older than") make no difference and do not bond.
+  // BONDHOOD (#320). Mere relations ("older than") make no difference and do
+  // not bond, so they lose the ARROWHEAD, not just the colour: under Bunge a
+  // bond is a coupling — the arrow says which thing acts on which, and a mere
+  // relation has no actor. It is capped `coupling` at both ends instead, and
+  // stays fully drawn: it was authored deliberately and Bunge's own ontology
+  // has a place for it (Def 1.1), which is exactly why it must be visible AND
+  // distinguishable. A Bunge bond need not carry anything — that is the
+  // difference from Mobus, where the same arrow would also mean transport.
   if (!relation.is_bond) {
-    return { color: "var(--text-muted)", width: STYLE.edge.mere, dash: "3 4", opacity: 0.7 };
+    return {
+      color: "var(--text-muted)",
+      width: STYLE.edge.mere,
+      dash: "3 4",
+      opacity: 0.7,
+      marker: "coupling",
+      markerStart: "coupling",
+    };
   }
   // Endo/exo as an edge split — kernel-computed (edge ∈ N vs edge ∈ G), kind-colored.
   // The exo dash further reads the kernel's coupling channel (#100 phase 2 F6,
