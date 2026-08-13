@@ -102,9 +102,9 @@ flow "Fine-tune Pipeline" -> "Local Models" : informational "tuned LoRA adapter"
 # construct for "this endo edge is exo one level down, at a subsystem
 # that is itself only a view" — see the note below.
 flow Proxy -> Homeostat : informational "transport telemetry"
-flow Homeostat -> Proxy : informational "guard verdict / gating signal"
+flow Homeostat -> Proxy : informational "guard verdict" description "The gating signal: the guard's ruling on a transport, which the proxy applies rather than re-decides."
 
-flow Homeostat -> "Published Mirror" : informational "published bench + spec snapshot"
+flow Homeostat -> "Published Mirror" : informational "published snapshot" description "The benchmark results and constraint spec as published — a one-way projection, never read back."
 
 @lens bunge
 

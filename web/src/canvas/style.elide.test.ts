@@ -3,6 +3,16 @@
 import { describe, expect, it } from "vitest";
 import { EDGE_LABEL_MAX, elideEdgeLabel } from "./style";
 
+describe("the label budget", () => {
+  it("is 28, the same number the shipped-model gate enforces", () => {
+    // #335 point 2 lives in Rust (crates/bert-canvas/tests/examples.rs), where
+    // the real parser can read a label out of an .sl file. Its LABEL_BUDGET and
+    // this constant are two copies of one number, so each side pins it: change
+    // one alone and this fails rather than the gate quietly going slack.
+    expect(EDGE_LABEL_MAX).toBe(28);
+  });
+});
+
 describe("elideEdgeLabel", () => {
   it("leaves a real name untouched — a well-named flow is never decorated", () => {
     expect(elideEdgeLabel("reserves minted")).toBe("reserves minted");
