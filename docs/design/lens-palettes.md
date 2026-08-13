@@ -394,6 +394,44 @@ Ground rule throughout: **the rail offers, the kernel decides** — legality is 
 before/after issue-delta of `validate_connection` (`bert-canvas/src/canvas.rs:425`)
 at the active Mode, never a UI list (design-system rule 8).
 
+### What the palette filters on, and what it must not
+
+Rows come from `LensPalette[lens]` and nothing else: **absence is ontology**. A
+Klir palette with no work-process primitives is not an omission, it is the claim
+that Klir cannot say that. The absence teaches, so it has to stay unambiguous.
+
+That matters because a second filter is tempting and is a different thing. The
+life-cycle formalism (Thornton & Mobus) carries a fixed catalogue of change
+operators **Ω**, of which only a subset **Ω(S)** is applicable in a given state,
+because each operator's precondition either holds or does not. Read across to
+this rail and the two filters are orthogonal: the **lens** picks Ω, what a
+tradition can express; the **state** picks Ω(S), what can fire on this model now.
+
+Three rules follow, and the third is the one that bites.
+
+1. **Lens-absence stays absence. State-inapplicability is not absence.** If both
+   removed rows, a reader could no longer tell "this tradition cannot express
+   that" from "you cannot do that right now", and the ontological signal would be
+   spent to buy a convenience one. The house pattern for the second case already
+   exists: the run controls are not rendered when a model cannot run, and the
+   reason is demoted to a quiet line rather than deleted. Disabled-with-a-reason,
+   never silently gone.
+2. **Applicability is the kernel's judgement, not the rail's.** "The rail offers,
+   the kernel decides — no legality is computed here" is the standing rule, and
+   Ω(S) is a legality claim about a specific model. Computing it in TypeScript
+   would be systems logic in the face. It needs a kernel surface first.
+3. **The palette's verbs are not Ω.** The rail offers *authoring gestures* —
+   place a component, designate an interface, arm a typed flow. Ω holds *system
+   transformations* — add component, remove component, swap interface, replace
+   component. "Stamp a component" maps to "add component"; "arm the typed-flow
+   gesture" is not an operator at all. Adopting Ω(S) here would assert that the
+   palette IS the operator catalogue, which is a larger claim than it sounds and
+   is not established. Answer that first.
+
+Where Ω(S) clearly does belong is the editing path, not the rail. `deleteThing`
+already cascades to the deleted node's relations — the taxonomy's cascade column,
+arrived at independently and for the same reason a dangling edge is not a tuple.
+
 ### Birth modes are the grammar
 
 Carried forward from the archived creation model (`docs/archive/design-system.md`
