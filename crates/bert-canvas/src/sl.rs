@@ -98,6 +98,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     let mut system_name: Option<String> = None;
     let mut system_seen = false;
     let mut domain_seen = false;
+    let mut description = String::new();
     let mut time_unit: Option<String> = None;
     let mut klir_level: Option<KlirLevel> = None;
     let mut lens = Lens::Mobus;
@@ -249,6 +250,28 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 match rest {
                     [Tok::Str(s)] => system_type.domain = Some(s.clone()),
                     _ => fail("domain syntax: `domain \"<subject area>\"`".into(), &mut errors),
+                }
+            }
+            // `description "<prose>"` — what the SOI is (#326). A top-level
+            // singleton beside `domain`, because `name` on the model IS the
+            // root system's name: this is that system's description, not a
+            // second thing standing beside the model.
+            "description" => {
+                if !description.is_empty() {
+                    fail(
+                        "`description` already declared — fix: a model has one; merge \
+                         this line into the earlier `description` line or delete it"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                match rest {
+                    [Tok::Str(s)] => description = s.clone(),
+                    _ => fail(
+                        "description syntax: `description \"<what this system is>\"`".into(),
+                        &mut errors,
+                    ),
                 }
             }
             // `time unit <symbol>` — the model's time-unit symbol (#94): what
@@ -1445,6 +1468,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         boundary: boundary.unwrap_or_default(),
         system_type,
         name: system_name,
+        description,
         time_unit,
         params,
         metrics,
@@ -1639,6 +1663,9 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
     }
     if let Some(domain) = &model.system_type.domain {
         writeln!(out, "domain {}", quote(domain)?).unwrap();
+    }
+    if !model.description.is_empty() {
+        writeln!(out, "description {}", quote(&model.description)?).unwrap();
     }
     // The model's time-unit symbol (#94) — header block, with system/domain.
     if let Some(tu) = model.time_unit.as_deref().map(str::trim).filter(|t| !t.is_empty()) {

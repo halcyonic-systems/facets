@@ -1140,6 +1140,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            description: String::new(),
             time_unit: None,
             params: vec![],
             metrics: vec![],

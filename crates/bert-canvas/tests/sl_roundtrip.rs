@@ -80,6 +80,7 @@ fn canvas_born_model_canonicalizes() {
     };
     let m = CanvasModel {
         lens: Lens::Klir,
+        description: String::new(),
         model_id: None,
         things: vec![
             thing(7, "A", Role::Component),

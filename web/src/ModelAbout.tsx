@@ -70,6 +70,14 @@ export function ModelAbout({
           {kind}
         </div>
       )}
+      {/* The SOI's own prose (#326), above the domain: what this system IS
+          reads before what subject area it belongs to. Read-only here — the
+          home slot reports, and the title-bar panel is where it is written. */}
+      {model.description && (
+        <p className="mb-3 text-xs leading-relaxed" style={{ color: "var(--text-primary)" }}>
+          {model.description}
+        </p>
+      )}
       {model.system_type?.domain && (
         <p className="mb-3 text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
           {model.system_type.domain}

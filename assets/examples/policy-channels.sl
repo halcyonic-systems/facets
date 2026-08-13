@@ -28,6 +28,8 @@ system "U.S. Federal Economic Policy" : Concrete/Social
 
 domain "The two channels through which federal policy reaches the economy: central-bank credit, and congressional transfers"
 
+description "The federal apparatus that acts on the economy, drawn as its two organs. The point of drawing them together is that they reach different people by different means: the Fed extends credit, which is intermediated and repayable, and Congress makes transfers, which are direct and are not."
+
 # Coupled organs, no authored rule between them — see fork 1.
 level Structure
 
@@ -40,13 +42,13 @@ level Structure
 # policy": https://www.federalreserve.gov/faqs.htm
 # The instruments are enumerable and few — NINE named policy tools:
 # https://www.federalreserve.gov/monetarypolicy/policytools.htm
-component "Federal Reserve" primitive Modulating interface
+component "Federal Reserve" primitive Modulating interface description "Modulating: it regulates flows it does not originate. It sets a price and a quantity; the banks decide whether to pass anything on."
 
 # CONGRESS. Also Modulating, and the contrast is the point: it directs
 # money it does not hold either, but its channel terminates on the
 # household rather than on a bank. Fiscal capacity is appropriation,
 # not lending — the money need not come back.
-component Congress primitive Modulating interface
+component Congress primitive Modulating interface description "Also Modulating, and the contrast is the point: it directs money it does not hold either, but its channel terminates on the household rather than on a bank."
 
 # ── Environment ──────────────────────────────────────────────────────
 
@@ -85,7 +87,7 @@ flow "Banks and Dealers" -> "Households and Firms" : matter "credit extended, at
 # Congress's channel: no intermediary, and nothing owed back. Cheques,
 # topped-up unemployment, PPP. This is the arrow that is NOT credit,
 # and the difference in substance is the model's central claim.
-flow Congress -> "Households and Firms" : matter "transfers — cheques, topped-up unemployment, PPP" substance transfers
+flow Congress -> "Households and Firms" : matter "transfers — cheques, topped-up unemployment, PPP" substance transfers description "No intermediary, and nothing owed back. This is the arrow that is not credit, and the difference in substance is the model's central claim."
 
 # ── What each organ steers by ────────────────────────────────────────
 

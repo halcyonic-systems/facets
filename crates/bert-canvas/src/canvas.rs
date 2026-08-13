@@ -450,6 +450,13 @@ pub struct CanvasModel {
     /// unchanged; `None` projects as the placeholder root name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    /// What the SYSTEM OF INTEREST is, in the author's words (#326). There is
+    /// no "model" here separate from the SOI: `name` above IS the root
+    /// system's name, so this is the root system's `Info.description` and not
+    /// a second concept beside it. `skip` when empty so stored models stay
+    /// byte-identical.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
     /// The model's time-unit symbol (bert-lenses#94) — what one unit of model
     /// time is called (`"h"`, `"mo"`). Projects to [`WorldModel::time_unit`],
     /// where the run's derived-stock-unit display reads it (`kW` inflow →
@@ -591,7 +598,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
     let mut sinks: Vec<ExternalEntity> = Vec::new();
 
     let root_name = model.name.as_deref().unwrap_or("System");
-    let mut root = new_system(root_id.clone(), 0, root_name, "", env_id.clone(), None, None);
+    let mut root = new_system(root_id.clone(), 0, root_name, &model.description, env_id.clone(), None, None);
     // Authored P lands on the root membrane — the projection stops erasing it.
     root.boundary.porosity = model.boundary.porosity;
     root.boundary.perceptive_fuzziness = model.boundary.perceptive_fuzziness;
@@ -1020,6 +1027,15 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         .filter(|n| !n.is_empty() && *n != "System")
         .map(str::to_string);
 
+    // The SOI's own prose, read back off the root system — the return leg that
+    // makes a model-level description round-trip like `name` does.
+    let description = model
+        .systems
+        .iter()
+        .find(|s| s.info.level == 0)
+        .map(|s| s.info.description.clone())
+        .unwrap_or_default();
+
     CanvasModel {
         lens,
         model_id: model.model_id,
@@ -1028,6 +1044,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         boundary,
         system_type: SystemType::default(),
         name,
+        description,
         time_unit: model.time_unit.clone(),
         // Params and metrics are canvas-resident presentation semantics; a
         // WorldModel never carried them, so a model born from kernel JSON
@@ -1237,6 +1254,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            description: String::new(),
             time_unit: None,
             params: vec![],
             metrics: vec![],
@@ -1267,6 +1285,7 @@ mod tests {
                 boundary: Default::default(),
                 system_type: Default::default(),
                 name: None,
+                description: String::new(),
                 time_unit: None,
                 params: vec![],
                 metrics: vec![],
@@ -1298,6 +1317,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            description: String::new(),
             time_unit: None,
             params: vec![],
             metrics: vec![],
@@ -1327,6 +1347,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            description: String::new(),
             time_unit: None,
             params: vec![],
             metrics: vec![],
@@ -1348,6 +1369,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            description: String::new(),
             time_unit: None,
             params: vec![],
             metrics: vec![],
@@ -1381,6 +1403,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            description: String::new(),
             time_unit: None,
             params: vec![],
             metrics: vec![],
@@ -1436,6 +1459,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            description: String::new(),
             time_unit: None,
             params: vec![],
             metrics: vec![],
@@ -1481,6 +1505,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            description: String::new(),
             time_unit: None,
             params: vec![],
             metrics: vec![],
@@ -1522,6 +1547,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            description: String::new(),
             time_unit: None,
             params: vec![],
             metrics: vec![],
@@ -1624,6 +1650,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            description: String::new(),
             time_unit: None,
             params: vec![],
             metrics: vec![],
@@ -1647,6 +1674,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            description: String::new(),
             time_unit: None,
             params: vec![],
             metrics: vec![],
@@ -1680,6 +1708,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            description: String::new(),
             time_unit: None,
             params: vec![],
             metrics: vec![],

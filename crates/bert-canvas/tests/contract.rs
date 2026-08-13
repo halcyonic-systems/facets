@@ -87,6 +87,7 @@ fn relation(id: u64, a: u64, b: u64, name: &str, is_bond: bool, kind: Kind) -> R
 fn sample() -> CanvasModel {
     CanvasModel {
         lens: Lens::Mobus,
+        description: String::new(),
         // A fixed identity so the golden proves `model_id` crosses the edge
         // deterministically (the walk depends on it surviving the seam).
         model_id: Some("Hrs6K91KnZZsiPcWzftv8U".parse::<ModelId>().unwrap()),

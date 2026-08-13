@@ -343,7 +343,7 @@ pub fn to_canvas(model_json: &str) -> Result<JsValue, JsError> {
 pub fn compile_sl(text: &str) -> Result<JsValue, JsError> {
     match bert_canvas::sl::parse_sl_full(text) {
         Ok(parse) => to_js(&SlOutcome::Ok {
-            ok: parse.model,
+            ok: Box::new(parse.model),
             lens_explicit: parse.lens_explicit,
         }),
         Err(errors) => to_js(&SlOutcome::Errors { errors }),
@@ -624,7 +624,10 @@ enum OperationalOutcome {
 #[serde(untagged)]
 enum SlOutcome {
     Ok {
-        ok: bert_canvas::canvas::CanvasModel,
+        // Boxed only to keep the variants a similar size (clippy's
+        // large_enum_variant): a `CanvasModel` dwarfs a fault list. `Box<T>`
+        // serializes exactly as `T`, so the shape crossing to JS is unchanged.
+        ok: Box<bert_canvas::canvas::CanvasModel>,
         lens_explicit: bool,
     },
     Errors {
@@ -921,6 +924,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            description: String::new(),
             time_unit: None,
             params: vec![],
             metrics: vec![],

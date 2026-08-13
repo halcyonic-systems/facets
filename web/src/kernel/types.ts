@@ -317,6 +317,10 @@ export interface SystemType {
 }
 
 export interface CanvasModel {
+  /** What the SYSTEM OF INTEREST is, in the author's words (#326). There is no
+   *  "model" separate from the SOI here: `name` IS the root system's name, so
+   *  this is that system's `Info.description`, not a second concept beside it. */
+  description?: string;
   lens: Lens;
   /** The model's stable base58 self-identity, carried through the canvas seam
    *  (to_canvas copies it in, project writes it back) so a walked child

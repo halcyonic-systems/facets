@@ -1810,6 +1810,8 @@ function Workspace() {
         hasModel={canvasModel !== null}
         currentLabel={currentLabel}
         systemType={canvasModel?.system_type}
+        soiDescription={canvasModel?.description ?? ""}
+        onSoiDescriptionChange={(d) => setCanvasModel((m) => (m ? { ...m, description: d } : m))}
         onSystemTypeChange={(st) => setCanvasModel((m) => (m ? { ...m, system_type: st } : m))}
         dirty={dirty}
         onHome={goHome}
@@ -2841,6 +2843,8 @@ export function MenuBar({
   currentLabel,
   systemType,
   onSystemTypeChange,
+  soiDescription,
+  onSoiDescriptionChange,
   dirty,
   onHome,
   libraryModels,
@@ -2871,6 +2875,8 @@ export function MenuBar({
    *  in the inspector dock beside live readings. Undefined = unasserted. */
   systemType?: SystemType;
   onSystemTypeChange?: (next: SystemType) => void;
+  soiDescription?: string;
+  onSoiDescriptionChange?: (next: string) => void;
   dirty: boolean;
   onHome: () => void;
   libraryModels: { name: string; savedAt: number; depth: number }[];
@@ -3160,7 +3166,12 @@ export function MenuBar({
                   the panel does not double-border. Same component, same
                   value/onChange contract it carried in the dock. */}
               <div className="absolute left-0 top-full z-20 mt-1 w-72">
-                <SystemTypeEditor value={systemType} onChange={onSystemTypeChange} />
+                <SystemTypeEditor
+                  value={systemType}
+                  onChange={onSystemTypeChange}
+                  description={soiDescription}
+                  onDescriptionChange={onSoiDescriptionChange}
+                />
               </div>
             </>
           )}
