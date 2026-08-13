@@ -22,6 +22,7 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
     Thing {
         id,
         name: name.to_string(),
+        description: String::new(),
         x: 0.0,
         y: 0.0,
         role,
@@ -45,6 +46,7 @@ fn rel(id: u64, a: u64, b: u64) -> Relation {
         a,
         b,
         name: String::new(),
+        description: String::new(),
         is_bond: true,
         kind: Kind::Unspecified,
         klir_directed: false,

@@ -191,6 +191,15 @@ pub struct Thing {
     /// `skip` when empty so existing models serialize unchanged.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub stock_unit: String,
+    /// What this thing IS, in the author's own words (bert-lenses#326). The
+    /// original BERT carried one on every entity and the rebuild dropped it,
+    /// while `bert_core::Info` kept the destination field and received an
+    /// empty string forever; this restores the authoring path to it. Prose,
+    /// never semantics: no verdict reads it, and two models differing only
+    /// here are the same system. `skip` when empty so models authored before
+    /// it stay byte-identical on disk.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
     /// Klir's measurement scale for this variable (§4, Table 4.1) — nominal,
     /// ordinal, interval, or ratio. Authored source-system metadata read only
     /// in the Klir register; the kernel carries no scale, so this never
@@ -247,6 +256,10 @@ pub struct Relation {
     pub is_bond: bool,
     #[serde(default)]
     pub kind: Kind,
+    /// What this flow IS, in the author's own words (#326). Same standing as
+    /// `Thing::description`: prose the kernel never reads.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
     /// Klir's observer toggle: neutral ⇄ directed (Facets Ch. 4 — "directed
     /// systems" merely add an orientation the observer commits to). Pure view
     /// state, canvas-resident; never projects (the kernel `dep` is ordered
@@ -467,11 +480,21 @@ pub struct CanvasModel {
 }
 
 fn info(id: Id, level: i32, name: &str) -> Info {
+    described(id, level, name, "")
+}
+
+/// `Info` has carried a `description` since bert-core's first version, and
+/// until #326 every one built here got an empty string — the kernel kept the
+/// slot and the authoring surface never reached it. This is the reaching.
+/// Structural nodes with no author behind them (the boundary, the environment
+/// wrapper) still go through `info` and are still empty, which is correct:
+/// nobody wrote prose about them.
+fn described(id: Id, level: i32, name: &str, description: &str) -> Info {
     Info {
         id,
         level,
         name: name.to_string(),
-        description: String::new(),
+        description: description.to_string(),
     }
 }
 
@@ -486,6 +509,7 @@ fn new_system(
     id: Id,
     level: i32,
     name: &str,
+    description: &str,
     parent: Id,
     pos: Option<(f32, f32)>,
     primitive: Option<ProcessPrimitive>,
@@ -495,7 +519,7 @@ fn new_system(
         indices: id.indices.clone(),
     };
     System {
-        info: info(id, level, name),
+        info: described(id, level, name, description),
         sources: vec![],
         sinks: vec![],
         parent,
@@ -567,7 +591,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
     let mut sinks: Vec<ExternalEntity> = Vec::new();
 
     let root_name = model.name.as_deref().unwrap_or("System");
-    let mut root = new_system(root_id.clone(), 0, root_name, env_id.clone(), None, None);
+    let mut root = new_system(root_id.clone(), 0, root_name, "", env_id.clone(), None, None);
     // Authored P lands on the root membrane — the projection stops erasing it.
     root.boundary.porosity = model.boundary.porosity;
     root.boundary.perceptive_fuzziness = model.boundary.perceptive_fuzziness;
@@ -589,6 +613,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     id.clone(),
                     1,
                     &t.name,
+                    &t.description,
                     root_id.clone(),
                     Some((t.x, t.y)),
                     t.primitive,
@@ -654,7 +679,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                 };
                 env_idx += 1;
                 let ext = ExternalEntity {
-                    info: info(id.clone(), -1, &t.name),
+                    info: described(id.clone(), -1, &t.name, &t.description),
                     ty: if is_source {
                         ExternalEntityType::Source
                     } else {
@@ -751,7 +776,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
         };
         interaction_of.insert(r.id, flow_id.clone());
         interactions.push(Interaction {
-            info: info(flow_id, 0, &r.name),
+            info: described(flow_id, 0, &r.name, &r.description),
             substance: Substance {
                 sub_type: r.substance.clone(),
                 ty: kind_to_substance(r.kind),
@@ -859,6 +884,10 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         things.push(Thing {
             id,
             name: s.info.name.clone(),
+            // The return leg of #326: project() writes the author's prose into
+            // Info.description, and this reads it back, so a description
+            // survives a round trip through the kernel like a name does.
+            description: s.info.description.clone(),
             x,
             y,
             role: Role::Component,
@@ -923,6 +952,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         things.push(Thing {
             id,
             name: e.info.name.clone(),
+            description: e.info.description.clone(),
             x,
             y,
             role: Role::Environment,
@@ -958,6 +988,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             a,
             b,
             name: ix.info.name.clone(),
+            description: ix.info.description.clone(),
             is_bond: true,
             kind: substance_to_kind(ix.substance.ty),
             klir_directed: false,
@@ -1146,6 +1177,7 @@ mod tests {
         Thing {
             id,
             name: name.to_string(),
+            description: String::new(),
             x: id as f32 * 100.0,
             y: 0.0,
             role,
@@ -1168,6 +1200,7 @@ mod tests {
             a,
             b,
             name: String::new(),
+            description: String::new(),
             is_bond: true,
             kind: Kind::Unspecified,
             klir_directed: false,

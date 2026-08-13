@@ -358,6 +358,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut interface = false;
                 let mut child_model: Option<ChildRef> = None;
                 let mut stock_unit = String::new();
+                let mut description = String::new();
                 let mut scale: Option<ScaleType> = None;
                 let mut states: Option<Vec<String>> = None;
                 let mut variable_kind: Option<KlirVarKind> = None;
@@ -430,6 +431,32 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                     i += 1;
                                 }
                             }
+                        }
+                        // `description "<prose>"` — what this thing IS, in the
+                        // author's words (#326). Unlike every other attribute it
+                        // rides ENVIRONMENT lines too: old-bert's descriptions are
+                        // mostly ON environment entities ("Distributed economic
+                        // environment for decentralized monetary system"), and the
+                        // opacity rule (§4.3.3.2.2) is about an env thing's
+                        // INTERNALS, not about naming what it is.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("description") => {
+                            if !description.is_empty() {
+                                fail("`description` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Str(d)) => description = d.clone(),
+                                _ => {
+                                    fail(
+                                        "description syntax: `description \"<prose>\"` \
+                                         (quoted, one per line)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
                         }
                         // `stock <unit>` — the stock's declared unit (#76/#94),
                         // bare or quoted (`stock ML`, `stock "kW·h"`).
@@ -621,6 +648,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 things.push(Thing {
                     id: next_id,
                     name,
+                    description,
                     x: 0.0,
                     y: 0.0,
                     role,
@@ -849,6 +877,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // `weight <n>` — per-transition count for the #67 DTMC read
                 // (`markov_edges`); omit for the uniform default 1.
                 let mut weight = None;
+                let mut description = String::new();
                 if let [Tok::Word(w), rest_tail @ ..] = tail {
                     if w.eq_ignore_ascii_case("weight") {
                         match rest_tail {
@@ -883,13 +912,35 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         }
                     }
                 }
+                // `description "<prose>"` — what this flow IS, in the author's
+                // words (#326). Trails the clause chain, because it is the one
+                // clause whose value is a sentence and putting it last keeps
+                // the machine-readable clauses adjacent and scannable.
+                if let [Tok::Word(w), rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("description") {
+                        match rest_tail {
+                            [Tok::Str(d), after @ ..] => {
+                                description = d.clone();
+                                tail = after;
+                            }
+                            _ => {
+                                fail(
+                                    "description syntax: `description \"<prose>\"` (quoted)".into(),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        }
+                    }
+                }
                 if !tail.is_empty() {
                     fail(
                         format!(
                             "unexpected `{}` at end of flow — fix: quote it if it is the flow's \
                              label, or remove it; a flow reads \
                              `flow <a> -> <b> [: <kind>] [\"label\"] [substance <s>] \
-                             [amount <n>] [unit <u>] [mere] [weight <n>]`",
+                             [amount <n>] [unit <u>] [mere] [weight <n>] \
+                             [description \"<prose>\"]`",
                             tail[0].display()
                         ),
                         &mut errors,
@@ -922,6 +973,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     a: things[ai].id,
                     b: things[bi].id,
                     name,
+                    description,
                     is_bond,
                     kind,
                     klir_directed: false,
@@ -1656,6 +1708,12 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
                 .join(", ");
             write!(out, " states {{{labels}}}").unwrap();
         }
+        // Prose last but one, before `decomposes` (#326). It is the only
+        // clause whose value is a sentence, so keeping it at the end leaves
+        // the machine-readable clauses adjacent and scannable.
+        if !t.description.is_empty() {
+            write!(out, " description {}", quote(&t.description)?).unwrap();
+        }
         if t.role == Role::Component {
             // `decomposes` emits last (§7.1 canonical order): name quoted, id in
             // the canonical base58 form, both mandatory.
@@ -1708,6 +1766,9 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         }
         if let Some(w) = r.weight {
             write!(out, " weight {w}").unwrap();
+        }
+        if !r.description.is_empty() {
+            write!(out, " description {}", quote(&r.description)?).unwrap();
         }
         out.push('\n');
     }
@@ -1903,6 +1964,7 @@ pub const RESERVED_WORDS: &[&str] = &[
     "weight",
     "substance",
     "amount",
+    "description",
     "porosity",
     "fuzziness",
     "energy",
@@ -1919,7 +1981,7 @@ pub const RESERVED_WORDS: &[&str] = &[
 /// `ample` stays out: it is positional, and a bare thing or substance named
 /// `ample` must keep re-parsing as itself.
 fn clause_head(w: &str) -> bool {
-    ["substance", "amount", "unit", "mere", "weight"]
+    ["substance", "amount", "unit", "mere", "weight", "description"]
         .iter()
         .any(|k| w.eq_ignore_ascii_case(k))
 }
@@ -2617,6 +2679,75 @@ flow S -> A : matter \"in\"
         let m = parse_sl("component A\n@pos A 1 2\n").unwrap();
         assert!(splice_positions("component A\n@pos A 1 2\n", &m).unwrap().ends_with('\n'));
         assert!(!splice_positions("component A\n@pos A 1 2", &m).unwrap().ends_with('\n'));
+    }
+
+
+    // ── descriptions: restoring what old-bert had (#326) ────────────────
+
+    #[test]
+    fn description_parses_on_components_and_environment_things() {
+        let m = parse_sl(
+            "component A primitive Combining interface description \"the work process\"\n\
+             source S description \"where it comes from\"\n\
+             flow S -> A : matter \"in\"\n",
+        )
+        .unwrap();
+        assert_eq!(m.things[0].description, "the work process");
+        assert_eq!(m.things[1].description, "where it comes from");
+    }
+
+    /// Environment lines take it too, and that is deliberate: old-bert's
+    /// descriptions are mostly ON environment entities. The opacity rule is
+    /// about an env thing's INTERNALS, not about naming what it is.
+    #[test]
+    fn description_is_not_refused_on_an_environment_line() {
+        assert!(parse_sl("sink Snk description \"where it ends up\"\n").is_ok());
+    }
+
+    #[test]
+    fn description_parses_on_a_flow_after_every_other_clause() {
+        let m = parse_sl(
+            "component A\ncomponent B\n\
+             flow A -> B : matter \"label\" substance water amount 2 unit ML weight 3 \
+             description \"what actually moves\"\n",
+        )
+        .unwrap();
+        assert_eq!(m.relations[0].description, "what actually moves");
+        assert_eq!(m.relations[0].substance, "water");
+        assert_eq!(m.relations[0].weight, Some(3));
+    }
+
+    /// The property that makes descriptions worth having as DATA rather than
+    /// comments: they survive text -> model -> text, which a comment cannot.
+    #[test]
+    fn description_round_trips_through_emit() {
+        let src = "component A primitive Combining interface description \"the work process\"\n\
+                   source S description \"where it comes from\"\n\
+                   flow S -> A : matter \"in\" description \"what moves\"\n";
+        let once = emit_sl(&parse_sl(src).unwrap()).unwrap();
+        assert!(once.contains("description \"the work process\""));
+        assert!(once.contains("description \"where it comes from\""));
+        assert!(once.contains("description \"what moves\""));
+        assert_eq!(emit_sl(&parse_sl(&once).unwrap()).unwrap(), once);
+    }
+
+    /// Absent stays absent — a model with no prose must serialize exactly as
+    /// it did before this field existed, or every stored model changes on disk.
+    #[test]
+    fn no_description_emits_no_clause() {
+        let src = "component A\nsource S\nflow S -> A : matter \"in\"\n";
+        let out = emit_sl(&parse_sl(src).unwrap()).unwrap();
+        assert!(!out.contains("description"));
+    }
+
+    #[test]
+    fn a_second_description_on_one_line_is_a_fault() {
+        assert!(parse_sl("component A description \"one\" description \"two\"\n").is_err());
+    }
+
+    #[test]
+    fn an_unquoted_description_is_a_fault() {
+        assert!(parse_sl("component A description bare\n").is_err());
     }
 
 }

@@ -44,6 +44,7 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
     Thing {
         id,
         name: name.to_string(),
+        description: String::new(),
         x: id as f32 * 120.0,
         y: 40.0,
         role,
@@ -67,6 +68,7 @@ fn relation(id: u64, a: u64, b: u64, name: &str, is_bond: bool, kind: Kind) -> R
         a,
         b,
         name: name.to_string(),
+        description: String::new(),
         is_bond,
         kind,
         klir_directed: false,

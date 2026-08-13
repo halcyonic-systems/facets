@@ -1097,6 +1097,7 @@ mod tests {
         Thing {
             id,
             name: name.to_string(),
+            description: String::new(),
             x: id as f32 * 100.0,
             y: 0.0,
             role,
@@ -1119,6 +1120,7 @@ mod tests {
             a,
             b,
             name: String::new(),
+            description: String::new(),
             is_bond,
             kind: Kind::Unspecified,
             klir_directed: false,
