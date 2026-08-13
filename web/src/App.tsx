@@ -645,6 +645,25 @@ function Workspace() {
     setDirty(false);
   };
 
+  // The drafted partition → open (#324). The corpus path, with one difference
+  // that is not a detail: a corpus entry is ship-gated so its compile failure
+  // would be a bug, while a drafted model is whatever a language model wrote
+  // and failing to compile is an ordinary outcome. The toast here is the real
+  // answer, not an unreachable branch — and the turn stays in the ledger either
+  // way, so a draft that does not compile is still there to be corrected.
+  const pickDrafted = async (sl: string) => {
+    if (!(await guardDiscard()) || !(await flushWalk())) return;
+    const outcome = compileSl(sl);
+    if ("errors" in outcome) {
+      setToast(outcome.errors[0]?.message ?? "that draft does not compile");
+      return;
+    }
+    await onSlCompiled(outcome.ok, outcome.lens_explicit);
+    syncSlPane(sl, outcome.ok);
+    setHomeOpen(false);
+    setDirty(false);
+  };
+
   // Examples gallery → open (#148): one card handler for both shapes. A runnable
   // entry runs (the demo path, unchanged); a structural one compiles its SL and
   // opens as a diagram (the corpus path, without a citation). onSlCompiled sets
@@ -2727,6 +2746,7 @@ function Workspace() {
           onStartFromData={startFromData}
           onOpenExample={pickExample}
           onOpenCorpus={pickCorpus}
+          onOpenDrafted={pickDrafted}
           onOpenFile={() => importInputRef.current?.click()}
           libraryTree={libraryTree}
           onLoadFromLibrary={loadFromLibrary}

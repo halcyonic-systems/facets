@@ -96,3 +96,40 @@ export async function authorSl(req: {
     latencyMs: Number.isFinite(latency) && latency >= 0 ? latency : undefined,
   };
 }
+
+/** One drafting turn as the reasoner recorded it (GSR #40). The wire shape,
+ *  snake_case and all — `drafted.ts` is where it becomes a library row. */
+export type AuthoringTurn = {
+  id: number;
+  description: string;
+  sl: string;
+  model: string;
+  lens: string;
+  latency_ms?: number;
+  at: string;
+};
+
+/** The turns this reasoner has recorded, newest first — the durable side of the
+ *  co-author's history (#324).
+ *
+ *  A GET, not a POST, so it does not go through `post()`: that door exists to
+ *  spend money downstream and reports an unreachable endpoint as a failure the
+ *  caller should show. This one is the opposite. Reading a history is free, the
+ *  reasoner is off by default (#229), and a library that cannot reach it must
+ *  render as though the partition were not there. So every failure — off,
+ *  unreachable, a shared GSR refusing an unattributable read (403) — resolves
+ *  to the empty list, and the caller is spared a branch it would only use to
+ *  render nothing.
+ */
+export async function authoringHistory(limit = 50): Promise<AuthoringTurn[]> {
+  const { enabled, endpoint } = reasonerConfig();
+  if (!enabled) return [];
+  try {
+    const res = await fetch(`${endpoint}/authoring-history?limit=${encodeURIComponent(limit)}`);
+    if (!res.ok) return [];
+    const data = (await res.json()) as { turns?: unknown };
+    return Array.isArray(data.turns) ? (data.turns as AuthoringTurn[]) : [];
+  } catch {
+    return [];
+  }
+}

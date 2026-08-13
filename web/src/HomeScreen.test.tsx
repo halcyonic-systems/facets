@@ -4,8 +4,11 @@
 //   1. HOME is a menu of doors, not a list of models.
 //   2. the LIBRARY is one flat list — every model that ships is on the page,
 //      openable, with no drill-down between the reader and it.
-//   3. the list is partitioned by PROVENANCE (ships / yours), and genus and
-//      tradition survive as TAGS plus a filter rather than as places.
+//   3. the list is partitioned by PROVENANCE (ships / yours / drafted), and
+//      genus and
+//      tradition survive as TAGS plus a filter rather than as places. The
+//      drafted partition is ABSENT, not empty, when there is nothing in it —
+//      the reasoner is off by default, so these tests render with no history.
 //   4. the filter's facet counts are DERIVED — a facet's number equals the
 //      number of rows carrying that tag, so a new example or a new corpus
 //      tradition can never drift from its facet.
@@ -13,12 +16,17 @@
 //      its entry's citation, an example row renders none.
 //   6. a tag on a model row marks the EXCEPTION (carries dynamics), never the
 //      rule.
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AboutPage, HomeMenu, LibraryBrowser } from "./HomeScreen";
 import { facets, matchesFacet, shippedModels, type Tag } from "./home";
 import { CORPUS } from "./corpus";
 import type { LibraryNode } from "./libraryTree";
+
+// renderToStaticMarkup never resolves an effect, so the drafted partition is
+// always empty here — which is exactly the state these tests want to pin. The
+// mock keeps the network door from being touched at all.
+vi.mock("./drafted", () => ({ draftedModels: async () => [] }));
 
 const noop = () => {};
 const asyncTrue = async () => true;
@@ -29,6 +37,7 @@ const browser = (tree: LibraryNode[] = [], initialFacet: Tag | null = null) =>
       onBack={noop}
       onOpenExample={noop}
       onOpenCorpus={noop}
+      onOpenDrafted={noop}
       onOpenFile={noop}
       onLoad={noop}
       onDelete={noop}

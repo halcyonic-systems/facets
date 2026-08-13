@@ -3,7 +3,8 @@
 //
 //   home     Create a model · Start from data · Open a model · Documentation
 //   library  ONE FLAT LIST of every model, partitioned by provenance —
-//            Ships with the app / Yours — plus a file from disk
+//            Ships with the app / Yours / Drafted with the co-author — plus a
+//            file from disk
 //
 // The library is not a browsing hierarchy any more. Genus and tradition are
 // facts ABOUT a model, not places a model lives, so they ride the row as tags
@@ -38,10 +39,11 @@
 //
 // Names keep their authored case — small caps, never text-transform (the model
 // is named `hal`, not `HAL`).
-import { useState, useRef, type CSSProperties, type ReactNode } from "react";
+import { useState, useRef, useEffect, type CSSProperties, type ReactNode } from "react";
 import type { Demo } from "./demos";
 import type { CorpusEntry } from "./corpus";
 import type { LibraryNode } from "./libraryTree";
+import { draftedModels, type DraftedModel } from "./drafted";
 import {
   facets,
   matchesFacet,
@@ -70,6 +72,7 @@ interface HomeProps {
   onStartFromData: () => void;
   onOpenExample: (d: Demo) => void;
   onOpenCorpus: (e: CorpusEntry) => void;
+  onOpenDrafted: (sl: string) => void;
   onOpenFile: () => void;
   libraryTree: LibraryNode[];
   onLoadFromLibrary: (name: string) => void;
@@ -114,6 +117,7 @@ export function HomeScreen(props: HomeProps) {
             onBack={() => setRoute({ view: "home" })}
             onOpenExample={props.onOpenExample}
             onOpenCorpus={props.onOpenCorpus}
+            onOpenDrafted={props.onOpenDrafted}
             onOpenFile={props.onOpenFile}
             onLoad={props.onLoadFromLibrary}
             onDelete={props.onDeleteFromLibrary}
@@ -134,6 +138,15 @@ export function HomeScreen(props: HomeProps) {
       </div>
     </div>
   );
+}
+
+/** A drafted row's gloss: when it was drafted, in the reader's own locale. The
+ *  ledger stores ISO-8601 UTC; a date is the only thing worth surfacing here,
+ *  since the prompt is already the row's name and the model is its tag. An
+ *  unparseable timestamp glosses as nothing rather than as "Invalid Date". */
+function draftedGloss(d: DraftedModel): string {
+  const t = Date.parse(d.at);
+  return Number.isNaN(t) ? "drafted" : `drafted ${new Date(t).toLocaleDateString()}`;
 }
 
 function countLibrary(tree: LibraryNode[]): number {
@@ -604,6 +617,7 @@ export function LibraryBrowser({
   onBack,
   onOpenExample,
   onOpenCorpus,
+  onOpenDrafted,
   onOpenFile,
   onLoad,
   onDelete,
@@ -617,6 +631,7 @@ export function LibraryBrowser({
   onBack: () => void;
   onOpenExample: (d: Demo) => void;
   onOpenCorpus: (e: CorpusEntry) => void;
+  onOpenDrafted: (sl: string) => void;
   onOpenFile: () => void;
   onLoad: (name: string) => void;
   onDelete: (name: string) => void;
@@ -625,6 +640,20 @@ export function LibraryBrowser({
 }) {
   const all = shippedModels();
   const allFacets = facets(all);
+  // #324. The third provenance is read over the network from the reasoner, so
+  // unlike the other two it starts empty and may stay that way forever — the
+  // reasoner is off by default (#229). An empty list renders NO SECTION, which
+  // is why this needs no loading state: there is nothing a spinner could
+  // promise, since "still fetching" and "you have never used the co-author"
+  // are supposed to look identical.
+  const [drafted, setDrafted] = useState<DraftedModel[]>([]);
+  useEffect(() => {
+    let live = true;
+    draftedModels().then((rows) => live && setDrafted(rows));
+    return () => {
+      live = false;
+    };
+  }, []);
   const [facet, setFacet] = useState<Tag | null>(initialFacet ?? null);
   const shown = all.filter((m) => matchesFacet(m, facet));
   const savedCount = countLibrary(tree);
@@ -757,6 +786,41 @@ export function LibraryBrowser({
             </div>
           )}
         </section>
+
+        {/* Drafted. The third provenance (#324), and the only one that can be
+            absent: it is read from the reasoner, which is off until the user
+            turns it on. No turns means no section — not an empty state and not
+            an explanation, because a user who has never used the co-author is
+            not missing anything and should not be told that they are. */}
+        {drafted.length > 0 && (
+          <section className="mt-16">
+            <BlockHeader
+              label="Drafted with the co-author"
+              count={`${drafted.length} draft${drafted.length === 1 ? "" : "s"}`}
+            />
+            {facet ? (
+              <div
+                className="border-t py-3 text-sm"
+                style={{ borderColor: "var(--rule-soft)", color: "var(--ink-muted)", fontFamily: display, fontStyle: "italic" }}
+              >
+                your drafts carry no genus or tradition tag — clear the filter to see them
+              </div>
+            ) : (
+              <Ledger>
+                {drafted.map((d, i) => (
+                  <LedgerRow
+                    key={d.key}
+                    index={i + 1}
+                    name={d.description}
+                    description={draftedGloss(d)}
+                    tag={d.model}
+                    onClick={() => onOpenDrafted(d.sl)}
+                  />
+                ))}
+              </Ledger>
+            )}
+          </section>
+        )}
 
         <section className="mt-16">
           <BlockHeader label="From a file" />
