@@ -70,8 +70,10 @@ describe("buildCorrectionBrief", () => {
 
 describe("kernelFindingsBrief", () => {
   const issues: VerdictFields[] = [
-    { severity: "Error", location: "Furnace", message: "Mobus §4.3: a component with no outgoing flow is a dead end", suggestion: null, doc: null },
-    { severity: "Warning", location: "Sensor", message: "no boundary-crossing flow", suggestion: null, doc: null },
+    // `code` is the kernel-supplied defect kind (#319). Required, so a fixture
+    // cannot stand in for a verdict without naming what kind of finding it is.
+    { code: "dead_end", severity: "Error", location: "Furnace", message: "Mobus §4.3: a component with no outgoing flow is a dead end", suggestion: null, doc: null },
+    { code: "interface_carries_no_flow", severity: "Warning", location: "Sensor", message: "no boundary-crossing flow", suggestion: null, doc: null },
   ];
 
   it("names the lens and the mode the verdict was reached at", () => {
