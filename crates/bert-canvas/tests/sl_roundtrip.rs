@@ -62,6 +62,7 @@ fn canvas_born_model_canonicalizes() {
     let thing = |id, name: &str, role| Thing {
         id,
         name: name.into(),
+        description: String::new(),
         x: 10.5,
         y: -3.25,
         role,
@@ -79,6 +80,7 @@ fn canvas_born_model_canonicalizes() {
     };
     let m = CanvasModel {
         lens: Lens::Klir,
+        description: String::new(),
         model_id: None,
         things: vec![
             thing(7, "A", Role::Component),
@@ -90,6 +92,7 @@ fn canvas_born_model_canonicalizes() {
             a: 7,
             b: 3,
             name: String::new(),
+            description: String::new(),
             is_bond: false,
             kind: Kind::Field,
             klir_directed: true,

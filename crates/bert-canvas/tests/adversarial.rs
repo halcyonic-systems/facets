@@ -22,6 +22,7 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
     Thing {
         id,
         name: name.to_string(),
+        description: String::new(),
         x: 0.0,
         y: 0.0,
         role,
@@ -45,6 +46,7 @@ fn rel(id: u64, a: u64, b: u64) -> Relation {
         a,
         b,
         name: String::new(),
+        description: String::new(),
         is_bond: true,
         kind: Kind::Unspecified,
         klir_directed: false,
@@ -88,18 +90,19 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
         // Empty model — no things, no relations.
         (
             "empty",
-            CanvasModel { lens: Lens::Mobus, model_id: None, things: vec![], relations: vec![], boundary: Default::default(), system_type: Default::default(), name: None, time_unit: None, params: vec![], metrics: vec![], klir_level: None },
+            CanvasModel { lens: Lens::Mobus, model_id: None, things: vec![], relations: vec![], boundary: Default::default(), system_type: Default::default(), name: None, description: String::new(), time_unit: None, params: vec![], metrics: vec![], klir_level: None },
         ),
         // A relation but NO things — every endpoint dangles.
         (
             "relation-without-things",
-            CanvasModel { lens: Lens::Bunge, model_id: None, things: vec![], relations: vec![rel(1, 1, 2)], boundary: Default::default(), system_type: Default::default(), name: None, time_unit: None, params: vec![], metrics: vec![], klir_level: None },
+            CanvasModel { lens: Lens::Bunge, model_id: None, things: vec![], relations: vec![rel(1, 1, 2)], boundary: Default::default(), system_type: Default::default(), name: None, description: String::new(), time_unit: None, params: vec![], metrics: vec![], klir_level: None },
         ),
         // Self-loop only.
         (
             "self-loop-only",
             CanvasModel {
                 lens: Lens::Mobus,
+                description: String::new(),
                 model_id: None,
                 things: vec![thing(1, "A", Role::Component)],
                 relations: vec![rel(1, 1, 1)],
@@ -117,6 +120,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
             "dangling-endpoints",
             CanvasModel {
                 lens: Lens::Mobus,
+                description: String::new(),
                 model_id: None,
                 things: vec![thing(1, "A", Role::Component)],
                 relations: vec![rel(1, 1, 77), rel(2, 88, 99)],
@@ -134,6 +138,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
             "duplicate-ids",
             CanvasModel {
                 lens: Lens::Bunge,
+                description: String::new(),
                 model_id: None,
                 things: vec![
                     thing(1, "A", Role::Component),
@@ -155,6 +160,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
             "extreme-coordinates",
             CanvasModel {
                 lens: Lens::Klir,
+                description: String::new(),
                 model_id: None,
                 things: vec![
                     Thing { x: f32::MAX, y: f32::MIN, ..thing(1, "far", Role::Component) },
@@ -185,6 +191,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 boundary: Default::default(),
                 system_type: Default::default(),
                 name: None,
+                description: String::new(),
                 time_unit: None,
                 params: vec![],
                 metrics: vec![],
@@ -205,6 +212,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 boundary: Default::default(),
                 system_type: Default::default(),
                 name: None,
+                description: String::new(),
                 time_unit: None,
                 params: vec![],
                 metrics: vec![],
@@ -232,6 +240,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 boundary: Default::default(),
                 system_type: Default::default(),
                 name: None,
+                description: String::new(),
                 time_unit: None,
                 params: vec![],
                 metrics: vec![],

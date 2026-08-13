@@ -5,7 +5,7 @@
 // (Postulate 6.4), so it stays disabled until then. Author grounding lives in
 // systems-science-foundations/docs/reference/system-type-typologies.md.
 import type { Genus, Kingdom, SystemType } from "./kernel/types";
-import { Card } from "./ui";
+import { Card, DescriptionField } from "./ui";
 
 const KINGDOMS: Kingdom[] = ["Conceptual", "Concrete"];
 const GENERA: Genus[] = ["Physical", "Chemical", "Biological", "Social", "Technical"];
@@ -19,9 +19,18 @@ const fieldStyle = {
 export function SystemTypeEditor({
   value,
   onChange,
+  description,
+  onDescriptionChange,
 }: {
   value: SystemType | undefined;
   onChange: (next: SystemType) => void;
+  /** The SOI's own prose (#326). There is no "model" separate from the system
+   *  of interest here — the model's name IS the root system's name — so this is
+   *  that system's description, and it belongs in the same panel as the rest of
+   *  what the author declares about it. Omitted where the surface has no way to
+   *  write it back (the new-model prompt); the field then does not render. */
+  description?: string;
+  onDescriptionChange?: (next: string) => void;
 }) {
   const st = value ?? {};
   const concrete = st.kingdom === "Concrete";
@@ -34,6 +43,14 @@ export function SystemTypeEditor({
   return (
     <Card title="System type" source="asserted · model metadata">
       <div className="grid gap-3">
+        {onDescriptionChange && (
+          <DescriptionField
+            value={description ?? ""}
+            onChange={onDescriptionChange}
+            label="What this system is"
+            placeholder="the system of interest, in your own words"
+          />
+        )}
         <label className="grid gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
           Kingdom
           <select

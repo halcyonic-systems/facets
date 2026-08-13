@@ -645,6 +645,25 @@ function Workspace() {
     setDirty(false);
   };
 
+  // The drafted partition → open (#324). The corpus path, with one difference
+  // that is not a detail: a corpus entry is ship-gated so its compile failure
+  // would be a bug, while a drafted model is whatever a language model wrote
+  // and failing to compile is an ordinary outcome. The toast here is the real
+  // answer, not an unreachable branch — and the turn stays in the ledger either
+  // way, so a draft that does not compile is still there to be corrected.
+  const pickDrafted = async (sl: string) => {
+    if (!(await guardDiscard()) || !(await flushWalk())) return;
+    const outcome = compileSl(sl);
+    if ("errors" in outcome) {
+      setToast(outcome.errors[0]?.message ?? "that draft does not compile");
+      return;
+    }
+    await onSlCompiled(outcome.ok, outcome.lens_explicit);
+    syncSlPane(sl, outcome.ok);
+    setHomeOpen(false);
+    setDirty(false);
+  };
+
   // Examples gallery → open (#148): one card handler for both shapes. A runnable
   // entry runs (the demo path, unchanged); a structural one compiles its SL and
   // opens as a diagram (the corpus path, without a citation). onSlCompiled sets
@@ -1791,6 +1810,8 @@ function Workspace() {
         hasModel={canvasModel !== null}
         currentLabel={currentLabel}
         systemType={canvasModel?.system_type}
+        soiDescription={canvasModel?.description ?? ""}
+        onSoiDescriptionChange={(d) => setCanvasModel((m) => (m ? { ...m, description: d } : m))}
         onSystemTypeChange={(st) => setCanvasModel((m) => (m ? { ...m, system_type: st } : m))}
         dirty={dirty}
         onHome={goHome}
@@ -2727,6 +2748,7 @@ function Workspace() {
           onStartFromData={startFromData}
           onOpenExample={pickExample}
           onOpenCorpus={pickCorpus}
+          onOpenDrafted={pickDrafted}
           onOpenFile={() => importInputRef.current?.click()}
           libraryTree={libraryTree}
           onLoadFromLibrary={loadFromLibrary}
@@ -2821,6 +2843,8 @@ export function MenuBar({
   currentLabel,
   systemType,
   onSystemTypeChange,
+  soiDescription,
+  onSoiDescriptionChange,
   dirty,
   onHome,
   libraryModels,
@@ -2851,6 +2875,8 @@ export function MenuBar({
    *  in the inspector dock beside live readings. Undefined = unasserted. */
   systemType?: SystemType;
   onSystemTypeChange?: (next: SystemType) => void;
+  soiDescription?: string;
+  onSoiDescriptionChange?: (next: string) => void;
   dirty: boolean;
   onHome: () => void;
   libraryModels: { name: string; savedAt: number; depth: number }[];
@@ -3140,7 +3166,12 @@ export function MenuBar({
                   the panel does not double-border. Same component, same
                   value/onChange contract it carried in the dock. */}
               <div className="absolute left-0 top-full z-20 mt-1 w-72">
-                <SystemTypeEditor value={systemType} onChange={onSystemTypeChange} />
+                <SystemTypeEditor
+                  value={systemType}
+                  onChange={onSystemTypeChange}
+                  description={soiDescription}
+                  onDescriptionChange={onSoiDescriptionChange}
+                />
               </div>
             </>
           )}

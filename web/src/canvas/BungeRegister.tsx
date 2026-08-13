@@ -35,7 +35,7 @@ import { observations, refusal } from "./connectionVerdict";
 import { KIND_COLOR } from "./types";
 import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 import { DecomposeRows, type DecomposeAffordance } from "./NodeEditor";
-import { BungeBody, FlowNameField } from "./EdgePopover";
+import { BungeBody, FlowDescriptionField, FlowNameField } from "./EdgePopover";
 import { CELL, confirmStripClass, confirmStripStyle, headerCellStyle } from "./registerChrome";
 import { bungeGlyph, couplingIndex, slotIsEnv } from "./bungeNotation";
 import { nextIdOf, nextThingPosition, relationsIn } from "./klirNotation";
@@ -362,6 +362,7 @@ export function BungeRegister({
                     name, kind, bond ⇄ mere, reverse — plus the kernel's
                     channel line. */}
                 <FlowNameField relation={selectedRelation} onUpdateRelation={onUpdateRelation} />
+                <FlowDescriptionField relation={selectedRelation} onUpdateRelation={onUpdateRelation} />
                 <BungeBody
                   relation={selectedRelation}
                   fact={edgeFacts.get(selectedRelation.id)}

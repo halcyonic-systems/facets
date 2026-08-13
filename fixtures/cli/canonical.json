@@ -1977,24 +1977,31 @@
       },
       {
         "env_kind": "Neutral",
-        "name": "Banking System",
+        "name": "Primary Dealers",
         "role": "Environment",
         "x": 291.0,
         "y": -8.0
       },
       {
         "env_kind": "Neutral",
+        "name": "Banking System",
+        "role": "Environment",
+        "x": 152.0,
+        "y": 131.0
+      },
+      {
+        "env_kind": "Neutral",
         "name": "U.S. Treasury",
         "role": "Environment",
-        "x": 124.0,
-        "y": 190.0
+        "x": 101.0,
+        "y": 320.0
       },
       {
         "env_kind": "Source",
         "name": "Statistical Agencies",
         "role": "Environment",
-        "x": 124.0,
-        "y": 450.0
+        "x": 152.0,
+        "y": 509.0
       },
       {
         "env_kind": "Neutral",
@@ -2005,7 +2012,7 @@
       }
     ],
     "pins": "Mobus",
-    "relations": 13,
+    "relations": 15,
     "run": {
       "answer": {
         "dt": 1.0,
@@ -2025,14 +2032,17 @@
             1.0,
             0.0,
             0.0,
-            -0.0,
-            0.0,
-            0.0,
             1.0,
             0.0,
             0.0,
+            -0.0,
             0.0,
-            3.0,
+            0.0,
+            -0.0,
+            0.0,
+            0.0,
+            0.0,
+            2.0,
             0.0
           ],
           [
@@ -2049,14 +2059,17 @@
             1.0,
             0.0,
             0.0,
+            1.0,
+            0.0,
+            0.0,
+            -0.0,
+            0.0,
+            0.0,
             -0.0,
             0.0,
             0.0,
             1.0,
-            0.0,
-            0.0,
-            1.0,
-            5.0,
+            3.0,
             0.0
           ],
           [
@@ -2073,14 +2086,17 @@
             1.0,
             0.0,
             0.0,
+            1.0,
+            0.0,
+            0.0,
+            -0.0,
+            0.0,
+            0.0,
             -0.0,
             0.0,
             0.0,
             1.0,
-            0.0,
-            0.0,
-            1.0,
-            7.0,
+            4.0,
             0.0
           ],
           [
@@ -2097,51 +2113,54 @@
             1.0,
             0.0,
             0.0,
+            1.0,
+            0.0,
+            0.0,
+            -0.0,
+            0.0,
+            0.0,
             -0.0,
             0.0,
             0.0,
             1.0,
-            0.0,
-            0.0,
-            1.0,
-            9.0,
+            5.0,
             0.0
           ]
         ],
         "ledger_history": [
           [
-            3.0,
+            4.0,
             0.0,
-            3.0,
-            0.0
-          ],
-          [
-            6.0,
-            0.0,
-            5.0,
-            1.0
-          ],
-          [
-            9.0,
-            0.0,
-            7.0,
+            2.0,
             2.0
+          ],
+          [
+            8.0,
+            0.0,
+            3.0,
+            5.0
           ],
           [
             12.0,
             0.0,
-            9.0,
-            3.0
+            4.0,
+            8.0
+          ],
+          [
+            16.0,
+            0.0,
+            5.0,
+            11.0
           ]
         ]
       },
       "outcome": "runs"
     },
-    "things": 7,
+    "things": 8,
     "verdict_under": {
       "bunge": {
         "description": {
-          "bondage": 13,
+          "bondage": 15,
           "boundary_components": [
             "FOMC",
             "Open Market Desk",
@@ -2158,6 +2177,7 @@
           ],
           "endostructure": 2,
           "environment": [
+            "Primary Dealers",
             "Banking System",
             "U.S. Treasury",
             "Statistical Agencies",
@@ -2167,8 +2187,10 @@
             "FOMC — Statistical Agencies",
             "FOMC — Financial Markets",
             "FOMC — Financial Markets",
-            "Banking System — Open Market Desk",
-            "Balance Sheet — Banking System",
+            "Open Market Desk — Primary Dealers",
+            "Open Market Desk — Primary Dealers",
+            "Open Market Desk — Primary Dealers",
+            "Open Market Desk — Primary Dealers",
             "Balance Sheet — Banking System",
             "Balance Sheet — U.S. Treasury",
             "Balance Sheet — Banking System",
@@ -2176,7 +2198,7 @@
             "Balance Sheet — Banking System",
             "Balance Sheet — U.S. Treasury"
           ],
-          "exostructure": 11,
+          "exostructure": 13,
           "lens": "Bunge",
           "mechanism_note": "M (mechanism — Bunge 2004, CESM) is documented but formally UNbridged: the Lean Mobus→Bunge projection is CES, not CESM (Bridge.lean discards T). ⊘M: with no mechanism stated, a concrete system reads as a black box at this lens — every concrete system has one (Mechanism Postulate, Bunge 1997), so stating it is what remains. Conceptual and semiotic systems have no mechanism at all; there ⊘M is correct, not a gap. A status, not an error.",
           "mere_relations": 0,
@@ -2201,11 +2223,11 @@
           ],
           "edges": [
             {
-              "a": 6,
+              "a": 7,
               "b": 1,
               "bond": true,
               "channel": "Input",
-              "id": 8,
+              "id": 9,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
@@ -2216,7 +2238,7 @@
               "b": 2,
               "bond": true,
               "channel": "Internuncial",
-              "id": 9,
+              "id": 10,
               "kind": "Informational",
               "locus": "Endo",
               "mobus_ok": true,
@@ -2224,21 +2246,21 @@
             },
             {
               "a": 1,
-              "b": 7,
+              "b": 8,
               "bond": true,
               "channel": "Output",
-              "id": 10,
+              "id": 11,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
               "self_loop": false
             },
             {
-              "a": 7,
+              "a": 8,
               "b": 1,
               "bond": true,
               "channel": "Input",
-              "id": 11,
+              "id": 12,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
@@ -2249,7 +2271,7 @@
               "b": 2,
               "bond": true,
               "channel": "Input",
-              "id": 12,
+              "id": 13,
               "kind": "Matter",
               "locus": "Exo",
               "mobus_ok": true,
@@ -2260,25 +2282,14 @@
               "b": 3,
               "bond": true,
               "channel": "Internuncial",
-              "id": 13,
+              "id": 14,
               "kind": "Matter",
               "locus": "Endo",
               "mobus_ok": true,
               "self_loop": false
             },
             {
-              "a": 3,
-              "b": 4,
-              "bond": true,
-              "channel": "Output",
-              "id": 14,
-              "kind": "Matter",
-              "locus": "Exo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 3,
+              "a": 2,
               "b": 4,
               "bond": true,
               "channel": "Output",
@@ -2289,8 +2300,8 @@
               "self_loop": false
             },
             {
-              "a": 3,
-              "b": 5,
+              "a": 2,
+              "b": 4,
               "bond": true,
               "channel": "Output",
               "id": 16,
@@ -2301,7 +2312,7 @@
             },
             {
               "a": 4,
-              "b": 3,
+              "b": 2,
               "bond": true,
               "channel": "Input",
               "id": 17,
@@ -2312,7 +2323,7 @@
             },
             {
               "a": 3,
-              "b": 4,
+              "b": 5,
               "bond": true,
               "channel": "Output",
               "id": 18,
@@ -2323,7 +2334,7 @@
             },
             {
               "a": 3,
-              "b": 4,
+              "b": 6,
               "bond": true,
               "channel": "Output",
               "id": 19,
@@ -2342,65 +2353,101 @@
               "locus": "Exo",
               "mobus_ok": true,
               "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 5,
+              "bond": true,
+              "channel": "Output",
+              "id": 21,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 5,
+              "bond": true,
+              "channel": "Output",
+              "id": 22,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 6,
+              "b": 3,
+              "bond": true,
+              "channel": "Input",
+              "id": 23,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
             }
           ],
           "environment_thing_ids": [
             4,
             5,
             6,
-            7
+            7,
+            8
           ],
           "orphan_env_thing_ids": [],
           "ports": [
             {
               "component": 1,
               "direction": "Receives",
-              "env": 6,
+              "env": 7,
               "protocol": "published measurements — PCE inflation, payrolls, unemployment",
               "relation_ids": [
-                8
+                9
               ]
             },
             {
               "component": 1,
               "direction": "Hybrid",
-              "env": 7,
+              "env": 8,
               "protocol": "the announced decision — rates as forward guidance · market-implied expectations — breakevens, the futures-implied path",
               "relation_ids": [
-                10,
-                11
-              ]
-            },
-            {
-              "component": 2,
-              "direction": "Receives",
-              "env": 4,
-              "protocol": "securities sold to the desk",
-              "relation_ids": [
+                11,
                 12
               ]
             },
             {
-              "component": 3,
+              "component": 2,
               "direction": "Hybrid",
               "env": 4,
-              "protocol": "reserve balances minted in payment · interest on reserves · collateral pledged at the discount window · reserves lent at the window · currency — notes issued against reserves",
+              "protocol": "securities bought by the desk · reserve balances minted in payment · securities sold from the portfolio · reserves extinguished in payment",
               "relation_ids": [
-                14,
+                13,
                 15,
-                17,
-                18,
-                19
+                16,
+                17
               ]
             },
             {
               "component": 3,
               "direction": "Hybrid",
               "env": 5,
+              "protocol": "interest on reserves · collateral pledged at the discount window · reserves lent at the window · currency — notes issued against reserves",
+              "relation_ids": [
+                18,
+                20,
+                21,
+                22
+              ]
+            },
+            {
+              "component": 3,
+              "direction": "Hybrid",
+              "env": 6,
               "protocol": "remittances — net income returned · TGA deposits — the Treasury's checking account",
               "relation_ids": [
-                16,
-                20
+                19,
+                23
               ]
             }
           ]
@@ -2435,9 +2482,11 @@
             "FOMC — Open Market Desk",
             "FOMC — Financial Markets",
             "FOMC — Financial Markets",
-            "Banking System — Open Market Desk",
+            "Open Market Desk — Primary Dealers",
             "Balance Sheet — Open Market Desk",
-            "Balance Sheet — Banking System",
+            "Open Market Desk — Primary Dealers",
+            "Open Market Desk — Primary Dealers",
+            "Open Market Desk — Primary Dealers",
             "Balance Sheet — Banking System",
             "Balance Sheet — U.S. Treasury",
             "Balance Sheet — Banking System",
@@ -2454,11 +2503,11 @@
           },
           "lens": "Klir",
           "level": "Structure",
-          "neutral": 13,
+          "neutral": 15,
           "note": "a system is what is distinguished as a system by the investigator; the distinction frame is the observer's act, not a boundary",
           "question": "what does the data commit me to? — the behavior function answers, and deliberately refuses to say what is behind it",
-          "relations": 13,
-          "things": 7
+          "relations": 15,
+          "things": 8
         },
         "facts": {
           "aggregate": false,
@@ -2478,11 +2527,11 @@
           ],
           "edges": [
             {
-              "a": 6,
+              "a": 7,
               "b": 1,
               "bond": true,
               "channel": "Input",
-              "id": 8,
+              "id": 9,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
@@ -2493,7 +2542,7 @@
               "b": 2,
               "bond": true,
               "channel": "Internuncial",
-              "id": 9,
+              "id": 10,
               "kind": "Informational",
               "locus": "Endo",
               "mobus_ok": true,
@@ -2501,21 +2550,21 @@
             },
             {
               "a": 1,
-              "b": 7,
+              "b": 8,
               "bond": true,
               "channel": "Output",
-              "id": 10,
+              "id": 11,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
               "self_loop": false
             },
             {
-              "a": 7,
+              "a": 8,
               "b": 1,
               "bond": true,
               "channel": "Input",
-              "id": 11,
+              "id": 12,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
@@ -2526,7 +2575,7 @@
               "b": 2,
               "bond": true,
               "channel": "Input",
-              "id": 12,
+              "id": 13,
               "kind": "Matter",
               "locus": "Exo",
               "mobus_ok": true,
@@ -2537,25 +2586,14 @@
               "b": 3,
               "bond": true,
               "channel": "Internuncial",
-              "id": 13,
+              "id": 14,
               "kind": "Matter",
               "locus": "Endo",
               "mobus_ok": true,
               "self_loop": false
             },
             {
-              "a": 3,
-              "b": 4,
-              "bond": true,
-              "channel": "Output",
-              "id": 14,
-              "kind": "Matter",
-              "locus": "Exo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 3,
+              "a": 2,
               "b": 4,
               "bond": true,
               "channel": "Output",
@@ -2566,8 +2604,8 @@
               "self_loop": false
             },
             {
-              "a": 3,
-              "b": 5,
+              "a": 2,
+              "b": 4,
               "bond": true,
               "channel": "Output",
               "id": 16,
@@ -2578,7 +2616,7 @@
             },
             {
               "a": 4,
-              "b": 3,
+              "b": 2,
               "bond": true,
               "channel": "Input",
               "id": 17,
@@ -2589,7 +2627,7 @@
             },
             {
               "a": 3,
-              "b": 4,
+              "b": 5,
               "bond": true,
               "channel": "Output",
               "id": 18,
@@ -2600,7 +2638,7 @@
             },
             {
               "a": 3,
-              "b": 4,
+              "b": 6,
               "bond": true,
               "channel": "Output",
               "id": 19,
@@ -2619,65 +2657,101 @@
               "locus": "Exo",
               "mobus_ok": true,
               "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 5,
+              "bond": true,
+              "channel": "Output",
+              "id": 21,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 5,
+              "bond": true,
+              "channel": "Output",
+              "id": 22,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 6,
+              "b": 3,
+              "bond": true,
+              "channel": "Input",
+              "id": 23,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
             }
           ],
           "environment_thing_ids": [
             4,
             5,
             6,
-            7
+            7,
+            8
           ],
           "orphan_env_thing_ids": [],
           "ports": [
             {
               "component": 1,
               "direction": "Receives",
-              "env": 6,
+              "env": 7,
               "protocol": "published measurements — PCE inflation, payrolls, unemployment",
               "relation_ids": [
-                8
+                9
               ]
             },
             {
               "component": 1,
               "direction": "Hybrid",
-              "env": 7,
+              "env": 8,
               "protocol": "the announced decision — rates as forward guidance · market-implied expectations — breakevens, the futures-implied path",
               "relation_ids": [
-                10,
-                11
-              ]
-            },
-            {
-              "component": 2,
-              "direction": "Receives",
-              "env": 4,
-              "protocol": "securities sold to the desk",
-              "relation_ids": [
+                11,
                 12
               ]
             },
             {
-              "component": 3,
+              "component": 2,
               "direction": "Hybrid",
               "env": 4,
-              "protocol": "reserve balances minted in payment · interest on reserves · collateral pledged at the discount window · reserves lent at the window · currency — notes issued against reserves",
+              "protocol": "securities bought by the desk · reserve balances minted in payment · securities sold from the portfolio · reserves extinguished in payment",
               "relation_ids": [
-                14,
+                13,
                 15,
-                17,
-                18,
-                19
+                16,
+                17
               ]
             },
             {
               "component": 3,
               "direction": "Hybrid",
               "env": 5,
+              "protocol": "interest on reserves · collateral pledged at the discount window · reserves lent at the window · currency — notes issued against reserves",
+              "relation_ids": [
+                18,
+                20,
+                21,
+                22
+              ]
+            },
+            {
+              "component": 3,
+              "direction": "Hybrid",
+              "env": 6,
               "protocol": "remittances — net income returned · TGA deposits — the Treasury's checking account",
               "relation_ids": [
-                16,
-                20
+                19,
+                23
               ]
             }
           ]
@@ -2686,11 +2760,11 @@
         "residue": {
           "hidden": [
             {
-              "count": 4,
+              "count": 5,
               "label": "environment roles"
             },
             {
-              "count": 13,
+              "count": 15,
               "label": "connection kinds"
             },
             {
@@ -2724,12 +2798,13 @@
           ],
           "dt_note": "Δt: time scale — a parametric field on the system",
           "e_objects": [
+            "Primary Dealers",
             "Banking System",
             "U.S. Treasury",
             "Statistical Agencies",
             "Financial Markets"
           ],
-          "g": 11,
+          "g": 13,
           "h_note": "H: history (accumulated state conditioning T) — NOT hierarchy",
           "lens": "Mobus",
           "milieu_note": "μ (milieu) is parametric/opaque — the one element with no cross-lens preimage (milieuOnly_bunge_empty)",
@@ -2758,11 +2833,11 @@
           ],
           "edges": [
             {
-              "a": 6,
+              "a": 7,
               "b": 1,
               "bond": true,
               "channel": "Input",
-              "id": 8,
+              "id": 9,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
@@ -2773,7 +2848,7 @@
               "b": 2,
               "bond": true,
               "channel": "Internuncial",
-              "id": 9,
+              "id": 10,
               "kind": "Informational",
               "locus": "Endo",
               "mobus_ok": true,
@@ -2781,21 +2856,21 @@
             },
             {
               "a": 1,
-              "b": 7,
+              "b": 8,
               "bond": true,
               "channel": "Output",
-              "id": 10,
+              "id": 11,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
               "self_loop": false
             },
             {
-              "a": 7,
+              "a": 8,
               "b": 1,
               "bond": true,
               "channel": "Input",
-              "id": 11,
+              "id": 12,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
@@ -2806,7 +2881,7 @@
               "b": 2,
               "bond": true,
               "channel": "Input",
-              "id": 12,
+              "id": 13,
               "kind": "Matter",
               "locus": "Exo",
               "mobus_ok": true,
@@ -2817,25 +2892,14 @@
               "b": 3,
               "bond": true,
               "channel": "Internuncial",
-              "id": 13,
+              "id": 14,
               "kind": "Matter",
               "locus": "Endo",
               "mobus_ok": true,
               "self_loop": false
             },
             {
-              "a": 3,
-              "b": 4,
-              "bond": true,
-              "channel": "Output",
-              "id": 14,
-              "kind": "Matter",
-              "locus": "Exo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 3,
+              "a": 2,
               "b": 4,
               "bond": true,
               "channel": "Output",
@@ -2846,8 +2910,8 @@
               "self_loop": false
             },
             {
-              "a": 3,
-              "b": 5,
+              "a": 2,
+              "b": 4,
               "bond": true,
               "channel": "Output",
               "id": 16,
@@ -2858,7 +2922,7 @@
             },
             {
               "a": 4,
-              "b": 3,
+              "b": 2,
               "bond": true,
               "channel": "Input",
               "id": 17,
@@ -2869,7 +2933,7 @@
             },
             {
               "a": 3,
-              "b": 4,
+              "b": 5,
               "bond": true,
               "channel": "Output",
               "id": 18,
@@ -2880,7 +2944,7 @@
             },
             {
               "a": 3,
-              "b": 4,
+              "b": 6,
               "bond": true,
               "channel": "Output",
               "id": 19,
@@ -2899,91 +2963,112 @@
               "locus": "Exo",
               "mobus_ok": true,
               "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 5,
+              "bond": true,
+              "channel": "Output",
+              "id": 21,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 5,
+              "bond": true,
+              "channel": "Output",
+              "id": 22,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 6,
+              "b": 3,
+              "bond": true,
+              "channel": "Input",
+              "id": 23,
+              "kind": "Matter",
+              "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
             }
           ],
           "environment_thing_ids": [
             4,
             5,
             6,
-            7
+            7,
+            8
           ],
           "orphan_env_thing_ids": [],
           "ports": [
             {
               "component": 1,
               "direction": "Receives",
-              "env": 6,
+              "env": 7,
               "protocol": "published measurements — PCE inflation, payrolls, unemployment",
               "relation_ids": [
-                8
+                9
               ]
             },
             {
               "component": 1,
               "direction": "Hybrid",
-              "env": 7,
+              "env": 8,
               "protocol": "the announced decision — rates as forward guidance · market-implied expectations — breakevens, the futures-implied path",
               "relation_ids": [
-                10,
-                11
-              ]
-            },
-            {
-              "component": 2,
-              "direction": "Receives",
-              "env": 4,
-              "protocol": "securities sold to the desk",
-              "relation_ids": [
+                11,
                 12
               ]
             },
             {
-              "component": 3,
+              "component": 2,
               "direction": "Hybrid",
               "env": 4,
-              "protocol": "reserve balances minted in payment · interest on reserves · collateral pledged at the discount window · reserves lent at the window · currency — notes issued against reserves",
+              "protocol": "securities bought by the desk · reserve balances minted in payment · securities sold from the portfolio · reserves extinguished in payment",
               "relation_ids": [
-                14,
+                13,
                 15,
-                17,
-                18,
-                19
+                16,
+                17
               ]
             },
             {
               "component": 3,
               "direction": "Hybrid",
               "env": 5,
+              "protocol": "interest on reserves · collateral pledged at the discount window · reserves lent at the window · currency — notes issued against reserves",
+              "relation_ids": [
+                18,
+                20,
+                21,
+                22
+              ]
+            },
+            {
+              "component": 3,
+              "direction": "Hybrid",
+              "env": 6,
               "protocol": "remittances — net income returned · TGA deposits — the Treasury's checking account",
               "relation_ids": [
-                16,
-                20
+                19,
+                23
               ]
             }
           ]
         },
-        "issue_targets": [
-          {
-            "disregarded_relations": 0,
-            "relation": null,
-            "thing": null
-          }
-        ],
+        "issue_targets": [],
         "residue": {
           "hidden": [],
           "unspecified": []
         },
         "validation": {
-          "issues": [
-            {
-              "code": "flow_not_consumed",
-              "doc": null,
-              "location": "interactions[1]",
-              "message": "'policy directive — the target range' (Message) flows into 'Open Market Desk' (Combining), which does not consume Message — the flow is delivered every step and ignored",
-              "severity": "Warning",
-              "suggestion": "Route the signal to something that reads it — a Modulating valve's control port consumes messages — or re-declare this flow's kind"
-            }
-          ]
+          "issues": []
         }
       }
     }

@@ -16,7 +16,7 @@
 // never gated on the drafter.
 
 import { useEffect, useState } from "react";
-import { compileSl, emitSl } from "./kernel";
+import { compileSl, emitSl, splicePositions } from "./kernel";
 import type { CanvasModel, SlError } from "./kernel/types";
 import { CoAuthorMode } from "./CoAuthorMode";
 import { SlChain } from "./SlChain";
@@ -75,6 +75,23 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
     if (!canvasModel) return;
     try {
       onTextChange(emitSl(canvasModel));
+      onErrors([]);
+    } catch (e) {
+      onErrors([{ line: 0, message: e instanceof Error ? e.message : String(e) }]);
+    }
+  }
+
+  // Canvas → text, the NON-DESTRUCTIVE half (#327). `fromCanvas` above
+  // replaces the pane with the model serialized, which is right when the
+  // canvas is the source of truth and wrong when the text is: a documented
+  // file has comments, blank lines and an authored order, none of which are in
+  // the model, so a re-emit trades all of it for four position numbers (#262).
+  // This asks the kernel to rewrite ONLY the `@pos` lines and hand back every
+  // other byte untouched — the drag is saved, the prose survives.
+  function layoutFromCanvas() {
+    if (!canvasModel) return;
+    try {
+      onTextChange(splicePositions(text, canvasModel));
       onErrors([]);
     } catch (e) {
       onErrors([{ line: 0, message: e instanceof Error ? e.message : String(e) }]);
@@ -215,6 +232,24 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
               title={canvasModel ? "Replace the text with the current canvas model, serialized" : "No model on the canvas yet"}
             >
               ← From canvas
+            </button>
+            <button
+              onClick={layoutFromCanvas}
+              disabled={!canvasModel}
+              className="rounded-full px-3 py-1.5 text-sm"
+              style={{
+                border: "1px solid var(--hairline)",
+                color: "var(--text-secondary)",
+                opacity: canvasModel ? 1 : 0.45,
+                cursor: canvasModel ? "pointer" : "not-allowed",
+              }}
+              title={
+                canvasModel
+                  ? "Update only the @pos lines from the canvas — comments and everything else in this text are left untouched"
+                  : "No model on the canvas yet"
+              }
+            >
+              ← Layout only
             </button>
             <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
               ⌘⏎ · deterministic compile, kernel verdicts

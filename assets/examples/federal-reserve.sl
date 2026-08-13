@@ -29,16 +29,24 @@ component FOMC primitive Modulating interface
 # The work process. The desk executes the directive by buying and
 # selling in the open market — the one place policy touches the flows.
 # Interface because the purchase crosses the boundary here: securities
-# arrive from the Banking System at the desk, and a crossing must land
+# arrive from the Primary Dealers at the desk, and a crossing must land
 # on the membrane (kernel precondition; QA 8/11).
-component "Open Market Desk" primitive Combining interface
+component "Open Market Desk" primitive Modulating interface
 
 # The stock. Assets accumulate on one side, and the reserves and
 # remittances they generate leave from the other.
 component "Balance Sheet" primitive Buffering interface
 
-# The commercial banks, in aggregate: counterparty to every operation,
-# holder of the reserves the Fed mints. Two-way by nature.
+# The Fed's counterparties differ BY INSTRUMENT, so they are two entities.
+# Primary dealers are the desk's counterparty in open market operations —
+# a couple of dozen firms, several of them broker-dealer subsidiaries
+# rather than banks. It was DEALER balance-sheet capacity that failed in
+# March 2020, not bank solvency, which is why this split is structural
+# and not cosmetic (see the FEDS note in Sources).
+environment "Primary Dealers"
+
+# The depository institutions: the discount window's borrowers, and the
+# holders of the reserves the Fed mints and pays interest on. Two-way.
 environment "Banking System"
 
 # The fiscal side: the Fed returns its net income to the Treasury.
@@ -74,15 +82,22 @@ flow FOMC -> "Financial Markets" : informational "the announced decision — rat
 # And the markets answer: what the path is now expected to be.
 flow "Financial Markets" -> FOMC : informational "market-implied expectations — breakevens, the futures-implied path"
 
-# The purchase, side one: securities move from the banks to the desk...
-flow "Banking System" -> "Open Market Desk" : matter "securities sold to the desk"
+# The purchase, side one: securities move from the dealers to the desk...
+flow "Primary Dealers" -> "Open Market Desk" : matter "securities bought by the desk" substance securities
 
 # ...and onto the asset side of the balance sheet.
 flow "Open Market Desk" -> "Balance Sheet" : matter "securities held"
 
 # The purchase, side two: the reserves that pay for it — created, not
 # transferred. This is the money-creation flow.
-flow "Balance Sheet" -> "Banking System" : matter "reserve balances minted in payment" substance reserves
+flow "Open Market Desk" -> "Primary Dealers" : matter "reserve balances minted in payment" substance reserves
+
+# And the same operation run backwards — the desk sells from the
+# portfolio and the reserves paid to it are extinguished. Dormant in an
+# easing regime, structurally present always; the balance sheet has been
+# shrinking since 2022 and this is the arrow that does it.
+flow "Open Market Desk" -> "Primary Dealers" : matter "securities sold from the portfolio" substance portfolio
+flow "Primary Dealers" -> "Open Market Desk" : matter "reserves extinguished in payment" substance settlement
 
 # What holding the reserves earns the banks — the rate the Fed
 # administers directly.
@@ -133,5 +148,38 @@ flow "U.S. Treasury" -> "Balance Sheet" : matter "TGA deposits — the Treasury'
 #   repricing expectations; markets talk back). Households and firms
 #   are deliberately unreachable at level 1: every path to them is
 #   mediated through banks or markets.
+
+# ── Sources ──────────────────────────────────────────────────────────
+# Retrieved and checked 2026-08-13. Every structural claim below is
+# either on one of these pages or listed as a fork above.
+#
+# The four stated responsibilities — this model draws the FIRST ONLY
+# ("conducting the nation's monetary policy"); supervision, financial
+# stability, and payment services are outside its boundary:
+#   https://www.federalreserve.gov/faqs.htm
+#
+# The instruments. Nine named policy tools, which is the countable form
+# of "a limited number of levers" — interest on reserve balances, open
+# market operations, the discount window, overnight reverse repo (fork
+# 1 above), the standing repo facility, central bank liquidity swaps,
+# the FIMA repo facility, term deposits, reserve requirements:
+#   https://www.federalreserve.gov/monetarypolicy/policytools.htm
+#
+# The balance sheet in 2020, for the flows drawn here. Treasury holdings
+# +$2.36 trillion mid-March to 12 Aug 2020 (15% -> 22% of outstanding
+# Treasury debt); traditional repo peaked at $496 billion in mid-March
+# and reached zero by early July. The Fed's own stated purpose was
+# "to restore market functioning in Treasury and agency MBS markets and
+# to promote effective transmission of monetary policy":
+#   https://www.federalreserve.gov/monetarypolicy/bsd-recent-developments-202008.htm
+#
+# Dealer capacity, and why dealers are their own entity here. Luke
+# Friendshuh's citation, 2026-08-06:
+#   https://www.federalreserve.gov/econres/notes/feds-notes/use-of-the-federal-reserves-repo-operations-and-changes-in-dealer-balance-sheets-20210806.html
+#
+# Companion model: `policy-channels.sl` stays OUTSIDE this boundary and
+# asks who can pay whom, drawing Congress beside the Fed. Where this
+# model opens the Fed, that one compares its channel with the fiscal
+# one. Read together they separate credit from transfer.
 
 @lens mobus

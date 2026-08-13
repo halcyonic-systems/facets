@@ -13,7 +13,7 @@
 // the pointer, so the first click of a double-click can never flash a menu into
 // the gesture that enters a child.
 import type { Lens, ProcessPrimitive, Thing } from "../kernel/types";
-import { InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
+import { DescriptionField, InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 
 /** The decomposition door as the shell hands it to the inspector (#89 step 5b).
  *  Which case applies is decided upstream off KERNEL facts (boundary membership
@@ -69,6 +69,13 @@ export function NodeEditorRows({
           style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
         />
       </Row>
+      {/* #326: prose about this thing, restored from the original BERT. It sits
+          under the name because that is the reading order — what it is called,
+          then what it is. No verdict reads it. */}
+      <DescriptionField
+        value={thing.description ?? ""}
+        onChange={(description) => onUpdateThing({ ...thing, description })}
+      />
       {/* The re-cut (#100 phase 2, ratified scope + F8): Bunge's C/E split is
           indexed to a chosen reference class A — 𝒞_A, 𝓔_A, 𝒮_A — so which
           side of the cut a thing sits on is the OBSERVER'S choice, re-drawable

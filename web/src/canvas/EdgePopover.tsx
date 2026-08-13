@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ColumnMapping, EdgeFact, Kind, Lens, Manifest, Relation } from "../kernel/types";
 import { channelCopy } from "./lenses/bunge";
 import type { Pt } from "./geometry";
-import { InspectorRow as Row, InspectorTitle as Title, Popover, ToolButton as SmallButton } from "../ui";
+import { DescriptionField, InspectorRow as Row, InspectorTitle as Title, Popover, ToolButton as SmallButton } from "../ui";
 import {
   FormalismLine,
   SUBSTANCES,
@@ -88,6 +88,26 @@ export function EdgePopover({
 // so a committed name reads as unsaved. Enter (or blurring the field) is the commit
 // gesture; a brief ✓ confirms the save landed. Presentation only: no new save path.
 // Exported for the Bunge register's inline coupling editor (#100 phase 2).
+/** The author's prose about a flow (#326) — the edge twin of the node editor's
+ *  field, and exported alongside `FlowNameField` for the same reason: the Bunge
+ *  register edits couplings inline and must offer the identical affordance. */
+export function FlowDescriptionField({
+  relation,
+  onUpdateRelation,
+}: {
+  relation: Relation;
+  onUpdateRelation: (r: Relation) => void;
+}) {
+  return (
+    <DescriptionField
+      value={relation.description ?? ""}
+      onChange={(description) => onUpdateRelation({ ...relation, description })}
+      placeholder="what this flow is, in your own words"
+      rows={2}
+    />
+  );
+}
+
 export function FlowNameField({
   relation,
   onUpdateRelation,
@@ -217,6 +237,7 @@ export function BungeBody({
       <p className="mb-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
         {channelCopy(fact, relation.is_bond)}
       </p>
+      <FlowDescriptionField relation={relation} onUpdateRelation={onUpdate} />
       <Row>
         <span style={{ color: "var(--text-secondary)" }}>connection kind</span>
         <select
@@ -288,6 +309,7 @@ function MobusBody({
     <>
       <Title>flow &ldquo;{relation.name || "unnamed"}&rdquo;</Title>
       <FormalismLine parts={mobusFormalism()} />
+      <FlowDescriptionField relation={relation} onUpdateRelation={onUpdate} />
       <Row>
         {/* Mobus's substances are material · energy · message (concordance row 6);
             the model stores a Kind, so map both ways via kind_to_substance. An

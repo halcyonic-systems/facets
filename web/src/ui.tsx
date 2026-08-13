@@ -154,6 +154,49 @@ export function InspectorRow({ children }: { children: ReactNode }) {
   return <div className="mb-2 flex items-center justify-between gap-2 text-xs">{children}</div>;
 }
 
+/** The author's prose about a thing, a flow, or the system of interest (#326).
+ *
+ *  A row of its own rather than an `InspectorRow`, because every other row is a
+ *  label beside a short value and this one is a paragraph: the label sits above
+ *  and the field takes the full measure, so a sentence is readable instead of
+ *  scrolling sideways through a 7rem input.
+ *
+ *  Shared by the node editor, both flow editors, and the model page, so the
+ *  three surfaces cannot drift into three different affordances for one field. */
+export function DescriptionField({
+  value,
+  onChange,
+  label = "description",
+  placeholder = "what this is, in your own words",
+  rows = 3,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  label?: string;
+  placeholder?: string;
+  rows?: number;
+}) {
+  return (
+    <div className="mb-2 text-xs">
+      <div className="mb-1" style={{ color: "var(--text-secondary)" }}>
+        {label}
+      </div>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        className="w-full resize-y rounded-md px-1.5 py-1 text-xs leading-snug"
+        style={{
+          border: "1px solid var(--border)",
+          background: "var(--bg-primary)",
+          color: "var(--text-primary)",
+        }}
+      />
+    </div>
+  );
+}
+
 /** Kernel-verdict announcement chrome (the aggregate/heap banner, palette
  *  legality feedback, gesture rejections). Presentation only — the message is
  *  always the kernel's. Position via className at the call site. */

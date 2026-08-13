@@ -98,6 +98,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     let mut system_name: Option<String> = None;
     let mut system_seen = false;
     let mut domain_seen = false;
+    let mut description = String::new();
     let mut time_unit: Option<String> = None;
     let mut klir_level: Option<KlirLevel> = None;
     let mut lens = Lens::Mobus;
@@ -251,6 +252,28 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     _ => fail("domain syntax: `domain \"<subject area>\"`".into(), &mut errors),
                 }
             }
+            // `description "<prose>"` — what the SOI is (#326). A top-level
+            // singleton beside `domain`, because `name` on the model IS the
+            // root system's name: this is that system's description, not a
+            // second thing standing beside the model.
+            "description" => {
+                if !description.is_empty() {
+                    fail(
+                        "`description` already declared — fix: a model has one; merge \
+                         this line into the earlier `description` line or delete it"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                match rest {
+                    [Tok::Str(s)] => description = s.clone(),
+                    _ => fail(
+                        "description syntax: `description \"<what this system is>\"`".into(),
+                        &mut errors,
+                    ),
+                }
+            }
             // `time unit <symbol>` — the model's time-unit symbol (#94): what
             // one unit of model time is called, so the run can integrate an
             // intrinsic rate in the author's vocabulary (`kW` → `kW·h`).
@@ -358,6 +381,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut interface = false;
                 let mut child_model: Option<ChildRef> = None;
                 let mut stock_unit = String::new();
+                let mut description = String::new();
                 let mut scale: Option<ScaleType> = None;
                 let mut states: Option<Vec<String>> = None;
                 let mut variable_kind: Option<KlirVarKind> = None;
@@ -430,6 +454,32 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                     i += 1;
                                 }
                             }
+                        }
+                        // `description "<prose>"` — what this thing IS, in the
+                        // author's words (#326). Unlike every other attribute it
+                        // rides ENVIRONMENT lines too: old-bert's descriptions are
+                        // mostly ON environment entities ("Distributed economic
+                        // environment for decentralized monetary system"), and the
+                        // opacity rule (§4.3.3.2.2) is about an env thing's
+                        // INTERNALS, not about naming what it is.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("description") => {
+                            if !description.is_empty() {
+                                fail("`description` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Str(d)) => description = d.clone(),
+                                _ => {
+                                    fail(
+                                        "description syntax: `description \"<prose>\"` \
+                                         (quoted, one per line)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
                         }
                         // `stock <unit>` — the stock's declared unit (#76/#94),
                         // bare or quoted (`stock ML`, `stock "kW·h"`).
@@ -621,6 +671,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 things.push(Thing {
                     id: next_id,
                     name,
+                    description,
                     x: 0.0,
                     y: 0.0,
                     role,
@@ -849,6 +900,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // `weight <n>` — per-transition count for the #67 DTMC read
                 // (`markov_edges`); omit for the uniform default 1.
                 let mut weight = None;
+                let mut description = String::new();
                 if let [Tok::Word(w), rest_tail @ ..] = tail {
                     if w.eq_ignore_ascii_case("weight") {
                         match rest_tail {
@@ -883,13 +935,35 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         }
                     }
                 }
+                // `description "<prose>"` — what this flow IS, in the author's
+                // words (#326). Trails the clause chain, because it is the one
+                // clause whose value is a sentence and putting it last keeps
+                // the machine-readable clauses adjacent and scannable.
+                if let [Tok::Word(w), rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("description") {
+                        match rest_tail {
+                            [Tok::Str(d), after @ ..] => {
+                                description = d.clone();
+                                tail = after;
+                            }
+                            _ => {
+                                fail(
+                                    "description syntax: `description \"<prose>\"` (quoted)".into(),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        }
+                    }
+                }
                 if !tail.is_empty() {
                     fail(
                         format!(
                             "unexpected `{}` at end of flow — fix: quote it if it is the flow's \
                              label, or remove it; a flow reads \
                              `flow <a> -> <b> [: <kind>] [\"label\"] [substance <s>] \
-                             [amount <n>] [unit <u>] [mere] [weight <n>]`",
+                             [amount <n>] [unit <u>] [mere] [weight <n>] \
+                             [description \"<prose>\"]`",
                             tail[0].display()
                         ),
                         &mut errors,
@@ -922,6 +996,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     a: things[ai].id,
                     b: things[bi].id,
                     name,
+                    description,
                     is_bond,
                     kind,
                     klir_directed: false,
@@ -1393,6 +1468,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         boundary: boundary.unwrap_or_default(),
         system_type,
         name: system_name,
+        description,
         time_unit,
         params,
         metrics,
@@ -1588,6 +1664,9 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
     if let Some(domain) = &model.system_type.domain {
         writeln!(out, "domain {}", quote(domain)?).unwrap();
     }
+    if !model.description.is_empty() {
+        writeln!(out, "description {}", quote(&model.description)?).unwrap();
+    }
     // The model's time-unit symbol (#94) — header block, with system/domain.
     if let Some(tu) = model.time_unit.as_deref().map(str::trim).filter(|t| !t.is_empty()) {
         writeln!(out, "time unit {}", name_token(tu)?).unwrap();
@@ -1656,6 +1735,12 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
                 .join(", ");
             write!(out, " states {{{labels}}}").unwrap();
         }
+        // Prose last but one, before `decomposes` (#326). It is the only
+        // clause whose value is a sentence, so keeping it at the end leaves
+        // the machine-readable clauses adjacent and scannable.
+        if !t.description.is_empty() {
+            write!(out, " description {}", quote(&t.description)?).unwrap();
+        }
         if t.role == Role::Component {
             // `decomposes` emits last (§7.1 canonical order): name quoted, id in
             // the canonical base58 form, both mandatory.
@@ -1708,6 +1793,9 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         }
         if let Some(w) = r.weight {
             write!(out, " weight {w}").unwrap();
+        }
+        if !r.description.is_empty() {
+            write!(out, " description {}", quote(&r.description)?).unwrap();
         }
         out.push('\n');
     }
@@ -1814,6 +1902,70 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
     Ok(out)
 }
 
+/// Rewrite only the `@pos` lines of an SL source, leaving every other byte of
+/// it alone — the layout half of a round-trip, without the round-trip.
+///
+/// [`emit_sl`] is canonicalizing, which is the right behaviour for producing
+/// text from a model and the wrong one for *updating* text an author wrote.
+/// Emit reproduces the model, and a model does not carry comments, blank lines,
+/// or the order the author chose to explain things in; re-emitting a documented
+/// file to save a drag therefore trades every word of its prose for four
+/// numbers. That loss is #262's subject. This function exists so that moving a
+/// node does not have to wait for it: positions are the one part of the text
+/// that is *purely* derived from the model, so they can be replaced in place
+/// while nothing else is touched.
+///
+/// A line counts as a position line exactly when the parser would read it as
+/// one — `tokenize` decides, so a `#` inside a quoted name and a `@pos` inside
+/// a comment are both handled the way the parser handles them, rather than by
+/// a second guess at its rules. A line that fails to tokenize is left ALONE
+/// rather than dropped: it is already a parse fault, and deleting text on the
+/// way past would turn a diagnosable error into a silent edit.
+///
+/// The new block lands where the first old position line was, so a file that
+/// grouped them at the end keeps them at the end. A source with no `@pos` at
+/// all gets the block appended. Things absent from `model` lose their line;
+/// things missing one gain it.
+///
+/// Line endings normalize to `\n` (SL sources in this repo are LF); a trailing
+/// newline is preserved if the source had one and not invented if it did not.
+pub fn splice_positions(source: &str, model: &CanvasModel) -> Result<String, String> {
+    let mut block = Vec::with_capacity(model.things.len());
+    for t in &model.things {
+        block.push(format!("@pos {} {} {}", name_token(&t.name)?, t.x, t.y));
+    }
+
+    let is_pos_line = |line: &str| match tokenize(line) {
+        Ok(toks) => matches!(toks.first(), Some(Tok::Word(w)) if w.strip_prefix('@') == Some("pos")),
+        Err(_) => false,
+    };
+
+    let mut out: Vec<String> = Vec::new();
+    let mut placed = false;
+    for line in source.lines() {
+        if is_pos_line(line) {
+            if !placed {
+                out.extend(block.iter().cloned());
+                placed = true;
+            }
+            continue;
+        }
+        out.push(line.to_string());
+    }
+    if !placed && !block.is_empty() {
+        if out.last().is_some_and(|l| !l.trim().is_empty()) {
+            out.push(String::new());
+        }
+        out.extend(block);
+    }
+
+    let mut text = out.join("\n");
+    if source.ends_with('\n') {
+        text.push('\n');
+    }
+    Ok(text)
+}
+
 /// Words the tokenizer or line parsers claim — a thing name matching one must
 /// be quoted to stay a name.
 pub const RESERVED_WORDS: &[&str] = &[
@@ -1839,6 +1991,7 @@ pub const RESERVED_WORDS: &[&str] = &[
     "weight",
     "substance",
     "amount",
+    "description",
     "porosity",
     "fuzziness",
     "energy",
@@ -1855,7 +2008,7 @@ pub const RESERVED_WORDS: &[&str] = &[
 /// `ample` stays out: it is positional, and a bare thing or substance named
 /// `ample` must keep re-parsing as itself.
 fn clause_head(w: &str) -> bool {
-    ["substance", "amount", "unit", "mere", "weight"]
+    ["substance", "amount", "unit", "mere", "weight", "description"]
         .iter()
         .any(|k| w.eq_ignore_ascii_case(k))
 }
@@ -2437,4 +2590,191 @@ boundary porosity 0.7 fuzziness 0.1
         let model = parse_sl("\ncomponent A  # the core\n\n# whole-line comment\n").unwrap();
         assert_eq!(model.things.len(), 1);
     }
+
+    // ── splice_positions: the layout half of a round-trip (#327) ─────────
+
+    /// The property the whole function exists for. `emit_sl` on this source
+    /// would return four lines; the splice must return all of it but the
+    /// positions.
+    #[test]
+    fn splice_keeps_every_line_that_is_not_a_position() {
+        let src = "\
+# ── A documented model ───────────────────────────────────────
+# The comment block is the reason this function exists: it is not
+# in the model, so an emit cannot give it back.
+#   https://example.org/a-source-worth-keeping
+
+system \"Doc\" : Concrete/Social
+
+# why this component is here
+component A primitive Combining interface
+
+source S
+
+flow S -> A : matter \"in\"
+
+@lens mobus
+@pos A 10 20
+@pos S 30 40
+";
+        let mut m = parse_sl(src).unwrap();
+        m.things[0].x = 111.0;
+        m.things[0].y = 222.0;
+        let out = splice_positions(src, &m).unwrap();
+
+        assert!(out.contains("https://example.org/a-source-worth-keeping"));
+        assert!(out.contains("# why this component is here"));
+        assert!(out.contains("@lens mobus"));
+        assert!(out.contains("@pos A 111 222"));
+        assert!(!out.contains("@pos A 10 20"));
+        // every non-position line of the original survives, in order
+        let kept: Vec<&str> = src.lines().filter(|l| !l.trim_start().starts_with("@pos")).collect();
+        let got: Vec<&str> = out.lines().filter(|l| !l.trim_start().starts_with("@pos")).collect();
+        assert_eq!(kept, got);
+    }
+
+    /// Re-parsing the spliced text must yield the moved model — the splice is
+    /// only worth anything if the kernel reads the new positions back.
+    #[test]
+    fn splice_round_trips_through_the_parser() {
+        let src = "component A\nsource S\nflow S -> A : matter \"in\"\n@pos A 1 2\n@pos S 3 4\n";
+        let mut m = parse_sl(src).unwrap();
+        m.things[0].x = 900.5;
+        m.things[0].y = -12.25;
+        let back = parse_sl(&splice_positions(src, &m).unwrap()).unwrap();
+        assert_eq!((back.things[0].x, back.things[0].y), (900.5, -12.25));
+        assert_eq!((back.things[1].x, back.things[1].y), (m.things[1].x, m.things[1].y));
+    }
+
+    /// A source that never pinned a position gains the block rather than
+    /// silently keeping auto-layout.
+    #[test]
+    fn splice_appends_when_the_source_pinned_nothing() {
+        let src = "component A\n";
+        let mut m = parse_sl(src).unwrap();
+        m.things[0].x = 7.0;
+        m.things[0].y = 8.0;
+        let out = splice_positions(src, &m).unwrap();
+        assert!(out.starts_with("component A\n"));
+        assert!(out.contains("@pos A 7 8"));
+        assert_eq!(parse_sl(&out).unwrap().things[0].x, 7.0);
+    }
+
+    /// The block lands where the old one was, so a file that put positions in
+    /// the middle keeps its shape.
+    #[test]
+    fn splice_places_the_block_at_the_first_old_position_line() {
+        let src = "component A\n@pos A 1 2\nsource S\nflow S -> A : matter \"in\"\n";
+        let m = parse_sl(src).unwrap();
+        let out = splice_positions(src, &m).unwrap();
+        let lines: Vec<&str> = out.lines().collect();
+        assert_eq!(lines[0], "component A");
+        assert!(lines[1].starts_with("@pos "));
+        assert!(lines.contains(&"source S"));
+    }
+
+    /// `#` inside a quoted name must not be read as a comment, and `@pos`
+    /// inside a comment must not be read as a position — both fall out of
+    /// using the parser's own tokenizer rather than a second guess at it.
+    #[test]
+    fn splice_classifies_lines_the_way_the_parser_does() {
+        let src = "component \"A#B\"\n# @pos A 1 2 -- this is prose, not a position\n@pos \"A#B\" 5 6\n";
+        let mut m = parse_sl(src).unwrap();
+        m.things[0].x = 50.0;
+        let out = splice_positions(src, &m).unwrap();
+        assert!(out.contains("# @pos A 1 2 -- this is prose, not a position"));
+        assert!(out.contains("@pos \"A#B\" 50 6"));
+        assert_eq!(out.matches("@pos \"A#B\"").count(), 1);
+    }
+
+    /// A line that will not tokenize is a parse fault the author needs to see.
+    /// Passing over it must not delete it.
+    #[test]
+    fn splice_leaves_an_untokenizable_line_alone() {
+        // The model comes from text that parses; the SOURCE being spliced is
+        // the broken one, which is the situation a mid-edit buffer is in.
+        let m = parse_sl("component A\n@pos A 3 4\n").unwrap();
+        let broken = "component A\n@pos \"unterminated\n@pos A 1 2\n";
+        let out = splice_positions(broken, &m).unwrap();
+        assert!(out.contains("@pos \"unterminated"));
+        assert!(out.contains("@pos A 3 4"));
+    }
+
+    /// Trailing newline is preserved, not invented and not dropped.
+    #[test]
+    fn splice_preserves_the_trailing_newline_either_way() {
+        let m = parse_sl("component A\n@pos A 1 2\n").unwrap();
+        assert!(splice_positions("component A\n@pos A 1 2\n", &m).unwrap().ends_with('\n'));
+        assert!(!splice_positions("component A\n@pos A 1 2", &m).unwrap().ends_with('\n'));
+    }
+
+
+    // ── descriptions: restoring what old-bert had (#326) ────────────────
+
+    #[test]
+    fn description_parses_on_components_and_environment_things() {
+        let m = parse_sl(
+            "component A primitive Combining interface description \"the work process\"\n\
+             source S description \"where it comes from\"\n\
+             flow S -> A : matter \"in\"\n",
+        )
+        .unwrap();
+        assert_eq!(m.things[0].description, "the work process");
+        assert_eq!(m.things[1].description, "where it comes from");
+    }
+
+    /// Environment lines take it too, and that is deliberate: old-bert's
+    /// descriptions are mostly ON environment entities. The opacity rule is
+    /// about an env thing's INTERNALS, not about naming what it is.
+    #[test]
+    fn description_is_not_refused_on_an_environment_line() {
+        assert!(parse_sl("sink Snk description \"where it ends up\"\n").is_ok());
+    }
+
+    #[test]
+    fn description_parses_on_a_flow_after_every_other_clause() {
+        let m = parse_sl(
+            "component A\ncomponent B\n\
+             flow A -> B : matter \"label\" substance water amount 2 unit ML weight 3 \
+             description \"what actually moves\"\n",
+        )
+        .unwrap();
+        assert_eq!(m.relations[0].description, "what actually moves");
+        assert_eq!(m.relations[0].substance, "water");
+        assert_eq!(m.relations[0].weight, Some(3));
+    }
+
+    /// The property that makes descriptions worth having as DATA rather than
+    /// comments: they survive text -> model -> text, which a comment cannot.
+    #[test]
+    fn description_round_trips_through_emit() {
+        let src = "component A primitive Combining interface description \"the work process\"\n\
+                   source S description \"where it comes from\"\n\
+                   flow S -> A : matter \"in\" description \"what moves\"\n";
+        let once = emit_sl(&parse_sl(src).unwrap()).unwrap();
+        assert!(once.contains("description \"the work process\""));
+        assert!(once.contains("description \"where it comes from\""));
+        assert!(once.contains("description \"what moves\""));
+        assert_eq!(emit_sl(&parse_sl(&once).unwrap()).unwrap(), once);
+    }
+
+    /// Absent stays absent — a model with no prose must serialize exactly as
+    /// it did before this field existed, or every stored model changes on disk.
+    #[test]
+    fn no_description_emits_no_clause() {
+        let src = "component A\nsource S\nflow S -> A : matter \"in\"\n";
+        let out = emit_sl(&parse_sl(src).unwrap()).unwrap();
+        assert!(!out.contains("description"));
+    }
+
+    #[test]
+    fn a_second_description_on_one_line_is_a_fault() {
+        assert!(parse_sl("component A description \"one\" description \"two\"\n").is_err());
+    }
+
+    #[test]
+    fn an_unquoted_description_is_a_fault() {
+        assert!(parse_sl("component A description bare\n").is_err());
+    }
+
 }

@@ -227,6 +227,10 @@ export type KlirLevel = "Source" | "Data" | "Generative" | "Structure" | "Metasy
 export interface Thing {
   id: number;
   name: string;
+  /** What this thing IS, in the author's own words (#326). Prose the kernel
+   *  never reads — no verdict depends on it. Absent when undeclared, so models
+   *  authored before it stay byte-identical. */
+  description?: string;
   x: number;
   y: number;
   role: CanvasRole;
@@ -268,6 +272,9 @@ export interface Relation {
   a: number;
   b: number;
   name: string;
+  /** What this flow IS, in the author's own words (#326). Same standing as
+   *  `Thing.description`: prose, never semantics. */
+  description?: string;
   is_bond: boolean;
   kind: Kind;
   /** Klir's observer toggle: neutral ⇄ directed. View state; never projects. */
@@ -310,6 +317,10 @@ export interface SystemType {
 }
 
 export interface CanvasModel {
+  /** What the SYSTEM OF INTEREST is, in the author's words (#326). There is no
+   *  "model" separate from the SOI here: `name` IS the root system's name, so
+   *  this is that system's `Info.description`, not a second concept beside it. */
+  description?: string;
   lens: Lens;
   /** The model's stable base58 self-identity, carried through the canvas seam
    *  (to_canvas copies it in, project writes it back) so a walked child

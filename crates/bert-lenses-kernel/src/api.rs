@@ -343,7 +343,7 @@ pub fn to_canvas(model_json: &str) -> Result<JsValue, JsError> {
 pub fn compile_sl(text: &str) -> Result<JsValue, JsError> {
     match bert_canvas::sl::parse_sl_full(text) {
         Ok(parse) => to_js(&SlOutcome::Ok {
-            ok: parse.model,
+            ok: Box::new(parse.model),
             lens_explicit: parse.lens_explicit,
         }),
         Err(errors) => to_js(&SlOutcome::Errors { errors }),
@@ -358,6 +358,21 @@ pub fn emit_sl(canvas_json: &str) -> Result<String, JsError> {
     let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
         .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
     bert_canvas::sl::emit_sl(&model).map_err(|e| JsError::new(&e))
+}
+
+/// Rewrite only the `@pos` lines of an SL source, leaving every other byte
+/// alone — how a canvas drag is saved back into a file the author wrote.
+///
+/// `emit_sl` above is the wrong call for that: it reproduces the model, and a
+/// model carries no comments, so saving a moved node through it would trade a
+/// documented file for its four position numbers (#262). Positions are the one
+/// part of the text purely derived from the model, so they alone can be
+/// replaced in place.
+#[wasm_bindgen]
+pub fn splice_positions(source: &str, canvas_json: &str) -> Result<String, JsError> {
+    let model: bert_canvas::canvas::CanvasModel = serde_json::from_str(canvas_json)
+        .map_err(|e| JsError::new(&format!("invalid canvas model: {e}")))?;
+    bert_canvas::sl::splice_positions(source, &model).map_err(|e| JsError::new(&e))
 }
 
 /// Validate a proposed connection at the model's current lens. Returns the issues
@@ -609,7 +624,10 @@ enum OperationalOutcome {
 #[serde(untagged)]
 enum SlOutcome {
     Ok {
-        ok: bert_canvas::canvas::CanvasModel,
+        // Boxed only to keep the variants a similar size (clippy's
+        // large_enum_variant): a `CanvasModel` dwarfs a fault list. `Box<T>`
+        // serializes exactly as `T`, so the shape crossing to JS is unchanged.
+        ok: Box<bert_canvas::canvas::CanvasModel>,
         lens_explicit: bool,
     },
     Errors {
@@ -864,6 +882,7 @@ mod tests {
             Thing {
                 id,
                 name: name.to_string(),
+                description: String::new(),
                 x: 0.0,
                 y: 0.0,
                 role: Role::Component,
@@ -886,6 +905,7 @@ mod tests {
                 a,
                 b,
                 name: String::new(),
+                description: String::new(),
                 is_bond: true,
                 kind: Kind::Unspecified,
                 klir_directed: false,
@@ -904,6 +924,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            description: String::new(),
             time_unit: None,
             params: vec![],
             metrics: vec![],

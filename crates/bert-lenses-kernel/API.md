@@ -140,8 +140,10 @@ type Lens = "Klir" | "Bunge" | "Mobus"            // → Core | Structural | Ope
 type Role = "Component" | "Environment"
 type Kind = "Unspecified" | "Energy" | "Matter" | "Field" | "Informational"
 type Thing = { id: number, name: string, x: number, y: number, role?: Role, primitive?: string,
-               stock_unit?: string }                  // declared stock unit (#76/#94)
-type Relation = { id: number, a: number, b: number, name?: string, is_bond?: boolean, kind?: Kind }
+               stock_unit?: string,                   // declared stock unit (#76/#94)
+               description?: string }                 // the author's prose (#326)
+type Relation = { id: number, a: number, b: number, name?: string, is_bond?: boolean, kind?: Kind,
+                  description?: string }              // the author's prose (#326)
 type CanvasModel = { lens: Lens, things: Thing[], relations: Relation[], time_unit?: string }
 ```
 
@@ -374,6 +376,41 @@ round-trip contract (`crates/bert-canvas/tests/sl_roundtrip.rs`, corpus in
 digit; arbitrary canvas models canonicalize (`emit∘parse∘emit == emit`).
 Throws (JsError) on the shapes SL v1 cannot express: a name/label containing
 `"` or a newline, a genus asserted without a kingdom.
+
+### `splice_positions(source: string, canvas_json: string) → string`
+Rewrite only the `@pos` lines of an SL source, leaving every other byte alone.
+Additive (#327); no existing signature changed.
+
+The layout half of a round-trip, without the round-trip. `emit_sl` reproduces
+the *model*, and a model carries no comments, blank lines, or authored ordering
+— so saving a canvas drag through it trades a documented file for its position
+numbers (that loss is #262). Positions are the one part of an SL text purely
+derived from the model, so they alone can be replaced in place.
+
+A line is a position line exactly when the parser's own `tokenize` reads it as
+one, so a `#` inside a quoted name and a `@pos` inside a comment behave the way
+the parser makes them behave. A line that will not tokenize is left ALONE, not
+dropped — it is already a parse fault, and deleting it would turn a diagnosable
+error into a silent edit. The new block lands where the first old position line
+was; a source with none gets it appended. Things absent from the model lose
+their line, things missing one gain it. Line endings normalize to `\n`; a
+trailing newline is preserved if present and not invented if absent.
+
+Throws (JsError) on the same name shapes `emit_sl` rejects.
+
+**v1.4 (#326) — descriptions restored.** `Thing` and `Relation` each gained
+`description?: string`, serde-skipped when empty so every stored model is
+byte-identical on disk. SL grew a matching `description "<prose>"` clause on
+thing lines (environment lines included) and at the tail of flow lines. No
+signature changed.
+
+This is a restoration, not an addition: the original BERT carried a description
+on every entity — 161 non-empty ones survive in `assets/models/examples/*.json`
+— and `bert_core::Info::description` has existed from the start, receiving
+`String::new()` at every construction site. `project()` now writes the authored
+prose into it and `to_canvas` reads it back, so a description round-trips like a
+name does. It is prose and never semantics: no verdict reads it, and two models
+differing only in descriptions receive identical verdicts.
 
 **v1.1 (#84):** `CanvasModel` gained an optional `name` field — the author-given
 SOI name. SL grew the matching form `system "Name" [: Kingdom[/Genus]]` (name

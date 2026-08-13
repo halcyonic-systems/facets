@@ -342,6 +342,7 @@ mod tests {
         Thing {
             id,
             name: format!("T{id}"),
+            description: String::new(),
             x: 0.0,
             y: 0.0,
             role,
@@ -365,6 +366,7 @@ mod tests {
             a,
             b,
             name: String::new(),
+            description: String::new(),
             is_bond: true,
             kind: Kind::Unspecified,
             klir_directed: false,
@@ -385,6 +387,7 @@ mod tests {
             boundary: Default::default(),
             system_type: Default::default(),
             name: None,
+            description: String::new(),
             time_unit: None,
             params: vec![],
             metrics: vec![],
