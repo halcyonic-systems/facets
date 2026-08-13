@@ -456,14 +456,22 @@ fn system_name(model: &WorldModel, id_str: &str) -> String {
         .unwrap_or_else(|| id_str.to_string())
 }
 
-/// Universal Warning: two interactions with the same source, sink, type, and
-/// substance are parallel duplicates. Distinct from `check_duplicate_ids`
-/// (repeated *ids*) — a genuine second channel differs in substance or
-/// usability, so identical edges are almost always an accidental double-draw.
-/// Warned, never blocked.
+/// Universal Warning: two interactions with the same source, sink, type,
+/// substance AND usability are parallel duplicates. Distinct from
+/// `check_duplicate_ids` (repeated *ids*) — a genuine second channel differs in
+/// substance or usability, so identical edges are almost always an accidental
+/// double-draw. Warned, never blocked.
+///
+/// Usability joined the key in #331. Before that the suggestion below told an
+/// author to "distinguish it by substance or usability" while the key read only
+/// substance, so following the advice cleared nothing — a promise the check
+/// could not keep. A resource in and a waste out along the same pair really are
+/// two channels, and the kernel now says so.
 fn check_duplicate_edges(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
-    let mut seen: HashMap<(String, String, InteractionType, SubstanceType, String), String> =
-        HashMap::new();
+    let mut seen: HashMap<
+        (String, String, InteractionType, SubstanceType, String, InteractionUsability),
+        String,
+    > = HashMap::new();
     for (i, ix) in model.interactions.iter().enumerate() {
         let key = (
             serialize_id(&ix.source),
@@ -471,6 +479,7 @@ fn check_duplicate_edges(model: &WorldModel, issues: &mut Vec<ValidationIssue>) 
             ix.ty,
             ix.substance.ty,
             ix.substance.sub_type.clone(),
+            ix.usability,
         );
         let loc = format!("interactions[{i}]");
         match seen.get(&key) {
@@ -479,7 +488,7 @@ fn check_duplicate_edges(model: &WorldModel, issues: &mut Vec<ValidationIssue>) 
                     "duplicate_edge",
                     &loc,
                     format!(
-                        "duplicate edge {}→{} (same type and substance as {prior})",
+                        "duplicate edge {}→{} (same type, substance and usability as {prior})",
                         key.0, key.1
                     ),
                     Some("Remove the duplicate, or distinguish it by substance or usability"),
@@ -3138,6 +3147,49 @@ mod tests {
                 .iter()
                 .any(|i| i.message.contains("duplicate edge")),
             "same endpoints and type but different substance is not a duplicate edge"
+        );
+    }
+
+    /// #331's separating pair, and the reason usability joined the key. Before
+    /// it did, the suggestion on this very warning told an author to
+    /// "distinguish it by substance or usability" while the key read only
+    /// substance — so following the advice cleared nothing. The control below
+    /// must still warn, or this test would prove only that the check got weaker.
+    #[test]
+    fn distinct_usability_is_not_a_duplicate() {
+        let mut m = two_component_model();
+        let mut inbound = flow(0, "a", sys_id(vec![0, 0]), sys_id(vec![0, 1]));
+        inbound.usability = InteractionUsability::Resource;
+        m.interactions.push(inbound);
+        let mut outbound = flow(1, "b", sys_id(vec![0, 0]), sys_id(vec![0, 1]));
+        outbound.usability = InteractionUsability::Waste;
+        m.interactions.push(outbound);
+        assert!(
+            !validate(&m)
+                .issues
+                .iter()
+                .any(|i| i.message.contains("duplicate edge")),
+            "a resource and a waste along one pair are two channels, not a double-draw"
+        );
+    }
+
+    /// The control. Identical in every respect INCLUDING usability, so the
+    /// warning must still fire — otherwise the test above would be satisfied by
+    /// a check that stopped working.
+    #[test]
+    fn identical_usability_is_still_a_duplicate() {
+        let mut m = two_component_model();
+        for i in 0..2 {
+            let mut f = flow(i, "a", sys_id(vec![0, 0]), sys_id(vec![0, 1]));
+            f.usability = InteractionUsability::Resource;
+            m.interactions.push(f);
+        }
+        assert!(
+            validate(&m)
+                .issues
+                .iter()
+                .any(|i| i.message.contains("duplicate edge")),
+            "same endpoints, type, substance AND usability is still a double-draw"
         );
     }
 

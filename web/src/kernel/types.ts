@@ -275,6 +275,11 @@ export interface Relation {
   /** What this flow IS, in the author's own words (#326). Same standing as
    *  `Thing.description`: prose, never semantics. */
   description?: string;
+  /** What this crossing IS to the system (#331) — Mobus's 2×2 of direction
+   *  against value. Absent means UNDECLARED, never `Resource`: only projection
+   *  supplies the default, so a surface must not render absence as an
+   *  assertion the author never made. */
+  usability?: "Resource" | "Disruption" | "Product" | "Waste";
   is_bond: boolean;
   kind: Kind;
   /** Klir's observer toggle: neutral ⇄ directed. View state; never projects. */

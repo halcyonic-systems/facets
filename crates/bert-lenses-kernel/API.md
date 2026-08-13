@@ -143,7 +143,8 @@ type Thing = { id: number, name: string, x: number, y: number, role?: Role, prim
                stock_unit?: string,                   // declared stock unit (#76/#94)
                description?: string }                 // the author's prose (#326)
 type Relation = { id: number, a: number, b: number, name?: string, is_bond?: boolean, kind?: Kind,
-                  description?: string }              // the author's prose (#326)
+                  description?: string,               // the author's prose (#326)
+                  usability?: "Resource" | "Disruption" | "Product" | "Waste" }  // #331; absent = undeclared
 type CanvasModel = { lens: Lens, things: Thing[], relations: Relation[], time_unit?: string }
 ```
 

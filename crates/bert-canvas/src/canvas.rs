@@ -260,6 +260,18 @@ pub struct Relation {
     /// `Thing::description`: prose the kernel never reads.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub description: String,
+    /// Mobus's reading of what a boundary crossing IS to the system (#331) — a
+    /// 2x2 of direction against value: `Resource` (useful in), `Disruption`
+    /// (harmful in), `Product` (useful out), `Waste` (harmful out). The kernel
+    /// has carried the enum since its first version; `project()` hardcoded
+    /// every flow to `Resource`, so the distinction was unauthorable and any
+    /// model needing it had to assert it in a comment.
+    ///
+    /// `None` is UNDECLARED, not `Resource`: an author who has not ruled on a
+    /// flow's usability has said nothing, and projection supplies the default
+    /// rather than the model pretending it was authored.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub usability: Option<InteractionUsability>,
     /// Klir's observer toggle: neutral ⇄ directed (Facets Ch. 4 — "directed
     /// systems" merely add an orientation the observer commits to). Pure view
     /// state, canvas-resident; never projects (the kernel `dep` is ordered
@@ -789,7 +801,10 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                 ty: kind_to_substance(r.kind),
             },
             ty: InteractionType::Flow,
-            usability: InteractionUsability::Resource,
+            // Authored wins; undeclared keeps the historical default. The
+            // default is a PROJECTION artifact and not a claim the author made
+            // — which is exactly why the field above is an Option (#331).
+            usability: r.usability.unwrap_or(InteractionUsability::Resource),
             // Crossing flows route through the designated component's interface
             // (flow ⇒ interface — bipartite_implies_boundary_complete).
             source: src.clone(),
@@ -996,6 +1011,11 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             b,
             name: ix.info.name.clone(),
             description: ix.info.description.clone(),
+            // A WorldModel cannot say "undeclared" — every interaction carries
+            // one — so the historical default reads back as unauthored rather
+            // than emitting a `usability Resource` nobody typed. Same trade
+            // `amount` makes just below (#262).
+            usability: (ix.usability != InteractionUsability::Resource).then_some(ix.usability),
             is_bond: true,
             kind: substance_to_kind(ix.substance.ty),
             klir_directed: false,
@@ -1218,6 +1238,7 @@ mod tests {
             b,
             name: String::new(),
             description: String::new(),
+            usability: None,
             is_bond: true,
             kind: Kind::Unspecified,
             klir_directed: false,

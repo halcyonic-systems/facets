@@ -906,6 +906,7 @@ mod tests {
                 b,
                 name: String::new(),
                 description: String::new(),
+                usability: None,
                 is_bond: true,
                 kind: Kind::Unspecified,
                 klir_directed: false,

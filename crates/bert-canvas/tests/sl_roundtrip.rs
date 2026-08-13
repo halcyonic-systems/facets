@@ -93,6 +93,7 @@ fn canvas_born_model_canonicalizes() {
             b: 3,
             name: String::new(),
             description: String::new(),
+            usability: None,
             is_bond: false,
             kind: Kind::Field,
             klir_directed: true,
