@@ -181,14 +181,30 @@ describe("the palette is stated once", () => {
     }
   });
 
-  // The substance channel is contractual: Matter is that green whatever the
-  // display is doing. A light-dark() pair here would be a semantic change, not
-  // a styling one.
-  it("keeps the KIND channel out of the theme entirely", () => {
+  // The substance channel is contractual, and #321 changed WHAT the contract
+  // binds. It used to be "identical hex in both themes" — this test asserted
+  // exactly that. But appearance is contextual: holding the number still against
+  // a near-black ground put Informational at 2.88 and Field at 2.92, and a
+  // channel you cannot see is not a channel. So the HUE is the contract and the
+  // lightness adapts. The claim under test is unchanged in substance — Matter is
+  // that green wherever you meet it — and only its mechanism moved.
+  it("holds the KIND channel's hue across themes, and lets lightness adapt", () => {
+    const hue = (hex: string) => {
+      const v = hex.replace("#", "");
+      const [r, g, b] = [0, 2, 4].map((i) => parseInt(v.slice(i, i + 2), 16) / 255);
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+      if (d === 0) return 0;
+      const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      return ((h * 60) % 360 + 360) % 360;
+    };
     for (const token of ["--kind-matter", "--kind-energy", "--kind-informational", "--kind-field"]) {
       const decls = [...css.matchAll(new RegExp(`^\\s*${token}\\s*:\\s*([^;]+);`, "gm"))];
       expect(decls.length, `${token} is declared ${decls.length} times`).toBe(1);
-      expect(decls[0][1].trim(), `${token} must not vary with the theme`).toMatch(/^#[0-9a-f]{6}$/i);
+      const pair = decls[0][1].trim().match(/light-dark\(\s*(#[0-9a-f]{6})\s*,\s*(#[0-9a-f]{6})\s*\)/i);
+      expect(pair, `${token} must be a light-dark() pair — lightness adapts`).not.toBeNull();
+      const [, light, dark] = pair!;
+      const gap = Math.abs(hue(light) - hue(dark));
+      expect(Math.min(gap, 360 - gap), `${token} hue moved between themes`).toBeLessThanOrEqual(3);
     }
   });
 });

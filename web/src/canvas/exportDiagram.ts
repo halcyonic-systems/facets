@@ -56,6 +56,33 @@ interface Serialized {
 
 /** Clone the live canvas SVG into a standalone, content-framed string. Returns
  *  null for an empty model (nothing to frame). */
+/** Resolve every colour in an export against the LIGHT theme, whatever the
+ *  screen is showing (#321).
+ *
+ *  `serializeDiagram` reads colours out of computed style, so before the KIND
+ *  channel adapted to the theme this was moot — the substance colours were the
+ *  same number either way. Now they are not, and an exported diagram is a
+ *  DURABLE artifact: it goes into a paper, an issue, a slide, and is read years
+ *  later on someone else's screen. Which values it carries must not depend on
+ *  whether the author happened to be in dark mode when they pressed export.
+ *
+ *  Light is the canonical set because that is the ground every published
+ *  diagram sits on. Implemented by stamping the theme attribute for the length
+ *  of the snapshot and restoring it, so the choice covers EVERY token the
+ *  export resolves, not just the substance channel.
+ */
+function inCanonicalTheme<T>(snapshot: () => T): T {
+  const root = document.documentElement;
+  const prior = root.getAttribute("data-theme");
+  root.setAttribute("data-theme", "light");
+  try {
+    return snapshot();
+  } finally {
+    if (prior === null) root.removeAttribute("data-theme");
+    else root.setAttribute("data-theme", prior);
+  }
+}
+
 function serializeDiagram(live: SVGSVGElement, model: CanvasModel): Serialized | null {
   const box = contentBounds(model);
   if (!box) return null;
@@ -136,7 +163,7 @@ function triggerDownload(blob: Blob, filename: string): void {
 /** Export the live canvas as a standalone SVG file. Returns false if the model
  *  is empty (caller surfaces "nothing to export"). */
 export function exportDiagramSvg(live: SVGSVGElement, model: CanvasModel, filename: string): boolean {
-  const out = serializeDiagram(live, model);
+  const out = inCanonicalTheme(() => serializeDiagram(live, model));
   if (!out) return false;
   triggerDownload(new Blob([out.svg], { type: "image/svg+xml;charset=utf-8" }), `${filename}.svg`);
   return true;
@@ -150,7 +177,7 @@ export async function exportDiagramPng(
   filename: string,
   scale = 2,
 ): Promise<boolean> {
-  const out = serializeDiagram(live, model);
+  const out = inCanonicalTheme(() => serializeDiagram(live, model));
   if (!out) return false;
   const url = URL.createObjectURL(new Blob([out.svg], { type: "image/svg+xml;charset=utf-8" }));
   try {

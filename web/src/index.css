@@ -79,12 +79,21 @@
 
   /* reserved KIND channel — substance identity (Matter / Energy / Informational
      / Field). Contractual: means substance type, never decorative, and constant
-     across lenses AND themes (so no dark override — substance color must not
-     shift with the theme). Consumed via tokens.ts `kind` → canvas KIND_COLOR. */
-  --kind-matter: #57814c;
-  --kind-energy: #bb6c1c;
-  --kind-informational: #8054a0;
-  --kind-field: #2f6c9c;
+     across LENSES. Consumed via tokens.ts `kind` → canvas KIND_COLOR.
+
+     THEME (#321, 2026-08-12): the contract used to be "identical hex in both
+     themes". That mechanism defeated its own purpose — colour appearance is
+     contextual, so holding the number fixed against a near-black ground gave
+     Informational 2.88 and Field 2.92 contrast, and a channel you cannot see is
+     not a channel. What the contract MEANS is that a substance is recognisable
+     as the same substance anywhere, so the HUE is contractual and the lightness
+     adapts to the ground. Every pair below holds hue to under 0.5° and clears
+     4.5 on its own theme's node fill; check-tokens.mjs enforces both, which is
+     the purpose bound by a check rather than a proxy for it. */
+  --kind-matter: light-dark(#57814c, #649457);
+  --kind-energy: light-dark(#bb6c1c, #c6721e);
+  --kind-informational: light-dark(#8054a0, #9e79b8);
+  --kind-field: light-dark(#2f6c9c, #428cc6);
 
   /* per-lens seam — the semantic names the ACTIVE lens redefines (design-
      system-draft §2, lemonaid's data-theme pattern). Set by data-lens on the

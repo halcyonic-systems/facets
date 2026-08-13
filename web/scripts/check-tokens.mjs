@@ -35,11 +35,19 @@ const stripComments = (src) =>
 function parseCss(src) {
   const declared = new Set();
   const hex = {};
+  const lightDark = {};
   for (const m of src.matchAll(/(--[a-z0-9-]+)\s*:/g)) declared.add(m[1]);
   for (const m of src.matchAll(/(--[a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})\s*;/g)) {
     if (!(m[1] in hex)) hex[m[1]] = norm(m[2]); // first match = the :root/light value
   }
-  return { declared, hex };
+  // light-dark(<light>, <dark>) — one declaration per themed token, so the two
+  // values cannot drift apart in separate blocks (#321).
+  for (const m of src.matchAll(
+    /(--[a-z0-9-]+)\s*:\s*light-dark\(\s*(#[0-9a-fA-F]{3,8})\s*,\s*(#[0-9a-fA-F]{3,8})\s*\)/g,
+  )) {
+    if (!(m[1] in lightDark)) lightDark[m[1]] = [norm(m[2]), norm(m[3])];
+  }
+  return { declared, hex, lightDark };
 }
 
 // tokens.ts: every var(--x) reference + every "key: #hex" literal.
@@ -68,12 +76,62 @@ for (const ref of tok.refs) {
   if (!css.declared.has(ref)) problems.push(`tokens.ts references ${ref}, not declared in index.css`);
 }
 
+// The KIND channel's contract, enforced as its PURPOSE rather than as a proxy
+// for it (#321). It used to be "the hex in tokens.ts equals the hex in
+// index.css", which held the numbers still and let the channel go invisible in
+// dark — Informational and Field sat at 2.88 and 2.92 against the dark node
+// fill. What the channel means is that a substance reads as the same substance
+// anywhere, so what is checked is: the hue is held, and both variants are
+// legible on their own ground.
+const HUE_TOLERANCE_DEG = 3;
+// 3.0, not 4.5: a substance colour is a stroke and a swatch, not body text.
+// WCAG 1.4.11 sets 3:1 for graphical objects and UI components; 4.5 is the
+// text threshold and the wrong instrument here. Worth knowing what the wrong
+// threshold surfaced when it was briefly set to 4.5 — the LIGHT values fail it
+// too (Matter 4.33, Energy 3.82), so this channel has been under the text
+// threshold on its home ground since it was authored, unnoticed because nothing
+// measured it. Both clear 3.0 comfortably, and the dark variants clear 4.5.
+const CONTRAST_FLOOR = 3.0;
+const NODE_FILL = { light: "#fafafb", dark: "#1d2022" }; // --bg-secondary per theme
+
+const srgb = (h) => {
+  const v = h.replace("#", "");
+  const n = v.length === 3 ? [...v].map((c) => c + c) : [v.slice(0, 2), v.slice(2, 4), v.slice(4, 6)];
+  return n.map((p) => parseInt(p, 16) / 255);
+};
+const hue = (hex) => {
+  const [r, g, b] = srgb(hex);
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  if (d === 0) return 0;
+  const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return ((h * 60) % 360 + 360) % 360;
+};
+const relLum = (hex) =>
+  srgb(hex).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+    .reduce((a, c, i) => a + c * [0.2126, 0.7152, 0.0722][i], 0);
+const contrast = (a, b) => {
+  const [hi, lo] = [relLum(a), relLum(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+};
+const hueGap = (a, b) => { const d = Math.abs(hue(a) - hue(b)); return Math.min(d, 360 - d); };
+
 for (const [key, cssVar] of Object.entries(KIND_MAP)) {
-  const t = tok.hex[key];
-  const c = css.hex[cssVar];
-  if (!c) problems.push(`index.css missing reserved ${cssVar}`);
-  if (!t) problems.push(`tokens.ts missing reserved kind.${key} hex`);
-  if (t && c && t !== c) problems.push(`kind.${key}: tokens.ts ${t} != index.css ${cssVar} ${c}`);
+  const pair = css.lightDark[cssVar];
+  if (!pair) {
+    problems.push(`${cssVar} must be a light-dark() pair — the KIND channel adapts lightness, not hue (#321)`);
+    continue;
+  }
+  const [light, dark] = pair;
+  const gap = hueGap(light, dark);
+  if (gap > HUE_TOLERANCE_DEG)
+    problems.push(`kind.${key}: hue moves ${gap.toFixed(1)}° between themes (max ${HUE_TOLERANCE_DEG}°) — the hue is the contract, not the value`);
+  for (const [theme, value] of [["light", light], ["dark", dark]]) {
+    const c = contrast(value, NODE_FILL[theme]);
+    if (c < CONTRAST_FLOOR)
+      problems.push(`kind.${key}: ${value} is ${c.toFixed(2)} on the ${theme} node fill (floor ${CONTRAST_FLOOR}) — an invisible channel is not a channel`);
+  }
+  if (tok.hex[key])
+    problems.push(`tokens.ts kind.${key} is a literal; it must reference ${cssVar} so the theme pair stays in one place`);
 }
 
 // ---------------------------------------------------------------------------

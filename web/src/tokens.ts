@@ -18,13 +18,16 @@ export const color = {
 
 // The reserved KIND channel: substance identity (Matter / Energy / Informational
 // / Field). Contractual — means substance type, never decorative, and constant
-// across lenses and themes. The hex mirrors --kind-* in index.css (kept in sync by
-// check-tokens.mjs); literal here because these feed SVG stroke/fill style objects.
+// across lenses. Theme-adaptive by hue since #321: index.css holds each as a
+// light-dark() pair, so these are var() references rather than literals. They
+// were literals on the claim that "SVG needs a literal", which the file itself
+// contradicted — Unspecified has always been a var() in this same record, and
+// exportDiagram resolves var(--…) from computed style at snapshot time.
 export const kind = {
-  Matter: "#57814c",
-  Energy: "#bb6c1c",
-  Informational: "#8054a0",
-  Field: "#2f6c9c",
+  Matter: "var(--kind-matter)",
+  Energy: "var(--kind-energy)",
+  Informational: "var(--kind-informational)",
+  Field: "var(--kind-field)",
   Unspecified: "var(--text-muted)",
 } as const;
 
