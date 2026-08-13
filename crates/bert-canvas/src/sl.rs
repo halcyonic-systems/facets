@@ -2036,6 +2036,7 @@ pub const RESERVED_WORDS: &[&str] = &[
     "substance",
     "amount",
     "description",
+    "usability",
     "porosity",
     "fuzziness",
     "energy",
