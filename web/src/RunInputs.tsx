@@ -362,6 +362,13 @@ export function RunInputs({
       {signals.length > 0 && (
         <>
           <GroupHeader>signals · informational</GroupHeader>
+          {/* The box needed to say what it IS (design sweep 2026-08-15):
+              these rows are not rates and mostly not knobs. */}
+          <p className="mb-1 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
+            information entering from outside — a signal gates or informs a
+            process rather than supplying quantity; one marked <em>ample</em>{" "}
+            asserts availability and never binds.
+          </p>
           {signals.map((r) => (
             <InputRow
               key={r.id}

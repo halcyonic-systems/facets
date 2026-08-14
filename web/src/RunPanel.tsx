@@ -91,7 +91,9 @@ export function RunPanel({
     <div className="grid gap-5">
       {metrics && (metrics.readings.length > 0 || metrics.failures.length > 0) && (
         <Card title="Declared metrics" source="declared in SL · computed from the run">
-          <div className="grid gap-5">
+          {/* Same grid discipline as the comparisons (design sweep 2026-08-15):
+              a model with six metrics is a plate of readouts, not a scroll. */}
+          <div className="grid gap-x-8 gap-y-5 xl:grid-cols-2">
             {metrics.readings.map((r) => (
               <MetricRow key={r.name} r={r} tick={tick} />
             ))}
@@ -134,26 +136,21 @@ export function RunPanel({
         </p>
       )}
       <Card title="Result" source="bert-compose · wasm">
+        {/* The headline is what the RUN did — the verdict, always. A validation
+            gap is one fact about the run, not its identity; it rides below as
+            a stat pointing at the charts (design sweep, 2026-08-15: "24% off
+            the data" as the headline buried the run under its worst readout). */}
         <div className="mb-4">
-          {lead ? (
-            <>
-              <div
-                className="text-3xl font-semibold tabular"
-                style={{ color: "var(--accent-strong)" }}
-              >
-                {Math.round(lead.pct ?? 0)}% off the data
-              </div>
-              <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-                the run&rsquo;s largest gap from your data: {lead.c.element} ·{" "}
-                {lead.c.actual.length} observation{lead.c.actual.length === 1 ? "" : "s"}
-                {forecastTicks > 0 &&
-                  ` · the remaining ${forecastTicks} ticks run past the data`}
-              </p>
-            </>
-          ) : (
-            <Verdict tone={result.conserved ? "ok" : "warning"}>
-              {result.conserved ? WORDING.ranClean : WORDING.ranLeak} · {result.ticks} ticks
-            </Verdict>
+          <Verdict tone={result.conserved ? "ok" : "warning"}>
+            {result.conserved ? WORDING.ranClean : WORDING.ranLeak} · {result.ticks} ticks
+          </Verdict>
+          {lead && (
+            <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+              largest gap from your data: <span className="font-medium">{lead.c.element}</span>,{" "}
+              {Math.round(lead.pct ?? 0)}% off · {lead.c.actual.length} observation
+              {lead.c.actual.length === 1 ? "" : "s"}
+              {forecastTicks > 0 && ` · the remaining ${forecastTicks} ticks run past the data`}
+            </p>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-4">
@@ -177,7 +174,13 @@ export function RunPanel({
 
       {result.comparisons.length > 0 && (
         <Card title="Simulated vs actual" source="bert-compose · wasm">
-          <div className="grid gap-6">
+          {/* Small multiples in a grid, not a vertical stack (design sweep
+              2026-08-15). One chart per readout stays: the flows carry
+              DIFFERENT units, and one y-axis over mixed units is the #1 chart
+              lie — merging same-unit series into one multi-line chart waits on
+              a categorical chart palette (the Frost accents fail the CVD and
+              normal-vision separation checks as series hues; see #341). */}
+          <div className="grid gap-x-8 gap-y-6 xl:grid-cols-2">
             {result.comparisons.map((c) => (
               <ComparisonChart key={c.element} c={c} tick={tick} />
             ))}
@@ -194,16 +197,29 @@ export function RunPanel({
         </Card>
       )}
 
-      <Card title="Final levels" source="bert-core · wasm">
-        <Levels
-          levels={result.levels}
-          ticks={result.ticks}
-          lens={lens}
-          onAcceptUnit={onAcceptUnit}
-          trajectories={result.trajectories}
-          tick={tick}
-        />
-      </Card>
+      {/* The full per-thing table is reference material, not the page (design
+          sweep 2026-08-15) — a disclosure, closed by default, so the run page
+          ends at its charts and the table is one click away when wanted. */}
+      <details className="group">
+        <summary
+          className="cursor-pointer select-none text-sm font-medium"
+          style={{ color: "var(--text-secondary)" }}
+        >
+          Final levels — every thing&rsquo;s number at run end ({result.levels.length})
+        </summary>
+        <div className="mt-3">
+          <Card title="Final levels" source="bert-core · wasm">
+            <Levels
+              levels={result.levels}
+              ticks={result.ticks}
+              lens={lens}
+              onAcceptUnit={onAcceptUnit}
+              trajectories={result.trajectories}
+              tick={tick}
+            />
+          </Card>
+        </div>
+      </details>
     </div>
   );
 }
