@@ -2,7 +2,7 @@
 // feeds it lives in Canvas (jsdom has no getBBox), so this is where the rule
 // itself is pinned.
 import { describe, expect, it } from "vitest";
-import { crowdedLabelIds, LABEL_COLLISION_PAD, type LabelBox } from "./geometry";
+import { crowdedLabelIds, type LabelBox } from "./geometry";
 
 const box = (id: number, x: number, y: number, w = 80, h = 12): LabelBox => ({ id, x, y, w, h });
 
@@ -31,11 +31,17 @@ describe("crowdedLabelIds", () => {
     expect([...crowdedLabelIds([box(1, 0, 0), box(2, 0, 6)])].sort()).toEqual([1, 2]);
   });
 
-  it("counts the pad as collision — text that merely touches is already unreadable", () => {
-    // Exactly PAD apart is still clear; one px closer is crowded.
-    const gap = 80 + LABEL_COLLISION_PAD;
-    expect(crowdedLabelIds([box(1, 0, 0), box(2, gap, 0)]).size).toBe(0);
-    expect(crowdedLabelIds([box(1, 0, 0), box(2, gap - 1, 0)]).size).toBe(2);
+  it("takes INTERSECTION as the rule — touching boxes do not collide", () => {
+    // No slack term. A text box already spans the em box plus side bearing, so
+    // the whitespace a pad would buy is inside the measurement; adding one made
+    // the rule fire on boxes that do not overlap. Edge-to-edge is clear, one px
+    // of overlap is not.
+    expect(crowdedLabelIds([box(1, 0, 0), box(2, 80, 0)]).size).toBe(0);
+    expect(crowdedLabelIds([box(1, 0, 0), box(2, 79, 0)]).size).toBe(2);
+    // The case that motivated it: adjacent horizontally, offset vertically,
+    // zero shared area — federal-reserve.sl's `policy directive` /
+    // `reserves minted`, which the pad quieted and intersection does not.
+    expect(crowdedLabelIds([box(1, 0, 0), box(2, 80, 5)]).size).toBe(0);
   });
 
   it("makes the flow label yield to a node NAME, never the other way", () => {

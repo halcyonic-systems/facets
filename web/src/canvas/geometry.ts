@@ -555,27 +555,40 @@ export interface LabelBox {
   fixed?: boolean;
 }
 
-/** Slack, in world px, before two labels count as colliding. Text that merely
- *  touches is already unreadable, so the pad buys a little air rather than
- *  waiting for a true overlap. */
-export const LABEL_COLLISION_PAD = 2;
-
 /** Every id in a colliding cluster — BOTH members of each overlapping pair, not
  *  a winner and a loser. Keeping one of a pair visible would only re-collide
  *  the moment its neighbour is hovered back in, so the cluster goes quiet
  *  together and hover picks exactly one to speak. `fixed` boxes are the
- *  exception: they collide but never yield. */
-export function crowdedLabelIds(boxes: LabelBox[], pad: number = LABEL_COLLISION_PAD): Set<number> {
+ *  exception: they collide but never yield.
+ *
+ *  THE RULE IS INTERSECTION, with no slack term. There was a 2px pad here, on
+ *  the reasoning that text which merely touches is already hard to read. That
+ *  double-counts: a text box measured by `getBoundingClientRect` spans the em
+ *  box — ascent plus descent, plus side bearing — so the whitespace the pad was
+ *  buying is already inside the box. The pad's only effect was to fire on boxes
+ *  that do not overlap at all.
+ *
+ *  Checked across the shipped corpus rather than on the model that exposed it,
+ *  counting by ELEMENT (a first pass keyed the set by label TEXT and collapsed
+ *  duplicate names, which understated the effect on the dense models):
+ *
+ *    llm-market        38 labels   30 quieted -> 23   (7 returned)
+ *    federal-reserve   15 labels   11 quieted ->  9   (2 returned)
+ *    ribosome, bitcoin, jung-functions, predator-prey, policy-channels: identical
+ *
+ *  The pattern is the argument. The pad is inert on every sparse model and
+ *  fires only on the CROWDED ones — where what it quiets are labels with zero
+ *  shared area. That is precisely backwards: a dense diagram is where each
+ *  legible label is worth most, and the pad was spending them to buy air the
+ *  text box already contained. */
+export function crowdedLabelIds(boxes: LabelBox[]): Set<number> {
   const out = new Set<number>();
   for (let i = 0; i < boxes.length; i++) {
     for (let j = i + 1; j < boxes.length; j++) {
       const p = boxes[i];
       const q = boxes[j];
       const apart =
-        p.x + p.w + pad <= q.x ||
-        q.x + q.w + pad <= p.x ||
-        p.y + p.h + pad <= q.y ||
-        q.y + q.h + pad <= p.y;
+        p.x + p.w <= q.x || q.x + q.w <= p.x || p.y + p.h <= q.y || q.y + q.h <= p.y;
       if (!apart) {
         if (!p.fixed) out.add(p.id);
         if (!q.fixed) out.add(q.id);
