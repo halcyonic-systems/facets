@@ -105,12 +105,32 @@ export function RunPanel({
       )}
       {metrics && metrics.readings.length === 0 && metrics.failures.length === 0 && (
         // The capacity, surfaced (#203): a model with no declared metrics is
-        // told — quietly — that it can ask its own questions of a run.
+        // told — quietly — that it can ask its own questions of a run. The
+        // examples are built from THIS model's own names (a hint that showed
+        // llm-market's vocabulary on every model taught the wrong lesson:
+        // that the words were magic rather than the author's).
         <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
           No declared metrics — name the readouts you want to watch, in the
-          model's own words:{" "}
-          <code className="font-mono">metric "Opus tokens served" : sum into Opus</code> ·{" "}
-          <code className="font-mono">metric "DeepSeek dev share" : share of flow Clearing -&gt; DeepSeek</code>
+          model&rsquo;s own words:{" "}
+          <code className="font-mono">
+            metric &quot;delivered&quot; : sum into{" "}
+            {model?.things.find((t) => t.role === "Environment" && t.env_kind === "Sink")?.name ??
+              "<a sink>"}
+          </code>
+          {(() => {
+            const f = model?.relations.find((r) => r.name);
+            const from = f && model?.things.find((t) => t.id === f.a)?.name;
+            const to = f && model?.things.find((t) => t.id === f.b)?.name;
+            return from && to ? (
+              <>
+                {" "}
+                ·{" "}
+                <code className="font-mono">
+                  metric &quot;share&quot; : share of flow {from} -&gt; {to}
+                </code>
+              </>
+            ) : null;
+          })()}
         </p>
       )}
       <Card title="Result" source="bert-compose · wasm">
@@ -124,9 +144,10 @@ export function RunPanel({
                 {Math.round(lead.pct ?? 0)}% off the data
               </div>
               <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-                {lead.c.element} · validated against {lead.c.actual.length} observations
+                the run&rsquo;s largest gap from your data: {lead.c.element} ·{" "}
+                {lead.c.actual.length} observation{lead.c.actual.length === 1 ? "" : "s"}
                 {forecastTicks > 0 &&
-                  ` · projecting ${forecastTicks} ticks beyond the data`}
+                  ` · the remaining ${forecastTicks} ticks run past the data`}
               </p>
             </>
           ) : (
@@ -139,7 +160,7 @@ export function RunPanel({
           {/* Which model ran (ADR run-seam-canvas-document) — the kernel hash
               already knows; this is the plain-word version for the reader. */}
           <Pill tone={ranEdited ? "warning" : "neutral"}>
-            {ranEdited ? "your edited model" : "shipped calibration"}
+            {ranEdited ? "ran your edited model" : "ran the shipped calibration"}
           </Pill>
           <Pill tone={result.conserved ? "ok" : "error"}>
             {result.conserved ? WORDING.conservedPill : WORDING.leakPill}
