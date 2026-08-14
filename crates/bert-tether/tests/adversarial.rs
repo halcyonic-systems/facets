@@ -12,7 +12,7 @@ use bert_tether::forcing::{component_targets, flow_targets, force_and_run, mappi
 use bert_tether::manifest::{ColumnMapping, Role, RunManifest};
 use bert_tether::tether::{parse_csv, MappingDraft};
 
-const RESERVOIR: &str = include_str!("../../../assets/models/demos/reservoir.json");
+const RESERVOIR: &str = include_str!("../../../assets/archive/demos/reservoir-model.json");
 
 fn reservoir() -> bert_core::WorldModel {
     serde_json::from_str(RESERVOIR).expect("reservoir asset parses")

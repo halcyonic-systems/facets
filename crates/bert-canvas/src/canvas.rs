@@ -1626,7 +1626,7 @@ mod tests {
     #[test]
     fn to_canvas_loads_a_demo_faithfully() {
         // The reservoir demo: Watershed(Source) → Reservoir(Buffering) → Release(Sink).
-        let json = include_str!("../../../assets/models/demos/reservoir.json");
+        let json = include_str!("../../../assets/archive/demos/reservoir-model.json");
         let model: WorldModel = serde_json::from_str(json).unwrap();
         let cm = to_canvas(&model);
 

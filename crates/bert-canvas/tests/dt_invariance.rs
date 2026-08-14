@@ -82,7 +82,7 @@ fn a_fixed_horizon_is_invariant_under_dt_refinement() {
 
     for demo in ["reservoir", "homeostat", "allocation"] {
         let path = format!(
-            "{}/../../assets/models/demos/{demo}.json",
+            "{}/../../assets/archive/demos/{demo}-model.json",
             env!("CARGO_MANIFEST_DIR")
         );
         let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"));
@@ -137,7 +137,7 @@ fn a_fixed_horizon_is_invariant_under_dt_refinement() {
 #[test]
 fn refinement_converges_on_the_feedback_path() {
     let path = format!(
-        "{}/../../assets/models/demos/homeostat.json",
+        "{}/../../assets/archive/demos/homeostat-model.json",
         env!("CARGO_MANIFEST_DIR")
     );
     let text = std::fs::read_to_string(&path).expect("homeostat demo");

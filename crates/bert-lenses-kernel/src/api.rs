@@ -822,7 +822,7 @@ mod tests {
 
     #[test]
     fn targets_fixture() {
-        let json = include_str!("../../../assets/models/demos/reservoir.json");
+        let json = include_str!("../../../assets/archive/demos/reservoir-model.json");
         let model: WorldModel = serde_json::from_str(json).expect("reservoir parses");
         let flows: Vec<FlowTarget> = bert_tether::forcing::flow_targets(&model)
             .into_iter()
@@ -838,7 +838,7 @@ mod tests {
 
     #[test]
     fn mapping_status_fixture() {
-        let json = include_str!("../../../assets/models/demos/reservoir.json");
+        let json = include_str!("../../../assets/archive/demos/reservoir-model.json");
         let model: WorldModel = serde_json::from_str(json).expect("reservoir parses");
         let status =
             bert_tether::forcing::mapping_status(&model, RESERVOIR_CSV, &reservoir_manifest())
@@ -858,7 +858,7 @@ mod tests {
 
     #[test]
     fn run_result_rich_fixture() {
-        let json = include_str!("../../../assets/models/demos/reservoir.json");
+        let json = include_str!("../../../assets/archive/demos/reservoir-model.json");
         let model: WorldModel = serde_json::from_str(json).expect("reservoir parses");
         let readout = bert_tether::forcing::force_and_run(
             model,

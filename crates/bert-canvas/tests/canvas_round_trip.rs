@@ -53,7 +53,7 @@ fn canvas_round_trip_preserves_the_run() {
 
     for demo in ["reservoir", "homeostat", "allocation"] {
         let path = format!(
-            "{}/../../assets/models/demos/{demo}.json",
+            "{}/../../assets/archive/demos/{demo}-model.json",
             env!("CARGO_MANIFEST_DIR")
         );
         let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"));

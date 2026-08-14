@@ -224,12 +224,21 @@ fn emit_cross_lens_matrix() {
     println!("\nSET\tENTRY\tPINNED\tKLIR\tBUNGE\tMOBUS\tBLIND(k/b/m)\tTHIRD_OUTCOME\tREASONS");
 
     // The demos first, because they were the models this report used to skip.
-    // The matrix read `.sl` and the demos are JSON, so the only three models with
-    // dynamics were the only three never cross-checked — which is how two Bunge
-    // aggregate verdicts on the flagships stayed invisible (#216). Exemptions are
-    // where embarrassment hides.
-    for demo in ["reservoir", "homeostat", "allocation"] {
-        let path = assets("models/demos").join(format!("{demo}.json"));
+    // The matrix read `.sl` and the demos are JSON, so the models with dynamics
+    // were the ones never cross-checked — which is how two Bunge aggregate
+    // verdicts on the flagships stayed invisible (#216). Exemptions are where
+    // embarrassment hides. The set is read from disk, not hard-coded, so a
+    // JSON-only demo shipping later re-enters the matrix without anyone
+    // remembering to add it; the three pre-SL demos left for the archive in
+    // the August 2026 curation and left this loop with them.
+    let mut demo_models: Vec<_> = fs::read_dir(assets("models/demos"))
+        .expect("assets/models/demos exists")
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.extension().is_some_and(|x| x == "json"))
+        .collect();
+    demo_models.sort();
+    for path in demo_models {
+        let demo = path.file_stem().unwrap_or_default().to_string_lossy().into_owned();
         let Ok(text) = fs::read_to_string(&path) else {
             println!("demo\t{demo}\tREAD-FAIL\t-\t-\t-\t{}", path.display());
             continue;

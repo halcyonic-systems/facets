@@ -76,21 +76,18 @@ describe("the shipped library", () => {
   });
 
   // The consolidation is load-bearing, so it is asserted rather than assumed:
-  // the gallery shows the keep set plus the three pre-SL JSON demos, and
-  // nothing that was archived out of it. `Allocation`, `Homeostat` and
-  // `Reservoir` have no `.sl` — they predate the language and cannot be ported
-  // (see docs/authoring-models.md, "The three pre-SL demos"), so they list here
-  // as run bundles rather than as example sources.
-  it("ships the keep set and the pre-SL demos, and nothing that was archived", () => {
+  // the gallery shows the keep set and nothing that was archived out of it.
+  // The three pre-SL demos (`Allocation`, `Homeostat`, `Reservoir`) retired to
+  // assets/archive/demos/ in the August 2026 curation — they predate the
+  // language and cannot be ported (see docs/authoring-models.md, "The three
+  // pre-SL demos"), and their run-bundle gates now hold them in the archive.
+  it("ships the keep set, and nothing that was archived", () => {
     expect(EXAMPLES.map((e) => e.title).sort()).toEqual([
-      "Allocation",
       "Bitcoin",
       "Federal Reserve",
-      "Homeostat",
       "Jungian Cognitive Function Stack",
       "LLM Market",
       "Predator-Prey Ecosystem",
-      "Reservoir",
       "Ribosome",
       "U.S. Federal Economic Policy",
       "hal",

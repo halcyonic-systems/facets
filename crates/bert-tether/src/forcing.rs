@@ -808,11 +808,14 @@ mod tests {
         assert_eq!(cmp.unit, "units/mo");
     }
 
-    // Law: conservation and domain-name legibility hold for every bundled
-    // demo, not just one hand-picked model.
-    // Each bundled demo (model + CSV + mapping) must run forced, conserve, and
-    // read back domain-named — proving the exact element-name match (incl. the
-    // "→" char) and the whole one-click path.
+    // Law: conservation and domain-name legibility hold for every hand-authored
+    // run bundle, not just one hand-picked model.
+    // Each bundle (model + CSV + mapping) must run forced, conserve, and read
+    // back domain-named — proving the exact element-name match (incl. the "→"
+    // char) and the whole one-click path. The three instances retired to
+    // assets/archive/demos/ in the August 2026 curation; they stay HELD here
+    // because they are the only hand-authored bundles (llm-market's is minted
+    // from SL and pinned by sl_demos.rs), so this law has no shipped instance.
     #[test]
     fn every_bundled_demo_runs_forced_and_conserves() {
         #[derive(serde::Deserialize)]
@@ -824,16 +827,16 @@ mod tests {
         }
         let demos = [
             (
-                include_str!("../../../assets/demos/reservoir.json"),
-                include_str!("../../../assets/models/demos/reservoir.json"),
+                include_str!("../../../assets/archive/demos/reservoir.json"),
+                include_str!("../../../assets/archive/demos/reservoir-model.json"),
             ),
             (
-                include_str!("../../../assets/demos/allocation.json"),
-                include_str!("../../../assets/models/demos/allocation.json"),
+                include_str!("../../../assets/archive/demos/allocation.json"),
+                include_str!("../../../assets/archive/demos/allocation-model.json"),
             ),
             (
-                include_str!("../../../assets/demos/homeostat.json"),
-                include_str!("../../../assets/models/demos/homeostat.json"),
+                include_str!("../../../assets/archive/demos/homeostat.json"),
+                include_str!("../../../assets/archive/demos/homeostat-model.json"),
             ),
         ];
         for (bundle_json, model_json) in demos {

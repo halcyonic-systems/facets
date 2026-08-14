@@ -70,7 +70,7 @@ The clearest way to see gate 3 is the pair the archive keeps deliberately:
 because `Furnace → Sensor → Thermostat → Furnace` is a loop of pure relays. The
 repair is not a parameter — it is a **missing thing**. The room is the regulated
 variable and it is not in the model, so the loop has nowhere to remember.
-`assets/demos/homeostat.json` is the same system with the room present as a
+`assets/archive/demos/homeostat.json` is the same system with the room present as a
 `Buffering` component between the valve and the thermostat, and it runs and
 converges. If a loop refuses, the first question is not "which stock do I add"
 but **"what is the regulated variable, and did I forget to draw it?"**
@@ -186,9 +186,10 @@ new verb for the language, not a formula — see ADR 0006 for the growth rule.
 
 ## The three pre-SL demos, and why they cannot be ported
 
-`allocation`, `homeostat` and `reservoir` (`assets/demos/` + their models in
-`assets/models/demos/`) predate System Language. They are bundled JSON with no
-`.sl` source, and the #318 pass asked whether to port them. The answer for two
+`allocation`, `homeostat` and `reservoir` (now in `assets/archive/demos/`,
+retired from the gallery in the August 2026 curation) predate System Language.
+They are bundled JSON with no `.sl` source, and the #318 pass asked whether to
+port them. The answer for two
 of them is that **the language cannot say what they say**, and that is worth
 knowing before anyone tries again:
 
@@ -204,9 +205,9 @@ path, because SL has no production for either until
 [#112](https://github.com/halcyonic-systems/bert-lenses/issues/112) chooses the
 transition functor. `language/spec.md` §8.2 already names the exporter's
 direct-to-JSON write as a **defect rather than a second authoring path**, and
-these three demos are the artifacts that cross it. So they stay as they are:
-they are the live evidence that #112 is open, and deleting them would delete
-both the evidence and three working demos while gaining nothing.
+these three demos are the artifacts that cross it. So they stay in the archive,
+held by their gates: they are the live evidence that #112 is open, and deleting
+them would delete the evidence while gaining nothing.
 
 The two things to take from them into SL when #112 lands: a nonzero opening
 stock, and a stock's release rate.
