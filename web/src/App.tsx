@@ -6,7 +6,7 @@ import {
   openModel,
   writeArchive,
   project,
-  parseCsv,
+
   analyzeCanvas,
   checkDecompositionsCanvas,
   decomposeComponent,
@@ -1252,15 +1252,6 @@ function Workspace() {
   // and the kernel would refuse it with a wall of unbound-flow reasons.
   const runCsv = demo?.csv ?? (attachedCsv && manifest.mapping.length > 0 ? attachedCsv : null);
 
-  const csvHeaders = useMemo(() => {
-    if (!activeCsv) return [];
-    try {
-      return parseCsv(activeCsv).headers;
-    } catch {
-      return [];
-    }
-  }, [activeCsv]);
-
   // Which flows are currently driven — a structural fact read off the manifest,
   // independent of whether a run has happened yet.
   const drivenNames = useMemo(
@@ -1329,17 +1320,6 @@ function Workspace() {
     // Klir drops it so its scrubber/readout never lingers under another lens.
     if (lens !== "Klir") setMarkovRun(null);
     setCanvasModel((m) => (m ? { ...m, lens } : m));
-  }
-
-  function applyDrive(next: Manifest) {
-    setManifest(next);
-    setSelectedRelationId(null);
-    // Judge against NEXT's mapping, not state — this call is the bind.
-    const csv = demo?.csv ?? (attachedCsv && next.mapping.length > 0 ? attachedCsv : null);
-    if (csv) {
-      const m = modelForRun();
-      if (m) runWith(m.json, csv, next, dt, t, m.edited);
-    }
   }
 
   // An inputs-panel edit (walkthrough #11): update the relation and RE-RUN
@@ -2493,7 +2473,6 @@ function Workspace() {
                         relation={selectedRelation}
                         lens={canvasModel.lens}
                         sigIndex={canvasModel.relations.findIndex((r) => r.id === selectedRelation.id)}
-                        headers={csvHeaders}
                         manifest={manifest}
                         anchor={toScreen(popoverAnchor)}
                         fact={facts?.edges.find((e) => e.id === selectedRelation.id)}
@@ -2506,7 +2485,8 @@ function Workspace() {
                             );
                           })
                           ?.name}
-                        onApplyManifest={applyDrive}
+                        fromName={canvasModel.things.find((t) => t.id === selectedRelation.a)?.name}
+                        toName={canvasModel.things.find((t) => t.id === selectedRelation.b)?.name}
                         onUpdateRelation={updateRelation}
                         onDelete={() => deleteRelation(selectedRelation.id)}
                         onClose={() => setSelectedRelationId(null)}

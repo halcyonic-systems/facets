@@ -2,11 +2,14 @@
 // each lens offering ITS author's operations and no other's:
 //   Klir:  toggle neutral ⇄ directed (the observer's act), read the signature.
 //   Bunge: set connection-kind, toggle bond ⇄ mere relation, reverse direction.
-//   Mobus: set substance type + drive with data (the tether).
+//   Mobus: name, endpoints, substance, description — ONE job (#336). Driving
+//          a flow with data is Data/Run-mode business; structure mode shows at
+//          most a one-sentence residue when a binding or declared amount
+//          already exists, and never the form.
 // Every edit flows through onModelChange → App re-runs validate_mode +
 // lens_facts in Rust; the popover itself decides nothing about systemhood.
 import { useEffect, useRef, useState } from "react";
-import type { ColumnMapping, EdgeFact, Kind, Lens, Manifest, Relation } from "../kernel/types";
+import type { EdgeFact, Kind, Lens, Manifest, Relation } from "../kernel/types";
 import { channelCopy } from "./lenses/bunge";
 import type { Pt } from "./geometry";
 import { DescriptionField, InspectorRow as Row, InspectorTitle as Title, Popover, ToolButton as SmallButton } from "../ui";
@@ -16,7 +19,6 @@ import {
   bungeFormalism,
   klirFormalism,
   kindToSubstance,
-  mobusFormalism,
   substanceToKind,
   type Substance,
 } from "./lenses/glossary";
@@ -27,12 +29,12 @@ export function EdgePopover({
   relation,
   lens,
   sigIndex,
-  headers,
   manifest,
   anchor,
   fact,
   paramName,
-  onApplyManifest,
+  fromName,
+  toName,
   onUpdateRelation,
   onDelete,
   onClose,
@@ -40,7 +42,6 @@ export function EdgePopover({
   relation: Relation;
   lens: Lens;
   sigIndex: number;
-  headers: string[];
   manifest: Manifest;
   anchor: Pt;
   /** The kernel's edge-ladder reading — Bunge shows its coupling channel (F6). */
@@ -48,7 +49,10 @@ export function EdgePopover({
   /** The declared parameter naming this flow's amount, when one does (#13) —
    *  resolved at the call site from `model.params`, shown for provenance. */
   paramName?: string;
-  onApplyManifest: (m: Manifest) => void;
+  /** The endpoints' names, resolved at the call site — the flow's identity
+   *  said in plain words ("from Vault → to Dealers", #336). */
+  fromName?: string;
+  toName?: string;
   onUpdateRelation: (r: Relation) => void;
   onDelete: () => void;
   onClose: () => void;
@@ -67,10 +71,10 @@ export function EdgePopover({
       {lens === "Mobus" && (
         <MobusBody
           relation={relation}
-          headers={headers}
           manifest={manifest}
           paramName={paramName}
-          onApplyManifest={onApplyManifest}
+          fromName={fromName}
+          toName={toName}
           onUpdate={onUpdateRelation}
           onClose={onClose}
         />
@@ -274,41 +278,59 @@ export function BungeBody({
   );
 }
 
-// ---- Mobus: substance-typed flow + drive it with data (the tether) ----
+// ---- Mobus: one job — name, endpoints, substance, description (#336) ----
+//
+// What is deliberately NOT here, and where it went:
+//   - the formalism strip → the formal face (FormalPanel's Mobus card). It was
+//     the same static line for every flow — model-level pedagogy, not per-flow
+//     content — so it is stated once where reading lives.
+//   - drive-with-data → DataMode IS the mapping surface (#304 M2, fork 2);
+//     a second bind path here had different behavior and competed with delete
+//     for the popover's bottom edge.
+//   - the "declared: unauthored" row → an internal word pair with no verb. A
+//     declared amount or a live binding shows below as one plain sentence,
+//     only when true; nothing is said about a flow nobody has quantified.
 
-function MobusBody({
+// Exported for its test (#336): the popover shell portals into document.body,
+// which the DOM-free suite cannot render — the body's contract is what the
+// gate pins, so the body is what it renders.
+export function MobusBody({
   relation,
-  headers,
   manifest,
   paramName,
-  onApplyManifest,
+  fromName,
+  toName,
   onUpdate,
   onClose,
 }: {
   relation: Relation;
-  headers: string[];
   manifest: Manifest;
   paramName?: string;
-  onApplyManifest: (m: Manifest) => void;
+  fromName?: string;
+  toName?: string;
   onUpdate: (r: Relation) => void;
   onClose: () => void;
 }) {
-  const current = manifest.mapping.find((m) => m.as === "flow" && m.element === relation.name);
-  const [column, setColumn] = useState(current?.column ?? "");
-  const [unit, setUnit] = useState(current?.unit ?? "");
-
-  function drive() {
-    if (!column) return;
-    // The time column must stay mapped — only this relation's flow entry moves.
-    const rest = manifest.mapping.filter((m) => !(m.as === "flow" && m.element === relation.name));
-    const entry: ColumnMapping = { column, as: "flow", element: relation.name, unit, force: true };
-    onApplyManifest({ ...manifest, mapping: [...rest, entry] });
-  }
+  const driven = manifest.mapping.find((m) => m.as === "flow" && m.element === relation.name);
+  // The one-sentence Run residue (#336): the first true statement wins, and an
+  // unquantified, unbound flow says nothing at all.
+  const residue = driven
+    ? `driven by “${driven.column}” — adjust in Data`
+    : relation.ample
+      ? "ample — never binding"
+      : relation.amount
+        ? `amount ${relation.amount}${relation.unit ? ` ${relation.unit}` : ""}${
+            paramName ? ` (“${paramName}”)` : ""
+          } — adjust in Run · Inputs`
+        : null;
 
   return (
     <>
-      <Title>flow &ldquo;{relation.name || "unnamed"}&rdquo;</Title>
-      <FormalismLine parts={mobusFormalism()} />
+      {fromName && toName && (
+        <p className="mb-2 text-[11px]" style={{ color: "var(--text-secondary)" }}>
+          from {fromName} → to {toName}
+        </p>
+      )}
       <FlowDescriptionField relation={relation} onUpdateRelation={onUpdate} />
       <Row>
         {/* Mobus's substances are material · energy · message (concordance row 6);
@@ -336,70 +358,12 @@ function MobusBody({
           ))}
         </select>
       </Row>
-      {/* The declared quantity, for provenance (#13): the number the model
-          asserts, readable where the flow is clicked. Read-only here — the
-          editing surface with the re-run loop is RUN · Inputs, and one value
-          should not have two edit paths with different behaviors. */}
-      <Row>
-        <span style={{ color: "var(--text-secondary)" }} title="the model's declared amount — adjust it in RUN · Inputs">
-          declared
-        </span>
-        <span
-          className={relation.ample ? "text-xs italic" : "font-mono text-xs"}
-          style={{ color: relation.amount || relation.ample ? "var(--text-primary)" : "var(--text-muted)" }}
-        >
-          {relation.ample
-            ? "ample — never binding"
-            : relation.amount
-              ? `${relation.amount}${relation.unit ? ` ${relation.unit}` : ""}`
-              : "unauthored"}
-        </span>
-      </Row>
-      {paramName && (
-        <p className="mb-2 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
-          named &ldquo;{paramName}&rdquo; in the inputs panel
+      {residue && (
+        <p className="mb-1 text-[11px] leading-snug" style={{ color: "var(--text-muted)" }}>
+          {residue}
         </p>
       )}
-      <div className="mb-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
-        drive with data
-      </div>
-      <select
-        value={column}
-        onChange={(e) => setColumn(e.target.value)}
-        className="mb-2 w-full rounded-md px-2 py-1 text-sm"
-        style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
-      >
-        <option value="">choose column…</option>
-        {headers.map((h) => (
-          <option key={h} value={h}>
-            {h}
-          </option>
-        ))}
-      </select>
-      <input
-        value={unit}
-        onChange={(e) => setUnit(e.target.value)}
-        placeholder="unit"
-        className="mb-3 w-full rounded-md px-2 py-1 text-sm"
-        style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
-      />
-      <div className="flex justify-end gap-2">
-        <button onClick={onClose} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--text-muted)" }}>
-          cancel
-        </button>
-        <button
-          onClick={drive}
-          disabled={!column}
-          className="rounded-full px-3 py-1 text-xs font-semibold"
-          style={{
-            background: column ? "var(--accent)" : "var(--bg-surface)",
-            color: column ? "var(--text-on-accent)" : "var(--text-muted)",
-            cursor: column ? "pointer" : "not-allowed",
-          }}
-        >
-          drive it
-        </button>
-      </div>
+      <CloseRow onClose={onClose} />
     </>
   );
 }

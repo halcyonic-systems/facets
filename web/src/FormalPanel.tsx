@@ -129,6 +129,13 @@ function MobusFace({ d }: { d: Extract<LensDescription, { lens: "Mobus" }> }) {
       <Line label={<Tex tex="G" />}>
         {d.g} external flow{d.g === 1 ? "" : "s"} — bipartite: environment object ↔ interface
       </Line>
+      {/* The flow reading, stated once (#336): this line lived as a formalism
+          strip in every flow popover, identical for every flow — model-level
+          pedagogy, so it belongs on the formal face rather than at each click. */}
+      <Line label={<Tex tex="k \to o" />}>
+        each flow carries one substance (material · energy · message) from its source k to its sink o — direction
+        inherent, never the observer&rsquo;s
+      </Line>
       <Line label={<Tex tex="B = \langle P, I \rangle" />}>
         I = {names(d.b_interfaces)}
         {BOUNDARY_PROPS_AUTHORING && (

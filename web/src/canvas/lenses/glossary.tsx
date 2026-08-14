@@ -93,39 +93,6 @@ const BUNGE: Record<string, SymbolEntry> = {
   },
 };
 
-// ---- Mobus: substance-typed flows in N and G (rows 4, 6, 7) ----
-
-const MOBUS: Record<string, SymbolEntry> = {
-  N: {
-    token: "N",
-    title: "the internal network",
-    gloss:
-      "N is the internal flow network: real substances moving from one component to the next with causal influence.",
-    source: "concordance row 4",
-  },
-  G: {
-    token: "G",
-    title: "the boundary flows",
-    gloss:
-      "G is the bipartite graph of boundary flows. Each crossing runs from an environment object to an interface, never straight to an interior component.",
-    source: "concordance row 4",
-  },
-  substance: {
-    token: "substance",
-    title: "substance",
-    gloss:
-      "Every flow carries one substance: material, energy, or message. A process turns low-quality substance into a high-quality version of the same kind; messages copy rather than conserve.",
-    source: "concordance row 6",
-  },
-  direction: {
-    token: "k → o",
-    title: "flow direction",
-    gloss:
-      "A flow runs from its source k to its sink o. The direction is inherent to the flow, not added by an observer.",
-    source: "concordance row 7",
-  },
-};
-
 /** A formalism is an ordered mix of plain text and clickable symbol entries. */
 export type FormalismPart = string | SymbolEntry;
 
@@ -148,10 +115,8 @@ export function bungeFormalism(relation: Relation): FormalismPart[] {
   return [link, "  a ", BUNGE.acts, " b  ·  ", BUNGE.kind];
 }
 
-/** Mobus: a substance-typed flow, internal (N) or across the boundary (G). */
-export function mobusFormalism(): FormalismPart[] {
-  return [MOBUS.substance, " flow  ·  ", MOBUS.N, " | ", MOBUS.G, "  ·  ", MOBUS.direction];
-}
+// (mobusFormalism lived here until #336: it took no arguments — the same static
+// strip for every flow — so its content moved to the formal face, stated once.)
 
 /** The picker offers Mobus's three substances; the model still stores a Kind, so
  *  this mirrors Rust kind_to_substance (crates/bert-canvas/src/canvas.rs:64-68)
