@@ -6,7 +6,7 @@
 // energy glowing, message thin/dashed — Message is a peer substance, copyable,
 // not conserved). Exo flows render as two segments because G is bipartite
 // (Tuple.lean): the crossing is env-object ↔ port, never straight to interior.
-import type { PortFact, Relation } from "../../kernel/types";
+import type { EdgeFact, PortFact, Relation } from "../../kernel/types";
 import { KIND_COLOR } from "../types";
 import { edgeGeometry, INTERFACE_SCALE, portHalfWidth, rimPoint, ringPoint, siblingStep, straightPath, thingById, NODE_R, type Pt } from "../geometry";
 import { STYLE, elideEdgeLabel } from "../style";
@@ -55,7 +55,7 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
   );
 }
 
-function edgeStyle(relation: Relation): EdgeStyle {
+function edgeStyle(relation: Relation, fact?: EdgeFact): EdgeStyle {
   // BONDHOOD (#320), stated at its strongest here. Under Mobus N IS the flow
   // set, a bond is a flow, and a flow is transport — so an arrowhead means a
   // bond with NO exception, and a `mere` relation gets none. It also loses its
@@ -75,7 +75,10 @@ function edgeStyle(relation: Relation): EdgeStyle {
       markerStart: "coupling",
     };
   }
-  const marker = `arrow-${relation.kind}`;
+  // #C phase 2: a crossing gets the amplified head. `locus` is the KERNEL's
+  // reading (Exo = one endpoint in the environment), not a guess from role, so
+  // the heavier mark tracks the boundary the kernel drew and nothing else.
+  const marker = `arrow-${relation.kind}${fact?.locus === "Exo" ? "-exo" : ""}`;
   switch (relation.kind) {
     case "Matter":
       return { color: KIND_COLOR[relation.kind], width: STYLE.edge.matter, opacity: 0.9, marker };
@@ -98,7 +101,7 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
   const geo = edgeGeometry(model, relation, true);
   if (!geo) return null;
   let { d, labelAt } = geo;
-  const style = edgeStyle(relation);
+  const style = edgeStyle(relation, fact);
 
   // Exo flows render as TWO segments — G is bipartite (Tuple.lean): the crossing
   // happens env-object ↔ port, never straight to an interior component. The

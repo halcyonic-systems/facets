@@ -35,6 +35,12 @@ import { MassOverlay } from "./MassOverlay";
  *  `setCrowded` is what actually keeps the measure/render pass from looping. */
 const EMPTY_CROWD: ReadonlySet<number> = new Set<number>();
 
+/** How much larger a boundary-crossing flow's arrowhead is drawn than an
+ *  interior one. The head is the per-flow direction mark, and at the shipped
+ *  register it renders 3-4 screen px on a fitted model — correct and
+ *  unreadable, the same failure the port chevron had. */
+const EXO_ARROW_GAIN = 2;
+
 interface Props {
   model: CanvasModel;
   lens: Lens;
@@ -434,6 +440,30 @@ export default function Canvas({
             refY="5"
             markerWidth={STYLE.arrowSize}
             markerHeight={STYLE.arrowSize}
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
+          </marker>
+        ))}
+        {/* #C phase 2: a boundary CROSSING carries a heavier head.
+            Direction is a per-FLOW question and the port cannot answer it — on
+            federal-reserve.sl four of five ports are `hybrid`, carrying inbound
+            and outbound at once, so their glyph says "both" however large it is
+            drawn. The head is the only mark that belongs to one flow.
+            It needed the gain because `markerUnits` defaults to strokeWidth: at
+            arrowSize 5 a matter head is 7.5 world units and an informational
+            one 5, which at a fitted 0.54 render as ~4 and ~2.7 SCREEN px.
+            Endo edges keep the plain head — inside the boundary there is no
+            in/out to read, so amplifying there would be decoration. */}
+        {Object.entries(KIND_COLOR).map(([k, color]) => (
+          <marker
+            key={`${k}-exo`}
+            id={`arrow-${k}-exo`}
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth={STYLE.arrowSize * EXO_ARROW_GAIN}
+            markerHeight={STYLE.arrowSize * EXO_ARROW_GAIN}
             orient="auto-start-reverse"
           >
             <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
