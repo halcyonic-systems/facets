@@ -61,6 +61,9 @@ export interface LensPortProps {
   onSelect?: () => void;
   /** #306: notch riding an on-membrane interface component's rim — smaller, unlabelled. */
   compact?: boolean;
+  /** Stage scale — the capsule holds a screen-size floor so its direction
+   *  chevron stays readable at a fitted zoom. Presentation only. */
+  scale?: number;
 }
 
 export interface LensViews {

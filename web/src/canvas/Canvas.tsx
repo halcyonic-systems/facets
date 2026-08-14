@@ -672,6 +672,7 @@ export default function Canvas({
             at={at}
             angle={angle}
             compact={compact}
+            scale={scale}
             onSelect={onSelectInterface ? () => onSelectInterface(port, at) : undefined}
           />
         ))}
@@ -713,6 +714,7 @@ export default function Canvas({
               at={at}
               angle={angle}
               compact={compact}
+              scale={scale}
               onSelect={onSelectThing ? () => onSelectThing(port.component) : undefined}
             />
           </g>

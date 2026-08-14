@@ -195,12 +195,16 @@ export function connectionTargetAt(
   portTargets: PortTarget[],
   p: Pt,
   exclude?: number,
+  /** Stage scale — the port capsule holds a screen-size floor, so its hit
+   *  target has to grow with it or the visible capsule stops being clickable
+   *  exactly where it is largest (zoomed out). */
+  scale = 1,
 ): Thing | undefined {
   for (const t of model.things) {
     if (t.id === exclude) continue;
     if (Math.hypot(t.x - p.x, t.y - p.y) <= NODE_R) return t;
   }
-  const owner = portOwnerAt(portTargets, p);
+  const owner = portOwnerAt(portTargets, p, scale);
   if (owner !== null && owner !== exclude) return thingById(model, owner);
   return undefined;
 }
@@ -326,7 +330,7 @@ export function useCanvasGestures({
   }
 
   function hitTest(p: Pt, exclude?: number): Thing | undefined {
-    return connectionTargetAt(model, portTargets, p, exclude);
+    return connectionTargetAt(model, portTargets, p, exclude, state.scale);
   }
 
   function onNodePointerDown(e: ReactPointerEvent, thing: Thing) {

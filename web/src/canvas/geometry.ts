@@ -13,9 +13,48 @@ export interface Pt {
   y: number;
 }
 
-/** Hit radius for an interface port. The capsule is 24×14 about its center, so
- *  a disc a little wider than its long half-axis. */
-export const PORT_HIT_R = 16;
+/** Half-width of the port capsule along the membrane normal, in WORLD px, and
+ *  the floor it will not render below on SCREEN.
+ *
+ *  The capsule carries the direction glyph — a chevron whose shape is the
+ *  kernel's `PortFact.direction` (mobus.tsx `PortView`) — and at the Fed
+ *  model's own fit zoom that chevron measured 4.6–5.6 SCREEN px. The channel
+ *  was correct and simply too small to read.
+ *
+ *  The floor is why this takes `scale`. Text cannot be rescued this way — every
+ *  label lives inside the one `scale()` group and nothing counter-scales, which
+ *  is what made zoom-aware labels a dead end — but a GLYPH can, and the canvas
+ *  already does it for the 18-screen-px edge hit paths via
+ *  `vectorEffect="non-scaling-stroke"`. This is the same idea with an explicit
+ *  number: proportionate when zoomed in (the base wins), legible when zoomed
+ *  out (the floor wins). Not full counter-scaling — a constant-screen-size
+ *  capsule would swell absurdly against the nodes at high zoom. */
+const PORT_HW_WORLD = 14;
+const PORT_MIN_SCREEN_HW = 13;
+
+/** Ceiling on the capsule, as a fraction of the node RADIUS in world px.
+ *  Without it the screen floor keeps inflating the capsule all the way down to
+ *  ZOOM_MIN (0.15), where 13 screen px of half-width is 87 world px — a notch
+ *  two and a half times wider than the whole component it sits on. The floor
+ *  buys legibility; this stops it eating the drawing to get it. */
+const PORT_HW_MAX_OF_NODE = 0.75;
+
+/** The capsule's half-width in world px at a given stage scale. Three regimes:
+ *  proportionate when zoomed in (the base wins), floored through the ordinary
+ *  fitted range so the direction chevron stays readable, and capped past about
+ *  0.5 so a far-out view does not turn every port into a blob. */
+export function portHalfWidth(scale = 1): number {
+  const floored = Math.max(PORT_HW_WORLD, PORT_MIN_SCREEN_HW / Math.max(scale, 0.05));
+  return Math.min(floored, NODE_R * PORT_HW_MAX_OF_NODE);
+}
+
+/** Hit radius for an interface port — derived from the DRAWN half-width so the
+ *  target cannot drift away from the capsule the reader is aiming at. The
+ *  capsule grows when zoomed out; a fixed radius would have left its visible
+ *  edge unclickable exactly where it is largest. */
+export function portHitRadius(scale = 1): number {
+  return portHalfWidth(scale) + 4;
+}
 
 /** A port's pixel position and the component it belongs to. `I ⊆ C`
  *  (`Tuple.lean:97` `interfaces_sub`): an interface is a component wearing a
@@ -28,11 +67,12 @@ export interface PortTarget {
 
 /** The component owning the port under `p`, or null. Nearest wins when two
  *  ports overlap on a crowded membrane. */
-export function portOwnerAt(targets: PortTarget[], p: Pt): number | null {
+export function portOwnerAt(targets: PortTarget[], p: Pt, scale = 1): number | null {
+  const hitR = portHitRadius(scale);
   let best: { id: number; d: number } | null = null;
   for (const t of targets) {
     const d = Math.hypot(t.at.x - p.x, t.at.y - p.y);
-    if (d <= PORT_HIT_R && (!best || d < best.d)) best = { id: t.component, d };
+    if (d <= hitR && (!best || d < best.d)) best = { id: t.component, d };
   }
   return best ? best.id : null;
 }

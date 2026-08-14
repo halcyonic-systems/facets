@@ -11,7 +11,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { CanvasModel, LensFacts } from "../kernel/types";
 import Canvas from "./Canvas";
 import { connectionTargetAt } from "./useCanvasGestures";
-import { PORT_HIT_R, membraneRing, ringPoint, type PortTarget } from "./geometry";
+import { portHitRadius, membraneRing, ringPoint, type PortTarget } from "./geometry";
 
 const model: CanvasModel = {
   lens: "Mobus",
@@ -44,7 +44,7 @@ describe("port as a drop target (#213)", () => {
   });
 
   it("resolves anywhere inside the port's hit disc", () => {
-    const grazed = { x: portAt.x + PORT_HIT_R - 1, y: portAt.y };
+    const grazed = { x: portAt.x + portHitRadius() - 1, y: portAt.y };
     expect(connectionTargetAt(model, targets, grazed)?.id).toBe(1);
   });
 
@@ -55,8 +55,20 @@ describe("port as a drop target (#213)", () => {
   });
 
   it("misses outside the disc — the membrane is not one big target", () => {
-    const far = { x: portAt.x + PORT_HIT_R + 40, y: portAt.y + 60 };
+    const far = { x: portAt.x + portHitRadius() + 40, y: portAt.y + 60 };
     expect(connectionTargetAt(model, targets, far)).toBeUndefined();
+  });
+
+  it("grows the target with the capsule when zoomed out", () => {
+    // The capsule holds a screen-size floor, so at a fitted zoom it is WIDER in
+    // world px than at 1:1. A fixed hit radius would have left its visible edge
+    // unclickable exactly where the capsule is largest.
+    const zoomedOut = portHitRadius(0.4);
+    expect(zoomedOut).toBeGreaterThan(portHitRadius(1));
+    const atEdge = { x: portAt.x + zoomedOut - 1, y: portAt.y };
+    expect(connectionTargetAt(model, targets, atEdge, undefined, 0.4)?.id).toBe(1);
+    // …and that same point is NOT a hit at 1:1, where the capsule is smaller.
+    expect(connectionTargetAt(model, targets, atEdge, undefined, 1)).toBeUndefined();
   });
 
   it("a node under a port still wins the drop", () => {
