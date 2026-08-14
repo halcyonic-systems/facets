@@ -383,6 +383,11 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut stock_unit = String::new();
                 let mut initial_stock: Option<f64> = None;
                 let mut release: Option<f64> = None;
+                let mut capacity: Option<f64> = None;
+                let mut time_constant: Option<f64> = None;
+                let mut setpoint: Option<f64> = None;
+                let mut maintenance: Option<f64> = None;
+                let mut back_pressure = false;
                 let mut description = String::new();
                 let mut scale: Option<ScaleType> = None;
                 let mut states: Option<Vec<String>> = None;
@@ -588,6 +593,209 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             }
                             i += 2;
                         }
+                        // `capacity <n>` — a Buffering stock's overflow ceiling
+                        // (#112): the kernel's cognitive_params["capacity"],
+                        // read by the storage clamp (circuit.rs:1342-1343 — the
+                        // overflow is dissipated). Buffering-only, > 0.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("capacity") => {
+                            if role == Role::Environment {
+                                fail(
+                                    "`capacity` applies to components only \
+                                     (environment internals are opaque)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                            if capacity.is_some() {
+                                fail("`capacity` already given on this component".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Word(n))
+                                    if n.parse::<f64>().is_ok_and(|v| v.is_finite() && v > 0.0) =>
+                                {
+                                    capacity = Some(n.parse::<f64>().unwrap());
+                                }
+                                _ => {
+                                    fail(
+                                        "capacity syntax: `capacity <positive number>` \
+                                         — the stock's overflow ceiling \
+                                         (e.g. `capacity 10`)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        // `time constant <n>` — a Buffering stock's first-order
+                        // drain coefficient τ (#112): the kernel's
+                        // cognitive_params["time_constant"], read by the
+                        // first-order drain (circuit.rs:1211-1212). `constant`
+                        // sits behind the `time` clause head so it joins
+                        // POSITIONAL_KEYWORDS rather than RESERVED_WORDS — no
+                        // name slot can ever reach it (see the doctrine above
+                        // POSITIONAL_KEYWORDS). Buffering-only, > 0, and
+                        // MUTUALLY EXCLUSIVE with `release` on one component:
+                        // the engine silently prefers time_constant whenever
+                        // both are set (`base = if tc>0 {..} else
+                        // {release_rate}`), so a `release` beside it would be a
+                        // declaration the run never honors — refused after the
+                        // line completes, the same `amount`-rule discipline
+                        // `release` already follows against the wrong
+                        // primitive.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("time") => {
+                            if role == Role::Environment {
+                                fail(
+                                    "`time constant` applies to components only \
+                                     (environment internals are opaque)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                            if time_constant.is_some() {
+                                fail("`time constant` already given on this component".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Word(c)) if c.eq_ignore_ascii_case("constant") => {
+                                    match attrs.get(i + 2) {
+                                        Some(Tok::Word(n))
+                                            if n.parse::<f64>()
+                                                .is_ok_and(|v| v.is_finite() && v > 0.0) =>
+                                        {
+                                            time_constant = Some(n.parse::<f64>().unwrap());
+                                        }
+                                        _ => {
+                                            fail(
+                                                "time constant syntax: `time constant \
+                                                 <positive number>` — the stock's drain \
+                                                 time constant τ (e.g. `time constant 3`)"
+                                                    .into(),
+                                                &mut errors,
+                                            );
+                                            ok = false;
+                                        }
+                                    }
+                                    i += 3;
+                                }
+                                _ => {
+                                    fail(
+                                        "time constant syntax: `time constant \
+                                         <positive number>`"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                    i += 1;
+                                }
+                            }
+                        }
+                        // `setpoint <n>` — an Inverting comparator's reference
+                        // (#112): the kernel's cognitive_params["setpoint"],
+                        // read by the comparator (circuit.rs:1292,
+                        // `(node.setpoint - message).max(0.0)`). Inverting-only,
+                        // > 0 — the engine's own default is 1.0 (the bare
+                        // `1 − signal`), so a non-positive declared reference
+                        // could never be what the author meant.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("setpoint") => {
+                            if role == Role::Environment {
+                                fail(
+                                    "`setpoint` applies to components only \
+                                     (environment internals are opaque)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                            if setpoint.is_some() {
+                                fail("`setpoint` already given on this component".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Word(n))
+                                    if n.parse::<f64>().is_ok_and(|v| v.is_finite() && v > 0.0) =>
+                                {
+                                    setpoint = Some(n.parse::<f64>().unwrap());
+                                }
+                                _ => {
+                                    fail(
+                                        "setpoint syntax: `setpoint <positive number>` \
+                                         — the comparator's reference value \
+                                         (e.g. `setpoint 0.8`)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        // `maintenance <n>` — a Buffering stock's per-tick
+                        // upkeep loss (#112): the kernel's
+                        // cognitive_params["maintenance"], read as per-tick
+                        // upkeep (circuit.rs:1335-1336 — Odum depreciation,
+                        // Mobus Fig 3.17). Buffering-only, > 0.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("maintenance") => {
+                            if role == Role::Environment {
+                                fail(
+                                    "`maintenance` applies to components only \
+                                     (environment internals are opaque)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                            if maintenance.is_some() {
+                                fail("`maintenance` already given on this component".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Word(n))
+                                    if n.parse::<f64>().is_ok_and(|v| v.is_finite() && v > 0.0) =>
+                                {
+                                    maintenance = Some(n.parse::<f64>().unwrap());
+                                }
+                                _ => {
+                                    fail(
+                                        "maintenance syntax: `maintenance \
+                                         <positive number>` — upkeep loss \
+                                         charged from the stock each tick \
+                                         (e.g. `maintenance 0.2`)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        // `backpressure` — a Modulating valve's throttle flag
+                        // (#112): the kernel's
+                        // cognitive_params["back_pressure"], read as the
+                        // throttle bool (circuit.rs:1270). Bare — there is no
+                        // magnitude to decline, only the flag itself.
+                        // Modulating-only.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("backpressure") => {
+                            if role == Role::Environment {
+                                fail(
+                                    "`backpressure` applies to components only \
+                                     (environment internals are opaque)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                            if back_pressure {
+                                fail("`backpressure` already given on this component".into(), &mut errors);
+                                ok = false;
+                            }
+                            back_pressure = true;
+                            i += 1;
+                        }
                         // `scale <Nominal|Ordinal|Interval|Ratio>` — Klir's
                         // measurement scale for the source variable (#154). Rides
                         // env lines too (#154 revision): Table 4.1 most wants the
@@ -721,6 +929,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                     "unexpected `{}` after {keyword} name — fix: quote it if it \
                                      is part of the name, or remove it; after the name only \
                                      `primitive <Name>`, `interface`, `stock \"<unit>\"`, \
+                                     `release <n>`, `capacity <n>`, `time constant <n>`, \
+                                     `setpoint <n>`, `maintenance <n>`, `backpressure`, \
                                      `scale <Scale>`, `states {{…}}`, `kind <Basic|Support>` \
                                      and `decomposes …` may follow",
                                     other.display()
@@ -751,17 +961,104 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     ok = false;
                 }
+                // The remaining five typed engine parameters (#112 slice 2),
+                // each gated to the one primitive whose arm reads it —
+                // otherwise the clause would parse to a value nothing
+                // consumes, same rule as `release` above.
+                if capacity.is_some() && primitive != Some(ProcessPrimitive::Buffering) {
+                    fail(
+                        "`capacity` applies to a Buffering component only — it is the \
+                         stock's overflow ceiling, and no other primitive reads it"
+                            .into(),
+                        &mut errors,
+                    );
+                    ok = false;
+                }
+                if time_constant.is_some() && primitive != Some(ProcessPrimitive::Buffering) {
+                    fail(
+                        "`time constant` applies to a Buffering component only — it is \
+                         the stock's first-order drain coefficient, and no other \
+                         primitive reads it"
+                            .into(),
+                        &mut errors,
+                    );
+                    ok = false;
+                }
+                if maintenance.is_some() && primitive != Some(ProcessPrimitive::Buffering) {
+                    fail(
+                        "`maintenance` applies to a Buffering component only — it is \
+                         the stock's per-tick upkeep loss, and no other primitive \
+                         reads it"
+                            .into(),
+                        &mut errors,
+                    );
+                    ok = false;
+                }
+                if setpoint.is_some() && primitive != Some(ProcessPrimitive::Inverting) {
+                    fail(
+                        "`setpoint` applies to an Inverting component only — it is the \
+                         comparator's reference value, and no other primitive reads it"
+                            .into(),
+                        &mut errors,
+                    );
+                    ok = false;
+                }
+                if back_pressure && primitive != Some(ProcessPrimitive::Modulating) {
+                    fail(
+                        "`backpressure` applies to a Modulating component only — it is \
+                         the valve's throttle flag, and no other primitive reads it"
+                            .into(),
+                        &mut errors,
+                    );
+                    ok = false;
+                }
+                // `release` and `time constant` on one component is a
+                // declaration the run will not honor, not a declaration to
+                // silently pick a winner from: the engine's first-order drain
+                // (circuit.rs:1211) prefers time_constant whenever it is set,
+                // so an author who also wrote `release` would watch it go
+                // unread. Refused, the same `amount`-rule discipline as
+                // everything else in this file that would parse to a value
+                // nothing consumes.
+                if release.is_some() && time_constant.is_some() {
+                    fail(
+                        "`release` and `time constant` on the same component — the \
+                         engine prefers time_constant whenever it is set, so the \
+                         declared `release` would never be honored; declare one or \
+                         the other"
+                            .into(),
+                        &mut errors,
+                    );
+                    ok = false;
+                }
                 if !ok {
                     continue;
                 }
                 by_name.insert(name.clone(), things.len());
-                // The two typed engine-parameter productions (#112): `stock …
-                // initial <n>` fills initial_state["storage"], `release <n>`
-                // fills cognitive_params["release_rate"]. Everything else in
-                // those bags remains inexpressible and keeps the emit refusal.
+                // The typed engine-parameter productions (#112): `stock …
+                // initial <n>` fills initial_state["storage"]; `release`,
+                // `capacity`, `time constant`, `setpoint`, `maintenance`, and
+                // `backpressure` fill the matching cognitive_params key.
+                // Everything else in those bags remains inexpressible and
+                // keeps the emit refusal.
                 let mut cognitive_params = std::collections::HashMap::new();
                 if let Some(r) = release {
                     cognitive_params.insert("release_rate".to_string(), r);
+                }
+                if let Some(c) = capacity {
+                    cognitive_params.insert("capacity".to_string(), c);
+                }
+                if let Some(tc) = time_constant {
+                    cognitive_params.insert("time_constant".to_string(), tc);
+                }
+                if let Some(sp) = setpoint {
+                    cognitive_params.insert("setpoint".to_string(), sp);
+                }
+                if let Some(m) = maintenance {
+                    cognitive_params.insert("maintenance".to_string(), m);
+                }
+                if back_pressure {
+                    cognitive_params.insert("back_pressure".to_string(), 1.0);
                 }
                 let mut initial_state = std::collections::HashMap::new();
                 if let Some(v) = initial_stock {
@@ -1826,13 +2123,18 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         // have an outgoing flow, falsifying corpus headers that claim a fixed
         // composition. A round trip must return what was written.
         // §7.3: refuse loudly rather than lose information silently. The canvas
-        // carries a loaded model's engine-parameter bags opaquely (#216). #112's
-        // first slice types exactly two keys — `initial_state["storage"]`
-        // (needs a declared stock unit to carry its dimension) and
-        // `cognitive_params["release_rate"]` (Buffering only) — and the refusal
-        // NARROWS to everything else: a second key in either bag would be
-        // silently dropped by an emit, which is the exact loss this check
-        // exists to make impossible.
+        // carries a loaded model's engine-parameter bags opaquely (#216). #112
+        // types `initial_state["storage"]` (needs a declared stock unit to
+        // carry its dimension) and six `cognitive_params` keys, each gated to
+        // the one primitive whose engine arm reads it — and the refusal
+        // NARROWS to everything else: an untyped key, or a typed key on the
+        // wrong primitive, would be silently dropped (or silently wrong) on
+        // emit, which is the exact loss this check exists to make impossible.
+        // `cognitive_params` still owes this refusal after #112 lands in
+        // full: a loaded JSON can carry arbitrary keys the parser has no
+        // production for (compose's exporter writes the bag directly, §8.2
+        // of the spec), so "unknown key arrives" stays a live path and the
+        // check stays load-bearing rather than dead.
         let initial_expressible = t.initial_state.is_empty()
             || (t.role == Role::Component
                 && !t.stock_unit.is_empty()
@@ -1841,18 +2143,37 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
                     .get("storage")
                     .and_then(|v| v.as_f64())
                     .is_some_and(f64::is_finite));
-        let release_expressible = t.cognitive_params.is_empty()
+        // `release_rate` and `time_constant` together is the same
+        // never-honored declaration the parser refuses (§ above): the engine
+        // prefers time_constant whenever both are set, so emitting both would
+        // write text that cannot re-parse to what it started as.
+        let release_tc_conflict = t.cognitive_params.contains_key("release_rate")
+            && t.cognitive_params.contains_key("time_constant");
+        let cognitive_expressible = t.cognitive_params.is_empty()
             || (t.role == Role::Component
-                && t.primitive == Some(ProcessPrimitive::Buffering)
-                && t.cognitive_params.len() == 1
-                && t.cognitive_params
-                    .get("release_rate")
-                    .is_some_and(|v| v.is_finite() && *v > 0.0));
-        if !(initial_expressible && release_expressible) {
+                && !release_tc_conflict
+                && t.cognitive_params.iter().all(|(k, v)| match k.as_str() {
+                    "release_rate" | "capacity" | "time_constant" | "maintenance" => {
+                        t.primitive == Some(ProcessPrimitive::Buffering)
+                            && v.is_finite()
+                            && *v > 0.0
+                    }
+                    "setpoint" => {
+                        t.primitive == Some(ProcessPrimitive::Inverting)
+                            && v.is_finite()
+                            && *v > 0.0
+                    }
+                    "back_pressure" => t.primitive == Some(ProcessPrimitive::Modulating),
+                    _ => false,
+                }));
+        if !(initial_expressible && cognitive_expressible) {
             return Err(format!(
-                "`{}` carries engine parameters SL cannot express (#112 covers only \
-                 `stock <unit> initial <n>` and, on Buffering, `release <n>`) — \
-                 export the model as kernel JSON instead of SL",
+                "`{}` carries engine parameters SL cannot express (#112 covers \
+                 `stock <unit> initial <n>` and, gated to their reading \
+                 primitive, `release <n>` / `capacity <n>` / `time constant <n>` \
+                 / `maintenance <n>` on Buffering, `setpoint <n>` on Inverting, \
+                 and `backpressure` on Modulating) — export the model as kernel \
+                 JSON instead of SL",
                 t.name
             ));
         }
@@ -1879,8 +2200,27 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
                     write!(out, " initial {v}").unwrap();
                 }
             }
+            // The six typed cognitive_params keys emit in this fixed order
+            // (#112): `release`, then the four remaining Buffering/Inverting/
+            // Modulating clauses, matching the order they are documented in
+            // spec.md §4.3.
             if let Some(r) = t.cognitive_params.get("release_rate") {
                 write!(out, " release {r}").unwrap();
+            }
+            if let Some(c) = t.cognitive_params.get("capacity") {
+                write!(out, " capacity {c}").unwrap();
+            }
+            if let Some(tc) = t.cognitive_params.get("time_constant") {
+                write!(out, " time constant {tc}").unwrap();
+            }
+            if let Some(sp) = t.cognitive_params.get("setpoint") {
+                write!(out, " setpoint {sp}").unwrap();
+            }
+            if let Some(m) = t.cognitive_params.get("maintenance") {
+                write!(out, " maintenance {m}").unwrap();
+            }
+            if t.cognitive_params.contains_key("back_pressure") {
+                write!(out, " backpressure").unwrap();
             }
         }
         // Klir source-system metadata (#154): kind, then scale, then state set.
@@ -2161,6 +2501,10 @@ pub const RESERVED_WORDS: &[&str] = &[
     "amount",
     "initial",
     "release",
+    "capacity",
+    "setpoint",
+    "maintenance",
+    "backpressure",
     "description",
     "usability",
     "porosity",
@@ -2189,13 +2533,17 @@ fn clause_head(w: &str) -> bool {
 /// emitted line ever begins with a bare name; `ample`, `range`, `shares`,
 /// `from`, and the metric verb words (`share`, `of`, `sum`, `into`) sit
 /// behind clause heads or fixed positions the parser matches structurally;
-/// the lens words are `@lens` values on an annotation line. A thing named
-/// `ample` therefore emits bare and re-parses as itself — quoting it would be
-/// noise, not safety. Spec §7.1 records the same split; `keyword_parity.rs`
-/// holds the union of the two lists equal to §4's terminals.
+/// the lens words are `@lens` values on an annotation line; `constant` sits
+/// behind the `time` clause head (`time constant <n>`, #112) exactly as those
+/// verb words sit behind theirs — `time` is already reserved, so a bare
+/// `constant` in a name slot can never be mistaken for the clause. A thing
+/// named `ample` therefore emits bare and re-parses as itself — quoting it
+/// would be noise, not safety. Spec §7.1 records the same split;
+/// `keyword_parity.rs` holds the union of the two lists equal to §4's
+/// terminals.
 pub const POSITIONAL_KEYWORDS: &[&str] = &[
     "param", "metric", "ample", "range", "shares", "from", "share", "of", "sum", "into", "klir",
-    "bunge", "mobus",
+    "bunge", "mobus", "constant",
 ];
 
 fn is_reserved(word: &str) -> bool {
