@@ -89,6 +89,7 @@ describe("the shipped library", () => {
       "LLM Market",
       "Predator-Prey Ecosystem",
       "Ribosome",
+      "Translation Apparatus",
       "U.S. Federal Economic Policy",
       "hal",
     ]);
