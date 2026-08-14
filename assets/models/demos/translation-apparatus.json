@@ -1,0 +1,730 @@
+{
+  "version": 1,
+  "mode": "Operational",
+  "environment": {
+    "info": {
+      "id": "E-1",
+      "level": -1,
+      "name": "Environment",
+      "description": ""
+    },
+    "sources": [
+      {
+        "info": {
+          "id": "Src-1.0",
+          "level": -1,
+          "name": "Nucleus",
+          "description": ""
+        },
+        "type": "Source",
+        "transform": {
+          "translation": [
+            295.79187,
+            0.94207764
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": true
+      },
+      {
+        "info": {
+          "id": "Src-1.2",
+          "level": -1,
+          "name": "Cytosol",
+          "description": ""
+        },
+        "type": "Source",
+        "transform": {
+          "translation": [
+            295.7918,
+            639.05786
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": false
+      }
+    ],
+    "sinks": [
+      {
+        "info": {
+          "id": "Snk-1.1",
+          "level": -1,
+          "name": "Chaperone",
+          "description": ""
+        },
+        "type": "Sink",
+        "transform": {
+          "translation": [
+            848.4163,
+            320.0
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": true
+      }
+    ]
+  },
+  "systems": [
+    {
+      "info": {
+        "id": "S0",
+        "level": 0,
+        "name": "Translation Apparatus",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "E-1",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0",
+          "level": 0,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [
+          {
+            "info": {
+              "id": "I0.0",
+              "level": 0,
+              "name": "Decoding Site",
+              "description": ""
+            },
+            "protocol": "mRNA transcript",
+            "type": "Import",
+            "exports_to": [],
+            "receives_from": [
+              "Src-1.0"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.1",
+              "level": 0,
+              "name": "Peptidyl Transferase Center",
+              "description": ""
+            },
+            "protocol": "Mg2+ and ionic milieu",
+            "type": "Import",
+            "exports_to": [],
+            "receives_from": [
+              "Src-1.2"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.2",
+              "level": 0,
+              "name": "Translocase",
+              "description": ""
+            },
+            "protocol": "GTP · GDP and inorganic phosphate",
+            "type": "Hybrid",
+            "exports_to": [
+              "Src-1.2"
+            ],
+            "receives_from": [
+              "Src-1.2"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.3",
+              "level": 0,
+              "name": "Exit Tunnel",
+              "description": ""
+            },
+            "protocol": "nascent polypeptide",
+            "type": "Export",
+            "exports_to": [
+              "Snk-1.1"
+            ],
+            "receives_from": [],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.4",
+              "level": 0,
+              "name": "Aminoacyl-tRNA Synthetase",
+              "description": ""
+            },
+            "protocol": "free amino acid · ATP",
+            "type": "Import",
+            "exports_to": [],
+            "receives_from": [
+              "Src-1.2",
+              "Src-1.2"
+            ],
+            "angle": null
+          }
+        ],
+        "parent_interface": null
+      },
+      "radius": 34.0,
+      "transform": null,
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": ""
+    },
+    {
+      "info": {
+        "id": "C0.0",
+        "level": 1,
+        "name": "Decoding Site",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.0",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.0"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          480.0,
+          150.0
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Sensing"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.1",
+        "level": 1,
+        "name": "Peptidyl Transferase Center",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.1",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.1"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          627.2243,
+          235.0
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Combining"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.2",
+        "level": 1,
+        "name": "Translocase",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.2",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.2"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          627.2243,
+          405.0
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Propelling"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.3",
+        "level": 1,
+        "name": "Exit Tunnel",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.3",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.3"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          480.0,
+          490.0
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Buffering"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.4",
+        "level": 1,
+        "name": "Aminoacyl-tRNA Synthetase",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.4",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.4"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          332.7757,
+          405.0
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Combining"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.5",
+        "level": 1,
+        "name": "tRNA Pool",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.5",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": null
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          332.7757,
+          234.99997
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Buffering",
+        "cognitive_params": {
+          "release_rate": 20.0
+        },
+        "initial_state": {
+          "storage": 100.0
+        },
+        "stock_unit": "tRNA"
+      }
+    }
+  ],
+  "interactions": [
+    {
+      "info": {
+        "id": "F0",
+        "level": 0,
+        "name": "mRNA transcript",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.0",
+      "source_interface": null,
+      "sink": "C0.0",
+      "sink_interface": "I0.0",
+      "amount": "20",
+      "unit": "codon/s",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F1",
+        "level": 0,
+        "name": "charged tRNA",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.5",
+      "source_interface": null,
+      "sink": "C0.0",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F2",
+        "level": 0,
+        "name": "deacylated tRNA",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.4",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F3",
+        "level": 0,
+        "name": "recharged tRNA",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.4",
+      "source_interface": null,
+      "sink": "C0.5",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F4",
+        "level": 0,
+        "name": "free amino acid",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.2",
+      "source_interface": null,
+      "sink": "C0.4",
+      "sink_interface": "I0.4",
+      "amount": "20",
+      "unit": "aa/s",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F5",
+        "level": 0,
+        "name": "ATP",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.2",
+      "source_interface": null,
+      "sink": "C0.4",
+      "sink_interface": "I0.4",
+      "amount": "20",
+      "unit": "ATP/s",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F6",
+        "level": 0,
+        "name": "GTP",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.2",
+      "source_interface": null,
+      "sink": "C0.2",
+      "sink_interface": "I0.2",
+      "amount": "40",
+      "unit": "GTP/s",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F7",
+        "level": 0,
+        "name": "accommodated amino acid",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.1",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F8",
+        "level": 0,
+        "name": "elongated chain",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.2",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F9",
+        "level": 0,
+        "name": "polypeptide chain",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.2",
+      "source_interface": null,
+      "sink": "C0.3",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F10",
+        "level": 0,
+        "name": "Mg2+ and ionic milieu",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.2",
+      "source_interface": null,
+      "sink": "C0.1",
+      "sink_interface": "I0.1",
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F11",
+        "level": 0,
+        "name": "nascent polypeptide",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.3",
+      "source_interface": "I0.3",
+      "sink": "Snk-1.1",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F12",
+        "level": 0,
+        "name": "GDP and inorganic phosphate",
+        "description": ""
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.2",
+      "source_interface": "I0.2",
+      "sink": "Src-1.2",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "parameters": []
+    }
+  ],
+  "hidden_entities": [],
+  "time_unit": "second"
+}

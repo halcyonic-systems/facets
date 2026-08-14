@@ -23,7 +23,7 @@ use bert_core::operational::validate_operational;
 // bundles + projections went with them to `assets/archive/demos/` — frozen
 // there rather than re-minted, because nothing lists them any more. Restoring
 // either is: name here, four files back, re-bless.
-const DEMOS: &[&str] = &["llm-market"];
+const DEMOS: &[&str] = &["llm-market", "translation-apparatus"];
 // Long enough that O(Δt) startup transients (each fresh stock's first step
 // releases nothing — release reads the opening state) fall inside the 2%
 // tolerance; the drift is honest Euler error and halves with Δt, which the

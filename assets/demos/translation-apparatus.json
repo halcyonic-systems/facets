@@ -1,0 +1,47 @@
+{
+  "title": "Translation Apparatus",
+  "blurb": "The ribosome with its tRNA cycle closed: mRNA read at 20 codons/s, energy entering as GTP and ATP and leaving as waste heat, the charged-tRNA pool starting at its declared 100 and draining at the elongation rate.",
+  "model": "translation-apparatus",
+  "genus": "Biological",
+  "t": 15,
+  "csv": "time,mRNA transcript,free amino acid,ATP,GTP\n0,20,20,20,40\n1,20,20,20,40\n2,20,20,20,40\n3,20,20,20,40\n4,20,20,20,40\n5,20,20,20,40\n6,20,20,20,40\n7,20,20,20,40\n8,20,20,20,40\n9,20,20,20,40\n10,20,20,20,40\n11,20,20,20,40\n12,20,20,20,40\n13,20,20,20,40\n14,20,20,20,40\n15,20,20,20,40\n",
+  "mapping": {
+    "model": "",
+    "data": "",
+    "t": 15.0,
+    "mapping": [
+      {
+        "column": "time",
+        "as": "time"
+      },
+      {
+        "column": "mRNA transcript",
+        "as": "flow",
+        "element": "mRNA transcript",
+        "unit": "codon/s",
+        "force": true
+      },
+      {
+        "column": "free amino acid",
+        "as": "flow",
+        "element": "free amino acid",
+        "unit": "aa/s",
+        "force": true
+      },
+      {
+        "column": "ATP",
+        "as": "flow",
+        "element": "ATP",
+        "unit": "ATP/s",
+        "force": true
+      },
+      {
+        "column": "GTP",
+        "as": "flow",
+        "element": "GTP",
+        "unit": "GTP/s",
+        "force": true
+      }
+    ]
+  }
+}
