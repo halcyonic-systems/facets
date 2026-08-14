@@ -91,12 +91,18 @@ export function RunPanel({
     <div className="grid gap-5">
       {metrics && (metrics.readings.length > 0 || metrics.failures.length > 0) && (
         <Card title="Declared metrics" source="declared in SL · computed from the run">
-          {/* Same grid discipline as the comparisons (design sweep 2026-08-15):
-              a model with six metrics is a plate of readouts, not a scroll. */}
+          {/* One chart per QUESTION, one line per entity answering it (#341):
+              readings sharing a family (same denominator, or same kind+unit)
+              merge into a leaderboard chart; singletons keep their row. The
+              grid holds either shape. */}
           <div className="grid gap-x-8 gap-y-5 xl:grid-cols-2">
-            {metrics.readings.map((r) => (
-              <MetricRow key={r.name} r={r} tick={tick} />
-            ))}
+            {groupReadings(metrics.readings).map((g) =>
+              g.length === 1 ? (
+                <MetricRow key={g[0].name} r={g[0]} tick={tick} />
+              ) : (
+                <MetricFamilyChart key={g[0].familyKey} readings={g} tick={tick} />
+              ),
+            )}
             {metrics.failures.map((f) => (
               <p key={f.name} className="text-xs" style={{ color: "var(--verdict-warning)" }}>
                 {f.name}: {f.reason}
@@ -174,16 +180,17 @@ export function RunPanel({
 
       {result.comparisons.length > 0 && (
         <Card title="Simulated vs actual" source="bert-compose · wasm">
-          {/* Small multiples in a grid, not a vertical stack (design sweep
-              2026-08-15). One chart per readout stays: the flows carry
-              DIFFERENT units, and one y-axis over mixed units is the #1 chart
-              lie — merging same-unit series into one multi-line chart waits on
-              a categorical chart palette (the Frost accents fail the CVD and
-              normal-vision separation checks as series hues; see #341). */}
+          {/* Small multiples in a grid; same-UNIT comparisons merge into one
+              chart with hue = flow and stroke style keeping role (#341).
+              Mixed units never share an axis — that is the #1 chart lie. */}
           <div className="grid gap-x-8 gap-y-6 xl:grid-cols-2">
-            {result.comparisons.map((c) => (
-              <ComparisonChart key={c.element} c={c} tick={tick} />
-            ))}
+            {groupComparisons(result.comparisons).map((g) =>
+              g.length === 1 ? (
+                <ComparisonChart key={g[0].element} c={g[0]} tick={tick} />
+              ) : (
+                <ComparisonFamilyChart key={g[0].unit || "unitless"} comparisons={g} tick={tick} />
+              ),
+            )}
           </div>
         </Card>
       )}
@@ -220,6 +227,215 @@ export function RunPanel({
           </Card>
         </div>
       </details>
+    </div>
+  );
+}
+
+/** The chart-series ink (#341, validated): identity colors used ONLY inside
+ *  charts. Assignment is by the entity's ALPHABETICAL index — stable across
+ *  runs, so a re-run that reorders the leaderboard never repaints a line
+ *  (color follows the entity, never its rank). */
+const CHART_SERIES = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"];
+
+/** Family grouping (#341): consecutive-key-independent, order-preserving on
+ *  first appearance. Families larger than the palette split into chunks of
+ *  four — a fifth hue is never invented. */
+function groupReadings(readings: MetricReading[]): MetricReading[][] {
+  const byKey = new Map<string, MetricReading[]>();
+  for (const r of readings) {
+    const g = byKey.get(r.familyKey);
+    if (g) g.push(r);
+    else byKey.set(r.familyKey, [r]);
+  }
+  const out: MetricReading[][] = [];
+  for (const g of byKey.values()) {
+    for (let i = 0; i < g.length; i += CHART_SERIES.length) {
+      out.push(g.slice(i, i + CHART_SERIES.length));
+    }
+  }
+  return out;
+}
+
+function groupComparisons(comparisons: Comparison[]): Comparison[][] {
+  const byUnit = new Map<string, Comparison[]>();
+  for (const c of comparisons) {
+    const key = c.unit || "";
+    const g = byUnit.get(key);
+    if (g) g.push(c);
+    else byUnit.set(key, [c]);
+  }
+  const out: Comparison[][] = [];
+  for (const g of byUnit.values()) {
+    for (let i = 0; i < g.length; i += CHART_SERIES.length) {
+      out.push(g.slice(i, i + CHART_SERIES.length));
+    }
+  }
+  return out;
+}
+
+/** A family of readings as ONE chart (#341): the question in the header, a
+ *  ranked leaderboard of entities beside it, one line per entity below. Hue
+ *  by alphabetical entity order; the leaderboard order is the endpoint's. */
+function MetricFamilyChart({ readings, tick }: { readings: MetricReading[]; tick?: number }) {
+  const first = readings[0];
+  const byEntity = [...readings].sort((a, b) => a.entity.localeCompare(b.entity));
+  const colorOf = new Map(byEntity.map((r, i) => [r.entity, CHART_SERIES[i]]));
+  const n = Math.max(...readings.map((r) => r.series.length));
+  const data = Array.from({ length: n }, (_, t) => {
+    const row: Record<string, number | null> = { t };
+    for (const r of readings) row[r.entity] = r.series[t] ?? null;
+    return row;
+  });
+  const endpointOf = (r: MetricReading) =>
+    r.kind === "share"
+      ? `${(r.endpoint * 100).toFixed(1)}%`
+      : `${humanize(r.endpoint)}${r.unit ? ` ${r.unit}` : ""}`;
+  return (
+    <div>
+      <div className="mb-1 flex items-baseline justify-between gap-3">
+        <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+          {first.family}
+        </div>
+        {/* The leaderboard: endpoint-ranked (the readings arrive pre-sorted). */}
+        <div className="flex flex-wrap justify-end gap-x-3 gap-y-0.5 text-[11px]">
+          {readings.map((r) => (
+            <span key={r.entity} className="inline-flex items-center gap-1">
+              <span
+                aria-hidden
+                className="inline-block h-[2px] w-3"
+                style={{ background: colorOf.get(r.entity) }}
+              />
+              <span style={{ color: "var(--text-secondary)" }}>{r.entity}</span>
+              <span className="tabular font-medium" style={{ color: "var(--text-primary)" }}>
+                {endpointOf(r)}
+              </span>
+            </span>
+          ))}
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={150}>
+        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
+          <CartesianGrid stroke="var(--hairline)" vertical={false} />
+          {tick !== undefined && tick > 0 && tick < n && (
+            <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
+          )}
+          <XAxis dataKey="t" tick={{ fontSize: 10, fill: "var(--text-muted)" }} stroke="var(--border)" />
+          <YAxis
+            domain={first.kind === "share" ? [0, 1] : undefined}
+            tick={{ fontSize: 10, fill: "var(--text-muted)" }}
+            stroke="var(--border)"
+            width={44}
+          />
+          <Tooltip
+            contentStyle={{
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              fontSize: 12,
+            }}
+          />
+          {byEntity.map((r) => (
+            <Line
+              key={r.entity}
+              type="monotone"
+              dataKey={r.entity}
+              name={r.entity}
+              stroke={colorOf.get(r.entity)}
+              dot={false}
+              strokeWidth={2}
+              isAnimationActive={false}
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** A same-unit comparison family as ONE chart (#341): hue = flow, stroke
+ *  style keeps role (solid executed, dashed actual). Declared-mean lines stay
+ *  with the singleton view — three encodings per entity is past the ink
+ *  budget of a merged chart. */
+function ComparisonFamilyChart({ comparisons, tick }: { comparisons: Comparison[]; tick?: number }) {
+  const byFlow = [...comparisons].sort((a, b) => a.element.localeCompare(b.element));
+  const colorOf = new Map(byFlow.map((c, i) => [c.element, CHART_SERIES[i]]));
+  const n = Math.max(...comparisons.map((c) => Math.max(c.simulated.length, c.actual.length)));
+  const data = Array.from({ length: n }, (_, t) => {
+    const row: Record<string, number | null> = { t };
+    for (const c of comparisons) {
+      row[`${c.element} · executed`] = c.simulated[t] ?? null;
+      row[`${c.element} · actual`] = c.actual[t] ?? null;
+    }
+    return row;
+  });
+  return (
+    <div>
+      <div className="mb-1 flex items-baseline justify-between gap-3">
+        <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+          {comparisons[0].unit || "model units"}
+        </div>
+        <div className="flex flex-wrap justify-end gap-x-3 gap-y-0.5 text-[11px]">
+          {comparisons.map((c) => (
+            <span key={c.element} className="inline-flex items-center gap-1">
+              <span
+                aria-hidden
+                className="inline-block h-[2px] w-3"
+                style={{ background: colorOf.get(c.element) }}
+              />
+              <span style={{ color: "var(--text-secondary)" }}>{c.element}</span>
+              {c.divergence_pct != null && (
+                <span className="tabular" style={{ color: "var(--text-muted)" }}>
+                  {Math.round(c.divergence_pct)}% off
+                </span>
+              )}
+            </span>
+          ))}
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={150}>
+        <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: -12 }}>
+          <CartesianGrid stroke="var(--hairline)" vertical={false} />
+          {tick !== undefined && tick > 0 && tick < n && (
+            <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
+          )}
+          <XAxis dataKey="t" tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" />
+          <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" width={44} />
+          <Tooltip
+            contentStyle={{
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              fontSize: 12,
+            }}
+          />
+          {byFlow.map((c) => (
+            <Line
+              key={`${c.element}-x`}
+              type="monotone"
+              dataKey={`${c.element} · executed`}
+              stroke={colorOf.get(c.element)}
+              dot={false}
+              strokeWidth={STROKES.executed.width}
+              isAnimationActive={false}
+            />
+          ))}
+          {byFlow.map((c) => (
+            <Line
+              key={`${c.element}-a`}
+              type="monotone"
+              dataKey={`${c.element} · actual`}
+              stroke={colorOf.get(c.element)}
+              strokeDasharray={STROKES.actual.dash}
+              dot={false}
+              strokeWidth={STROKES.actual.width}
+              isAnimationActive={false}
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+      <p className="mt-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
+        solid = executed (the run) · dashed = actual (your data)
+      </p>
     </div>
   );
 }

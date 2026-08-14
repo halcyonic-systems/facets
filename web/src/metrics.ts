@@ -20,6 +20,15 @@ export interface MetricReading {
   endpoint: number;
   /** Plain-words statement of what was computed, for the card's subtitle. */
   detail: string;
+  /** The FAMILY this reading belongs to (#341): the same question asked of
+   *  different entities. Shares family by their denominator (everything
+   *  leaving one source); sums family by kind + unit. Readings sharing a
+   *  key are one chart with a line per entity — the leaderboard, visual. */
+  familyKey: string;
+  /** The family's display name ("share of what leaves Clearing"). */
+  family: string;
+  /** The entity this reading answers for (the receiving/target thing). */
+  entity: string;
 }
 
 export interface MetricFailure {
@@ -78,6 +87,9 @@ export function evaluateMetrics(model: CanvasModel, result: RunResultRich): Metr
         series,
         endpoint: series[series.length - 1] ?? 0,
         detail: `${a} → ${b} as a fraction of everything leaving ${a}`,
+        familyKey: `share:${a}`,
+        family: `share of what leaves ${a}`,
+        entity: b,
       });
     } else {
       const target = nameOf(m.expr.SumInto.thing);
@@ -109,6 +121,9 @@ export function evaluateMetrics(model: CanvasModel, result: RunResultRich): Metr
         series,
         endpoint: series.reduce((acc, v) => acc + v, 0) * result.dt,
         detail: `everything arriving at ${target}, per tick`,
+        familyKey: `sum:${units[0] ?? ""}`,
+        family: units[0] ? `arrivals · ${units[0]}` : "arrivals",
+        entity: target,
       });
     }
   }

@@ -174,8 +174,18 @@ param shares "Enterprise market share" : from "Enterprise clearing"
 # observables of the run — today they echo the declared split, and when
 # the clearing becomes agent-chosen (#269) the same declarations read the
 # endogenous result with no rewrite.
+# Each share family asks ONE question of several models (the leaderboard
+# reading, drawn as one chart per clearing since #341): the four largest
+# servers per channel, with the long tail already folded into "Other open"
+# by the model's own structure.
 metric "DeepSeek dev share" : share of flow "Developer clearing" -> DeepSeek
+metric "Qwen dev share" : share of flow "Developer clearing" -> Qwen
+metric "Gemini dev share" : share of flow "Developer clearing" -> Gemini
+metric "Opus dev share" : share of flow "Developer clearing" -> Opus
 metric "Opus enterprise share" : share of flow "Enterprise clearing" -> Opus
+metric "GPT enterprise share" : share of flow "Enterprise clearing" -> GPT
+metric "Gemini enterprise share" : share of flow "Enterprise clearing" -> Gemini
+metric "Fable enterprise share" : share of flow "Enterprise clearing" -> Fable
 metric "Opus tokens served" : sum into Opus
 metric "Fable tokens served" : sum into Fable
 metric "DeepSeek tokens served" : sum into DeepSeek

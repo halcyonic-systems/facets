@@ -65,6 +65,15 @@
   --accent-soft: light-dark(#d5e2e8, #1b2f39);
   --accent-indigo: light-dark(#545c93, #8b93cf);
   --accent-slate: light-dark(#5d6f7b, #8ea1ad);
+  /* Chart SERIES ink (#341, validated 2026-08-15 — six dataviz checks, both
+     modes): identity needs chroma the instrument accents deliberately lack,
+     so series get their own four, used ONLY inside charts. Fixed assignment
+     order 1→4, never cycled; the interleave is load-bearing (an all-cool set
+     collapses for normal vision, copper beside moss collapses for protan). */
+  --chart-1: light-dark(#0d82a6, #33a0bf);
+  --chart-2: light-dark(#b0642d, #c77436);
+  --chart-3: light-dark(#6b74e0, #8188e8);
+  --chart-4: light-dark(#4a7a35, #699a4e);
   /* Per-lens WORLD hues (#7 follow-on) — deliberately farther apart than the
      accent trio, which are hue-neighbors and converge to the same gray at
      tint strength. Character-matched: Klir = cold steel (data, the mask),
