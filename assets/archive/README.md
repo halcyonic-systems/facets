@@ -15,8 +15,9 @@ curated down to a keep set in August 2026. Being here means three things:
 - **still in the repo, still compiling, still runnable from the CLI.**
   `bert run assets/archive/watershed.sl --t 12` works exactly as it did.
 
-Three of these files are still read by gates, by path, because they carry a fact
-no shipped model carries. Those are marked **HELD** below; moving or editing one
+Four of these files are still read by gates, by path, because they carry a fact
+no shipped model carries — `bank-run` and `respiring-cell` (`bert-canvas/tests/environment_kind.rs`), `fsm-traffic`
+(`bert-cli/tests/surface.rs`) and `lake-observation` (`bert-canvas/tests/sl_level.rs`). Those are marked **HELD** below; moving or editing one
 of them turns a test red, which is the intended arrangement.
 
 ## What is here, and what each one settled
