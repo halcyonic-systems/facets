@@ -46,20 +46,34 @@ enum Standing {
     Debt(&'static str),
     /// Declared irrelevant by the author, not a debt.
     Excluded(&'static str),
-    /// Filled with a constant, no issue open, and nobody has yet ruled whether
-    /// it should be authorable. Surfaced BY this gate — see the module note.
-    Unruled(&'static str),
+    /// Mobus ontology the author has RULED real (all of these are defined in
+    /// his ch. 3-6) but which has no tracking issue yet. The str carries the
+    /// ruling and its research horizon, so the row is a decision rather than a
+    /// shrug. These are the issues waiting to be filed.
+    Ontology(&'static str),
 }
 use Standing::*;
 
 /// Every field of every struct `project()` constructs, with its standing.
 ///
 /// The five in #329's audit are here (`complexity`, `archetype`, `protocol`,
-/// `parameters`, `usability`) — and so are seven more the audit never listed,
-/// found by reading what `project()` actually writes rather than what the audit
-/// had already looked for. They are `Unruled`: filled with a constant, no issue
-/// open, no ruling from the author. `history` is the pointed one — H in Mobus's
-/// 8-tuple, projected as `String::new()`.
+/// `parameters`, `usability`). Reading what `project()` actually writes — rather
+/// than what the audit went looking for — turned up more, and the author ruled
+/// on them 2026-08-14: all are defined in Mobus ch. 3-6, none is junk.
+///
+/// Two of those turned out to be MY error, not a gap. `Boundary.porosity` and
+/// `perceptive_fuzziness` ARE authored: `canvas.rs:615-616` set them on the root
+/// system from the model, and the `0.0` I read at `new_system` is the non-root
+/// default. Checking the assignment rather than the literal is what caught it.
+///
+/// One had a tracking issue all along: `reachability_requirements` is #69, and
+/// `kernel-architecture.md:78` already records the exact gap — the requirements
+/// "do not yet survive the canvas projection and have no SL syntax".
+///
+/// The rest are `Ontology`: real, Mobus-defined, ruled, and awaiting an issue.
+/// `history` is the pointed one — H in the 8-tuple, and `spec.md:347` already
+/// takes a normative position on it ("H is a record, never an input to T"), so
+/// the slot has doctrine and no carrier.
 const LEDGER: &[(&str, &str, Standing, &str)] = &[
     // ---- WorldModel ----
     ("WorldModel", "version", Structural, "schema version of the projection"),
@@ -68,8 +82,8 @@ const LEDGER: &[(&str, &str, Standing, &str)] = &[
     ("WorldModel", "environment", Structural, "the env container the walk fills"),
     ("WorldModel", "systems", Structural, "the projected system list"),
     ("WorldModel", "interactions", Structural, "the projected flow list"),
-    ("WorldModel", "hidden_entities", Unruled("vec![] — never populated, never authored"), ""),
-    ("WorldModel", "reachability_requirements", Unruled("vec![] — never populated"), ""),
+    ("WorldModel", "hidden_entities", Ontology("a LOST old-bert capability, not a Mobus slot: hiding elements on a crowded canvas. Confirmed in bert save.rs/load.rs — ids persisted and restored"), ""),
+    ("WorldModel", "reachability_requirements", Debt("#69"), "author-declared MustReach/AlternativePath; the kernel REFUSES on violation. kernel-architecture.md:78: \"do not yet survive the canvas projection and have no SL syntax\""),
     ("WorldModel", "time_unit", Authored, "`time unit` (spec §4)"),
     // ---- Environment ----
     ("Environment", "info", Structural, "synthesized container info"),
@@ -89,18 +103,18 @@ const LEDGER: &[(&str, &str, Standing, &str)] = &[
     ("System", "boundary", Structural, "the Boundary struct, itemized below"),
     ("System", "radius", Presentation, "RADIUS constant — canvas geometry"),
     ("System", "transform", Authored, "the authored position"),
-    ("System", "equivalence", Unruled("String::new() — no SL clause, no issue"), ""),
-    ("System", "history", Unruled("String::new() — H in Mobus's 8-tuple, projected empty"), ""),
-    ("System", "transformation", Unruled("String::new() — no SL clause, no issue"), ""),
-    ("System", "member_autonomy", Unruled("1.0 — no SL clause, no issue"), ""),
-    ("System", "time_constant", Unruled("String::new() — no SL clause, no issue"), ""),
+    ("System", "equivalence", Ontology("Mobus ch. 3-6; ruled FUTURE research by the author 2026-08-14"), ""),
+    ("System", "history", Ontology("H in the 8-tuple. Ruled ESSENTIAL TO CURRENT research 2026-08-14. spec.md:347 already takes a normative position — \"H is a record, never an input to T\" — so the slot has doctrine but no carrier"), ""),
+    ("System", "transformation", Ontology("T in the 8-tuple. Ruled ESSENTIAL TO CURRENT research (grounded simulation/runs) 2026-08-14"), ""),
+    ("System", "member_autonomy", Ontology("Mobus ch. 3-6; ruled important but likely FUTURE research 2026-08-14"), ""),
+    ("System", "time_constant", Ontology("Δt in the 8-tuple. Ruled relevant to CURRENT sim work 2026-08-14"), ""),
     ("System", "archetype", Debt("#332"), "Agent-if-primitive else Unspecified; needs an obligation designed, not a field restored"),
     ("System", "agent", Structural, "derived from the authored `primitive`"),
     ("System", "child_model", Structural, "decomposition link"),
     // ---- Boundary ----
     ("Boundary", "info", Structural, "synthesized"),
-    ("Boundary", "porosity", Unruled("0.0 — the authoring control is designed but pinned"), ""),
-    ("Boundary", "perceptive_fuzziness", Unruled("0.0 — same"), ""),
+    ("Boundary", "porosity", Authored, "boundary inspector -> canvas.rs:615 sets it on the ROOT system; the 0.0 in new_system is the non-root default. #54 settled its DYNAMICAL effect separately (Mobus: P's form is still an object of research)"),
+    ("Boundary", "perceptive_fuzziness", Authored, "canvas.rs:616, same path. #54: epistemic (about the observer's read), so render-only is likely correct"),
     ("Boundary", "interfaces", Structural, "filled from crossing flows"),
     ("Boundary", "parent_interface", Structural, "decomposition link"),
     // ---- Interface ----
@@ -233,6 +247,22 @@ fn every_debt_names_its_issue() {
             assert!(
                 issue.starts_with('#') && issue[1..].chars().all(|c| c.is_ascii_digit()),
                 "{s}.{f}: Debt must name an issue like \"#332\", got {issue:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn every_ontology_row_carries_its_ruling() {
+    // `Ontology` is the standing for "real, ruled, not yet tracked". The note is
+    // the whole value of the row — without it the entry is indistinguishable
+    // from the shrug this gate exists to replace. When one of these gets an
+    // issue, it becomes a Debt and this stops applying to it.
+    for (s, f, standing, _) in LEDGER {
+        if let Ontology(note) = standing {
+            assert!(
+                note.len() > 30,
+                "{s}.{f}: Ontology must record WHY it is real and its horizon, got {note:?}"
             );
         }
     }
