@@ -5,7 +5,9 @@ language was learned: nearly every one was written to find out whether SL could
 say something, and the answer it gave is the reason the file still exists.
 
 They are here rather than in `../examples/` because the shipped library was
-curated down to a keep set in August 2026. Being here means three things:
+curated down to a keep set in August 2026 — the admission rule is stated in
+`../examples/README.md` (a model ships iff it is the smallest witness of a
+distinction the kernel can make). Being here means three things:
 
 - **out of the gallery** — the web app globs `assets/examples/*.sl`, so nothing
   in this directory appears as a library card;
