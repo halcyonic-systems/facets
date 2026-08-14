@@ -121,4 +121,59 @@ describe("Data mode (#304 M1)", () => {
     expect(html).toContain("TGA deposits"); // every declared flow waits in the rail
     expect(html).toContain("remittances");
   });
+
+  // Run-from-attached (#304): a stock binds too — the column's t0 observation
+  // supplies the component's initial level. Offered only for Buffering
+  // components (the things that hold a level), and value-prefixed so a stock
+  // and a flow sharing a name cannot collide in one dropdown.
+  it("offers Buffering components as stock-level bindings, and only those", () => {
+    const stocky: CanvasModel = {
+      ...model,
+      things: [
+        ...model.things,
+        { id: 3, name: "Reserve", x: 2, y: 0, role: "Component", primitive: "Buffering" },
+      ],
+    };
+    const html = renderToStaticMarkup(
+      <DataMode
+        model={stocky}
+        modelName="Federal Reserve"
+        csv={csv}
+        manifest={manifest}
+        onAttachCsv={() => {}}
+        onManifestChange={() => {}}
+      />,
+    );
+    expect(html).toContain("stock level (t0 = initial)");
+    expect(html).toContain('value="stock:Reserve"');
+    // Balance Sheet has no Buffering primitive, so it is not offered as a stock.
+    expect(html).not.toContain('value="stock:Balance Sheet"');
+  });
+
+  it("round-trips a stock binding through the manifest", () => {
+    const withStock: Manifest = {
+      ...manifest,
+      mapping: [...manifest.mapping, { column: "reserve", as: "stock", element: "Reserve" }],
+    };
+    const stocky: CanvasModel = {
+      ...model,
+      things: [
+        ...model.things,
+        { id: 3, name: "Reserve", x: 2, y: 0, role: "Component", primitive: "Buffering" },
+      ],
+    };
+    const html = renderToStaticMarkup(
+      <DataMode
+        model={stocky}
+        modelName="Federal Reserve"
+        csv={"week,tga,ghost,reserve\n2023-01-04,536.2,1,100\n"}
+        manifest={withStock}
+        onAttachCsv={() => {}}
+        onManifestChange={() => {}}
+      />,
+    );
+    // The dropdown for the bound column shows the stock as selected — the
+    // prefixed value survives currentBinding's read-back.
+    expect(html).toContain('value="stock:Reserve"');
+  });
 });

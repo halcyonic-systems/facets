@@ -228,7 +228,13 @@ export function DataMode({
     const rest = base.mapping.filter((m) => m.column !== column);
     let entry: ColumnMapping | null = null;
     if (value === "time") entry = { column, as: "time" };
-    else if (value !== "ignore") {
+    else if (value.startsWith("stock:")) {
+      // A stock-level column: its t0 observation supplies the component's
+      // initial storage (the tether's carry layer — a MEASURED initial
+      // condition, not a declared one). Values are prefixed so a component
+      // and a flow sharing a name cannot collide in one dropdown.
+      entry = { column, as: "stock", element: value.slice("stock:".length) };
+    } else if (value !== "ignore") {
       // The kernel's T2 gate requires a unit on every flow column, and the
       // author already has one place to say it — the flow's own `unit`
       // clause — so the binding inherits it rather than asking twice. A
@@ -243,7 +249,9 @@ export function DataMode({
   const currentBinding = (column: string): string => {
     const m = manifest?.mapping.find((x) => x.column === column);
     if (!m || m.as === "ignore") return "ignore";
-    return m.as === "time" ? "time" : (m.element ?? "ignore");
+    if (m.as === "time") return "time";
+    if (m.as === "stock") return m.element ? `stock:${m.element}` : "ignore";
+    return m.element ?? "ignore";
   };
 
   // The binding panel — every CSV column with a role dropdown. This IS the
@@ -284,6 +292,22 @@ export function DataMode({
                     → {r.name}
                   </option>
                 ))}
+              {/* Stocks bind too: the column's t0 observation is the
+                  component's initial level (tether stock_series → the
+                  projection's initial_state.storage). Offered only for the
+                  things that HOLD a level — Buffering components. */}
+              {model.things.filter((th) => th.role === "Component" && th.primitive === "Buffering")
+                .length > 0 && (
+                <optgroup label="stock level (t0 = initial)">
+                  {model.things
+                    .filter((th) => th.role === "Component" && th.primitive === "Buffering")
+                    .map((th) => (
+                      <option key={`stock-${th.id}`} value={`stock:${th.name}`}>
+                        ▤ {th.name}
+                      </option>
+                    ))}
+                </optgroup>
+              )}
             </select>
           </li>
         ))}

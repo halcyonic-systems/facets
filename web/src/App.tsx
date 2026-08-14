@@ -2201,7 +2201,14 @@ function Workspace() {
                         onAcceptUnit={acceptDerivedUnit}
                         tick={tick}
                         model={canvasModel}
-                        manifest={demo ? manifest : null}
+                        // The run's manifest exists in two cases, not one: a
+                        // demo bundle, or an attached CSV with at least one
+                        // binding (#304's run-from-attached — the same pair
+                        // `runCsv` accepts). Passing null here made a bound
+                        // library model read as bundle-less in Run mode.
+                        manifest={
+                          demo || (attachedCsv && manifest.mapping.length > 0) ? manifest : null
+                        }
                         onInputEdit={applyInputEdit}
                         onResetInputs={demo?.sl ? resetInputs : undefined}
                         time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}

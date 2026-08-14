@@ -135,7 +135,7 @@ export function RunMode({
           ? // #297: the model opens at zero — loaded, mapped, and waiting for
             // the author's horizon. Nothing has run until Run is pressed.
             "The model is loaded and nothing has run. Set the run length in Time and press ▶ Run, or ⏭ Step one tick at a time."
-          : "Run needs a demo bundle (model, CSV, and mapping) to force the simulation."}
+          : "Run needs data: open a demo bundle, or attach a CSV in Data mode and bind at least one flow."}
       </Placeholder>
     );
   })();
