@@ -370,7 +370,7 @@
       },
       "substance": {
         "sub_type": "heat",
-        "type": "Material"
+        "type": "Message"
       },
       "type": "Flow",
       "usability": "Product",

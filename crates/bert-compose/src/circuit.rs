@@ -646,11 +646,18 @@ impl Circuit {
             .unwrap_or(self.nodes[w.from].out_substance.base)
     }
 
-    /// A PUSHED wire Buffer → Sensing is an observation tap: the sensor reads
-    /// the stock's LEVEL without draining it ("sensing is very low power").
-    /// A gradient wire into a sensor is a real drain, not a tap.
+    /// A PUSHED, INFORMATIONAL wire Buffer → Sensing is an observation tap:
+    /// the sensor reads the stock's LEVEL without draining it ("sensing is
+    /// very low power"). The kind is part of the criterion, not just the
+    /// shape (#337): Energy/Material conserve and Message copies (module
+    /// header), so only a Message wire may read without taking — a declared
+    /// matter flow into a sensor is consumption, and tap-classifying it
+    /// creates mass (the translation-apparatus tRNA pool compounded 25% per
+    /// tick under the shape-only rule). A gradient wire into a sensor is a
+    /// real drain, not a tap.
     pub fn is_observation(&self, w: &Wire) -> bool {
         w.mode == FlowMode::Pushed
+            && self.wire_substance(w) == SubstanceType::Message
             && matches!(
                 self.nodes[w.from].kind,
                 NodeKind::Process(ProcessPrimitive::Buffering)
@@ -1112,15 +1119,20 @@ impl Circuit {
                 })
                 .collect();
             // What the transfer function sees (observation level-reads count:
-            // a sensor reads the stock).
+            // a sensor reads the stock). A tap is DECLARED Message (#337 —
+            // the declaration types the coupling: read, don't drain), but the
+            // value it hands over is the LEVEL of a physical stock, which is
+            // what Sensing transduces — so an observation read counts as
+            // physical input, and "physical in → Message out" holds end to
+            // end.
             let physical: f32 = incoming
                 .iter()
-                .filter(|(s, _, _)| *s != SubstanceType::Message)
+                .filter(|(s, _, obs)| *obs || *s != SubstanceType::Message)
                 .map(|(_, a, _)| a)
                 .sum();
             let message: f32 = incoming
                 .iter()
-                .filter(|(s, _, _)| *s == SubstanceType::Message)
+                .filter(|(s, _, obs)| !*obs && *s == SubstanceType::Message)
                 .map(|(_, a, _)| a)
                 .sum();
             // Ample signal present (#9): some incoming informational wire
@@ -2072,10 +2084,13 @@ mod tests {
         c.nodes[3].param = 0.2; // sensor gain k
         c.wires.push(Wire::new(0, 1)); // supply → valve
         c.wires.push(Wire::new(1, 2)); // valve → stock
-        c.wires.push(Wire::new(2, 3)); // stock outflow sensed
+        c.wires.push(Wire::new(2, 3)); // stock LEVEL sensed — a read, so the
         c.wires.push(Wire::new(3, 4)); // sensor → inverter
         c.wires.push(Wire::new(4, 1)); // control closes the loop (gate)
         c.wires.push(Wire::new(2, 5)); // stock → sink
+        // wire must SAY it is informational (#337): a tap is Message by
+        // declaration now, never by shape alone.
+        c.wires[2].substance_override = Some(SubstanceType::Message);
         let mut peak: f32 = 0.0;
         for _ in 0..200 {
             c.step();
@@ -2219,11 +2234,48 @@ mod tests {
         o.nodes[0].initial_storage = 7.0;
         o.nodes[0].storage = 7.0;
         o.wires.push(Wire::new(0, 1));
+        // A tap is informational by declaration (#337).
+        o.wires[0].substance_override = Some(SubstanceType::Message);
         o.step();
         assert!(
             (o.wire_amount(0) - 7.0).abs() < 1e-3,
             "observation tap reads the level: {}",
             o.wire_amount(0)
+        );
+    }
+
+    /// #337 separating pair: the tap rule checks the KIND, not just the
+    /// shape. A declared Message read of a stock's level takes nothing; the
+    /// same wiring declared Material is consumption and must drain. Under the
+    /// shape-only rule the Material half could not fail — which is how the
+    /// translation-apparatus tRNA pool compounded 25% per tick.
+    #[test]
+    fn a_matter_flow_into_a_sensor_drains_and_a_message_read_does_not() {
+        use ProcessPrimitive::*;
+        fn stock_into_sensor(substance: SubstanceType) -> Circuit {
+            let mut c = Circuit::default();
+            c.nodes.push(node(NodeKind::Process(Buffering)));
+            c.nodes.push(node(NodeKind::Process(Sensing)));
+            c.nodes[0].initial_storage = 10.0;
+            c.nodes[0].storage = 10.0;
+            c.nodes[0].release_rate = 1.0;
+            c.wires.push(Wire::new(0, 1));
+            c.wires[0].substance_override = Some(substance);
+            c
+        }
+        let mut read = stock_into_sensor(SubstanceType::Message);
+        read.step();
+        assert!(
+            (read.nodes[0].storage - 10.0).abs() < 1e-6,
+            "a Message read leaves the level alone, got {}",
+            read.nodes[0].storage
+        );
+        let mut drain = stock_into_sensor(SubstanceType::Material);
+        drain.step();
+        assert!(
+            drain.nodes[0].storage < 10.0,
+            "a Material flow into a sensor must drain the stock, got {}",
+            drain.nodes[0].storage
         );
     }
 
@@ -2935,6 +2987,8 @@ mod tests {
             for (f, t) in [(0, 1), (1, 2), (2, 3), (2, 4), (4, 5), (5, 1)] {
                 c.wires.push(Wire::new(f, t));
             }
+            // The sensed wire (2→4) is a read and says so (#337).
+            c.wires[3].substance_override = Some(SubstanceType::Message);
             c
         }
         let tail_mean = |c: &mut Circuit| {
