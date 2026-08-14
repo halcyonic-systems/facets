@@ -1135,6 +1135,20 @@ impl Circuit {
                 .filter(|(s, _, obs)| !*obs && *s == SubstanceType::Message)
                 .map(|(_, a, _)| a)
                 .sum();
+            // What a TRANSFORMING primitive may pass through (#340): only the
+            // inflows of the same kind as its declared output. Fig 3.17: all
+            // processes transform low-quality substance "into high-quality
+            // versions OF THE SAME"; the energy that drives a material
+            // process leaves as waste heat, never as product mass — the
+            // per-node residual routes it into `dissipated` without further
+            // bookkeeping. (The translation apparatus's synthetase was
+            // minting 20 tRNA/s out of its ATP feed under the old
+            // energy-plus-material sum.)
+            let matched: f32 = incoming
+                .iter()
+                .filter(|(s, _, obs)| !*obs && *s == node.out_substance.base)
+                .map(|(_, a, _)| a)
+                .sum();
             // Ample signal present (#9): some incoming informational wire
             // asserts availability. Gate-type consumers below read this flag
             // and hold their gate open / drop the availability limb; the
@@ -1219,10 +1233,15 @@ impl Circuit {
                         // (inflow is no activity dependency — that is what
                         // makes the stock the loop's anchor).
                     }
-                    ProcessPrimitive::Combining => physical,
-                    ProcessPrimitive::Splitting => physical, // fanout divides on wires
-                    ProcessPrimitive::Propelling => (physical + message) * a,
-                    ProcessPrimitive::Impeding => (physical + message) * a,
+                    // Substance-matched throughput (#340, Fig 3.17): output =
+                    // inflows of the declared output kind. A Combining fed 5
+                    // matter and 7 energy produces 5, never 12; the 7 drove
+                    // the work and dissipates. A Message mover (out_substance
+                    // Message) passes its messages the same way.
+                    ProcessPrimitive::Combining => matched,
+                    ProcessPrimitive::Splitting => matched, // fanout divides on wires
+                    ProcessPrimitive::Propelling => matched * a,
+                    ProcessPrimitive::Impeding => matched * a,
                     // signal · gain, bounded by metered Energy — no free mass
                     ProcessPrimitive::Amplifying => {
                         let power: f32 = incoming
@@ -2241,6 +2260,53 @@ mod tests {
             (o.wire_amount(0) - 7.0).abs() < 1e-3,
             "observation tap reads the level: {}",
             o.wire_amount(0)
+        );
+    }
+
+    /// #340 separating pair (Fig 3.17): a transforming primitive passes only
+    /// the inflows of its declared output kind. 5 matter + 7 energy into a
+    /// material Combining must yield activity 5 with the 7 dissipated — under
+    /// the old energy-plus-material sum the output was 12 and this test could
+    /// not pass. The converse: an all-material feed is untouched.
+    #[test]
+    fn energy_drives_a_material_process_and_never_becomes_its_output() {
+        use ProcessPrimitive::*;
+        fn combiner(second: SubstanceType) -> Circuit {
+            let mut c = Circuit::default();
+            c.nodes.push(node(NodeKind::Source)); // 0: matter feed
+            c.nodes.push(node(NodeKind::Source)); // 1: second feed
+            c.nodes.push(node(NodeKind::Process(Combining))); // 2
+            c.nodes.push(node(NodeKind::Sink)); // 3
+            c.nodes[0].param = 5.0;
+            c.nodes[1].param = 7.0;
+            c.nodes[2].out_substance = SubstanceType::Material.into();
+            c.wires.push(Wire::new(0, 2));
+            c.wires[0].substance_override = Some(SubstanceType::Material);
+            c.wires.push(Wire::new(1, 2));
+            c.wires[1].substance_override = Some(second);
+            c.wires.push(Wire::new(2, 3));
+            c
+        }
+        let mut driven = combiner(SubstanceType::Energy);
+        driven.step();
+        driven.step();
+        assert!(
+            (driven.nodes[2].activity - 5.0).abs() < 1e-6,
+            "5 matter + 7 energy combine to 5, got {}",
+            driven.nodes[2].activity
+        );
+        assert!(
+            driven.dissipated >= 7.0 - 1e-3,
+            "the driving energy dissipates, got {}",
+            driven.dissipated
+        );
+        let mut fed = combiner(SubstanceType::Material);
+        fed.step();
+        fed.step();
+        assert!(
+            (fed.nodes[2].activity - 12.0).abs() < 1e-6,
+            "an all-material feed passes whole, got {}",
+            fed.nodes[2].activity
         );
     }
 
