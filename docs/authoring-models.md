@@ -199,18 +199,21 @@ knowing before anyone tries again:
 | `homeostat` | `release_rate` on the Room. A closed regulatory loop that actually runs and converges — see the thermostat pair above. | **no** |
 | `allocation` | nothing but structure: one `Splitting` component fanning a forced total across three weighted sinks, all four columns driven from CSV. | yes, but its fact already lives in `llm-market.sl`, richer, with `param shares` |
 
-The blocker is not effort. `emit_sl` **refuses** a thing carrying
-`cognitive_params` or `initial_state` and names the JSON export as the lossless
-path, because SL has no production for either until
-[#112](https://github.com/halcyonic-systems/bert-lenses/issues/112) chooses the
-transition functor. `language/spec.md` §8.2 already names the exporter's
-direct-to-JSON write as a **defect rather than a second authoring path**, and
-these three demos are the artifacts that cross it. So they stay in the archive,
-held by their gates: they are the live evidence that #112 is open, and deleting
-them would delete the evidence while gaining nothing.
+**Update, 2026-08-15 — the two productions exist.** #112 slice 1 landed after
+the transition-functor derivation ruled both facts orthogonal to the functor
+(an initial stock is a choice of basepoint — a pointed coalgebra; a release
+rate is a parameter of the transition map). SL now says both: `stock <unit>
+initial <n>` and, on a Buffering component, `release <n>` — the emit refusal
+narrowed to the keys that remain untyped (`capacity`, `setpoint`,
+`time_constant`, …), each narrowing with its separating instance
+(`sl_stock_dynamics.rs`). The first user of both clauses is
+`examples/translation-apparatus.sl`'s tRNA pool: `stock tRNA initial 100
+release 20`, a self-contained dynamical model with no JSON bypass.
 
-The two things to take from them into SL when #112 lands: a nonzero opening
-stock, and a stock's release rate.
+What this means for the three archived demos: **porting is now possible and
+remains open work** — they stay in the archive, held by their gates, until
+someone ports them deliberately and re-blesses. Their history is the record
+of why the productions exist.
 
 ## Where the semantics live
 

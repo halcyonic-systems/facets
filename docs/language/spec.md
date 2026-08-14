@@ -77,6 +77,8 @@ SL is one unified language: the traditions *contributed* the words, and the lang
 | `weight` | per-transition count for the DTMC read (#67) — a non-negative integer; absent reads as the uniform 1 | Klir (the directed-system observer's transition structure); SSF's `kindCodomain .markov` | `Relation.weight` |
 | `boundary`, `porosity`, `fuzziness` | B's properties P = ⟨porosity, perceptive_fuzziness⟩ | **Mobus (B = ⟨P, I⟩) and Bunge (topological boundary, 1992)** — shared concept; the property words are Mobus's | `CanvasBoundaryProps` |
 | `stock` | a Buffering stock's declared unit — the stock accumulates its inflow over Δt, so its dimension differs from the flow's and carries its own unit (#76/#94) | Mobus (stocks/buffers, the Buffering work process); the Stella/Vensim stock-flow convention | `Thing.stock_unit` → `AgentModel.stock_unit` |
+| `initial` | the stock's starting level, welded to the `stock` clause so a dimensionless initial is unwritable (#112) — the archived reservoir's fact ("starts with a stock already full"), now sayable; the tether's t0 observation writes the same field, so an authored initial and a measured one are one kind of fact | Mobus (a run's initial condition; the pointed-coalgebra reading, #112 proposal §2.a) | `Thing.initial_state["storage"]` → `AgentModel.initial_state["storage"]` |
+| `release` | a Buffering stock's drain per `time unit` (#112) — the archived homeostat's fact, now sayable; Buffering-only, since no other primitive reads it. ≤ 0 is a parse fault (same rule as `amount`) | Mobus (Buffering's release behavior); a parameter of the transition map (#112 proposal §2.b) | `Thing.cognitive_params["release_rate"]` → `AgentModel.cognitive_params["release_rate"]` |
 | `scale` + one of `Nominal`, `Ordinal`, `Interval`, `Ratio` | the measurement scale of a variable's state set — the level at which its values are comparable (v1.2, #154) | Klir (the source-system characterization of a variable — §4, Table 4.1, the ground floor of his epistemological hierarchy) | `Thing.scale` (`ScaleType`) — authored canvas-side metadata, read in the Klir register only; never projects |
 | `states` | the variable's state set, in Klir's set notation — `{Green, Red}`; `{}` is the explicit empty set (v1.2, #154) | Klir (a source-system variable *is* characterized by its state set — §4, Table 4.1) | `Thing.states` — same register-only standing as `scale` |
 | `kind` (thing clause) + one of `Basic`, `Support` | the basic-vs-supporting partition of the source variables — a semantic role the modeler declares, never readable off R; omitted reads as `Basic`, so the clause declares the rare support variable (v1.2, #154) | Klir (basic variables are the observed quantities; supporting variables encode the support set — time, space, population — §4, Table 4.1) | `Thing.variable_kind` (`KlirVarKind`) — same register-only standing as `scale` |
@@ -111,7 +113,8 @@ thing       = thingword name { attr } ;
 thingword   = "component" | "source" | "sink" | "environment" ;
 attr        = "interface" | "primitive" primword
             | "description" string                     (* prose, #326 *)
-            | "stock" name                             (* declared stock unit *)
+            | "stock" name [ "initial" number ]        (* declared stock unit; starting level, #112 *)
+            | "release" number                         (* Buffering drain per time unit, #112 *)
             | "scale" scaleword                        (* Klir source-system metadata, #154; *)
             | "states" "{" [ name { "," name } ] "}"   (*   these three ride environment    *)
             | "kind" varkindword                       (*   lines too — §4.3                *)

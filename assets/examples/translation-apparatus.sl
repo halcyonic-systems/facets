@@ -19,7 +19,11 @@ component "Aminoacyl-tRNA Synthetase" primitive Combining interface
 # The regulated variable of the cycle. The pool is what remembers how many
 # charged tRNAs exist between one elongation step and the next, which is the
 # thing a loop needs in order to be well-posed rather than instantaneous.
-component "tRNA Pool" primitive Buffering
+# It starts full and drains at the elongation rate — the two facts SL could
+# not say until #112 slice 1 (the archived reservoir and homeostat carry the
+# history of that refusal). 20/s matches usage; the pool holds steady only
+# once #340 stops ATP's energy inflating the recharge.
+component "tRNA Pool" primitive Buffering stock tRNA initial 100 release 20
 
 source Nucleus
 sink Chaperone

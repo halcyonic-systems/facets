@@ -381,6 +381,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut interface = false;
                 let mut child_model: Option<ChildRef> = None;
                 let mut stock_unit = String::new();
+                let mut initial_stock: Option<f64> = None;
+                let mut release: Option<f64> = None;
                 let mut description = String::new();
                 let mut scale: Option<ScaleType> = None;
                 let mut states: Option<Vec<String>> = None;
@@ -505,6 +507,79 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                     fail(
                                         "stock syntax: `stock <unit>` (e.g. `stock ML`, \
                                          `stock \"kW·h\"`)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                            // `initial <n>` extends the stock clause (#112): the
+                            // starting level, welded to the unit just declared so
+                            // a dimensionless initial is unwritable. ≥ 0 — a
+                            // stock cannot start below empty.
+                            if let Some(Tok::Word(w2)) = attrs.get(i) {
+                                if w2.eq_ignore_ascii_case("initial") {
+                                    match attrs.get(i + 1) {
+                                        Some(Tok::Word(n)) if n.parse::<f64>().is_ok() => {
+                                            let v = n.parse::<f64>().unwrap();
+                                            if v.is_finite() && v >= 0.0 {
+                                                initial_stock = Some(v);
+                                            } else {
+                                                fail(
+                                                    "a stock's initial level is a finite \
+                                                     value ≥ 0 (a stock cannot start below \
+                                                     empty)"
+                                                        .into(),
+                                                    &mut errors,
+                                                );
+                                                ok = false;
+                                            }
+                                        }
+                                        _ => {
+                                            fail(
+                                                "initial syntax: `stock <unit> initial <n>` \
+                                                 (e.g. `stock ML initial 4.5`)"
+                                                    .into(),
+                                                &mut errors,
+                                            );
+                                            ok = false;
+                                        }
+                                    }
+                                    i += 2;
+                                }
+                            }
+                        }
+                        // `release <n>` — a Buffering stock's drain per time
+                        // unit (#112): the kernel's cognitive_params
+                        // ["release_rate"], the positive half of the pair the
+                        // archived homeostat.json witnesses. Buffering-only,
+                        // checked after the line completes (the primitive may
+                        // be declared on either side of this clause).
+                        Tok::Word(w) if w.eq_ignore_ascii_case("release") => {
+                            if role == Role::Environment {
+                                fail(
+                                    "`release` applies to components only (environment \
+                                     internals are opaque)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                            if release.is_some() {
+                                fail("`release` already given on this component".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Word(n))
+                                    if n.parse::<f64>().is_ok_and(|v| v.is_finite() && v > 0.0) =>
+                                {
+                                    release = Some(n.parse::<f64>().unwrap());
+                                }
+                                _ => {
+                                    fail(
+                                        "release syntax: `release <positive number>` — the \
+                                         stock's drain per time unit (e.g. `release 1.4`)"
                                             .into(),
                                         &mut errors,
                                     );
@@ -664,10 +739,34 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // crossing half (γsrc/γsnk + counterparty preservation) in
                 // bert-core::decomposition. `interface` + `decomposes` on one
                 // component is now a legal, checked authoring move.
+                // `release` names the Buffering arm's drain and nothing else
+                // reads it (#112 separating rule): on any other primitive the
+                // clause would parse to a value the engine never consumes.
+                if release.is_some() && primitive != Some(ProcessPrimitive::Buffering) {
+                    fail(
+                        "`release` applies to a Buffering component only — it is the \
+                         stock's drain per time unit, and no other primitive reads it"
+                            .into(),
+                        &mut errors,
+                    );
+                    ok = false;
+                }
                 if !ok {
                     continue;
                 }
                 by_name.insert(name.clone(), things.len());
+                // The two typed engine-parameter productions (#112): `stock …
+                // initial <n>` fills initial_state["storage"], `release <n>`
+                // fills cognitive_params["release_rate"]. Everything else in
+                // those bags remains inexpressible and keeps the emit refusal.
+                let mut cognitive_params = std::collections::HashMap::new();
+                if let Some(r) = release {
+                    cognitive_params.insert("release_rate".to_string(), r);
+                }
+                let mut initial_state = std::collections::HashMap::new();
+                if let Some(v) = initial_stock {
+                    initial_state.insert("storage".to_string(), serde_json::json!(v));
+                }
                 things.push(Thing {
                     id: next_id,
                     name,
@@ -683,10 +782,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     scale,
                     states,
                     variable_kind,
-                    // SL has no production for the engine-parameter bags (#112),
-                    // so a parsed thing never carries them.
-                    cognitive_params: Default::default(),
-                    initial_state: Default::default(),
+                    cognitive_params,
+                    initial_state,
                     agency_capacity: None,
                 });
                 next_id += 1;
@@ -1729,14 +1826,33 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         // have an outgoing flow, falsifying corpus headers that claim a fixed
         // composition. A round trip must return what was written.
         // §7.3: refuse loudly rather than lose information silently. The canvas
-        // carries a loaded model's engine-parameter bags opaquely (#216); SL has
-        // no production for them until #112 chooses the transition functor, so a
-        // thing that carries them cannot be written down without narrowing.
-        if !t.cognitive_params.is_empty() || !t.initial_state.is_empty() {
+        // carries a loaded model's engine-parameter bags opaquely (#216). #112's
+        // first slice types exactly two keys — `initial_state["storage"]`
+        // (needs a declared stock unit to carry its dimension) and
+        // `cognitive_params["release_rate"]` (Buffering only) — and the refusal
+        // NARROWS to everything else: a second key in either bag would be
+        // silently dropped by an emit, which is the exact loss this check
+        // exists to make impossible.
+        let initial_expressible = t.initial_state.is_empty()
+            || (t.role == Role::Component
+                && !t.stock_unit.is_empty()
+                && t.initial_state.len() == 1
+                && t.initial_state
+                    .get("storage")
+                    .and_then(|v| v.as_f64())
+                    .is_some_and(f64::is_finite));
+        let release_expressible = t.cognitive_params.is_empty()
+            || (t.role == Role::Component
+                && t.primitive == Some(ProcessPrimitive::Buffering)
+                && t.cognitive_params.len() == 1
+                && t.cognitive_params
+                    .get("release_rate")
+                    .is_some_and(|v| v.is_finite() && *v > 0.0));
+        if !(initial_expressible && release_expressible) {
             return Err(format!(
-                "`{}` carries engine parameters (cognitive_params / initial_state) \
-                 SL cannot yet express (#112) — export the model as kernel JSON \
-                 instead of SL",
+                "`{}` carries engine parameters SL cannot express (#112 covers only \
+                 `stock <unit> initial <n>` and, on Buffering, `release <n>`) — \
+                 export the model as kernel JSON instead of SL",
                 t.name
             ));
         }
@@ -1757,6 +1873,14 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
             // Declared stock unit (#76/#94) — before `decomposes` (which stays last).
             if !t.stock_unit.is_empty() {
                 write!(out, " stock {}", name_token(&t.stock_unit)?).unwrap();
+                // The starting level rides its unit (#112) — expressibility was
+                // gated above, so the read here cannot miss.
+                if let Some(v) = t.initial_state.get("storage").and_then(|v| v.as_f64()) {
+                    write!(out, " initial {v}").unwrap();
+                }
+            }
+            if let Some(r) = t.cognitive_params.get("release_rate") {
+                write!(out, " release {r}").unwrap();
             }
         }
         // Klir source-system metadata (#154): kind, then scale, then state set.
@@ -2035,6 +2159,8 @@ pub const RESERVED_WORDS: &[&str] = &[
     "weight",
     "substance",
     "amount",
+    "initial",
+    "release",
     "description",
     "usability",
     "porosity",
