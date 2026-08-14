@@ -81,6 +81,20 @@ describe("the human's verdict (#325)", () => {
     authoringHistoryMock.mockResolvedValue([turn({ status: "lgtm" })]);
     expect((await draftedModels())[0].status).toBeNull();
   });
+
+  /// The ruling becomes a shorter list HERE and nowhere else: the ledger keeps
+  /// the turn (durable, reversible), the library stops showing it. Without this
+  /// filter, discarding a draft changes nothing visible — the dead-verb state
+  /// the 2026-08-14 curation pass found the feature in.
+  it("drops a discarded turn from the list, and only that turn", async () => {
+    authoringHistoryMock.mockResolvedValue([
+      turn(),
+      turn({ id: 114, status: "discarded" }),
+      turn({ id: 115, status: "accepted" }),
+    ]);
+    const rows = await draftedModels();
+    expect(rows.map((r) => r.key)).toEqual(["drafted:113", "drafted:115"]);
+  });
 });
 
 describe("a description becomes a line", () => {

@@ -142,13 +142,17 @@ export function HomeScreen(props: HomeProps) {
   );
 }
 
-/** A drafted row's gloss: when it was drafted, in the reader's own locale. The
- *  ledger stores ISO-8601 UTC; a date is the only thing worth surfacing here,
- *  since the prompt is already the row's name and the model is its tag. An
- *  unparseable timestamp glosses as nothing rather than as "Invalid Date". */
+/** A drafted row's gloss: when it was drafted, in the reader's own locale, and
+ *  the human's ruling when there is one. The ledger stores ISO-8601 UTC; the
+ *  prompt is already the row's name and the model is its tag, so date and
+ *  ruling are all that is worth surfacing. Discarded rows never reach this
+ *  list (drafted.ts drops them), so the only ruling to show is `accepted` —
+ *  which means "checked onto the canvas", not "saved". An unparseable
+ *  timestamp glosses as the verb alone rather than as "Invalid Date". */
 function draftedGloss(d: DraftedModel): string {
+  const verb = d.status === "accepted" ? "accepted" : "drafted";
   const t = Date.parse(d.at);
-  return Number.isNaN(t) ? "drafted" : `drafted ${new Date(t).toLocaleDateString()}`;
+  return Number.isNaN(t) ? verb : `${verb} ${new Date(t).toLocaleDateString()}`;
 }
 
 function countLibrary(tree: LibraryNode[]): number {

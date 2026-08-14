@@ -76,8 +76,18 @@ function toRow(turn: AuthoringTurn): DraftedModel | null {
 
 /** The drafted partition's contents, newest first. Resolves to the empty list
  *  whenever the reasoner is off, unreachable, or shared — see `authoringHistory`,
- *  which is where that decision is made and explained. */
+ *  which is where that decision is made and explained.
+ *
+ *  A turn ruled `discarded` is dropped HERE, not in the ledger: the ledger is
+ *  the durable record of every turn and keeps serving all of them, and this is
+ *  the one place a ruling becomes a shorter list. Discarding is therefore
+ *  reversible at the ledger and invisible in the library — which is what a
+ *  ruling on a draft should be. `accepted` rows stay listed: accept puts a
+ *  draft onto the canvas, it does not save it, so until the author saves, the
+ *  drafted row is still where that model lives. */
 export async function draftedModels(limit = 50): Promise<DraftedModel[]> {
   const turns = await authoringHistory(limit);
-  return turns.map(toRow).filter((r): r is DraftedModel => r !== null);
+  return turns
+    .map(toRow)
+    .filter((r): r is DraftedModel => r !== null && r.status !== "discarded");
 }
