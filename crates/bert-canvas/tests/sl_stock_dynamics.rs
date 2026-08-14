@@ -84,14 +84,15 @@ fn a_mixed_initial_state_bag_still_refuses_to_emit() {
     assert!(err.contains("#112"), "the refusal names the boundary: {err}");
 }
 
-/// Separating instance (#112 proposal §3.3): `capacity` is a real, executing
-/// engine field with no SL production — accepting the bag because
-/// `release_rate` is present would silently drop it on export.
+/// Separating instance (#112 proposal §3.3): a key with no SL production at
+/// all (not one of the six #112 typed keys — see `sl_engine_params.rs` for
+/// those) — accepting the bag because `release_rate` is present would
+/// silently drop it on export.
 #[test]
 fn a_mixed_cognitive_params_bag_still_refuses_to_emit() {
     let mut m = parse_sl(AUTHORED).expect("parses");
     let t = m.things.iter_mut().find(|t| t.name == "Reservoir").unwrap();
-    t.cognitive_params.insert("capacity".to_string(), 50.0);
+    t.cognitive_params.insert("efficiency".to_string(), 0.9);
     let err = emit_sl(&m).expect_err("an untyped key must refuse");
     assert!(err.contains("#112"), "{err}");
 }
