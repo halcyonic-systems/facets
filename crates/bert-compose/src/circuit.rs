@@ -322,8 +322,10 @@ pub struct Node {
     pub activity: f32,
     pub total: f32,
     /// The node's last `SPARK_CAP` ticks — storage for a buffer (the thing it
-    /// holds), activity for everything else. Engine state, not view state:
-    /// the inline sparkline just draws this buffer, so it ports to any shell.
+    /// holds), activity for everything else. TRACE, not transition state: the
+    /// step writes it and never reads it (`history_is_a_record_not_an_input_to_t`
+    /// pins this), so it sits outside the coalgebra's carrier (#112 proposal
+    /// §1.6) — it lives here only so the inline sparkline ports to any shell.
     pub spark: VecDeque<f32>,
 }
 
