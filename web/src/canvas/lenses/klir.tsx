@@ -3,7 +3,7 @@
 // relation is the salient, designed element — labelled by signature (arity /
 // Cartesian form), never by substance type (that vocabulary is Mobus's).
 import { edgeGeometry } from "../geometry";
-import { STYLE } from "../style";
+import { STYLE, elideEdgeLabel } from "../style";
 import { EdgeScaffold, NodeBody, NullPortView, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
 
@@ -30,7 +30,7 @@ function NodeView({ thing, hovered, sim, onPointerDown, onHandlePointerDown }: L
 // The relation is neutral, substance-blind: no material/energy/message coloring.
 const KLIR_STYLE: EdgeStyle = { color: "var(--text-secondary)", width: STYLE.edge.klir, opacity: 0.9 };
 
-function EdgeView({ model, relation, sigIndex, selected, driven, sim, onSelect }: LensEdgeProps) {
+function EdgeView({ model, relation, sigIndex, selected, driven, sim, crowded, onSelect }: LensEdgeProps) {
   const geo = edgeGeometry(model, relation, false);
   if (!geo) return null;
   const { d, labelAt } = geo;
@@ -49,9 +49,10 @@ function EdgeView({ model, relation, sigIndex, selected, driven, sim, onSelect }
   // to read. Without a name the relation was pure notation — the bounce-off case.
   const sig = `r${sigIndex + 1} ⊆ T×T${relation.klir_directed ? " (directed)" : ""}`;
   const label = relation.name ? (
-    <text x={labelAt.x} y={labelAt.y - 12} textAnchor="middle" className="font-mono pointer-events-none">
+    <text x={labelAt.x} y={labelAt.y - 12} textAnchor="middle" className="font-mono">
+      <title>{relation.name}</title>
       <tspan x={labelAt.x} fontSize={11} fill="var(--text-secondary)">
-        {relation.name}
+        {elideEdgeLabel(relation.name)}
       </tspan>
       <tspan x={labelAt.x} dy={11} fontSize={9} fill="var(--text-muted)">
         {sig}
@@ -81,6 +82,7 @@ function EdgeView({ model, relation, sigIndex, selected, driven, sim, onSelect }
       relationId={relation.id}
       onSelect={onSelect}
       label={label}
+      crowded={crowded}
     />
   );
 }

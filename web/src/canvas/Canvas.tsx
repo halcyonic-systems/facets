@@ -5,7 +5,7 @@
 // `useCanvasGestures` (pointer events → a pure reducer); per-lens rendering lives
 // in the `LensRegistry` (stateless views, one set per lens). This file is the
 // stage: backdrops, the render loop, and the node-name draft input.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CanvasModel, EdgeFact, Lens, LensFacts, PortFact, Thing } from "../kernel/types";
 import { KIND_COLOR, type SimFrame } from "./types";
 import {
@@ -17,7 +17,9 @@ import {
   unprojectWrite,
   straightPath,
   thingById,
+  crowdedLabelIds,
   NODE_R,
+  type LabelBox,
   type Hull,
   type PortTarget,
   type Pt,
@@ -27,6 +29,17 @@ import { useCanvasGestures } from "./useCanvasGestures";
 import { STYLE } from "./style";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
 import { MassOverlay } from "./MassOverlay";
+
+/** #335: the "nothing is crowded" set. Hoisted to module scope so the common
+ *  case allocates nothing per render; the size-and-membership guard on
+ *  `setCrowded` is what actually keeps the measure/render pass from looping. */
+const EMPTY_CROWD: ReadonlySet<number> = new Set<number>();
+
+/** How much larger a boundary-crossing flow's arrowhead is drawn than an
+ *  interior one. The head is the per-flow direction mark, and at the shipped
+ *  register it renders 3-4 screen px on a fitted model — correct and
+ *  unreadable, the same failure the port chevron had. */
+const EXO_ARROW_GAIN = 2;
 
 interface Props {
   model: CanvasModel;
@@ -297,6 +310,64 @@ export default function Canvas({
     return () => svg.removeEventListener("wheel", onStageWheel);
   }, [onStageWheel]);
 
+  // #335 detail-on-demand: which edge labels collide, measured off what was
+  // actually drawn. Every lens renders its label inside a `[data-edge-label]`
+  // group, so this reads the rendered boxes rather than re-deriving per-lens
+  // text — the lens stays the single author of its own label.
+  //
+  // useLayoutEffect, not useEffect: the quieting is applied before paint, so a
+  // crowded label never flashes at full strength and then dims.
+  //
+  // No dependency array by design. Label boxes move with node drags, lens
+  // changes, sibling counts and name edits — enumerating those is a bug farm,
+  // and the `setCrowded` below is idempotent, so an extra pass costs one
+  // measurement and changes nothing. It TERMINATES because quieting is done
+  // with opacity: the boxes measured on pass 2 are identical to pass 1, the set
+  // compares equal, and no further render is scheduled.
+  //
+  // Boxes are read in SCREEN space, so the pad is real perceived air. Whether
+  // two labels collide is still zoom-invariant — the stage transform is a
+  // uniform scale, which is why zoom-aware labels were a dead end — but the pan
+  // and scale state that this effect reruns on keep the rects honest.
+  const [crowded, setCrowded] = useState<ReadonlySet<number>>(EMPTY_CROWD);
+  useLayoutEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    // Node NAMES join the pass as fixed obstacles — an edge label landing on a
+    // thing's name is as unreadable as one landing on another label, and it is
+    // the flow label that yields (a name has no hover of its own).
+    const els = Array.from(
+      svg.querySelectorAll<SVGElement>("[data-edge-label], [data-node-label]"),
+    );
+    const boxes: LabelBox[] = [];
+    for (const el of els) {
+      // Screen space, so an edge label on the stage and a name inside its
+      // node's transformed group compare directly. jsdom reports every rect as
+      // 0×0, so the unit suite measures nothing, nothing is crowded, and every
+      // label renders — the pre-#335 behaviour. The clustering rule itself is
+      // covered directly in geometry.crowding.test.ts.
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) continue;
+      // Thing ids and relation ids share one number space here, which is safe
+      // only because a `fixed` box is never ADDED to the result — the returned
+      // set holds relation ids alone, so `crowded.has(r.id)` cannot be answered
+      // by a node that happens to carry the same number.
+      const fixed = el.dataset.nodeLabel !== undefined;
+      boxes.push({
+        id: Number(fixed ? el.dataset.nodeLabel : el.dataset.edgeLabel),
+        x: r.x,
+        y: r.y,
+        w: r.width,
+        h: r.height,
+        fixed,
+      });
+    }
+    const next = crowdedLabelIds(boxes);
+    setCrowded((prev) =>
+      prev.size === next.size && [...next].every((id) => prev.has(id)) ? prev : next,
+    );
+  });
+
   const views = LensRegistry[lens];
   const containerBox = boundingBox(dModel.things);
 
@@ -369,6 +440,30 @@ export default function Canvas({
             refY="5"
             markerWidth={STYLE.arrowSize}
             markerHeight={STYLE.arrowSize}
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
+          </marker>
+        ))}
+        {/* #C phase 2: a boundary CROSSING carries a heavier head.
+            Direction is a per-FLOW question and the port cannot answer it — on
+            federal-reserve.sl four of five ports are `hybrid`, carrying inbound
+            and outbound at once, so their glyph says "both" however large it is
+            drawn. The head is the only mark that belongs to one flow.
+            It needed the gain because `markerUnits` defaults to strokeWidth: at
+            arrowSize 5 a matter head is 7.5 world units and an informational
+            one 5, which at a fitted 0.54 render as ~4 and ~2.7 SCREEN px.
+            Endo edges keep the plain head — inside the boundary there is no
+            in/out to read, so amplifying there would be decoration. */}
+        {Object.entries(KIND_COLOR).map(([k, color]) => (
+          <marker
+            key={`${k}-exo`}
+            id={`arrow-${k}-exo`}
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth={STYLE.arrowSize * EXO_ARROW_GAIN}
+            markerHeight={STYLE.arrowSize * EXO_ARROW_GAIN}
             orient="auto-start-reverse"
           >
             <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
@@ -529,6 +624,7 @@ export default function Canvas({
             ring={ring}
             sigIndex={dModel.relations.indexOf(r)}
             selected={selectedRelationId === r.id}
+            crowded={crowded.has(r.id)}
             driven={driven?.has(r.name) ?? false}
             sim={sim?.edges[r.name]}
             onSelect={onSelectRelation}
@@ -606,6 +702,7 @@ export default function Canvas({
             at={at}
             angle={angle}
             compact={compact}
+            scale={scale}
             onSelect={onSelectInterface ? () => onSelectInterface(port, at) : undefined}
           />
         ))}
@@ -647,6 +744,7 @@ export default function Canvas({
               at={at}
               angle={angle}
               compact={compact}
+              scale={scale}
               onSelect={onSelectThing ? () => onSelectThing(port.component) : undefined}
             />
           </g>

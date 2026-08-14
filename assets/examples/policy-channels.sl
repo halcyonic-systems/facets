@@ -62,7 +62,7 @@ environment "Households and Firms"
 # ── Flows ────────────────────────────────────────────────────────────
 
 # The purchase, side one: securities leave the banks...
-flow "Banks and Dealers" -> "Federal Reserve" : matter "securities sold to the desk" substance securities
+flow "Banks and Dealers" -> "Federal Reserve" : matter "securities sold" substance securities description "The purchase, side one — securities leave the banks for the desk."
 
 # ...and side two: the reserves that pay for them are CREATED, not
 # moved. This is the money-creation flow, and it terminates on a bank.
@@ -70,32 +70,32 @@ flow "Banks and Dealers" -> "Federal Reserve" : matter "securities sold to the d
 # 12 Aug 2020, from 15% to 22% of outstanding Treasury debt — done, in
 # the Fed's own words, "to restore market functioning":
 # https://www.federalreserve.gov/monetarypolicy/bsd-recent-developments-202008.htm
-flow "Federal Reserve" -> "Banks and Dealers" : matter "reserve balances created in payment" substance reserves
+flow "Federal Reserve" -> "Banks and Dealers" : matter "reserves created" substance reserves description "The reserves that pay for the securities are created, not moved. This is the money-creation flow, and it terminates on a bank."
 
 # Lending, not spending. Repo peaked at $496 billion in mid-March 2020
 # and fell to zero by early July — a loan, made and unwound. (Same
 # source as above.) Luke's own citation for the operations announcement:
 # https://www.newyorkfed.org/markets/opolicy/operating_policy_200315
-flow "Federal Reserve" -> "Banks and Dealers" : matter "credit lent against collateral" substance credit
+flow "Federal Reserve" -> "Banks and Dealers" : matter "credit lent" substance credit description "Against collateral — lending, not spending. Repo peaked at $496 billion in mid-March 2020 and fell to zero by early July, a loan made and unwound."
 
 # The mediated leg, and the one nobody controls. The Fed can make credit
 # cheap and abundant at the bank; it cannot make the bank lend, nor a
 # household borrow. Whether this arrow is traversed is the whole
 # question of "transmission".
-flow "Banks and Dealers" -> "Households and Firms" : matter "credit extended, at the banks' discretion" substance credit
+flow "Banks and Dealers" -> "Households and Firms" : matter "credit extended" substance credit description "At the banks' discretion — the mediated leg nobody controls. The Fed can make credit cheap and abundant at the bank; it cannot make the bank lend, nor a household borrow. Whether this arrow is traversed is the whole question of 'transmission'."
 
 # Congress's channel: no intermediary, and nothing owed back. Cheques,
 # topped-up unemployment, PPP. This is the arrow that is NOT credit,
 # and the difference in substance is the model's central claim.
-flow Congress -> "Households and Firms" : matter "transfers — cheques, topped-up unemployment, PPP" substance transfers description "No intermediary, and nothing owed back. This is the arrow that is not credit, and the difference in substance is the model's central claim."
+flow Congress -> "Households and Firms" : matter "transfers" substance transfers description "Cheques, topped-up unemployment, PPP — no intermediary, and nothing owed back. This is the arrow that is not credit, and the difference in substance is the model's central claim."
 
 # ── What each organ steers by ────────────────────────────────────────
 
 # The Fed reads markets, not people.
-flow "Banks and Dealers" -> "Federal Reserve" : informational "market conditions — spreads, funding pressure, dealer capacity"
+flow "Banks and Dealers" -> "Federal Reserve" : informational "market conditions" description "Spreads, funding pressure, dealer capacity — the Fed reads markets, not people."
 
 # Congress reads people, not markets.
-flow "Households and Firms" -> Congress : informational "the political signal — constituents, elections"
+flow "Households and Firms" -> Congress : informational "political signal" description "Constituents, elections — Congress reads people, not markets."
 
 # ── What the kernel says ─────────────────────────────────────────────
 # Mobus: 0 issues. Klir: 0 issues. Runs.

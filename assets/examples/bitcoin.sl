@@ -61,13 +61,13 @@ source "Energy Market"
 environment "Asset Market"
 
 # Submission: transactions enter the queue.
-flow Transactors -> Mempool : informational "submitted transactions, bidding for queue position"
+flow Transactors -> Mempool : informational "submitted transactions" description "Bidding for queue position."
 
 # Selection: highest feerate first — the fee market clearing.
-flow Mempool -> Mining : informational "transactions selected by feerate"
+flow Mempool -> Mining : informational "selected by feerate" description "Highest feerate first — the fee market clearing."
 
 # The burn: hashes are bought with electricity.
-flow "Energy Market" -> Mining : energy "electricity burned into proof of work"
+flow "Energy Market" -> Mining : energy "electricity burned" description "Bought with electricity, burned into proof of work."
 
 # Settlement: blocks append to the chain.
 flow Mining -> "Chain State" : informational "blocks appended"
@@ -84,22 +84,22 @@ flow "Chain State" -> Transactors : informational "confirmations"
 
 # By construction: the chain observes its own block pace and adjusts
 # the work required — the protocol's thermostat.
-flow "Chain State" -> Mining : informational "difficulty — retargeted from observed block pace"
+flow "Chain State" -> Mining : informational "difficulty" description "Retargeted from observed block pace — the protocol's thermostat."
 
 # By conjecture, the sensing leg: queue depth becomes a price. This is
 # the flow the fee_percentiles extraction measures.
-flow Mempool -> Transactors : informational "the feerate signal — the price of queue position"
+flow Mempool -> Transactors : informational "feerate signal" description "The price of queue position — queue depth becomes a price. This is the flow the fee_percentiles extraction measures."
 
 # Issuance: the subsidy plus collected fees, minted to the miner by
 # protocol rule. Structurally the Fed parallel: created in payment,
 # not transferred (see federal-reserve.sl, same shelf).
-flow "Chain State" -> Mining : matter "block reward — subsidy and fees, minted in payment"
+flow "Chain State" -> Mining : matter "block reward" description "Subsidy and fees, minted in payment to the miner by protocol rule. Structurally the Fed parallel: created in payment, not transferred (see federal-reserve.sl, same shelf)."
 
 # The asset face: miners sell to cover the energy bill...
-flow Mining -> "Asset Market" : matter "coins sold to cover costs"
+flow Mining -> "Asset Market" : matter "coins sold" description "Sold to cover costs — the energy bill."
 
 # ...and the price comes back to everyone as information.
-flow "Asset Market" -> Transactors : informational "the price — bitcoin as an asset"
+flow "Asset Market" -> Transactors : informational "the price" description "Bitcoin as an asset — the price comes back to everyone as information."
 
 # ── Pass 2, planned (not this file): the tether ──────────────────────
 # Amounts and declared metrics arrive with the CSV tether from

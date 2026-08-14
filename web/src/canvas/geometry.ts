@@ -13,9 +13,48 @@ export interface Pt {
   y: number;
 }
 
-/** Hit radius for an interface port. The capsule is 24×14 about its center, so
- *  a disc a little wider than its long half-axis. */
-export const PORT_HIT_R = 16;
+/** Half-width of the port capsule along the membrane normal, in WORLD px, and
+ *  the floor it will not render below on SCREEN.
+ *
+ *  The capsule carries the direction glyph — a chevron whose shape is the
+ *  kernel's `PortFact.direction` (mobus.tsx `PortView`) — and at the Fed
+ *  model's own fit zoom that chevron measured 4.6–5.6 SCREEN px. The channel
+ *  was correct and simply too small to read.
+ *
+ *  The floor is why this takes `scale`. Text cannot be rescued this way — every
+ *  label lives inside the one `scale()` group and nothing counter-scales, which
+ *  is what made zoom-aware labels a dead end — but a GLYPH can, and the canvas
+ *  already does it for the 18-screen-px edge hit paths via
+ *  `vectorEffect="non-scaling-stroke"`. This is the same idea with an explicit
+ *  number: proportionate when zoomed in (the base wins), legible when zoomed
+ *  out (the floor wins). Not full counter-scaling — a constant-screen-size
+ *  capsule would swell absurdly against the nodes at high zoom. */
+const PORT_HW_WORLD = 14;
+const PORT_MIN_SCREEN_HW = 13;
+
+/** Ceiling on the capsule, as a fraction of the node RADIUS in world px.
+ *  Without it the screen floor keeps inflating the capsule all the way down to
+ *  ZOOM_MIN (0.15), where 13 screen px of half-width is 87 world px — a notch
+ *  two and a half times wider than the whole component it sits on. The floor
+ *  buys legibility; this stops it eating the drawing to get it. */
+const PORT_HW_MAX_OF_NODE = 0.75;
+
+/** The capsule's half-width in world px at a given stage scale. Three regimes:
+ *  proportionate when zoomed in (the base wins), floored through the ordinary
+ *  fitted range so the direction chevron stays readable, and capped past about
+ *  0.5 so a far-out view does not turn every port into a blob. */
+export function portHalfWidth(scale = 1): number {
+  const floored = Math.max(PORT_HW_WORLD, PORT_MIN_SCREEN_HW / Math.max(scale, 0.05));
+  return Math.min(floored, NODE_R * PORT_HW_MAX_OF_NODE);
+}
+
+/** Hit radius for an interface port — derived from the DRAWN half-width so the
+ *  target cannot drift away from the capsule the reader is aiming at. The
+ *  capsule grows when zoomed out; a fixed radius would have left its visible
+ *  edge unclickable exactly where it is largest. */
+export function portHitRadius(scale = 1): number {
+  return portHalfWidth(scale) + 4;
+}
 
 /** A port's pixel position and the component it belongs to. `I ⊆ C`
  *  (`Tuple.lean:97` `interfaces_sub`): an interface is a component wearing a
@@ -28,11 +67,12 @@ export interface PortTarget {
 
 /** The component owning the port under `p`, or null. Nearest wins when two
  *  ports overlap on a crowded membrane. */
-export function portOwnerAt(targets: PortTarget[], p: Pt): number | null {
+export function portOwnerAt(targets: PortTarget[], p: Pt, scale = 1): number | null {
+  const hitR = portHitRadius(scale);
   let best: { id: number; d: number } | null = null;
   for (const t of targets) {
     const d = Math.hypot(t.at.x - p.x, t.at.y - p.y);
-    if (d <= PORT_HIT_R && (!best || d < best.d)) best = { id: t.component, d };
+    if (d <= hitR && (!best || d < best.d)) best = { id: t.component, d };
   }
   return best ? best.id : null;
 }
@@ -117,18 +157,107 @@ export function unprojectWrite(authored: CanvasModel, projected: CanvasModel, ou
   return { ...outgoing, things: outgoing.things.map((t) => restore.get(t) ?? t) };
 }
 
-/** This relation's centered rank among siblings on the same unordered pair
- *  (…-1, 0, 1…) — the shared fan index for both the rim-to-rim bow and the
- *  exo crossing spread, so one flow occupies the same slot in both drawings. */
-export function siblingStep(model: CanvasModel, relation: Relation): number {
+/** This relation's rank among siblings on the same unordered pair, and how many
+ *  there are. Ordered by id so the assignment is stable across renders. */
+function siblingRank(model: CanvasModel, relation: Relation): { i: number; n: number } {
   const siblings = model.relations
     .filter(
       (r) =>
         (r.a === relation.a && r.b === relation.b) || (r.a === relation.b && r.b === relation.a),
     )
     .sort((r1, r2) => r1.id - r2.id);
-  return siblings.findIndex((r) => r.id === relation.id) - (siblings.length - 1) / 2;
+  return { i: siblings.findIndex((r) => r.id === relation.id), n: siblings.length };
 }
+
+/** Minimum angular gap, in radians, between two edges' contact points on one
+ *  node's rim. At NODE_R this is roughly a 10px arc — enough that two
+ *  arrowheads read as two.
+ *
+ *  Do not raise this without re-measuring a DENSE model. Widening the gap makes
+ *  a resolved run wider, and a wider run walks into the edges on either side of
+ *  it, which are not part of the run and do not move. Measured closest-pair on
+ *  `llm-market.sl`: 2.91 world px at 0.3, but 1.64 at 0.42 — the wider gap made
+ *  the crowded model WORSE while helping the sparse ones. Removing the tension
+ *  needs the run to yield to its neighbours (an iterative relaxation) rather
+ *  than a bigger constant. */
+export const MIN_RIM_GAP = 0.3;
+
+/** The contact ANGLE on `endpointId`'s rim for `relation`, or null if the
+ *  relation does not touch that node.
+ *
+ *  This is what stops arrowheads landing on one pixel. A rim point is computed
+ *  from the two node centres alone, so parallel siblings — which share both
+ *  centres — contact the rim at *exactly* the same place. PARALLEL_BOW bows the
+ *  middles of those curves apart and then delivers every arrowhead back to the
+ *  identical point. Measured on `federal-reserve.sl`: 15 heads on 11 distinct
+ *  points, three of them stacked on BANKING SYSTEM.
+ *
+ *  It spreads only what is ALREADY TOO CLOSE, and leaves everything else on its
+ *  natural bearing. That restraint is the whole design, learned the hard way: an
+ *  unconditional per-edge fan (rotate every contact by its rank) fixed the
+ *  sibling case and REGRESSED `llm-market.sl`, whose 38 heads were already
+ *  distinct — rotating edges that had room pushed some of them into each other.
+ *  So the rule is not "fan the edges", it is "resolve the ties".
+ *
+ *  Self-loops are excluded: one draws its own bowed path and takes no rim point,
+ *  so a slot for it would open a gap where no line arrives. */
+export function rimAngleFor(
+  model: CanvasModel,
+  relation: Relation,
+  endpointId: number,
+): number | null {
+  const node = thingById(model, endpointId);
+  if (!node) return null;
+  const incident = model.relations
+    .filter((r) => r.a !== r.b && (r.a === endpointId || r.b === endpointId))
+    .map((r) => {
+      const other = thingById(model, r.a === endpointId ? r.b : r.a);
+      return {
+        id: r.id,
+        ang: other ? Math.atan2(other.y - node.y, other.x - node.x) : 0,
+      };
+    })
+    // Sorted by bearing, ties broken by id so the assignment is stable across
+    // renders — an unstable order would make arrowheads swap places on a drag.
+    .sort((x, y) => x.ang - y.ang || x.id - y.id);
+
+  const idx = incident.findIndex((e) => e.id === relation.id);
+  if (idx < 0) return null;
+
+  // Walk the sorted bearings and find RUNS that crowd each other, then
+  // redistribute each run at MIN_RIM_GAP about its own midpoint. A lone edge,
+  // or one with room on both sides, is returned exactly as authored.
+  const resolved = incident.map((e) => e.ang);
+  let i = 0;
+  while (i < incident.length) {
+    let j = i;
+    while (j + 1 < incident.length && incident[j + 1].ang - incident[j].ang < MIN_RIM_GAP) j++;
+    if (j > i) {
+      const n = j - i + 1;
+      const mid = (incident[i].ang + incident[j].ang) / 2;
+      for (let k = 0; k < n; k++) resolved[i + k] = mid + (k - (n - 1) / 2) * MIN_RIM_GAP;
+    }
+    i = j + 1;
+  }
+  return resolved[idx];
+}
+
+/** This relation's centered rank among siblings on the same unordered pair
+ *  (…-1, 0, 1…) — the shared fan index for both the rim-to-rim bow and the
+ *  exo crossing spread, so one flow occupies the same slot in both drawings. */
+export function siblingStep(model: CanvasModel, relation: Relation): number {
+  const { i, n } = siblingRank(model, relation);
+  return i - (n - 1) / 2;
+}
+
+/** #335: how far apart siblings' labels sit ALONG the wire, as a fraction of
+ *  its length. The perpendicular fan (`PARALLEL_BOW`, 30px) cannot separate
+ *  labels — measured on `federal-reserve.sl`, an elided label is still ~100px
+ *  wide against a 30px fan, and the gap shrinks further with zoom because the
+ *  fan is model-space while the reader's eye is not. Staggering along the wire
+ *  scales with the edge instead of fighting it, so two labels on one pair are
+ *  as far apart as the wire is long. */
+const SIBLING_LABEL_SPREAD = 0.46;
 
 /** The `d` + label anchor for a drawn relation, shared by every lens's EdgeView
  *  and the DrivePopover anchor (App reads it to place the popover at the same
@@ -148,8 +277,20 @@ export function edgeGeometry(
     const loop = selfLoopPath(from, NODE_R);
     return { d: loop.d, labelAt: loop.labelAt };
   }
-  const a = rimPoint(from, to, rr?.a ?? NODE_R);
-  const b = rimPoint(to, from, rr?.b ?? NODE_R);
+  // Contact points come from the resolved rim ANGLE, so edges that would land on
+  // one pixel are separated while every edge with room keeps its true bearing.
+  const ra = rr?.a ?? NODE_R;
+  const rb = rr?.b ?? NODE_R;
+  const angA = rimAngleFor(model, relation, relation.a);
+  const angB = rimAngleFor(model, relation, relation.b);
+  const a =
+    angA === null
+      ? rimPoint(from, to, ra)
+      : { x: from.x + Math.cos(angA) * ra, y: from.y + Math.sin(angA) * ra };
+  const b =
+    angB === null
+      ? rimPoint(to, from, rb)
+      : { x: to.x + Math.cos(angB) * rb, y: to.y + Math.sin(angB) * rb };
 
   // Parallel edges between the same pair of nodes would draw the identical path
   // and stack into one indistinguishable, unclickable line. Rank this relation
@@ -185,7 +326,12 @@ export function edgeGeometry(
     const peak = step * PARALLEL_BOW;
     const cx = mid.x + px * peak * 2;
     const cy = mid.y + py * peak * 2;
-    const at = lerp(a, b, labelT);
+    // Siblings share endpoints, so they share `labelT` and their labels would
+    // pile at one point on the wire however far the curves bow apart. Spread
+    // them along it instead, centred on labelT.
+    const { i, n } = siblingRank(model, relation);
+    const spread = n > 1 ? (i / (n - 1) - 0.5) * SIBLING_LABEL_SPREAD : 0;
+    const at = lerp(a, b, Math.min(0.88, Math.max(0.12, labelT + spread)));
     return {
       d: `M ${a.x} ${a.y} Q ${cx} ${cy}, ${b.x} ${b.y}`,
       labelAt: { x: at.x + px * peak, y: at.y + py * peak },
@@ -369,4 +515,72 @@ export function fitToBox(
   const cx = (box.minX + box.maxX) / 2;
   const cy = (box.minY + box.maxY) / 2;
   return { pan: { x: vw / 2 - scale * cx, y: vh / 2 - scale * cy }, scale };
+}
+
+// ---- #335 detail-on-demand: which labels are crowded -------------------------
+//
+// The three findings that shaped this. (1) Crowding is ZOOM-INVARIANT — every
+// label lives inside the one `scale()` group and nothing counter-scales, so
+// text and separation grow together and a zoom threshold changes only WHEN
+// labels vanish, never whether they collide. Boxes are therefore compared in
+// world space, and the answer holds at every zoom. (2) Placement cannot fix the
+// remainder — siblings on a short edge want ~80px of text in the ~45px
+// `SIBLING_LABEL_SPREAD` can offer, and two unrelated edges can simply share a
+// midpoint. (3) So the surviving move is deferral, not tuning: a colliding
+// cluster goes quiet and gives its name back on hover or selection.
+//
+// Boxes come from the DOM's own `getBBox`, never from an estimate — a
+// monospace character-count guess drifts per lens (Klir stacks a signature
+// line, Bunge and Mobus append a set/bond tag) and would have to restate the
+// per-lens label logic to stay true. Measuring the rendered text keeps one
+// source of truth: the lens draws it, this reads what was drawn.
+
+/** A rendered label's box, tagged with the relation it names. Boxes arrive in
+ *  SCREEN space (`getBoundingClientRect`), not world space, for two reasons: a
+ *  node's name is nested inside its own transformed group while an edge's label
+ *  sits on the stage, so only screen space compares them without unwinding
+ *  transforms; and the pad below then buys real perceived air rather than world
+ *  px that shrink under the reader's zoom. Overlap itself is unaffected — the
+ *  stage transform is a uniform scale plus a translate, which preserves whether
+ *  two boxes intersect. */
+export interface LabelBox {
+  id: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** A box that collides but can never yield — a node's NAME. It has no hover
+   *  gesture of its own to give it back, and identity outranks a flow's label,
+   *  so the flow label is the one that defers. */
+  fixed?: boolean;
+}
+
+/** Slack, in world px, before two labels count as colliding. Text that merely
+ *  touches is already unreadable, so the pad buys a little air rather than
+ *  waiting for a true overlap. */
+export const LABEL_COLLISION_PAD = 2;
+
+/** Every id in a colliding cluster — BOTH members of each overlapping pair, not
+ *  a winner and a loser. Keeping one of a pair visible would only re-collide
+ *  the moment its neighbour is hovered back in, so the cluster goes quiet
+ *  together and hover picks exactly one to speak. `fixed` boxes are the
+ *  exception: they collide but never yield. */
+export function crowdedLabelIds(boxes: LabelBox[], pad: number = LABEL_COLLISION_PAD): Set<number> {
+  const out = new Set<number>();
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = i + 1; j < boxes.length; j++) {
+      const p = boxes[i];
+      const q = boxes[j];
+      const apart =
+        p.x + p.w + pad <= q.x ||
+        q.x + q.w + pad <= p.x ||
+        p.y + p.h + pad <= q.y ||
+        q.y + q.h + pad <= p.y;
+      if (!apart) {
+        if (!p.fixed) out.add(p.id);
+        if (!q.fixed) out.add(q.id);
+      }
+    }
+  }
+  return out;
 }

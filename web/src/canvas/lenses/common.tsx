@@ -369,7 +369,11 @@ export function NodeBody({
         </text>
       )}
 
+      {/* #335: a thing's NAME is a fixed obstacle in the label-crowding pass —
+          an edge label landing on it is the one that goes quiet, since a name
+          has no hover gesture to give it back. Tagged, never quieted. */}
       <text
+        data-node-label={thing.id}
         y={NODE_R * bodyScale + 16}
         textAnchor="middle"
         fontSize={labelSmall ? STYLE.label.smallSize : STYLE.label.size}
@@ -413,6 +417,10 @@ interface EdgeScaffoldProps {
   overlay?: ReactNode;
   /** The per-lens edge label (Klir signature vs Bunge/Mobus flow name). */
   label?: ReactNode;
+  /** #335: this label overlaps another (Canvas measures the rendered boxes —
+   *  `crowdedLabelIds`). A crowded label goes quiet at rest and speaks again on
+   *  hover or selection; an uncrowded one is never touched. */
+  crowded?: boolean;
   /** Hover copy on the edge's hit path (e.g. Bunge's channel vocabulary,
    *  #100 phase 2 F6). Omitted by Klir/Mobus — their output is unchanged. */
   title?: string;
@@ -434,6 +442,7 @@ export function EdgeScaffold({
   onSelect,
   overlay,
   label,
+  crowded = false,
   title,
 }: EdgeScaffoldProps) {
   const [hover, setHover] = useState(false);
@@ -526,7 +535,23 @@ export function EdgeScaffold({
       ))}
       {driven && <circle cx={labelAt.x} cy={labelAt.y - 6} r={4} fill="var(--accent)" pointerEvents="none" />}
       {overlay}
-      {label}
+      {/* #335: the label stays MOUNTED when quieted, hidden by opacity rather
+          than by unmounting. Canvas measures these boxes to decide crowding, so
+          removing a quiet label would erase the very evidence that it collides
+          — it would measure as uncrowded, come back, collide, and flicker
+          forever. Opacity leaves the geometry intact, so the measurement is a
+          fixed point and settles in one pass. `data-edge-label` is the handle
+          Canvas queries to measure, and the handle exportDiagram uses to force
+          every label back to full strength — a still has no hover. */}
+      {label && (
+        <g
+          data-edge-label={relationId}
+          opacity={crowded && !hover && !selected ? 0 : 1}
+          pointerEvents={crowded && !hover && !selected ? "none" : undefined}
+        >
+          {label}
+        </g>
+      )}
       {ample ? (
         <text
           x={labelAt.x}

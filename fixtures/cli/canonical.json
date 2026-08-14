@@ -2401,7 +2401,7 @@
               "component": 1,
               "direction": "Receives",
               "env": 7,
-              "protocol": "published measurements — PCE inflation, payrolls, unemployment",
+              "protocol": "published measurements",
               "relation_ids": [
                 9
               ]
@@ -2410,7 +2410,7 @@
               "component": 1,
               "direction": "Hybrid",
               "env": 8,
-              "protocol": "the announced decision — rates as forward guidance · market-implied expectations — breakevens, the futures-implied path",
+              "protocol": "announced decision · market expectations",
               "relation_ids": [
                 11,
                 12
@@ -2420,7 +2420,7 @@
               "component": 2,
               "direction": "Hybrid",
               "env": 4,
-              "protocol": "securities bought by the desk · reserve balances minted in payment · securities sold from the portfolio · reserves extinguished in payment",
+              "protocol": "securities bought · reserves minted · securities sold · reserves extinguished",
               "relation_ids": [
                 13,
                 15,
@@ -2432,7 +2432,7 @@
               "component": 3,
               "direction": "Hybrid",
               "env": 5,
-              "protocol": "interest on reserves · collateral pledged at the discount window · reserves lent at the window · currency — notes issued against reserves",
+              "protocol": "interest on reserves · collateral pledged · reserves lent · currency issued",
               "relation_ids": [
                 18,
                 20,
@@ -2444,7 +2444,7 @@
               "component": 3,
               "direction": "Hybrid",
               "env": 6,
-              "protocol": "remittances — net income returned · TGA deposits — the Treasury's checking account",
+              "protocol": "remittances · TGA deposits",
               "relation_ids": [
                 19,
                 23
@@ -2705,7 +2705,7 @@
               "component": 1,
               "direction": "Receives",
               "env": 7,
-              "protocol": "published measurements — PCE inflation, payrolls, unemployment",
+              "protocol": "published measurements",
               "relation_ids": [
                 9
               ]
@@ -2714,7 +2714,7 @@
               "component": 1,
               "direction": "Hybrid",
               "env": 8,
-              "protocol": "the announced decision — rates as forward guidance · market-implied expectations — breakevens, the futures-implied path",
+              "protocol": "announced decision · market expectations",
               "relation_ids": [
                 11,
                 12
@@ -2724,7 +2724,7 @@
               "component": 2,
               "direction": "Hybrid",
               "env": 4,
-              "protocol": "securities bought by the desk · reserve balances minted in payment · securities sold from the portfolio · reserves extinguished in payment",
+              "protocol": "securities bought · reserves minted · securities sold · reserves extinguished",
               "relation_ids": [
                 13,
                 15,
@@ -2736,7 +2736,7 @@
               "component": 3,
               "direction": "Hybrid",
               "env": 5,
-              "protocol": "interest on reserves · collateral pledged at the discount window · reserves lent at the window · currency — notes issued against reserves",
+              "protocol": "interest on reserves · collateral pledged · reserves lent · currency issued",
               "relation_ids": [
                 18,
                 20,
@@ -2748,7 +2748,7 @@
               "component": 3,
               "direction": "Hybrid",
               "env": 6,
-              "protocol": "remittances — net income returned · TGA deposits — the Treasury's checking account",
+              "protocol": "remittances · TGA deposits",
               "relation_ids": [
                 19,
                 23
@@ -3011,7 +3011,7 @@
               "component": 1,
               "direction": "Receives",
               "env": 7,
-              "protocol": "published measurements — PCE inflation, payrolls, unemployment",
+              "protocol": "published measurements",
               "relation_ids": [
                 9
               ]
@@ -3020,7 +3020,7 @@
               "component": 1,
               "direction": "Hybrid",
               "env": 8,
-              "protocol": "the announced decision — rates as forward guidance · market-implied expectations — breakevens, the futures-implied path",
+              "protocol": "announced decision · market expectations",
               "relation_ids": [
                 11,
                 12
@@ -3030,7 +3030,7 @@
               "component": 2,
               "direction": "Hybrid",
               "env": 4,
-              "protocol": "securities bought by the desk · reserve balances minted in payment · securities sold from the portfolio · reserves extinguished in payment",
+              "protocol": "securities bought · reserves minted · securities sold · reserves extinguished",
               "relation_ids": [
                 13,
                 15,
@@ -3042,7 +3042,7 @@
               "component": 3,
               "direction": "Hybrid",
               "env": 5,
-              "protocol": "interest on reserves · collateral pledged at the discount window · reserves lent at the window · currency — notes issued against reserves",
+              "protocol": "interest on reserves · collateral pledged · reserves lent · currency issued",
               "relation_ids": [
                 18,
                 20,
@@ -3054,7 +3054,7 @@
               "component": 3,
               "direction": "Hybrid",
               "env": 6,
-              "protocol": "remittances — net income returned · TGA deposits — the Treasury's checking account",
+              "protocol": "remittances · TGA deposits",
               "relation_ids": [
                 19,
                 23

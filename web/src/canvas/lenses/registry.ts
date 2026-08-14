@@ -45,6 +45,10 @@ export interface LensEdgeProps {
   selected: boolean;
   driven: boolean;
   sim?: { value: number; unit: string };
+  /** #335: this edge's label overlaps another one, so it defers to hover or
+   *  selection. A LAYOUT fact measured off the rendered boxes by Canvas, not a
+   *  systems fact — every lens passes it straight to EdgeScaffold. */
+  crowded?: boolean;
   onSelect?: (id: number) => void;
 }
 
@@ -57,6 +61,9 @@ export interface LensPortProps {
   onSelect?: () => void;
   /** #306: notch riding an on-membrane interface component's rim — smaller, unlabelled. */
   compact?: boolean;
+  /** Stage scale — the capsule holds a screen-size floor so its direction
+   *  chevron stays readable at a fitted zoom. Presentation only. */
+  scale?: number;
 }
 
 export interface LensViews {

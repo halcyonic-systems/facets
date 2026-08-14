@@ -6,10 +6,10 @@
 // energy glowing, message thin/dashed — Message is a peer substance, copyable,
 // not conserved). Exo flows render as two segments because G is bipartite
 // (Tuple.lean): the crossing is env-object ↔ port, never straight to interior.
-import type { PortFact, Relation } from "../../kernel/types";
+import type { EdgeFact, PortFact, Relation } from "../../kernel/types";
 import { KIND_COLOR } from "../types";
-import { edgeGeometry, INTERFACE_SCALE, rimPoint, ringPoint, siblingStep, straightPath, thingById, NODE_R, type Pt } from "../geometry";
-import { STYLE } from "../style";
+import { edgeGeometry, INTERFACE_SCALE, portHalfWidth, rimPoint, ringPoint, siblingStep, straightPath, thingById, NODE_R, type Pt } from "../geometry";
+import { STYLE, elideEdgeLabel } from "../style";
 import { EdgeScaffold, NodeBody, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
 
@@ -55,7 +55,7 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
   );
 }
 
-function edgeStyle(relation: Relation): EdgeStyle {
+function edgeStyle(relation: Relation, fact?: EdgeFact): EdgeStyle {
   // BONDHOOD (#320), stated at its strongest here. Under Mobus N IS the flow
   // set, a bond is a flow, and a flow is transport — so an arrowhead means a
   // bond with NO exception, and a `mere` relation gets none. It also loses its
@@ -75,7 +75,10 @@ function edgeStyle(relation: Relation): EdgeStyle {
       markerStart: "coupling",
     };
   }
-  const marker = `arrow-${relation.kind}`;
+  // #C phase 2: a crossing gets the amplified head. `locus` is the KERNEL's
+  // reading (Exo = one endpoint in the environment), not a guess from role, so
+  // the heavier mark tracks the boundary the kernel drew and nothing else.
+  const marker = `arrow-${relation.kind}${fact?.locus === "Exo" ? "-exo" : ""}`;
   switch (relation.kind) {
     case "Matter":
       return { color: KIND_COLOR[relation.kind], width: STYLE.edge.matter, opacity: 0.9, marker };
@@ -94,11 +97,11 @@ function edgeStyle(relation: Relation): EdgeStyle {
   }
 }
 
-function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect }: LensEdgeProps) {
+function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded, onSelect }: LensEdgeProps) {
   const geo = edgeGeometry(model, relation, true);
   if (!geo) return null;
   let { d, labelAt } = geo;
-  const style = edgeStyle(relation);
+  const style = edgeStyle(relation, fact);
 
   // Exo flows render as TWO segments — G is bipartite (Tuple.lean): the crossing
   // happens env-object ↔ port, never straight to an interior component. The
@@ -189,7 +192,10 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
         fill="var(--text-muted)"
         className="font-mono pointer-events-none"
       >
-        {relation.name}
+        {/* #335: the drawn label is the NAME, elided to a budget. The full
+            text is never lost — it is on hover here and in the inspector. */}
+        <title>{relation.name}</title>
+        {elideEdgeLabel(relation.name)}
         {/* The set tag has to be true (#320): a mere relation is in NEITHER N
             nor G, and tagging it `· N` printed a flow-set membership the lens
             does not grant. */}
@@ -212,6 +218,7 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, onSelect
       relationId={relation.id}
       onSelect={onSelect}
       label={label}
+      crowded={crowded}
       title={title}
     />
   );
@@ -228,6 +235,7 @@ function PortView({
   angle = 0,
   onSelect,
   compact = false,
+  scale = 1,
 }: {
   port: PortFact;
   at: Pt;
@@ -237,17 +245,28 @@ function PortView({
    *  capsule, no protocol label (the flow names live on the edges and in the
    *  interface inspector; the title keeps φ for hover). */
   compact?: boolean;
+  /** Stage scale, so the capsule can hold a screen-size floor. The direction
+   *  chevron is the only mark that says which way a flow crosses, and it
+   *  measured under 6 screen px at the Fed model's own fit zoom. */
+  scale?: number;
 }) {
-  const chevron =
-    port.direction === "Receives"
-      ? "M2.5-3.4 L-2 0 L2.5 3.4" // inward — flow enters
-      : port.direction === "Exports"
-        ? "M-2.5-3.4 L2 0 L-2.5 3.4" // outward — flow leaves
-        : "M1-3 L4 0 L1 3 M-1-3 L-4 0 L-1 3"; // ⇄ hybrid
   const label = port.protocol.length > 22 ? `${port.protocol.slice(0, 21)}…` : port.protocol;
   const out = { x: Math.cos(angle), y: Math.sin(angle) };
-  const hw = compact ? 8 : 12; // capsule half-width along the normal
-  const hh = compact ? 5 : 7;
+  // Capsule half-width along the normal, floored on SCREEN so the chevron stays
+  // readable when the model is fitted. `compact` keeps its #306 proportion of
+  // the full notch — a pass-way in the boundary, not a peer of the processes.
+  const hw = portHalfWidth(scale) * (compact ? 0.66 : 1);
+  const hh = hw * (compact ? 0.62 : 0.58);
+  // The glyph is drawn against a 7px half-height and scaled with the capsule, so
+  // enlarging the notch enlarges the one mark that carries direction.
+  const k = hh / 7;
+  const n = (v: number) => (v * k).toFixed(2);
+  const chevron =
+    port.direction === "Receives"
+      ? `M ${n(2.5)} ${n(-3.4)} L ${n(-2)} 0 L ${n(2.5)} ${n(3.4)}` // inward — flow enters
+      : port.direction === "Exports"
+        ? `M ${n(-2.5)} ${n(-3.4)} L ${n(2)} 0 L ${n(-2.5)} ${n(3.4)}` // outward — flow leaves
+        : `M ${n(1)} ${n(-3)} L ${n(4)} 0 L ${n(1)} ${n(3)} M ${n(-1)} ${n(-3)} L ${n(-4)} 0 L ${n(-1)} ${n(3)}`; // ⇄ hybrid
   return (
     <g
       transform={`translate(${at.x}, ${at.y})`}
@@ -273,7 +292,14 @@ function PortView({
           stroke="var(--lens-accent)"
           strokeWidth={STYLE.portStrokeWidth}
         />
-        <path d={chevron} fill="none" stroke="var(--lens-accent)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+        <path
+          d={chevron}
+          fill="none"
+          stroke="var(--lens-accent)"
+          strokeWidth={1.6 * k}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </g>
       {/* The label sits OUTSIDE the capsule, anchored away from it — centering
           it on the outward normal put half the string back across the notch and

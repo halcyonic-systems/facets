@@ -56,6 +56,8 @@ import {
 } from "./home";
 import { openExternal } from "./desktop";
 import { buildInfo, provenanceLines } from "./buildInfo";
+import Thumbnail from "./canvas/Thumbnail";
+import { useThumbnailModel } from "./canvas/useThumbnail";
 
 const DOCS_URL = "https://github.com/halcyonic-systems/bert-lenses/tree/main/docs";
 
@@ -857,6 +859,23 @@ export function LibraryBrowser({
  *  separator, and it is per-row now that there are no shelves to hoist a shared
  *  one onto. The `runs` mark is the EXCEPTION, never the rule: every model here
  *  is structural, so a label saying so on every row says nothing. */
+/** #311: the row's left cell. It holds the model's own diagram once the kernel
+ *  has compiled it, and the folio numeral until then (or for good, if the model
+ *  does not compile). The cell is the same 3rem either way, so nothing in the
+ *  row moves when the drawing arrives. */
+function ModelGutter({ model, index }: { model: ShippedModel; index: number }) {
+  const sl = model.open.kind === "example" ? model.open.demo.sl : model.open.entry.sl;
+  const compiled = useThumbnailModel(model.key, sl);
+  return (
+    <span
+      className="record-folio flex items-start justify-end pr-1 pt-1 text-[11px] tabular"
+      style={{ color: "var(--ink-muted)", transition: "color var(--transition-base)" }}
+    >
+      {compiled ? <Thumbnail model={compiled} size={40} /> : String(index).padStart(2, "0")}
+    </span>
+  );
+}
+
 function ModelRow({
   model,
   index,
@@ -872,12 +891,7 @@ function ModelRow({
       className="record-row grid w-full grid-cols-[3rem_minmax(0,1fr)_auto] items-start gap-x-4 border-b py-3 text-left"
       style={{ borderColor: "var(--rule-soft)" }}
     >
-      <span
-        className="record-folio flex items-start justify-end pr-1 pt-1 text-[11px] tabular"
-        style={{ color: "var(--ink-muted)", transition: "color var(--transition-base)" }}
-      >
-        {String(index).padStart(2, "0")}
-      </span>
+      <ModelGutter model={model} index={index} />
       <span className="block min-w-0">
         <span className="flex items-baseline gap-3">
           <span className="truncate text-2xl leading-tight" style={nameStyle}>

@@ -70,55 +70,55 @@ source "Statistical Agencies"
 environment "Financial Markets"
 
 # The sensing leg: the dual-mandate measurements, read as information.
-flow "Statistical Agencies" -> FOMC : informational "published measurements — PCE inflation, payrolls, unemployment"
+flow "Statistical Agencies" -> FOMC : informational "published measurements" description "PCE inflation, payrolls and unemployment — the FOMC steers by measurements of the economy, with their lags and revisions, not by the thing itself"
 
 # The directive: the target range, handed to the desk to implement.
-flow FOMC -> "Open Market Desk" : informational "policy directive — the target range"
+flow FOMC -> "Open Market Desk" : informational "policy directive" description "The target range, handed to the desk to implement."
 
 # The announcement: much of the mechanism is expectation, not
 # transaction — the decision reprices the curve the moment it lands.
-flow FOMC -> "Financial Markets" : informational "the announced decision — rates as forward guidance"
+flow FOMC -> "Financial Markets" : informational "announced decision" description "Rates as forward guidance — much of the mechanism is expectation, not transaction; the decision reprices the curve the moment it lands."
 
 # And the markets answer: what the path is now expected to be.
-flow "Financial Markets" -> FOMC : informational "market-implied expectations — breakevens, the futures-implied path"
+flow "Financial Markets" -> FOMC : informational "market expectations" description "Breakevens and the futures-implied path — what the markets say the path is now expected to be."
 
 # The purchase, side one: securities move from the dealers to the desk...
-flow "Primary Dealers" -> "Open Market Desk" : matter "securities bought by the desk" substance securities
+flow "Primary Dealers" -> "Open Market Desk" : matter "securities bought" substance securities description "The purchase, side one — securities move from the dealers to the desk."
 
 # ...and onto the asset side of the balance sheet.
 flow "Open Market Desk" -> "Balance Sheet" : matter "securities held"
 
 # The purchase, side two: the reserves that pay for it — created, not
 # transferred. This is the money-creation flow.
-flow "Open Market Desk" -> "Primary Dealers" : matter "reserve balances minted in payment" substance reserves
+flow "Open Market Desk" -> "Primary Dealers" : matter "reserves minted" substance reserves description "The reserves that pay for the purchase — created, not transferred. This is the money-creation flow."
 
 # And the same operation run backwards — the desk sells from the
 # portfolio and the reserves paid to it are extinguished. Dormant in an
 # easing regime, structurally present always; the balance sheet has been
 # shrinking since 2022 and this is the arrow that does it.
-flow "Open Market Desk" -> "Primary Dealers" : matter "securities sold from the portfolio" substance portfolio
-flow "Primary Dealers" -> "Open Market Desk" : matter "reserves extinguished in payment" substance settlement
+flow "Open Market Desk" -> "Primary Dealers" : matter "securities sold" substance portfolio description "The same purchase run backwards — the desk sells from the portfolio. Dormant in an easing regime, structurally present always; this is one of the arrows that has been shrinking the balance sheet since 2022."
+flow "Primary Dealers" -> "Open Market Desk" : matter "reserves extinguished" substance settlement description "Paid to the desk in the reverse purchase and extinguished, not transferred — the other arrow shrinking the balance sheet since 2022."
 
 # What holding the reserves earns the banks — the rate the Fed
 # administers directly.
 flow "Balance Sheet" -> "Banking System" : matter "interest on reserves" substance interest
 
 # What the portfolio earns, net of expenses, goes back to the fisc.
-flow "Balance Sheet" -> "U.S. Treasury" : matter "remittances — net income returned" unit "USD millions"
+flow "Balance Sheet" -> "U.S. Treasury" : matter "remittances" unit "USD millions" description "Net income returned — what the portfolio earns, net of expenses, goes back to the fisc."
 
 # The window: a standing channel, structurally present even when
 # dormant — the channel is structure, its activation rate is dynamics.
-flow "Banking System" -> "Balance Sheet" : matter "collateral pledged at the discount window"
-flow "Balance Sheet" -> "Banking System" : matter "reserves lent at the window" substance credit
+flow "Banking System" -> "Balance Sheet" : matter "collateral pledged" description "Pledged at the discount window — a standing channel, structurally present even when dormant; the channel is structure, its activation rate is dynamics."
+flow "Balance Sheet" -> "Banking System" : matter "reserves lent" substance credit description "Lent at the discount window."
 
 # Currency: notes reach the public only through the banks — a swap,
 # reserves debited as notes ship. The public stays behind the banks,
 # as households stay behind the markets.
-flow "Balance Sheet" -> "Banking System" : matter "currency — notes issued against reserves" substance banknotes
+flow "Balance Sheet" -> "Banking System" : matter "currency issued" substance banknotes description "Notes issued against reserves — a swap, reserves debited as notes ship. The public reaches currency only through the banks, staying behind them as households stay behind the markets."
 
 # The fisc's checking account: TGA drawdowns and rebuilds move the
 # same reserve stock policy steers, with no policy decision anywhere.
-flow "U.S. Treasury" -> "Balance Sheet" : matter "TGA deposits — the Treasury's checking account" unit "USD millions"
+flow "U.S. Treasury" -> "Balance Sheet" : matter "TGA deposits" unit "USD millions" description "The Treasury's checking account — TGA drawdowns and rebuilds move the same reserve stock policy steers, with no policy decision anywhere."
 
 # ── Open forks ───────────────────────────────────────────────────────
 # 1. ON RRP: its counterparties are money-market funds, not banks — a
