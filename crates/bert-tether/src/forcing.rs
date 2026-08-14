@@ -419,12 +419,11 @@ pub fn summarize(
         })
         .collect();
 
-    let comparisons = build_comparisons(model, imported, &trajectories, &activities, ticks);
-
     // Executed per-wire deliveries (#203), domain-named by zipping the spec's
     // flows with the circuit's wires — `from_spec` builds one wire per spec
     // flow in order, and `validate_operational` guarantees every endpoint
-    // resolves, so the zip is an identity pairing.
+    // resolves, so the zip is an identity pairing. Built before the
+    // comparisons, which read these series (#338).
     let flows: Vec<FlowSeries> = spec
         .flows
         .iter()
@@ -442,6 +441,8 @@ pub fn summarize(
                 .collect(),
         })
         .collect();
+
+    let comparisons = build_comparisons(model, imported, &trajectories, &activities, &flows, ticks);
 
     // Conservation: scale-free — residual as a fraction of total emitted.
     let throughput: f32 = run.ledger_history.iter().map(|l| l[0]).sum();
@@ -468,6 +469,7 @@ fn build_comparisons(
     imported: &crate::tether::ImportedData,
     trajectories: &[Trajectory],
     activities: &HashMap<String, Vec<f32>>,
+    wire_series: &[FlowSeries],
     ticks: usize,
 ) -> Vec<Comparison> {
     let components = component_targets(model); // (handle, name)
@@ -501,7 +503,13 @@ fn build_comparisons(
         });
     }
 
-    // Flows: the upstream endpoint's executed emission vs the imported series.
+    // Flows: THIS WIRE's executed delivery vs the imported series. The wire's
+    // own per-tick series is the truth (#338): a sender with several outwires
+    // has one activity but many deliveries, and comparing the observed column
+    // against the sender's total inflated every multi-outwire validation
+    // (Cytosol's 81 read as each flow's "executed" — a fake 305% off on a
+    // perfectly forced 20). The upstream endpoint's activity survives only as
+    // the fallback for a flow the wire zip did not name.
     for (rid, s) in &imported.flow_series {
         // A weight (rung 2) is a control input, not an observable — skip.
         if s.unit.eq_ignore_ascii_case("weight") {
@@ -518,10 +526,14 @@ fn build_comparisons(
         let amount = s.mean().unwrap_or(0.0) as f32;
         let flat = vec![amount; ticks.max(actual.len()).max(2)];
         let upstream_name = id_name.get(&ix.source).cloned();
-        let executed = upstream_name
-            .as_deref()
-            .and_then(|n| activities.get(n))
-            .cloned();
+        let executed = wire_series
+            .iter()
+            .find(|fs| {
+                fs.name == ix.info.name
+                    && upstream_name.as_deref().is_none_or(|n| fs.from == n)
+            })
+            .map(|fs| fs.series.clone())
+            .or_else(|| upstream_name.as_deref().and_then(|n| activities.get(n)).cloned());
         let (sim, baseline) = match executed {
             Some(series) => (series, Some(flat)),
             None => (flat, None),
@@ -765,6 +777,52 @@ mod tests {
             "the declared time-unit symbol carries into the integrated display"
         );
         assert!(stock.unit_derived, "still derived — the stock itself declared nothing");
+    }
+
+    // #338 separating instance: a sender with TWO outwires, each forced to a
+    // different constant. Each flow's comparison must read ITS wire's executed
+    // series — under the sender's-total bug both read the sum, so this test
+    // could not pass: 10 and 30 forced, both "executed" would be 40.
+    #[test]
+    fn each_outwire_compares_against_its_own_delivery_not_the_senders_total() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let mut model: WorldModel = serde_json::from_str(json).unwrap();
+        // Clone the inflow into a second outwire from the same source, with its
+        // own name and substance so nothing reads as a duplicate edge.
+        let mut second = model.interactions[0].clone();
+        second.info.name = "second inflow".to_string();
+        second.info.id.indices = vec![97]; // its own identity, off the sample's index space
+        second.substance.sub_type = "auxiliary".to_string();
+        model.interactions.push(second);
+        let first_name = model.interactions[0].info.name.clone();
+
+        let csv = "t,a,b\n0,10,30\n1,10,30\n2,10,30\n3,10,30\n";
+        let manifest_json = format!(
+            r#"{{"model":"","data":"","t":4.0,"mapping":[
+                {{"column":"t","as":"time"}},
+                {{"column":"a","as":"flow","element":{first_name:?},"unit":"units/mo","force":true}},
+                {{"column":"b","as":"flow","element":"second inflow","unit":"units/mo","force":true}}
+            ]}}"#
+        );
+        let manifest: RunManifest = serde_json::from_str(&manifest_json).unwrap();
+        let readout = force_and_run(model, csv, &manifest, 1.0, 4.0, "2026-07-14")
+            .expect("forced run should succeed");
+
+        let executed_of = |name: &str| -> Vec<f32> {
+            readout
+                .comparisons
+                .iter()
+                .find(|c| c.element_name == name && c.kind == "flow")
+                .expect("comparison exists")
+                .simulated
+                .clone()
+        };
+        assert_eq!(executed_of(&first_name), vec![10.0; 4], "first wire reads its own 10s");
+        assert_eq!(
+            executed_of("second inflow"),
+            vec![30.0; 4],
+            "second wire reads its own 30s, never the sender's 40"
+        );
     }
 
     // Law: a forced run must conserve (residual ~0 against throughput) and every
