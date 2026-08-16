@@ -1668,12 +1668,26 @@ fn check_s0_interface_processors(model: &WorldModel, issues: &mut Vec<Validation
         None => return,
     };
 
-    let claimed: HashSet<String> = model
+    let mut claimed: HashSet<String> = model
         .systems
         .iter()
         .filter_map(|s| s.boundary.parent_interface.as_ref())
         .map(serialize_id)
         .collect();
+    // A processor serving SEVERAL interfaces (Mobus Fig 4.16; the fused
+    // pass-way shape, #226) cannot claim them all through the single
+    // parent_interface slot — but an interface whose routed interaction ends
+    // at a SUBSYSTEM traces inward by the flow itself, which is the very
+    // thing this warning guards. Routing to the root does NOT count: that is
+    // the legacy shape where the flow stops at S0's skin and no interior
+    // processor receives it.
+    for ix in &model.interactions {
+        for (routed, endpoint) in [(&ix.source_interface, &ix.source), (&ix.sink_interface, &ix.sink)] {
+            if let (Some(iid), IdType::Subsystem) = (routed, endpoint.ty) {
+                claimed.insert(serialize_id(iid));
+            }
+        }
+    }
 
     for (j, iface) in s0.boundary.interfaces.iter().enumerate() {
         let id_str = serialize_id(&iface.info.id);

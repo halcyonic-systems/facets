@@ -391,10 +391,13 @@ fn lens_residue(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensResid
         .iter()
         .filter(|t| t.role == Role::Component)
         .count();
+    // A pass-way (#226) is excluded deliberately: its answer to "what work
+    // process?" is "none — I am a pass-way", which is an ANSWER, not an
+    // omission. A component merely STAMPED interface still gets asked.
     let bare_components = model
         .things
         .iter()
-        .filter(|t| t.role == Role::Component && t.primitive.is_none())
+        .filter(|t| t.role == Role::Component && t.primitive.is_none() && !t.passway)
         .count();
     let directed = model.relations.iter().filter(|r| r.klir_directed).count();
     // Effective I = flow-crossing ∪ authored — the same union b_interfaces reports.

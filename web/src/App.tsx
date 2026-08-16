@@ -92,7 +92,7 @@ import { resolveModelRefs } from "./modelResolve";
 import { diagramFilename, exportDiagramSvg, exportDiagramPng } from "./canvas/exportDiagram";
 
 // A residue line, exactly as the kernel worded it. `count === 0` is the
-// uncountable line (Bunge's ⊘M): one unanswered question, not a tally, so no
+// uncountable line (Bunge's Ã¢ÂÂM): one unanswered question, not a tally, so no
 // number precedes it.
 const residueLine = (e: ResidueEntry) => (e.count === 0 ? e.label : `${e.count} ${e.label}`);
 
@@ -100,7 +100,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 const LENSES: CanvasModel["lens"][] = ["Klir", "Bunge", "Mobus"];
 
 /** The mode axis (#304, extended by #312 move 2), in switch order. Three things
- *  to be DOING with the open model — asserting, observing, executing — not three
+ *  to be DOING with the open model Ã¢ÂÂ asserting, observing, executing Ã¢ÂÂ not three
  *  readings of it. The readings are the inspector dock's tabs, and Run is no
  *  longer one of them: a run has a timeline, inputs and results, and it now gets
  *  the whole stage to show them on. */
@@ -112,12 +112,12 @@ const WORK_MODE_LABEL: Record<WorkMode, string> = {
   run: "Run",
 };
 const WORK_MODE_TITLE: Record<WorkMode, string> = {
-  structure: "Structure — author the model (the canvas asserts)",
-  data: "Data — the model's data-level face (rows = time, columns = declared flows; observes, never asserts)",
-  run: "Run — the model executing: its time slice, what forces it, and the trajectory that came back",
+  structure: "Structure Ã¢ÂÂ author the model (the canvas asserts)",
+  data: "Data Ã¢ÂÂ the model's data-level face (rows = time, columns = declared flows; observes, never asserts)",
+  run: "Run Ã¢ÂÂ the model executing: its time slice, what forces it, and the trajectory that came back",
 };
 
-// #109 walk choreography — the enter/exit transition's OUT phase length. Must
+// #109 walk choreography Ã¢ÂÂ the enter/exit transition's OUT phase length. Must
 // match the walk-*-out animation durations in index.css: the model swap waits
 // for this beat (and races data resolution via Promise.all), so the old canvas
 // finishes pressing through the membrane before the next one arrives.
@@ -142,7 +142,7 @@ const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 // One ancestor on the decomposition walk (#89 step 5b): everything needed to
 // restore that model when the breadcrumb exits back to it, plus the display
 // facts the breadcrumb renders (label, id on hover, seam glyph as of descent).
-// The walk is presentation/navigation state — every seam verdict along it is
+// The walk is presentation/navigation state Ã¢ÂÂ every seam verdict along it is
 // still the kernel's.
 interface WalkSegment {
   label: string;
@@ -159,16 +159,16 @@ interface WalkSegment {
   dirty: boolean;
 }
 
-// The SL pane's seed text — Mobus's steel plant (Ch.4 §4.3.1) as a system
+// The SL pane's seed text Ã¢ÂÂ Mobus's steel plant (Ch.4 ÃÂ§4.3.1) as a system
 // paragraph, so the pane's first Compile produces a live model.
 // The SL pane's starter text. Deliberately NOT the corpus steel-plant (#318):
 // this is a hand-cut four-flow paraphrase whose job is to be small enough to
 // read at a glance and edit without fear, and quoting the corpus entry would
-// open the pane on forty lines of provenance header. The citable Steel-Plant —
-// Mobus's own, Fig. 4.14, F-numbers and substances intact — is
+// open the pane on forty lines of provenance header. The citable Steel-Plant Ã¢ÂÂ
+// Mobus's own, Fig. 4.14, F-numbers and substances intact Ã¢ÂÂ is
 // assets/corpus/mobus/steel-plant.sl, and the walk that opens its box is
 // assets/walkthroughs/steel-plant/. Nothing here should be cited as his.
-const SL_SEED = `# A steel plant, after Mobus — a system paragraph in SL
+const SL_SEED = `# A steel plant, after Mobus Ã¢ÂÂ a system paragraph in SL
 # (a paraphrase for editing; the citable entry is corpus/mobus/steel-plant.sl)
 system : Concrete/Technical
 domain "steel manufacturing"
@@ -187,15 +187,15 @@ boundary porosity 0.7 fuzziness 0.1
 `;
 
 // The minted demos carry the compose ladder's original tight spacing (~120px),
-// too cramped for their domain-named flow labels ("Watershed → Reservoir").
-// Purely a display scale-up of the loaded positions — no systems meaning here,
+// too cramped for their domain-named flow labels ("Watershed Ã¢ÂÂ Reservoir").
+// Purely a display scale-up of the loaded positions Ã¢ÂÂ no systems meaning here,
 // just breathing room for the edge labels.
 function spaceOut(model: CanvasModel): CanvasModel {
   const SPACING = 1.8;
   return { ...model, things: model.things.map((t) => ({ ...t, x: t.x * SPACING })) };
 }
 
-// Offer a JSON string to the browser as a file download — the save/export
+// Offer a JSON string to the browser as a file download Ã¢ÂÂ the save/export
 // mechanism for a pure-wasm page with no native file bridge (anchor + Blob URL,
 // no File System Access dependency, no server).
 function downloadJson(filename: string, json: string) {
@@ -226,12 +226,12 @@ export default function App() {
       ) : (
         <>
           {/* During kernel load the File button is disabled (loaded={false}),
-              so its menu never opens — the items are visibly greyed, not silent
+              so its menu never opens Ã¢ÂÂ the items are visibly greyed, not silent
               no-ops behind a live-looking menu. */}
           <MenuBar loaded={false} onNew={() => {}} onOpen={() => {}} onSave={() => {}} onExport={() => {}} onSaveToFolder={() => {}} onSaveToLibrary={() => {}} canExport={false} hasModel={false} currentLabel={null} dirty={false} onHome={() => {}} libraryModels={[]} onSwitchDemo={() => {}} onSwitchLibrary={() => {}} onOpenFull={() => {}} />
           <div className="flex flex-1 items-center justify-center">
             <p className="text-sm" style={{ color: loadError ? "var(--verdict-error)" : "var(--text-muted)" }}>
-              {loadError ? `Failed to load the wasm kernel: ${loadError}` : "loading kernel…"}
+              {loadError ? `Failed to load the wasm kernel: ${loadError}` : "loading kernelÃ¢ÂÂ¦"}
             </p>
           </div>
         </>
@@ -243,17 +243,17 @@ export default function App() {
 function Workspace() {
   const [demo, setDemo] = useState<Demo | null>(null);
   const [canvasModel, setCanvasModel] = useState<CanvasModel | null>(null);
-  // A compiled SL draft shown on the canvas but NOT yet committed — the
+  // A compiled SL draft shown on the canvas but NOT yet committed Ã¢ÂÂ the
   // author's own model is stashed so Discard reverts. Accept commits the draft
   // (the human-checks-meaning gate; llm-sl-authoring-plan.md Rung 0). null =
   // not previewing. Works for a human pasting SL today and for an LLM drafter next.
   const [preview, setPreview] = useState<{ stash: CanvasModel | null; priorDirty: boolean } | null>(null);
-  // #10 resident co-author: the active preview's originating turn, if any —
+  // #10 resident co-author: the active preview's originating turn, if any Ã¢ÂÂ
   // lets accept/discard (fired from the shared preview banner) flip the SAME
   // turn's status in the Co-author dock's history. undefined-vs-turn distinguishes
   // a coauthor-sourced preview from a plain paste/corpus compile (which clears it).
   const [activeTurnId, setActiveTurnId] = useState<string | null>(null);
-  // #10: the resident co-author's persistent draft history — folded into the
+  // #10: the resident co-author's persistent draft history Ã¢ÂÂ folded into the
   // SL pane as a mode (not a dock tab; locked 2026-07-24), and lifted here so
   // it outlives the pane's own mount (localStorage-backed, no cap).
   const [coauthorTurns, setCoauthorTurns] = useState<CoauthorTurn[]>(loadCoauthorTurns);
@@ -266,12 +266,12 @@ function Workspace() {
   const [discardAsk, setDiscardAsk] = useState<{ resolve: (ok: boolean) => void } | null>(null);
   const [t, setT] = useState(12);
   const [result, setResult] = useState<RunResultRich | null>(null);
-  // ADR run-seam-canvas-document: which model the last run executed — the
+  // ADR run-seam-canvas-document: which model the last run executed Ã¢ÂÂ the
   // shipped calibration artifact, or the projection of an edited canvas. The
   // kernel already hash-stamps the difference; this is the UI's plain word.
   const [ranEdited, setRanEdited] = useState(false);
   // #67 J9: a Klir state machine's run is a distribution trajectory, not a
-  // conservation ledger — held apart so its result never reaches for a
+  // conservation ledger Ã¢ÂÂ held apart so its result never reaches for a
   // conservation `residual`/`conserved` field (and the conservation pill, driven
   // by `result`, stays suppressed while a Markov run is showing).
   const [markovRun, setMarkovRun] = useState<MarkovRunResult | null>(null);
@@ -283,20 +283,20 @@ function Workspace() {
   // #304: the MODE axis, not dock tabs. Three values, and each one is a
   // different thing to be doing with the open model rather than a different
   // reading of it: STRUCTURE asserts (the canvas), DATA observes (the model's
-  // Klir data-level face — rows = support, columns = declared flows), RUN
-  // executes (#312 move 2 — the run is an activity with a timeline, inputs and
+  // Klir data-level face Ã¢ÂÂ rows = support, columns = declared flows), RUN
+  // executes (#312 move 2 Ã¢ÂÂ the run is an activity with a timeline, inputs and
   // results, and Run = a mode transition is doctrine, Arc 4). Only Structure
   // renders the canvas. Structure/Data ratified 2026-08-09; Run 2026-08-12.
   const [workMode, setWorkMode] = useState<WorkMode>("structure");
-  // #304 M2 slice 1: a CSV attached to the OPEN model from the Data tab —
+  // #304 M2 slice 1: a CSV attached to the OPEN model from the Data tab Ã¢ÂÂ
   // the document acquires data without a demo bundle. Cleared wherever the
   // open document changes (same sites that clear `demo`).
   const [attachedCsv, setAttachedCsv] = useState<string | null>(null);
-  // #309 M1: the data-first front door — a full-screen authoring surface that
+  // #309 M1: the data-first front door Ã¢ÂÂ a full-screen authoring surface that
   // creates a Klir-lens entry from observations (CSV or typed) before any
   // structure exists.
   const [startFromDataOpen, setStartFromDataOpen] = useState(false);
-  // The interface inspector's target — a flow-carrying capsule (r = (S, φ)).
+  // The interface inspector's target Ã¢ÂÂ a flow-carrying capsule (r = (S, ÃÂ)).
   // Cleared on any model identity change: the PortFact is a snapshot, and a
   // swap (walk enter/exit, open) or an edit can orphan it.
   const [interfaceSel, setInterfaceSel] = useState<{ port: PortFact; at: Pt } | null>(null);
@@ -306,18 +306,18 @@ function Workspace() {
   // Fit-to-content request counter (presentation-only): bumped after an SL
   // compile so the canvas frames the freshly laid-out model in the current
   // viewport (its auto-layout centers on a fixed point that can otherwise land
-  // outside the narrower SL-pane view — #83). Canvas fits once per new value.
+  // outside the narrower SL-pane view Ã¢ÂÂ #83). Canvas fits once per new value.
   const [fitToken, setFitToken] = useState<number | undefined>(undefined);
-  // The Klir locator's preset size (#100 harvest — "way too small" on 2 of 3
+  // The Klir locator's preset size (#100 harvest Ã¢ÂÂ "way too small" on 2 of 3
   // blind-pick arms). Three presets, medium default; a change refits the
   // picture to the new box via fitToken. Presentation only.
   const [locSize, setLocSize] = useState<"s" | "m" | "l">("m");
-  // The locator can also expand to a full-viewport overlay — a large diagram to
+  // The locator can also expand to a full-viewport overlay Ã¢ÂÂ a large diagram to
   // read or present. Escape or the toggle returns it to the preset box.
   const [locFull, setLocFull] = useState(false);
   useEffect(() => {
     // Refit once the box has actually resized (entering or leaving fullscreen),
-    // not on the click — measuring before layout settles reframes to the wrong box.
+    // not on the click Ã¢ÂÂ measuring before layout settles reframes to the wrong box.
     const raf = requestAnimationFrame(() => setFitToken((n) => (n ?? 0) + 1));
     if (!locFull) return () => cancelAnimationFrame(raf);
     const onKey = (e: KeyboardEvent) => {
@@ -332,7 +332,7 @@ function Workspace() {
   // Shell chrome state (presentation only): the home screen (the landing screen
   // before anything is loaded, and the route back out of a model), which of its
   // three levels it opens on, and the docked palette's collapse. The workbench
-  // stays mounted behind it — hidden, not unmounted, so a loaded model's canvas
+  // stays mounted behind it Ã¢ÂÂ hidden, not unmounted, so a loaded model's canvas
   // viewport survives a trip to the library.
   const [homeOpen, setHomeOpen] = useState(true);
   const [homeRoute, setHomeRoute] = useState<HomeRoute>({ view: "home" });
@@ -341,7 +341,7 @@ function Workspace() {
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
   // #57: inspector focus mode. Pops the docked inspector to full width and hides
   // the palette + canvas so the active reading (Run / Formal / Review) gets the
-  // whole work region. Presentation-only — the canvas <main> stays mounted (just
+  // whole work region. Presentation-only Ã¢ÂÂ the canvas <main> stays mounted (just
   // display:none'd), so its pan/zoom viewport survives the round trip untouched.
   const [inspectorFocused, setInspectorFocused] = useState(false);
   // Presentation-only: has the author touched the lens picker yet this session?
@@ -356,22 +356,22 @@ function Workspace() {
   // The decomposition walk (#89 step 5b): the ancestors above the model on the
   // canvas, root-first. Empty = not walking. Entering a decomposed component
   // pushes the current model as a segment; the breadcrumb exits by restoring
-  // one. Navigation state only — every model and verdict stays kernel-fed.
+  // one. Navigation state only Ã¢ÂÂ every model and verdict stays kernel-fed.
   const [walk, setWalk] = useState<WalkSegment[]>([]);
   // #109: the enter/exit transition phase on the canvas wrapper. Presentation
-  // only — the walk's document-navigation mechanism above is untouched.
+  // only Ã¢ÂÂ the walk's document-navigation mechanism above is untouched.
   const [walkFx, setWalkFx] = useState<WalkFx | null>(null);
   // The SL text pane (textual authoring surface). Text + faults live here so
   // the pane survives toggling; seeded with a worked example (Mobus's steel
-  // plant, Ch.4 §4.3.1) so the first Compile lands a real model.
+  // plant, Ch.4 ÃÂ§4.3.1) so the first Compile lands a real model.
   const [slOpen, setSlOpen] = useState(false);
   const [slText, setSlText] = useState(SL_SEED);
   const [slErrors, setSlErrors] = useState<SlError[]>([]);
   // Folder SAVE (File System Access): the picked working folder, the current
   // model's filename stem (so re-saving is one gesture into the same file), and
-  // the SaveDialog toggle. Explicit-save only — nothing here fires without a
+  // the SaveDialog toggle. Explicit-save only Ã¢ÂÂ nothing here fires without a
   // menu gesture. The matching "open a folder" browse path is gone: it was
-  // Chrome-only, and the home screen's two libraries plus Open a file… cover
+  // Chrome-only, and the home screen's two libraries plus Open a fileÃ¢ÂÂ¦ cover
   // its job in every browser.
   const [dirHandle, setDirHandle] = useState<DirHandleLike | null>(null);
   const [currentName, setCurrentName] = useState<string | null>(null);
@@ -380,7 +380,7 @@ function Workspace() {
   // whether the pending SaveDialog writes to the folder or the library, and the
   // library's current listing (shown in OpenDialog, refreshed when it opens).
   // The listing is a TREE (#105): children reached by `decomposes` references
-  // group under their root SOIs, read fresh from the records on every refresh —
+  // group under their root SOIs, read fresh from the records on every refresh Ã¢ÂÂ
   // grouping is never stored, so deleting a parent simply re-reads its children
   // as roots. The flattened form feeds the Switch menu's indented rows.
   const [saveTarget, setSaveTarget] = useState<"folder" | "library">("folder");
@@ -388,7 +388,7 @@ function Workspace() {
   const libraryList = useMemo(() => flattenLibraryTree(libraryTree), [libraryTree]);
   // The workbench (workbench.ts): hand-pinned quick access to the models being
   // worked on. `openRef` is the open model's pinnable identity, set at the same
-  // open seams that sync the SL pane — null for imports and blank canvases,
+  // open seams that sync the SL pane Ã¢ÂÂ null for imports and blank canvases,
   // which have no address a pin could name.
   const [pins, setPins] = useState<Pin[]>(loadPins);
   const [openRef, setOpenRef] = useState<Pin | null>(null);
@@ -423,10 +423,10 @@ function Workspace() {
     setLibraryTree(buildLibraryTree(await library.list()));
   }
   // A soft, informational message channel, distinct from `toast` (which the
-  // canvas reserves for kernel rejections, rendered "rejected — …").
+  // canvas reserves for kernel rejections, rendered "rejected Ã¢ÂÂ Ã¢ÂÂ¦").
   const [notice, setNotice] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
-  // World → screen inside the canvas container (popover anchoring under zoom).
+  // World Ã¢ÂÂ screen inside the canvas container (popover anchoring under zoom).
   const toScreen = (p: Pt): Pt => ({
     x: canvasPan.x + p.x * canvasScale,
     y: canvasPan.y + p.y * canvasScale,
@@ -435,7 +435,7 @@ function Workspace() {
 
   // #109: the Escape exit route, held in a ref refreshed every render so the
   // window keydown handler (subscribed on a narrow dep list) never fires a
-  // STALE exitTo — the exit autosaves, and it must save the current canvas,
+  // STALE exitTo Ã¢ÂÂ the exit autosaves, and it must save the current canvas,
   // not the closure it was subscribed with. The ref also owns the "nothing
   // capturing is open" gate: dialogs keep Escape to themselves.
   const escapeExitRef = useRef<() => void>(() => {});
@@ -446,7 +446,7 @@ function Workspace() {
     };
   });
 
-  // ⌘S / Ctrl-S → quickSave, through the same every-render ref discipline as
+  // Ã¢ÂÂS / Ctrl-S Ã¢ÂÂ quickSave, through the same every-render ref discipline as
   // escapeExitRef: the keydown subscription must see the CURRENT model, never
   // the closure it subscribed with.
   const quickSaveRef = useRef<() => void>(() => {});
@@ -458,7 +458,7 @@ function Workspace() {
   });
 
   // Esc = disarm the rail tool, else clear selection (closing any popover),
-  // else — while walking, with no field focused and no dialog open — exit one
+  // else Ã¢ÂÂ while walking, with no field focused and no dialog open Ã¢ÂÂ exit one
   // level of the walk (#109). Field editors win outright: the #116 label
   // draft, the node-name draft, and dialog inputs all cancel on their own
   // Escape handlers, so a focused input never also navigates. Delete/Backspace
@@ -503,7 +503,7 @@ function Workspace() {
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedThingId, selectedRelationId, boundaryAnchor, interfaceSel, armed]);
 
-  // A PortFact is a snapshot of the open model — any model identity change
+  // A PortFact is a snapshot of the open model Ã¢ÂÂ any model identity change
   // (walk enter/exit, open, edit) may orphan it, so the inspector closes.
   useEffect(() => setInterfaceSel(null), [canvasModel]);
 
@@ -521,7 +521,7 @@ function Workspace() {
     }
   };
 
-  /** ADR run-seam-canvas-document — the canvas is the document. A dirty
+  /** ADR run-seam-canvas-document Ã¢ÂÂ the canvas is the document. A dirty
    *  canvas runs its PROJECTION through the same gate and forcing path (the
    *  kernel's content hash marks it as a different model); a clean canvas
    *  keeps the stored artifact, which sl_demos CI proves identical to the
@@ -529,7 +529,7 @@ function Workspace() {
    *  refused, or no bundle). */
   const modelForRun = (): { json: string; edited: boolean } | null => {
     // No bundle = no stored artifact to prefer, so a clean canvas projects
-    // too (#304 run-from-attached) — `edited` still means dirty-since-open.
+    // too (#304 run-from-attached) Ã¢ÂÂ `edited` still means dirty-since-open.
     if (canvasModel && (dirty || !demo)) {
       try {
         return { json: JSON.stringify(project(canvasModel)), edited: dirty };
@@ -542,7 +542,7 @@ function Workspace() {
   };
 
   // #67 J9: run a Klir state machine as a discrete-time Markov chain. The Run
-  // action routes here when the lens is Klir — the model IS a labeled directed
+  // action routes here when the lens is Klir Ã¢ÂÂ the model IS a labeled directed
   // graph (transitions), so `run_markov` evolves a distribution over its states
   // (T reused as the step horizon). No CSV/manifest: a state machine's dynamics
   // are its transition weights, not a forcing series.
@@ -560,11 +560,11 @@ function Workspace() {
   };
 
   // The SL pane follows the open model: every explicit open seam hands the
-  // pane the model's text — the authored .sl document where one exists
+  // pane the model's text Ã¢ÂÂ the authored .sl document where one exists
   // (corpus, examples, demos: comments and provenance survive), the canonical
   // emit_sl serialization where none does (imports, library loads). Opening a
   // model is the author's stated intent, so pane text is replaced without a
-  // confirm — the same discipline these seams already apply to the canvas.
+  // confirm Ã¢ÂÂ the same discipline these seams already apply to the canvas.
   function syncSlPane(source: string | null, cm: CanvasModel) {
     if (source != null) {
       setSlText(source);
@@ -572,38 +572,56 @@ function Workspace() {
       try {
         setSlText(emitSl(cm));
       } catch {
-        return; // pane keeps its text — the serialization is a courtesy, not the open
+        return; // pane keeps its text Ã¢ÂÂ the serialization is a courtesy, not the open
       }
     }
     setSlErrors([]);
   }
 
-  // Guarded + flushed at the seam itself (#111), so every caller — the Switch
-  // menu AND the OpenDialog gallery — gets the same discard discipline.
+  // Guarded + flushed at the seam itself (#111), so every caller Ã¢ÂÂ the Switch
+  // menu AND the OpenDialog gallery Ã¢ÂÂ gets the same discard discipline.
   const pick = async (d: Demo) => {
-    // Runnable only — a structural entry has no run bundle and opens via
+    // Runnable only Ã¢ÂÂ a structural entry has no run bundle and opens via
     // pickExample instead. The guard also narrows the optional fields (#148).
     if (d.modelJson == null || d.csv == null || d.manifest == null || d.t == null) return;
     if (!(await guardDiscard()) || !(await flushWalk())) return;
     setDemo(d); setAttachedCsv(null);
-    // An SL-authored demo opens from its `.sl` — the author's document, which
+    // Your saved copy SHADOWS the shipped demo: a quickSave of a demo lands
+    // in the library under the demo's own key, and reopening the gallery
+    // card must honor it Ã¢ÂÂ otherwise "save" reverts on reopen (field report
+    // 2026-08-16). The run bundle (csv/manifest/t) still attaches: the copy
+    // is the same system with the author's layout.
+    let saved: CanvasModel | null = null;
+    if (libraryList.some((m) => m.name === d.key)) {
+      try {
+        saved = openModel(await library.load(d.key));
+      } catch {
+        saved = null;
+      }
+    }
+    // An SL-authored demo opens from its `.sl` Ã¢ÂÂ the author's document, which
     // carries what projection loses (declared params, #18). The bundle stays
     // the run's model: sl_demos.rs pins it to the projection of this same
     // text, so the two cannot disagree about the system.
-    // A compile THROW (kernel trap — seen live when Vite HMR drops the wasm
+    // A compile THROW (kernel trap Ã¢ÂÂ seen live when Vite HMR drops the wasm
     // instance) must not dead-end the open; the bundle is the projection of
     // the same text and remains a legitimate way in.
     let compiled: ReturnType<typeof compileSl> | null = null;
-    if (d.sl) {
+    if (!saved && d.sl) {
       try {
         compiled = compileSl(d.sl);
       } catch {
         compiled = null;
       }
     }
-    const opened = compiled && "ok" in compiled ? compiled.ok : spaceOut(openModel(d.modelJson));
+    const opened = saved ?? (compiled && "ok" in compiled ? compiled.ok : spaceOut(openModel(d.modelJson)));
     setCanvasModel(opened);
-    syncSlPane(d.sl ?? null, opened);
+    // The saved copy may have drifted from the shipped SL, so its pane text
+    // re-emits from the model itself rather than showing stale source.
+    syncSlPane(saved ? null : (d.sl ?? null), opened);
+    // Ã¢ÂÂS must overwrite THIS model's slot Ã¢ÂÂ never a previously open one.
+    setCurrentName(saved ? d.key : null);
+    if (saved) setNotice(`opened your saved copy Ã¢ÂÂ delete library slot "${d.key}" to get the shipped original`);
     setOpenRef({ kind: "example", ref: d.key });
     setManifest(d.manifest);
     setDt(d.manifest.dt ?? 1);
@@ -614,12 +632,12 @@ function Workspace() {
     setHomeOpen(false);
     setDirty(false);
     setWalk([]);
-    // Frame the opened layout in the viewport — every open seam owes this fit
+    // Frame the opened layout in the viewport Ã¢ÂÂ every open seam owes this fit
     // (#83): the default pan covered small demos by luck until the 21-node
     // llm-market opened to an empty corner.
     setFitToken((n) => (n ?? 0) + 1);
-    // #297: opening is not executing. The model arrives at zero — Time is the
-    // author's first decision, ▶ Run the authored act. Nothing is lost by
+    // #297: opening is not executing. The model arrives at zero Ã¢ÂÂ Time is the
+    // author's first decision, Ã¢ÂÂ¶ Run the authored act. Nothing is lost by
     // dropping the old auto-run: runs are deterministic and declared amounts
     // ARE the defaults, so Run on an untouched model reproduces the shipped
     // calibration exactly.
@@ -629,13 +647,13 @@ function Workspace() {
     setTick(0);
   };
 
-  // Source corpus → open: an author's own model, shipped as SL text. Reuses the
-  // two existing seams and invents nothing — guardDiscard (which onSlCompiled
+  // Source corpus Ã¢ÂÂ open: an author's own model, shipped as SL text. Reuses the
+  // two existing seams and invents nothing Ã¢ÂÂ guardDiscard (which onSlCompiled
   // deliberately omits, because compiling in the pane is the author's stated
   // intent) then the SL compile seam itself.
   //
   // A corpus entry ships no CSV and no manifest, so the CSV-forced conservation
-  // run stays dark. That is the File → Import case exactly (see the comment
+  // run stays dark. That is the File Ã¢ÂÂ Import case exactly (see the comment
   // there), not a new state: structure, lens, formal object and review still
   // light up, because they read the canvas model.
   //
@@ -661,11 +679,11 @@ function Workspace() {
     setDirty(false);
   };
 
-  // The drafted partition → open (#324). The corpus path, with one difference
+  // The drafted partition Ã¢ÂÂ open (#324). The corpus path, with one difference
   // that is not a detail: a corpus entry is ship-gated so its compile failure
   // would be a bug, while a drafted model is whatever a language model wrote
   // and failing to compile is an ordinary outcome. The toast here is the real
-  // answer, not an unreachable branch — and the turn stays in the ledger either
+  // answer, not an unreachable branch Ã¢ÂÂ and the turn stays in the ledger either
   // way, so a draft that does not compile is still there to be corrected.
   const pickDrafted = async (sl: string) => {
     if (!(await guardDiscard()) || !(await flushWalk())) return;
@@ -680,7 +698,7 @@ function Workspace() {
     setDirty(false);
   };
 
-  // Examples gallery → open (#148): one card handler for both shapes. A runnable
+  // Examples gallery Ã¢ÂÂ open (#148): one card handler for both shapes. A runnable
   // entry runs (the demo path, unchanged); a structural one compiles its SL and
   // opens as a diagram (the corpus path, without a citation). onSlCompiled sets
   // demo to null, so the loaded-demo state stays a runnable Demo or null.
@@ -703,17 +721,18 @@ function Workspace() {
     setDirty(false);
   };
 
-  // File → Import: load a user-supplied model JSON onto the canvas via the same
+  // File Ã¢ÂÂ Import: load a user-supplied model JSON onto the canvas via the same
   // kernel seam the demo picker uses (toCanvas). No demo bundle means no CSV /
-  // manifest, so the run path stays dark for imports — structure, lens, formal
+  // manifest, so the run path stays dark for imports Ã¢ÂÂ structure, lens, formal
   // object, and review still light up (they read the canvas model).
   async function importModel(json: string) {
     if (!(await guardDiscard()) || !(await flushWalk())) return;
     try {
-      // Either generation may arrive here — a neutral archive, or a legacy
+      // Either generation may arrive here Ã¢ÂÂ a neutral archive, or a legacy
       // WorldModel someone exported before #140. The kernel decides which.
       const cm = openModel(json);
       setDemo(null); setAttachedCsv(null);
+      setCurrentName(null); // a foreign file is nobody's library slot - Cmd-S must ask for a name
       setCanvasModel(cm);
       syncSlPane(null, cm);
       setOpenRef(null);
@@ -733,14 +752,14 @@ function Workspace() {
     }
   }
 
-  // SL pane → Compile: the parsed model lands through the same reset seam as
-  // import. The lens is view state — if a model is already on the canvas, the
+  // SL pane Ã¢ÂÂ Compile: the parsed model lands through the same reset seam as
+  // import. The lens is view state Ã¢ÂÂ if a model is already on the canvas, the
   // author's current lens survives the compile unless the text pinned one via
   // @lens (the parser reports which).
   // No confirm here (compiling over the canvas is the author's stated intent),
   // but a walk's dirty ancestors still autosave before the reset (#111).
-  // `asPreview` (SL pane → Compile): render the draft on the canvas but do NOT
-  // commit it — stash the author's model so Discard reverts, Accept commits
+  // `asPreview` (SL pane Ã¢ÂÂ Compile): render the draft on the canvas but do NOT
+  // commit it Ã¢ÂÂ stash the author's model so Discard reverts, Accept commits
   // (llm-sl-authoring-plan.md Rung 0, the human-checks-meaning gate). Other callers
   // (corpus open) commit directly, as before.
   async function onSlCompiled(cm: CanvasModel, lensExplicit: boolean, asPreview = false, turnId?: string) {
@@ -766,22 +785,22 @@ function Workspace() {
       // If already previewing, keep the original stash so re-compiling an edited
       // draft never buries the author's base model.
       setPreview((p) => p ?? { stash: prior, priorDirty: dirty });
-      setDirty(true); // uncommitted draft — guard against silent loss
-      setNotice("SL compiled — previewing (Accept to keep, Discard to revert)");
+      setDirty(true); // uncommitted draft Ã¢ÂÂ guard against silent loss
+      setNotice("SL compiled Ã¢ÂÂ previewing (Accept to keep, Discard to revert)");
       setActiveTurnId(turnId ?? null);
     } else {
       setPreview(null); // committing clears any stale preview
       setDirty(false);
-      setNotice("SL compiled ✓");
+      setNotice("SL compiled Ã¢ÂÂ");
       setActiveTurnId(null);
     }
   }
 
   // Accept the previewed draft: it becomes the working model (still unsaved). The
-  // human-checks-meaning gate — the line between "LLM proposes" and "LLM authors".
+  // human-checks-meaning gate Ã¢ÂÂ the line between "LLM proposes" and "LLM authors".
   function acceptPreview() {
     setPreview(null);
-    setNotice("Accepted onto the canvas ✓");
+    setNotice("Accepted onto the canvas Ã¢ÂÂ");
     if (activeTurnId) {
       const id = activeTurnId;
       setCoauthorTurns((ts) => ts.map((x) => (x.id === id ? { ...x, status: "accepted" } : x)));
@@ -797,7 +816,7 @@ function Workspace() {
     setDirty(preview.priorDirty);
     setResult(null);
     setPreview(null);
-    setNotice("Draft discarded — reverted");
+    setNotice("Draft discarded Ã¢ÂÂ reverted");
     if (activeTurnId) {
       const id = activeTurnId;
       setCoauthorTurns((ts) => ts.map((x) => (x.id === id ? { ...x, status: "discarded" } : x)));
@@ -808,16 +827,16 @@ function Workspace() {
   // #10 resident co-author, folded into the SL pane as a mode: description ->
   // draft -> compile -> Rung-0 preview, recorded as a turn in the pane's
   // history. Reuses the exact draftSlWithRetry + onSlCompiled path the pane's
-  // manual Compile button rides — the co-author is an assist that writes into
+  // manual Compile button rides Ã¢ÂÂ the co-author is an assist that writes into
   // the SAME SL text, never a separate write path. A failed compile or an
   // unreachable drafter still lands as a turn and still populates the text
-  // (nothing hidden — the author can hand-fix a near-miss draft).
+  // (nothing hidden Ã¢ÂÂ the author can hand-fix a near-miss draft).
   async function coauthorDraft(description: string, onStage?: (stage: DraftStage) => void) {
     const id = newTurnId();
     const lens = canvasModel?.lens;
     // The author's standing choice, read at draft time (drafterModel.ts, the
     // same runtime-preference shape as the reasoner's address). Recorded on
-    // every turn beside the model that answered — the pane names the answering
+    // every turn beside the model that answered Ã¢ÂÂ the pane names the answering
     // one and, when they differ, says so.
     const requestedModel = drafterModel();
     let sl = "";
@@ -849,13 +868,13 @@ function Workspace() {
     setCoauthorTurns((ts) => [{ id, description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls }, ...ts]);
   }
 
-  // #314 the correction turn — "this is good as far as it goes, but you've
+  // #314 the correction turn Ã¢ÂÂ "this is good as far as it goes, but you've
   // identified flows as sources and sinks" (George Mobus, 2026-08-12).
   //
   // A redraft, not an in-place edit: the drafter is shown the SL it wrote, the
   // kernel's current reading of it, and the author's correction, and it writes
   // a new draft. That draft lands in exactly the channel a first draft lands
-  // in — compile, preview, accept or discard — so the human's words never
+  // in Ã¢ÂÂ compile, preview, accept or discard Ã¢ÂÂ so the human's words never
   // reach the kernel except as a description on a request. `runCorrectionTurn`
   // (coauthor.ts) owns the sequence and the invariant; this function is the
   // React binding around it.
@@ -900,14 +919,15 @@ function Workspace() {
     setCoauthorTurns((ts) => [outcome.turn, ...ts]);
   }
 
-  // File → New: a blank canvas to author a model from scratch (the #14 path — no
+  // File Ã¢ÂÂ New: a blank canvas to author a model from scratch (the #14 path Ã¢ÂÂ no
   // demo bundle, so the run stays dark until tethered; structure/lens/formal/review
   // read the empty model). Boundary defaults are neutral, editable via the popover.
   async function newModel() {
     if (!(await guardDiscard()) || !(await flushWalk())) return;
     setDemo(null); setAttachedCsv(null);
+    setCurrentName(null); // a fresh model is nobody's library slot - Cmd-S must ask for a name
     setCanvasModel({ lens: "Mobus", things: [], relations: [], boundary: { porosity: 0, perceptive_fuzziness: 0 } });
-    setSlText(""); // blank canvas, blank page — the seed is for first launch, not File → New
+    setSlText(""); // blank canvas, blank page Ã¢ÂÂ the seed is for first launch, not File Ã¢ÂÂ New
     setSlErrors([]);
     setOpenRef(null);
     setManifest({ model: "", data: "", t: 12, mapping: [] });
@@ -924,7 +944,7 @@ function Workspace() {
     setTypePromptOpen(true); // #77: offer the kind/name first step (skippable)
   }
 
-  // #309 M1: open the data-first door. Same discard/walk guards as File → New;
+  // #309 M1: open the data-first door. Same discard/walk guards as File Ã¢ÂÂ New;
   // the reset itself waits until the surface commits.
   async function startFromData() {
     if (!(await guardDiscard()) || !(await flushWalk())) return;
@@ -933,7 +953,7 @@ function Workspace() {
 
   // The authored entry arrives whole: a Klir-lens model whose things are the
   // variables (source system), the observations as attached CSV, and a manifest
-  // naming the support column. Lands in Data mode — the face the entry earned.
+  // naming the support column. Lands in Data mode Ã¢ÂÂ the face the entry earned.
   function commitStartFromData(model: CanvasModel, csvText: string, m: Manifest) {
     setDemo(null);
     setCanvasModel(model);
@@ -966,7 +986,7 @@ function Workspace() {
     reader.readAsText(file);
   }
 
-  // File → Save / Export: project the canvas editing model back to a bert-core
+  // File Ã¢ÂÂ Save / Export: project the canvas editing model back to a bert-core
   // WorldModel (the display-faithful inverse of toCanvas) and offer it as a
   // download. The run path uses the same projection when the canvas is dirty
   // (ADR run-seam-canvas-document); a clean canvas runs the stored artifact.
@@ -981,8 +1001,8 @@ function Workspace() {
     }
   }
 
-  // File → Export diagram (SVG/PNG) (#78): serialize the live canvas SVG framed
-  // on its content extent — a deliverable diagram straight off the stage, no
+  // File Ã¢ÂÂ Export diagram (SVG/PNG) (#78): serialize the live canvas SVG framed
+  // on its content extent Ã¢ÂÂ a deliverable diagram straight off the stage, no
   // cropped screenshot. Reads the mounted SVG by class (single canvas on screen).
   async function exportDiagram(format: "svg" | "png") {
     if (!canvasModel) return;
@@ -997,21 +1017,21 @@ function Workspace() {
         format === "svg"
           ? exportDiagramSvg(svg, canvasModel, filename)
           : await exportDiagramPng(svg, canvasModel, filename);
-      if (!ok) setToast("nothing to export — the model is empty");
+      if (!ok) setToast("nothing to export Ã¢ÂÂ the model is empty");
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
   }
 
-  // File → Save to folder…: the native-file counterpart to the download-based
+  // File Ã¢ÂÂ Save to folderÃ¢ÂÂ¦: the native-file counterpart to the download-based
   // Save/Export. Pick a working folder once (reused thereafter), then a small
-  // SaveDialog names the file — writing is still explicit (menu → dialog → Save),
+  // SaveDialog names the file Ã¢ÂÂ writing is still explicit (menu Ã¢ÂÂ dialog Ã¢ÂÂ Save),
   // never automatic. On unsupported browsers the download Save/Export remain.
   async function saveToFolder() {
     if (!canvasModel) return;
     if (!isFolderSupported()) {
       setNotice(
-        "Folder access is off in this browser. Brave disables the File System Access API by default — enable brave://flags/#file-system-access-api and relaunch, or use Chrome/Edge.",
+        "Folder access is off in this browser. Brave disables the File System Access API by default Ã¢ÂÂ enable brave://flags/#file-system-access-api and relaunch, or use Chrome/Edge.",
       );
       return;
     }
@@ -1029,8 +1049,8 @@ function Workspace() {
     }
   }
 
-  // File → Save to library…: the flag-free counterpart to Save to folder. No
-  // picker, no feature gate — IndexedDB is everywhere. Just name the model, then
+  // File Ã¢ÂÂ Save to libraryÃ¢ÂÂ¦: the flag-free counterpart to Save to folder. No
+  // picker, no feature gate Ã¢ÂÂ IndexedDB is everywhere. Just name the model, then
   // confirmSave routes to saveModel below.
   function saveToLibrary() {
     if (!canvasModel) return;
@@ -1038,15 +1058,15 @@ function Workspace() {
     setSaveDialogOpen(true);
   }
 
-  // The slot a no-dialog save writes to: the open library slot, or — for a
-  // demo — the demo's own key. Demos are bundled assets and cannot be written
+  // The slot a no-dialog save writes to: the open library slot, or Ã¢ÂÂ for a
+  // demo Ã¢ÂÂ the demo's own key. Demos are bundled assets and cannot be written
   // in place; the library slot under the demo's key IS the author's editable
   // copy of the model they just loaded, and re-opening that slot restores the
-  // saved layout. A hand-drawn untitled model has no slot (null) — it must be
+  // saved layout. A hand-drawn untitled model has no slot (null) Ã¢ÂÂ it must be
   // named once through the dialog.
   const quickSaveSlot = currentName ?? demo?.key ?? null;
 
-  // File → Save (and ⌘S): the one-action overwrite, no dialog. Falls back to
+  // File Ã¢ÂÂ Save (and Ã¢ÂÂS): the one-action overwrite, no dialog. Falls back to
   // the Save-to-library dialog only when there is no slot to write to.
   async function quickSave() {
     if (!canvasModel) return;
@@ -1057,7 +1077,7 @@ function Workspace() {
         setCurrentName(quickSaveSlot);
         setOpenRef({ kind: "library", ref: quickSaveSlot });
         setDirty(false);
-        setNotice(`saved to library → ${quickSaveSlot}`);
+        setNotice(`saved to library Ã¢ÂÂ ${quickSaveSlot}`);
       } catch (e) {
         setToast(e instanceof Error ? e.message : String(e));
       }
@@ -1075,11 +1095,11 @@ function Workspace() {
     if (!canvasModel) return;
     const stem = name.trim().replace(/\.json$/i, "") || "untitled";
     // Save-as-copy discipline (bert-core model_id contract): saving under a NEW
-    // name is a copy, and a copy must not inherit its origin's identity — clear
+    // name is a copy, and a copy must not inherit its origin's identity Ã¢ÂÂ clear
     // it so a later decomposition mints a fresh one. Re-saving the same slot
     // keeps the id (that's what keeps a walked child's parent reference alive).
     // #140: storage writes the NEUTRAL model. `project` stays the Mobus
-    // export and the executable projection — it is lossy on Bunge's `mere` and
+    // export and the executable projection Ã¢ÂÂ it is lossy on Bunge's `mere` and
     // `field` and Klir's `@directed`, so it must never be what we archive.
     const copy = { ...canvasModel } as CanvasModel & { model_id?: string };
     if (currentName && stem !== currentName) delete copy.model_id;
@@ -1093,10 +1113,10 @@ function Workspace() {
         await library.save(stem, json);
         await refreshLibrary();
         setCurrentName(stem);
-        setOpenRef({ kind: "library", ref: stem }); // now addressable — pinnable
+        setOpenRef({ kind: "library", ref: stem }); // now addressable Ã¢ÂÂ pinnable
         setSaveDialogOpen(false);
         setDirty(false);
-        setNotice(`saved to library → ${stem}`);
+        setNotice(`saved to library Ã¢ÂÂ ${stem}`);
         return;
       }
       if (!dirHandle) return;
@@ -1104,13 +1124,13 @@ function Workspace() {
       setCurrentName(stem);
       setSaveDialogOpen(false);
       setDirty(false);
-      setNotice(`saved → ${stem}.json`);
+      setNotice(`saved Ã¢ÂÂ ${stem}.json`);
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
   }
 
-  // Home → My library: load one of the user's saved models onto the canvas —
+  // Home Ã¢ÂÂ My library: load one of the user's saved models onto the canvas Ã¢ÂÂ
   // same seam as import (toCanvas + reset), and it remembers the name so a
   // re-save overwrites the same library slot. Guarded here (#111), so the
   // direct load never bypasses the gate.
@@ -1150,12 +1170,12 @@ function Workspace() {
   }
 
   // Rename a library slot in place (#116 candidate 3): same record, same id,
-  // new key — the store refuses a taken name, and the refusal surfaces as a
+  // new key Ã¢ÂÂ the store refuses a taken name, and the refusal surfaces as a
   // toast while the row stays in edit mode (returns false). Every in-memory
   // pointer at the old key follows the rename: `currentName` (so a re-save
   // lands in the renamed slot, not a resurrected old one) and any walk
   // segment's autosave slot (flushWalk writes by name). The parent's
-  // `decomposes @id` stamp needs no touch-up — resolution is by identity.
+  // `decomposes @id` stamp needs no touch-up Ã¢ÂÂ resolution is by identity.
   async function renameInLibrary(from: string, to: string): Promise<boolean> {
     const target = to.trim();
     if (!target || target === from) return true;
@@ -1176,7 +1196,7 @@ function Workspace() {
   }
 
   // The author-view verdict, lens facts, and formal object: every model or lens
-  // change re-projects and re-judges in Rust — one atomic analyze_canvas call
+  // change re-projects and re-judges in Rust Ã¢ÂÂ one atomic analyze_canvas call
   // (one deserialization, one projection), memoized on the canvas model. The
   // canvas renders these; it derives nothing.
   //
@@ -1184,7 +1204,7 @@ function Workspace() {
   // editing state (which palette authoring routinely produces) would throw
   // straight through render and unmount the tree. Catch it here: the canvas
   // still draws its structure, and the verdict/formal panels show the kernel's
-  // reason instead of white-screening. Recovery is automatic — a new canvas
+  // reason instead of white-screening. Recovery is automatic Ã¢ÂÂ a new canvas
   // model recomputes this memo. The KernelErrorBoundary below is the belt to
   // this suspenders, catching the same class of throw from child renders.
   const analysis = useMemo(() => {
@@ -1199,16 +1219,16 @@ function Workspace() {
   // Decomposition seams are judged at resolution time (#89 step 5a): collect
   // the model's `decomposes` references, resolve them through the store layer
   // (IndexedDB library, then the working folder), and let the kernel check
-  // every seam — including the cross-model derived_env identity. Async because
+  // every seam Ã¢ÂÂ including the cross-model derived_env identity. Async because
   // resolution is I/O; the issues merge into the same verdict the pill and
   // review panel read, so a missing or broken referent is as loud as any other
-  // validation error. Effect-shaped (not memo) — a stale check is discarded.
+  // validation error. Effect-shaped (not memo) Ã¢ÂÂ a stale check is discarded.
   // Since step 5b the kernel also resolves each issue's canvas target
   // (check_decompositions_canvas), so seam rows navigate like any other issue.
-  // `error` is the HOST's failure, deliberately not an issue (#233 §4): when
+  // `error` is the HOST's failure, deliberately not an issue (#233 ÃÂ§4): when
   // resolution itself dies (storage error, projection throw) the kernel never
   // judged anything, so there is no verdict to show. It used to be dressed as
-  // one — a hand-built `ValidationIssue` concatenated onto the kernel's list,
+  // one Ã¢ÂÂ a hand-built `ValidationIssue` concatenated onto the kernel's list,
   // under a panel that says every line is machine-checked. The provenance brand
   // makes that a compile error now; this field is where the truth goes instead.
   const [decomposition, setDecomposition] = useState<{
@@ -1232,7 +1252,7 @@ function Workspace() {
       if (!stale) setDecomposition({ issues: report.issues, targets: report.issue_targets, error: null });
     })().catch((e) => {
       // Resolution failing outright (storage error, projection throw) must
-      // still surface on the review panel, never only the console — but as the
+      // still surface on the review panel, never only the console Ã¢ÂÂ but as the
       // host failure it is, in its own region, outside the verdict list.
       if (!stale) {
         setDecomposition({
@@ -1250,10 +1270,10 @@ function Workspace() {
   }, [canvasModel, dirHandle]);
 
   // The kernel's lens-gate verdict plus the resolution-time decomposition
-  // issues, one list — the issues Pill, the review panel, and the dock all read
+  // issues, one list Ã¢ÂÂ the issues Pill, the review panel, and the dock all read
   // this. Both halves carry kernel-resolved canvas targets, index-parallel.
   // Both halves are also KERNEL output, which is the only reason they may share
-  // a list at all (#233 §4); the host's own failures go to `decomposition.error`.
+  // a list at all (#233 ÃÂ§4); the host's own failures go to `decomposition.error`.
   const verdict = useMemo(() => {
     const base = analysis.ok?.validation ?? null;
     if (decomposition.issues.length === 0) return base;
@@ -1288,16 +1308,16 @@ function Workspace() {
   }, [homeOpen]);
 
   // Attached data beats the bundle for READING surfaces (Data mode, the
-  // per-flow column picker). The run path still runs the bundle only —
+  // per-flow column picker). The run path still runs the bundle only Ã¢ÂÂ
   // Run-from-attached is the next M2 slice, deliberately not smuggled in here.
   const activeCsv = attachedCsv ?? demo?.csv ?? null;
   // #304 run-from-attached: what the conservation engine may be fed. A demo
   // bundle's pinned CSV always qualifies; an author's attachment qualifies
-  // once at least one column is bound — an unmapped sheet forces nothing,
+  // once at least one column is bound Ã¢ÂÂ an unmapped sheet forces nothing,
   // and the kernel would refuse it with a wall of unbound-flow reasons.
   const runCsv = demo?.csv ?? (attachedCsv && manifest.mapping.length > 0 ? attachedCsv : null);
 
-  // Which flows are currently driven — a structural fact read off the manifest,
+  // Which flows are currently driven Ã¢ÂÂ a structural fact read off the manifest,
   // independent of whether a run has happened yet.
   const drivenNames = useMemo(
     () =>
@@ -1310,7 +1330,7 @@ function Workspace() {
   );
 
   // The scrubber's per-tick readout: indexing into the kernel's trajectories /
-  // comparisons at `tick`. No dynamics computed here — only array lookups.
+  // comparisons at `tick`. No dynamics computed here Ã¢ÂÂ only array lookups.
   const simFrame: SimFrame | null = useMemo(() => {
     if (!result) return null;
     const nodes: SimFrame["nodes"] = {};
@@ -1329,7 +1349,7 @@ function Workspace() {
     return { nodes, edges };
   }, [result, tick]);
 
-  // #67 J9: probability mass per state at the scrubbed tick — the row of the
+  // #67 J9: probability mass per state at the scrubbed tick Ã¢ÂÂ the row of the
   // distribution trajectory `history[tick]`, keyed by state name so the canvas
   // rides it on the matching node. Pure indexing (with the tick clamped into
   // range, like the Bunge marker); no dynamics computed here. Only under Klir,
@@ -1358,7 +1378,7 @@ function Workspace() {
     // why (see the note beside the pills). Once the author has worked the
     // picker at all, the note has done its job and stands down.
     setLensTouched(true);
-    // The armed tool belongs to the outgoing lens's verb list — disarm. The
+    // The armed tool belongs to the outgoing lens's verb list Ã¢ÂÂ disarm. The
     // canvas itself never resets (accretion pattern).
     setArmed(null);
     // #67 J9: a Markov run belongs to the Klir reading of the model; leaving
@@ -1368,7 +1388,7 @@ function Workspace() {
   }
 
   // An inputs-panel edit (walkthrough #11): update the relation and RE-RUN
-  // immediately from the edited document — the projection is computed from the
+  // immediately from the edited document Ã¢ÂÂ the projection is computed from the
   // next model synchronously, so the run can never race the state update. The
   // simulation-tool loop: change a number, see the world change.
   function applyInputEdit(next: import("./kernel/types").Relation) {
@@ -1393,15 +1413,15 @@ function Workspace() {
     }
   }
 
-  // A run-deck time commit (Δt/T relocation): store the new values and, when
-  // a run is already on screen, re-run over the new slice immediately — the
+  // A run-deck time commit (ÃÂt/T relocation): store the new values and, when
+  // a run is already on screen, re-run over the new slice immediately Ã¢ÂÂ the
   // same edit-and-the-world-re-runs grammar as the inputs card. Values arrive
   // as arguments so the re-run can never race the state update.
   function applyTime(nextDt: number, nextT: number) {
     setDt(nextDt);
     setT(nextT);
     // No run on screen yet = nothing to re-run (#297: zero-start honors this).
-    // Both run kinds count — the guard read only `result`, so a Klir steps
+    // Both run kinds count Ã¢ÂÂ the guard read only `result`, so a Klir steps
     // edit never re-ran the DTMC despite the Time card's stated grammar.
     if ((result === null && markovRun === null) || !canvasModel) return;
     if (canvasModel.lens === "Klir") {
@@ -1413,10 +1433,10 @@ function Workspace() {
   }
 
   // Reset the inputs to the model's declared amounts. The baseline is not
-  // stored state — it is DERIVED by recompiling the demo's `.sl` (the author's
+  // stored state Ã¢ÂÂ it is DERIVED by recompiling the demo's `.sl` (the author's
   // document), so it can never go stale or leak across documents. Relation ids
   // are deterministic per compile, so the map lands on the same flows.
-  // #94: accept a run-derived stock unit as DECLARED — write it onto the
+  // #94: accept a run-derived stock unit as DECLARED Ã¢ÂÂ write it onto the
   // matching component (run nodes carry the components' own names). An
   // authoring edit like any other: dirty, saved via the normal save path. It
   // rides with the run panel, so #312 move 2 moved it from the dock's prop site
@@ -1450,7 +1470,7 @@ function Workspace() {
     });
   }
 
-  // A per-lens edge edit (kind / bond⇄mere / direction / klir toggle): update
+  // A per-lens edge edit (kind / bondÃ¢ÂÂmere / direction / klir toggle): update
   // the editing model; the effect above re-projects + re-judges in Rust.
   function updateRelation(next: import("./kernel/types").Relation) {
     setCanvasModel((m) =>
@@ -1460,7 +1480,7 @@ function Workspace() {
   }
 
   // Delete removes the selected element. Deleting a component cascades to its
-  // flows — a relation can't dangle to a thing that no longer exists.
+  // flows Ã¢ÂÂ a relation can't dangle to a thing that no longer exists.
   function deleteThing(id: number) {
     setCanvasModel((m) =>
       m
@@ -1482,17 +1502,17 @@ function Workspace() {
   }
 
   // A node edit from the popover (rename, work-process set/clear): same shape
-  // as updateRelation — the kernel re-projects + re-judges on every change.
+  // as updateRelation Ã¢ÂÂ the kernel re-projects + re-judges on every change.
   function updateThing(next: import("./kernel/types").Thing) {
     // The re-cut narration (#100 phase 2, F8-as-curriculum): when a Bunge
-    // author moves a thing across the C/E partition, say the C→E→S dependency
-    // out loud AT the moment it is enacted — the one-line lesson, no wizard,
+    // author moves a thing across the C/E partition, say the CÃ¢ÂÂEÃ¢ÂÂS dependency
+    // out loud AT the moment it is enacted Ã¢ÂÂ the one-line lesson, no wizard,
     // no enforced sequence. The re-derivation itself is the kernel's (the
-    // analyze memo below re-judges ℰ, 𝒮, and the hull off the new 𝒞).
+    // analyze memo below re-judges Ã¢ÂÂ°, Ã°ÂÂÂ®, and the hull off the new Ã°ÂÂÂ).
     const prev = canvasModel?.things.find((t) => t.id === next.id);
     if (canvasModel?.lens === "Bunge" && prev && prev.role !== next.role) {
       setNotice(
-        `re-cut: "${next.name || "unnamed"}" → ${next.role === "Component" ? "𝒞" : "ℰ"} — composition chosen; environment and structure re-derive (C → E → S)`,
+        `re-cut: "${next.name || "unnamed"}" Ã¢ÂÂ ${next.role === "Component" ? "Ã°ÂÂÂ" : "Ã¢ÂÂ°"} Ã¢ÂÂ composition chosen; environment and structure re-derive (C Ã¢ÂÂ E Ã¢ÂÂ S)`,
       );
     }
     setCanvasModel((m) =>
@@ -1512,7 +1532,7 @@ function Workspace() {
   const clean = verdict !== null && verdict.issues.length === 0;
 
   // #204: the review is an action the author takes, not a tab they may never
-  // open. The kernel already judges continuously — invoking a review raises the
+  // open. The kernel already judges continuously Ã¢ÂÂ invoking a review raises the
   // report and stamps when it was read. No new computation, and no LLM.
   const [reviewRequest, setReviewRequest] = useState(0);
   const [reviewedAt, setReviewedAt] = useState<string | null>(null);
@@ -1521,7 +1541,7 @@ function Workspace() {
     setReviewedAt(new Date().toLocaleTimeString());
   }, []);
 
-  // The SL pane's compile chain asking the dock for the Formal tab — the same
+  // The SL pane's compile chain asking the dock for the Formal tab Ã¢ÂÂ the same
   // bump contract as the review above. Nothing is computed here: `describe`
   // already ran with the rest of the analysis; this only decides what is on
   // screen next to the text.
@@ -1530,12 +1550,12 @@ function Workspace() {
 
   // The math-panel-first Klir register (#100): under Klir the set listings are
   // the primary surface and the node-and-edge picture demotes to a locator, so
-  // the container composes differently — Mobus is untouched.
+  // the container composes differently Ã¢ÂÂ Mobus is untouched.
   const isKlir = canvasModel?.lens === "Klir";
 
   // The Bunge register (#100 phase 2): Bunge KEEPS the picture (the coupling
   // graph with its hull is the primary face), but his structure is also his
-  // coupling matrix M — so the Bunge canvas carries a graph ⇄ matrix view
+  // coupling matrix M Ã¢ÂÂ so the Bunge canvas carries a graph Ã¢ÂÂ matrix view
   // toggle (F1, the Klir register's toggle grammar as a sibling, not a clone).
   // While the matrix is up the picture demotes to the same locator Klir uses.
   const [bungeView, setBungeView] = useState<"graph" | "matrix">("graph");
@@ -1545,7 +1565,7 @@ function Workspace() {
   const registerActive = isKlir || isBungeMatrix;
 
   // The decomposition door's case, decided off KERNEL facts (boundary
-  // membership = lens_facts.boundary_thing_ids — the same set the kernel's v1
+  // membership = lens_facts.boundary_thing_ids Ã¢ÂÂ the same set the kernel's v1
   // refusal checks). One function, read by the NodePopover AND the Klir
   // register's inline thing editor.
   function decomposeFor(thing: Thing): DecomposeAffordance | null {
@@ -1557,14 +1577,14 @@ function Workspace() {
     return { kind: "ready", onDecompose: () => decomposeThing(thing) };
   }
 
-  // A human label for the model now on the canvas — the demo's title, else the
+  // A human label for the model now on the canvas Ã¢ÂÂ the demo's title, else the
   // saved name, else a neutral "untitled". Shown in the menu bar and used to
   // mark the active row in the Switch menu.
   const currentLabel = demo?.title ?? currentName ?? (canvasModel ? "untitled" : null);
 
   // Confirm-before-discard gate for the nav affordances: only the unsaved-work
   // case prompts. A walk's dirty ancestors autosave on reset (flushWalk below),
-  // so only a segment flushWalk cannot save — dirty with no name — still
+  // so only a segment flushWalk cannot save Ã¢ÂÂ dirty with no name Ã¢ÂÂ still
   // counts as discardable work here.
   // Async since the in-app ConfirmDialog replaced `window.confirm` (which
   // cannot be themed and blocks browser automation cold). The dialog's
@@ -1580,12 +1600,12 @@ function Workspace() {
   }
 
   // #140: the ONE place a model becomes stored text. Every storage write
-  // funnels here, so the archive encoding is chosen once — the seam that was
+  // funnels here, so the archive encoding is chosen once Ã¢ÂÂ the seam that was
   // spread across seven separate call sites before it had a name.
   const persist = (name: string, model: CanvasModel) => library.save(name, writeArchive(model));
 
   // Walk-reset autosave (#111): every path that discards the walk gets the
-  // breadcrumb-exit discipline — dirty ancestor segments are saved before
+  // breadcrumb-exit discipline Ã¢ÂÂ dirty ancestor segments are saved before
   // setWalk([]) throws their snapshots away. Dirty-only, name-required, same
   // as exitTo. The current model is not saved here; guardDiscard's confirm
   // owns that decision. False = a save failed, so the caller must not reset.
@@ -1603,7 +1623,7 @@ function Workspace() {
     }
   }
 
-  // Home / Close (#73): leave the canvas and return to the start screen — a null
+  // Home / Close (#73): leave the canvas and return to the start screen Ã¢ÂÂ a null
   // model behind the open gallery, exactly the app's initial state. The one
   // route back out of a loaded model.
   async function goHome() {
@@ -1623,16 +1643,16 @@ function Workspace() {
     openHomeAt({ view: "home" });
   }
 
-  // Open the home screen on a chosen level — the menu (Home) or straight into
-  // the library browser (File → Open…, Switch → Open full library).
+  // Open the home screen on a chosen level Ã¢ÂÂ the menu (Home) or straight into
+  // the library browser (File Ã¢ÂÂ OpenÃ¢ÂÂ¦, Switch Ã¢ÂÂ Open full library).
   function openHomeAt(route: HomeRoute) {
     setHomeRoute(route);
     setHomeOpen(true);
   }
 
   // Switch model (#74): load another model without routing through the full
-  // Open… dialog. Both quick paths reuse the existing load seams, which now
-  // carry the guard + walk flush themselves (#111) — no second gate here.
+  // OpenÃ¢ÂÂ¦ dialog. Both quick paths reuse the existing load seams, which now
+  // carry the guard + walk flush themselves (#111) Ã¢ÂÂ no second gate here.
   function switchToDemo(d: Demo) {
     void pick(d);
   }
@@ -1641,10 +1661,10 @@ function Workspace() {
   }
 
   // The door (#89 step 5b): derive the child of a component in the KERNEL
-  // (G′ from flows(c), minted identity, empty interior), save it to the browser
+  // (GÃ¢ÂÂ² from flows(c), minted identity, empty interior), save it to the browser
   // library, and stamp the parent's `decomposes` reference. Stamping is
-  // tooling — this layer writes the reference; the kernel derived and judged.
-  // The stamped parent persists in the same breath (#111) — the moment the
+  // tooling Ã¢ÂÂ this layer writes the reference; the kernel derived and judged.
+  // The stamped parent persists in the same breath (#111) Ã¢ÂÂ the moment the
   // reference is written into it is the moment it must live somewhere a walk
   // reset can't reach. Child saved first: a crash between the two leaves an
   // unreferenced child (recoverable), never a reference to a missing child.
@@ -1656,7 +1676,7 @@ function Workspace() {
       const taken = new Set((await library.list()).map((m) => m.name));
       const parent = parentSlotName(currentName, canvasModel.name, demo?.key, taken);
       if (!parent) {
-        setNotice("name this model first (File → Save to library…) — the decomposition reference needs a saved parent to live in");
+        setNotice("name this model first (File Ã¢ÂÂ Save to libraryÃ¢ÂÂ¦) Ã¢ÂÂ the decomposition reference needs a saved parent to live in");
         return;
       }
       const out = decomposeComponent(canvasModel, thing.id);
@@ -1668,8 +1688,8 @@ function Workspace() {
       const name = mintLibraryName(out.ok.child_name || "subsystem", taken);
       // The kernel derives the newborn as a WorldModel (`child.systems`), so it
       // was still landing in storage in the format #140 demoted. Nothing is
-      // lost either way — a newborn carries no `mere`, `field`, or `@directed`
-      // yet — but a write path that emits the old format is exactly how the old
+      // lost either way Ã¢ÂÂ a newborn carries no `mere`, `field`, or `@directed`
+      // yet Ã¢ÂÂ but a write path that emits the old format is exactly how the old
       // format comes back.
       await persist(name, openModel(out.ok.child_json));
       const stamped: CanvasModel = {
@@ -1686,8 +1706,8 @@ function Workspace() {
       setSelectedThingId(null);
       setNotice(
         parent.isNew
-          ? `decomposed → saved "${name}" to the library; parent saved as "${parent.name}" — double-click the component to enter`
-          : `decomposed → saved "${name}" to the library — double-click the component to enter`,
+          ? `decomposed Ã¢ÂÂ saved "${name}" to the library; parent saved as "${parent.name}" Ã¢ÂÂ double-click the component to enter`
+          : `decomposed Ã¢ÂÂ saved "${name}" to the library Ã¢ÂÂ double-click the component to enter`,
       );
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
@@ -1698,14 +1718,14 @@ function Workspace() {
   // by id through the store layer, push the current model as a walk segment,
   // and put the child on the canvas. Mechanism = navigation across documents;
   // only the breadcrumb makes it read as a hierarchical dive. A referent that
-  // resolves nowhere surfaces the kernel's defined issue in place — never a
+  // resolves nowhere surfaces the kernel's defined issue in place Ã¢ÂÂ never a
   // crash, never a silent no-op.
   async function enterThingChild(thing: Thing) {
     const ref = thing.child_model;
     if (!ref || !canvasModel) return;
     // The dive choreography (#109): the view presses toward the clicked
     // component (dive-out, origin at the component's screen position) while
-    // the child resolves CONCURRENTLY — resolution races the beat, never the
+    // the child resolves CONCURRENTLY Ã¢ÂÂ resolution races the beat, never the
     // other way round. If resolution is slow the out-phase completes (fill:
     // forwards holds it) and the child arrives when ready, exactly the
     // existing async enter path. Reduced motion: no phases, instant swap.
@@ -1731,8 +1751,8 @@ function Workspace() {
         ...w,
         {
           // A compiled example has no library slot (currentLabel falls to
-          // "untitled"), but the model names itself — the breadcrumb should
-          // read "Steel-Plant …" when the walk starts from the gallery.
+          // "untitled"), but the model names itself Ã¢ÂÂ the breadcrumb should
+          // read "Steel-Plant Ã¢ÂÂ¦" when the walk starts from the gallery.
           label: demo?.title ?? currentName ?? canvasModel.name ?? "untitled",
           modelId: canvasModel.model_id ?? null,
           clean: decomposition.issues.length === 0 && decomposition.error === null,
@@ -1757,9 +1777,9 @@ function Workspace() {
       setCurrentName(ref.name);
       setHomeOpen(false);
       setDirty(false);
-      // Entry orientation (#109 §3): the fit fires IN the swap batch, so the
+      // Entry orientation (#109 ÃÂ§3): the fit fires IN the swap batch, so the
       // child's first committed frame already centers its membrane with the
-      // G′ stand-ins framed — and the dive-in phase starts from opacity 0,
+      // GÃ¢ÂÂ² stand-ins framed Ã¢ÂÂ and the dive-in phase starts from opacity 0,
       // so the one pre-fit paint the fit effect allows is never visible.
       setFitToken((n) => (n ?? 0) + 1);
       setWalkFx(animate ? { phase: "dive-in", origin: "50% 50%" } : null);
@@ -1769,7 +1789,7 @@ function Workspace() {
     }
   }
 
-  // Exit to an ancestor (breadcrumb click). AUTOSAVES before navigating — the
+  // Exit to an ancestor (breadcrumb click). AUTOSAVES before navigating Ã¢ÂÂ the
   // current child and every deeper segment being popped, dirty-only, so work is
   // never lost and an untouched newborn is never rewritten. No confirm dialog;
   // explicit save is unchanged. Restoring the ancestor re-runs its seam check
@@ -1778,7 +1798,7 @@ function Workspace() {
     if (!canvasModel || index >= walk.length) return;
     // The reverse choreography (#109): the child recedes (rise-out) and the
     // restored ancestor arrives pulling back to rest (rise-in). Same racing
-    // discipline as enter — the autosaves run concurrently with the beat and
+    // discipline as enter Ã¢ÂÂ the autosaves run concurrently with the beat and
     // are never delayed by it. Center-origin on both phases (the entered
     // component's post-fit screen position isn't knowable pre-render).
     const animate = !prefersReducedMotion();
@@ -1861,7 +1881,7 @@ function Workspace() {
 
       {/* The workbench proper. data-lens drives the --lens-* seam: every
           descendant's chrome re-tints to the active lens (slate/indigo/teal),
-          bound to the kernel Mode via LENS_TO_MODE — a reskin keyed on a kernel
+          bound to the kernel Mode via LENS_TO_MODE Ã¢ÂÂ a reskin keyed on a kernel
           fact. The whole workbench (toolbar strip, palette, canvas, panels)
           lives under it so the seam reaches every lens-tinted control. */}
       <div
@@ -1870,10 +1890,10 @@ function Workspace() {
         style={homeOpen ? { display: "none" } : undefined}
       >
         {/* The walk breadcrumb (#89 step 5b): the label path down the
-            decomposition (`Boiler › Furnace`), each segment carrying its
-            contract-status glyph (✓ seams hold / ⚠ violations, kernel-fed).
+            decomposition (`Boiler Ã¢ÂÂº Furnace`), each segment carrying its
+            contract-status glyph (Ã¢ÂÂ seams hold / Ã¢ÂÂ  violations, kernel-fed).
             Ids live on hover/title only. Clicking an ancestor exits to it
-            (autosaving on the way — see exitTo). Shown only while walking. */}
+            (autosaving on the way Ã¢ÂÂ see exitTo). Shown only while walking. */}
         {walk.length > 0 && canvasModel && (
           <nav
             className="flex flex-wrap items-center gap-1.5 border-b px-4 py-1.5 text-xs"
@@ -1881,7 +1901,7 @@ function Workspace() {
           >
             {walk.map((seg, i) => (
               <span key={i} className="flex items-center gap-1.5">
-                {i > 0 && <span style={{ color: "var(--text-muted)" }}>›</span>}
+                {i > 0 && <span style={{ color: "var(--text-muted)" }}>Ã¢ÂÂº</span>}
                 <button
                   onClick={() => exitTo(i)}
                   className="flex items-center gap-1"
@@ -1893,7 +1913,7 @@ function Workspace() {
                 </button>
               </span>
             ))}
-            <span style={{ color: "var(--text-muted)" }}>›</span>
+            <span style={{ color: "var(--text-muted)" }}>Ã¢ÂÂº</span>
             <span
               className="flex items-center gap-1 font-semibold"
               style={{ color: "var(--text-primary)" }}
@@ -1905,8 +1925,8 @@ function Workspace() {
           </nav>
         )}
 
-        {/* Provisional control strip — temporary neutral home for the
-            lens-switch pills, clean/issues Pill, and the Δt/T + Run controls
+        {/* Provisional control strip Ã¢ÂÂ temporary neutral home for the
+            lens-switch pills, clean/issues Pill, and the ÃÂt/T + Run controls
             that used to live inside the canvas Card. NOT a designed toolbar:
             arrangement of the workbench's controls is still open. */}
         {canvasModel && (
@@ -1914,11 +1934,11 @@ function Workspace() {
             className="flex flex-wrap items-center gap-3 border-b px-4 py-2"
             style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
           >
-            {/* #304: the mode switch — sibling of the lens pills, left of
+            {/* #304: the mode switch Ã¢ÂÂ sibling of the lens pills, left of
                 them. A lens is a reading and reads at either rung; the mode
                 decides which rung's face fills the stage. #312 move 2 put Run
                 on this axis: it is the one control that says the run exists, so
-                it is always visible while a model is open, and pressing ▶ Run
+                it is always visible while a model is open, and pressing Ã¢ÂÂ¶ Run
                 arrives here on its own. */}
             <div
               className="flex items-center gap-1 rounded-pill p-1"
@@ -1971,12 +1991,12 @@ function Workspace() {
             )}
             {/* Lens switching is question switching (#100): each tradition
                 answers a different guiding question, so the picker docks the
-                active lens's question as orientation copy. Kernel copy — the
+                active lens's question as orientation copy. Kernel copy Ã¢ÂÂ the
                 same describe() string the contract fixtures pin. Rendered with
                 real presence (#7): display serif in the lens accent, settling
-                briefly on each switch — the key re-mounts the span so the
+                briefly on each switch Ã¢ÂÂ the key re-mounts the span so the
                 animation re-runs exactly when the question changes. */}
-            {/* placeholder — the question moved to its own display band below */}
+            {/* placeholder Ã¢ÂÂ the question moved to its own display band below */}
             {/* #204: the review as an action. The pill beside it is the standing
                 reading; this button is the author asking for the report. */}
             <button
@@ -1993,9 +2013,9 @@ function Workspace() {
             </button>
             <Pill tone={clean ? "ok" : "warning"}>
               {verdict === null
-                ? "…"
+                ? "Ã¢ÂÂ¦"
                 : clean
-                  ? "✓ clean"
+                  ? "Ã¢ÂÂ clean"
                   : `${verdict.issues.length} issue${verdict.issues.length === 1 ? "" : "s"}`}
             </Pill>
             <button
@@ -2010,22 +2030,22 @@ function Workspace() {
             >
               SL
             </button>
-            {/* Δt/T live with the run they govern, in Run mode beside Inputs.
+            {/* ÃÂt/T live with the run they govern, in Run mode beside Inputs.
                 The controls below stay HERE, on the axis-wide strip, so the run
                 can be started from whichever mode the author is in. */}
             <div className="ml-auto flex flex-wrap items-center gap-3">
               {(() => {
-                // #282: the run wears its lens — the registry declares the run
+                // #282: the run wears its lens Ã¢ÂÂ the registry declares the run
                 // kind and this button renders from the declaration. Klir's
                 // behavior function runs as a DTMC straight from the canvas
                 // (#67 J9); Mobus's work processes run the CSV-forced
-                // conservation engine; Bunge declares no mechanism (⊘M), so
+                // conservation engine; Bunge declares no mechanism (Ã¢ÂÂM), so
                 // Run has nothing to execute and says so.
                 const runKind = LensPalette[canvasModel.lens].run;
                 // #309/#288: the level is earned, and so is Run. A Source- or
                 // Data-level entry authors no generating rule (the census's
-                // cross-cutting test), so there is nothing to evolve — same
-                // shape as Bunge's ⊘M refusal, stated in the title.
+                // cross-cutting test), so there is nothing to evolve Ã¢ÂÂ same
+                // shape as Bunge's Ã¢ÂÂM refusal, stated in the title.
                 const subGenerative =
                   canvasModel.klir_level === "Source" || canvasModel.klir_level === "Data";
                 const dtmcRunnable =
@@ -2049,8 +2069,8 @@ function Workspace() {
                 // The unrunnable branches are now VISIBLE copy, not tooltips
                 // (the deck stands down and this sentence takes its place), so
                 // they read as sentences: no em dashes, plain and short. Each
-                // claim is preserved exactly — the level is declared and
-                // authors no rule, Bunge states no mechanism (⊘M).
+                // claim is preserved exactly Ã¢ÂÂ the level is declared and
+                // authors no rule, Bunge states no mechanism (Ã¢ÂÂM).
                 const title =
                   runKind === "dtmc"
                     ? dtmcRunnable
@@ -2064,8 +2084,8 @@ function Workspace() {
                         : attachedCsv
                           ? "Bind at least one column in Data mode to drive the run."
                           : "Run needs data: a demo bundle, or a CSV attached and bound in Data mode."
-                      : "No mechanism stated (⊘M), so structure alone gives Run nothing to execute.";
-                // #297: advance by one tick — a deterministic re-run one step
+                      : "No mechanism stated (Ã¢ÂÂM), so structure alone gives Run nothing to execute.";
+                // #297: advance by one tick Ã¢ÂÂ a deterministic re-run one step
                 // longer, scrubber landed on the new final tick. No incremental
                 // engine state: the recorded-run architecture makes T+1 exact.
                 const onStep = () => {
@@ -2090,7 +2110,7 @@ function Workspace() {
                 // A dead primary action is worse than no action: on a model
                 // that cannot run, the deck is not rendered at all, so its
                 // ARRIVAL is the signal that the model became runnable. The
-                // kernel-side meaning of `runnable` is untouched — only whether
+                // kernel-side meaning of `runnable` is untouched Ã¢ÂÂ only whether
                 // the control is drawn. The reason a run is unavailable is
                 // demoted, not deleted: same sentence the disabled button used
                 // to carry in its tooltip, now a quiet line in the deck's place.
@@ -2117,7 +2137,7 @@ function Workspace() {
                         background: "transparent",
                       }}
                     >
-                      ⏭ Step
+                      Ã¢ÂÂ­ Step
                     </button>
                     <button
                       onClick={onRun}
@@ -2125,14 +2145,14 @@ function Workspace() {
                       className="rounded-full px-5 py-2 text-sm font-semibold transition-colors"
                       style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
                     >
-                      ▶ Run
+                      Ã¢ÂÂ¶ Run
                     </button>
                   </>
                 );
               })()}
             </div>
             {/* The lens's stance, declared (#7, boldened on review): a
-                full-width display band under the controls — the strip is
+                full-width display band under the controls Ã¢ÂÂ the strip is
                 flex-wrap, so basis-full lands the question on its own line,
                 where the display serif can run large without fighting the
                 buttons. */}
@@ -2143,11 +2163,11 @@ function Workspace() {
               >
                 {/* #309: the registry's question speaks from the generative
                     rung (the behavior function). A Source/Data-level entry in
-                    Data mode hasn't earned that question yet — it gets the
+                    Data mode hasn't earned that question yet Ã¢ÂÂ it gets the
                     data rung's own. */}
                 {workMode === "data" &&
                 (canvasModel.klir_level === "Source" || canvasModel.klir_level === "Data")
-                  ? "what did I observe? — variables over a support, their states recorded; nothing behind them is asserted"
+                  ? "what did I observe? Ã¢ÂÂ variables over a support, their states recorded; nothing behind them is asserted"
                   : desc.question}
               </div>
             )}
@@ -2176,7 +2196,7 @@ function Workspace() {
                           await persist(quickSaveSlot, canvasModel);
                           await refreshLibrary();
                           setCurrentName(quickSaveSlot);
-                          setNotice(`saved to library → ${quickSaveSlot}`);
+                          setNotice(`saved to library Ã¢ÂÂ ${quickSaveSlot}`);
                           discardAsk.resolve(true);
                         } catch (e) {
                           setToast(e instanceof Error ? e.message : String(e));
@@ -2196,7 +2216,7 @@ function Workspace() {
             canvas <main> is hidden (not unmounted) so the dock can fill the row. */}
         <div className="flex min-h-0 flex-1">
           {/* The palette authors onto the CANVAS, and only Structure mode has
-              one — Data and Run both take the stage, so the rail folds away with
+              one Ã¢ÂÂ Data and Run both take the stage, so the rail folds away with
               the mode (#309: it was overlapping the sheet's left edge). Written
               as "is structure", never "is not data": with three modes on the
               axis, a negation would have left the palette standing over the
@@ -2207,7 +2227,7 @@ function Workspace() {
             </PaletteDock>
           )}
 
-          {/* The SL text pane — mounts independently of a loaded model, so an
+          {/* The SL text pane Ã¢ÂÂ mounts independently of a loaded model, so an
               author can write a model from blank text. */}
           {slOpen && !inspectorFocused && (
             <SlPane
@@ -2218,13 +2238,13 @@ function Workspace() {
               onCompiled={(cm, lensExplicit) => onSlCompiled(cm, lensExplicit, true)}
               onClose={() => setSlOpen(false)}
               canvasModel={canvasModel}
-              // The compile chain (text → model → formal object → verdict):
+              // The compile chain (text Ã¢ÂÂ model Ã¢ÂÂ formal object Ã¢ÂÂ verdict):
               // the kernel outputs the pane needs to name what its own Compile
-              // just produced. Same `desc`/`verdict` the dock reads — one
+              // just produced. Same `desc`/`verdict` the dock reads Ã¢ÂÂ one
               // analysis, two places it is legible.
               chain={{ desc, verdict, onShowFormal: showFormal }}
               // #10: the co-author, folded into the pane as a mode (locked
-              // 2026-07-24) — not a dock tab. coauthorDraft owns the whole
+              // 2026-07-24) Ã¢ÂÂ not a dock tab. coauthorDraft owns the whole
               // draft->compile->preview->record sequence; the pane just
               // switches back to the SL view once it resolves.
               coauthor={{ turns: coauthorTurns, onDraft: coauthorDraft, onCorrect: coauthorCorrect }}
@@ -2243,7 +2263,7 @@ function Workspace() {
             {canvasModel && (
               <KernelErrorBoundary resetKeys={[canvasModel, demo?.key ?? "import"]}>
                 <div className="flex min-h-full flex-col p-4">
-                  {/* Canvas owns the viewport — fills the region (no more
+                  {/* Canvas owns the viewport Ã¢ÂÂ fills the region (no more
                       height:440 cap), and its popovers/banners still anchor to
                       this relatively-positioned container. */}
                   <div
@@ -2253,7 +2273,7 @@ function Workspace() {
                       border: "1px solid color-mix(in srgb, var(--lens-accent) 30%, var(--hairline))",
                     }}
                   >
-                    {/* #109: the choreography wrapper — the walk-fx-* classes
+                    {/* #109: the choreography wrapper Ã¢ÂÂ the walk-fx-* classes
                         animate ONLY this layer (opacity + transform), so the
                         banners/popovers anchored to the container never warp.
                         The "in" phases clear themselves on animation end. It
@@ -2261,7 +2281,7 @@ function Workspace() {
                         register dives with its locator. */}
                     {workMode === "run" ? (
                       /* #312 move 2: the run takes the stage. Same state, same
-                         kernel outputs, same cards the dock's Run tab hosted —
+                         kernel outputs, same cards the dock's Run tab hosted Ã¢ÂÂ
                          re-parented into the mode, which is the width they were
                          starved of. */
                       <RunMode
@@ -2275,7 +2295,7 @@ function Workspace() {
                         model={canvasModel}
                         // The run's manifest exists in two cases, not one: a
                         // demo bundle, or an attached CSV with at least one
-                        // binding (#304's run-from-attached — the same pair
+                        // binding (#304's run-from-attached Ã¢ÂÂ the same pair
                         // `runCsv` accepts). Passing null here made a bound
                         // library model read as bundle-less in Run mode.
                         manifest={
@@ -2294,7 +2314,7 @@ function Workspace() {
                         manifest={manifest}
                         onAttachCsv={(text) => {
                           setAttachedCsv(text);
-                          // A fresh attachment resets the mapping — bindings
+                          // A fresh attachment resets the mapping Ã¢ÂÂ bindings
                           // are per-dataset, and stale ones would silently
                           // misread the new columns.
                           setManifest({ model: "", data: "attached.csv", t: 12, mapping: [] });
@@ -2309,7 +2329,7 @@ function Workspace() {
                         setWalkFx((fx) => (fx && (fx.phase === "dive-in" || fx.phase === "rise-in") ? null : fx))
                       }
                     >
-                    {/* Klir (#100): the register IS the stage — the literal
+                    {/* Klir (#100): the register IS the stage Ã¢ÂÂ the literal
                         T/R listings (and their matrix twin) fill the region;
                         the node-and-edge picture demotes to the small locator
                         box below. Editing happens in the register's own text;
@@ -2345,13 +2365,13 @@ function Workspace() {
                         onNotice={setNotice}
                         decomposeFor={decomposeFor}
                         placeName={canvasModel.name?.trim() || currentLabel}
-                        // The kernel's ladder verdict (#100 harvest) — the
+                        // The kernel's ladder verdict (#100 harvest) Ã¢ÂÂ the
                         // register renders it as a collapsed complement chip.
                         ladder={desc?.lens === "Klir" ? desc.ladder : null}
                         // #154 P3: the run + scrubber tick feed the mask readout
-                        // (f: Ḡ → G off the recorded trajectory). Same result/tick
+                        // (f: Ã¡Â¸Â  Ã¢ÂÂ G off the recorded trajectory). Same result/tick
                         // the InspectorDock's RunPanel reads; absent = empty state.
-                        // #154: markovRun (#67) is the mask's other source — App
+                        // #154: markovRun (#67) is the mask's other source Ã¢ÂÂ App
                         // keeps result/markovRun mutually exclusive, KlirRegister
                         // just forwards both and MaskTable picks the one present.
                         result={result}
@@ -2360,10 +2380,10 @@ function Workspace() {
                       />
                     )}
                     {/* Bunge (#100 phase 2): the coupling matrix M as the
-                        register surface — same composition as the Klir
+                        register surface Ã¢ÂÂ same composition as the Klir
                         register (panel + locator), Bunge's own semantics
                         (kind-of-action cells, bond vs mere, the cut as the
-                        row/col ordering). C→E→S→M inside (F8). */}
+                        row/col ordering). CÃ¢ÂÂEÃ¢ÂÂSÃ¢ÂÂM inside (F8). */}
                     {isBungeMatrix && (
                       <BungeRegister
                         model={canvasModel}
@@ -2407,7 +2427,7 @@ function Workspace() {
                           : registerActive
                           ? `absolute bottom-9 right-3 max-h-[45vh] max-w-[70%] overflow-hidden rounded-lg ${
                               // #100 harvest: the locator was "way too small"
-                              // on 2 of 3 arms — preset sizes, medium default.
+                              // on 2 of 3 arms Ã¢ÂÂ preset sizes, medium default.
                               // The caps are the harvest residue: on a short
                               // viewport the large preset climbed over the
                               // register's own text, so the preset is a
@@ -2452,7 +2472,7 @@ function Workspace() {
                         if (t.child_model) enterThingChild(t);
                       }}
                       // #109 exit gesture (a): while walking, double-click on
-                      // the empty stage exits one level — the mirror of
+                      // the empty stage exits one level Ã¢ÂÂ the mirror of
                       // double-click-to-enter. Null when not walking, so the
                       // stage double-click stays the node-draft creator.
                       onExitUp={walk.length > 0 ? () => void exitTo(walk.length - 1) : null}
@@ -2463,7 +2483,7 @@ function Workspace() {
                         setSelectedRelationId(null);
                       }}
                       // Clicking a flow-carrying capsule asks about THE
-                      // INTERFACE — list its crossing flows, don't answer
+                      // INTERFACE Ã¢ÂÂ list its crossing flows, don't answer
                       // with the boundary editor (2026-08-09 field report).
                       onSelectInterface={(port, at) => {
                         setInterfaceSel({ port, at });
@@ -2507,7 +2527,7 @@ function Workspace() {
                                 background: locSize === s ? "var(--lens-accent-soft)" : "transparent",
                                 border: `1px solid ${locSize === s ? "var(--lens-accent)" : "var(--hairline)"}`,
                               }}
-                              title={`locator size — ${s === "s" ? "small" : s === "m" ? "medium" : "large"}`}
+                              title={`locator size Ã¢ÂÂ ${s === "s" ? "small" : s === "m" ? "medium" : "large"}`}
                             >
                               {s}
                             </button>
@@ -2523,7 +2543,7 @@ function Workspace() {
                             }}
                             title={locFull ? "exit fullscreen (Esc)" : "expand diagram to fullscreen"}
                           >
-                            {locFull ? "×" : "⛶"}
+                            {locFull ? "ÃÂ" : "Ã¢ÂÂ¶"}
                           </button>
                         </div>
                       )}
@@ -2572,7 +2592,7 @@ function Workspace() {
                       />
                     )}
                     {/* The Bunge view toggle (#100 phase 2, F1): coupling
-                        graph ⇄ coupling matrix — one structure, two of
+                        graph Ã¢ÂÂ coupling matrix Ã¢ÂÂ one structure, two of
                         Bunge's own notations, the Klir register's toggle
                         grammar as a sibling. Rendered on the graph face; the
                         register carries its own copy of the same control. */}
@@ -2581,13 +2601,13 @@ function Workspace() {
                         <ToolButton
                           active
                           onClick={() => {}}
-                          title="the coupling graph — things, bonds, and the hull (the observer's cut)"
+                          title="the coupling graph Ã¢ÂÂ things, bonds, and the hull (the observer's cut)"
                         >
                           graph
                         </ToolButton>
                         <ToolButton
                           onClick={() => setBungeView("matrix")}
-                          title="Bunge's coupling matrix M — who acts on whom, by what kind of action"
+                          title="Bunge's coupling matrix M Ã¢ÂÂ who acts on whom, by what kind of action"
                         >
                           matrix
                         </ToolButton>
@@ -2595,8 +2615,8 @@ function Workspace() {
                     )}
                     {/* Bunge's single most lens-specific rule: systemhood is
                         EARNED. The verdict is the kernel's (validate_mode(
-                        Structural) via lens_facts.aggregate) — the face only
-                        announces it. Graph view only — the register carries
+                        Structural) via lens_facts.aggregate) Ã¢ÂÂ the face only
+                        announces it. Graph view only Ã¢ÂÂ the register carries
                         the same verdict as its headline pill. */}
                     {canvasModel.lens === "Bunge" && !isBungeMatrix && facts && (
                       <Banner
@@ -2604,24 +2624,24 @@ function Workspace() {
                         className="pointer-events-none absolute left-48 top-3"
                       >
                         {facts.aggregate
-                          ? "⚠ aggregate (heap) — no bond among distinct components (Bunge Def 1.1)"
-                          : "✓ system — ≥1 bond among distinct components (Bunge Def 1.1)"}
+                          ? "Ã¢ÂÂ  aggregate (heap) Ã¢ÂÂ no bond among distinct components (Bunge Def 1.1)"
+                          : "Ã¢ÂÂ system Ã¢ÂÂ Ã¢ÂÂ¥1 bond among distinct components (Bunge Def 1.1)"}
                       </Banner>
                     )}
                     {/* Grace note for a walked-into newborn (#89 step 5b): an
                         empty interior is the intended starting state, so nudge
-                        gently — an invitation on the canvas, not an error row
+                        gently Ã¢ÂÂ an invitation on the canvas, not an error row
                         on the review. Counting components is empty-state UI,
                         not a systems verdict. */}
                     {walk.length > 0 && !canvasModel.things.some((t) => t.role === "Component") && (
                       <Banner tone="soft" className="pointer-events-none absolute left-3 top-3">
-                        newly decomposed — the stand-ins around you are this system's
+                        newly decomposed Ã¢ÂÂ the stand-ins around you are this system's
                         neighbors; place your first primitive and wire them through it
                       </Banner>
                     )}
                     {/* The residue register (#100): every lens view enumerates
                         what it is NOT showing. Kernel judgment (analyze's
-                        residue) — hidden: the model has it, this lens does not
+                        residue) Ã¢ÂÂ hidden: the model has it, this lens does not
                         ask that question; unanswered: the lens asks, the model
                         has not answered. Pedagogy, not alarm. */}
                     {residue && (residue.hidden.length > 0 || residue.unspecified.length > 0) && (
@@ -2638,7 +2658,7 @@ function Workspace() {
                             : null,
                         ]
                           .filter(Boolean)
-                          .join(" · ")}
+                          .join(" ÃÂ· ")}
                       </div>
                     )}
                     {/* The stage is the canvas here by construction (this is
@@ -2649,12 +2669,12 @@ function Workspace() {
                         className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-mono"
                         style={{ color: "var(--text-muted)" }}
                       >
-                        arm a tool to stamp (Esc disarms) · click a node to edit it in the Element tab · double-click to enter it · drag the handle dot to connect · click a flow to drive it
+                        arm a tool to stamp (Esc disarms) ÃÂ· click a node to edit it in the Element tab ÃÂ· double-click to enter it ÃÂ· drag the handle dot to connect ÃÂ· click a flow to drive it
                       </div>
                     )}
                     {toast && (
                       <Banner tone="error" className="absolute bottom-3 left-3">
-                        rejected — {toast}
+                        rejected Ã¢ÂÂ {toast}
                       </Banner>
                     )}
                     {notice && (
@@ -2675,7 +2695,7 @@ function Workspace() {
                           color: "var(--text-primary)",
                         }}
                       >
-                        <span>Previewing a draft — assess it, then</span>
+                        <span>Previewing a draft Ã¢ÂÂ assess it, then</span>
                         <button
                           onClick={acceptPreview}
                           className="rounded-full px-3 py-1 text-xs font-semibold"
@@ -2703,7 +2723,7 @@ function Workspace() {
                       <SimScrubber steps={result.ticks} tick={tick} onTick={setTick} />
                       <div className="flex flex-wrap items-center gap-3">
                         <Pill tone={result.conserved ? "ok" : "error"}>
-                          {result.conserved ? "✓ conserved" : "⚠ leak"}
+                          {result.conserved ? "Ã¢ÂÂ conserved" : "Ã¢ÂÂ  leak"}
                         </Pill>
                         <span className="text-xs tabular" style={{ color: "var(--text-muted)" }}>
                           residual {result.residual.toExponential(1)}
@@ -2713,12 +2733,12 @@ function Workspace() {
                   )}
 
                   {/* #67 J9: the Markov run's scrubber + distribution readout.
-                      Structure-primary — the mass rides the diagram above; this
+                      Structure-primary Ã¢ÂÂ the mass rides the diagram above; this
                       is the secondary, noted reading. It carries no conservation
                       pill (a distribution run has no residual to show). */}
                   {markovRun && <MarkovReadout run={markovRun} tick={tick} onTick={setTick} />}
 
-                  {/* The Run / Formal / Review panels no longer stack here — they
+                  {/* The Run / Formal / Review panels no longer stack here Ã¢ÂÂ they
                       live in the right-docked InspectorDock (a sibling of this
                       <main>, below), so the canvas keeps the full viewport. */}
                 </div>
@@ -2729,7 +2749,7 @@ function Workspace() {
           {/* Right-edge instrument dock: the READINGS as tabs (Element /
               Formal / Review / Analyst), one visible at a time, full height of
               the work region. Only mounts once a model is loaded. The run is
-              not among them (#312 move 2) — it is a mode. */}
+              not among them (#312 move 2) Ã¢ÂÂ it is a mode. */}
           {canvasModel && (
             <InspectorDock
               result={result}
@@ -2799,7 +2819,7 @@ function Workspace() {
 
       {/* The home screen takes the work region while it is open (the workbench
           above is hidden, not unmounted). Remounting on every open is what makes
-          `initialRoute` land — File→Open… opens straight on the library. */}
+          `initialRoute` land Ã¢ÂÂ FileÃ¢ÂÂOpenÃ¢ÂÂ¦ opens straight on the library. */}
       {homeOpen && (
         <HomeScreen
           initialRoute={homeRoute}
@@ -2833,8 +2853,8 @@ function Workspace() {
   );
 }
 
-// The breadcrumb's per-segment contract-status glyph: ✓ every decomposition
-// seam of that model held / ⚠ violations. The verdict itself is the kernel's
+// The breadcrumb's per-segment contract-status glyph: Ã¢ÂÂ every decomposition
+// seam of that model held / Ã¢ÂÂ  violations. The verdict itself is the kernel's
 // (check_decompositions_canvas); this only colors it.
 function SeamGlyph({ clean }: { clean: boolean }) {
   return (
@@ -2842,15 +2862,15 @@ function SeamGlyph({ clean }: { clean: boolean }) {
       aria-label={clean ? "seams hold" : "seam violations"}
       style={{ color: clean ? "var(--verdict-ok)" : "var(--verdict-warning)" }}
     >
-      {clean ? "✓" : "⚠"}
+      {clean ? "Ã¢ÂÂ" : "Ã¢ÂÂ "}
     </span>
   );
 }
 
 // The theme control (#309 follow-on). It lives in the menu bar's far-right
 // chrome cluster, next to the kernel-status chip, because that end of the bar
-// is where the facts about the INSTRUMENT sit — is the kernel up, how is it
-// being displayed — while the left end is about the MODEL (Home, File, Switch,
+// is where the facts about the INSTRUMENT sit Ã¢ÂÂ is the kernel up, how is it
+// being displayed Ã¢ÂÂ while the left end is about the MODEL (Home, File, Switch,
 // the model's name and type). Theme is not a reading of the model, so it must
 // not sit anywhere near the Structure / Data / Run axis; that axis is about
 // what is being looked at, this is about the lamp.
@@ -2875,8 +2895,8 @@ function ThemeControl() {
       aria-label={`Theme: ${THEME_LABEL[choice]}`}
       title={
         choice === "system"
-          ? `Theme: following the system — click for ${THEME_LABEL[next]}`
-          : `Theme: ${THEME_LABEL[choice]}, overriding the system — click for ${THEME_LABEL[next]}`
+          ? `Theme: following the system Ã¢ÂÂ click for ${THEME_LABEL[next]}`
+          : `Theme: ${THEME_LABEL[choice]}, overriding the system Ã¢ÂÂ click for ${THEME_LABEL[next]}`
       }
     >
       {THEME_LABEL[choice]}
@@ -2884,9 +2904,9 @@ function ThemeControl() {
   );
 }
 
-// The thin top menu bar — Frost chrome, quiet, mono/small-caps. The File menu
+// The thin top menu bar Ã¢ÂÂ Frost chrome, quiet, mono/small-caps. The File menu
 // carries the working Open / Save / Export seams. Opening a disk file folds into
-// Open…'s "From a file" section rather than a separate Import item.
+// OpenÃ¢ÂÂ¦'s "From a file" section rather than a separate Import item.
 export function MenuBar({
   loaded,
   onNew,
@@ -2987,7 +3007,7 @@ export function MenuBar({
         className="text-xs font-semibold uppercase tracking-wider"
         style={{ fontFamily: "var(--font-mono)", color: "var(--ink)" }}
       >
-        bert&#8202;·&#8202;lenses
+        bert&#8202;ÃÂ·&#8202;lenses
       </span>
 
       {/* Home / Close (#73): the one route back to the start screen from a
@@ -3034,11 +3054,11 @@ export function MenuBar({
               }}
             >
               {item("New", onNew)}
-              {item("Open…", onOpen)}
+              {item("OpenÃ¢ÂÂ¦", onOpen)}
               <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
-              {item("Save ⌘S", onSave, !canExport)}
-              {item("Save to folder…", onSaveToFolder, !canExport)}
-              {item("Save to library as…", onSaveToLibrary, !canExport)}
+              {item("SaveÃ¢ÂÂÃ¢ÂÂS", onSave, !canExport)}
+              {item("Save to folderÃ¢ÂÂ¦", onSaveToFolder, !canExport)}
+              {item("Save to library asÃ¢ÂÂ¦", onSaveToLibrary, !canExport)}
               <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
               {onDownload && item("Download (.model)", onDownload, !canExport)}
               {item("Export JSON", onExport, !canExport)}
@@ -3048,9 +3068,9 @@ export function MenuBar({
           </>
         )}
       </div>
-      {/* Switch model (#74): an in-canvas quick-open — demos + browser library
+      {/* Switch model (#74): an in-canvas quick-open Ã¢ÂÂ demos + browser library
           in a compact menu, so switching models never routes through the full
-          Open… dialog. Only meaningful once a model is loaded. */}
+          OpenÃ¢ÂÂ¦ dialog. Only meaningful once a model is loaded. */}
       <div className="relative">
         <button
           onClick={() => setSwitchOpen((o) => !o)}
@@ -3065,7 +3085,7 @@ export function MenuBar({
           }}
           title="Switch to another model without leaving the canvas"
         >
-          Switch ▾
+          Switch Ã¢ÂÂ¾
         </button>
         {switchOpen && (
           <>
@@ -3100,7 +3120,7 @@ export function MenuBar({
                         style={{ color: active ? "var(--accent-strong)" : "var(--text-secondary)" }}
                         title={w.detail || w.title}
                       >
-                        {active ? "• " : ""}
+                        {active ? "Ã¢ÂÂ¢ " : ""}
                         {w.title}
                       </button>
                     );
@@ -3127,7 +3147,7 @@ export function MenuBar({
                     style={{ color: active ? "var(--accent-strong)" : "var(--text-secondary)" }}
                     title={d.title}
                   >
-                    {active ? "• " : ""}
+                    {active ? "Ã¢ÂÂ¢ " : ""}
                     {d.title}
                   </button>
                 );
@@ -3165,10 +3185,10 @@ export function MenuBar({
                     >
                       {m.depth > 0 && (
                         <span aria-hidden style={{ color: "var(--text-muted)" }}>
-                          {"└ "}
+                          {"Ã¢ÂÂ "}
                         </span>
                       )}
-                      {active ? "• " : ""}
+                      {active ? "Ã¢ÂÂ¢ " : ""}
                       {m.name}
                     </button>
                   );
@@ -3183,14 +3203,14 @@ export function MenuBar({
                 className="block w-full px-3 py-1.5 text-left text-xs"
                 style={{ color: "var(--text-secondary)" }}
               >
-                More… (Open dialog)
+                MoreÃ¢ÂÂ¦ (Open dialog)
               </button>
             </div>
           </>
         )}
       </div>
 
-      {/* The model now on the canvas — a quiet mono label, dot-marked when it
+      {/* The model now on the canvas Ã¢ÂÂ a quiet mono label, dot-marked when it
           carries unsaved edits, and the handle for the model's asserted type
           (#312 move 1). The name answers "which model is this"; kingdom /
           genus / domain answer "what is it", so the declaration opens from the
@@ -3202,7 +3222,7 @@ export function MenuBar({
             onClick={() => onSystemTypeChange && setTypeOpen((o) => !o)}
             disabled={!onSystemTypeChange}
             aria-expanded={typeOpen}
-            aria-label={`${currentLabel} — system type`}
+            aria-label={`${currentLabel} Ã¢ÂÂ system type`}
             className="max-w-[16rem] truncate rounded px-1.5 py-0.5 text-[11px]"
             style={{
               fontFamily: "var(--font-mono)",
@@ -3212,14 +3232,14 @@ export function MenuBar({
             }}
             title={
               onSystemTypeChange
-                ? `${currentLabel}${dirty ? " — unsaved changes" : ""} · system type: ${typeLabel} (click to declare)`
+                ? `${currentLabel}${dirty ? " Ã¢ÂÂ unsaved changes" : ""} ÃÂ· system type: ${typeLabel} (click to declare)`
                 : dirty
-                  ? `${currentLabel} — unsaved changes`
+                  ? `${currentLabel} Ã¢ÂÂ unsaved changes`
                   : currentLabel
             }
           >
             {currentLabel}
-            {dirty ? " •" : ""}
+            {dirty ? " Ã¢ÂÂ¢" : ""}
           </button>
           {typeOpen && onSystemTypeChange && (
             <>
@@ -3240,7 +3260,7 @@ export function MenuBar({
         </div>
       )}
 
-      {/* Pin the open model to the workbench — only shown when the model has
+      {/* Pin the open model to the workbench Ã¢ÂÂ only shown when the model has
           an address a pin could name. */}
       {canPin && onTogglePin && (
         <button
@@ -3250,9 +3270,9 @@ export function MenuBar({
             fontFamily: "var(--font-mono)",
             color: pinned ? "var(--accent-strong)" : "var(--text-muted)",
           }}
-          title={pinned ? "On the workbench — click to remove" : "Pin to the workbench (Home and Switch menus)"}
+          title={pinned ? "On the workbench Ã¢ÂÂ click to remove" : "Pin to the workbench (Home and Switch menus)"}
         >
-          {pinned ? "pinned ✓" : "pin"}
+          {pinned ? "pinned Ã¢ÂÂ" : "pin"}
         </button>
       )}
 
@@ -3261,19 +3281,19 @@ export function MenuBar({
       <span
         className="inline-flex items-center gap-1.5 text-[11px]"
         style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-        title="crates/ = truth · web/ = face"
+        title="crates/ = truth ÃÂ· web/ = face"
       >
         <span
           className="h-1.5 w-1.5 rounded-full"
           style={{ background: loaded ? "var(--accent)" : "var(--text-muted)" }}
         />
-        {loaded ? "kernel · wasm" : "loading…"}
+        {loaded ? "kernel ÃÂ· wasm" : "loadingÃ¢ÂÂ¦"}
       </span>
     </div>
   );
 }
 
-// The docked, collapsible left palette panel — a real shell-level dock track.
+// The docked, collapsible left palette panel Ã¢ÂÂ a real shell-level dock track.
 // Its content (PaletteRail) is unchanged; only its position moved here from
 // inside the canvas container.
 function PaletteDock({
@@ -3297,7 +3317,7 @@ function PaletteDock({
           className="text-xs"
           style={{ color: "var(--text-muted)" }}
         >
-          ▸
+          Ã¢ÂÂ¸
         </button>
       </div>
     );
@@ -3321,7 +3341,7 @@ function PaletteDock({
           palette
         </span>
         <button onClick={onToggle} title="Collapse palette" className="text-xs" style={{ color: "var(--text-muted)" }}>
-          ◂
+          Ã¢ÂÂ
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
@@ -3330,7 +3350,7 @@ function PaletteDock({
 }
 
 // A small name-this modal reusing the OpenDialog overlay/card chrome. The only
-// decision a save needs from the user: the name. Shared by both save targets —
+// decision a save needs from the user: the name. Shared by both save targets Ã¢ÂÂ
 // `target` only tunes the heading and the ".json" hint (a library slot has no
 // extension).
 function SaveDialog({
