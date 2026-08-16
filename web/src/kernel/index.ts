@@ -15,6 +15,7 @@ import init, {
   model_targets as wasmModelTargets,
   mapping_status as wasmMappingStatus,
   run_forced as wasmRunForced,
+  run_rich as wasmRunRich,
   open_model as wasmOpenModel,
   write_archive as wasmWriteArchive,
   project as wasmProject,
@@ -243,6 +244,13 @@ export function runForced(
   return call("run_forced", () =>
     wasmRunForced(modelJson, csvText, JSON.stringify(manifest), dt, t, today),
   );
+}
+
+/** Run a model from its DECLARED amounts alone — no CSV, no forcing — with the
+ *  same rich, domain-named readout as runForced (interactive params,
+ *  2026-08-16). `comparisons` comes back empty by construction. */
+export function runRich(modelJson: string, dt: number, t: number): RunResultRich {
+  return call("run_rich", () => wasmRunRich(modelJson, dt, t));
 }
 
 // ---- Phase 2: the canvas seam ------------------------------------------------

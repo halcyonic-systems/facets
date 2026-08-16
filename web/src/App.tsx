@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ready,
   runForced,
+  runRich,
   runMarkov,
   openModel,
   writeArchive,
@@ -517,7 +518,10 @@ function Workspace() {
 
   const runWith = (modelJson: string, csv: string, m: Manifest, dtv: number, tv: number, edited = false) => {
     try {
-      const r = runForced(modelJson, csv, m, dtv, tv, today());
+      // No data attached → the declared amounts alone govern (run_rich, same
+      // domain-named readout, comparisons empty by construction). With a CSV
+      // the forcing path runs exactly as before.
+      const r = csv.trim() ? runForced(modelJson, csv, m, dtv, tv, today()) : runRich(modelJson, dtv, tv);
       setResult(r);
       setRanEdited(edited);
       setMarkovRun(null);
@@ -1372,6 +1376,17 @@ function Workspace() {
       nodes[traj.name] = { value, unit: traj.unit, frac: max > min ? (value - min) / (max - min) : 0.5 };
     }
     const edges: SimFrame["edges"] = {};
+    // EVERY wire's executed per-tick series lights the diagram (the kernel
+    // has always returned result.flows for every wire — it was simply unread
+    // here; interactive-params research, 2026-08-16). The canvas stays a
+    // READER of the trace, per the accepted trace-separation design.
+    for (const f of result.flows) {
+      if (!f.name) continue; // an unlabeled wire has no edge key to ride
+      const value = f.series[Math.min(tick, f.series.length - 1)] ?? 0;
+      edges[f.name] = { value, unit: f.unit };
+    }
+    // CSV-mapped comparisons keep the last word where both exist — they carry
+    // the observed context the bare execution lacks.
     for (const c of result.comparisons) {
       const value = c.simulated[Math.min(tick, c.simulated.length - 1)] ?? 0;
       edges[c.element] = { value, unit: c.unit };
