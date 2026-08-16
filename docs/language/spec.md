@@ -141,7 +141,7 @@ flow        = "flow" name "->" name [ ":" kindword ] [ string ]
               [ "mere" ] [ "weight" integer ]
               [ "usability" usabilityword ]              (* #331 *)
               [ "description" string ] ;          (* ample: informational only, no unit *)
-decimal     = positive decimal number ;                (* "1.5"; 0 and below refused *)
+decimal     = nonnegative decimal number ;             (* "1.5"; 0 = arrested supply; negative refused *)
 param       = "param" string ":" "flow" name "->" name [ string ]
               [ "range" number ".." number ]           (* walkthrough #18 *)
             | "param" "shares" string ":" "from" name ;

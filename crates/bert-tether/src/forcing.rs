@@ -152,8 +152,27 @@ pub fn apply_params(model: &mut WorldModel, params: &ModelParams) {
     for (i, ix) in model.interactions.iter_mut().enumerate() {
         let id = i as u64;
         if let Some(amt) = params.flow_amount.get(&id) {
-            if let Some(d) = Decimal::from_f64_retain(*amt) {
-                ix.amount = d;
+            // The column mean supplies the amount ONLY where it does not
+            // silence a declaration (field report 2026-08-16: slider edits to
+            // declared amounts were clobbered by unforced mapped columns, so
+            // every re-run reproduced the CSV and the params UI read as dead):
+            // - a FORCED flow takes the mean as its data-horizon fallback
+            //   (#34) — the series is the truth and says so in the UI;
+            // - an UNDECLARED amount (the projection default ONE) takes the
+            //   mean — "the default becomes a floor", the original
+            //   tether-as-supply intent (#13), preserved verbatim;
+            // - a DECLARED amount on an unforced flow WINS, and the mapped
+            //   column's job is the comparison — executed-vs-observed
+            //   divergence is what that panel is FOR (#304's M-ladder).
+            // Heuristic edge, stated: an author who declares exactly 1 is
+            // indistinguishable from the default here; the honest fix is an
+            // authored-Option amount on Interaction (the #331 usability
+            // pattern) — tracked as follow-up.
+            let forced = params.flow_series.contains_key(&id);
+            if forced || ix.amount == Decimal::ONE {
+                if let Some(d) = Decimal::from_f64_retain(*amt) {
+                    ix.amount = d;
+                }
             }
         }
         // Re-derive the forcing params we own (idempotent if applied twice).
@@ -883,6 +902,38 @@ mod tests {
         assert_eq!(cmp.kind, "flow");
         assert_eq!(cmp.actual, vec![10.0, 10.0, 10.0, 10.0]);
         assert_eq!(cmp.unit, "units/mo");
+    }
+
+    // Law (the slider fix, 2026-08-16): a DECLARED amount on an UNFORCED
+    // mapped flow survives the import — the column becomes comparison, not
+    // supply. The undeclared default (ONE) still takes the mean (floor, #13),
+    // and a forced flow still takes mean + series (#34). Separating triple.
+    #[test]
+    fn a_declared_amount_survives_an_unforced_mapped_column() {
+        use crate::tether::ModelParams;
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let mut declared: WorldModel = serde_json::from_str(json).unwrap();
+        declared.interactions[0].amount = Decimal::from(20);
+
+        let mut params = ModelParams::default();
+        params.flow_amount.insert(0, 10.0);
+
+        // Unforced + declared → the declaration wins.
+        let mut m = declared.clone();
+        apply_params(&mut m, &params);
+        assert_eq!(m.interactions[0].amount, Decimal::from(20));
+
+        // Unforced + undeclared (the projection default ONE) → the mean supplies.
+        let mut m = declared.clone();
+        m.interactions[0].amount = Decimal::ONE;
+        apply_params(&mut m, &params);
+        assert_eq!(m.interactions[0].amount, Decimal::from(10));
+
+        // Forced → the mean supplies as the data-horizon fallback.
+        params.flow_series.insert(0, vec![10.0, 10.0]);
+        let mut m = declared;
+        apply_params(&mut m, &params);
+        assert_eq!(m.interactions[0].amount, Decimal::from(10));
     }
 
     // Law: the CSV-less run reads back with the SAME richness as the forced

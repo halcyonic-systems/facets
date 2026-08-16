@@ -1458,14 +1458,23 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         match rest_tail {
                             [Tok::Word(n), after @ ..] => {
                                 match n.parse::<bert_core::rust_decimal::Decimal>() {
-                                    Ok(v) if v > bert_core::rust_decimal::Decimal::ZERO => {
+                                    // Zero is admissible (interactive params,
+                                    // 2026-08-16): a declared 0 is ARREST —
+                                    // "the supply is shut off" — which is a
+                                    // dynamical statement, not an absent flow.
+                                    // A slider at its 0 floor writes it, and a
+                                    // saved model must re-parse. Negative
+                                    // stays refused: direction is the arrow's.
+                                    Ok(v) if v >= bert_core::rust_decimal::Decimal::ZERO => {
                                         amount = Some(v);
                                         tail = after;
                                     }
                                     Ok(_) => {
                                         fail(
-                                            "a flow's amount is a positive magnitude — to \
-                                             model an absent flow, remove the line"
+                                            "a flow's amount cannot be negative — direction \
+                                             belongs to the arrow; to model an absent flow, \
+                                             remove the line (a declared 0 means arrested \
+                                             supply, and is allowed)"
                                                 .into(),
                                             &mut errors,
                                         );
