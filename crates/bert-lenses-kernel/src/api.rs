@@ -18,8 +18,17 @@ use bert_core::operational::{validate_operational as core_validate_operational, 
 use bert_core::WorldModel;
 
 /// Serialize any kernel result to a JS value (the one marshaling primitive).
+///
+/// `json_compatible()` is load-bearing (field report 2026-08-16): the default
+/// serializer turns a Rust `HashMap` into an ES `Map`, which `JSON.stringify`
+/// silently flattens to `{}` — so a compiled model's engine-parameter bags
+/// (`cognitive_params`, `initial_state`) died at the face's first re-projection
+/// and the tRNA pool ran empty. The TS types have always declared these as
+/// plain `Record`s; this makes the boundary say what the types promise.
 fn to_js<T: Serialize>(value: &T) -> Result<JsValue, JsError> {
-    serde_wasm_bindgen::to_value(value).map_err(|e| JsError::new(&e.to_string()))
+    value
+        .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        .map_err(|e| JsError::new(&e.to_string()))
 }
 
 /// Parse a BERT `WorldModel` from its JSON text, or a JS error naming the fault.
