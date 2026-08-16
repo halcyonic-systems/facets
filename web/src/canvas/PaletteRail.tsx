@@ -8,7 +8,6 @@ import type { Lens, ProcessPrimitive } from "../kernel/types";
 import { LensPalette, type PaletteHint, type PaletteTool } from "./lenses/registry";
 import { primitiveGlyph } from "./lenses/primitive-glyphs";
 import { ProcessReference } from "./ProcessReference";
-import { STYLE } from "./style";
 import { Popover, ToolButton } from "../ui";
 
 /** The primitive's own glyph on its rail row (#100 phase 4): picking a
@@ -107,22 +106,53 @@ export function PaletteRail({
 
   return (
     <>
-      <div
-        className="absolute left-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-40 flex-col gap-3 overflow-y-auto p-3"
-        style={{
-          background: "var(--lens-chrome)",
-          border: "1px solid var(--border)",
-          boxShadow: "var(--shadow-card)",
-          borderRadius: STYLE.dockRadius,
-        }}
-      >
+      {/* A plain flow column: the rail lives inside PaletteDock, which owns the
+          chrome (header, border, background) and the scroll. The old floating-
+          card styling (absolute + own background/shadow) painted the rail over
+          the dock's "palette" header. */}
+      <div className="flex flex-col gap-3 p-3">
         {spec.place.length > 0 && (
           <Section label="place">
             {spec.place.map(toolRow)}
           </Section>
         )}
         {spec.designate.length > 0 && (
-          <Section label="designate">
+          <Section
+            label="designate"
+            // The process-vocabulary reference (#100) opens FROM the section it
+            // documents — an ≡ affordance beside the label, not a stray button
+            // at the rail's foot. Still registry-gated: it renders exactly when
+            // this lens's palette offers primitive designation (Mobus today),
+            // so Klir and Bunge never speak "primitive" (absence is ontology).
+            action={
+              spec.designate.some((t) => t.verb === "designate" && t.designation.type === "primitive") ? (
+                <span className="relative">
+                  <button
+                    className="text-[10px] font-semibold"
+                    style={{ color: "var(--text-muted)" }}
+                    onClick={() => setShowRef((v) => !v)}
+                    title="The ten process primitives, on one surface"
+                  >
+                    {showRef ? "× reference" : "≡ reference"}
+                  </button>
+                  {showRef && (
+                    /* x offset ≈ the dock's width: the reference opens BESIDE
+                       the rail (its historical home), not over it — the
+                       popover's zero-size anchor sits at the button. */
+                    <Popover x={180} y={0} width={288} prefer="right">
+                      <div
+                        className="mb-2 text-[10px] font-semibold uppercase tracking-wide"
+                        style={{ color: "var(--lens-accent)" }}
+                      >
+                        processes — the vocabulary
+                      </div>
+                      <ProcessReference />
+                    </Popover>
+                  )}
+                </span>
+              ) : undefined
+            }
+          >
             <div className="flex flex-wrap gap-1">{spec.designate.map(toolRow)}</div>
           </Section>
         )}
@@ -142,52 +172,32 @@ export function PaletteRail({
             </div>
           </Section>
         )}
-        {/* The process-vocabulary reference (#100), gated by the registry:
-            it renders exactly when this lens's palette OFFERS primitive
-            designation — Mobus today, and any future lens that adopts the
-            vocabulary inherits the reference for free. Under Klir and Bunge
-            the rail never speaks "primitive", so a reference for the ten
-            Mobus work processes was a leak against absence-is-ontology.
-            Rendered through the shared Popover (walkthrough #5). */}
-        {spec.designate.some((t) => t.verb === "designate" && t.designation.type === "primitive") && (
-        <span className="relative">
-          <button
-            className="mt-1 text-left text-[10px] font-semibold uppercase tracking-wide"
-            style={{ color: "var(--text-muted)" }}
-            onClick={() => setShowRef((v) => !v)}
-            title="The ten process primitives, on one surface"
-          >
-            {showRef ? "× process reference" : "≡ process reference"}
-          </button>
-          {showRef && (
-            /* x offset ≈ the rail's width: the reference opens BESIDE the rail
-               (its historical home), not over it — the primitive's zero-size
-               anchor sits at the button, inside the rail. */
-            <Popover x={150} y={0} width={288} prefer="right">
-              <div
-                className="mb-2 text-[10px] font-semibold uppercase tracking-wide"
-                style={{ color: "var(--lens-accent)" }}
-              >
-                processes — the vocabulary
-              </div>
-              <ProcessReference />
-            </Popover>
-          )}
-        </span>
-        )}
       </div>
     </>
   );
 }
 
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
+function Section({
+  label,
+  action,
+  children,
+}: {
+  label: string;
+  /** An optional affordance beside the label — e.g. the designate section's
+   *  process-reference toggle, which belongs with what it documents. */
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col items-start gap-1.5">
-      <div
-        className="text-[10px] font-semibold uppercase tracking-wide"
-        style={{ color: "var(--lens-accent)" }}
-      >
-        {label}
+      <div className="flex w-full items-baseline justify-between">
+        <div
+          className="text-[10px] font-semibold uppercase tracking-wide"
+          style={{ color: "var(--lens-accent)" }}
+        >
+          {label}
+        </div>
+        {action}
       </div>
       {children}
     </div>

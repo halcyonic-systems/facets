@@ -446,6 +446,17 @@ function Workspace() {
     };
   });
 
+  // ⌘S / Ctrl-S → quickSave, through the same every-render ref discipline as
+  // escapeExitRef: the keydown subscription must see the CURRENT model, never
+  // the closure it subscribed with.
+  const quickSaveRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    quickSaveRef.current = () => {
+      if (homeOpen || saveDialogOpen) return;
+      void quickSave();
+    };
+  });
+
   // Esc = disarm the rail tool, else clear selection (closing any popover),
   // else — while walking, with no field focused and no dialog open — exit one
   // level of the walk (#109). Field editors win outright: the #116 label
@@ -454,6 +465,11 @@ function Workspace() {
   // removes the selected node or flow (same typing guard).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "s") {
+        e.preventDefault(); // the browser's own Save-page dialog must never win
+        quickSaveRef.current();
+        return;
+      }
       if (e.key === "Escape") {
         if (armed) {
           setArmed(null);
@@ -1018,6 +1034,35 @@ function Workspace() {
   // confirmSave routes to saveModel below.
   function saveToLibrary() {
     if (!canvasModel) return;
+    setSaveTarget("library");
+    setSaveDialogOpen(true);
+  }
+
+  // The slot a no-dialog save writes to: the open library slot, or — for a
+  // demo — the demo's own key. Demos are bundled assets and cannot be written
+  // in place; the library slot under the demo's key IS the author's editable
+  // copy of the model they just loaded, and re-opening that slot restores the
+  // saved layout. A hand-drawn untitled model has no slot (null) — it must be
+  // named once through the dialog.
+  const quickSaveSlot = currentName ?? demo?.key ?? null;
+
+  // File → Save (and ⌘S): the one-action overwrite, no dialog. Falls back to
+  // the Save-to-library dialog only when there is no slot to write to.
+  async function quickSave() {
+    if (!canvasModel) return;
+    if (quickSaveSlot) {
+      try {
+        await persist(quickSaveSlot, canvasModel);
+        await refreshLibrary();
+        setCurrentName(quickSaveSlot);
+        setOpenRef({ kind: "library", ref: quickSaveSlot });
+        setDirty(false);
+        setNotice(`saved to library → ${quickSaveSlot}`);
+      } catch (e) {
+        setToast(e instanceof Error ? e.message : String(e));
+      }
+      return;
+    }
     setSaveTarget("library");
     setSaveDialogOpen(true);
   }
@@ -1780,7 +1825,8 @@ function Workspace() {
         loaded={true}
         onNew={newModel}
         onOpen={() => openHomeAt({ view: "library" })}
-        onSave={() => exportModel(".model")}
+        onSave={() => void quickSave()}
+        onDownload={() => exportModel(".model")}
         onExport={() => exportModel(".world")}
         onExportSvg={() => exportDiagram("svg")}
         onExportPng={() => exportDiagram("png")}
@@ -2116,6 +2162,32 @@ function Workspace() {
               discardAsk.resolve(ok);
               setDiscardAsk(null);
             }}
+            // The third way out: save to the model's slot (open library slot,
+            // or the demo's key), then let the pending navigation proceed.
+            // Absent only for an unnamed hand-drawn model, which has no slot
+            // to save into without the naming dialog.
+            alt={
+              quickSaveSlot && canvasModel
+                ? {
+                    label: "Save & continue",
+                    onPick: () => {
+                      void (async () => {
+                        try {
+                          await persist(quickSaveSlot, canvasModel);
+                          await refreshLibrary();
+                          setCurrentName(quickSaveSlot);
+                          setNotice(`saved to library → ${quickSaveSlot}`);
+                          discardAsk.resolve(true);
+                        } catch (e) {
+                          setToast(e instanceof Error ? e.message : String(e));
+                          discardAsk.resolve(false);
+                        }
+                        setDiscardAsk(null);
+                      })();
+                    },
+                  }
+                : undefined
+            }
           />
         )}
 
@@ -2752,7 +2824,7 @@ function Workspace() {
       {saveDialogOpen && (
         <SaveDialog
           target={saveTarget}
-          defaultName={currentName ?? "untitled"}
+          defaultName={currentName ?? demo?.key ?? "untitled"}
           onSave={confirmSave}
           onClose={() => setSaveDialogOpen(false)}
         />
@@ -2820,6 +2892,7 @@ export function MenuBar({
   onNew,
   onOpen,
   onSave,
+  onDownload,
   onExport,
   onExportSvg,
   onExportPng,
@@ -2848,6 +2921,7 @@ export function MenuBar({
   onNew: () => void;
   onOpen: () => void;
   onSave: () => void;
+  onDownload?: () => void;
   onExport: () => void;
   onExportSvg?: () => void;
   onExportPng?: () => void;
@@ -2962,10 +3036,11 @@ export function MenuBar({
               {item("New", onNew)}
               {item("Open…", onOpen)}
               <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
-              {item("Save", onSave, !canExport)}
+              {item("Save ⌘S", onSave, !canExport)}
               {item("Save to folder…", onSaveToFolder, !canExport)}
-              {item("Save to library…", onSaveToLibrary, !canExport)}
+              {item("Save to library as…", onSaveToLibrary, !canExport)}
               <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
+              {onDownload && item("Download (.model)", onDownload, !canExport)}
               {item("Export JSON", onExport, !canExport)}
               {onExportSvg && item("Export diagram (SVG)", onExportSvg, !canExport)}
               {onExportPng && item("Export diagram (PNG)", onExportPng, !canExport)}

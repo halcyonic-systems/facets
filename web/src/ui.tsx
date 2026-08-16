@@ -331,11 +331,16 @@ export function ConfirmDialog({
   message,
   confirmLabel,
   onResolve,
+  alt,
 }: {
   message: string;
   /** The destructive verb ("Discard"), never "OK". */
   confirmLabel: string;
   onResolve: (ok: boolean) => void;
+  /** An optional non-destructive third way out ("Save & continue") — rendered
+   *  as the emphasized action, because when it exists it is almost always what
+   *  the user wants over discarding. The caller settles its own resolver. */
+  alt?: { label: string; onPick: () => void };
 }) {
   useLayoutEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -381,6 +386,15 @@ export function ConfirmDialog({
           >
             {confirmLabel}
           </button>
+          {alt && (
+            <button
+              onClick={alt.onPick}
+              className="rounded-full px-4 py-1.5 text-sm font-semibold"
+              style={{ background: "var(--lens-accent)", color: "var(--text-on-accent)" }}
+            >
+              {alt.label}
+            </button>
+          )}
         </div>
       </div>
     </div>,
