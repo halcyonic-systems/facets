@@ -2804,6 +2804,11 @@ function Workspace() {
                         time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}
                         runKind={LensPalette[canvasModel.lens].run}
                       dock={LensPalette[canvasModel.lens].run === "conservation"}
+                      transport={
+                        result ? (
+                          <SimScrubber steps={result.ticks} tick={tick} onTick={setTick} />
+                        ) : null
+                      }
                       />
                   )}
 
@@ -2811,7 +2816,7 @@ function Workspace() {
                       scrubber animates the canvas frame in Structure and marks
                       where the system is on its path in Run, so it sits below
                       the stage rather than inside either one. */}
-                  {result && (
+                  {result && workMode !== "run" && (
                     <div className="mt-3 grid gap-3">
                       <SimScrubber steps={result.ticks} tick={tick} onTick={setTick} />
                       <div className="flex flex-wrap items-center gap-3">

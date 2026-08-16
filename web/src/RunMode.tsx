@@ -37,6 +37,7 @@ export function RunMode({
   time,
   runKind,
   dock = false,
+  transport,
 }: {
   result: RunResultRich | null;
   /** #282: the DTMC run (#67) — the result when the active lens declares
@@ -63,6 +64,10 @@ export function RunMode({
    *  dock beneath the LIVING diagram stage, instead of a full-bleed frame
    *  over it. Conservation runs only; the caller decides. */
   dock?: boolean;
+  /** The run's transport (the scrubber) — in dock form it rides the dock's
+   *  own spine, the one row both surfaces share, instead of a strip below
+   *  the whole stage where the dock made it invisible (field report). */
+  transport?: React.ReactNode;
 }) {
   // #282, decided 2026-08-01: Bunge does not run. The lens's own register says
   // it — no mechanism stated (⊘M) — so executing Mobus's engine under this
@@ -146,7 +151,7 @@ export function RunMode({
   })();
 
   return (
-    <Frame name={model?.name} runKind={runKind} dock={dock}>
+    <Frame name={model?.name} runKind={runKind} dock={dock} transport={transport}>
       {/* The width the run was starved of in the dock: the timeline and its
           forcing sit in a fixed rail, and the result takes everything else, so a
           trajectory finally has a page to be drawn across. One column until
@@ -180,11 +185,13 @@ function Frame({
   name,
   runKind,
   dock = false,
+  transport,
   children,
 }: {
   name?: string | null;
   runKind: RunKind;
   dock?: boolean;
+  transport?: React.ReactNode;
   children: React.ReactNode;
 }) {
   // Dock form (the recomposition): the run's cards take the stage's lower
@@ -199,25 +206,31 @@ function Frame({
         style={{ background: "var(--bg-primary)", borderTop: "1px solid var(--border)" }}
       >
         <div
-          className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-4 py-1.5"
+          className="flex items-center gap-x-4 px-4 py-1.5"
           style={{ borderBottom: "1px solid var(--hairline)" }}
         >
           <span
-            className="text-xs font-semibold uppercase tracking-wide"
+            className="shrink-0 text-xs font-semibold uppercase tracking-wide"
             style={{ color: "var(--text-primary)" }}
           >
             Run
           </span>
           {name?.trim() && (
-            <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+            <span className="hidden shrink-0 text-xs sm:inline" style={{ color: "var(--text-secondary)" }}>
               {name.trim()}
             </span>
           )}
+          {/* The transport IS the spine: the one cursor both surfaces read,
+              on the one row both surfaces share. */}
+          <div className="min-w-0 flex-1">{transport}</div>
           {/* #344 item 5, said once where both controls live: Run computes,
               play reads. */}
-          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-            ▶ Run computes the whole history · the scrubber's ▶ plays the cursor
-            through it — diagram and charts move together
+          <span
+            className="hidden shrink-0 text-[11px] xl:inline"
+            style={{ color: "var(--text-muted)" }}
+            title="▶ Run computes the whole history · the scrubber's ▶ plays the cursor through it"
+          >
+            Run computes · ▶ plays — diagram and charts move together
           </span>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3">{children}</div>
