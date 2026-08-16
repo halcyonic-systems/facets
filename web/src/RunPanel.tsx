@@ -180,6 +180,17 @@ export function RunPanel({
         </div>
       </Card>
 
+      {/* The stocks' curves lead the charts (2026-08-16): at steady state
+          the flow lines are constants, and the run's story — a pool
+          drifting, a level responding — is here. The per-thing TABLE stays
+          behind the disclosure below; the curves are the page. */}
+      {result.trajectories.length > 0 &&
+        result.levels.some((l) => l.category === "internal") && (
+        <Card title="Levels over the run" source="bert-compose · wasm">
+          <LevelsChart trajectories={result.trajectories} levels={result.levels} tick={tick} />
+        </Card>
+      )}
+
       {result.comparisons.length > 0 && (
         <Card title="Simulated vs actual" source="bert-compose · wasm">
           {/* Small multiples in a grid; same-UNIT comparisons merge into one
@@ -875,6 +886,115 @@ function LegendSwatch({
       </svg>
       {label}
     </span>
+  );
+}
+
+/** The stocks' own curves (field report 2026-08-16: at steady state the flow
+ *  charts are flat constants, and the run's actual STORY — a pool drifting, a
+ *  level responding — lived only in end-of-run numbers). One chart per unit
+ *  family; progressive to the shared cursor like every other chart. */
+function LevelsChart({
+  trajectories,
+  levels,
+  tick,
+}: {
+  trajectories: NonNullable<RunResultRich["trajectories"]>;
+  levels: Level[];
+  tick?: number;
+}) {
+  // Internal stocks only: a source's "trajectory" is its declared rate drawn
+  // flat — the rates-as-levels confusion all over again (#344 item 2). The
+  // curves that carry the run's story are the levels that RESPOND.
+  const internal = new Set(levels.filter((l) => l.category === "internal").map((l) => l.name));
+  const shown = trajectories.filter((t) => internal.has(t.name));
+  const groups = new Map<string, typeof trajectories>();
+  for (const t of shown) {
+    const k = t.unit || "level";
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k)!.push(t);
+  }
+  return (
+    <div className="grid gap-x-8 gap-y-4 xl:grid-cols-2">
+      {[...groups.entries()].map(([unit, fam]) => {
+        const byName = [...fam].sort((a, b) => a.name.localeCompare(b.name));
+        const colorOf = new Map(byName.map((t, i) => [t.name, CHART_SERIES[i % CHART_SERIES.length]]));
+        const n = Math.max(...fam.map((t) => t.series.length));
+        const mid = midRun(tick, n);
+        const data = Array.from({ length: n }, (_, i) => {
+          const row: Record<string, number | null> = { t: i };
+          for (const tr of fam) {
+            row[tr.name] = tr.series[i] ?? null;
+            if (mid) row[PAST(tr.name)] = i <= tick! ? (tr.series[i] ?? null) : null;
+          }
+          return row;
+        });
+        return (
+          <div key={unit}>
+            <div className="mb-1 flex items-baseline justify-between gap-3">
+              <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
+                {unitLabel(unit).text}
+              </div>
+              <div className="flex flex-wrap justify-end gap-x-3 gap-y-0.5 text-[11px]">
+                {byName.map((t) => (
+                  <span key={t.name} className="inline-flex items-center gap-1">
+                    <span
+                      aria-hidden
+                      className="inline-block h-[2px] w-3"
+                      style={{ background: colorOf.get(t.name) }}
+                    />
+                    <span style={{ color: "var(--text-secondary)" }}>{t.name}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={110}>
+              <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
+                <CartesianGrid stroke="var(--hairline)" vertical={false} />
+                {tick !== undefined && tick > 0 && tick < n && (
+                  <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
+                )}
+                <XAxis dataKey="t" ticks={axisTicks(n)} tick={{ fontSize: 10, fill: "var(--text-muted)" }} stroke="var(--border)" />
+                <YAxis tick={{ fontSize: 10, fill: "var(--text-muted)" }} stroke="var(--border)" width={44} />
+                <Tooltip
+                  contentStyle={{
+                    background: "var(--bg-secondary)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                />
+                {byName.map((t) => (
+                  <Line
+                    key={t.name}
+                    type="monotone"
+                    dataKey={t.name}
+                    name={t.name}
+                    stroke={colorOf.get(t.name)}
+                    strokeOpacity={mid ? FUTURE_OPACITY : 1}
+                    dot={false}
+                    strokeWidth={2}
+                    isAnimationActive={false}
+                  />
+                ))}
+                {mid &&
+                  byName.map((t) => (
+                    <Line
+                      key={`${t.name}-past`}
+                      type="monotone"
+                      dataKey={PAST(t.name)}
+                      stroke={colorOf.get(t.name)}
+                      dot={false}
+                      strokeWidth={2}
+                      isAnimationActive={false}
+                      tooltipType="none"
+                    />
+                  ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
