@@ -1103,6 +1103,7 @@ mod tests {
             role,
             primitive: None,
             interface: false,
+            passway: false,
             protocol: String::new(),
             child_model: None,
             stock_unit: String::new(),

@@ -443,6 +443,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     env_kind: EnvKind::Neutral,
                     primitive: None,
                     interface: true,
+                    passway: true,
                     protocol,
                     child_model: None,
                     stock_unit: String::new(),
@@ -1242,6 +1243,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     env_kind,
                     primitive,
                     interface,
+                    passway: false,
                     protocol,
                     child_model,
                     stock_unit,
@@ -2350,7 +2352,8 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         // own — emits as its own declaration (#226): the split form is the
         // default surface. Anything carrying processor freight (a primitive,
         // a stock, engine params, a child) keeps the merged component form.
-        if t.role == Role::Component
+        if t.passway
+            && t.role == Role::Component
             && t.interface
             && t.primitive.is_none()
             && t.stock_unit.is_empty()
@@ -3611,10 +3614,12 @@ flow S -> A : matter \"in\"
         )
         .unwrap();
         assert_eq!(m.things[0].protocol, "badge required");
-        // Gate carries no processor freight, so it re-emits in the split form —
-        // the protocol survives the promotion.
+        // A STAMPED component stays in the merged form — the authored form is
+        // the author's claim about what the thing is, never silently promoted
+        // (the neuron corpus's primitive-less compartments must keep meaning
+        // component).
         let out = emit_sl(&m).unwrap();
-        assert!(out.contains("interface Gate protocol \"badge required\""), "got:\n{out}");
+        assert!(out.contains("component Gate interface protocol \"badge required\""), "got:\n{out}");
     }
 
     /// A protocol is an interface's admission rule — dangling on a plain
