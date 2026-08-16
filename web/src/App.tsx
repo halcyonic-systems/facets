@@ -34,6 +34,7 @@ import type { DecomposeAffordance } from "./canvas/NodeEditor";
 import { KlirRegister } from "./canvas/KlirRegister";
 import { BungeRegister } from "./canvas/BungeRegister";
 import { BoundaryPopover } from "./canvas/BoundaryPopover";
+import { MilieuPopover } from "./canvas/MilieuPopover";
 import { DataMode } from "./DataMode";
 import { RunMode } from "./RunMode";
 import { InterfacePopover } from "./canvas/InterfacePopover";
@@ -280,6 +281,8 @@ function Workspace() {
   const [selectedRelationId, setSelectedRelationId] = useState<number | null>(null);
   const [selectedThingId, setSelectedThingId] = useState<number | null>(null);
   const [boundaryAnchor, setBoundaryAnchor] = useState<Pt | null>(null);
+  // The milieu inspector's anchor — click the bath's band/label to read M.
+  const [milieuAnchor, setMilieuAnchor] = useState<Pt | null>(null);
   // #304: the MODE axis, not dock tabs. Three values, and each one is a
   // different thing to be doing with the open model rather than a different
   // reading of it: STRUCTURE asserts (the canvas), DATA observes (the model's
@@ -476,10 +479,15 @@ function Workspace() {
           return;
         }
         const hadSelection =
-          selectedThingId !== null || selectedRelationId !== null || boundaryAnchor !== null || interfaceSel !== null;
+          selectedThingId !== null ||
+          selectedRelationId !== null ||
+          boundaryAnchor !== null ||
+          milieuAnchor !== null ||
+          interfaceSel !== null;
         setSelectedThingId(null);
         setSelectedRelationId(null);
         setBoundaryAnchor(null);
+        setMilieuAnchor(null);
         setInterfaceSel(null);
         if (hadSelection) return;
         const el = document.activeElement as HTMLElement | null;
@@ -501,7 +509,7 @@ function Workspace() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selectedThingId, selectedRelationId, boundaryAnchor, interfaceSel, armed]);
+  }, [selectedThingId, selectedRelationId, boundaryAnchor, milieuAnchor, interfaceSel, armed]);
 
   // A PortFact is a snapshot of the open model — any model identity change
   // (walk enter/exit, open, edit) may orphan it, so the inspector closes.
@@ -2500,6 +2508,14 @@ function Workspace() {
                       onExitUp={walk.length > 0 ? () => void exitTo(walk.length - 1) : null}
                       onSelectBoundary={(at) => {
                         setBoundaryAnchor(at);
+                        setMilieuAnchor(null);
+                        setInterfaceSel(null);
+                        setSelectedThingId(null);
+                        setSelectedRelationId(null);
+                      }}
+                      onSelectMilieu={(at) => {
+                        setMilieuAnchor(at);
+                        setBoundaryAnchor(null);
                         setInterfaceSel(null);
                         setSelectedThingId(null);
                         setSelectedRelationId(null);
@@ -2578,6 +2594,13 @@ function Workspace() {
                         anchor={toScreen(boundaryAnchor)}
                         onUpdateBoundary={updateBoundary}
                         onClose={() => setBoundaryAnchor(null)}
+                      />
+                    )}
+                    {milieuAnchor && (canvasModel.milieu?.length ?? 0) > 0 && (
+                      <MilieuPopover
+                        milieu={canvasModel.milieu!}
+                        anchor={toScreen(milieuAnchor)}
+                        onClose={() => setMilieuAnchor(null)}
                       />
                     )}
                     {interfaceSel && (

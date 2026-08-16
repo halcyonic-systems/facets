@@ -72,6 +72,8 @@ interface Props {
    *  clicking an interface used to answer a different question ("the boundary")
    *  than the one asked (2026-08-09 field report). */
   onSelectBoundary?: (at: Pt) => void;
+  /** Click the milieu band/label to read M — the bath answers when asked. */
+  onSelectMilieu?: (at: Pt) => void;
   /** Click a flow-carrying capsule to open the INTERFACE inspector — the
    *  crossing flows at that r = (S, φ), each clickable through to the flow.
    *  UI word is "interface" (Mobus's term); "port" stays code-internal. */
@@ -108,6 +110,7 @@ export default function Canvas({
   onEnterThing,
   onExitUp = null,
   onSelectBoundary,
+  onSelectMilieu,
   onSelectInterface,
   driven,
   sim,
@@ -584,7 +587,29 @@ export default function Canvas({
                 set of interfaces" (lifecycle paper). Mobus lens only — Klir
                 and Bunge count it in their hidden residue instead. */}
             {(model.milieu?.length ?? 0) > 0 && (
-              <g pointerEvents="none">
+              <g>
+                {/* The ambient wash: M pervades the whole EXTERIOR (the env
+                    objects sit in the bath — that is what a milieu is), cut
+                    away inside the membrane. Flat fill, not a gradient (the
+                    instrument register forbids gradients); the band below
+                    doubles the tint where system meets bath, so density at
+                    the boundary reads without a fade. */}
+                <path
+                  fillRule="evenodd"
+                  d={
+                    `M ${ring.cx - ring.rx - 4000} ${ring.cy - ring.ry - 4000} ` +
+                    `H ${ring.cx + ring.rx + 4000} V ${ring.cy + ring.ry + 4000} ` +
+                    `H ${ring.cx - ring.rx - 4000} Z ` +
+                    `M ${ring.cx - ring.rx} ${ring.cy} ` +
+                    `A ${ring.rx} ${ring.ry} 0 1 0 ${ring.cx + ring.rx} ${ring.cy} ` +
+                    `A ${ring.rx} ${ring.ry} 0 1 0 ${ring.cx - ring.rx} ${ring.cy} Z`
+                  }
+                  fill="var(--milieu)"
+                  opacity={0.05}
+                  pointerEvents="none"
+                />
+                {/* The band: same tint, denser where the system meets its
+                    bath. Clickable — the bath answers when asked. */}
                 <ellipse
                   cx={ring.cx}
                   cy={ring.cy}
@@ -594,6 +619,12 @@ export default function Canvas({
                   stroke="var(--milieu)"
                   strokeWidth={34}
                   opacity={0.14}
+                  pointerEvents={onSelectMilieu ? "stroke" : "none"}
+                  className={onSelectMilieu ? "cursor-pointer" : undefined}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectMilieu?.({ x: ring.cx, y: ring.cy + ring.ry + 56 });
+                  }}
                 />
                 <text
                   x={ring.cx}
@@ -606,8 +637,14 @@ export default function Canvas({
                   stroke="var(--bg-primary)"
                   strokeWidth={3}
                   strokeLinejoin="round"
-                  className="font-body"
+                  className={`font-body${onSelectMilieu ? " cursor-pointer" : ""}`}
+                  pointerEvents={onSelectMilieu ? "all" : "none"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectMilieu?.({ x: ring.cx, y: ring.cy + ring.ry + 56 });
+                  }}
                 >
+                  <title>The milieu M — click to read its variables</title>
                   {"milieu — " +
                     model
                       .milieu!.map((m) =>
