@@ -99,10 +99,10 @@
             "info": {
               "id": "I0.0",
               "level": 0,
-              "name": "Decoding Site",
+              "name": "mRNA Entry Channel",
               "description": ""
             },
-            "protocol": "mRNA transcript",
+            "protocol": "single-stranded mRNA, threaded codon by codon",
             "type": "Import",
             "exports_to": [],
             "receives_from": [
@@ -114,13 +114,14 @@
             "info": {
               "id": "I0.1",
               "level": 0,
-              "name": "Peptidyl Transferase Center",
+              "name": "Aminoacylation Site",
               "description": ""
             },
-            "protocol": "Mg2+ and ionic milieu",
+            "protocol": "cognate amino acid + ATP at one catalytic pocket",
             "type": "Import",
             "exports_to": [],
             "receives_from": [
+              "Src-1.2",
               "Src-1.2"
             ],
             "angle": null
@@ -129,10 +130,10 @@
             "info": {
               "id": "I0.2",
               "level": 0,
-              "name": "Translocase",
+              "name": "GTPase-Associated Center",
               "description": ""
             },
-            "protocol": "GTP · GDP and inorganic phosphate",
+            "protocol": "GTP-loaded elongation factors dock; GDP + Pi release",
             "type": "Hybrid",
             "exports_to": [
               "Src-1.2"
@@ -146,31 +147,30 @@
             "info": {
               "id": "I0.3",
               "level": 0,
-              "name": "Exit Tunnel",
+              "name": "Ion Coordination Shell",
               "description": ""
             },
-            "protocol": "nascent polypeptide",
-            "type": "Export",
-            "exports_to": [
-              "Snk-1.1"
+            "protocol": "Mg2+ and monovalent ions, by diffusion",
+            "type": "Import",
+            "exports_to": [],
+            "receives_from": [
+              "Src-1.2"
             ],
-            "receives_from": [],
             "angle": null
           },
           {
             "info": {
               "id": "I0.4",
               "level": 0,
-              "name": "Aminoacyl-tRNA Synthetase",
+              "name": "Exit Tunnel",
               "description": ""
             },
-            "protocol": "free amino acid · ATP",
-            "type": "Import",
-            "exports_to": [],
-            "receives_from": [
-              "Src-1.2",
-              "Src-1.2"
+            "protocol": "nascent polypeptide, N-terminus first",
+            "type": "Export",
+            "exports_to": [
+              "Snk-1.1"
             ],
+            "receives_from": [],
             "angle": null
           }
         ],
@@ -211,7 +211,7 @@
       "transform": {
         "translation": [
           480.0,
-          150.0
+          490.0
         ],
         "rotation": 0.0
       },
@@ -248,13 +248,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.1"
+        "parent_interface": "I0.3"
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          627.2243,
-          235.0
+          380.0765,
+          457.5329
         ],
         "rotation": 0.0
       },
@@ -291,13 +291,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.2"
+        "parent_interface": "I0.4"
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          627.2243,
-          405.0
+          318.32037,
+          372.53287
         ],
         "rotation": 0.0
       },
@@ -317,7 +317,7 @@
       "info": {
         "id": "C0.3",
         "level": 1,
-        "name": "Exit Tunnel",
+        "name": "Aminoacyl-tRNA Synthetase",
         "description": ""
       },
       "sources": [],
@@ -334,56 +334,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.3"
+        "parent_interface": "I0.1"
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          480.0,
-          490.0
-        ],
-        "rotation": 0.0
-      },
-      "equivalence": "",
-      "history": "",
-      "transformation": "",
-      "member_autonomy": 1.0,
-      "time_constant": "",
-      "archetype": "Agent",
-      "agent": {
-        "kind": "Reactive",
-        "agency_capacity": 0.5,
-        "primitive": "Buffering"
-      }
-    },
-    {
-      "info": {
-        "id": "C0.4",
-        "level": 1,
-        "name": "Aminoacyl-tRNA Synthetase",
-        "description": ""
-      },
-      "sources": [],
-      "sinks": [],
-      "parent": "S0",
-      "complexity": "Atomic",
-      "boundary": {
-        "info": {
-          "id": "B0.4",
-          "level": 1,
-          "name": "",
-          "description": ""
-        },
-        "porosity": 0.0,
-        "perceptive_fuzziness": 0.0,
-        "interfaces": [],
-        "parent_interface": "I0.4"
-      },
-      "radius": 34.0,
-      "transform": {
-        "translation": [
-          332.7757,
-          405.0
+          318.32037,
+          267.4671
         ],
         "rotation": 0.0
       },
@@ -401,7 +358,7 @@
     },
     {
       "info": {
-        "id": "C0.5",
+        "id": "C0.4",
         "level": 1,
         "name": "tRNA Pool",
         "description": ""
@@ -412,7 +369,7 @@
       "complexity": "Atomic",
       "boundary": {
         "info": {
-          "id": "B0.5",
+          "id": "B0.4",
           "level": 1,
           "name": "",
           "description": ""
@@ -425,8 +382,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          332.7757,
-          234.99997
+          380.07648,
+          182.46713
         ],
         "rotation": 0.0
       },
@@ -474,7 +431,7 @@
     },
     {
       "info": {
-        "id": "F1",
+        "id": "F2",
         "level": 0,
         "name": "charged tRNA",
         "description": ""
@@ -485,7 +442,7 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.5",
+      "source": "C0.4",
       "source_interface": null,
       "sink": "C0.0",
       "sink_interface": null,
@@ -495,7 +452,7 @@
     },
     {
       "info": {
-        "id": "F2",
+        "id": "F3",
         "level": 0,
         "name": "deacylated tRNA",
         "description": ""
@@ -508,7 +465,7 @@
       "usability": "Resource",
       "source": "C0.0",
       "source_interface": null,
-      "sink": "C0.4",
+      "sink": "C0.3",
       "sink_interface": null,
       "amount": "1",
       "unit": "",
@@ -516,7 +473,7 @@
     },
     {
       "info": {
-        "id": "F3",
+        "id": "F4",
         "level": 0,
         "name": "recharged tRNA",
         "description": ""
@@ -527,9 +484,9 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.4",
+      "source": "C0.3",
       "source_interface": null,
-      "sink": "C0.5",
+      "sink": "C0.4",
       "sink_interface": null,
       "amount": "1",
       "unit": "",
@@ -537,7 +494,7 @@
     },
     {
       "info": {
-        "id": "F4",
+        "id": "F5",
         "level": 0,
         "name": "free amino acid",
         "description": ""
@@ -550,15 +507,15 @@
       "usability": "Resource",
       "source": "Src-1.2",
       "source_interface": null,
-      "sink": "C0.4",
-      "sink_interface": "I0.4",
+      "sink": "C0.3",
+      "sink_interface": "I0.1",
       "amount": "20",
       "unit": "aa/s",
       "parameters": []
     },
     {
       "info": {
-        "id": "F5",
+        "id": "F6",
         "level": 0,
         "name": "ATP",
         "description": ""
@@ -571,15 +528,15 @@
       "usability": "Resource",
       "source": "Src-1.2",
       "source_interface": null,
-      "sink": "C0.4",
-      "sink_interface": "I0.4",
+      "sink": "C0.3",
+      "sink_interface": "I0.1",
       "amount": "20",
       "unit": "ATP/s",
       "parameters": []
     },
     {
       "info": {
-        "id": "F6",
+        "id": "F9",
         "level": 0,
         "name": "GTP",
         "description": ""
@@ -600,7 +557,7 @@
     },
     {
       "info": {
-        "id": "F7",
+        "id": "F11",
         "level": 0,
         "name": "accommodated amino acid",
         "description": ""
@@ -621,7 +578,7 @@
     },
     {
       "info": {
-        "id": "F8",
+        "id": "F12",
         "level": 0,
         "name": "elongated chain",
         "description": ""
@@ -642,28 +599,7 @@
     },
     {
       "info": {
-        "id": "F9",
-        "level": 0,
-        "name": "polypeptide chain",
-        "description": ""
-      },
-      "substance": {
-        "sub_type": "",
-        "type": "Material"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.2",
-      "source_interface": null,
-      "sink": "C0.3",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F10",
+        "id": "F13",
         "level": 0,
         "name": "Mg2+ and ionic milieu",
         "description": ""
@@ -677,14 +613,14 @@
       "source": "Src-1.2",
       "source_interface": null,
       "sink": "C0.1",
-      "sink_interface": "I0.1",
+      "sink_interface": "I0.3",
       "amount": "1",
       "unit": "",
       "parameters": []
     },
     {
       "info": {
-        "id": "F11",
+        "id": "F16",
         "level": 0,
         "name": "nascent polypeptide",
         "description": ""
@@ -695,8 +631,8 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.3",
-      "source_interface": "I0.3",
+      "source": "C0.2",
+      "source_interface": "I0.4",
       "sink": "Snk-1.1",
       "sink_interface": null,
       "amount": "1",
@@ -705,7 +641,7 @@
     },
     {
       "info": {
-        "id": "F12",
+        "id": "F18",
         "level": 0,
         "name": "GDP and inorganic phosphate",
         "description": ""
