@@ -25,7 +25,9 @@ import { evaluateMetrics, type MetricReading } from "./metrics";
 // the value IS — a sink's total delivered vs a source/process level at run end.
 const CATEGORY_SUB: Record<Level["category"], (ticks: number) => string> = {
   product: (t) => `total delivered over ${t} ticks`,
-  resource: () => "level at run end",
+  // A source has no level — what it shows is its declared per-tick supply
+  // (#344 item 2: a rate presented as a level read as nonsense).
+  resource: () => "declared supply, per tick",
   internal: () => "level at run end",
 };
 const CATEGORY_LABEL: Record<CanvasModel["lens"], Record<Level["category"], string>> = {
@@ -276,14 +278,40 @@ function groupComparisons(comparisons: Comparison[]): Comparison[][] {
 /** A family of readings as ONE chart (#341): the question in the header, a
  *  ranked leaderboard of entities beside it, one line per entity below. Hue
  *  by alphabetical entity order; the leaderboard order is the endpoint's. */
+/** Progressive draw (the recomposition, 2026-08-16): while the shared cursor
+ *  is mid-run, a chart's curves grow to it — the past drawn full, the future
+ *  faint — so playback moves the panel the way it moves the diagram. At rest
+ *  (tick 0, or the cursor at the end) charts render whole, exactly as before.
+ *  The past rides separate `≤`-prefixed keys so one data array serves both
+ *  lines; the faint line is kept out of the tooltip. */
+function midRun(tick: number | undefined, n: number): boolean {
+  return tick !== undefined && tick > 0 && tick < n - 1;
+}
+const FUTURE_OPACITY = 0.25;
+
+/** Regular tick marks for a run axis (#344 item 3): multiples of a round step,
+ *  instead of recharts' irregular auto picks ("2 5 8 11…" read as noise). */
+function axisTicks(n: number): number[] {
+  const step = n <= 16 ? 2 : n <= 60 ? 5 : n <= 120 ? 10 : 25;
+  const out: number[] = [];
+  for (let t = 0; t < n; t += step) out.push(t);
+  if (out[out.length - 1] !== n - 1) out.push(n - 1);
+  return out;
+}
+const PAST = (k: string) => `\u2264 ${k}`;
+
 function MetricFamilyChart({ readings, tick }: { readings: MetricReading[]; tick?: number }) {
   const first = readings[0];
   const byEntity = [...readings].sort((a, b) => a.entity.localeCompare(b.entity));
   const colorOf = new Map(byEntity.map((r, i) => [r.entity, CHART_SERIES[i]]));
   const n = Math.max(...readings.map((r) => r.series.length));
+  const mid = midRun(tick, n);
   const data = Array.from({ length: n }, (_, t) => {
     const row: Record<string, number | null> = { t };
-    for (const r of readings) row[r.entity] = r.series[t] ?? null;
+    for (const r of readings) {
+      row[r.entity] = r.series[t] ?? null;
+      if (mid) row[PAST(r.entity)] = t <= tick! ? (r.series[t] ?? null) : null;
+    }
     return row;
   });
   const endpointOf = (r: MetricReading) =>
@@ -319,7 +347,7 @@ function MetricFamilyChart({ readings, tick }: { readings: MetricReading[]; tick
           {tick !== undefined && tick > 0 && tick < n && (
             <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
           )}
-          <XAxis dataKey="t" tick={{ fontSize: 10, fill: "var(--text-muted)" }} stroke="var(--border)" />
+          <XAxis dataKey="t" ticks={axisTicks(n)} tick={{ fontSize: 10, fill: "var(--text-muted)" }} stroke="var(--border)" />
           <YAxis
             domain={first.kind === "share" ? [0, 1] : undefined}
             tick={{ fontSize: 10, fill: "var(--text-muted)" }}
@@ -341,11 +369,25 @@ function MetricFamilyChart({ readings, tick }: { readings: MetricReading[]; tick
               dataKey={r.entity}
               name={r.entity}
               stroke={colorOf.get(r.entity)}
+              strokeOpacity={mid ? FUTURE_OPACITY : 1}
               dot={false}
               strokeWidth={2}
               isAnimationActive={false}
             />
           ))}
+          {mid &&
+            byEntity.map((r) => (
+              <Line
+                key={`${r.entity}-past`}
+                type="monotone"
+                dataKey={PAST(r.entity)}
+                stroke={colorOf.get(r.entity)}
+                dot={false}
+                strokeWidth={2}
+                isAnimationActive={false}
+                tooltipType="none"
+              />
+            ))}
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -360,11 +402,14 @@ function ComparisonFamilyChart({ comparisons, tick }: { comparisons: Comparison[
   const byFlow = [...comparisons].sort((a, b) => a.element.localeCompare(b.element));
   const colorOf = new Map(byFlow.map((c, i) => [c.element, CHART_SERIES[i]]));
   const n = Math.max(...comparisons.map((c) => Math.max(c.simulated.length, c.actual.length)));
+  const mid = midRun(tick, n);
   const data = Array.from({ length: n }, (_, t) => {
     const row: Record<string, number | null> = { t };
     for (const c of comparisons) {
       row[`${c.element} · executed`] = c.simulated[t] ?? null;
       row[`${c.element} · actual`] = c.actual[t] ?? null;
+      if (mid)
+        row[PAST(`${c.element} · executed`)] = t <= tick! ? (c.simulated[t] ?? null) : null;
     }
     return row;
   });
@@ -398,7 +443,7 @@ function ComparisonFamilyChart({ comparisons, tick }: { comparisons: Comparison[
           {tick !== undefined && tick > 0 && tick < n && (
             <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
           )}
-          <XAxis dataKey="t" tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" />
+          <XAxis dataKey="t" ticks={axisTicks(n)} tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" />
           <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" width={44} />
           <Tooltip
             contentStyle={{
@@ -414,11 +459,25 @@ function ComparisonFamilyChart({ comparisons, tick }: { comparisons: Comparison[
               type="monotone"
               dataKey={`${c.element} · executed`}
               stroke={colorOf.get(c.element)}
+              strokeOpacity={mid ? FUTURE_OPACITY : 1}
               dot={false}
               strokeWidth={STROKES.executed.width}
               isAnimationActive={false}
             />
           ))}
+          {mid &&
+            byFlow.map((c) => (
+              <Line
+                key={`${c.element}-x-past`}
+                type="monotone"
+                dataKey={PAST(`${c.element} · executed`)}
+                stroke={colorOf.get(c.element)}
+                dot={false}
+                strokeWidth={STROKES.executed.width}
+                isAnimationActive={false}
+                tooltipType="none"
+              />
+            ))}
           {byFlow.map((c) => (
             <Line
               key={`${c.element}-a`}
@@ -445,7 +504,8 @@ function ComparisonFamilyChart({ comparisons, tick }: { comparisons: Comparison[
  *  families arrive pre-sorted by endpoint — the leaderboard reading. */
 function MetricRow({ r, tick }: { r: MetricReading; tick?: number }) {
   const n = r.series.length;
-  const data = r.series.map((v, t) => ({ t, v }));
+  const mid = midRun(tick, n);
+  const data = r.series.map((v, t) => ({ t, v, past: mid && t <= tick! ? v : null }));
   const endpoint =
     r.kind === "share"
       ? `${(r.endpoint * 100).toFixed(1)}%`
@@ -466,7 +526,9 @@ function MetricRow({ r, tick }: { r: MetricReading; tick?: number }) {
             {endpoint}
           </div>
           <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-            {r.kind === "share" ? "at run end" : "over the run"}
+            {r.kind === "share"
+              ? "at run end"
+              : `over ${n} ticks · ≈${humanize(r.endpoint / Math.max(1, n))}/tick`}
           </div>
         </div>
       </div>
@@ -476,7 +538,7 @@ function MetricRow({ r, tick }: { r: MetricReading; tick?: number }) {
           {tick !== undefined && tick > 0 && tick < n && (
             <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
           )}
-          <XAxis dataKey="t" tick={{ fontSize: 10, fill: "var(--text-muted)" }} stroke="var(--border)" />
+          <XAxis dataKey="t" ticks={axisTicks(n)} tick={{ fontSize: 10, fill: "var(--text-muted)" }} stroke="var(--border)" />
           <YAxis
             domain={r.kind === "share" ? [0, 1] : undefined}
             tick={{ fontSize: 10, fill: "var(--text-muted)" }}
@@ -496,10 +558,22 @@ function MetricRow({ r, tick }: { r: MetricReading; tick?: number }) {
             dataKey="v"
             name={r.name}
             stroke="var(--accent)"
+            strokeOpacity={mid ? FUTURE_OPACITY : 1}
             dot={false}
             strokeWidth={2}
             isAnimationActive={false}
           />
+          {mid && (
+            <Line
+              type="monotone"
+              dataKey="past"
+              stroke="var(--accent)"
+              dot={false}
+              strokeWidth={2}
+              isAnimationActive={false}
+              tooltipType="none"
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -508,11 +582,14 @@ function MetricRow({ r, tick }: { r: MetricReading; tick?: number }) {
 
 function ComparisonChart({ c, tick }: { c: Comparison; tick?: number }) {
   const n = Math.max(c.simulated.length, c.actual.length, c.declared?.length ?? 0);
+  const mid = midRun(tick, n);
   const data = Array.from({ length: n }, (_, i) => ({
     t: i,
     executed: c.simulated[i] ?? null,
     actual: c.actual[i] ?? null,
     declared: c.declared ? (c.declared[i] ?? null) : null,
+    // The declared mean stays whole — it is a reference, not a trajectory.
+    pastExecuted: mid && i <= tick! ? (c.simulated[i] ?? null) : null,
   }));
   // The horizon is where the data ends; past it the executed line is a forecast
   // with nothing to check against. Fit is scored in-sample only.
@@ -554,7 +631,7 @@ function ComparisonChart({ c, tick }: { c: Comparison; tick?: number }) {
           {tick !== undefined && tick > 0 && tick < n && (
             <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
           )}
-          <XAxis dataKey="t" tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" />
+          <XAxis dataKey="t" ticks={axisTicks(n)} tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" />
           <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" width={44} />
           <Tooltip
             contentStyle={{
@@ -582,10 +659,22 @@ function ComparisonChart({ c, tick }: { c: Comparison; tick?: number }) {
             dataKey="executed"
             name="executed"
             stroke="var(--accent)"
+            strokeOpacity={mid ? FUTURE_OPACITY : 1}
             dot={false}
             strokeWidth={STROKES.executed.width}
             isAnimationActive={false}
           />
+          {mid && (
+            <Line
+              type="monotone"
+              dataKey="pastExecuted"
+              stroke="var(--accent)"
+              dot={false}
+              strokeWidth={STROKES.executed.width}
+              isAnimationActive={false}
+              tooltipType="none"
+            />
+          )}
           <Line
             type="monotone"
             dataKey="actual"

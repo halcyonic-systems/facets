@@ -36,6 +36,7 @@ export function RunMode({
   onResetInputs,
   time,
   runKind,
+  dock = false,
 }: {
   result: RunResultRich | null;
   /** #282: the DTMC run (#67) — the result when the active lens declares
@@ -58,6 +59,10 @@ export function RunMode({
   time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
   /** #282: the lens's declared run semantics — this view renders from it. */
   runKind: RunKind;
+  /** The recomposition (2026-08-16): dock form — the run's cards in a bottom
+   *  dock beneath the LIVING diagram stage, instead of a full-bleed frame
+   *  over it. Conservation runs only; the caller decides. */
+  dock?: boolean;
 }) {
   // #282, decided 2026-08-01: Bunge does not run. The lens's own register says
   // it — no mechanism stated (⊘M) — so executing Mobus's engine under this
@@ -65,7 +70,7 @@ export function RunMode({
   // furniture; it has no timeline and no inputs, so it takes no rail.
   if (runKind === "none") {
     return (
-      <Frame name={model?.name} runKind={runKind}>
+      <Frame name={model?.name} runKind={runKind} dock={dock}>
         <div className="mx-auto w-full max-w-2xl">
           <Card title="Result" source="bert-core · wasm">
             <Verdict tone="warning">no mechanism stated (⊘M) — reads as a black box</Verdict>
@@ -141,7 +146,7 @@ export function RunMode({
   })();
 
   return (
-    <Frame name={model?.name} runKind={runKind}>
+    <Frame name={model?.name} runKind={runKind} dock={dock}>
       {/* The width the run was starved of in the dock: the timeline and its
           forcing sit in a fixed rail, and the result takes everything else, so a
           trajectory finally has a page to be drawn across. One column until
@@ -174,12 +179,51 @@ const RUN_KIND_LINE: Record<RunKind, string> = {
 function Frame({
   name,
   runKind,
+  dock = false,
   children,
 }: {
   name?: string | null;
   runKind: RunKind;
+  dock?: boolean;
   children: React.ReactNode;
 }) {
+  // Dock form (the recomposition): the run's cards take the stage's lower
+  // band and the DIAGRAM keeps the rest — run it and both readers of the one
+  // recorded trace move together. Fixed height by design (no splitter
+  // primitive exists in this repo; do not invent one casually). Full-bleed
+  // form stays for the run kinds that own their whole surface.
+  if (dock) {
+    return (
+      <div
+        className="absolute inset-x-0 bottom-0 flex h-[42%] min-h-[15rem] flex-col"
+        style={{ background: "var(--bg-primary)", borderTop: "1px solid var(--border)" }}
+      >
+        <div
+          className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-4 py-1.5"
+          style={{ borderBottom: "1px solid var(--hairline)" }}
+        >
+          <span
+            className="text-xs font-semibold uppercase tracking-wide"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Run
+          </span>
+          {name?.trim() && (
+            <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+              {name.trim()}
+            </span>
+          )}
+          {/* #344 item 5, said once where both controls live: Run computes,
+              play reads. */}
+          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+            ▶ Run computes the whole history · the scrubber's ▶ plays the cursor
+            through it — diagram and charts move together
+          </span>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-3">{children}</div>
+      </div>
+    );
+  }
   return (
     <div
       className="absolute inset-0 flex flex-col"

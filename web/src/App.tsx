@@ -312,6 +312,13 @@ function Workspace() {
   // viewport (its auto-layout centers on a fixed point that can otherwise land
   // outside the narrower SL-pane view — #83). Canvas fits once per new value.
   const [fitToken, setFitToken] = useState<number | undefined>(undefined);
+  // Recomposition (2026-08-16): entering or leaving Run re-frames the diagram
+  // — the dock claims the lower band on the way in and returns it on the way
+  // out, and the fit should follow both moves.
+  useEffect(() => {
+    setFitToken((n) => (n === undefined ? undefined : n + 1));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workMode]);
   // The Klir locator's preset size (#100 harvest — "way too small" on 2 of 3
   // blind-pick arms). Three presets, medium default; a change refits the
   // picture to the new box via fitToken. Presentation only.
@@ -2324,34 +2331,7 @@ function Workspace() {
                         The "in" phases clear themselves on animation end. It
                         encloses the whole per-lens view, so under Klir the
                         register dives with its locator. */}
-                    {workMode === "run" ? (
-                      /* #312 move 2: the run takes the stage. Same state, same
-                         kernel outputs, same cards the dock's Run tab hosted —
-                         re-parented into the mode, which is the width they were
-                         starved of. */
-                      <RunMode
-                        result={result}
-                        markovRun={markovRun}
-                        ranEdited={ranEdited}
-                        runError={runError}
-                        lens={canvasModel.lens}
-                        onAcceptUnit={acceptDerivedUnit}
-                        tick={tick}
-                        model={canvasModel}
-                        // The run's manifest exists in two cases, not one: a
-                        // demo bundle, or an attached CSV with at least one
-                        // binding (#304's run-from-attached — the same pair
-                        // `runCsv` accepts). Passing null here made a bound
-                        // library model read as bundle-less in Run mode.
-                        manifest={
-                          demo || (attachedCsv && manifest.mapping.length > 0) ? manifest : null
-                        }
-                        onInputEdit={applyInputEdit}
-                        onResetInputs={demo?.sl ? resetInputs : undefined}
-                        time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}
-                        runKind={LensPalette[canvasModel.lens].run}
-                      />
-                    ) : workMode === "data" ? (
+                    {workMode === "data" ? (
                       <DataMode
                         model={canvasModel}
                         modelName={canvasModel.name?.trim() || currentLabel || "untitled"}
@@ -2550,6 +2530,13 @@ function Workspace() {
                       onPanChange={setCanvasPan}
                       onScaleChange={setCanvasScale}
                       fitToken={fitToken}
+                      // Recomposition: in Run mode the dock owns the lower band,
+                      // so fit frames the diagram into what stays visible.
+                      fitBottomFraction={
+                        workMode === "run" && LensPalette[canvasModel.lens].run === "conservation"
+                          ? 0.42
+                          : 0
+                      }
                       // #100 phase 0: the container/place label names the
                       // SYSTEM (author SOI name, else the shell's label), so a
                       // model can never impersonate its only component.
@@ -2773,6 +2760,44 @@ function Workspace() {
                       </div>
                     )}
                   </div>
+
+                  {/* Run mode over the living stage (recomposition, 2026-08-16):
+                      the diagram STAYS the stage — same canvas, same overlays,
+                      moving with the shared cursor — and the run's cards dock
+                      beneath it (dock form) for a conservation run. The other
+                      run kinds keep the full-bleed frame: Klir's DTMC already
+                      rides the diagram (#67 J9), and a non-running lens states
+                      its refusal on neutral ground. #304 honored — the mode is
+                      built, its stage recomposed; no drawer (#312 stands). */}
+                  {workMode === "run" && (
+                    /* #312 move 2: the run takes the stage. Same state, same
+                         kernel outputs, same cards the dock's Run tab hosted —
+                         re-parented into the mode, which is the width they were
+                         starved of. */
+                      <RunMode
+                        result={result}
+                        markovRun={markovRun}
+                        ranEdited={ranEdited}
+                        runError={runError}
+                        lens={canvasModel.lens}
+                        onAcceptUnit={acceptDerivedUnit}
+                        tick={tick}
+                        model={canvasModel}
+                        // The run's manifest exists in two cases, not one: a
+                        // demo bundle, or an attached CSV with at least one
+                        // binding (#304's run-from-attached — the same pair
+                        // `runCsv` accepts). Passing null here made a bound
+                        // library model read as bundle-less in Run mode.
+                        manifest={
+                          demo || (attachedCsv && manifest.mapping.length > 0) ? manifest : null
+                        }
+                        onInputEdit={applyInputEdit}
+                        onResetInputs={demo?.sl ? resetInputs : undefined}
+                        time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}
+                        runKind={LensPalette[canvasModel.lens].run}
+                      dock={LensPalette[canvasModel.lens].run === "conservation"}
+                      />
+                  )}
 
                   {/* The run's transport, under the stage in every mode: the
                       scrubber animates the canvas frame in Structure and marks

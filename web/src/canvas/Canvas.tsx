@@ -90,6 +90,10 @@ interface Props {
    *  after an SL compile lays the model out around a fixed center that may sit
    *  outside the narrower SL-pane viewport). Each distinct value fits once. */
   fitToken?: number;
+  /** Fraction of the viewport's HEIGHT a bottom overlay (the run dock,
+   *  recomposition 2026-08-16) covers — fit frames the content into the band
+   *  that stays visible. 0/absent = the whole viewport, as ever. */
+  fitBottomFraction?: number;
   /** The containing system's name (author SOI name, else the shell's label) —
    *  the per-lens container labels itself with it (#100 phase 0), so a model
    *  can never impersonate its only component. */
@@ -118,6 +122,7 @@ export default function Canvas({
   onPanChange,
   onScaleChange,
   fitToken,
+  fitBottomFraction,
   placeName = null,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -309,7 +314,7 @@ export default function Canvas({
     const svg = svgRef.current;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
-    fitToViewport(rect.width, rect.height);
+    fitToViewport(rect.width, rect.height * (1 - (fitBottomFraction ?? 0)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitToken]);
 

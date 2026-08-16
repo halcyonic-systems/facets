@@ -4,8 +4,8 @@ import { horizonOf, unitLabel } from "./runViz";
 
 describe("unitLabel", () => {
   it("discloses abstract units when none is declared", () => {
-    expect(unitLabel("")).toEqual({ text: "abstract units", abstract: true });
-    expect(unitLabel("   ")).toEqual({ text: "abstract units", abstract: true });
+    expect(unitLabel("")).toEqual({ text: "no unit declared", abstract: true });
+    expect(unitLabel("   ")).toEqual({ text: "no unit declared", abstract: true });
   });
 
   it("passes a declared unit through", () => {
