@@ -29,11 +29,6 @@ interface "Aminoacylation Site" protocol "cognate amino acid + ATP at one cataly
 # leave (Voorhees & Ramakrishnan 2013). One site, both directions.
 interface "GTPase-Associated Center" protocol "GTP-loaded elongation factors dock; GDP + Pi release" description "The factor-binding hub on the large subunit — sarcin-ricin loop and the L7/L12 stalk. GTP arrives and its hydrolysis products leave through the same real docking site."
 
-# Ions permeate the whole particle — no port exists. The honest interface is
-# the coordination shell the folded rRNA cannot hold its structure without
-# (Klein, Moore & Steitz 2004).
-interface "Ion Coordination Shell" protocol "Mg2+ and monovalent ions, by diffusion" description "Not a channel: the ensemble of Mg2+-phosphate coordination contacts that stabilize the folded rRNA, including the PTC's catalytic core. The milieu crossing is diffuse, and this name says so."
-
 # Both naming panels' verdict: the exit tunnel IS a pass-way, not a processor
 # — an 80-100 Å conduit through the large subunit whose exit port (the
 # L23/L29 ring) is where the chaperone docks (Ferbitz et al. 2004). George's
@@ -59,6 +54,16 @@ source Nucleus
 sink Chaperone
 
 environment Cytosol
+
+# ── The milieu, bathing the machine ───────────────────────────────────────
+# George's third correction (2026-08-12 call): the ionic milieu genuinely
+# interacts with the large subunit. It is now represented by his own newest
+# construct — E = ⟨O, M⟩ from the lifecycle paper's introduction: ions have
+# no discrete point source and no port (structures resolve hundreds of
+# ordered Mg2+ throughout the particle; Klein, Moore & Steitz 2004), so
+# this is a condition that bathes, not a flow that plugs in. Free Mg2+ in
+# the bacterial cytosol sits near 1 mM (Alatossava et al. 1985).
+milieu "Mg2+ and ionic milieu" value 1 unit mM description "The coordination shell: Mg2+-phosphate contacts the folded rRNA, including the PTC's catalytic core, cannot hold its structure without. Diffuse by nature — no channel exists, and none is invented."
 
 # Rates are steady-state elongation at 20 residues/s (Wikipedia, Translation:
 # 17-21 aa/s prokaryotic; quantities sheet 2026-08-14). Energy enters as GTP at
@@ -87,13 +92,6 @@ flow "GTPase-Associated Center" -> Translocase : energy "GTP"
 
 flow "Decoding Site" -> "Peptidyl Transferase Center" : matter "accommodated amino acid"
 flow "Peptidyl Transferase Center" -> Translocase : matter "elongated chain"
-
-# George's third correction (2026-08-12 call): the ionic milieu genuinely
-# interacts with the large subunit. At this grain the large subunit's catalytic
-# center is the PTC, so the milieu enters there. Magnitude is not the point of
-# this edge, so it stays unauthored; `ample` cannot say it (informational only).
-flow Cytosol -> "Ion Coordination Shell" : matter "Mg2+ and ionic milieu"
-flow "Ion Coordination Shell" -> "Peptidyl Transferase Center" : matter "Mg2+ and ionic milieu"
 
 flow Translocase -> "Exit Tunnel" : matter "polypeptide chain"
 flow "Exit Tunnel" -> Chaperone : matter "nascent polypeptide"

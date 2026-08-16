@@ -19,8 +19,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            295.79187,
-            0.94207764
+            295.05505,
+            -0.33407593
           ],
           "rotation": 0.0
         },
@@ -39,8 +39,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            295.7918,
-            639.05786
+            295.05502,
+            640.3341
           ],
           "rotation": 0.0
         },
@@ -61,7 +61,7 @@
         "type": "Sink",
         "transform": {
           "translation": [
-            848.4163,
+            849.8899,
             320.0
           ],
           "rotation": 0.0
@@ -70,6 +70,14 @@
         "model": "",
         "is_same_as_id": null,
         "authored_direction": true
+      }
+    ],
+    "milieu": [
+      {
+        "name": "Mg2+ and ionic milieu",
+        "value": 1.0,
+        "unit": "mM",
+        "description": "The coordination shell: Mg2+-phosphate contacts the folded rRNA, including the PTC's catalytic core, cannot hold its structure without. Diffuse by nature — no channel exists, and none is invented."
       }
     ]
   },
@@ -147,21 +155,6 @@
             "info": {
               "id": "I0.3",
               "level": 0,
-              "name": "Ion Coordination Shell",
-              "description": ""
-            },
-            "protocol": "Mg2+ and monovalent ions, by diffusion",
-            "type": "Import",
-            "exports_to": [],
-            "receives_from": [
-              "Src-1.2"
-            ],
-            "angle": null
-          },
-          {
-            "info": {
-              "id": "I0.4",
-              "level": 0,
               "name": "Exit Tunnel",
               "description": ""
             },
@@ -210,8 +203,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          480.0,
-          490.0
+          538.14343,
+          479.74774
         ],
         "rotation": 0.0
       },
@@ -248,13 +241,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.3"
+        "parent_interface": null
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          380.0765,
-          457.5329
+          421.85654,
+          479.74774
         ],
         "rotation": 0.0
       },
@@ -291,13 +284,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.4"
+        "parent_interface": "I0.3"
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          318.32037,
-          372.53287
+          332.7757,
+          405.0
         ],
         "rotation": 0.0
       },
@@ -339,8 +332,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          318.32037,
-          267.4671
+          312.5827,
+          290.47977
         ],
         "rotation": 0.0
       },
@@ -382,8 +375,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          380.07648,
-          182.46713
+          370.72614,
+          189.77243
         ],
         "rotation": 0.0
       },
@@ -599,28 +592,7 @@
     },
     {
       "info": {
-        "id": "F13",
-        "level": 0,
-        "name": "Mg2+ and ionic milieu",
-        "description": ""
-      },
-      "substance": {
-        "sub_type": "",
-        "type": "Material"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "Src-1.2",
-      "source_interface": null,
-      "sink": "C0.1",
-      "sink_interface": "I0.3",
-      "amount": "1",
-      "unit": "",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F16",
+        "id": "F14",
         "level": 0,
         "name": "nascent polypeptide",
         "description": ""
@@ -632,7 +604,7 @@
       "type": "Flow",
       "usability": "Resource",
       "source": "C0.2",
-      "source_interface": "I0.4",
+      "source_interface": "I0.3",
       "sink": "Snk-1.1",
       "sink_interface": null,
       "amount": "1",
@@ -641,7 +613,7 @@
     },
     {
       "info": {
-        "id": "F18",
+        "id": "F16",
         "level": 0,
         "name": "GDP and inorganic phosphate",
         "description": ""
