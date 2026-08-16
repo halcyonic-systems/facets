@@ -96,7 +96,17 @@ export type Designation =
   | { type: "interface" };
 
 export type PaletteTool =
-  | { verb: "place"; id: string; label: string; tip: string; role: CanvasRole }
+  | {
+      verb: "place";
+      id: string;
+      label: string;
+      tip: string;
+      role: CanvasRole;
+      /** #226: this place-tool births a PASS-WAY — a member of I that lives
+       *  ON the membrane (the canvas snaps it there) and fuses to its
+       *  Interface record at projection. Interfaces are placed, not stamped. */
+      passway?: boolean;
+    }
   | { verb: "designate"; id: string; label: string; tip: string; designation: Designation };
 
 /** A non-armable rail row: connect-gesture hints and kernel-derived kinds. */
@@ -206,18 +216,29 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
         tip: "E.O — Source vs Sink is derived from flow direction in project(); pending until a flow touches it",
         role: "Environment",
       },
+      // #226 (2026-08-16): the interface is PLACED, not stamped — a pass-way
+      // in the membrane (I ⊆ C, Tuple.lean `interfaces_sub`), which the
+      // canvas snaps onto the ring. It must carry a boundary-crossing flow
+      // (`interfaces_carry_flow`, SSF #31) and hands off interiorly to the
+      // processor it serves; at projection the two-hop chain lowers to one
+      // interface-routed interaction (bert#108).
+      {
+        verb: "place",
+        id: "interface",
+        label: "interface",
+        tip: "place a pass-way in the membrane — crossing flows enter through it, an interior flow hands off to the processor it serves; flowless is refused at Operational (SSF #31)",
+        role: "Component",
+        passway: true,
+      },
     ],
     // Work processes are Economy-side content (ch. 10: agents are the decision
     // ovals INSIDE process ovals; agency on a primitive was a category error,
     // bert-compose circuit.rs). Agent designation is a future entry here.
     designate: [
-      {
-        verb: "designate" as const,
-        id: "interface",
-        label: "interface",
-        tip: "designate a component into I (I ⊆ C, Tuple.lean `interfaces_sub`). An interface must carry a boundary-crossing flow — a flowless one is refused at Operational (`interfaces_carry_flow`, SSF #31). Drop a flow on its port to satisfy it. Stamp again to undo.",
-        designation: { type: "interface" as const },
-      },
+      // The interface designation moved to the PLACE list (#226): an
+      // interface is a thing you place in the membrane while constructing,
+      // not a status you stamp mid-flight. The merged form (a component that
+      // IS a pass-way) remains valid — SL's suffix keyword authors it.
       // #100 phase 4 (#81 harvest): each primitive tool BOTH stamps an existing
       // leaf component AND places a new component that IS that process on an
       // empty-stage click — one gesture, glyph-first. The glyphs are a

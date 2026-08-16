@@ -131,11 +131,21 @@ export default function Canvas({
   // presentation: the authored position survives in the model and dragging an
   // interface slides it along the ring (the constraint teaches the ontology).
   const authoredInterfaceIds = new Set(facts?.authored_interface_thing_ids ?? []);
-  // Ring extent comes from ALL components at their AUTHORED positions — the
-  // projection below reads authored coords, so it cannot move the ring it
-  // targets (no circularity). Excluding interfaces here was the first cut and
-  // collapsed the Fed membrane to a bubble around its one plain component.
-  const ring: Ring | null = lens === "Mobus" ? membraneRing(model.things) : null;
+  // Ring extent comes from the INTERIOR components alone (#226, 2026-08-16):
+  // an interface lives ON the ring, so its position must never feed the fit —
+  // that feedback was why dragging an interface resized the whole membrane.
+  // The one guarded fallback is the degenerate interior (fewer than two
+  // interior components — the Fed's single plain component): there the fit
+  // falls back to ALL components at authored positions, exactly the pre-#226
+  // behavior, so a membrane never collapses to a bubble.
+  const interiorThings = model.things.filter(
+    (t) => !(t.role === "Component" && authoredInterfaceIds.has(t.id)),
+  );
+  const interiorComponentCount = interiorThings.filter((t) => t.role === "Component").length;
+  const ring: Ring | null =
+    lens === "Mobus"
+      ? membraneRing(interiorComponentCount >= 2 ? interiorThings : model.things)
+      : null;
   // The display model — identical to the authored model except interface
   // components snap to the ring. Every consumer below (gestures, edges, nodes,
   // ports, fit) reads THIS, so pixels and hit-tests always agree.

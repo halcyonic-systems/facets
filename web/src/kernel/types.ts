@@ -241,6 +241,13 @@ export interface Thing {
   /** Authored interface designation (I ⊆ C). Must carry a boundary-crossing flow —
    *  flowless is refused at Operational (`interfaces_carry_flow`, SSF #31). */
   interface?: boolean;
+  /** Born of the `interface "Name"` declaration or the place-interface verb
+   *  (#226): a pass-way — same ontology as a stamped component (both in I),
+   *  but only a pass-way fuses to its Interface record at projection. */
+  passway?: boolean;
+  /** Authored interface protocol (#333, Listing 4.2): the pass-way's
+   *  admission rule in the author's words. */
+  protocol?: string;
   /** The child model this component decomposes into, by reference. */
   child_model?: ChildRef;
   /** The stock's declared unit (#76/#94) — meaningful on a Buffering component.

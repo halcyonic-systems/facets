@@ -117,8 +117,13 @@ describe("stamp the primitive glyph as the placeable thing (#81 harvest)", () =>
     expect(model.things).toHaveLength(1);
   });
 
-  it("interface designation stays unary-on-existing — no stage stamp", () => {
-    expect(stampPrimitiveAt(model, tool("interface"), { x: 0, y: 0 })).toBeNull();
+  it("the interface is placed, not designated (#226) — a pass-way place tool", () => {
+    const iface = LensPalette.Mobus.place.find((p) => p.id === "interface");
+    expect(iface).toBeDefined();
+    expect(iface).toMatchObject({ verb: "place", role: "Component", passway: true });
+    expect(LensPalette.Mobus.designate.find((d) => d.id === "interface")).toBeUndefined();
+    // And it never routes through the primitive stamp.
+    expect(stampPrimitiveAt(model, iface!, { x: 0, y: 0 })).toBeNull();
   });
 
   it("place tools keep their own branch — not routed through the stamp", () => {

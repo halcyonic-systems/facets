@@ -391,6 +391,20 @@ export function useCanvasGestures({
       // the kind the armed tool carries instead of the lens default.
       const p = toWorld(e);
       const id = nextId(model.things.map((t) => t.id));
+      // #226: the interface place-tool births a PASS-WAY — interface: true so
+      // the membrane projection owns its rendering (it snaps to the ring
+      // wherever the click lands), passway: true so projection fuses it to
+      // its Interface record once flows route through it.
+      if (armed.passway) {
+        onModelChange({
+          ...model,
+          things: [
+            ...model.things,
+            { id, name: `I${id}`, x: p.x, y: p.y, role: "Component", interface: true, passway: true },
+          ],
+        });
+        return;
+      }
       const name = armed.role === "Environment" ? `E${id}` : `T${id}`;
       onModelChange({
         ...model,
