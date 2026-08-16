@@ -10,11 +10,10 @@ import { InspectorRow as Row, InspectorTitle as Title, Popover } from "../ui";
 export function MilieuPopover({
   milieu,
   anchor,
+  onClose,
 }: {
   milieu: MilieuVar[];
   anchor: Pt;
-  /** Dismissal is App-owned (Escape / click-away clears the anchor), matching
-   *  the boundary inspector's contract. */
   onClose: () => void;
 }) {
   return (
@@ -43,6 +42,11 @@ export function MilieuPopover({
         interface, no flows. Declared, not dynamically coupled: how the bath
         influences the running system is the paper's open research area.
         Authored in SL: <code>milieu &lt;name&gt; value &lt;n&gt; unit &lt;u&gt;</code>
+      </div>
+      <div className="flex justify-end">
+        <button onClick={onClose} className="rounded-full px-3 py-1 text-xs" style={{ color: "var(--text-muted)" }}>
+          close
+        </button>
       </div>
     </Popover>
   );
