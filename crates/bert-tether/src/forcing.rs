@@ -257,6 +257,25 @@ pub fn force_and_run(
     Ok(summarize(&model, &imported, &spec, &circuit, &run, dt))
 }
 
+/// Run the model from its DECLARED amounts alone — no CSV, no forcing — and
+/// read the run back in the same domain terms [`force_and_run`] returns
+/// (levels, trajectories, per-wire flow series, conservation verdict).
+///
+/// This is the rich readout for the CSV-less case (interactive params,
+/// 2026-08-16): a parameter edit re-declares an amount and re-runs, and the
+/// face needs domain-named series either way. Same pipeline minus the import:
+/// precondition → validate → wire → record → summarize over empty
+/// [`ImportedData`] (so `comparisons` is empty by construction — nothing was
+/// observed, and the readout says so rather than inventing a baseline).
+pub fn run_unforced(model: WorldModel, dt: f64, t: f64) -> Result<RunReadout, String> {
+    bert_compose::ticks_over(dt, t)?;
+    let spec = bert_core::operational::validate_operational(&model)
+        .map_err(|errors| format!("model is not executable ({} reason(s))", errors.len()))?;
+    let mut circuit = bert_compose::from_spec(&spec);
+    let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)?;
+    Ok(summarize(&model, &crate::tether::ImportedData::default(), &spec, &circuit, &run, dt))
+}
+
 /// A final level, purpose-ordered and domain-named.
 pub struct Level {
     pub name: String,
@@ -864,6 +883,25 @@ mod tests {
         assert_eq!(cmp.kind, "flow");
         assert_eq!(cmp.actual, vec![10.0, 10.0, 10.0, 10.0]);
         assert_eq!(cmp.unit, "units/mo");
+    }
+
+    // Law: the CSV-less run reads back with the SAME richness as the forced
+    // one — domain-named trajectories, per-wire flow series, a conservation
+    // verdict — and an EMPTY comparisons (nothing was observed; the readout
+    // must not invent a baseline). The declared amounts alone govern.
+    #[test]
+    fn an_unforced_run_is_rich_conserves_and_observes_nothing() {
+        let json = include_str!("../../../assets/models/runnable-sample.json");
+        let model: WorldModel = serde_json::from_str(json).unwrap();
+        let readout = run_unforced(model, 1.0, 4.0).expect("unforced run should succeed");
+        assert!(readout.conserved, "residual {}", readout.residual);
+        assert!(!readout.trajectories.is_empty());
+        assert!(!readout.flows.is_empty(), "per-wire series populate without a CSV");
+        assert!(readout.trajectories.iter().all(|t| !t.name.is_empty()));
+        assert!(
+            readout.comparisons.is_empty(),
+            "no data attached — nothing to compare against"
+        );
     }
 
     // Law: conservation and domain-name legibility hold for every hand-authored

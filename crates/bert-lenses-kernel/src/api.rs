@@ -181,6 +181,18 @@ pub fn run_forced(
     to_js(&RunResultRich::from(readout))
 }
 
+/// Run the model from its DECLARED amounts alone — no CSV, no forcing — with
+/// the same rich, domain-named readout as [`run_forced`] (interactive params,
+/// 2026-08-16). A parameter edit re-declares an amount; this is the re-run the
+/// face calls when no data is attached. `comparisons` comes back empty by
+/// construction — nothing was observed.
+#[wasm_bindgen]
+pub fn run_rich(model_json: &str, dt: f64, t: f64) -> Result<JsValue, JsError> {
+    let model = parse_model(model_json)?;
+    let readout = bert_tether::forcing::run_unforced(model, dt, t).map_err(|e| JsError::new(&e))?;
+    to_js(&RunResultRich::from(readout))
+}
+
 /// A model's stable self-identity (canonical base58), read from its JSON —
 /// `null` for a model that never minted one. The store layer's decoder: records
 /// carry this id so a `decomposes @id` reference resolves by identity, with the

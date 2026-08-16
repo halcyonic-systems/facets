@@ -99,4 +99,21 @@ flow "Exit Tunnel" -> Chaperone : matter "nascent polypeptide"
 flow Translocase -> "GTPase-Associated Center" : matter "GDP and inorganic phosphate"
 flow "GTPase-Associated Center" -> Cytosol : matter "GDP and inorganic phosphate"
 
+# ── Declared parameters: the environment's knobs, in the model's words ────
+# Mobus ch. 4 (bert-lenses#260): environmental entities are unmodeled
+# INTERNALLY, not unparameterized — "the way to alter a simulation's behavior
+# is to adjust the parameters of its inputs and outputs." Ranges run 0 → 2×
+# the steady-state calibration: 0 is arrest/starvation (transcriptional
+# shutoff, amino-acid or energy starvation), 2× is saturated supply — the
+# span a wet-lab perturbation actually sweeps.
+param "mRNA supply" : flow Nucleus -> "mRNA Entry Channel" range 0..40
+param "amino acid supply" : flow Cytosol -> "Aminoacylation Site" "free amino acid" range 0..40
+param "ATP supply" : flow Cytosol -> "Aminoacylation Site" "ATP" range 0..40
+param "GTP supply" : flow Cytosol -> "GTPase-Associated Center" range 0..80
+
+# ── Declared metric: the reading the perturbations are FOR ────────────────
+# The finished protein handed to the chaperone — the model's output in the
+# model's words (#203). Sweep a supply param and this is what answers.
+metric "polypeptide output" : sum into Chaperone
+
 @lens mobus

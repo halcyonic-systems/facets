@@ -18,29 +18,25 @@
         "column": "mRNA transcript",
         "as": "flow",
         "element": "mRNA transcript",
-        "unit": "codon/s",
-        "force": true
+        "unit": "codon/s"
       },
       {
         "column": "free amino acid",
         "as": "flow",
         "element": "free amino acid",
-        "unit": "aa/s",
-        "force": true
+        "unit": "aa/s"
       },
       {
         "column": "ATP",
         "as": "flow",
         "element": "ATP",
-        "unit": "ATP/s",
-        "force": true
+        "unit": "ATP/s"
       },
       {
         "column": "GTP",
         "as": "flow",
         "element": "GTP",
-        "unit": "GTP/s",
-        "force": true
+        "unit": "GTP/s"
       }
     ]
   }
