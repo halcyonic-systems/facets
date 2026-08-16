@@ -2719,13 +2719,21 @@ function Workspace() {
                         arm a tool to stamp (Esc disarms) · click a node to edit it in the Element tab · double-click to enter it · drag the handle dot to connect · click a flow to drive it
                       </div>
                     )}
+                    {/* In Run mode the dock owns the lower band, so the
+                        banners ride just above it instead of underneath it. */}
                     {toast && (
-                      <Banner tone="error" className="absolute bottom-3 left-3">
+                      <Banner
+                        tone="error"
+                        className={`absolute left-3 ${workMode === "run" ? "bottom-[calc(42%+0.75rem)]" : "bottom-3"}`}
+                      >
                         rejected — {toast}
                       </Banner>
                     )}
                     {notice && (
-                      <Banner tone="soft" className="absolute bottom-3 left-3">
+                      <Banner
+                        tone="soft"
+                        className={`absolute left-3 ${workMode === "run" ? "bottom-[calc(42%+0.75rem)]" : "bottom-3"}`}
+                      >
                         {notice}
                       </Banner>
                     )}
