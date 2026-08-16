@@ -1515,6 +1515,30 @@ pub struct Environment {
     pub sources: Vec<ExternalEntity>,
     /// All external sinks
     pub sinks: Vec<ExternalEntity>,
+    /// The milieu M — E = ⟨O, M⟩ per the Mobus lifecycle working paper
+    /// (2026 revision of the 8-tuple; the Lean core already carries the slot,
+    /// SSF `MobusEnvironment.milieu`): ambient condition variables without a
+    /// discrete point source, which "surround or 'bathe' the system" and need
+    /// no interface. Declared and projected, never coupled to the dynamics —
+    /// the paper marks that coupling "an area for much more research", and
+    /// this tool refuses to fake what the theory has not stated.
+    /// `skip` when empty so every existing model serializes unchanged.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub milieu: Vec<MilieuVariable>,
+}
+
+/// One ambient condition variable in M (Temp, pH, salinity, ionic strength…).
+/// A declared `value` is a snapshot of the ambient condition, not a dynamical
+/// input — nothing in the engine reads it yet, deliberately.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct MilieuVariable {
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<f64>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub unit: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
 }
 
 /// Source or sink

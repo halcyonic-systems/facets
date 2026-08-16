@@ -108,6 +108,7 @@ mod tests {
         let mut m = CanvasModel {
             lens: Lens::Bunge,
             model_id: None,
+            milieu: Vec::new(),
             things: Vec::new(),
             relations: Vec::new(),
             boundary: Default::default(),
@@ -355,6 +356,7 @@ mod decomposition_seam {
         let mut m = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             // Intake and Output touch the environment, so they are interface
             // components; Furnace is INTERIOR — the only kind v1's boundary
             // contract will decompose.

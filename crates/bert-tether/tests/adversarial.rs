@@ -211,6 +211,7 @@ fn target_enumeration_is_total() {
             info: bert_core::Info { id: bert_core::Id { ty: bert_core::IdType::Environment, indices: vec![-1] }, level: -1, name: String::new(), description: String::new() },
             sources: vec![],
             sinks: vec![],
+            milieu: vec![],
         },
         systems: vec![],
         interactions: vec![],

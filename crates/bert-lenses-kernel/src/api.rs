@@ -922,6 +922,7 @@ mod tests {
         CanvasModel {
             lens: Lens::Klir,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![thing(1, "Even"), thing(2, "Odd")],
             relations: vec![edge(10, 1, 2), edge(11, 1, 1), edge(12, 2, 1), edge(13, 2, 2)],
             boundary: Default::default(),

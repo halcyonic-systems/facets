@@ -1141,6 +1141,7 @@ mod tests {
         CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things,
             relations,
             boundary: Default::default(),

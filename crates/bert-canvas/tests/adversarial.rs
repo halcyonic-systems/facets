@@ -93,12 +93,12 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
         // Empty model — no things, no relations.
         (
             "empty",
-            CanvasModel { lens: Lens::Mobus, model_id: None, things: vec![], relations: vec![], boundary: Default::default(), system_type: Default::default(), name: None, description: String::new(), time_unit: None, params: vec![], metrics: vec![], klir_level: None },
+            CanvasModel { lens: Lens::Mobus, model_id: None, milieu: vec![], things: vec![], relations: vec![], boundary: Default::default(), system_type: Default::default(), name: None, description: String::new(), time_unit: None, params: vec![], metrics: vec![], klir_level: None },
         ),
         // A relation but NO things — every endpoint dangles.
         (
             "relation-without-things",
-            CanvasModel { lens: Lens::Bunge, model_id: None, things: vec![], relations: vec![rel(1, 1, 2)], boundary: Default::default(), system_type: Default::default(), name: None, description: String::new(), time_unit: None, params: vec![], metrics: vec![], klir_level: None },
+            CanvasModel { lens: Lens::Bunge, model_id: None, milieu: vec![], things: vec![], relations: vec![rel(1, 1, 2)], boundary: Default::default(), system_type: Default::default(), name: None, description: String::new(), time_unit: None, params: vec![], metrics: vec![], klir_level: None },
         ),
         // Self-loop only.
         (
@@ -107,6 +107,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 lens: Lens::Mobus,
                 description: String::new(),
                 model_id: None,
+                milieu: vec![],
                 things: vec![thing(1, "A", Role::Component)],
                 relations: vec![rel(1, 1, 1)],
                 boundary: Default::default(),
@@ -125,6 +126,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 lens: Lens::Mobus,
                 description: String::new(),
                 model_id: None,
+                milieu: vec![],
                 things: vec![thing(1, "A", Role::Component)],
                 relations: vec![rel(1, 1, 77), rel(2, 88, 99)],
                 boundary: Default::default(),
@@ -143,6 +145,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 lens: Lens::Bunge,
                 description: String::new(),
                 model_id: None,
+                milieu: vec![],
                 things: vec![
                     thing(1, "A", Role::Component),
                     thing(1, "A-again", Role::Component),
@@ -165,6 +168,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
                 lens: Lens::Klir,
                 description: String::new(),
                 model_id: None,
+                milieu: vec![],
                 things: vec![
                     Thing { x: f32::MAX, y: f32::MIN, ..thing(1, "far", Role::Component) },
                     Thing { x: f32::NAN, y: f32::INFINITY, ..thing(2, "nan", Role::Component) },
@@ -186,6 +190,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
             CanvasModel {
                 lens: Lens::Bunge,
                 model_id: None,
+                milieu: Vec::new(),
                 things: vec![thing(1, "", Role::Component), thing(2, "", Role::Environment)],
                 relations: vec![
                     Relation { is_bond: false, ..rel(1, 1, 2) },
@@ -207,6 +212,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
             CanvasModel {
                 lens: Lens::Mobus,
                 model_id: None,
+                milieu: Vec::new(),
                 things: vec![
                     thing(1, "E1", Role::Environment),
                     thing(2, "E2", Role::Environment),
@@ -228,6 +234,7 @@ fn adversarial_models() -> Vec<(&'static str, CanvasModel)> {
             CanvasModel {
                 lens: Lens::Mobus,
                 model_id: None,
+                milieu: Vec::new(),
                 things: vec![
                     thing(1, "c1", Role::Component),
                     thing(2, "c2", Role::Component),

@@ -468,6 +468,12 @@ pub struct CanvasModel {
     pub things: Vec<Thing>,
     #[serde(default)]
     pub relations: Vec<Relation>,
+    /// The milieu M (E = ⟨O, M⟩, lifecycle-paper revision): ambient condition
+    /// variables that bathe the system — never things, never flow endpoints;
+    /// the absence of edges IS the ontology. One struct, defined in the
+    /// kernel, shared here. `skip` when empty: old models stay byte-identical.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub milieu: Vec<bert_core::MilieuVariable>,
     #[serde(default)]
     pub boundary: CanvasBoundaryProps,
     /// Author-asserted system type (genus + optional domain). serde `default` so
@@ -995,6 +1001,8 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             info: info(env_id, -1, "Environment"),
             sources,
             sinks,
+            // E = ⟨O, M⟩: the authored milieu crosses the seam verbatim.
+            milieu: model.milieu.clone(),
         },
         systems,
         interactions,
@@ -1241,6 +1249,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
     CanvasModel {
         lens,
         model_id: model.model_id,
+        milieu: model.environment.milieu.clone(),
         things,
         relations,
         boundary,
@@ -1444,6 +1453,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Klir,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![
                 thing(1, "Even", Role::Component),
                 thing(2, "Odd", Role::Component),
@@ -1479,7 +1489,7 @@ mod tests {
     #[test]
     fn projects_a_bonded_pair_cleanly_at_every_lens() {
         for lens in [Lens::Klir, Lens::Bunge, Lens::Mobus] {
-            let model = CanvasModel {
+            let model = CanvasModel { milieu: vec![],
                 lens,
                 model_id: None,
                 things: vec![
@@ -1517,6 +1527,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![thing(1, "A", Role::Component), thing(2, "B", Role::Component)],
             relations: vec![bond(10, 1, 2)],
             boundary: Default::default(),
@@ -1547,6 +1558,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![thing(1, "S", Role::Component), thing(2, "H", Role::Component)],
             relations: vec![],
             boundary: Default::default(),
@@ -1569,6 +1581,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![thing(1, "S", Role::Component), thing(2, "H", Role::Component)],
             relations: vec![bond(10, 1, 2)],
             boundary: Default::default(),
@@ -1599,6 +1612,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![
                 thing(1, "S", Role::Component),
                 thing(2, "H", Role::Component),
@@ -1649,6 +1663,39 @@ mod tests {
         assert!(belongs_at_the_gesture(&at(Severity::Error, "mode/Structural")));
     }
 
+    /// E = ⟨O, M⟩ crosses the seam: authored milieu variables project into
+    /// the kernel Environment verbatim, and read back through to_canvas.
+    #[test]
+    fn the_milieu_projects_and_reads_back() {
+        let mut model = CanvasModel {
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: vec![bert_core::MilieuVariable {
+                name: "pH".into(),
+                value: Some(7.2),
+                unit: String::new(),
+                description: String::new(),
+            }],
+            things: vec![thing(1, "Core", Role::Component)],
+            relations: vec![],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        model.things[0].primitive = Some(ProcessPrimitive::Buffering);
+        let world = project(&model);
+        assert_eq!(world.environment.milieu.len(), 1);
+        assert_eq!(world.environment.milieu[0].name, "pH");
+        assert_eq!(world.environment.milieu[0].value, Some(7.2));
+        let back = to_canvas(&world);
+        assert_eq!(back.milieu, model.milieu);
+    }
+
     /// The fusion law (#226 + bert#108): a pure pass-way with one processor
     /// projects to an Interface record ALONE — never a subsystem — its
     /// crossing flow re-anchors to the processor with the interface routed,
@@ -1664,6 +1711,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![gate, thing(2, "Furnace", Role::Component), thing(3, "Mine", Role::Environment)],
             relations: vec![bond(10, 3, 1), bond(11, 1, 2)],
             boundary: Default::default(),
@@ -1716,6 +1764,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![
                 gate,
                 thing(2, "A", Role::Component),
@@ -1749,6 +1798,7 @@ mod tests {
         let base = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![gate, thing(2, "Core", Role::Component), thing(3, "Mine", Role::Environment)],
             relations: vec![r, bond(11, 1, 2)],
             boundary: Default::default(),
@@ -1779,6 +1829,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![a, thing(2, "Core", Role::Component)],
             relations: vec![bond(10, 1, 2)],
             boundary: Default::default(),
@@ -1825,6 +1876,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![a, thing(2, "Core", Role::Component)],
             relations: vec![],
             boundary: Default::default(),
@@ -1867,6 +1919,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![gate, thing(2, "Core", Role::Component), thing(3, "Supply", Role::Environment)],
             relations: vec![bond(10, 1, 2)],
             boundary: Default::default(),
@@ -1967,6 +2020,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![
                 thing(1, "Env", Role::Environment),
                 thing(2, "Comp", Role::Component),
@@ -1994,6 +2048,7 @@ mod tests {
         let mut world = project(&CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![thing(1, "A", Role::Component), thing(2, "B", Role::Component)],
             relations: vec![bond(10, 1, 2)],
             boundary: Default::default(),
@@ -2022,6 +2077,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![
                 thing(1, "Src", Role::Environment),
                 thing(2, "A", Role::Component),

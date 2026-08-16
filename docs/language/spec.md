@@ -62,6 +62,7 @@ SL is one unified language: the traditions *contributed* the words, and the lang
 | `component` | a thing inside the boundary | **Bunge (composition C) and Mobus (C in the tuple)** — shared; Klir diverges (things/elements) | `Role::Component` |
 | `source`, `sink`, `environment` | a thing outside the boundary | Mobus (Src/Snk environment objects); `environment` shared with Bunge (E) | `Role::Environment` (§5.2 on the three words) |
 | `interface` | membership in the root membrane's I (flat I ⊆ C is the Lean's convention, Tuple.lean; the book makes interfaces components of the *boundary subsystem* — concordance row 9). The word is a **claim, not a label**: since #213/#225 an interface must carry a boundary-crossing flow or the kernel refuses the model at Operational — see §5.4. **RESOLVED([#226](https://github.com/halcyonic-systems/bert-lenses/issues/226), 2026-08-16)**: the pass-way declares as its own object (`interface "Name" [protocol "…"]`) and the processor it serves sits inside, associated by an interior flow — the split is the default authoring pattern; the stamped suffix form remains the merged special case for a component that IS a pass-way. No new node sort: both are components, I ⊆ C intact (the split is the `InterfaceDecomposition.lean` shape, SSF #43) | **Mobus (I in B; Fig 4.10's interface-serves-a-receiver/exporter-process) and Bunge ("interface points" = i/o terminals ∈ boundary, 1992)** — shared | `Thing.interface` + `Thing.protocol` |
+| `milieu` | one ambient condition variable in M — E = ⟨O, M⟩ per the lifecycle working paper (2026 oct-tuple revision; the Lean core carries the slot, `MobusEnvironment.milieu`, and proves the Mobus→Bunge projection discards it). Variables "surround or 'bathe' the system" and need no interface: a milieu line takes no flows and no position — the absence of edges IS the ontology. `value` declares a snapshot of the condition (`milieu pH value 7.2`); nothing dynamical reads it, deliberately (the paper marks that coupling an open research area) | Mobus (lifecycle paper, M in E) | `CanvasModel.milieu` / `Environment.milieu` (`MilieuVariable`) |
 | `usability` + one of `Resource`, `Disruption`, `Product`, `Waste` | what a boundary crossing IS to the system — a 2×2 of direction against value: useful in, harmful in, useful out, harmful out (v1.4, #331). The kernel has carried `InteractionUsability` from its first version; `project()` hardcoded every flow to `Resource`, so the distinction was unauthorable and a model needing it had to assert it in a comment. Undeclared is UNDECLARED, never `Resource` — only projection supplies the default | Mobus (resources in, products and wastes out — ch. 10's archetypes, ch. 12's tactical coordination) | `Relation.usability` → `Interaction.usability` |
 | `description` | prose about a thing or a flow, in the author's own words — restored in v1.4 (#326) after the rebuild dropped what the original BERT carried on every entity. **Never semantics**: no verdict reads it, and two models differing only here are the same system. It projects into `Info.description`, a bert-core field that existed from the start and received an empty string until this clause reached it | house word; the DISTINCTION is old-bert's, and the destination field is bert-core's | `Thing.description` / `Relation.description` → `Info.description` |
 | `primitive` + one of `Combining`, `Splitting`, `Buffering`, `Impeding`, `Propelling`, `Copying`, `Sensing`, `Modulating`, `Amplifying`, `Inverting` | the work-process taxonomy | Mobus | `ProcessPrimitive` |
@@ -109,7 +110,7 @@ SL is line-oriented. A file is a sequence of lines, each independently one of: b
 model       = { line } ;
 line        = blank | comment | structure | annotation ;
 
-structure   = system | domain | timeunit | level | thing | iface | flow | param | metric | boundary ;
+structure   = system | domain | timeunit | level | thing | iface | milieuvar | flow | param | metric | boundary ;
 system      = "system" [ string ] [ ":" kingdom [ "/" genus ] ] ;
 domain      = "domain" string ;
 timeunit    = "time" "unit" name ;                     (* the Δt symbol, #94 *)
@@ -118,6 +119,9 @@ thing       = thingword name { attr } ;
 thingword   = "component" | "source" | "sink" | "environment" ;
 iface       = "interface" name [ "protocol" string ]   (* the pass-way as its own object, #226; *)
               [ "description" string ] ;               (*   resolves the stamped-vs-placed fork *)
+milieuvar   = "milieu" name [ "value" number ]         (* one ambient variable in M — E = ⟨O,M⟩, *)
+              [ "unit" name ]                          (*   lifecycle-paper revision; no flows,  *)
+              [ "description" string ] ;               (*   no position: it bathes, not plugs   *)
 attr        = "interface" [ "protocol" string ]        (* merged form: this component IS the pass-way *)
             | "primitive" primword
             | "description" string                     (* prose, #326 *)
@@ -455,6 +459,7 @@ A three-component decomposition with two boundary interfaces, an authored membra
 | ~~No decomposition / sub-paragraphs~~ decompose-by-reference shipped (step 4) | #89 (step 4 merged 2026-07-20) | `decomposes "label" @id` → `System.child_model` — see §3, §4.3, §7.1; the reference form keeps each file one flat paragraph, the recursion in the id index |
 | ~~No Klir source-system variable characterization~~ shipped as v1.2 | #154 (landed 2026-07-24; spec caught up 2026-07-31 — the words shipped ahead of this document, the drift the keyword-parity gate now makes impossible) | `scale` / `states` / `kind` → `Thing.scale` / `.states` / `.variable_kind` — see §3, §4.3, §7.1 |
 | ~~No declared epistemological level~~ shipped as v1.3 | #288 (landed 2026-08-08, spec and parser together — the discipline #154's drift taught) | `level` → `CanvasModel.klir_level` — see §3, §4.9, §7.1; the cross-level refusal is `lenses::check_cross_level`, printing Klir §5.4 |
+| milieu dynamics coupling absent by design | lifecycle paper | The paper marks how M's conditions influence the running system "an area for much more research"; a declared `value` is a snapshot, and nothing in the engine reads it until the theory states the coupling |
 | `interface` + `decomposes` refused together (v1) | #89 | The Lean contract covers a component's internal network only; when it grows the membrane-crossing case (flows through an interface component) the co-occurrence becomes legal and the `interface`/`decomposes` emission order (§7.1) gets revisited |
 | No controlled systems-English tier (the verbal surface proper) | design doc §5 Rung 2 | Fixed-grammar system-paragraph parsing to the same neutral spec |
 | Compiled diagram can land partly off-viewport | #83 | Zoom-to-fit after compile (UI, not language) |

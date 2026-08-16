@@ -105,6 +105,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     let mut lens_explicit = false;
     // name → thing index; names are the text surface's identifiers.
     let mut by_name: HashMap<String, usize> = HashMap::new();
+    // M — the ambient milieu variables (E = ⟨O, M⟩); parallel to things, never in them.
+    let mut milieu_vars: Vec<bert_core::MilieuVariable> = Vec::new();
     // explicit positions from the annotation layer, applied after layout.
     let mut positions: HashMap<String, (f32, f32)> = HashMap::new();
     // `@directed <n>` marks (1-based flow index, source line) to apply at the end.
@@ -330,6 +332,135 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         &mut errors,
                     ),
                 }
+            }
+            // `milieu <Name> [value <n>] [unit <name>] [description "<str>"]`
+            // — one ambient condition variable in M (E = ⟨O, M⟩, the
+            // lifecycle-paper revision; SSF `MobusEnvironment.milieu`). Never
+            // a thing: it has no position, takes no flows — "surrounds or
+            // bathes the system... does not interact necessarily through a
+            // discrete set of interfaces." A declared value is a snapshot of
+            // the ambient condition, not a dynamical input: nothing in the
+            // engine reads it, deliberately (the paper marks the coupling an
+            // open research area).
+            "milieu" => {
+                let Some((name, attrs)) = rest.split_first() else {
+                    fail(
+                        "milieu needs a variable name — fix: write `milieu <Name>`, \
+                         quoting the name if it contains spaces (e.g. `milieu pH`, \
+                         `milieu \"ionic strength\" value 0.15 unit M`)"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                };
+                if !name.is_name() {
+                    fail(
+                        "milieu needs a variable name — fix: write `milieu <Name>`, \
+                         quoting the name if it contains spaces"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                let name = name.name();
+                if milieu_vars.iter().any(|m: &bert_core::MilieuVariable| m.name == name) {
+                    fail(
+                        format!(
+                            "milieu variable `{name}` is already declared — fix: give this \
+                             one a different name, or delete this line if it repeats the \
+                             earlier declaration"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                let mut value: Option<f64> = None;
+                let mut unit = String::new();
+                let mut description = String::new();
+                let mut i = 0;
+                let mut ok = true;
+                while i < attrs.len() {
+                    match &attrs[i] {
+                        Tok::Word(w) if w.eq_ignore_ascii_case("value") => {
+                            if value.is_some() {
+                                fail("`value` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Word(n)) if n.parse::<f64>().is_ok() => {
+                                    let v = n.parse::<f64>().unwrap();
+                                    if v.is_finite() {
+                                        value = Some(v);
+                                    } else {
+                                        fail("a milieu value must be finite".into(), &mut errors);
+                                        ok = false;
+                                    }
+                                }
+                                _ => {
+                                    fail(
+                                        "value syntax: `value <n>` (e.g. `value 7.2`)".into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        Tok::Word(w) if w.eq_ignore_ascii_case("unit") => {
+                            if !unit.is_empty() {
+                                fail("`unit` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(u) if u.is_name() && !u.name().trim().is_empty() => {
+                                    unit = u.name().trim().to_string();
+                                }
+                                _ => {
+                                    fail("unit syntax: `unit <name>` (e.g. `unit mM`)".into(), &mut errors);
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        Tok::Word(w) if w.eq_ignore_ascii_case("description") => {
+                            if !description.is_empty() {
+                                fail("`description` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Str(d)) => description = d.clone(),
+                                _ => {
+                                    fail(
+                                        "description syntax: `description \"<prose>\"` \
+                                         (quoted, one per line)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        other => {
+                            fail(
+                                format!(
+                                    "unknown clause on milieu line: `{}` — a milieu variable \
+                                     takes only `value <n>`, `unit <name>`, and `description \
+                                     \"<prose>\"`; it has no flows and no position (it bathes \
+                                     the system, it does not plug into it)",
+                                    other.display()
+                                ),
+                                &mut errors,
+                            );
+                            ok = false;
+                            i += 1;
+                        }
+                    }
+                }
+                if !ok {
+                    continue;
+                }
+                milieu_vars.push(bert_core::MilieuVariable { name, value, unit, description });
             }
             // `interface "Name" [protocol "<str>"] [description "<str>"]` —
             // the pass-way declared as its own object (#226, ratified
@@ -2071,6 +2202,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         model_id: None,
         things,
         relations,
+        milieu: milieu_vars,
         boundary: boundary.unwrap_or_default(),
         system_type,
         name: system_name,
@@ -2457,6 +2589,22 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         out.push('\n');
     }
 
+    // M — the milieu, after the point objects and before the flows: the bath
+    // is environment structure, not connection structure.
+    for m in &model.milieu {
+        write!(out, "milieu {}", name_token(&m.name)?).unwrap();
+        if let Some(v) = m.value {
+            write!(out, " value {v}").unwrap();
+        }
+        if !m.unit.is_empty() {
+            write!(out, " unit {}", name_token(&m.unit)?).unwrap();
+        }
+        if !m.description.is_empty() {
+            write!(out, " description {}", quote(&m.description)?).unwrap();
+        }
+        out.push('\n');
+    }
+
     // flows
     let name_of = |id: u64| {
         model
@@ -2686,6 +2834,8 @@ pub const RESERVED_WORDS: &[&str] = &[
     "flow",
     "boundary",
     "interface",
+    "milieu",
+    "value",
     "protocol",
     "primitive",
     "decomposes",
@@ -3639,5 +3789,46 @@ flow S -> A : matter \"in\"
     #[test]
     fn an_interface_name_collision_is_a_fault() {
         assert!(parse_sl("component A\ninterface A\n").is_err());
+    }
+
+    // ── the milieu: E = ⟨O, M⟩, lifecycle-paper revision ─────────────────
+
+    #[test]
+    fn milieu_variables_parse_and_round_trip() {
+        let src = "component A\n\
+                   milieu pH value 7.2\n\
+                   milieu \"Mg2+ and ionic milieu\" unit mM description \"the coordination shell\"\n";
+        let m = parse_sl(src).unwrap();
+        assert_eq!(m.milieu.len(), 2);
+        assert_eq!(m.milieu[0].name, "pH");
+        assert_eq!(m.milieu[0].value, Some(7.2));
+        assert_eq!(m.milieu[1].unit, "mM");
+        assert_eq!(m.milieu[1].description, "the coordination shell");
+        let out = emit_sl(&m).unwrap();
+        assert!(out.contains("milieu pH value 7.2"), "got:\n{out}");
+        assert!(
+            out.contains("milieu \"Mg2+ and ionic milieu\" unit mM description \"the coordination shell\""),
+            "got:\n{out}"
+        );
+        let back = parse_sl(&out).unwrap();
+        assert_eq!(back.milieu, m.milieu);
+    }
+
+    /// A milieu variable is not a thing: it takes no flows — the refusal is
+    /// the ontology ("it bathes, it does not plug in").
+    #[test]
+    fn a_flow_cannot_touch_a_milieu_variable() {
+        assert!(parse_sl("component A\nmilieu pH\nflow pH -> A : matter \"x\"\n").is_err());
+    }
+
+    #[test]
+    fn a_duplicate_milieu_variable_is_a_fault() {
+        assert!(parse_sl("milieu pH\nmilieu pH value 7\n").is_err());
+    }
+
+    #[test]
+    fn a_milieu_line_refuses_thing_freight() {
+        assert!(parse_sl("milieu pH primitive Sensing\n").is_err());
+        assert!(parse_sl("milieu Temp interface\n").is_err());
     }
 }

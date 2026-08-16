@@ -1759,6 +1759,7 @@ mod tests {
                 },
                 sources: vec![],
                 sinks: vec![],
+                milieu: Vec::new(),
             },
             systems: vec![System {
                 info: Info {

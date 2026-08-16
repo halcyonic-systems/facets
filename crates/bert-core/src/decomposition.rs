@@ -606,6 +606,9 @@ pub fn derive_child(parent: &WorldModel, comp: &Id) -> Result<WorldModel, Vec<Va
             },
             sources,
             sinks,
+            // The parent's milieu bathes the child too — the same ambient
+            // conditions hold one level down (the walk does not shed the bath).
+            milieu: parent.environment.milieu.clone(),
         },
         systems: vec![child_root(&root_id, &env_id, &root_name)],
         interactions,
