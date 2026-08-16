@@ -576,6 +576,47 @@ export default function Canvas({
             Porosity → dash density; fuzziness → edge blur. */}
         {ring && (
           <>
+            {/* The milieu M (E = ⟨O, M⟩): the bath, drawn as bathing — a soft
+                halo band hugging the membrane's outside, pointer-transparent,
+                with the variables named once in a quiet line beneath the ring.
+                Never a box, never an arrow: the milieu "surrounds or bathes
+                the system... does not interact necessarily through a discrete
+                set of interfaces" (lifecycle paper). Mobus lens only — Klir
+                and Bunge count it in their hidden residue instead. */}
+            {(model.milieu?.length ?? 0) > 0 && (
+              <g pointerEvents="none">
+                <ellipse
+                  cx={ring.cx}
+                  cy={ring.cy}
+                  rx={ring.rx + 20}
+                  ry={ring.ry + 20}
+                  fill="none"
+                  stroke="var(--milieu)"
+                  strokeWidth={34}
+                  opacity={0.14}
+                />
+                <text
+                  x={ring.cx}
+                  y={ring.cy + ring.ry + 48}
+                  textAnchor="middle"
+                  fontSize={STYLE.label.size - 1}
+                  fontStyle="italic"
+                  fill="var(--milieu)"
+                  paintOrder="stroke"
+                  stroke="var(--bg-primary)"
+                  strokeWidth={3}
+                  strokeLinejoin="round"
+                  className="font-body"
+                >
+                  {"milieu — " +
+                    model
+                      .milieu!.map((m) =>
+                        m.value != null ? `${m.name} ${m.value}${m.unit ? ` ${m.unit}` : ""}` : m.name,
+                      )
+                      .join(" · ")}
+                </text>
+              </g>
+            )}
             <ellipse
               cx={ring.cx}
               cy={ring.cy}

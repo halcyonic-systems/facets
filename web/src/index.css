@@ -99,6 +99,9 @@
      adapts to the ground. Every pair below holds hue to under 0.5° and clears
      4.5 on its own theme's node fill; check-tokens.mjs enforces both, which is
      the purpose bound by a check rather than a proxy for it. */
+  /* The milieu M's bath tint (E = ⟨O, M⟩): watery slate-teal, quiet by
+     construction — the halo renders it at low opacity. */
+  --milieu: light-dark(#4e7f8f, #6b9aa8);
   --kind-matter: light-dark(#57814c, #649457);
   --kind-energy: light-dark(#bb6c1c, #c6721e);
   --kind-informational: light-dark(#8054a0, #9e79b8);
