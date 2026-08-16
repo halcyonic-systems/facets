@@ -50,6 +50,7 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
         role,
         primitive: None,
         interface: false,
+        protocol: String::new(),
         child_model: None,
         stock_unit: String::new(),
         scale: None,

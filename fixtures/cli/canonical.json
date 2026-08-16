@@ -519,42 +519,42 @@
             "reason": "Core (Klir) commits to things and dependency only — a representational mode with no flow semantics to execute"
           },
           {
-            "hint": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+            "hint": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line.",
             "location": "interactions[0].sink_interface",
             "reason": "flow 'v(c-n) — input from the cell above' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared"
           },
           {
-            "hint": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+            "hint": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line.",
             "location": "interactions[1].sink_interface",
             "reason": "flow 'v(c-1) — input from the cell to the left' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared"
           },
           {
-            "hint": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+            "hint": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line.",
             "location": "interactions[2].sink_interface",
             "reason": "flow 'v(c+1) — input from the cell to the right' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared"
           },
           {
-            "hint": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+            "hint": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line.",
             "location": "interactions[3].sink_interface",
             "reason": "flow 'v(c+n) — input from the cell below' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared"
           },
           {
-            "hint": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+            "hint": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line.",
             "location": "interactions[4].source_interface",
             "reason": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared"
           },
           {
-            "hint": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+            "hint": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line.",
             "location": "interactions[5].source_interface",
             "reason": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared"
           },
           {
-            "hint": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+            "hint": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line.",
             "location": "interactions[6].source_interface",
             "reason": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared"
           },
           {
-            "hint": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+            "hint": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line.",
             "location": "interactions[7].source_interface",
             "reason": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared"
           },
@@ -1273,7 +1273,7 @@
               "location": "interactions[0].sink_interface",
               "message": "flow 'v(c-n) — input from the cell above' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
               "severity": "Error",
-              "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
+              "suggestion": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line."
             },
             {
               "code": "crossing_flow_without_interface",
@@ -1281,7 +1281,7 @@
               "location": "interactions[1].sink_interface",
               "message": "flow 'v(c-1) — input from the cell to the left' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
               "severity": "Error",
-              "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
+              "suggestion": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line."
             },
             {
               "code": "crossing_flow_without_interface",
@@ -1289,7 +1289,7 @@
               "location": "interactions[2].sink_interface",
               "message": "flow 'v(c+1) — input from the cell to the right' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
               "severity": "Error",
-              "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
+              "suggestion": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line."
             },
             {
               "code": "crossing_flow_without_interface",
@@ -1297,7 +1297,7 @@
               "location": "interactions[3].sink_interface",
               "message": "flow 'v(c+n) — input from the cell below' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
               "severity": "Error",
-              "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
+              "suggestion": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line."
             },
             {
               "code": "crossing_flow_without_interface",
@@ -1305,7 +1305,7 @@
               "location": "interactions[4].source_interface",
               "message": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
               "severity": "Error",
-              "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
+              "suggestion": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line."
             },
             {
               "code": "crossing_flow_without_interface",
@@ -1313,7 +1313,7 @@
               "location": "interactions[5].source_interface",
               "message": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
               "severity": "Error",
-              "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
+              "suggestion": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line."
             },
             {
               "code": "crossing_flow_without_interface",
@@ -1321,7 +1321,7 @@
               "location": "interactions[6].source_interface",
               "message": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
               "severity": "Error",
-              "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
+              "suggestion": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line."
             },
             {
               "code": "crossing_flow_without_interface",
@@ -1329,7 +1329,7 @@
               "location": "interactions[7].source_interface",
               "message": "flow 'v(c) — the one output, coupled to every adjacent cell' leaves the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
               "severity": "Error",
-              "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one"
+              "suggestion": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line."
             }
           ]
         }

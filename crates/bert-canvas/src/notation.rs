@@ -348,6 +348,7 @@ mod tests {
             role,
             primitive: None,
             interface: false,
+            protocol: String::new(),
             child_model: None,
             stock_unit: String::new(),
             scale: None,

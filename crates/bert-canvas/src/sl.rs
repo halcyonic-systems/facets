@@ -331,6 +331,130 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     ),
                 }
             }
+            // `interface "Name" [protocol "<str>"] [description "<str>"]` —
+            // the pass-way declared as its own object (#226, ratified
+            // 2026-08-16): a component in I with no work-process character of
+            // its own. The split authoring pattern: crossing flows route
+            // through it, an interior flow hands off to the processor it
+            // serves. The suffix form (`component ... interface`) remains
+            // parseable — the merged special case for components that ARE
+            // pass-ways.
+            "interface" => {
+                let Some((name, attrs)) = rest.split_first() else {
+                    fail(
+                        "interface needs a name — fix: write `interface <Name>`, \
+                         quoting the name if it contains spaces"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                };
+                if !name.is_name() {
+                    fail(
+                        "interface needs a name — fix: write `interface <Name>`, \
+                         quoting the name if it contains spaces"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                let name = name.name();
+                if by_name.contains_key(&name) {
+                    fail(
+                        format!(
+                            "`{name}` is already declared — fix: give this one a different \
+                             name, or delete this line if it repeats the earlier declaration"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                let mut protocol = String::new();
+                let mut description = String::new();
+                let mut i = 0;
+                let mut ok = true;
+                while i < attrs.len() {
+                    match &attrs[i] {
+                        Tok::Word(w) if w.eq_ignore_ascii_case("protocol") => {
+                            if !protocol.is_empty() {
+                                fail("`protocol` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Str(p)) => protocol = p.clone(),
+                                _ => {
+                                    fail(
+                                        "protocol syntax: `protocol \"<rule>\"` \
+                                         (quoted, one per line)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        Tok::Word(w) if w.eq_ignore_ascii_case("description") => {
+                            if !description.is_empty() {
+                                fail("`description` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Str(d)) => description = d.clone(),
+                                _ => {
+                                    fail(
+                                        "description syntax: `description \"<prose>\"` \
+                                         (quoted, one per line)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        other => {
+                            fail(
+                                format!(
+                                    "unknown clause on interface line: `{}` — an interface \
+                                     takes only `protocol \"<rule>\"` and `description \
+                                     \"<prose>\"`; work-process character belongs to the \
+                                     processor component it serves",
+                                    other.display()
+                                ),
+                                &mut errors,
+                            );
+                            ok = false;
+                            i += 1;
+                        }
+                    }
+                }
+                if !ok {
+                    continue;
+                }
+                by_name.insert(name.clone(), things.len());
+                things.push(Thing {
+                    id: next_id,
+                    name,
+                    description,
+                    x: 0.0,
+                    y: 0.0,
+                    role: Role::Component,
+                    env_kind: EnvKind::Neutral,
+                    primitive: None,
+                    interface: true,
+                    protocol,
+                    child_model: None,
+                    stock_unit: String::new(),
+                    scale: None,
+                    states: None,
+                    variable_kind: None,
+                    cognitive_params: std::collections::HashMap::new(),
+                    initial_state: std::collections::HashMap::new(),
+                    agency_capacity: None,
+                });
+                next_id += 1;
+            }
             "component" | "source" | "sink" | "environment" => {
                 let role = if keyword == "component" {
                     Role::Component
@@ -379,6 +503,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 }
                 let mut primitive: Option<ProcessPrimitive> = None;
                 let mut interface = false;
+                let mut protocol = String::new();
                 let mut child_model: Option<ChildRef> = None;
                 let mut stock_unit = String::new();
                 let mut initial_stock: Option<f64> = None;
@@ -889,6 +1014,39 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             interface = true;
                             i += 1;
                         }
+                        // `protocol "<rule>"` — rides the merged form
+                        // (`component ... interface protocol "..."`) so a
+                        // round-trip through the suffix syntax never drops an
+                        // authored protocol (#333). Meaningless without
+                        // `interface`; refused below when it dangles.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("protocol") => {
+                            if role == Role::Environment {
+                                fail(
+                                    "`protocol` applies to interfaces only (environment \
+                                     internals are opaque)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                            if !protocol.is_empty() {
+                                fail("`protocol` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Str(p)) => protocol = p.clone(),
+                                _ => {
+                                    fail(
+                                        "protocol syntax: `protocol \"<rule>\"` \
+                                         (quoted, one per line)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
                         Tok::Word(w) if w.eq_ignore_ascii_case("primitive") => {
                             match attrs.get(i + 1) {
                                 Some(Tok::Word(p)) => match parse_primitive(p) {
@@ -1064,6 +1222,16 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 if let Some(v) = initial_stock {
                     initial_state.insert("storage".to_string(), serde_json::json!(v));
                 }
+                if !protocol.is_empty() && !interface {
+                    fail(
+                        "`protocol` without `interface` — a protocol is the admission \
+                         rule of a pass-way; fix: add `interface` to this line, or move \
+                         the protocol onto the interface this component serves"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
                 things.push(Thing {
                     id: next_id,
                     name,
@@ -1074,6 +1242,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     env_kind,
                     primitive,
                     interface,
+                    protocol,
                     child_model,
                     stock_unit,
                     scale,
@@ -2177,6 +2346,31 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
                 t.name
             ));
         }
+        // A pure pass-way — interface with no work-process character of its
+        // own — emits as its own declaration (#226): the split form is the
+        // default surface. Anything carrying processor freight (a primitive,
+        // a stock, engine params, a child) keeps the merged component form.
+        if t.role == Role::Component
+            && t.interface
+            && t.primitive.is_none()
+            && t.stock_unit.is_empty()
+            && t.cognitive_params.is_empty()
+            && t.initial_state.is_empty()
+            && t.child_model.is_none()
+            && t.variable_kind.is_none()
+            && t.scale.is_none()
+            && t.states.is_none()
+        {
+            write!(out, "interface {}", name_token(&t.name)?).unwrap();
+            if !t.protocol.is_empty() {
+                write!(out, " protocol {}", quote(&t.protocol)?).unwrap();
+            }
+            if !t.description.is_empty() {
+                write!(out, " description {}", quote(&t.description)?).unwrap();
+            }
+            out.push('\n');
+            continue;
+        }
         let keyword = match (t.role, t.env_kind) {
             (Role::Component, _) => "component",
             (Role::Environment, EnvKind::Source) => "source",
@@ -2190,6 +2384,9 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
             }
             if t.interface {
                 write!(out, " interface").unwrap();
+                if !t.protocol.is_empty() {
+                    write!(out, " protocol {}", quote(&t.protocol)?).unwrap();
+                }
             }
             // Declared stock unit (#76/#94) — before `decomposes` (which stays last).
             if !t.stock_unit.is_empty() {
@@ -2486,6 +2683,7 @@ pub const RESERVED_WORDS: &[&str] = &[
     "flow",
     "boundary",
     "interface",
+    "protocol",
     "primitive",
     "decomposes",
     "stock",
@@ -3359,4 +3557,82 @@ flow S -> A : matter \"in\"
         assert_eq!(r.unit, "ML");
     }
 
+    // ── the interface declaration: the pass-way as its own object (#226) ──
+
+    #[test]
+    fn an_interface_declares_as_its_own_object() {
+        let m = parse_sl(
+            "interface \"Ore Gate\" protocol \"graded ore only\"\n\
+             component Furnace primitive Combining\nsource Mine\n\
+             flow Mine -> \"Ore Gate\" : matter \"ore\"\n\
+             flow \"Ore Gate\" -> Furnace : matter \"ore\"\n",
+        )
+        .unwrap();
+        let gate = m.things.iter().find(|t| t.name == "Ore Gate").unwrap();
+        assert!(gate.interface);
+        assert_eq!(gate.role, Role::Component);
+        assert_eq!(gate.primitive, None);
+        assert_eq!(gate.protocol, "graded ore only");
+        let furnace = m.things.iter().find(|t| t.name == "Furnace").unwrap();
+        assert!(!furnace.interface, "the processor stays interior");
+    }
+
+    /// The separating pair for the split emit rule: a pure pass-way emits as
+    /// an `interface` declaration; a component with processor freight keeps
+    /// the merged suffix form.
+    #[test]
+    fn a_pure_passway_round_trips_through_the_interface_form() {
+        let src = "interface \"Ore Gate\" protocol \"graded ore only\" description \"the intake\"\n\
+                   component Furnace primitive Combining interface\nsource Mine\n\
+                   flow Mine -> \"Ore Gate\" : matter \"ore\"\n\
+                   flow \"Ore Gate\" -> Furnace : matter \"ore\"\n\
+                   flow Mine -> Furnace : matter \"flux\"\n";
+        let m = parse_sl(src).unwrap();
+        let out = emit_sl(&m).unwrap();
+        assert!(
+            out.contains("interface \"Ore Gate\" protocol \"graded ore only\" description \"the intake\""),
+            "pure pass-way emits split form; got:\n{out}"
+        );
+        assert!(
+            out.contains("component Furnace primitive Combining interface"),
+            "merged component keeps the suffix form; got:\n{out}"
+        );
+        let back = parse_sl(&out).unwrap();
+        let gate = back.things.iter().find(|t| t.name == "Ore Gate").unwrap();
+        assert_eq!(gate.protocol, "graded ore only");
+        assert!(gate.interface && gate.primitive.is_none());
+    }
+
+    #[test]
+    fn protocol_rides_the_merged_form_and_round_trips() {
+        let m = parse_sl(
+            "component Gate interface protocol \"badge required\"\nsource S\n\
+             flow S -> Gate : matter \"x\"\n",
+        )
+        .unwrap();
+        assert_eq!(m.things[0].protocol, "badge required");
+        // Gate carries no processor freight, so it re-emits in the split form —
+        // the protocol survives the promotion.
+        let out = emit_sl(&m).unwrap();
+        assert!(out.contains("interface Gate protocol \"badge required\""), "got:\n{out}");
+    }
+
+    /// A protocol is an interface's admission rule — dangling on a plain
+    /// component it is a fault, not a silently ignored word.
+    #[test]
+    fn protocol_without_interface_is_a_fault() {
+        assert!(parse_sl("component A protocol \"x\"\n").is_err());
+    }
+
+    /// The interface line refuses processor freight: work-process character
+    /// belongs to the component the pass-way serves.
+    #[test]
+    fn an_interface_line_refuses_a_primitive() {
+        assert!(parse_sl("interface Gate primitive Combining\n").is_err());
+    }
+
+    #[test]
+    fn an_interface_name_collision_is_a_fault() {
+        assert!(parse_sl("component A\ninterface A\n").is_err());
+    }
 }

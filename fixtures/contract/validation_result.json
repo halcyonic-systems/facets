@@ -21,7 +21,7 @@
       "code": "crossing_flow_without_interface",
       "location": "interactions[1].sink_interface",
       "message": "flow 'supply' enters the system but crosses the boundary without an interface — in Mobus's tuple every external flow passes through a member of I (SSF `bipartite_implies_boundary_complete`: G is bipartite between environment objects and interfaces), so a crossing flow with no interface is a hole in the membrane the author never declared",
-      "suggestion": "Designate the component this flow attaches to as an interface (SL: add `interface` to its component line), or re-route the flow through an existing one",
+      "suggestion": "Declare the pass-way and route the flow through it — the interface emerges from the act of writing a crossing flow. SL: `interface \"<Name>\"`, then split this flow in two: `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` (or the reverse for an outbound flow). If this component IS the pass-way, the merged form stays valid: add `interface` to its component line.",
       "doc": "docs/language/terminology-concordance.md#9-interface"
     }
   ]

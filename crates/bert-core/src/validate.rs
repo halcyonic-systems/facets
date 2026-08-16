@@ -1139,9 +1139,13 @@ fn check_crossing_flows_route_through_interface(
                     ix.info.name, verb
                 ),
                 Some(
-                    "Designate the component this flow attaches to as an interface \
-                     (SL: add `interface` to its component line), or re-route the \
-                     flow through an existing one",
+                    "Declare the pass-way and route the flow through it — the \
+                     interface emerges from the act of writing a crossing flow. \
+                     SL: `interface \"<Name>\"`, then split this flow in two: \
+                     `flow <env> -> \"<Name>\"` and `flow \"<Name>\" -> <component>` \
+                     (or the reverse for an outbound flow). If this component IS \
+                     the pass-way, the merged form stays valid: add `interface` \
+                     to its component line.",
                 ),
             )
             .with_doc(doc::INTERFACE),

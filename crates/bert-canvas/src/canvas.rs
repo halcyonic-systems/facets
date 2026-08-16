@@ -176,6 +176,13 @@ pub struct Thing {
     /// things (their internals are opaque, §4.3.3.2.2).
     #[serde(default)]
     pub interface: bool,
+    /// Authored interface protocol (bert-lenses#333, Mobus Listing 4.2): the
+    /// admission rule this pass-way enforces, in the author's words.
+    /// Meaningful only alongside `interface`; projection prefers it over the
+    /// computed flow-label join. `skip` when empty so models authored before
+    /// it stay byte-identical on disk.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub protocol: String,
     /// The child model this component decomposes into, by reference (SL's
     /// `decomposes`; bert-lenses#89 step 4). `None` for atomic components and
     /// every model authored before step 4; `skip_serializing_if` so those stay
@@ -618,8 +625,9 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
 
     let mut comp_idx: i64 = 0;
     let mut env_idx: i64 = 0;
-    // (systems index, thing id, name) per interface-designated component.
-    let mut designated: Vec<(usize, u64, &str)> = Vec::new();
+    // (systems index, thing id, name, authored protocol) per
+    // interface-designated component.
+    let mut designated: Vec<(usize, u64, &str, &str)> = Vec::new();
     for t in &model.things {
         match t.role {
             Role::Component => {
@@ -672,7 +680,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     }
                 }
                 if t.interface {
-                    designated.push((systems.len() - 1, t.id, &t.name));
+                    designated.push((systems.len() - 1, t.id, &t.name, &t.protocol));
                 }
                 id_map.insert(t.id, id);
             }
@@ -737,7 +745,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
         .map(|t| t.id)
         .collect();
     let mut iface_of: HashMap<u64, Id> = HashMap::new();
-    for (seq, (sys_idx, thing_id, name)) in designated.into_iter().enumerate() {
+    for (seq, (sys_idx, thing_id, name, authored_protocol)) in designated.into_iter().enumerate() {
         let iface_id = Id {
             ty: IdType::Interface,
             indices: vec![0, seq as i64],
@@ -773,7 +781,13 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
         };
         systems[0].boundary.interfaces.push(Interface {
             info: info(iface_id.clone(), 0, name),
-            protocol: labels.join(" · "),
+            // The author's protocol wins (#333, Listing 4.2); the flow-label
+            // join is the fallback for interfaces that never declared one.
+            protocol: if authored_protocol.is_empty() {
+                labels.join(" · ")
+            } else {
+                authored_protocol.to_string()
+            },
             ty,
             exports_to,
             receives_from,
@@ -919,6 +933,25 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             // parent_interface is the designation's inverse: a level-1 system
             // attached to a root-membrane interface IS a designated member of I.
             interface: s.boundary.parent_interface.is_some(),
+            // The claimed Interface record's protocol reads back onto the
+            // thing (#333). The kernel cannot say whether it was authored or
+            // the computed flow-label join — the read-back keeps the best
+            // information the record carries, same trade the `interface`
+            // bool above already makes.
+            protocol: s
+                .boundary
+                .parent_interface
+                .as_ref()
+                .and_then(|iid| {
+                    model.systems.first().and_then(|root| {
+                        root.boundary
+                            .interfaces
+                            .iter()
+                            .find(|i| &i.info.id == iid)
+                            .map(|i| i.protocol.clone())
+                    })
+                })
+                .unwrap_or_default(),
             // The kernel keys decomposition on the id alone; label the
             // reconstructed reference with the component's own name.
             child_model: s.child_model.map(|id| ChildRef {
@@ -987,6 +1020,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             },
             primitive: None,
             interface: false,
+            protocol: String::new(),
             child_model: None,
             stock_unit: String::new(),
             scale: None,
@@ -1220,6 +1254,7 @@ mod tests {
             role,
             primitive: None,
             interface: false,
+            protocol: String::new(),
             child_model: None,
             stock_unit: String::new(),
             scale: None,
@@ -1463,6 +1498,38 @@ mod tests {
             "interactions[0]"
         )));
         assert!(belongs_at_the_gesture(&at(Severity::Error, "mode/Structural")));
+    }
+
+    /// The separating pair for #333: with an authored protocol the projected
+    /// Interface record carries the author's rule; without one it falls back
+    /// to the computed flow-label join. Same model otherwise.
+    #[test]
+    fn authored_protocol_wins_and_the_join_is_the_fallback() {
+        let mut gate = thing(1, "Gate", Role::Component);
+        gate.interface = true;
+        let mut r = bond(10, 3, 1);
+        r.name = "graded ore".into();
+        let base = CanvasModel {
+            lens: Lens::Mobus,
+            model_id: None,
+            things: vec![gate, thing(2, "Core", Role::Component), thing(3, "Mine", Role::Environment)],
+            relations: vec![r, bond(11, 1, 2)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let joined = project(&base);
+        assert_eq!(joined.systems[0].boundary.interfaces[0].protocol, "graded ore");
+
+        let mut authored = base.clone();
+        authored.things[0].protocol = "badge required".into();
+        let world = project(&authored);
+        assert_eq!(world.systems[0].boundary.interfaces[0].protocol, "badge required");
     }
 
     /// Law (#213 / SSF #31): a component stamped `interface` with no crossing
