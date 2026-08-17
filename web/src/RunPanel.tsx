@@ -1,22 +1,21 @@
 // The run/results panel — legible, domain-named. Every label is the model's own
 // name + unit; every number is the kernel's. The face renders, it does not judge.
 import { useState } from "react";
-import {
-  Line,
-  LineChart,
-  ReferenceArea,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from "recharts";
+import { Line, ReferenceArea, ReferenceLine } from "recharts";
 import type { CanvasModel, Comparison, Level, MarkovRunResult, RunResultRich } from "./kernel/types";
 import { Card, Pill, Stat, Verdict, humanize } from "./ui";
 import { horizonOf, unitLabel } from "./runViz";
 import { BungeStateSpace } from "./canvas/BungeStateSpace";
 import { evaluateMetrics, type MetricReading } from "./metrics";
+import {
+  CHART_SERIES,
+  FUTURE_OPACITY,
+  PAST,
+  RunChart,
+  STROKES,
+  midRun,
+  timeAxisLabel,
+} from "./RunChart";
 
 // Category labels are lens-faithful (K≅2 on the run panel): Klir and Bunge share
 // input/output/internal (both authors' own words — Klir ch.2 "input, output, and
@@ -137,9 +136,9 @@ export function RunStory({
         <div className="grid gap-x-8 gap-y-5 xl:grid-cols-2">
           {groupReadings(metrics.readings).map((g) =>
             g.length === 1 ? (
-              <MetricRow key={g[0].name} r={g[0]} tick={tick} height={CHART_H} />
+              <MetricRow key={g[0].name} r={g[0]} tick={tick} height={CHART_H} timeUnit={model?.time_unit} />
             ) : (
-              <MetricFamilyChart key={g[0].familyKey} readings={g} tick={tick} height={CHART_H} />
+              <MetricFamilyChart key={g[0].familyKey} readings={g} tick={tick} height={CHART_H} timeUnit={model?.time_unit} />
             ),
           )}
           {metrics.failures.map((f) => (
@@ -171,6 +170,7 @@ export function RunStory({
               levels={result.levels}
               tick={tick}
               height={CHART_H}
+              timeUnit={model?.time_unit}
             />
           </div>
         )}
@@ -189,7 +189,7 @@ export function RunStory({
 /** The Fit tab (ws3) — only mounted when a CSV is bound (absence is ontology:
  *  no data, no fit). The sharpest MEANINGFUL divergence headlines; a forced
  *  flow trivially matching its own data never does. */
-export function RunFit({ result, tick }: { result: RunResultRich; tick?: number }) {
+export function RunFit({ result, tick, timeUnit }: { result: RunResultRich; tick?: number; timeUnit?: string | null }) {
   const lead = result.comparisons
     .map((c) => ({ c, pct: c.divergence_pct }))
     .filter((r) => r.pct != null && r.pct > 0.5)
@@ -210,9 +210,9 @@ export function RunFit({ result, tick }: { result: RunResultRich; tick?: number 
       <div className="grid gap-x-8 gap-y-6 xl:grid-cols-2">
         {groupComparisons(result.comparisons).map((g) =>
           g.length === 1 ? (
-            <ComparisonChart key={g[0].element} c={g[0]} tick={tick} height={230} />
+            <ComparisonChart key={g[0].element} c={g[0]} tick={tick} height={230} timeUnit={timeUnit} />
           ) : (
-            <ComparisonFamilyChart key={g[0].unit || "unitless"} comparisons={g} tick={tick} height={230} />
+            <ComparisonFamilyChart key={g[0].unit || "unitless"} comparisons={g} tick={tick} height={230} timeUnit={timeUnit} />
           ),
         )}
       </div>
@@ -274,11 +274,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** The chart-series ink (#341, validated): identity colors used ONLY inside
- *  charts. Assignment is by the entity's ALPHABETICAL index — stable across
- *  runs, so a re-run that reorders the leaderboard never repaints a line
- *  (color follows the entity, never its rank). */
-const CHART_SERIES = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"];
 
 /** Family grouping (#341): consecutive-key-independent, order-preserving on
  *  first appearance. Families larger than the palette split into chunks of
@@ -319,29 +314,9 @@ function groupComparisons(comparisons: Comparison[]): Comparison[][] {
 /** A family of readings as ONE chart (#341): the question in the header, a
  *  ranked leaderboard of entities beside it, one line per entity below. Hue
  *  by alphabetical entity order; the leaderboard order is the endpoint's. */
-/** Progressive draw (the recomposition, 2026-08-16): while the shared cursor
- *  is mid-run, a chart's curves grow to it — the past drawn full, the future
- *  faint — so playback moves the panel the way it moves the diagram. At rest
- *  (tick 0, or the cursor at the end) charts render whole, exactly as before.
- *  The past rides separate `≤`-prefixed keys so one data array serves both
- *  lines; the faint line is kept out of the tooltip. */
-function midRun(tick: number | undefined, n: number): boolean {
-  return tick !== undefined && tick > 0 && tick < n - 1;
-}
-const FUTURE_OPACITY = 0.25;
 
-/** Regular tick marks for a run axis (#344 item 3): multiples of a round step,
- *  instead of recharts' irregular auto picks ("2 5 8 11…" read as noise). */
-function axisTicks(n: number): number[] {
-  const step = n <= 16 ? 2 : n <= 60 ? 5 : n <= 120 ? 10 : 25;
-  const out: number[] = [];
-  for (let t = 0; t < n; t += step) out.push(t);
-  if (out[out.length - 1] !== n - 1) out.push(n - 1);
-  return out;
-}
-const PAST = (k: string) => `\u2264 ${k}`;
 
-function MetricFamilyChart({ readings, tick, height = 150 }: { readings: MetricReading[]; tick?: number; height?: number }) {
+function MetricFamilyChart({ readings, tick, height = 150, timeUnit }: { readings: MetricReading[]; tick?: number; height?: number; timeUnit?: string | null }) {
   const first = readings[0];
   const byEntity = [...readings].sort((a, b) => a.entity.localeCompare(b.entity));
   const colorOf = new Map(byEntity.map((r, i) => [r.entity, CHART_SERIES[i]]));
@@ -382,27 +357,15 @@ function MetricFamilyChart({ readings, tick, height = 150 }: { readings: MetricR
           ))}
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
-          <CartesianGrid stroke="var(--hairline)" vertical={false} />
-          {tick !== undefined && tick > 0 && tick < n && (
-            <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
-          )}
-          <XAxis dataKey="t" ticks={axisTicks(n)} tick={{ fontSize: 10, fill: "var(--text-muted)" }} stroke="var(--border)" />
-          <YAxis
-            domain={first.kind === "share" ? [0, 1] : undefined}
-            tick={{ fontSize: 10, fill: "var(--text-muted)" }}
-            stroke="var(--border)"
-            width={44}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "var(--bg-secondary)",
-              border: "1px solid var(--border)",
-              borderRadius: 8,
-              fontSize: 12,
-            }}
-          />
+      <RunChart
+        data={data}
+        n={n}
+        tick={tick}
+        height={height}
+        xLabel={timeAxisLabel(timeUnit)}
+        yLabel={first.kind === "share" ? "share" : first.unit || undefined}
+        yDomain={first.kind === "share" ? [0, 1] : undefined}
+      >
           {byEntity.map((r) => (
             <Line
               key={r.entity}
@@ -412,7 +375,7 @@ function MetricFamilyChart({ readings, tick, height = 150 }: { readings: MetricR
               stroke={colorOf.get(r.entity)}
               strokeOpacity={mid ? FUTURE_OPACITY : 1}
               dot={false}
-              strokeWidth={2}
+              strokeWidth={2.5}
               isAnimationActive={false}
             />
           ))}
@@ -424,13 +387,12 @@ function MetricFamilyChart({ readings, tick, height = 150 }: { readings: MetricR
                 dataKey={PAST(r.entity)}
                 stroke={colorOf.get(r.entity)}
                 dot={false}
-                strokeWidth={2}
+                strokeWidth={2.5}
                 isAnimationActive={false}
                 tooltipType="none"
               />
             ))}
-        </LineChart>
-      </ResponsiveContainer>
+      </RunChart>
     </div>
   );
 }
@@ -439,7 +401,7 @@ function MetricFamilyChart({ readings, tick, height = 150 }: { readings: MetricR
  *  style keeps role (solid executed, dashed actual). Declared-mean lines stay
  *  with the singleton view — three encodings per entity is past the ink
  *  budget of a merged chart. */
-function ComparisonFamilyChart({ comparisons, tick, height = 150 }: { comparisons: Comparison[]; tick?: number; height?: number }) {
+function ComparisonFamilyChart({ comparisons, tick, height = 150, timeUnit }: { comparisons: Comparison[]; tick?: number; height?: number; timeUnit?: string | null }) {
   const byFlow = [...comparisons].sort((a, b) => a.element.localeCompare(b.element));
   const colorOf = new Map(byFlow.map((c, i) => [c.element, CHART_SERIES[i]]));
   const n = Math.max(...comparisons.map((c) => Math.max(c.simulated.length, c.actual.length)));
@@ -478,22 +440,14 @@ function ComparisonFamilyChart({ comparisons, tick, height = 150 }: { comparison
           ))}
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: -12 }}>
-          <CartesianGrid stroke="var(--hairline)" vertical={false} />
-          {tick !== undefined && tick > 0 && tick < n && (
-            <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
-          )}
-          <XAxis dataKey="t" ticks={axisTicks(n)} tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" />
-          <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" width={44} />
-          <Tooltip
-            contentStyle={{
-              background: "var(--bg-secondary)",
-              border: "1px solid var(--border)",
-              borderRadius: 8,
-              fontSize: 12,
-            }}
-          />
+      <RunChart
+        data={data}
+        n={n}
+        tick={tick}
+        height={height}
+        xLabel={timeAxisLabel(timeUnit)}
+        yLabel={comparisons[0].unit || "model units"}
+      >
           {byFlow.map((c) => (
             <Line
               key={`${c.element}-x`}
@@ -531,8 +485,7 @@ function ComparisonFamilyChart({ comparisons, tick, height = 150 }: { comparison
               isAnimationActive={false}
             />
           ))}
-        </LineChart>
-      </ResponsiveContainer>
+      </RunChart>
       <p className="mt-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
         solid = executed (the run) · dashed = actual (your data)
       </p>
@@ -543,7 +496,7 @@ function ComparisonFamilyChart({ comparisons, tick, height = 150 }: { comparison
 /** One declared metric's reading (#203): the author's name and endpoint
  *  number lead; the executed series rides below as a small chart. Same-verb
  *  families arrive pre-sorted by endpoint — the leaderboard reading. */
-function MetricRow({ r, tick, height = 90 }: { r: MetricReading; tick?: number; height?: number }) {
+function MetricRow({ r, tick, height = 90, timeUnit }: { r: MetricReading; tick?: number; height?: number; timeUnit?: string | null }) {
   const n = r.series.length;
   const mid = midRun(tick, n);
   const data = r.series.map((v, t) => ({ t, v, past: mid && t <= tick! ? v : null }));
@@ -563,7 +516,7 @@ function MetricRow({ r, tick, height = 90 }: { r: MetricReading; tick?: number; 
           </div>
         </div>
         <div className="text-right">
-          <div className="text-xl font-semibold tabular" style={{ color: "var(--accent-strong)" }}>
+          <div className="text-2xl font-semibold tabular" style={{ color: "var(--accent-strong)" }}>
             {endpoint}
           </div>
           <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>
@@ -573,27 +526,15 @@ function MetricRow({ r, tick, height = 90 }: { r: MetricReading; tick?: number; 
           </div>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
-          <CartesianGrid stroke="var(--hairline)" vertical={false} />
-          {tick !== undefined && tick > 0 && tick < n && (
-            <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
-          )}
-          <XAxis dataKey="t" ticks={axisTicks(n)} tick={{ fontSize: 10, fill: "var(--text-muted)" }} stroke="var(--border)" />
-          <YAxis
-            domain={r.kind === "share" ? [0, 1] : undefined}
-            tick={{ fontSize: 10, fill: "var(--text-muted)" }}
-            stroke="var(--border)"
-            width={44}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "var(--bg-secondary)",
-              border: "1px solid var(--border)",
-              borderRadius: 8,
-              fontSize: 12,
-            }}
-          />
+      <RunChart
+        data={data}
+        n={n}
+        tick={tick}
+        height={height}
+        xLabel={timeAxisLabel(timeUnit)}
+        yLabel={r.kind === "share" ? "share" : r.unit || undefined}
+        yDomain={r.kind === "share" ? [0, 1] : undefined}
+      >
           <Line
             type="monotone"
             dataKey="v"
@@ -601,7 +542,7 @@ function MetricRow({ r, tick, height = 90 }: { r: MetricReading; tick?: number; 
             stroke="var(--accent)"
             strokeOpacity={mid ? FUTURE_OPACITY : 1}
             dot={false}
-            strokeWidth={2}
+            strokeWidth={2.5}
             isAnimationActive={false}
           />
           {mid && (
@@ -610,18 +551,17 @@ function MetricRow({ r, tick, height = 90 }: { r: MetricReading; tick?: number; 
               dataKey="past"
               stroke="var(--accent)"
               dot={false}
-              strokeWidth={2}
+              strokeWidth={2.5}
               isAnimationActive={false}
               tooltipType="none"
             />
           )}
-        </LineChart>
-      </ResponsiveContainer>
+      </RunChart>
     </div>
   );
 }
 
-function ComparisonChart({ c, tick, height = 150 }: { c: Comparison; tick?: number; height?: number }) {
+function ComparisonChart({ c, tick, height = 150, timeUnit }: { c: Comparison; tick?: number; height?: number; timeUnit?: string | null }) {
   const n = Math.max(c.simulated.length, c.actual.length, c.declared?.length ?? 0);
   const mid = midRun(tick, n);
   const data = Array.from({ length: n }, (_, i) => ({
@@ -652,9 +592,16 @@ function ComparisonChart({ c, tick, height = 150 }: { c: Comparison; tick?: numb
           </span>
         )}
       </div>
-      <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: -12 }}>
-          <CartesianGrid stroke="var(--hairline)" vertical={false} />
+      <RunChart
+        data={data}
+        n={n}
+        tick={tick}
+        height={height}
+        xLabel={timeAxisLabel(timeUnit)}
+        yLabel={c.unit || "model units"}
+      >
+          {/* The forecast region: past the data's horizon the executed line is
+              a forecast with nothing to check against (fit is in-sample only). */}
           {forecastTicks > 0 && h != null && (
             <ReferenceArea
               x1={h}
@@ -667,21 +614,6 @@ function ComparisonChart({ c, tick, height = 150 }: { c: Comparison; tick?: numb
           {forecastTicks > 0 && h != null && (
             <ReferenceLine x={h} stroke="var(--text-muted)" strokeDasharray="4 4" />
           )}
-          {/* One tick state everywhere (walkthrough #10): the scrubber's
-              position draws on every chart, so playback moves the panel too. */}
-          {tick !== undefined && tick > 0 && tick < n && (
-            <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
-          )}
-          <XAxis dataKey="t" ticks={axisTicks(n)} tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" />
-          <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" width={44} />
-          <Tooltip
-            contentStyle={{
-              background: "var(--bg-secondary)",
-              border: "1px solid var(--border)",
-              borderRadius: 8,
-              fontSize: 12,
-            }}
-          />
           {c.declared && (
             <Line
               type="monotone"
@@ -726,8 +658,7 @@ function ComparisonChart({ c, tick, height = 150 }: { c: Comparison; tick?: numb
             strokeWidth={STROKES.actual.width}
             isAnimationActive={false}
           />
-        </LineChart>
-      </ResponsiveContainer>
+      </RunChart>
       <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
         <LegendSwatch stroke={STROKES.executed} color="var(--accent)" label="executed (the run, model units)" />
         <LegendSwatch
@@ -748,14 +679,6 @@ function ComparisonChart({ c, tick, height = 150 }: { c: Comparison; tick?: numb
   );
 }
 
-// The three series wear three strokes, not three shades (#283): executed
-// solid, actual dashed, declared dotted. Declared here, drawn identically in
-// the chart and in the legend swatches — the legend shows the line itself.
-const STROKES = {
-  executed: { dash: undefined as string | undefined, width: 2 },
-  actual: { dash: "6 4" as string | undefined, width: 2 },
-  declared: { dash: "1 4" as string | undefined, width: 1.5 },
-};
 
 // #282: the Klir deck — a DTMC run wears DTMC semantics. Steps, states, and
 // occupancy; no Δt, no conservation chrome (probability is the only mass here,
@@ -822,31 +745,16 @@ export function DtmcPanel({
       </Card>
 
       <Card title="State occupancy" source="bert-compose · wasm">
-        <ResponsiveContainer width="100%" height={170}>
-          <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: -12 }}>
-            <CartesianGrid stroke="var(--hairline)" vertical={false} />
-            {tick !== undefined && tick > 0 && tick < steps && (
-              <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
-            )}
-            <XAxis
-              dataKey="step"
-              tick={{ fontSize: 11, fill: "var(--text-muted)" }}
-              stroke="var(--border)"
-            />
-            <YAxis
-              domain={[0, 1]}
-              tick={{ fontSize: 11, fill: "var(--text-muted)" }}
-              stroke="var(--border)"
-              width={44}
-            />
-            <Tooltip
-              contentStyle={{
-                background: "var(--bg-secondary)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 12,
-              }}
-            />
+        <RunChart
+          data={data}
+          n={steps}
+          tick={tick}
+          height={170}
+          xKey="step"
+          xLabel="step"
+          yLabel="probability"
+          yDomain={[0, 1]}
+        >
             {run.states.map((s, i) => (
               <Line
                 key={s}
@@ -854,12 +762,11 @@ export function DtmcPanel({
                 dataKey={s}
                 stroke={STATE_COLORS[i % STATE_COLORS.length]}
                 dot={false}
-                strokeWidth={2}
+                strokeWidth={2.5}
                 isAnimationActive={false}
               />
             ))}
-          </LineChart>
-        </ResponsiveContainer>
+      </RunChart>
         <div
           className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px]"
           style={{ color: "var(--text-muted)" }}
@@ -928,11 +835,13 @@ function LevelsChart({
   levels,
   tick,
   height = 110,
+  timeUnit,
 }: {
   trajectories: NonNullable<RunResultRich["trajectories"]>;
   levels: Level[];
   tick?: number;
   height?: number;
+  timeUnit?: string | null;
 }) {
   // Internal stocks only: a source's "trajectory" is its declared rate drawn
   // flat — the rates-as-levels confusion all over again (#344 item 2). The
@@ -979,22 +888,14 @@ function LevelsChart({
                 ))}
               </div>
             </div>
-            <ResponsiveContainer width="100%" height={height}>
-              <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
-                <CartesianGrid stroke="var(--hairline)" vertical={false} />
-                {tick !== undefined && tick > 0 && tick < n && (
-                  <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
-                )}
-                <XAxis dataKey="t" ticks={axisTicks(n)} tick={{ fontSize: 10, fill: "var(--text-muted)" }} stroke="var(--border)" />
-                <YAxis tick={{ fontSize: 10, fill: "var(--text-muted)" }} stroke="var(--border)" width={44} />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--bg-secondary)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                />
+            <RunChart
+              data={data}
+              n={n}
+              tick={tick}
+              height={height}
+              xLabel={timeAxisLabel(timeUnit)}
+              yLabel={unitLabel(unit).text}
+            >
                 {byName.map((t) => (
                   <Line
                     key={t.name}
@@ -1004,7 +905,7 @@ function LevelsChart({
                     stroke={colorOf.get(t.name)}
                     strokeOpacity={mid ? FUTURE_OPACITY : 1}
                     dot={false}
-                    strokeWidth={2}
+                    strokeWidth={2.5}
                     isAnimationActive={false}
                   />
                 ))}
@@ -1016,13 +917,12 @@ function LevelsChart({
                       dataKey={PAST(t.name)}
                       stroke={colorOf.get(t.name)}
                       dot={false}
-                      strokeWidth={2}
+                      strokeWidth={2.5}
                       isAnimationActive={false}
                       tooltipType="none"
                     />
                   ))}
-              </LineChart>
-            </ResponsiveContainer>
+      </RunChart>
           </div>
         );
       })}

@@ -142,7 +142,9 @@ export function RunMode({
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           {tab === "story" && <RunStory result={result} lens={lens} tick={tick} model={model} />}
-          {tab === "fit" && hasFit && <RunFit result={result} tick={tick} />}
+          {tab === "fit" && hasFit && (
+            <RunFit result={result} tick={tick} timeUnit={model?.time_unit} />
+          )}
           {tab === "table" && (
             <RunTable
               result={result}
