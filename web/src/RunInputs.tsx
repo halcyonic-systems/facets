@@ -189,7 +189,7 @@ export function RunInputs({
   }
 
   return (
-    <Card title="Inputs" source="declared in the model · edits re-run">
+    <Card title="Inputs" source="declared · edits re-run">
       {onReset && (
         <button
           onClick={onReset}

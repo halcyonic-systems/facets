@@ -383,7 +383,7 @@ function TimeRow({
     </label>
   );
   return (
-    <Card title="Time" source="the run's slice · edits re-run">
+    <Card title="Time" source="edits re-run">
       <div className="flex flex-wrap items-center gap-4">
         {!time.klir &&
           field(
