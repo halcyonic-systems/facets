@@ -2020,10 +2020,98 @@ function Workspace() {
     }
   }
 
+  // ws-D (#345): the workbench controls, dissolved upward from the strip.
+  // Wrapped in the data-lens scope so the lens seam re-tints them inside the
+  // menu bar (which sits outside the workbench's own data-lens container).
+  const workbenchControls = canvasModel ? (
+    <div className="flex items-center gap-2" data-lens={canvasModel.lens}>
+      <div
+        className="flex items-center gap-0.5 p-0.5"
+        style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
+      >
+        {WORK_MODES.map((m) => (
+          <button
+            key={m}
+            onClick={() => setWorkMode(m)}
+            className="px-2 py-0.5 text-xs font-body transition-colors"
+            style={{
+              borderRadius: "var(--radius-pill)",
+              background: workMode === m ? "var(--accent-strong)" : "transparent",
+              color: workMode === m ? "var(--text-on-accent)" : "var(--text-secondary)",
+              transition: "var(--transition-base)",
+            }}
+            title={WORK_MODE_TITLE[m]}
+          >
+            {WORK_MODE_LABEL[m]}
+          </button>
+        ))}
+      </div>
+      <div
+        className="flex items-center gap-0.5 p-0.5"
+        style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
+        title={
+          !lensTouched && canvasModel.lens === "Mobus"
+            ? "Mobus by default: the fullest reading. Switch any time."
+            : "The active lens — each tradition asks its own question of the model"
+        }
+      >
+        {LENSES.map((l) => (
+          <button
+            key={l}
+            onClick={() => setLens(l)}
+            className="px-2 py-0.5 text-xs font-body transition-colors"
+            style={{
+              borderRadius: "var(--radius-pill)",
+              background: canvasModel.lens === l ? "var(--lens-accent)" : "transparent",
+              color: canvasModel.lens === l ? "var(--text-on-accent)" : "var(--text-secondary)",
+              transition: "var(--transition-base)",
+            }}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
+      {/* #204: the review as an action; the pill beside it is the standing
+          reading. Same verbs, menu-bar register. */}
+      <button
+        onClick={invokeReview}
+        className="px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em]"
+        style={{
+          background: "var(--accent-strong)",
+          color: "var(--text-on-accent)",
+          borderRadius: "var(--radius-sm)",
+        }}
+        title={`Review this model against the kernel at ${MODE_BY_LENS[canvasModel.lens]} mode`}
+      >
+        Review
+      </button>
+      <Pill tone={clean ? "ok" : "warning"}>
+        {verdict === null
+          ? "…"
+          : clean
+            ? "✓ clean"
+            : `${verdict.issues.length} issue${verdict.issues.length === 1 ? "" : "s"}`}
+      </Pill>
+      <button
+        onClick={() => setSlOpen((o) => !o)}
+        className="px-2 py-0.5 text-xs font-body transition-colors"
+        style={{
+          borderRadius: "var(--radius-pill)",
+          background: slOpen ? "var(--lens-accent)" : "var(--bg-surface)",
+          color: slOpen ? "var(--text-on-accent)" : "var(--text-secondary)",
+        }}
+        title="Toggle the SL text pane (textual authoring surface)"
+      >
+        SL
+      </button>
+    </div>
+  ) : undefined;
+
   return (
     <>
       <MenuBar
         loaded={true}
+        controls={workbenchControls}
         onNew={newModel}
         onOpen={() => openHomeAt({ view: "library" })}
         onSave={() => void quickSave()}
@@ -2106,136 +2194,24 @@ function Workspace() {
           </nav>
         )}
 
-        {/* Provisional control strip — temporary neutral home for the
-            lens-switch pills, clean/issues Pill, and the Ît/T + Run controls
-            that used to live inside the canvas Card. NOT a designed toolbar:
-            arrangement of the workbench's controls is still open. */}
-        {canvasModel && (
+        {/* ws-D (#345): the control strip dissolved upward into the menu bar
+            (see workbenchControls below). What remains here is the lens's
+            QUESTION alone (#100/#7) — one quiet display line, re-mounted on
+            each switch so the settle animation re-runs when it changes. */}
+        {canvasModel && desc && (
           <div
-            className="flex flex-wrap items-center gap-3 border-b px-4 py-2"
+            className="border-b px-4 py-1"
             style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
           >
-            {/* #304: the mode switch — sibling of the lens pills, left of
-                them. A lens is a reading and reads at either rung; the mode
-                decides which rung's face fills the stage. #312 move 2 put Run
-                on this axis: it is the one control that says the run exists, so
-                it is always visible while a model is open, and pressing ▶ Run
-                arrives here on its own. */}
-            <div
-              className="flex items-center gap-1 rounded-pill p-1"
-              style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
-            >
-              {WORK_MODES.map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setWorkMode(m)}
-                  className="rounded-pill px-3 py-1.5 text-sm font-body transition-colors"
-                  style={{
-                    borderRadius: "var(--radius-pill)",
-                    background: workMode === m ? "var(--accent-strong)" : "transparent",
-                    color: workMode === m ? "var(--text-on-accent)" : "var(--text-secondary)",
-                    transition: "var(--transition-base)",
-                  }}
-                  title={WORK_MODE_TITLE[m]}
-                >
-                  {WORK_MODE_LABEL[m]}
-                </button>
-              ))}
+            <div key={`${canvasModel.lens}-${workMode}`} className="lens-question">
+              {/* #309: the registry's question speaks from the generative rung.
+                  A Source/Data-level entry in Data mode hasn't earned it yet —
+                  it gets the data rung's own. */}
+              {workMode === "data" &&
+              (canvasModel.klir_level === "Source" || canvasModel.klir_level === "Data")
+                ? "what did I observe? — variables over a support, their states recorded; nothing behind them is asserted"
+                : desc.question}
             </div>
-            <div
-              className="flex items-center gap-1 rounded-pill p-1"
-              style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
-            >
-              {LENSES.map((l) => (
-                <button
-                  key={l}
-                  onClick={() => setLens(l)}
-                  className="rounded-pill px-3 py-1.5 text-sm font-body transition-colors"
-                  style={{
-                    borderRadius: "var(--radius-pill)",
-                    background: canvasModel.lens === l ? "var(--lens-accent)" : "transparent",
-                    color: canvasModel.lens === l ? "var(--text-on-accent)" : "var(--text-secondary)",
-                    transition: "var(--transition-base)",
-                  }}
-                >
-                  {l}
-                </button>
-              ))}
-            </div>
-            {/* The default is a decision, so it says so. A model opens on Mobus
-                because that lens asks the most of a model; the pills beside this
-                note are how you leave. Retires once the picker has been used. */}
-            {!lensTouched && canvasModel.lens === "Mobus" && (
-              <span className="text-xs font-body" style={{ color: "var(--text-muted)" }}>
-                Mobus by default: the fullest reading. Switch any time.
-              </span>
-            )}
-            {/* Lens switching is question switching (#100): each tradition
-                answers a different guiding question, so the picker docks the
-                active lens's question as orientation copy. Kernel copy — the
-                same describe() string the contract fixtures pin. Rendered with
-                real presence (#7): display serif in the lens accent, settling
-                briefly on each switch — the key re-mounts the span so the
-                animation re-runs exactly when the question changes. */}
-            {/* placeholder — the question moved to its own display band below */}
-            {/* #204: the review as an action. The pill beside it is the standing
-                reading; this button is the author asking for the report. */}
-            <button
-              onClick={invokeReview}
-              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em]"
-              style={{
-                background: "var(--accent-strong)",
-                color: "var(--text-on-accent)",
-                borderRadius: "var(--radius-sm)",
-              }}
-              title={`Review this model against the kernel at ${MODE_BY_LENS[canvasModel.lens]} mode`}
-            >
-              Review
-            </button>
-            <Pill tone={clean ? "ok" : "warning"}>
-              {verdict === null
-                ? "…"
-                : clean
-                  ? "✓ clean"
-                  : `${verdict.issues.length} issue${verdict.issues.length === 1 ? "" : "s"}`}
-            </Pill>
-            <button
-              onClick={() => setSlOpen((o) => !o)}
-              className="rounded-pill px-3 py-1.5 text-sm font-body transition-colors"
-              style={{
-                borderRadius: "var(--radius-pill)",
-                background: slOpen ? "var(--lens-accent)" : "var(--bg-surface)",
-                color: slOpen ? "var(--text-on-accent)" : "var(--text-secondary)",
-              }}
-              title="Toggle the SL text pane (textual authoring surface)"
-            >
-              SL
-            </button>
-            {/* Δt/T live with the run they govern, in Run mode beside the
-                inputs. The run controls left this strip for the dock's
-                transport spine (run-legibility, 2026-08-17): one place starts
-                a run, one place plays it, and that place is the bench. Run
-                mode itself is one click away on the mode switch. */}
-            {/* The lens's stance, declared (#7, boldened on review): a
-                full-width display band under the controls — the strip is
-                flex-wrap, so basis-full lands the question on its own line,
-                where the display serif can run large without fighting the
-                buttons. */}
-            {desc && (
-              <div
-                key={`${canvasModel.lens}-${workMode}`}
-                className="lens-question basis-full pb-1 pt-0.5"
-              >
-                {/* #309: the registry's question speaks from the generative
-                    rung (the behavior function). A Source/Data-level entry in
-                    Data mode hasn't earned that question yet — it gets the
-                    data rung's own. */}
-                {workMode === "data" &&
-                (canvasModel.klir_level === "Source" || canvasModel.klir_level === "Data")
-                  ? "what did I observe? — variables over a support, their states recorded; nothing behind them is asserted"
-                  : desc.question}
-              </div>
-            )}
           </div>
         )}
 
@@ -3052,8 +3028,13 @@ export function MenuBar({
   pinned = false,
   onTogglePin,
   onOpenPin,
+  controls,
 }: {
   loaded: boolean;
+  /** #345 ws-D: the workbench controls, dissolved upward from the old
+   *  strip — mode switch, lens pills, Review, clean chip, SL. The caller
+   *  wraps them in a data-lens scope so the lens seam re-tints them here. */
+  controls?: React.ReactNode;
   onNew: () => void;
   onOpen: () => void;
   onSave: () => void;
@@ -3378,6 +3359,10 @@ export function MenuBar({
 
       {/* Pin the open model to the workbench — only shown when the model has
           an address a pin could name. */}
+      {controls && (
+        <div className="ml-auto flex min-w-0 flex-wrap items-center gap-2">{controls}</div>
+      )}
+
       {canPin && onTogglePin && (
         <button
           onClick={onTogglePin}
