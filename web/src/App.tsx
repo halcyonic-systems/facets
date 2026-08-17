@@ -279,6 +279,17 @@ function Workspace() {
   const [markovRun, setMarkovRun] = useState<MarkovRunResult | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  // Playback state, ONE owner (run-legibility, 2026-08-17): lifted from
+  // SimScrubber so ▶ Run can auto-play its result once (playing a recorded
+  // trace is reading, not executing — trace-separation intact) and so playback
+  // survives the scrubber remounting across modes. `playLoop=false` is the
+  // auto-play-once posture: rest at the last frame; a manual ▶ press loops.
+  const [playing, setPlaying] = useState(false);
+  const [playLoop, setPlayLoop] = useState(true);
+  const handlePlayingChange = useCallback((p: boolean) => {
+    setPlaying(p);
+    if (p) setPlayLoop(true);
+  }, []);
   const [selectedRelationId, setSelectedRelationId] = useState<number | null>(null);
   const [selectedThingId, setSelectedThingId] = useState<number | null>(null);
   const [boundaryAnchor, setBoundaryAnchor] = useState<Pt | null>(null);
@@ -523,7 +534,15 @@ function Workspace() {
   // (walk enter/exit, open, edit) may orphan it, so the inspector closes.
   useEffect(() => setInterfaceSel(null), [canvasModel]);
 
-  const runWith = (modelJson: string, csv: string, m: Manifest, dtv: number, tv: number, edited = false) => {
+  const runWith = (
+    modelJson: string,
+    csv: string,
+    m: Manifest,
+    dtv: number,
+    tv: number,
+    edited = false,
+    autoplay = false,
+  ) => {
     try {
       // No data attached → the declared amounts alone govern (run_rich, same
       // domain-named readout, comparisons empty by construction). With a CSV
@@ -534,8 +553,17 @@ function Workspace() {
       setMarkovRun(null);
       setRunError(null);
       setTick(0);
+      // Auto-play the recorded trace once (▶ Run and slider-edit re-runs): the
+      // world visibly answers with no further clicks, then rests at the end.
+      if (autoplay && r.ticks > 1) {
+        setPlaying(true);
+        setPlayLoop(false);
+      } else {
+        setPlaying(false);
+      }
     } catch (e) {
       setResult(null);
+      setPlaying(false);
       setRunError(e instanceof Error ? e.message : String(e));
     }
   };
@@ -565,15 +593,24 @@ function Workspace() {
   // graph (transitions), so `run_markov` evolves a distribution over its states
   // (T reused as the step horizon). No CSV/manifest: a state machine's dynamics
   // are its transition weights, not a forcing series.
-  const runKlir = (model: CanvasModel, ticks: number) => {
+  const runKlir = (model: CanvasModel, ticks: number, autoplay = false) => {
     try {
       const r = runMarkov(model, ticks);
       setMarkovRun(r);
       setResult(null);
       setRunError(null);
       setTick(0);
+      // Same auto-play-once grammar as the conservation run: the mass walks
+      // the diagram after ▶ Run, then rests on the final distribution.
+      if (autoplay && r.history.length > 1) {
+        setPlaying(true);
+        setPlayLoop(false);
+      } else {
+        setPlaying(false);
+      }
     } catch (e) {
       setMarkovRun(null);
+      setPlaying(false);
       setRunError(e instanceof Error ? e.message : String(e));
     }
   };
@@ -1458,7 +1495,7 @@ function Workspace() {
     setDirty(true);
     if (runCsv && nextModel.lens !== "Klir") {
       try {
-        runWith(JSON.stringify(project(nextModel)), runCsv, manifest, dt, t, true);
+        runWith(JSON.stringify(project(nextModel)), runCsv, manifest, dt, t, true, true);
       } catch (e) {
         setToast(e instanceof Error ? e.message : String(e));
       }
@@ -2112,10 +2149,10 @@ function Workspace() {
                 const onRun = () => {
                   setWorkMode("run");
                   if (runKind === "dtmc") {
-                    if (dtmcRunnable) runKlir(canvasModel, t);
+                    if (dtmcRunnable) runKlir(canvasModel, t, true);
                   } else if (runKind === "conservation" && runCsv) {
                     const m = modelForRun();
-                    if (m) runWith(m.json, runCsv, manifest, dt, t, m.edited);
+                    if (m) runWith(m.json, runCsv, manifest, dt, t, m.edited, true);
                   }
                 };
                 // The unrunnable branches are now VISIBLE copy, not tooltips
@@ -2806,7 +2843,14 @@ function Workspace() {
                       dock={LensPalette[canvasModel.lens].run === "conservation"}
                       transport={
                         result ? (
-                          <SimScrubber steps={result.ticks} tick={tick} onTick={setTick} />
+                          <SimScrubber
+                            steps={result.ticks}
+                            tick={tick}
+                            onTick={setTick}
+                            playing={playing}
+                            onPlayingChange={handlePlayingChange}
+                            loop={playLoop}
+                          />
                         ) : null
                       }
                       />
@@ -2818,7 +2862,14 @@ function Workspace() {
                       the stage rather than inside either one. */}
                   {result && workMode !== "run" && (
                     <div className="mt-3 grid gap-3">
-                      <SimScrubber steps={result.ticks} tick={tick} onTick={setTick} />
+                      <SimScrubber
+                        steps={result.ticks}
+                        tick={tick}
+                        onTick={setTick}
+                        playing={playing}
+                        onPlayingChange={handlePlayingChange}
+                        loop={playLoop}
+                      />
                       <div className="flex flex-wrap items-center gap-3">
                         <Pill tone={result.conserved ? "ok" : "error"}>
                           {result.conserved ? "✓ conserved" : "⚠ leak"}
@@ -2834,7 +2885,16 @@ function Workspace() {
                       Structure-primary — the mass rides the diagram above; this
                       is the secondary, noted reading. It carries no conservation
                       pill (a distribution run has no residual to show). */}
-                  {markovRun && <MarkovReadout run={markovRun} tick={tick} onTick={setTick} />}
+                  {markovRun && (
+                    <MarkovReadout
+                      run={markovRun}
+                      tick={tick}
+                      onTick={setTick}
+                      playing={playing}
+                      onPlayingChange={handlePlayingChange}
+                      loop={playLoop}
+                    />
+                  )}
 
                   {/* The Run / Formal / Review panels no longer stack here — they
                       live in the right-docked InspectorDock (a sibling of this

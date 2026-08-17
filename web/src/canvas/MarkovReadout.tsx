@@ -14,15 +14,28 @@ export function MarkovReadout({
   run,
   tick,
   onTick,
+  playing,
+  onPlayingChange,
+  loop,
 }: {
   run: MarkovRunResult;
   tick: number;
   onTick: (k: number) => void;
+  playing: boolean;
+  onPlayingChange: (p: boolean) => void;
+  loop: boolean;
 }) {
   const row = run.history[Math.max(0, Math.min(run.history.length - 1, tick))] ?? [];
   return (
     <div className="mt-3 grid gap-3" data-markov-controls>
-      <SimScrubber steps={run.history.length} tick={tick} onTick={onTick} />
+      <SimScrubber
+        steps={run.history.length}
+        tick={tick}
+        onTick={onTick}
+        playing={playing}
+        onPlayingChange={onPlayingChange}
+        loop={loop}
+      />
       <div
         className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs tabular"
         style={{ color: "var(--text-muted)" }}
