@@ -130,7 +130,7 @@ export function RunCard({
           ticks while the trace plays; the key stock rides under it at the
           weight of a supporting fact, not a second headline. */}
       {facts && (facts.headValue || facts.stockValue != null) && (
-        <Band className="py-2">
+        <Band className="py-1.5">
           {facts.head && facts.headValue && (
             <div className="flex items-baseline justify-between gap-2" title={facts.head.detail}>
               <span className="min-w-0 truncate text-xs" style={{ color: "var(--text-secondary)" }}>
@@ -203,7 +203,7 @@ export function RunCard({
           keep their group surface in Readouts' rail). Same control, same commit
           path as everywhere, sitting a rule away from the curve they move. */}
       {paramRows.length > 0 && (
-        <Band className="py-1.5">
+        <Band className="py-1">
           {paramRows.map(({ param, relation }) => (
             <ParamControl
               key={param.name}
@@ -226,7 +226,7 @@ export function RunCard({
         </Band>
       )}
 
-      <Band className="py-2" title="the run's time slice — edits re-run">
+      <Band className="py-1.5" title="the run's time slice — edits re-run">
         <TimeRow time={time} frame={false} />
       </Band>
     </div>

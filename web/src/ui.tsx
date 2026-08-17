@@ -421,7 +421,11 @@ export function Tabs({
 }) {
   return (
     <div className="flex items-stretch border-b" style={{ borderColor: "var(--hairline)" }}>
-      <div className="flex min-w-0 flex-1 items-stretch overflow-x-auto">
+      {/* Scrolls under width pressure but never draws the bar (field report
+          2026-08-17: a visible scrollbar on a three-tab strip read as clutter). */}
+      <div
+        className="flex min-w-0 flex-1 items-stretch overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {tabs.map((t) => (
           <TabButton
             key={t.key}
