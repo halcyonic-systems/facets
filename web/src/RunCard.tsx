@@ -4,6 +4,9 @@
 // sliders, the time slice, the glance facts at the cursor, and the ONE
 // headline chart. Everything deeper lives in the Readouts expansion (⤢).
 // Collapsible to a sliver — a viewing posture, so the state lives here.
+// The knob and the curve it bends stay on one surface: nothing here collapses
+// or hides behind disclosure, and the sections are divided by hairlines rather
+// than by gaps, so the whole run reads in one downward pass.
 // No systems fact is decided in this file; every number is the kernel's and
 // every edit routes through the same commit path as every other surface.
 import { useState } from "react";
@@ -17,6 +20,31 @@ import { TimeRow } from "./Readouts";
 import { evaluateMetrics } from "./metrics";
 import { humanize } from "./ui";
 import { unitLabel } from "./runViz";
+
+/** One band of the stack. The rule rides the TOP of every band but the first,
+ *  so the divisions are the card's own structure and not decoration hung on
+ *  each section. */
+function Band({
+  first,
+  className = "",
+  title,
+  children,
+}: {
+  first?: boolean;
+  className?: string;
+  title?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`px-3 ${className}`}
+      title={title}
+      style={first ? undefined : { borderTop: "1px solid var(--hairline)" }}
+    >
+      {children}
+    </div>
+  );
+}
 
 export function RunCard({
   model,
@@ -64,7 +92,7 @@ export function RunCard({
 
   return (
     <div
-      className="absolute right-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-72 flex-col overflow-y-auto p-3"
+      className="absolute right-3 top-3 z-10 flex max-h-[calc(100%-1.5rem)] w-72 flex-col overflow-y-auto"
       style={{
         background: "var(--bg-secondary)",
         border: "1px solid var(--border)",
@@ -72,7 +100,7 @@ export function RunCard({
         boxShadow: "var(--shadow-card)",
       }}
     >
-      <div className="mb-2 flex items-center gap-2">
+      <Band first className="flex items-center gap-2 py-1.5">
         <span
           className="text-xs font-semibold uppercase tracking-wide"
           style={{ color: "var(--text-primary)" }}
@@ -83,7 +111,7 @@ export function RunCard({
         <button
           onClick={onOpenReadouts}
           title="Open Readouts — every chart, full page"
-          className="px-1.5 text-xs"
+          className="text-[11px]"
           style={{ color: "var(--text-muted)" }}
         >
           ⤢ readouts
@@ -91,25 +119,25 @@ export function RunCard({
         <button
           onClick={() => setCollapsed(true)}
           title="Collapse the run card"
-          className="px-1 text-xs"
+          className="pl-1 text-xs"
           style={{ color: "var(--text-muted)" }}
         >
           ▸
         </button>
-      </div>
+      </Band>
 
-      {/* Glance facts — the cursor's answer, stacked for the card's width.
-          The headline is the AT-CURSOR value, so it ticks up while the trace
-          plays — the living number is the card's whole point. */}
-      {facts && (
-        <div className="mb-2 grid gap-1">
+      {/* Beat one — the reading. The headline is the AT-CURSOR value, so it
+          ticks while the trace plays; the key stock rides under it at the
+          weight of a supporting fact, not a second headline. */}
+      {facts && (facts.headValue || facts.stockValue != null) && (
+        <Band className="py-2">
           {facts.head && facts.headValue && (
             <div className="flex items-baseline justify-between gap-2" title={facts.head.detail}>
-              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+              <span className="min-w-0 truncate text-xs" style={{ color: "var(--text-secondary)" }}>
                 {facts.head.name}
               </span>
               <span
-                className="text-xl font-semibold tabular"
+                className="shrink-0 text-2xl font-semibold leading-none tabular"
                 style={{ color: "var(--accent-strong)" }}
               >
                 {facts.headValue}
@@ -117,22 +145,24 @@ export function RunCard({
             </div>
           )}
           {facts.internal && facts.stockValue != null && (
-            <div className="flex items-baseline justify-between gap-2 text-xs">
-              <span style={{ color: "var(--text-muted)" }}>{facts.internal.name}</span>
-              <span className="tabular" style={{ color: "var(--text-primary)" }}>
+            <div className="mt-1 flex items-baseline justify-between gap-2 text-xs">
+              <span className="min-w-0 truncate" style={{ color: "var(--text-muted)" }}>
+                {facts.internal.name}
+              </span>
+              <span className="shrink-0 tabular" style={{ color: "var(--text-primary)" }}>
                 {humanize(facts.stockValue)}
                 {facts.internal.unit ? ` ${unitLabel(facts.internal.unit).text}` : ""}
               </span>
             </div>
           )}
-        </div>
+        </Band>
       )}
 
-      {/* The ONE headline chart — the declared metric's running total, drawn
-          bare (the glance row above is its header; repeating name and number
-          here would say the same fact twice in one card). */}
+      {/* Beat two — the shape. The ONE headline chart, drawn bare (the reading
+          above is its header) and given the height at which a curve's turn is
+          actually legible rather than merely present. */}
       {result && headReading && (
-        <div className="mb-2">
+        <Band className="pb-1 pt-2">
           <RunChart
             data={headReading.series.map((v, i) => ({
               t: i,
@@ -141,7 +171,7 @@ export function RunCard({
             }))}
             n={headReading.series.length}
             tick={tick}
-            height={120}
+            height={140}
             xLabel={timeAxisLabel(model.time_unit)}
             yLabel={headReading.kind === "share" ? "share" : headReading.unit || undefined}
             yDomain={headReading.kind === "share" ? [0, 1] : undefined}
@@ -166,13 +196,14 @@ export function RunCard({
               />
             )}
           </RunChart>
-        </div>
+        </Band>
       )}
 
-      {/* The declared knobs (Flow-anchored; % splits keep their group surface
-          in Readouts' rail). Same control, same commit path as everywhere. */}
+      {/* Beat three — the knobs. The declared params (Flow-anchored; % splits
+          keep their group surface in Readouts' rail). Same control, same commit
+          path as everywhere, sitting a rule away from the curve they move. */}
       {paramRows.length > 0 && (
-        <div className="mb-1">
+        <Band className="py-1.5">
           {paramRows.map(({ param, relation }) => (
             <ParamControl
               key={param.name}
@@ -185,23 +216,19 @@ export function RunCard({
           {onResetInputs && (
             <button
               onClick={onResetInputs}
-              className="mt-0.5 text-[11px]"
+              className="mt-1 text-[11px]"
               style={{ color: "var(--text-muted)" }}
               title="Restore every amount to what the model declares"
             >
               ↺ reset to declared
             </button>
           )}
-        </div>
+        </Band>
       )}
 
-      <div
-        className="mt-1 border-t pt-2"
-        style={{ borderColor: "var(--hairline)" }}
-        title="the run's time slice — edits re-run"
-      >
+      <Band className="py-2" title="the run's time slice — edits re-run">
         <TimeRow time={time} frame={false} />
-      </div>
+      </Band>
     </div>
   );
 }
