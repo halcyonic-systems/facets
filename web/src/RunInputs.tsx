@@ -22,7 +22,8 @@
 // changed. The taxonomy groups below remain the floor for every undeclared
 // magnitude, so declaring params is enrichment, never a requirement.
 import { useState } from "react";
-import type { CanvasModel, Manifest, ParamDecl, Relation } from "./kernel/types";
+import type { CanvasModel, Manifest, Relation } from "./kernel/types";
+import { declaredRelations, forcedByColumn, resolveParamRows } from "./kernel/params";
 import { AmountField, ParamControl, useCommitOnRelease } from "./ParamControl";
 import { Card } from "./ui";
 
@@ -158,29 +159,17 @@ export function RunInputs({
   onReset?: () => void;
 }) {
   const thing = (id: number) => model.things.find((t) => t.id === id);
-  const declared = model.relations.filter((r) => r.is_bond && (r.amount != null || r.ample));
-  const forcedBy = (r: Relation): string | undefined =>
-    manifest?.mapping.find((m) => m.as === "flow" && m.force && m.element === r.name)?.column;
+  const declared = declaredRelations(model);
+  const forcedBy = (r: Relation): string | undefined => forcedByColumn(manifest, r);
 
   // Declared params claim their relations away from the taxonomy fallback —
-  // a magnitude appears once, under its domain name when it has one.
-  const params = model.params ?? [];
-  const covered = new Set<number>();
-  const paramRows: { param: ParamDecl; relation?: Relation; group?: Relation[] }[] = [];
-  for (const p of params) {
-    const anchor = p.anchor;
-    if ("Flow" in anchor) {
-      const r = declared.find((r) => r.id === anchor.Flow.relation);
-      if (!r) continue;
-      covered.add(r.id);
-      paramRows.push({ param: p, relation: r });
-    } else {
-      const group = declared.filter((r) => r.a === anchor.Shares.thing);
-      if (group.length < 2) continue;
-      for (const r of group) covered.add(r.id);
-      paramRows.push({ param: p, group });
-    }
-  }
+  // a magnitude appears once, under its domain name when it has one. The
+  // resolution itself is shared with the canvas EdgePopover (kernel/params.ts),
+  // so a param can never mean different flows on different surfaces.
+  const paramRows = resolveParamRows(model);
+  const covered = new Set<number>(
+    paramRows.flatMap((row) => (row.relation ? [row.relation.id] : row.group!.map((r) => r.id))),
+  );
 
   const rest = declared.filter((r) => !covered.has(r.id));
   const fromSource = (r: Relation) => {

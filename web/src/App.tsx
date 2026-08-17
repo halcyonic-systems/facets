@@ -31,6 +31,7 @@ import type { CorpusEntry } from "./corpus";
 import Canvas from "./canvas/Canvas";
 import { edgeGeometry, thingById } from "./canvas/geometry";
 import { EdgePopover } from "./canvas/EdgePopover";
+import { flowParamFor, forcedByColumn } from "./kernel/params";
 import type { DecomposeAffordance } from "./canvas/NodeEditor";
 import { KlirRegister } from "./canvas/KlirRegister";
 import { BungeRegister } from "./canvas/BungeRegister";
@@ -2614,6 +2615,17 @@ function Workspace() {
                             );
                           })
                           ?.name}
+                        // ws5: in Run mode the popover carries the param's own
+                        // slider — same resolution (kernel/params.ts) and same
+                        // commit path (applyInputEdit → re-run + auto-play) as
+                        // the rail. Structure mode passes neither (#336).
+                        param={
+                          workMode === "run"
+                            ? (flowParamFor(canvasModel, selectedRelation.id) ?? undefined)
+                            : undefined
+                        }
+                        paramForcedBy={forcedByColumn(manifest, selectedRelation)}
+                        onParamEdit={workMode === "run" ? applyInputEdit : undefined}
                         fromName={canvasModel.things.find((t) => t.id === selectedRelation.a)?.name}
                         toName={canvasModel.things.find((t) => t.id === selectedRelation.b)?.name}
                         onUpdateRelation={updateRelation}
