@@ -2518,7 +2518,7 @@ function Workspace() {
                       // so fit frames the diagram into what stays visible.
                       fitBottomFraction={
                         workMode === "run" && LensPalette[canvasModel.lens].run === "conservation"
-                          ? 0.42
+                          ? 0.45
                           : 0
                       }
                       // #100 phase 0: the container/place label names the
@@ -2719,7 +2719,7 @@ function Workspace() {
                     {toast && (
                       <Banner
                         tone="error"
-                        className={`absolute left-3 ${workMode === "run" ? "bottom-[calc(42%+0.75rem)]" : "bottom-3"}`}
+                        className={`absolute left-3 ${workMode === "run" ? "bottom-[calc(45%+0.75rem)]" : "bottom-3"}`}
                       >
                         rejected — {toast}
                       </Banner>
@@ -2727,7 +2727,7 @@ function Workspace() {
                     {notice && (
                       <Banner
                         tone="soft"
-                        className={`absolute left-3 ${workMode === "run" ? "bottom-[calc(42%+0.75rem)]" : "bottom-3"}`}
+                        className={`absolute left-3 ${workMode === "run" ? "bottom-[calc(45%+0.75rem)]" : "bottom-3"}`}
                       >
                         {notice}
                       </Banner>
