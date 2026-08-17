@@ -50,75 +50,108 @@ const WORDING = {
   residualLabel: "balance residual",
 };
 
-export function RunPanel({
+/** The run's always-visible glance row (run-legibility ws3): the headline
+ *  metric at the cursor, the key responding stock, and the residual — the
+ *  three numbers a cold viewer needs before any tab. Reads the same kernel
+ *  outputs as the tabs; computes nothing the kernel didn't. */
+export function RunGlance({
   result,
-  ranEdited,
+  model,
+  tick,
+}: {
+  result: RunResultRich;
+  model?: CanvasModel | null;
+  tick?: number;
+}) {
+  const metrics = model ? evaluateMetrics(model, result) : null;
+  const head = metrics?.readings[0] ?? null;
+  const n = head?.series.length ?? result.ticks;
+  const at = tick !== undefined ? Math.max(0, Math.min(n - 1, tick)) : n - 1;
+  const headValue = head
+    ? head.kind === "share"
+      ? `${(((head.series[at] ?? head.endpoint) as number) * 100).toFixed(1)}%`
+      : `${humanize(head.series[at] ?? head.endpoint)}${head.unit ? ` ${head.unit}` : ""}`
+    : null;
+  // The key responding stock: the first internal level with a trajectory.
+  const internal = result.levels.find((l) => l.category === "internal");
+  const stockTraj = internal
+    ? result.trajectories.find((t) => t.name === internal.name)
+    : undefined;
+  const stockValue = stockTraj
+    ? (stockTraj.series[Math.min(at, stockTraj.series.length - 1)] ?? internal!.value)
+    : internal?.value;
+  return (
+    <div
+      className="flex flex-wrap items-baseline gap-x-6 gap-y-1 px-4 py-2"
+      style={{ borderBottom: "1px solid var(--hairline)" }}
+    >
+      {head && headValue && (
+        <span className="inline-flex items-baseline gap-2" title={head.detail}>
+          <span className="text-2xl font-semibold tabular" style={{ color: "var(--accent-strong)" }}>
+            {headValue}
+          </span>
+          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+            {head.name}
+            <span style={{ color: "var(--text-muted)" }}>
+              {head.kind === "sum" ? " · running total" : " · share"}
+            </span>
+          </span>
+        </span>
+      )}
+      {internal && stockValue != null && (
+        <span className="inline-flex items-baseline gap-1.5 text-sm">
+          <span className="tabular font-medium" style={{ color: "var(--text-primary)" }}>
+            {humanize(stockValue)}
+          </span>
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+            {internal.name}
+            {internal.unit ? ` · ${unitLabel(internal.unit).text}` : ""}
+          </span>
+        </span>
+      )}
+      <span className="ml-auto text-xs tabular" style={{ color: "var(--text-muted)" }}>
+        {WORDING.residualLabel} {result.residual.toExponential(1)}
+      </span>
+    </div>
+  );
+}
+
+/** The Story tab (ws3): the declared-metric running totals and the responding
+ *  levels, LARGE — each chart gets real height instead of a 90-150px strip. */
+export function RunStory({
+  result,
   lens,
-  onAcceptUnit,
   tick,
   model,
 }: {
   result: RunResultRich;
-  /** ADR run-seam-canvas-document: true when this run executed the edited
-   *  canvas's projection; false/absent = the shipped calibration artifact. */
-  ranEdited?: boolean;
   lens: CanvasModel["lens"];
-  /** #203: the authoring model, read for its declared metrics. Absent = no
-   *  authoring surface, so no metrics card and no teach line. */
-  model?: CanvasModel | null;
-  /** #94: accept a derived stock unit as the component's DECLARED unit. The
-   *  parent writes it into the authoring model; absent = no authoring surface
-   *  to write into, so no affordance is shown. */
-  onAcceptUnit?: (name: string, unit: string) => void;
-  /** #154 P1: the SimScrubber's current tick, so the Bunge state-space readout
-   *  marks where the system is on its path. Absent = no live marker. */
   tick?: number;
+  model?: CanvasModel | null;
 }) {
-  // Lead with the sharpest MEANINGFUL divergence. A forced flow trivially
-  // matches its own data (~0% off) — that's a tautology, not a finding, so it
-  // never headlines; only a real gap (a responding stock, an unforced flow) does.
-  // Divergence is scored in-sample: the fit is only meaningful where data exists,
-  // never against a forecast tick past the horizon.
-  const lead = result.comparisons
-    .map((c) => ({ c, pct: c.divergence_pct }))
-    .filter((r) => r.pct != null && r.pct > 0.5)
-    .sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0))[0];
-  const forecastTicks = lead ? lead.c.simulated.length - lead.c.actual.length : 0;
-  // #203: declared metrics lead the deck — the questions the author wrote
-  // into the model answer FIRST, in the author's words; the kernel-fidelity
-  // furniture follows. Null = no authoring model in reach.
   const metrics = model ? evaluateMetrics(model, result) : null;
-
+  const CHART_H = 210;
   return (
     <div className="grid gap-5">
       {metrics && (metrics.readings.length > 0 || metrics.failures.length > 0) && (
-        <Card title="Declared metrics" source="declared in SL · computed from the run">
-          {/* One chart per QUESTION, one line per entity answering it (#341):
-              readings sharing a family (same denominator, or same kind+unit)
-              merge into a leaderboard chart; singletons keep their row. The
-              grid holds either shape. */}
-          <div className="grid gap-x-8 gap-y-5 xl:grid-cols-2">
-            {groupReadings(metrics.readings).map((g) =>
-              g.length === 1 ? (
-                <MetricRow key={g[0].name} r={g[0]} tick={tick} />
-              ) : (
-                <MetricFamilyChart key={g[0].familyKey} readings={g} tick={tick} />
-              ),
-            )}
-            {metrics.failures.map((f) => (
-              <p key={f.name} className="text-xs" style={{ color: "var(--verdict-warning)" }}>
-                {f.name}: {f.reason}
-              </p>
-            ))}
-          </div>
-        </Card>
+        <div className="grid gap-x-8 gap-y-5 xl:grid-cols-2">
+          {groupReadings(metrics.readings).map((g) =>
+            g.length === 1 ? (
+              <MetricRow key={g[0].name} r={g[0]} tick={tick} height={CHART_H} />
+            ) : (
+              <MetricFamilyChart key={g[0].familyKey} readings={g} tick={tick} height={CHART_H} />
+            ),
+          )}
+          {metrics.failures.map((f) => (
+            <p key={f.name} className="text-xs" style={{ color: "var(--verdict-warning)" }}>
+              {f.name}: {f.reason}
+            </p>
+          ))}
+        </div>
       )}
       {metrics && metrics.readings.length === 0 && metrics.failures.length === 0 && (
         // The capacity, surfaced (#203): a model with no declared metrics is
-        // told — quietly — that it can ask its own questions of a run. The
-        // examples are built from THIS model's own names (a hint that showed
-        // llm-market's vocabulary on every model taught the wrong lesson:
-        // that the words were magic rather than the author's).
+        // told — quietly — that it can ask its own questions of a run.
         <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
           No declared metrics — name the readouts you want to watch, in the
           model&rsquo;s own words:{" "}
@@ -127,111 +160,116 @@ export function RunPanel({
             {model?.things.find((t) => t.role === "Environment" && t.env_kind === "Sink")?.name ??
               "<a sink>"}
           </code>
-          {(() => {
-            const f = model?.relations.find((r) => r.name);
-            const from = f && model?.things.find((t) => t.id === f.a)?.name;
-            const to = f && model?.things.find((t) => t.id === f.b)?.name;
-            return from && to ? (
-              <>
-                {" "}
-                ·{" "}
-                <code className="font-mono">
-                  metric &quot;share&quot; : share of flow {from} -&gt; {to}
-                </code>
-              </>
-            ) : null;
-          })()}
         </p>
       )}
-      <Card title="Result" source="bert-compose · wasm">
-        {/* The VERDICT lives once, as the transport spine's chip (ws2 of the
-            run-legibility pass) — this card carries the run's facts, not a
-            second verdict. A validation gap is one fact about the run, not
-            its identity (design sweep, 2026-08-15). */}
-        {lead && (
-          <p className="mb-3 text-sm" style={{ color: "var(--text-secondary)" }}>
-            largest gap from your data: <span className="font-medium">{lead.c.element}</span>,{" "}
-            {Math.round(lead.pct ?? 0)}% off · {lead.c.actual.length} observation
-            {lead.c.actual.length === 1 ? "" : "s"}
-            {forecastTicks > 0 && ` · the remaining ${forecastTicks} ticks run past the data`}
-          </p>
-        )}
-        <div className="flex flex-wrap items-center gap-4">
-          {/* Which model ran (ADR run-seam-canvas-document) — the kernel hash
-              already knows; this is the plain-word version for the reader. */}
-          <Pill tone={ranEdited ? "warning" : "neutral"}>
-            {ranEdited ? "ran your edited model" : "ran the shipped calibration"}
-          </Pill>
-          <Stat
-            label={WORDING.residualLabel}
-            value={result.residual.toExponential(1)}
-            tone={result.conserved ? "ok" : "error"}
-          />
-          <Stat label="ticks" value={String(result.ticks)} />
-          <Stat label="step size (Δt)" value={result.dt.toFixed(1)} />
-        </div>
-      </Card>
-
-      {/* The stocks' curves lead the charts (2026-08-16): at steady state
-          the flow lines are constants, and the run's story — a pool
-          drifting, a level responding — is here. The per-thing TABLE stays
-          behind the disclosure below; the curves are the page. */}
       {result.trajectories.length > 0 &&
         result.levels.some((l) => l.category === "internal") && (
-        <Card title="Levels over the run" source="bert-compose · wasm">
-          <LevelsChart trajectories={result.trajectories} levels={result.levels} tick={tick} />
-        </Card>
-      )}
-
-      {result.comparisons.length > 0 && (
-        <Card title="Simulated vs actual" source="bert-compose · wasm">
-          {/* Small multiples in a grid; same-UNIT comparisons merge into one
-              chart with hue = flow and stroke style keeping role (#341).
-              Mixed units never share an axis — that is the #1 chart lie. */}
-          <div className="grid gap-x-8 gap-y-6 xl:grid-cols-2">
-            {groupComparisons(result.comparisons).map((g) =>
-              g.length === 1 ? (
-                <ComparisonChart key={g[0].element} c={g[0]} tick={tick} />
-              ) : (
-                <ComparisonFamilyChart key={g[0].unit || "unitless"} comparisons={g} tick={tick} />
-              ),
-            )}
-          </div>
-        </Card>
-      )}
-
-      {/* #100 phase 5: in the Bunge lens, the run reads as a trajectory through
-          state space — the coalgebra unfolding drawn in Bunge's register, beside
-          the coupling matrix that carries its structure. */}
-      {lens === "Bunge" && result.trajectories.length > 0 && (
-        <Card title="State space" source="bert-compose · wasm">
-          <BungeStateSpace result={result} tick={tick} />
-        </Card>
-      )}
-
-      {/* The full per-thing table is reference material, not the page (design
-          sweep 2026-08-15) — a disclosure, closed by default, so the run page
-          ends at its charts and the table is one click away when wanted. */}
-      <details className="group">
-        <summary
-          className="cursor-pointer select-none text-sm font-medium"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          Final levels — every thing&rsquo;s number at run end ({result.levels.length})
-        </summary>
-        <div className="mt-3">
-          <Card title="Final levels" source="bert-core · wasm">
-            <Levels
-              levels={result.levels}
-              ticks={result.ticks}
-              lens={lens}
-              onAcceptUnit={onAcceptUnit}
+          <div>
+            <SectionLabel>Levels over the run</SectionLabel>
+            <LevelsChart
               trajectories={result.trajectories}
+              levels={result.levels}
               tick={tick}
+              height={CHART_H}
             />
-          </Card>
+          </div>
+        )}
+      {/* #100 phase 5: under Bunge the run reads as a trajectory through state
+          space, in Bunge's register. */}
+      {lens === "Bunge" && result.trajectories.length > 0 && (
+        <div>
+          <SectionLabel>State space</SectionLabel>
+          <BungeStateSpace result={result} tick={tick} />
         </div>
-      </details>
+      )}
+    </div>
+  );
+}
+
+/** The Fit tab (ws3) — only mounted when a CSV is bound (absence is ontology:
+ *  no data, no fit). The sharpest MEANINGFUL divergence headlines; a forced
+ *  flow trivially matching its own data never does. */
+export function RunFit({ result, tick }: { result: RunResultRich; tick?: number }) {
+  const lead = result.comparisons
+    .map((c) => ({ c, pct: c.divergence_pct }))
+    .filter((r) => r.pct != null && r.pct > 0.5)
+    .sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0))[0];
+  const forecastTicks = lead ? lead.c.simulated.length - lead.c.actual.length : 0;
+  return (
+    <div className="grid gap-4">
+      {lead && (
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+          largest gap from your data: <span className="font-medium">{lead.c.element}</span>,{" "}
+          {Math.round(lead.pct ?? 0)}% off · {lead.c.actual.length} observation
+          {lead.c.actual.length === 1 ? "" : "s"}
+          {forecastTicks > 0 && ` · the remaining ${forecastTicks} ticks run past the data`}
+        </p>
+      )}
+      {/* Small multiples; same-UNIT comparisons merge into one chart (#341).
+          Mixed units never share an axis — that is the #1 chart lie. */}
+      <div className="grid gap-x-8 gap-y-6 xl:grid-cols-2">
+        {groupComparisons(result.comparisons).map((g) =>
+          g.length === 1 ? (
+            <ComparisonChart key={g[0].element} c={g[0]} tick={tick} height={230} />
+          ) : (
+            <ComparisonFamilyChart key={g[0].unit || "unitless"} comparisons={g} tick={tick} height={230} />
+          ),
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** The Table tab (ws3): every thing's number at run end, plus the run's own
+ *  stats — the reference reading, one tab away instead of a disclosure. */
+export function RunTable({
+  result,
+  ranEdited,
+  lens,
+  onAcceptUnit,
+  tick,
+}: {
+  result: RunResultRich;
+  ranEdited?: boolean;
+  lens: CanvasModel["lens"];
+  onAcceptUnit?: (name: string, unit: string) => void;
+  tick?: number;
+}) {
+  return (
+    <div className="grid gap-4">
+      <div className="flex flex-wrap items-center gap-4">
+        {/* Which model ran (ADR run-seam-canvas-document) — the kernel hash
+            already knows; this is the plain-word version for the reader. */}
+        <Pill tone={ranEdited ? "warning" : "neutral"}>
+          {ranEdited ? "ran your edited model" : "ran the shipped calibration"}
+        </Pill>
+        <Stat
+          label={WORDING.residualLabel}
+          value={result.residual.toExponential(1)}
+          tone={result.conserved ? "ok" : "error"}
+        />
+        <Stat label="ticks" value={String(result.ticks)} />
+        <Stat label="step size (Δt)" value={result.dt.toFixed(1)} />
+      </div>
+      <Levels
+        levels={result.levels}
+        ticks={result.ticks}
+        lens={lens}
+        onAcceptUnit={onAcceptUnit}
+        trajectories={result.trajectories}
+        tick={tick}
+      />
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="mb-2 text-[11px] font-semibold uppercase tracking-wide"
+      style={{ color: "var(--text-muted)" }}
+    >
+      {children}
     </div>
   );
 }
@@ -303,7 +341,7 @@ function axisTicks(n: number): number[] {
 }
 const PAST = (k: string) => `\u2264 ${k}`;
 
-function MetricFamilyChart({ readings, tick }: { readings: MetricReading[]; tick?: number }) {
+function MetricFamilyChart({ readings, tick, height = 150 }: { readings: MetricReading[]; tick?: number; height?: number }) {
   const first = readings[0];
   const byEntity = [...readings].sort((a, b) => a.entity.localeCompare(b.entity));
   const colorOf = new Map(byEntity.map((r, i) => [r.entity, CHART_SERIES[i]]));
@@ -344,7 +382,7 @@ function MetricFamilyChart({ readings, tick }: { readings: MetricReading[]; tick
           ))}
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={150}>
+      <ResponsiveContainer width="100%" height={height}>
         <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
           <CartesianGrid stroke="var(--hairline)" vertical={false} />
           {tick !== undefined && tick > 0 && tick < n && (
@@ -401,7 +439,7 @@ function MetricFamilyChart({ readings, tick }: { readings: MetricReading[]; tick
  *  style keeps role (solid executed, dashed actual). Declared-mean lines stay
  *  with the singleton view — three encodings per entity is past the ink
  *  budget of a merged chart. */
-function ComparisonFamilyChart({ comparisons, tick }: { comparisons: Comparison[]; tick?: number }) {
+function ComparisonFamilyChart({ comparisons, tick, height = 150 }: { comparisons: Comparison[]; tick?: number; height?: number }) {
   const byFlow = [...comparisons].sort((a, b) => a.element.localeCompare(b.element));
   const colorOf = new Map(byFlow.map((c, i) => [c.element, CHART_SERIES[i]]));
   const n = Math.max(...comparisons.map((c) => Math.max(c.simulated.length, c.actual.length)));
@@ -440,7 +478,7 @@ function ComparisonFamilyChart({ comparisons, tick }: { comparisons: Comparison[
           ))}
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={150}>
+      <ResponsiveContainer width="100%" height={height}>
         <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: -12 }}>
           <CartesianGrid stroke="var(--hairline)" vertical={false} />
           {tick !== undefined && tick > 0 && tick < n && (
@@ -505,7 +543,7 @@ function ComparisonFamilyChart({ comparisons, tick }: { comparisons: Comparison[
 /** One declared metric's reading (#203): the author's name and endpoint
  *  number lead; the executed series rides below as a small chart. Same-verb
  *  families arrive pre-sorted by endpoint — the leaderboard reading. */
-function MetricRow({ r, tick }: { r: MetricReading; tick?: number }) {
+function MetricRow({ r, tick, height = 90 }: { r: MetricReading; tick?: number; height?: number }) {
   const n = r.series.length;
   const mid = midRun(tick, n);
   const data = r.series.map((v, t) => ({ t, v, past: mid && t <= tick! ? v : null }));
@@ -535,7 +573,7 @@ function MetricRow({ r, tick }: { r: MetricReading; tick?: number }) {
           </div>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={90}>
+      <ResponsiveContainer width="100%" height={height}>
         <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
           <CartesianGrid stroke="var(--hairline)" vertical={false} />
           {tick !== undefined && tick > 0 && tick < n && (
@@ -583,7 +621,7 @@ function MetricRow({ r, tick }: { r: MetricReading; tick?: number }) {
   );
 }
 
-function ComparisonChart({ c, tick }: { c: Comparison; tick?: number }) {
+function ComparisonChart({ c, tick, height = 150 }: { c: Comparison; tick?: number; height?: number }) {
   const n = Math.max(c.simulated.length, c.actual.length, c.declared?.length ?? 0);
   const mid = midRun(tick, n);
   const data = Array.from({ length: n }, (_, i) => ({
@@ -614,7 +652,7 @@ function ComparisonChart({ c, tick }: { c: Comparison; tick?: number }) {
           </span>
         )}
       </div>
-      <ResponsiveContainer width="100%" height={150}>
+      <ResponsiveContainer width="100%" height={height}>
         <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: -12 }}>
           <CartesianGrid stroke="var(--hairline)" vertical={false} />
           {forecastTicks > 0 && h != null && (
@@ -889,10 +927,12 @@ function LevelsChart({
   trajectories,
   levels,
   tick,
+  height = 110,
 }: {
   trajectories: NonNullable<RunResultRich["trajectories"]>;
   levels: Level[];
   tick?: number;
+  height?: number;
 }) {
   // Internal stocks only: a source's "trajectory" is its declared rate drawn
   // flat — the rates-as-levels confusion all over again (#344 item 2). The
@@ -939,7 +979,7 @@ function LevelsChart({
                 ))}
               </div>
             </div>
-            <ResponsiveContainer width="100%" height={110}>
+            <ResponsiveContainer width="100%" height={height}>
               <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
                 <CartesianGrid stroke="var(--hairline)" vertical={false} />
                 {tick !== undefined && tick > 0 && tick < n && (

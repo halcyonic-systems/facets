@@ -80,7 +80,10 @@ export function SimScrubber({
         }}
         className="flex-1"
       />
-      <span className="w-20 shrink-0 text-right text-xs tabular" style={{ color: "var(--text-muted)" }}>
+      <span
+        className="shrink-0 whitespace-nowrap text-right text-xs tabular"
+        style={{ color: "var(--text-muted)" }}
+      >
         tick {tick} / {Math.max(0, steps - 1)}
       </span>
     </div>

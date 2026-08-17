@@ -10,6 +10,7 @@
 // model; the run's availability is still decided upstream in the control strip,
 // which is where the run controls live and where a model that cannot run says
 // so.
+import { useState } from "react";
 import type {
   CanvasModel,
   Manifest,
@@ -19,8 +20,12 @@ import type {
 } from "./kernel/types";
 import type { RunKind } from "./canvas/lenses/registry";
 import { RunInputs } from "./RunInputs";
-import { DtmcPanel, RunPanel, weightProvenance } from "./RunPanel";
-import { Card, Verdict } from "./ui";
+import { DtmcPanel, RunFit, RunGlance, RunStory, RunTable, weightProvenance } from "./RunPanel";
+import { Card, Tabs, Verdict } from "./ui";
+
+/** The dock's readout tabs (ws3). Fit only exists when a CSV is bound —
+ *  absence is ontology, not a disabled tab. */
+type ReadoutTab = "story" | "fit" | "table";
 
 export function RunMode({
   result,
@@ -69,6 +74,11 @@ export function RunMode({
    *  the whole stage where the dock made it invisible (field report). */
   transport?: React.ReactNode;
 }) {
+  // Which readout tab is open — a viewing posture, not run state, so it lives
+  // here (the InspectorDock precedent), while every number rendered below
+  // still flows from App's one owner.
+  const [tabChoice, setTabChoice] = useState<ReadoutTab>("story");
+
   // #282, decided 2026-08-01: Bunge does not run. The lens's own register says
   // it — no mechanism stated (⊘M) — so executing Mobus's engine under this
   // reading was a lens leak. The mode states the refusal rather than borrowing
@@ -100,6 +110,79 @@ export function RunMode({
     ) : null;
   const timeRow = time ? <TimeRow time={time} /> : null;
 
+  // Dock form (conservation runs): the BENCH (ws3). A fixed left rail that
+  // never scrolls away — time and the declared knobs — and a readout area
+  // whose glance row is always visible, with the charts behind real tabs.
+  // Only the tab panel scrolls; every fact appears exactly once.
+  if (dock) {
+    const hasFit = !!result && result.comparisons.length > 0;
+    const tab: ReadoutTab = tabChoice === "fit" && !hasFit ? "story" : tabChoice;
+    const readout = runError ? (
+      <div className="p-3">
+        <Card title="Result" source="bert-compose · wasm">
+          <p className="text-sm" style={{ color: "var(--verdict-error)" }}>
+            {runError}
+          </p>
+        </Card>
+      </div>
+    ) : result ? (
+      <>
+        <RunGlance result={result} model={model} tick={tick} />
+        <div className="px-3">
+          <Tabs
+            tabs={[
+              { key: "story", label: "Story" },
+              // Fit exists only when a CSV is bound — absence is ontology.
+              ...(hasFit ? [{ key: "fit", label: "Fit to data" }] : []),
+              { key: "table", label: "Table" },
+            ]}
+            active={tab}
+            onSelect={(k) => setTabChoice(k as ReadoutTab)}
+          />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+          {tab === "story" && <RunStory result={result} lens={lens} tick={tick} model={model} />}
+          {tab === "fit" && hasFit && <RunFit result={result} tick={tick} />}
+          {tab === "table" && (
+            <RunTable
+              result={result}
+              ranEdited={ranEdited}
+              lens={lens}
+              onAcceptUnit={onAcceptUnit}
+              tick={tick}
+            />
+          )}
+        </div>
+      </>
+    ) : (
+      <Placeholder>
+        {manifest
+          ? // #297: the model opens at zero — loaded, mapped, and waiting for
+            // the author's horizon. Nothing has run until Run is pressed.
+            "The model is loaded and nothing has run. Set the run length in Time and press ▶ Run, or ⏭ Step one tick at a time."
+          : "Run needs data: open a demo bundle, or attach a CSV in Data mode and bind at least one flow."}
+      </Placeholder>
+    );
+    return (
+      <Frame name={model?.name} runKind={runKind} dock transport={transport}>
+        <div className="flex min-h-0 flex-1">
+          <aside
+            className="w-60 shrink-0 overflow-y-auto border-r p-3"
+            style={{ borderColor: "var(--hairline)" }}
+          >
+            <div className="grid gap-3">
+              {timeRow}
+              {inputs}
+            </div>
+          </aside>
+          <section className="flex min-w-0 flex-1 flex-col">{readout}</section>
+        </div>
+      </Frame>
+    );
+  }
+
+  // Full-bleed form: the run kinds that own their whole surface (a DTMC, or
+  // an error on one). Conservation runs never reach here — they dock.
   const deck = (() => {
     if (runError)
       return (
@@ -128,23 +211,10 @@ export function RunMode({
             " Transition weights are undeclared, so the chain will run uniform. Add `weight <n>` to a flow to calibrate it."}
         </Placeholder>
       );
-    if (result)
-      return (
-        <RunPanel
-          result={result}
-          ranEdited={ranEdited}
-          lens={lens}
-          onAcceptUnit={onAcceptUnit}
-          tick={tick}
-          model={model}
-        />
-      );
     return (
       <Placeholder>
         {manifest
-          ? // #297: the model opens at zero — loaded, mapped, and waiting for
-            // the author's horizon. Nothing has run until Run is pressed.
-            "The model is loaded and nothing has run. Set the run length in Time and press ▶ Run, or ⏭ Step one tick at a time."
+          ? "The model is loaded and nothing has run. Set the run length in Time and press ▶ Run, or ⏭ Step one tick at a time."
           : "Run needs data: open a demo bundle, or attach a CSV in Data mode and bind at least one flow."}
       </Placeholder>
     );
@@ -152,10 +222,6 @@ export function RunMode({
 
   return (
     <Frame name={model?.name} runKind={runKind} dock={dock} transport={transport}>
-      {/* The width the run was starved of in the dock: the timeline and its
-          forcing sit in a fixed rail, and the result takes everything else, so a
-          trajectory finally has a page to be drawn across. One column until
-          there is room for two. */}
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(16rem,20rem)_1fr]">
         <div className="grid gap-5">
           {timeRow}
@@ -202,7 +268,7 @@ function Frame({
   if (dock) {
     return (
       <div
-        className="absolute inset-x-0 bottom-0 flex h-[42%] min-h-[15rem] flex-col"
+        className="absolute inset-x-0 bottom-0 flex h-[45%] min-h-[16rem] flex-col"
         style={{ background: "var(--bg-primary)", borderTop: "1px solid var(--border)" }}
       >
         <div
@@ -225,7 +291,9 @@ function Frame({
               computes-vs-plays line rides as its tooltip). */}
           <div className="min-w-0 flex-1">{transport}</div>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">{children}</div>
+        {/* No outer scroll (ws3): the rail and the tab panel own their own
+            overflow, so the bench's fixed parts can never scroll away. */}
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       </div>
     );
   }
