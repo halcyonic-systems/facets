@@ -14,9 +14,10 @@ flow Nucleus -> "Decoding Site" : matter "mRNA transcript" amount 20 unit codon/
 flow Cytosol -> Translocase : energy "GTP" amount 40 unit GTP/s
 ```
 
-Run · Inputs is where the knobs turn; a CSV is for *data* — measurements to
-validate against, a time-varying forcing a constant cannot say, an observed
-initial condition. Nothing about the base run needs one.
+The run card beside the diagram (and the Readouts rail) is where the knobs
+turn; a CSV is for *data* — measurements to validate against, a time-varying
+forcing a constant cannot say, an observed initial condition. Nothing about
+the base run needs one.
 
 ## 1. The structure receipt — his corrections, on the record
 
@@ -77,7 +78,7 @@ defects, each now fixed at the root with a separating test, or filed.
   arithmetic, not conservation by itself — conservation is the non-negative
   channels *plus* the balance, which is what the #337/#340 fixes bought.
 
-In the app: open Translation Apparatus → Run → ▶. To validate against data or
+In the app: open Translation Apparatus → press ▶ Run in the strip under the diagram (the trace auto-plays once). To validate against data or
 force a perturbation (amino-acid starvation, seconds 8–10), attach a CSV in
 Data mode and bind columns — the pool can also take its t0 from a measured
 observation instead of the declared 100, and the two are the same kind of

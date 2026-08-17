@@ -157,9 +157,9 @@ and Mobus panels each describe the same model in their own vocabulary.
 
 ## 7. Watch one run
 
-A model you just authored has structure but no data, so **Run stays disabled** —
-and its tooltip says exactly why: *"Run needs a demo bundle (model + CSV +
-mapping)."* A run here is forced by real numbers rather than invented ones, so it
+A model you just authored has structure but no data, so the transport strip
+under the diagram states why there is nothing to run yet: *"Run needs data: a
+demo bundle, or a CSV attached and bound in Data mode."* A run here is forced by real numbers rather than invented ones, so it
 needs a model *and* a data series *and* a mapping between them. That bundle is
 what the library's runnable entries carry.
 
@@ -176,8 +176,9 @@ It runs on open. The run panel reports **Ran clean · 12 ticks**, the
 [conservation invariant](glossary.md#conservation-invariant-declared) the model
 declares holding as **nothing lost or created**, and a
 [run ledger](glossary.md#run-ledger) — the per-step accounting that shows the
-invariant holding, or where it does not. `▶ Run` re-runs it; `Δt` and `T` set the
-step and the horizon.
+invariant holding, or where it does not. `▶ Run` in the strip under the diagram re-runs it (the trace auto-plays
+once); `Δt` and `T` sit in the run card beside the diagram and set the step
+and the horizon.
 
 The current engine executes one [dynamics-kind](glossary.md#dynamics-kind): a
 deterministic map over ℝⁿ stocks under a model-declared additive invariant.
