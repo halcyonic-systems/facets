@@ -144,31 +144,23 @@ export function RunPanel({
         </p>
       )}
       <Card title="Result" source="bert-compose · wasm">
-        {/* The headline is what the RUN did — the verdict, always. A validation
-            gap is one fact about the run, not its identity; it rides below as
-            a stat pointing at the charts (design sweep, 2026-08-15: "24% off
-            the data" as the headline buried the run under its worst readout). */}
-        <div className="mb-4">
-          <Verdict tone={result.conserved ? "ok" : "warning"}>
-            {result.conserved ? WORDING.ranClean : WORDING.ranLeak} · {result.ticks} ticks
-          </Verdict>
-          {lead && (
-            <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-              largest gap from your data: <span className="font-medium">{lead.c.element}</span>,{" "}
-              {Math.round(lead.pct ?? 0)}% off · {lead.c.actual.length} observation
-              {lead.c.actual.length === 1 ? "" : "s"}
-              {forecastTicks > 0 && ` · the remaining ${forecastTicks} ticks run past the data`}
-            </p>
-          )}
-        </div>
+        {/* The VERDICT lives once, as the transport spine's chip (ws2 of the
+            run-legibility pass) — this card carries the run's facts, not a
+            second verdict. A validation gap is one fact about the run, not
+            its identity (design sweep, 2026-08-15). */}
+        {lead && (
+          <p className="mb-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+            largest gap from your data: <span className="font-medium">{lead.c.element}</span>,{" "}
+            {Math.round(lead.pct ?? 0)}% off · {lead.c.actual.length} observation
+            {lead.c.actual.length === 1 ? "" : "s"}
+            {forecastTicks > 0 && ` · the remaining ${forecastTicks} ticks run past the data`}
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-4">
           {/* Which model ran (ADR run-seam-canvas-document) — the kernel hash
               already knows; this is the plain-word version for the reader. */}
           <Pill tone={ranEdited ? "warning" : "neutral"}>
             {ranEdited ? "ran your edited model" : "ran the shipped calibration"}
-          </Pill>
-          <Pill tone={result.conserved ? "ok" : "error"}>
-            {result.conserved ? WORDING.conservedPill : WORDING.leakPill}
           </Pill>
           <Stat
             label={WORDING.residualLabel}

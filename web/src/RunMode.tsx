@@ -220,18 +220,10 @@ function Frame({
               {name.trim()}
             </span>
           )}
-          {/* The transport IS the spine: the one cursor both surfaces read,
-              on the one row both surfaces share. */}
+          {/* The transport IS the spine: one row starts the run, plays the
+              recorded trace, and states the verdict (#344 item 5's
+              computes-vs-plays line rides as its tooltip). */}
           <div className="min-w-0 flex-1">{transport}</div>
-          {/* #344 item 5, said once where both controls live: Run computes,
-              play reads. */}
-          <span
-            className="hidden shrink-0 text-[11px] xl:inline"
-            style={{ color: "var(--text-muted)" }}
-            title="▶ Run computes the whole history · the scrubber's ▶ plays the cursor through it"
-          >
-            Run computes · ▶ plays — diagram and charts move together
-          </span>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3">{children}</div>
       </div>
@@ -243,7 +235,7 @@ function Frame({
       style={{ background: "var(--bg-primary)" }}
     >
       <div className="px-4 pb-2 pt-3" style={{ borderBottom: "1px solid var(--border)" }}>
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span
             className="text-xs font-semibold uppercase tracking-wide"
             style={{ color: "var(--text-primary)" }}
@@ -255,6 +247,10 @@ function Frame({
               {name.trim()}
             </span>
           )}
+          {/* The transport rides this header too (ws2): a DTMC's Run/Step and
+              scrubber live on the same spine the dock form uses, instead of
+              being silently dropped by the full-bleed frame. */}
+          {transport && <div className="min-w-0 flex-1">{transport}</div>}
         </div>
         <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
           {RUN_KIND_LINE[runKind]}

@@ -38,6 +38,7 @@ import { BoundaryPopover } from "./canvas/BoundaryPopover";
 import { MilieuPopover } from "./canvas/MilieuPopover";
 import { DataMode } from "./DataMode";
 import { RunMode } from "./RunMode";
+import { Transport } from "./Transport";
 import { InterfacePopover } from "./canvas/InterfacePopover";
 import { PaletteRail } from "./canvas/PaletteRail";
 import type { PaletteTool } from "./canvas/lenses/registry";
@@ -1559,6 +1560,67 @@ function Workspace() {
     });
   }
 
+  // The run's controls, computed once beside the state they read (ws2 of the
+  // run-legibility pass). The Transport in the dock spine renders these; the
+  // lens registry still declares the run kind (#282), the level still gates a
+  // DTMC (#309/#288), and pressing Run is still a mode transition (#312).
+  // Null = no model open, so no transport anywhere.
+  const runCtl = (() => {
+    if (!canvasModel) return null;
+    const runKind = LensPalette[canvasModel.lens].run;
+    const subGenerative =
+      canvasModel.klir_level === "Source" || canvasModel.klir_level === "Data";
+    const dtmcRunnable = runKind === "dtmc" && canvasModel.things.length > 0 && !subGenerative;
+    const runnable =
+      runKind === "dtmc" ? dtmcRunnable : runKind === "conservation" && !!runCsv;
+    const title =
+      runKind === "dtmc"
+        ? dtmcRunnable
+          ? "Run the state machine as a Markov chain"
+          : subGenerative
+            ? `Declared level ${canvasModel.klir_level} authors no generating rule, so Run has nothing to execute.`
+            : "Add at least one state to run."
+        : runKind === "conservation"
+          ? runCsv
+            ? "Run the forced simulation"
+            : attachedCsv
+              ? "Bind at least one column in Data mode to drive the run."
+              : "Run needs data: a demo bundle, or a CSV attached and bound in Data mode."
+          : "No mechanism stated (⊘M), so structure alone gives Run nothing to execute.";
+    const onRun = () => {
+      setWorkMode("run");
+      if (runKind === "dtmc") {
+        if (dtmcRunnable) runKlir(canvasModel, t, true);
+      } else if (runKind === "conservation" && runCsv) {
+        const m = modelForRun();
+        if (m) runWith(m.json, runCsv, manifest, dt, t, m.edited, true);
+      }
+    };
+    // #297: advance by one tick — a deterministic re-run one step longer,
+    // scrubber landed on the new final tick. The recorded-run architecture
+    // makes T+1 exact; no incremental engine state.
+    const onStep = () => {
+      setWorkMode("run");
+      if (runKind === "dtmc") {
+        if (!dtmcRunnable) return;
+        // The Markov history carries the t0 row, so the current step count is
+        // history.length - 1; one more is length.
+        const next = markovRun ? markovRun.history.length : 1;
+        setT(next);
+        runKlir(canvasModel, next);
+        setTick(next);
+      } else if (runKind === "conservation" && runCsv) {
+        const m = modelForRun();
+        if (!m) return;
+        const nextT = result ? (result.ticks + 1) * dt : dt;
+        setT(nextT);
+        runWith(m.json, runCsv, manifest, dt, nextT, m.edited);
+        setTick(result ? result.ticks : 0);
+      }
+    };
+    return { runKind, runnable, title, onRun, onStep };
+  })();
+
   // A per-lens edge edit (kind / bond⇄mere / direction / klir toggle): update
   // the editing model; the effect above re-projects + re-judges in Rust.
   function updateRelation(next: import("./kernel/types").Relation) {
@@ -2119,127 +2181,11 @@ function Workspace() {
             >
               SL
             </button>
-            {/* Ît/T live with the run they govern, in Run mode beside Inputs.
-                The controls below stay HERE, on the axis-wide strip, so the run
-                can be started from whichever mode the author is in. */}
-            <div className="ml-auto flex flex-wrap items-center gap-3">
-              {(() => {
-                // #282: the run wears its lens — the registry declares the run
-                // kind and this button renders from the declaration. Klir's
-                // behavior function runs as a DTMC straight from the canvas
-                // (#67 J9); Mobus's work processes run the CSV-forced
-                // conservation engine; Bunge declares no mechanism (⊘M), so
-                // Run has nothing to execute and says so.
-                const runKind = LensPalette[canvasModel.lens].run;
-                // #309/#288: the level is earned, and so is Run. A Source- or
-                // Data-level entry authors no generating rule (the census's
-                // cross-cutting test), so there is nothing to evolve — same
-                // shape as Bunge's ⊘M refusal, stated in the title.
-                const subGenerative =
-                  canvasModel.klir_level === "Source" || canvasModel.klir_level === "Data";
-                const dtmcRunnable =
-                  runKind === "dtmc" && !!canvasModel && canvasModel.things.length > 0 && !subGenerative;
-                const runnable =
-                  runKind === "dtmc" ? dtmcRunnable : runKind === "conservation" && !!runCsv;
-                // #312 move 2: pressing Run is a MODE TRANSITION, so it makes
-                // one. The results left the dock, and a primary action whose
-                // output lands somewhere the author is not looking is how a
-                // feature becomes findable only by people who knew where it
-                // used to be. Nothing about the run itself changes here.
-                const onRun = () => {
-                  setWorkMode("run");
-                  if (runKind === "dtmc") {
-                    if (dtmcRunnable) runKlir(canvasModel, t, true);
-                  } else if (runKind === "conservation" && runCsv) {
-                    const m = modelForRun();
-                    if (m) runWith(m.json, runCsv, manifest, dt, t, m.edited, true);
-                  }
-                };
-                // The unrunnable branches are now VISIBLE copy, not tooltips
-                // (the deck stands down and this sentence takes its place), so
-                // they read as sentences: no em dashes, plain and short. Each
-                // claim is preserved exactly — the level is declared and
-                // authors no rule, Bunge states no mechanism (⊘M).
-                const title =
-                  runKind === "dtmc"
-                    ? dtmcRunnable
-                      ? "Run the state machine as a Markov chain"
-                      : subGenerative
-                        ? `Declared level ${canvasModel.klir_level} authors no generating rule, so Run has nothing to execute.`
-                        : "Add at least one state to run."
-                    : runKind === "conservation"
-                      ? runCsv
-                        ? "Run the forced simulation"
-                        : attachedCsv
-                          ? "Bind at least one column in Data mode to drive the run."
-                          : "Run needs data: a demo bundle, or a CSV attached and bound in Data mode."
-                      : "No mechanism stated (⊘M), so structure alone gives Run nothing to execute.";
-                // #297: advance by one tick — a deterministic re-run one step
-                // longer, scrubber landed on the new final tick. No incremental
-                // engine state: the recorded-run architecture makes T+1 exact.
-                const onStep = () => {
-                  setWorkMode("run");
-                  if (runKind === "dtmc") {
-                    if (!dtmcRunnable) return;
-                    // The Markov history carries the t0 row, so the current
-                    // step count is history.length - 1; one more is length.
-                    const next = markovRun ? markovRun.history.length : 1;
-                    setT(next);
-                    runKlir(canvasModel, next);
-                    setTick(next);
-                  } else if (runKind === "conservation" && runCsv) {
-                    const m = modelForRun();
-                    if (!m) return;
-                    const nextT = result ? (result.ticks + 1) * dt : dt;
-                    setT(nextT);
-                    runWith(m.json, runCsv, manifest, dt, nextT, m.edited);
-                    setTick(result ? result.ticks : 0);
-                  }
-                };
-                // A dead primary action is worse than no action: on a model
-                // that cannot run, the deck is not rendered at all, so its
-                // ARRIVAL is the signal that the model became runnable. The
-                // kernel-side meaning of `runnable` is untouched — only whether
-                // the control is drawn. The reason a run is unavailable is
-                // demoted, not deleted: same sentence the disabled button used
-                // to carry in its tooltip, now a quiet line in the deck's place.
-                if (!runnable) {
-                  return (
-                    <span
-                      className="max-w-md text-right text-xs font-body"
-                      style={{ color: "var(--text-muted)" }}
-                      title={title}
-                    >
-                      {title}
-                    </span>
-                  );
-                }
-                return (
-                  <>
-                    <button
-                      onClick={onStep}
-                      title="Advance the run by one tick (starts one if none has run)"
-                      className="rounded-full border px-4 py-2 text-sm font-semibold transition-colors"
-                      style={{
-                        borderColor: "var(--accent)",
-                        color: "var(--accent)",
-                        background: "transparent",
-                      }}
-                    >
-                      ⏭ Step
-                    </button>
-                    <button
-                      onClick={onRun}
-                      title={title}
-                      className="rounded-full px-5 py-2 text-sm font-semibold transition-colors"
-                      style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
-                    >
-                      ▶ Run
-                    </button>
-                  </>
-                );
-              })()}
-            </div>
+            {/* Δt/T live with the run they govern, in Run mode beside the
+                inputs. The run controls left this strip for the dock's
+                transport spine (run-legibility, 2026-08-17): one place starts
+                a run, one place plays it, and that place is the bench. Run
+                mode itself is one click away on the mode switch. */}
             {/* The lens's stance, declared (#7, boldened on review): a
                 full-width display band under the controls — the strip is
                 flex-wrap, so basis-full lands the question on its own line,
@@ -2842,14 +2788,25 @@ function Workspace() {
                         runKind={LensPalette[canvasModel.lens].run}
                       dock={LensPalette[canvasModel.lens].run === "conservation"}
                       transport={
-                        result ? (
-                          <SimScrubber
-                            steps={result.ticks}
+                        runCtl ? (
+                          <Transport
+                            onRun={runCtl.onRun}
+                            onStep={runCtl.onStep}
+                            runnable={runCtl.runnable}
+                            runTitle={runCtl.title}
+                            steps={
+                              result ? result.ticks : markovRun ? markovRun.history.length : 0
+                            }
                             tick={tick}
                             onTick={setTick}
                             playing={playing}
                             onPlayingChange={handlePlayingChange}
                             loop={playLoop}
+                            verdict={
+                              result
+                                ? { conserved: result.conserved, residual: result.residual }
+                                : null
+                            }
                           />
                         ) : null
                       }
