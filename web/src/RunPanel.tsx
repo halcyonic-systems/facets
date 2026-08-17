@@ -49,19 +49,15 @@ const WORDING = {
   residualLabel: "balance residual",
 };
 
-/** The run's always-visible glance row (run-legibility ws3): the headline
- *  metric at the cursor, the key responding stock, and the residual — the
- *  three numbers a cold viewer needs before any tab. Reads the same kernel
- *  outputs as the tabs; computes nothing the kernel didn't. */
-export function RunGlance({
-  result,
-  model,
-  tick,
-}: {
-  result: RunResultRich;
-  model?: CanvasModel | null;
-  tick?: number;
-}) {
+/** The glance facts (shared by the dock/Readouts glance row and the bench's
+ *  RunCard): the headline metric at the cursor, the key responding stock, and
+ *  the residual. Reads the same kernel outputs as the tabs; computes nothing
+ *  the kernel didn't. */
+export function glanceFacts(
+  result: RunResultRich,
+  model: CanvasModel | null | undefined,
+  tick: number | undefined,
+) {
   const metrics = model ? evaluateMetrics(model, result) : null;
   const head = metrics?.readings[0] ?? null;
   const n = head?.series.length ?? result.ticks;
@@ -72,13 +68,28 @@ export function RunGlance({
       : `${humanize(head.series[at] ?? head.endpoint)}${head.unit ? ` ${head.unit}` : ""}`
     : null;
   // The key responding stock: the first internal level with a trajectory.
-  const internal = result.levels.find((l) => l.category === "internal");
+  const internal = result.levels.find((l) => l.category === "internal") ?? null;
   const stockTraj = internal
     ? result.trajectories.find((t) => t.name === internal.name)
     : undefined;
   const stockValue = stockTraj
     ? (stockTraj.series[Math.min(at, stockTraj.series.length - 1)] ?? internal!.value)
-    : internal?.value;
+    : (internal?.value ?? null);
+  return { head, headValue, internal, stockValue };
+}
+
+/** The run's always-visible glance row: the three numbers a cold viewer needs
+ *  before any tab. */
+export function RunGlance({
+  result,
+  model,
+  tick,
+}: {
+  result: RunResultRich;
+  model?: CanvasModel | null;
+  tick?: number;
+}) {
+  const { head, headValue, internal, stockValue } = glanceFacts(result, model, tick);
   return (
     <div
       className="flex flex-wrap items-baseline gap-x-6 gap-y-1 px-4 py-2"
@@ -115,8 +126,6 @@ export function RunGlance({
   );
 }
 
-/** The Story tab (ws3): the declared-metric running totals and the responding
- *  levels, LARGE — each chart gets real height instead of a 90-150px strip. */
 export function RunStory({
   result,
   lens,
@@ -496,7 +505,7 @@ function ComparisonFamilyChart({ comparisons, tick, height = 150, timeUnit }: { 
 /** One declared metric's reading (#203): the author's name and endpoint
  *  number lead; the executed series rides below as a small chart. Same-verb
  *  families arrive pre-sorted by endpoint — the leaderboard reading. */
-function MetricRow({ r, tick, height = 90, timeUnit }: { r: MetricReading; tick?: number; height?: number; timeUnit?: string | null }) {
+export function MetricRow({ r, tick, height = 90, timeUnit }: { r: MetricReading; tick?: number; height?: number; timeUnit?: string | null }) {
   const n = r.series.length;
   const mid = midRun(tick, n);
   const data = r.series.map((v, t) => ({ t, v, past: mid && t <= tick! ? v : null }));

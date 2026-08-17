@@ -38,13 +38,13 @@ import { BungeRegister } from "./canvas/BungeRegister";
 import { BoundaryPopover } from "./canvas/BoundaryPopover";
 import { MilieuPopover } from "./canvas/MilieuPopover";
 import { DataMode } from "./DataMode";
-import { RunMode } from "./RunMode";
+import { Readouts } from "./Readouts";
+import { RunCard } from "./RunCard";
 import { Transport } from "./Transport";
 import { InterfacePopover } from "./canvas/InterfacePopover";
 import { PaletteRail } from "./canvas/PaletteRail";
 import type { PaletteTool } from "./canvas/lenses/registry";
 import { LensPalette } from "./canvas/lenses/registry";
-import { SimScrubber } from "./canvas/SimScrubber";
 import { MarkovReadout } from "./canvas/MarkovReadout";
 import { type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
@@ -108,17 +108,20 @@ const LENSES: CanvasModel["lens"][] = ["Klir", "Bunge", "Mobus"];
  *  readings of it. The readings are the inspector dock's tabs, and Run is no
  *  longer one of them: a run has a timeline, inputs and results, and it now gets
  *  the whole stage to show them on. */
-export const WORK_MODES = ["structure", "data", "run"] as const;
+/** #345 (doctrine revision, 2026-08-17): Run LEFT the mode axis. A run is a
+ *  state of the Model surface — the transport rides under the stage, the run
+ *  card sits beside the diagram, and the deep-dive charts are the Readouts
+ *  EXPANSION (readoutsOpen), not a place on this axis. The internal value
+ *  "structure" survives as Model's key (smallest diff; the label is the word). */
+export const WORK_MODES = ["structure", "data"] as const;
 export type WorkMode = (typeof WORK_MODES)[number];
 const WORK_MODE_LABEL: Record<WorkMode, string> = {
-  structure: "Structure",
+  structure: "Model",
   data: "Data",
-  run: "Run",
 };
 const WORK_MODE_TITLE: Record<WorkMode, string> = {
-  structure: "Structure — author the model (the canvas asserts)",
+  structure: "Model — the diagram, its knobs, and the run on one bench (the canvas asserts; Run computes)",
   data: "Data — the model's data-level face (rows = time, columns = declared flows; observes, never asserts)",
-  run: "Run — the model executing: its time slice, what forces it, and the trajectory that came back",
 };
 
 // #109 walk choreography — the enter/exit transition's OUT phase length. Must
@@ -305,6 +308,13 @@ function Workspace() {
   // results, and Run = a mode transition is doctrine, Arc 4). Only Structure
   // renders the canvas. Structure/Data ratified 2026-08-09; Run 2026-08-12.
   const [workMode, setWorkMode] = useState<WorkMode>("structure");
+  // #345: the Readouts EXPANSION — the run's full-page deep-dive over the
+  // Model surface. Not a mode: ⤢ opens it, Esc/⤡ closes it, and it stands
+  // down whenever the surface under it changes.
+  const [readoutsOpen, setReadoutsOpen] = useState(false);
+  useEffect(() => {
+    if (workMode !== "structure") setReadoutsOpen(false);
+  }, [workMode]);
   // #304 M2 slice 1: a CSV attached to the OPEN model from the Data tab —
   // the document acquires data without a demo bundle. Cleared wherever the
   // open document changes (same sites that clear `demo`).
@@ -1589,7 +1599,8 @@ function Workspace() {
               : "Run needs data: a demo bundle, or a CSV attached and bound in Data mode."
           : "No mechanism stated (⊘M), so structure alone gives Run nothing to execute.";
     const onRun = () => {
-      setWorkMode("run");
+      // #345: no mode transition — the transport lives on the Model surface,
+      // so the run happens where the author already is.
       if (runKind === "dtmc") {
         if (dtmcRunnable) runKlir(canvasModel, t, true);
       } else if (runKind === "conservation" && runCsv) {
@@ -1601,7 +1612,6 @@ function Workspace() {
     // scrubber landed on the new final tick. The recorded-run architecture
     // makes T+1 exact; no incremental engine state.
     const onStep = () => {
-      setWorkMode("run");
       if (runKind === "dtmc") {
         if (!dtmcRunnable) return;
         // The Markov history carries the t0 row, so the current step count is
@@ -1621,6 +1631,25 @@ function Workspace() {
     };
     return { runKind, runnable, title, onRun, onStep };
   })();
+
+  // The ONE transport spine (#345): mounted under the stage on the Model
+  // surface, and in the Readouts header when the expansion is open — never
+  // both at once (two scrubbers would double-advance the shared cursor).
+  const transportEl = runCtl ? (
+    <Transport
+      onRun={runCtl.onRun}
+      onStep={runCtl.onStep}
+      runnable={runCtl.runnable}
+      runTitle={runCtl.title}
+      steps={result ? result.ticks : markovRun ? markovRun.history.length : 0}
+      tick={tick}
+      onTick={setTick}
+      playing={playing}
+      onPlayingChange={handlePlayingChange}
+      loop={playLoop}
+      verdict={result ? { conserved: result.conserved, residual: result.residual } : null}
+    />
+  ) : null;
 
   // A per-lens edge edit (kind / bond⇄mere / direction / klir toggle): update
   // the editing model; the effect above re-projects + re-judges in Rust.
@@ -2516,11 +2545,7 @@ function Workspace() {
                       fitToken={fitToken}
                       // Recomposition: in Run mode the dock owns the lower band,
                       // so fit frames the diagram into what stays visible.
-                      fitBottomFraction={
-                        workMode === "run" && LensPalette[canvasModel.lens].run === "conservation"
-                          ? 0.45
-                          : 0
-                      }
+                      fitBottomFraction={0}
                       // #100 phase 0: the container/place label names the
                       // SYSTEM (author SOI name, else the shell's label), so a
                       // model can never impersonate its only component.
@@ -2620,12 +2645,16 @@ function Workspace() {
                         // commit path (applyInputEdit → re-run + auto-play) as
                         // the rail. Structure mode passes neither (#336).
                         param={
-                          workMode === "run"
+                          runCtl?.runKind === "conservation" && runCtl.runnable
                             ? (flowParamFor(canvasModel, selectedRelation.id) ?? undefined)
                             : undefined
                         }
                         paramForcedBy={forcedByColumn(manifest, selectedRelation)}
-                        onParamEdit={workMode === "run" ? applyInputEdit : undefined}
+                        onParamEdit={
+                          runCtl?.runKind === "conservation" && runCtl.runnable
+                            ? applyInputEdit
+                            : undefined
+                        }
                         fromName={canvasModel.things.find((t) => t.id === selectedRelation.a)?.name}
                         toName={canvasModel.things.find((t) => t.id === selectedRelation.b)?.name}
                         onUpdateRelation={updateRelation}
@@ -2719,7 +2748,7 @@ function Workspace() {
                     {toast && (
                       <Banner
                         tone="error"
-                        className={`absolute left-3 ${workMode === "run" ? "bottom-[calc(45%+0.75rem)]" : "bottom-3"}`}
+                        className={"absolute left-3 bottom-3"}
                       >
                         rejected — {toast}
                       </Banner>
@@ -2727,7 +2756,7 @@ function Workspace() {
                     {notice && (
                       <Banner
                         tone="soft"
-                        className={`absolute left-3 ${workMode === "run" ? "bottom-[calc(45%+0.75rem)]" : "bottom-3"}`}
+                        className={"absolute left-3 bottom-3"}
                       >
                         {notice}
                       </Banner>
@@ -2762,108 +2791,68 @@ function Workspace() {
                         </button>
                       </div>
                     )}
-                  </div>
-
-                  {/* Run mode over the living stage (recomposition, 2026-08-16):
-                      the diagram STAYS the stage — same canvas, same overlays,
-                      moving with the shared cursor — and the run's cards dock
-                      beneath it (dock form) for a conservation run. The other
-                      run kinds keep the full-bleed frame: Klir's DTMC already
-                      rides the diagram (#67 J9), and a non-running lens states
-                      its refusal on neutral ground. #304 honored — the mode is
-                      built, its stage recomposed; no drawer (#312 stands). */}
-                  {workMode === "run" && (
-                    /* #312 move 2: the run takes the stage. Same state, same
-                         kernel outputs, same cards the dock's Run tab hosted —
-                         re-parented into the mode, which is the width they were
-                         starved of. */
-                      <RunMode
-                        result={result}
-                        markovRun={markovRun}
-                        ranEdited={ranEdited}
-                        runError={runError}
-                        lens={canvasModel.lens}
-                        onAcceptUnit={acceptDerivedUnit}
-                        tick={tick}
+                    {/* #345: the bench — Run is a STATE of this surface, not a
+                      mode. The diagram stays full-size; the run card rides the
+                      stage's right edge; the transport rides under the stage;
+                      Readouts is the full-page expansion over both. */}
+                  {workMode === "structure" &&
+                    runCtl?.runKind === "conservation" &&
+                    (runCtl.runnable || result !== null) && (
+                      <RunCard
                         model={canvasModel}
-                        // The run's manifest exists in two cases, not one: a
-                        // demo bundle, or an attached CSV with at least one
-                        // binding (#304's run-from-attached — the same pair
-                        // `runCsv` accepts). Passing null here made a bound
-                        // library model read as bundle-less in Run mode.
                         manifest={
                           demo || (attachedCsv && manifest.mapping.length > 0) ? manifest : null
                         }
+                        result={result}
+                        tick={tick}
+                        time={{ dt, t, klir: false, onCommit: applyTime }}
                         onInputEdit={applyInputEdit}
                         onResetInputs={demo?.sl ? resetInputs : undefined}
-                        time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}
-                        runKind={LensPalette[canvasModel.lens].run}
-                      dock={LensPalette[canvasModel.lens].run === "conservation"}
-                      transport={
-                        runCtl ? (
-                          <Transport
-                            onRun={runCtl.onRun}
-                            onStep={runCtl.onStep}
-                            runnable={runCtl.runnable}
-                            runTitle={runCtl.title}
-                            steps={
-                              result ? result.ticks : markovRun ? markovRun.history.length : 0
-                            }
-                            tick={tick}
-                            onTick={setTick}
-                            playing={playing}
-                            onPlayingChange={handlePlayingChange}
-                            loop={playLoop}
-                            verdict={
-                              result
-                                ? { conserved: result.conserved, residual: result.residual }
-                                : null
-                            }
-                          />
-                        ) : null
+                        onOpenReadouts={() => setReadoutsOpen(true)}
+                      />
+                    )}
+                  {readoutsOpen && workMode === "structure" && (
+                    <Readouts
+                      result={result}
+                      markovRun={markovRun}
+                      ranEdited={ranEdited}
+                      runError={runError}
+                      lens={canvasModel.lens}
+                      onAcceptUnit={acceptDerivedUnit}
+                      tick={tick}
+                      model={canvasModel}
+                      // The run's manifest exists in two cases, not one: a demo
+                      // bundle, or an attached CSV with at least one binding
+                      // (#304's run-from-attached — the same pair `runCsv`
+                      // accepts).
+                      manifest={
+                        demo || (attachedCsv && manifest.mapping.length > 0) ? manifest : null
                       }
-                      />
+                      onInputEdit={applyInputEdit}
+                      onResetInputs={demo?.sl ? resetInputs : undefined}
+                      time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}
+                      runKind={LensPalette[canvasModel.lens].run}
+                      transport={transportEl}
+                      onClose={() => setReadoutsOpen(false)}
+                    />
                   )}
+                  </div>
 
-                  {/* The run's transport, under the stage in every mode: the
-                      scrubber animates the canvas frame in Structure and marks
-                      where the system is on its path in Run, so it sits below
-                      the stage rather than inside either one. */}
-                  {result && workMode !== "run" && (
-                    <div className="mt-3 grid gap-3">
-                      <SimScrubber
-                        steps={result.ticks}
-                        tick={tick}
-                        onTick={setTick}
-                        playing={playing}
-                        onPlayingChange={handlePlayingChange}
-                        loop={playLoop}
-                      />
-                      <div className="flex flex-wrap items-center gap-3">
-                        <Pill tone={result.conserved ? "ok" : "error"}>
-                          {result.conserved ? "✓ conserved" : "⚠ leak"}
-                        </Pill>
-                        <span className="text-xs tabular" style={{ color: "var(--text-muted)" }}>
-                          residual {result.residual.toExponential(1)}
-                        </span>
-                      </div>
-                    </div>
+
+                  {/* The transport strip under the stage (#345): the one row
+                      that starts a run, plays the recorded trace, and states
+                      the verdict — hidden while Readouts is open so the spine
+                      exists exactly once. An unrunnable model states why here
+                      (the refusal's home, now that Run is not a mode). */}
+                  {workMode === "structure" && !readoutsOpen && runCtl && (
+                    <div className="mt-3">{transportEl}</div>
                   )}
 
                   {/* #67 J9: the Markov run's scrubber + distribution readout.
                       Structure-primary — the mass rides the diagram above; this
                       is the secondary, noted reading. It carries no conservation
                       pill (a distribution run has no residual to show). */}
-                  {markovRun && (
-                    <MarkovReadout
-                      run={markovRun}
-                      tick={tick}
-                      onTick={setTick}
-                      playing={playing}
-                      onPlayingChange={handlePlayingChange}
-                      loop={playLoop}
-                    />
-                  )}
+                  {markovRun && !readoutsOpen && <MarkovReadout run={markovRun} tick={tick} />}
 
                   {/* The Run / Formal / Review panels no longer stack here — they
                       live in the right-docked InspectorDock (a sibling of this
