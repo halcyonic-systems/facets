@@ -30,6 +30,19 @@ interface Props {
 const NODE_W = 92;
 const NODE_H = 40;
 
+/** The node sparkline path: the spark ring scaled into a strip along the
+ *  node's lower edge, normalized to its own max (shape, not magnitude). */
+function sparkPoints(spark: number[]): string {
+  const max = Math.max(...spark, 1e-6);
+  const x0 = 46;
+  const w = NODE_W - x0 - 6;
+  const y0 = NODE_H - 6;
+  const h = 9;
+  return spark
+    .map((v, i) => `${(x0 + (i / (spark.length - 1)) * w).toFixed(1)},${(y0 - (v / max) * h).toFixed(1)}`)
+    .join(" ");
+}
+
 /** Kind glyph — a compact visual anchor per primitive (full name is below). */
 const GLYPH: Record<string, string> = {
   Source: "▶",
@@ -115,6 +128,10 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
         <marker id="sb-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
           <path d="M0,0 L8,4 L0,8 z" fill="var(--text-muted)" />
         </marker>
+        {/* The flow animation: a dash marching down the wire. Speed and weight
+            carry the delivery (engine's last_amount) — the canvas never
+            computes a number, only renders one. */}
+        <style>{`@keyframes sb-flow { to { stroke-dashoffset: -14; } }`}</style>
       </defs>
 
       {/* wires */}
@@ -136,6 +153,19 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
               strokeDasharray={w.mode === "gradient" ? "4 3" : undefined}
               markerEnd="url(#sb-arrow)"
             />
+            {w.last_amount > 0.02 && (
+              <line
+                x1={a.x}
+                y1={a.y}
+                x2={b.x}
+                y2={b.y}
+                stroke="var(--accent)"
+                strokeWidth={Math.min(4, 1 + Math.sqrt(w.last_amount))}
+                strokeDasharray="7 7"
+                opacity={0.65}
+                style={{ animation: `sb-flow ${Math.max(0.25, 1.2 / Math.sqrt(w.last_amount))}s linear infinite` }}
+              />
+            )}
             {w.last_amount > 0 && (
               <text
                 x={(a.x + b.x) / 2}
@@ -199,6 +229,16 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
             <text x={8} y={31} fontSize={9} fontFamily="monospace" fill="var(--text-muted)">
               {isBuffer ? `stock ${n.storage.toFixed(1)}` : `act ${n.activity.toFixed(1)}`}
             </text>
+            {/* inline sparkline: the node's last SPARK_CAP ticks (engine trace) */}
+            {n.spark.length > 1 && (
+              <polyline
+                points={sparkPoints(n.spark)}
+                fill="none"
+                stroke="var(--accent)"
+                strokeWidth={0.75}
+                opacity={0.7}
+              />
+            )}
             {/* output port: drag from here to wire */}
             <circle
               cx={NODE_W}

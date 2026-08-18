@@ -12,6 +12,7 @@ import type { LadderStamp, SandboxPaletteEntry } from "../kernel/types";
 import { useSandboxSession } from "./useSandboxSession";
 import SandboxCanvas, { type CanvasSelection } from "./SandboxCanvas";
 import SandboxInspector from "./SandboxInspector";
+import SandboxMetrics from "./SandboxMetrics";
 
 /** Cascade for click-to-place so repeated adds don't perfectly overlap. */
 function placeAt(count: number): { x: number; y: number } {
@@ -205,6 +206,9 @@ export default function SandboxSurface() {
           )}
         </aside>
       </div>
+
+      {/* metrics strip */}
+      {snap && snap.nodes.length > 0 && <SandboxMetrics session={sb.session} snapshot={snap} />}
 
       {/* status line */}
       <footer className="border-t px-4 py-1 text-right font-mono text-[10px]" style={{ color: "var(--text-muted)" }}>
