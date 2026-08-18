@@ -46,6 +46,12 @@ import type {
   Thing,
   ValidationIssue,
   ValidationResult,
+  SandboxSnapshot,
+  SandboxNode,
+  SandboxWire,
+  SandboxHistoryDelta,
+  SandboxPaletteEntry,
+  LadderStamp,
 } from "./types";
 import { kernelVerdict } from "./testVerdict";
 
@@ -785,5 +791,166 @@ describe("serde↔TS boundary fixtures", () => {
     const r = parseRunResultRich(fixture("run_result_rich"));
     expect(r.conserved).toBeTypeOf("boolean");
     expect(r.comparisons.length).toBeGreaterThan(0);
+  });
+});
+
+// ---- the sandbox seam (SandboxSession DTOs) ---------------------------------
+
+const SUBSTANCE_BASES = ["Energy", "Material", "Message"] as const;
+const WIRE_MODES = ["pushed", "gradient"] as const;
+
+function numArr(v: unknown, where: string): number[] {
+  return arr(v, where).map((x, i) => num(x, `${where}[${i}]`));
+}
+
+function ledgerRow(v: unknown, where: string): [number, number, number, number] {
+  const r = numArr(v, where);
+  if (r.length !== 4) throw new Error(`${where}: expected 4 ledger columns, got ${r.length}`);
+  return r as [number, number, number, number];
+}
+
+function parseSandboxNode(v: unknown, where: string): SandboxNode {
+  const o = shape(v, where, [
+    "kind", "name", "x", "y", "param", "release_rate", "initial_storage",
+    "capacity", "setpoint", "time_constant", "maintenance", "back_pressure",
+    "substance", "substance_base", "activity", "storage", "total", "spark",
+    "process", "equation",
+  ]);
+  return {
+    kind: str(o.kind, `${where}.kind`),
+    name: str(o.name, `${where}.name`),
+    x: num(o.x, `${where}.x`),
+    y: num(o.y, `${where}.y`),
+    param: num(o.param, `${where}.param`),
+    release_rate: num(o.release_rate, `${where}.release_rate`),
+    initial_storage: num(o.initial_storage, `${where}.initial_storage`),
+    capacity: num(o.capacity, `${where}.capacity`),
+    setpoint: num(o.setpoint, `${where}.setpoint`),
+    time_constant: num(o.time_constant, `${where}.time_constant`),
+    maintenance: num(o.maintenance, `${where}.maintenance`),
+    back_pressure: bool(o.back_pressure, `${where}.back_pressure`),
+    substance: str(o.substance, `${where}.substance`),
+    substance_base: oneOf(o.substance_base, `${where}.substance_base`, SUBSTANCE_BASES),
+    activity: num(o.activity, `${where}.activity`),
+    storage: num(o.storage, `${where}.storage`),
+    total: num(o.total, `${where}.total`),
+    spark: numArr(o.spark, `${where}.spark`),
+    process: nullableStr(o.process, `${where}.process`),
+    equation: str(o.equation, `${where}.equation`),
+  };
+}
+
+function parseSandboxWire(v: unknown, where: string): SandboxWire {
+  const o = shape(v, where, ["from", "to", "mode", "conductance", "rate", "ample", "last_amount"]);
+  return {
+    from: num(o.from, `${where}.from`),
+    to: num(o.to, `${where}.to`),
+    mode: oneOf(o.mode, `${where}.mode`, WIRE_MODES),
+    conductance: num(o.conductance, `${where}.conductance`),
+    rate: nullableNum(o.rate, `${where}.rate`),
+    ample: bool(o.ample, `${where}.ample`),
+    last_amount: num(o.last_amount, `${where}.last_amount`),
+  };
+}
+
+function parseSandboxSnapshot(v: unknown): SandboxSnapshot {
+  const o = shape(v, "SandboxSnapshot", [
+    "tick", "time", "invariant", "balance", "emitted", "sunk", "dissipated",
+    "stored", "algebraic_cycle", "nodes", "wires",
+  ]);
+  return {
+    tick: num(o.tick, "tick"),
+    time: num(o.time, "time"),
+    invariant: oneOf(o.invariant, "invariant", ["conserved", "none"] as const),
+    balance: nullableNum(o.balance, "balance"),
+    emitted: num(o.emitted, "emitted"),
+    sunk: num(o.sunk, "sunk"),
+    dissipated: num(o.dissipated, "dissipated"),
+    stored: num(o.stored, "stored"),
+    algebraic_cycle: o.algebraic_cycle === null ? null : numArr(o.algebraic_cycle, "algebraic_cycle"),
+    nodes: arr(o.nodes, "nodes").map((n, i) => parseSandboxNode(n, `nodes[${i}]`)),
+    wires: arr(o.wires, "wires").map((w, i) => parseSandboxWire(w, `wires[${i}]`)),
+  };
+}
+
+function parseSandboxHistoryDelta(v: unknown): SandboxHistoryDelta {
+  const o = shape(v, "SandboxHistoryDelta", ["rows", "ledger", "wires"]);
+  return {
+    rows: arr(o.rows, "rows").map((r, i) => numArr(r, `rows[${i}]`)),
+    ledger: arr(o.ledger, "ledger").map((r, i) => ledgerRow(r, `ledger[${i}]`)),
+    wires: arr(o.wires, "wires").map((r, i) => numArr(r, `wires[${i}]`)),
+  };
+}
+
+function parsePrimitiveCard(v: unknown, where: string) {
+  const o = shape(v, where, ["plain", "everyday", "math", "substance", "theory", "code"]);
+  return {
+    plain: str(o.plain, `${where}.plain`),
+    everyday: str(o.everyday, `${where}.everyday`),
+    math: str(o.math, `${where}.math`),
+    substance: str(o.substance, `${where}.substance`),
+    theory: str(o.theory, `${where}.theory`),
+    code: str(o.code, `${where}.code`),
+  };
+}
+
+function parseSandboxPaletteEntry(v: unknown, where: string): SandboxPaletteEntry {
+  const o = shape(v, where, ["kind", "param_spec", "emits_signal", "inherits_substance", "default_out", "card"]);
+  let spec: [string, number] | null = null;
+  if (o.param_spec !== null) {
+    const pair = arr(o.param_spec, `${where}.param_spec`);
+    if (pair.length !== 2) throw new Error(`${where}.param_spec: expected [label, max]`);
+    spec = [str(pair[0], `${where}.param_spec[0]`), num(pair[1], `${where}.param_spec[1]`)];
+  }
+  return {
+    kind: str(o.kind, `${where}.kind`),
+    param_spec: spec,
+    emits_signal: bool(o.emits_signal, `${where}.emits_signal`),
+    inherits_substance: bool(o.inherits_substance, `${where}.inherits_substance`),
+    default_out: oneOf(o.default_out, `${where}.default_out`, SUBSTANCE_BASES),
+    card: parsePrimitiveCard(o.card, `${where}.card`),
+  };
+}
+
+function parseLadderStamp(v: unknown, where: string): LadderStamp {
+  const o = shape(v, where, ["slug", "name", "blurb", "composition", "provenance"]);
+  return {
+    slug: str(o.slug, `${where}.slug`),
+    name: str(o.name, `${where}.name`),
+    blurb: str(o.blurb, `${where}.blurb`),
+    composition: str(o.composition, `${where}.composition`),
+    provenance: str(o.provenance, `${where}.provenance`),
+  };
+}
+
+describe("serde↔TS sandbox fixtures", () => {
+  it("SandboxSnapshot validates", () => {
+    const s = parseSandboxSnapshot(fixture("sandbox_snapshot"));
+    expect(s.tick).toBeGreaterThan(0);
+    expect(s.nodes.length).toBeGreaterThan(0);
+    expect(s.wires.length).toBeGreaterThan(0);
+    // The fixture is a conserved Flows stamp: residual present and ≈ 0.
+    expect(s.invariant).toBe("conserved");
+    expect(Math.abs(s.balance ?? NaN)).toBeLessThan(1e-3);
+  });
+
+  it("SandboxHistoryDelta validates", () => {
+    const d = parseSandboxHistoryDelta(fixture("sandbox_history_delta"));
+    expect(d.rows.length).toBeGreaterThan(0);
+    expect(d.ledger.length).toBe(d.rows.length);
+  });
+
+  it("sandbox palette validates and carries the 12 kinds", () => {
+    const entries = arr(fixture("sandbox_palette"), "sandbox_palette")
+      .map((e, i) => parseSandboxPaletteEntry(e, `palette[${i}]`));
+    expect(entries).toHaveLength(12);
+    expect(entries.map((e) => e.kind)).toContain("Buffering");
+  });
+
+  it("Troncale process stamps validate", () => {
+    const stamps = arr(fixture("ladder_stamps"), "ladder_stamps")
+      .map((s, i) => parseLadderStamp(s, `stamps[${i}]`));
+    expect(stamps.length).toBeGreaterThan(0);
+    for (const s of stamps) expect(s.composition.length).toBeGreaterThan(0);
   });
 });

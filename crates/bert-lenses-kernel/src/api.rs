@@ -18,7 +18,8 @@ use bert_core::operational::{validate_operational as core_validate_operational, 
 use bert_core::WorldModel;
 
 /// Serialize any kernel result to a JS value (the one marshaling primitive).
-fn to_js<T: Serialize>(value: &T) -> Result<JsValue, JsError> {
+/// `pub(crate)` so the sandbox seam shares it rather than growing a twin.
+pub(crate) fn to_js<T: Serialize>(value: &T) -> Result<JsValue, JsError> {
     serde_wasm_bindgen::to_value(value).map_err(|e| JsError::new(&e.to_string()))
 }
 
@@ -813,6 +814,34 @@ mod tests {
 
     const RESERVOIR_CSV: &str =
         "month,inflow\n1,20\n2,35\n3,60\n4,45\n5,25\n6,15\n7,10\n8,12\n9,22\n10,40\n11,55\n12,30\n";
+
+    /// The sandbox seam's DTOs, fixtured from a real stamped-and-stepped
+    /// session (never hand-typed). The web mirrors are `SandboxSnapshot`,
+    /// `SandboxHistoryDelta`, `SandboxPaletteEntry[]`, `LadderStamp[]`.
+    #[test]
+    fn sandbox_snapshot_fixture() {
+        let mut s = bert_compose::session::Session::from_stamp("Flows").expect("Flows stamps");
+        s.set_invariant(true);
+        s.step(5, 1.0);
+        check_fixture("sandbox_snapshot", &s.snapshot());
+    }
+
+    #[test]
+    fn sandbox_history_delta_fixture() {
+        let mut s = bert_compose::session::Session::from_stamp("Flows").expect("Flows stamps");
+        s.step(5, 1.0);
+        check_fixture("sandbox_history_delta", &s.history_since(4));
+    }
+
+    #[test]
+    fn sandbox_palette_fixture() {
+        check_fixture("sandbox_palette", &bert_compose::session::palette());
+    }
+
+    #[test]
+    fn ladder_stamps_fixture() {
+        check_fixture("ladder_stamps", &bert_compose::session::stamps());
+    }
 
     #[test]
     fn csv_parse_fixture() {

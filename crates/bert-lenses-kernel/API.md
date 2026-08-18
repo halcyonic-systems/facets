@@ -715,6 +715,69 @@ mark is real content. All three are recomputed through the real wasm package by
 `scripts/wasm_exec.mjs` and validated field-by-field against the TS mirrors by
 `web/src/kernel/contract.test.ts`.
 
+## The sandbox seam (additive — the boundary's ONE stateful export)
+
+Everything above is stateless: each call deserializes its full input, delegates,
+and serializes the answer; the boundary holds nothing between calls. The sandbox
+is the one deliberate carve-out. Its defining interaction — a parameter tweaked
+MID-RUN without resetting stocks — cannot be expressed by a batch re-run, so a
+live `Circuit` is held across calls. Boundaries of the carve-out:
+
+- ONE exported class, `SandboxSession`. The state and all its meaning live
+  engine-side (`bert_compose::session::Session`, natively tested); the wasm
+  class delegates and converts, marshaling-only like every other export.
+- A session is an instrument's live state, never the document of record. The
+  document is a `WorldModel` (`to_model_json()` / `SandboxSession.from_model`,
+  via the lossless `export::to_world_model` / `from_world_model` seam) — the
+  same artifact the Model surface opens, so graduation is just a save.
+- Trap story: if the module traps, the face discards the session (`.free()`)
+  and rebuilds from its own authoring mirror or the saved model. Nothing
+  irreplaceable lives in wasm memory.
+- The session's trace is an observer artifact of an ongoing performance —
+  distinct from `RecordedRun` (a spec-keyed batch query) and from the 8-tuple's
+  `H`. Topology edits clear it (recorded rows are index-aligned); the front is
+  truncated past `HISTORY_CAP` (10k rows) so an idle running sandbox stays
+  bounded.
+
+### `new SandboxSession()` / `SandboxSession.from_stamp(name)` / `SandboxSession.from_model(model_json)`
+An empty canvas; a canvas opened on a stamped Troncale process (names from
+`ladder_stamps()`); a session over a saved model JSON.
+
+### Authoring: `add_node(kind, x, y) → u32` · `remove_node(i)` · `add_wire(from, to, mode) → u32` · `remove_wire(k)` · `stamp(name, x, y) → u32`
+`kind` is a `sandbox_palette()` name ("Source" | "Sink" | the ten primitives);
+`mode` is `"pushed" | "gradient"`. Node identity is Vec-index: `remove_node`
+drops touching wires and remaps indices above `i` (desktop semantics) — a face
+cache keyed by index must rebuild from the next `snapshot()`. Every bad index,
+unknown kind, or self-loop is a named `Error`, never a trap.
+
+### Live tweaking: `set_node_param(i, field, v)` · `set_node_pos` · `set_node_name` · `set_substance(i, name, base, unit)` · `set_wire_param(k, field, v)` · `set_invariant(conserved)`
+Node fields: `param` | `release_rate` | `initial_storage` (also writes the live
+stock, so it's touchable mid-run) | `capacity` | `setpoint` | `time_constant` |
+`maintenance` | `back_pressure` (0/1). Wire fields: `conductance` | `rate`
+(negative clears to the shared fallback). `set_invariant(false)` declines the
+conservation ledger (axis D — ADR-0003): identical trajectory, no balance, no
+ledger rows. Tweaks never reset the clock or the stocks; the running system
+responds next tick (`balance` documents the moved baseline; Reset re-baselines).
+
+### Transport: `step(n, dt)` · `reset()`
+The FACE owns the clock (a ticks/s wall-clock accumulator calling `step` per
+frame); the engine owns the transition. An algebraic cycle makes `step` a
+refused no-op — read `snapshot().algebraic_cycle` for the loop's node indices.
+
+### Reading: `snapshot() → SandboxSnapshot` · `history_since(from_tick) → SandboxHistoryDelta` · `to_model_json(name) → string`
+`snapshot()` is one frame's read: clock, ledger totals, residual (`balance`,
+null when the invariant is declined), per-node scalars + sparkline, wires with
+this tick's delivery. `history_since` is a delta pull keyed by recorded tick,
+so history never crosses the boundary in full. TS mirrors: `SandboxSnapshot`,
+`SandboxHistoryDelta` in `web/src/kernel/types.ts`; fixtures
+`sandbox_snapshot` / `sandbox_history_delta`.
+
+### `sandbox_palette() → SandboxPaletteEntry[]` · `ladder_stamps() → LadderStamp[]`
+Stateless data exports: the 12-kind primitive palette (label, `param_spec`
+knob, substance behavior) and the stampable Troncale processes (name, blurb,
+the composition honesty line, provenance). The face renders what the engine
+declares and decides nothing. Fixtures `sandbox_palette` / `ladder_stamps`.
+
 ## Notes
 - The wasm is built with `wasm-pack build --target web` into `pkg/` (a build
   artifact, gitignored). `--release` for the shipped bundle; `--dev` while iterating.

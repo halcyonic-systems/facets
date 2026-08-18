@@ -1,0 +1,44 @@
+[
+  {
+    "slug": "00-potential-fields",
+    "name": "Potential Fields",
+    "blurb": "Two stocks on a gradient equalize with no controller — passive homeostasis.",
+    "composition": "two Buffers joined by a gradient flow (the field is the driver)",
+    "provenance": "his deepest root: 'Flows require Potential Fields'; Mobus Ch.4 (fields are generalized flows)"
+  },
+  {
+    "slug": "01-flows",
+    "name": "Flows",
+    "blurb": "Substance crosses the system, throughput reaches the sink.",
+    "composition": "Source → Buffer → Sink",
+    "provenance": "his root: 'Flows require Potential Fields'"
+  },
+  {
+    "slug": "03-feedback-regulation",
+    "name": "Feedback",
+    "blurb": "Negative feedback keeps the stock bounded — but it hunts (a limit cycle), it doesn't rest.",
+    "composition": "Sensing → Inverting → Modulating around a Buffer (the homeostat loop)",
+    "provenance": "his root; the homeostat (proven 6/09)"
+  },
+  {
+    "slug": "04-cycling-oscillation",
+    "name": "Oscillation",
+    "blurb": "Stiffen the loop and it overshoots to empty, then refills — a relaxation oscillator.",
+    "composition": "the same Feedback loop, high gain",
+    "provenance": "'Oscillations require Coupled Feedbacks require Cycling'"
+  },
+  {
+    "slug": "06-decay",
+    "name": "Decay",
+    "blurb": "A stock releasing faster than it's fed drains to empty (linear, zeroth-order).",
+    "composition": "a Buffer whose release exceeds its inflow",
+    "provenance": "pathology family (Rheopathology / drain)"
+  },
+  {
+    "slug": "07-networks",
+    "name": "Networks",
+    "blurb": "One inflow fans into many, conserved — the shares sum back to the input.",
+    "composition": "a Splitting node fanning out to several Sinks",
+    "provenance": "composition; Splitting/Combining fans"
+  }
+]

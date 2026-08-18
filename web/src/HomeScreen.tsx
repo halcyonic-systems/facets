@@ -452,6 +452,12 @@ export function HomeMenu({
           />
           <LedgerRow
             door
+            name="Sandbox"
+            description="Touch the system: drop work processes, wire them, and tweak the running flow. Saves as an ordinary model."
+            href="?sandbox=1"
+          />
+          <LedgerRow
+            door
             name="Documentation"
             description="The language, the kernel, and the traditions behind them."
             tag="external"

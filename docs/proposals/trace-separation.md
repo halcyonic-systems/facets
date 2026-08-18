@@ -1,4 +1,4 @@
-**Status:** DESIGNED, reviewed and accepted 2026-08-15; not yet implemented.
+**Status: PROPOSED** — designed, reviewed and accepted 2026-08-15; not yet implemented.
 Stage 0 (the `Node::spark` doc contradiction) applied same day. Stages 1-3
 await a dedicated session — the acceptance criterion is byte-identical float
 assertions before and after, and stage 3's test-file rewrites (including

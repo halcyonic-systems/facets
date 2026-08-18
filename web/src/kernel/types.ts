@@ -662,3 +662,110 @@ export interface BungeCoupling {
   cut_at: number;
   cells: BungeCell[];
 }
+
+// ---- The sandbox seam (the boundary's one stateful export) ------------------
+// Mirrors crates/bert-compose/src/session.rs DTOs, marshaled by
+// crates/bert-lenses-kernel/src/sandbox.rs. See API.md "SandboxSession".
+
+/** One frame's read of a live sandbox circuit. */
+export interface SandboxSnapshot {
+  tick: number;
+  time: number;
+  /** The declared state invariant (axis D). */
+  invariant: "conserved" | "none";
+  /** Conservation residual — present only while the ledger is declared. */
+  balance: number | null;
+  emitted: number;
+  sunk: number;
+  dissipated: number;
+  stored: number;
+  /** The unanchored loop's node indices when the wiring has one — the step
+   *  is a refused no-op until it's broken (#259). */
+  algebraic_cycle: number[] | null;
+  nodes: SandboxNode[];
+  wires: SandboxWire[];
+}
+
+export interface SandboxNode {
+  kind: string;
+  name: string;
+  x: number;
+  y: number;
+  param: number;
+  release_rate: number;
+  initial_storage: number;
+  capacity: number;
+  setpoint: number;
+  time_constant: number;
+  maintenance: number;
+  back_pressure: boolean;
+  /** Display label ("money (Material)" / "Material"). */
+  substance: string;
+  substance_base: "Energy" | "Material" | "Message";
+  activity: number;
+  storage: number;
+  total: number;
+  /** The node's last SPARK_CAP ticks (trace, not transition state). */
+  spark: number[];
+  /** The Troncale process this node was stamped from, if any. */
+  process: string | null;
+  /** The transfer function, instantiated with this node's live values —
+   *  rendered engine-side; the face only displays it. */
+  equation: string;
+}
+
+export interface SandboxWire {
+  from: number;
+  to: number;
+  mode: "pushed" | "gradient";
+  conductance: number;
+  rate: number | null;
+  ample: boolean;
+  /** What the wire delivered this tick — drives the flow animation. */
+  last_amount: number;
+}
+
+/** A `history_since(fromTick)` delta pull. */
+export interface SandboxHistoryDelta {
+  /** `[tick, n0.activity, n0.storage, n0.total, n1…]` per row. */
+  rows: number[][];
+  /** `[emitted, delivered, stored, dissipated]` per row — empty when the
+   *  invariant is declined. */
+  ledger: [number, number, number, number][];
+  /** Executed wire deliveries per row. */
+  wires: number[][];
+}
+
+/** One primitive palette entry — the face renders what the engine declares. */
+export interface SandboxPaletteEntry {
+  kind: string;
+  /** The tunable scalar knob, when the primitive has one: [label, max]. */
+  param_spec: [string, number] | null;
+  emits_signal: boolean;
+  inherits_substance: boolean;
+  default_out: "Energy" | "Material" | "Message";
+  /** The teaching card — progressive disclosure, engine-authored. */
+  card: PrimitiveCard;
+}
+
+/** Per-primitive teaching card (plain English first, then the drill-down). */
+export interface PrimitiveCard {
+  plain: string;
+  everyday: string;
+  math: string;
+  substance: string;
+  theory: string;
+  code: string;
+}
+
+/** One stampable Troncale process (a ladder rung offered as a macro). */
+export interface LadderStamp {
+  slug: string;
+  name: string;
+  /** What the run shows. */
+  blurb: string;
+  /** The honesty line: how it's wired from primitives. */
+  composition: string;
+  /** Troncale provenance (citation / dependency statement). */
+  provenance: string;
+}

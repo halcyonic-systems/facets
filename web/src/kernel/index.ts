@@ -32,6 +32,10 @@ import init, {
   check_decompositions_canvas as wasmCheckDecompositionsCanvas,
   klir_incidence_cells as wasmKlirIncidenceCells,
   bunge_coupling_cells as wasmBungeCouplingCells,
+  to_canvas as wasmToCanvas,
+  SandboxSession as WasmSandboxSession,
+  sandbox_palette as wasmSandboxPalette,
+  ladder_stamps as wasmLadderStamps,
 } from "bert-lenses-kernel";
 import wasmUrl from "bert-lenses-kernel/bert_lenses_kernel_bg.wasm?url";
 
@@ -55,6 +59,10 @@ import type {
   DecompositionReport,
   KlirIncidence,
   BungeCoupling,
+  SandboxSnapshot,
+  SandboxHistoryDelta,
+  SandboxPaletteEntry,
+  LadderStamp,
 } from "./types";
 import type { Lens } from "./types";
 
@@ -73,7 +81,11 @@ let readyPromise: Promise<void> | null = null;
  *
  *  It is also not needed, which is the part that was never measured. This
  *  boundary holds no state between calls — every export deserializes its whole
- *  input — so a trap unwinds one call and the module keeps answering. The
+ *  input (the ONE exception is `SandboxSession`, whose live circuit is an
+ *  instrument's session state, never the document of record: on a trap the
+ *  face discards it and rebuilds from its own mirror or the saved model; see
+ *  API.md "The sandbox seam") — so a trap unwinds one call and the module
+ *  keeps answering. The
  *  wasm-exec gate (`scripts/wasm_exec.mjs`, §E) drives 50 consecutive panics
  *  through a probe build and asserts the analysis computed after is identical
  *  to the one computed before. What a trap does cost is the JsValue heap slots
@@ -411,4 +423,130 @@ export function klirIncidenceCells(model: CanvasModel): KlirIncidence {
  *  Memoize on (model, enBloc). */
 export function bungeCouplingCells(model: CanvasModel, enBloc: boolean): BungeCoupling {
   return call("bunge_coupling_cells", () => wasmBungeCouplingCells(JSON.stringify(model), enBloc));
+}
+
+// ---- The sandbox seam: the boundary's ONE stateful export -------------------
+
+/** Node parameter knobs the engine accepts (`session.rs::set_node_param`). */
+export type SandboxNodeField =
+  | "param"
+  | "release_rate"
+  | "initial_storage"
+  | "capacity"
+  | "setpoint"
+  | "time_constant"
+  | "maintenance"
+  | "back_pressure";
+
+/**
+ * A live circuit under authoring and continuous stepping — the face's typed
+ * handle on the wasm `SandboxSession`. Everything it means is computed engine-
+ * side; this class only routes every method through `call` so refusals arrive
+ * as `KernelError`s with the kernel's own message.
+ *
+ * Lifecycle: the session is wasm-owned memory — `free()` it on teardown. It is
+ * an instrument's live state, never the document of record: persist through
+ * `toModelJson()` (a WorldModel, the same artifact the Model surface opens)
+ * and rebuild via `Sandbox.fromModel` after a trap or a reload.
+ */
+export class Sandbox {
+  private inner: WasmSandboxSession;
+
+  private constructor(inner: WasmSandboxSession) {
+    this.inner = inner;
+  }
+
+  /** An empty canvas. */
+  static empty(): Sandbox {
+    return call("SandboxSession.new", () => new Sandbox(new WasmSandboxSession()));
+  }
+
+  /** A canvas opened on a stamped Troncale process (`ladderStamps()` names). */
+  static fromStamp(name: string): Sandbox {
+    return call("SandboxSession.from_stamp", () => new Sandbox(WasmSandboxSession.from_stamp(name)));
+  }
+
+  /** A session over a saved model JSON. */
+  static fromModel(modelJson: string): Sandbox {
+    return call("SandboxSession.from_model", () => new Sandbox(WasmSandboxSession.from_model(modelJson)));
+  }
+
+  addNode(kind: string, x: number, y: number): number {
+    return call("sandbox.add_node", () => this.inner.add_node(kind, x, y));
+  }
+  removeNode(i: number): void {
+    call("sandbox.remove_node", () => this.inner.remove_node(i));
+  }
+  addWire(from: number, to: number, mode: "pushed" | "gradient"): number {
+    return call("sandbox.add_wire", () => this.inner.add_wire(from, to, mode));
+  }
+  removeWire(k: number): void {
+    call("sandbox.remove_wire", () => this.inner.remove_wire(k));
+  }
+  /** Stamp a Troncale process into the live canvas; returns the first stamped node. */
+  stamp(name: string, x: number, y: number): number {
+    return call("sandbox.stamp", () => this.inner.stamp(name, x, y));
+  }
+
+  setNodeParam(i: number, field: SandboxNodeField, v: number): void {
+    call("sandbox.set_node_param", () => this.inner.set_node_param(i, field, v));
+  }
+  setNodePos(i: number, x: number, y: number): void {
+    call("sandbox.set_node_pos", () => this.inner.set_node_pos(i, x, y));
+  }
+  setNodeName(i: number, name: string): void {
+    call("sandbox.set_node_name", () => this.inner.set_node_name(i, name));
+  }
+  setSubstance(i: number, name: string, base: "Energy" | "Material" | "Message", unit: string): void {
+    call("sandbox.set_substance", () => this.inner.set_substance(i, name, base, unit));
+  }
+  setWireParam(k: number, field: "conductance" | "rate", v: number): void {
+    call("sandbox.set_wire_param", () => this.inner.set_wire_param(k, field, v));
+  }
+  /** Declare the state invariant (axis D): the conservation ledger on or off. */
+  setInvariant(conserved: boolean): void {
+    call("sandbox.set_invariant", () => this.inner.set_invariant(conserved));
+  }
+
+  /** Advance `n` steps of `dt` each. An algebraic cycle makes this a refused
+   *  no-op — read `snapshot().algebraic_cycle` for the loop. */
+  step(n: number, dt: number): void {
+    call("sandbox.step", () => this.inner.step(n, dt));
+  }
+  reset(): void {
+    call("sandbox.reset", () => this.inner.reset());
+  }
+
+  snapshot(): SandboxSnapshot {
+    return call("sandbox.snapshot", () => this.inner.snapshot());
+  }
+  historySince(fromTick: number): SandboxHistoryDelta {
+    return call("sandbox.history_since", () => this.inner.history_since(fromTick));
+  }
+  /** The sandbox document: a WorldModel JSON. Graduation is a save. */
+  toModelJson(name: string): string {
+    return call("sandbox.to_model_json", () => this.inner.to_model_json(name));
+  }
+
+  /** Release the wasm-owned memory. The handle is dead afterwards. */
+  free(): void {
+    this.inner.free();
+  }
+}
+
+/** Reconstruct a canvas from a kernel `WorldModel` JSON — the explicit
+ *  projection-side read (storage reads go through `openModel` instead). Used
+ *  by the sandbox's graduation path: session → WorldModel → canvas → archive. */
+export function toCanvas(modelJson: string): CanvasModel {
+  return call("to_canvas", () => wasmToCanvas(modelJson));
+}
+
+/** The 12-kind primitive palette, declared by the engine. */
+export function sandboxPalette(): SandboxPaletteEntry[] {
+  return call("sandbox_palette", () => wasmSandboxPalette());
+}
+
+/** The stampable Troncale processes (name, blurb, composition honesty line). */
+export function ladderStamps(): LadderStamp[] {
+  return call("ladder_stamps", () => wasmLadderStamps());
 }

@@ -20,8 +20,10 @@ pub mod examples;
 pub mod export;
 pub mod ladder;
 pub mod lens;
+pub mod docs;
 pub mod markov;
 pub mod run;
+pub mod session;
 
 /// The engine and the node vocabulary a caller reads results against.
 pub use circuit::{Circuit, Node, NodeKind};

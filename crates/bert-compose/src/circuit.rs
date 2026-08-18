@@ -538,6 +538,77 @@ impl Circuit {
         self.dissipated = 0.0;
     }
 
+    /// Clear the recorded traces after a topology change. History rows are
+    /// flat per-node triples and `wire_history` rows are per-wire, so a
+    /// changed node or wire count would misalign every earlier row against
+    /// the new indices. Live state and the ledger totals keep running —
+    /// editing topology mid-run moves the conservation baseline exactly like
+    /// editing a stock does (`balance` doc), and Reset re-baselines.
+    fn clear_traces(&mut self) {
+        self.history.clear();
+        self.ledger_history.clear();
+        self.wire_history.clear();
+    }
+
+    /// Append a node (free authoring). Naming and numbering are the caller's
+    /// job — the shell owns its monotonic counter (as the desktop `App` did),
+    /// the engine owns only the graph.
+    pub fn add_node(&mut self, node: Node) -> usize {
+        self.nodes.push(node);
+        self.clear_traces();
+        self.nodes.len() - 1
+    }
+
+    /// Remove node `i`: drop every wire touching it and remap the indices
+    /// above it (node identity is Vec-index, the desktop semantics).
+    pub fn remove_node(&mut self, i: usize) {
+        self.nodes.remove(i);
+        self.wires.retain(|w| w.from != i && w.to != i);
+        for w in &mut self.wires {
+            if w.from > i {
+                w.from -= 1;
+            }
+            if w.to > i {
+                w.to -= 1;
+            }
+        }
+        self.clear_traces();
+    }
+
+    pub fn add_wire(&mut self, w: Wire) -> usize {
+        self.wires.push(w);
+        self.clear_traces();
+        self.wires.len() - 1
+    }
+
+    pub fn remove_wire(&mut self, k: usize) {
+        self.wires.remove(k);
+        self.clear_traces();
+    }
+
+    /// Merge another circuit (a ladder stamp) into this one: nodes land
+    /// translated by `offset`, wires re-anchored past the existing nodes,
+    /// provenance recorded on every stamped node so the inspector can say
+    /// "part of a Feedback process". Returns the index of the first merged
+    /// node. Ported from the desktop `App::stamp_macro`, minus viewport math.
+    pub fn merge(&mut self, sub: Circuit, offset: glam::Vec2, provenance: Option<&'static str>) -> usize {
+        let base = self.nodes.len();
+        for mut node in sub.nodes {
+            node.pos += offset;
+            if provenance.is_some() {
+                node.process = provenance;
+            }
+            self.nodes.push(node);
+        }
+        for mut w in sub.wires {
+            w.from += base;
+            w.to += base;
+            self.wires.push(w);
+        }
+        self.clear_traces();
+        base
+    }
+
     /// The wire graph's algebraic cycle, if it has one: a loop every element
     /// of which computes its output from same-step input, with no
     /// state-determined (Moore) anchor — no stock level read, no gradient, no
