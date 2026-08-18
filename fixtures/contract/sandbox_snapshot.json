@@ -1,0 +1,114 @@
+{
+  "tick": 5,
+  "time": 5.0,
+  "invariant": "conserved",
+  "balance": 0.0,
+  "emitted": 10.0,
+  "sunk": 6.0,
+  "dissipated": 0.0,
+  "stored": 4.0,
+  "algebraic_cycle": null,
+  "nodes": [
+    {
+      "kind": "Source",
+      "name": "Source 1",
+      "x": 0.0,
+      "y": 0.0,
+      "param": 2.0,
+      "release_rate": 1.0,
+      "initial_storage": 0.0,
+      "capacity": 0.0,
+      "setpoint": 1.0,
+      "time_constant": 0.0,
+      "maintenance": 0.0,
+      "back_pressure": false,
+      "substance": "Material",
+      "substance_base": "Material",
+      "activity": 2.0,
+      "storage": 0.0,
+      "total": 0.0,
+      "spark": [
+        2.0,
+        2.0,
+        2.0,
+        2.0,
+        2.0
+      ],
+      "process": "Flows"
+    },
+    {
+      "kind": "Buffering",
+      "name": "Buffering 2",
+      "x": 200.0,
+      "y": 0.0,
+      "param": 0.5,
+      "release_rate": 1.5,
+      "initial_storage": 0.0,
+      "capacity": 0.0,
+      "setpoint": 1.0,
+      "time_constant": 0.0,
+      "maintenance": 0.0,
+      "back_pressure": false,
+      "substance": "Material",
+      "substance_base": "Material",
+      "activity": 1.5,
+      "storage": 4.0,
+      "total": 0.0,
+      "spark": [
+        2.0,
+        2.5,
+        3.0,
+        3.5,
+        4.0
+      ],
+      "process": "Flows"
+    },
+    {
+      "kind": "Sink",
+      "name": "Sink 3",
+      "x": 400.0,
+      "y": 0.0,
+      "param": 0.5,
+      "release_rate": 1.0,
+      "initial_storage": 0.0,
+      "capacity": 0.0,
+      "setpoint": 1.0,
+      "time_constant": 0.0,
+      "maintenance": 0.0,
+      "back_pressure": false,
+      "substance": "Material",
+      "substance_base": "Material",
+      "activity": 1.5,
+      "storage": 0.0,
+      "total": 6.0,
+      "spark": [
+        0.0,
+        1.5,
+        1.5,
+        1.5,
+        1.5
+      ],
+      "process": "Flows"
+    }
+  ],
+  "wires": [
+    {
+      "from": 0,
+      "to": 1,
+      "mode": "pushed",
+      "conductance": 0.3,
+      "rate": null,
+      "ample": false,
+      "last_amount": 2.0
+    },
+    {
+      "from": 1,
+      "to": 2,
+      "mode": "pushed",
+      "conductance": 0.3,
+      "rate": null,
+      "ample": false,
+      "last_amount": 1.5
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # The transition functor as shipped — #112
 
-**Status:** ACCEPTED with slice 1 implemented (2026-08-15 review). The
+**Status: ADOPTED** — accepted with slice 1 implemented (2026-08-15 review). The
 functor reading in §1 is adopted: F = Id over the whole-circuit product state,
 Δt a family index (not an input port), the shipped forcing read as the closed
 instance. §1.7's finding 1 was fixed as #337 (`4cb56b1` — the tap rule now

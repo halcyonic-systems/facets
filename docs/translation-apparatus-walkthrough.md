@@ -1,6 +1,6 @@
 # The translation apparatus, running — walkthrough for 2026-08-19
 
-Status: CURRENT as of 2026-08-15 (post #337/#338/#340 fixes and #112 slice 1).
+**Status: RESEARCH.** Current as of 2026-08-15 (post #337/#338/#340 fixes and #112 slice 1).
 Every number below is reproducible: `bert run assets/examples/translation-apparatus.sl --t 15`.
 
 ## 0. One model, self-contained

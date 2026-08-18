@@ -1,0 +1,101 @@
+[
+  {
+    "kind": "Source",
+    "param_spec": [
+      "rate / tick",
+      10.0
+    ],
+    "emits_signal": false,
+    "inherits_substance": false,
+    "default_out": "Material"
+  },
+  {
+    "kind": "Sink",
+    "param_spec": null,
+    "emits_signal": false,
+    "inherits_substance": false,
+    "default_out": "Material"
+  },
+  {
+    "kind": "Buffering",
+    "param_spec": null,
+    "emits_signal": false,
+    "inherits_substance": true,
+    "default_out": "Material"
+  },
+  {
+    "kind": "Combining",
+    "param_spec": null,
+    "emits_signal": false,
+    "inherits_substance": false,
+    "default_out": "Material"
+  },
+  {
+    "kind": "Splitting",
+    "param_spec": null,
+    "emits_signal": false,
+    "inherits_substance": true,
+    "default_out": "Material"
+  },
+  {
+    "kind": "Amplifying",
+    "param_spec": [
+      "gain  (→ ×1–10)",
+      1.0
+    ],
+    "emits_signal": true,
+    "inherits_substance": false,
+    "default_out": "Message"
+  },
+  {
+    "kind": "Modulating",
+    "param_spec": null,
+    "emits_signal": false,
+    "inherits_substance": true,
+    "default_out": "Material"
+  },
+  {
+    "kind": "Sensing",
+    "param_spec": [
+      "sensor gain  k",
+      1.0
+    ],
+    "emits_signal": true,
+    "inherits_substance": false,
+    "default_out": "Message"
+  },
+  {
+    "kind": "Inverting",
+    "param_spec": null,
+    "emits_signal": true,
+    "inherits_substance": false,
+    "default_out": "Message"
+  },
+  {
+    "kind": "Copying",
+    "param_spec": null,
+    "emits_signal": true,
+    "inherits_substance": false,
+    "default_out": "Message"
+  },
+  {
+    "kind": "Propelling",
+    "param_spec": [
+      "efficiency  η",
+      1.0
+    ],
+    "emits_signal": false,
+    "inherits_substance": true,
+    "default_out": "Material"
+  },
+  {
+    "kind": "Impeding",
+    "param_spec": [
+      "throughput  (1 − impedance)",
+      1.0
+    ],
+    "emits_signal": false,
+    "inherits_substance": true,
+    "default_out": "Material"
+  }
+]

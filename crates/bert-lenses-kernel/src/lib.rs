@@ -15,6 +15,7 @@
 
 pub mod api;
 pub mod archive;
+pub mod sandbox;
 
 /// Install the panic hook as the module initializes (wasm only).
 ///

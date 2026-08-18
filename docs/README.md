@@ -56,6 +56,9 @@ Research foundations — what others build on; not themselves decisions:
 - [`design/educational-model-suite.md`](design/educational-model-suite.md) — **RESEARCH** — a 13-model graded curriculum teaching systems concepts through the instrument (primitive-first; refusals as lessons), plus a faculty-appeal appendix. Not in-tool, and untracked: the curriculum was planned against #80 and #21, both of which closed in July 2026 having shipped narrower things.
 - [`design/shape-vocabulary-research.md`](design/shape-vocabulary-research.md) — **RESEARCH** — notation precedents (Mobus's own icon set, Stella/Forrester, Odum, SysML ports, automata, Petri nets) for the palette shape vocabulary ([#81](https://github.com/halcyonic-systems/bert-lenses/issues/81)).
 - [`design/design-system-draft.md`](design/design-system-draft.md) — **RESEARCH** — visual design system draft.
+- [`proposals/112-transition-functor.md`](proposals/112-transition-functor.md) — **ADOPTED** ([#112](https://github.com/halcyonic-systems/bert-lenses/issues/112)) — the transition functor as shipped: F = Id over the whole-circuit product state, Δt a family index, the shipped forcing read as the closed instance; slice 1 implemented 2026-08-15.
+- [`proposals/trace-separation.md`](proposals/trace-separation.md) — **PROPOSED** — separating recorded trace from transition state (stage 0 applied 2026-08-15; stages 1–3 await a dedicated session with byte-identical float assertions as the acceptance bar).
+- [`translation-apparatus-walkthrough.md`](translation-apparatus-walkthrough.md) — **RESEARCH** — the translation apparatus running end to end, every number reproducible via `bert run assets/examples/translation-apparatus.sl --t 15` (current as of 2026-08-15).
 
 ## Decisions
 
