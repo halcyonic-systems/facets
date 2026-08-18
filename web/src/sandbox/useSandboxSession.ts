@@ -37,6 +37,9 @@ export interface UseSandboxSession {
   /** The live handle, for reads the mirror does not carry (history pulls,
    *  toModelJson). Null before ready. */
   session: Sandbox | null;
+  /** Swap the live session for a new one (open a saved document): frees the
+   *  old handle, installs the built one, re-mirrors. */
+  replace: (build: () => Sandbox) => void;
 }
 
 /** Build the session once the kernel is ready; `make` runs against the fresh
@@ -114,6 +117,16 @@ export function useSandboxSession(make?: (sb: Sandbox) => void): UseSandboxSessi
     mirror();
   }, [mirror]);
 
+  const replace = useCallback(
+    (build: () => Sandbox) => {
+      const next = build(); // build first — a refused open keeps the old session
+      sessionRef.current?.free();
+      sessionRef.current = next;
+      setSnapshot(next.snapshot());
+    },
+    [],
+  );
+
   const mutate = useCallback(
     (fn: (sb: Sandbox) => void) => {
       const sb = sessionRef.current;
@@ -136,5 +149,6 @@ export function useSandboxSession(make?: (sb: Sandbox) => void): UseSandboxSessi
     reset,
     mutate,
     session: sessionRef.current,
+    replace,
   };
 }

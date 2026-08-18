@@ -16,9 +16,9 @@ const WINDOW = 400;
 
 type Tab = "activity" | "storage" | "cumulative" | "conservation";
 
-/** Distinguishable series colors, cycled (matches the app's chart idiom of
- *  letting recharts carry the palette; kept explicit for theme stability). */
-const SERIES = ["#0e7490", "#7c3aed", "#b45309", "#15803d", "#be123c", "#1d4ed8", "#a21caf", "#4d7c0f"];
+/** The house chart series tokens (index.css is the source of truth), cycled
+ *  across however many nodes the circuit holds. */
+const SERIES = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"];
 
 export default function SandboxMetrics({
   session,

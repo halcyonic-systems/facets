@@ -7,7 +7,8 @@
 // type in the persistence phase.
 
 import { useEffect, useState } from "react";
-import { ready, ladderStamps, sandboxPalette } from "../kernel";
+import { ready, ladderStamps, sandboxPalette, toCanvas, writeArchive, openModel, project, Sandbox, isKernelError } from "../kernel";
+import { saveModel, listModelRecords, loadModel } from "../modelStore";
 import type { LadderStamp, SandboxPaletteEntry } from "../kernel/types";
 import { useSandboxSession } from "./useSandboxSession";
 import SandboxCanvas, { type CanvasSelection } from "./SandboxCanvas";
@@ -24,13 +25,50 @@ export default function SandboxSurface() {
   const [stampList, setStampList] = useState<LadderStamp[]>([]);
   const [palette, setPalette] = useState<SandboxPaletteEntry[]>([]);
   const [selected, setSelected] = useState<CanvasSelection | null>(null);
+  const [docName, setDocName] = useState("My sandbox");
+  const [saved, setSaved] = useState<string[]>([]);
+  const [fileNote, setFileNote] = useState<string | null>(null);
 
   useEffect(() => {
     void ready().then(() => {
       setStampList(ladderStamps());
       setPalette(sandboxPalette());
     });
+    void listModelRecords().then((rs) => setSaved(rs.map((r) => r.name)));
   }, []);
+
+  // Save: the sandbox document IS a WorldModel — session → WorldModel →
+  // canvas → archive → the ordinary library. It appears on Home under
+  // "yours" and opens on the Model surface like any model (graduation is
+  // the save itself).
+  const save = async () => {
+    const s = sb.session;
+    if (!s) return;
+    try {
+      const archive = writeArchive(toCanvas(s.toModelJson(docName)));
+      await saveModel(docName, archive);
+      setSaved((prev) => (prev.includes(docName) ? prev : [...prev, docName]));
+      setFileNote(`saved — open it from Home as an ordinary model, or keep playing`);
+    } catch (e) {
+      setFileNote(isKernelError(e) ? e.message : String(e));
+    }
+  };
+
+  // Open: a saved archive → canvas → WorldModel → a fresh live session.
+  // Build-before-free (replace), so a model the executable gate refuses
+  // leaves the current sandbox untouched and names the reason.
+  const open = async (name: string) => {
+    try {
+      const archive = await loadModel(name);
+      const model = JSON.stringify(project(openModel(archive)));
+      sb.replace(() => Sandbox.fromModel(model));
+      setSelected(null);
+      setDocName(name);
+      setFileNote(null);
+    } catch (e) {
+      setFileNote(isKernelError(e) ? e.message : String(e));
+    }
+  };
 
   const snap = sb.snapshot;
 
@@ -104,6 +142,38 @@ export default function SandboxSurface() {
             ): put a stock on the loop
           </span>
         )}
+
+        {/* file cluster: the sandbox document is an ordinary model */}
+        <span className="ml-auto flex items-center gap-2 text-xs">
+          {fileNote && (
+            <span className="max-w-64 truncate" style={{ color: "var(--text-muted)" }} title={fileNote}>
+              {fileNote}
+            </span>
+          )}
+          <input
+            className="w-32 rounded border px-2 py-1"
+            value={docName}
+            onChange={(e) => setDocName(e.target.value)}
+          />
+          <button className="rounded border px-2 py-1" onClick={() => void save()}>
+            Save
+          </button>
+          <select
+            className="rounded border px-1 py-1"
+            value=""
+            onChange={(e) => e.target.value && void open(e.target.value)}
+          >
+            <option value="">Open…</option>
+            {saved.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+          <a href="/" className="underline" style={{ color: "var(--text-muted)" }}>
+            Home
+          </a>
+        </span>
       </header>
 
       <div className="flex min-h-0 flex-1">

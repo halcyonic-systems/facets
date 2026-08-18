@@ -18,6 +18,7 @@ Design positions and research foundations, grouped by status. See [`../README.md
 
 - [`run-seam-canvas-document.md`](run-seam-canvas-document.md) — the canvas is the document: Run executes the projection of an edited canvas (clean canvases keep the stored artifact, CI-proven identical), the UI states which model ran, and provenance rides the kernel's content hash rather than a frozen run path. Adopted 2026-07-28; founds editable inputs, scenarios ([#202](https://github.com/halcyonic-systems/bert-lenses/issues/202)), and typed parameters ([#112](https://github.com/halcyonic-systems/bert-lenses/issues/112)).
 - [`dynamics-principled-position.md`](dynamics-principled-position.md) — what counts as dynamics: a state-transition family satisfying the semigroup axiom; a dynamics-*kind* is the transition functor; conservation is an invariant the model declares, not the engine's premise. Adopted via [#86](https://github.com/halcyonic-systems/bert-lenses/issues/86); `language/spec.md` §8 is normatively bound to it.
+- [`sandbox-surface.md`](sandbox-surface.md) — the sandbox surface: a Home document entry (never a third mode, per [#345](https://github.com/halcyonic-systems/bert-lenses/issues/345)), the boundary's one stateful wasm export (`SandboxSession` over the engine-side session), and the WorldModel-as-document graduation path. Conservation declared, not premised (ADR 0003); Troncale stamps are macros, not atoms. Adopted 2026-08-17.
 
 ## PROPOSED (awaiting adoption)
 

@@ -681,3 +681,36 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod graduation_laws {
+    use crate::{export, ladder};
+
+    /// Law: the model round trip may REORDER nodes (the import path groups
+    /// terminals first) but never changes any node's behavior — trajectories
+    /// match BY NAME, not by index. Pinned because an index-aligned
+    /// comparison across the seam reads the reorder as a 25-unit divergence
+    /// (it did, in the first graduation smoke).
+    #[test]
+    fn round_trip_reorders_but_preserves_each_node() {
+        let mut a = (ladder::by_name("Feedback").unwrap().build)();
+        let model = export::to_world_model(&a, "graduation");
+        let mut b = export::from_world_model(&model).unwrap();
+        for _ in 0..30 {
+            a.step();
+            b.step();
+        }
+        for x in &a.nodes {
+            let y = b
+                .nodes
+                .iter()
+                .find(|y| y.name == x.name)
+                .expect("every node survives by name");
+            assert!(
+                (x.storage - y.storage).abs() < 1e-4 && (x.activity - y.activity).abs() < 1e-4,
+                "{} diverged: storage {} vs {}, activity {} vs {}",
+                x.name, x.storage, y.storage, x.activity, y.activity
+            );
+        }
+    }
+}

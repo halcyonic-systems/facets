@@ -32,6 +32,7 @@ import init, {
   check_decompositions_canvas as wasmCheckDecompositionsCanvas,
   klir_incidence_cells as wasmKlirIncidenceCells,
   bunge_coupling_cells as wasmBungeCouplingCells,
+  to_canvas as wasmToCanvas,
   SandboxSession as WasmSandboxSession,
   sandbox_palette as wasmSandboxPalette,
   ladder_stamps as wasmLadderStamps,
@@ -531,6 +532,13 @@ export class Sandbox {
   free(): void {
     this.inner.free();
   }
+}
+
+/** Reconstruct a canvas from a kernel `WorldModel` JSON — the explicit
+ *  projection-side read (storage reads go through `openModel` instead). Used
+ *  by the sandbox's graduation path: session → WorldModel → canvas → archive. */
+export function toCanvas(modelJson: string): CanvasModel {
+  return call("to_canvas", () => wasmToCanvas(modelJson));
 }
 
 /** The 12-kind primitive palette, declared by the engine. */
