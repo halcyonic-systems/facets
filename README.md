@@ -63,6 +63,14 @@ prerequisite table is under [Prerequisites](#prerequisites). Then take the
 verdicts, break it on purpose, fix what the refusal names, and open one that runs
 against real data.
 
+Or skip the quickstart and **touch the system first**: the **Sandbox** door on
+the Home screen (or `?sandbox=1`) opens a live free-play surface — drop Mobus
+work processes, wire them, press Run, and tweak parameters *while it flows*.
+Troncale systems-process stamps (Flows, Feedback, Oscillation, …) drop known
+arrangements you can edit freely; each node's transfer function renders with its
+live values; a saved sandbox is an ordinary model, so play graduates into
+authoring. Design record: [`docs/design/sandbox-surface.md`](docs/design/sandbox-surface.md).
+
 ## See it refuse
 
 The whole claim in one exchange. Four lines of SL — two things and a relation

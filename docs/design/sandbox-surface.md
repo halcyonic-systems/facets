@@ -60,6 +60,19 @@ recorded trace flagging *signatures associated with* systems processes,
 never asserting identity) is the planned Phase 5, gated on the SP typology
 research; nothing in this surface asserts an SP happened.
 
+## Closed since adoption (2026-08-18)
+
+Two gaps named at review closed before merge: **per-flow declared rates** on
+pushed Source outwires surface in the wire inspector (bert#111 — rate is an
+edge attribute; empty = the engine's shared-rate fallback), and the
+**instantiated equation**: every node snapshot carries its transfer function
+with live values substituted (`session.rs::equation`, faithful to the
+`circuit.rs` step arms), rendered verbatim in the inspector. Both computed
+engine-side — the face renders semantics it never authors. Still open, tracked
+on the continuation issue: series-forcing UI in the sandbox, the whole-circuit
+symbolic view (#112-adjacent), and the witness engine (Phase 5, gated on the
+SP-typology review).
+
 ## What this is not
 
 Not a third mode (#345); not a second engine (the vendored `bert-compose`
