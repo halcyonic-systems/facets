@@ -226,6 +226,19 @@ export function RunCard({
               ↺ reset to declared
             </button>
           )}
+          {/* The honest boundary of the knobs, where the knobs live: transforms
+              pass their matched substance and dissipate the rest, so a
+              co-substrate knob moves the energy ledger, not the output. Stating
+              it here is the instrument owning its grain (the same fact a
+              Combining processor's law line carries). */}
+          <p
+            className="mb-1 mt-1.5 text-[10px] leading-snug"
+            style={{ color: "var(--text-muted)" }}
+            title="Transforms produce their matched substance; other inflows drive the work and dissipate. Coupling output to the scarcest input (Liebig's law of the minimum) is named, open engine research."
+          >
+            not every knob binds output yet — limiting-factor coupling is open
+            research
+          </p>
         </Band>
       )}
 
