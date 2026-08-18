@@ -63,7 +63,7 @@ function fail(what) {
 
 // ---- structural comparison --------------------------------------------------
 
-const allowances = { f32: 0, undefinedForNull: 0 };
+const allowances = { f32: 0, undefinedForNull: 0, emptyMapAbsent: 0 };
 
 /** Every place `got` (through wasm) and `want` (the committed fixture) differ,
  *  after the two named marshaling allowances above. Empty = agreement. */
@@ -84,6 +84,19 @@ function differences(got, want, path = "", out = []) {
   // Allowance 2: Option::None crosses as undefined where the fixture says null.
   if (got === undefined && want === null) {
     allowances.undefinedForNull++;
+    return out;
+  }
+
+  // Allowance 3: an EMPTY opaque-params map is declared equivalent to an
+  // absent one ("Empty = absent, `skip` on disk" — Thing.cognitive_params /
+  // initial_state, #216). serde_wasm_bindgen marshals the empty map as {},
+  // serde_json honors skip_serializing_if and omits the key, so the two legal
+  // encodings of the same content meet here. Counted like every allowance —
+  // a tolerance that is not counted is a tolerance that grows.
+  const emptyObj = (v) =>
+    v !== null && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length === 0;
+  if ((got === undefined && emptyObj(want)) || (emptyObj(got) && want === undefined)) {
+    allowances.emptyMapAbsent++;
     return out;
   }
 
@@ -435,7 +448,7 @@ if (PROBE) {
 }
 
 console.log(
-  `wasm-exec: marshaling allowances used — f32 widening ${allowances.f32}, undefined-for-null ${allowances.undefinedForNull}`,
+  `wasm-exec: marshaling allowances used — f32 widening ${allowances.f32}, undefined-for-null ${allowances.undefinedForNull}, empty-map-vs-absent ${allowances.emptyMapAbsent}`,
 );
 
 if (failures.length > 0) {
