@@ -72,6 +72,8 @@ interface Props {
    *  clicking an interface used to answer a different question ("the boundary")
    *  than the one asked (2026-08-09 field report). */
   onSelectBoundary?: (at: Pt) => void;
+  /** Click the milieu band/label to read M — the bath answers when asked. */
+  onSelectMilieu?: (at: Pt) => void;
   /** Click a flow-carrying capsule to open the INTERFACE inspector — the
    *  crossing flows at that r = (S, φ), each clickable through to the flow.
    *  UI word is "interface" (Mobus's term); "port" stays code-internal. */
@@ -88,6 +90,10 @@ interface Props {
    *  after an SL compile lays the model out around a fixed center that may sit
    *  outside the narrower SL-pane viewport). Each distinct value fits once. */
   fitToken?: number;
+  /** Fraction of the viewport's HEIGHT a bottom overlay (the run dock,
+   *  recomposition 2026-08-16) covers — fit frames the content into the band
+   *  that stays visible. 0/absent = the whole viewport, as ever. */
+  fitBottomFraction?: number;
   /** The containing system's name (author SOI name, else the shell's label) —
    *  the per-lens container labels itself with it (#100 phase 0), so a model
    *  can never impersonate its only component. */
@@ -108,6 +114,7 @@ export default function Canvas({
   onEnterThing,
   onExitUp = null,
   onSelectBoundary,
+  onSelectMilieu,
   onSelectInterface,
   driven,
   sim,
@@ -115,6 +122,7 @@ export default function Canvas({
   onPanChange,
   onScaleChange,
   fitToken,
+  fitBottomFraction,
   placeName = null,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -131,11 +139,21 @@ export default function Canvas({
   // presentation: the authored position survives in the model and dragging an
   // interface slides it along the ring (the constraint teaches the ontology).
   const authoredInterfaceIds = new Set(facts?.authored_interface_thing_ids ?? []);
-  // Ring extent comes from ALL components at their AUTHORED positions — the
-  // projection below reads authored coords, so it cannot move the ring it
-  // targets (no circularity). Excluding interfaces here was the first cut and
-  // collapsed the Fed membrane to a bubble around its one plain component.
-  const ring: Ring | null = lens === "Mobus" ? membraneRing(model.things) : null;
+  // Ring extent comes from the INTERIOR components alone (#226, 2026-08-16):
+  // an interface lives ON the ring, so its position must never feed the fit —
+  // that feedback was why dragging an interface resized the whole membrane.
+  // The one guarded fallback is the degenerate interior (fewer than two
+  // interior components — the Fed's single plain component): there the fit
+  // falls back to ALL components at authored positions, exactly the pre-#226
+  // behavior, so a membrane never collapses to a bubble.
+  const interiorThings = model.things.filter(
+    (t) => !(t.role === "Component" && authoredInterfaceIds.has(t.id)),
+  );
+  const interiorComponentCount = interiorThings.filter((t) => t.role === "Component").length;
+  const ring: Ring | null =
+    lens === "Mobus"
+      ? membraneRing(interiorComponentCount >= 2 ? interiorThings : model.things)
+      : null;
   // The display model — identical to the authored model except interface
   // components snap to the ring. Every consumer below (gestures, edges, nodes,
   // ports, fit) reads THIS, so pixels and hit-tests always agree.
@@ -296,7 +314,7 @@ export default function Canvas({
     const svg = svgRef.current;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
-    fitToViewport(rect.width, rect.height);
+    fitToViewport(rect.width, rect.height * (1 - (fitBottomFraction ?? 0)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitToken]);
 
@@ -566,6 +584,81 @@ export default function Canvas({
             Porosity → dash density; fuzziness → edge blur. */}
         {ring && (
           <>
+            {/* The milieu M (E = ⟨O, M⟩): the bath, drawn as bathing — a soft
+                halo band hugging the membrane's outside, pointer-transparent,
+                with the variables named once in a quiet line beneath the ring.
+                Never a box, never an arrow: the milieu "surrounds or bathes
+                the system... does not interact necessarily through a discrete
+                set of interfaces" (lifecycle paper). Mobus lens only — Klir
+                and Bunge count it in their hidden residue instead. */}
+            {(model.milieu?.length ?? 0) > 0 && (
+              <g>
+                {/* The ambient wash: M pervades the whole EXTERIOR (the env
+                    objects sit in the bath — that is what a milieu is), cut
+                    away inside the membrane. Flat fill, not a gradient (the
+                    instrument register forbids gradients); the band below
+                    doubles the tint where system meets bath, so density at
+                    the boundary reads without a fade. */}
+                <path
+                  fillRule="evenodd"
+                  d={
+                    `M ${ring.cx - ring.rx - 4000} ${ring.cy - ring.ry - 4000} ` +
+                    `H ${ring.cx + ring.rx + 4000} V ${ring.cy + ring.ry + 4000} ` +
+                    `H ${ring.cx - ring.rx - 4000} Z ` +
+                    `M ${ring.cx - ring.rx} ${ring.cy} ` +
+                    `A ${ring.rx} ${ring.ry} 0 1 0 ${ring.cx + ring.rx} ${ring.cy} ` +
+                    `A ${ring.rx} ${ring.ry} 0 1 0 ${ring.cx - ring.rx} ${ring.cy} Z`
+                  }
+                  fill="var(--milieu)"
+                  opacity={0.05}
+                  pointerEvents="none"
+                />
+                {/* The band: same tint, denser where the system meets its
+                    bath. Clickable — the bath answers when asked. */}
+                <ellipse
+                  cx={ring.cx}
+                  cy={ring.cy}
+                  rx={ring.rx + 20}
+                  ry={ring.ry + 20}
+                  fill="none"
+                  stroke="var(--milieu)"
+                  strokeWidth={34}
+                  opacity={0.14}
+                  pointerEvents={onSelectMilieu ? "stroke" : "none"}
+                  className={onSelectMilieu ? "cursor-pointer" : undefined}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectMilieu?.({ x: ring.cx, y: ring.cy + ring.ry + 56 });
+                  }}
+                />
+                <text
+                  x={ring.cx}
+                  y={ring.cy + ring.ry + 48}
+                  textAnchor="middle"
+                  fontSize={STYLE.label.size - 1}
+                  fontStyle="italic"
+                  fill="var(--milieu)"
+                  paintOrder="stroke"
+                  stroke="var(--bg-primary)"
+                  strokeWidth={3}
+                  strokeLinejoin="round"
+                  className={`font-body${onSelectMilieu ? " cursor-pointer" : ""}`}
+                  pointerEvents={onSelectMilieu ? "all" : "none"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectMilieu?.({ x: ring.cx, y: ring.cy + ring.ry + 56 });
+                  }}
+                >
+                  <title>The milieu M — click to read its variables</title>
+                  {"milieu — " +
+                    model
+                      .milieu!.map((m) =>
+                        m.value != null ? `${m.name} ${m.value}${m.unit ? ` ${m.unit}` : ""}` : m.name,
+                      )
+                      .join(" · ")}
+                </text>
+              </g>
+            )}
             <ellipse
               cx={ring.cx}
               cy={ring.cy}

@@ -99,6 +99,9 @@
      adapts to the ground. Every pair below holds hue to under 0.5° and clears
      4.5 on its own theme's node fill; check-tokens.mjs enforces both, which is
      the purpose bound by a check rather than a proxy for it. */
+  /* The milieu M's bath tint (E = ⟨O, M⟩): watery slate-teal, quiet by
+     construction — the halo renders it at low opacity. */
+  --milieu: light-dark(#4e7f8f, #6b9aa8);
   --kind-matter: light-dark(#57814c, #649457);
   --kind-energy: light-dark(#bb6c1c, #c6721e);
   --kind-informational: light-dark(#8054a0, #9e79b8);
@@ -352,4 +355,62 @@ body {
   line-height: 1.3;
   color: var(--text-secondary);
   animation: lens-question-settle 0.45s ease-out;
+}
+
+/* Range inputs wear the instrument (#345 sweep, the last non-Frost tell):
+   the browser-default blue thumb on the transport scrubber and every param
+   slider was the one control the design system didn't own. A quiet hairline
+   track, the accent only on the thumb — the same ink discipline as the
+   charts (identity on the mark, chrome recessive). Tokens only; both engines
+   styled identically so the bench feels the same in every browser. */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 16px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -5px; /* centers the 13px thumb on the 3px track */
+  height: 13px;
+  width: 13px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  border: 2px solid var(--bg-primary);
+  box-shadow: 0 0 0 1px var(--border);
+  transition: var(--transition-base);
+}
+input[type="range"]:hover::-webkit-slider-thumb,
+input[type="range"]:focus-visible::-webkit-slider-thumb {
+  background: var(--accent-strong);
+}
+input[type="range"]::-moz-range-track {
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+}
+input[type="range"]::-moz-range-thumb {
+  height: 13px;
+  width: 13px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  border: 2px solid var(--bg-primary);
+  box-shadow: 0 0 0 1px var(--border);
+  transition: var(--transition-base);
+}
+input[type="range"]:hover::-moz-range-thumb,
+input[type="range"]:focus-visible::-moz-range-thumb {
+  background: var(--accent-strong);
+}
+input[type="range"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-pill);
 }

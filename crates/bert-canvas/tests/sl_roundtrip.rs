@@ -69,6 +69,8 @@ fn canvas_born_model_canonicalizes() {
         env_kind: Default::default(),
         primitive: None,
         interface: false,
+        passway: false,
+        protocol: String::new(),
         child_model: None,
         stock_unit: String::new(),
         scale: None,
@@ -82,6 +84,7 @@ fn canvas_born_model_canonicalizes() {
         lens: Lens::Klir,
         description: String::new(),
         model_id: None,
+        milieu: vec![],
         things: vec![
             thing(7, "A", Role::Component),
             thing(3, "B", Role::Component),
@@ -124,7 +127,9 @@ fn canvas_born_model_canonicalizes() {
     // Positions survive as @pos annotations.
     assert_eq!((m2.things[0].x, m2.things[0].y), (10.5, -3.25));
     // The untouched env thing emits as `environment` (no bond touches it).
-    assert!(t1.contains("environment Milieu"), "{t1}");
+    // `milieu` became a reserved word (E = ⟨O, M⟩), so a thing NAMED Milieu
+    // now emits quoted — the round-trip survives, the surface shields it.
+    assert!(t1.contains("environment \"Milieu\""), "{t1}");
 }
 
 /// Law: the SOI name survives both round trips — text → model → text AND

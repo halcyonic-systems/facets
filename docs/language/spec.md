@@ -61,7 +61,8 @@ SL is one unified language: the traditions *contributed* the words, and the lang
 | `domain` | the analyst's subject-area framing | Mobus (the generic lexicon translated into domain-specific terms, §4.4) | `SystemType.domain` |
 | `component` | a thing inside the boundary | **Bunge (composition C) and Mobus (C in the tuple)** — shared; Klir diverges (things/elements) | `Role::Component` |
 | `source`, `sink`, `environment` | a thing outside the boundary | Mobus (Src/Snk environment objects); `environment` shared with Bunge (E) | `Role::Environment` (§5.2 on the three words) |
-| `interface` | membership in the root membrane's I (flat I ⊆ C is the Lean's convention, Tuple.lean; the book makes interfaces components of the *boundary subsystem* — concordance row 9). The word is a **claim, not a label**: since #213/#225 an interface must carry a boundary-crossing flow or the kernel refuses the model at Operational — see §5.4. **CONTINGENT([#226](https://github.com/halcyonic-systems/bert-lenses/issues/226))**: whether the interface is stamped onto a component, as here, or placed on the boundary, is open | **Mobus (I in B) and Bunge ("interface points" = i/o terminals ∈ boundary, 1992)** — shared | `Thing.interface` |
+| `interface` | membership in the root membrane's I (flat I ⊆ C is the Lean's convention, Tuple.lean; the book makes interfaces components of the *boundary subsystem* — concordance row 9). The word is a **claim, not a label**: since #213/#225 an interface must carry a boundary-crossing flow or the kernel refuses the model at Operational — see §5.4. **RESOLVED([#226](https://github.com/halcyonic-systems/bert-lenses/issues/226), 2026-08-16)**: the pass-way declares as its own object (`interface "Name" [protocol "…"]`) and the processor it serves sits inside, associated by an interior flow — the split is the default authoring pattern; the stamped suffix form remains the merged special case for a component that IS a pass-way. No new node sort: both are components, I ⊆ C intact (the split is the `InterfaceDecomposition.lean` shape, SSF #43) | **Mobus (I in B; Fig 4.10's interface-serves-a-receiver/exporter-process) and Bunge ("interface points" = i/o terminals ∈ boundary, 1992)** — shared | `Thing.interface` + `Thing.protocol` |
+| `milieu` | one ambient condition variable in M — E = ⟨O, M⟩ per the lifecycle working paper (2026 oct-tuple revision; the Lean core carries the slot, `MobusEnvironment.milieu`, and proves the Mobus→Bunge projection discards it). Variables "surround or 'bathe' the system" and need no interface: a milieu line takes no flows and no position — the absence of edges IS the ontology. `value` declares a snapshot of the condition (`milieu pH value 7.2`); nothing dynamical reads it, deliberately (the paper marks that coupling an open research area) | Mobus (lifecycle paper, M in E) | `CanvasModel.milieu` / `Environment.milieu` (`MilieuVariable`) |
 | `usability` + one of `Resource`, `Disruption`, `Product`, `Waste` | what a boundary crossing IS to the system — a 2×2 of direction against value: useful in, harmful in, useful out, harmful out (v1.4, #331). The kernel has carried `InteractionUsability` from its first version; `project()` hardcoded every flow to `Resource`, so the distinction was unauthorable and a model needing it had to assert it in a comment. Undeclared is UNDECLARED, never `Resource` — only projection supplies the default | Mobus (resources in, products and wastes out — ch. 10's archetypes, ch. 12's tactical coordination) | `Relation.usability` → `Interaction.usability` |
 | `description` | prose about a thing or a flow, in the author's own words — restored in v1.4 (#326) after the rebuild dropped what the original BERT carried on every entity. **Never semantics**: no verdict reads it, and two models differing only here are the same system. It projects into `Info.description`, a bert-core field that existed from the start and received an empty string until this clause reached it | house word; the DISTINCTION is old-bert's, and the destination field is bert-core's | `Thing.description` / `Relation.description` → `Info.description` |
 | `primitive` + one of `Combining`, `Splitting`, `Buffering`, `Impeding`, `Propelling`, `Copying`, `Sensing`, `Modulating`, `Amplifying`, `Inverting` | the work-process taxonomy | Mobus | `ProcessPrimitive` |
@@ -109,14 +110,20 @@ SL is line-oriented. A file is a sequence of lines, each independently one of: b
 model       = { line } ;
 line        = blank | comment | structure | annotation ;
 
-structure   = system | domain | timeunit | level | thing | flow | param | metric | boundary ;
+structure   = system | domain | timeunit | level | thing | iface | milieuvar | flow | param | metric | boundary ;
 system      = "system" [ string ] [ ":" kingdom [ "/" genus ] ] ;
 domain      = "domain" string ;
 timeunit    = "time" "unit" name ;                     (* the Δt symbol, #94 *)
 level       = "level" levelword ;                      (* the declared Klir level, #288 *)
 thing       = thingword name { attr } ;
 thingword   = "component" | "source" | "sink" | "environment" ;
-attr        = "interface" | "primitive" primword
+iface       = "interface" name [ "protocol" string ]   (* the pass-way as its own object, #226; *)
+              [ "description" string ] ;               (*   resolves the stamped-vs-placed fork *)
+milieuvar   = "milieu" name [ "value" number ]         (* one ambient variable in M — E = ⟨O,M⟩, *)
+              [ "unit" name ]                          (*   lifecycle-paper revision; no flows,  *)
+              [ "description" string ] ;               (*   no position: it bathes, not plugs   *)
+attr        = "interface" [ "protocol" string ]        (* merged form: this component IS the pass-way *)
+            | "primitive" primword
             | "description" string                     (* prose, #326 *)
             | "stock" name [ "initial" number ]        (* declared stock unit; starting level, #112 *)
             | "release" number                         (* Buffering drain per time unit, #112 *)
@@ -134,7 +141,7 @@ flow        = "flow" name "->" name [ ":" kindword ] [ string ]
               [ "mere" ] [ "weight" integer ]
               [ "usability" usabilityword ]              (* #331 *)
               [ "description" string ] ;          (* ample: informational only, no unit *)
-decimal     = positive decimal number ;                (* "1.5"; 0 and below refused *)
+decimal     = nonnegative decimal number ;             (* "1.5"; 0 = arrested supply; negative refused *)
 param       = "param" string ":" "flow" name "->" name [ string ]
               [ "range" number ".." number ]           (* walkthrough #18 *)
             | "param" "shares" string ":" "from" name ;
@@ -177,7 +184,9 @@ At most one per file. The free-text subject area that frames narration: `domain 
 
 ### 4.3 Thing lines
 
-`component Furnace primitive Combining interface` declares a component, optionally designating it a work process of a named primitive kind and/or a member of the boundary interface set. `source` / `sink` / `environment` declare environment things; the attribute words are rejected there (environment internals are opaque — Mobus §4.3.3.2.2, mirrored at `canvas.rs:84`). Names are unique per file; things must be declared before any flow references them.
+`interface "Ore Gate" protocol "graded ore only"` declares a pass-way as its own object (#226, resolved 2026-08-16): a component in I with no work-process character of its own. The split authoring pattern routes a crossing flow through it (`flow Mine -> "Ore Gate"`, `flow "Ore Gate" -> Furnace`), so the processor the pass-way serves sits inside the boundary and the interface emerges from the act of writing the crossing flow. `protocol` is the pass-way's admission rule in the author's words (#333, Mobus Listing 4.2); it also rides the merged form (`component X interface protocol "…"`), and `protocol` without `interface` is a fault. Emit prefers the split form: an interface-designated component with no primitive, stock, engine params, or child emits as an `interface` declaration.
+
+`component Furnace primitive Combining interface` declares a component, optionally designating it a work process of a named primitive kind and/or a member of the boundary interface set — the merged special case for a component that IS a pass-way. `source` / `sink` / `environment` declare environment things; the attribute words are rejected there (environment internals are opaque — Mobus §4.3.3.2.2, mirrored at `canvas.rs:84`). Names are unique per file; things must be declared before any flow references them.
 
 `component Furnace primitive Combining decomposes "furnace-interior" @Hrs6K91KnZZsiPcWzftv8U` designates the component as decomposed: it carries a child model that realizes it (`System.child_model`, the reference form of §6 in `decomposition-foundations.md` — Option B, the child is its own model). Both halves are mandatory. The quoted string is a human label (it may drift under renames — the toolchain re-stamps, the compiler never resolves it); the `@`-prefixed token is the child's stamped model id, base58 per `model_id.rs`, and is the key. A name with no `@id` is a fault (`unstamped reference — resolve via the library`; stamping is later tooling, not the compiler's job); an id that fails the base58 decoder is a fault; a second `decomposes` on one line is a fault; `decomposes` on an environment thing is a fault (its internals are opaque). `decomposes` and `interface` on the same component is a fault in v1: the Lean contract covers a component's internal network only, not flows crossing the parent membrane through an interface component (the gate-open narrowing, #89) — parent-side knowledge the store-free compiler rejects early rather than deferring. `decomposes` emits last, after `primitive` and `interface` (§7.1).
 
@@ -450,6 +459,7 @@ A three-component decomposition with two boundary interfaces, an authored membra
 | ~~No decomposition / sub-paragraphs~~ decompose-by-reference shipped (step 4) | #89 (step 4 merged 2026-07-20) | `decomposes "label" @id` → `System.child_model` — see §3, §4.3, §7.1; the reference form keeps each file one flat paragraph, the recursion in the id index |
 | ~~No Klir source-system variable characterization~~ shipped as v1.2 | #154 (landed 2026-07-24; spec caught up 2026-07-31 — the words shipped ahead of this document, the drift the keyword-parity gate now makes impossible) | `scale` / `states` / `kind` → `Thing.scale` / `.states` / `.variable_kind` — see §3, §4.3, §7.1 |
 | ~~No declared epistemological level~~ shipped as v1.3 | #288 (landed 2026-08-08, spec and parser together — the discipline #154's drift taught) | `level` → `CanvasModel.klir_level` — see §3, §4.9, §7.1; the cross-level refusal is `lenses::check_cross_level`, printing Klir §5.4 |
+| milieu dynamics coupling absent by design | lifecycle paper | The paper marks how M's conditions influence the running system "an area for much more research"; a declared `value` is a snapshot, and nothing in the engine reads it until the theory states the coupling |
 | `interface` + `decomposes` refused together (v1) | #89 | The Lean contract covers a component's internal network only; when it grows the membrane-crossing case (flows through an interface component) the co-occurrence becomes legal and the `interface`/`decomposes` emission order (§7.1) gets revisited |
 | No controlled systems-English tier (the verbal surface proper) | design doc §5 Rung 2 | Fixed-grammar system-paragraph parsing to the same neutral spec |
 | Compiled diagram can land partly off-viewport | #83 | Zoom-to-fit after compile (UI, not language) |

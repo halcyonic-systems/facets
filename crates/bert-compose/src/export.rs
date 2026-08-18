@@ -53,6 +53,8 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
         info: info(id(IdType::Environment, &[-1]), -1, "Environment", ""),
         sources: Vec::new(),
         sinks: Vec::new(),
+        // A circuit declares no milieu — M is authored structure, not derived.
+        milieu: Vec::new(),
     };
 
     // Composite root.

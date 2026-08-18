@@ -401,3 +401,77 @@ export function ConfirmDialog({
     document.body,
   );
 }
+
+/** The shared tab strip (run-legibility ws3): one way to draw tabs anywhere —
+ *  the InspectorDock's ELEMENT/FORMAL/REVIEW/ANALYST strip and the run dock's
+ *  Story/Fit/Table are the same primitive. Two cells, and the split is
+ *  load-bearing (harvested from the dock): the tab list scrolls under
+ *  pressure, `controls` stays pinned at the right edge. Selection state lives
+ *  with the caller; this only draws it. */
+export function Tabs({
+  tabs,
+  active,
+  onSelect,
+  controls,
+}: {
+  tabs: { key: string; label: string; badge?: number }[];
+  active: string;
+  onSelect: (key: string) => void;
+  controls?: ReactNode;
+}) {
+  return (
+    <div className="flex items-stretch border-b" style={{ borderColor: "var(--hairline)" }}>
+      {/* Scrolls under width pressure but never draws the bar (field report
+          2026-08-17: a visible scrollbar on a three-tab strip read as clutter). */}
+      <div
+        className="flex min-w-0 flex-1 items-stretch overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {tabs.map((t) => (
+          <TabButton
+            key={t.key}
+            label={t.label}
+            active={active === t.key}
+            onClick={() => onSelect(t.key)}
+            badge={t.badge}
+          />
+        ))}
+      </div>
+      {controls && <div className="flex shrink-0 items-stretch">{controls}</div>}
+    </div>
+  );
+}
+
+function TabButton({
+  label,
+  active,
+  onClick,
+  badge,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  badge?: number;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex shrink-0 items-center gap-1.5 px-2.5 py-2.5 text-xs font-semibold uppercase tracking-wide transition-colors"
+      style={{
+        color: active ? "var(--text-primary)" : "var(--text-muted)",
+        borderBottom: `2px solid ${active ? "var(--lens-accent)" : "transparent"}`,
+        marginBottom: "-1px",
+        transition: "var(--transition-base)",
+      }}
+    >
+      {label}
+      {badge !== undefined && (
+        <span
+          className="inline-flex min-w-[1.1rem] items-center justify-center rounded-full px-1 text-[10px] font-medium tabular"
+          style={{ background: "var(--verdict-warning)", color: "var(--text-on-accent)" }}
+        >
+          {badge}
+        </span>
+      )}
+    </button>
+  );
+}

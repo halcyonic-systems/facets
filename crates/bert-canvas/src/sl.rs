@@ -105,6 +105,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     let mut lens_explicit = false;
     // name → thing index; names are the text surface's identifiers.
     let mut by_name: HashMap<String, usize> = HashMap::new();
+    // M — the ambient milieu variables (E = ⟨O, M⟩); parallel to things, never in them.
+    let mut milieu_vars: Vec<bert_core::MilieuVariable> = Vec::new();
     // explicit positions from the annotation layer, applied after layout.
     let mut positions: HashMap<String, (f32, f32)> = HashMap::new();
     // `@directed <n>` marks (1-based flow index, source line) to apply at the end.
@@ -331,6 +333,260 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     ),
                 }
             }
+            // `milieu <Name> [value <n>] [unit <name>] [description "<str>"]`
+            // — one ambient condition variable in M (E = ⟨O, M⟩, the
+            // lifecycle-paper revision; SSF `MobusEnvironment.milieu`). Never
+            // a thing: it has no position, takes no flows — "surrounds or
+            // bathes the system... does not interact necessarily through a
+            // discrete set of interfaces." A declared value is a snapshot of
+            // the ambient condition, not a dynamical input: nothing in the
+            // engine reads it, deliberately (the paper marks the coupling an
+            // open research area).
+            "milieu" => {
+                let Some((name, attrs)) = rest.split_first() else {
+                    fail(
+                        "milieu needs a variable name — fix: write `milieu <Name>`, \
+                         quoting the name if it contains spaces (e.g. `milieu pH`, \
+                         `milieu \"ionic strength\" value 0.15 unit M`)"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                };
+                if !name.is_name() {
+                    fail(
+                        "milieu needs a variable name — fix: write `milieu <Name>`, \
+                         quoting the name if it contains spaces"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                let name = name.name();
+                if milieu_vars.iter().any(|m: &bert_core::MilieuVariable| m.name == name) {
+                    fail(
+                        format!(
+                            "milieu variable `{name}` is already declared — fix: give this \
+                             one a different name, or delete this line if it repeats the \
+                             earlier declaration"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                let mut value: Option<f64> = None;
+                let mut unit = String::new();
+                let mut description = String::new();
+                let mut i = 0;
+                let mut ok = true;
+                while i < attrs.len() {
+                    match &attrs[i] {
+                        Tok::Word(w) if w.eq_ignore_ascii_case("value") => {
+                            if value.is_some() {
+                                fail("`value` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Word(n)) if n.parse::<f64>().is_ok() => {
+                                    let v = n.parse::<f64>().unwrap();
+                                    if v.is_finite() {
+                                        value = Some(v);
+                                    } else {
+                                        fail("a milieu value must be finite".into(), &mut errors);
+                                        ok = false;
+                                    }
+                                }
+                                _ => {
+                                    fail(
+                                        "value syntax: `value <n>` (e.g. `value 7.2`)".into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        Tok::Word(w) if w.eq_ignore_ascii_case("unit") => {
+                            if !unit.is_empty() {
+                                fail("`unit` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(u) if u.is_name() && !u.name().trim().is_empty() => {
+                                    unit = u.name().trim().to_string();
+                                }
+                                _ => {
+                                    fail("unit syntax: `unit <name>` (e.g. `unit mM`)".into(), &mut errors);
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        Tok::Word(w) if w.eq_ignore_ascii_case("description") => {
+                            if !description.is_empty() {
+                                fail("`description` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Str(d)) => description = d.clone(),
+                                _ => {
+                                    fail(
+                                        "description syntax: `description \"<prose>\"` \
+                                         (quoted, one per line)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        other => {
+                            fail(
+                                format!(
+                                    "unknown clause on milieu line: `{}` — a milieu variable \
+                                     takes only `value <n>`, `unit <name>`, and `description \
+                                     \"<prose>\"`; it has no flows and no position (it bathes \
+                                     the system, it does not plug into it)",
+                                    other.display()
+                                ),
+                                &mut errors,
+                            );
+                            ok = false;
+                            i += 1;
+                        }
+                    }
+                }
+                if !ok {
+                    continue;
+                }
+                milieu_vars.push(bert_core::MilieuVariable { name, value, unit, description });
+            }
+            // `interface "Name" [protocol "<str>"] [description "<str>"]` —
+            // the pass-way declared as its own object (#226, ratified
+            // 2026-08-16): a component in I with no work-process character of
+            // its own. The split authoring pattern: crossing flows route
+            // through it, an interior flow hands off to the processor it
+            // serves. The suffix form (`component ... interface`) remains
+            // parseable — the merged special case for components that ARE
+            // pass-ways.
+            "interface" => {
+                let Some((name, attrs)) = rest.split_first() else {
+                    fail(
+                        "interface needs a name — fix: write `interface <Name>`, \
+                         quoting the name if it contains spaces"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                };
+                if !name.is_name() {
+                    fail(
+                        "interface needs a name — fix: write `interface <Name>`, \
+                         quoting the name if it contains spaces"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                let name = name.name();
+                if by_name.contains_key(&name) {
+                    fail(
+                        format!(
+                            "`{name}` is already declared — fix: give this one a different \
+                             name, or delete this line if it repeats the earlier declaration"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                let mut protocol = String::new();
+                let mut description = String::new();
+                let mut i = 0;
+                let mut ok = true;
+                while i < attrs.len() {
+                    match &attrs[i] {
+                        Tok::Word(w) if w.eq_ignore_ascii_case("protocol") => {
+                            if !protocol.is_empty() {
+                                fail("`protocol` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Str(p)) => protocol = p.clone(),
+                                _ => {
+                                    fail(
+                                        "protocol syntax: `protocol \"<rule>\"` \
+                                         (quoted, one per line)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        Tok::Word(w) if w.eq_ignore_ascii_case("description") => {
+                            if !description.is_empty() {
+                                fail("`description` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Str(d)) => description = d.clone(),
+                                _ => {
+                                    fail(
+                                        "description syntax: `description \"<prose>\"` \
+                                         (quoted, one per line)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
+                        other => {
+                            fail(
+                                format!(
+                                    "unknown clause on interface line: `{}` — an interface \
+                                     takes only `protocol \"<rule>\"` and `description \
+                                     \"<prose>\"`; work-process character belongs to the \
+                                     processor component it serves",
+                                    other.display()
+                                ),
+                                &mut errors,
+                            );
+                            ok = false;
+                            i += 1;
+                        }
+                    }
+                }
+                if !ok {
+                    continue;
+                }
+                by_name.insert(name.clone(), things.len());
+                things.push(Thing {
+                    id: next_id,
+                    name,
+                    description,
+                    x: 0.0,
+                    y: 0.0,
+                    role: Role::Component,
+                    env_kind: EnvKind::Neutral,
+                    primitive: None,
+                    interface: true,
+                    passway: true,
+                    protocol,
+                    child_model: None,
+                    stock_unit: String::new(),
+                    scale: None,
+                    states: None,
+                    variable_kind: None,
+                    cognitive_params: std::collections::HashMap::new(),
+                    initial_state: std::collections::HashMap::new(),
+                    agency_capacity: None,
+                });
+                next_id += 1;
+            }
             "component" | "source" | "sink" | "environment" => {
                 let role = if keyword == "component" {
                     Role::Component
@@ -379,6 +635,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 }
                 let mut primitive: Option<ProcessPrimitive> = None;
                 let mut interface = false;
+                let mut protocol = String::new();
                 let mut child_model: Option<ChildRef> = None;
                 let mut stock_unit = String::new();
                 let mut initial_stock: Option<f64> = None;
@@ -889,6 +1146,39 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             interface = true;
                             i += 1;
                         }
+                        // `protocol "<rule>"` — rides the merged form
+                        // (`component ... interface protocol "..."`) so a
+                        // round-trip through the suffix syntax never drops an
+                        // authored protocol (#333). Meaningless without
+                        // `interface`; refused below when it dangles.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("protocol") => {
+                            if role == Role::Environment {
+                                fail(
+                                    "`protocol` applies to interfaces only (environment \
+                                     internals are opaque)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                            if !protocol.is_empty() {
+                                fail("`protocol` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Str(p)) => protocol = p.clone(),
+                                _ => {
+                                    fail(
+                                        "protocol syntax: `protocol \"<rule>\"` \
+                                         (quoted, one per line)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
                         Tok::Word(w) if w.eq_ignore_ascii_case("primitive") => {
                             match attrs.get(i + 1) {
                                 Some(Tok::Word(p)) => match parse_primitive(p) {
@@ -1064,6 +1354,16 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 if let Some(v) = initial_stock {
                     initial_state.insert("storage".to_string(), serde_json::json!(v));
                 }
+                if !protocol.is_empty() && !interface {
+                    fail(
+                        "`protocol` without `interface` — a protocol is the admission \
+                         rule of a pass-way; fix: add `interface` to this line, or move \
+                         the protocol onto the interface this component serves"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
                 things.push(Thing {
                     id: next_id,
                     name,
@@ -1074,6 +1374,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     env_kind,
                     primitive,
                     interface,
+                    passway: false,
+                    protocol,
                     child_model,
                     stock_unit,
                     scale,
@@ -1156,14 +1458,23 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         match rest_tail {
                             [Tok::Word(n), after @ ..] => {
                                 match n.parse::<bert_core::rust_decimal::Decimal>() {
-                                    Ok(v) if v > bert_core::rust_decimal::Decimal::ZERO => {
+                                    // Zero is admissible (interactive params,
+                                    // 2026-08-16): a declared 0 is ARREST —
+                                    // "the supply is shut off" — which is a
+                                    // dynamical statement, not an absent flow.
+                                    // A slider at its 0 floor writes it, and a
+                                    // saved model must re-parse. Negative
+                                    // stays refused: direction is the arrow's.
+                                    Ok(v) if v >= bert_core::rust_decimal::Decimal::ZERO => {
                                         amount = Some(v);
                                         tail = after;
                                     }
                                     Ok(_) => {
                                         fail(
-                                            "a flow's amount is a positive magnitude — to \
-                                             model an absent flow, remove the line"
+                                            "a flow's amount cannot be negative — direction \
+                                             belongs to the arrow; to model an absent flow, \
+                                             remove the line (a declared 0 means arrested \
+                                             supply, and is allowed)"
                                                 .into(),
                                             &mut errors,
                                         );
@@ -1900,6 +2211,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         model_id: None,
         things,
         relations,
+        milieu: milieu_vars,
         boundary: boundary.unwrap_or_default(),
         system_type,
         name: system_name,
@@ -2177,6 +2489,32 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
                 t.name
             ));
         }
+        // A pure pass-way — interface with no work-process character of its
+        // own — emits as its own declaration (#226): the split form is the
+        // default surface. Anything carrying processor freight (a primitive,
+        // a stock, engine params, a child) keeps the merged component form.
+        if t.passway
+            && t.role == Role::Component
+            && t.interface
+            && t.primitive.is_none()
+            && t.stock_unit.is_empty()
+            && t.cognitive_params.is_empty()
+            && t.initial_state.is_empty()
+            && t.child_model.is_none()
+            && t.variable_kind.is_none()
+            && t.scale.is_none()
+            && t.states.is_none()
+        {
+            write!(out, "interface {}", name_token(&t.name)?).unwrap();
+            if !t.protocol.is_empty() {
+                write!(out, " protocol {}", quote(&t.protocol)?).unwrap();
+            }
+            if !t.description.is_empty() {
+                write!(out, " description {}", quote(&t.description)?).unwrap();
+            }
+            out.push('\n');
+            continue;
+        }
         let keyword = match (t.role, t.env_kind) {
             (Role::Component, _) => "component",
             (Role::Environment, EnvKind::Source) => "source",
@@ -2190,6 +2528,9 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
             }
             if t.interface {
                 write!(out, " interface").unwrap();
+                if !t.protocol.is_empty() {
+                    write!(out, " protocol {}", quote(&t.protocol)?).unwrap();
+                }
             }
             // Declared stock unit (#76/#94) — before `decomposes` (which stays last).
             if !t.stock_unit.is_empty() {
@@ -2253,6 +2594,22 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
                 write!(out, " decomposes {} @{}", quote(&child.name)?, encode_uuid(&child.id.as_uuid()))
                     .unwrap();
             }
+        }
+        out.push('\n');
+    }
+
+    // M — the milieu, after the point objects and before the flows: the bath
+    // is environment structure, not connection structure.
+    for m in &model.milieu {
+        write!(out, "milieu {}", name_token(&m.name)?).unwrap();
+        if let Some(v) = m.value {
+            write!(out, " value {v}").unwrap();
+        }
+        if !m.unit.is_empty() {
+            write!(out, " unit {}", name_token(&m.unit)?).unwrap();
+        }
+        if !m.description.is_empty() {
+            write!(out, " description {}", quote(&m.description)?).unwrap();
         }
         out.push('\n');
     }
@@ -2486,6 +2843,9 @@ pub const RESERVED_WORDS: &[&str] = &[
     "flow",
     "boundary",
     "interface",
+    "milieu",
+    "value",
+    "protocol",
     "primitive",
     "decomposes",
     "stock",
@@ -3359,4 +3719,125 @@ flow S -> A : matter \"in\"
         assert_eq!(r.unit, "ML");
     }
 
+    // ── the interface declaration: the pass-way as its own object (#226) ──
+
+    #[test]
+    fn an_interface_declares_as_its_own_object() {
+        let m = parse_sl(
+            "interface \"Ore Gate\" protocol \"graded ore only\"\n\
+             component Furnace primitive Combining\nsource Mine\n\
+             flow Mine -> \"Ore Gate\" : matter \"ore\"\n\
+             flow \"Ore Gate\" -> Furnace : matter \"ore\"\n",
+        )
+        .unwrap();
+        let gate = m.things.iter().find(|t| t.name == "Ore Gate").unwrap();
+        assert!(gate.interface);
+        assert_eq!(gate.role, Role::Component);
+        assert_eq!(gate.primitive, None);
+        assert_eq!(gate.protocol, "graded ore only");
+        let furnace = m.things.iter().find(|t| t.name == "Furnace").unwrap();
+        assert!(!furnace.interface, "the processor stays interior");
+    }
+
+    /// The separating pair for the split emit rule: a pure pass-way emits as
+    /// an `interface` declaration; a component with processor freight keeps
+    /// the merged suffix form.
+    #[test]
+    fn a_pure_passway_round_trips_through_the_interface_form() {
+        let src = "interface \"Ore Gate\" protocol \"graded ore only\" description \"the intake\"\n\
+                   component Furnace primitive Combining interface\nsource Mine\n\
+                   flow Mine -> \"Ore Gate\" : matter \"ore\"\n\
+                   flow \"Ore Gate\" -> Furnace : matter \"ore\"\n\
+                   flow Mine -> Furnace : matter \"flux\"\n";
+        let m = parse_sl(src).unwrap();
+        let out = emit_sl(&m).unwrap();
+        assert!(
+            out.contains("interface \"Ore Gate\" protocol \"graded ore only\" description \"the intake\""),
+            "pure pass-way emits split form; got:\n{out}"
+        );
+        assert!(
+            out.contains("component Furnace primitive Combining interface"),
+            "merged component keeps the suffix form; got:\n{out}"
+        );
+        let back = parse_sl(&out).unwrap();
+        let gate = back.things.iter().find(|t| t.name == "Ore Gate").unwrap();
+        assert_eq!(gate.protocol, "graded ore only");
+        assert!(gate.interface && gate.primitive.is_none());
+    }
+
+    #[test]
+    fn protocol_rides_the_merged_form_and_round_trips() {
+        let m = parse_sl(
+            "component Gate interface protocol \"badge required\"\nsource S\n\
+             flow S -> Gate : matter \"x\"\n",
+        )
+        .unwrap();
+        assert_eq!(m.things[0].protocol, "badge required");
+        // A STAMPED component stays in the merged form — the authored form is
+        // the author's claim about what the thing is, never silently promoted
+        // (the neuron corpus's primitive-less compartments must keep meaning
+        // component).
+        let out = emit_sl(&m).unwrap();
+        assert!(out.contains("component Gate interface protocol \"badge required\""), "got:\n{out}");
+    }
+
+    /// A protocol is an interface's admission rule — dangling on a plain
+    /// component it is a fault, not a silently ignored word.
+    #[test]
+    fn protocol_without_interface_is_a_fault() {
+        assert!(parse_sl("component A protocol \"x\"\n").is_err());
+    }
+
+    /// The interface line refuses processor freight: work-process character
+    /// belongs to the component the pass-way serves.
+    #[test]
+    fn an_interface_line_refuses_a_primitive() {
+        assert!(parse_sl("interface Gate primitive Combining\n").is_err());
+    }
+
+    #[test]
+    fn an_interface_name_collision_is_a_fault() {
+        assert!(parse_sl("component A\ninterface A\n").is_err());
+    }
+
+    // ── the milieu: E = ⟨O, M⟩, lifecycle-paper revision ─────────────────
+
+    #[test]
+    fn milieu_variables_parse_and_round_trip() {
+        let src = "component A\n\
+                   milieu pH value 7.2\n\
+                   milieu \"Mg2+ and ionic milieu\" unit mM description \"the coordination shell\"\n";
+        let m = parse_sl(src).unwrap();
+        assert_eq!(m.milieu.len(), 2);
+        assert_eq!(m.milieu[0].name, "pH");
+        assert_eq!(m.milieu[0].value, Some(7.2));
+        assert_eq!(m.milieu[1].unit, "mM");
+        assert_eq!(m.milieu[1].description, "the coordination shell");
+        let out = emit_sl(&m).unwrap();
+        assert!(out.contains("milieu pH value 7.2"), "got:\n{out}");
+        assert!(
+            out.contains("milieu \"Mg2+ and ionic milieu\" unit mM description \"the coordination shell\""),
+            "got:\n{out}"
+        );
+        let back = parse_sl(&out).unwrap();
+        assert_eq!(back.milieu, m.milieu);
+    }
+
+    /// A milieu variable is not a thing: it takes no flows — the refusal is
+    /// the ontology ("it bathes, it does not plug in").
+    #[test]
+    fn a_flow_cannot_touch_a_milieu_variable() {
+        assert!(parse_sl("component A\nmilieu pH\nflow pH -> A : matter \"x\"\n").is_err());
+    }
+
+    #[test]
+    fn a_duplicate_milieu_variable_is_a_fault() {
+        assert!(parse_sl("milieu pH\nmilieu pH value 7\n").is_err());
+    }
+
+    #[test]
+    fn a_milieu_line_refuses_thing_freight() {
+        assert!(parse_sl("milieu pH primitive Sensing\n").is_err());
+        assert!(parse_sl("milieu Temp interface\n").is_err());
+    }
 }

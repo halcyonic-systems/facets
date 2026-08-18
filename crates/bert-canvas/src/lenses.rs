@@ -391,10 +391,13 @@ fn lens_residue(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensResid
         .iter()
         .filter(|t| t.role == Role::Component)
         .count();
+    // A pass-way (#226) is excluded deliberately: its answer to "what work
+    // process?" is "none — I am a pass-way", which is an ANSWER, not an
+    // omission. A component merely STAMPED interface still gets asked.
     let bare_components = model
         .things
         .iter()
-        .filter(|t| t.role == Role::Component && t.primitive.is_none())
+        .filter(|t| t.role == Role::Component && t.primitive.is_none() && !t.passway)
         .count();
     let directed = model.relations.iter().filter(|r| r.klir_directed).count();
     // Effective I = flow-crossing ∪ authored — the same union b_interfaces reports.
@@ -430,6 +433,8 @@ fn lens_residue(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensResid
                 residue_entry(primitives, "process primitive", "process primitives"),
                 residue_entry(interfaces, "interface", "interfaces"),
                 residue_entry(membrane_props, "membrane property", "membrane properties"),
+                // M has no Klir preimage — the (T, R) surface carries no bath.
+                residue_entry(model.milieu.len(), "milieu variable", "milieu variables"),
             ],
             vec![],
         ),
@@ -451,6 +456,11 @@ fn lens_residue(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> LensResid
                 ),
                 residue_entry(membrane_props, "membrane property", "membrane properties"),
                 residue_entry(directed, "directed annotation", "directed annotations"),
+                // The Lean PROVES this loss: Mobus→Bunge discards M
+                // (`MobusEnvironment.toBungeEnvironment` docstring — "one of
+                // two systematic information losses"). The register is that
+                // theorem, spoken.
+                residue_entry(model.milieu.len(), "milieu variable", "milieu variables"),
             ],
             vec![
                 residue_entry(untyped, "connection kind", "connection kinds"),
@@ -1040,9 +1050,29 @@ fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> Le
                 .filter(|e| e.bond && e.locus == EdgeLocus::Endo)
                 .count(),
             e_objects: facts.environment_thing_ids.iter().map(|&id| name_of(id)).collect(),
-            milieu_note: "μ (milieu) is parametric/opaque — the one element with no \
-                          cross-lens preimage (milieuOnly_bunge_empty)"
-                .to_string(),
+            // Declared M typesets as the paper writes it (E = ⟨O, M⟩, M as a
+            // tuple of named condition variables); an empty M keeps the old
+            // parametric/opaque note — the slot exists either way, and only
+            // the author can fill it.
+            milieu_note: if model.milieu.is_empty() {
+                "μ (milieu) is parametric/opaque — the one element with no \
+                 cross-lens preimage (milieuOnly_bunge_empty)"
+                    .to_string()
+            } else {
+                format!(
+                    "M = ⟨{}⟩ — ambient conditions, declared, not dynamically coupled",
+                    model
+                        .milieu
+                        .iter()
+                        .map(|m| match (m.value, m.unit.is_empty()) {
+                            (Some(v), false) => format!("{} = {} {}", m.name, v, m.unit),
+                            (Some(v), true) => format!("{} = {}", m.name, v),
+                            _ => m.name.clone(),
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            },
             g: facts
                 .edges
                 .iter()
@@ -1103,6 +1133,8 @@ mod tests {
             role,
             primitive: None,
             interface: false,
+            passway: false,
+            protocol: String::new(),
             child_model: None,
             stock_unit: String::new(),
             scale: None,
@@ -1136,6 +1168,7 @@ mod tests {
         CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things,
             relations,
             boundary: Default::default(),

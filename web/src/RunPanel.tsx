@@ -1,22 +1,21 @@
 // The run/results panel — legible, domain-named. Every label is the model's own
 // name + unit; every number is the kernel's. The face renders, it does not judge.
 import { useState } from "react";
-import {
-  Line,
-  LineChart,
-  ReferenceArea,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from "recharts";
+import { Line, ReferenceArea, ReferenceLine } from "recharts";
 import type { CanvasModel, Comparison, Level, MarkovRunResult, RunResultRich } from "./kernel/types";
 import { Card, Pill, Stat, Verdict, humanize } from "./ui";
 import { horizonOf, unitLabel } from "./runViz";
 import { BungeStateSpace } from "./canvas/BungeStateSpace";
 import { evaluateMetrics, type MetricReading } from "./metrics";
+import {
+  CHART_SERIES,
+  FUTURE_OPACITY,
+  PAST,
+  RunChart,
+  STROKES,
+  midRun,
+  timeAxisLabel,
+} from "./RunChart";
 
 // Category labels are lens-faithful (K≅2 on the run panel): Klir and Bunge share
 // input/output/internal (both authors' own words — Klir ch.2 "input, output, and
@@ -25,7 +24,9 @@ import { evaluateMetrics, type MetricReading } from "./metrics";
 // the value IS — a sink's total delivered vs a source/process level at run end.
 const CATEGORY_SUB: Record<Level["category"], (ticks: number) => string> = {
   product: (t) => `total delivered over ${t} ticks`,
-  resource: () => "level at run end",
+  // A source has no level — what it shows is its declared per-tick supply
+  // (#344 item 2: a rate presented as a level read as nonsense).
+  resource: () => "declared supply, per tick",
   internal: () => "level at run end",
 };
 const CATEGORY_LABEL: Record<CanvasModel["lens"], Record<Level["category"], string>> = {
@@ -48,75 +49,124 @@ const WORDING = {
   residualLabel: "balance residual",
 };
 
-export function RunPanel({
+/** The residual, humanly: an exact zero says "0" instead of the exponential
+ *  form's "0.0e+0" (fresh-eyes pass, 2026-08-18); a nonzero keeps the
+ *  exponential — its magnitude IS the reading. */
+export function residualText(residual: number): string {
+  return residual === 0 ? "0 (exact)" : residual.toExponential(1);
+}
+
+/** The glance facts (shared by the dock/Readouts glance row and the bench's
+ *  RunCard): the headline metric at the cursor, the key responding stock, and
+ *  the residual. Reads the same kernel outputs as the tabs; computes nothing
+ *  the kernel didn't. */
+export function glanceFacts(
+  result: RunResultRich,
+  model: CanvasModel | null | undefined,
+  tick: number | undefined,
+) {
+  const metrics = model ? evaluateMetrics(model, result) : null;
+  const head = metrics?.readings[0] ?? null;
+  const n = head?.series.length ?? result.ticks;
+  const at = tick !== undefined ? Math.max(0, Math.min(n - 1, tick)) : n - 1;
+  const headValue = head
+    ? head.kind === "share"
+      ? `${(((head.series[at] ?? head.endpoint) as number) * 100).toFixed(1)}%`
+      : `${humanize(head.series[at] ?? head.endpoint)}${head.unit ? ` ${head.unit}` : ""}`
+    : null;
+  // The key responding stock: the first internal level with a trajectory.
+  const internal = result.levels.find((l) => l.category === "internal") ?? null;
+  const stockTraj = internal
+    ? result.trajectories.find((t) => t.name === internal.name)
+    : undefined;
+  const stockValue = stockTraj
+    ? (stockTraj.series[Math.min(at, stockTraj.series.length - 1)] ?? internal!.value)
+    : (internal?.value ?? null);
+  return { head, headValue, internal, stockValue };
+}
+
+/** The run's always-visible glance row: the three numbers a cold viewer needs
+ *  before any tab. */
+export function RunGlance({
   result,
-  ranEdited,
+  model,
+  tick,
+}: {
+  result: RunResultRich;
+  model?: CanvasModel | null;
+  tick?: number;
+}) {
+  const { head, headValue, internal, stockValue } = glanceFacts(result, model, tick);
+  return (
+    <div
+      className="flex flex-wrap items-baseline gap-x-6 gap-y-1 px-4 py-2"
+      style={{ borderBottom: "1px solid var(--hairline)" }}
+    >
+      {head && headValue && (
+        <span className="inline-flex items-baseline gap-2" title={head.detail}>
+          <span className="text-2xl font-semibold tabular" style={{ color: "var(--accent-strong)" }}>
+            {headValue}
+          </span>
+          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+            {head.name}
+            <span style={{ color: "var(--text-muted)" }}>
+              {head.kind === "sum" ? " · running total" : " · share"}
+            </span>
+          </span>
+        </span>
+      )}
+      {internal && stockValue != null && (
+        <span className="inline-flex items-baseline gap-1.5 text-sm">
+          <span className="tabular font-medium" style={{ color: "var(--text-primary)" }}>
+            {humanize(stockValue)}
+          </span>
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+            {internal.name} · level
+            {internal.unit ? ` · ${unitLabel(internal.unit).text}` : ""}
+          </span>
+        </span>
+      )}
+      <span className="ml-auto text-xs tabular" style={{ color: "var(--text-muted)" }}>
+        {WORDING.residualLabel} {residualText(result.residual)}
+      </span>
+    </div>
+  );
+}
+
+export function RunStory({
+  result,
   lens,
-  onAcceptUnit,
   tick,
   model,
 }: {
   result: RunResultRich;
-  /** ADR run-seam-canvas-document: true when this run executed the edited
-   *  canvas's projection; false/absent = the shipped calibration artifact. */
-  ranEdited?: boolean;
   lens: CanvasModel["lens"];
-  /** #203: the authoring model, read for its declared metrics. Absent = no
-   *  authoring surface, so no metrics card and no teach line. */
-  model?: CanvasModel | null;
-  /** #94: accept a derived stock unit as the component's DECLARED unit. The
-   *  parent writes it into the authoring model; absent = no authoring surface
-   *  to write into, so no affordance is shown. */
-  onAcceptUnit?: (name: string, unit: string) => void;
-  /** #154 P1: the SimScrubber's current tick, so the Bunge state-space readout
-   *  marks where the system is on its path. Absent = no live marker. */
   tick?: number;
+  model?: CanvasModel | null;
 }) {
-  // Lead with the sharpest MEANINGFUL divergence. A forced flow trivially
-  // matches its own data (~0% off) — that's a tautology, not a finding, so it
-  // never headlines; only a real gap (a responding stock, an unforced flow) does.
-  // Divergence is scored in-sample: the fit is only meaningful where data exists,
-  // never against a forecast tick past the horizon.
-  const lead = result.comparisons
-    .map((c) => ({ c, pct: c.divergence_pct }))
-    .filter((r) => r.pct != null && r.pct > 0.5)
-    .sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0))[0];
-  const forecastTicks = lead ? lead.c.simulated.length - lead.c.actual.length : 0;
-  // #203: declared metrics lead the deck — the questions the author wrote
-  // into the model answer FIRST, in the author's words; the kernel-fidelity
-  // furniture follows. Null = no authoring model in reach.
   const metrics = model ? evaluateMetrics(model, result) : null;
-
+  const CHART_H = 210;
   return (
     <div className="grid gap-5">
       {metrics && (metrics.readings.length > 0 || metrics.failures.length > 0) && (
-        <Card title="Declared metrics" source="declared in SL · computed from the run">
-          {/* One chart per QUESTION, one line per entity answering it (#341):
-              readings sharing a family (same denominator, or same kind+unit)
-              merge into a leaderboard chart; singletons keep their row. The
-              grid holds either shape. */}
-          <div className="grid gap-x-8 gap-y-5 xl:grid-cols-2">
-            {groupReadings(metrics.readings).map((g) =>
-              g.length === 1 ? (
-                <MetricRow key={g[0].name} r={g[0]} tick={tick} />
-              ) : (
-                <MetricFamilyChart key={g[0].familyKey} readings={g} tick={tick} />
-              ),
-            )}
-            {metrics.failures.map((f) => (
-              <p key={f.name} className="text-xs" style={{ color: "var(--verdict-warning)" }}>
-                {f.name}: {f.reason}
-              </p>
-            ))}
-          </div>
-        </Card>
+        <div className="grid gap-x-8 gap-y-5 xl:grid-cols-2">
+          {groupReadings(metrics.readings).map((g) =>
+            g.length === 1 ? (
+              <MetricRow key={g[0].name} r={g[0]} tick={tick} height={CHART_H} timeUnit={model?.time_unit} />
+            ) : (
+              <MetricFamilyChart key={g[0].familyKey} readings={g} tick={tick} height={CHART_H} timeUnit={model?.time_unit} />
+            ),
+          )}
+          {metrics.failures.map((f) => (
+            <p key={f.name} className="text-xs" style={{ color: "var(--verdict-warning)" }}>
+              {f.name}: {f.reason}
+            </p>
+          ))}
+        </div>
       )}
       {metrics && metrics.readings.length === 0 && metrics.failures.length === 0 && (
         // The capacity, surfaced (#203): a model with no declared metrics is
-        // told — quietly — that it can ask its own questions of a run. The
-        // examples are built from THIS model's own names (a hint that showed
-        // llm-market's vocabulary on every model taught the wrong lesson:
-        // that the words were magic rather than the author's).
+        // told — quietly — that it can ask its own questions of a run.
         <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
           No declared metrics — name the readouts you want to watch, in the
           model&rsquo;s own words:{" "}
@@ -125,117 +175,136 @@ export function RunPanel({
             {model?.things.find((t) => t.role === "Environment" && t.env_kind === "Sink")?.name ??
               "<a sink>"}
           </code>
-          {(() => {
-            const f = model?.relations.find((r) => r.name);
-            const from = f && model?.things.find((t) => t.id === f.a)?.name;
-            const to = f && model?.things.find((t) => t.id === f.b)?.name;
-            return from && to ? (
-              <>
-                {" "}
-                ·{" "}
-                <code className="font-mono">
-                  metric &quot;share&quot; : share of flow {from} -&gt; {to}
-                </code>
-              </>
-            ) : null;
-          })()}
         </p>
       )}
-      <Card title="Result" source="bert-compose · wasm">
-        {/* The headline is what the RUN did — the verdict, always. A validation
-            gap is one fact about the run, not its identity; it rides below as
-            a stat pointing at the charts (design sweep, 2026-08-15: "24% off
-            the data" as the headline buried the run under its worst readout). */}
-        <div className="mb-4">
-          <Verdict tone={result.conserved ? "ok" : "warning"}>
-            {result.conserved ? WORDING.ranClean : WORDING.ranLeak} · {result.ticks} ticks
-          </Verdict>
-          {lead && (
-            <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-              largest gap from your data: <span className="font-medium">{lead.c.element}</span>,{" "}
-              {Math.round(lead.pct ?? 0)}% off · {lead.c.actual.length} observation
-              {lead.c.actual.length === 1 ? "" : "s"}
-              {forecastTicks > 0 && ` · the remaining ${forecastTicks} ticks run past the data`}
-            </p>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-4">
-          {/* Which model ran (ADR run-seam-canvas-document) — the kernel hash
-              already knows; this is the plain-word version for the reader. */}
-          <Pill tone={ranEdited ? "warning" : "neutral"}>
-            {ranEdited ? "ran your edited model" : "ran the shipped calibration"}
-          </Pill>
-          <Pill tone={result.conserved ? "ok" : "error"}>
-            {result.conserved ? WORDING.conservedPill : WORDING.leakPill}
-          </Pill>
-          <Stat
-            label={WORDING.residualLabel}
-            value={result.residual.toExponential(1)}
-            tone={result.conserved ? "ok" : "error"}
-          />
-          <Stat label="ticks" value={String(result.ticks)} />
-          <Stat label="step size (Δt)" value={result.dt.toFixed(1)} />
-        </div>
-      </Card>
-
-      {result.comparisons.length > 0 && (
-        <Card title="Simulated vs actual" source="bert-compose · wasm">
-          {/* Small multiples in a grid; same-UNIT comparisons merge into one
-              chart with hue = flow and stroke style keeping role (#341).
-              Mixed units never share an axis — that is the #1 chart lie. */}
-          <div className="grid gap-x-8 gap-y-6 xl:grid-cols-2">
-            {groupComparisons(result.comparisons).map((g) =>
-              g.length === 1 ? (
-                <ComparisonChart key={g[0].element} c={g[0]} tick={tick} />
-              ) : (
-                <ComparisonFamilyChart key={g[0].unit || "unitless"} comparisons={g} tick={tick} />
-              ),
-            )}
-          </div>
-        </Card>
-      )}
-
-      {/* #100 phase 5: in the Bunge lens, the run reads as a trajectory through
-          state space — the coalgebra unfolding drawn in Bunge's register, beside
-          the coupling matrix that carries its structure. */}
-      {lens === "Bunge" && result.trajectories.length > 0 && (
-        <Card title="State space" source="bert-compose · wasm">
-          <BungeStateSpace result={result} tick={tick} />
-        </Card>
-      )}
-
-      {/* The full per-thing table is reference material, not the page (design
-          sweep 2026-08-15) — a disclosure, closed by default, so the run page
-          ends at its charts and the table is one click away when wanted. */}
-      <details className="group">
-        <summary
-          className="cursor-pointer select-none text-sm font-medium"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          Final levels — every thing&rsquo;s number at run end ({result.levels.length})
-        </summary>
-        <div className="mt-3">
-          <Card title="Final levels" source="bert-core · wasm">
-            <Levels
-              levels={result.levels}
-              ticks={result.ticks}
-              lens={lens}
-              onAcceptUnit={onAcceptUnit}
+      {result.trajectories.length > 0 &&
+        result.levels.some((l) => l.category === "internal") && (
+          <div>
+            <SectionLabel>Levels over the run</SectionLabel>
+            <LevelsChart
               trajectories={result.trajectories}
+              levels={result.levels}
               tick={tick}
+              height={CHART_H}
+              timeUnit={model?.time_unit}
             />
-          </Card>
+          </div>
+        )}
+      {/* #100 phase 5: under Bunge the run reads as a trajectory through state
+          space, in Bunge's register. */}
+      {lens === "Bunge" && result.trajectories.length > 0 && (
+        <div>
+          <SectionLabel>State space</SectionLabel>
+          <BungeStateSpace result={result} tick={tick} />
         </div>
-      </details>
+      )}
     </div>
   );
 }
 
-/** The chart-series ink (#341, validated): identity colors used ONLY inside
- *  charts. Assignment is by the entity's ALPHABETICAL index — stable across
- *  runs, so a re-run that reorders the leaderboard never repaints a line
- *  (color follows the entity, never its rank). */
-const CHART_SERIES = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"];
+/** The Fit tab (ws3) — only mounted when a CSV is bound (absence is ontology:
+ *  no data, no fit). The sharpest MEANINGFUL divergence headlines; a forced
+ *  flow trivially matching its own data never does. */
+export function RunFit({ result, tick, timeUnit }: { result: RunResultRich; tick?: number; timeUnit?: string | null }) {
+  const lead = result.comparisons
+    .map((c) => ({ c, pct: c.divergence_pct }))
+    .filter((r) => r.pct != null && r.pct > 0.5)
+    .sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0))[0];
+  const forecastTicks = lead ? lead.c.simulated.length - lead.c.actual.length : 0;
+  const obs = result.comparisons[0]?.actual.length ?? 0;
+  return (
+    <div className="grid gap-4">
+      {/* Provenance first — a cold viewer's "what data, from where?" (fresh-eyes
+          pass, 2026-08-18). The comparisons exist only because a CSV is bound
+          in Data mode, so that is the sentence's whole content. */}
+      <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+        Each chart overlays the executed run on the observations bound in Data mode —{" "}
+        {result.comparisons.length} bound series · {obs} observation{obs === 1 ? "" : "s"} each.
+        "% off" is the run's mean divergence from that data over the observed window.
+      </p>
+      {!lead && result.comparisons.length > 0 && (
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+          no series diverges from its data by more than 0.5% — the run reproduces the bound
+          observations.
+        </p>
+      )}
+      {lead && (
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+          largest gap from your data: <span className="font-medium">{lead.c.element}</span>,{" "}
+          {Math.round(lead.pct ?? 0)}% off · {lead.c.actual.length} observation
+          {lead.c.actual.length === 1 ? "" : "s"}
+          {forecastTicks > 0 && ` · the remaining ${forecastTicks} ticks run past the data`}
+        </p>
+      )}
+      {/* Small multiples; same-UNIT comparisons merge into one chart (#341).
+          Mixed units never share an axis — that is the #1 chart lie. */}
+      <div className="grid gap-x-8 gap-y-6 xl:grid-cols-2">
+        {groupComparisons(result.comparisons).map((g) =>
+          g.length === 1 ? (
+            <ComparisonChart key={g[0].element} c={g[0]} tick={tick} height={230} timeUnit={timeUnit} />
+          ) : (
+            <ComparisonFamilyChart key={g[0].unit || "unitless"} comparisons={g} tick={tick} height={230} timeUnit={timeUnit} />
+          ),
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** The Table tab (ws3): every thing's number at run end, plus the run's own
+ *  stats — the reference reading, one tab away instead of a disclosure. */
+export function RunTable({
+  result,
+  ranEdited,
+  lens,
+  onAcceptUnit,
+  tick,
+}: {
+  result: RunResultRich;
+  ranEdited?: boolean;
+  lens: CanvasModel["lens"];
+  onAcceptUnit?: (name: string, unit: string) => void;
+  tick?: number;
+}) {
+  return (
+    <div className="grid gap-4">
+      <div className="flex flex-wrap items-center gap-4">
+        {/* Which model ran (ADR run-seam-canvas-document) — the kernel hash
+            already knows; this is the plain-word version for the reader. */}
+        <Pill tone={ranEdited ? "warning" : "neutral"}>
+          {ranEdited ? "ran your edited model" : "ran the model as shipped"}
+        </Pill>
+        <Stat
+          label={WORDING.residualLabel}
+          value={residualText(result.residual)}
+          tone={result.conserved ? "ok" : "error"}
+        />
+        <Stat label="ticks" value={String(result.ticks)} />
+        <Stat label="step size (Δt)" value={result.dt.toFixed(1)} />
+      </div>
+      <Levels
+        levels={result.levels}
+        ticks={result.ticks}
+        lens={lens}
+        onAcceptUnit={onAcceptUnit}
+        trajectories={result.trajectories}
+        tick={tick}
+      />
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="mb-2 text-[11px] font-semibold uppercase tracking-wide"
+      style={{ color: "var(--text-muted)" }}
+    >
+      {children}
+    </div>
+  );
+}
+
 
 /** Family grouping (#341): consecutive-key-independent, order-preserving on
  *  first appearance. Families larger than the palette split into chunks of
@@ -276,14 +345,20 @@ function groupComparisons(comparisons: Comparison[]): Comparison[][] {
 /** A family of readings as ONE chart (#341): the question in the header, a
  *  ranked leaderboard of entities beside it, one line per entity below. Hue
  *  by alphabetical entity order; the leaderboard order is the endpoint's. */
-function MetricFamilyChart({ readings, tick }: { readings: MetricReading[]; tick?: number }) {
+
+
+function MetricFamilyChart({ readings, tick, height = 150, timeUnit }: { readings: MetricReading[]; tick?: number; height?: number; timeUnit?: string | null }) {
   const first = readings[0];
   const byEntity = [...readings].sort((a, b) => a.entity.localeCompare(b.entity));
   const colorOf = new Map(byEntity.map((r, i) => [r.entity, CHART_SERIES[i]]));
   const n = Math.max(...readings.map((r) => r.series.length));
+  const mid = midRun(tick, n);
   const data = Array.from({ length: n }, (_, t) => {
     const row: Record<string, number | null> = { t };
-    for (const r of readings) row[r.entity] = r.series[t] ?? null;
+    for (const r of readings) {
+      row[r.entity] = r.series[t] ?? null;
+      if (mid) row[PAST(r.entity)] = t <= tick! ? (r.series[t] ?? null) : null;
+    }
     return row;
   });
   const endpointOf = (r: MetricReading) =>
@@ -313,27 +388,15 @@ function MetricFamilyChart({ readings, tick }: { readings: MetricReading[]; tick
           ))}
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={150}>
-        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
-          <CartesianGrid stroke="var(--hairline)" vertical={false} />
-          {tick !== undefined && tick > 0 && tick < n && (
-            <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
-          )}
-          <XAxis dataKey="t" tick={{ fontSize: 10, fill: "var(--text-muted)" }} stroke="var(--border)" />
-          <YAxis
-            domain={first.kind === "share" ? [0, 1] : undefined}
-            tick={{ fontSize: 10, fill: "var(--text-muted)" }}
-            stroke="var(--border)"
-            width={44}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "var(--bg-secondary)",
-              border: "1px solid var(--border)",
-              borderRadius: 8,
-              fontSize: 12,
-            }}
-          />
+      <RunChart
+        data={data}
+        n={n}
+        tick={tick}
+        height={height}
+        xLabel={timeAxisLabel(timeUnit)}
+        yLabel={first.kind === "share" ? "share" : first.unit || undefined}
+        yDomain={first.kind === "share" ? [0, 1] : undefined}
+      >
           {byEntity.map((r) => (
             <Line
               key={r.entity}
@@ -341,13 +404,26 @@ function MetricFamilyChart({ readings, tick }: { readings: MetricReading[]; tick
               dataKey={r.entity}
               name={r.entity}
               stroke={colorOf.get(r.entity)}
+              strokeOpacity={mid ? FUTURE_OPACITY : 1}
               dot={false}
-              strokeWidth={2}
+              strokeWidth={2.5}
               isAnimationActive={false}
             />
           ))}
-        </LineChart>
-      </ResponsiveContainer>
+          {mid &&
+            byEntity.map((r) => (
+              <Line
+                key={`${r.entity}-past`}
+                type="monotone"
+                dataKey={PAST(r.entity)}
+                stroke={colorOf.get(r.entity)}
+                dot={false}
+                strokeWidth={2.5}
+                isAnimationActive={false}
+                tooltipType="none"
+              />
+            ))}
+      </RunChart>
     </div>
   );
 }
@@ -356,15 +432,18 @@ function MetricFamilyChart({ readings, tick }: { readings: MetricReading[]; tick
  *  style keeps role (solid executed, dashed actual). Declared-mean lines stay
  *  with the singleton view — three encodings per entity is past the ink
  *  budget of a merged chart. */
-function ComparisonFamilyChart({ comparisons, tick }: { comparisons: Comparison[]; tick?: number }) {
+function ComparisonFamilyChart({ comparisons, tick, height = 150, timeUnit }: { comparisons: Comparison[]; tick?: number; height?: number; timeUnit?: string | null }) {
   const byFlow = [...comparisons].sort((a, b) => a.element.localeCompare(b.element));
   const colorOf = new Map(byFlow.map((c, i) => [c.element, CHART_SERIES[i]]));
   const n = Math.max(...comparisons.map((c) => Math.max(c.simulated.length, c.actual.length)));
+  const mid = midRun(tick, n);
   const data = Array.from({ length: n }, (_, t) => {
     const row: Record<string, number | null> = { t };
     for (const c of comparisons) {
       row[`${c.element} · executed`] = c.simulated[t] ?? null;
       row[`${c.element} · actual`] = c.actual[t] ?? null;
+      if (mid)
+        row[PAST(`${c.element} · executed`)] = t <= tick! ? (c.simulated[t] ?? null) : null;
     }
     return row;
   });
@@ -392,33 +471,39 @@ function ComparisonFamilyChart({ comparisons, tick }: { comparisons: Comparison[
           ))}
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={150}>
-        <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: -12 }}>
-          <CartesianGrid stroke="var(--hairline)" vertical={false} />
-          {tick !== undefined && tick > 0 && tick < n && (
-            <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
-          )}
-          <XAxis dataKey="t" tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" />
-          <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" width={44} />
-          <Tooltip
-            contentStyle={{
-              background: "var(--bg-secondary)",
-              border: "1px solid var(--border)",
-              borderRadius: 8,
-              fontSize: 12,
-            }}
-          />
+      <RunChart
+        data={data}
+        n={n}
+        tick={tick}
+        height={height}
+        xLabel={timeAxisLabel(timeUnit)}
+        yLabel={comparisons[0].unit || "model units"}
+      >
           {byFlow.map((c) => (
             <Line
               key={`${c.element}-x`}
               type="monotone"
               dataKey={`${c.element} · executed`}
               stroke={colorOf.get(c.element)}
+              strokeOpacity={mid ? FUTURE_OPACITY : 1}
               dot={false}
               strokeWidth={STROKES.executed.width}
               isAnimationActive={false}
             />
           ))}
+          {mid &&
+            byFlow.map((c) => (
+              <Line
+                key={`${c.element}-x-past`}
+                type="monotone"
+                dataKey={PAST(`${c.element} · executed`)}
+                stroke={colorOf.get(c.element)}
+                dot={false}
+                strokeWidth={STROKES.executed.width}
+                isAnimationActive={false}
+                tooltipType="none"
+              />
+            ))}
           {byFlow.map((c) => (
             <Line
               key={`${c.element}-a`}
@@ -431,8 +516,7 @@ function ComparisonFamilyChart({ comparisons, tick }: { comparisons: Comparison[
               isAnimationActive={false}
             />
           ))}
-        </LineChart>
-      </ResponsiveContainer>
+      </RunChart>
       <p className="mt-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
         solid = executed (the run) · dashed = actual (your data)
       </p>
@@ -443,9 +527,10 @@ function ComparisonFamilyChart({ comparisons, tick }: { comparisons: Comparison[
 /** One declared metric's reading (#203): the author's name and endpoint
  *  number lead; the executed series rides below as a small chart. Same-verb
  *  families arrive pre-sorted by endpoint — the leaderboard reading. */
-function MetricRow({ r, tick }: { r: MetricReading; tick?: number }) {
+export function MetricRow({ r, tick, height = 90, timeUnit }: { r: MetricReading; tick?: number; height?: number; timeUnit?: string | null }) {
   const n = r.series.length;
-  const data = r.series.map((v, t) => ({ t, v }));
+  const mid = midRun(tick, n);
+  const data = r.series.map((v, t) => ({ t, v, past: mid && t <= tick! ? v : null }));
   const endpoint =
     r.kind === "share"
       ? `${(r.endpoint * 100).toFixed(1)}%`
@@ -462,57 +547,61 @@ function MetricRow({ r, tick }: { r: MetricReading; tick?: number }) {
           </div>
         </div>
         <div className="text-right">
-          <div className="text-xl font-semibold tabular" style={{ color: "var(--accent-strong)" }}>
+          <div className="text-2xl font-semibold tabular" style={{ color: "var(--accent-strong)" }}>
             {endpoint}
           </div>
           <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-            {r.kind === "share" ? "at run end" : "over the run"}
+            {r.kind === "share"
+              ? "at run end"
+              : `over ${n} ticks · ≈${humanize(r.endpoint / Math.max(1, n))}/tick`}
           </div>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={90}>
-        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
-          <CartesianGrid stroke="var(--hairline)" vertical={false} />
-          {tick !== undefined && tick > 0 && tick < n && (
-            <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
-          )}
-          <XAxis dataKey="t" tick={{ fontSize: 10, fill: "var(--text-muted)" }} stroke="var(--border)" />
-          <YAxis
-            domain={r.kind === "share" ? [0, 1] : undefined}
-            tick={{ fontSize: 10, fill: "var(--text-muted)" }}
-            stroke="var(--border)"
-            width={44}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "var(--bg-secondary)",
-              border: "1px solid var(--border)",
-              borderRadius: 8,
-              fontSize: 12,
-            }}
-          />
+      <RunChart
+        data={data}
+        n={n}
+        tick={tick}
+        height={height}
+        xLabel={timeAxisLabel(timeUnit)}
+        yLabel={r.kind === "share" ? "share" : r.unit || undefined}
+        yDomain={r.kind === "share" ? [0, 1] : undefined}
+      >
           <Line
             type="monotone"
             dataKey="v"
             name={r.name}
             stroke="var(--accent)"
+            strokeOpacity={mid ? FUTURE_OPACITY : 1}
             dot={false}
-            strokeWidth={2}
+            strokeWidth={2.5}
             isAnimationActive={false}
           />
-        </LineChart>
-      </ResponsiveContainer>
+          {mid && (
+            <Line
+              type="monotone"
+              dataKey="past"
+              stroke="var(--accent)"
+              dot={false}
+              strokeWidth={2.5}
+              isAnimationActive={false}
+              tooltipType="none"
+            />
+          )}
+      </RunChart>
     </div>
   );
 }
 
-function ComparisonChart({ c, tick }: { c: Comparison; tick?: number }) {
+function ComparisonChart({ c, tick, height = 150, timeUnit }: { c: Comparison; tick?: number; height?: number; timeUnit?: string | null }) {
   const n = Math.max(c.simulated.length, c.actual.length, c.declared?.length ?? 0);
+  const mid = midRun(tick, n);
   const data = Array.from({ length: n }, (_, i) => ({
     t: i,
     executed: c.simulated[i] ?? null,
     actual: c.actual[i] ?? null,
     declared: c.declared ? (c.declared[i] ?? null) : null,
+    // The declared mean stays whole — it is a reference, not a trajectory.
+    pastExecuted: mid && i <= tick! ? (c.simulated[i] ?? null) : null,
   }));
   // The horizon is where the data ends; past it the executed line is a forecast
   // with nothing to check against. Fit is scored in-sample only.
@@ -534,9 +623,16 @@ function ComparisonChart({ c, tick }: { c: Comparison; tick?: number }) {
           </span>
         )}
       </div>
-      <ResponsiveContainer width="100%" height={150}>
-        <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: -12 }}>
-          <CartesianGrid stroke="var(--hairline)" vertical={false} />
+      <RunChart
+        data={data}
+        n={n}
+        tick={tick}
+        height={height}
+        xLabel={timeAxisLabel(timeUnit)}
+        yLabel={c.unit || "model units"}
+      >
+          {/* The forecast region: past the data's horizon the executed line is
+              a forecast with nothing to check against (fit is in-sample only). */}
           {forecastTicks > 0 && h != null && (
             <ReferenceArea
               x1={h}
@@ -549,21 +645,6 @@ function ComparisonChart({ c, tick }: { c: Comparison; tick?: number }) {
           {forecastTicks > 0 && h != null && (
             <ReferenceLine x={h} stroke="var(--text-muted)" strokeDasharray="4 4" />
           )}
-          {/* One tick state everywhere (walkthrough #10): the scrubber's
-              position draws on every chart, so playback moves the panel too. */}
-          {tick !== undefined && tick > 0 && tick < n && (
-            <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
-          )}
-          <XAxis dataKey="t" tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" />
-          <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--border)" width={44} />
-          <Tooltip
-            contentStyle={{
-              background: "var(--bg-secondary)",
-              border: "1px solid var(--border)",
-              borderRadius: 8,
-              fontSize: 12,
-            }}
-          />
           {c.declared && (
             <Line
               type="monotone"
@@ -582,10 +663,22 @@ function ComparisonChart({ c, tick }: { c: Comparison; tick?: number }) {
             dataKey="executed"
             name="executed"
             stroke="var(--accent)"
+            strokeOpacity={mid ? FUTURE_OPACITY : 1}
             dot={false}
             strokeWidth={STROKES.executed.width}
             isAnimationActive={false}
           />
+          {mid && (
+            <Line
+              type="monotone"
+              dataKey="pastExecuted"
+              stroke="var(--accent)"
+              dot={false}
+              strokeWidth={STROKES.executed.width}
+              isAnimationActive={false}
+              tooltipType="none"
+            />
+          )}
           <Line
             type="monotone"
             dataKey="actual"
@@ -596,8 +689,7 @@ function ComparisonChart({ c, tick }: { c: Comparison; tick?: number }) {
             strokeWidth={STROKES.actual.width}
             isAnimationActive={false}
           />
-        </LineChart>
-      </ResponsiveContainer>
+      </RunChart>
       <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
         <LegendSwatch stroke={STROKES.executed} color="var(--accent)" label="executed (the run, model units)" />
         <LegendSwatch
@@ -618,14 +710,6 @@ function ComparisonChart({ c, tick }: { c: Comparison; tick?: number }) {
   );
 }
 
-// The three series wear three strokes, not three shades (#283): executed
-// solid, actual dashed, declared dotted. Declared here, drawn identically in
-// the chart and in the legend swatches — the legend shows the line itself.
-const STROKES = {
-  executed: { dash: undefined as string | undefined, width: 2 },
-  actual: { dash: "6 4" as string | undefined, width: 2 },
-  declared: { dash: "1 4" as string | undefined, width: 1.5 },
-};
 
 // #282: the Klir deck — a DTMC run wears DTMC semantics. Steps, states, and
 // occupancy; no Δt, no conservation chrome (probability is the only mass here,
@@ -692,31 +776,16 @@ export function DtmcPanel({
       </Card>
 
       <Card title="State occupancy" source="bert-compose · wasm">
-        <ResponsiveContainer width="100%" height={170}>
-          <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: -12 }}>
-            <CartesianGrid stroke="var(--hairline)" vertical={false} />
-            {tick !== undefined && tick > 0 && tick < steps && (
-              <ReferenceLine x={tick} stroke="var(--accent)" strokeOpacity={0.7} />
-            )}
-            <XAxis
-              dataKey="step"
-              tick={{ fontSize: 11, fill: "var(--text-muted)" }}
-              stroke="var(--border)"
-            />
-            <YAxis
-              domain={[0, 1]}
-              tick={{ fontSize: 11, fill: "var(--text-muted)" }}
-              stroke="var(--border)"
-              width={44}
-            />
-            <Tooltip
-              contentStyle={{
-                background: "var(--bg-secondary)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 12,
-              }}
-            />
+        <RunChart
+          data={data}
+          n={steps}
+          tick={tick}
+          height={170}
+          xKey="step"
+          xLabel="step"
+          yLabel="probability"
+          yDomain={[0, 1]}
+        >
             {run.states.map((s, i) => (
               <Line
                 key={s}
@@ -724,12 +793,11 @@ export function DtmcPanel({
                 dataKey={s}
                 stroke={STATE_COLORS[i % STATE_COLORS.length]}
                 dot={false}
-                strokeWidth={2}
+                strokeWidth={2.5}
                 isAnimationActive={false}
               />
             ))}
-          </LineChart>
-        </ResponsiveContainer>
+      </RunChart>
         <div
           className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px]"
           style={{ color: "var(--text-muted)" }}
@@ -789,6 +857,110 @@ function LegendSwatch({
   );
 }
 
+/** The stocks' own curves (field report 2026-08-16: at steady state the flow
+ *  charts are flat constants, and the run's actual STORY — a pool drifting, a
+ *  level responding — lived only in end-of-run numbers). One chart per unit
+ *  family; progressive to the shared cursor like every other chart. */
+function LevelsChart({
+  trajectories,
+  levels,
+  tick,
+  height = 110,
+  timeUnit,
+}: {
+  trajectories: NonNullable<RunResultRich["trajectories"]>;
+  levels: Level[];
+  tick?: number;
+  height?: number;
+  timeUnit?: string | null;
+}) {
+  // Internal stocks only: a source's "trajectory" is its declared rate drawn
+  // flat — the rates-as-levels confusion all over again (#344 item 2). The
+  // curves that carry the run's story are the levels that RESPOND.
+  const internal = new Set(levels.filter((l) => l.category === "internal").map((l) => l.name));
+  const shown = trajectories.filter((t) => internal.has(t.name));
+  const groups = new Map<string, typeof trajectories>();
+  for (const t of shown) {
+    const k = t.unit || "level";
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k)!.push(t);
+  }
+  return (
+    <div className="grid gap-x-8 gap-y-4 xl:grid-cols-2">
+      {[...groups.entries()].map(([unit, fam]) => {
+        const byName = [...fam].sort((a, b) => a.name.localeCompare(b.name));
+        const colorOf = new Map(byName.map((t, i) => [t.name, CHART_SERIES[i % CHART_SERIES.length]]));
+        const n = Math.max(...fam.map((t) => t.series.length));
+        const mid = midRun(tick, n);
+        const data = Array.from({ length: n }, (_, i) => {
+          const row: Record<string, number | null> = { t: i };
+          for (const tr of fam) {
+            row[tr.name] = tr.series[i] ?? null;
+            if (mid) row[PAST(tr.name)] = i <= tick! ? (tr.series[i] ?? null) : null;
+          }
+          return row;
+        });
+        return (
+          <div key={unit}>
+            <div className="mb-1 flex items-baseline justify-between gap-3">
+              <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
+                {unitLabel(unit).text}
+              </div>
+              <div className="flex flex-wrap justify-end gap-x-3 gap-y-0.5 text-[11px]">
+                {byName.map((t) => (
+                  <span key={t.name} className="inline-flex items-center gap-1">
+                    <span
+                      aria-hidden
+                      className="inline-block h-[2px] w-3"
+                      style={{ background: colorOf.get(t.name) }}
+                    />
+                    <span style={{ color: "var(--text-secondary)" }}>{t.name}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+            <RunChart
+              data={data}
+              n={n}
+              tick={tick}
+              height={height}
+              xLabel={timeAxisLabel(timeUnit)}
+              yLabel={unitLabel(unit).text}
+            >
+                {byName.map((t) => (
+                  <Line
+                    key={t.name}
+                    type="monotone"
+                    dataKey={t.name}
+                    name={t.name}
+                    stroke={colorOf.get(t.name)}
+                    strokeOpacity={mid ? FUTURE_OPACITY : 1}
+                    dot={false}
+                    strokeWidth={2.5}
+                    isAnimationActive={false}
+                  />
+                ))}
+                {mid &&
+                  byName.map((t) => (
+                    <Line
+                      key={`${t.name}-past`}
+                      type="monotone"
+                      dataKey={PAST(t.name)}
+                      stroke={colorOf.get(t.name)}
+                      dot={false}
+                      strokeWidth={2.5}
+                      isAnimationActive={false}
+                      tooltipType="none"
+                    />
+                  ))}
+      </RunChart>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Levels({
   levels,
   ticks,
@@ -831,7 +1003,34 @@ function Levels({
                 · {header.sub(ticks)}
               </span>
             </div>
-            <div className="grid gap-1">
+            {/* A real table, not a list of name/number pairs (fresh-eyes pass,
+                2026-08-18): fixed columns so the eye reads DOWN a column
+                instead of re-parsing each row. The at-cursor column exists
+                only mid-scrub — absent, not blank. */}
+            <div
+              className="grid items-baseline gap-x-6 gap-y-1"
+              style={{
+                gridTemplateColumns: scrubbed
+                  ? "minmax(0,1fr) auto auto auto"
+                  : "minmax(0,1fr) auto auto",
+                // Full-page Readouts would otherwise stretch the name column
+                // into a canyon between name and number — the table reads as
+                // a table only when the columns sit within one eye-span.
+                maxWidth: "42rem",
+              }}
+            >
+              <span />
+              {scrubbed && (
+                <span className="text-right text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+                  at t={tick}
+                </span>
+              )}
+              <span className="text-right text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+                final
+              </span>
+              <span className="text-right text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+                unit
+              </span>
               {rows.map((l) => (
                 // Keyed by name + unit so an accepted row's local state resets
                 // when a different model/run puts a different unit on the name.
@@ -840,7 +1039,7 @@ function Levels({
                   level={l}
                   onAcceptUnit={onAcceptUnit}
                   atTickValue={atTick(l.name)}
-                  tick={tick}
+                  scrubbed={scrubbed}
                 />
               ))}
             </div>
@@ -855,14 +1054,15 @@ function LevelRow({
   level: l,
   onAcceptUnit,
   atTickValue,
-  tick,
+  scrubbed,
 }: {
   level: Level;
   onAcceptUnit?: (name: string, unit: string) => void;
-  /** The row's trajectory value at the scrubbed tick; null = not scrubbed or
-   *  no matching trajectory (the final value stands alone). */
+  /** The row's trajectory value at the scrubbed tick; null = no matching
+   *  trajectory (the cell shows an em dash while the column exists). */
   atTickValue?: number | null;
-  tick?: number;
+  /** Whether the table currently carries the at-cursor column. */
+  scrubbed?: boolean;
 }) {
   // A whole-number source/process level renders as e.g. "3.0" — a magnitude cue
   // that reads it as a stock height, not a count of parts. Sinks keep humanize
@@ -878,15 +1078,19 @@ function LevelRow({
   const derived = l.unit_derived && !accepted;
   const acceptable = derived && onAcceptUnit !== undefined && !l.unit.includes("Δt");
   return (
-    <div className="flex items-baseline justify-between text-sm">
-      <span style={{ color: "var(--text-primary)" }}>{l.name}</span>
-      <span className="tabular" style={{ color: "var(--text-secondary)" }}>
-        {atTickValue != null && (
-          <span className="mr-2 text-xs" style={{ color: "var(--accent)" }}>
-            {humanize(atTickValue)} <span style={{ color: "var(--text-muted)" }}>at {tick}</span> ·
-          </span>
-        )}
+    <>
+      <span className="text-sm" style={{ color: "var(--text-primary)" }}>
+        {l.name}
+      </span>
+      {scrubbed && (
+        <span className="tabular text-right text-xs" style={{ color: "var(--accent)" }}>
+          {atTickValue != null ? humanize(atTickValue) : "—"}
+        </span>
+      )}
+      <span className="tabular text-right text-sm" style={{ color: "var(--text-secondary)" }}>
         {showsMagnitude ? l.value.toFixed(1) : humanize(l.value)}
+      </span>
+      <span className="text-right text-sm">
         <span
           className={unit.abstract ? "italic" : undefined}
           style={{
@@ -900,7 +1104,6 @@ function LevelRow({
           }}
           title={derived ? "derived from inflow × Δt" : undefined}
         >
-          {" "}
           {unit.text}
         </span>
         {acceptable && (
@@ -922,6 +1125,6 @@ function LevelRow({
           </span>
         )}
       </span>
-    </div>
+    </>
   );
 }

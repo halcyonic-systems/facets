@@ -176,6 +176,23 @@ pub struct Thing {
     /// things (their internals are opaque, §4.3.3.2.2).
     #[serde(default)]
     pub interface: bool,
+    /// Born of the `interface "Name"` declaration (#226): a pass-way — a
+    /// member of I with no work-process character — as opposed to a component
+    /// STAMPED `interface` (the merged form). Same ontology either way (both
+    /// are components, I ⊆ C); what this records is the authored form, and
+    /// only a pass-way fuses at projection. A stamped component never fuses:
+    /// existing models keep their meaning exactly (typical-neuron's
+    /// `Synaptic Compartments` is a genuine compartment, not a pass-way).
+    /// `skip` when false so models authored before it stay byte-identical.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub passway: bool,
+    /// Authored interface protocol (bert-lenses#333, Mobus Listing 4.2): the
+    /// admission rule this pass-way enforces, in the author's words.
+    /// Meaningful only alongside `interface`; projection prefers it over the
+    /// computed flow-label join. `skip` when empty so models authored before
+    /// it stay byte-identical on disk.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub protocol: String,
     /// The child model this component decomposes into, by reference (SL's
     /// `decomposes`; bert-lenses#89 step 4). `None` for atomic components and
     /// every model authored before step 4; `skip_serializing_if` so those stay
@@ -451,6 +468,12 @@ pub struct CanvasModel {
     pub things: Vec<Thing>,
     #[serde(default)]
     pub relations: Vec<Relation>,
+    /// The milieu M (E = ⟨O, M⟩, lifecycle-paper revision): ambient condition
+    /// variables that bathe the system — never things, never flow endpoints;
+    /// the absence of edges IS the ontology. One struct, defined in the
+    /// kernel, shared here. `skip` when empty: old models stay byte-identical.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub milieu: Vec<bert_core::MilieuVariable>,
     #[serde(default)]
     pub boundary: CanvasBoundaryProps,
     /// Author-asserted system type (genus + optional domain). serde `default` so
@@ -604,6 +627,67 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
     let originates: HashSet<u64> = bonds.iter().map(|r| r.a).collect();
     let touched: HashSet<u64> = bonds.iter().flat_map(|r| [r.a, r.b]).collect();
 
+    // ── Pass-way fusion (#226) ─────────────────────────────────────────────
+    // A PURE pass-way — `interface` with no work-process freight — whose
+    // interior flows all reach ONE processor component fuses at projection:
+    // it becomes an Interface record alone (never a subsystem), each of its
+    // crossing flows re-anchors to the processor with source/sink_interface
+    // set, and its interior legs vanish. bert#108 then guarantees the run is
+    // exactly what it would be with the pass-way absent — the authored
+    // two-hop chain and the lowered one-hop interaction are the same system.
+    // The 1:1 bound is deliberate (SSF InterfaceDecomposition covers 1:1
+    // refinement only): a pass-way serving several processors, or serving
+    // none, falls back to the merged projection unfused.
+    let is_env = |id: u64| {
+        model
+            .things
+            .iter()
+            .any(|t| t.id == id && t.role == Role::Environment)
+    };
+    let pure_passway = |t: &Thing| {
+        t.passway
+            && t.role == Role::Component
+            && t.interface
+            && t.primitive.is_none()
+            && t.stock_unit.is_empty()
+            && t.cognitive_params.is_empty()
+            && t.initial_state.is_empty()
+            && t.child_model.is_none()
+            && t.agency_capacity.is_none()
+    };
+    // fused pass-way id → the one processor component it serves
+    let mut fused_to: HashMap<u64, u64> = HashMap::new();
+    for t in model.things.iter().filter(|t| pure_passway(t)) {
+        let mut interior: HashSet<u64> = HashSet::new();
+        let mut crossings = 0usize;
+        for r in &bonds {
+            let other = if r.a == t.id {
+                r.b
+            } else if r.b == t.id {
+                r.a
+            } else {
+                continue;
+            };
+            if is_env(other) {
+                crossings += 1;
+            } else {
+                interior.insert(other);
+            }
+        }
+        if crossings > 0 && interior.len() == 1 {
+            let c = *interior.iter().next().unwrap();
+            // The counterpart must itself be a processor, not another
+            // pass-way — a chain of pure pass-ways stays unfused.
+            let c_is_passway = model
+                .things
+                .iter()
+                .any(|x| x.id == c && pure_passway(x));
+            if !c_is_passway {
+                fused_to.insert(t.id, c);
+            }
+        }
+    }
+
     let mut id_map: HashMap<u64, Id> = HashMap::new();
     let mut systems: Vec<System> = Vec::new();
     let mut sources: Vec<ExternalEntity> = Vec::new();
@@ -618,16 +702,28 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
 
     let mut comp_idx: i64 = 0;
     let mut env_idx: i64 = 0;
-    // (systems index, thing id, name) per interface-designated component.
-    let mut designated: Vec<(usize, u64, &str)> = Vec::new();
+    // (systems index, thing id, name, authored protocol) per
+    // interface-designated component.
+    let mut designated: Vec<(usize, u64, &str, &str)> = Vec::new();
+    // (thing id, name, protocol) per FUSED pass-way — an Interface record
+    // alone, never a subsystem (#226).
+    let mut fused_passways: Vec<(u64, &str, &str)> = Vec::new();
+    // component thing id → its systems[] index (the fusion's parent_interface
+    // back-pointer needs to find the processor's subsystem).
+    let mut sys_idx_of: HashMap<u64, usize> = HashMap::new();
     for t in &model.things {
         match t.role {
             Role::Component => {
+                if fused_to.contains_key(&t.id) {
+                    fused_passways.push((t.id, &t.name, &t.protocol));
+                    continue;
+                }
                 let id = Id {
                     ty: IdType::Subsystem,
                     indices: vec![0, comp_idx],
                 };
                 comp_idx += 1;
+                sys_idx_of.insert(t.id, systems.len());
                 systems.push(new_system(
                     id.clone(),
                     1,
@@ -672,7 +768,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     }
                 }
                 if t.interface {
-                    designated.push((systems.len() - 1, t.id, &t.name));
+                    designated.push((systems.len() - 1, t.id, &t.name, &t.protocol));
                 }
                 id_map.insert(t.id, id);
             }
@@ -737,7 +833,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
         .map(|t| t.id)
         .collect();
     let mut iface_of: HashMap<u64, Id> = HashMap::new();
-    for (seq, (sys_idx, thing_id, name)) in designated.into_iter().enumerate() {
+    for (seq, (sys_idx, thing_id, name, authored_protocol)) in designated.into_iter().enumerate() {
         let iface_id = Id {
             ty: IdType::Interface,
             indices: vec![0, seq as i64],
@@ -773,7 +869,13 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
         };
         systems[0].boundary.interfaces.push(Interface {
             info: info(iface_id.clone(), 0, name),
-            protocol: labels.join(" · "),
+            // The author's protocol wins (#333, Listing 4.2); the flow-label
+            // join is the fallback for interfaces that never declared one.
+            protocol: if authored_protocol.is_empty() {
+                labels.join(" · ")
+            } else {
+                authored_protocol.to_string()
+            },
             ty,
             exports_to,
             receives_from,
@@ -783,10 +885,74 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
         iface_of.insert(thing_id, iface_id);
     }
 
+    // Fused pass-ways (#226): an Interface record alone. The processor's
+    // subsystem claims it via parent_interface — the back-pointer direction
+    // the original BERT settled on — and the crossing flows re-anchor to the
+    // processor in the interaction loop below.
+    let fused_seq_base = systems[0].boundary.interfaces.len();
+    for (seq, (thing_id, name, authored_protocol)) in fused_passways.into_iter().enumerate() {
+        let iface_id = Id {
+            ty: IdType::Interface,
+            indices: vec![0, (fused_seq_base + seq) as i64],
+        };
+        let mut receives_from: Vec<Id> = Vec::new();
+        let mut exports_to: Vec<Id> = Vec::new();
+        let mut labels: Vec<String> = Vec::new();
+        for r in &bonds {
+            let (env, incoming) = if r.b == thing_id && env_things.contains(&r.a) {
+                (r.a, true)
+            } else if r.a == thing_id && env_things.contains(&r.b) {
+                (r.b, false)
+            } else {
+                continue;
+            };
+            let Some(env_kernel) = id_map.get(&env) else { continue };
+            if incoming {
+                receives_from.push(env_kernel.clone());
+            } else {
+                exports_to.push(env_kernel.clone());
+            }
+            if !r.name.trim().is_empty() && !labels.contains(&r.name.trim().to_string()) {
+                labels.push(r.name.trim().to_string());
+            }
+        }
+        let ty = match (!receives_from.is_empty(), !exports_to.is_empty()) {
+            (true, false) => InterfaceType::Import,
+            (false, true) => InterfaceType::Export,
+            _ => InterfaceType::Hybrid,
+        };
+        systems[0].boundary.interfaces.push(Interface {
+            info: info(iface_id.clone(), 0, name),
+            protocol: if authored_protocol.is_empty() {
+                labels.join(" · ")
+            } else {
+                authored_protocol.to_string()
+            },
+            ty,
+            exports_to,
+            receives_from,
+            angle: None,
+        });
+        if let Some(&c_idx) = fused_to.get(&thing_id).and_then(|c| sys_idx_of.get(c)) {
+            systems[c_idx].boundary.parent_interface = Some(iface_id.clone());
+        }
+        iface_of.insert(thing_id, iface_id);
+    }
+
     let mut interactions: Vec<Interaction> = Vec::new();
     let mut interaction_of: HashMap<u64, Id> = HashMap::new();
     for (k, r) in bonds.iter().enumerate() {
-        let (Some(src), Some(snk)) = (id_map.get(&r.a), id_map.get(&r.b)) else {
+        // Pass-way fusion (#226): the interior leg (pass-way ↔ its processor)
+        // lowers to nothing — the crossing leg carries the payload — and a
+        // crossing leg re-anchors to the processor, routed through the fused
+        // interface (source/sink_interface below reads the ORIGINAL endpoint,
+        // which is where iface_of keys the pass-way).
+        if fused_to.get(&r.a) == Some(&r.b) || fused_to.get(&r.b) == Some(&r.a) {
+            continue;
+        }
+        let ea = fused_to.get(&r.a).copied().unwrap_or(r.a);
+        let eb = fused_to.get(&r.b).copied().unwrap_or(r.b);
+        let (Some(src), Some(snk)) = (id_map.get(&ea), id_map.get(&eb)) else {
             continue;
         };
         let flow_id = Id {
@@ -835,6 +1001,8 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             info: info(env_id, -1, "Environment"),
             sources,
             sinks,
+            // E = ⟨O, M⟩: the authored milieu crosses the seam verbatim.
+            milieu: model.milieu.clone(),
         },
         systems,
         interactions,
@@ -919,6 +1087,26 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             // parent_interface is the designation's inverse: a level-1 system
             // attached to a root-membrane interface IS a designated member of I.
             interface: s.boundary.parent_interface.is_some(),
+            passway: false,
+            // The claimed Interface record's protocol reads back onto the
+            // thing (#333). The kernel cannot say whether it was authored or
+            // the computed flow-label join — the read-back keeps the best
+            // information the record carries, same trade the `interface`
+            // bool above already makes.
+            protocol: s
+                .boundary
+                .parent_interface
+                .as_ref()
+                .and_then(|iid| {
+                    model.systems.first().and_then(|root| {
+                        root.boundary
+                            .interfaces
+                            .iter()
+                            .find(|i| &i.info.id == iid)
+                            .map(|i| i.protocol.clone())
+                    })
+                })
+                .unwrap_or_default(),
             // The kernel keys decomposition on the id alone; label the
             // reconstructed reference with the component's own name.
             child_model: s.child_model.map(|id| ChildRef {
@@ -987,6 +1175,8 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             },
             primitive: None,
             interface: false,
+            passway: false,
+            protocol: String::new(),
             child_model: None,
             stock_unit: String::new(),
             scale: None,
@@ -1059,6 +1249,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
     CanvasModel {
         lens,
         model_id: model.model_id,
+        milieu: model.environment.milieu.clone(),
         things,
         relations,
         boundary,
@@ -1220,6 +1411,8 @@ mod tests {
             role,
             primitive: None,
             interface: false,
+            passway: false,
+            protocol: String::new(),
             child_model: None,
             stock_unit: String::new(),
             scale: None,
@@ -1260,6 +1453,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Klir,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![
                 thing(1, "Even", Role::Component),
                 thing(2, "Odd", Role::Component),
@@ -1295,7 +1489,7 @@ mod tests {
     #[test]
     fn projects_a_bonded_pair_cleanly_at_every_lens() {
         for lens in [Lens::Klir, Lens::Bunge, Lens::Mobus] {
-            let model = CanvasModel {
+            let model = CanvasModel { milieu: vec![],
                 lens,
                 model_id: None,
                 things: vec![
@@ -1333,6 +1527,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![thing(1, "A", Role::Component), thing(2, "B", Role::Component)],
             relations: vec![bond(10, 1, 2)],
             boundary: Default::default(),
@@ -1363,6 +1558,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![thing(1, "S", Role::Component), thing(2, "H", Role::Component)],
             relations: vec![],
             boundary: Default::default(),
@@ -1385,6 +1581,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![thing(1, "S", Role::Component), thing(2, "H", Role::Component)],
             relations: vec![bond(10, 1, 2)],
             boundary: Default::default(),
@@ -1415,6 +1612,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![
                 thing(1, "S", Role::Component),
                 thing(2, "H", Role::Component),
@@ -1465,6 +1663,162 @@ mod tests {
         assert!(belongs_at_the_gesture(&at(Severity::Error, "mode/Structural")));
     }
 
+    /// E = ⟨O, M⟩ crosses the seam: authored milieu variables project into
+    /// the kernel Environment verbatim, and read back through to_canvas.
+    #[test]
+    fn the_milieu_projects_and_reads_back() {
+        let mut model = CanvasModel {
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: vec![bert_core::MilieuVariable {
+                name: "pH".into(),
+                value: Some(7.2),
+                unit: String::new(),
+                description: String::new(),
+            }],
+            things: vec![thing(1, "Core", Role::Component)],
+            relations: vec![],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        model.things[0].primitive = Some(ProcessPrimitive::Buffering);
+        let world = project(&model);
+        assert_eq!(world.environment.milieu.len(), 1);
+        assert_eq!(world.environment.milieu[0].name, "pH");
+        assert_eq!(world.environment.milieu[0].value, Some(7.2));
+        let back = to_canvas(&world);
+        assert_eq!(back.milieu, model.milieu);
+    }
+
+    /// The fusion law (#226 + bert#108): a pure pass-way with one processor
+    /// projects to an Interface record ALONE — never a subsystem — its
+    /// crossing flow re-anchors to the processor with the interface routed,
+    /// its interior leg vanishes, and the processor's subsystem claims the
+    /// interface via parent_interface. Operational then validates clean:
+    /// the authored two-hop chain IS the lowered one-hop interaction.
+    #[test]
+    fn a_pure_passway_fuses_to_an_interface_record() {
+        let mut gate = thing(1, "Ore Gate", Role::Component);
+        gate.interface = true;
+        gate.passway = true;
+        gate.protocol = "graded ore only".into();
+        let model = CanvasModel {
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![gate, thing(2, "Furnace", Role::Component), thing(3, "Mine", Role::Environment)],
+            relations: vec![bond(10, 3, 1), bond(11, 1, 2)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let world = project(&model);
+        // One subsystem (the Furnace); the pass-way is no system at all.
+        assert_eq!(world.systems.len(), 2, "root + processor only");
+        assert_eq!(world.systems[1].info.name, "Furnace");
+        // The Interface record carries the pass-way's name and protocol.
+        let ifaces = &world.systems[0].boundary.interfaces;
+        assert_eq!(ifaces.len(), 1);
+        assert_eq!(ifaces[0].info.name, "Ore Gate");
+        assert_eq!(ifaces[0].protocol, "graded ore only");
+        // The processor claims it — the old-BERT back-pointer.
+        assert_eq!(
+            world.systems[1].boundary.parent_interface,
+            Some(ifaces[0].info.id.clone())
+        );
+        // One interaction: Mine → Furnace, routed through the pass-way; the
+        // interior leg lowered to nothing.
+        assert_eq!(world.interactions.len(), 1);
+        let ix = &world.interactions[0];
+        assert_eq!(ix.sink, world.systems[1].info.id);
+        assert_eq!(ix.sink_interface, Some(ifaces[0].info.id.clone()));
+        // And the lowered model is well-formed where it counts.
+        let report = validate_mode(&world, bert_core::Mode::Operational);
+        assert!(
+            !report.issues.iter().any(|i| i.severity == Severity::Error),
+            "fused projection validates clean: {:?}",
+            report.issues
+        );
+    }
+
+    /// The 1:1 bound is deliberate (SSF InterfaceDecomposition covers 1:1
+    /// only): a pass-way whose interior flows reach TWO processors stays
+    /// unfused and falls back to the merged projection — it remains a
+    /// subsystem, exactly as a stamped component would.
+    #[test]
+    fn a_passway_serving_two_processors_does_not_fuse() {
+        let mut gate = thing(1, "Gate", Role::Component);
+        gate.interface = true;
+        gate.passway = true;
+        let model = CanvasModel {
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![
+                gate,
+                thing(2, "A", Role::Component),
+                thing(3, "B", Role::Component),
+                thing(4, "Mine", Role::Environment),
+            ],
+            relations: vec![bond(10, 4, 1), bond(11, 1, 2), bond(12, 1, 3)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let world = project(&model);
+        assert_eq!(world.systems.len(), 4, "root + Gate + A + B: no fusion");
+        assert_eq!(world.interactions.len(), 3, "all three legs survive");
+    }
+
+    /// The separating pair for #333: with an authored protocol the projected
+    /// Interface record carries the author's rule; without one it falls back
+    /// to the computed flow-label join. Same model otherwise.
+    #[test]
+    fn authored_protocol_wins_and_the_join_is_the_fallback() {
+        let mut gate = thing(1, "Gate", Role::Component);
+        gate.interface = true;
+        let mut r = bond(10, 3, 1);
+        r.name = "graded ore".into();
+        let base = CanvasModel {
+            lens: Lens::Mobus,
+            model_id: None,
+            milieu: Vec::new(),
+            things: vec![gate, thing(2, "Core", Role::Component), thing(3, "Mine", Role::Environment)],
+            relations: vec![r, bond(11, 1, 2)],
+            boundary: Default::default(),
+            system_type: Default::default(),
+            name: None,
+            description: String::new(),
+            time_unit: None,
+            params: vec![],
+            metrics: vec![],
+            klir_level: None,
+        };
+        let joined = project(&base);
+        assert_eq!(joined.systems[0].boundary.interfaces[0].protocol, "graded ore");
+
+        let mut authored = base.clone();
+        authored.things[0].protocol = "badge required".into();
+        let world = project(&authored);
+        assert_eq!(world.systems[0].boundary.interfaces[0].protocol, "badge required");
+    }
+
     /// Law (#213 / SSF #31): a component stamped `interface` with no crossing
     /// flow is REFUSED at Operational. The refusal is the kernel's, addressed to
     /// the interface's own path, and it names the designated component.
@@ -1475,6 +1829,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![a, thing(2, "Core", Role::Component)],
             relations: vec![bond(10, 1, 2)],
             boundary: Default::default(),
@@ -1521,6 +1876,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![a, thing(2, "Core", Role::Component)],
             relations: vec![],
             boundary: Default::default(),
@@ -1563,6 +1919,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![gate, thing(2, "Core", Role::Component), thing(3, "Supply", Role::Environment)],
             relations: vec![bond(10, 1, 2)],
             boundary: Default::default(),
@@ -1663,6 +2020,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![
                 thing(1, "Env", Role::Environment),
                 thing(2, "Comp", Role::Component),
@@ -1690,6 +2048,7 @@ mod tests {
         let mut world = project(&CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![thing(1, "A", Role::Component), thing(2, "B", Role::Component)],
             relations: vec![bond(10, 1, 2)],
             boundary: Default::default(),
@@ -1718,6 +2077,7 @@ mod tests {
         let model = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![
                 thing(1, "Src", Role::Environment),
                 thing(2, "A", Role::Component),

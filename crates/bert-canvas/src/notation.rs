@@ -348,6 +348,8 @@ mod tests {
             role,
             primitive: None,
             interface: false,
+            passway: false,
+            protocol: String::new(),
             child_model: None,
             stock_unit: String::new(),
             scale: None,
@@ -380,7 +382,7 @@ mod tests {
     }
 
     fn model(lens: Lens, things: Vec<Thing>, relations: Vec<Relation>) -> CanvasModel {
-        CanvasModel {
+        CanvasModel { milieu: vec![],
             lens,
             model_id: None,
             things,

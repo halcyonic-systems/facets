@@ -87,18 +87,23 @@ fn flow_quantity_round_trips_through_emit() {
     );
 }
 
-/// Law: a non-positive or unreadable amount is a parse fault, never a silent
+/// Law: a negative or unreadable amount is a parse fault, never a silent
 /// default — the same rule that makes an unknown parameter name a fault (C3):
-/// the language refuses what it cannot mean.
+/// the language refuses what it cannot mean. Zero is ADMISSIBLE since the
+/// interactive-params work (2026-08-16): a declared 0 is arrested supply — a
+/// dynamical statement a slider writes and a saved model must re-parse.
 #[test]
 fn bad_amounts_are_parse_faults() {
-    for bad in ["amount 0", "amount -2", "amount much"] {
+    for bad in ["amount -2", "amount much"] {
         let text = format!("component A primitive Combining\nsink B\nflow A -> B : matter {bad}\n");
         assert!(
             parse_sl(&text).is_err(),
             "`{bad}` must be refused, not defaulted"
         );
     }
+    let zero = "component A primitive Combining\nsink B\nflow A -> B : matter amount 0\n";
+    let m = parse_sl(zero).expect("a declared 0 is arrested supply, not an absent flow");
+    assert_eq!(m.relations[0].amount.map(|d| d.to_string()), Some("0".to_string()));
 }
 
 /// Law: a quantity on a `mere` relation is a contradiction — a non-bond never

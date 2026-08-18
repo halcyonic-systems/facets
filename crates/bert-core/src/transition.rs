@@ -30,7 +30,7 @@
 //! | Structural precondition | `HasBond` needs semantic `Bonded` (`ActsOn`) | `check_bond` is syntactic — any interaction between distinct systems counts |
 //! | Kernel invariance | `toMobus_toKlir = toKlir` | `WorldModel::kernel` byte-identical across every transition |
 //! | Minimal witness | `PUnit` / `∅` | empty string / `None` / empty vec / zero / `Default` |
-//! | Milieu `M` | spec-level (§3.8) | no `WorldModel` representation as of a8969b7 (A3); the `Structural → Core` witness carries environment membership only, which the kernel already preserves, so it is empty in the current schema |
+//! | Milieu `M` | spec-level (§3.8); `MobusEnvironment.milieu` in Lean, with the Mobus→Bunge projection proven to discard it | `Environment.milieu` (lifecycle-paper E = ⟨O, M⟩, added 2026-08-16); the `Operational → Core` descent sheds it into the witness (`environment.milieu`) and `rebuild` restores it — the witness IS the Lean's information-loss statement, operational |
 
 use crate::rust_decimal::Decimal;
 use crate::validate::{validate_mode, Severity};
@@ -270,6 +270,19 @@ fn strip_dynamical(model: &mut WorldModel, entries: &mut Vec<LossEntry>) {
 /// and external-flow designation, interfaces, and boundary porosity/fuzziness (π).
 fn strip_operational(model: &mut WorldModel, entries: &mut Vec<LossEntry>) {
     const SECTION: &str = "Operational→Core";
+    // The milieu M is Mobus's environment structure alone: the Lean proves the
+    // Mobus→Bunge projection DISCARDS it (`MobusEnvironment.toBungeEnvironment`,
+    // "one of two systematic information losses"), so the descent sheds it
+    // into the witness and `rebuild` restores it.
+    if !model.environment.milieu.is_empty() {
+        entries.push(LossEntry::new(
+            SECTION,
+            model.environment.info.id.clone(),
+            "environment.milieu",
+            &model.environment.milieu,
+        ));
+        model.environment.milieu.clear();
+    }
     for ix in &mut model.interactions {
         let owner = ix.info.id.clone();
         if !ix.substance.sub_type.is_empty() {
@@ -424,6 +437,9 @@ fn decode<T: for<'de> Deserialize<'de>>(value: &serde_json::Value) -> T {
 
 fn restore(model: &mut WorldModel, entry: &LossEntry) {
     match entry.slot.as_str() {
+        "environment.milieu" => {
+            model.environment.milieu = decode(&entry.value);
+        }
         "transformation" => {
             if let Some(s) = find_system(model, &entry.owner) {
                 s.transformation = decode(&entry.value);
@@ -614,6 +630,7 @@ mod tests {
                 info: info(env, -1, "Environment"),
                 sources: vec![],
                 sinks: vec![],
+                milieu: Vec::new(),
             },
             systems: vec![root, comp_a, comp_b],
             interactions: vec![minimal_flow(0, "bond", a, b)],
@@ -691,6 +708,27 @@ mod tests {
     fn l1_full_to_core_round_trips() {
         let m = full_model();
         let (down, loss) = downgrade(&m, Mode::Core);
+        assert_eq!(as_json(&rebuild(down, &loss)), as_json(&m));
+    }
+
+    /// Law: the milieu M is shed on the Operational→Core descent — the Rust
+    /// face of the Lean's proven information loss (Mobus→Bunge/Klir discards
+    /// M, `MobusEnvironment.toBungeEnvironment`) — and the witness restores it.
+    #[test]
+    fn l1_milieu_sheds_into_the_witness_and_rebuilds() {
+        let mut m = full_model();
+        m.environment.milieu = vec![crate::MilieuVariable {
+            name: "pH".to_string(),
+            value: Some(7.2),
+            unit: String::new(),
+            description: String::new(),
+        }];
+        let (down, loss) = downgrade(&m, Mode::Core);
+        assert!(down.environment.milieu.is_empty(), "Core carries no M");
+        assert!(
+            loss.entries.iter().any(|e| e.slot == "environment.milieu"),
+            "the witness records the shed milieu"
+        );
         assert_eq!(as_json(&rebuild(down, &loss)), as_json(&m));
     }
 
@@ -905,6 +943,7 @@ mod tests {
                     authored_direction: true,
                 }],
                 sinks: vec![],
+                milieu: Vec::new(),
             },
             systems: vec![root, comp_a, comp_b],
             interactions: vec![flow],

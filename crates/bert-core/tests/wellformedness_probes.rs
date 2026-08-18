@@ -54,6 +54,7 @@ fn root_model() -> WorldModel {
             ),
             sources: vec![],
             sinks: vec![],
+            milieu: Vec::new(),
         },
         systems: vec![system(sys_id(vec![0]), 0, "Root", None)],
         interactions: vec![],

@@ -108,6 +108,7 @@ mod tests {
         let mut m = CanvasModel {
             lens: Lens::Bunge,
             model_id: None,
+            milieu: Vec::new(),
             things: Vec::new(),
             relations: Vec::new(),
             boundary: Default::default(),
@@ -132,6 +133,8 @@ mod tests {
             role: Role::Component,
             primitive: None,
             interface: false,
+            passway: false,
+            protocol: String::new(),
             child_model: None,
             stock_unit: String::new(),
             scale: None,
@@ -151,6 +154,8 @@ mod tests {
             role: Role::Component,
             primitive: None,
             interface: false,
+            passway: false,
+            protocol: String::new(),
             child_model: None,
             stock_unit: String::new(),
             scale: None,
@@ -326,6 +331,8 @@ mod decomposition_seam {
             role,
             primitive: None,
             interface: false,
+            passway: false,
+            protocol: String::new(),
             child_model: None,
             stock_unit: String::new(),
             scale: None,
@@ -349,6 +356,7 @@ mod decomposition_seam {
         let mut m = CanvasModel {
             lens: Lens::Mobus,
             model_id: None,
+            milieu: Vec::new(),
             // Intake and Output touch the environment, so they are interface
             // components; Furnace is INTERIOR — the only kind v1's boundary
             // contract will decompose.

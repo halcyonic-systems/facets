@@ -50,6 +50,8 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
         role,
         primitive: None,
         interface: false,
+        passway: false,
+        protocol: String::new(),
         child_model: None,
         stock_unit: String::new(),
         scale: None,
@@ -88,6 +90,7 @@ fn relation(id: u64, a: u64, b: u64, name: &str, is_bond: bool, kind: Kind) -> R
 fn sample() -> CanvasModel {
     CanvasModel {
         lens: Lens::Mobus,
+        milieu: Vec::new(),
         description: String::new(),
         // A fixed identity so the golden proves `model_id` crosses the edge
         // deterministically (the walk depends on it surviving the seam).

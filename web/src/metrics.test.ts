@@ -55,12 +55,14 @@ describe("share of flow", () => {
 });
 
 describe("sum into", () => {
-  it("sums every inflow per tick; the endpoint is the run total × Δt", () => {
+  it("charts the RUNNING total (per-tick × Δt, accumulated); the endpoint is its last point", () => {
     const m = model([{ name: "Tokens served", expr: { SumInto: { thing: 4 } } }]);
     const r = run([flow("North", "Served", [1, 2, 3]), flow("South", "Served", [4, 5, 6])], 0.5);
     const { readings, failures } = evaluateMetrics(m, r);
     expect(failures).toEqual([]);
-    expect(readings[0].series).toEqual([5, 7, 9]);
+    // per tick: 5, 7, 9 → running total × Δt=0.5: 2.5, 6, 10.5 — the curve
+    // rises to the headline instead of drawing a flat rate line (2026-08-16).
+    expect(readings[0].series).toEqual([2.5, 6, 10.5]);
     expect(readings[0].endpoint).toBe(21 * 0.5);
     expect(readings[0].unit).toBe("Gtok/day");
   });

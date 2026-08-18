@@ -27,7 +27,7 @@ import { FormalPanel } from "./FormalPanel";
 import { ReviewPanel } from "./ReviewPanel";
 import { AnalystPanel } from "./AnalystPanel";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
-import { Card } from "./ui";
+import { Card, Tabs } from "./ui";
 
 /** The dock's faces, in strip order — the single source for both the rendered
  *  tab strip and the width gate in InspectorDock.test.tsx, so a tab cannot be
@@ -247,49 +247,44 @@ export function InspectorDock({
           1), and Run left it for the mode axis (move 2). Every remaining tab is
           a reading of the model or of the selection. Tab widths are bound by
           InspectorDock.test.tsx. */}
-      <div
-        className="flex items-stretch border-b"
-        style={{ borderColor: "var(--hairline)" }}
-      >
-        <div className="flex min-w-0 flex-1 items-stretch overflow-x-auto">
-        {DOCK_TABS.map(({ id, label }) =>
-          id === "element" && !element ? null : (
-            <TabButton
-              key={id}
-              label={label}
-              active={tab === id}
-              onClick={() => setTab(id)}
-              badge={id === "review" && issueCount > 0 ? issueCount : undefined}
-            />
-          ),
+      <Tabs
+        tabs={DOCK_TABS.filter(({ id }) => !(id === "element" && !element)).map(
+          ({ id, label }) => ({
+            key: id,
+            label,
+            badge: id === "review" && issueCount > 0 ? issueCount : undefined,
+          }),
         )}
-        </div>
-        <div className="flex shrink-0 items-stretch">
-          {/* Focus toggle — pops the active tab full-width (hides the canvas) and
-              back. Same quiet glyph-button chrome as the collapse control. */}
-          <button
-            onClick={onToggleFocus}
-            title={focused ? "Exit focus (show canvas)" : "Focus — expand this tab full-width"}
-            aria-pressed={focused}
-            className="px-3 text-xs"
-            style={{ color: focused ? "var(--lens-accent)" : "var(--text-muted)" }}
-          >
-            {focused ? "⤡" : "⤢"}
-          </button>
-          {/* Collapse to a sliver — only meaningful in the docked (non-focus)
-              layout; full-width focus can't collapse to a rail. */}
-          {!focused && (
+        active={tab}
+        onSelect={(k) => setTab(k as Tab)}
+        controls={
+          <>
+            {/* Focus toggle — pops the active tab full-width (hides the canvas)
+                and back. Same quiet glyph-button chrome as the collapse control. */}
             <button
-              onClick={() => setCollapsed(true)}
-              title="Collapse inspector"
+              onClick={onToggleFocus}
+              title={focused ? "Exit focus (show canvas)" : "Focus — expand this tab full-width"}
+              aria-pressed={focused}
               className="px-3 text-xs"
-              style={{ color: "var(--text-muted)" }}
+              style={{ color: focused ? "var(--lens-accent)" : "var(--text-muted)" }}
             >
-              ▸
+              {focused ? "⤡" : "⤢"}
             </button>
-          )}
-        </div>
-      </div>
+            {/* Collapse to a sliver — only meaningful in the docked (non-focus)
+                layout; full-width focus can't collapse to a rail. */}
+            {!focused && (
+              <button
+                onClick={() => setCollapsed(true)}
+                title="Collapse inspector"
+                className="px-3 text-xs"
+                style={{ color: "var(--text-muted)" }}
+              >
+                ▸
+              </button>
+            )}
+          </>
+        }
+      />
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {/* In focus mode the panel gets the whole row; hold it to a comfortable
@@ -345,41 +340,6 @@ export function InspectorDock({
         </div>
       </div>
     </div>
-  );
-}
-
-function TabButton({
-  label,
-  active,
-  onClick,
-  badge,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  badge?: number;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex shrink-0 items-center gap-1.5 px-2.5 py-2.5 text-xs font-semibold uppercase tracking-wide transition-colors"
-      style={{
-        color: active ? "var(--text-primary)" : "var(--text-muted)",
-        borderBottom: `2px solid ${active ? "var(--lens-accent)" : "transparent"}`,
-        marginBottom: "-1px",
-        transition: "var(--transition-base)",
-      }}
-    >
-      {label}
-      {badge !== undefined && (
-        <span
-          className="inline-flex min-w-[1.1rem] items-center justify-center rounded-full px-1 text-[10px] font-medium tabular"
-          style={{ background: "var(--verdict-warning)", color: "var(--text-on-accent)" }}
-        >
-          {badge}
-        </span>
-      )}
-    </button>
   );
 }
 

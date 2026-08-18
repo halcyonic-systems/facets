@@ -609,6 +609,7 @@ mod tests {
                     is_same_as_id: None,
                     authored_direction: true,
                 }],
+                milieu: Vec::new(),
             },
             systems: vec![root_sys, {
                 let mut tank = system(

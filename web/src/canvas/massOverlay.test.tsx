@@ -63,7 +63,7 @@ describe("kind discrimination — a Markov run shows no conservation verdict", (
   };
 
   it("renders the distribution but never a conservation pill or residual", () => {
-    const m = renderToStaticMarkup(<MarkovReadout run={run} tick={1} onTick={() => {}} />);
+    const m = renderToStaticMarkup(<MarkovReadout run={run} tick={1} />);
     expect(m).toContain("distribution");
     expect(m).toContain("Even 50%");
     expect(m).toContain("Odd 50%");

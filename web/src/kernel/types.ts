@@ -241,6 +241,13 @@ export interface Thing {
   /** Authored interface designation (I ⊆ C). Must carry a boundary-crossing flow —
    *  flowless is refused at Operational (`interfaces_carry_flow`, SSF #31). */
   interface?: boolean;
+  /** Born of the `interface "Name"` declaration or the place-interface verb
+   *  (#226): a pass-way — same ontology as a stamped component (both in I),
+   *  but only a pass-way fuses to its Interface record at projection. */
+  passway?: boolean;
+  /** Authored interface protocol (#333, Listing 4.2): the pass-way's
+   *  admission rule in the author's words. */
+  protocol?: string;
   /** The child model this component decomposes into, by reference. */
   child_model?: ChildRef;
   /** The stock's declared unit (#76/#94) — meaningful on a Buffering component.
@@ -321,11 +328,24 @@ export interface SystemType {
   domain?: string;
 }
 
+/** One ambient condition variable in M — E = ⟨O, M⟩, the lifecycle-paper
+ *  revision (SSF `MobusEnvironment.milieu`). Never a thing: no position, no
+ *  flows; `value` is a snapshot of the condition, not a dynamical input. */
+export interface MilieuVar {
+  name: string;
+  value?: number;
+  unit?: string;
+  description?: string;
+}
+
 export interface CanvasModel {
   /** What the SYSTEM OF INTEREST is, in the author's words (#326). There is no
    *  "model" separate from the SOI here: `name` IS the root system's name, so
    *  this is that system's `Info.description`, not a second concept beside it. */
   description?: string;
+  /** M — the milieu that bathes the system. Drawn as the halo band around the
+   *  Mobus membrane; hidden (and counted in the residue) under Klir/Bunge. */
+  milieu?: MilieuVar[];
   lens: Lens;
   /** The model's stable base58 self-identity, carried through the canvas seam
    *  (to_canvas copies it in, project writes it back) so a walked child

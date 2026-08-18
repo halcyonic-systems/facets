@@ -37,6 +37,23 @@ function RoleChip({ role }: { role: "Component" | "Environment" }) {
   );
 }
 
+/** The pass-way's rail chip (#226): a small gate on an arc with the flow
+ *  arrow passing through — the thing you are placing IS a crossing point in
+ *  the membrane, and the icon says so. */
+function PasswayChip() {
+  return (
+    <svg width={16} height={14} viewBox="-8 -7 16 14" aria-hidden className="mr-1 inline-block align-[-2px]">
+      <g fill="none" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round">
+        <path d="M0 -6.5 V -2.5" />
+        <path d="M0 2.5 V 6.5" />
+        <rect x={-2.2} y={-2.5} width={4.4} height={5} rx={1} />
+        <path d="M-6.5 0 H 5" strokeDasharray="1.8 1.8" />
+        <path d="M3.2 -2 L 6.2 0 L 3.2 2" />
+      </g>
+    </svg>
+  );
+}
+
 /** The connect gesture, illustrated (walkthrough #2): a node with its handle
  *  dot and the drag arrow — the row teaches the gesture instead of naming a
  *  verb it cannot arm. */
@@ -78,7 +95,8 @@ export function PaletteRail({
       title={t.tip}
       onClick={() => onArm(armed?.id === t.id ? null : t)}
     >
-      {t.verb === "place" && <RoleChip role={t.role === "Environment" ? "Environment" : "Component"} />}
+      {t.verb === "place" &&
+        (t.passway ? <PasswayChip /> : <RoleChip role={t.role === "Environment" ? "Environment" : "Component"} />)}
       {t.verb === "designate" && t.designation.type === "primitive" && (
         <GlyphChip primitive={t.designation.primitive} />
       )}

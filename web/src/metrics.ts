@@ -111,16 +111,22 @@ export function evaluateMetrics(model: CanvasModel, result: RunResultRich): Metr
         continue;
       }
       const ticks = Math.max(...family.map((f) => f.series.length));
-      const series = Array.from({ length: ticks }, (_, t) =>
+      const perTick = Array.from({ length: ticks }, (_, t) =>
         family.reduce((acc, f) => acc + (f.series[t] ?? 0), 0),
       );
+      // The chart shows the RUNNING TOTAL (per-tick × Δt, accumulated): "sum
+      // into" names a total, so the curve rises to the headline number instead
+      // of drawing a flat per-tick line that tells the eye nothing (field
+      // report 2026-08-16 — steady state made every charted series constant).
+      let acc = 0;
+      const series = perTick.map((v) => (acc += v * result.dt));
       readings.push({
         name: m.name,
         kind: "sum",
         unit: units[0] ?? "",
         series,
-        endpoint: series.reduce((acc, v) => acc + v, 0) * result.dt,
-        detail: `everything arriving at ${target}, per tick`,
+        endpoint: series[series.length - 1] ?? 0,
+        detail: `delivered to ${target} so far — the running total`,
         familyKey: `sum:${units[0] ?? ""}`,
         family: units[0] ? `arrivals · ${units[0]}` : "arrivals",
         entity: target,

@@ -71,16 +71,18 @@ describe("the model name carries the system type (#312)", () => {
   });
 });
 
-describe("the run is a mode, not a tab (#312 move 2)", () => {
+describe("the run is a state of the Model surface, not a tab and not a mode (#345)", () => {
   // The architectural claim, bound where the tab list lives so the two cannot
-  // drift: what the dock carries is READINGS. A run is an activity with a
-  // timeline, inputs and results, and #304 settles it as a mode transition.
+  // drift: what the dock carries is READINGS. #312 move 2 made Run a mode;
+  // #345 (2026-08-17) revised that from field use — the run now lives ON the
+  // Model surface (transport strip + run card) with Readouts as a full-page
+  // EXPANSION, so the mode axis is exactly Model | Data.
   it("the dock carries four faces, and every one of them is a reading", () => {
     expect(DOCK_TABS.map((t) => t.id)).toEqual(["element", "formal", "review", "analyst"]);
   });
 
-  it("run is on the mode axis, beside structure and data", () => {
-    expect(WORK_MODES).toContain("run");
+  it("the mode axis is Model | Data — run is on neither the axis nor the dock", () => {
+    expect(WORK_MODES).toEqual(["structure", "data"]);
     expect(DOCK_TABS.map((t) => t.id)).not.toContain("run");
   });
 });

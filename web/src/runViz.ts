@@ -7,7 +7,7 @@
  *  rendered bare, where it could read as a count. */
 export function unitLabel(unit: string): { text: string; abstract: boolean } {
   const u = unit.trim();
-  return u ? { text: u, abstract: false } : { text: "abstract units", abstract: true };
+  return u ? { text: u, abstract: false } : { text: "no unit declared", abstract: true };
 }
 
 /** Last index where both series are defined — the in-sample endpoint. Null if

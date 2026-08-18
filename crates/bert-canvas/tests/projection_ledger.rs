@@ -89,6 +89,7 @@ const LEDGER: &[(&str, &str, Standing, &str)] = &[
     ("Environment", "info", Structural, "synthesized container info"),
     ("Environment", "sources", Structural, "filled from env-role things"),
     ("Environment", "sinks", Structural, "filled from env-role things"),
+    ("Environment", "milieu", Authored, "M verbatim from SL `milieu` lines — E = ⟨O, M⟩, lifecycle-paper revision"),
     // ---- Info ----
     ("Info", "id", Structural, "projection-assigned Id"),
     ("Info", "level", Structural, "depth in the decomposition walk"),

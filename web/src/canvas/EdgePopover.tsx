@@ -9,8 +9,9 @@
 // Every edit flows through onModelChange → App re-runs validate_mode +
 // lens_facts in Rust; the popover itself decides nothing about systemhood.
 import { useEffect, useRef, useState } from "react";
-import type { EdgeFact, Kind, Lens, Manifest, Relation } from "../kernel/types";
+import type { EdgeFact, Kind, Lens, Manifest, ParamDecl, Relation } from "../kernel/types";
 import { channelCopy } from "./lenses/bunge";
+import { ParamControl } from "../ParamControl";
 import type { Pt } from "./geometry";
 import { DescriptionField, InspectorRow as Row, InspectorTitle as Title, Popover, ToolButton as SmallButton } from "../ui";
 import {
@@ -33,6 +34,9 @@ export function EdgePopover({
   anchor,
   fact,
   paramName,
+  param,
+  paramForcedBy,
+  onParamEdit,
   fromName,
   toName,
   onUpdateRelation,
@@ -49,6 +53,16 @@ export function EdgePopover({
   /** The declared parameter naming this flow's amount, when one does (#13) —
    *  resolved at the call site from `model.params`, shown for provenance. */
   paramName?: string;
+  /** Run mode (ws5): the Flow-anchored param governing this relation, resolved
+   *  through the SAME kernel/params.ts path the rail uses. With `onParamEdit`
+   *  present, the popover carries the param's slider — the flow answers for
+   *  itself where it was clicked. Structure mode passes neither (#336 stands:
+   *  no data-driving forms there). */
+  param?: ParamDecl;
+  paramForcedBy?: string;
+  /** The rail's exact commit path (applyInputEdit → commitInputModel): the
+   *  edited document re-runs and auto-plays. One param behavior, two homes. */
+  onParamEdit?: (r: Relation) => void;
   /** The endpoints' names, resolved at the call site — the flow's identity
    *  said in plain words ("from Vault → to Dealers", #336). */
   fromName?: string;
@@ -57,6 +71,14 @@ export function EdgePopover({
   onDelete: () => void;
   onClose: () => void;
 }) {
+  const paramSlider = param && onParamEdit ? (
+    <div className="mb-1 border-b pb-1.5" style={{ borderColor: "var(--hairline)" }}>
+      <ParamControl param={param} relation={relation} forcedBy={paramForcedBy} onEdit={onParamEdit} />
+      <p className="mt-0.5 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
+        drag re-runs the world
+      </p>
+    </div>
+  ) : null;
   // Shared viewport-clamped Popover (walkthrough #16): a mid-canvas wire's
   // editor used to run past the canvas bottom with its fields unreachable.
   return (
@@ -64,6 +86,7 @@ export function EdgePopover({
       {/* Flow name — shared across lenses. A flow's name is its identity (and the
           manifest key when tethered); an FSA transition IS a named trigger. */}
       <FlowNameField relation={relation} onUpdateRelation={onUpdateRelation} />
+      {paramSlider}
       {lens === "Klir" && (
         <KlirBody relation={relation} sigIndex={sigIndex} onUpdate={onUpdateRelation} onClose={onClose} />
       )}
@@ -73,6 +96,7 @@ export function EdgePopover({
           relation={relation}
           manifest={manifest}
           paramName={paramName}
+          sliderPresent={paramSlider !== null}
           fromName={fromName}
           toName={toName}
           onUpdate={onUpdateRelation}
@@ -298,6 +322,7 @@ export function MobusBody({
   relation,
   manifest,
   paramName,
+  sliderPresent,
   fromName,
   toName,
   onUpdate,
@@ -306,19 +331,28 @@ export function MobusBody({
   relation: Relation;
   manifest: Manifest;
   paramName?: string;
+  /** ws5: the popover itself carries this param's slider (Run mode), so the
+   *  "amount … adjust in Run · Inputs" residue would point away from a knob
+   *  sitting right above it — it stands down; the other residues still hold. */
+  sliderPresent?: boolean;
   fromName?: string;
   toName?: string;
   onUpdate: (r: Relation) => void;
   onClose: () => void;
 }) {
-  const driven = manifest.mapping.find((m) => m.as === "flow" && m.element === relation.name);
+  // FORCED bindings only (ws5 alignment with kernel/params.ts): a non-forcing
+  // flow mapping is a comparison target, not a driver — calling it "driven"
+  // contradicted the param slider sitting right above it.
+  const driven = manifest.mapping.find(
+    (m) => m.as === "flow" && m.force && m.element === relation.name,
+  );
   // The one-sentence Run residue (#336): the first true statement wins, and an
   // unquantified, unbound flow says nothing at all.
   const residue = driven
     ? `driven by “${driven.column}” — adjust in Data`
     : relation.ample
       ? "ample — never binding"
-      : relation.amount
+      : relation.amount && !sliderPresent
         ? `amount ${relation.amount}${relation.unit ? ` ${relation.unit}` : ""}${
             paramName ? ` (“${paramName}”)` : ""
           } — adjust in Run · Inputs`

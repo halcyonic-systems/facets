@@ -19,8 +19,17 @@ use bert_core::WorldModel;
 
 /// Serialize any kernel result to a JS value (the one marshaling primitive).
 /// `pub(crate)` so the sandbox seam shares it rather than growing a twin.
+///
+/// `json_compatible()` is load-bearing (field report 2026-08-16): the default
+/// serializer turns a Rust `HashMap` into an ES `Map`, which `JSON.stringify`
+/// silently flattens to `{}` — so a compiled model's engine-parameter bags
+/// (`cognitive_params`, `initial_state`) died at the face's first re-projection
+/// and the tRNA pool ran empty. The TS types have always declared these as
+/// plain `Record`s; this makes the boundary say what the types promise.
 pub(crate) fn to_js<T: Serialize>(value: &T) -> Result<JsValue, JsError> {
-    serde_wasm_bindgen::to_value(value).map_err(|e| JsError::new(&e.to_string()))
+    value
+        .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        .map_err(|e| JsError::new(&e.to_string()))
 }
 
 /// Parse a BERT `WorldModel` from its JSON text, or a JS error naming the fault.
@@ -179,6 +188,18 @@ pub fn run_forced(
         .map_err(|e| JsError::new(&format!("invalid manifest: {e}")))?;
     let readout = bert_tether::forcing::force_and_run(model, csv_text, &manifest, dt, t, today)
         .map_err(|e| JsError::new(&e))?;
+    to_js(&RunResultRich::from(readout))
+}
+
+/// Run the model from its DECLARED amounts alone — no CSV, no forcing — with
+/// the same rich, domain-named readout as [`run_forced`] (interactive params,
+/// 2026-08-16). A parameter edit re-declares an amount; this is the re-run the
+/// face calls when no data is attached. `comparisons` comes back empty by
+/// construction — nothing was observed.
+#[wasm_bindgen]
+pub fn run_rich(model_json: &str, dt: f64, t: f64) -> Result<JsValue, JsError> {
+    let model = parse_model(model_json)?;
+    let readout = bert_tether::forcing::run_unforced(model, dt, t).map_err(|e| JsError::new(&e))?;
     to_js(&RunResultRich::from(readout))
 }
 
@@ -917,6 +938,8 @@ mod tests {
                 role: Role::Component,
                 primitive: None,
                 interface: false,
+                passway: false,
+                protocol: String::new(),
                 child_model: None,
                 stock_unit: String::new(),
                 scale: None,
@@ -949,6 +972,7 @@ mod tests {
         CanvasModel {
             lens: Lens::Klir,
             model_id: None,
+            milieu: Vec::new(),
             things: vec![thing(1, "Even"), thing(2, "Odd")],
             relations: vec![edge(10, 1, 2), edge(11, 1, 1), edge(12, 2, 1), edge(13, 2, 2)],
             boundary: Default::default(),

@@ -14,13 +14,13 @@
           "id": "Src-1.0",
           "level": -1,
           "name": "Nucleus",
-          "description": ""
+          "description": "The transcript's origin: the compartment that supplies mRNA, opaque here except as the source of the coding stream."
         },
         "type": "Source",
         "transform": {
           "translation": [
-            295.79187,
-            0.94207764
+            295.05505,
+            -0.33407593
           ],
           "rotation": 0.0
         },
@@ -34,13 +34,13 @@
           "id": "Src-1.2",
           "level": -1,
           "name": "Cytosol",
-          "description": ""
+          "description": "The surrounding cytosol: reservoir of free amino acids, ATP and GTP, and the sink for hydrolysis products. Internally opaque — it supplies and receives."
         },
         "type": "Source",
         "transform": {
           "translation": [
-            295.7918,
-            639.05786
+            295.05502,
+            640.3341
           ],
           "rotation": 0.0
         },
@@ -56,12 +56,12 @@
           "id": "Snk-1.1",
           "level": -1,
           "name": "Chaperone",
-          "description": ""
+          "description": "The trigger-factor-class chaperone docked at the exit port, receiving each nascent polypeptide as it emerges — where the model's output lands."
         },
         "type": "Sink",
         "transform": {
           "translation": [
-            848.4163,
+            849.8899,
             320.0
           ],
           "rotation": 0.0
@@ -70,6 +70,14 @@
         "model": "",
         "is_same_as_id": null,
         "authored_direction": true
+      }
+    ],
+    "milieu": [
+      {
+        "name": "Mg2+ and ionic milieu",
+        "value": 1.0,
+        "unit": "mM",
+        "description": "The coordination shell: Mg2+-phosphate contacts the folded rRNA, including the PTC's catalytic core, cannot hold its structure without. Diffuse by nature — no channel exists, and none is invented."
       }
     ]
   },
@@ -99,10 +107,10 @@
             "info": {
               "id": "I0.0",
               "level": 0,
-              "name": "Decoding Site",
+              "name": "mRNA Entry Channel",
               "description": ""
             },
-            "protocol": "mRNA transcript",
+            "protocol": "single-stranded mRNA, threaded codon by codon",
             "type": "Import",
             "exports_to": [],
             "receives_from": [
@@ -114,13 +122,14 @@
             "info": {
               "id": "I0.1",
               "level": 0,
-              "name": "Peptidyl Transferase Center",
+              "name": "Aminoacylation Site",
               "description": ""
             },
-            "protocol": "Mg2+ and ionic milieu",
+            "protocol": "cognate amino acid + ATP at one catalytic pocket",
             "type": "Import",
             "exports_to": [],
             "receives_from": [
+              "Src-1.2",
               "Src-1.2"
             ],
             "angle": null
@@ -129,10 +138,10 @@
             "info": {
               "id": "I0.2",
               "level": 0,
-              "name": "Translocase",
+              "name": "GTPase-Associated Center",
               "description": ""
             },
-            "protocol": "GTP · GDP and inorganic phosphate",
+            "protocol": "GTP-loaded elongation factors dock; GDP + Pi release",
             "type": "Hybrid",
             "exports_to": [
               "Src-1.2"
@@ -149,28 +158,12 @@
               "name": "Exit Tunnel",
               "description": ""
             },
-            "protocol": "nascent polypeptide",
+            "protocol": "nascent polypeptide, N-terminus first",
             "type": "Export",
             "exports_to": [
               "Snk-1.1"
             ],
             "receives_from": [],
-            "angle": null
-          },
-          {
-            "info": {
-              "id": "I0.4",
-              "level": 0,
-              "name": "Aminoacyl-tRNA Synthetase",
-              "description": ""
-            },
-            "protocol": "free amino acid · ATP",
-            "type": "Import",
-            "exports_to": [],
-            "receives_from": [
-              "Src-1.2",
-              "Src-1.2"
-            ],
             "angle": null
           }
         ],
@@ -189,7 +182,7 @@
         "id": "C0.0",
         "level": 1,
         "name": "Decoding Site",
-        "description": ""
+        "description": "The decoding center on the small subunit, where each codon is read against the anticodon of an incoming charged tRNA — selection of the right carrier, not catalysis."
       },
       "sources": [],
       "sinks": [],
@@ -210,8 +203,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          480.0,
-          150.0
+          538.14343,
+          479.74774
         ],
         "rotation": 0.0
       },
@@ -232,7 +225,7 @@
         "id": "C0.1",
         "level": 1,
         "name": "Peptidyl Transferase Center",
-        "description": ""
+        "description": "The catalytic heart of the large subunit, all rRNA: forges each peptide bond between the growing chain and the newly accommodated amino acid."
       },
       "sources": [],
       "sinks": [],
@@ -248,13 +241,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.1"
+        "parent_interface": null
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          627.2243,
-          235.0
+          421.85654,
+          479.74774
         ],
         "rotation": 0.0
       },
@@ -275,7 +268,7 @@
         "id": "C0.2",
         "level": 1,
         "name": "Translocase",
-        "description": ""
+        "description": "The ratcheting step: GTP-powered translocation advances mRNA and tRNAs by exactly one codon, moving the whole machine forward."
       },
       "sources": [],
       "sinks": [],
@@ -291,12 +284,12 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.2"
+        "parent_interface": "I0.3"
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          627.2243,
+          332.7757,
           405.0
         ],
         "rotation": 0.0
@@ -317,8 +310,8 @@
       "info": {
         "id": "C0.3",
         "level": 1,
-        "name": "Exit Tunnel",
-        "description": ""
+        "name": "Aminoacyl-tRNA Synthetase",
+        "description": "The recharging enzyme: matches each spent tRNA with its cognate amino acid and charges it at ATP's expense — the move that closes the carrier cycle."
       },
       "sources": [],
       "sinks": [],
@@ -334,56 +327,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.3"
+        "parent_interface": "I0.1"
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          480.0,
-          490.0
-        ],
-        "rotation": 0.0
-      },
-      "equivalence": "",
-      "history": "",
-      "transformation": "",
-      "member_autonomy": 1.0,
-      "time_constant": "",
-      "archetype": "Agent",
-      "agent": {
-        "kind": "Reactive",
-        "agency_capacity": 0.5,
-        "primitive": "Buffering"
-      }
-    },
-    {
-      "info": {
-        "id": "C0.4",
-        "level": 1,
-        "name": "Aminoacyl-tRNA Synthetase",
-        "description": ""
-      },
-      "sources": [],
-      "sinks": [],
-      "parent": "S0",
-      "complexity": "Atomic",
-      "boundary": {
-        "info": {
-          "id": "B0.4",
-          "level": 1,
-          "name": "",
-          "description": ""
-        },
-        "porosity": 0.0,
-        "perceptive_fuzziness": 0.0,
-        "interfaces": [],
-        "parent_interface": "I0.4"
-      },
-      "radius": 34.0,
-      "transform": {
-        "translation": [
-          332.7757,
-          405.0
+          312.5827,
+          290.47977
         ],
         "rotation": 0.0
       },
@@ -401,10 +351,10 @@
     },
     {
       "info": {
-        "id": "C0.5",
+        "id": "C0.4",
         "level": 1,
         "name": "tRNA Pool",
-        "description": ""
+        "description": "The circulating stock of charged tRNAs — the cycle's memory between one elongation step and the next. Starts full at 100 and drains at the elongation rate."
       },
       "sources": [],
       "sinks": [],
@@ -412,7 +362,7 @@
       "complexity": "Atomic",
       "boundary": {
         "info": {
-          "id": "B0.5",
+          "id": "B0.4",
           "level": 1,
           "name": "",
           "description": ""
@@ -425,8 +375,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          332.7757,
-          234.99997
+          370.72614,
+          189.77243
         ],
         "rotation": 0.0
       },
@@ -456,7 +406,7 @@
         "id": "F0",
         "level": 0,
         "name": "mRNA transcript",
-        "description": ""
+        "description": "Steady-state transcript supply: codons arriving at the entry channel at the elongation rate."
       },
       "substance": {
         "sub_type": "",
@@ -474,52 +424,10 @@
     },
     {
       "info": {
-        "id": "F1",
-        "level": 0,
-        "name": "charged tRNA",
-        "description": ""
-      },
-      "substance": {
-        "sub_type": "",
-        "type": "Material"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.5",
-      "source_interface": null,
-      "sink": "C0.0",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "",
-      "parameters": []
-    },
-    {
-      "info": {
         "id": "F2",
         "level": 0,
-        "name": "deacylated tRNA",
-        "description": ""
-      },
-      "substance": {
-        "sub_type": "",
-        "type": "Material"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.0",
-      "source_interface": null,
-      "sink": "C0.4",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F3",
-        "level": 0,
-        "name": "recharged tRNA",
-        "description": ""
+        "name": "charged tRNA",
+        "description": "Charged tRNAs leaving the pool to be read at the decoding site — the cycle's working leg."
       },
       "substance": {
         "sub_type": "",
@@ -529,18 +437,60 @@
       "usability": "Resource",
       "source": "C0.4",
       "source_interface": null,
-      "sink": "C0.5",
+      "sink": "C0.0",
       "sink_interface": null,
       "amount": "1",
-      "unit": "",
+      "unit": "tRNA/s",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F3",
+        "level": 0,
+        "name": "deacylated tRNA",
+        "description": "The spent carrier, stripped of its amino acid, passed on for recharging."
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.3",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "tRNA/s",
       "parameters": []
     },
     {
       "info": {
         "id": "F4",
         "level": 0,
+        "name": "recharged tRNA",
+        "description": "Recharged tRNA returned to the pool — the leg that closes the loop."
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.3",
+      "source_interface": null,
+      "sink": "C0.4",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "tRNA/s",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F5",
+        "level": 0,
         "name": "free amino acid",
-        "description": ""
+        "description": "Free amino acids from the cytosol, co-binding at the aminoacylation pocket."
       },
       "substance": {
         "sub_type": "",
@@ -550,18 +500,18 @@
       "usability": "Resource",
       "source": "Src-1.2",
       "source_interface": null,
-      "sink": "C0.4",
-      "sink_interface": "I0.4",
+      "sink": "C0.3",
+      "sink_interface": "I0.1",
       "amount": "20",
       "unit": "aa/s",
       "parameters": []
     },
     {
       "info": {
-        "id": "F5",
+        "id": "F6",
         "level": 0,
         "name": "ATP",
-        "description": ""
+        "description": "ATP co-bound at the same pocket — the energy that pays for charging."
       },
       "substance": {
         "sub_type": "",
@@ -571,18 +521,18 @@
       "usability": "Resource",
       "source": "Src-1.2",
       "source_interface": null,
-      "sink": "C0.4",
-      "sink_interface": "I0.4",
+      "sink": "C0.3",
+      "sink_interface": "I0.1",
       "amount": "20",
       "unit": "ATP/s",
       "parameters": []
     },
     {
       "info": {
-        "id": "F6",
+        "id": "F9",
         "level": 0,
         "name": "GTP",
-        "description": ""
+        "description": "GTP-loaded elongation factors docking at the factor-binding hub."
       },
       "substance": {
         "sub_type": "",
@@ -600,10 +550,10 @@
     },
     {
       "info": {
-        "id": "F7",
+        "id": "F11",
         "level": 0,
         "name": "accommodated amino acid",
-        "description": ""
+        "description": "The selected, accommodated amino acid passed to the catalytic center."
       },
       "substance": {
         "sub_type": "",
@@ -616,15 +566,15 @@
       "sink": "C0.1",
       "sink_interface": null,
       "amount": "1",
-      "unit": "",
+      "unit": "aa/s",
       "parameters": []
     },
     {
       "info": {
-        "id": "F8",
+        "id": "F12",
         "level": 0,
         "name": "elongated chain",
-        "description": ""
+        "description": "The chain, one residue longer, handed forward for ratcheting."
       },
       "substance": {
         "sub_type": "",
@@ -637,15 +587,15 @@
       "sink": "C0.2",
       "sink_interface": null,
       "amount": "1",
-      "unit": "",
+      "unit": "aa/s",
       "parameters": []
     },
     {
       "info": {
-        "id": "F9",
+        "id": "F14",
         "level": 0,
-        "name": "polypeptide chain",
-        "description": ""
+        "name": "nascent polypeptide",
+        "description": "The emerging nascent chain, N-terminus first, delivered to the waiting chaperone."
       },
       "substance": {
         "sub_type": "",
@@ -654,61 +604,19 @@
       "type": "Flow",
       "usability": "Resource",
       "source": "C0.2",
-      "source_interface": null,
-      "sink": "C0.3",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F10",
-        "level": 0,
-        "name": "Mg2+ and ionic milieu",
-        "description": ""
-      },
-      "substance": {
-        "sub_type": "",
-        "type": "Material"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "Src-1.2",
-      "source_interface": null,
-      "sink": "C0.1",
-      "sink_interface": "I0.1",
-      "amount": "1",
-      "unit": "",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F11",
-        "level": 0,
-        "name": "nascent polypeptide",
-        "description": ""
-      },
-      "substance": {
-        "sub_type": "",
-        "type": "Material"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.3",
       "source_interface": "I0.3",
       "sink": "Snk-1.1",
       "sink_interface": null,
       "amount": "1",
-      "unit": "",
+      "unit": "aa",
       "parameters": []
     },
     {
       "info": {
-        "id": "F12",
+        "id": "F16",
         "level": 0,
         "name": "GDP and inorganic phosphate",
-        "description": ""
+        "description": "GDP and phosphate returned to the cytosol through the same docking site."
       },
       "substance": {
         "sub_type": "",
@@ -721,7 +629,7 @@
       "sink": "Src-1.2",
       "sink_interface": null,
       "amount": "1",
-      "unit": "",
+      "unit": "GDP/s",
       "parameters": []
     }
   ],
