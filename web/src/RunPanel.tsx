@@ -1013,6 +1013,10 @@ function Levels({
                 gridTemplateColumns: scrubbed
                   ? "minmax(0,1fr) auto auto auto"
                   : "minmax(0,1fr) auto auto",
+                // Full-page Readouts would otherwise stretch the name column
+                // into a canyon between name and number — the table reads as
+                // a table only when the columns sit within one eye-span.
+                maxWidth: "42rem",
               }}
             >
               <span />
