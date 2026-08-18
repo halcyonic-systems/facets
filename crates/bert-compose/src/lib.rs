@@ -20,6 +20,7 @@ pub mod examples;
 pub mod export;
 pub mod ladder;
 pub mod lens;
+pub mod docs;
 pub mod markov;
 pub mod run;
 pub mod session;

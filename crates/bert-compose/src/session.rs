@@ -423,6 +423,8 @@ pub struct PaletteEntry {
     pub inherits_substance: bool,
     /// "Energy" | "Material" | "Message".
     pub default_out: String,
+    /// The teaching card (plain / everyday / math / substance / theory / code).
+    pub card: crate::docs::Doc,
 }
 
 pub fn palette() -> Vec<PaletteEntry> {
@@ -434,6 +436,7 @@ pub fn palette() -> Vec<PaletteEntry> {
             emits_signal: k.emits_signal(),
             inherits_substance: k.inherits_substance(),
             default_out: format!("{:?}", k.default_out()),
+            card: crate::docs::doc(*k),
         })
         .collect()
 }

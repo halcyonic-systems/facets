@@ -881,8 +881,20 @@ function parseSandboxHistoryDelta(v: unknown): SandboxHistoryDelta {
   };
 }
 
+function parsePrimitiveCard(v: unknown, where: string) {
+  const o = shape(v, where, ["plain", "everyday", "math", "substance", "theory", "code"]);
+  return {
+    plain: str(o.plain, `${where}.plain`),
+    everyday: str(o.everyday, `${where}.everyday`),
+    math: str(o.math, `${where}.math`),
+    substance: str(o.substance, `${where}.substance`),
+    theory: str(o.theory, `${where}.theory`),
+    code: str(o.code, `${where}.code`),
+  };
+}
+
 function parseSandboxPaletteEntry(v: unknown, where: string): SandboxPaletteEntry {
-  const o = shape(v, where, ["kind", "param_spec", "emits_signal", "inherits_substance", "default_out"]);
+  const o = shape(v, where, ["kind", "param_spec", "emits_signal", "inherits_substance", "default_out", "card"]);
   let spec: [string, number] | null = null;
   if (o.param_spec !== null) {
     const pair = arr(o.param_spec, `${where}.param_spec`);
@@ -895,6 +907,7 @@ function parseSandboxPaletteEntry(v: unknown, where: string): SandboxPaletteEntr
     emits_signal: bool(o.emits_signal, `${where}.emits_signal`),
     inherits_substance: bool(o.inherits_substance, `${where}.inherits_substance`),
     default_out: oneOf(o.default_out, `${where}.default_out`, SUBSTANCE_BASES),
+    card: parsePrimitiveCard(o.card, `${where}.card`),
   };
 }
 

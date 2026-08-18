@@ -741,6 +741,18 @@ export interface SandboxPaletteEntry {
   emits_signal: boolean;
   inherits_substance: boolean;
   default_out: "Energy" | "Material" | "Message";
+  /** The teaching card — progressive disclosure, engine-authored. */
+  card: PrimitiveCard;
+}
+
+/** Per-primitive teaching card (plain English first, then the drill-down). */
+export interface PrimitiveCard {
+  plain: string;
+  everyday: string;
+  math: string;
+  substance: string;
+  theory: string;
+  code: string;
 }
 
 /** One stampable Troncale process (a ladder rung offered as a macro). */
