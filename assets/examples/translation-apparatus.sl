@@ -36,10 +36,10 @@ interface "GTPase-Associated Center" protocol "GTP-loaded elongation factors doc
 interface "Exit Tunnel" protocol "nascent polypeptide, N-terminus first" description "The polypeptide exit tunnel through the large subunit, opening at the exit port where trigger-factor-class chaperones dock to receive the emerging chain."
 
 # ── The processors, inside ────────────────────────────────────────────────
-component "Decoding Site" primitive Sensing
-component "Peptidyl Transferase Center" primitive Combining
-component Translocase primitive Propelling
-component "Aminoacyl-tRNA Synthetase" primitive Combining
+component "Decoding Site" primitive Sensing description "The decoding center on the small subunit, where each codon is read against the anticodon of an incoming charged tRNA — selection of the right carrier, not catalysis."
+component "Peptidyl Transferase Center" primitive Combining description "The catalytic heart of the large subunit, all rRNA: forges each peptide bond between the growing chain and the newly accommodated amino acid."
+component Translocase primitive Propelling description "The ratcheting step: GTP-powered translocation advances mRNA and tRNAs by exactly one codon, moving the whole machine forward."
+component "Aminoacyl-tRNA Synthetase" primitive Combining description "The recharging enzyme: matches each spent tRNA with its cognate amino acid and charges it at ATP's expense — the move that closes the carrier cycle."
 
 # The regulated variable of the cycle. The pool is what remembers how many
 # charged tRNAs exist between one elongation step and the next, which is the
@@ -48,12 +48,12 @@ component "Aminoacyl-tRNA Synthetase" primitive Combining
 # not say until #112 slice 1 (the archived reservoir and homeostat carry the
 # history of that refusal). 20/s matches usage; the pool holds steady only
 # once #340 stops ATP's energy inflating the recharge.
-component "tRNA Pool" primitive Buffering stock tRNA initial 100 release 20
+component "tRNA Pool" primitive Buffering stock tRNA initial 100 release 20 description "The circulating stock of charged tRNAs — the cycle's memory between one elongation step and the next. Starts full at 100 and drains at the elongation rate."
 
-source Nucleus
-sink Chaperone
+source Nucleus description "The transcript's origin: the compartment that supplies mRNA, opaque here except as the source of the coding stream."
+sink Chaperone description "The trigger-factor-class chaperone docked at the exit port, receiving each nascent polypeptide as it emerges — where the model's output lands."
 
-environment Cytosol
+environment Cytosol description "The surrounding cytosol: reservoir of free amino acids, ATP and GTP, and the sink for hydrolysis products. Internally opaque — it supplies and receives."
 
 # ── The milieu, bathing the machine ───────────────────────────────────────
 # George's third correction (2026-08-12 call): the ionic milieu genuinely
@@ -70,34 +70,34 @@ milieu "Mg2+ and ionic milieu" value 1 unit mM description "The coordination she
 # translocation and ATP at charging; 2 GTP + 2 ATP-bonds per residue checks
 # against the article's 4n-1 total. Initiation, termination and proofreading
 # are below this grain.
-flow Nucleus -> "mRNA Entry Channel" : matter "mRNA transcript" amount 20 unit codon/s
-flow "mRNA Entry Channel" -> "Decoding Site" : matter "mRNA transcript"
+flow Nucleus -> "mRNA Entry Channel" : matter "mRNA transcript" amount 20 unit codon/s description "Steady-state transcript supply: codons arriving at the entry channel at the elongation rate."
+flow "mRNA Entry Channel" -> "Decoding Site" : matter "mRNA transcript" unit codon/s description "The threaded transcript handed inward from the channel to the decoding site, reading frame intact."
 
 # The cycle: charged tRNA is spent at the decoding site, the spent carrier
 # reaches the synthetase, and the synthetase returns it to the pool charged.
 # The return leg is MATTER, which is what lets the pool be read as a level.
-flow "tRNA Pool" -> "Decoding Site" : matter "charged tRNA"
-flow "Decoding Site" -> "Aminoacyl-tRNA Synthetase" : matter "deacylated tRNA"
-flow "Aminoacyl-tRNA Synthetase" -> "tRNA Pool" : matter "recharged tRNA"
+flow "tRNA Pool" -> "Decoding Site" : matter "charged tRNA" unit tRNA/s description "Charged tRNAs leaving the pool to be read at the decoding site — the cycle's working leg."
+flow "Decoding Site" -> "Aminoacyl-tRNA Synthetase" : matter "deacylated tRNA" unit tRNA/s description "The spent carrier, stripped of its amino acid, passed on for recharging."
+flow "Aminoacyl-tRNA Synthetase" -> "tRNA Pool" : matter "recharged tRNA" unit tRNA/s description "Recharged tRNA returned to the pool — the leg that closes the loop."
 
 # What the synthetase consumes to do that, from outside — both substrates
 # through the one aminoacylation pocket.
-flow Cytosol -> "Aminoacylation Site" : matter "free amino acid" amount 20 unit aa/s
-flow Cytosol -> "Aminoacylation Site" : energy "ATP" amount 20 unit ATP/s
-flow "Aminoacylation Site" -> "Aminoacyl-tRNA Synthetase" : matter "free amino acid"
-flow "Aminoacylation Site" -> "Aminoacyl-tRNA Synthetase" : energy "ATP"
+flow Cytosol -> "Aminoacylation Site" : matter "free amino acid" amount 20 unit aa/s description "Free amino acids from the cytosol, co-binding at the aminoacylation pocket."
+flow Cytosol -> "Aminoacylation Site" : energy "ATP" amount 20 unit ATP/s description "ATP co-bound at the same pocket — the energy that pays for charging."
+flow "Aminoacylation Site" -> "Aminoacyl-tRNA Synthetase" : matter "free amino acid" unit aa/s description "The pocket's matter handoff: amino acid delivered into the synthetase."
+flow "Aminoacylation Site" -> "Aminoacyl-tRNA Synthetase" : energy "ATP" unit ATP/s description "The pocket's energy handoff: ATP delivered into the synthetase."
 
-flow Cytosol -> "GTPase-Associated Center" : energy "GTP" amount 40 unit GTP/s
-flow "GTPase-Associated Center" -> Translocase : energy "GTP"
+flow Cytosol -> "GTPase-Associated Center" : energy "GTP" amount 40 unit GTP/s description "GTP-loaded elongation factors docking at the factor-binding hub."
+flow "GTPase-Associated Center" -> Translocase : energy "GTP" unit GTP/s description "GTP delivered inward to power each translocation step."
 
-flow "Decoding Site" -> "Peptidyl Transferase Center" : matter "accommodated amino acid"
-flow "Peptidyl Transferase Center" -> Translocase : matter "elongated chain"
+flow "Decoding Site" -> "Peptidyl Transferase Center" : matter "accommodated amino acid" unit aa/s description "The selected, accommodated amino acid passed to the catalytic center."
+flow "Peptidyl Transferase Center" -> Translocase : matter "elongated chain" unit aa/s description "The chain, one residue longer, handed forward for ratcheting."
 
-flow Translocase -> "Exit Tunnel" : matter "polypeptide chain"
-flow "Exit Tunnel" -> Chaperone : matter "nascent polypeptide"
+flow Translocase -> "Exit Tunnel" : matter "polypeptide chain" unit aa/s description "The growing polypeptide advanced into the exit tunnel."
+flow "Exit Tunnel" -> Chaperone : matter "nascent polypeptide" unit aa/s description "The emerging nascent chain, N-terminus first, delivered to the waiting chaperone."
 
-flow Translocase -> "GTPase-Associated Center" : matter "GDP and inorganic phosphate"
-flow "GTPase-Associated Center" -> Cytosol : matter "GDP and inorganic phosphate"
+flow Translocase -> "GTPase-Associated Center" : matter "GDP and inorganic phosphate" unit GDP/s description "Hydrolysis products leaving the translocase after each step."
+flow "GTPase-Associated Center" -> Cytosol : matter "GDP and inorganic phosphate" unit GDP/s description "GDP and phosphate returned to the cytosol through the same docking site."
 
 # ── Declared parameters: the environment's knobs, in the model's words ────
 # Mobus ch. 4 (bert-lenses#260): environmental entities are unmodeled
