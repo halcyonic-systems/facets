@@ -283,6 +283,7 @@ impl Session {
                 .map(|(k, w)| WireSnap {
                     from: w.from,
                     to: w.to,
+                    substance_base: format!("{:?}", c.wire_substance(w)),
                     mode: match w.mode {
                         FlowMode::Pushed => "pushed",
                         FlowMode::Gradient => "gradient",
@@ -459,6 +460,10 @@ pub struct NodeSnap {
 pub struct WireSnap {
     pub from: usize,
     pub to: usize,
+    /// The conserved kind this wire carries ("Energy" | "Material" |
+    /// "Message") — the engine's `wire_substance` (override-aware), so the
+    /// face can color by the reserved KIND channel without guessing.
+    pub substance_base: String,
     /// "pushed" | "gradient".
     pub mode: &'static str,
     pub conductance: f32,

@@ -717,6 +717,9 @@ export interface SandboxNode {
 export interface SandboxWire {
   from: number;
   to: number;
+  /** The conserved kind this wire carries — engine-computed (override-aware),
+   *  for the reserved KIND color channel. */
+  substance_base: "Energy" | "Material" | "Message";
   mode: "pushed" | "gradient";
   conductance: number;
   rate: number | null;

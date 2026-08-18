@@ -30,6 +30,15 @@ interface Props {
 const NODE_W = 92;
 const NODE_H = 40;
 
+/** The reserved KIND channel (web/src/tokens.ts / index.css): color means
+ *  substance identity here, exactly as it does everywhere else in the app —
+ *  never decoration. Material→matter green, Energy→amber, Message→info violet. */
+const KIND_COLOR: Record<string, string> = {
+  Material: "var(--kind-matter)",
+  Energy: "var(--kind-energy)",
+  Message: "var(--kind-informational)",
+};
+
 /** The node sparkline path: the spark ring scaled into a strip along the
  *  node's lower edge, normalized to its own max (shape, not magnitude). */
 function sparkPoints(spark: number[]): string {
@@ -148,7 +157,8 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
               y1={a.y}
               x2={b.x}
               y2={b.y}
-              stroke={isSel ? "var(--accent)" : "var(--text-muted)"}
+              stroke={isSel ? "var(--accent)" : KIND_COLOR[w.substance_base] ?? "var(--text-muted)"}
+              strokeOpacity={isSel ? 1 : 0.75}
               strokeWidth={isSel ? 2 : 1.25}
               strokeDasharray={w.mode === "gradient" ? "4 3" : undefined}
               markerEnd="url(#sb-arrow)"
@@ -159,7 +169,7 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
                 y1={a.y}
                 x2={b.x}
                 y2={b.y}
-                stroke="var(--accent)"
+                stroke={KIND_COLOR[w.substance_base] ?? "var(--accent)"}
                 strokeWidth={Math.min(4, 1 + Math.sqrt(w.last_amount))}
                 strokeDasharray="7 7"
                 opacity={0.65}
@@ -220,7 +230,17 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
               stroke={onLoop ? "var(--verdict-error)" : isSel ? "var(--accent)" : "var(--text-muted)"}
               strokeWidth={isSel || onLoop ? 2 : 1}
             />
-            <text x={8} y={16} fontSize={11}>
+            {/* substance accent: the KIND channel, same meaning as on wires */}
+            <rect
+              x={1}
+              y={1}
+              width={NODE_W - 2}
+              height={3}
+              rx={1.5}
+              fill={KIND_COLOR[n.substance_base] ?? "var(--text-muted)"}
+              opacity={0.9}
+            />
+            <text x={8} y={17} fontSize={11} fill={KIND_COLOR[n.substance_base] ?? "var(--text-primary)"}>
               {GLYPH[n.kind] ?? "□"}
             </text>
             <text x={24} y={16} fontSize={10} fill="var(--text-primary)">
@@ -245,7 +265,8 @@ export default function SandboxCanvas({ snapshot, selected, onSelect, onMoveNode
               cy={NODE_H / 2}
               r={5}
               fill="var(--surface, #fff)"
-              stroke="var(--accent)"
+              stroke={KIND_COLOR[n.substance_base] ?? "var(--accent)"}
+              strokeWidth={1.5}
               style={{ cursor: "crosshair" }}
               onPointerDown={(e) => {
                 e.stopPropagation();

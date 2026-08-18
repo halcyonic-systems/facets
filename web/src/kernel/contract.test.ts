@@ -841,10 +841,11 @@ function parseSandboxNode(v: unknown, where: string): SandboxNode {
 }
 
 function parseSandboxWire(v: unknown, where: string): SandboxWire {
-  const o = shape(v, where, ["from", "to", "mode", "conductance", "rate", "ample", "last_amount"]);
+  const o = shape(v, where, ["from", "to", "substance_base", "mode", "conductance", "rate", "ample", "last_amount"]);
   return {
     from: num(o.from, `${where}.from`),
     to: num(o.to, `${where}.to`),
+    substance_base: oneOf(o.substance_base, `${where}.substance_base`, SUBSTANCE_BASES),
     mode: oneOf(o.mode, `${where}.mode`, WIRE_MODES),
     conductance: num(o.conductance, `${where}.conductance`),
     rate: nullableNum(o.rate, `${where}.rate`),

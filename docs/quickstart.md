@@ -9,6 +9,11 @@ defer to never covered it. New terms link
 to the [terminology concordance](language/terminology-concordance.md) on first
 use; the [glossary](glossary.md) is the fast reference.
 
+Prefer to touch before you read? The **Sandbox** door on the Home screen is the
+no-text on-ramp: stamp a systems process, press Run, and tweak the running flow —
+then come back here when you want the judged-model path. Its design record is
+[`design/sandbox-surface.md`](design/sandbox-surface.md).
+
 ## 0. Install the prerequisites
 
 Every command here is a `just` recipe, so install `just` first — it is the one
