@@ -49,6 +49,13 @@ const WORDING = {
   residualLabel: "balance residual",
 };
 
+/** The residual, humanly: an exact zero says "0" instead of the exponential
+ *  form's "0.0e+0" (fresh-eyes pass, 2026-08-18); a nonzero keeps the
+ *  exponential — its magnitude IS the reading. */
+export function residualText(residual: number): string {
+  return residual === 0 ? "0 (exact)" : residual.toExponential(1);
+}
+
 /** The glance facts (shared by the dock/Readouts glance row and the bench's
  *  RunCard): the headline metric at the cursor, the key responding stock, and
  *  the residual. Reads the same kernel outputs as the tabs; computes nothing
@@ -114,13 +121,13 @@ export function RunGlance({
             {humanize(stockValue)}
           </span>
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-            {internal.name}
+            {internal.name} · level
             {internal.unit ? ` · ${unitLabel(internal.unit).text}` : ""}
           </span>
         </span>
       )}
       <span className="ml-auto text-xs tabular" style={{ color: "var(--text-muted)" }}>
-        {WORDING.residualLabel} {result.residual.toExponential(1)}
+        {WORDING.residualLabel} {residualText(result.residual)}
       </span>
     </div>
   );
@@ -204,8 +211,23 @@ export function RunFit({ result, tick, timeUnit }: { result: RunResultRich; tick
     .filter((r) => r.pct != null && r.pct > 0.5)
     .sort((a, b) => (b.pct ?? 0) - (a.pct ?? 0))[0];
   const forecastTicks = lead ? lead.c.simulated.length - lead.c.actual.length : 0;
+  const obs = result.comparisons[0]?.actual.length ?? 0;
   return (
     <div className="grid gap-4">
+      {/* Provenance first — a cold viewer's "what data, from where?" (fresh-eyes
+          pass, 2026-08-18). The comparisons exist only because a CSV is bound
+          in Data mode, so that is the sentence's whole content. */}
+      <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+        Each chart overlays the executed run on the observations bound in Data mode —{" "}
+        {result.comparisons.length} bound series · {obs} observation{obs === 1 ? "" : "s"} each.
+        "% off" is the run's mean divergence from that data over the observed window.
+      </p>
+      {!lead && result.comparisons.length > 0 && (
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+          no series diverges from its data by more than 0.5% — the run reproduces the bound
+          observations.
+        </p>
+      )}
       {lead && (
         <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
           largest gap from your data: <span className="font-medium">{lead.c.element}</span>,{" "}
@@ -250,11 +272,11 @@ export function RunTable({
         {/* Which model ran (ADR run-seam-canvas-document) — the kernel hash
             already knows; this is the plain-word version for the reader. */}
         <Pill tone={ranEdited ? "warning" : "neutral"}>
-          {ranEdited ? "ran your edited model" : "ran the shipped calibration"}
+          {ranEdited ? "ran your edited model" : "ran the model as shipped"}
         </Pill>
         <Stat
           label={WORDING.residualLabel}
-          value={result.residual.toExponential(1)}
+          value={residualText(result.residual)}
           tone={result.conserved ? "ok" : "error"}
         />
         <Stat label="ticks" value={String(result.ticks)} />
@@ -981,7 +1003,30 @@ function Levels({
                 · {header.sub(ticks)}
               </span>
             </div>
-            <div className="grid gap-1">
+            {/* A real table, not a list of name/number pairs (fresh-eyes pass,
+                2026-08-18): fixed columns so the eye reads DOWN a column
+                instead of re-parsing each row. The at-cursor column exists
+                only mid-scrub — absent, not blank. */}
+            <div
+              className="grid items-baseline gap-x-6 gap-y-1"
+              style={{
+                gridTemplateColumns: scrubbed
+                  ? "minmax(0,1fr) auto auto auto"
+                  : "minmax(0,1fr) auto auto",
+              }}
+            >
+              <span />
+              {scrubbed && (
+                <span className="text-right text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+                  at t={tick}
+                </span>
+              )}
+              <span className="text-right text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+                final
+              </span>
+              <span className="text-right text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+                unit
+              </span>
               {rows.map((l) => (
                 // Keyed by name + unit so an accepted row's local state resets
                 // when a different model/run puts a different unit on the name.
@@ -990,7 +1035,7 @@ function Levels({
                   level={l}
                   onAcceptUnit={onAcceptUnit}
                   atTickValue={atTick(l.name)}
-                  tick={tick}
+                  scrubbed={scrubbed}
                 />
               ))}
             </div>
@@ -1005,14 +1050,15 @@ function LevelRow({
   level: l,
   onAcceptUnit,
   atTickValue,
-  tick,
+  scrubbed,
 }: {
   level: Level;
   onAcceptUnit?: (name: string, unit: string) => void;
-  /** The row's trajectory value at the scrubbed tick; null = not scrubbed or
-   *  no matching trajectory (the final value stands alone). */
+  /** The row's trajectory value at the scrubbed tick; null = no matching
+   *  trajectory (the cell shows an em dash while the column exists). */
   atTickValue?: number | null;
-  tick?: number;
+  /** Whether the table currently carries the at-cursor column. */
+  scrubbed?: boolean;
 }) {
   // A whole-number source/process level renders as e.g. "3.0" — a magnitude cue
   // that reads it as a stock height, not a count of parts. Sinks keep humanize
@@ -1028,15 +1074,19 @@ function LevelRow({
   const derived = l.unit_derived && !accepted;
   const acceptable = derived && onAcceptUnit !== undefined && !l.unit.includes("Δt");
   return (
-    <div className="flex items-baseline justify-between text-sm">
-      <span style={{ color: "var(--text-primary)" }}>{l.name}</span>
-      <span className="tabular" style={{ color: "var(--text-secondary)" }}>
-        {atTickValue != null && (
-          <span className="mr-2 text-xs" style={{ color: "var(--accent)" }}>
-            {humanize(atTickValue)} <span style={{ color: "var(--text-muted)" }}>at {tick}</span> ·
-          </span>
-        )}
+    <>
+      <span className="text-sm" style={{ color: "var(--text-primary)" }}>
+        {l.name}
+      </span>
+      {scrubbed && (
+        <span className="tabular text-right text-xs" style={{ color: "var(--accent)" }}>
+          {atTickValue != null ? humanize(atTickValue) : "—"}
+        </span>
+      )}
+      <span className="tabular text-right text-sm" style={{ color: "var(--text-secondary)" }}>
         {showsMagnitude ? l.value.toFixed(1) : humanize(l.value)}
+      </span>
+      <span className="text-right text-sm">
         <span
           className={unit.abstract ? "italic" : undefined}
           style={{
@@ -1050,7 +1100,6 @@ function LevelRow({
           }}
           title={derived ? "derived from inflow × Δt" : undefined}
         >
-          {" "}
           {unit.text}
         </span>
         {acceptable && (
@@ -1072,6 +1121,6 @@ function LevelRow({
           </span>
         )}
       </span>
-    </div>
+    </>
   );
 }

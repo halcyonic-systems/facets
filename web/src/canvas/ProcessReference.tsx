@@ -26,6 +26,23 @@ export const PRIMITIVES: ReadonlyArray<readonly [ProcessPrimitive, string]> = [
   ["Inverting", "reversal — the flow's sense is flipped"],
 ];
 
+/** Each primitive's per-tick rule, stated as the engine actually computes it
+ *  (bert-compose circuit.rs activity pass — transcribed from the source, not
+ *  paraphrased; fresh-eyes pass 2026-08-18). One line each: what a click on a
+ *  processor can honestly say is happening to the flow inside it. */
+export const PRIMITIVE_LAWS: Readonly<Record<ProcessPrimitive, string>> = {
+  Combining: "out = Σ inflows of its output kind — other kinds drive the work and dissipate (no limiting-factor coupling yet)",
+  Splitting: "out = Σ matched inflows, divided across outwires by declared shares",
+  Buffering: "stock += inflow − release · release = declared rate (or stock/τ) read from the step's opening stock, never more than it holds",
+  Impeding: "out = matched inflow × agency (0–1)",
+  Propelling: "out = matched inflow × agency (0–1)",
+  Copying: "out = the message, duplicated — copyable, not conserved",
+  Sensing: "signal out = physical inflow × agency — crosses substance, drains nothing",
+  Modulating: "out = physical inflow × control gate (0–1) · no control wire = open valve",
+  Amplifying: "out = min(signal × gain, metered energy in) — no free mass",
+  Inverting: "out = max(setpoint − signal, 0) — the comparator",
+};
+
 function Glyph({ primitive }: { primitive: ProcessPrimitive }) {
   return (
     <svg width={22} height={22} viewBox="-8 -8 16 16" aria-hidden className="shrink-0">

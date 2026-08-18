@@ -2841,8 +2841,11 @@ function Workspace() {
           {/* Right-edge instrument dock: the READINGS as tabs (Element /
               Formal / Review / Analyst), one visible at a time, full height of
               the work region. Only mounts once a model is loaded. The run is
-              not among them (#312 move 2) — it is a mode. */}
-          {canvasModel && (
+              not among them — it is a state of the Model surface (#345).
+              While Readouts stands expanded the dock stands down entirely:
+              the expansion is a reading posture, and the authoring inspector
+              beside it reads as clutter (fresh-eyes pass, 2026-08-18). */}
+          {canvasModel && !readoutsOpen && (
             <InspectorDock
               result={result}
               runManifest={demo ? manifest : null}

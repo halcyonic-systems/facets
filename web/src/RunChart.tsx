@@ -56,7 +56,7 @@ export function axisTicks(n: number): number[] {
 /** The x axis says what it measures: the model's declared time unit when there
  *  is one ("t · second"), plain ticks when there isn't. */
 export function timeAxisLabel(unit?: string | null): string {
-  return unit?.trim() ? `t · ${unit.trim()}` : "t · ticks";
+  return unit?.trim() ? `time (${unit.trim()})` : "time (ticks)";
 }
 
 const AXIS_TICK = { fontSize: 10, fill: "var(--text-muted)" };

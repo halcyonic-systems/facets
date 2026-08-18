@@ -5,7 +5,7 @@
 // NodeEditorRows above. No systems fact is decided here — relations and
 // trajectories arrive resolved from the canvas model and the kernel readout.
 import type { CanvasModel, RunResultRich, Thing } from "./kernel/types";
-import { PRIMITIVES } from "./canvas/ProcessReference";
+import { PRIMITIVES, PRIMITIVE_LAWS } from "./canvas/ProcessReference";
 
 const primitiveLine = (p: Thing["primitive"]) =>
   PRIMITIVES.find(([name]) => name === p)?.[1] ?? null;
@@ -103,6 +103,12 @@ export function ElementMechanism({
       {line && thing.primitive && (
         <div className="mb-2 text-xs" style={{ color: "var(--text-secondary)" }}>
           {thing.primitive}: {line}
+          {/* The primitive's actual per-tick rule, as the engine computes it
+              (PRIMITIVE_LAWS, transcribed from circuit.rs) — the honest answer
+              to "what happens to the flow inside this box?" */}
+          <div className="mt-1 font-mono text-[11px]" style={{ color: "var(--text-muted)" }}>
+            {PRIMITIVE_LAWS[thing.primitive]}
+          </div>
         </div>
       )}
       {inflows.length > 0 && (

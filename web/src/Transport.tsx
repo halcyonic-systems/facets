@@ -73,6 +73,19 @@ export function Transport({
       >
         ⏭ Step
       </button>
+      {steps > 0 && (
+        <button
+          onClick={() => {
+            onPlayingChange(false);
+            onTick(0);
+          }}
+          title="Rewind to the start of the recorded trace"
+          className="shrink-0 px-1 text-xs"
+          style={{ color: "var(--text-secondary)" }}
+        >
+          ⏮
+        </button>
+      )}
       {steps > 0 ? (
         <div className="min-w-0 flex-1">
           <SimScrubber

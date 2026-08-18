@@ -135,6 +135,9 @@ export function RunCard({
             <div className="flex items-baseline justify-between gap-2" title={facts.head.detail}>
               <span className="min-w-0 truncate text-xs" style={{ color: "var(--text-secondary)" }}>
                 {facts.head.name}
+                <span style={{ color: "var(--text-muted)" }}>
+                  {facts.head.kind === "sum" ? " · running total" : " · share"}
+                </span>
               </span>
               <span
                 className="shrink-0 text-2xl font-semibold leading-none tabular"
@@ -147,7 +150,7 @@ export function RunCard({
           {facts.internal && facts.stockValue != null && (
             <div className="mt-1 flex items-baseline justify-between gap-2 text-xs">
               <span className="min-w-0 truncate" style={{ color: "var(--text-muted)" }}>
-                {facts.internal.name}
+                {facts.internal.name} · level
               </span>
               <span className="shrink-0 tabular" style={{ color: "var(--text-primary)" }}>
                 {humanize(facts.stockValue)}
