@@ -709,6 +709,9 @@ export interface SandboxNode {
   spark: number[];
   /** The Troncale process this node was stamped from, if any. */
   process: string | null;
+  /** The transfer function, instantiated with this node's live values —
+   *  rendered engine-side; the face only displays it. */
+  equation: string;
 }
 
 export interface SandboxWire {

@@ -273,6 +273,7 @@ impl Session {
                     total: n.total,
                     spark: n.spark.iter().copied().collect(),
                     process: n.process,
+                    equation: equation(n),
                 })
                 .collect(),
             wires: c
@@ -340,6 +341,69 @@ impl Session {
     }
 }
 
+/// A short number for an equation string: whole values print bare ("3"),
+/// fractions keep two places ("0.35").
+fn q(v: f32) -> String {
+    if (v - v.round()).abs() < 1e-4 {
+        format!("{}", v.round() as i64)
+    } else {
+        format!("{v:.2}")
+    }
+}
+
+/// The node's transfer function, INSTANTIATED with its live parameter values —
+/// what the inspector renders under "this node, right now". Faithful to the
+/// `circuit.rs` step arms (not the teaching-card paraphrase): each string is
+/// the rule that arm actually computes, with the knobs substituted. Engine-
+/// side on purpose — the face renders semantics, it never authors them.
+fn equation(n: &crate::circuit::Node) -> String {
+    use bert_core::ProcessPrimitive::*;
+    match n.kind {
+        NodeKind::Source => format!("out = {} / tick (per-wire rates override)", q(n.param)),
+        NodeKind::Sink => "total += inflow".to_string(),
+        NodeKind::Process(Buffering) => {
+            let base = if n.time_constant > 0.0 {
+                format!("stock/τ = {}/{}", q(n.storage), q(n.time_constant))
+            } else {
+                q(n.release_rate)
+            };
+            let mut eq = format!(
+                "stock({}) += inflow − release;  release = min(stock, {} · gate)",
+                q(n.storage),
+                base
+            );
+            if n.capacity > 0.0 {
+                eq.push_str(&format!(";  stock ≤ {} (overflow dissipates)", q(n.capacity)));
+            }
+            if n.maintenance > 0.0 {
+                eq.push_str(&format!(";  −{} /tick upkeep", q(n.maintenance)));
+            }
+            eq
+        }
+        NodeKind::Process(Combining) => "out = Σ physical inflows".to_string(),
+        NodeKind::Process(Splitting) => "out per wire = inflow ÷ fanout".to_string(),
+        NodeKind::Process(Propelling) => {
+            format!("out = inflow · η({});  ({} dissipates)", q(n.param), q(1.0 - n.param))
+        }
+        NodeKind::Process(Impeding) => {
+            format!("out = inflow · {};  ({} held back, dissipates)", q(n.param), q(1.0 - n.param))
+        }
+        NodeKind::Process(Amplifying) => {
+            format!("out = min(signal · {}, energy power)", q(1.0 + 9.0 * n.param))
+        }
+        NodeKind::Process(Sensing) => format!("signal = physical inflow · k({})", q(n.param)),
+        NodeKind::Process(Modulating) => if n.back_pressure {
+            "out = inflow · gate(control 0–1); blocked flow backs UP (upstream throttled)".to_string()
+        } else {
+            "out = inflow · gate(control 0–1); blocked flow sheds (dissipates)".to_string()
+        },
+        NodeKind::Process(Inverting) => {
+            format!("out = max(0, {} − signal)", q(n.setpoint))
+        }
+        NodeKind::Process(Copying) => "out = signal, copied to every receiver".to_string(),
+    }
+}
+
 /// One frame's read of the live circuit — small by design (per-node scalars
 /// and the SPARK_CAP sparkline, never full history; see `history_since`).
 #[derive(Serialize, Debug)]
@@ -386,6 +450,9 @@ pub struct NodeSnap {
     pub spark: Vec<f32>,
     /// The Troncale process this node was stamped from, if any.
     pub process: Option<&'static str>,
+    /// The transfer function, instantiated with this node's live values —
+    /// faithful to the `circuit.rs` step arm, rendered engine-side.
+    pub equation: String,
 }
 
 #[derive(Serialize, Debug)]

@@ -49,6 +49,7 @@ function node(kind: string, over: Partial<SandboxNode> = {}): SandboxNode {
     total: 0,
     spark: [],
     process: null,
+    equation: "out = 1 / tick",
     ...over,
   };
 }
@@ -115,5 +116,11 @@ describe("sandbox inspector", () => {
 
   it("the teaching card leads with plain English", () => {
     expect(render([node("Source")])).toContain("Where something enters.");
+  });
+
+  it("the live equation renders engine-authored, verbatim", () => {
+    expect(render([node("Source", { equation: "out = min(7.3, 1.5 · gate)" })])).toContain(
+      "out = min(7.3, 1.5 · gate)",
+    );
   });
 });

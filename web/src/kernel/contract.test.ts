@@ -814,7 +814,7 @@ function parseSandboxNode(v: unknown, where: string): SandboxNode {
     "kind", "name", "x", "y", "param", "release_rate", "initial_storage",
     "capacity", "setpoint", "time_constant", "maintenance", "back_pressure",
     "substance", "substance_base", "activity", "storage", "total", "spark",
-    "process",
+    "process", "equation",
   ]);
   return {
     kind: str(o.kind, `${where}.kind`),
@@ -836,6 +836,7 @@ function parseSandboxNode(v: unknown, where: string): SandboxNode {
     total: num(o.total, `${where}.total`),
     spark: numArr(o.spark, `${where}.spark`),
     process: nullableStr(o.process, `${where}.process`),
+    equation: str(o.equation, `${where}.equation`),
   };
 }
 

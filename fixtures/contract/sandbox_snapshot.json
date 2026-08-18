@@ -34,7 +34,8 @@
         2.0,
         2.0
       ],
-      "process": "Flows"
+      "process": "Flows",
+      "equation": "out = 2 / tick (per-wire rates override)"
     },
     {
       "kind": "Buffering",
@@ -61,7 +62,8 @@
         3.5,
         4.0
       ],
-      "process": "Flows"
+      "process": "Flows",
+      "equation": "stock(4) += inflow − release;  release = min(stock, 1.50 · gate)"
     },
     {
       "kind": "Sink",
@@ -88,7 +90,8 @@
         1.5,
         1.5
       ],
-      "process": "Flows"
+      "process": "Flows",
+      "equation": "total += inflow"
     }
   ],
   "wires": [

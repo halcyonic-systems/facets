@@ -125,6 +125,31 @@ export default function SandboxInspector({ snapshot, palette, selected, mutate, 
             onChange={(v) => mutate((sb) => sb.setWireParam(k, "conductance", v))}
           />
         )}
+        {w.mode === "pushed" && snapshot.nodes[w.from]?.kind === "Source" && (
+          <Row label="declared rate / tick (this wire)">
+            <span
+              className="flex items-center gap-2"
+              title="rate is an edge attribute in Mobus's formalism (Eq. 4.5) — a source with several outflows carries one rate PER FLOW (bert#111). Empty = share the source's own rate across its undeclared outwires."
+            >
+              <input
+                type="number"
+                min={0}
+                step={0.1}
+                className="w-20 rounded border px-1 py-0.5"
+                value={w.rate ?? ""}
+                placeholder="shared"
+                onChange={(e) =>
+                  mutate((sb) =>
+                    sb.setWireParam(k, "rate", e.target.value === "" ? -1 : Math.max(0, Number(e.target.value))),
+                  )
+                }
+              />
+              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                {w.rate == null ? "sharing the source's rate" : "declared on this flow"}
+              </span>
+            </span>
+          </Row>
+        )}
         <p className="mb-2 font-mono text-xs" style={{ color: "var(--text-muted)" }}>
           delivered this tick: {w.last_amount.toFixed(2)}
         </p>
@@ -291,6 +316,16 @@ export default function SandboxInspector({ snapshot, palette, selected, mutate, 
 
       <p className="mb-2 font-mono text-xs" style={{ color: "var(--text-muted)" }}>
         activity {n.activity.toFixed(2)} · stored {n.storage.toFixed(2)}
+      </p>
+
+      {/* the transfer function, instantiated live — engine-authored, updates
+          as sliders move and the sim runs */}
+      <p
+        className="mb-2 rounded border px-2 py-1 font-mono text-[11px]"
+        style={{ borderColor: "var(--hairline, var(--border, #e5e7eb))" }}
+        title="this node's transfer function with its current values substituted — computed by the kernel, faithful to the step rule"
+      >
+        {n.equation}
       </p>
 
       {/* Troncale provenance: this node is part of a stamped process */}
