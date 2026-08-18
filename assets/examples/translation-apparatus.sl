@@ -94,7 +94,10 @@ flow "Decoding Site" -> "Peptidyl Transferase Center" : matter "accommodated ami
 flow "Peptidyl Transferase Center" -> Translocase : matter "elongated chain" unit aa/s description "The chain, one residue longer, handed forward for ratcheting."
 
 flow Translocase -> "Exit Tunnel" : matter "polypeptide chain" unit aa/s description "The growing polypeptide advanced into the exit tunnel."
-flow "Exit Tunnel" -> Chaperone : matter "nascent polypeptide" unit aa/s description "The emerging nascent chain, N-terminus first, delivered to the waiting chaperone."
+# Unit is the COUNT (aa), not the rate: this leg is what the Chaperone sink
+# and the "polypeptide output" metric accumulate, and a running total of
+# residues is measured in residues — the interior legs keep their rate form.
+flow "Exit Tunnel" -> Chaperone : matter "nascent polypeptide" unit aa description "The emerging nascent chain, N-terminus first, delivered to the waiting chaperone."
 
 flow Translocase -> "GTPase-Associated Center" : matter "GDP and inorganic phosphate" unit GDP/s description "Hydrolysis products leaving the translocase after each step."
 flow "GTPase-Associated Center" -> Cytosol : matter "GDP and inorganic phosphate" unit GDP/s description "GDP and phosphate returned to the cytosol through the same docking site."
