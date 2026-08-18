@@ -1,17 +1,20 @@
 # The translation apparatus, running — walkthrough for 2026-08-19
 
-Status: CURRENT as of 2026-08-15 (post #337/#338/#340 fixes and #112 slice 1).
-Every number below is reproducible: `bert run assets/examples/translation-apparatus.sl --t 15`.
+Status: CURRENT as of 2026-08-18 (post #345 bench, milieu E=⟨O,M⟩, and the
+fresh-eyes polish pass — descriptions and units now authored on every element).
+Every number below is reproducible:
+`cargo run -p bert-cli -- run assets/examples/translation-apparatus.sl --t 15`.
 
 ## 0. One model, self-contained
 
 The file is the whole base state. Structure, rates, the pool's starting level
-and its drain — all declared in SL:
+and its drain — all declared in SL (flows enter through their declared
+pass-ways, #226):
 
 ```
 component "tRNA Pool" primitive Buffering stock tRNA initial 100 release 20
-flow Nucleus -> "Decoding Site" : matter "mRNA transcript" amount 20 unit codon/s
-flow Cytosol -> Translocase : energy "GTP" amount 40 unit GTP/s
+flow Nucleus -> "mRNA Entry Channel" : matter "mRNA transcript" amount 20 unit codon/s
+flow Cytosol -> "GTPase-Associated Center" : energy "GTP" amount 40 unit GTP/s
 ```
 
 The run card beside the diagram (and the Readouts rail) is where the knobs
@@ -29,10 +32,13 @@ located three errors. All three are in this model, as structure:
 - **tRNA and GTP are inputs, not sources.** GTP enters from the cytosol; tRNA
   is not an input at all at this boundary — it circulates: charged out of the
   pool, spent at the decoding site, recharged by the synthetase.
-- **The ionic milieu genuinely interacts.** `Cytosol → PTC : matter "Mg2+ and
-  ionic milieu"` — and the kernel REFUSED this edge until the PTC was declared
-  an interface. The same boundary check that fired on his call fired here as a
-  refusal, and it was right both times.
+- **The ionic milieu genuinely interacts.** Now said with his own newest
+  construct — E = ⟨O, M⟩ from the lifecycle paper's introduction: `milieu
+  "Mg2+ and ionic milieu" value 1 unit mM`. Ions have no point source and no
+  port, so this is a condition that bathes, not a flow that plugs in. (The
+  earlier flow encoding is the history: the kernel REFUSED that edge until
+  the PTC was declared an interface — the same boundary check that fired on
+  his call — and the milieu construct is the structurally honest resolution.)
 
 ## 2. The numbers, and where they come from
 
@@ -64,11 +70,14 @@ defects, each now fixed at the root with a separating test, or filed.
 
 ## 4. The run
 
-`--t 15` (one ~300-residue protein at 20 aa/s):
+`--t 15` (one ~300-residue protein at 20 aa/s; re-measured 2026-08-18 on the
+current model):
 
-- **Conserved, with every channel non-negative**: emitted 1515, sunk 14,
-  stored 277, dissipated 1324, balance 0. The dissipated channel is *large
-  and honest* — it is the GTP and ATP that drove the work, plus split losses.
+- **Conserved, with every channel non-negative**: emitted 1500 (+100 initial
+  stock), sunk 37.5, stored 250, dissipated 1312.5, balance 0. The dissipated
+  channel is *large and honest* — it is the GTP and ATP that drove the work,
+  plus split losses. The 37.5 sunk IS the headline "polypeptide output ·
+  running total" on the run card.
 - **The pool starts at its declared 100 and drifts +10/tick.** The drift is
   a grain statement, not a defect: the decoding site's agency (0.5) and its
   even outwire split halve the tRNA return leg at this resolution. True
@@ -78,9 +87,15 @@ defects, each now fixed at the root with a separating test, or filed.
   arithmetic, not conservation by itself — conservation is the non-negative
   channels *plus* the balance, which is what the #337/#340 fixes bought.
 
-In the app: open Translation Apparatus → press ▶ Run in the strip under the diagram (the trace auto-plays once). To validate against data or
-force a perturbation (amino-acid starvation, seconds 8–10), attach a CSV in
-Data mode and bind columns — the pool can also take its t0 from a measured
+In the app: open Translation Apparatus → press ▶ Run in the strip under the
+diagram (the trace auto-plays once; ⏮ rewinds). The run card beside the
+diagram carries the sliders, the headline ("polypeptide output · running
+total") and the one chart; ⤢ opens the full-page Readouts. Click any
+processor for its mechanism: its description, its flows, and its actual
+per-tick rule as the engine computes it (the Combining line states the
+no-limiting-factor caveat in writing). To validate against data or force a
+perturbation (amino-acid starvation, seconds 8–10), attach a CSV in Data
+mode and bind columns — the pool can also take its t0 from a measured
 observation instead of the declared 100, and the two are the same kind of
 fact by construction.
 
