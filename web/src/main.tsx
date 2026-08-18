@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { initTheme } from "./theme";
 import "./index.css";
 import App from "./App";
+import SandboxSurface from "./sandbox/SandboxSurface";
 import { initReasoner } from "./reasoner";
 
 // The stored theme choice goes on <html> before anything else runs — before the
@@ -15,10 +16,14 @@ initTheme();
 // Read the stored reasoner setting before first paint, so the co-author's gate
 // renders its real state (off, or on and pointed somewhere) rather than
 // flashing "off" and correcting itself.
+// Phase-1 dev entry for the live sandbox (no app-shell route yet): `?sandbox=1`
+// renders the sandbox surface instead of the app. Becomes a Home document type
+// in the persistence phase.
+const sandboxEntry =
+  typeof window !== "undefined" && new URLSearchParams(window.location.search).get("sandbox") === "1";
+
 void initReasoner().finally(() => {
   createRoot(document.getElementById("root")!).render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
+    <StrictMode>{sandboxEntry ? <SandboxSurface /> : <App />}</StrictMode>,
   );
 });
