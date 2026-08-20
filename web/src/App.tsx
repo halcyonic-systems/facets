@@ -54,6 +54,7 @@ import { NewModelTypePrompt } from "./NewModelTypePrompt";
 import { SystemTypeEditor } from "./SystemTypeEditor";
 import { StartFromData } from "./StartFromData";
 import { SlPane } from "./SlPane";
+import { lineToName, nameToLine } from "./sl/names";
 import {
   draftSlWithRetry,
   kernelFindingsBrief,
@@ -401,6 +402,38 @@ function Workspace() {
   const [slOpen, setSlOpen] = useState(false);
   const [slText, setSlText] = useState(SL_SEED);
   const [slErrors, setSlErrors] = useState<SlError[]>([]);
+  // Tier 4 (#353): shared selection between pane and canvas, bridged on
+  // NAMES — ids are not stable across canonicalization (§7.2), names are the
+  // text's identifiers. `slSelSource` breaks the feedback loop: a selection
+  // that originated in the pane must not scroll the pane back.
+  const slSelSource = useRef<"pane" | null>(null);
+  const [slFocusLine, setSlFocusLine] = useState<{ line: number; nonce: number } | null>(null);
+  function onSlCursorLine(line: number) {
+    if (!canvasModel) return;
+    const name = lineToName(slText.split("\n")).get(line);
+    if (name === undefined) return;
+    const thing = canvasModel.things.find((t) => t.name === name);
+    if (!thing || thing.id === selectedThingId) return;
+    slSelSource.current = "pane";
+    setSelectedThingId(thing.id);
+    setSelectedRelationId(null);
+  }
+  useEffect(() => {
+    if (slSelSource.current === "pane") {
+      slSelSource.current = null;
+      return;
+    }
+    if (!slOpen || selectedThingId === null || !canvasModel) return;
+    const name = canvasModel.things.find((t) => t.id === selectedThingId)?.name;
+    if (name === undefined) return;
+    const line = nameToLine(slText.split("\n")).get(name);
+    if (line !== undefined) {
+      setSlFocusLine((prev) => ({ line, nonce: (prev?.nonce ?? 0) + 1 }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selection is the
+    // one signal; text/model react through it, and re-firing on their changes
+    // would scroll the pane on every compile.
+  }, [selectedThingId]);
   // Folder SAVE (File System Access): the picked working folder, the current
   // model's filename stem (so re-saving is one gesture into the same file), and
   // the SaveDialog toggle. Explicit-save only — nothing here fires without a
@@ -2284,6 +2317,7 @@ function Workspace() {
               // just produced. Same `desc`/`verdict` the dock reads — one
               // analysis, two places it is legible.
               chain={{ desc, verdict, onShowFormal: showFormal }}
+              selection={{ onCursorLine: onSlCursorLine, focusLine: slFocusLine }}
               // #10: the co-author, folded into the pane as a mode (locked
               // 2026-07-24) — not a dock tab. coauthorDraft owns the whole
               // draft->compile->preview->record sequence; the pane just

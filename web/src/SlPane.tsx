@@ -48,6 +48,13 @@ interface SlPaneProps {
    *  and a pane with no model to analyze has no chain to show. `text` and
    *  `model` come from the props above — only the kernel outputs are passed. */
   chain?: Omit<SlChainProps, "text" | "model">;
+  /** Tier 4 (#353): shared selection over names. The parent owns both maps
+   *  (name↔id from the compiled model, name↔line from the text); this pane
+   *  only forwards the editor's cursor line up and a focus request down. */
+  selection?: {
+    onCursorLine: (line: number) => void;
+    focusLine: { line: number; nonce: number } | null;
+  };
   coauthor?: {
     turns: CoauthorTurn[];
     /** `onStage` is #218's progress feed — the parent's draft call reports
@@ -60,7 +67,7 @@ interface SlPaneProps {
   };
 }
 
-export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel, chain, coauthor }: SlPaneProps) {
+export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel, chain, selection, coauthor }: SlPaneProps) {
   const [mode, setMode] = useState<Mode>("sl");
   // Faults describe the text as of their compile; once the author types past
   // them they are history, not the present — dimmed and labeled, never
@@ -179,6 +186,8 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
               setEditedSinceCompile(true);
             }}
             onCompile={() => compile()}
+            onCursorLine={selection?.onCursorLine}
+            focusLine={selection?.focusLine ?? null}
           />
           {errors.length > 0 && (
             <div
