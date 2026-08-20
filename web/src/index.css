@@ -463,3 +463,23 @@ input[type="range"]:focus-visible {
   box-shadow: inset 2px 0 color-mix(in srgb, var(--verdict-error) 45%, transparent);
   background: transparent;
 }
+.sl-band-start {
+  box-shadow: inset 0 1px var(--hairline);
+}
+.sl-band-start.sl-line-error {
+  box-shadow: inset 0 1px var(--hairline), inset 2px 0 var(--verdict-error);
+}
+.sl-editor .sl-band-gutter {
+  width: 4.25rem;
+  background: var(--bg-primary);
+  border-right: 1px solid var(--hairline);
+}
+.sl-band-label {
+  display: block;
+  padding: 0 0.5rem;
+  font-size: 0.5625rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  line-height: 1.625rem;
+}

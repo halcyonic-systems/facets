@@ -13,6 +13,7 @@ import type { SlError } from "../kernel/types";
 import { slLanguage } from "./mode";
 import { slHighlight } from "./highlight";
 import { shouldReplaceDoc } from "./sync";
+import { bandExtension } from "./bandView";
 
 const setErrorLines = StateEffect.define<number[]>();
 
@@ -80,6 +81,7 @@ export function SlEditor({ value, errors, stale, onChange, onCompile }: SlEditor
           ]),
           slLanguage,
           syntaxHighlighting(slHighlight),
+          bandExtension,
           errorField,
           EditorView.lineWrapping,
           EditorView.updateListener.of((u) => {
