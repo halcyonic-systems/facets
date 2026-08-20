@@ -2,7 +2,10 @@
 // never be gated behind the co-author — it renders whether or not `coauthor`
 // is supplied, and stays the default view even when the mode switch is
 // present. Static-markup checks (no DOM events, so mode-switch clicking is
-// exercised live — see the PR's manual verification note).
+// exercised live — see the PR's manual verification note). The editor is a
+// CodeMirror host mounted in an effect (#353 Tier 2), so static markup shows
+// its host div, not the text; the text is asserted at the pure-module level
+// (sl/mode.test.ts, sl/sync.test.ts).
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { SlPane } from "./SlPane";
@@ -22,7 +25,7 @@ describe("SlPane — manual authoring is preserved", () => {
         canvasModel={null}
       />,
     );
-    expect(m).toContain("system X");
+    expect(m).toContain("sl-editor");
     expect(m).toContain("Compile");
     expect(m).not.toContain("Co-author");
   });
@@ -40,10 +43,10 @@ describe("SlPane — manual authoring is preserved", () => {
         coauthor={{ turns: [], onDraft: async () => {}, onCorrect: async () => {} }}
       />,
     );
-    // Both the mode switch AND the manual textarea/Compile are present —
+    // Both the mode switch AND the manual editor/Compile are present —
     // co-author is an added mode, not a replacement for hand-authoring.
     expect(m).toContain("Co-author");
-    expect(m).toContain("system Y");
+    expect(m).toContain("sl-editor");
     expect(m).toContain("Compile");
   });
 

@@ -17,6 +17,7 @@
 
 import { useEffect, useState } from "react";
 import { compileSl, emitSl, splicePositions } from "./kernel";
+import { SlEditor } from "./sl/SlEditor";
 import type { CanvasModel, SlError } from "./kernel/types";
 import { CoAuthorMode } from "./CoAuthorMode";
 import { SlChain } from "./SlChain";
@@ -169,22 +170,15 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
         <CoAuthorMode turns={coauthor.turns} onDraft={handleDraft} onCorrect={handleCorrect} onLoad={handleLoad} />
       ) : (
         <>
-          <textarea
+          <SlEditor
             value={text}
-            onChange={(e) => {
-              onTextChange(e.target.value);
+            errors={errors}
+            stale={editedSinceCompile}
+            onChange={(t) => {
+              onTextChange(t);
               setEditedSinceCompile(true);
             }}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
-                compile();
-              }
-            }}
-            spellCheck={false}
-            className="min-h-0 flex-1 resize-none p-3 font-mono text-xs leading-relaxed outline-none"
-            style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}
-            placeholder={'component Furnace interface\nsource "Iron Vendor"\nflow "Iron Vendor" -> Furnace : matter "iron"'}
+            onCompile={() => compile()}
           />
           {errors.length > 0 && (
             <div
