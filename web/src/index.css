@@ -508,3 +508,6 @@ input[type="range"]:focus-visible {
 .sl-glyph-kind-matter { color: var(--kind-matter); }
 .sl-glyph-kind-field { color: var(--kind-field); }
 .sl-glyph-kind-informational { color: var(--kind-informational); }
+.sl-align-pad {
+  display: inline-block;
+}

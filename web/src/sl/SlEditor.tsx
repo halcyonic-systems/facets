@@ -15,6 +15,7 @@ import { shouldReplaceDoc } from "./sync";
 import { bandExtension } from "./bandView";
 import { errorDecorations, errorLinesField, setErrorLines } from "./faults";
 import { glyphGutter } from "./glyphView";
+import { alignExtension } from "./alignView";
 
 interface SlEditorProps {
   value: string;
@@ -58,6 +59,7 @@ export function SlEditor({ value, errors, stale, onChange, onCompile }: SlEditor
           syntaxHighlighting(slHighlight),
           bandExtension,
           glyphGutter,
+          alignExtension,
           errorLinesField,
           errorDecorations,
           EditorView.lineWrapping,
