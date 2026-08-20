@@ -483,3 +483,28 @@ input[type="range"]:focus-visible {
   color: var(--text-muted);
   line-height: 1.625rem;
 }
+.sl-editor .sl-glyph-gutter {
+  width: 1.1rem;
+  background: var(--bg-primary);
+}
+.sl-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.625rem;
+  color: var(--text-muted);
+}
+.sl-glyph-error {
+  color: var(--verdict-error);
+  font-weight: 700;
+}
+.sl-glyph-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+.sl-glyph-kind-energy { color: var(--kind-energy); }
+.sl-glyph-kind-matter { color: var(--kind-matter); }
+.sl-glyph-kind-field { color: var(--kind-field); }
+.sl-glyph-kind-informational { color: var(--kind-informational); }

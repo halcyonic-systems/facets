@@ -4,9 +4,8 @@
 // All language logic lives in the pure modules (mode.ts, sync.ts) — this
 // file is wiring.
 import { useEffect, useRef } from "react";
-import { EditorState, StateEffect, StateField } from "@codemirror/state";
-import { Decoration, EditorView, keymap } from "@codemirror/view";
-import type { DecorationSet } from "@codemirror/view";
+import { EditorState } from "@codemirror/state";
+import { EditorView, keymap } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { syntaxHighlighting } from "@codemirror/language";
 import type { SlError } from "../kernel/types";
@@ -14,32 +13,8 @@ import { slLanguage } from "./mode";
 import { slHighlight } from "./highlight";
 import { shouldReplaceDoc } from "./sync";
 import { bandExtension } from "./bandView";
-
-const setErrorLines = StateEffect.define<number[]>();
-
-const errorLine = Decoration.line({ class: "sl-line-error" });
-
-const errorField = StateField.define<DecorationSet>({
-  create: () => Decoration.none,
-  update(deco, tr) {
-    deco = deco.map(tr.changes);
-    for (const e of tr.effects) {
-      if (e.is(setErrorLines)) {
-        const marks = [];
-        for (const n of e.value) {
-          // Kernel fault lines are 1-based; line 0 is a whole-text fault
-          // (emit refusals), which has no line to mark.
-          if (n >= 1 && n <= tr.state.doc.lines) {
-            marks.push(errorLine.range(tr.state.doc.line(n).from));
-          }
-        }
-        deco = Decoration.set(marks, true);
-      }
-    }
-    return deco;
-  },
-  provide: (f) => EditorView.decorations.from(f),
-});
+import { errorDecorations, errorLinesField, setErrorLines } from "./faults";
+import { glyphGutter } from "./glyphView";
 
 interface SlEditorProps {
   value: string;
@@ -82,7 +57,9 @@ export function SlEditor({ value, errors, stale, onChange, onCompile }: SlEditor
           slLanguage,
           syntaxHighlighting(slHighlight),
           bandExtension,
-          errorField,
+          glyphGutter,
+          errorLinesField,
+          errorDecorations,
           EditorView.lineWrapping,
           EditorView.updateListener.of((u) => {
             if (u.docChanged) {
