@@ -1,0 +1,36 @@
+{
+  "name": "sl-language",
+  "displayName": "SL (Systems Language)",
+  "description": "Syntax highlighting for SL, the bert-lenses systems language.",
+  "version": "0.1.0",
+  "publisher": "halcyonic",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "sl",
+        "aliases": [
+          "SL",
+          "Systems Language"
+        ],
+        "extensions": [
+          ".sl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "sl",
+        "scopeName": "source.sl",
+        "path": "./syntaxes/sl.tmLanguage.json"
+      }
+    ]
+  }
+}

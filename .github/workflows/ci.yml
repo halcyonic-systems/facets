@@ -87,6 +87,11 @@ jobs:
         run: npm run check:tokens
         working-directory: web
 
+      # TextMate grammar ↔ keyword contract: the editor grammar's word lists
+      # must equal fixtures/contract/sl_keywords.json, both directions.
+      - name: tm-grammar (keyword-contract drift-gate)
+        run: node scripts/check_tm_grammar.mjs
+
       - name: tsc --noEmit
         run: npx tsc --noEmit
         working-directory: web
