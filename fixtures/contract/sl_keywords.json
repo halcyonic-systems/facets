@@ -1,0 +1,94 @@
+{
+  "annotations": [
+    "@lens",
+    "@pos",
+    "@directed"
+  ],
+  "positional": [
+    "param",
+    "metric",
+    "ample",
+    "range",
+    "shares",
+    "from",
+    "share",
+    "of",
+    "sum",
+    "into",
+    "klir",
+    "bunge",
+    "mobus",
+    "constant"
+  ],
+  "reserved": [
+    "system",
+    "domain",
+    "component",
+    "source",
+    "sink",
+    "environment",
+    "flow",
+    "boundary",
+    "interface",
+    "milieu",
+    "value",
+    "protocol",
+    "primitive",
+    "decomposes",
+    "stock",
+    "scale",
+    "states",
+    "kind",
+    "time",
+    "unit",
+    "level",
+    "mere",
+    "weight",
+    "substance",
+    "amount",
+    "initial",
+    "release",
+    "capacity",
+    "setpoint",
+    "maintenance",
+    "backpressure",
+    "description",
+    "usability",
+    "porosity",
+    "fuzziness",
+    "energy",
+    "matter",
+    "field",
+    "informational"
+  ],
+  "value_words": {
+    "kind": [
+      "energy",
+      "matter",
+      "field",
+      "informational"
+    ],
+    "kingdom": [
+      "Conceptual",
+      "Concrete"
+    ],
+    "primitive": [
+      "Combining",
+      "Splitting",
+      "Buffering",
+      "Impeding",
+      "Propelling",
+      "Copying",
+      "Sensing",
+      "Modulating",
+      "Amplifying",
+      "Inverting"
+    ],
+    "scale": [
+      "Nominal",
+      "Ordinal",
+      "Interval",
+      "Ratio"
+    ]
+  }
+}

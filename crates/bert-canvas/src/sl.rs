@@ -2943,6 +2943,13 @@ fn as_name(name: &str) -> String {
     }
 }
 
+/// The kingdom value words, in canonical emitted spelling (`{k:?}` in
+/// `emit_sl`). Parsers match case-insensitively; these consts exist so tooling
+/// (the keyword contract fixture, editor grammars) never scrapes `match` arms.
+/// Each `*_WORDS` const is parity-tested against its `parse_*` in this
+/// module's tests: every listed word parses, and a word count mismatch fails.
+pub const KINGDOM_WORDS: &[&str] = &["Conceptual", "Concrete"];
+
 fn parse_system_type(word: &str) -> Result<(Kingdom, Option<Genus>), String> {
     let (kingdom_str, genus_str) = match word.split_once('/') {
         Some((k, g)) => (k, Some(g)),
@@ -2971,6 +2978,9 @@ fn parse_system_type(word: &str) -> Result<(Kingdom, Option<Genus>), String> {
     Ok((kingdom, genus))
 }
 
+/// The flow-kind value words, canonical emitted spelling (lowercased `{:?}`).
+pub const KIND_WORDS: &[&str] = &["energy", "matter", "field", "informational"];
+
 fn parse_kind(word: &str) -> Result<Kind, String> {
     match word.to_ascii_lowercase().as_str() {
         "energy" => Ok(Kind::Energy),
@@ -2982,6 +2992,20 @@ fn parse_kind(word: &str) -> Result<Kind, String> {
         )),
     }
 }
+
+/// The ten process-primitive value words, canonical emitted spelling (`{p:?}`).
+pub const PRIMITIVE_WORDS: &[&str] = &[
+    "Combining",
+    "Splitting",
+    "Buffering",
+    "Impeding",
+    "Propelling",
+    "Copying",
+    "Sensing",
+    "Modulating",
+    "Amplifying",
+    "Inverting",
+];
 
 fn parse_primitive(word: &str) -> Result<ProcessPrimitive, String> {
     use ProcessPrimitive::*;
@@ -3002,6 +3026,9 @@ fn parse_primitive(word: &str) -> Result<ProcessPrimitive, String> {
         )),
     }
 }
+
+/// The measurement-scale value words, canonical emitted spelling (`{sc:?}`).
+pub const SCALE_WORDS: &[&str] = &["Nominal", "Ordinal", "Interval", "Ratio"];
 
 fn parse_scale(word: &str) -> Result<ScaleType, String> {
     match word.to_ascii_lowercase().as_str() {
@@ -3168,6 +3195,35 @@ fn tokenize(line: &str) -> Result<Vec<Tok>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Each value-word const is the canonical vocabulary of its `parse_*`:
+    /// every listed word parses, and parses back to a value whose emitted
+    /// spelling is the listed word itself. A bogus word must fail, so the
+    /// consts can never drift into accepting-anything territory.
+    #[test]
+    fn value_word_consts_match_their_parsers() {
+        for w in KINGDOM_WORDS {
+            let (k, g) = parse_system_type(w).unwrap_or_else(|e| panic!("{w}: {e}"));
+            assert_eq!(&format!("{k:?}"), w);
+            assert_eq!(g, None);
+        }
+        for w in KIND_WORDS {
+            let k = parse_kind(w).unwrap_or_else(|e| panic!("{w}: {e}"));
+            assert_eq!(&format!("{k:?}").to_ascii_lowercase(), w);
+        }
+        for w in PRIMITIVE_WORDS {
+            let p = parse_primitive(w).unwrap_or_else(|e| panic!("{w}: {e}"));
+            assert_eq!(&format!("{p:?}"), w);
+        }
+        for w in SCALE_WORDS {
+            let s = parse_scale(w).unwrap_or_else(|e| panic!("{w}: {e}"));
+            assert_eq!(&format!("{s:?}"), w);
+        }
+        assert!(parse_system_type("astral").is_err());
+        assert!(parse_kind("astral").is_err());
+        assert!(parse_primitive("astral").is_err());
+        assert!(parse_scale("astral").is_err());
+    }
 
     const STEEL: &str = r#"
 # Mobus's steel plant, as a system paragraph in SL
