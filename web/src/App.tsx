@@ -54,7 +54,7 @@ import { NewModelTypePrompt } from "./NewModelTypePrompt";
 import { SystemTypeEditor } from "./SystemTypeEditor";
 import { StartFromData } from "./StartFromData";
 import { SlPane } from "./SlPane";
-import { lineToName, nameToLine } from "./sl/names";
+import { flowAtLine, flowToLine, lineToName, nameToLine } from "./sl/names";
 import {
   draftSlWithRetry,
   kernelFindingsBrief,
@@ -410,30 +410,70 @@ function Workspace() {
   const [slFocusLine, setSlFocusLine] = useState<{ line: number; nonce: number } | null>(null);
   function onSlCursorLine(line: number) {
     if (!canvasModel) return;
-    const name = lineToName(slText.split("\n")).get(line);
-    if (name === undefined) return;
-    const thing = canvasModel.things.find((t) => t.name === name);
-    if (!thing || thing.id === selectedThingId) return;
-    slSelSource.current = "pane";
-    setSelectedThingId(thing.id);
-    setSelectedRelationId(null);
+    const lines = slText.split("\n");
+    const name = lineToName(lines).get(line);
+    if (name !== undefined) {
+      const thing = canvasModel.things.find((t) => t.name === name);
+      if (!thing || thing.id === selectedThingId) return;
+      slSelSource.current = "pane";
+      setSelectedThingId(thing.id);
+      setSelectedRelationId(null);
+      return;
+    }
+    // Flow lines: no unique name, so match endpoints + label, ordinal-
+    // disambiguated for duplicate triples; endpoints-only as the fallback
+    // when a hand-authored line carries no label.
+    const at = flowAtLine(lines, line);
+    if (at) {
+      const nameOf = (id: number) => canvasModel.things.find((t) => t.id === id)?.name;
+      const endpoint = canvasModel.relations.filter(
+        (r) => nameOf(r.a) === at.ref.from && nameOf(r.b) === at.ref.to
+      );
+      const labeled = endpoint.filter((r) => r.name === at.ref.label);
+      const rel = labeled[at.ordinal] ?? labeled[0] ?? endpoint[0];
+      if (!rel || rel.id === selectedRelationId) return;
+      slSelSource.current = "pane";
+      setSelectedRelationId(rel.id);
+      setSelectedThingId(null);
+    }
   }
   useEffect(() => {
     if (slSelSource.current === "pane") {
       slSelSource.current = null;
       return;
     }
-    if (!slOpen || selectedThingId === null || !canvasModel) return;
-    const name = canvasModel.things.find((t) => t.id === selectedThingId)?.name;
-    if (name === undefined) return;
-    const line = nameToLine(slText.split("\n")).get(name);
+    if (!slOpen || !canvasModel) return;
+    const lines = slText.split("\n");
+    let line: number | undefined;
+    if (selectedThingId !== null) {
+      const name = canvasModel.things.find((t) => t.id === selectedThingId)?.name;
+      if (name !== undefined) line = nameToLine(lines).get(name);
+    } else if (selectedRelationId !== null) {
+      const rel = canvasModel.relations.find((r) => r.id === selectedRelationId);
+      if (rel) {
+        const nameOf = (id: number) => canvasModel.things.find((t) => t.id === id)?.name ?? "";
+        const ref = { from: nameOf(rel.a), to: nameOf(rel.b), label: rel.name };
+        const ordinal = canvasModel.relations
+          .filter((r) => nameOf(r.a) === ref.from && nameOf(r.b) === ref.to && r.name === ref.label)
+          .findIndex((r) => r.id === rel.id);
+        line =
+          flowToLine(lines, ref, Math.max(0, ordinal)) ??
+          flowToLine(lines, { ...ref, label: "" }, 0) ??
+          undefined;
+      }
+    } else if (interfaceSel !== null) {
+      // A pass-way click selects a PORT, not a thing (#226's popover); the
+      // port's boundary identity is the thing whose line the pane shows.
+      const name = canvasModel.things.find((t) => t.id === interfaceSel.port.component)?.name;
+      if (name !== undefined) line = nameToLine(lines).get(name);
+    }
     if (line !== undefined) {
-      setSlFocusLine((prev) => ({ line, nonce: (prev?.nonce ?? 0) + 1 }));
+      setSlFocusLine((prev) => ({ line: line as number, nonce: (prev?.nonce ?? 0) + 1 }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- selection is the
     // one signal; text/model react through it, and re-firing on their changes
     // would scroll the pane on every compile.
-  }, [selectedThingId]);
+  }, [selectedThingId, selectedRelationId, interfaceSel]);
   // Folder SAVE (File System Access): the picked working folder, the current
   // model's filename stem (so re-saving is one gesture into the same file), and
   // the SaveDialog toggle. Explicit-save only — nothing here fires without a
