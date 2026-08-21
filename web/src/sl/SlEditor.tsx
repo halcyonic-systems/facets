@@ -39,6 +39,12 @@ export function SlEditor({ value, errors, stale, onChange, onCompile }: SlEditor
 
   useEffect(() => {
     if (!hostRef.current) return;
+    // A fresh view has emitted nothing. Without this reset, a remount whose
+    // prop still equals the PREVIOUS view's last emit (StrictMode's dev
+    // double-mount, or any teardown that keeps the instance) reads its own
+    // history as an echo and skips the initial fill — an open model lands
+    // on a blank pane (field report 2026-08-21).
+    lastEmitted.current = null;
     const view = new EditorView({
       state: EditorState.create({
         doc: "",
