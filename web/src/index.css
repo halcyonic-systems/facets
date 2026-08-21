@@ -414,3 +414,100 @@ input[type="range"]:focus-visible {
   outline-offset: 2px;
   border-radius: var(--radius-pill);
 }
+
+/* ── The SL editor (CodeMirror host, #353 Tier 2) ─────────────────────────
+   Classes only; every color is a token. The KIND words carry their own
+   channels because KIND is ontology, not decoration. */
+.sl-editor .cm-editor {
+  height: 100%;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.75rem;
+  line-height: 1.625;
+}
+.sl-editor .cm-editor.cm-focused {
+  outline: none;
+}
+.sl-editor .cm-content {
+  padding: 0.75rem;
+  caret-color: var(--text-primary);
+}
+.sl-editor .cm-line {
+  padding: 0;
+}
+.sl-editor .cm-cursor {
+  border-left-color: var(--text-primary);
+}
+.sl-editor .cm-selectionBackground,
+.sl-editor .cm-editor ::selection {
+  background: var(--accent-soft);
+}
+.sl-tok-comment { color: var(--text-muted); }
+.sl-tok-string { color: var(--text-primary); }
+.sl-tok-number { color: var(--accent-indigo); }
+.sl-tok-annotation { color: var(--text-muted); }
+.sl-tok-arrow { color: var(--accent-strong); }
+.sl-tok-head { color: var(--accent-strong); font-weight: 600; }
+.sl-tok-value { color: var(--accent-indigo); }
+.sl-tok-keyword { color: var(--accent); }
+.sl-tok-kind-energy { color: var(--kind-energy); }
+.sl-tok-kind-matter { color: var(--kind-matter); }
+.sl-tok-kind-field { color: var(--kind-field); }
+.sl-tok-kind-informational { color: var(--kind-informational); }
+.sl-line-error {
+  box-shadow: inset 2px 0 var(--verdict-error);
+  background: color-mix(in srgb, var(--verdict-error) 7%, transparent);
+}
+.sl-errors-stale .sl-line-error {
+  box-shadow: inset 2px 0 color-mix(in srgb, var(--verdict-error) 45%, transparent);
+  background: transparent;
+}
+.sl-band-start {
+  box-shadow: inset 0 1px var(--hairline);
+}
+.sl-band-start.sl-line-error {
+  box-shadow: inset 0 1px var(--hairline), inset 2px 0 var(--verdict-error);
+}
+.sl-editor .sl-band-gutter {
+  width: 4.25rem;
+  background: var(--bg-primary);
+  border-right: 1px solid var(--hairline);
+}
+.sl-band-label {
+  display: block;
+  padding: 0 0.5rem;
+  font-size: 0.5625rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  line-height: 1.625rem;
+}
+.sl-editor .sl-glyph-gutter {
+  width: 1.1rem;
+  background: var(--bg-primary);
+}
+.sl-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.625rem;
+  color: var(--text-muted);
+}
+.sl-glyph-error {
+  color: var(--verdict-error);
+  font-weight: 700;
+}
+.sl-glyph-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+.sl-glyph-kind-energy { color: var(--kind-energy); }
+.sl-glyph-kind-matter { color: var(--kind-matter); }
+.sl-glyph-kind-field { color: var(--kind-field); }
+.sl-glyph-kind-informational { color: var(--kind-informational); }
+.sl-align-pad {
+  display: inline-block;
+}

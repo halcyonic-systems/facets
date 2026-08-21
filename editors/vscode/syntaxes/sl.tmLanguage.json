@@ -1,0 +1,64 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "SL",
+  "scopeName": "source.sl",
+  "fileTypes": ["sl"],
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#string" },
+    { "include": "#annotation" },
+    { "include": "#arrow" },
+    { "include": "#declaration-head" },
+    { "include": "#kind-value" },
+    { "include": "#value-word" },
+    { "include": "#keyword" },
+    { "include": "#number" },
+    { "include": "#name" }
+  ],
+  "repository": {
+    "comment": {
+      "match": "#.*$",
+      "name": "comment.line.number-sign.sl"
+    },
+    "string": {
+      "match": "\"[^\"]*\"",
+      "name": "string.quoted.double.sl"
+    },
+    "annotation": {
+      "match": "(?<!\\S)(@lens|@pos|@directed)\\b",
+      "name": "storage.modifier.annotation.sl"
+    },
+    "arrow": {
+      "match": "->",
+      "name": "keyword.operator.arrow.sl"
+    },
+    "declaration-head": {
+      "match": "(?i)^\\s*(system|domain|description|time|level|component|source|sink|environment|interface|milieu|flow|param|metric|boundary)\\b",
+      "name": "keyword.control.sl"
+    },
+    "kind-value": {
+      "patterns": [
+        { "match": "(?i)\\b(energy)\\b", "name": "constant.language.kind.energy.sl" },
+        { "match": "(?i)\\b(matter)\\b", "name": "constant.language.kind.matter.sl" },
+        { "match": "(?i)\\b(field)\\b", "name": "constant.language.kind.field.sl" },
+        { "match": "(?i)\\b(informational)\\b", "name": "constant.language.kind.informational.sl" }
+      ]
+    },
+    "value-word": {
+      "match": "(?i)\\b(Conceptual|Concrete|Combining|Splitting|Buffering|Impeding|Propelling|Copying|Sensing|Modulating|Amplifying|Inverting|Nominal|Ordinal|Interval|Ratio)\\b",
+      "name": "support.constant.sl"
+    },
+    "keyword": {
+      "match": "(?i)\\b(system|domain|component|source|sink|environment|flow|boundary|interface|milieu|value|protocol|primitive|decomposes|stock|scale|states|kind|time|unit|level|mere|weight|substance|amount|initial|release|capacity|setpoint|maintenance|backpressure|description|usability|porosity|fuzziness|energy|matter|field|informational|param|metric|ample|range|shares|from|share|of|sum|into|klir|bunge|mobus|constant)\\b",
+      "name": "keyword.other.sl"
+    },
+    "number": {
+      "match": "(?<![\\w.])-?\\d+(\\.\\d+)?([eE][+-]?\\d+)?\\b",
+      "name": "constant.numeric.sl"
+    },
+    "name": {
+      "match": "\\b[A-Za-z_][A-Za-z0-9_-]*\\b",
+      "name": "entity.name.type.sl"
+    }
+  }
+}

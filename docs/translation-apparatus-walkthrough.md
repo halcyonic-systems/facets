@@ -1,6 +1,6 @@
 # The translation apparatus, running — walkthrough for 2026-08-19
 
-Status: CURRENT as of 2026-08-18 (post #345 bench, milieu E=⟨O,M⟩, and the
+**Status: LIVE** — current as of 2026-08-18 (post #345 bench, milieu E=⟨O,M⟩, and the
 fresh-eyes polish pass — descriptions and units now authored on every element).
 Every number below is reproducible:
 `cargo run -p bert-cli -- run assets/examples/translation-apparatus.sl --t 15`.
