@@ -423,8 +423,8 @@ input[type="range"]:focus-visible {
   background: var(--bg-primary);
   color: var(--text-secondary);
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.75rem;
-  line-height: 1.625;
+  font-size: 0.8125rem;
+  line-height: 1.375rem;
 }
 .sl-editor .cm-editor.cm-focused {
   outline: none;
@@ -481,7 +481,7 @@ input[type="range"]:focus-visible {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
-  line-height: 1.625rem;
+  line-height: 1.375rem;
 }
 .sl-editor .sl-glyph-gutter {
   width: 1.1rem;
@@ -491,7 +491,7 @@ input[type="range"]:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 1.625rem;
+  height: 1.375rem;
   color: var(--text-muted);
 }
 .sl-glyph-error {
@@ -510,4 +510,9 @@ input[type="range"]:focus-visible {
 .sl-glyph-kind-informational { color: var(--kind-informational); }
 .sl-align-pad {
   display: inline-block;
+}
+
+.sl-pane-resize:hover,
+.sl-pane-resize:active {
+  background: var(--accent-soft);
 }
