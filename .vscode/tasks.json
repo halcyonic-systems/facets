@@ -1,0 +1,28 @@
+{
+  // ⌘⇧B on a .sl file: compile through the kernel, faults land in the
+  // Problems panel and as squiggles at their lines. The matcher eats the
+  // CLI's own `file:line: message` stderr shape — the kernel's real
+  // messages, no paraphrase. (The LSP tier of bert-lenses#353 supersedes
+  // this with as-you-type diagnostics; this is the one-keystroke version.)
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "bert: compile SL (current file)",
+      "type": "shell",
+      "command": "cargo run --quiet -p bert-cli --bin bert -- compile ${file}",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "silent", "clear": true },
+      "problemMatcher": {
+        "owner": "sl",
+        "fileLocation": "absolute",
+        "pattern": {
+          "regexp": "^(.*\\.sl):(\\d+): (.*)$",
+          "file": 1,
+          "line": 2,
+          "message": 3
+        }
+      }
+    }
+  ]
+}

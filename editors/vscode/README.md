@@ -23,6 +23,15 @@ Or symlink into your extensions directory:
 ln -s "$(pwd)/editors/vscode" ~/.vscode/extensions/halcyonic.sl-language-0.1.0
 ```
 
+## Compile from the editor
+
+With the repo open as the workspace, `⌘⇧B` on a `.sl` file runs
+`bert compile` on it (`.vscode/tasks.json`). Faults appear in the Problems
+panel and as squiggles at their lines, carrying the kernel's own messages.
+There is no rendered preview and none is planned: the app is the preview
+surface, and the ladder's LSP tier (bert-lenses#353) is the as-you-type
+version of this task.
+
 ## Scopes
 
 Stock themes render these out of the box; a theme can target the KIND value

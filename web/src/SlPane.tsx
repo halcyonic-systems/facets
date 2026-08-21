@@ -67,8 +67,50 @@ interface SlPaneProps {
   };
 }
 
+const PANE_WIDTH_KEY = "sl-pane-width";
+const PANE_WIDTH_DEFAULT = 480;
+const PANE_WIDTH_MIN = 320;
+const PANE_WIDTH_MAX = 960;
+
+function clampPaneWidth(w: number): number {
+  return Number.isFinite(w) ? Math.min(PANE_WIDTH_MAX, Math.max(PANE_WIDTH_MIN, w)) : PANE_WIDTH_DEFAULT;
+}
+
+function initialPaneWidth(): number {
+  try {
+    const stored = Number(localStorage.getItem(PANE_WIDTH_KEY));
+    return stored ? clampPaneWidth(stored) : PANE_WIDTH_DEFAULT;
+  } catch {
+    return PANE_WIDTH_DEFAULT;
+  }
+}
+
+function persistPaneWidth(w: number) {
+  try {
+    localStorage.setItem(PANE_WIDTH_KEY, String(w));
+  } catch {
+    // private mode etc. — the width just won't survive a reload
+  }
+}
+
 export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel, chain, selection, coauthor }: SlPaneProps) {
   const [mode, setMode] = useState<Mode>("sl");
+  // Room to breathe: the pane is drag-resizable at its right edge (SL reads
+  // best when flow lines don't fold), remembered across sessions.
+  const [paneWidth, setPaneWidth] = useState(initialPaneWidth);
+  function startResize(e: React.PointerEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = paneWidth;
+    const move = (ev: PointerEvent) => setPaneWidth(clampPaneWidth(startW + ev.clientX - startX));
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      persistPaneWidth(clampPaneWidth(startW + ev.clientX - startX));
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
   // Faults describe the text as of their compile; once the author types past
   // them they are history, not the present — dimmed and labeled, never
   // silently persisted as if still true. Cleared whenever a fresh fault list
@@ -142,9 +184,18 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
 
   return (
     <aside
-      className="flex w-96 min-w-0 flex-col border-r"
-      style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
+      className="relative flex min-w-0 flex-col border-r"
+      style={{ width: paneWidth, borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
     >
+      <div
+        className="sl-pane-resize absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize"
+        title="Drag to resize · double-click to reset"
+        onPointerDown={startResize}
+        onDoubleClick={() => {
+          setPaneWidth(PANE_WIDTH_DEFAULT);
+          persistPaneWidth(PANE_WIDTH_DEFAULT);
+        }}
+      />
       <div
         className="flex items-center justify-between border-b px-3 py-2"
         style={{ borderColor: "var(--hairline)" }}

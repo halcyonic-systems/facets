@@ -78,7 +78,8 @@ export function SlEditor({
           alignExtension,
           errorLinesField,
           errorDecorations,
-          EditorView.lineWrapping,
+          // No line wrapping: SL reads columnar (bands, aligned arrows), so
+          // long lines scroll horizontally the way they do in a code editor.
           EditorView.updateListener.of((u) => {
             if (u.docChanged) {
               const text = u.state.doc.toString();
