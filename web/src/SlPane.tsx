@@ -48,6 +48,13 @@ interface SlPaneProps {
    *  and a pane with no model to analyze has no chain to show. `text` and
    *  `model` come from the props above — only the kernel outputs are passed. */
   chain?: Omit<SlChainProps, "text" | "model">;
+  /** Tier 4 (#353): shared selection over names. The parent owns both maps
+   *  (name↔id from the compiled model, name↔line from the text); this pane
+   *  only forwards the editor's cursor line up and a focus request down. */
+  selection?: {
+    onCursorLine: (line: number) => void;
+    focusLine: { line: number; nonce: number } | null;
+  };
   coauthor?: {
     turns: CoauthorTurn[];
     /** `onStage` is #218's progress feed — the parent's draft call reports
@@ -86,7 +93,7 @@ function persistPaneWidth(w: number) {
   }
 }
 
-export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel, chain, coauthor }: SlPaneProps) {
+export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel, chain, selection, coauthor }: SlPaneProps) {
   const [mode, setMode] = useState<Mode>("sl");
   // Room to breathe: the pane is drag-resizable at its right edge (SL reads
   // best when flow lines don't fold), remembered across sessions.
@@ -230,6 +237,8 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
               setEditedSinceCompile(true);
             }}
             onCompile={() => compile()}
+            onCursorLine={selection?.onCursorLine}
+            focusLine={selection?.focusLine ?? null}
           />
           {errors.length > 0 && (
             <div
