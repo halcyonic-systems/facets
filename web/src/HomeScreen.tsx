@@ -410,7 +410,7 @@ function LedgerRow({
 // ---------------------------------------------------------------------------
 
 const LEDE =
-  "A modeling and simulation instrument for systems. Draw a system on the canvas or write it in SL; the kernel judges it under Klir, Bunge, and Mobus.";
+  "Build a model of a system and see whether it holds. Draw it on the canvas or write it in SL; every verdict cites the rule it rests on, and a model that holds can run against your data.";
 
 export function HomeMenu({
   onCreate,

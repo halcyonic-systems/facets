@@ -5,110 +5,99 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Facets</title>
 <link rel="icon" href="/chat/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  /* Portal for facets.systems — two doors: Chat and Model. Deliberately neutral:
-     it borrows the chat face's warm ground and the model face's teal accent
-     without committing either as the house style (design reconciliation is a
-     tracked follow-on). Straight edges, light, no framework. */
+  /* Portal for facets.systems — two doors. Halcyonic Frost: cool light ground,
+     teal + indigo accents, Cormorant Garamond display over Inter. Straight edges. */
   :root {
-    --ground: #f7f4ef;
-    --ink: #1c1a16;
-    --ink-soft: #5c574e;
-    --border: #ddd8cf;
-    --card: #fffdf9;
-    --accent-chat: #8a6a3a;
-    --accent-model: #0d9488;
+    --ground: #f8fafc;
+    --ink: #0f172a;
+    --ink-soft: #475569;
+    --border: #e2e8f0;
+    --card: #ffffff;
+    --teal: #0d9488;
+    --indigo: #6366f1;
   }
   * { box-sizing: border-box; margin: 0; }
   body {
     background: var(--ground);
     color: var(--ink);
-    font-family: ui-serif, Georgia, "Times New Roman", serif;
+    font-family: "Inter", system-ui, sans-serif;
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 2rem 1.25rem;
   }
-  main { max-width: 46rem; width: 100%; }
+  main { max-width: 44rem; width: 100%; }
   h1 {
-    font-size: 2.6rem;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 3.2rem;
     font-weight: 600;
-    letter-spacing: 0.01em;
+    line-height: 1.1;
   }
   .tagline {
-    margin-top: 0.6rem;
+    margin-top: 0.5rem;
     color: var(--ink-soft);
     font-size: 1.05rem;
-    line-height: 1.5;
+    line-height: 1.55;
+    max-width: 34rem;
   }
   .doors {
-    margin-top: 2.5rem;
+    margin-top: 2.25rem;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1.25rem;
+    gap: 1.1rem;
   }
   @media (max-width: 34rem) { .doors { grid-template-columns: 1fr; } }
   .door {
     display: block;
     border: 1px solid var(--border);
-    border-top: 3px solid var(--door-accent);
     background: var(--card);
-    padding: 1.4rem 1.5rem 1.5rem;
+    padding: 1.35rem 1.4rem 1.45rem;
     text-decoration: none;
     color: inherit;
   }
   a.door:hover { border-color: var(--door-accent); }
   .door h2 {
-    font-size: 1.35rem;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 1.6rem;
     font-weight: 600;
   }
   .door p {
-    margin-top: 0.55rem;
+    margin-top: 0.5rem;
     color: var(--ink-soft);
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     line-height: 1.55;
   }
   .door .go {
     display: inline-block;
-    margin-top: 0.9rem;
-    font-size: 0.9rem;
+    margin-top: 0.85rem;
+    font-size: 0.85rem;
     font-weight: 600;
+    letter-spacing: 0.01em;
     color: var(--door-accent);
   }
-  .door.dark {
-    background: transparent;
-    border-style: dashed;
-    border-top-style: solid;
-  }
+  .door.dark { background: transparent; border-style: dashed; }
   .door.dark .go { color: var(--ink-soft); font-weight: 500; }
-  footer {
-    margin-top: 3rem;
-    font-size: 0.85rem;
-    color: var(--ink-soft);
-  }
-  footer a { color: inherit; }
 </style>
 </head>
 <body>
 <main>
   <h1>Facets</h1>
-  <p class="tagline">One instrument for systems science: ask questions grounded in the
-  formal core, or build and run models through the traditions&rsquo; lenses.</p>
+  <p class="tagline">Two ways to make sense of any system: ask, or build.</p>
 
   <div class="doors">
-    <a class="door" href="/chat/" style="--door-accent: var(--accent-chat)">
+    <a class="door" href="/chat/" style="--door-accent: var(--indigo)">
       <h2>Chat</h2>
-      <p>Ask a question. See which facets of systems science it touches &mdash; answers
-      grounded in the primary texts, one synthesis across five lenses.</p>
+      <p>Ask about any system, real or imagined. Answers draw on the major
+      traditions of systems science and show you where they come from.</p>
       <span class="go">Ask &rarr;</span>
     </a>
     <div id="model-door"></div>
   </div>
-
-  <footer>
-    <a href="https://halcyonic.systems">Halcyonic Systems</a>
-  </footer>
 </main>
 <script>
   // Flipped to true by publish-site.sh --with-model; until then the Model door
@@ -116,16 +105,16 @@
   var MODEL_LIVE = false;
   var el = document.getElementById('model-door');
   if (MODEL_LIVE) {
-    el.outerHTML = '<a class="door" href="/model/" style="--door-accent: var(--accent-model)">'
+    el.outerHTML = '<a class="door" href="/model/" style="--door-accent: var(--teal)">'
       + '<h2>Model</h2>'
-      + '<p>Draw a system on the canvas, audit it through the Klir, Bunge, and Mobus '
-      + 'lenses, and run it &mdash; entirely in your browser.</p>'
+      + '<p>Draw a system on a canvas, check that it holds together, and run it. '
+      + 'Everything happens in your browser.</p>'
       + '<span class="go">Build &rarr;</span></a>';
   } else {
-    el.outerHTML = '<div class="door dark" style="--door-accent: var(--accent-model)">'
+    el.outerHTML = '<div class="door dark" style="--door-accent: var(--teal)">'
       + '<h2>Model</h2>'
-      + '<p>Draw a system on the canvas, audit it through the Klir, Bunge, and Mobus '
-      + 'lenses, and run it &mdash; entirely in your browser.</p>'
+      + '<p>Draw a system on a canvas, check that it holds together, and run it. '
+      + 'Everything happens in your browser.</p>'
       + '<span class="go">Coming soon</span></div>';
   }
 </script>
