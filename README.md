@@ -1,13 +1,20 @@
-# bert-lenses
+# Facets
 
 **Describe a system — draw it on a canvas, write it in SL, or draft it with an
 LLM. A formal kernel then judges whether what you described holds as a *system*,
 and cites the rule when it doesn't.**
 
+Facets is one instrument with two doors, served at
+[facets.systems](https://facets.systems): **Chat** asks questions of the
+systems-science corpus through the [General Systems Reasoner](https://github.com/halcyonic-systems/general-systems-reasoner)
+(client in [`chat/`](chat/)), and **Model** — most of this repository — builds
+and runs the models. The name changed in August 2026; this codebase was
+`bert-lenses`, and the kernel crates still carry that name.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
-[![CI](https://github.com/halcyonic-systems/bert-lenses/actions/workflows/ci.yml/badge.svg)](https://github.com/halcyonic-systems/bert-lenses/actions/workflows/ci.yml)
-[![wasm boundary](https://github.com/halcyonic-systems/bert-lenses/actions/workflows/wasm-exec.yml/badge.svg)](https://github.com/halcyonic-systems/bert-lenses/actions/workflows/wasm-exec.yml)
-[![Lean provenance](https://github.com/halcyonic-systems/bert-lenses/actions/workflows/lean-provenance.yml/badge.svg)](https://github.com/halcyonic-systems/bert-lenses/actions/workflows/lean-provenance.yml)
+[![CI](https://github.com/halcyonic-systems/facets/actions/workflows/ci.yml/badge.svg)](https://github.com/halcyonic-systems/facets/actions/workflows/ci.yml)
+[![wasm boundary](https://github.com/halcyonic-systems/facets/actions/workflows/wasm-exec.yml/badge.svg)](https://github.com/halcyonic-systems/facets/actions/workflows/wasm-exec.yml)
+[![Lean provenance](https://github.com/halcyonic-systems/facets/actions/workflows/lean-provenance.yml/badge.svg)](https://github.com/halcyonic-systems/facets/actions/workflows/lean-provenance.yml)
 
 <!-- SCREENSHOT SLOT (#252) ────────────────────────────────────────────────
      One image, here: a refusal on screen in the verdict panel, with the model
@@ -317,7 +324,7 @@ The `justfile` is the entry point. Rust is the brain (wasm), `web/` is the face;
 crate change must never silently serve stale wasm.
 
 There's no back end and no IPC: the kernel runs synchronously in the browser tab
-(wasm-bindgen), so bert-lenses runs in a browser, on mobile, and inside
+(wasm-bindgen), so the instrument runs in a browser, on mobile, and inside
 Claude-in-Chrome. `src-tauri/` hosts the *same* `web/dist` as a macOS app — a
 window, no second code path.
 
@@ -485,7 +492,7 @@ read-only LLM analysis rung shipped 2026-07-17 (deterministic #66 graph checks +
 an Analyst panel that narrates kernel facts through GSR, read-only). The prior
 egui app lives on the `pre-web-rebuild` tag / `archive/egui-app` branch.
 
-**Live status and roadmap → [bert-lenses Roadmap board](https://github.com/orgs/halcyonic-systems/projects/12).**
+**Live status and roadmap → [Facets Roadmap board](https://github.com/orgs/halcyonic-systems/projects/12).**
 
 The instrument is one of the two faces of the K≅2 kernel: the *structural* face
 (author/validate) and the *dynamical* face (`bert-compose`, run), united here in
