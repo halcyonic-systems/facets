@@ -8,12 +8,19 @@
 <meta property="og:title" content="Facets — Systems Reasoning Engine">
 <meta property="og:description" content="Ask a question. See which facets of systems science it touches.">
 <script>
-  // GitHub Pages SPA fallback. This file must stay a stub — app code lives ONLY in
-  // index.html. (Its previous life as a full copy drifted 160+ lines behind and served
-  // stale UI on every /a/<id> permalink.) Stash the deep link, bounce to the shell;
-  // index.html restores the path via history.replaceState before routing.
-  sessionStorage.setItem('facets-deep-link', location.pathname + location.search);
-  location.replace('/');
+  // GitHub Pages SPA fallback, deployed at the SITE ROOT of facets.systems (Pages
+  // serves one 404 per site). This file must stay a stub — app code lives ONLY in
+  // chat/index.html. (Its previous life as a full copy drifted 160+ lines behind and
+  // served stale UI on every /a/<id> permalink.) Chat deep links (/chat/a/<id>,
+  // /chat/c/<id>) are stashed and bounced to the chat shell, which restores the path
+  // via history.replaceState before routing; anything else bounces to the portal.
+  var p = location.pathname + location.search;
+  if (location.pathname.indexOf('/chat/') === 0) {
+    sessionStorage.setItem('facets-deep-link', p);
+    location.replace('/chat/');
+  } else {
+    location.replace('/');
+  }
 </script>
 </head>
 <body></body>

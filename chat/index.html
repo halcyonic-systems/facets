@@ -1738,11 +1738,11 @@
 <script>
 // ══════════════════════════════════════════
 // FACETS — Chat Pipeline (Refactored)
-// No landing page. Welcome state in chat panel.
+// Served at /chat/ under the facets.systems portal. Welcome state in chat panel.
 // Tab-locked responses. No duplicate submissions.
 // ══════════════════════════════════════════
 
-const API = (window.location.hostname === 'localhost' || window.location.protocol === 'file:')
+const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')
   ? 'http://localhost:5010' : 'https://reasoner.halcyonic.systems';
 
 // Read-only shared-answer mode (/a/<id>): render a stored snapshot, suppress re-run affordances,
@@ -2268,7 +2268,7 @@ function init() {
   }
   // Shared-answer permalink (/a/<id>): set read-only and short-circuit BEFORE any tab bootstrap,
   // so loadTabs/createTab/saveTabs never persist a blank tab to the recipient's local history.
-  const shareMatch = window.location.pathname.match(/^\/a\/([A-Za-z0-9_-]+)$/);
+  const shareMatch = window.location.pathname.match(/^\/chat\/a\/([A-Za-z0-9_-]+)$/);
   if (shareMatch) {
     READONLY = true;
     renderSharedAnswer(shareMatch[1]);
@@ -2353,7 +2353,7 @@ function showSharedBanner() {
     + 'padding:.55rem .9rem;margin:.5rem 0;border:1px solid #d4ddd8;background:#eef3f1;'
     + 'border-radius:8px;font-size:.82rem;color:#3a4a45;';
   banner.innerHTML = '<span>Shared answer · read-only snapshot</span>'
-    + '<a href="/" style="color:#2f7a68;font-weight:600;text-decoration:none;white-space:nowrap;">Ask your own →</a>';
+    + '<a href="/chat/" style="color:#2f7a68;font-weight:600;text-decoration:none;white-space:nowrap;">Ask your own →</a>';
   chatEl.parentNode.insertBefore(banner, chatEl);
 }
 
@@ -2387,7 +2387,7 @@ function saveTabs() {
 function pushConversationUrl() {
   const tab = getTab();
   if (tab && tab.messages.some(m => m.role === 'user')) {
-    const path = '/c/' + tab.id;
+    const path = '/chat/c/' + tab.id;
     if (window.location.pathname !== path) {
       history.pushState({ tabId: tab.id }, '', path);
     }
@@ -2395,7 +2395,7 @@ function pushConversationUrl() {
 }
 
 function restoreFromUrl() {
-  const match = window.location.pathname.match(/^\/c\/(.+)$/);
+  const match = window.location.pathname.match(/^\/chat\/c\/(.+)$/);
   if (match) {
     const tabId = match[1];
     const tab = tabs.find(t => t.id === tabId);
@@ -2413,7 +2413,7 @@ window.addEventListener('popstate', (e) => {
     if (tab) { switchTab(e.state.tabId); return; }
   }
   const restored = restoreFromUrl();
-  if (!restored && window.location.pathname === '/') {
+  if (!restored && (window.location.pathname === '/chat/' || window.location.pathname === '/chat')) {
     renderTabs();
     renderMessages();
   }
@@ -2452,7 +2452,7 @@ function switchTab(id) {
   renderMessages();
   const tab = tabs.find(t => t.id === id);
   if (tab && tab.messages.some(m => m.role === 'user')) {
-    history.pushState({ tabId: id }, '', '/c/' + id);
+    history.pushState({ tabId: id }, '', '/chat/c/' + id);
   } else {
     history.pushState(null, '', '/');
   }
@@ -2762,7 +2762,7 @@ function renderMessages() {
         shareBtn.className = 'msg-copy-btn';
         shareBtn.textContent = 'Share';
         shareBtn.onclick = () => {
-          const url = window.location.origin + '/a/' + m.meta.answer_id;
+          const url = window.location.origin + '/chat/a/' + m.meta.answer_id;
           navigator.clipboard.writeText(url).then(() => {
             shareBtn.textContent = '✓ Link copied';
             setTimeout(() => { shareBtn.textContent = 'Share'; }, 2000);
@@ -3463,7 +3463,7 @@ function appendDrillShare(bodyEl, answerId) {
   shareBtn.className = 'msg-copy-btn';
   shareBtn.textContent = 'Share';
   shareBtn.onclick = () => {
-    const url = window.location.origin + '/a/' + answerId;
+    const url = window.location.origin + '/chat/a/' + answerId;
     navigator.clipboard.writeText(url).then(() => {
       shareBtn.textContent = '✓ Link copied';
       setTimeout(() => { shareBtn.textContent = 'Share'; }, 2000);
@@ -3634,7 +3634,7 @@ document.getElementById('share-link-btn').addEventListener('click', () => {
     document.getElementById('export-menu').classList.remove('open');
     return;
   }
-  const url = window.location.origin + '/a/' + lastShared.meta.answer_id;
+  const url = window.location.origin + '/chat/a/' + lastShared.meta.answer_id;
   navigator.clipboard.writeText(url).then(() => {
     btn.textContent = 'Link copied!';
     setTimeout(() => { btn.textContent = 'Copy share link'; }, 1500);

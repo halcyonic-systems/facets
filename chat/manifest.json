@@ -1,9 +1,9 @@
 {
-  "name": "Facets — Systems Reasoning Engine",
-  "short_name": "Facets",
+  "name": "Facets Chat — Systems Reasoning Engine",
+  "short_name": "Facets Chat",
   "description": "Ask a question. See which facets of systems science it touches.",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "/chat/",
+  "scope": "/chat/",
   "display": "standalone",
   "background_color": "#f7f4ef",
   "theme_color": "#f7f4ef",

@@ -3,7 +3,10 @@
 // Strategy: network-first for navigations (so shared /a/<id> links + updates stay fresh),
 // stale-while-revalidate for the static font/KaTeX assets, cache-first for our own icons.
 
-const CACHE = 'facets-shell-v1';
+// v2: the facets.systems merge — chat moved to /chat/ under the portal. Bump this
+// name on any structural change; the precached shell only refreshes when sw.js's
+// bytes change, so an unbumped cache serves the old UI to offline users forever.
+const CACHE = 'facets-shell-v2';
 const CORE = [
   './',
   './index.html',
