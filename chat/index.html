@@ -1,0 +1,3781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Facets — Systems Reasoning Engine</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233a6e62' stroke-width='2' fill='%23f7f4ef'/%3E%3C/svg%3E">
+<meta name="description" content="A systems reasoning engine. Every question decomposed through eight structural dimensions — Components, Network, Environment, Flows, Boundary, Transforms, History, Time Scale.">
+<meta property="og:title" content="Facets — Systems Reasoning Engine">
+<meta property="og:description" content="Ask a question. See which facets of systems science it touches.">
+<meta name="theme-color" content="#f7f4ef">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Facets">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1c1a16;
+    --ink-dim: #4a4640;
+    --ink-faint: #736e66;
+    --ground: #f7f4ef;
+    --ground-raised: #f0ece4;
+    --ground-border: #ddd8cf;
+    --accent: #8a6a3a;
+    --accent-dim: #b8966a;
+    --flow: #3a6e62;
+    --flow-bright: #2d5a50;
+    --dim-C: #2e7d5e;
+    --dim-N: #2a6299;
+    --dim-E: #8a6840;
+    --dim-G: #a04a6a;
+    --dim-B: #7044a0;
+    --dim-T: #1f6e56;
+    --dim-H: #7a5e0f;
+    --dim-Dt: #1a5e82;
+    /* SPT mode colors */
+    --dim-FB: #b04040;
+    --dim-FL: #3a8fb0;
+    --dim-CY: #7a5ebf;
+    --dim-EM: #d4872a;
+    --dim-EV: #2a8e5a;
+    --dim-NW: #5a6eb0;
+    --dim-DU: #9a5480;
+    --dim-CH: #c45030;
+    --dim-DG: #6a6a6a;
+    /* Klir mode colors */
+    --dim-TH: #6b5a3e;
+    --dim-SY: #2e5e8a;
+    --dim-SR: #4a7a8a;
+    --dim-DA: #5a8a4a;
+    --dim-GN: #8a4a7a;
+    --dim-ST: #4a5a9a;
+    --dim-MT: #a06a2a;
+    /* Bunge mode colors (C, E, B shared with Mobus) */
+    --dim-S: #5a4a8a;
+    --dim-L: #2a7a6a;
+    --dim-M: #b05a30;
+    /* CT mode colors (C shared with Mobus/Bunge) */
+    --dim-I: #3a7a9a;
+    --dim-W: #6a4d8f;
+    --dim-F: #b0562a;
+    --dim-O: #9a4a70;
+    --dim-D: #6b6b3e;
+    --serif: 'Newsreader', Georgia, serif;
+    --display: 'Fraunces', Georgia, serif;
+    /* UI chrome font — humanist sans (was JetBrains Mono; de-AI pass 2026-07-01) */
+    --ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    font-family: var(--serif);
+    background: var(--ground);
+    color: var(--ink);
+    min-height: 100vh;
+    min-height: 100dvh;
+    line-height: 1.6;
+  }
+
+  /* ══════════════════════════════════════════
+     CHAT WELCOME STATE (empty tab)
+     ══════════════════════════════════════════ */
+  .chat-welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 1;
+    padding: 0 24px 24px;
+    text-align: center;
+  }
+  .chat-welcome svg {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 16px;
+  }
+  .chat-welcome-title {
+    font-family: var(--display);
+    font-size: 2rem;
+    font-weight: 300;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .chat-welcome-tagline {
+    font-family: var(--display);
+    font-size: 1.05rem;
+    color: var(--flow);
+    letter-spacing: 0.03em;
+    margin-bottom: 6px;
+  }
+  .chat-welcome-subline {
+    font-family: var(--ui);
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+    margin-bottom: 28px;
+    letter-spacing: 0.02em;
+  }
+  .chat-welcome-example {
+    width: 100%;
+    max-width: 560px;
+    margin-top: 20px;
+    text-align: left;
+  }
+  .example-label {
+    font-family: var(--ui);
+    font-size: 0.58rem;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+    text-align: center;
+    opacity: 0.7;
+  }
+  .example-query {
+    font-family: var(--serif);
+    font-size: 0.85rem;
+    color: var(--ink-dim);
+    background: var(--ground-raised);
+    padding: 6px 12px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    display: inline-block;
+  }
+  .example-card {
+    background: white;
+    border: 1px solid var(--ground-border);
+    border-radius: 10px;
+    padding: 14px 18px;
+  }
+  .example-card .msg-tldr { border-left: 3px solid var(--flow); padding-left: 12px; }
+  .example-card .msg-tldr p { font-family: var(--serif); font-size: 0.88rem; line-height: 1.6; color: var(--ink-dim); margin: 4px 0; }
+  .example-card .msg-tldr ul { font-family: var(--serif); font-size: 0.88rem; line-height: 1.6; color: var(--ink-dim); padding-left: 18px; }
+  .example-card .msg-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
+  .example-card .msg-tag-dim {
+    font-family: var(--ui);
+    font-size: 0.6rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--ground-border);
+    color: var(--ink-faint);
+  }
+  .example-card .evidence-toggle {
+    font-family: var(--ui);
+    font-size: 0.6rem;
+    color: var(--ink-faint);
+    background: none;
+    border: none;
+    margin-top: 8px;
+    cursor: default;
+  }
+  .chat-welcome-name { margin-top: 16px; }
+  .welcome-name-input {
+    font-family: var(--ui);
+    font-size: 0.72rem;
+    color: var(--ink-dim);
+    background: var(--ground);
+    border: 1px solid var(--ground-border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    text-align: center;
+    outline: none;
+    width: 180px;
+    transition: border-color 0.2s ease;
+  }
+  .welcome-name-input:focus { border-color: var(--flow); }
+  .welcome-name-input::placeholder { color: var(--ink-faint); }
+  .name-gate-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 26, 22, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .name-gate-card {
+    background: var(--ground);
+    border: 1px solid var(--ground-border);
+    border-radius: 12px;
+    padding: 32px;
+    max-width: 360px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  }
+  .name-gate-card h3 {
+    font-family: var(--display);
+    font-size: 1.3rem;
+    color: var(--ink);
+    margin: 0 0 8px 0;
+  }
+  .name-gate-card p {
+    font-family: var(--serif);
+    font-size: 0.85rem;
+    color: var(--ink-dim);
+    margin: 0 0 20px 0;
+    line-height: 1.5;
+  }
+  .name-gate-input {
+    font-family: var(--ui);
+    font-size: 0.82rem;
+    color: var(--ink);
+    background: white;
+    border: 1px solid var(--ground-border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    width: 100%;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 12px;
+  }
+  .name-gate-input:focus { border-color: var(--flow); }
+  .name-gate-btn {
+    font-family: var(--ui);
+    font-size: 0.75rem;
+    color: white;
+    background: var(--flow);
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    cursor: pointer;
+    width: 100%;
+    transition: opacity 0.2s;
+  }
+  .name-gate-btn:disabled { opacity: 0.4; cursor: default; }
+  .name-gate-btn:hover:not(:disabled) { opacity: 0.85; }
+  .name-gate-actions { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+  .name-gate-actions .name-gate-btn { width: auto; flex: 1; margin: 0; }
+  .name-gate-skip {
+    font-family: var(--ui); font-size: 0.72rem; color: var(--ink-faint);
+    background: none; border: none; padding: 10px 8px; cursor: pointer; white-space: nowrap;
+  }
+  .name-gate-skip:hover { color: var(--ink-dim); }
+  .chat-welcome-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    max-width: 520px;
+  }
+  .chip {
+    font-family: var(--serif);
+    font-size: 0.85rem;
+    color: var(--ink-dim);
+    background: var(--ground-raised);
+    border: 1px solid var(--ground-border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  .chip:hover {
+    border-color: var(--flow);
+    color: var(--flow);
+    background: rgba(58, 110, 98, 0.06);
+  }
+
+  /* ══════════════════════════════════════════
+     MAIN LAYOUT
+     ══════════════════════════════════════════ */
+  .page {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .diagram-toggle-btn {
+    font-family: var(--serif);
+    font-size: 0.82rem;
+    color: var(--ink-dim);
+    background: none;
+    border: 1px solid var(--ground-border);
+    border-radius: 4px;
+    padding: 3px 10px;
+    cursor: pointer;
+    margin-left: 12px;
+  }
+  .diagram-toggle-btn:hover { color: var(--flow); border-color: var(--flow); }
+
+  .diagram-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+  .diagram-header svg {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+  .diagram-header h1 {
+    font-family: var(--display);
+    font-size: 1.6rem;
+    font-weight: 400;
+    color: var(--ink);
+    letter-spacing: 0.01em;
+  }
+  .diagram-tagline {
+    font-family: var(--display);
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: var(--flow);
+    letter-spacing: 0.03em;
+    margin-bottom: 8px;
+  }
+  .diagram-subtitle {
+    font-family: var(--serif);
+    font-size: 0.85rem;
+    color: var(--ink-dim);
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+  .diagram-attribution {
+    font-family: var(--ui);
+    font-size: 0.68rem;
+    color: var(--ink-faint);
+    margin-bottom: 28px;
+    letter-spacing: 0.02em;
+    padding-top: 8px;
+    border-top: 1px solid var(--ground-border);
+  }
+
+  .flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .arrow {
+    width: 1px;
+    height: 24px;
+    background: var(--ground-border);
+    position: relative;
+  }
+  .arrow::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid var(--ground-border);
+    transition: border-top-color 0.4s ease;
+  }
+  .section.hl + .arrow { background: var(--flow); }
+  .section.hl + .arrow::after { border-top-color: var(--flow); }
+  .flow-note {
+    font-family: var(--ui);
+    font-size: 0.72rem;
+    color: var(--ink-faint);
+    text-align: center;
+    padding: 3px 0;
+    letter-spacing: 0.02em;
+  }
+
+  .intensity-badge {
+    font-family: var(--ui);
+    font-size: 0.68rem;
+    font-weight: 500;
+    padding: 3px 12px;
+    border-radius: 20px;
+    background: var(--ground);
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 1.5px solid var(--ground-border);
+    transition: all 0.35s ease;
+  }
+  .intensity-badge.full {
+    background: rgba(58, 110, 98, 0.08);
+    color: var(--flow);
+    border-color: var(--flow);
+  }
+  .intensity-badge.light {
+    background: rgba(138, 106, 58, 0.08);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .reasoning-text {
+    font-family: var(--serif);
+    font-size: 0.88rem;
+    color: var(--ink);
+    line-height: 1.65;
+    flex: 1;
+  }
+
+  .mono-tag {
+    display: inline-block;
+    font-family: var(--ui);
+    font-size: 0.69rem;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 10px;
+    margin-top: 4px;
+    background: rgba(138, 106, 58, 0.1);
+    color: var(--accent);
+  }
+
+  .output-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #fff;
+    border: 1px solid var(--ground-border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    flex-wrap: wrap;
+  }
+  .out-badge {
+    font-family: var(--ui);
+    font-size: 0.69rem;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+  .out-badge-route  { background: rgba(138, 106, 58, 0.1); color: var(--accent); }
+  .out-badge-conf   { background: rgba(58, 110, 98, 0.1); color: var(--flow); }
+  .out-badge-dim    { background: rgba(58, 110, 98, 0.08); color: var(--flow-bright); }
+  /* gsr#37 grounding signal: corpus-backed vs parametric spans in Facets synthesis */
+  .grounding-badge {
+    display: inline-block;
+    font-family: var(--ui);
+    font-size: 0.66rem;
+    font-weight: 500;
+    padding: 1px 7px;
+    margin: 0 2px;
+    border-radius: 8px;
+    white-space: nowrap;
+    vertical-align: middle;
+    cursor: help;
+  }
+  .grounding-badge-grounded { background: rgba(58, 110, 98, 0.12); color: var(--flow-bright); }
+  .grounding-badge-ungrounded { background: rgba(180, 90, 60, 0.12); color: #a5502f; }
+  .out-label {
+    font-family: var(--ui);
+    font-size: 0.69rem;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Top nav bar ── */
+  .topnav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 20px;
+    border-bottom: 1px solid var(--ground-border);
+    background: var(--ground);
+    grid-column: 1 / -1;
+  }
+  .topnav-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .topnav-left:hover { opacity: 0.7; }
+  .topnav-left svg { width: 22px; height: 22px; }
+  .topnav-left span {
+    font-family: var(--display);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .topnav-links {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+  .topnav-links a {
+    font-family: var(--ui);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .topnav-links a:hover { color: var(--accent); }
+
+  /* ── Chat pane ── */
+  .chat-pane {
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 41px);
+    height: calc(100dvh - 41px);
+    max-width: 760px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .chat-header {
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--ground-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .chat-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .chat-header-left svg { width: 24px; height: 24px; flex-shrink: 0; }
+  .chat-header-left h2 {
+    font-family: var(--display);
+    font-size: 1.15rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .chat-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ground-border); transition: background 0.3s ease;
+  }
+  .status-dot.online { background: var(--flow); }
+  .status-dot.loading { background: var(--accent-dim); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: 0.4; } }
+
+  .export-group { position: relative; }
+  .export-trigger {
+    font-family: var(--ui);
+    font-size: 0.6rem;
+    padding: 3px 8px;
+    border: 1px solid var(--ground-border);
+    border-radius: 4px;
+    background: none;
+    color: var(--ink-faint);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .export-trigger:hover { border-color: var(--flow); color: var(--flow); }
+  .export-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    background: var(--ground);
+    border: 1px solid var(--ground-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(28,26,22,0.1);
+    z-index: 20;
+    min-width: 130px;
+    padding: 4px 0;
+  }
+  .export-menu.open { display: block; }
+  .export-menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font-family: var(--ui);
+    font-size: 0.6rem;
+    padding: 6px 12px;
+    border: none;
+    background: none;
+    color: var(--ink-dim);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .export-menu button:hover { background: var(--ground-raised); color: var(--flow); }
+  .export-btn {
+    font-family: var(--ui);
+    font-size: 0.55rem;
+    padding: 2px 6px;
+    border: 1px solid var(--ground-border);
+    border-radius: 4px;
+    background: none;
+    color: var(--ink-faint);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.02em;
+  }
+  .export-btn:hover {
+    border-color: var(--flow);
+    color: var(--flow);
+  }
+
+  /* ── Chat history panel (slides from right) ── */
+  .chat-tabs { display: none; }
+  .history-panel {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: min(320px, 85vw);
+    z-index: 200;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #fff;
+    border-left: 1px solid var(--ground-border);
+    box-shadow: -4px 0 24px rgba(28,26,22,0.10);
+    display: flex;
+    flex-direction: column;
+  }
+  .history-panel.open { transform: translateX(0); }
+  .history-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 190;
+    background: rgba(28,26,22,0.3);
+  }
+  .history-backdrop.visible { display: block; }
+  .history-header {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--ground-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .history-header h3 {
+    font-family: var(--display);
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: var(--ink);
+  }
+  .history-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--ink-faint);
+    cursor: pointer;
+  }
+  .history-close-btn:hover { color: var(--ink); }
+  .history-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+  .history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 18px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    transition: background 0.15s ease;
+  }
+  .history-item:hover { background: var(--ground-raised); }
+  .history-item.active { background: var(--ground-raised); border-left: 3px solid var(--flow); }
+  .history-item-name {
+    font-family: var(--serif);
+    font-size: 0.88rem;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+  .history-item-close {
+    font-size: 0.7rem;
+    color: var(--ground-border);
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 2px 6px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .history-item:hover .history-item-close { opacity: 1; }
+  .history-item-close:hover { color: #c55; }
+  .history-new-btn {
+    margin: 8px 18px;
+    padding: 8px;
+    font-family: var(--ui);
+    font-size: 0.76rem;
+    color: var(--flow);
+    background: none;
+    border: 1px dashed var(--ground-border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+  }
+  .history-new-btn:hover { border-color: var(--flow); }
+  /* History button in header */
+  .chat-history-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--ui);
+    font-size: 0.72rem;
+    color: var(--ink-faint);
+    background: none;
+    border: 1px solid var(--ground-border);
+    border-radius: 4px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  .chat-history-btn:hover { color: var(--flow); border-color: var(--flow); }
+  .chat-history-btn svg { flex-shrink: 0; }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .msg {
+    max-width: 92%;
+    font-size: 0.86rem;
+    line-height: 1.6;
+    padding: 10px 14px;
+    border-radius: 10px;
+    word-wrap: break-word;
+  }
+  .msg-user {
+    align-self: flex-end;
+    font-family: var(--serif);
+    background: var(--flow);
+    color: #fff;
+    border-bottom-right-radius: 3px;
+  }
+  .msg-bot {
+    align-self: flex-start;
+    font-family: var(--serif);
+    background: var(--ground);
+    color: var(--ink);
+    border-bottom-left-radius: 3px;
+    max-width: min(92%, 65ch);
+  }
+  .msg-system {
+    align-self: center;
+    font-family: var(--serif);
+    font-size: 0.76rem;
+    color: var(--ink-faint);
+    font-style: italic;
+    padding: 4px 0;
+  }
+  .msg-meta {
+    display: flex;
+    gap: 5px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .msg-tag {
+    font-family: var(--ui);
+    font-size: 0.64rem;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .msg-tag-route  { background: rgba(138, 106, 58, 0.1); color: var(--accent); }
+  .msg-tag-conf   { background: rgba(58, 110, 98, 0.1); color: var(--flow); }
+  .msg-tag-dim    { background: rgba(58, 110, 98, 0.08); color: var(--flow-bright); }
+  .msg-tag-dim .dim-chip-code { opacity: 0.55; font-weight: 600; margin-right: 4px; letter-spacing: 0.02em; }
+  .msg-tag-dim[data-dim="C"]  { background: rgba(46,125,94,0.14);  color: var(--dim-C); }
+  .msg-tag-dim[data-dim="N"]  { background: rgba(42,98,153,0.14);  color: var(--dim-N); }
+  .msg-tag-dim[data-dim="E"]  { background: rgba(138,104,64,0.14);  color: var(--dim-E); }
+  .msg-tag-dim[data-dim="G"]  { background: rgba(160,74,106,0.14);  color: var(--dim-G); }
+  .msg-tag-dim[data-dim="B"]  { background: rgba(112,68,160,0.14);  color: var(--dim-B); }
+  .msg-tag-dim[data-dim="T"]  { background: rgba(42,138,110,0.14);  color: var(--dim-T); }
+  .msg-tag-dim[data-dim="H"]  { background: rgba(154,122,34,0.14);  color: var(--dim-H); }
+  .msg-tag-dim[data-dim="Dt"] { background: rgba(40,120,160,0.14);  color: var(--dim-Dt); }
+  /* SPT dimension badge colors */
+  .msg-tag-dim[data-dim="FB"] { background: rgba(176,64,64,0.14);   color: var(--dim-FB); }
+  .msg-tag-dim[data-dim="FL"] { background: rgba(58,143,176,0.14);  color: var(--dim-FL); }
+  .msg-tag-dim[data-dim="CY"] { background: rgba(122,94,191,0.14);  color: var(--dim-CY); }
+  .msg-tag-dim[data-dim="EM"] { background: rgba(212,135,42,0.14);  color: var(--dim-EM); }
+  .msg-tag-dim[data-dim="EV"] { background: rgba(42,142,90,0.14);   color: var(--dim-EV); }
+  .msg-tag-dim[data-dim="NW"] { background: rgba(90,110,176,0.14);  color: var(--dim-NW); }
+  .msg-tag-dim[data-dim="DU"] { background: rgba(154,84,128,0.14);  color: var(--dim-DU); }
+  .msg-tag-dim[data-dim="CH"] { background: rgba(196,80,48,0.14);   color: var(--dim-CH); }
+  .msg-tag-dim[data-dim="DG"] { background: rgba(106,106,106,0.14); color: var(--dim-DG); }
+  /* Klir dimension badge colors */
+  .msg-tag-dim[data-dim="TH"] { background: rgba(107,90,62,0.14);   color: var(--dim-TH); }
+  .msg-tag-dim[data-dim="SY"] { background: rgba(46,94,138,0.14);   color: var(--dim-SY); }
+  .msg-tag-dim[data-dim="SR"] { background: rgba(74,122,138,0.14);  color: var(--dim-SR); }
+  .msg-tag-dim[data-dim="DA"] { background: rgba(90,138,74,0.14);   color: var(--dim-DA); }
+  .msg-tag-dim[data-dim="GN"] { background: rgba(138,74,122,0.14);  color: var(--dim-GN); }
+  .msg-tag-dim[data-dim="ST"] { background: rgba(74,90,154,0.14);   color: var(--dim-ST); }
+  .msg-tag-dim[data-dim="MT"] { background: rgba(160,106,42,0.14);  color: var(--dim-MT); }
+  /* Bunge dimension badge colors (C, E, B shared with Mobus) */
+  .msg-tag-dim[data-dim="S"]  { background: rgba(90,74,138,0.14);   color: var(--dim-S); }
+  .msg-tag-dim[data-dim="L"]  { background: rgba(42,122,106,0.14);  color: var(--dim-L); }
+  .msg-tag-dim[data-dim="M"]  { background: rgba(176,90,48,0.14);   color: var(--dim-M); }
+  /* CT dimension badge colors (C shared with Mobus/Bunge) */
+  .msg-tag-dim[data-dim="I"]  { background: rgba(58,122,154,0.14);  color: var(--dim-I); }
+  .msg-tag-dim[data-dim="W"]  { background: rgba(106,77,143,0.14);  color: var(--dim-W); }
+  .msg-tag-dim[data-dim="F"]  { background: rgba(176,86,42,0.14);   color: var(--dim-F); }
+  .msg-tag-dim[data-dim="O"]  { background: rgba(154,74,112,0.14);  color: var(--dim-O); }
+  .msg-tag-dim[data-dim="D"]  { background: rgba(107,107,62,0.14);  color: var(--dim-D); }
+  .msg-tag-dim-clickable { cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .msg-tag-dim-clickable:hover,
+  .msg-tag-dim-clickable:active { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+  /* Dimension nudge */
+  .dim-nudge {
+    font-family: var(--serif);
+    font-size: 0.76rem;
+    font-style: italic;
+    color: var(--ink-faint);
+    margin-top: 6px;
+    padding: 4px 0;
+    opacity: 1;
+    transition: opacity 0.6s ease;
+  }
+  .dim-nudge.fading { opacity: 0; }
+
+  /* Copy button */
+  .msg-bot { position: relative; }
+  .msg-copy-btn {
+    background: var(--ground-raised);
+    border: 1px solid var(--ground-border);
+    border-radius: 4px;
+    padding: 3px 6px;
+    cursor: pointer;
+    opacity: 0.75;
+    transition: opacity 0.2s ease;
+    font-family: var(--ui);
+    font-size: 0.69rem;
+    color: var(--ink-faint);
+  }
+  .msg-copy-btn:hover { opacity: 1; color: var(--ink); border-color: var(--ink-faint); }
+  .msg-actions { display: flex; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--ground-border); }
+  .msg-convergence { background: var(--ground-raised); border: 1px solid var(--ground-border); border-radius: 8px; padding: 16px 18px; max-width: 100%; }
+  .conv-panel h2 { font-size: 1.05rem; color: var(--flow-bright); margin: 0.7em 0 0.3em; font-family: 'Cormorant Garamond', serif; }
+  .conv-panel h2:first-child { margin-top: 0; }
+  .conv-panel p, .conv-panel li { color: var(--ink-dim); }
+  .conv-lenses { margin-top: 16px; border-top: 1px solid var(--ground-border); padding-top: 6px; }
+  .conv-lens { border-bottom: 1px solid var(--ground-border); }
+  .conv-lens:last-child { border-bottom: 0; }
+  .conv-lens-head { width: 100%; text-align: left; background: none; border: 0; cursor: pointer; font: inherit; padding: 9px 0; display: flex; gap: 10px; align-items: baseline; color: var(--ink); }
+  .conv-lens-head:hover .conv-lens-name,
+  .conv-lens-head:active .conv-lens-name { color: var(--flow); }
+  .conv-lens-name { font-weight: 600; }
+  .conv-lens-dims { color: var(--ink-faint); font-size: 0.78rem; font-family: var(--ui); letter-spacing: 0.02em; }
+  .conv-lens-caret { margin-left: auto; color: var(--flow); font-size: 0.8rem; font-family: var(--ui); font-weight: 500; white-space: nowrap; }
+  .conv-lens-head:hover .conv-lens-caret { text-decoration: underline; }
+  .conv-lens-body { font-size: 0.92rem; color: var(--ink-dim); padding: 2px 0 10px; line-height: 1.6; }
+  .conv-lens-body.collapsed { display: none; }
+  .conv-lens-role { color: var(--ink-faint); font-size: 0.78rem; font-style: italic; }
+
+  /* ── Integrated flow: lens-consulting progress ── */
+  .lens-progress {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 12px 16px; margin: 4px 0;
+    font-size: 0.82rem; color: var(--ink-dim);
+    animation: lp-in 0.2s ease;
+  }
+  @keyframes lp-in { from { opacity: 0; } to { opacity: 1; } }
+  .lp-label { color: var(--ink-dim); }
+  .lp-lens {
+    font-family: var(--ui); font-size: 0.74rem; padding: 2px 9px;
+    border: 1px solid var(--ground-border); border-radius: 999px;
+    color: var(--ink-faint); opacity: 0.55; transition: all 0.25s ease;
+  }
+  .lp-lens.ready {
+    opacity: 1; color: var(--flow); border-color: var(--flow);
+    background: rgba(58,110,98,0.06);
+  }
+  .lp-stage { color: var(--flow); font-style: italic; }
+  @media (prefers-reduced-motion: reduce) { .lens-progress, .lp-lens { animation: none; transition: none; } }
+
+  /* ── Integrated flow: drill-in lens strip under the answer ── */
+  .lens-strip { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--ground-border); }
+  .lens-strip-label {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-faint); margin-bottom: 6px;
+  }
+  .lens-snippet { color: var(--ink-faint); font-size: 0.84rem; font-style: italic; line-height: 1.5; }
+  .lens-loading { color: var(--ink-faint); font-size: 0.86rem; font-style: italic; }
+
+  /* ── Single-lens composer indicator (when a lens is chosen via the Lenses toggle) ── */
+  #lens-toggle.active { border-bottom-color: var(--flow); color: var(--flow); }
+  .composer-lens {
+    display: flex; align-items: baseline; gap: 7px;
+    padding: 6px 2px 2px; font-size: 0.82rem; color: var(--ink-dim);
+  }
+  .composer-lens[hidden] { display: none; }
+  /* dimensions belong to a lens — hidden in the integrated (all-lenses) view */
+  .dim-bar[hidden], .dim-bar-framing[hidden] { display: none; }
+  .composer-lens .cl-prefix { color: var(--ink-faint); }
+  .composer-lens .cl-name { font-weight: 600; color: var(--flow); }
+  .composer-lens .cl-role { color: var(--ink-faint); font-style: italic; font-size: 0.78rem; }
+  .composer-lens .cl-clear {
+    margin-left: auto; background: none; border: 0; cursor: pointer;
+    font: inherit; font-size: 0.76rem; color: var(--ink-faint); padding: 2px 6px; border-radius: 5px;
+  }
+  .composer-lens .cl-clear:hover { color: var(--flow); background: var(--ground-raised, rgba(0,0,0,0.03)); }
+  .lens-btn-all .lens-name { letter-spacing: 0.01em; }
+  .msg-tldr { margin-bottom: 12px; }
+  .msg-tldr ul { margin: 4px 0; padding-left: 18px; }
+  .msg-tldr li { margin-bottom: 4px; line-height: 1.5; }
+  .tldr-expander {
+    font-family: var(--ui);
+    font-size: 0.69rem;
+    color: var(--flow);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 0;
+    margin-bottom: 4px;
+  }
+  .tldr-expander:hover { text-decoration: underline; }
+  .msg-full.collapsed { display: none; }
+
+  /* Markdown in bot messages */
+  .msg-bot p { margin: 0 0 8px; line-height: 1.6; }
+  .msg-bot p:last-child { margin-bottom: 0; }
+  .msg-bot strong { font-weight: 600; color: var(--ink); }
+  .msg-bot ol, .msg-bot ul { margin: 6px 0 10px; padding-left: 20px; }
+  .msg-bot li { margin-bottom: 6px; line-height: 1.55; }
+  .msg-bot li p { margin: 2px 0; }
+  .msg-bot h1, .msg-bot h2, .msg-bot h3, .msg-bot h4 {
+    font-family: var(--display);
+    font-size: 0.92rem; font-weight: 500; color: var(--ink); margin: 12px 0 4px;
+  }
+  .msg-bot code {
+    font-family: var(--ui);
+    font-size: 0.76rem; background: var(--ground-raised); padding: 1px 5px; border-radius: 3px;
+  }
+  .msg-bot blockquote {
+    border-left: 2px solid var(--ground-border); margin: 6px 0; padding: 2px 0 2px 12px; color: var(--ink-dim);
+  }
+  .msg-bot hr { border: none; border-top: 1px solid var(--ground-border); margin: 10px 0; }
+  .msg-bot table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    margin: 6px 0 10px;
+  }
+  .msg-bot th, .msg-bot td {
+    border: 1px solid var(--ground-border);
+    padding: 4px 8px;
+    white-space: nowrap;
+    text-align: left;
+  }
+  .msg-bot pre { overflow-x: auto; white-space: pre; max-width: 100%; }
+
+  /* ── Dimension bar ── */
+  .composer {
+    flex-shrink: 0;
+    background: var(--ground-raised);
+    border-top: 1px solid var(--ground-border);
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+  .composer.welcome-mode {
+    background: #fff;
+    border-top-color: transparent;
+  }
+  .dim-bar-framing {
+    font-family: var(--serif);
+    font-size: 0.72rem;
+    font-style: italic;
+    color: var(--ink-faint);
+    text-align: center;
+    padding: 8px 16px 0;
+    letter-spacing: 0.02em;
+  }
+  .dim-bar {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 16px 4px;
+    flex-shrink: 0;
+  }
+  .dim-bar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 4px 10px;
+    border: 1px solid var(--ground-border);
+    border-radius: 5px;
+    background: none;
+    color: var(--ink-faint);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .dim-bar-btn .dim-btn-code {
+    font-family: var(--ui);
+    font-size: 0.65rem;
+    font-weight: 600;
+  }
+  .dim-bar-btn .dim-btn-label {
+    font-family: var(--serif);
+    font-size: 0.72rem;
+  }
+  /* Per-dimension color at rest */
+  .dim-bar-btn[data-dim="C"]  { border-left: 2px solid var(--dim-C); }
+  .dim-bar-btn[data-dim="N"]  { border-left: 2px solid var(--dim-N); }
+  .dim-bar-btn[data-dim="E"]  { border-left: 2px solid var(--dim-E); }
+  .dim-bar-btn[data-dim="G"]  { border-left: 2px solid var(--dim-G); }
+  .dim-bar-btn[data-dim="B"]  { border-left: 2px solid var(--dim-B); }
+  .dim-bar-btn[data-dim="T"]  { border-left: 2px solid var(--dim-T); }
+  .dim-bar-btn[data-dim="H"]  { border-left: 2px solid var(--dim-H); }
+  .dim-bar-btn[data-dim="Dt"] { border-left: 2px solid var(--dim-Dt); }
+  .dim-bar-btn:hover { border-color: var(--ink-faint); color: var(--ink-dim); }
+  .dim-bar-btn:active { border-color: var(--flow); color: var(--flow); }
+  .dim-bar-btn:hover[data-dim="C"]  { border-left-color: var(--dim-C); }
+  .dim-bar-btn:hover[data-dim="N"]  { border-left-color: var(--dim-N); }
+  .dim-bar-btn:hover[data-dim="E"]  { border-left-color: var(--dim-E); }
+  .dim-bar-btn:hover[data-dim="G"]  { border-left-color: var(--dim-G); }
+  .dim-bar-btn:hover[data-dim="B"]  { border-left-color: var(--dim-B); }
+  .dim-bar-btn:hover[data-dim="T"]  { border-left-color: var(--dim-T); }
+  .dim-bar-btn:hover[data-dim="H"]  { border-left-color: var(--dim-H); }
+  .dim-bar-btn:hover[data-dim="Dt"] { border-left-color: var(--dim-Dt); }
+  .dim-bar-btn.active {
+    font-weight: 600;
+  }
+  .dim-bar-btn.active[data-dim="C"]  { border-color: var(--dim-C); color: var(--dim-C); background: rgba(46,125,94,0.08); border-left: 2px solid var(--dim-C); }
+  .dim-bar-btn.active[data-dim="N"]  { border-color: var(--dim-N); color: var(--dim-N); background: rgba(42,98,153,0.08); border-left: 2px solid var(--dim-N); }
+  .dim-bar-btn.active[data-dim="E"]  { border-color: var(--dim-E); color: var(--dim-E); background: rgba(138,104,64,0.08); border-left: 2px solid var(--dim-E); }
+  .dim-bar-btn.active[data-dim="G"]  { border-color: var(--dim-G); color: var(--dim-G); background: rgba(160,74,106,0.08); border-left: 2px solid var(--dim-G); }
+  .dim-bar-btn.active[data-dim="B"]  { border-color: var(--dim-B); color: var(--dim-B); background: rgba(112,68,160,0.08); border-left: 2px solid var(--dim-B); }
+  .dim-bar-btn.active[data-dim="T"]  { border-color: var(--dim-T); color: var(--dim-T); background: rgba(31,110,86,0.08); border-left: 2px solid var(--dim-T); }
+  .dim-bar-btn.active[data-dim="H"]  { border-color: var(--dim-H); color: var(--dim-H); background: rgba(122,94,15,0.08); border-left: 2px solid var(--dim-H); }
+  .dim-bar-btn.active[data-dim="Dt"] { border-color: var(--dim-Dt); color: var(--dim-Dt); background: rgba(26,94,130,0.08); border-left: 2px solid var(--dim-Dt); }
+  /* SPT active dim-bar states */
+  .dim-bar-btn[data-dim="FB"] { border-left: 2px solid var(--dim-FB); }
+  .dim-bar-btn[data-dim="FL"] { border-left: 2px solid var(--dim-FL); }
+  .dim-bar-btn[data-dim="CY"] { border-left: 2px solid var(--dim-CY); }
+  .dim-bar-btn[data-dim="EM"] { border-left: 2px solid var(--dim-EM); }
+  .dim-bar-btn[data-dim="EV"] { border-left: 2px solid var(--dim-EV); }
+  .dim-bar-btn[data-dim="NW"] { border-left: 2px solid var(--dim-NW); }
+  .dim-bar-btn[data-dim="DU"] { border-left: 2px solid var(--dim-DU); }
+  .dim-bar-btn[data-dim="CH"] { border-left: 2px solid var(--dim-CH); }
+  .dim-bar-btn[data-dim="DG"] { border-left: 2px solid var(--dim-DG); }
+  .dim-bar-btn.active[data-dim="FB"] { border-color: var(--dim-FB); color: var(--dim-FB); background: rgba(176,64,64,0.08); border-left: 2px solid var(--dim-FB); }
+  .dim-bar-btn.active[data-dim="FL"] { border-color: var(--dim-FL); color: var(--dim-FL); background: rgba(58,143,176,0.08); border-left: 2px solid var(--dim-FL); }
+  .dim-bar-btn.active[data-dim="CY"] { border-color: var(--dim-CY); color: var(--dim-CY); background: rgba(122,94,191,0.08); border-left: 2px solid var(--dim-CY); }
+  .dim-bar-btn.active[data-dim="EM"] { border-color: var(--dim-EM); color: var(--dim-EM); background: rgba(212,135,42,0.08); border-left: 2px solid var(--dim-EM); }
+  .dim-bar-btn.active[data-dim="EV"] { border-color: var(--dim-EV); color: var(--dim-EV); background: rgba(42,142,90,0.08); border-left: 2px solid var(--dim-EV); }
+  .dim-bar-btn.active[data-dim="NW"] { border-color: var(--dim-NW); color: var(--dim-NW); background: rgba(90,110,176,0.08); border-left: 2px solid var(--dim-NW); }
+  .dim-bar-btn.active[data-dim="DU"] { border-color: var(--dim-DU); color: var(--dim-DU); background: rgba(154,84,128,0.08); border-left: 2px solid var(--dim-DU); }
+  .dim-bar-btn.active[data-dim="CH"] { border-color: var(--dim-CH); color: var(--dim-CH); background: rgba(196,80,48,0.08); border-left: 2px solid var(--dim-CH); }
+  .dim-bar-btn.active[data-dim="DG"] { border-color: var(--dim-DG); color: var(--dim-DG); background: rgba(106,106,106,0.08); border-left: 2px solid var(--dim-DG); }
+  .dim-bar-btn.disabled { opacity: 0.6; cursor: default; }
+  .dim-bar-btn.disabled:hover { border-color: var(--ground-border); color: var(--ink-faint); }
+
+  /* Dimension tooltips */
+  .dim-bar-btn { position: relative; }
+  .dim-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: var(--ground);
+    font-family: var(--serif);
+    font-size: 0.78rem;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 1.5;
+    padding: 8px 12px;
+    border-radius: 6px;
+    width: auto;
+    max-width: min(240px, 90vw);
+    white-space: normal;
+    text-align: left;
+    pointer-events: none;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .dim-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--ink);
+  }
+  .dim-bar-btn:hover .dim-tooltip,
+  .dim-bar-btn:focus .dim-tooltip,
+  .dim-bar-btn.show .dim-tooltip { display: block; }
+  .dim-bar-btn.disabled:hover .dim-tooltip { display: none; }
+  .dim-bar-btn:first-child .dim-tooltip { left: 0; transform: none; }
+  .dim-bar-btn:first-child .dim-tooltip::after { left: 20px; transform: none; }
+  .dim-bar-btn:last-child .dim-tooltip { left: auto; right: 0; transform: none; }
+  .dim-bar-btn:last-child .dim-tooltip::after { left: auto; right: 20px; transform: none; }
+
+  .chat-input-area {
+    padding: 12px 20px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    display: flex;
+    gap: 12px;
+    flex-shrink: 0;
+    align-items: flex-end;
+  }
+  .chat-input-area textarea {
+    flex: 1;
+    font-family: var(--serif);
+    font-size: 1rem;
+    padding: 12px 16px;
+    border: 1px solid var(--ground-border);
+    border-radius: 12px;
+    background: var(--ground);
+    outline: none;
+    color: var(--ink);
+    transition: border-color 0.3s ease;
+    resize: none;
+    overflow-y: hidden;
+    min-height: 48px;
+    max-height: 200px;
+    line-height: 1.5;
+  }
+  .chat-input-area textarea:focus { border-color: var(--flow); }
+  .chat-input-area textarea::placeholder { color: var(--ink-faint); }
+  .chat-input-area button {
+    font-family: var(--ui);
+    font-size: 0.76rem;
+    font-weight: 500;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    background: var(--flow);
+    color: #fff;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s ease;
+    letter-spacing: 0.02em;
+    min-height: 44px;
+  }
+  .chat-input-area button:hover { background: var(--flow-bright); }
+  .chat-input-area button:disabled { background: var(--ground-border); cursor: not-allowed; }
+
+  @media (max-width: 600px) {
+    .chat-welcome-title { font-size: 1.6rem; }
+    .chat-welcome-chips { flex-direction: column; align-items: stretch; max-width: 280px; }
+    .diagram-pane { width: 92vw; padding: 20px 16px 24px; }
+    .dim-bar { gap: 4px; }
+    /* Larger, more legible answer + source text on phones */
+    .msg { font-size: 1rem; line-height: 1.65; }
+    .evidence-list { font-size: 0.8rem; }
+    .evidence-type, .evidence-score { font-size: 0.7rem; }
+    .evidence-list li, .evidence-source { overflow-wrap: anywhere; word-break: break-word; }
+    .tldr-expander {
+      display: block;
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--ground-border);
+      border-radius: 8px;
+      text-align: center;
+      font-size: 0.8rem;
+    }
+    /* Sub-16px inputs trigger iOS focus-zoom; force 16px on the first-touch fields */
+    .name-gate-input, .welcome-name-input { font-size: 16px; }
+  }
+  /* ── Model Toggle ── */
+  .model-select {
+    font-family: var(--ui);
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    border: 1px solid var(--ground-border);
+    border-radius: 6px;
+    background: var(--ground);
+    color: var(--ink-dim);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+  }
+  .model-select:hover, .model-select:focus { border-color: var(--flow); color: var(--flow); }
+
+
+  /* ── Lens bar: choose your reader ── */
+  .lens-bar {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    border-bottom: 1px solid var(--ground-border);
+    background: var(--ground);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .lens-bar::-webkit-scrollbar { display: none; }
+  .lens-bar-label {
+    font-family: var(--ui);
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    align-self: center;
+    padding: 0 10px 0 16px;
+    white-space: nowrap;
+  }
+  .lens-btn {
+    flex: 1;
+    min-width: 110px;
+    padding: 8px 12px 7px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    line-height: 1.25;
+  }
+  .lens-btn .lens-name {
+    display: block;
+    font-family: var(--serif);
+    font-size: 0.92rem;
+    color: var(--ink-dim);
+  }
+  .lens-btn .lens-tag {
+    display: block;
+    font-family: var(--ui);
+    font-size: 0.56rem;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint);
+    margin-top: 1px;
+  }
+  .lens-btn:hover { background: var(--ground-raised, rgba(0,0,0,0.03)); }
+  .lens-btn.active { border-bottom-color: var(--lens-accent, var(--flow)); }
+  .lens-btn.active .lens-name { color: var(--lens-accent, var(--flow)); }
+  .lens-btn:focus-visible { outline: 2px solid var(--flow); outline-offset: -2px; }
+
+  /* ── Thinker card (popover under the lens bar — overlays, never displaces) ── */
+  .lens-zone { position: relative; }
+  .thinker-card {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    box-shadow: 0 10px 24px -8px rgba(0,0,0,0.18);
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--ground-border);
+    background: var(--ground);
+    animation: thinker-in 0.25s ease;
+  }
+  @keyframes thinker-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .thinker-card { animation: none; } }
+  .thinker-card[hidden] { display: none; }
+  .thinker-medallion {
+    flex: 0 0 52px;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--serif);
+    font-size: 1.25rem;
+    color: #fff;
+    background: var(--lens-accent, var(--flow));
+    user-select: none;
+  }
+  .thinker-body { flex: 1; min-width: 0; }
+  .thinker-name {
+    font-family: var(--serif);
+    font-size: 1.02rem;
+    color: var(--ink);
+  }
+  .thinker-dates { font-family: var(--ui); font-size: 0.62rem; color: var(--ink-faint); margin-left: 6px; }
+  .thinker-role { font-size: 0.75rem; color: var(--ink-dim); margin-top: 1px; }
+  .thinker-bio { font-size: 0.78rem; color: var(--ink-dim); margin-top: 5px; line-height: 1.45; max-width: 62ch; }
+  .thinker-asks {
+    font-size: 0.78rem;
+    margin-top: 6px;
+    color: var(--lens-accent, var(--flow));
+    font-style: italic;
+  }
+  .thinker-dismiss {
+    flex: 0 0 auto;
+    background: none; border: none; cursor: pointer;
+    color: var(--ink-faint);
+    font-size: 0.85rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .thinker-dismiss:hover { color: var(--ink-dim); background: rgba(0,0,0,0.04); }
+  @media (max-width: 560px) {
+    .lens-bar-label { display: none; }
+    .lens-btn { min-width: 86px; }
+    .lens-btn .lens-tag { display: none; }
+    .thinker-medallion { flex-basis: 42px; width: 42px; height: 42px; font-size: 1rem; }
+  }
+
+  .pathology-badge {
+    font-family: var(--ui);
+    font-size: 0.6rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(176, 64, 64, 0.1);
+    color: #b04040;
+    border: 1px solid rgba(176, 64, 64, 0.2);
+    margin-left: 4px;
+    cursor: help;
+  }
+
+  /* ── Thinking / Stage Progress Indicator ── */
+  .msg-thinking {
+    align-self: flex-start;
+    font-family: var(--ui);
+    font-size: 0.72rem;
+    color: var(--ink-faint);
+    padding: 10px 14px;
+  }
+  .msg-thinking::after {
+    content: '';
+    animation: thinking 1.5s infinite;
+  }
+  @keyframes thinking {
+    0% { content: '.'; }
+    33% { content: '..'; }
+    66% { content: '...'; }
+  }
+  .stage-progress {
+    align-self: flex-start;
+    display: flex;
+    gap: 6px;
+    padding: 10px 14px;
+    font-family: var(--ui);
+    font-size: 0.72rem;
+  }
+  .stage-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--ink-faint);
+    opacity: 0.4;
+    transition: opacity 0.3s, color 0.3s;
+  }
+  .stage-item.active {
+    opacity: 1;
+    color: var(--flow);
+  }
+  .stage-item.active::after {
+    content: '';
+    animation: thinking 1.5s infinite;
+  }
+  .stage-item.done {
+    opacity: 0.7;
+    color: var(--ink-faint);
+  }
+  .stage-item .stage-check { display: none; }
+  .stage-item.done .stage-check { display: inline; }
+  .stage-item .stage-time {
+    font-size: 0.62rem;
+    opacity: 0.6;
+  }
+  .stage-sep {
+    color: var(--ink-faint);
+    opacity: 0.3;
+    align-self: center;
+  }
+  .stage-elapsed {
+    font-size: 0.62rem;
+    color: var(--ink-faint);
+    opacity: 0.6;
+    margin-left: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Source Evidence ── */
+  .grounding-line {
+    font-family: var(--ui);
+    font-size: 0.6rem;
+    color: var(--ink-faint);
+    margin-top: 8px;
+  }
+  .msg-evidence {
+    margin-top: 8px;
+    border-top: 1px solid var(--ground-border);
+    padding-top: 6px;
+  }
+  .evidence-toggle {
+    font-family: var(--ui);
+    font-size: 0.6rem;
+    color: var(--ink-faint);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 0;
+    transition: color 0.2s ease;
+  }
+  .evidence-toggle:hover { color: var(--flow); }
+  .evidence-list {
+    list-style: none;
+    padding: 0;
+    margin: 4px 0 0;
+    font-family: var(--ui);
+    font-size: 0.6rem;
+    color: var(--ink-faint);
+    line-height: 1.5;
+  }
+  .evidence-list.collapsed { display: none; }
+  .evidence-list li {
+    padding: 3px 0;
+    border-bottom: 1px solid var(--ground-border);
+  }
+  .evidence-list li:last-child { border-bottom: none; }
+  .evidence-type {
+    display: inline-block;
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--ground-raised);
+    color: var(--ink-faint);
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+  .evidence-score {
+    color: var(--ink-faint);
+    font-size: 0.55rem;
+    opacity: 0.7;
+  }
+  .evidence-source { color: var(--ink-dim); font-weight: 500; }
+  a.evidence-source { color: var(--ink-accent, #2563eb); text-decoration: underline; }
+  a.evidence-source:hover { opacity: 0.8; }
+
+  /* ── Ontology Info ── */
+  .info-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid var(--ground-border);
+    background: var(--ground);
+    color: var(--ink-faint);
+    font-family: var(--serif);
+    font-size: 0.68rem;
+    font-style: italic;
+    cursor: pointer;
+    margin-left: 6px;
+    transition: all 0.2s ease;
+    vertical-align: middle;
+  }
+  .info-btn:hover { border-color: var(--flow); color: var(--flow); }
+  .ontology-tooltip {
+    display: none;
+    background: var(--ink);
+    color: var(--ground);
+    font-family: var(--serif);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    padding: 16px 20px;
+    border-radius: 8px;
+    max-width: 340px;
+    margin: 8px auto 0;
+  }
+  .ontology-tooltip.visible { display: block; }
+  .ontology-tooltip strong {
+    font-family: var(--display);
+    font-size: 0.92rem;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  /* ── Routing Diagram ── */
+  .routing-diagram {
+    border: 1px solid var(--ground-border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    background: var(--ground-raised);
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+  }
+  .routing-path {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--ui);
+    font-size: 0.72rem;
+  }
+  .routing-dims {
+    display: flex;
+    gap: 3px;
+  }
+  .routing-dim {
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+    background: var(--ground);
+    border: 1px solid var(--ground-border);
+    transition: all 0.35s ease;
+  }
+  .routing-dim.active { border-color: currentColor; }
+  .routing-arrow {
+    color: var(--ink-faint);
+    font-size: 0.72rem;
+  }
+  .routing-target {
+    font-weight: 500;
+    color: var(--ink-dim);
+  }
+  .routing-target-graph { color: var(--accent); }
+  .routing-target-vector { color: var(--flow); }
+  .routing-sep {
+    width: 1px;
+    background: var(--ground-border);
+    align-self: stretch;
+  }
+
+  /* ── Accessibility ── */
+  .skip-link {
+    position: absolute;
+    top: -40px;
+    left: 8px;
+    background: var(--ink);
+    color: var(--ground);
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-family: var(--ui);
+    font-size: 0.72rem;
+    z-index: 1000;
+    text-decoration: none;
+    transition: top 0.2s ease;
+  }
+  .skip-link:focus { top: 8px; }
+  *:focus-visible {
+    outline: 2px solid var(--flow);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+  input:focus-visible, button:focus-visible { outline-offset: 1px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ════════════════════════════════════════════════
+     Mobile quick-win pass (additive; desktop untouched)
+     ════════════════════════════════════════════════ */
+  @media (max-width: 640px) {
+    /* Header row can't fit New/History/Lenses/model + Export at 375px — let it wrap */
+    .chat-header { flex-wrap: wrap; row-gap: 8px; }
+    .chat-header-left, .chat-header-right { flex-wrap: wrap; }
+    /* Labelled dimension chips scroll horizontally instead of stacking into many rows */
+    .dim-bar { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }
+    .dim-bar::-webkit-scrollbar { display: none; }
+    .dim-bar-btn { flex-shrink: 0; }
+  }
+
+  /* Touch devices: 44px+ hit targets, visible dimension labels, tap-friendly info button */
+  @media (hover: none), (pointer: coarse) {
+    .dim-bar-btn,
+    .chat-history-btn,
+    .model-select,
+    .export-trigger,
+    .conv-lens-head,
+    .msg-copy-btn,
+    .tldr-expander,
+    .evidence-toggle {
+      min-height: 44px;
+    }
+    .dim-bar-btn { padding-top: 8px; padding-bottom: 8px; }
+    .chat-history-btn { padding-top: 10px; padding-bottom: 10px; }
+    .model-select { padding-top: 10px; padding-bottom: 10px; }
+    .export-trigger { padding-top: 10px; padding-bottom: 10px; font-size: 0.72rem; }
+    .msg-copy-btn { padding-top: 10px; padding-bottom: 10px; }
+    .evidence-toggle { padding-top: 12px; padding-bottom: 12px; }
+    /* Keep the dimension words visible on phones (was hidden below 600px) */
+    .dim-bar-btn .dim-btn-label { display: inline; }
+    /* Give the small circular info button a real 44px tap area without changing its look */
+    .info-btn { position: relative; }
+    .info-btn::before {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 44px; height: 44px;
+      transform: translate(-50%, -50%);
+    }
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+</head>
+<body>
+<a href="#chat-input" class="skip-link">Skip to chat</a>
+<main id="main-content">
+
+<div class="page" id="page">
+
+  <!-- TOP NAV -->
+  <nav class="topnav">
+    <div class="topnav-left" id="nav-home" title="New conversation" role="button" tabindex="0" aria-label="Start new conversation">
+      <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4"
+          stroke="var(--flow)" stroke-width="2" fill="rgba(58,110,98,0.06)" />
+        <line x1="40" y1="40" x2="40" y2="4" stroke="var(--flow)" stroke-width="1" opacity="0.4" />
+        <line x1="40" y1="40" x2="68.3" y2="16.6" stroke="var(--flow)" stroke-width="1" opacity="0.4" />
+        <line x1="40" y1="40" x2="76" y2="44.9" stroke="var(--flow)" stroke-width="1" opacity="0.4" />
+        <line x1="40" y1="40" x2="59.4" y2="70.1" stroke="var(--flow)" stroke-width="1" opacity="0.4" />
+        <line x1="40" y1="40" x2="20.6" y2="70.1" stroke="var(--flow)" stroke-width="1" opacity="0.4" />
+        <line x1="40" y1="40" x2="4" y2="44.9" stroke="var(--flow)" stroke-width="1" opacity="0.4" />
+        <line x1="40" y1="40" x2="11.7" y2="16.6" stroke="var(--flow)" stroke-width="1" opacity="0.4" />
+      </svg>
+      <span>Facets</span>
+      <!-- Architecture link removed pending rebuild for the four-lens engine (GSR issue) -->
+    </div>
+    <div class="topnav-links">
+      <a href="https://halcyonic.systems" target="_blank" rel="noopener noreferrer" aria-label="Halcyonic Systems (opens in new tab)">Halcyonic Systems</a>
+    </div>
+  </nav>
+
+  <!-- Architecture diagram is now at /architecture -->
+
+
+  <!-- Chat (full-width, centered) -->
+  <div class="chat-pane">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <div class="status-dot" id="status-dot"></div>
+        <select class="model-select" id="model-select" aria-label="Select synthesis model" disabled>
+          <option value="claude-haiku-4-5-20251001">Haiku (fast)</option>
+          <option value="claude-sonnet-4-6">Sonnet (deep)</option>
+        </select>
+        <span class="mono-tag" id="llm-model-tag" style="display:none">---</span>
+        <button class="chat-history-btn" id="new-conv-btn" aria-label="New conversation" title="New conversation">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>
+          New
+        </button>
+        <button class="chat-history-btn" id="chat-history-btn" aria-label="Chat history" title="Chat history">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
+          History
+        </button>
+        <button class="chat-history-btn" id="lens-toggle" aria-label="Choose a lens" aria-pressed="false" title="Ask through a single thinker's lens">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="8,1.5 13.5,4.5 13.5,11.5 8,14.5 2.5,11.5 2.5,4.5"/><line x1="8" y1="1.5" x2="8" y2="14.5"/></svg>
+          Lenses
+        </button>
+      </div>
+      <div class="chat-header-right">
+        <div class="export-group">
+          <button class="export-trigger" id="export-trigger" aria-label="Export options" aria-expanded="false">Export ▾</button>
+          <div class="export-menu" id="export-menu" role="menu">
+            <button id="copy-md-btn" role="menuitem">Copy as Markdown</button>
+            <button id="copy-json-btn" role="menuitem">Copy as JSON</button>
+            <button id="export-md-btn" role="menuitem">Download .md</button>
+            <button id="export-json-btn" role="menuitem">Download .json</button>
+            <button id="share-link-btn" role="menuitem">Copy share link</button>
+            <button id="model-this-btn" role="menuitem">Model this → canvas</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="lens-zone" id="lens-zone" hidden>
+    <nav class="lens-bar" id="lens-bar" aria-label="Choose a lens"><span class="lens-bar-label">Lens</span></nav>
+    <section class="thinker-card" id="thinker-card" hidden aria-live="polite">
+      <div class="thinker-medallion" id="thinker-medallion" aria-hidden="true"></div>
+      <div class="thinker-body">
+        <div><span class="thinker-name" id="thinker-name"></span><span class="thinker-dates" id="thinker-dates"></span></div>
+        <div class="thinker-role" id="thinker-role"></div>
+        <p class="thinker-bio" id="thinker-bio"></p>
+        <div class="thinker-asks" id="thinker-asks"></div>
+      </div>
+      <button class="thinker-dismiss" id="thinker-dismiss" aria-label="Hide thinker card" title="Hide">✕</button>
+    </section>
+    </div>
+    <div class="chat-tabs" id="chat-tabs"></div>
+    <div class="chat-messages" id="chat-messages" role="log" aria-live="polite" aria-label="Conversation history"></div>
+    <div class="composer">
+      <div class="composer-lens" id="composer-lens" hidden>
+        <span class="cl-prefix">Asking through</span>
+        <span class="cl-name"></span><span class="cl-role"></span>
+        <button class="cl-clear" id="composer-lens-clear" title="Back to all five lenses">✕ all five lenses</button>
+      </div>
+      <div class="dim-bar-framing">Examine through eight dimensions</div>
+      <div class="dim-bar" id="dim-bar">
+        <button class="dim-bar-btn" data-dim="C" aria-describedby="tip-C"><span class="dim-btn-code">C</span><span class="dim-btn-label">Components</span><span class="dim-tooltip" id="tip-C" role="tooltip">What are the parts? Identify the agents, subsystems, and entities that make up this system.</span></button>
+        <button class="dim-bar-btn" data-dim="N" aria-describedby="tip-N"><span class="dim-btn-code">N</span><span class="dim-btn-label">Network</span><span class="dim-tooltip" id="tip-N" role="tooltip">How are the parts connected? Internal relationships, dependencies, and communication channels.</span></button>
+        <button class="dim-bar-btn" data-dim="E" aria-describedby="tip-E"><span class="dim-btn-code">E</span><span class="dim-btn-label">Environment</span><span class="dim-tooltip" id="tip-E" role="tooltip">What surrounds the system? External entities, conditions, and constraints it cannot control.</span></button>
+        <button class="dim-bar-btn" data-dim="G" aria-describedby="tip-G"><span class="dim-btn-code">G</span><span class="dim-btn-label">Flows</span><span class="dim-tooltip" id="tip-G" role="tooltip">What crosses the boundary? Trace imports and exports of energy, material, and information.</span></button>
+        <button class="dim-bar-btn" data-dim="B" aria-describedby="tip-B"><span class="dim-btn-code">B</span><span class="dim-btn-label">Boundary</span><span class="dim-tooltip" id="tip-B" role="tooltip">Where does the system end? What is inside vs. outside, and the interfaces between them.</span></button>
+        <button class="dim-bar-btn" data-dim="T" aria-describedby="tip-T"><span class="dim-btn-code">T</span><span class="dim-btn-label">Transforms</span><span class="dim-tooltip" id="tip-T" role="tooltip">What processes occur? Functions that convert inputs to outputs — the system's work.</span></button>
+        <button class="dim-bar-btn" data-dim="H" aria-describedby="tip-H"><span class="dim-btn-code">H</span><span class="dim-btn-label">History</span><span class="dim-tooltip" id="tip-H" role="tooltip">What does the system remember? Accumulated state, learned behaviors, path dependence.</span></button>
+        <button class="dim-bar-btn" data-dim="Dt" aria-describedby="tip-Dt"><span class="dim-btn-code">Dt</span><span class="dim-btn-label">Time Scale</span><span class="dim-tooltip" id="tip-Dt" role="tooltip">At what pace? Time scales that matter — milliseconds, seasons, generations, epochs.</span></button>
+      </div>
+      <div class="chat-input-area">
+        <textarea id="chat-input" rows="1" enterkeyhint="send" autocapitalize="sentences" aria-label="Ask a systems science question" placeholder="Ask anything — a real system, a concept, or a design challenge…"></textarea>
+        <button id="send-btn" aria-label="Send message">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat history panel (slides from right) -->
+  <div class="history-panel" id="history-panel">
+    <div class="history-header">
+      <h3>Conversations</h3>
+      <button class="history-close-btn" id="history-close" aria-label="Close history">✕</button>
+    </div>
+    <div class="history-list" id="history-list"></div>
+    <button class="history-new-btn" id="history-new-btn">+ New conversation</button>
+  </div>
+  <div class="history-backdrop" id="history-backdrop"></div>
+
+</div>
+</main>
+<script>
+// ══════════════════════════════════════════
+// FACETS — Chat Pipeline (Refactored)
+// No landing page. Welcome state in chat panel.
+// Tab-locked responses. No duplicate submissions.
+// ══════════════════════════════════════════
+
+const API = (window.location.hostname === 'localhost' || window.location.protocol === 'file:')
+  ? 'http://localhost:5010' : 'https://reasoner.halcyonic.systems';
+
+// Read-only shared-answer mode (/a/<id>): render a stored snapshot, suppress re-run affordances,
+// and never write to the recipient's local history.
+let READONLY = false;
+
+function logFunnelEvent(event, meta) {
+  try {
+    fetch(API + '/log-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event,
+        session_id: (getTab() || {}).sessionId || null,
+        user_id: typeof FACETS_USER_ID !== 'undefined' ? FACETS_USER_ID : getUserId(),
+        meta: meta || null,
+      }),
+    }).catch(() => {});
+  } catch(e) {}
+}
+
+// ── Thinker identities (lens bar + card) ──
+const THINKERS = {
+  mobus: {
+    name: 'George Mobus', initials: 'GM', dates: '', accent: '#1f6e56',
+    tag: 'the anatomist',
+    role: 'Systems scientist · University of Washington Tacoma',
+    bio: 'Wrote the deep systems analysis methodology this engine grew up on: any system decomposes into components, networks, boundary, flows, transformations, history, and time scale. The working engineer’s answer to “what is a system?”',
+    asks: 'This lens asks: what IS this system — its parts, boundary, and flows?'
+  },
+  spt: {
+    name: 'Len Troncale', initials: 'LT', dates: '', accent: '#b04040',
+    tag: 'the process theorist',
+    role: 'Biologist & systems scientist · Cal Poly Pomona',
+    bio: 'Spent five decades cataloguing the universal processes every system runs — feedback, cycles, emergence, decay — and the linkage propositions that connect them across physics, biology, and society.',
+    asks: 'This lens asks: HOW does it work — which universal processes are running?'
+  },
+  klir: {
+    name: 'George Klir', initials: 'GK', dates: '1932–2016', accent: '#1a5e82',
+    tag: 'the epistemologist',
+    role: 'Systems scientist · SUNY Binghamton',
+    bio: 'Distilled what every definition of system shares — things and the relations on them, S = (T, R) — and built a hierarchy for grading what we actually know about any system, from raw data to laws to laws-that-change.',
+    asks: 'This lens asks: WHICH representation — what kind of knowledge do we have?'
+  },
+  bunge: {
+    name: 'Mario Bunge', initials: 'MB', dates: '1919–2020', accent: '#8a6840',
+    tag: 'the ontologist',
+    role: 'Philosopher & physicist · McGill University',
+    bio: 'Made “system” an exact ontological concept: composition, environment, structure — and the bonds that separate a genuine system from a heap. To explain something is to exhibit the mechanism that makes it tick.',
+    asks: 'This lens asks: what MAKES it a system at all — where are the bonds?'
+  },
+  ct: {
+    name: 'The Compositional School', short: 'Compositional', initials: 'CT', dates: '', accent: '#6a4d8f',
+    tag: 'the compositionalist',
+    role: 'Applied category theory · Fong, Spivak & Myers',
+    bio: 'The one lens that is a school, not a founder: category theory applied to systems. Fong and Spivak’s Seven Sketches and Myers’ Categorical Systems Theory make “connect these two systems” formally exact — interfaces, wiring diagrams, and the colimits that glue them.',
+    asks: 'This lens asks: how does it COMPOSE — what happens when systems connect?'
+  }
+};
+
+function renderLensBar(mode) {
+  document.querySelectorAll('.lens-btn').forEach(btn => {
+    const t = THINKERS[btn.dataset.mode];   // null for the "All lenses" button
+    const on = btn.dataset.mode === mode;
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-pressed', on);
+    if (t) btn.style.setProperty('--lens-accent', t.accent);
+  });
+}
+
+function renderThinkerCard(mode, show) {
+  const t = THINKERS[mode];
+  const card = document.getElementById('thinker-card');
+  card.style.setProperty('--lens-accent', t.accent);
+  document.getElementById('thinker-medallion').textContent = t.initials;
+  document.getElementById('thinker-name').textContent = t.name;
+  document.getElementById('thinker-dates').textContent = t.dates;
+  document.getElementById('thinker-role').textContent = t.role;
+  document.getElementById('thinker-bio').textContent = t.bio;
+  document.getElementById('thinker-asks').textContent = t.asks;
+  if (show !== undefined) card.hidden = !show;
+}
+
+// ── Mode Configuration ──
+let activeMode = 'mobus';
+// composerLens: null = integrated (all five lenses); a mode string = ask through that single lens.
+let composerLens = null;
+const MODE_CONFIGS = {
+  mobus: {
+    dims: ['C','N','E','G','B','T','H','Dt'],
+    graphDims: new Set(['C','N','E','G','B']),
+    vectorDims: new Set(['T','H','Dt']),
+    names: {C:'Components',N:'Network',E:'Environment',G:'External Flows',B:'Boundary',T:'Transforms',H:'History',Dt:'Time Scale'},
+    queries: {
+      C:'What are components — the parts that constitute a system?',
+      N:'How do networks work — the internal connections between parts?',
+      E:'What is the environment — what lies outside a system boundary?',
+      G:'What are external flows — what crosses system boundaries?',
+      B:'What are boundaries — what defines inside versus outside a system?',
+      T:'What are transforms — the processes that convert inputs to outputs?',
+      H:'What is history — what a system remembers over time?',
+      Dt:'What is time scale — temporal resolution in systems?'
+    },
+    contextual: {
+      C:'Analyze the components of',
+      N:'Analyze the internal network and connections within',
+      E:'Analyze the environment surrounding',
+      G:'Analyze the external flows (inputs and outputs) of',
+      B:'Analyze the boundary and what defines inside vs outside of',
+      T:'Analyze the transforms and processes within',
+      H:'Analyze the history and accumulated state of',
+      Dt:'Analyze the time scales and temporal dynamics of'
+    },
+    framing: 'Examine through eight dimensions',
+    titles: {C:'Components — What constitutes the system',N:'Network — How parts connect internally',E:'Environment — What lies outside the boundary',G:'Flows — What crosses the boundary',B:'Boundary — Where the system ends',T:'Transforms — How inputs become outputs',H:'History — What the system remembers',Dt:'Time Scale — How fast or slow it operates'},
+    tooltips: {
+      C:'What are the parts? Identify the agents, subsystems, and entities that make up this system.',
+      N:'How are the parts connected? Internal relationships, dependencies, and communication channels.',
+      E:'What surrounds the system? External entities, conditions, and constraints it cannot control.',
+      G:'What crosses the boundary? Trace imports and exports of energy, material, and information.',
+      B:'Where does the system end? What is inside vs. outside, and the interfaces between them.',
+      T:'What processes occur? Functions that convert inputs to outputs — the system\'s work.',
+      H:'What does the system remember? Accumulated state, learned behaviors, path dependence.',
+      Dt:'At what pace? Time scales that matter — milliseconds, seasons, generations, epochs.'
+    }
+  },
+  spt: {
+    dims: ['FB','FL','CY','EM','EV','NW','DU','CH','DG'],
+    graphDims: new Set(['FB','NW','DU']),
+    vectorDims: new Set(['FL','CY','EM','EV','CH','DG']),
+    names: {FB:'Feedback',FL:'Flows',CY:'Cycles',EM:'Emergence',EV:'Evolution',NW:'Networks',DU:'Duality',CH:'Chaos',DG:'Pathology'},
+    queries: {
+      FB:'What is feedback — how do systems regulate and control themselves?',
+      FL:'What are flows — how do energy, material, and information move through systems?',
+      CY:'What are cycles — oscillations, periodic behavior, and phase transitions?',
+      EM:'What is emergence — properties the whole has that no part has alone?',
+      EV:'What is evolution — variation, selection, and developmental trajectories?',
+      NW:'What are networks — connectivity patterns, hubs, and hierarchical structure?',
+      DU:'What is duality — paired forces like centralization vs. decentralization?',
+      CH:'What is chaos — sensitivity to initial conditions and non-equilibrium dynamics?',
+      DG:'What is pathology — decay patterns, structural weaknesses, and system failure?'
+    },
+    contextual: {
+      FB:'Analyze the feedback and control mechanisms of',
+      FL:'Analyze the flows and throughput within',
+      CY:'Analyze the cycles and oscillations in',
+      EM:'Analyze the emergent properties of',
+      EV:'Analyze the evolutionary dynamics of',
+      NW:'Analyze the network structure of',
+      DU:'Analyze the dualities and symmetries in',
+      CH:'Analyze the chaotic and non-equilibrium behavior of',
+      DG:'Analyze the decay and pathological patterns in'
+    },
+    framing: 'Examine through nine process dimensions',
+    titles: {FB:'Feedback — Regulation and control loops',FL:'Flows — Energy/matter/information movement',CY:'Cycles — Periodic behavior and oscillations',EM:'Emergence — Self-organization and novelty',EV:'Evolution — Variation, selection, and growth',NW:'Networks — Connectivity and hierarchy',DU:'Duality — Paired forces and symmetry',CH:'Chaos — Non-equilibrium dynamics',DG:'Pathology — Decay and failure modes'},
+    tooltips: {
+      FB:'How does it regulate itself? Positive and negative loops that amplify or stabilize behavior.',
+      FL:'What moves through it? Energy, material, and information flows that sustain the system.',
+      CY:'What repeats? Oscillations, periodic behaviors, and phase transitions over time.',
+      EM:'What arises from interaction? Properties the whole has that no part has alone.',
+      EV:'How does it change? Variation, selection pressures, and developmental trajectories.',
+      NW:'How is it wired? Connectivity patterns, hub-spoke vs. mesh, hierarchical layering.',
+      DU:'What tensions coexist? Paired forces — centralization vs. decentralization, stability vs. adaptability.',
+      CH:'Where is it unpredictable? Sensitivity to initial conditions, tipping points, non-equilibrium dynamics.',
+      DG:'Where is it failing? Decay patterns, structural weaknesses, and pathological feedback loops.'
+    }
+  },
+  klir: {
+    dims: ['TH','SY','SR','DA','GN','ST','MT'],
+    graphDims: new Set([]),
+    vectorDims: new Set(['TH','SY','SR','DA','GN','ST','MT']),
+    names: {TH:'Thinghood',SY:'Systemhood',SR:'Source',DA:'Data',GN:'Generative',ST:'Structure Sys',MT:'Metasystem'},
+    queries: {
+      TH:'What is thinghood — the things a system is made of, and why disciplines depend on it?',
+      SY:'What is systemhood — the relation R that makes a set of things a system, S = (T, R)?',
+      SR:'What is a source system — variables, supports, and the experimental frame?',
+      DA:'What is a data system — actual observations within a defined support set?',
+      GN:'What is a generative system — the support-invariant relation that generates data?',
+      ST:'What is a structure system — subsystems coupled into one overall system?',
+      MT:'What is a metasystem — change of the generative laws themselves?'
+    },
+    contextual: {
+      TH:'Analyze the thinghood — the elements and primitives — of',
+      SY:'Analyze the systemhood — the defining relations — of',
+      SR:'Frame the source system (variables, supports, states) for',
+      DA:'Analyze the available data and observations for',
+      GN:'Identify the generative laws and dynamics behind',
+      ST:'Decompose into coupled subsystems the structure of',
+      MT:'Analyze how the governing rules themselves change in'
+    },
+    framing: 'Examine through systemhood and knowledge levels',
+    titles: {TH:'Thinghood — What the system is made of',SY:'Systemhood — The relation that makes it a system',SR:'Source — Variables, supports, the experimental frame',DA:'Data — Actual observations within the frame',GN:'Generative — The law that generates the data',ST:'Structure System — Coupled subsystems as one system',MT:'Metasystem — When the laws themselves change'},
+    tooltips: {
+      TH:'What is it made of? The elements and primitives — the adjective in "X system" lives here.',
+      SY:'What makes it a system? The relation R on the things T — organization, coupling, constraint.',
+      SR:'What would you measure? Variables, supports, and state sets — the experimental frame.',
+      DA:'What was observed? Actual states of the variables — time series, records, datasets.',
+      GN:'What generates the pattern? Support-invariant laws — state machines, equations, behavior functions.',
+      ST:'How does it decompose? Subsystems sharing variables, integrated into one overall system.',
+      MT:'Do the rules change? Replacement procedures — adaptation, self-organization, regime change.'
+    }
+  },
+  bunge: {
+    dims: ['C','E','S','B','L','M'],
+    graphDims: new Set([]),
+    vectorDims: new Set(['C','E','S','B','L','M']),
+    names: {C:'Composition',E:'Environment',S:'Structure',B:'Bondage',L:'Levels',M:'Mechanism'},
+    queries: {
+      C:'What is composition — the set of a system\'s parts at a level of analysis?',
+      E:'What is environment — the things outside that act on the system\'s components?',
+      S:'What is structure — the relations among components and with the environment?',
+      B:'What is bondage — the bonds that separate a system from a mere aggregate?',
+      L:'What are levels — composition-ordered strata from physical to social systems?',
+      M:'What is mechanism — the processes that make a system work?'
+    },
+    contextual: {
+      C:'Analyze the composition — the parts — of',
+      E:'Analyze the environment acting on',
+      S:'Analyze the structure — the web of relations — of',
+      B:'Analyze the bonds that hold together',
+      L:'Analyze the level structure — micro to macro — of',
+      M:'Exhibit the mechanism — how it actually works — of'
+    },
+    framing: 'Examine through six ontological dimensions',
+    titles: {C:'Composition — What the system is made of',E:'Environment — What acts on it from outside',S:'Structure — The relations that organize it',B:'Bondage — The bonds that make it a system',L:'Levels — Where it sits, micro to macro',M:'Mechanism — What makes it tick'},
+    tooltips: {
+      C:'What are the parts? The set of components at a chosen level of analysis, at a time.',
+      E:'What surrounds it? Things outside the composition that act on or are acted on by components.',
+      S:'How is it organized? All relations — bonding and nonbonding — among parts and with the environment.',
+      B:'What holds it together? Bonds that make a difference to their relata — system vs. heap.',
+      L:'At what level? Composition-ordered levels; emergence is properties gained on assembly.',
+      M:'How does it work? The processes that make it tick — explanation means exhibiting mechanism.'
+    }
+  },
+  ct: {
+    dims: ['I','W','C','F','O','D'],
+    graphDims: new Set([]),
+    vectorDims: new Set(['I','W','C','F','O','D']),
+    names: {I:'Interface',W:'Wiring',C:'Colimits',F:'Functoriality',O:'Operads',D:'Doctrine'},
+    queries: {
+      I:'What is an interface — the ports a system exposes for composition?',
+      W:'What are wiring diagrams — the patterns by which systems connect and nest?',
+      C:'What are colimits — the pushouts and cospans that make "gluing" exact?',
+      F:'What is functoriality — structure-preserving maps and free constructions?',
+      O:'What are operads — composition grammars without a fixed input/output split?',
+      D:'What is a doctrine — the choice of what counts as a system at all?'
+    },
+    contextual: {
+      I:'Analyze the interface — the exposed ports — of',
+      W:'Analyze the wiring pattern that composes',
+      C:'Analyze the gluing — the shared parts and pushouts — in',
+      F:'Analyze the structure-preserving maps within',
+      O:'Analyze the undirected, network-style composition of',
+      D:'Analyze what counts as a system — the doctrine — behind'
+    },
+    framing: 'Examine through six compositional dimensions',
+    titles: {I:'Interface — What it exposes to compose',W:'Wiring — How boxes nest and connect',C:'Colimits — Gluing made exact',F:'Functoriality — Maps that preserve structure',O:'Operads — Composition without direction',D:'Doctrine — What counts as a system'},
+    tooltips: {
+      I:'What does it expose? The ports and boundary through which all composition happens.',
+      W:'How is it connected? Wiring diagrams — boxes nested in boxes, outputs plugged to inputs.',
+      C:'How does it glue? Pushouts, cospans, coproducts — "connect these two" made precise.',
+      F:'What maps preserve structure? Functors, free constructions, identity and composition laws.',
+      O:'How to compose without direction? Arity and substitution — circuits and networks, no fixed in/out.',
+      D:'What counts as a system here? The category a systems theory commits to before it starts.'
+    }
+  }
+};
+
+// Active mode accessors (these get swapped on mode change)
+let GRAPH_DIMS = MODE_CONFIGS.mobus.graphDims;
+let VECTOR_DIMS = MODE_CONFIGS.mobus.vectorDims;
+let DIM_NAMES = MODE_CONFIGS.mobus.names;
+// Resolve a dimension code to its display name across ALL lens vocabularies — chips can
+// carry any tradition's codes (drilled and shared answers aren't bound to the active mode).
+// The active mode wins the C/E/B collisions shared by Mobus and Bunge.
+function dimDisplayName(d) {
+  if (DIM_NAMES[d]) return DIM_NAMES[d];
+  for (const k in MODE_CONFIGS) {
+    const n = MODE_CONFIGS[k].names;
+    if (n && n[d]) return n[d];
+  }
+  return d;
+}
+let DIM_QUERIES = MODE_CONFIGS.mobus.queries;
+let DIM_CONTEXTUAL = MODE_CONFIGS.mobus.contextual;
+// Fire a dimension query — contextual if conversation exists, cold otherwise
+// On touch devices, hover tooltips never fire — so the first tap on a dimension chip
+// reveals its meaning (the .dim-tooltip) and only a second tap runs the query.
+const DIM_COARSE_POINTER = window.matchMedia('(hover: none)').matches;
+function activateDimBtn(btn) {
+  if (btn.classList.contains('disabled')) return;
+  if (DIM_COARSE_POINTER && !btn.classList.contains('show')) {
+    document.querySelectorAll('.dim-bar-btn.show').forEach(b => b.classList.remove('show'));
+    btn.classList.add('show');
+    return;
+  }
+  btn.classList.remove('show');
+  fireDimQuery(btn.getAttribute('data-dim'));
+}
+// Dismiss a revealed tooltip when tapping anywhere else
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.dim-bar-btn')) {
+    document.querySelectorAll('.dim-bar-btn.show').forEach(b => b.classList.remove('show'));
+  }
+});
+
+function fireDimQuery(dim) {
+  const tab = getTab();
+  const hasConvo = tab && tab.messages.some(m => m.role === 'user');
+  if (hasConvo) {
+    const lastUser = [...tab.messages].reverse().find(m => m.role === 'user');
+    const topic = lastUser ? lastUser.text.slice(0, 80) : '';
+    sendQueryStream('Based on our conversation so far, how does ' + dimDisplayName(dim) + ' (' + dim + ') apply? What does this structural dimension reveal that we haven\'t explored yet?');
+  } else {
+    // Chips on drilled/shared answers can carry another lens's codes — DIM_QUERIES only
+    // covers the active mode, so fall back to a generic dimension query.
+    sendQueryStream(DIM_QUERIES[dim] || ('How does ' + dimDisplayName(dim) + ' (' + dim + ') apply as a structural dimension of systems?'));
+  }
+}
+
+// Update dim bar active states from last response dimensions
+function updateDimBar(activeDims) {
+  document.querySelectorAll('.dim-bar-btn').forEach(btn => {
+    const dim = btn.getAttribute('data-dim');
+    if (activeDims && activeDims.includes(dim)) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+}
+
+function rebuildDimBar(mode) {
+  const cfg = MODE_CONFIGS[mode];
+  const bar = document.getElementById('dim-bar');
+  bar.innerHTML = '';
+  cfg.dims.forEach(dim => {
+    const btn = document.createElement('button');
+    btn.className = 'dim-bar-btn';
+    btn.setAttribute('data-dim', dim);
+    btn.setAttribute('aria-describedby', 'tip-' + dim);
+    btn.style.borderLeftColor = 'var(--dim-' + dim + ')';
+    const tipText = cfg.tooltips ? cfg.tooltips[dim] : (cfg.titles[dim] || dim);
+    btn.innerHTML = '<span class="dim-btn-code">' + dim + '</span><span class="dim-btn-label">' + cfg.names[dim] + '</span><span class="dim-tooltip" id="tip-' + dim + '" role="tooltip">' + tipText + '</span>';
+    btn.addEventListener('click', () => activateDimBtn(btn));
+    bar.appendChild(btn);
+  });
+  const framing = document.querySelector('.dim-bar-framing');
+  if (framing) framing.textContent = cfg.framing;
+}
+
+function switchMode(mode, showCard) {
+  activeMode = mode;
+  const cfg = MODE_CONFIGS[mode];
+  GRAPH_DIMS = cfg.graphDims;
+  VECTOR_DIMS = cfg.vectorDims;
+  DIM_NAMES = cfg.names;
+  DIM_QUERIES = cfg.queries;
+  DIM_CONTEXTUAL = cfg.contextual;
+  rebuildDimBar(mode);
+  updateDimBar([]);
+  renderLensBar(mode);
+  renderThinkerCard(mode, showCard);
+}
+
+// Choose what the composer asks through: null = integrated (all five), or a single lens.
+// Selecting a lens surfaces that thinker's bio card (the "clever" info reveal).
+function selectComposerLens(mode) {
+  composerLens = mode;
+  const ind = document.getElementById('composer-lens');
+  const card = document.getElementById('thinker-card');
+  if (mode) {
+    switchMode(mode, true);   // sets activeMode + dim-bar context + shows the bio card
+    if (ind) {
+      ind.hidden = false;
+      ind.querySelector('.cl-name').textContent = THINKERS[mode].name;
+      ind.querySelector('.cl-role').textContent = THINKERS[mode].tag || '';
+    }
+  } else {
+    // integrated: reset the exploration dim-bar to the canonical default, hide card + indicator
+    if (activeMode !== 'mobus') switchMode('mobus', false);
+    if (card) card.hidden = true;
+    if (ind) ind.hidden = true;
+  }
+  // Highlight last so "All lenses" wins in integrated mode (switchMode re-runs renderLensBar).
+  document.querySelectorAll('.lens-btn').forEach(b => {
+    const on = (mode === null && b.dataset.mode === '__all__') || b.dataset.mode === mode;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+  // Dimensions belong to a lens: show the dim-bar only in single-lens mode.
+  const dimFraming = document.querySelector('.dim-bar-framing');
+  const dimBar = document.getElementById('dim-bar');
+  if (dimFraming) dimFraming.hidden = !mode;
+  if (dimBar) dimBar.hidden = !mode;
+}
+
+// Route a query through the integrated default, or a single lens if one is selected.
+function sendDefault(q) { return composerLens ? sendQueryStream(q) : sendIntegrated(q); }
+
+const EXAMPLE_POOL = [
+  // Abstract / conceptual
+  { query: 'Why do large organizations become slow?', label: 'Why do large organizations become slow?', tags: ['abstract'] },
+  { query: 'What governs boundary formation in systems?', label: 'What governs boundary formation?', tags: ['abstract'] },
+  { query: 'How do feedback loops create emergent behavior?', label: 'How do feedback loops create emergence?', tags: ['abstract'] },
+  { query: 'What makes a system resilient vs fragile?', label: 'What makes a system resilient vs fragile?', tags: ['abstract'] },
+  // Real-world / domain-specific
+  { query: 'How could primary care be redesigned using systems principles?', label: 'How could primary care be redesigned?', tags: ['applied'] },
+  { query: 'Decompose a city water treatment plant as a system', label: 'How does a water treatment plant work as a system?', tags: ['applied'] },
+  { query: 'What makes a supply chain vulnerable to disruption?', label: 'What makes a supply chain vulnerable?', tags: ['applied'] },
+  { query: 'How does a coral reef maintain itself as a system?', label: 'How does a coral reef maintain itself?', tags: ['applied'] },
+  { query: 'Model a public school district as a system', label: 'How does a school district work as a system?', tags: ['applied'] },
+  // Diagnostic
+  { query: 'Why do organizations keep solving the same problems over and over?', label: 'Why do orgs repeat the same problems?', tags: ['diagnostic'] },
+  { query: 'Why do housing policies often worsen the problems they target?', label: 'Why do housing policies backfire?', tags: ['diagnostic'] },
+  { query: 'What systemic patterns cause startups to fail despite strong products?', label: 'Why do strong-product startups still fail?', tags: ['diagnostic'] },
+  // Comparative / structural
+  { query: 'Compare a forest ecosystem and a city as systems', label: 'How do a forest and a city compare as systems?', tags: ['comparative'] },
+  { query: 'How is a blockchain like a biological cell?', label: 'How is a blockchain like a biological cell?', tags: ['comparative'] },
+  { query: 'Compare how a startup and a government agency adapt to change', label: 'How do startups and government agencies adapt differently?', tags: ['comparative'] },
+  // Design
+  { query: 'Design a community food system using systems principles', label: 'Design a community food system', tags: ['design'] },
+  { query: 'How would you design a decentralized science funding system?', label: 'Design decentralized science funding', tags: ['design'] },
+];
+
+function pickWelcomeChips(n = 4) {
+  const byTag = {};
+  EXAMPLE_POOL.forEach(e => e.tags.forEach(t => (byTag[t] = byTag[t] || []).push(e)));
+  const picks = [];
+  const used = new Set();
+  // Guarantee at least one applied/domain and one design/diagnostic
+  for (const tag of ['applied', 'design']) {
+    const pool = (byTag[tag] || []).filter(e => !used.has(e.query));
+    if (pool.length) { const p = pool[Math.floor(Math.random() * pool.length)]; picks.push(p); used.add(p.query); }
+  }
+  // Fill remaining slots randomly
+  const remaining = EXAMPLE_POOL.filter(e => !used.has(e.query));
+  while (picks.length < n && remaining.length) {
+    const idx = Math.floor(Math.random() * remaining.length);
+    picks.push(remaining[idx]); used.add(remaining[idx].query);
+    remaining.splice(idx, 1);
+  }
+  // Shuffle final order
+  for (let i = picks.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [picks[i], picks[j]] = [picks[j], picks[i]]; }
+  return picks;
+}
+const WELCOME_CHIPS = pickWelcomeChips(2);
+const LS_KEY = 'facets_chats';
+
+// ── User Identity ──
+function getUserId() {
+  let id = localStorage.getItem('facets_user_id');
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem('facets_user_id', id); }
+  return id;
+}
+function getUserName() { return localStorage.getItem('facets_user_name') || ''; }
+function setUserName(name) { localStorage.setItem('facets_user_name', name || ''); }
+
+// Dismissible name prompt. Never blocks asking — surfaced AFTER the first answer via
+// maybePromptName(), and closable ("Maybe later" / Escape) so it can't interrupt a first query.
+function ensureUserName() {
+  return new Promise((resolve) => {
+    if (getUserName()) { resolve(getUserName()); return; }
+    const overlay = document.createElement('div');
+    overlay.className = 'name-gate-overlay';
+    overlay.innerHTML = `<div class="name-gate-card">
+      <h3>What should we call you?</h3>
+      <p>A first name, nickname, or pseudonym. This helps us understand how people use the tool. Your real identity is never required.</p>
+      <input class="name-gate-input" type="text" placeholder="e.g. Jo, curious_engineer, anon42" autofocus>
+      <div class="name-gate-actions">
+        <button class="name-gate-skip" type="button">Maybe later</button>
+        <button class="name-gate-btn" disabled>Continue</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    const input = overlay.querySelector('.name-gate-input');
+    const btn = overlay.querySelector('.name-gate-btn');
+    const skip = overlay.querySelector('.name-gate-skip');
+    input.addEventListener('input', () => { btn.disabled = !input.value.trim(); });
+    function close(val) { overlay.remove(); document.removeEventListener('keydown', onKey); resolve(val); }
+    function submit() { const name = input.value.trim(); if (!name) return; setUserName(name); close(name); }
+    function onKey(e) { if (e.key === 'Escape') close(null); }
+    btn.addEventListener('click', submit);
+    skip.addEventListener('click', () => close(null));
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+    document.addEventListener('keydown', onKey);
+  });
+}
+// Prompt for a name once per session, only after the user has seen value (the first answer).
+function maybePromptName() {
+  if (getUserName() || sessionStorage.getItem('facets-name-prompted')) return;
+  sessionStorage.setItem('facets-name-prompted', '1');
+  ensureUserName();
+}
+const FACETS_USER_ID = getUserId();
+
+// ── State ──
+let tabs = [];
+let activeTab = null;
+let inFlight = false;
+let userScrolledUp = false;
+
+// Track user scroll — disable auto-scroll when user scrolls up
+document.addEventListener('DOMContentLoaded', () => {
+  const chatEl = document.getElementById('chat-messages');
+  if (chatEl) {
+    chatEl.addEventListener('scroll', () => {
+      const atBottom = chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 40;
+      userScrolledUp = !atBottom;
+    });
+  }
+});
+
+// ── Init ──
+function init() {
+  // GH Pages serves deep links (/a/<id>) through the 404.html stub, which stashes the
+  // path and bounces here — restore it before routing so the permalink matcher below
+  // sees the real pathname and the address bar shows the shareable URL.
+  const deepLink = sessionStorage.getItem('facets-deep-link');
+  if (deepLink) {
+    sessionStorage.removeItem('facets-deep-link');
+    try { history.replaceState(null, '', deepLink); } catch (e) {}
+  }
+  // Shared-answer permalink (/a/<id>): set read-only and short-circuit BEFORE any tab bootstrap,
+  // so loadTabs/createTab/saveTabs never persist a blank tab to the recipient's local history.
+  const shareMatch = window.location.pathname.match(/^\/a\/([A-Za-z0-9_-]+)$/);
+  if (shareMatch) {
+    READONLY = true;
+    renderSharedAnswer(shareMatch[1]);
+    return;
+  }
+  loadTabs();
+  if (!tabs.length) createTab(true);
+  restoreFromUrl();
+  renderTabs();
+  renderMessages();
+  checkStatus();
+  setInterval(checkStatus, 15000);
+  // Preload from ?q= URL param (legacy share links — re-runs the query; kept for back-compat)
+  const urlParams = new URLSearchParams(window.location.search);
+  const preloadQ = urlParams.get('q');
+  if (preloadQ) {
+    setTimeout(() => sendDefault(decodeURIComponent(preloadQ)), 500);
+  }
+  // Nav-home: new empty tab (shows welcome state)
+  document.getElementById('nav-home').addEventListener('click', () => createTab());
+  document.getElementById('nav-home').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); createTab(); }
+  });
+  // Dimension Explorer (dim-bar-btn handlers wired in rebuildDimBar)
+  replayDiagramState();
+}
+
+// Render a shared answer (/a/<id>) as a faithful, read-only snapshot — fetch the stored payload
+// and re-hydrate it through the normal message renderer. No re-run, no local-history writes.
+async function renderSharedAnswer(shareId) {
+  READONLY = true;
+  document.body.classList.add('readonly-share');
+  // This is a snapshot, not a chat — hide the composer and conversation controls.
+  const composer = document.querySelector('.composer');
+  if (composer) composer.style.display = 'none';
+  const header = document.querySelector('.chat-header');
+  if (header) header.style.display = 'none';
+
+  const chatEl = document.getElementById('chat-messages');
+  if (chatEl) chatEl.innerHTML = '<div class="msg msg-system">Loading shared answer…</div>';
+
+  let data = null;
+  try {
+    const r = await fetch(API + '/a/' + encodeURIComponent(shareId));
+    if (!r.ok) throw new Error('not found');
+    data = await r.json();
+  } catch (e) {
+    showSharedBanner();
+    if (chatEl) chatEl.innerHTML = '<div class="msg msg-system">This shared answer could not be found — it may have been removed.</div>';
+    return;
+  }
+
+  const p = data.payload || {};
+  const meta = {
+    route: p.route, confidence: p.confidence,
+    dimensions: p.dimensions || [], intensity: p.intensity,
+    reasoning: p.reasoning, sources: p.sources || [],
+    lenses: p.lenses || [], pathology: p.pathology || null,
+    web_search: p.web_search,
+  };
+  // Synthetic, in-memory tab only — saveTabs() is guarded by READONLY so nothing persists.
+  tabs = [{
+    id: 'shared', name: 'Shared answer', sessionId: 'shared',
+    messages: [
+      { role: 'user', text: data.question || p.question || '', meta: null },
+      { role: 'bot', text: p.answer || '', meta },
+    ],
+  }];
+  activeTab = 'shared';
+  showSharedBanner();
+  renderMessages();
+  replayDiagramState();
+}
+
+function showSharedBanner() {
+  if (document.querySelector('.shared-banner')) return;
+  const chatEl = document.getElementById('chat-messages');
+  if (!chatEl || !chatEl.parentNode) return;
+  const banner = document.createElement('div');
+  banner.className = 'shared-banner';
+  banner.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:1rem;'
+    + 'padding:.55rem .9rem;margin:.5rem 0;border:1px solid #d4ddd8;background:#eef3f1;'
+    + 'border-radius:8px;font-size:.82rem;color:#3a4a45;';
+  banner.innerHTML = '<span>Shared answer · read-only snapshot</span>'
+    + '<a href="/" style="color:#2f7a68;font-weight:600;text-decoration:none;white-space:nowrap;">Ask your own →</a>';
+  chatEl.parentNode.insertBefore(banner, chatEl);
+}
+
+function replayDiagramState() {
+  if (!document.getElementById('query-display')) return;
+  const tab = getTab();
+  if (!tab || !tab.messages.length) return;
+  // Find last bot message with meta
+  const lastBot = [...tab.messages].reverse().find(m => m.role === 'bot' && m.meta);
+  if (!lastBot || !lastBot.meta) return;
+  const lastUser = [...tab.messages].reverse().find(m => m.role === 'user');
+  if (lastUser) updateDiagram('query', lastUser.text);
+  const dims = lastBot.meta.dimensions || [];
+  const intensity = lastBot.meta.intensity || 'none';
+  const reasoning = lastBot.meta.reasoning || '';
+  const route = lastBot.meta.route || 'vector';
+  const confidence = lastBot.meta.confidence || '';
+  if (dims.length || intensity !== 'none') {
+    updateDiagram('tuple', { dims, intensity, reasoning });
+    updateDiagram('retrieval', dims);
+    updateDiagram('response', { route, confidence, dims });
+  }
+}
+
+// ── LocalStorage (persists activeTab) ──
+function saveTabs() {
+  if (READONLY) return;  // a shared snapshot must not pollute the recipient's stored history
+  try { localStorage.setItem(LS_KEY, JSON.stringify({ tabs, activeTab })); } catch(e) {}
+}
+
+function pushConversationUrl() {
+  const tab = getTab();
+  if (tab && tab.messages.some(m => m.role === 'user')) {
+    const path = '/c/' + tab.id;
+    if (window.location.pathname !== path) {
+      history.pushState({ tabId: tab.id }, '', path);
+    }
+  }
+}
+
+function restoreFromUrl() {
+  const match = window.location.pathname.match(/^\/c\/(.+)$/);
+  if (match) {
+    const tabId = match[1];
+    const tab = tabs.find(t => t.id === tabId);
+    if (tab) {
+      activeTab = tabId;
+      return true;
+    }
+  }
+  return false;
+}
+
+window.addEventListener('popstate', (e) => {
+  if (e.state && e.state.tabId) {
+    const tab = tabs.find(t => t.id === e.state.tabId);
+    if (tab) { switchTab(e.state.tabId); return; }
+  }
+  const restored = restoreFromUrl();
+  if (!restored && window.location.pathname === '/') {
+    renderTabs();
+    renderMessages();
+  }
+});
+function loadTabs() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_KEY));
+    if (Array.isArray(raw) && raw.length) {
+      tabs = raw; activeTab = tabs[0].id;
+    } else if (raw && raw.tabs && raw.tabs.length) {
+      tabs = raw.tabs;
+      activeTab = raw.activeTab || tabs[0].id;
+      if (!tabs.find(t => t.id === activeTab)) activeTab = tabs[0].id;
+    }
+    tabs.forEach(t => {
+      t.messages = t.messages.filter(m => m.role !== 'thinking');
+      if (!t.sessionId) t.sessionId = crypto.randomUUID();
+    });
+  } catch(e) {}
+}
+
+// ── Tab management ──
+function createTab(silent) {
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+  const sessionId = crypto.randomUUID();
+  const name = 'Chat ' + (tabs.length + 1);
+  tabs.push({ id, name, sessionId, messages: [] });
+  activeTab = id;
+  saveTabs();
+  if (!silent) { renderTabs(); renderMessages(); }
+}
+function switchTab(id) {
+  activeTab = id;
+  saveTabs();
+  renderTabs();
+  renderMessages();
+  const tab = tabs.find(t => t.id === id);
+  if (tab && tab.messages.some(m => m.role === 'user')) {
+    history.pushState({ tabId: id }, '', '/c/' + id);
+  } else {
+    history.pushState(null, '', '/');
+  }
+  const lastBot = tab && [...tab.messages].reverse().find(m => m.role === 'bot' && m.meta);
+  updateDimBar(lastBot && lastBot.meta.dimensions ? lastBot.meta.dimensions : null);
+}
+function deleteTab(id) {
+  if (tabs.length <= 1) return;
+  tabs = tabs.filter(t => t.id !== id);
+  if (activeTab === id) activeTab = tabs[0].id;
+  saveTabs();
+  renderTabs();
+  renderMessages();
+}
+function renameTab(id) {
+  const tab = tabs.find(t => t.id === id);
+  if (!tab) return;
+  const name = prompt('Rename tab:', tab.name);
+  if (name && name.trim()) { tab.name = name.trim(); saveTabs(); renderTabs(); }
+}
+function getTab() { return tabs.find(t => t.id === activeTab); }
+
+function renderTabs() {
+  const histBtn = document.getElementById('chat-history-btn');
+  const hasConversations = tabs.some(t => t.messages.some(m => m.role === 'user'));
+  if (histBtn) histBtn.style.display = hasConversations ? '' : 'none';
+
+  // Update history panel list
+  const el = document.getElementById('history-list');
+  if (!el) return;
+  el.innerHTML = '';
+  tabs.forEach(t => {
+    const item = document.createElement('button');
+    item.className = 'history-item' + (t.id === activeTab ? ' active' : '');
+    const name = document.createElement('span');
+    name.className = 'history-item-name';
+    name.textContent = t.name;
+    name.title = 'Double-click to rename';
+    name.ondblclick = (e) => { e.stopPropagation(); renameTab(t.id); };
+    item.appendChild(name);
+    if (tabs.length > 1) {
+      const x = document.createElement('button');
+      x.className = 'history-item-close';
+      x.textContent = '\u00d7';
+      x.setAttribute('aria-label', 'Delete: ' + t.name);
+      x.onclick = (e) => { e.stopPropagation(); deleteTab(t.id); };
+      item.appendChild(x);
+    }
+    item.onclick = () => { switchTab(t.id); closeHistory(); };
+    el.appendChild(item);
+  });
+}
+
+function openHistory() {
+  document.getElementById('history-panel').classList.add('open');
+  document.getElementById('history-backdrop').classList.add('visible');
+  renderTabs();
+}
+function closeHistory() {
+  document.getElementById('history-panel').classList.remove('open');
+  document.getElementById('history-backdrop').classList.remove('visible');
+}
+
+// ── Messages ──
+function renderMessages() {
+  const el = document.getElementById('chat-messages');
+  const tab = getTab();
+  if (!tab) { el.innerHTML = ''; return; }
+  el.innerHTML = '';
+  // Hide New button when already on empty tab
+  const newBtn = document.getElementById('new-conv-btn');
+  if (newBtn) newBtn.style.display = tab.messages.length > 0 ? '' : 'none';
+  // Export is an output action — nothing to export on the empty home screen.
+  const exportGroup = document.querySelector('.export-group');
+  if (exportGroup) exportGroup.style.display = tab.messages.length > 0 ? '' : 'none';
+  // Dim bar: always visible, but disabled until conversation exists
+  const hasConvo = tab.messages.some(m => m.role === 'bot');
+  document.querySelectorAll('.dim-bar-btn').forEach(btn => {
+    btn.classList.toggle('disabled', !hasConvo);
+  });
+  // Welcome state for empty tabs
+  if (tab.messages.length === 0) {
+    const welcome = document.createElement('div');
+    welcome.className = 'chat-welcome';
+    welcome.innerHTML = `
+      <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4"
+          stroke="var(--flow)" stroke-width="1.5" fill="rgba(58,110,98,0.04)" />
+        <line x1="40" y1="40" x2="40" y2="4" stroke="var(--flow)" stroke-width="0.8" opacity="0.5" />
+        <line x1="40" y1="40" x2="68.3" y2="16.6" stroke="var(--flow)" stroke-width="0.8" opacity="0.5" />
+        <line x1="40" y1="40" x2="76" y2="44.9" stroke="var(--flow)" stroke-width="0.8" opacity="0.5" />
+        <line x1="40" y1="40" x2="59.4" y2="70.1" stroke="var(--flow)" stroke-width="0.8" opacity="0.5" />
+        <line x1="40" y1="40" x2="20.6" y2="70.1" stroke="var(--flow)" stroke-width="0.8" opacity="0.5" />
+        <line x1="40" y1="40" x2="4" y2="44.9" stroke="var(--flow)" stroke-width="0.8" opacity="0.5" />
+        <line x1="40" y1="40" x2="11.7" y2="16.6" stroke="var(--flow)" stroke-width="0.8" opacity="0.5" />
+        <circle cx="40" cy="40" r="2" fill="var(--flow)" opacity="0.4" />
+      </svg>
+      <div class="chat-welcome-title">Facets</div>
+      <div class="chat-welcome-tagline">A systems reasoning engine.</div>
+      <div class="chat-welcome-subline">Ask about any system, real, conceptual, or hypothetical. Facets reveals the structures and dynamics that make it work, drawing on the major traditions of systems science.</div>
+      <div class="chat-welcome-name"></div>`;
+    // No example chips — let people ask whatever comes to mind. Name is collected via
+    // ensureUserName() gate on first query.
+    el.appendChild(welcome);
+    document.querySelectorAll('.dim-bar-btn').forEach(b => b.classList.add('disabled'));
+    document.querySelector('.composer').classList.add('welcome-mode');
+    logFunnelEvent('landing_viewed');
+    return;
+  }
+  document.querySelectorAll('.dim-bar-btn').forEach(b => b.classList.remove('disabled'));
+  document.querySelector('.composer').classList.remove('welcome-mode');
+  tab.messages.forEach(m => {
+    const div = document.createElement('div');
+    if (m.role === 'thinking') {
+      div.className = 'msg msg-thinking';
+      div.textContent = m.text || 'Thinking';
+    } else if (m.role === 'system') {
+      div.className = 'msg msg-system';
+      div.textContent = m.text;
+    } else if (m.role === 'user') {
+      div.className = 'msg msg-user';
+      div.textContent = m.text;
+    } else if (m.role === 'convergence') {
+      div.className = 'msg msg-convergence';
+      const cm = m.meta || {};
+      const conv = document.createElement('div');
+      conv.className = 'conv-panel';
+      conv.innerHTML = renderClean((cm.convergence && cm.convergence.text) || '_No convergence produced._');
+      div.appendChild(conv);
+      const lensWrap = document.createElement('div');
+      lensWrap.className = 'conv-lenses';
+      const LENS_LABEL = { mobus: 'Mobus', klir: 'Klir', bunge: 'Bunge', spt: 'Troncale', ct: 'CT' };
+      (cm.lenses || []).forEach(l => {
+        const card = document.createElement('div');
+        card.className = 'conv-lens';
+        const head = document.createElement('button');
+        head.className = 'conv-lens-head';
+        head.innerHTML = '<span class="conv-lens-name">' + (LENS_LABEL[l.mode] || l.mode) + '</span> <span class="conv-lens-dims">' + (l.dimensions || []).join(' ') + '</span><span class="conv-lens-caret">▾</span>';
+        const body = document.createElement('div');
+        body.className = 'conv-lens-body collapsed';
+        body.innerHTML = l.error ? '<em>this lens was unavailable</em>' : renderClean(l.answer || '');
+        head.onclick = () => { body.classList.toggle('collapsed'); head.classList.toggle('open'); };
+        card.appendChild(head);
+        card.appendChild(body);
+        lensWrap.appendChild(card);
+      });
+      div.appendChild(lensWrap);
+    } else {
+      div.className = 'msg msg-bot';
+      const parsed = parseTLDR(m.text || '');
+      if (parsed.hasTLDR) {
+        const tldrEl = document.createElement('div');
+        tldrEl.className = 'msg-tldr';
+        tldrEl.innerHTML = renderClean(parsed.tldr);
+        renderMath(tldrEl);
+        div.appendChild(tldrEl);
+
+        const expander = document.createElement('button');
+        expander.className = 'tldr-expander';
+        expander.textContent = 'Read full analysis ▼';
+        div.appendChild(expander);
+
+        const fullEl = document.createElement('div');
+        fullEl.className = 'msg-full collapsed';
+        fullEl.innerHTML = renderClean(parsed.full);
+        renderMath(fullEl);
+        div.appendChild(fullEl);
+
+        expander.onclick = () => {
+          fullEl.classList.toggle('collapsed');
+          expander.textContent = fullEl.classList.contains('collapsed')
+            ? 'Read full analysis ▼' : 'Hide full analysis ▲';
+        };
+      } else {
+        div.innerHTML = renderClean(m.text || '');
+        renderMath(div);
+      }
+      if (m.meta) {
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'msg-meta';
+        // Internal route enum + raw confidence float are debug signals, not user-facing.
+        // (De-AI pass 2026-07-01 — kept out of the product surface; dimensions/pathology stay.)
+        if (m.meta.dimensions && m.meta.dimensions.length) {
+          m.meta.dimensions.forEach(d => {
+            const b = document.createElement('span');
+            b.className = 'msg-tag msg-tag-dim';
+            b.setAttribute('data-dim', d);
+            // Same visual grammar as the dimension bar: faded code + full name. Bare
+            // codes (CY, EM, …) mean nothing to a first-time or shared-link reader.
+            const code = document.createElement('span');
+            code.className = 'dim-chip-code';
+            code.textContent = d;
+            b.appendChild(code);
+            b.appendChild(document.createTextNode(dimDisplayName(d)));
+            if (!READONLY) {
+              b.classList.add('msg-tag-dim-clickable');
+              b.title = 'Explore ' + dimDisplayName(d);
+              b.style.cursor = 'pointer';
+              b.onclick = () => fireDimQuery(d);
+            }
+            metaDiv.appendChild(b);
+          });
+        }
+        if (m.meta.pathology && m.meta.pathology.pathology) {
+          const pb = document.createElement('span');
+          pb.className = 'msg-tag pathology-badge';
+          pb.textContent = m.meta.pathology.pathology;
+          const reason = m.meta.pathology.reasoning || 'System pathology detected';
+          pb.title = reason;
+          // Touch has no hover — let a tap reveal the reasoning inline
+          if (DIM_COARSE_POINTER) {
+            pb.style.cursor = 'pointer';
+            const reasonEl = document.createElement('div');
+            reasonEl.className = 'dim-nudge';
+            reasonEl.textContent = reason;
+            reasonEl.style.display = 'none';
+            pb.onclick = () => {
+              reasonEl.style.display = reasonEl.style.display === 'none' ? 'block' : 'none';
+            };
+            metaDiv.appendChild(pb);
+            metaDiv.appendChild(reasonEl);
+          } else {
+            metaDiv.appendChild(pb);
+          }
+        }
+        if (metaDiv.children.length) div.appendChild(metaDiv);
+
+        // Dimension nudge — first bot response only
+        if (m.meta.dimensions && m.meta.dimensions.length > 0) {
+          const botMessages = tab.messages.filter(msg => msg.role === 'bot');
+          if (botMessages.indexOf(m) === 0) {
+            const totalDims = MODE_CONFIGS[activeMode] ? MODE_CONFIGS[activeMode].dims.length : 8;
+            const nudge = document.createElement('div');
+            nudge.className = 'dim-nudge';
+            nudge.textContent = 'This analysis touched ' + m.meta.dimensions.length + ' of ' + totalDims + ' structural dimensions. Click any badge to explore deeper.';
+            div.appendChild(nudge);
+            setTimeout(() => { nudge.classList.add('fading'); setTimeout(() => nudge.remove(), 600); }, 12000);
+          }
+        }
+
+        // Grounding line — surface the engine's web-search decision on every answer.
+        // Old messages in localStorage lack meta.web_search; fall back to counting web sources.
+        const webSrcCount = (m.meta.sources || []).filter(s => s.type === 'web').length;
+        if (typeof m.meta.web_search === 'boolean' || webSrcCount > 0) {
+          const gl = document.createElement('div');
+          gl.className = 'grounding-line';
+          if (webSrcCount > 0) {
+            gl.textContent = 'Grounded from web · ' + webSrcCount + ' source' + (webSrcCount === 1 ? '' : 's');
+          } else if (m.meta.web_search) {
+            gl.textContent = 'Web search ran · no web sources cited';
+          } else {
+            gl.textContent = 'Answered from corpus · no web search';
+          }
+          div.appendChild(gl);
+        }
+
+        // Source evidence (B.7)
+        if (m.meta.sources && m.meta.sources.length) {
+          const evDiv = document.createElement('div');
+          evDiv.className = 'msg-evidence';
+          const toggle = document.createElement('button');
+          toggle.className = 'evidence-toggle';
+          toggle.textContent = 'Sources (' + m.meta.sources.length + ')';
+          const ul = document.createElement('ul');
+          ul.className = 'evidence-list collapsed';
+          toggle.onclick = () => ul.classList.toggle('collapsed');
+          m.meta.sources.forEach(s => {
+            const li = document.createElement('li');
+            const typeBadge = '<span class="evidence-type">' + (s.type || 'vector') + '</span> ';
+            if (s.type === 'web') {
+              li.innerHTML = typeBadge + '<a class="evidence-source" href="' + (s.excerpt || '#') + '" target="_blank" rel="noopener">' + (s.source || 'Web') + '</a>';
+            } else {
+              const scoreStr = s.score ? ' <span class="evidence-score">' + s.score + '</span>' : '';
+              li.innerHTML = typeBadge + '<span class="evidence-source">' + (s.source || 'Unknown') + '</span>' + scoreStr + ' ' + (s.excerpt || '');
+            }
+            ul.appendChild(li);
+          });
+          evDiv.appendChild(toggle);
+          evDiv.appendChild(ul);
+          div.appendChild(evDiv);
+        }
+      }
+      // Drill-in lens strip (integrated answers only — guarded on m.meta.lenses).
+      // Skipped in read-only share view: drill-in re-runs a lens against the engine.
+      if (!READONLY) appendLensStrip(div, m, tab);
+
+      // Action bar at bottom of bot messages
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'msg-actions';
+      const parsed2 = parseTLDR(m.text || '');
+      if (parsed2.hasTLDR) {
+        const copyTldr = document.createElement('button');
+        copyTldr.className = 'msg-copy-btn';
+        copyTldr.textContent = 'Copy TL;DR';
+        copyTldr.onclick = () => { navigator.clipboard.writeText(parsed2.tldr).then(() => { copyTldr.textContent = '✓'; setTimeout(() => { copyTldr.textContent = 'Copy TL;DR'; }, 1500); }); };
+        actionsDiv.appendChild(copyTldr);
+      }
+      const copyFull = document.createElement('button');
+      copyFull.className = 'msg-copy-btn';
+      copyFull.textContent = parsed2.hasTLDR ? 'Copy Full' : 'Copy';
+      copyFull.onclick = () => { navigator.clipboard.writeText(m.text).then(() => { copyFull.textContent = '✓'; setTimeout(() => { copyFull.textContent = parsed2.hasTLDR ? 'Copy Full' : 'Copy'; }, 1500); }); };
+      actionsDiv.appendChild(copyFull);
+      // Share button — copies a permalink to this exact stored answer (/a/<id>), not a ?q= re-run.
+      // Only offered when the answer was persisted with a share id (e.g. prod with logging on).
+      if (!READONLY && m.meta && m.meta.answer_id) {
+        const shareBtn = document.createElement('button');
+        shareBtn.className = 'msg-copy-btn';
+        shareBtn.textContent = 'Share';
+        shareBtn.onclick = () => {
+          const url = window.location.origin + '/a/' + m.meta.answer_id;
+          navigator.clipboard.writeText(url).then(() => {
+            shareBtn.textContent = '✓ Link copied';
+            setTimeout(() => { shareBtn.textContent = 'Share'; }, 2000);
+          });
+        };
+        actionsDiv.appendChild(shareBtn);
+      }
+      if (!READONLY) {
+        const compareBtn = document.createElement('button');
+        compareBtn.className = 'msg-copy-btn';
+        compareBtn.textContent = '◇ Compare all lenses';
+        compareBtn.onclick = () => {
+          const t = getTab();
+          const idx = t ? t.messages.indexOf(m) : -1;
+          let userQ = '';
+          for (let j = idx - 1; j >= 0; j--) { if (t.messages[j].role === 'user') { userQ = t.messages[j].text; break; } }
+          if (userQ) askAll(userQ, compareBtn);
+        };
+        actionsDiv.appendChild(compareBtn);
+      }
+      div.appendChild(actionsDiv);
+    }
+    el.appendChild(div);
+  });
+  if (!userScrolledUp) el.scrollTop = el.scrollHeight;
+}
+
+function parseTLDR(text) {
+  const tldrMatch = text.match(/^##\s*TL;DR\s*\n([\s\S]*?)(?=\n##\s)/m);
+  const fullMatch = text.match(/^##\s*Full Analysis\s*\n([\s\S]*)$/m);
+  if (!tldrMatch) return { hasTLDR: false, tldr: '', full: text };
+  return { hasTLDR: true, tldr: tldrMatch[1].trim(), full: fullMatch ? fullMatch[1].trim() : text };
+}
+
+function renderGroundingMarkers(md) {
+  // gsr#37 grounding signal: the integration prompt emits [[g: source]] / [[u]] markers
+  // inline after corpus-grounded / parametric claims. Render them as visible badges —
+  // "ungrounded" is a first-class state, not hidden.
+  return md
+    .replace(/\[\[g:\s*([^\]]*)\]\]/g, (_, src) =>
+      `<span class="grounding-badge grounding-badge-grounded" title="${src.trim().replace(/"/g, '&quot;')}">✓ ${src.trim()}</span>`)
+    .replace(/\[\[u\]\]/g, '<span class="grounding-badge grounding-badge-ungrounded" title="not in the retrieved corpus">◌ ungrounded</span>');
+}
+
+function cleanMarkdown(md) {
+  return renderGroundingMarkers(md)
+    .replace(/^\s*\.\s*$/gm, '')        // orphan period on its own line
+    .replace(/ +\./g, '.')              // space before period
+    .replace(/\n{3,}/g, '\n\n');        // collapse excess blank lines
+}
+
+function renderMath(el) {
+  if (typeof katex === 'undefined') return;
+  el.innerHTML = el.innerHTML
+    .replace(/\$\$([\s\S]+?)\$\$/g, (_, tex) => {
+      try { return katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false }); }
+      catch(e) { return '$$' + tex + '$$'; }
+    })
+    .replace(/\$([^\$\n]+?)\$/g, (m, tex) => {
+      if (/^\d/.test(tex.trim())) return m;
+      try { return katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false }); }
+      catch(e) { return '$' + tex + '$'; }
+    });
+}
+
+function renderClean(md) {
+  const html = marked.parse(cleanMarkdown(md));
+  return html;
+}
+
+async function askAll(question, btn) {
+  if (window.__askAllInFlight) return;
+  window.__askAllInFlight = true;
+  const originTabId = getTab() ? getTab().id : null;
+  if (btn) { btn.disabled = true; btn.textContent = 'Comparing 5 lenses…'; }
+  addMessage('thinking', 'Comparing across all five lenses…', null, originTabId);
+  try {
+    const r = await fetch(API + '/ask-all', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, user_id: FACETS_USER_ID, user_name: getUserName(), session_id: (tabs.find(t => t.id === originTabId) || {}).sessionId || '' })
+    });
+    const data = await r.json();
+    const tab = tabs.find(t => t.id === originTabId);
+    if (tab) tab.messages = tab.messages.filter(mm => mm.role !== 'thinking');
+    addMessage('convergence', '', { question, lenses: data.lenses || [], convergence: data.convergence || {} }, originTabId);
+  } catch (e) {
+    const tab = tabs.find(t => t.id === originTabId);
+    if (tab) tab.messages = tab.messages.filter(mm => mm.role !== 'thinking');
+    addMessage('system', 'Could not compare lenses — try again.', null, originTabId);
+  } finally {
+    window.__askAllInFlight = false;
+    if (btn) { btn.disabled = false; btn.textContent = '◇ Compare all lenses'; }
+  }
+}
+
+function addMessage(role, text, meta, tabId) {
+  const tab = tabId ? tabs.find(t => t.id === tabId) : getTab();
+  if (!tab) return;
+  tab.messages.push({ role, text, meta: meta || null });
+  saveTabs();
+  if (!tabId || tabId === activeTab) renderMessages();
+}
+
+// ── Export ──
+function exportChatJSON() {
+  const tab = getTab();
+  if (!tab) return;
+  const data = JSON.stringify(tab.messages, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (tab.name || 'chat') + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function exportChatMarkdown() {
+  const tab = getTab();
+  if (!tab) return;
+  const md = '# ' + (tab.name || 'Facets Chat') + '\n\n' +
+    tab.messages.filter(m => m.role !== 'system').map(m => {
+      if (m.role === 'user') return '**Q:** ' + m.text;
+      let out = m.text;
+      if (m.meta) {
+        const parts = [];
+        if (m.meta.dimensions && m.meta.dimensions.length) parts.push('Dimensions: ' + m.meta.dimensions.map(d => dimDisplayName(d) + ' (' + d + ')').join(', '));
+        if (m.meta.route) parts.push('Route: ' + m.meta.route);
+        if (m.meta.intensity) parts.push('Intensity: ' + m.meta.intensity);
+        if (m.meta.sources && m.meta.sources.length) {
+          parts.push('Sources: ' + [...new Set(m.meta.sources.map(s => s.source))].join(', '));
+        }
+        if (parts.length) out += '\n\n*' + parts.join(' | ') + '*';
+      }
+      return out;
+    }).join('\n\n---\n\n');
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (tab.name || 'chat') + '.md';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+// ── API ──
+async function checkStatus() {
+  const dot = document.getElementById('status-dot');
+  try {
+    const r = await fetch(API + '/status');
+    if (r.ok) {
+      const data = await r.json();
+      dot.className = 'status-dot online';
+      dot.setAttribute('aria-label', 'Connected');
+      dot.title = 'Connected';
+      // Update LLM display — skip if still loading
+      const model = data.model || 'unknown';
+      if (model === 'loading' || !data.ready) {
+        const loadingName = document.getElementById('llm-model-name');
+        if (loadingName) loadingName.textContent = 'Loading...';
+        // Don't hide selector during loading — just disable it
+        document.getElementById('model-select').disabled = true;
+      } else {
+      const modelNameEl = document.getElementById('llm-model-name');
+      if (modelNameEl) modelNameEl.textContent = 'Synthesis';
+      const mode = data.mode || (model.includes('claude') ? 'cloud' : 'local');
+      const select = document.getElementById('model-select');
+      const tag = document.getElementById('llm-model-tag');
+      const diagTag = document.getElementById('llm-diagram-tag');
+      select.disabled = false;
+      if (mode === 'local') {
+        select.style.display = 'none';
+        tag.style.display = 'inline';
+        tag.textContent = model + ' \u00b7 Local';
+        if (diagTag) diagTag.textContent = model + ' \u00b7 Local';
+      } else {
+        select.style.display = '';
+        tag.style.display = 'none';
+        if (diagTag) diagTag.textContent = model.includes('sonnet') ? 'Claude Sonnet' : 'Claude Haiku';
+        if (select.querySelector('option[value="' + model + '"]')) {
+          select.value = model;
+        }
+      }
+      const wsb = document.getElementById('web-search-badge');
+      if (wsb) wsb.style.display = data.web_search ? 'inline' : 'none';
+      } // end model display
+    } else {
+      dot.className = 'status-dot';
+      dot.setAttribute('aria-label', 'Disconnected');
+      dot.title = 'Disconnected';
+    }
+  } catch(e) {
+    dot.className = 'status-dot';
+    dot.setAttribute('aria-label', 'Disconnected');
+    dot.title = 'Disconnected';
+  }
+}
+
+function getRecentHistory(maxTurns) {
+  const tab = tabs.find(t => t.id === activeTab);
+  if (!tab) return [];
+  return tab.messages
+    .filter(m => m.role === 'user' || m.role === 'bot')
+    .slice(-(maxTurns * 2))
+    .map(m => ({ role: m.role, text: m.text.slice(0, 1000) }));
+}
+
+async function sendQuery(question) {
+  if (inFlight) return;
+  inFlight = true;
+
+  const originTabId = activeTab;  // Lock response to this tab
+  const btn = document.getElementById('send-btn');
+  const dot = document.getElementById('status-dot');
+  btn.disabled = true;
+  dot.className = 'status-dot loading';
+
+  addMessage('user', question, null, originTabId);
+
+  // Auto-name tab from first query
+  const tab = tabs.find(t => t.id === originTabId);
+  const userMsgCount = tab ? tab.messages.filter(m => m.role === 'user').length : 1;
+  logFunnelEvent(userMsgCount <= 1 ? 'query_submitted' : 'query_submitted_second');
+  if (tab && userMsgCount === 1) {
+    tab.name = question.length > 30 ? question.slice(0, 28) + '…' : question;
+    saveTabs();
+    renderTabs();
+  }
+
+  pushConversationUrl();
+
+  // Thinking indicator as a tab-aware message (survives re-renders)
+  addMessage('thinking', '', null, originTabId);
+
+  updateDiagram('query', question);
+  animateFlow('query');
+
+  try {
+    const r = await fetch(API + '/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question,
+        history: getRecentHistory(6),
+        session_id: (tabs.find(t => t.id === originTabId) || {}).sessionId || '',
+        user_id: FACETS_USER_ID,
+        user_name: getUserName(),
+        mode: activeMode
+      })
+    });
+    const data = await r.json();
+
+    const dims = data.dimensions || [];
+    const intensity = data.intensity || 'none';
+    const reasoning = data.reasoning || '';
+    const route = data.route || 'unknown';
+    const confidence = data.confidence || '';
+    const answer = data.answer || 'No response.';
+
+    // Remove thinking indicator from the originating tab
+    const originTab = tabs.find(t => t.id === originTabId);
+    if (originTab) {
+      originTab.messages = originTab.messages.filter(m => m.role !== 'thinking');
+    }
+
+    addMessage('bot', answer, { route, confidence, dimensions: dims, intensity, reasoning, sources: data.sources || [], web_search: data.web_search, answer_id: data.answer_id }, originTabId);
+    updateDimBar(dims);
+    dot.className = 'status-dot online';
+  } catch(e) {
+    const originTab = tabs.find(t => t.id === originTabId);
+    if (originTab) {
+      originTab.messages = originTab.messages.filter(m => m.role !== 'thinking');
+    }
+    addMessage('system', 'Error: Could not reach the API.', null, originTabId);
+    clearDiagramHighlights();
+    dot.className = 'status-dot';
+  }
+  btn.disabled = false;
+  inFlight = false;
+}
+
+async function sendQueryStream(question) {
+  if (inFlight) return;
+  inFlight = true;
+  userScrolledUp = false;
+
+  const originTabId = activeTab;
+  const btn = document.getElementById('send-btn');
+  const dot = document.getElementById('status-dot');
+  btn.disabled = true;
+  dot.className = 'status-dot loading';
+
+  addMessage('user', question, null, originTabId);
+
+  // Auto-name tab from first query
+  const tab = tabs.find(t => t.id === originTabId);
+  const userMsgCount = tab ? tab.messages.filter(m => m.role === 'user').length : 1;
+  logFunnelEvent(userMsgCount <= 1 ? 'query_submitted' : 'query_submitted_second');
+  if (tab && userMsgCount === 1) {
+    tab.name = question.length > 30 ? question.slice(0, 28) + '…' : question;
+    saveTabs();
+    renderTabs();
+  }
+
+  pushConversationUrl();
+
+  // Thinking indicator
+  addMessage('thinking', '', null, originTabId);
+
+  updateDiagram('query', question);
+  animateFlow('query');
+
+  try {
+    const r = await fetch(API + '/ask-stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question,
+        history: getRecentHistory(6),
+        session_id: (tabs.find(t => t.id === originTabId) || {}).sessionId || '',
+        user_id: FACETS_USER_ID,
+        user_name: getUserName(),
+        mode: activeMode
+      })
+    });
+
+    if (!r.ok || !r.body) throw new Error('Stream failed');
+
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let accText = '';
+    let currentEvent = null;
+    let streamEl = null;  // DOM element for streaming text
+    let elapsedTimer = null;
+    let elapsedStart = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7).trim();
+        } else if (line.startsWith('data: ') && currentEvent) {
+          const payload = JSON.parse(line.slice(6));
+
+          if (currentEvent === 'status') {
+            if (!streamEl) {
+              let stageOrder = ['classifying', 'retrieving', 'synthesizing'];
+              let stageLabels = {
+                classifying: 'Classifying',
+                retrieving: 'Retrieving',
+                synthesizing: 'Synthesizing'
+              };
+
+              // Insert web search stage when intensity is full
+              if (payload.stage === 'synthesizing' && payload.web_search) {
+                stageOrder = ['classifying', 'retrieving', 'searching', 'synthesizing'];
+                stageLabels.searching = 'Searching web';
+              }
+
+              const currentStageIdx = stageOrder.indexOf(
+                payload.stage === 'synthesizing' && payload.web_search ? 'searching' : payload.stage
+              );
+
+              // Create stage progress element on first status event
+              let progressEl = document.querySelector('.stage-progress');
+              if (!progressEl) {
+                const thinkEl = document.querySelector('.msg-thinking');
+                if (thinkEl) thinkEl.remove();
+                const originTab = tabs.find(t => t.id === originTabId);
+                if (originTab) originTab.messages = originTab.messages.filter(m => m.role !== 'thinking');
+
+                progressEl = document.createElement('div');
+                progressEl.className = 'stage-progress';
+              }
+
+              // Rebuild stages (handles dynamic insertion of web search stage)
+              progressEl.innerHTML = '';
+              for (let i = 0; i < stageOrder.length; i++) {
+                if (i > 0) {
+                  const sep = document.createElement('span');
+                  sep.className = 'stage-sep';
+                  sep.textContent = '→';
+                  progressEl.appendChild(sep);
+                }
+                const item = document.createElement('span');
+                item.className = 'stage-item';
+                item.dataset.stage = stageOrder[i];
+                item.innerHTML = `<span class="stage-check">✓</span> ${stageLabels[stageOrder[i]]}<span class="stage-time"></span>`;
+                progressEl.appendChild(item);
+              }
+              if (!progressEl.parentNode) {
+                const elapsedSpan = document.createElement('span');
+                elapsedSpan.className = 'stage-elapsed';
+                elapsedSpan.textContent = '0s';
+                progressEl.appendChild(elapsedSpan);
+                document.getElementById('chat-messages').appendChild(progressEl);
+                elapsedStart = Date.now();
+                elapsedTimer = setInterval(() => {
+                  elapsedSpan.textContent = Math.floor((Date.now() - elapsedStart) / 1000) + 's';
+                }, 1000);
+              }
+              if (!userScrolledUp) progressEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+              // Update stage states
+              progressEl.querySelectorAll('.stage-item').forEach(item => {
+                const idx = stageOrder.indexOf(item.dataset.stage);
+                if (idx < currentStageIdx) {
+                  item.className = 'stage-item done';
+                  if (item.dataset.stage === 'classifying' && payload.classify_ms) {
+                    item.querySelector('.stage-time').textContent = ` ${payload.classify_ms}ms`;
+                  }
+                  if (item.dataset.stage === 'retrieving' && payload.retrieve_ms) {
+                    item.querySelector('.stage-time').textContent = ` ${payload.retrieve_ms}ms`;
+                  }
+                } else if (idx === currentStageIdx) {
+                  item.className = 'stage-item active';
+                } else {
+                  item.className = 'stage-item';
+                }
+              });
+            }
+
+            if (payload.stage === 'retrieving' && payload.dimensions) {
+              updateDiagram('tuple', {
+                dims: payload.dimensions,
+                intensity: payload.intensity || 'none',
+                reasoning: payload.reasoning || ''
+              });
+              updateDiagram('retrieval', payload.dimensions);
+            }
+            if (payload.stage === 'synthesizing') {
+              animateFlow('llm');
+            }
+
+          } else if (currentEvent === 'token') {
+            // Remove progress indicator on first token
+            if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null; }
+            const progressEl = document.querySelector('.stage-progress');
+            if (progressEl) progressEl.remove();
+            const originTab = tabs.find(t => t.id === originTabId);
+            if (originTab && originTab.messages.some(m => m.role === 'thinking')) {
+              originTab.messages = originTab.messages.filter(m => m.role !== 'thinking');
+              const thinkEl = document.querySelector('.msg-thinking');
+              if (thinkEl) thinkEl.remove();
+            }
+
+            accText += payload.text;
+
+            // Create or update streaming message element
+            if (!streamEl) {
+              streamEl = document.createElement('div');
+              streamEl.className = 'msg msg-bot msg-streaming';
+              streamEl.innerHTML = marked.parse(renderGroundingMarkers(accText));
+              document.getElementById('chat-messages').appendChild(streamEl);
+              if (!userScrolledUp) streamEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            } else {
+              streamEl.innerHTML = marked.parse(renderGroundingMarkers(accText));
+              if (!userScrolledUp) streamEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+
+          } else if (currentEvent === 'done') {
+            if (payload.timing) {
+              console.log('%c⏱ Facets Timing', 'font-weight:bold;color:#3a6e62', payload.timing);
+            }
+            // Remove streaming element, add final message to tab state
+            if (streamEl) streamEl.remove();
+
+            const dims = payload.dimensions || [];
+            const route = payload.route || 'unknown';
+            const confidence = payload.confidence || '';
+            const intensity = payload.intensity || 'none';
+            const reasoning = payload.reasoning || '';
+            const sources = payload.sources || [];
+            const pathology = payload.pathology || null;
+            const answer = payload.answer || accText;
+
+            // Clean thinking tags from answer
+            const cleanAnswer = answer.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
+
+            updateDiagram('response', { route, confidence, dims });
+
+            addMessage('bot', cleanAnswer, { route, confidence, dimensions: dims, intensity, reasoning, sources, pathology, web_search: payload.web_search, answer_id: payload.answer_id }, originTabId);
+            updateDimBar(dims);
+            dot.className = 'status-dot online';
+            logFunnelEvent('answer_rendered');
+            setTimeout(maybePromptName, 1200);
+          }
+          currentEvent = null;
+        }
+      }
+    }
+  } catch(e) {
+    console.error('Stream error:', e);
+    // Fall back to non-streaming
+    const originTab = tabs.find(t => t.id === originTabId);
+    if (originTab) {
+      originTab.messages = originTab.messages.filter(m => m.role !== 'thinking');
+    }
+    // Remove any streaming element
+    const streamEl = document.querySelector('.msg-streaming');
+    if (streamEl) streamEl.remove();
+    // Try non-streaming fallback
+    inFlight = false;
+    btn.disabled = false;
+    dot.className = 'status-dot';
+    clearDiagramHighlights();
+    addMessage('system', 'Streaming failed — retrying...', null, originTabId);
+    return sendQuery(question);
+  }
+  btn.disabled = false;
+  inFlight = false;
+}
+
+// ── Integrated default flow: one consolidated answer grounded in all five lenses ──
+const LENS_LABEL = { mobus: 'Mobus', klir: 'Klir', bunge: 'Bunge', spt: 'Troncale', ct: 'CT' };
+const LENS_ROLE = { mobus: 'the anatomist', klir: 'the epistemologist', bunge: 'the ontologist', spt: 'the process theorist', ct: 'the compositionalist' };
+
+async function sendIntegrated(question) {
+  if (inFlight) return;
+  inFlight = true; userScrolledUp = false;
+
+  const originTabId = activeTab;
+  const btn = document.getElementById('send-btn');
+  const dot = document.getElementById('status-dot');
+  btn.disabled = true; dot.className = 'status-dot loading';
+
+  addMessage('user', question, null, originTabId);
+
+  const tab = tabs.find(t => t.id === originTabId);
+  const userMsgCount = tab ? tab.messages.filter(m => m.role === 'user').length : 1;
+  logFunnelEvent(userMsgCount <= 1 ? 'query_submitted' : 'query_submitted_second');
+  if (tab && userMsgCount === 1) {
+    tab.name = question.length > 30 ? question.slice(0, 28) + '…' : question;
+    saveTabs(); renderTabs();
+  }
+  pushConversationUrl();
+  addMessage('thinking', '', null, originTabId);
+
+  let progressEl = null, streamEl = null, elapsedTimer = null, elapsedStart = null;
+  function ensureProgress() {
+    if (progressEl) return;
+    const thinkEl = document.querySelector('.msg-thinking'); if (thinkEl) thinkEl.remove();
+    const ot = tabs.find(t => t.id === originTabId);
+    if (ot) ot.messages = ot.messages.filter(m => m.role !== 'thinking');
+    progressEl = document.createElement('div');
+    progressEl.className = 'lens-progress';
+    progressEl.innerHTML = '<span class="lp-label">Consulting the lenses</span>'
+      + ['mobus', 'klir', 'bunge', 'spt', 'ct'].map(m => '<span class="lp-lens" data-lens="' + m + '">' + LENS_LABEL[m] + '</span>').join('')
+      + '<span class="lp-stage"></span><span class="stage-elapsed">0s</span>';
+    document.getElementById('chat-messages').appendChild(progressEl);
+    elapsedStart = Date.now();
+    elapsedTimer = setInterval(() => {
+      const s = progressEl && progressEl.querySelector('.stage-elapsed');
+      if (s) s.textContent = Math.floor((Date.now() - elapsedStart) / 1000) + 's';
+    }, 1000);
+    if (!userScrolledUp) progressEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }
+  function clearProgress() {
+    if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null; }
+    if (progressEl) { progressEl.remove(); progressEl = null; }
+  }
+
+  try {
+    const r = await fetch(API + '/ask-integrated', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question, history: getRecentHistory(6),
+        session_id: (tab || {}).sessionId || '',
+        user_id: FACETS_USER_ID, user_name: getUserName()
+      })
+    });
+    if (!r.ok || !r.body) throw new Error('integrated stream failed');
+
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '', accText = '', currentEvent = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (line.startsWith('event: ')) { currentEvent = line.slice(7).trim(); continue; }
+        if (!line.startsWith('data: ') || !currentEvent) continue;
+        const payload = JSON.parse(line.slice(6));
+
+        if (currentEvent === 'status') {
+          ensureProgress();
+          if (payload.stage === 'lens_ready' && payload.lens) {
+            const chip = progressEl.querySelector('.lp-lens[data-lens="' + payload.lens.mode + '"]');
+            if (chip) chip.classList.add('ready');
+          } else if (payload.stage === 'synthesizing') {
+            progressEl.querySelectorAll('.lp-lens').forEach(c => c.classList.add('ready'));
+            const st = progressEl.querySelector('.lp-stage'); if (st) st.textContent = 'synthesizing…';
+          }
+        } else if (currentEvent === 'token') {
+          clearProgress();
+          const ot = tabs.find(t => t.id === originTabId);
+          if (ot && ot.messages.some(m => m.role === 'thinking')) {
+            ot.messages = ot.messages.filter(m => m.role !== 'thinking');
+            const te = document.querySelector('.msg-thinking'); if (te) te.remove();
+          }
+          accText += payload.text;
+          if (!streamEl) {
+            streamEl = document.createElement('div');
+            streamEl.className = 'msg msg-bot msg-streaming';
+            document.getElementById('chat-messages').appendChild(streamEl);
+          }
+          streamEl.innerHTML = marked.parse(renderGroundingMarkers(accText));
+          if (!userScrolledUp) streamEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        } else if (currentEvent === 'done') {
+          clearProgress();
+          if (payload.timing) console.log('%c⏱ Facets Integrated', 'font-weight:bold;color:#3a6e62', payload.timing);
+          if (streamEl) { streamEl.remove(); streamEl = null; }
+          const answer = (payload.answer || accText).replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
+          addMessage('bot', answer, {
+            route: payload.route || 'integrated',
+            confidence: payload.confidence || '',
+            dimensions: [],
+            sources: payload.sources || [],
+            lenses: payload.lenses || [],
+            web_search: payload.web_search,
+            answer_id: payload.answer_id
+          }, originTabId);
+          dot.className = 'status-dot online';
+          logFunnelEvent('answer_rendered');
+          setTimeout(maybePromptName, 1200);
+        }
+        currentEvent = null;
+      }
+    }
+  } catch (e) {
+    console.error('Integrated error:', e);
+    clearProgress();
+    const ot = tabs.find(t => t.id === originTabId);
+    if (ot) ot.messages = ot.messages.filter(m => m.role !== 'thinking');
+    if (streamEl) streamEl.remove();
+    addMessage('system', 'Could not reach the reasoning engine. Please try again.', null, originTabId);
+    dot.className = 'status-dot';
+  }
+  btn.disabled = false; inFlight = false;
+}
+
+// Drill-in: stream one lens's full grounded answer into an expanded card body (on demand).
+async function drillLens(bodyEl, question, mode) {
+  bodyEl.innerHTML = '<div class="lens-loading">Consulting ' + (LENS_LABEL[mode] || mode) + '…</div>';
+  try {
+    const r = await fetch(API + '/ask-stream', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, history: [], user_id: FACETS_USER_ID, user_name: getUserName(), mode })
+    });
+    if (!r.ok || !r.body) throw new Error('drill stream failed');
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '', acc = '', currentEvent = null, started = false;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (line.startsWith('event: ')) { currentEvent = line.slice(7).trim(); continue; }
+        if (!line.startsWith('data: ') || !currentEvent) continue;
+        const payload = JSON.parse(line.slice(6));
+        if (currentEvent === 'token') {
+          if (!started) { started = true; acc = ''; }
+          acc += payload.text;
+          bodyEl.innerHTML = renderClean(acc);
+          renderMath(bodyEl);
+        } else if (currentEvent === 'done') {
+          acc = (payload.answer || acc).replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
+          bodyEl.innerHTML = renderClean(acc);
+          renderMath(bodyEl);
+          // The drilled answer is persisted under its OWN share id — the parent integrated
+          // answer's Share button carries a different id, so without this button a consultation
+          // could only ever be shared as its parent.
+          if (payload.answer_id) appendDrillShare(bodyEl, payload.answer_id);
+        }
+        currentEvent = null;
+      }
+    }
+  } catch (e) {
+    bodyEl.innerHTML = '<em class="lens-loading">This lens was unavailable. Try again.</em>';
+  }
+}
+
+function appendDrillShare(bodyEl, answerId) {
+  const actions = document.createElement('div');
+  actions.className = 'msg-actions';
+  const shareBtn = document.createElement('button');
+  shareBtn.className = 'msg-copy-btn';
+  shareBtn.textContent = 'Share';
+  shareBtn.onclick = () => {
+    const url = window.location.origin + '/a/' + answerId;
+    navigator.clipboard.writeText(url).then(() => {
+      shareBtn.textContent = '✓ Link copied';
+      setTimeout(() => { shareBtn.textContent = 'Share'; }, 2000);
+    });
+  };
+  actions.appendChild(shareBtn);
+  bodyEl.appendChild(actions);
+}
+
+// Append the "consult a lens" drill-in strip beneath an integrated answer.
+function appendLensStrip(container, m, tab) {
+  const lenses = (m.meta && m.meta.lenses) || [];
+  if (!lenses.length) return;
+  const idx = tab ? tab.messages.indexOf(m) : -1;
+  let userQ = '';
+  for (let j = idx - 1; j >= 0; j--) { if (tab.messages[j].role === 'user') { userQ = tab.messages[j].text; break; } }
+
+  const strip = document.createElement('div');
+  strip.className = 'lens-strip';
+  const label = document.createElement('div');
+  label.className = 'lens-strip-label';
+  label.textContent = 'Consult a lens';
+  strip.appendChild(label);
+  const wrap = document.createElement('div');
+  wrap.className = 'conv-lenses';
+  lenses.forEach(l => {
+    const card = document.createElement('div'); card.className = 'conv-lens';
+    const head = document.createElement('button'); head.className = 'conv-lens-head';
+    // Expand the raw dimension codes (C/N/E/G/B/T/H, S/Y, …) to their names — the letters mean nothing on their own.
+    const nm = (MODE_CONFIGS[l.mode] && MODE_CONFIGS[l.mode].names) || {};
+    const dimWords = (l.dimensions || []).map(d => nm[d] || d);
+    const dimText = dimWords.slice(0, 3).join(', ') + (dimWords.length > 3 ? '…' : '');
+    head.innerHTML = '<span class="conv-lens-name">' + (LENS_LABEL[l.mode] || l.mode) + '</span> '
+      + '<span class="conv-lens-role">' + (LENS_ROLE[l.mode] || '') + '</span> '
+      + (dimText ? '<span class="conv-lens-dims">' + dimText + '</span>' : '')
+      + '<span class="conv-lens-caret">Consult&nbsp;▾</span>';
+    const body = document.createElement('div'); body.className = 'conv-lens-body collapsed';
+    if (l.snippet) { const sn = document.createElement('div'); sn.className = 'lens-snippet'; sn.textContent = l.snippet + '…'; body.appendChild(sn); }
+    head.onclick = () => {
+      const opening = body.classList.contains('collapsed');
+      body.classList.toggle('collapsed'); head.classList.toggle('open');
+      const caret = head.querySelector('.conv-lens-caret');
+      if (caret) caret.innerHTML = opening ? 'Hide&nbsp;▴' : 'Consult&nbsp;▾';
+      if (opening && !head.dataset.loaded) { head.dataset.loaded = '1'; drillLens(body, userQ, l.mode); }
+    };
+    card.appendChild(head); card.appendChild(body); wrap.appendChild(card);
+  });
+  strip.appendChild(wrap);
+  container.appendChild(strip);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Diagram updates (stubs — diagram moved to /architecture) ──
+function clearDiagramHighlights() {}
+function animateFlow(stage) {}
+
+function updateDiagram(stage, data) {}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHistory(); });
+
+// ── New conversation button ──
+document.getElementById('new-conv-btn').addEventListener('click', () => createTab());
+
+// ── History panel ──
+document.getElementById('chat-history-btn').addEventListener('click', openHistory);
+document.getElementById('history-close').addEventListener('click', closeHistory);
+document.getElementById('history-backdrop').addEventListener('click', closeHistory);
+document.getElementById('history-new-btn').addEventListener('click', () => { createTab(); closeHistory(); });
+
+// ── Dimension bar ──
+document.querySelectorAll('.dim-bar-btn').forEach(btn => {
+  btn.addEventListener('click', () => activateDimBtn(btn));
+});
+
+// ── Input handling ──
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+  el.style.overflowY = el.scrollHeight > 200 ? 'auto' : 'hidden';
+}
+document.getElementById('chat-input').addEventListener('input', function() { autoGrow(this); });
+// The full placeholder wraps past the single-line composer on phones and gets clipped
+const narrowScreen = window.matchMedia('(max-width: 600px)');
+function setComposerPlaceholder() {
+  document.getElementById('chat-input').placeholder = narrowScreen.matches
+    ? 'Ask about any system…'
+    : 'Ask anything — a real system, a concept, or a design challenge…';
+}
+setComposerPlaceholder();
+narrowScreen.addEventListener('change', setComposerPlaceholder);
+// Belt-and-suspenders: pull the composer above the on-screen keyboard where dvh lags
+document.getElementById('chat-input').addEventListener('focus', function() { this.scrollIntoView({ block: 'end' }); });
+document.getElementById('send-btn').addEventListener('click', () => {
+  const input = document.getElementById('chat-input');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+  input.style.height = 'auto';
+  sendDefault(q);
+});
+document.getElementById('chat-input').addEventListener('keydown', (e) => {
+  // Ignore Enter while an IME/autocomplete candidate is being confirmed
+  if (e.isComposing || e.keyCode === 229) return;
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    document.getElementById('send-btn').click();
+  }
+});
+document.getElementById('export-trigger').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const menu = document.getElementById('export-menu');
+  const open = menu.classList.toggle('open');
+  document.getElementById('export-trigger').setAttribute('aria-expanded', String(open));
+});
+document.addEventListener('click', () => {
+  document.getElementById('export-menu').classList.remove('open');
+  document.getElementById('export-trigger').setAttribute('aria-expanded', 'false');
+});
+document.getElementById('export-md-btn').addEventListener('click', () => { exportChatMarkdown(); document.getElementById('export-menu').classList.remove('open'); });
+document.getElementById('export-json-btn').addEventListener('click', () => { exportChatJSON(); document.getElementById('export-menu').classList.remove('open'); });
+document.getElementById('copy-json-btn').addEventListener('click', () => {
+  const tab = getTab();
+  if (!tab) return;
+  const data = JSON.stringify(tab.messages.filter(m => m.role !== 'thinking'), null, 2);
+  navigator.clipboard.writeText(data).then(() => {
+    const btn = document.getElementById('copy-json-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy as JSON'; }, 1500);
+  });
+  document.getElementById('export-menu').classList.remove('open');
+});
+document.getElementById('copy-md-btn').addEventListener('click', () => {
+  const tab = getTab();
+  if (!tab) return;
+  const md = '# ' + (tab.name || 'Facets Chat') + '\n\n' +
+    tab.messages.filter(m => m.role !== 'system').map(m => {
+      if (m.role === 'user') return '**Q:** ' + m.text;
+      let out = m.text;
+      if (m.meta) {
+        const parts = [];
+        if (m.meta.dimensions && m.meta.dimensions.length) parts.push('Dimensions: ' + m.meta.dimensions.map(d => dimDisplayName(d) + ' (' + d + ')').join(', '));
+        if (m.meta.route) parts.push('Route: ' + m.meta.route);
+        if (m.meta.intensity) parts.push('Intensity: ' + m.meta.intensity);
+        if (m.meta.sources && m.meta.sources.length) {
+          parts.push('Sources: ' + [...new Set(m.meta.sources.map(s => s.source))].join(', '));
+        }
+        if (parts.length) out += '\n\n*' + parts.join(' | ') + '*';
+      }
+      return out;
+    }).join('\n\n---\n\n');
+  navigator.clipboard.writeText(md).then(() => {
+    const btn = document.getElementById('copy-md-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy as Markdown'; }, 1500);
+  });
+  document.getElementById('export-menu').classList.remove('open');
+});
+document.getElementById('share-link-btn').addEventListener('click', () => {
+  const tab = getTab();
+  if (!tab) return;
+  const btn = document.getElementById('share-link-btn');
+  // Permalink to the latest stored answer in this conversation (/a/<id>), not a ?q= re-run.
+  const lastShared = [...tab.messages].reverse().find(m => m.role === 'bot' && m.meta && m.meta.answer_id);
+  if (!lastShared) {
+    btn.textContent = 'Nothing to share yet';
+    setTimeout(() => { btn.textContent = 'Copy share link'; }, 1500);
+    document.getElementById('export-menu').classList.remove('open');
+    return;
+  }
+  const url = window.location.origin + '/a/' + lastShared.meta.answer_id;
+  navigator.clipboard.writeText(url).then(() => {
+    btn.textContent = 'Link copied!';
+    setTimeout(() => { btn.textContent = 'Copy share link'; }, 1500);
+  });
+  document.getElementById('export-menu').classList.remove('open');
+});
+// "Model this → canvas" — the push half of the Facets→canvas bridge. Send the conversation's first
+// question to GSR /extract, download the resulting spec, which the canvas opens via its "Import spec"
+// action (reusing model_from_spec — one distillation source of truth). We download the FULL /extract
+// response: the canvas unwraps .spec, and repairs/warnings ride along as provenance (pass-through ethos,
+// see GSR docs/spec-architecture.md §8). Extraction model is left to the server default (Haiku cloud /
+// FACETS_MODEL local) — extraction is a structural compile, distinct from the RAG model choice.
+// NOTE: /extract is local-only until the integrated engine is deployed (W27 focus ③); on an engine
+// without it this 404s, handled below. Server logs every /extract (kind="extract") — usage is the
+// instrumentation the kernel-from-usage method calls for; no client logging needed.
+document.getElementById('model-this-btn').addEventListener('click', async () => {
+  const menu = document.getElementById('export-menu');
+  const btn = document.getElementById('model-this-btn');
+  const LABEL = 'Model this → canvas';
+  const tab = getTab();
+  const firstQ = tab && tab.messages.find(m => m.role === 'user');
+  if (!firstQ) { menu.classList.remove('open'); return; }
+  btn.disabled = true;
+  btn.textContent = 'Modeling…';
+  const reset = (msg) => {
+    btn.textContent = msg;
+    setTimeout(() => { btn.textContent = LABEL; btn.disabled = false; menu.classList.remove('open'); }, 2800);
+  };
+  try {
+    const r = await fetch(API + '/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: firstQ.text, model: '' })
+    });
+    if (r.status === 404) { reset('Engine has no /extract yet'); return; }
+    if (!r.ok) { reset('Extract failed (' + r.status + ')'); return; }
+    const data = await r.json();
+    if (data.error || !data.spec) { reset('No spec returned'); return; }
+    const sysName = (data.spec.system && data.spec.system.name) || firstQ.text;
+    const slug = sysName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'system';
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = slug + '-spec.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    reset('Downloaded ✓ — open in canvas via Import spec');
+  } catch (e) {
+    console.error('Model this failed:', e);
+    reset('Could not reach engine');
+  }
+});
+// Tooltip removed — 8-tuple explanation now displayed inline
+document.getElementById('model-select').addEventListener('change', async (e) => {
+  const select = e.target;
+  const newModel = select.value;
+  select.disabled = true;
+  try {
+    const r = await fetch(API + '/model', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: newModel })
+    });
+    if (r.ok) {
+      localStorage.setItem('facets-model', newModel);
+      checkStatus();
+    }
+  } catch(e) { console.error('Model switch failed:', e); }
+  select.disabled = false;
+});
+
+// ── Lens bar wiring ──
+(function buildLensBar() {
+  const bar = document.getElementById('lens-bar');
+  // "All lenses" = the integrated default (leftmost, active on load).
+  const allBtn = document.createElement('button');
+  allBtn.className = 'lens-btn lens-btn-all active';
+  allBtn.dataset.mode = '__all__';
+  allBtn.setAttribute('aria-pressed', 'true');
+  allBtn.innerHTML = '<span class="lens-name">All lenses</span><span class="lens-tag">one consolidated answer</span>';
+  allBtn.addEventListener('click', () => selectComposerLens(null));
+  bar.appendChild(allBtn);
+  Object.keys(MODE_CONFIGS).forEach(mode => {
+    const t = THINKERS[mode];
+    const btn = document.createElement('button');
+    btn.className = 'lens-btn';
+    btn.dataset.mode = mode;
+    btn.setAttribute('aria-pressed', 'false');
+    btn.innerHTML = '<span class="lens-name">' + (t.short || t.name.split(' ').pop()) + '</span><span class="lens-tag">' + t.tag + '</span>';
+    btn.addEventListener('click', () => {
+      if (composerLens === mode) {
+        // Tapping the already-selected lens re-opens its bio card
+        const card = document.getElementById('thinker-card');
+        card.hidden = !card.hidden;
+        return;
+      }
+      selectComposerLens(mode);
+      localStorage.setItem('facets-mode', mode);
+    });
+    bar.appendChild(btn);
+  });
+})();
+
+// Header "Lenses" toggle — reveals the (demoted) lens bar for power users.
+document.getElementById('lens-toggle').addEventListener('click', () => {
+  const zone = document.getElementById('lens-zone');
+  const showing = zone.hidden;
+  zone.hidden = !showing;
+  document.getElementById('lens-toggle').classList.toggle('active', showing);
+  document.getElementById('lens-toggle').setAttribute('aria-pressed', String(showing));
+});
+document.getElementById('composer-lens-clear').addEventListener('click', () => selectComposerLens(null));
+function hideThinkerCard() {
+  document.getElementById('thinker-card').hidden = true;
+  sessionStorage.setItem('facets-thinker-dismissed', '1');
+}
+document.getElementById('thinker-dismiss').addEventListener('click', hideThinkerCard);
+document.addEventListener('click', (e) => {
+  const card = document.getElementById('thinker-card');
+  if (!card.hidden && !e.target.closest('.lens-zone')) hideThinkerCard();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') hideThinkerCard();
+});
+// Default front door is integrated (all five). Init dim-bar globals without revealing the
+// demoted lens zone or bio card; the "Lenses" toggle surfaces single-lens mode on demand.
+const savedMode = localStorage.getItem('facets-mode');
+const startMode = (savedMode && MODE_CONFIGS[savedMode]) ? savedMode : 'mobus';
+switchMode(startMode, false);
+selectComposerLens(null);
+
+init();
+
+// Minimal PWA app-shell service worker — makes "pin to home screen" a real standalone
+// app and repeat /a/<id> opens instant. Additive; failure is silently ignored.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
