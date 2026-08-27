@@ -60,7 +60,12 @@
     text-decoration: none;
     color: inherit;
   }
-  a.door:hover { border-color: var(--door-accent); }
+  a.door { transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease; }
+  a.door:hover {
+    border-color: var(--door-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  }
   .door h2 {
     font-family: "Cormorant Garamond", Georgia, serif;
     font-size: 1.6rem;
@@ -81,20 +86,34 @@
     color: var(--door-accent);
   }
   .door.dark { background: transparent; border-style: dashed; }
+  .gem { display: block; margin-bottom: 1.1rem; }
   .door.dark .go { color: var(--ink-soft); font-weight: 500; }
 </style>
 </head>
 <body>
 <main>
+  <svg class="gem" width="44" height="44" viewBox="0 0 80 80" aria-hidden="true">
+    <polygon points="40,4 71,19 78,52 57,76 23,76 2,52 9,19" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
+    <polygon points="40,4 71,19 40,40" fill="#6366f1" opacity="0.14"/>
+    <polygon points="23,76 2,52 40,40" fill="#0d9488" opacity="0.16"/>
+    <line x1="40" y1="4"  x2="40" y2="40" stroke="#94a3b8" stroke-width="0.8" opacity="0.6"/>
+    <line x1="71" y1="19" x2="40" y2="40" stroke="#94a3b8" stroke-width="0.8" opacity="0.6"/>
+    <line x1="78" y1="52" x2="40" y2="40" stroke="#94a3b8" stroke-width="0.8" opacity="0.6"/>
+    <line x1="57" y1="76" x2="40" y2="40" stroke="#94a3b8" stroke-width="0.8" opacity="0.6"/>
+    <line x1="23" y1="76" x2="40" y2="40" stroke="#94a3b8" stroke-width="0.8" opacity="0.6"/>
+    <line x1="2"  y1="52" x2="40" y2="40" stroke="#94a3b8" stroke-width="0.8" opacity="0.6"/>
+    <line x1="9"  y1="19" x2="40" y2="40" stroke="#94a3b8" stroke-width="0.8" opacity="0.6"/>
+  </svg>
   <h1>Facets</h1>
-  <p class="tagline">Two ways to make sense of any system: ask, or build.</p>
+  <p class="tagline">Make sense of any system: ask questions, or build one and watch it run.</p>
 
   <div class="doors">
     <a class="door" href="/chat/" style="--door-accent: var(--indigo)">
       <h2>Chat</h2>
-      <p>Ask about any system, real or imagined. Answers draw on the major
-      traditions of systems science and show you where they come from.</p>
-      <span class="go">Ask &rarr;</span>
+      <p>Why don&rsquo;t cities collapse? How does a cell know what to build?
+      Ask about anything that works like a system, and every answer shows
+      its sources.</p>
+      <span class="go">Start asking &rarr;</span>
     </a>
     <div id="model-door"></div>
   </div>
@@ -107,14 +126,14 @@
   if (MODEL_LIVE) {
     el.outerHTML = '<a class="door" href="/model/" style="--door-accent: var(--teal)">'
       + '<h2>Model</h2>'
-      + '<p>Draw a system on a canvas, check that it holds together, and run it. '
-      + 'Everything happens in your browser.</p>'
-      + '<span class="go">Build &rarr;</span></a>';
+      + '<p>Sketch a system on a canvas: a supply chain, an ecosystem, an economy. '
+      + 'Check that it holds together, then press run and watch it flow.</p>'
+      + '<span class="go">Start building &rarr;</span></a>';
   } else {
     el.outerHTML = '<div class="door dark" style="--door-accent: var(--teal)">'
       + '<h2>Model</h2>'
-      + '<p>Draw a system on a canvas, check that it holds together, and run it. '
-      + 'Everything happens in your browser.</p>'
+      + '<p>Sketch a system on a canvas: a supply chain, an ecosystem, an economy. '
+      + 'Check that it holds together, then press run and watch it flow.</p>'
       + '<span class="go">Coming soon</span></div>';
   }
 </script>
