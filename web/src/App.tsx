@@ -3181,7 +3181,7 @@ export function MenuBar({
         className="text-xs font-semibold uppercase tracking-wider"
         style={{ fontFamily: "var(--font-mono)", color: "var(--ink)" }}
       >
-        bert&#8202;·&#8202;lenses
+        facets&#8202;·&#8202;model
       </span>
 
       {/* Home / Close (#73): the one route back to the start screen from a

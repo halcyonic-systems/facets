@@ -426,7 +426,7 @@ export function HomeMenu({
 }) {
   return (
     <div>
-      <Masthead title={<span>bert&#8202;·&#8202;lenses</span>} lede={LEDE} />
+      <Masthead title={<span>facets&#8202;·&#8202;model</span>} lede={LEDE} />
       <Column className="pb-20 pt-12">
         <BlockHeader label="Start here" />
         <Ledger>
