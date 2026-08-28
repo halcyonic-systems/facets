@@ -3177,12 +3177,26 @@ export function MenuBar({
       className="relative z-30 flex items-center gap-4 border-b px-3 py-1.5"
       style={{ borderColor: "var(--rule-soft)", background: "var(--paper-edge)" }}
     >
-      <span
-        className="text-xs font-semibold uppercase tracking-wider"
-        style={{ fontFamily: "var(--font-mono)", color: "var(--ink)" }}
-      >
-        facets&#8202;·&#8202;model
-      </span>
+      {/* Under the facets.systems portal the wordmark is the way back to the
+          entry screen; everywhere else (dev, :5190, desktop) there is no portal
+          above this app, so it stays plain text. */}
+      {import.meta.env.BASE_URL === "/model/" ? (
+        <a
+          href="/"
+          className="text-xs font-semibold uppercase tracking-wider"
+          style={{ fontFamily: "var(--font-mono)", color: "var(--ink)" }}
+          title="Facets home"
+        >
+          facets&#8202;·&#8202;model
+        </a>
+      ) : (
+        <span
+          className="text-xs font-semibold uppercase tracking-wider"
+          style={{ fontFamily: "var(--font-mono)", color: "var(--ink)" }}
+        >
+          facets&#8202;·&#8202;model
+        </span>
+      )}
 
       {/* Home / Close (#73): the one route back to the start screen from a
           loaded model. Disabled when already home (no model), so it never

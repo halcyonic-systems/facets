@@ -1623,7 +1623,7 @@
 
   <!-- TOP NAV -->
   <nav class="topnav">
-    <div class="topnav-left" id="nav-home" title="New conversation" role="button" tabindex="0" aria-label="Start new conversation">
+    <a class="topnav-left" id="nav-home" href="/" title="Facets home" aria-label="Facets home" style="text-decoration:none;color:inherit;">
       <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
         <polygon points="40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4"
           stroke="var(--flow)" stroke-width="2" fill="rgba(58,110,98,0.06)" />
@@ -1637,9 +1637,9 @@
       </svg>
       <span>Facets</span>
       <!-- Architecture link removed pending rebuild for the four-lens engine (GSR issue) -->
-    </div>
+    </a>
     <div class="topnav-links">
-      <a href="https://halcyonic.systems" target="_blank" rel="noopener noreferrer" aria-label="Halcyonic Systems (opens in new tab)">Halcyonic Systems</a>
+      <!-- Cross-link to /model/ lands here when the Model door goes live (facets#359) -->
     </div>
   </nav>
 
@@ -2287,11 +2287,7 @@ function init() {
   if (preloadQ) {
     setTimeout(() => sendDefault(decodeURIComponent(preloadQ)), 500);
   }
-  // Nav-home: new empty tab (shows welcome state)
-  document.getElementById('nav-home').addEventListener('click', () => createTab());
-  document.getElementById('nav-home').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); createTab(); }
-  });
+  // Nav-home is a plain link to the portal; new conversations live on the New button.
   // Dimension Explorer (dim-bar-btn handlers wired in rebuildDimBar)
   replayDiagramState();
 }
