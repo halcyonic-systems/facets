@@ -6,13 +6,15 @@
 #   scripts/publish-site.sh --with-model --dry-run   # assemble
 #   scripts/preview-site.sh                          # then walk it
 #
-# Serves on http://localhost:5199 — the `localhost` hostname matters: the chat
-# client points its API at the local GSR (:5010) when served from localhost.
+# Serves on http://localhost:5321 — the `localhost` hostname matters (the chat
+# client points its API at the local GSR on :5010 only for localhost), and the
+# port matters (5321 is in the local GSR's CORS allow-list; a different port
+# gets "Could not reach the reasoning engine" from the browser's CORS block).
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SITE_DIR="$REPO_ROOT/_site"
 [ -d "$SITE_DIR" ] || { echo "no _site/ — run scripts/publish-site.sh --dry-run first" >&2; exit 1; }
-PORT="${PORT:-5199}"
+PORT="${PORT:-5321}"
 
 python3 - "$SITE_DIR" "$PORT" <<'EOF'
 import http.server, functools, sys, os
