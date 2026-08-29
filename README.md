@@ -283,6 +283,28 @@ dependency and compiles clean to `wasm32-unknown-unknown`. Node geometry uses
 `pipeline/` produces the LLM-market panel CSVs some demos are shaped around. It has
 its own venv and README and is **not** load-bearing for the product or the gates.
 
+## Publishing facets.systems
+
+The live site is a **snapshot, not a branch of this history**. `main` is the working
+branch; GitHub Pages serves the `live` branch, which holds only assembled site trees.
+Nothing publishes on push to `main` — publishing is one deliberate command (the
+branded-surface policy: commit ≠ publish):
+
+```bash
+scripts/publish-site.sh                 # portal + /chat/; the Model door says "coming soon"
+scripts/publish-site.sh --with-model    # + /model/ (wasm build), door open
+scripts/publish-site.sh --dry-run       # assemble only — inspect _site/, push nothing
+scripts/preview-site.sh                 # serve _site/ at localhost:5321, 404 fallback and all
+```
+
+The script builds, assembles `_site/` (`portal/` → `/`, `chat/` → `/chat/`, the web
+build → `/model/`, the site-wide `404.html`, `CNAME`), then writes an orphan commit
+through a scratch git index — the working tree and index are never touched — and
+force-pushes it to `live`. Each publish replaces the last; the snapshot's message names
+the `main` commit it was built from. **Never hand-edit the `live` branch**; it is build
+output. Rehearse against the local GSR by previewing on port 5321 (that exact port is
+in GSR's CORS allow-list — a different port is blocked by the browser).
+
 ## Prerequisites
 
 Every command below is a `just` recipe, so **`just` itself is the one thing you
