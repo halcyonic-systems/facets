@@ -53,7 +53,9 @@ fi
 
 echo "==> Publishing snapshot to origin/live"
 SHA=$(git -C "$REPO_ROOT" rev-parse --short HEAD)
-TMP_INDEX=$(mktemp)
+# mktemp's empty file would be rejected by git as a corrupt index — hand git a
+# fresh path instead and let it initialize the index itself.
+TMP_INDEX=$(mktemp) && rm -f "$TMP_INDEX"
 trap 'rm -f "$TMP_INDEX"' EXIT
 # Build the snapshot commit with a scratch index so the session's working index
 # is never touched (one repo, one index — parallel worktrees are live here).
