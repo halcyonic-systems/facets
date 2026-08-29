@@ -74,6 +74,9 @@ function shipNotices(): Plugin {
 // the sample models live in the repo-root assets/ tree — one level above web/.
 // Allow Vite to serve both.
 export default defineConfig({
+  // Root by default (dev, the launchd :5190 serve, the Tauri shell). The hosted
+  // facets.systems build lives at /model/ — publish-site.sh sets VITE_BASE.
+  base: process.env.VITE_BASE ?? "/",
   plugins: [react(), tailwindcss(), shipNotices()],
   define: {
     __APP_VERSION__: JSON.stringify(version),
