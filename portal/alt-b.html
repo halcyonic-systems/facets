@@ -1,0 +1,93 @@
+<!doctype html>
+<!-- Runner-up template from the 2026-08-29 portal final (candidate B: corner architecture,
+     one-liner doors). Kept deliberately as a swappable alternative: to try it live,
+     have publish-site.sh copy THIS file to _site/index.html instead of index.html.
+     Not wired to MODEL_LIVE; wire before any real swap. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Facets — Candidate B</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Candidate B — H minimal: corner architecture, one-liner doors. */
+  :root {
+    --ground: #f9fafc; --ink: #0f172a; --ink-soft: #475569;
+    --teal: #0d9488; --indigo: #6366f1; --hairline: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--ground); color: var(--ink);
+    font-family: "Inter", system-ui, sans-serif;
+    min-height: 100vh; position: relative; overflow-x: hidden;
+    display: flex; align-items: center;
+  }
+  .architecture {
+    position: absolute; top: 0; right: 0; width: 100%; height: 62vh;
+    pointer-events: none;
+  }
+  main { position: relative; width: 100%; max-width: 74rem; margin: 0 auto; padding: 3rem 2rem; }
+  h1 {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: clamp(3.6rem, 7.5vw, 6.5rem); font-weight: 600; line-height: 1;
+  }
+  .tagline { margin-top: 1.2rem; color: var(--ink-soft); font-size: 1.2rem; line-height: 1.5; max-width: 30rem; }
+  .doors {
+    margin-top: 5.5rem; display: grid;
+    grid-template-columns: minmax(0,1fr) 1px minmax(0,1fr); align-items: start;
+  }
+  .rule { background: var(--hairline); height: 100%; min-height: 7rem; }
+  .door { display: block; text-decoration: none; color: inherit; padding: 0.4rem 0; }
+  .door:first-child { padding-right: 3.5rem; }
+  .door:last-child { padding-left: 3.5rem; }
+  .door-head { display: flex; align-items: center; gap: 0.7rem; }
+  .mark { width: 11px; height: 11px; background: var(--door-accent); flex-shrink: 0; }
+  .door h2 {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 2.9rem; font-weight: 600; line-height: 1.05;
+  }
+  .door p { margin-top: 0.55rem; color: var(--ink-soft); font-size: 1.02rem; }
+  .door .go {
+    display: inline-block; margin-top: 0.75rem; font-size: 0.95rem; font-weight: 600;
+    color: var(--door-accent);
+    transition: transform 140ms ease;
+  }
+  .door:hover h2 { color: var(--door-accent); }
+  .door:hover .go { transform: translateX(4px); }
+  @media (max-width: 700px) {
+    .doors { grid-template-columns: 1fr; gap: 1.8rem; }
+    .rule { height: 1px; min-height: 0; width: 6rem; }
+    .door:first-child, .door:last-child { padding-left: 0; padding-right: 0; }
+  }
+</style>
+</head>
+<body>
+<svg class="architecture" viewBox="0 0 1440 560" preserveAspectRatio="xMaxYMin slice" aria-hidden="true">
+  <line x1="1370" y1="-40" x2="620" y2="560" stroke="#0f172a" stroke-width="1" opacity="0.10"></line>
+  <line x1="1370" y1="-40" x2="880" y2="560" stroke="#0f172a" stroke-width="1" opacity="0.10"></line>
+  <line x1="1370" y1="-40" x2="1180" y2="560" stroke="#0f172a" stroke-width="1" opacity="0.10"></line>
+  <line x1="1370" y1="-40" x2="1440" y2="420" stroke="#0f172a" stroke-width="1" opacity="0.10"></line>
+  <polygon points="1370,-40 880,560 1180,560" fill="#0d9488" opacity="0.05"></polygon>
+  <polygon points="1370,-40 1440,420 1440,-40" fill="#6366f1" opacity="0.06"></polygon>
+</svg>
+<main>
+  <h1>Facets</h1>
+  <p class="tagline">Make sense of any system: ask questions, or build one and watch it run.</p>
+  <div class="doors">
+    <a class="door" href="/chat/" style="--door-accent: var(--indigo)">
+      <div class="door-head"><span class="mark"></span><h2>Chat</h2></div>
+      <p>Ask anything that works like a system.</p>
+      <span class="go">Start asking &rarr;</span>
+    </a>
+    <div class="rule"></div>
+    <a class="door" href="/model/" style="--door-accent: var(--teal)">
+      <div class="door-head"><span class="mark"></span><h2>Model</h2></div>
+      <p>Draw one, check it, run it.</p>
+      <span class="go">Start building &rarr;</span>
+    </a>
+  </div>
+</main>
+</body>
+</html>
