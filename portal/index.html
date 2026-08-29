@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Facets</title>
-<meta name="description" content="Make sense of any system: ask a question, or build a model and watch it run.">
+<meta name="description" content="Make sense of any system, lens by lens: ask a question, or build a model and watch it run.">
 <link rel="icon" href="/chat/icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -56,8 +56,11 @@
   .model-dark #model-door { cursor: default; pointer-events: none; }
   .model-dark #model-go { fill: #64748b; }
   @media (max-width: 760px) {
-    main { flex-direction: column; gap: 1.6rem; align-items: flex-start; }
-    .gem { width: min(88vw, 420px); align-self: center; }
+    main { flex-direction: column; gap: 2rem; align-items: center; }
+    .gem { order: -1; width: min(82vw, 400px); }
+    .intro { text-align: center; }
+    h1 { font-size: 3.8rem; }
+    .tagline { font-size: 1.08rem; }
   }
 </style>
 </head>
@@ -65,7 +68,7 @@
 <main>
   <div class="intro">
     <h1>Facets</h1>
-    <p class="tagline">Make sense of any system, from every angle: ask a question, or build one and watch it run.</p>
+    <p class="tagline">Make sense of any system, lens by lens: ask a question, or build one and watch it run.</p>
   </div>
   <div class="gem">
     <svg viewBox="0 0 80 80" aria-label="Choose a door: Chat or Model">
