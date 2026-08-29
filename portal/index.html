@@ -22,7 +22,8 @@
   body {
     background: var(--ground); color: var(--ink);
     font-family: "Inter", system-ui, sans-serif;
-    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; min-height: 100svh;
+    display: flex; align-items: center; justify-content: center;
     padding: 2rem 1.5rem; overflow-x: hidden;
   }
   main {
@@ -56,8 +57,9 @@
   .model-dark #model-door { cursor: default; pointer-events: none; }
   .model-dark #model-go { fill: #64748b; }
   @media (max-width: 760px) {
-    main { flex-direction: column; gap: 2rem; align-items: center; }
-    .gem { width: min(82vw, 400px); }
+    body { padding: 1.25rem 1.5rem; }
+    main { flex-direction: column; gap: 1.6rem; align-items: center; }
+    .gem { width: min(82vw, 400px, 52svh); }
     .intro { text-align: center; }
     h1 { font-size: 3.8rem; }
     .tagline { font-size: 1.08rem; }
