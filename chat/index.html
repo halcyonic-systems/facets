@@ -1194,20 +1194,6 @@
     /* Sub-16px inputs trigger iOS focus-zoom; force 16px on the first-touch fields */
     .name-gate-input, .welcome-name-input { font-size: 16px; }
   }
-  /* ── Model Toggle ── */
-  .model-select {
-    font-family: var(--ui);
-    font-size: 0.65rem;
-    padding: 3px 8px;
-    border: 1px solid var(--ground-border);
-    border-radius: 6px;
-    background: var(--ground);
-    color: var(--ink-dim);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    outline: none;
-  }
-  .model-select:hover, .model-select:focus { border-color: var(--flow); color: var(--flow); }
 
 
   /* ── Lens bar: choose your reader ── */
@@ -1308,6 +1294,10 @@
     color: var(--lens-accent, var(--flow));
     font-style: italic;
   }
+  /* Curated deep-dive links (2026-08-31): quiet footer row, external. */
+  .thinker-links { font-family: var(--ui); font-size: 0.7rem; margin-top: 7px; color: var(--ink-faint); }
+  .thinker-links a { color: var(--ink-dim); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--ground-border); }
+  .thinker-links a:hover { color: var(--flow); text-decoration-color: var(--flow); }
   .thinker-dismiss {
     flex: 0 0 auto;
     background: none; border: none; cursor: pointer;
@@ -1591,7 +1581,6 @@
   @media (hover: none), (pointer: coarse) {
     .dim-bar-btn,
     .chat-history-btn,
-    .model-select,
     .export-trigger,
     .conv-lens-head,
     .msg-copy-btn,
@@ -1601,7 +1590,6 @@
     }
     .dim-bar-btn { padding-top: 8px; padding-bottom: 8px; }
     .chat-history-btn { padding-top: 10px; padding-bottom: 10px; }
-    .model-select { padding-top: 10px; padding-bottom: 10px; }
     .export-trigger { padding-top: 10px; padding-bottom: 10px; font-size: 0.72rem; }
     .msg-copy-btn { padding-top: 10px; padding-bottom: 10px; }
     .evidence-toggle { padding-top: 12px; padding-bottom: 12px; }
@@ -1658,11 +1646,9 @@
     <div class="chat-header">
       <div class="chat-header-left">
         <div class="status-dot" id="status-dot"></div>
-        <select class="model-select" id="model-select" aria-label="Select synthesis model" disabled>
-          <option value="claude-haiku-4-5-20251001">Haiku (fast)</option>
-          <option value="claude-sonnet-4-6">Sonnet (deep)</option>
-        </select>
-        <span class="mono-tag" id="llm-model-tag" style="display:none">---</span>
+        <!-- 2026-08-31: the model choice is the instrument's, not the user's knob.
+             The engine's active model is named here as provenance (was a select). -->
+        <span class="mono-tag" id="llm-model-tag">---</span>
         <button class="chat-history-btn" id="new-conv-btn" aria-label="New conversation" title="New conversation">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>
           New
@@ -1699,6 +1685,7 @@
         <div class="thinker-role" id="thinker-role"></div>
         <p class="thinker-bio" id="thinker-bio"></p>
         <div class="thinker-asks" id="thinker-asks"></div>
+        <div class="thinker-links" id="thinker-links"></div>
       </div>
       <button class="thinker-dismiss" id="thinker-dismiss" aria-label="Hide thinker card" title="Hide">✕</button>
     </section>
@@ -1778,35 +1765,55 @@ const THINKERS = {
     tag: 'the anatomist',
     role: 'Systems scientist · University of Washington Tacoma',
     bio: 'Wrote the deep systems analysis methodology this engine grew up on: any system decomposes into components, networks, boundary, flows, transformations, history, and time scale. The working engineer’s answer to “what is a system?”',
-    asks: 'This lens asks: what IS this system — its parts, boundary, and flows?'
+    asks: 'This lens asks: what IS this system — its parts, boundary, and flows?',
+    links: [
+      { label: 'Principles of Systems Science (Springer)', url: 'https://doi.org/10.1007/978-1-4939-1920-8' },
+      { label: 'Systems science — Wikipedia', url: 'https://en.wikipedia.org/wiki/Systems_science' }
+    ],
   },
   spt: {
     name: 'Len Troncale', initials: 'LT', dates: '', accent: '#b04040',
     tag: 'the process theorist',
     role: 'Biologist & systems scientist · Cal Poly Pomona',
     bio: 'Spent five decades cataloguing the universal processes every system runs — feedback, cycles, emergence, decay — and the linkage propositions that connect them across physics, biology, and society.',
-    asks: 'This lens asks: HOW does it work — which universal processes are running?'
+    asks: 'This lens asks: HOW does it work — which universal processes are running?',
+    links: [
+      { label: 'Len R. Troncale — Wikipedia', url: 'https://en.wikipedia.org/wiki/Len_R._Troncale' },
+      { label: 'Systems Processes Theory — lentroncale.com', url: 'https://lentroncale.com/systems-theory/systems-research/' }
+    ],
   },
   klir: {
     name: 'George Klir', initials: 'GK', dates: '1932–2016', accent: '#1a5e82',
     tag: 'the epistemologist',
     role: 'Systems scientist · SUNY Binghamton',
     bio: 'Distilled what every definition of system shares — things and the relations on them, S = (T, R) — and built a hierarchy for grading what we actually know about any system, from raw data to laws to laws-that-change.',
-    asks: 'This lens asks: WHICH representation — what kind of knowledge do we have?'
+    asks: 'This lens asks: WHICH representation — what kind of knowledge do we have?',
+    links: [
+      { label: 'George Klir — Wikipedia', url: 'https://en.wikipedia.org/wiki/George_Klir' },
+      { label: 'Systems theory — Wikipedia', url: 'https://en.wikipedia.org/wiki/Systems_theory' }
+    ],
   },
   bunge: {
     name: 'Mario Bunge', initials: 'MB', dates: '1919–2020', accent: '#8a6840',
     tag: 'the ontologist',
     role: 'Philosopher & physicist · McGill University',
     bio: 'Made “system” an exact ontological concept: composition, environment, structure — and the bonds that separate a genuine system from a heap. To explain something is to exhibit the mechanism that makes it tick.',
-    asks: 'This lens asks: what MAKES it a system at all — where are the bonds?'
+    asks: 'This lens asks: what MAKES it a system at all — where are the bonds?',
+    links: [
+      { label: 'Mario Bunge — Wikipedia', url: 'https://en.wikipedia.org/wiki/Mario_Bunge' },
+      { label: 'Systemism — Wikipedia', url: 'https://en.wikipedia.org/wiki/Systemism' }
+    ],
   },
   ct: {
     name: 'The Compositional School', short: 'Compositional', initials: 'CT', dates: '', accent: '#6a4d8f',
     tag: 'the compositionalist',
     role: 'Applied category theory · Fong, Spivak & Myers',
     bio: 'The one lens that is a school, not a founder: category theory applied to systems. Fong and Spivak’s Seven Sketches and Myers’ Categorical Systems Theory make “connect these two systems” formally exact — interfaces, wiring diagrams, and the colimits that glue them.',
-    asks: 'This lens asks: how does it COMPOSE — what happens when systems connect?'
+    asks: 'This lens asks: how does it COMPOSE — what happens when systems connect?',
+    links: [
+      { label: 'Seven Sketches in Compositionality — arXiv', url: 'https://arxiv.org/abs/1803.05316' },
+      { label: 'Applied category theory — Wikipedia', url: 'https://en.wikipedia.org/wiki/Applied_category_theory' }
+    ],
   }
 };
 
@@ -1830,6 +1837,17 @@ function renderThinkerCard(mode, show) {
   document.getElementById('thinker-role').textContent = t.role;
   document.getElementById('thinker-bio').textContent = t.bio;
   document.getElementById('thinker-asks').textContent = t.asks;
+  const linksEl = document.getElementById('thinker-links');
+  if (linksEl) {
+    linksEl.innerHTML = '';
+    (t.links || []).forEach((l, i) => {
+      if (i > 0) linksEl.appendChild(document.createTextNode(' \u00b7 '));
+      const a = document.createElement('a');
+      a.href = l.url; a.textContent = l.label;
+      a.target = '_blank'; a.rel = 'noopener';
+      linksEl.appendChild(a);
+    });
+  }
   if (show !== undefined) card.hidden = !show;
 }
 
@@ -2145,6 +2163,8 @@ function selectComposerLens(mode) {
   const dimBar = document.getElementById('dim-bar');
   if (dimFraming) dimFraming.hidden = !mode;
   if (dimBar) dimBar.hidden = !mode;
+  // If the welcome screen is showing, its copy is lens-aware — re-render it.
+  if (document.querySelector('.chat-welcome')) renderMessages();
 }
 
 // Route a query through the integrated default, or a single lens if one is selected.
@@ -2540,6 +2560,9 @@ function renderMessages() {
   if (tab.messages.length === 0) {
     const welcome = document.createElement('div');
     welcome.className = 'chat-welcome';
+    // Lens-aware welcome (2026-08-31): with a single lens armed, the generic
+    // greeting yields to that lens's own question.
+    const wt = composerLens ? THINKERS[composerLens] : null;
     welcome.innerHTML = `
       <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
         <polygon points="40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4"
@@ -2554,8 +2577,8 @@ function renderMessages() {
         <circle cx="40" cy="40" r="2" fill="var(--flow)" opacity="0.4" />
       </svg>
       <div class="chat-welcome-title">Facets</div>
-      <div class="chat-welcome-tagline">Ask about any system.</div>
-      <div class="chat-welcome-subline">A cell, a market, a machine, an idea. Facets shows you the parts, the flows, and the structure that make it work, and names the sources it drew on.</div>
+      <div class="chat-welcome-tagline">${wt ? `Ask through ${wt.name}\u2019s lens.` : 'Ask about any system.'}</div>
+      <div class="chat-welcome-subline">${wt ? wt.asks : 'A cell, a market, a machine, an idea. Facets shows you the parts, the flows, and the structure that make it work, and names the sources it drew on.'}</div>
       <div class="chat-welcome-name"></div>`;
     // No example chips — let people ask whatever comes to mind. Name is collected via
     // ensureUserName() gate on first query.
@@ -2924,29 +2947,17 @@ async function checkStatus() {
       if (model === 'loading' || !data.ready) {
         const loadingName = document.getElementById('llm-model-name');
         if (loadingName) loadingName.textContent = 'Loading...';
-        // Don't hide selector during loading — just disable it
-        document.getElementById('model-select').disabled = true;
       } else {
       const modelNameEl = document.getElementById('llm-model-name');
       if (modelNameEl) modelNameEl.textContent = 'Synthesis';
       const mode = data.mode || (model.includes('claude') ? 'cloud' : 'local');
-      const select = document.getElementById('model-select');
       const tag = document.getElementById('llm-model-tag');
       const diagTag = document.getElementById('llm-diagram-tag');
-      select.disabled = false;
-      if (mode === 'local') {
-        select.style.display = 'none';
-        tag.style.display = 'inline';
-        tag.textContent = model + ' \u00b7 Local';
-        if (diagTag) diagTag.textContent = model + ' \u00b7 Local';
-      } else {
-        select.style.display = '';
-        tag.style.display = 'none';
-        if (diagTag) diagTag.textContent = model.includes('sonnet') ? 'Claude Sonnet' : 'Claude Haiku';
-        if (select.querySelector('option[value="' + model + '"]')) {
-          select.value = model;
-        }
-      }
+      // The engine picks the model; the header names it as provenance.
+      const pretty = mode === 'local' ? model + ' \u00b7 Local'
+        : model.includes('sonnet') ? 'Claude Sonnet' : 'Claude Haiku';
+      tag.textContent = pretty;
+      if (diagTag) diagTag.textContent = pretty;
       const wsb = document.getElementById('web-search-badge');
       if (wsb) wsb.style.display = data.web_search ? 'inline' : 'none';
       } // end model display
@@ -3692,24 +3703,6 @@ document.getElementById('model-this-btn').addEventListener('click', async () => 
   }
 });
 // Tooltip removed — 8-tuple explanation now displayed inline
-document.getElementById('model-select').addEventListener('change', async (e) => {
-  const select = e.target;
-  const newModel = select.value;
-  select.disabled = true;
-  try {
-    const r = await fetch(API + '/model', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: newModel })
-    });
-    if (r.ok) {
-      localStorage.setItem('facets-model', newModel);
-      checkStatus();
-    }
-  } catch(e) { console.error('Model switch failed:', e); }
-  select.disabled = false;
-});
-
 // ── Lens bar wiring ──
 (function buildLensBar() {
   const bar = document.getElementById('lens-bar');
