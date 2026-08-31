@@ -811,6 +811,30 @@
     font-style: italic;
     padding: 4px 0;
   }
+  /* ── Sheets (workbench phase 2, 2026-08-31): a question and its answer are
+     one numbered paper surface. The ledger ground steps back so sheets read
+     as sheets; collapsing keeps the record present without the scroll. ── */
+  .chat-messages.sheeted { background: var(--ground); gap: 14px; }
+  .sheet {
+    background: var(--ground-raised);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    box-shadow: var(--shadow-card);
+    width: 100%;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .sheet-head { display: flex; align-items: baseline; gap: 12px; padding: 14px 18px 4px; cursor: pointer; }
+  .sheet.collapsed .sheet-head { padding: 10px 18px; }
+  .sheet-num { font-family: var(--mono); font-size: 0.7rem; color: var(--seal); flex-shrink: 0; }
+  .sheet-q { font-family: var(--display); font-size: 1.12rem; font-weight: 600; line-height: 1.3; color: var(--ink); flex: 1; }
+  .sheet.collapsed .sheet-q { font-family: var(--ui); font-size: 0.85rem; font-weight: 500; color: var(--ink-dim); }
+  .sheet-caret { border: none; background: none; font-size: 0.72rem; color: var(--ink-faint); cursor: pointer; padding: 2px 4px; }
+  .sheet.collapsed .sheet-body { display: none; }
+  .sheet-body { padding: 4px 18px 12px; }
+  .sheet-focused { border-color: var(--accent-slate); box-shadow: var(--shadow-card-hover); }
+  .sheet .msg-bot { background: transparent; border-radius: 0; padding: 0; max-width: none; align-self: stretch; }
+
   .msg-meta {
     display: flex;
     gap: 5px;
@@ -2580,6 +2604,7 @@ function renderMessages() {
   const tab = getTab();
   if (!tab) { el.innerHTML = ''; return; }
   el.innerHTML = '';
+  el.classList.remove('sheeted');
   // Hide New button when already on empty tab
   const newBtn = document.getElementById('new-conv-btn');
   if (newBtn) newBtn.style.display = tab.messages.length > 0 ? '' : 'none';
@@ -2625,7 +2650,11 @@ function renderMessages() {
   }
   document.querySelectorAll('.dim-bar-btn').forEach(b => b.classList.remove('disabled'));
   document.querySelector('.composer').classList.remove('welcome-mode');
-  tab.messages.forEach(m => {
+  // Sheets (workbench phase 2): a user question directly followed by its bot
+  // answer renders as one numbered sheet; everything else stays a stream item.
+  let openSheet = null;   // sheet built from a question, awaiting its answer
+  let sheetBot = -1;      // running bot index — the same space the dock's cursor lives in
+  tab.messages.forEach((m, mi) => {
     const div = document.createElement('div');
     if (m.role === 'thinking') {
       div.className = 'msg msg-thinking';
@@ -2846,10 +2875,50 @@ function renderMessages() {
       }
       div.appendChild(actionsDiv);
     }
+    // Placement: a question paired with its answer becomes a sheet.
+    const nxt = tab.messages[mi + 1];
+    if (m.role === 'user' && nxt && nxt.role === 'bot') {
+      openSheet = document.createElement('article');
+      openSheet.className = 'sheet';
+      const head = document.createElement('div');
+      head.className = 'sheet-head';
+      const num = document.createElement('span'); num.className = 'sheet-num';
+      const q = document.createElement('span'); q.className = 'sheet-q'; q.textContent = m.text;
+      const caret = document.createElement('button'); caret.className = 'sheet-caret';
+      caret.textContent = '\u25be'; caret.setAttribute('aria-label', 'Collapse sheet');
+      head.appendChild(num); head.appendChild(q); head.appendChild(caret);
+      openSheet.appendChild(head);
+      el.appendChild(openSheet);
+      el.classList.add('sheeted');
+      return; // the user bubble is absorbed into the sheet head
+    }
+    if (m.role === 'bot' && openSheet) {
+      sheetBot++;
+      const bi = sheetBot;
+      const sheet = openSheet; openSheet = null;
+      sheet.dataset.bot = bi;
+      sheet.querySelector('.sheet-num').textContent = String(bi + 1).padStart(2, '0');
+      const body = document.createElement('div');
+      body.className = 'sheet-body';
+      body.appendChild(div);
+      sheet.appendChild(body);
+      sheet.querySelector('.sheet-caret').onclick = (e) => {
+        e.stopPropagation();
+        sheet.classList.toggle('collapsed');
+      };
+      sheet.querySelector('.sheet-head').onclick = () => {
+        if (sheet.classList.contains('collapsed')) sheet.classList.remove('collapsed');
+      };
+      sheet.addEventListener('click', () => focusSheet(bi));
+      return;
+    }
+    if (m.role === 'bot') sheetBot++; // unpaired answer stays a bubble; the count stays aligned
+    openSheet = null;
     el.appendChild(div);
   });
   if (!userScrolledUp) el.scrollTop = el.scrollHeight;
   renderDock();
+  syncSheetFocus();
 }
 
 function parseTLDR(text) {
@@ -3745,6 +3814,30 @@ document.getElementById('model-this-btn').addEventListener('click', async () => 
 // answer's meta — readouts, lens, sources — so context stops scrolling away.
 // Follows the latest answer by default; ‹ › steps back through the record.
 let dockCursor = null;   // index into the tab's bot answers; null = follow latest
+function focusSheet(bi) {
+  const tab = getTab();
+  const total = tab ? tab.messages.filter(mm => mm.role === 'bot').length : 0;
+  dockCursor = (bi >= total - 1) ? null : bi;
+  renderDock();
+  syncSheetFocus();
+}
+function syncSheetFocus() {
+  const tab = getTab();
+  const bots = tab ? tab.messages.filter(mm => mm.role === 'bot') : [];
+  if (!bots.length) return;
+  const n = dockCursor === null ? bots.length - 1 : dockCursor;
+  document.querySelectorAll('.sheet').forEach(sh => {
+    sh.classList.toggle('sheet-focused', Number(sh.dataset.bot) === n);
+  });
+}
+function revealFocusedSheet() {
+  syncSheetFocus();
+  const sh = document.querySelector('.sheet-focused');
+  if (sh) {
+    sh.classList.remove('collapsed');
+    sh.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
 function dockEsc(v) { const d = document.createElement('div'); d.textContent = v == null ? '' : String(v); return d.innerHTML; }
 function renderDock() {
   const dock = document.getElementById('context-dock');
@@ -3802,8 +3895,8 @@ function renderDock() {
   html += '<div class="dock-note">' + (dockCursor === null ? 'following the latest answer' : 'pinned \u2014 \u203a returns to latest') + '</div>';
   dock.innerHTML = html;
   const prev = document.getElementById('dock-prev'), next = document.getElementById('dock-next');
-  if (prev) prev.onclick = () => { dockCursor = n - 1; renderDock(); };
-  if (next) next.onclick = () => { dockCursor = (n + 1 >= bots.length - 1) ? null : n + 1; renderDock(); };
+  if (prev) prev.onclick = () => { dockCursor = n - 1; renderDock(); revealFocusedSheet(); };
+  if (next) next.onclick = () => { dockCursor = (n + 1 >= bots.length - 1) ? null : n + 1; renderDock(); revealFocusedSheet(); };
 }
 
 // ── Lens bar wiring ──
