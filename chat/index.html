@@ -548,7 +548,36 @@
     .dock-chips { display: flex; flex-wrap: wrap; gap: 5px; }
     .dock-chip { font-family: var(--ui); font-size: 0.68rem; font-weight: 500; padding: 2px 8px; border-radius: 9999px; background: var(--ground-raised); border: 1px solid var(--ground-border); }
     .dock-sources { display: flex; flex-direction: column; gap: 4px; font-family: var(--mono); font-size: 0.7rem; color: var(--ink-dim); }
+    .dock-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+    .dock-tab { font-family: var(--ui); font-size: 0.68rem; font-weight: 500; padding: 2px 9px; border-radius: 9999px; border: 1px solid var(--ground-border); background: var(--ground-raised); color: var(--ink-dim); cursor: pointer; }
+    .dock-tab.active { background: var(--flow); border-color: var(--flow); color: var(--text-on-accent); }
+    .dock-snippet { font-family: var(--serif); font-size: 0.78rem; line-height: 1.45; color: var(--ink-dim); border-left: 2px solid var(--ground-border); padding-left: 9px; }
     .dock-note { margin-top: auto; font-family: var(--ui); font-size: 0.7rem; font-style: italic; color: var(--ink-faint); }
+  }
+
+  /* ── Conversations rail (the mock's left rail, 2026-08-31): History stands
+     open when the screen affords the full triple ensemble — 236 rail + 16 ·
+     760 pane · 22 + 270 dock = 1304 — and stays a drawer below that. ── */
+  .conv-rail { display: none; }
+  @media (min-width: 1360px) {
+    main .chat-pane { margin: 0 0 0 calc(50vw - 400px); }
+    .context-dock.has-content { left: calc(50vw + 382px); }
+    .conv-rail.has-content {
+      display: flex; flex-direction: column; gap: 2px;
+      position: fixed; top: 41px; left: calc(50vw - 652px);
+      width: 236px; box-sizing: border-box;
+      height: calc(100vh - 41px);
+      height: calc(100dvh - 41px);
+      overflow-y: auto; padding: 18px 0;
+    }
+    .conv-rail-label { font-family: var(--ui); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); padding: 0 14px 8px; }
+    .conv-rail-item { display: block; width: 100%; text-align: left; border: none; background: none; cursor: pointer; padding: 8px 14px 8px 11px; border-left: 3px solid transparent; border-radius: 0 6px 6px 0; }
+    .conv-rail-item:hover { background: var(--ground-raised); }
+    .conv-rail-item.active { background: var(--ground-raised); border-left-color: var(--flow); }
+    .conv-rail-name { font-family: var(--ui); font-size: 0.82rem; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .conv-rail-sub { font-family: var(--mono); font-size: 0.65rem; color: var(--ink-faint); margin-top: 1px; }
+    .conv-rail-new { margin-top: auto; border: none; background: none; cursor: pointer; text-align: left; padding: 10px 14px; font-family: var(--ui); font-size: 0.8rem; font-weight: 500; color: var(--flow); }
+    .conv-rail-new:hover { color: var(--flow-bright); }
   }
 
   /* ── Chat pane ── */
@@ -1787,6 +1816,7 @@
 
 </div>
 <aside class="context-dock" id="context-dock" aria-label="Answer context"></aside>
+<aside class="conv-rail" id="conv-rail" aria-label="Conversations"></aside>
 </main>
 <script>
 // ══════════════════════════════════════════
@@ -2955,6 +2985,7 @@ function renderMessages() {
   if (!userScrolledUp) el.scrollTop = el.scrollHeight;
   renderDock();
   syncSheetFocus();
+  renderConvRail();
 }
 
 function parseTLDR(text) {
@@ -3850,6 +3881,41 @@ document.getElementById('model-this-btn').addEventListener('click', async () => 
 // answer's meta — readouts, lens, sources — so context stops scrolling away.
 // Follows the latest answer by default; ‹ › steps back through the record.
 let dockCursor = null;   // index into the tab's bot answers; null = follow latest
+let dockLens = null;     // integrated answers only: which lens's reading the dock projects
+let dockLensFor = null;  // the answer index dockLens belongs to — focus moves reset it
+// The standing conversations rail — same data and actions as the History
+// drawer, permanently open where the triple ensemble fits.
+function renderConvRail() {
+  const rail = document.getElementById('conv-rail');
+  if (!rail) return;
+  rail.innerHTML = '';
+  if (READONLY || !tabs.length) { rail.classList.remove('has-content'); return; }
+  rail.classList.add('has-content');
+  const label = document.createElement('div');
+  label.className = 'conv-rail-label';
+  label.textContent = 'Conversations';
+  rail.appendChild(label);
+  tabs.forEach(t => {
+    const item = document.createElement('button');
+    item.className = 'conv-rail-item' + (t.id === activeTab ? ' active' : '');
+    const nm = document.createElement('div');
+    nm.className = 'conv-rail-name';
+    nm.textContent = t.name || 'Untitled';
+    const sub = document.createElement('div');
+    sub.className = 'conv-rail-sub';
+    const nb = t.messages.filter(mm => mm.role === 'bot').length;
+    sub.textContent = nb ? nb + ' sheet' + (nb === 1 ? '' : 's') : 'empty';
+    item.appendChild(nm); item.appendChild(sub);
+    item.onclick = () => switchTab(t.id);
+    rail.appendChild(item);
+  });
+  const nb = document.createElement('button');
+  nb.className = 'conv-rail-new';
+  nb.textContent = '+ New conversation';
+  nb.onclick = () => createTab();
+  rail.appendChild(nb);
+}
+
 function focusSheet(bi) {
   const tab = getTab();
   const total = tab ? tab.messages.filter(mm => mm.role === 'bot').length : 0;
@@ -3886,6 +3952,7 @@ function renderDock() {
   const n = dockCursor === null ? bots.length - 1 : dockCursor;
   const m = bots[n];
   const meta = m.meta || {};
+  if (dockLensFor !== n) { dockLens = null; dockLensFor = n; }
   const idx = tab.messages.indexOf(m);
   let q = '';
   for (let j = idx - 1; j >= 0; j--) { if (tab.messages[j].role === 'user') { q = tab.messages[j].text; break; } }
@@ -3919,8 +3986,28 @@ function renderDock() {
       '<span class="dock-chip" style="color: var(--dim-' + dockEsc(d) + ', var(--ink-dim))">' + dockEsc((cfg && cfg.names[d]) || d) + '</span>').join('') + '</div>';
     html += '</div>';
   } else if (meta.lenses && meta.lenses.length) {
-    html += '<div class="dock-section"><div class="dock-label">Lenses consulted</div><div class="dock-chips">'
-      + meta.lenses.map(l => '<span class="dock-chip">' + dockEsc((THINKERS[l.mode] && THINKERS[l.mode].name) || l.mode) + '</span>').join('') + '</div></div>';
+    // Lens tabs (DockLenses sketch): the integrated payload already carries
+    // every lens's reading, so tabs re-project the SAME answer — no backend.
+    const cur = meta.lenses.find(l => l.mode === dockLens) || null;
+    html += '<div class="dock-section"><div class="dock-label">Lens</div><div class="dock-tabs">'
+      + '<button class="dock-tab' + (cur ? '' : ' active') + '" data-lens="">All</button>'
+      + meta.lenses.map(l => {
+          const t = THINKERS[l.mode];
+          const short = (t && (t.short || t.name.split(' ').pop())) || l.mode;
+          return '<button class="dock-tab' + (cur && cur.mode === l.mode ? ' active' : '') + '" data-lens="' + dockEsc(l.mode) + '">' + dockEsc(short) + '</button>';
+        }).join('') + '</div>';
+    if (cur) {
+      const t = THINKERS[cur.mode];
+      if (t) html += '<div class="dock-asks">' + dockEsc(t.asks.replace('This lens asks: ', '')) + '</div>';
+      const lcfg = MODE_CONFIGS[cur.mode];
+      if (cur.dimensions && cur.dimensions.length) html += '<div class="dock-chips">' + cur.dimensions.map(d =>
+        '<span class="dock-chip" style="color: var(--dim-' + dockEsc(d) + ', var(--ink-dim))">' + dockEsc((lcfg && lcfg.names[d]) || d) + '</span>').join('') + '</div>';
+      if (cur.snippet) html += '<div class="dock-snippet">' + dockEsc(cur.snippet) + '\u2026</div>';
+    } else {
+      html += '<div class="dock-chips">' + meta.lenses.map(l =>
+        '<span class="dock-chip">' + dockEsc((THINKERS[l.mode] && THINKERS[l.mode].name) || l.mode) + '</span>').join('') + '</div>';
+    }
+    html += '</div>';
   } else if (dims.length) {
     html += '<div class="dock-section"><div class="dock-label">Dimensions</div><div class="dock-chips">' + dims.map(d =>
       '<span class="dock-chip" style="color: var(--dim-' + dockEsc(d) + ', var(--ink-dim))">' + dockEsc(dimDisplayName(d)) + '</span>').join('') + '</div></div>';
@@ -3930,6 +4017,9 @@ function renderDock() {
     + srcs.slice(0, 6).map(sr => '<span>' + dockEsc(sr) + '</span>').join('') + '</div></div>';
   html += '<div class="dock-note">' + (dockCursor === null ? 'following the latest answer' : 'pinned \u2014 \u203a returns to latest') + '</div>';
   dock.innerHTML = html;
+  dock.querySelectorAll('.dock-tab').forEach(btn => {
+    btn.onclick = () => { dockLens = btn.dataset.lens || null; renderDock(); };
+  });
   const prev = document.getElementById('dock-prev'), next = document.getElementById('dock-next');
   if (prev) prev.onclick = () => { dockCursor = n - 1; renderDock(); revealFocusedSheet(); };
   if (next) next.onclick = () => { dockCursor = (n + 1 >= bots.length - 1) ? null : n + 1; renderDock(); revealFocusedSheet(); };
