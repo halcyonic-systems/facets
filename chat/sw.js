@@ -6,7 +6,9 @@
 // v2: the facets.systems merge — chat moved to /chat/ under the portal. Bump this
 // name on any structural change; the precached shell only refreshes when sw.js's
 // bytes change, so an unbumped cache serves the old UI to offline users forever.
-const CACHE = 'facets-shell-v2';
+// v3: Frost unification — fonts self-hosted via /shared/ (no more Google Fonts),
+// so the shared sheet + faces join the precached shell.
+const CACHE = 'facets-shell-v3';
 const CORE = [
   './',
   './index.html',
@@ -14,6 +16,10 @@ const CORE = [
   './icon-192.png',
   './icon-512.png',
   './icon-180.png',
+  '../shared/frost.css',
+  '../shared/fonts/cormorant-garamond-latin.woff2',
+  '../shared/fonts/inter-latin.woff2',
+  '../shared/fonts/jetbrains-mono-latin.woff2',
 ];
 
 self.addEventListener('install', (event) => {

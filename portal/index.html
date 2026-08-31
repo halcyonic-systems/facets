@@ -6,17 +6,21 @@
 <title>Facets</title>
 <meta name="description" content="One system, many true descriptions. Ask a question, or build a model and watch it run.">
 <link rel="icon" href="/chat/icon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/frost.css">
 <style>
   /* The portal: the gem is the interface. Its two lit facets are the doors; the
      five unlit ones are room for what ships next. Chosen 2026-08-29 from the
      three-candidate final (winner A; runner-up B preserved at portal/alt-b.html).
      Copy is a work in progress by declaration — tagline and door lines especially. */
   :root {
-    --ground: #f9fafc; --ink: #0f172a; --ink-soft: #475569;
-    --teal: #0d9488; --indigo: #6366f1;
+    /* Frost aliases (2026-08-31 unification) — values come from shared/frost.css,
+       generated from web/src/index.css. The gem SVG needs literal fills
+       (presentation attributes can't read var()), so the portal is pinned light
+       until the gem's fills move into CSS; the literals below mirror the
+       light-theme Frost values and change with the generator's source. */
+    color-scheme: light;
+    --ground: var(--bg-secondary); --ink-soft: var(--text-secondary);
+    --teal: var(--accent); --indigo: var(--accent-indigo);
   }
   * { box-sizing: border-box; margin: 0; }
   body {
@@ -53,9 +57,9 @@
   .facet-model { animation: breathe 3.2s ease-in-out 1.6s infinite alternate; }
   svg a:hover .facet-chat, svg a:hover .facet-model { animation: none; }
   /* Model dark (pre-launch): the facet waits, unlit and unlinked */
-  .model-dark .facet-model { animation: none; fill: #64748b; opacity: 0.14; }
+  .model-dark .facet-model { animation: none; fill: #5d6f7b; opacity: 0.14; }
   .model-dark #model-door { cursor: default; pointer-events: none; }
-  .model-dark #model-go { fill: #64748b; }
+  .model-dark #model-go { fill: #5d6f7b; }
   @media (max-width: 760px) {
     body { padding: 1.25rem 1.5rem; }
     main { flex-direction: column; gap: 1.6rem; align-items: center; }
@@ -74,29 +78,29 @@
   </div>
   <div class="gem">
     <svg viewBox="0 0 80 80" aria-label="Choose a door: Chat or Model">
-      <polygon points="40,4 71,19 78,52 57,76 23,76 2,52 9,19" fill="#ffffff" stroke="#0f172a" stroke-width="0.35"></polygon>
-      <polygon points="71,19 78,52 40,40" fill="#6366f1" opacity="0.07"></polygon>
-      <polygon points="78,52 57,76 40,40" fill="#0d9488" opacity="0.08"></polygon>
-      <polygon points="23,76 2,52 40,40" fill="#334155" opacity="0.05"></polygon>
-      <polygon points="2,52 9,19 40,40" fill="#334155" opacity="0.03"></polygon>
-      <polygon points="9,19 40,4 40,40" fill="#6366f1" opacity="0.05"></polygon>
+      <polygon points="40,4 71,19 78,52 57,76 23,76 2,52 9,19" fill="#ffffff" stroke="#17181a" stroke-width="0.35"></polygon>
+      <polygon points="71,19 78,52 40,40" fill="#545c93" opacity="0.07"></polygon>
+      <polygon points="78,52 57,76 40,40" fill="#3d6373" opacity="0.08"></polygon>
+      <polygon points="23,76 2,52 40,40" fill="#5d6f7b" opacity="0.05"></polygon>
+      <polygon points="2,52 9,19 40,40" fill="#5d6f7b" opacity="0.03"></polygon>
+      <polygon points="9,19 40,4 40,40" fill="#545c93" opacity="0.05"></polygon>
       <a href="/chat/" aria-label="Chat: ask a question about any system">
-        <polygon class="facet facet-chat" points="40,4 71,19 40,40" fill="#6366f1" opacity="0.30"></polygon>
+        <polygon class="facet facet-chat" points="40,4 71,19 40,40" fill="#545c93" opacity="0.30"></polygon>
         <text class="label" x="51.5" y="19.6">Chat</text>
-        <text class="go" x="51.5" y="24" fill="#6366f1">ask &#8594;</text>
+        <text class="go" x="51.5" y="24" fill="#545c93">ask &#8594;</text>
       </a>
       <a href="/model/" id="model-door" aria-label="Model: build a system and run it">
-        <polygon class="facet facet-model" points="57,76 23,76 40,40" fill="#0d9488" opacity="0.32"></polygon>
+        <polygon class="facet facet-model" points="57,76 23,76 40,40" fill="#3d6373" opacity="0.32"></polygon>
         <text class="label" x="40" y="62">Model</text>
-        <text class="go" id="model-go" x="40" y="66.6" fill="#0d9488">build &#8594;</text>
+        <text class="go" id="model-go" x="40" y="66.6" fill="#3d6373">build &#8594;</text>
       </a>
-      <line x1="40" y1="4" x2="40" y2="40" stroke="#0f172a" stroke-width="0.2" opacity="0.5"></line>
-      <line x1="71" y1="19" x2="40" y2="40" stroke="#0f172a" stroke-width="0.2" opacity="0.5"></line>
-      <line x1="78" y1="52" x2="40" y2="40" stroke="#0f172a" stroke-width="0.2" opacity="0.5"></line>
-      <line x1="57" y1="76" x2="40" y2="40" stroke="#0f172a" stroke-width="0.2" opacity="0.5"></line>
-      <line x1="23" y1="76" x2="40" y2="40" stroke="#0f172a" stroke-width="0.2" opacity="0.5"></line>
-      <line x1="2" y1="52" x2="40" y2="40" stroke="#0f172a" stroke-width="0.2" opacity="0.5"></line>
-      <line x1="9" y1="19" x2="40" y2="40" stroke="#0f172a" stroke-width="0.2" opacity="0.5"></line>
+      <line x1="40" y1="4" x2="40" y2="40" stroke="#17181a" stroke-width="0.2" opacity="0.5"></line>
+      <line x1="71" y1="19" x2="40" y2="40" stroke="#17181a" stroke-width="0.2" opacity="0.5"></line>
+      <line x1="78" y1="52" x2="40" y2="40" stroke="#17181a" stroke-width="0.2" opacity="0.5"></line>
+      <line x1="57" y1="76" x2="40" y2="40" stroke="#17181a" stroke-width="0.2" opacity="0.5"></line>
+      <line x1="23" y1="76" x2="40" y2="40" stroke="#17181a" stroke-width="0.2" opacity="0.5"></line>
+      <line x1="2" y1="52" x2="40" y2="40" stroke="#17181a" stroke-width="0.2" opacity="0.5"></line>
+      <line x1="9" y1="19" x2="40" y2="40" stroke="#17181a" stroke-width="0.2" opacity="0.5"></line>
     </svg>
   </div>
 </main>

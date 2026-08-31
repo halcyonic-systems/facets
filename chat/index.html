@@ -4,71 +4,78 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Facets — Systems Reasoning Engine</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233a6e62' stroke-width='2' fill='%23f7f4ef'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
 <meta name="description" content="Ask about any system and see what makes it work. Answers grounded in the major traditions of systems science, with sources shown.">
 <meta property="og:title" content="Facets — Systems Reasoning Engine">
 <meta property="og:description" content="Ask a question. See which facets of systems science it touches.">
-<meta name="theme-color" content="#f7f4ef">
+<meta name="theme-color" content="#eaecee">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Facets">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/frost.css">
 <style>
   :root {
-    --ink: #1c1a16;
-    --ink-dim: #4a4640;
-    --ink-faint: #736e66;
-    --ground: #f7f4ef;
-    --ground-raised: #f0ece4;
-    --ground-border: #ddd8cf;
-    --accent: #8a6a3a;
-    --accent-dim: #b8966a;
-    --flow: #3a6e62;
-    --flow-bright: #2d5a50;
-    --dim-C: #2e7d5e;
-    --dim-N: #2a6299;
-    --dim-E: #8a6840;
-    --dim-G: #a04a6a;
-    --dim-B: #7044a0;
-    --dim-T: #1f6e56;
-    --dim-H: #7a5e0f;
-    --dim-Dt: #1a5e82;
+    /* Halcyonic Frost alias layer (2026-08-31 unification). Foundation tokens
+       come from ../shared/frost.css, generated from web/src/index.css — the
+       one place values are edited. Chat's historical names are kept as
+       aliases so the rules below need no churn: --ink and friends resolve to
+       the printed-record register, --flow (the interactive accent) to Frost
+       teal. The old warm-paper palette (Fraunces/Newsreader, #f7f4ef) is
+       retired; both facets surfaces now theme from the same sheet, and the
+       light-dark() pairs give chat a dark mode for free. */
+    --ink-dim: var(--ink-secondary);
+    --ink-faint: var(--ink-muted);
+    --ground: var(--paper-ground);
+    --ground-raised: var(--paper);
+    --ground-border: var(--border);
+    --accent-dim: var(--accent-slate);
+    --flow: var(--accent);
+    --flow-bright: var(--accent-strong);
+    /* Facet dimension channels — content semantics, chat-local (the model app
+       keeps its own KIND/world channels). Hue is the identity; the dark half
+       lifts lightness so the channel stays legible on a dark ground. */
+    --dim-C: light-dark(#2e7d5e, color-mix(in oklab, #2e7d5e, white 38%));
+    --dim-N: light-dark(#2a6299, color-mix(in oklab, #2a6299, white 38%));
+    --dim-E: light-dark(#8a6840, color-mix(in oklab, #8a6840, white 38%));
+    --dim-G: light-dark(#a04a6a, color-mix(in oklab, #a04a6a, white 38%));
+    --dim-B: light-dark(#7044a0, color-mix(in oklab, #7044a0, white 38%));
+    --dim-T: light-dark(#1f6e56, color-mix(in oklab, #1f6e56, white 38%));
+    --dim-H: light-dark(#7a5e0f, color-mix(in oklab, #7a5e0f, white 38%));
+    --dim-Dt: light-dark(#1a5e82, color-mix(in oklab, #1a5e82, white 38%));
     /* SPT mode colors */
-    --dim-FB: #b04040;
-    --dim-FL: #3a8fb0;
-    --dim-CY: #7a5ebf;
-    --dim-EM: #d4872a;
-    --dim-EV: #2a8e5a;
-    --dim-NW: #5a6eb0;
-    --dim-DU: #9a5480;
-    --dim-CH: #c45030;
-    --dim-DG: #6a6a6a;
+    --dim-FB: light-dark(#b04040, color-mix(in oklab, #b04040, white 38%));
+    --dim-FL: light-dark(#3a8fb0, color-mix(in oklab, #3a8fb0, white 38%));
+    --dim-CY: light-dark(#7a5ebf, color-mix(in oklab, #7a5ebf, white 38%));
+    --dim-EM: light-dark(#d4872a, color-mix(in oklab, #d4872a, white 38%));
+    --dim-EV: light-dark(#2a8e5a, color-mix(in oklab, #2a8e5a, white 38%));
+    --dim-NW: light-dark(#5a6eb0, color-mix(in oklab, #5a6eb0, white 38%));
+    --dim-DU: light-dark(#9a5480, color-mix(in oklab, #9a5480, white 38%));
+    --dim-CH: light-dark(#c45030, color-mix(in oklab, #c45030, white 38%));
+    --dim-DG: light-dark(#6a6a6a, color-mix(in oklab, #6a6a6a, white 38%));
     /* Klir mode colors */
-    --dim-TH: #6b5a3e;
-    --dim-SY: #2e5e8a;
-    --dim-SR: #4a7a8a;
-    --dim-DA: #5a8a4a;
-    --dim-GN: #8a4a7a;
-    --dim-ST: #4a5a9a;
-    --dim-MT: #a06a2a;
+    --dim-TH: light-dark(#6b5a3e, color-mix(in oklab, #6b5a3e, white 38%));
+    --dim-SY: light-dark(#2e5e8a, color-mix(in oklab, #2e5e8a, white 38%));
+    --dim-SR: light-dark(#4a7a8a, color-mix(in oklab, #4a7a8a, white 38%));
+    --dim-DA: light-dark(#5a8a4a, color-mix(in oklab, #5a8a4a, white 38%));
+    --dim-GN: light-dark(#8a4a7a, color-mix(in oklab, #8a4a7a, white 38%));
+    --dim-ST: light-dark(#4a5a9a, color-mix(in oklab, #4a5a9a, white 38%));
+    --dim-MT: light-dark(#a06a2a, color-mix(in oklab, #a06a2a, white 38%));
     /* Bunge mode colors (C, E, B shared with Mobus) */
-    --dim-S: #5a4a8a;
-    --dim-L: #2a7a6a;
-    --dim-M: #b05a30;
+    --dim-S: light-dark(#5a4a8a, color-mix(in oklab, #5a4a8a, white 38%));
+    --dim-L: light-dark(#2a7a6a, color-mix(in oklab, #2a7a6a, white 38%));
+    --dim-M: light-dark(#b05a30, color-mix(in oklab, #b05a30, white 38%));
     /* CT mode colors (C shared with Mobus/Bunge) */
-    --dim-I: #3a7a9a;
-    --dim-W: #6a4d8f;
-    --dim-F: #b0562a;
-    --dim-O: #9a4a70;
-    --dim-D: #6b6b3e;
-    --serif: 'Newsreader', Georgia, serif;
-    --display: 'Fraunces', Georgia, serif;
-    /* UI chrome font — humanist sans (was JetBrains Mono; de-AI pass 2026-07-01) */
-    --ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --dim-I: light-dark(#3a7a9a, color-mix(in oklab, #3a7a9a, white 38%));
+    --dim-W: light-dark(#6a4d8f, color-mix(in oklab, #6a4d8f, white 38%));
+    --dim-F: light-dark(#b0562a, color-mix(in oklab, #b0562a, white 38%));
+    --dim-O: light-dark(#9a4a70, color-mix(in oklab, #9a4a70, white 38%));
+    --dim-D: light-dark(#6b6b3e, color-mix(in oklab, #6b6b3e, white 38%));
+    --serif: var(--font-body);
+    --display: var(--font-display);
+    --ui: var(--font-body);
+    --mono: var(--font-mono);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -193,7 +200,7 @@
   .name-gate-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(28, 26, 22, 0.5);
+    background: rgba(10, 12, 14, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -278,7 +285,7 @@
   .chip:hover {
     border-color: var(--flow);
     color: var(--flow);
-    background: rgba(58, 110, 98, 0.06);
+    background: color-mix(in srgb, var(--flow) 6%, transparent);
   }
 
   /* ══════════════════════════════════════════
@@ -396,12 +403,12 @@
     transition: all 0.35s ease;
   }
   .intensity-badge.full {
-    background: rgba(58, 110, 98, 0.08);
+    background: color-mix(in srgb, var(--flow) 8%, transparent);
     color: var(--flow);
     border-color: var(--flow);
   }
   .intensity-badge.light {
-    background: rgba(138, 106, 58, 0.08);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
     color: var(--accent);
     border-color: var(--accent);
   }
@@ -421,7 +428,7 @@
     padding: 3px 10px;
     border-radius: 10px;
     margin-top: 4px;
-    background: rgba(138, 106, 58, 0.1);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
     color: var(--accent);
   }
 
@@ -429,7 +436,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    background: #fff;
+    background: var(--paper);
     border: 1px solid var(--ground-border);
     border-radius: 8px;
     padding: 12px 16px;
@@ -443,9 +450,9 @@
     border-radius: 10px;
     white-space: nowrap;
   }
-  .out-badge-route  { background: rgba(138, 106, 58, 0.1); color: var(--accent); }
-  .out-badge-conf   { background: rgba(58, 110, 98, 0.1); color: var(--flow); }
-  .out-badge-dim    { background: rgba(58, 110, 98, 0.08); color: var(--flow-bright); }
+  .out-badge-route  { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent); }
+  .out-badge-conf   { background: color-mix(in srgb, var(--flow) 10%, transparent); color: var(--flow); }
+  .out-badge-dim    { background: color-mix(in srgb, var(--flow) 8%, transparent); color: var(--flow-bright); }
   /* gsr#37 grounding signal: corpus-backed vs parametric spans in Facets synthesis */
   .grounding-badge {
     display: inline-block;
@@ -459,8 +466,8 @@
     vertical-align: middle;
     cursor: help;
   }
-  .grounding-badge-grounded { background: rgba(58, 110, 98, 0.12); color: var(--flow-bright); }
-  .grounding-badge-ungrounded { background: rgba(180, 90, 60, 0.12); color: #a5502f; }
+  .grounding-badge-grounded { background: color-mix(in srgb, var(--flow) 12%, transparent); color: var(--flow-bright); }
+  .grounding-badge-ungrounded { background: color-mix(in srgb, var(--verdict-warning) 12%, transparent); color: var(--verdict-warning); }
   .out-label {
     font-family: var(--ui);
     font-size: 0.69rem;
@@ -510,9 +517,75 @@
   }
   .topnav-links a:hover { color: var(--accent); }
 
+  /* ── Context dock (workbench phase 1, 2026-08-31): direction A — the
+     stream stays, but the focused answer's readouts stop scrolling away.
+     Wide screens only; below the gate the chat is exactly what it was.
+     Pure projection of message meta — no backend, one cursor of state. ── */
+  .context-dock { display: none; }
+  @media (min-width: 1100px) {
+    /* The ensemble (760 pane + 22 gap + 270 dock = 1052) centers as one unit:
+       the pane shifts half a dock-width left, the dock rides fixed beside it.
+       The topnav lives inside <main>, so the container is never made flex. */
+    main .chat-pane { margin: 0 0 0 calc(50vw - 526px); }
+    .context-dock.has-content {
+      display: flex; flex-direction: column; gap: 16px;
+      position: fixed; top: 41px; left: calc(50vw + 256px);
+      width: 270px; box-sizing: border-box;
+      height: calc(100vh - 41px);
+      height: calc(100dvh - 41px);
+      overflow-y: auto; padding: 18px 8px 18px 4px;
+    }
+    .dock-head { display: flex; align-items: center; gap: 8px; }
+    .dock-step { font-family: var(--ui); font-size: 0.8rem; color: var(--ink-dim); background: var(--ground-raised); border: 1px solid var(--ground-border); border-radius: 6px; padding: 1px 8px; cursor: pointer; }
+    .dock-step:disabled { opacity: 0.4; cursor: default; }
+    .dock-count { font-family: var(--ui); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+    .dock-q { font-family: var(--serif); font-size: 0.85rem; line-height: 1.4; color: var(--ink); }
+    .dock-section { display: flex; flex-direction: column; gap: 7px; }
+    .dock-label { font-family: var(--ui); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
+    .dock-rows { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-family: var(--ui); font-size: 0.78rem; color: var(--ink-faint); }
+    .dock-val { color: var(--ink); text-align: right; }
+    .dock-asks { font-family: var(--serif); font-style: italic; font-size: 0.82rem; color: var(--flow); line-height: 1.35; }
+    .dock-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+    .dock-chip { font-family: var(--ui); font-size: 0.68rem; font-weight: 500; padding: 2px 8px; border-radius: 9999px; background: var(--ground-raised); border: 1px solid var(--ground-border); }
+    .dock-sources { display: flex; flex-direction: column; gap: 4px; font-family: var(--mono); font-size: 0.7rem; color: var(--ink-dim); }
+    .dock-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+    .dock-tab { font-family: var(--ui); font-size: 0.68rem; font-weight: 500; padding: 2px 9px; border-radius: 9999px; border: 1px solid var(--ground-border); background: var(--ground-raised); color: var(--ink-dim); cursor: pointer; }
+    .dock-tab.active { background: var(--flow); border-color: var(--flow); color: var(--text-on-accent); }
+    .dock-snippet { font-family: var(--serif); font-size: 0.78rem; line-height: 1.45; color: var(--ink-dim); border-left: 2px solid var(--ground-border); padding-left: 9px; }
+    .dock-note { margin-top: auto; font-family: var(--ui); font-size: 0.7rem; font-style: italic; color: var(--ink-faint); }
+  }
+
+  /* ── Conversations rail (the mock's left rail, 2026-08-31): History stands
+     open when the screen affords the full triple ensemble — 236 rail + 16 ·
+     760 pane · 22 + 270 dock = 1304 — and stays a drawer below that. ── */
+  .conv-rail { display: none; }
+  @media (min-width: 1360px) {
+    main .chat-pane { margin: 0 0 0 calc(50vw - 400px); }
+    /* The standing rail IS history — the drawer's trigger is redundant here.
+       The drawer itself stays; it is the only door below this gate. */
+    #chat-history-btn { display: none; }
+    .context-dock.has-content { left: calc(50vw + 382px); }
+    .conv-rail.has-content {
+      display: flex; flex-direction: column; gap: 2px;
+      position: fixed; top: 41px; left: calc(50vw - 652px);
+      width: 236px; box-sizing: border-box;
+      height: calc(100vh - 41px);
+      height: calc(100dvh - 41px);
+      overflow-y: auto; padding: 18px 0;
+    }
+    .conv-rail-label { font-family: var(--ui); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); padding: 0 14px 8px; }
+    .conv-rail-item { display: block; width: 100%; text-align: left; border: none; background: none; cursor: pointer; padding: 8px 14px 8px 11px; border-left: 3px solid transparent; border-radius: 0 6px 6px 0; }
+    .conv-rail-item:hover { background: var(--ground-raised); }
+    .conv-rail-item.active { background: var(--ground-raised); border-left-color: var(--flow); }
+    .conv-rail-name { font-family: var(--ui); font-size: 0.82rem; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .conv-rail-sub { font-family: var(--mono); font-size: 0.65rem; color: var(--ink-faint); margin-top: 1px; }
+    .conv-rail-new { margin-top: auto; border: none; background: none; cursor: pointer; text-align: left; padding: 10px 14px; font-family: var(--ui); font-size: 0.8rem; font-weight: 500; color: var(--flow); }
+    .conv-rail-new:hover { color: var(--flow-bright); }
+  }
+
   /* ── Chat pane ── */
   .chat-pane {
-    background: #fff;
+    background: var(--paper);
     display: flex;
     flex-direction: column;
     height: calc(100vh - 41px);
@@ -576,7 +649,7 @@
     background: var(--ground);
     border: 1px solid var(--ground-border);
     border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(28,26,22,0.1);
+    box-shadow: 0 4px 12px rgba(10, 12, 14, 0.1);
     z-index: 20;
     min-width: 130px;
     padding: 4px 0;
@@ -624,9 +697,9 @@
     z-index: 200;
     transform: translateX(100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: #fff;
+    background: var(--paper);
     border-left: 1px solid var(--ground-border);
-    box-shadow: -4px 0 24px rgba(28,26,22,0.10);
+    box-shadow: -4px 0 24px rgba(10, 12, 14, 0.10);
     display: flex;
     flex-direction: column;
   }
@@ -636,7 +709,7 @@
     position: fixed;
     inset: 0;
     z-index: 190;
-    background: rgba(28,26,22,0.3);
+    background: rgba(10, 12, 14, 0.35);
   }
   .history-backdrop.visible { display: block; }
   .history-header {
@@ -751,7 +824,7 @@
     align-self: flex-end;
     font-family: var(--serif);
     background: var(--flow);
-    color: #fff;
+    color: var(--text-on-accent);
     border-bottom-right-radius: 3px;
   }
   .msg-bot {
@@ -770,6 +843,30 @@
     font-style: italic;
     padding: 4px 0;
   }
+  /* ── Sheets (workbench phase 2, 2026-08-31): a question and its answer are
+     one numbered paper surface. The ledger ground steps back so sheets read
+     as sheets; collapsing keeps the record present without the scroll. ── */
+  .chat-messages.sheeted { background: var(--ground); gap: 14px; }
+  .sheet {
+    background: var(--ground-raised);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    box-shadow: var(--shadow-card);
+    width: 100%;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .sheet-head { display: flex; align-items: baseline; gap: 12px; padding: 14px 18px 4px; cursor: pointer; }
+  .sheet.collapsed .sheet-head { padding: 10px 18px; }
+  .sheet-num { font-family: var(--mono); font-size: 0.7rem; color: var(--seal); flex-shrink: 0; }
+  .sheet-q { font-family: var(--display); font-size: 1.12rem; font-weight: 600; line-height: 1.3; color: var(--ink); flex: 1; }
+  .sheet.collapsed .sheet-q { font-family: var(--ui); font-size: 0.85rem; font-weight: 500; color: var(--ink-dim); }
+  .sheet-caret { border: none; background: none; font-size: 0.72rem; color: var(--ink-faint); cursor: pointer; padding: 2px 4px; }
+  .sheet.collapsed .sheet-body { display: none; }
+  .sheet-body { padding: 4px 18px 12px; }
+  .sheet-focused { border-color: var(--accent-slate); box-shadow: var(--shadow-card-hover); }
+  .sheet .msg-bot { background: transparent; border-radius: 0; padding: 0; max-width: none; align-self: stretch; }
+
   .msg-meta {
     display: flex;
     gap: 5px;
@@ -783,9 +880,9 @@
     padding: 2px 8px;
     border-radius: 10px;
   }
-  .msg-tag-route  { background: rgba(138, 106, 58, 0.1); color: var(--accent); }
-  .msg-tag-conf   { background: rgba(58, 110, 98, 0.1); color: var(--flow); }
-  .msg-tag-dim    { background: rgba(58, 110, 98, 0.08); color: var(--flow-bright); }
+  .msg-tag-route  { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent); }
+  .msg-tag-conf   { background: color-mix(in srgb, var(--flow) 10%, transparent); color: var(--flow); }
+  .msg-tag-dim    { background: color-mix(in srgb, var(--flow) 8%, transparent); color: var(--flow-bright); }
   .msg-tag-dim .dim-chip-code { opacity: 0.55; font-weight: 600; margin-right: 4px; letter-spacing: 0.02em; }
   .msg-tag-dim[data-dim="C"]  { background: rgba(46,125,94,0.14);  color: var(--dim-C); }
   .msg-tag-dim[data-dim="N"]  { background: rgba(42,98,153,0.14);  color: var(--dim-N); }
@@ -890,7 +987,7 @@
   }
   .lp-lens.ready {
     opacity: 1; color: var(--flow); border-color: var(--flow);
-    background: rgba(58,110,98,0.06);
+    background: color-mix(in srgb, var(--flow) 6%, transparent);
   }
   .lp-stage { color: var(--flow); font-style: italic; }
   @media (prefers-reduced-motion: reduce) { .lens-progress, .lp-lens { animation: none; transition: none; } }
@@ -982,7 +1079,7 @@
     transition: background 0.3s ease, border-color 0.3s ease;
   }
   .composer.welcome-mode {
-    background: #fff;
+    background: var(--paper);
     border-top-color: transparent;
   }
   .dim-bar-framing {
@@ -1155,7 +1252,7 @@
     border: none;
     border-radius: 10px;
     background: var(--flow);
-    color: #fff;
+    color: var(--text-on-accent);
     cursor: pointer;
     white-space: nowrap;
     transition: background 0.2s ease;
@@ -1187,20 +1284,6 @@
     /* Sub-16px inputs trigger iOS focus-zoom; force 16px on the first-touch fields */
     .name-gate-input, .welcome-name-input { font-size: 16px; }
   }
-  /* ── Model Toggle ── */
-  .model-select {
-    font-family: var(--ui);
-    font-size: 0.65rem;
-    padding: 3px 8px;
-    border: 1px solid var(--ground-border);
-    border-radius: 6px;
-    background: var(--ground);
-    color: var(--ink-dim);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    outline: none;
-  }
-  .model-select:hover, .model-select:focus { border-color: var(--flow); color: var(--flow); }
 
 
   /* ── Lens bar: choose your reader ── */
@@ -1282,7 +1365,7 @@
     display: flex; align-items: center; justify-content: center;
     font-family: var(--serif);
     font-size: 1.25rem;
-    color: #fff;
+    color: var(--text-on-accent);
     background: var(--lens-accent, var(--flow));
     user-select: none;
   }
@@ -1301,6 +1384,10 @@
     color: var(--lens-accent, var(--flow));
     font-style: italic;
   }
+  /* Curated deep-dive links (2026-08-31): quiet footer row, external. */
+  .thinker-links { font-family: var(--ui); font-size: 0.7rem; margin-top: 7px; color: var(--ink-faint); }
+  .thinker-links a { color: var(--ink-dim); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--ground-border); }
+  .thinker-links a:hover { color: var(--flow); text-decoration-color: var(--flow); }
   .thinker-dismiss {
     flex: 0 0 auto;
     background: none; border: none; cursor: pointer;
@@ -1309,7 +1396,7 @@
     padding: 2px 6px;
     border-radius: 4px;
   }
-  .thinker-dismiss:hover { color: var(--ink-dim); background: rgba(0,0,0,0.04); }
+  .thinker-dismiss:hover { color: var(--ink-dim); background: color-mix(in srgb, var(--ink) 6%, transparent); }
   @media (max-width: 560px) {
     .lens-bar-label { display: none; }
     .lens-btn { min-width: 86px; }
@@ -1322,9 +1409,9 @@
     font-size: 0.6rem;
     padding: 2px 8px;
     border-radius: 4px;
-    background: rgba(176, 64, 64, 0.1);
-    color: #b04040;
-    border: 1px solid rgba(176, 64, 64, 0.2);
+    background: color-mix(in srgb, var(--verdict-error) 10%, transparent);
+    color: var(--verdict-error);
+    border: 1px solid color-mix(in srgb, var(--verdict-error) 20%, transparent);
     margin-left: 4px;
     cursor: help;
   }
@@ -1584,7 +1671,6 @@
   @media (hover: none), (pointer: coarse) {
     .dim-bar-btn,
     .chat-history-btn,
-    .model-select,
     .export-trigger,
     .conv-lens-head,
     .msg-copy-btn,
@@ -1594,7 +1680,6 @@
     }
     .dim-bar-btn { padding-top: 8px; padding-bottom: 8px; }
     .chat-history-btn { padding-top: 10px; padding-bottom: 10px; }
-    .model-select { padding-top: 10px; padding-bottom: 10px; }
     .export-trigger { padding-top: 10px; padding-bottom: 10px; font-size: 0.72rem; }
     .msg-copy-btn { padding-top: 10px; padding-bottom: 10px; }
     .evidence-toggle { padding-top: 12px; padding-bottom: 12px; }
@@ -1651,11 +1736,9 @@
     <div class="chat-header">
       <div class="chat-header-left">
         <div class="status-dot" id="status-dot"></div>
-        <select class="model-select" id="model-select" aria-label="Select synthesis model" disabled>
-          <option value="claude-haiku-4-5-20251001">Haiku (fast)</option>
-          <option value="claude-sonnet-4-6">Sonnet (deep)</option>
-        </select>
-        <span class="mono-tag" id="llm-model-tag" style="display:none">---</span>
+        <!-- 2026-08-31: the model choice is the instrument's, not the user's knob.
+             The engine's active model is named here as provenance (was a select). -->
+        <span class="mono-tag" id="llm-model-tag">---</span>
         <button class="chat-history-btn" id="new-conv-btn" aria-label="New conversation" title="New conversation">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>
           New
@@ -1692,6 +1775,7 @@
         <div class="thinker-role" id="thinker-role"></div>
         <p class="thinker-bio" id="thinker-bio"></p>
         <div class="thinker-asks" id="thinker-asks"></div>
+        <div class="thinker-links" id="thinker-links"></div>
       </div>
       <button class="thinker-dismiss" id="thinker-dismiss" aria-label="Hide thinker card" title="Hide">✕</button>
     </section>
@@ -1734,6 +1818,8 @@
   <div class="history-backdrop" id="history-backdrop"></div>
 
 </div>
+<aside class="context-dock" id="context-dock" aria-label="Answer context"></aside>
+<aside class="conv-rail" id="conv-rail" aria-label="Conversations"></aside>
 </main>
 <script>
 // ══════════════════════════════════════════
@@ -1771,35 +1857,55 @@ const THINKERS = {
     tag: 'the anatomist',
     role: 'Systems scientist · University of Washington Tacoma',
     bio: 'Wrote the deep systems analysis methodology this engine grew up on: any system decomposes into components, networks, boundary, flows, transformations, history, and time scale. The working engineer’s answer to “what is a system?”',
-    asks: 'This lens asks: what IS this system — its parts, boundary, and flows?'
+    asks: 'This lens asks: what IS this system — its parts, boundary, and flows?',
+    links: [
+      { label: 'Principles of Systems Science (Springer)', url: 'https://doi.org/10.1007/978-1-4939-1920-8' },
+      { label: 'Systems science — Wikipedia', url: 'https://en.wikipedia.org/wiki/Systems_science' }
+    ],
   },
   spt: {
     name: 'Len Troncale', initials: 'LT', dates: '', accent: '#b04040',
     tag: 'the process theorist',
     role: 'Biologist & systems scientist · Cal Poly Pomona',
     bio: 'Spent five decades cataloguing the universal processes every system runs — feedback, cycles, emergence, decay — and the linkage propositions that connect them across physics, biology, and society.',
-    asks: 'This lens asks: HOW does it work — which universal processes are running?'
+    asks: 'This lens asks: HOW does it work — which universal processes are running?',
+    links: [
+      { label: 'Len R. Troncale — Wikipedia', url: 'https://en.wikipedia.org/wiki/Len_R._Troncale' },
+      { label: 'Systems Processes Theory — lentroncale.com', url: 'https://lentroncale.com/systems-theory/systems-research/' }
+    ],
   },
   klir: {
     name: 'George Klir', initials: 'GK', dates: '1932–2016', accent: '#1a5e82',
     tag: 'the epistemologist',
     role: 'Systems scientist · SUNY Binghamton',
     bio: 'Distilled what every definition of system shares — things and the relations on them, S = (T, R) — and built a hierarchy for grading what we actually know about any system, from raw data to laws to laws-that-change.',
-    asks: 'This lens asks: WHICH representation — what kind of knowledge do we have?'
+    asks: 'This lens asks: WHICH representation — what kind of knowledge do we have?',
+    links: [
+      { label: 'George Klir — Wikipedia', url: 'https://en.wikipedia.org/wiki/George_Klir' },
+      { label: 'Systems theory — Wikipedia', url: 'https://en.wikipedia.org/wiki/Systems_theory' }
+    ],
   },
   bunge: {
     name: 'Mario Bunge', initials: 'MB', dates: '1919–2020', accent: '#8a6840',
     tag: 'the ontologist',
     role: 'Philosopher & physicist · McGill University',
     bio: 'Made “system” an exact ontological concept: composition, environment, structure — and the bonds that separate a genuine system from a heap. To explain something is to exhibit the mechanism that makes it tick.',
-    asks: 'This lens asks: what MAKES it a system at all — where are the bonds?'
+    asks: 'This lens asks: what MAKES it a system at all — where are the bonds?',
+    links: [
+      { label: 'Mario Bunge — Wikipedia', url: 'https://en.wikipedia.org/wiki/Mario_Bunge' },
+      { label: 'Systemism — Wikipedia', url: 'https://en.wikipedia.org/wiki/Systemism' }
+    ],
   },
   ct: {
     name: 'The Compositional School', short: 'Compositional', initials: 'CT', dates: '', accent: '#6a4d8f',
     tag: 'the compositionalist',
     role: 'Applied category theory · Fong, Spivak & Myers',
     bio: 'The one lens that is a school, not a founder: category theory applied to systems. Fong and Spivak’s Seven Sketches and Myers’ Categorical Systems Theory make “connect these two systems” formally exact — interfaces, wiring diagrams, and the colimits that glue them.',
-    asks: 'This lens asks: how does it COMPOSE — what happens when systems connect?'
+    asks: 'This lens asks: how does it COMPOSE — what happens when systems connect?',
+    links: [
+      { label: 'Seven Sketches in Compositionality — arXiv', url: 'https://arxiv.org/abs/1803.05316' },
+      { label: 'Applied category theory — Wikipedia', url: 'https://en.wikipedia.org/wiki/Applied_category_theory' }
+    ],
   }
 };
 
@@ -1823,6 +1929,17 @@ function renderThinkerCard(mode, show) {
   document.getElementById('thinker-role').textContent = t.role;
   document.getElementById('thinker-bio').textContent = t.bio;
   document.getElementById('thinker-asks').textContent = t.asks;
+  const linksEl = document.getElementById('thinker-links');
+  if (linksEl) {
+    linksEl.innerHTML = '';
+    (t.links || []).forEach((l, i) => {
+      if (i > 0) linksEl.appendChild(document.createTextNode(' \u00b7 '));
+      const a = document.createElement('a');
+      a.href = l.url; a.textContent = l.label;
+      a.target = '_blank'; a.rel = 'noopener';
+      linksEl.appendChild(a);
+    });
+  }
   if (show !== undefined) card.hidden = !show;
 }
 
@@ -2138,6 +2255,8 @@ function selectComposerLens(mode) {
   const dimBar = document.getElementById('dim-bar');
   if (dimFraming) dimFraming.hidden = !mode;
   if (dimBar) dimBar.hidden = !mode;
+  // If the welcome screen is showing, its copy is lens-aware — re-render it.
+  if (document.querySelector('.chat-welcome')) renderMessages();
 }
 
 // Route a query through the integrated default, or a single lens if one is selected.
@@ -2252,9 +2371,45 @@ document.addEventListener('DOMContentLoaded', () => {
     chatEl.addEventListener('scroll', () => {
       const atBottom = chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 40;
       userScrolledUp = !atBottom;
+      scheduleScrollFocus(chatEl);
     });
   }
 });
+
+// Focus follows scroll (workbench phase 3): as the ledger scrolls, the sheet
+// nearest the top of the view becomes the focused one and the dock follows.
+// At the bottom the cursor returns to null — "following the latest answer" —
+// so a live conversation keeps its default behavior. rAF-throttled; the dock
+// stepper's own scrollIntoView lands on the sheet it just focused, so the two
+// mechanisms agree rather than fight. Throttled with a timeout, not rAF —
+// rAF pauses in background tabs and would wedge the pending flag.
+let scrollFocusPending = false;
+function scheduleScrollFocus(chatEl) {
+  if (scrollFocusPending) return;
+  scrollFocusPending = true;
+  setTimeout(() => {
+    scrollFocusPending = false;
+    const sheets = [...chatEl.querySelectorAll('.sheet')];
+    if (!sheets.length) return;
+    const atBottom = chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 40;
+    if (atBottom) {
+      if (dockCursor !== null) { dockCursor = null; renderDock(); syncSheetFocus(); }
+      return;
+    }
+    const topEdge = chatEl.getBoundingClientRect().top + 72;
+    let pick = null;
+    for (const sh of sheets) {
+      const r = sh.getBoundingClientRect();
+      if (r.bottom < topEdge) continue;       // fully scrolled past
+      pick = sh; break;                        // first sheet still in view
+    }
+    if (!pick) pick = sheets[sheets.length - 1];
+    const bi = Number(pick.dataset.bot);
+    const total = getTab() ? getTab().messages.filter(mm => mm.role === 'bot').length : 0;
+    const want = (bi >= total - 1) ? null : bi;
+    if (want !== dockCursor) { dockCursor = want; renderDock(); syncSheetFocus(); }
+  }, 60);
+}
 
 // ── Init ──
 function init() {
@@ -2518,6 +2673,7 @@ function renderMessages() {
   const tab = getTab();
   if (!tab) { el.innerHTML = ''; return; }
   el.innerHTML = '';
+  el.classList.remove('sheeted');
   // Hide New button when already on empty tab
   const newBtn = document.getElementById('new-conv-btn');
   if (newBtn) newBtn.style.display = tab.messages.length > 0 ? '' : 'none';
@@ -2533,6 +2689,9 @@ function renderMessages() {
   if (tab.messages.length === 0) {
     const welcome = document.createElement('div');
     welcome.className = 'chat-welcome';
+    // Lens-aware welcome (2026-08-31): with a single lens armed, the generic
+    // greeting yields to that lens's own question.
+    const wt = composerLens ? THINKERS[composerLens] : null;
     welcome.innerHTML = `
       <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
         <polygon points="40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4"
@@ -2547,8 +2706,8 @@ function renderMessages() {
         <circle cx="40" cy="40" r="2" fill="var(--flow)" opacity="0.4" />
       </svg>
       <div class="chat-welcome-title">Facets</div>
-      <div class="chat-welcome-tagline">Ask about any system.</div>
-      <div class="chat-welcome-subline">A cell, a market, a machine, an idea. Facets shows you the parts, the flows, and the structure that make it work, and names the sources it drew on.</div>
+      <div class="chat-welcome-tagline">${wt ? `Ask through ${wt.name}\u2019s lens.` : 'Ask about any system.'}</div>
+      <div class="chat-welcome-subline">${wt ? wt.asks : 'A cell, a market, a machine, an idea. Facets shows you the parts, the flows, and the structure that make it work, and names the sources it drew on.'}</div>
       <div class="chat-welcome-name"></div>`;
     // No example chips — let people ask whatever comes to mind. Name is collected via
     // ensureUserName() gate on first query.
@@ -2560,7 +2719,11 @@ function renderMessages() {
   }
   document.querySelectorAll('.dim-bar-btn').forEach(b => b.classList.remove('disabled'));
   document.querySelector('.composer').classList.remove('welcome-mode');
-  tab.messages.forEach(m => {
+  // Sheets (workbench phase 2): a user question directly followed by its bot
+  // answer renders as one numbered sheet; everything else stays a stream item.
+  let openSheet = null;   // sheet built from a question, awaiting its answer
+  let sheetBot = -1;      // running bot index — the same space the dock's cursor lives in
+  tab.messages.forEach((m, mi) => {
     const div = document.createElement('div');
     if (m.role === 'thinking') {
       div.className = 'msg msg-thinking';
@@ -2781,9 +2944,51 @@ function renderMessages() {
       }
       div.appendChild(actionsDiv);
     }
+    // Placement: a question paired with its answer becomes a sheet.
+    const nxt = tab.messages[mi + 1];
+    if (m.role === 'user' && nxt && nxt.role === 'bot') {
+      openSheet = document.createElement('article');
+      openSheet.className = 'sheet';
+      const head = document.createElement('div');
+      head.className = 'sheet-head';
+      const num = document.createElement('span'); num.className = 'sheet-num';
+      const q = document.createElement('span'); q.className = 'sheet-q'; q.textContent = m.text;
+      const caret = document.createElement('button'); caret.className = 'sheet-caret';
+      caret.textContent = '\u25be'; caret.setAttribute('aria-label', 'Collapse sheet');
+      head.appendChild(num); head.appendChild(q); head.appendChild(caret);
+      openSheet.appendChild(head);
+      el.appendChild(openSheet);
+      el.classList.add('sheeted');
+      return; // the user bubble is absorbed into the sheet head
+    }
+    if (m.role === 'bot' && openSheet) {
+      sheetBot++;
+      const bi = sheetBot;
+      const sheet = openSheet; openSheet = null;
+      sheet.dataset.bot = bi;
+      sheet.querySelector('.sheet-num').textContent = String(bi + 1).padStart(2, '0');
+      const body = document.createElement('div');
+      body.className = 'sheet-body';
+      body.appendChild(div);
+      sheet.appendChild(body);
+      sheet.querySelector('.sheet-caret').onclick = (e) => {
+        e.stopPropagation();
+        sheet.classList.toggle('collapsed');
+      };
+      sheet.querySelector('.sheet-head').onclick = () => {
+        if (sheet.classList.contains('collapsed')) sheet.classList.remove('collapsed');
+      };
+      sheet.addEventListener('click', () => focusSheet(bi));
+      return;
+    }
+    if (m.role === 'bot') sheetBot++; // unpaired answer stays a bubble; the count stays aligned
+    openSheet = null;
     el.appendChild(div);
   });
   if (!userScrolledUp) el.scrollTop = el.scrollHeight;
+  renderDock();
+  syncSheetFocus();
+  renderConvRail();
 }
 
 function parseTLDR(text) {
@@ -2917,29 +3122,17 @@ async function checkStatus() {
       if (model === 'loading' || !data.ready) {
         const loadingName = document.getElementById('llm-model-name');
         if (loadingName) loadingName.textContent = 'Loading...';
-        // Don't hide selector during loading — just disable it
-        document.getElementById('model-select').disabled = true;
       } else {
       const modelNameEl = document.getElementById('llm-model-name');
       if (modelNameEl) modelNameEl.textContent = 'Synthesis';
       const mode = data.mode || (model.includes('claude') ? 'cloud' : 'local');
-      const select = document.getElementById('model-select');
       const tag = document.getElementById('llm-model-tag');
       const diagTag = document.getElementById('llm-diagram-tag');
-      select.disabled = false;
-      if (mode === 'local') {
-        select.style.display = 'none';
-        tag.style.display = 'inline';
-        tag.textContent = model + ' \u00b7 Local';
-        if (diagTag) diagTag.textContent = model + ' \u00b7 Local';
-      } else {
-        select.style.display = '';
-        tag.style.display = 'none';
-        if (diagTag) diagTag.textContent = model.includes('sonnet') ? 'Claude Sonnet' : 'Claude Haiku';
-        if (select.querySelector('option[value="' + model + '"]')) {
-          select.value = model;
-        }
-      }
+      // The engine picks the model; the header names it as provenance.
+      const pretty = mode === 'local' ? model + ' \u00b7 Local'
+        : model.includes('sonnet') ? 'Claude Sonnet' : 'Claude Haiku';
+      tag.textContent = pretty;
+      if (diagTag) diagTag.textContent = pretty;
       const wsb = document.getElementById('web-search-badge');
       if (wsb) wsb.style.display = data.web_search ? 'inline' : 'none';
       } // end model display
@@ -3022,7 +3215,7 @@ async function sendQuery(question) {
       originTab.messages = originTab.messages.filter(m => m.role !== 'thinking');
     }
 
-    addMessage('bot', answer, { route, confidence, dimensions: dims, intensity, reasoning, sources: data.sources || [], web_search: data.web_search, answer_id: data.answer_id }, originTabId);
+    addMessage('bot', answer, { route, confidence, dimensions: dims, intensity, reasoning, sources: data.sources || [], web_search: data.web_search, answer_id: data.answer_id, asked: composerLens || activeMode }, originTabId);
     updateDimBar(dims);
     dot.className = 'status-dot online';
   } catch(e) {
@@ -3244,7 +3437,7 @@ async function sendQueryStream(question) {
 
             updateDiagram('response', { route, confidence, dims });
 
-            addMessage('bot', cleanAnswer, { route, confidence, dimensions: dims, intensity, reasoning, sources, pathology, web_search: payload.web_search, answer_id: payload.answer_id }, originTabId);
+            addMessage('bot', cleanAnswer, { route, confidence, dimensions: dims, intensity, reasoning, sources, pathology, web_search: payload.web_search, answer_id: payload.answer_id, asked: composerLens || activeMode }, originTabId);
             updateDimBar(dims);
             dot.className = 'status-dot online';
             logFunnelEvent('answer_rendered');
@@ -3387,7 +3580,8 @@ async function sendIntegrated(question) {
             sources: payload.sources || [],
             lenses: payload.lenses || [],
             web_search: payload.web_search,
-            answer_id: payload.answer_id
+            answer_id: payload.answer_id,
+            asked: 'integrated'
           }, originTabId);
           dot.className = 'status-dot online';
           logFunnelEvent('answer_rendered');
@@ -3685,23 +3879,154 @@ document.getElementById('model-this-btn').addEventListener('click', async () => 
   }
 });
 // Tooltip removed — 8-tuple explanation now displayed inline
-document.getElementById('model-select').addEventListener('change', async (e) => {
-  const select = e.target;
-  const newModel = select.value;
-  select.disabled = true;
-  try {
-    const r = await fetch(API + '/model', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: newModel })
-    });
-    if (r.ok) {
-      localStorage.setItem('facets-model', newModel);
-      checkStatus();
+// ── Context dock (workbench phase 1, 2026-08-31) ──
+// Direction A of the pivot: a wide-screen side panel projecting the focused
+// answer's meta — readouts, lens, sources — so context stops scrolling away.
+// Follows the latest answer by default; ‹ › steps back through the record.
+let dockCursor = null;   // index into the tab's bot answers; null = follow latest
+let dockLens = null;     // integrated answers only: which lens's reading the dock projects
+let dockLensFor = null;  // the answer index dockLens belongs to — focus moves reset it
+// The standing conversations rail — same data and actions as the History
+// drawer, permanently open where the triple ensemble fits.
+function renderConvRail() {
+  const rail = document.getElementById('conv-rail');
+  if (!rail) return;
+  rail.innerHTML = '';
+  if (READONLY || !tabs.length) { rail.classList.remove('has-content'); return; }
+  rail.classList.add('has-content');
+  const label = document.createElement('div');
+  label.className = 'conv-rail-label';
+  label.textContent = 'Conversations';
+  rail.appendChild(label);
+  tabs.forEach(t => {
+    const item = document.createElement('button');
+    item.className = 'conv-rail-item' + (t.id === activeTab ? ' active' : '');
+    const nm = document.createElement('div');
+    nm.className = 'conv-rail-name';
+    nm.textContent = t.name || 'Untitled';
+    const sub = document.createElement('div');
+    sub.className = 'conv-rail-sub';
+    const nb = t.messages.filter(mm => mm.role === 'bot').length;
+    sub.textContent = nb ? nb + ' sheet' + (nb === 1 ? '' : 's') : 'empty';
+    item.appendChild(nm); item.appendChild(sub);
+    item.onclick = () => switchTab(t.id);
+    rail.appendChild(item);
+  });
+  const nb = document.createElement('button');
+  nb.className = 'conv-rail-new';
+  nb.textContent = '+ New conversation';
+  nb.onclick = () => createTab();
+  rail.appendChild(nb);
+}
+
+function focusSheet(bi) {
+  const tab = getTab();
+  const total = tab ? tab.messages.filter(mm => mm.role === 'bot').length : 0;
+  dockCursor = (bi >= total - 1) ? null : bi;
+  renderDock();
+  syncSheetFocus();
+}
+function syncSheetFocus() {
+  const tab = getTab();
+  const bots = tab ? tab.messages.filter(mm => mm.role === 'bot') : [];
+  if (!bots.length) return;
+  const n = dockCursor === null ? bots.length - 1 : dockCursor;
+  document.querySelectorAll('.sheet').forEach(sh => {
+    sh.classList.toggle('sheet-focused', Number(sh.dataset.bot) === n);
+  });
+}
+function revealFocusedSheet() {
+  syncSheetFocus();
+  const sh = document.querySelector('.sheet-focused');
+  if (sh) {
+    sh.classList.remove('collapsed');
+    sh.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+function dockEsc(v) { const d = document.createElement('div'); d.textContent = v == null ? '' : String(v); return d.innerHTML; }
+function renderDock() {
+  const dock = document.getElementById('context-dock');
+  if (!dock) return;
+  const tab = getTab();
+  const bots = tab ? tab.messages.filter(mm => mm.role === 'bot') : [];
+  if (!bots.length) { dock.classList.remove('has-content'); dock.innerHTML = ''; return; }
+  dock.classList.add('has-content');
+  if (dockCursor !== null && (dockCursor < 0 || dockCursor >= bots.length)) dockCursor = null;
+  const n = dockCursor === null ? bots.length - 1 : dockCursor;
+  const m = bots[n];
+  const meta = m.meta || {};
+  if (dockLensFor !== n) { dockLens = null; dockLensFor = n; }
+  const idx = tab.messages.indexOf(m);
+  let q = '';
+  for (let j = idx - 1; j >= 0; j--) { if (tab.messages[j].role === 'user') { q = tab.messages[j].text; break; } }
+  const g = (m.text.match(/\[\[g:/g) || []).length;
+  const u = (m.text.match(/\[\[u\]\]/g) || []).length;
+  const asked = meta.asked || ((meta.lenses && meta.lenses.length) ? 'integrated' : null);
+  const thinker = (asked && asked !== 'integrated') ? THINKERS[asked] : null;
+  const cfg = thinker && MODE_CONFIGS[asked] ? MODE_CONFIGS[asked] : null;
+  const dims = meta.dimensions || [];
+  const rows = [];
+  if (meta.route) rows.push(['route', dockEsc(meta.route)]);
+  if (meta.confidence) rows.push(['confidence', dockEsc(meta.confidence)]);
+  if (meta.intensity && meta.intensity !== 'none') rows.push(['intensity', dockEsc(meta.intensity)]);
+  if (g || u) rows.push(['grounding', u
+    ? '<span style="color: var(--verdict-warning)">' + g + ' \u2713 \u00b7 ' + u + ' open</span>'
+    : '<span style="color: var(--verdict-ok)">grounded \u2713</span>']);
+  if (meta.web_search) rows.push(['web', 'searched']);
+
+  let html = '<div class="dock-head">'
+    + '<button class="dock-step" id="dock-prev"' + (n === 0 ? ' disabled' : '') + ' aria-label="Earlier answer">\u2039</button>'
+    + '<span class="dock-count">answer ' + (n + 1) + ' of ' + bots.length + '</span>'
+    + '<button class="dock-step" id="dock-next"' + (n === bots.length - 1 ? ' disabled' : '') + ' aria-label="Later answer">\u203a</button>'
+    + '</div>';
+  if (q) html += '<div class="dock-q">' + dockEsc(q.length > 90 ? q.slice(0, 90) + '\u2026' : q) + '</div>';
+  if (rows.length) html += '<div class="dock-section"><div class="dock-label">Readouts</div><div class="dock-rows">'
+    + rows.map(r => '<span>' + r[0] + '</span><span class="dock-val">' + r[1] + '</span>').join('') + '</div></div>';
+  if (thinker) {
+    html += '<div class="dock-section"><div class="dock-label">Lens \u00b7 ' + dockEsc(thinker.name) + '</div>'
+      + '<div class="dock-asks">' + dockEsc(thinker.asks.replace('This lens asks: ', '')) + '</div>';
+    if (dims.length) html += '<div class="dock-chips">' + dims.map(d =>
+      '<span class="dock-chip" style="color: var(--dim-' + dockEsc(d) + ', var(--ink-dim))">' + dockEsc((cfg && cfg.names[d]) || d) + '</span>').join('') + '</div>';
+    html += '</div>';
+  } else if (meta.lenses && meta.lenses.length) {
+    // Lens tabs (DockLenses sketch): the integrated payload already carries
+    // every lens's reading, so tabs re-project the SAME answer — no backend.
+    const cur = meta.lenses.find(l => l.mode === dockLens) || null;
+    html += '<div class="dock-section"><div class="dock-label">Lens</div><div class="dock-tabs">'
+      + '<button class="dock-tab' + (cur ? '' : ' active') + '" data-lens="">All</button>'
+      + meta.lenses.map(l => {
+          const t = THINKERS[l.mode];
+          const short = (t && (t.short || t.name.split(' ').pop())) || l.mode;
+          return '<button class="dock-tab' + (cur && cur.mode === l.mode ? ' active' : '') + '" data-lens="' + dockEsc(l.mode) + '">' + dockEsc(short) + '</button>';
+        }).join('') + '</div>';
+    if (cur) {
+      const t = THINKERS[cur.mode];
+      if (t) html += '<div class="dock-asks">' + dockEsc(t.asks.replace('This lens asks: ', '')) + '</div>';
+      const lcfg = MODE_CONFIGS[cur.mode];
+      if (cur.dimensions && cur.dimensions.length) html += '<div class="dock-chips">' + cur.dimensions.map(d =>
+        '<span class="dock-chip" style="color: var(--dim-' + dockEsc(d) + ', var(--ink-dim))">' + dockEsc((lcfg && lcfg.names[d]) || d) + '</span>').join('') + '</div>';
+      if (cur.snippet) html += '<div class="dock-snippet">' + dockEsc(cur.snippet) + '\u2026</div>';
+    } else {
+      html += '<div class="dock-chips">' + meta.lenses.map(l =>
+        '<span class="dock-chip">' + dockEsc((THINKERS[l.mode] && THINKERS[l.mode].name) || l.mode) + '</span>').join('') + '</div>';
     }
-  } catch(e) { console.error('Model switch failed:', e); }
-  select.disabled = false;
-});
+    html += '</div>';
+  } else if (dims.length) {
+    html += '<div class="dock-section"><div class="dock-label">Dimensions</div><div class="dock-chips">' + dims.map(d =>
+      '<span class="dock-chip" style="color: var(--dim-' + dockEsc(d) + ', var(--ink-dim))">' + dockEsc(dimDisplayName(d)) + '</span>').join('') + '</div></div>';
+  }
+  const srcs = [...new Set((meta.sources || []).map(sr => sr.source).filter(Boolean))];
+  if (srcs.length) html += '<div class="dock-section"><div class="dock-label">Sources</div><div class="dock-sources">'
+    + srcs.slice(0, 6).map(sr => '<span>' + dockEsc(sr) + '</span>').join('') + '</div></div>';
+  html += '<div class="dock-note">' + (dockCursor === null ? 'following the latest answer' : 'pinned \u2014 \u203a returns to latest') + '</div>';
+  dock.innerHTML = html;
+  dock.querySelectorAll('.dock-tab').forEach(btn => {
+    btn.onclick = () => { dockLens = btn.dataset.lens || null; renderDock(); };
+  });
+  const prev = document.getElementById('dock-prev'), next = document.getElementById('dock-next');
+  if (prev) prev.onclick = () => { dockCursor = n - 1; renderDock(); revealFocusedSheet(); };
+  if (next) next.onclick = () => { dockCursor = (n + 1 >= bots.length - 1) ? null : n + 1; renderDock(); revealFocusedSheet(); };
+}
 
 // ── Lens bar wiring ──
 (function buildLensBar() {

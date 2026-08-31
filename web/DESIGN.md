@@ -17,6 +17,11 @@ Frost family (slate / teal / indigo).
   them via `var(--x)` in inline styles; `src/tokens.ts` mirrors the few needed as
   JS strings for SVG / numeric props. Change tokens in one place; keep this file
   in sync.
+- **The tokens' reach is repo-wide (2026-08-31):** `scripts/gen-frost-shared.mjs`
+  extracts the cross-app subset into the generated `shared/frost.css`, which
+  portal and chat link — so an edit here restyles all three surfaces. Re-run the
+  generator after changing a shared token; `publish-site.sh` gates on `--check`.
+  Mechanism and shared/private split: `docs/design/frost-shared.md`.
 - **Type:** Cormorant Garamond (display / wordmark) · Inter (body) · JetBrains
   Mono (the kernel's numbers, `.tabular`).
 - **Accent:** teal (`--accent`), with indigo + slate support. Verdicts use
