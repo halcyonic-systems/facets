@@ -2338,9 +2338,45 @@ document.addEventListener('DOMContentLoaded', () => {
     chatEl.addEventListener('scroll', () => {
       const atBottom = chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 40;
       userScrolledUp = !atBottom;
+      scheduleScrollFocus(chatEl);
     });
   }
 });
+
+// Focus follows scroll (workbench phase 3): as the ledger scrolls, the sheet
+// nearest the top of the view becomes the focused one and the dock follows.
+// At the bottom the cursor returns to null — "following the latest answer" —
+// so a live conversation keeps its default behavior. rAF-throttled; the dock
+// stepper's own scrollIntoView lands on the sheet it just focused, so the two
+// mechanisms agree rather than fight. Throttled with a timeout, not rAF —
+// rAF pauses in background tabs and would wedge the pending flag.
+let scrollFocusPending = false;
+function scheduleScrollFocus(chatEl) {
+  if (scrollFocusPending) return;
+  scrollFocusPending = true;
+  setTimeout(() => {
+    scrollFocusPending = false;
+    const sheets = [...chatEl.querySelectorAll('.sheet')];
+    if (!sheets.length) return;
+    const atBottom = chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight < 40;
+    if (atBottom) {
+      if (dockCursor !== null) { dockCursor = null; renderDock(); syncSheetFocus(); }
+      return;
+    }
+    const topEdge = chatEl.getBoundingClientRect().top + 72;
+    let pick = null;
+    for (const sh of sheets) {
+      const r = sh.getBoundingClientRect();
+      if (r.bottom < topEdge) continue;       // fully scrolled past
+      pick = sh; break;                        // first sheet still in view
+    }
+    if (!pick) pick = sheets[sheets.length - 1];
+    const bi = Number(pick.dataset.bot);
+    const total = getTab() ? getTab().messages.filter(mm => mm.role === 'bot').length : 0;
+    const want = (bi >= total - 1) ? null : bi;
+    if (want !== dockCursor) { dockCursor = want; renderDock(); syncSheetFocus(); }
+  }, 60);
+}
 
 // ── Init ──
 function init() {
