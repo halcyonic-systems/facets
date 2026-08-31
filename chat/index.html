@@ -517,6 +517,40 @@
   }
   .topnav-links a:hover { color: var(--accent); }
 
+  /* ── Context dock (workbench phase 1, 2026-08-31): direction A — the
+     stream stays, but the focused answer's readouts stop scrolling away.
+     Wide screens only; below the gate the chat is exactly what it was.
+     Pure projection of message meta — no backend, one cursor of state. ── */
+  .context-dock { display: none; }
+  @media (min-width: 1100px) {
+    /* The ensemble (760 pane + 22 gap + 270 dock = 1052) centers as one unit:
+       the pane shifts half a dock-width left, the dock rides fixed beside it.
+       The topnav lives inside <main>, so the container is never made flex. */
+    main .chat-pane { margin: 0 0 0 calc(50vw - 526px); }
+    .context-dock.has-content {
+      display: flex; flex-direction: column; gap: 16px;
+      position: fixed; top: 41px; left: calc(50vw + 256px);
+      width: 270px; box-sizing: border-box;
+      height: calc(100vh - 41px);
+      height: calc(100dvh - 41px);
+      overflow-y: auto; padding: 18px 8px 18px 4px;
+    }
+    .dock-head { display: flex; align-items: center; gap: 8px; }
+    .dock-step { font-family: var(--ui); font-size: 0.8rem; color: var(--ink-dim); background: var(--ground-raised); border: 1px solid var(--ground-border); border-radius: 6px; padding: 1px 8px; cursor: pointer; }
+    .dock-step:disabled { opacity: 0.4; cursor: default; }
+    .dock-count { font-family: var(--ui); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+    .dock-q { font-family: var(--serif); font-size: 0.85rem; line-height: 1.4; color: var(--ink); }
+    .dock-section { display: flex; flex-direction: column; gap: 7px; }
+    .dock-label { font-family: var(--ui); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
+    .dock-rows { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-family: var(--ui); font-size: 0.78rem; color: var(--ink-faint); }
+    .dock-val { color: var(--ink); text-align: right; }
+    .dock-asks { font-family: var(--serif); font-style: italic; font-size: 0.82rem; color: var(--flow); line-height: 1.35; }
+    .dock-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+    .dock-chip { font-family: var(--ui); font-size: 0.68rem; font-weight: 500; padding: 2px 8px; border-radius: 9999px; background: var(--ground-raised); border: 1px solid var(--ground-border); }
+    .dock-sources { display: flex; flex-direction: column; gap: 4px; font-family: var(--mono); font-size: 0.7rem; color: var(--ink-dim); }
+    .dock-note { margin-top: auto; font-family: var(--ui); font-size: 0.7rem; font-style: italic; color: var(--ink-faint); }
+  }
+
   /* ── Chat pane ── */
   .chat-pane {
     background: var(--paper);
@@ -1728,6 +1762,7 @@
   <div class="history-backdrop" id="history-backdrop"></div>
 
 </div>
+<aside class="context-dock" id="context-dock" aria-label="Answer context"></aside>
 </main>
 <script>
 // ══════════════════════════════════════════
@@ -2814,6 +2849,7 @@ function renderMessages() {
     el.appendChild(div);
   });
   if (!userScrolledUp) el.scrollTop = el.scrollHeight;
+  renderDock();
 }
 
 function parseTLDR(text) {
@@ -3040,7 +3076,7 @@ async function sendQuery(question) {
       originTab.messages = originTab.messages.filter(m => m.role !== 'thinking');
     }
 
-    addMessage('bot', answer, { route, confidence, dimensions: dims, intensity, reasoning, sources: data.sources || [], web_search: data.web_search, answer_id: data.answer_id }, originTabId);
+    addMessage('bot', answer, { route, confidence, dimensions: dims, intensity, reasoning, sources: data.sources || [], web_search: data.web_search, answer_id: data.answer_id, asked: composerLens || activeMode }, originTabId);
     updateDimBar(dims);
     dot.className = 'status-dot online';
   } catch(e) {
@@ -3262,7 +3298,7 @@ async function sendQueryStream(question) {
 
             updateDiagram('response', { route, confidence, dims });
 
-            addMessage('bot', cleanAnswer, { route, confidence, dimensions: dims, intensity, reasoning, sources, pathology, web_search: payload.web_search, answer_id: payload.answer_id }, originTabId);
+            addMessage('bot', cleanAnswer, { route, confidence, dimensions: dims, intensity, reasoning, sources, pathology, web_search: payload.web_search, answer_id: payload.answer_id, asked: composerLens || activeMode }, originTabId);
             updateDimBar(dims);
             dot.className = 'status-dot online';
             logFunnelEvent('answer_rendered');
@@ -3405,7 +3441,8 @@ async function sendIntegrated(question) {
             sources: payload.sources || [],
             lenses: payload.lenses || [],
             web_search: payload.web_search,
-            answer_id: payload.answer_id
+            answer_id: payload.answer_id,
+            asked: 'integrated'
           }, originTabId);
           dot.className = 'status-dot online';
           logFunnelEvent('answer_rendered');
@@ -3703,6 +3740,72 @@ document.getElementById('model-this-btn').addEventListener('click', async () => 
   }
 });
 // Tooltip removed — 8-tuple explanation now displayed inline
+// ── Context dock (workbench phase 1, 2026-08-31) ──
+// Direction A of the pivot: a wide-screen side panel projecting the focused
+// answer's meta — readouts, lens, sources — so context stops scrolling away.
+// Follows the latest answer by default; ‹ › steps back through the record.
+let dockCursor = null;   // index into the tab's bot answers; null = follow latest
+function dockEsc(v) { const d = document.createElement('div'); d.textContent = v == null ? '' : String(v); return d.innerHTML; }
+function renderDock() {
+  const dock = document.getElementById('context-dock');
+  if (!dock) return;
+  const tab = getTab();
+  const bots = tab ? tab.messages.filter(mm => mm.role === 'bot') : [];
+  if (!bots.length) { dock.classList.remove('has-content'); dock.innerHTML = ''; return; }
+  dock.classList.add('has-content');
+  if (dockCursor !== null && (dockCursor < 0 || dockCursor >= bots.length)) dockCursor = null;
+  const n = dockCursor === null ? bots.length - 1 : dockCursor;
+  const m = bots[n];
+  const meta = m.meta || {};
+  const idx = tab.messages.indexOf(m);
+  let q = '';
+  for (let j = idx - 1; j >= 0; j--) { if (tab.messages[j].role === 'user') { q = tab.messages[j].text; break; } }
+  const g = (m.text.match(/\[\[g:/g) || []).length;
+  const u = (m.text.match(/\[\[u\]\]/g) || []).length;
+  const asked = meta.asked || ((meta.lenses && meta.lenses.length) ? 'integrated' : null);
+  const thinker = (asked && asked !== 'integrated') ? THINKERS[asked] : null;
+  const cfg = thinker && MODE_CONFIGS[asked] ? MODE_CONFIGS[asked] : null;
+  const dims = meta.dimensions || [];
+  const rows = [];
+  if (meta.route) rows.push(['route', dockEsc(meta.route)]);
+  if (meta.confidence) rows.push(['confidence', dockEsc(meta.confidence)]);
+  if (meta.intensity && meta.intensity !== 'none') rows.push(['intensity', dockEsc(meta.intensity)]);
+  if (g || u) rows.push(['grounding', u
+    ? '<span style="color: var(--verdict-warning)">' + g + ' \u2713 \u00b7 ' + u + ' open</span>'
+    : '<span style="color: var(--verdict-ok)">grounded \u2713</span>']);
+  if (meta.web_search) rows.push(['web', 'searched']);
+
+  let html = '<div class="dock-head">'
+    + '<button class="dock-step" id="dock-prev"' + (n === 0 ? ' disabled' : '') + ' aria-label="Earlier answer">\u2039</button>'
+    + '<span class="dock-count">answer ' + (n + 1) + ' of ' + bots.length + '</span>'
+    + '<button class="dock-step" id="dock-next"' + (n === bots.length - 1 ? ' disabled' : '') + ' aria-label="Later answer">\u203a</button>'
+    + '</div>';
+  if (q) html += '<div class="dock-q">' + dockEsc(q.length > 90 ? q.slice(0, 90) + '\u2026' : q) + '</div>';
+  if (rows.length) html += '<div class="dock-section"><div class="dock-label">Readouts</div><div class="dock-rows">'
+    + rows.map(r => '<span>' + r[0] + '</span><span class="dock-val">' + r[1] + '</span>').join('') + '</div></div>';
+  if (thinker) {
+    html += '<div class="dock-section"><div class="dock-label">Lens \u00b7 ' + dockEsc(thinker.name) + '</div>'
+      + '<div class="dock-asks">' + dockEsc(thinker.asks.replace('This lens asks: ', '')) + '</div>';
+    if (dims.length) html += '<div class="dock-chips">' + dims.map(d =>
+      '<span class="dock-chip" style="color: var(--dim-' + dockEsc(d) + ', var(--ink-dim))">' + dockEsc((cfg && cfg.names[d]) || d) + '</span>').join('') + '</div>';
+    html += '</div>';
+  } else if (meta.lenses && meta.lenses.length) {
+    html += '<div class="dock-section"><div class="dock-label">Lenses consulted</div><div class="dock-chips">'
+      + meta.lenses.map(l => '<span class="dock-chip">' + dockEsc((THINKERS[l.mode] && THINKERS[l.mode].name) || l.mode) + '</span>').join('') + '</div></div>';
+  } else if (dims.length) {
+    html += '<div class="dock-section"><div class="dock-label">Dimensions</div><div class="dock-chips">' + dims.map(d =>
+      '<span class="dock-chip" style="color: var(--dim-' + dockEsc(d) + ', var(--ink-dim))">' + dockEsc(dimDisplayName(d)) + '</span>').join('') + '</div></div>';
+  }
+  const srcs = [...new Set((meta.sources || []).map(sr => sr.source).filter(Boolean))];
+  if (srcs.length) html += '<div class="dock-section"><div class="dock-label">Sources</div><div class="dock-sources">'
+    + srcs.slice(0, 6).map(sr => '<span>' + dockEsc(sr) + '</span>').join('') + '</div></div>';
+  html += '<div class="dock-note">' + (dockCursor === null ? 'following the latest answer' : 'pinned \u2014 \u203a returns to latest') + '</div>';
+  dock.innerHTML = html;
+  const prev = document.getElementById('dock-prev'), next = document.getElementById('dock-next');
+  if (prev) prev.onclick = () => { dockCursor = n - 1; renderDock(); };
+  if (next) next.onclick = () => { dockCursor = (n + 1 >= bots.length - 1) ? null : n + 1; renderDock(); };
+}
+
 // ── Lens bar wiring ──
 (function buildLensBar() {
   const bar = document.getElementById('lens-bar');
