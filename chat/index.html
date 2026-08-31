@@ -561,6 +561,9 @@
   .conv-rail { display: none; }
   @media (min-width: 1360px) {
     main .chat-pane { margin: 0 0 0 calc(50vw - 400px); }
+    /* The standing rail IS history — the drawer's trigger is redundant here.
+       The drawer itself stays; it is the only door below this gate. */
+    #chat-history-btn { display: none; }
     .context-dock.has-content { left: calc(50vw + 382px); }
     .conv-rail.has-content {
       display: flex; flex-direction: column; gap: 2px;
