@@ -3198,6 +3198,10 @@ export function MenuBar({
         </span>
       )}
 
+      {/* Nav cluster (declutter opt 1, 2026-08-31): Home / File / Switch read
+          as one unit — tight internal gap, a step smaller than the working
+          controls on the right. Population unchanged (#345 stands). */}
+      <div className="flex items-center gap-1">
       {/* Home / Close (#73): the one route back to the start screen from a
           loaded model. Disabled when already home (no model), so it never
           no-ops silently. */}
@@ -3205,7 +3209,7 @@ export function MenuBar({
         onClick={onHome}
         disabled={!loaded || !hasModel}
         title={hasModel ? "Close this model and return to the start screen" : "Already at the start screen"}
-        className="rounded px-2 py-1 text-xs uppercase tracking-wide"
+        className="rounded px-2 py-1 text-[11px] uppercase tracking-wide"
         style={{
           fontFamily: "var(--font-mono)",
           color: loaded && hasModel ? "var(--text-secondary)" : "var(--text-muted)",
@@ -3220,7 +3224,7 @@ export function MenuBar({
         <button
           onClick={() => setFileOpen((o) => !o)}
           disabled={!loaded}
-          className="rounded px-2 py-1 text-xs uppercase tracking-wide"
+          className="rounded px-2 py-1 text-[11px] uppercase tracking-wide"
           style={{
             fontFamily: "var(--font-mono)",
             color: loaded ? "var(--text-secondary)" : "var(--text-muted)",
@@ -3263,7 +3267,7 @@ export function MenuBar({
         <button
           onClick={() => setSwitchOpen((o) => !o)}
           disabled={!loaded || !hasModel}
-          className="rounded px-2 py-1 text-xs uppercase tracking-wide"
+          className="rounded px-2 py-1 text-[11px] uppercase tracking-wide"
           style={{
             fontFamily: "var(--font-mono)",
             color: loaded && hasModel ? "var(--text-secondary)" : "var(--text-muted)",
@@ -3398,6 +3402,8 @@ export function MenuBar({
         )}
       </div>
 
+      </div>
+
       {/* The model now on the canvas — a quiet mono label, dot-marked when it
           carries unsaved edits, and the handle for the model's asserted type
           (#312 move 1). The name answers "which model is this"; kingdom /
@@ -3454,6 +3460,12 @@ export function MenuBar({
         <div className="ml-auto flex min-w-0 flex-wrap items-center gap-2">{controls}</div>
       )}
 
+      {/* Meta cluster: pin · theme · kernel chip — standing status, not
+          actions; a hairline sets it off from the working controls. */}
+      {controls && (
+        <span aria-hidden className="h-4 w-px" style={{ background: "var(--hairline)" }} />
+      )}
+      <div className={controls ? "flex items-center gap-2" : "ml-auto flex items-center gap-2"}>
       {canPin && onTogglePin && (
         <button
           onClick={onTogglePin}
@@ -3481,6 +3493,7 @@ export function MenuBar({
         />
         {loaded ? "kernel · wasm" : "loading…"}
       </span>
+      </div>
     </div>
   );
 }
