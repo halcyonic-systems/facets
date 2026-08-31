@@ -4,71 +4,78 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Facets — Systems Reasoning Engine</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233a6e62' stroke-width='2' fill='%23f7f4ef'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
 <meta name="description" content="Ask about any system and see what makes it work. Answers grounded in the major traditions of systems science, with sources shown.">
 <meta property="og:title" content="Facets — Systems Reasoning Engine">
 <meta property="og:description" content="Ask a question. See which facets of systems science it touches.">
-<meta name="theme-color" content="#f7f4ef">
+<meta name="theme-color" content="#eaecee">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Facets">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/frost.css">
 <style>
   :root {
-    --ink: #1c1a16;
-    --ink-dim: #4a4640;
-    --ink-faint: #736e66;
-    --ground: #f7f4ef;
-    --ground-raised: #f0ece4;
-    --ground-border: #ddd8cf;
-    --accent: #8a6a3a;
-    --accent-dim: #b8966a;
-    --flow: #3a6e62;
-    --flow-bright: #2d5a50;
-    --dim-C: #2e7d5e;
-    --dim-N: #2a6299;
-    --dim-E: #8a6840;
-    --dim-G: #a04a6a;
-    --dim-B: #7044a0;
-    --dim-T: #1f6e56;
-    --dim-H: #7a5e0f;
-    --dim-Dt: #1a5e82;
+    /* Halcyonic Frost alias layer (2026-08-31 unification). Foundation tokens
+       come from ../shared/frost.css, generated from web/src/index.css — the
+       one place values are edited. Chat's historical names are kept as
+       aliases so the rules below need no churn: --ink and friends resolve to
+       the printed-record register, --flow (the interactive accent) to Frost
+       teal. The old warm-paper palette (Fraunces/Newsreader, #f7f4ef) is
+       retired; both facets surfaces now theme from the same sheet, and the
+       light-dark() pairs give chat a dark mode for free. */
+    --ink-dim: var(--ink-secondary);
+    --ink-faint: var(--ink-muted);
+    --ground: var(--paper-ground);
+    --ground-raised: var(--paper);
+    --ground-border: var(--border);
+    --accent-dim: var(--accent-slate);
+    --flow: var(--accent);
+    --flow-bright: var(--accent-strong);
+    /* Facet dimension channels — content semantics, chat-local (the model app
+       keeps its own KIND/world channels). Hue is the identity; the dark half
+       lifts lightness so the channel stays legible on a dark ground. */
+    --dim-C: light-dark(#2e7d5e, color-mix(in oklab, #2e7d5e, white 38%));
+    --dim-N: light-dark(#2a6299, color-mix(in oklab, #2a6299, white 38%));
+    --dim-E: light-dark(#8a6840, color-mix(in oklab, #8a6840, white 38%));
+    --dim-G: light-dark(#a04a6a, color-mix(in oklab, #a04a6a, white 38%));
+    --dim-B: light-dark(#7044a0, color-mix(in oklab, #7044a0, white 38%));
+    --dim-T: light-dark(#1f6e56, color-mix(in oklab, #1f6e56, white 38%));
+    --dim-H: light-dark(#7a5e0f, color-mix(in oklab, #7a5e0f, white 38%));
+    --dim-Dt: light-dark(#1a5e82, color-mix(in oklab, #1a5e82, white 38%));
     /* SPT mode colors */
-    --dim-FB: #b04040;
-    --dim-FL: #3a8fb0;
-    --dim-CY: #7a5ebf;
-    --dim-EM: #d4872a;
-    --dim-EV: #2a8e5a;
-    --dim-NW: #5a6eb0;
-    --dim-DU: #9a5480;
-    --dim-CH: #c45030;
-    --dim-DG: #6a6a6a;
+    --dim-FB: light-dark(#b04040, color-mix(in oklab, #b04040, white 38%));
+    --dim-FL: light-dark(#3a8fb0, color-mix(in oklab, #3a8fb0, white 38%));
+    --dim-CY: light-dark(#7a5ebf, color-mix(in oklab, #7a5ebf, white 38%));
+    --dim-EM: light-dark(#d4872a, color-mix(in oklab, #d4872a, white 38%));
+    --dim-EV: light-dark(#2a8e5a, color-mix(in oklab, #2a8e5a, white 38%));
+    --dim-NW: light-dark(#5a6eb0, color-mix(in oklab, #5a6eb0, white 38%));
+    --dim-DU: light-dark(#9a5480, color-mix(in oklab, #9a5480, white 38%));
+    --dim-CH: light-dark(#c45030, color-mix(in oklab, #c45030, white 38%));
+    --dim-DG: light-dark(#6a6a6a, color-mix(in oklab, #6a6a6a, white 38%));
     /* Klir mode colors */
-    --dim-TH: #6b5a3e;
-    --dim-SY: #2e5e8a;
-    --dim-SR: #4a7a8a;
-    --dim-DA: #5a8a4a;
-    --dim-GN: #8a4a7a;
-    --dim-ST: #4a5a9a;
-    --dim-MT: #a06a2a;
+    --dim-TH: light-dark(#6b5a3e, color-mix(in oklab, #6b5a3e, white 38%));
+    --dim-SY: light-dark(#2e5e8a, color-mix(in oklab, #2e5e8a, white 38%));
+    --dim-SR: light-dark(#4a7a8a, color-mix(in oklab, #4a7a8a, white 38%));
+    --dim-DA: light-dark(#5a8a4a, color-mix(in oklab, #5a8a4a, white 38%));
+    --dim-GN: light-dark(#8a4a7a, color-mix(in oklab, #8a4a7a, white 38%));
+    --dim-ST: light-dark(#4a5a9a, color-mix(in oklab, #4a5a9a, white 38%));
+    --dim-MT: light-dark(#a06a2a, color-mix(in oklab, #a06a2a, white 38%));
     /* Bunge mode colors (C, E, B shared with Mobus) */
-    --dim-S: #5a4a8a;
-    --dim-L: #2a7a6a;
-    --dim-M: #b05a30;
+    --dim-S: light-dark(#5a4a8a, color-mix(in oklab, #5a4a8a, white 38%));
+    --dim-L: light-dark(#2a7a6a, color-mix(in oklab, #2a7a6a, white 38%));
+    --dim-M: light-dark(#b05a30, color-mix(in oklab, #b05a30, white 38%));
     /* CT mode colors (C shared with Mobus/Bunge) */
-    --dim-I: #3a7a9a;
-    --dim-W: #6a4d8f;
-    --dim-F: #b0562a;
-    --dim-O: #9a4a70;
-    --dim-D: #6b6b3e;
-    --serif: 'Newsreader', Georgia, serif;
-    --display: 'Fraunces', Georgia, serif;
-    /* UI chrome font — humanist sans (was JetBrains Mono; de-AI pass 2026-07-01) */
-    --ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --dim-I: light-dark(#3a7a9a, color-mix(in oklab, #3a7a9a, white 38%));
+    --dim-W: light-dark(#6a4d8f, color-mix(in oklab, #6a4d8f, white 38%));
+    --dim-F: light-dark(#b0562a, color-mix(in oklab, #b0562a, white 38%));
+    --dim-O: light-dark(#9a4a70, color-mix(in oklab, #9a4a70, white 38%));
+    --dim-D: light-dark(#6b6b3e, color-mix(in oklab, #6b6b3e, white 38%));
+    --serif: var(--font-body);
+    --display: var(--font-display);
+    --ui: var(--font-body);
+    --mono: var(--font-mono);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -193,7 +200,7 @@
   .name-gate-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(28, 26, 22, 0.5);
+    background: rgba(10, 12, 14, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -278,7 +285,7 @@
   .chip:hover {
     border-color: var(--flow);
     color: var(--flow);
-    background: rgba(58, 110, 98, 0.06);
+    background: color-mix(in srgb, var(--flow) 6%, transparent);
   }
 
   /* ══════════════════════════════════════════
@@ -396,12 +403,12 @@
     transition: all 0.35s ease;
   }
   .intensity-badge.full {
-    background: rgba(58, 110, 98, 0.08);
+    background: color-mix(in srgb, var(--flow) 8%, transparent);
     color: var(--flow);
     border-color: var(--flow);
   }
   .intensity-badge.light {
-    background: rgba(138, 106, 58, 0.08);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
     color: var(--accent);
     border-color: var(--accent);
   }
@@ -421,7 +428,7 @@
     padding: 3px 10px;
     border-radius: 10px;
     margin-top: 4px;
-    background: rgba(138, 106, 58, 0.1);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
     color: var(--accent);
   }
 
@@ -429,7 +436,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    background: #fff;
+    background: var(--paper);
     border: 1px solid var(--ground-border);
     border-radius: 8px;
     padding: 12px 16px;
@@ -443,9 +450,9 @@
     border-radius: 10px;
     white-space: nowrap;
   }
-  .out-badge-route  { background: rgba(138, 106, 58, 0.1); color: var(--accent); }
-  .out-badge-conf   { background: rgba(58, 110, 98, 0.1); color: var(--flow); }
-  .out-badge-dim    { background: rgba(58, 110, 98, 0.08); color: var(--flow-bright); }
+  .out-badge-route  { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent); }
+  .out-badge-conf   { background: color-mix(in srgb, var(--flow) 10%, transparent); color: var(--flow); }
+  .out-badge-dim    { background: color-mix(in srgb, var(--flow) 8%, transparent); color: var(--flow-bright); }
   /* gsr#37 grounding signal: corpus-backed vs parametric spans in Facets synthesis */
   .grounding-badge {
     display: inline-block;
@@ -459,8 +466,8 @@
     vertical-align: middle;
     cursor: help;
   }
-  .grounding-badge-grounded { background: rgba(58, 110, 98, 0.12); color: var(--flow-bright); }
-  .grounding-badge-ungrounded { background: rgba(180, 90, 60, 0.12); color: #a5502f; }
+  .grounding-badge-grounded { background: color-mix(in srgb, var(--flow) 12%, transparent); color: var(--flow-bright); }
+  .grounding-badge-ungrounded { background: color-mix(in srgb, var(--verdict-warning) 12%, transparent); color: var(--verdict-warning); }
   .out-label {
     font-family: var(--ui);
     font-size: 0.69rem;
@@ -512,7 +519,7 @@
 
   /* ── Chat pane ── */
   .chat-pane {
-    background: #fff;
+    background: var(--paper);
     display: flex;
     flex-direction: column;
     height: calc(100vh - 41px);
@@ -576,7 +583,7 @@
     background: var(--ground);
     border: 1px solid var(--ground-border);
     border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(28,26,22,0.1);
+    box-shadow: 0 4px 12px rgba(10, 12, 14, 0.1);
     z-index: 20;
     min-width: 130px;
     padding: 4px 0;
@@ -624,9 +631,9 @@
     z-index: 200;
     transform: translateX(100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: #fff;
+    background: var(--paper);
     border-left: 1px solid var(--ground-border);
-    box-shadow: -4px 0 24px rgba(28,26,22,0.10);
+    box-shadow: -4px 0 24px rgba(10, 12, 14, 0.10);
     display: flex;
     flex-direction: column;
   }
@@ -636,7 +643,7 @@
     position: fixed;
     inset: 0;
     z-index: 190;
-    background: rgba(28,26,22,0.3);
+    background: rgba(10, 12, 14, 0.35);
   }
   .history-backdrop.visible { display: block; }
   .history-header {
@@ -751,7 +758,7 @@
     align-self: flex-end;
     font-family: var(--serif);
     background: var(--flow);
-    color: #fff;
+    color: var(--text-on-accent);
     border-bottom-right-radius: 3px;
   }
   .msg-bot {
@@ -783,9 +790,9 @@
     padding: 2px 8px;
     border-radius: 10px;
   }
-  .msg-tag-route  { background: rgba(138, 106, 58, 0.1); color: var(--accent); }
-  .msg-tag-conf   { background: rgba(58, 110, 98, 0.1); color: var(--flow); }
-  .msg-tag-dim    { background: rgba(58, 110, 98, 0.08); color: var(--flow-bright); }
+  .msg-tag-route  { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent); }
+  .msg-tag-conf   { background: color-mix(in srgb, var(--flow) 10%, transparent); color: var(--flow); }
+  .msg-tag-dim    { background: color-mix(in srgb, var(--flow) 8%, transparent); color: var(--flow-bright); }
   .msg-tag-dim .dim-chip-code { opacity: 0.55; font-weight: 600; margin-right: 4px; letter-spacing: 0.02em; }
   .msg-tag-dim[data-dim="C"]  { background: rgba(46,125,94,0.14);  color: var(--dim-C); }
   .msg-tag-dim[data-dim="N"]  { background: rgba(42,98,153,0.14);  color: var(--dim-N); }
@@ -890,7 +897,7 @@
   }
   .lp-lens.ready {
     opacity: 1; color: var(--flow); border-color: var(--flow);
-    background: rgba(58,110,98,0.06);
+    background: color-mix(in srgb, var(--flow) 6%, transparent);
   }
   .lp-stage { color: var(--flow); font-style: italic; }
   @media (prefers-reduced-motion: reduce) { .lens-progress, .lp-lens { animation: none; transition: none; } }
@@ -982,7 +989,7 @@
     transition: background 0.3s ease, border-color 0.3s ease;
   }
   .composer.welcome-mode {
-    background: #fff;
+    background: var(--paper);
     border-top-color: transparent;
   }
   .dim-bar-framing {
@@ -1155,7 +1162,7 @@
     border: none;
     border-radius: 10px;
     background: var(--flow);
-    color: #fff;
+    color: var(--text-on-accent);
     cursor: pointer;
     white-space: nowrap;
     transition: background 0.2s ease;
@@ -1282,7 +1289,7 @@
     display: flex; align-items: center; justify-content: center;
     font-family: var(--serif);
     font-size: 1.25rem;
-    color: #fff;
+    color: var(--text-on-accent);
     background: var(--lens-accent, var(--flow));
     user-select: none;
   }
@@ -1309,7 +1316,7 @@
     padding: 2px 6px;
     border-radius: 4px;
   }
-  .thinker-dismiss:hover { color: var(--ink-dim); background: rgba(0,0,0,0.04); }
+  .thinker-dismiss:hover { color: var(--ink-dim); background: color-mix(in srgb, var(--ink) 6%, transparent); }
   @media (max-width: 560px) {
     .lens-bar-label { display: none; }
     .lens-btn { min-width: 86px; }
@@ -1322,9 +1329,9 @@
     font-size: 0.6rem;
     padding: 2px 8px;
     border-radius: 4px;
-    background: rgba(176, 64, 64, 0.1);
-    color: #b04040;
-    border: 1px solid rgba(176, 64, 64, 0.2);
+    background: color-mix(in srgb, var(--verdict-error) 10%, transparent);
+    color: var(--verdict-error);
+    border: 1px solid color-mix(in srgb, var(--verdict-error) 20%, transparent);
     margin-left: 4px;
     cursor: help;
   }

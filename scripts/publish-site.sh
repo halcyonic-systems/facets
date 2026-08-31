@@ -39,6 +39,10 @@ rm -rf "$SITE_DIR"
 mkdir -p "$SITE_DIR"
 cp "$REPO_ROOT/portal/index.html" "$SITE_DIR/index.html"
 rsync -a --exclude docs "$REPO_ROOT/chat/" "$SITE_DIR/chat/"
+# Shared Frost foundation (generated — see scripts/gen-frost-shared.mjs);
+# portal and chat link it at /shared/frost.css.
+node "$REPO_ROOT/scripts/gen-frost-shared.mjs" --check
+rsync -a "$REPO_ROOT/shared/" "$SITE_DIR/shared/"
 mv "$SITE_DIR/chat/404.html" "$SITE_DIR/404.html"   # Pages serves one 404 per site
 echo "$DOMAIN" > "$SITE_DIR/CNAME"
 if [ $WITH_MODEL -eq 1 ]; then
