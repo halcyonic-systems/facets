@@ -470,14 +470,17 @@ function Gem() {
 // hover tint carries through (see .home-panel in index.css).
 const glyphStroke: CSSProperties = { stroke: "currentColor", fill: "none" };
 const glyphFill: CSSProperties = { fill: "currentColor" };
+// A closed shape in a glyph wears the soft accent: colour as a filled region
+// with an edge, never a fade — the one tint the page carries at rest.
+const glyphWash: CSSProperties = { stroke: "currentColor", fill: "var(--accent-soft)" };
 
 function DrawGlyph() {
   return (
     <svg viewBox="0 0 96 64" width="96" height="64" aria-hidden="true" className="home-glyph shrink-0">
       <ellipse cx={48} cy={32} rx={44} ry={27} style={glyphStroke} strokeWidth={1} strokeDasharray="3 3" />
-      <circle cx={26} cy={40} r={7} style={{ ...glyphStroke, fill: "var(--paper)" }} strokeWidth={1.2} />
-      <circle cx={48} cy={20} r={7} style={{ ...glyphStroke, fill: "var(--paper)" }} strokeWidth={1.2} />
-      <circle cx={70} cy={40} r={7} style={{ ...glyphStroke, fill: "var(--paper)" }} strokeWidth={1.2} />
+      <circle cx={26} cy={40} r={7} style={glyphWash} strokeWidth={1.2} />
+      <circle cx={48} cy={20} r={7} style={glyphWash} strokeWidth={1.2} />
+      <circle cx={70} cy={40} r={7} style={glyphWash} strokeWidth={1.2} />
       <line x1={31.5} y1={35} x2={41} y2={26.5} style={glyphStroke} strokeWidth={1.2} />
       <polygon points="39,24 44,23.5 41.5,28" style={glyphFill} />
       <line x1={55} y1={26.5} x2={64.5} y2={35} style={glyphStroke} strokeWidth={1.2} />
@@ -490,6 +493,7 @@ function DataGlyph() {
   return (
     <svg viewBox="0 0 96 64" width="96" height="64" aria-hidden="true" className="home-glyph shrink-0">
       <rect x={6} y={8} width={84} height={48} style={glyphStroke} strokeWidth={1} />
+      <rect x={6} y={8} width={84} height={12} style={{ fill: "var(--accent-soft)" }} />
       <line x1={6} y1={20} x2={90} y2={20} style={glyphStroke} strokeWidth={1} />
       <line x1={6} y1={32} x2={90} y2={32} style={glyphStroke} strokeWidth={0.6} strokeDasharray="2 2" />
       <line x1={6} y1={44} x2={90} y2={44} style={glyphStroke} strokeWidth={0.6} strokeDasharray="2 2" />
@@ -506,7 +510,7 @@ function OpenGlyph() {
   return (
     <svg viewBox="0 0 48 48" width="44" height="44" aria-hidden="true" className="home-glyph shrink-0">
       <rect x={12} y={6} width={26} height={32} style={{ ...glyphStroke, fill: "var(--paper)" }} strokeWidth={1} />
-      <rect x={8} y={10} width={26} height={32} style={{ ...glyphStroke, fill: "var(--paper)" }} strokeWidth={1} />
+      <rect x={8} y={10} width={26} height={32} style={glyphWash} strokeWidth={1} />
       <line x1={14} y1={20} x2={28} y2={20} style={glyphStroke} strokeWidth={0.8} />
       <line x1={14} y1={26} x2={28} y2={26} style={glyphStroke} strokeWidth={0.8} />
     </svg>
@@ -516,8 +520,8 @@ function OpenGlyph() {
 function SandboxGlyph() {
   return (
     <svg viewBox="0 0 48 48" width="44" height="44" aria-hidden="true" className="home-glyph shrink-0">
-      <circle cx={14} cy={24} r={6} style={{ ...glyphStroke, fill: "var(--paper)" }} strokeWidth={1.1} />
-      <circle cx={36} cy={24} r={6} style={{ ...glyphStroke, fill: "var(--paper)" }} strokeWidth={1.1} />
+      <circle cx={14} cy={24} r={6} style={glyphWash} strokeWidth={1.1} />
+      <circle cx={36} cy={24} r={6} style={glyphWash} strokeWidth={1.1} />
       <path d="M20 24 Q25 14 30 24" style={glyphStroke} strokeWidth={1.1} />
       <path d="M30 24 Q25 34 20 24" style={glyphStroke} strokeWidth={1.1} strokeDasharray="2 2" />
     </svg>
@@ -676,7 +680,7 @@ export function HomeMenu({
               className="record-folio text-[11px] uppercase tracking-[0.2em]"
               style={folioStyle}
             >
-              This build · {buildInfo.gitSha}
+              This build
             </button>
           )}
           <a
