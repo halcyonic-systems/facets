@@ -634,14 +634,14 @@ export function HomeMenu({
           <Panel
             glyph={<DrawGlyph />}
             name="Draw your system"
-            description="Place the parts, connect the flows. Checked as it grows."
+            description="Components, flows, a boundary. Every step is checked as you draw."
             onClick={() => onCreate()}
           />
           {onStartFromData && (
             <Panel
               glyph={<DataGlyph />}
               name="Build from data"
-              description="Bring a CSV or type observations. Structure comes later."
+              description="Start from a CSV or a few observations, and find the structure in them."
               onClick={onStartFromData}
             />
           )}
