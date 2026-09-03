@@ -97,6 +97,11 @@ wasm:
 bert *ARGS:
     @cargo run --quiet -p bert-cli --bin bert -- {{ARGS}}
 
+# Render the LIVE doc set to _site/docs/ the way publish-site.sh does (#368);
+# `scripts/preview-site.sh` then serves it at /docs/.
+docs-site: web-deps
+    node scripts/build-docs.mjs _site/docs
+
 # Rebuild wasm, then start the vite dev server (face sees the fresh brain).
 # Build the wasm kernel, install web deps if needed, start the dev server.
 dev: web-deps wasm

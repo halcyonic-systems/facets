@@ -7,7 +7,8 @@
 #   scripts/publish-site.sh --with-model  + the /model/ canvas build, door open
 #   scripts/publish-site.sh --dry-run     assemble only (tree left in _site/), no push
 #
-# Site layout:  /  portal · /chat/ chat client · /model/ canvas (wasm) · 404.html
+# Site layout:  /  portal · /chat/ chat client · /model/ canvas (wasm) · /docs/ the
+# LIVE doc set rendered (scripts/build-docs.mjs, #368) · /shared/ Frost · 404.html
 # The live branch is a snapshot (orphan commit, force-push) — never hand-edit it.
 set -euo pipefail
 
@@ -43,6 +44,9 @@ rsync -a --exclude docs "$REPO_ROOT/chat/" "$SITE_DIR/chat/"
 # portal and chat link it at /shared/frost.css.
 node "$REPO_ROOT/scripts/gen-frost-shared.mjs" --check
 rsync -a "$REPO_ROOT/shared/" "$SITE_DIR/shared/"
+# The docs (#368): the LIVE doc set rendered on every publish, model door or not.
+[ -d "$WEB_DIR/node_modules/marked" ] || (cd "$WEB_DIR" && npm install)
+node "$REPO_ROOT/scripts/build-docs.mjs" "$SITE_DIR/docs"
 mv "$SITE_DIR/chat/404.html" "$SITE_DIR/404.html"   # Pages serves one 404 per site
 echo "$DOMAIN" > "$SITE_DIR/CNAME"
 if [ $WITH_MODEL -eq 1 ]; then

@@ -53,8 +53,8 @@ describe("home", () => {
     expect(html).toContain("Open a model");
     expect(html).toContain("Sandbox");
     expect(html).toContain("Documentation");
-    // The docs link goes to the rendered README, not a repo tree (2026-09-03).
-    expect(html).toContain('href="https://github.com/halcyonic-systems/facets/blob/main/docs/README.md"');
+    // The docs link goes to the rendered docs on the site (#368), not a repo tree.
+    expect(html).toContain('href="https://facets.systems/docs/"');
     // A real anchor, so right-click → Copy Link works. The desktop shim hangs
     // off its click handler; it must not replace the anchor with a button.
     expect(html).toContain('target="_blank"');

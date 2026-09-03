@@ -60,9 +60,9 @@ import { buildInfo, provenanceLines } from "./buildInfo";
 import Thumbnail from "./canvas/Thumbnail";
 import { useThumbnailModel } from "./canvas/useThumbnail";
 
-// The docs front page, rendered by GitHub. A tree view drops a visitor among
-// design notes and proposals; the README is the curated index (2026-09-03).
-const DOCS_URL = "https://github.com/halcyonic-systems/facets/blob/main/docs/README.md";
+// The rendered docs on the site (#368): the LIVE doc set, published with the
+// rest of facets.systems by scripts/publish-site.sh.
+const DOCS_URL = "https://facets.systems/docs/";
 
 // The `shelf` view is gone: with the list flat and a filter over it, a shelf
 // was a page that showed a subset the library already shows. Nothing in
