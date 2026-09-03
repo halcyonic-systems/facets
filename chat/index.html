@@ -484,33 +484,105 @@
     .dock-note { margin-top: auto; font-family: var(--ui); font-size: 0.7rem; font-style: italic; color: var(--ink-faint); }
   }
 
-  /* ── Conversations rail (the mock's left rail, 2026-08-31): History stands
-     open when the screen affords the full triple ensemble — 236 rail + 16 ·
-     760 pane · 22 + 270 dock = 1304 — and stays a drawer below that. ── */
-  .conv-rail { display: none; }
+  /* ── Conversations rail (facets#370): "your stuff" exists at every width now.
+     It was gated at 1360px, which left narrow screens with a drawer and no
+     standing surface for identity. Collapsed it is an icon strip; open below
+     the wide gate it overlays the pane like a drawer; at 1360 and up it docks
+     beside the pane and the centred triple ensemble is unchanged. ── */
+  .conv-rail {
+    position: fixed; top: 41px; left: 0; bottom: 0;
+    width: 236px; box-sizing: border-box; z-index: 150;
+    display: flex; flex-direction: column;
+    background: var(--paper);
+    border-right: 1px solid var(--ground-border);
+    overflow: hidden;
+  }
+  .conv-rail.collapsed { width: 52px; }
+  /* Below the docked gate the strip stands over the pane's left edge, so the
+     pane gives it that gutter rather than letting it sit on the text. */
+  @media (max-width: 1359px) {
+    body.rail-strip .chat-pane { padding-left: 52px; }
+  }
+  .rail-backdrop { display: none; position: fixed; inset: 41px 0 0 0; z-index: 140; background: rgba(10, 12, 14, 0.35); }
+  body.rail-open .rail-backdrop { display: block; }
   @media (min-width: 1360px) {
     main .chat-pane { margin: 0 0 0 calc(50vw - 400px); }
-    /* The standing rail IS history — the drawer's trigger is redundant here.
-       The drawer itself stays; it is the only door below this gate. */
-    #chat-history-btn { display: none; }
     .context-dock.has-content { left: calc(50vw + 382px); }
-    .conv-rail.has-content {
-      display: flex; flex-direction: column; gap: 2px;
-      position: fixed; top: 41px; left: calc(50vw - 652px);
-      width: 236px; box-sizing: border-box;
-      height: calc(100vh - 41px);
-      height: calc(100dvh - 41px);
-      overflow-y: auto; padding: 18px 0;
+    body.rail-open .rail-backdrop { display: none; }
+    /* Docked: the rail rides beside the pane rather than against the window edge. */
+    .conv-rail:not(.collapsed) {
+      left: max(0px, calc(50vw - 652px));
+      background: transparent; border-right-color: transparent;
     }
-    .conv-rail-label { font-family: var(--ui); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); padding: 0 14px 8px; }
-    .conv-rail-item { display: block; width: 100%; text-align: left; border: none; background: none; cursor: pointer; padding: 8px 14px 8px 11px; border-left: 3px solid transparent; border-radius: 0 6px 6px 0; }
-    .conv-rail-item:hover { background: var(--ground-raised); }
-    .conv-rail-item.active { background: var(--ground-raised); border-left-color: var(--flow); }
-    .conv-rail-name { font-family: var(--ui); font-size: 0.82rem; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .conv-rail-sub { font-family: var(--mono); font-size: 0.65rem; color: var(--ink-faint); margin-top: 1px; }
-    .conv-rail-new { margin-top: auto; border: none; background: none; cursor: pointer; text-align: left; padding: 10px 14px; font-family: var(--ui); font-size: 0.8rem; font-weight: 500; color: var(--flow); }
-    .conv-rail-new:hover { color: var(--flow-bright); }
   }
+  .conv-rail-head { display: flex; align-items: center; gap: 4px; padding: 12px 8px 6px; }
+  .conv-rail.collapsed .conv-rail-head { flex-direction: column; padding: 12px 4px 6px; }
+  .rail-icon-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; flex-shrink: 0;
+    border: none; background: none; border-radius: 6px;
+    color: var(--ink-faint); cursor: pointer;
+  }
+  .rail-icon-btn:hover { background: var(--ground-raised); color: var(--flow); }
+  .conv-rail-body { flex: 1; overflow-y: auto; padding-bottom: 8px; }
+  .conv-rail.collapsed .conv-rail-body { display: none; }
+  .conv-rail-label { font-family: var(--ui); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); padding: 12px 14px 6px; }
+  .conv-rail-empty { font-family: var(--ui); font-size: 0.76rem; color: var(--ink-faint); padding: 2px 14px 6px; line-height: 1.45; }
+  .conv-rail-item { display: block; width: 100%; text-align: left; border: none; background: none; cursor: pointer; padding: 8px 14px 8px 11px; border-left: 3px solid transparent; border-radius: 0 6px 6px 0; }
+  .conv-rail-item:hover { background: var(--ground-raised); }
+  .conv-rail-item.active { background: var(--ground-raised); border-left-color: var(--flow); }
+  .conv-rail-name { font-family: var(--ui); font-size: 0.82rem; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .conv-rail-sub { font-family: var(--mono); font-size: 0.65rem; color: var(--ink-faint); margin-top: 1px; }
+  .conv-rail-new { border: none; background: none; cursor: pointer; text-align: left; padding: 8px 14px; font-family: var(--ui); font-size: 0.8rem; font-weight: 500; color: var(--flow); }
+  .conv-rail-new:hover { color: var(--flow-bright); }
+  .conv-rail-foot { border-top: 1px solid var(--ground-border); padding: 6px; }
+  .conv-rail-you {
+    display: flex; align-items: center; gap: 9px; width: 100%;
+    border: none; background: none; cursor: pointer;
+    padding: 8px; border-radius: 6px; text-align: left;
+  }
+  .conv-rail-you:hover { background: var(--ground-raised); }
+  .conv-rail.collapsed .conv-rail-you { justify-content: center; padding: 8px 0; }
+  .conv-rail.collapsed .you-text { display: none; }
+  .you-avatar {
+    width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%;
+    border: 1px solid var(--ground-border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--ui); font-size: 0.62rem; color: var(--ink-faint);
+  }
+  .you-text { font-family: var(--ui); font-size: 0.8rem; color: var(--ink-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── You panel: identity actions sit behind their own door, never one tap
+     from casual browsing (council §4.2). ── */
+  .you-overlay { position: fixed; inset: 0; z-index: 300; background: rgba(10, 12, 14, 0.45); display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .you-card {
+    background: var(--ground); border: 1px solid var(--ground-border); border-radius: 8px;
+    width: min(420px, 100%); max-height: 90vh; overflow-y: auto; padding: 22px;
+  }
+  .you-card h3 { font-family: var(--display); font-size: 1.25rem; font-weight: 500; color: var(--ink); margin-bottom: 4px; }
+  .you-status { font-family: var(--ui); font-size: 0.78rem; color: var(--ink-dim); margin-bottom: 18px; }
+  .you-section { border-top: 1px solid var(--ground-border); padding-top: 14px; margin-top: 14px; }
+  .you-label { font-family: var(--ui); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 7px; }
+  .you-note { font-family: var(--ui); font-size: 0.74rem; color: var(--ink-faint); line-height: 1.5; margin-top: 7px; }
+  .you-row { display: flex; gap: 8px; align-items: center; }
+  .you-input {
+    flex: 1; font-family: var(--ui); font-size: 0.82rem; color: var(--ink);
+    background: var(--paper); border: 1px solid var(--ground-border); border-radius: 6px;
+    padding: 8px 11px; outline: none; min-width: 0;
+  }
+  .you-input:focus { border-color: var(--flow); }
+  .you-btn {
+    font-family: var(--ui); font-size: 0.76rem; color: var(--ink-dim);
+    background: none; border: 1px solid var(--ground-border); border-radius: 6px;
+    padding: 8px 14px; cursor: pointer; white-space: nowrap;
+  }
+  .you-btn:hover:not(:disabled) { border-color: var(--flow); color: var(--flow); }
+  .you-btn:disabled { opacity: 0.4; cursor: default; }
+  .you-btn-danger { color: var(--verdict-warning); border-color: var(--ground-border); }
+  .you-btn-danger:hover:not(:disabled) { border-color: var(--verdict-warning); color: var(--verdict-warning); }
+  .you-check { display: flex; align-items: flex-start; gap: 8px; font-family: var(--ui); font-size: 0.76rem; color: var(--ink-dim); margin: 9px 0; line-height: 1.45; }
+  .you-close { float: right; border: none; background: none; font-size: 0.95rem; color: var(--ink-faint); cursor: pointer; }
+  .you-close:hover { color: var(--ink); }
 
   /* ── Chat pane ── */
   .chat-pane {
@@ -615,108 +687,7 @@
     color: var(--flow);
   }
 
-  /* ── Chat history panel (slides from right) ── */
   .chat-tabs { display: none; }
-  .history-panel {
-    position: fixed;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: min(320px, 85vw);
-    z-index: 200;
-    transform: translateX(100%);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: var(--paper);
-    border-left: 1px solid var(--ground-border);
-    box-shadow: -4px 0 24px rgba(10, 12, 14, 0.10);
-    display: flex;
-    flex-direction: column;
-  }
-  .history-panel.open { transform: translateX(0); }
-  .history-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 190;
-    background: rgba(10, 12, 14, 0.35);
-  }
-  .history-backdrop.visible { display: block; }
-  .history-header {
-    padding: 16px 18px;
-    border-bottom: 1px solid var(--ground-border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .history-header h3 {
-    font-family: var(--display);
-    font-size: 1.1rem;
-    font-weight: 400;
-    color: var(--ink);
-  }
-  .history-close-btn {
-    background: none;
-    border: none;
-    font-size: 1.2rem;
-    color: var(--ink-faint);
-    cursor: pointer;
-  }
-  .history-close-btn:hover { color: var(--ink); }
-  .history-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 8px 0;
-  }
-  .history-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 18px;
-    cursor: pointer;
-    border: none;
-    background: none;
-    width: 100%;
-    text-align: left;
-    transition: background 0.15s ease;
-  }
-  .history-item:hover { background: var(--ground-raised); }
-  .history-item.active { background: var(--ground-raised); border-left: 3px solid var(--flow); }
-  .history-item-name {
-    font-family: var(--serif);
-    font-size: 0.88rem;
-    color: var(--ink);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    flex: 1;
-  }
-  .history-item-close {
-    font-size: 0.7rem;
-    color: var(--ground-border);
-    cursor: pointer;
-    border: none;
-    background: none;
-    padding: 2px 6px;
-    flex-shrink: 0;
-    opacity: 0;
-    transition: opacity 0.15s ease;
-  }
-  .history-item:hover .history-item-close { opacity: 1; }
-  .history-item-close:hover { color: #c55; }
-  .history-new-btn {
-    margin: 8px 18px;
-    padding: 8px;
-    font-family: var(--ui);
-    font-size: 0.76rem;
-    color: var(--flow);
-    background: none;
-    border: 1px dashed var(--ground-border);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: border-color 0.2s ease;
-  }
-  .history-new-btn:hover { border-color: var(--flow); }
-  /* History button in header */
   .chat-history-btn {
     display: flex;
     align-items: center;
@@ -1192,6 +1163,8 @@
   .chat-input-area button:disabled { background: var(--ground-border); cursor: not-allowed; }
 
   @media (max-width: 600px) {
+    /* Sub-16px inputs trigger iOS focus-zoom */
+    .you-input { font-size: 16px; }
     .chat-welcome-title { font-size: 1.6rem; }
     .chat-welcome-chips { flex-direction: column; align-items: stretch; max-width: 280px; }
     .diagram-pane { width: 92vw; padding: 20px 16px 24px; }
@@ -1598,6 +1571,9 @@
   @media (hover: none), (pointer: coarse) {
     .dim-bar-btn,
     .chat-history-btn,
+    .rail-icon-btn,
+    .conv-rail-item,
+    .conv-rail-you,
     .export-trigger,
     .conv-lens-head,
     .msg-copy-btn,
@@ -1670,10 +1646,6 @@
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>
           New
         </button>
-        <button class="chat-history-btn" id="chat-history-btn" aria-label="Chat history" title="Chat history">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
-          History
-        </button>
         <button class="chat-history-btn" id="lens-toggle" aria-label="Choose a lens" aria-pressed="false" title="Ask through a single thinker's lens">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="8,1.5 13.5,4.5 13.5,11.5 8,14.5 2.5,11.5 2.5,4.5"/><line x1="8" y1="1.5" x2="8" y2="14.5"/></svg>
           Lenses
@@ -1733,16 +1705,7 @@
     </div>
   </div>
 
-  <!-- Chat history panel (slides from right) -->
-  <div class="history-panel" id="history-panel">
-    <div class="history-header">
-      <h3>Conversations</h3>
-      <button class="history-close-btn" id="history-close" aria-label="Close history">✕</button>
-    </div>
-    <div class="history-list" id="history-list"></div>
-    <button class="history-new-btn" id="history-new-btn">+ New conversation</button>
-  </div>
-  <div class="history-backdrop" id="history-backdrop"></div>
+  <div class="rail-backdrop" id="rail-backdrop"></div>
 
 </div>
 <aside class="context-dock" id="context-dock" aria-label="Answer context"></aside>
@@ -1908,6 +1871,7 @@ async function claimLegacyIdentity() {
     // A refusal is final; only a route that is not there yet earns another try.
     if (r.ok || (r.status >= 400 && r.status < 500 && r.status !== 404)) {
       localStorage.removeItem('facets_user_id');
+      localStorage.removeItem('facets_user_name');
     }
   } catch (e) {}
 }
@@ -2461,7 +2425,7 @@ function init() {
   loadTabs();
   if (!tabs.length) createTab(true);
   restoreFromUrl();
-  renderTabs();
+  renderConvRail();
   renderMessages();
   checkStatus();
   setInterval(checkStatus, 15000);
@@ -2592,7 +2556,7 @@ async function hydrateConversations() {
   if (!tabs.length) createTab(true);
   if (!tabs.find(t => t.id === activeTab)) activeTab = tabs[0].id;
   saveTabs();
-  renderTabs();
+  renderConvRail();
   renderMessages();
   const cur = getTab();
   if (cur && cur.serverId && !cur.hydrated) hydrateConversation(cur);
@@ -2622,7 +2586,7 @@ function dropTabLocally(id) {
   if (!tabs.length) createTab(true);
   if (!tabs.find(t => t.id === activeTab)) activeTab = tabs[0].id;
   saveTabs();
-  renderTabs();
+  renderConvRail();
   renderMessages();
 }
 
@@ -2661,7 +2625,7 @@ window.addEventListener('storage', (e) => {
     renderSessionState();
     return;
   }
-  if (e.key === LS_KEY && !inFlight && !READONLY) { loadTabs(); renderTabs(); renderMessages(); }
+  if (e.key === LS_KEY && !inFlight && !READONLY) { loadTabs(); renderConvRail(); renderMessages(); }
 });
 
 function sendLocked() { return Date.now() < foreignSendUntil; }
@@ -2744,7 +2708,7 @@ window.addEventListener('popstate', (e) => {
   }
   const restored = restoreFromUrl();
   if (!restored && (window.location.pathname === '/chat/' || window.location.pathname === '/chat')) {
-    renderTabs();
+    renderConvRail();
     renderMessages();
   }
 });
@@ -2776,12 +2740,12 @@ function createTab(silent) {
   tabs.push({ id, name, sessionId, messages: [], serverId: null, hydrated: true });
   activeTab = id;
   saveTabs();
-  if (!silent) { renderTabs(); renderMessages(); }
+  if (!silent) { renderConvRail(); renderMessages(); }
 }
 function switchTab(id) {
   activeTab = id;
   saveTabs();
-  renderTabs();
+  renderConvRail();
   renderMessages();
   const tab = tabs.find(t => t.id === id);
   if (tab && tab.serverId && !tab.hydrated) hydrateConversation(tab);
@@ -2802,7 +2766,7 @@ function deleteTab(id) {
   tabs = tabs.filter(t => t.id !== id);
   if (activeTab === id) activeTab = tabs[0].id;
   saveTabs();
-  renderTabs();
+  renderConvRail();
   renderMessages();
 }
 function renameTab(id) {
@@ -2811,7 +2775,7 @@ function renameTab(id) {
   const name = prompt('Rename conversation:', tab.name);
   if (!name || !name.trim()) return;
   tab.name = name.trim();
-  saveTabs(); renderTabs(); renderConvRail();
+  saveTabs(); renderConvRail(); renderConvRail();
   if (tab.serverId) {
     authFetch('/v1/conversations/' + encodeURIComponent(tab.serverId), {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -2820,47 +2784,6 @@ function renameTab(id) {
   }
 }
 function getTab() { return tabs.find(t => t.id === activeTab); }
-
-function renderTabs() {
-  const histBtn = document.getElementById('chat-history-btn');
-  const hasConversations = tabs.some(t => t.messages.some(m => m.role === 'user'));
-  if (histBtn) histBtn.style.display = hasConversations ? '' : 'none';
-
-  // Update history panel list
-  const el = document.getElementById('history-list');
-  if (!el) return;
-  el.innerHTML = '';
-  tabs.forEach(t => {
-    const item = document.createElement('button');
-    item.className = 'history-item' + (t.id === activeTab ? ' active' : '');
-    const name = document.createElement('span');
-    name.className = 'history-item-name';
-    name.textContent = t.name;
-    name.title = 'Double-click to rename';
-    name.ondblclick = (e) => { e.stopPropagation(); renameTab(t.id); };
-    item.appendChild(name);
-    if (tabs.length > 1) {
-      const x = document.createElement('button');
-      x.className = 'history-item-close';
-      x.textContent = '\u00d7';
-      x.setAttribute('aria-label', 'Delete: ' + t.name);
-      x.onclick = (e) => { e.stopPropagation(); deleteTab(t.id); };
-      item.appendChild(x);
-    }
-    item.onclick = () => { switchTab(t.id); closeHistory(); };
-    el.appendChild(item);
-  });
-}
-
-function openHistory() {
-  document.getElementById('history-panel').classList.add('open');
-  document.getElementById('history-backdrop').classList.add('visible');
-  renderTabs();
-}
-function closeHistory() {
-  document.getElementById('history-panel').classList.remove('open');
-  document.getElementById('history-backdrop').classList.remove('visible');
-}
 
 // ── Messages ──
 function renderMessages() {
@@ -3116,6 +3039,7 @@ function renderMessages() {
         shareBtn.textContent = 'Share';
         shareBtn.onclick = () => {
           const url = window.location.origin + '/chat/a/' + m.meta.answer_id;
+          recordShare(m.meta.answer_id, questionFor(tab, m));
           navigator.clipboard.writeText(url).then(() => {
             shareBtn.textContent = '✓ Link copied';
             setTimeout(() => { shareBtn.textContent = 'Share'; }, 2000);
@@ -3374,7 +3298,7 @@ async function sendQuery(question, msgId) {
   if (tab && userMsgCount === 1) {
     tab.name = question.length > 30 ? question.slice(0, 28) + '…' : question;
     saveTabs();
-    renderTabs();
+    renderConvRail();
   }
 
   pushConversationUrl();
@@ -3458,7 +3382,7 @@ async function sendQueryStream(question, msgId) {
   if (tab && userMsgCount === 1) {
     tab.name = question.length > 30 ? question.slice(0, 28) + '…' : question;
     saveTabs();
-    renderTabs();
+    renderConvRail();
   }
 
   pushConversationUrl();
@@ -3704,7 +3628,7 @@ async function sendIntegrated(question, msgId) {
   logFunnelEvent(userMsgCount <= 1 ? 'query_submitted' : 'query_submitted_second');
   if (tab && userMsgCount === 1) {
     tab.name = question.length > 30 ? question.slice(0, 28) + '…' : question;
-    saveTabs(); renderTabs();
+    saveTabs(); renderConvRail();
   }
   pushConversationUrl();
   addMessage('thinking', '', null, originTabId);
@@ -3858,7 +3782,7 @@ async function drillLens(bodyEl, question, mode) {
           // The drilled answer is persisted under its OWN share id — the parent integrated
           // answer's Share button carries a different id, so without this button a consultation
           // could only ever be shared as its parent.
-          if (payload.answer_id) appendDrillShare(bodyEl, payload.answer_id);
+          if (payload.answer_id) appendDrillShare(bodyEl, payload.answer_id, question);
         }
         currentEvent = null;
       }
@@ -3868,7 +3792,7 @@ async function drillLens(bodyEl, question, mode) {
   }
 }
 
-function appendDrillShare(bodyEl, answerId) {
+function appendDrillShare(bodyEl, answerId, question) {
   const actions = document.createElement('div');
   actions.className = 'msg-actions';
   const shareBtn = document.createElement('button');
@@ -3876,6 +3800,7 @@ function appendDrillShare(bodyEl, answerId) {
   shareBtn.textContent = 'Share';
   shareBtn.onclick = () => {
     const url = window.location.origin + '/chat/a/' + answerId;
+    recordShare(answerId, question);
     navigator.clipboard.writeText(url).then(() => {
       shareBtn.textContent = '✓ Link copied';
       setTimeout(() => { shareBtn.textContent = 'Share'; }, 2000);
@@ -3935,16 +3860,9 @@ function animateFlow(stage) {}
 
 function updateDiagram(stage, data) {}
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHistory(); });
-
 // ── New conversation button ──
 document.getElementById('new-conv-btn').addEventListener('click', () => createTab());
-
-// ── History panel ──
-document.getElementById('chat-history-btn').addEventListener('click', openHistory);
-document.getElementById('history-close').addEventListener('click', closeHistory);
-document.getElementById('history-backdrop').addEventListener('click', closeHistory);
-document.getElementById('history-new-btn').addEventListener('click', () => { createTab(); closeHistory(); });
+document.getElementById('rail-backdrop').addEventListener('click', () => setRailOpen(false));
 
 // ── Dimension bar ──
 document.querySelectorAll('.dim-bar-btn').forEach(btn => {
@@ -4047,6 +3965,7 @@ document.getElementById('share-link-btn').addEventListener('click', () => {
     return;
   }
   const url = window.location.origin + '/chat/a/' + lastShared.meta.answer_id;
+  recordShare(lastShared.meta.answer_id, questionFor(tab, lastShared));
   navigator.clipboard.writeText(url).then(() => {
     btn.textContent = 'Link copied!';
     setTimeout(() => { btn.textContent = 'Copy share link'; }, 1500);
@@ -4110,35 +4029,254 @@ let dockLens = null;     // integrated answers only: which lens's reading the do
 let dockLensFor = null;  // the answer index dockLens belongs to — focus moves reset it
 // The standing conversations rail — same data and actions as the History
 // drawer, permanently open where the triple ensemble fits.
+const ICON_CHEVRON = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3l5 5-5 5"/></svg>';
+const ICON_CHEVRON_BACK = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3L5 8l5 5"/></svg>';
+const ICON_NEW = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>';
+
+let railOpen = (function () {
+  const saved = localStorage.getItem('facets_rail_open');
+  return saved === null ? window.innerWidth >= 1360 : saved === '1';
+})();
+
+function setRailOpen(open) {
+  railOpen = open;
+  try { localStorage.setItem('facets_rail_open', open ? '1' : '0'); } catch (e) {}
+  renderConvRail();
+}
+
+function recordedShares() {
+  try { return JSON.parse(localStorage.getItem('facets_shares') || '[]'); } catch (e) { return []; }
+}
+// The server knows which answers were shared; until that read exists the rail
+// lists the ones this browser sent, which is what the sharer wants to find again.
+function recordShare(answerId, question) {
+  if (!answerId) return;
+  const list = recordedShares();
+  if (!list.some(sh => sh.id === answerId)) {
+    list.unshift({ id: answerId, q: question || '' });
+    try { localStorage.setItem('facets_shares', JSON.stringify(list.slice(0, 50))); } catch (e) {}
+  }
+  renderConvRail();
+}
+
+function questionFor(tab, msg) {
+  const i = tab.messages.indexOf(msg);
+  for (let j = i - 1; j >= 0; j--) if (tab.messages[j].role === 'user') return tab.messages[j].text;
+  return '';
+}
+
+function railIcon(html, label, onClick) {
+  const b = document.createElement('button');
+  b.className = 'rail-icon-btn';
+  b.innerHTML = html;
+  b.setAttribute('aria-label', label);
+  b.title = label;
+  b.onclick = onClick;
+  return b;
+}
+
 function renderConvRail() {
   const rail = document.getElementById('conv-rail');
   if (!rail) return;
   rail.innerHTML = '';
-  if (READONLY || !tabs.length) { rail.classList.remove('has-content'); return; }
-  rail.classList.add('has-content');
-  const label = document.createElement('div');
-  label.className = 'conv-rail-label';
-  label.textContent = 'Conversations';
-  rail.appendChild(label);
-  tabs.forEach(t => {
+  document.body.classList.toggle('rail-open', railOpen && !READONLY);
+  document.body.classList.toggle('rail-strip', !railOpen && !READONLY);
+  if (READONLY) { rail.style.display = 'none'; return; }
+  rail.style.display = '';
+  rail.classList.toggle('collapsed', !railOpen);
+  rail.setAttribute('aria-expanded', String(railOpen));
+
+  const head = document.createElement('div');
+  head.className = 'conv-rail-head';
+  head.appendChild(railIcon(railOpen ? ICON_CHEVRON_BACK : ICON_CHEVRON,
+    railOpen ? 'Collapse conversations' : 'Open conversations', () => setRailOpen(!railOpen)));
+  head.appendChild(railIcon(ICON_NEW, 'New conversation', () => { createTab(); if (window.innerWidth < 1360) setRailOpen(false); }));
+  rail.appendChild(head);
+
+  const body = document.createElement('div');
+  body.className = 'conv-rail-body';
+
+  const convLabel = document.createElement('div');
+  convLabel.className = 'conv-rail-label';
+  convLabel.textContent = 'Conversations';
+  body.appendChild(convLabel);
+
+  // A conversation the server named belongs in the list before its messages arrive.
+  const live = tabs.filter(t => t.serverId || t.messages.length || t.id === activeTab);
+  if (!live.some(t => t.serverId || t.messages.length)) {
+    const empty = document.createElement('div');
+    empty.className = 'conv-rail-empty';
+    empty.textContent = 'Ask something and it is kept here.';
+    body.appendChild(empty);
+  }
+  live.forEach(t => {
     const item = document.createElement('button');
     item.className = 'conv-rail-item' + (t.id === activeTab ? ' active' : '');
     const nm = document.createElement('div');
     nm.className = 'conv-rail-name';
     nm.textContent = t.name || 'Untitled';
+    nm.title = 'Double-click to rename';
+    nm.ondblclick = (e) => { e.stopPropagation(); renameTab(t.id); };
     const sub = document.createElement('div');
     sub.className = 'conv-rail-sub';
     const nb = t.messages.filter(mm => mm.role === 'bot').length;
-    sub.textContent = nb ? nb + ' sheet' + (nb === 1 ? '' : 's') : 'empty';
+    // A server conversation whose messages have not been fetched is not empty, we just do not know its size yet.
+    sub.textContent = nb ? nb + ' sheet' + (nb === 1 ? '' : 's') : (t.serverId && !t.hydrated ? '' : 'empty');
     item.appendChild(nm); item.appendChild(sub);
-    item.onclick = () => switchTab(t.id);
-    rail.appendChild(item);
+    item.onclick = () => { switchTab(t.id); if (window.innerWidth < 1360) setRailOpen(false); };
+    body.appendChild(item);
   });
+
   const nb = document.createElement('button');
   nb.className = 'conv-rail-new';
   nb.textContent = '+ New conversation';
-  nb.onclick = () => createTab();
-  rail.appendChild(nb);
+  nb.onclick = () => { createTab(); if (window.innerWidth < 1360) setRailOpen(false); };
+  body.appendChild(nb);
+
+  const shares = recordedShares();
+  if (shares.length) {
+    const sl = document.createElement('div');
+    sl.className = 'conv-rail-label';
+    sl.textContent = 'Shared';
+    body.appendChild(sl);
+    shares.slice(0, 10).forEach(sh => {
+      const item = document.createElement('button');
+      item.className = 'conv-rail-item';
+      const nm2 = document.createElement('div');
+      nm2.className = 'conv-rail-name';
+      nm2.textContent = sh.q || 'Shared answer';
+      const sub2 = document.createElement('div');
+      sub2.className = 'conv-rail-sub';
+      sub2.textContent = 'permalink';
+      item.appendChild(nm2); item.appendChild(sub2);
+      item.onclick = () => window.open('/chat/a/' + sh.id, '_blank', 'noopener');
+      body.appendChild(item);
+    });
+  }
+  rail.appendChild(body);
+
+  const foot = document.createElement('div');
+  foot.className = 'conv-rail-foot';
+  const you = document.createElement('button');
+  you.className = 'conv-rail-you';
+  you.setAttribute('aria-label', 'You');
+  you.title = 'You';
+  const av = document.createElement('div');
+  av.className = 'you-avatar';
+  av.textContent = accountName ? accountName.trim().slice(0, 2).toUpperCase() : '○';
+  const label = document.createElement('span');
+  label.className = 'you-text';
+  label.textContent = accountName || 'You';
+  you.appendChild(av); you.appendChild(label);
+  you.onclick = openYouPanel;
+  foot.appendChild(you);
+  rail.appendChild(foot);
+}
+
+// ── You panel (facets#370): status, name, export, erasure, retention ──
+const RETENTION_LINE = 'Anonymous history is kept for a year of inactivity. Add an email to keep it.';
+let accountName = localStorage.getItem('facets_display_name') || '';
+
+function setAccountName(name) {
+  accountName = name || '';
+  try {
+    if (accountName) localStorage.setItem('facets_display_name', accountName);
+    else localStorage.removeItem('facets_display_name');
+  } catch (e) {}
+  renderConvRail();
+}
+
+function openYouPanel() {
+  if (document.querySelector('.you-overlay')) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'you-overlay';
+  overlay.innerHTML = '<div class="you-card" role="dialog" aria-modal="true" aria-label="You">'
+    + '<button class="you-close" aria-label="Close">✕</button>'
+    + '<h3>You</h3>'
+    + '<div class="you-status" id="you-status">' + (accountName
+        ? dockEsc(accountName) + ' · saved in this browser'
+        : 'Anonymous · saved in this browser') + '</div>'
+    + '<div class="you-section"><div class="you-label">Display name</div>'
+    + '<div class="you-row"><input class="you-input" id="you-name" type="text" placeholder="Optional" value="' + dockEsc(accountName) + '">'
+    + '<button class="you-btn" id="you-name-save">Save</button></div>'
+    + '<div class="you-note">Shown to you only. It is not required and never used to identify you.</div></div>'
+    + '<div class="you-section"><div class="you-label">Your data</div>'
+    + '<div class="you-row"><button class="you-btn" id="you-export">Export everything</button></div>'
+    + '<div class="you-note">' + RETENTION_LINE + '</div></div>'
+    + '<div class="you-section"><div class="you-label">Forget me</div>'
+    + '<div class="you-note">This deletes your account and every conversation on it. Answers you shared stay reachable as detached snapshots unless you also revoke them.</div>'
+    + '<label class="you-check"><input type="checkbox" id="you-revoke"> also remove my shared links</label>'
+    + '<div class="you-row"><input class="you-input" id="you-confirm" type="text" placeholder="type: forget me" autocomplete="off">'
+    + '<button class="you-btn you-btn-danger" id="you-forget" disabled>Forget me</button></div></div>'
+    + '</div>';
+  document.body.appendChild(overlay);
+
+  const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); };
+  function onKey(e) { if (e.key === 'Escape') close(); }
+  document.addEventListener('keydown', onKey);
+  overlay.querySelector('.you-close').onclick = close;
+  overlay.onclick = (e) => { if (e.target === overlay) close(); };
+
+  // The server's copy of the name is the real one; the cached value paints first.
+  authFetch('/v1/me').then(r => r.ok ? r.json() : null).then(me => {
+    if (!me) return;
+    const input = overlay.querySelector('#you-name');
+    if (me.display_name && input && !input.value) input.value = me.display_name;
+    if (me.display_name) setAccountName(me.display_name);
+    const st = overlay.querySelector('#you-status');
+    if (st) st.textContent = (me.display_name ? me.display_name : 'Anonymous') + ' · saved in this browser';
+  }).catch(() => {});
+
+  const saveBtn = overlay.querySelector('#you-name-save');
+  saveBtn.onclick = async () => {
+    const val = overlay.querySelector('#you-name').value.trim();
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+    try {
+      const r = await authFetch('/v1/me', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ display_name: val || null }),
+      });
+      saveBtn.textContent = r.ok ? 'Saved' : 'Could not save';
+      if (r.ok) setAccountName(val);
+    } catch (e) { saveBtn.textContent = 'Could not save'; }
+    setTimeout(() => { saveBtn.textContent = 'Save'; saveBtn.disabled = false; }, 1600);
+  };
+
+  const exportBtn = overlay.querySelector('#you-export');
+  exportBtn.onclick = async () => {
+    exportBtn.disabled = true; exportBtn.textContent = 'Preparing…';
+    try {
+      const r = await authFetch('/v1/me/export');
+      if (!r.ok) throw new Error('export failed');
+      const blob = new Blob([JSON.stringify(await r.json(), null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'facets-export.json'; a.click();
+      URL.revokeObjectURL(url);
+      exportBtn.textContent = 'Downloaded';
+    } catch (e) { exportBtn.textContent = 'Could not export'; }
+    setTimeout(() => { exportBtn.textContent = 'Export everything'; exportBtn.disabled = false; }, 1800);
+  };
+
+  const confirmInput = overlay.querySelector('#you-confirm');
+  const forgetBtn = overlay.querySelector('#you-forget');
+  confirmInput.addEventListener('input', () => {
+    forgetBtn.disabled = confirmInput.value.trim().toLowerCase() !== 'forget me';
+  });
+  forgetBtn.onclick = async () => {
+    forgetBtn.disabled = true; forgetBtn.textContent = 'Deleting…';
+    const revoke = overlay.querySelector('#you-revoke').checked ? '1' : '0';
+    try {
+      const r = await authFetch('/v1/me?revoke_shares=' + revoke, { method: 'DELETE' });
+      if (!r.ok) throw new Error('erasure failed');
+      ['facets_chats', 'facets_shares', 'facets_display_name', 'facets_auth_sub', 'facets_auth_token', 'facets_user_id']
+        .forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+      window.location.replace('/chat/');
+    } catch (e) {
+      forgetBtn.textContent = 'Could not delete';
+      setTimeout(() => { forgetBtn.textContent = 'Forget me'; forgetBtn.disabled = false; }, 1800);
+    }
+  };
 }
 
 function focusSheet(bi) {
