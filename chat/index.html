@@ -2571,7 +2571,7 @@ async function hydrateConversation(tab) {
   let c;
   try { c = await r.json(); } catch (e) { return; }
   const server = (c.messages || []).slice().sort((a, b) => (a.seq || 0) - (b.seq || 0))
-    .map(m => ({ id: m.id, seq: m.seq, role: m.role, text: m.content || '', meta: m.model_meta || null }));
+    .map(m => ({ id: m.id, seq: m.seq, role: m.role === 'assistant' ? 'bot' : m.role, text: m.content || '', meta: m.model_meta || null }));
   const pending = tab.messages.filter(m => m.pending && !server.some(s => s.id === m.id));
   tab.messages = server.concat(pending);
   tab.name = c.title || tab.name;
