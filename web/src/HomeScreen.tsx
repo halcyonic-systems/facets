@@ -1,7 +1,8 @@
 // The home screen — a menu with three doors, not a modal stacked on an empty
 // canvas. Two levels, one surface:
 //
-//   home     Create a model · Start from data · Open a model · Documentation
+//   home     Start (Draw your system · Build from data) · Continue (Open a model)
+//            · Try (Sandbox) — documentation and provenance in the colophon
 //   library  ONE FLAT LIST of every model, partitioned by provenance —
 //            Ships with the app / Yours / Drafted with the co-author — plus a
 //            file from disk
@@ -59,7 +60,9 @@ import { buildInfo, provenanceLines } from "./buildInfo";
 import Thumbnail from "./canvas/Thumbnail";
 import { useThumbnailModel } from "./canvas/useThumbnail";
 
-const DOCS_URL = "https://github.com/halcyonic-systems/bert-lenses/tree/main/docs";
+// The docs front page, rendered by GitHub. A tree view drops a visitor among
+// design notes and proposals; the README is the curated index (2026-09-03).
+const DOCS_URL = "https://github.com/halcyonic-systems/facets/blob/main/docs/README.md";
 
 // The `shelf` view is gone: with the list flat and a filter over it, a shelf
 // was a page that showed a subset the library already shows. Nothing in
@@ -221,6 +224,7 @@ const doorStyle: CSSProperties = {
 function Masthead({
   eyebrow,
   title,
+  mark,
   lede,
   note,
   stat,
@@ -229,9 +233,11 @@ function Masthead({
 }: {
   eyebrow?: string;
   title: ReactNode;
+  /** A mark set beside the title — the home page's gem. */
+  mark?: ReactNode;
   /** The page's opening line. Plain sans; the library's shorter `note` is the
    *  same object at a smaller size. */
-  lede?: string;
+  lede?: ReactNode;
   note?: string;
   stat?: number;
   statLabel?: string;
@@ -249,18 +255,21 @@ function Masthead({
         </button>
       )}
       <div className="flex items-start justify-between gap-10 pt-6">
-        <div className="min-w-0">
-          {eyebrow && (
-            <div className="mb-3 text-[11px] uppercase tracking-[0.3em]" style={folioStyle}>
-              {eyebrow}
-            </div>
-          )}
-          <h1
-            className="text-6xl leading-[0.95] tracking-tight"
-            style={{ fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em" }}
-          >
-            {title}
-          </h1>
+        <div className="flex min-w-0 items-center gap-6">
+          {mark}
+          <div className="min-w-0">
+            {eyebrow && (
+              <div className="mb-3 text-[11px] uppercase tracking-[0.3em]" style={folioStyle}>
+                {eyebrow}
+              </div>
+            )}
+            <h1
+              className="text-6xl leading-[0.95] tracking-tight"
+              style={{ fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em" }}
+            >
+              {title}
+            </h1>
+          </div>
         </div>
         {stat !== undefined && (
           <div className="shrink-0 pt-1 text-right">
@@ -409,8 +418,174 @@ function LedgerRow({
 // home
 // ---------------------------------------------------------------------------
 
-const LEDE =
-  "Build a model of a system and see whether it holds. Draw it on the canvas or write it in SL; every verdict cites the rule it rests on, and a model that holds can run against your data.";
+// The gem from the portal, the Model facet lit: this page belongs to the same
+// site, and the colour says which door you came through. Fills go through
+// style so they read the theme (presentation attributes cannot take var()).
+const GEM_FACETS: { points: string; token: string; opacity: number }[] = [
+  { points: "40,4 71,19 40,40", token: "var(--accent-indigo)", opacity: 0.1 },
+  { points: "71,19 78,52 40,40", token: "var(--accent-indigo)", opacity: 0.07 },
+  { points: "78,52 57,76 40,40", token: "var(--accent)", opacity: 0.12 },
+  { points: "57,76 23,76 40,40", token: "var(--accent)", opacity: 0.55 },
+  { points: "23,76 2,52 40,40", token: "var(--accent)", opacity: 0.12 },
+  { points: "2,52 9,19 40,40", token: "var(--accent-slate)", opacity: 0.03 },
+  { points: "9,19 40,4 40,40", token: "var(--accent-indigo)", opacity: 0.05 },
+];
+const GEM_RIM = [
+  [40, 4],
+  [71, 19],
+  [78, 52],
+  [57, 76],
+  [23, 76],
+  [2, 52],
+  [9, 19],
+];
+
+function Gem() {
+  return (
+    <svg viewBox="0 0 80 80" width="72" height="72" aria-hidden="true" className="shrink-0">
+      <polygon
+        points={GEM_RIM.map((p) => p.join(",")).join(" ")}
+        style={{ fill: "var(--paper)", stroke: "var(--ink)", strokeWidth: 0.35 }}
+      />
+      {GEM_FACETS.map((f) => (
+        <polygon key={f.points} points={f.points} style={{ fill: f.token, opacity: f.opacity }} />
+      ))}
+      {GEM_RIM.map(([x, y]) => (
+        <line
+          key={`${x},${y}`}
+          x1={40}
+          y1={40}
+          x2={x}
+          y2={y}
+          style={{ stroke: "var(--ink)", strokeWidth: 0.2, opacity: 0.5 }}
+        />
+      ))}
+    </svg>
+  );
+}
+
+// The door glyphs: line drawings in the instrument's own vocabulary — a
+// boundary holding processes and flows, a table of observations, a stack of
+// saved sheets, a loop that runs. Stroke and fill take the row's ink so the
+// hover tint carries through (see .home-panel in index.css).
+const glyphStroke: CSSProperties = { stroke: "currentColor", fill: "none" };
+const glyphFill: CSSProperties = { fill: "currentColor" };
+
+function DrawGlyph() {
+  return (
+    <svg viewBox="0 0 96 64" width="96" height="64" aria-hidden="true" className="home-glyph shrink-0">
+      <ellipse cx={48} cy={32} rx={44} ry={27} style={glyphStroke} strokeWidth={1} strokeDasharray="3 3" />
+      <circle cx={26} cy={40} r={7} style={{ ...glyphStroke, fill: "var(--paper)" }} strokeWidth={1.2} />
+      <circle cx={48} cy={20} r={7} style={{ ...glyphStroke, fill: "var(--paper)" }} strokeWidth={1.2} />
+      <circle cx={70} cy={40} r={7} style={{ ...glyphStroke, fill: "var(--paper)" }} strokeWidth={1.2} />
+      <line x1={31.5} y1={35} x2={41} y2={26.5} style={glyphStroke} strokeWidth={1.2} />
+      <polygon points="39,24 44,23.5 41.5,28" style={glyphFill} />
+      <line x1={55} y1={26.5} x2={64.5} y2={35} style={glyphStroke} strokeWidth={1.2} />
+      <polygon points="62,37.5 67,37 64.5,32.5" style={glyphFill} />
+    </svg>
+  );
+}
+
+function DataGlyph() {
+  return (
+    <svg viewBox="0 0 96 64" width="96" height="64" aria-hidden="true" className="home-glyph shrink-0">
+      <rect x={6} y={8} width={84} height={48} style={glyphStroke} strokeWidth={1} />
+      <line x1={6} y1={20} x2={90} y2={20} style={glyphStroke} strokeWidth={1} />
+      <line x1={6} y1={32} x2={90} y2={32} style={glyphStroke} strokeWidth={0.6} strokeDasharray="2 2" />
+      <line x1={6} y1={44} x2={90} y2={44} style={glyphStroke} strokeWidth={0.6} strokeDasharray="2 2" />
+      <line x1={34} y1={8} x2={34} y2={56} style={glyphStroke} strokeWidth={0.6} />
+      <line x1={62} y1={8} x2={62} y2={56} style={glyphStroke} strokeWidth={0.6} />
+      <circle cx={20} cy={14} r={2} style={glyphFill} />
+      <circle cx={48} cy={14} r={2} style={glyphFill} />
+      <circle cx={76} cy={14} r={2} style={glyphFill} />
+    </svg>
+  );
+}
+
+function OpenGlyph() {
+  return (
+    <svg viewBox="0 0 48 48" width="44" height="44" aria-hidden="true" className="home-glyph shrink-0">
+      <rect x={12} y={6} width={26} height={32} style={{ ...glyphStroke, fill: "var(--paper)" }} strokeWidth={1} />
+      <rect x={8} y={10} width={26} height={32} style={{ ...glyphStroke, fill: "var(--paper)" }} strokeWidth={1} />
+      <line x1={14} y1={20} x2={28} y2={20} style={glyphStroke} strokeWidth={0.8} />
+      <line x1={14} y1={26} x2={28} y2={26} style={glyphStroke} strokeWidth={0.8} />
+    </svg>
+  );
+}
+
+function SandboxGlyph() {
+  return (
+    <svg viewBox="0 0 48 48" width="44" height="44" aria-hidden="true" className="home-glyph shrink-0">
+      <circle cx={14} cy={24} r={6} style={{ ...glyphStroke, fill: "var(--paper)" }} strokeWidth={1.1} />
+      <circle cx={36} cy={24} r={6} style={{ ...glyphStroke, fill: "var(--paper)" }} strokeWidth={1.1} />
+      <path d="M20 24 Q25 14 30 24" style={glyphStroke} strokeWidth={1.1} />
+      <path d="M30 24 Q25 34 20 24" style={glyphStroke} strokeWidth={1.1} strokeDasharray="2 2" />
+    </svg>
+  );
+}
+
+/** A door as a panel: a glyph, the door's name in the serif, and a gloss. The
+ *  same shape for every door; Start's two carry a larger glyph. */
+function Panel({
+  glyph,
+  name,
+  description,
+  onClick,
+  href,
+}: {
+  glyph: ReactNode;
+  name: string;
+  description: string;
+  onClick?: () => void;
+  href?: string;
+}) {
+  const cls = "home-panel flex w-full items-center gap-5 border px-6 py-5 text-left";
+  const style = { borderColor: "var(--rule-soft)", color: "var(--ink)" };
+  const body = (
+    <>
+      {glyph}
+      <span className="flex min-w-0 flex-col gap-1">
+        <span className="text-2xl leading-tight" style={doorStyle}>
+          {name}
+        </span>
+        <span className="text-sm leading-relaxed" style={{ color: "var(--ink-secondary)" }}>
+          {description}
+        </span>
+      </span>
+    </>
+  );
+  return href ? (
+    <a href={href} className={cls} style={style}>
+      {body}
+    </a>
+  ) : (
+    <button onClick={onClick} className={cls} style={style}>
+      {body}
+    </button>
+  );
+}
+
+/** A group mark for a set of doors — the section head, with the lead group in
+ *  the accent so the eye lands on Start. */
+function GroupHeader({ label, lead }: { label: string; lead?: boolean }) {
+  return (
+    <div className="flex items-baseline gap-4 pb-3.5">
+      <span
+        className="text-[11px] uppercase tracking-[0.28em]"
+        style={{ ...folioStyle, color: lead ? "var(--accent)" : "var(--ink-muted)" }}
+      >
+        {label}
+      </span>
+      <span className="h-px min-w-6 flex-1" style={{ background: "var(--rule-soft)" }} />
+    </div>
+  );
+}
+
+const ledeLink: CSSProperties = {
+  color: "var(--ink)",
+  borderBottom: "1px solid var(--accent)",
+  paddingBottom: 1,
+};
 
 export function HomeMenu({
   onCreate,
@@ -418,58 +593,84 @@ export function HomeMenu({
   onOpenLibrary,
   onAbout,
 }: {
-  onCreate: () => void;
+  /** Open a blank canvas; `{ sl: true }` opens it with the SL pane showing,
+   *  which is where "describe it in a few lines" lands. */
+  onCreate: (opts?: { sl?: boolean }) => void;
   onStartFromData?: () => void;
   onOpenLibrary: () => void;
   /** Open the provenance page (#229). Optional so the menu renders standalone. */
   onAbout?: () => void;
 }) {
+  const lede = (
+    <>
+      <button className="home-lede-link" style={ledeLink} onClick={() => onCreate()}>
+        Draw a system
+      </button>
+      , or{" "}
+      <button className="home-lede-link" style={ledeLink} onClick={() => onCreate({ sl: true })}>
+        describe it in a few lines
+      </button>
+      , and the instrument checks the structure as you go.
+    </>
+  );
   return (
     <div>
-      <Masthead title={<span>facets&#8202;·&#8202;model</span>} lede={LEDE} />
-      <Column className="pb-20 pt-12">
-        <BlockHeader label="Start here" />
-        <Ledger>
-          <LedgerRow
-            door
-            name="Create a model"
-            description="Start from a blank canvas and draw the structure."
-            onClick={onCreate}
+      <Masthead
+        title={
+          <span>
+            facets&#8202;·&#8202;<span style={{ color: "var(--accent)" }}>model</span>
+          </span>
+        }
+        mark={<Gem />}
+        lede={lede}
+      />
+      <Column className="pb-16 pt-10">
+        <GroupHeader label="Start" lead />
+        <div className="grid grid-cols-2 gap-5">
+          <Panel
+            glyph={<DrawGlyph />}
+            name="Draw your system"
+            description="Place the parts, connect the flows. Checked as it grows."
+            onClick={() => onCreate()}
           />
           {onStartFromData && (
-            <LedgerRow
-              door
-              name="Start from data"
-              description="Create one the other way instead: bring a CSV or type observations, and let the structure come later."
+            <Panel
+              glyph={<DataGlyph />}
+              name="Build from data"
+              description="Bring a CSV or type observations. Structure comes later."
               onClick={onStartFromData}
             />
           )}
-          <LedgerRow
-            door
-            name="Open a model"
-            description="The standard library, your own saved models, or a file from disk."
-            onClick={onOpenLibrary}
-          />
-          <LedgerRow
-            door
-            name="Sandbox"
-            description="Touch the system: drop work processes, wire them, and tweak the running flow. Saves as an ordinary model."
-            href="?sandbox=1"
-          />
-          <LedgerRow
-            door
-            name="Documentation"
-            description="The language, the kernel, and the traditions behind them."
-            tag="external"
-            href={DOCS_URL}
-          />
-        </Ledger>
+        </div>
+        <div className="mt-9 grid grid-cols-2 gap-5">
+          <div>
+            <GroupHeader label="Continue" />
+            <Panel
+              glyph={<OpenGlyph />}
+              name="Open a model"
+              description="Library, your saved models, or a file."
+              onClick={onOpenLibrary}
+            />
+          </div>
+          <div>
+            <GroupHeader label="Try" />
+            <Panel
+              glyph={<SandboxGlyph />}
+              name="Sandbox"
+              description="A running system you can touch."
+              href="?sandbox=1"
+            />
+          </div>
+        </div>
         {/* The colophon. A printed record states its edition at the foot of the
             page, not in its table of contents — and the provenance is what this
             page's claim rests on, so it belongs on the page, quietly, rather
-            than among the doors. */}
-        {onAbout && (
-          <div className="mt-14 border-t pt-4" style={{ borderColor: "var(--rule-soft)" }}>
+            than among the doors. The docs sit beside it: a reference, not a door. */}
+        <div
+          className="mt-14 flex items-baseline gap-8 border-t pt-4"
+          style={{ borderColor: "var(--rule-soft)" }}
+        >
+          {onAbout && (
             <button
               onClick={onAbout}
               className="record-folio text-[11px] uppercase tracking-[0.2em]"
@@ -477,8 +678,18 @@ export function HomeMenu({
             >
               This build · {buildInfo.gitSha}
             </button>
-          </div>
-        )}
+          )}
+          <a
+            href={DOCS_URL}
+            target="_blank"
+            rel="noreferrer"
+            onClick={openExternal}
+            className="record-folio text-[11px] uppercase tracking-[0.2em]"
+            style={folioStyle}
+          >
+            Documentation
+          </a>
+        </div>
       </Column>
     </div>
   );

@@ -47,13 +47,14 @@ const browser = (tree: LibraryNode[] = [], initialFacet: Tag | null = null) =>
   );
 
 describe("home", () => {
-  it("is a menu of three doors", () => {
+  it("is four doors in three groups, with the docs in the colophon", () => {
     const html = renderToStaticMarkup(<HomeMenu onCreate={noop} onOpenLibrary={noop} />);
-    expect(html).toContain("Create a model");
+    expect(html).toContain("Draw your system");
     expect(html).toContain("Open a model");
+    expect(html).toContain("Sandbox");
     expect(html).toContain("Documentation");
-    // The docs door links out; it is not an in-app page.
-    expect(html).toContain('href="https://github.com/halcyonic-systems/bert-lenses/tree/main/docs"');
+    // The docs link goes to the rendered README, not a repo tree (2026-09-03).
+    expect(html).toContain('href="https://github.com/halcyonic-systems/facets/blob/main/docs/README.md"');
     // A real anchor, so right-click → Copy Link works. The desktop shim hangs
     // off its click handler; it must not replace the anchor with a button.
     expect(html).toContain('target="_blank"');

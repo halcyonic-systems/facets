@@ -1085,7 +1085,9 @@ function Workspace() {
   // File → New: a blank canvas to author a model from scratch (the #14 path — no
   // demo bundle, so the run stays dark until tethered; structure/lens/formal/review
   // read the empty model). Boundary defaults are neutral, editable via the popover.
-  async function newModel() {
+  // `sl` opens the fresh canvas with the SL pane showing — the home lede's
+  // "describe it in a few lines" lands here (2026-09-03).
+  async function newModel(opts?: { sl?: boolean }) {
     if (!(await guardDiscard()) || !(await flushWalk())) return;
     setDemo(null); setAttachedCsv(null);
     setCurrentName(null); // a fresh model is nobody's library slot - Cmd-S must ask for a name
@@ -1105,6 +1107,7 @@ function Workspace() {
     setWalk([]);
     setFitToken((n) => (n ?? 0) + 1); // frame the newborn membrane (#100 phase 0)
     setTypePromptOpen(true); // #77: offer the kind/name first step (skippable)
+    if (opts?.sl) setSlOpen(true);
   }
 
   // #309 M1: open the data-first door. Same discard/walk guards as File → New;

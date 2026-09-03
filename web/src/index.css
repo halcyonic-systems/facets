@@ -254,6 +254,33 @@ body {
   color: var(--seal);
 }
 
+/* the home page's doors: a panel tints toward the accent under the cursor and
+   its glyph takes the accent — the one place the page wears colour before a
+   choice is made (2026-09-03) */
+.home-panel {
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base);
+}
+.home-panel:hover,
+.home-panel:focus-visible {
+  background-color: color-mix(in oklab, var(--accent) 6%, var(--paper));
+  border-color: var(--accent) !important;
+}
+.home-glyph {
+  color: var(--ink);
+  transition: color var(--transition-base);
+}
+.home-panel:hover .home-glyph {
+  color: var(--accent);
+}
+.home-lede-link {
+  transition: color var(--transition-base);
+}
+.home-lede-link:hover {
+  color: var(--accent) !important;
+}
+
 /* faint tabular figures for all the numbers the kernel returns */
 .tabular {
   font-variant-numeric: tabular-nums;
