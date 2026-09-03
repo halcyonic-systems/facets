@@ -181,89 +181,6 @@
     margin-top: 8px;
     cursor: default;
   }
-  .chat-welcome-name { margin-top: 16px; }
-  .welcome-name-input {
-    font-family: var(--ui);
-    font-size: 0.72rem;
-    color: var(--ink-dim);
-    background: var(--ground);
-    border: 1px solid var(--ground-border);
-    border-radius: 6px;
-    padding: 6px 12px;
-    text-align: center;
-    outline: none;
-    width: 180px;
-    transition: border-color 0.2s ease;
-  }
-  .welcome-name-input:focus { border-color: var(--flow); }
-  .welcome-name-input::placeholder { color: var(--ink-faint); }
-  .name-gate-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(10, 12, 14, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-  .name-gate-card {
-    background: var(--ground);
-    border: 1px solid var(--ground-border);
-    border-radius: 12px;
-    padding: 32px;
-    max-width: 360px;
-    text-align: center;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-  }
-  .name-gate-card h3 {
-    font-family: var(--display);
-    font-size: 1.3rem;
-    color: var(--ink);
-    margin: 0 0 8px 0;
-  }
-  .name-gate-card p {
-    font-family: var(--serif);
-    font-size: 0.85rem;
-    color: var(--ink-dim);
-    margin: 0 0 20px 0;
-    line-height: 1.5;
-  }
-  .name-gate-input {
-    font-family: var(--ui);
-    font-size: 0.82rem;
-    color: var(--ink);
-    background: white;
-    border: 1px solid var(--ground-border);
-    border-radius: 8px;
-    padding: 10px 14px;
-    width: 100%;
-    box-sizing: border-box;
-    outline: none;
-    transition: border-color 0.2s;
-    margin-bottom: 12px;
-  }
-  .name-gate-input:focus { border-color: var(--flow); }
-  .name-gate-btn {
-    font-family: var(--ui);
-    font-size: 0.75rem;
-    color: white;
-    background: var(--flow);
-    border: none;
-    border-radius: 8px;
-    padding: 10px 24px;
-    cursor: pointer;
-    width: 100%;
-    transition: opacity 0.2s;
-  }
-  .name-gate-btn:disabled { opacity: 0.4; cursor: default; }
-  .name-gate-btn:hover:not(:disabled) { opacity: 0.85; }
-  .name-gate-actions { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
-  .name-gate-actions .name-gate-btn { width: auto; flex: 1; margin: 0; }
-  .name-gate-skip {
-    font-family: var(--ui); font-size: 0.72rem; color: var(--ink-faint);
-    background: none; border: none; padding: 10px 8px; cursor: pointer; white-space: nowrap;
-  }
-  .name-gate-skip:hover { color: var(--ink-dim); }
   .chat-welcome-chips {
     display: flex;
     flex-wrap: wrap;
@@ -287,6 +204,18 @@
     color: var(--flow);
     background: color-mix(in srgb, var(--flow) 6%, transparent);
   }
+
+  .session-note {
+    font-family: var(--ui);
+    font-size: 0.74rem;
+    color: var(--ink-dim);
+    background: var(--ground-raised);
+    border: 1px solid var(--ground-border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+  }
+  .chat-pane.session-expired .chat-input-area { opacity: 0.5; }
 
   /* ══════════════════════════════════════════
      MAIN LAYOUT
@@ -1281,8 +1210,6 @@
       text-align: center;
       font-size: 0.8rem;
     }
-    /* Sub-16px inputs trigger iOS focus-zoom; force 16px on the first-touch fields */
-    .name-gate-input, .welcome-name-input { font-size: 16px; }
   }
 
 
@@ -1828,22 +1755,171 @@
 // Tab-locked responses. No duplicate submissions.
 // ══════════════════════════════════════════
 
-const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')
-  ? 'http://localhost:5010' : 'https://reasoner.halcyonic.systems';
+const LOCAL_HOST = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:');
+const API = LOCAL_HOST ? 'http://localhost:5010' : 'https://api.facets.systems';
+
+// ── Identity (facets#369) ──
+// The client no longer invents a user. A managed provider mints the subject and
+// GSR verifies the token at one seam (gsr#47); everything below that seam is
+// getAccessToken(). Fill these two in when the Supabase project exists — until
+// then the local minter runs, matching GSR's AUTH_MODE=local claim shape so the
+// whole stack works offline.
+const SUPABASE_URL = '';
+const SUPABASE_ANON_KEY = '';
+const AUTH_MODE = SUPABASE_URL ? 'supabase' : 'local';
+const DEV_AUTH_SECRET = 'facets-dev-secret';
+const TOKEN_TTL = 7 * 24 * 3600;
 
 // Read-only shared-answer mode (/a/<id>): render a stored snapshot, suppress re-run affordances,
 // and never write to the recipient's local history.
 let READONLY = false;
+// Set when the seam rejects our token. The cache stays readable; the composer closes.
+let SESSION_EXPIRED = false;
+
+function b64url(bytes) {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64urlJson(obj) { return b64url(new TextEncoder().encode(JSON.stringify(obj))); }
+
+function authSubject() {
+  let sub = localStorage.getItem('facets_auth_sub');
+  if (!sub) { sub = crypto.randomUUID(); localStorage.setItem('facets_auth_sub', sub); }
+  return sub;
+}
+
+async function mintLocalToken() {
+  const now = Math.floor(Date.now() / 1000);
+  const body = b64urlJson({ alg: 'HS256', typ: 'JWT' }) + '.' + b64urlJson({
+    sub: authSubject(), aud: 'authenticated', role: 'authenticated',
+    iat: now, exp: now + TOKEN_TTL, is_anonymous: true,
+  });
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(DEV_AUTH_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
+  return body + '.' + b64url(new Uint8Array(sig));
+}
+
+function tokenExpiry(tok) {
+  try { return JSON.parse(atob(tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).exp || 0; }
+  catch (e) { return 0; }
+}
+
+let localTokenPromise = null;
+function localToken() {
+  const cached = localStorage.getItem('facets_auth_token');
+  if (cached && tokenExpiry(cached) - 300 > Date.now() / 1000) return Promise.resolve(cached);
+  if (!localTokenPromise) {
+    localTokenPromise = mintLocalToken().then(tok => {
+      try { localStorage.setItem('facets_auth_token', tok); } catch (e) {}
+      localTokenPromise = null;
+      return tok;
+    }, e => { localTokenPromise = null; throw e; });
+  }
+  return localTokenPromise;
+}
+
+// The vendored SDK is 200KB and only the provider path needs it, so it loads on demand.
+let sbLoad = null;
+function loadSupabaseSdk() {
+  if (window.supabase) return Promise.resolve(window.supabase);
+  if (!sbLoad) sbLoad = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'vendor/supabase.js';
+    s.onload = () => resolve(window.supabase);
+    s.onerror = () => reject(new Error('supabase sdk unavailable'));
+    document.head.appendChild(s);
+  });
+  return sbLoad;
+}
+
+let sbClient = null;
+async function supabaseToken() {
+  const sdk = await loadSupabaseSdk();
+  if (!sbClient) sbClient = sdk.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  let { data } = await sbClient.auth.getSession();
+  if (!data.session) {
+    const r = await sbClient.auth.signInAnonymously();
+    if (r.error) throw r.error;
+    data = r.data;
+  }
+  return data.session ? data.session.access_token : null;
+}
+
+// The one seam. Every GSR call goes through authFetch, which goes through here.
+async function getAccessToken() {
+  try {
+    return AUTH_MODE === 'supabase' ? await supabaseToken() : await localToken();
+  } catch (e) {
+    return null;
+  }
+}
+
+async function authFetch(path, opts) {
+  const o = Object.assign({}, opts || {});
+  o.headers = Object.assign({}, o.headers || {});
+  const tok = await getAccessToken();
+  if (tok) o.headers['Authorization'] = 'Bearer ' + tok;
+  const r = await fetch(API + path, o);
+  if (r.status === 401) onSessionExpired();
+  else if (SESSION_EXPIRED && r.ok) { SESSION_EXPIRED = false; renderSessionState(); }
+  return r;
+}
+
+// A rejected token is not a reason to mint a second user (council §4.4). The cache
+// stays on screen; the composer closes until the session is restored.
+function onSessionExpired() {
+  if (SESSION_EXPIRED) return;
+  SESSION_EXPIRED = true;
+  renderSessionState();
+}
+
+function renderSessionState() {
+  const pane = document.querySelector('.chat-pane');
+  if (pane) pane.classList.toggle('session-expired', SESSION_EXPIRED);
+  const input = document.getElementById('chat-input');
+  const send = document.getElementById('send-btn');
+  if (input) input.disabled = SESSION_EXPIRED;
+  if (send) send.disabled = SESSION_EXPIRED || inFlight;
+  let note = document.getElementById('session-note');
+  if (!SESSION_EXPIRED) { if (note) note.remove(); return; }
+  if (note) return;
+  const composer = document.querySelector('.composer');
+  if (!composer) return;
+  note = document.createElement('div');
+  note.id = 'session-note';
+  note.className = 'session-note';
+  note.textContent = "This browser's session expired. Keep chatting as new, or restore from another device.";
+  composer.insertBefore(note, composer.firstChild);
+}
+
+// One-shot migration (gsr#47): the browser's old client-minted UUID is offered to
+// the seam once, so history written before identity existed follows the subject.
+async function claimLegacyIdentity() {
+  const legacy = localStorage.getItem('facets_user_id');
+  if (!legacy) return;
+  try {
+    const r = await authFetch('/v1/auth/claim-legacy', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ legacy_user_id: legacy }),
+    });
+    // A refusal is final; only a route that is not there yet earns another try.
+    if (r.ok || (r.status >= 400 && r.status < 500 && r.status !== 404)) {
+      localStorage.removeItem('facets_user_id');
+    }
+  } catch (e) {}
+}
 
 function logFunnelEvent(event, meta) {
   try {
-    fetch(API + '/log-event', {
+    authFetch('/log-event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         event,
         session_id: (getTab() || {}).sessionId || null,
-        user_id: typeof FACETS_USER_ID !== 'undefined' ? FACETS_USER_ID : getUserId(),
         meta: meta || null,
       }),
     }).catch(() => {});
@@ -2311,53 +2387,6 @@ function pickWelcomeChips(n = 4) {
 const WELCOME_CHIPS = pickWelcomeChips(2);
 const LS_KEY = 'facets_chats';
 
-// ── User Identity ──
-function getUserId() {
-  let id = localStorage.getItem('facets_user_id');
-  if (!id) { id = crypto.randomUUID(); localStorage.setItem('facets_user_id', id); }
-  return id;
-}
-function getUserName() { return localStorage.getItem('facets_user_name') || ''; }
-function setUserName(name) { localStorage.setItem('facets_user_name', name || ''); }
-
-// Dismissible name prompt. Never blocks asking — surfaced AFTER the first answer via
-// maybePromptName(), and closable ("Maybe later" / Escape) so it can't interrupt a first query.
-function ensureUserName() {
-  return new Promise((resolve) => {
-    if (getUserName()) { resolve(getUserName()); return; }
-    const overlay = document.createElement('div');
-    overlay.className = 'name-gate-overlay';
-    overlay.innerHTML = `<div class="name-gate-card">
-      <h3>What should we call you?</h3>
-      <p>A first name, nickname, or pseudonym. This helps us understand how people use the tool. Your real identity is never required.</p>
-      <input class="name-gate-input" type="text" placeholder="e.g. Jo, curious_engineer, anon42" autofocus>
-      <div class="name-gate-actions">
-        <button class="name-gate-skip" type="button">Maybe later</button>
-        <button class="name-gate-btn" disabled>Continue</button>
-      </div>
-    </div>`;
-    document.body.appendChild(overlay);
-    const input = overlay.querySelector('.name-gate-input');
-    const btn = overlay.querySelector('.name-gate-btn');
-    const skip = overlay.querySelector('.name-gate-skip');
-    input.addEventListener('input', () => { btn.disabled = !input.value.trim(); });
-    function close(val) { overlay.remove(); document.removeEventListener('keydown', onKey); resolve(val); }
-    function submit() { const name = input.value.trim(); if (!name) return; setUserName(name); close(name); }
-    function onKey(e) { if (e.key === 'Escape') close(null); }
-    btn.addEventListener('click', submit);
-    skip.addEventListener('click', () => close(null));
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
-    document.addEventListener('keydown', onKey);
-  });
-}
-// Prompt for a name once per session, only after the user has seen value (the first answer).
-function maybePromptName() {
-  if (getUserName() || sessionStorage.getItem('facets-name-prompted')) return;
-  sessionStorage.setItem('facets-name-prompted', '1');
-  ensureUserName();
-}
-const FACETS_USER_ID = getUserId();
-
 // ── State ──
 let tabs = [];
 let activeTab = null;
@@ -2445,6 +2474,7 @@ function init() {
   // Nav-home is a plain link to the portal; new conversations live on the New button.
   // Dimension Explorer (dim-bar-btn handlers wired in rebuildDimBar)
   replayDiagramState();
+  claimLegacyIdentity();
 }
 
 // Render a shared answer (/a/<id>) as a faithful, read-only snapshot — fetch the stored payload
@@ -2463,7 +2493,7 @@ async function renderSharedAnswer(shareId) {
 
   let data = null;
   try {
-    const r = await fetch(API + '/a/' + encodeURIComponent(shareId));
+    const r = await authFetch('/a/' + encodeURIComponent(shareId));
     if (!r.ok) throw new Error('not found');
     data = await r.json();
   } catch (e) {
@@ -2708,9 +2738,8 @@ function renderMessages() {
       <div class="chat-welcome-title">Facets</div>
       <div class="chat-welcome-tagline">${wt ? `Ask through ${wt.name}\u2019s lens.` : 'Ask about any system.'}</div>
       <div class="chat-welcome-subline">${wt ? wt.asks : 'A cell, a market, a machine, an idea. Facets shows you the parts, the flows, and the structure that make it work, and names the sources it drew on.'}</div>
-      <div class="chat-welcome-name"></div>`;
-    // No example chips — let people ask whatever comes to mind. Name is collected via
-    // ensureUserName() gate on first query.
+      `;
+    // No example chips — let people ask whatever comes to mind.
     el.appendChild(welcome);
     document.querySelectorAll('.dim-bar-btn').forEach(b => b.classList.add('disabled'));
     document.querySelector('.composer').classList.add('welcome-mode');
@@ -3041,9 +3070,9 @@ async function askAll(question, btn) {
   if (btn) { btn.disabled = true; btn.textContent = 'Comparing 5 lenses…'; }
   addMessage('thinking', 'Comparing across all five lenses…', null, originTabId);
   try {
-    const r = await fetch(API + '/ask-all', {
+    const r = await authFetch('/ask-all', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, user_id: FACETS_USER_ID, user_name: getUserName(), session_id: (tabs.find(t => t.id === originTabId) || {}).sessionId || '' })
+      body: JSON.stringify({ question, session_id: (tabs.find(t => t.id === originTabId) || {}).sessionId || '' })
     });
     const data = await r.json();
     const tab = tabs.find(t => t.id === originTabId);
@@ -3111,7 +3140,7 @@ function exportChatMarkdown() {
 async function checkStatus() {
   const dot = document.getElementById('status-dot');
   try {
-    const r = await fetch(API + '/status');
+    const r = await authFetch('/status');
     if (r.ok) {
       const data = await r.json();
       dot.className = 'status-dot online';
@@ -3188,15 +3217,13 @@ async function sendQuery(question) {
   animateFlow('query');
 
   try {
-    const r = await fetch(API + '/ask', {
+    const r = await authFetch('/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         question,
         history: getRecentHistory(6),
         session_id: (tabs.find(t => t.id === originTabId) || {}).sessionId || '',
-        user_id: FACETS_USER_ID,
-        user_name: getUserName(),
         mode: activeMode
       })
     });
@@ -3263,15 +3290,13 @@ async function sendQueryStream(question) {
   animateFlow('query');
 
   try {
-    const r = await fetch(API + '/ask-stream', {
+    const r = await authFetch('/ask-stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         question,
         history: getRecentHistory(6),
         session_id: (tabs.find(t => t.id === originTabId) || {}).sessionId || '',
-        user_id: FACETS_USER_ID,
-        user_name: getUserName(),
         mode: activeMode
       })
     });
@@ -3441,7 +3466,6 @@ async function sendQueryStream(question) {
             updateDimBar(dims);
             dot.className = 'status-dot online';
             logFunnelEvent('answer_rendered');
-            setTimeout(maybePromptName, 1200);
           }
           currentEvent = null;
         }
@@ -3519,12 +3543,11 @@ async function sendIntegrated(question) {
   }
 
   try {
-    const r = await fetch(API + '/ask-integrated', {
+    const r = await authFetch('/ask-integrated', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         question, history: getRecentHistory(6),
         session_id: (tab || {}).sessionId || '',
-        user_id: FACETS_USER_ID, user_name: getUserName()
       })
     });
     if (!r.ok || !r.body) throw new Error('integrated stream failed');
@@ -3585,7 +3608,6 @@ async function sendIntegrated(question) {
           }, originTabId);
           dot.className = 'status-dot online';
           logFunnelEvent('answer_rendered');
-          setTimeout(maybePromptName, 1200);
         }
         currentEvent = null;
       }
@@ -3606,9 +3628,9 @@ async function sendIntegrated(question) {
 async function drillLens(bodyEl, question, mode) {
   bodyEl.innerHTML = '<div class="lens-loading">Consulting ' + (LENS_LABEL[mode] || mode) + '…</div>';
   try {
-    const r = await fetch(API + '/ask-stream', {
+    const r = await authFetch('/ask-stream', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, history: [], user_id: FACETS_USER_ID, user_name: getUserName(), mode })
+      body: JSON.stringify({ question, history: [], mode })
     });
     if (!r.ok || !r.body) throw new Error('drill stream failed');
     const reader = r.body.getReader();
@@ -3854,7 +3876,7 @@ document.getElementById('model-this-btn').addEventListener('click', async () => 
     setTimeout(() => { btn.textContent = LABEL; btn.disabled = false; menu.classList.remove('open'); }, 2800);
   };
   try {
-    const r = await fetch(API + '/extract', {
+    const r = await authFetch('/extract', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ description: firstQ.text, model: '' })
