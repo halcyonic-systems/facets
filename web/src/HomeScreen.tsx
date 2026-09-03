@@ -661,7 +661,7 @@ export function HomeMenu({
             <Panel
               glyph={<SandboxGlyph />}
               name="Sandbox"
-              description="A running system you can touch."
+              description="Drop in processes, wire them, press Run. Change a rate mid-run and watch the flow answer."
               href="?sandbox=1"
             />
           </div>
