@@ -11,7 +11,7 @@
 > LIVE docs. This file is kept as the **concordance of the three surviving
 > senses** (compose dependency ladder, per-edge classification, project-phase
 > "rung") so the words that legitimately stay are legible. See issue
-> [#90](https://github.com/halcyonic-systems/bert-lenses/issues/90).
+> [#90](https://github.com/halcyonic-systems/facets/issues/90).
 
 This repo's docs and code use "ladder"/"rung"/"climb" for **three unrelated concepts**. None of the three is wrong on its own terms, but the same word carrying three different shapes is a readability hazard worth naming explicitly, so a reader (human or LLM) doesn't import one sense's properties into another sense's sentence.
 

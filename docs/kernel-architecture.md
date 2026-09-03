@@ -6,7 +6,7 @@
 
 ## The two marks, and what each one is worth
 
-This document carries two grades, and they are **not** the same grade. Until 2026-07-26 the stronger sections were headed `— VERIFIED` while the same document used "machine-checked" separately, with no legend and one line of body text disambiguating four headers. In a repo whose value proposition *is* the distinction between proof and inspection, one word doing both jobs is the worst word available (issue [#232](https://github.com/halcyonic-systems/bert-lenses/issues/232)). So:
+This document carries two grades, and they are **not** the same grade. Until 2026-07-26 the stronger sections were headed `— VERIFIED` while the same document used "machine-checked" separately, with no legend and one line of body text disambiguating four headers. In a repo whose value proposition *is* the distinction between proof and inspection, one word doing both jobs is the worst word available (issue [#232](https://github.com/halcyonic-systems/facets/issues/232)). So:
 
 - **CODE-READ** — a human read the Rust and reports what it does. That is all. It is defeasible by the next refactor and by a careless reading, and it is the mark on every section heading below. It is the same *strength* of claim as the concordance's source-verified **VERIFIED**, but about a different object (this repo's code, not a tradition's text), so it gets a different word rather than a second definition of the same one.
 - **MACHINE-CHECKED** — a named Lean declaration at the pinned SSF commit carries the weight, and [`lean-provenance.md`](lean-provenance.md) maps the claim to that declaration by `claim_id`. Nothing in this document is machine-checked on its own authority; where the word appears, it points there.

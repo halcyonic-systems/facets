@@ -1,6 +1,6 @@
 # Three faithful palettes — Klir · Bunge · Mobus
 
-> **Status: LIVE** (implemented 2026-07-15, Phase 3 [#44](https://github.com/halcyonic-systems/bert-lenses/issues/44)). The two kernel
+> **Status: LIVE** (implemented 2026-07-15, Phase 3 [#44](https://github.com/halcyonic-systems/facets/issues/44)). The two kernel
 > primitives are `bert-core::{boundary_components, edge_locus}` surfaced
 > canvas-keyed via `bert-lenses-kernel/src/lenses.rs` (`lens_facts`,
 > `describe`); the renderings live in `web/src/canvas/Canvas.tsx` and the

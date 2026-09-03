@@ -176,7 +176,7 @@ new verb for the language, not a formula — see ADR 0006 for the growth rule.
    gate reads held open and the diagram shows the word.
 4. **Stocks start at zero.** SL's `stock <unit>` declares a unit, not a value —
    an initial stock value is typed parameter territory, gated on
-   [#112](https://github.com/halcyonic-systems/bert-lenses/issues/112) (C2).
+   [#112](https://github.com/halcyonic-systems/facets/issues/112) (C2).
    Until then, author systems that fill from empty, or force them.
 5. **Feedback loops need memory on the loop.** Wires transmit; stocks remember
    (#259). A loop is well-posed when it passes through a stock's level read; a

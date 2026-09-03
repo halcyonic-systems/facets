@@ -12,7 +12,7 @@ Attribution for the eight slots themselves is the concordance's job, not this do
 
 **Note on citation strength.** `Systems/Mobus/Lifecycle.lean` is **outside** this repo's pinned citation set. `lean-manifest.json`'s staleness block says so explicitly — the file is new at SSF HEAD and "this repo cites none of them" — so the claims below are cited by declaration name at a commit, not by `claim_id`, and they are not covered by Gate A. Adding them to the manifest means moving the pin, which is a separate decision.
 
-**The kernel.** `crates/bert-core/src/validate.rs` emits 28 distinct `code`s (every issue has carried one since [#319](https://github.com/halcyonic-systems/bert-lenses/issues/319), so the set is enumerable rather than estimated). `validate` runs 13 universal checks; `validate_mode` adds one check at Structural and nine at Operational, ten at Full. Two sibling files carry checks that are **not** in scope here and are treated separately at the end: `operational.rs` (the executability seam, which emits `OperationalError`, not coded issues) and `decomposition.rs` (20 seam codes transcribing a *different* Lean structure, `Decomposition`).
+**The kernel.** `crates/bert-core/src/validate.rs` emits 28 distinct `code`s (every issue has carried one since [#319](https://github.com/halcyonic-systems/facets/issues/319), so the set is enumerable rather than estimated). `validate` runs 13 universal checks; `validate_mode` adds one check at Structural and nine at Operational, ten at Full. Two sibling files carry checks that are **not** in scope here and are treated separately at the end: `operational.rs` (the executability seam, which emits `OperationalError`, not coded issues) and `decomposition.rs` (20 seam codes transcribing a *different* Lean structure, `Decomposition`).
 
 **The paper.** `paper.tex` §"Closure under lawful change" prints `WF(S)` with **four** conjuncts. Read only; that repo is untouched.
 
@@ -64,7 +64,7 @@ It does **not** cover the case where *both* ends are environment objects. The ch
 
 Demonstrated, and the strongest gap in this audit: `fixtures/wellformedness/env-to-env-flow.sl` adds `flow Src -> Snk` alongside a normal in/out pair. Under the Mobus lens `bert verdict` exits **0** with `"issues": []`, and the edge is counted in `G` (`"g": 3`, `"locus": "Exo"`). Under the Klir lens it is likewise clean. `bert run --t 3` produces a trajectory. So the edge passes `validate`, passes `validate_mode` at Operational, and passes the executability seam — while the Lean's `bipartite` forbids it outright.
 
-Also not covered at Core and Structural, which is a decided non-goal rather than a gap ([#213](https://github.com/halcyonic-systems/bert-lenses/issues/213), [#219](https://github.com/halcyonic-systems/bert-lenses/issues/219): Klir and Bunge carry no interface concept).
+Also not covered at Core and Structural, which is a decided non-goal rather than a gap ([#213](https://github.com/halcyonic-systems/facets/issues/213), [#219](https://github.com/halcyonic-systems/facets/issues/219): Klir and Bunge carry no interface concept).
 
 **9 — `interfaces_carry_flow`.** The closest correspondence in the table, and still not clean. The Lean's `InterfacesCarryEdges` (`Systems/Mobus/Interface.lean:53`) is a **graph** condition: for each `i ∈ I` there must exist an edge of `G` with `i` as an endpoint. `check_interfaces_carry_flow` accepts three ways of satisfying it — the interface is routed through by some interaction, *or* its `receives_from` is non-empty, *or* its `exports_to` is non-empty. The last two are declarations, not edges. The sibling `check_interface_declarations_match_flows` then backstops the declaration, but weakly: a declaration counts as recorded when *some* interaction has the declared entity at its far end and its near end merely "reaches" the interface — which includes landing on the system whose boundary carries it, not only being routed through it.
 
@@ -96,7 +96,7 @@ All 28 codes from `validate.rs`. Nineteen have **no counterpart in `WellFormed`*
 | `dynamical_face_empty` | Warning · Full | **NO COUNTERPART.** An observation about `T`/`H`/`Δt` being unpopulated; the Lean's are opaque type parameters |
 | `stock_unit_rate_like` | Warning · all | **NO COUNTERPART.** Dimensional analysis on declared units |
 | `stock_unit_dimension_mismatch` | Error · Operational, Full | **NO COUNTERPART.** Dimensional analysis across two declarations. Per #220, unreachable from the canvas today |
-| `reachability_requirement_unmet` | Error · Operational, Full | **NO COUNTERPART.** Author-declared requirement ([#69](https://github.com/halcyonic-systems/bert-lenses/issues/69)); `PreTuple` has no slot for it |
+| `reachability_requirement_unmet` | Error · Operational, Full | **NO COUNTERPART.** Author-declared requirement ([#69](https://github.com/halcyonic-systems/facets/issues/69)); `PreTuple` has no slot for it |
 | `alternative_path_unmet` | Error · Operational, Full | **NO COUNTERPART.** Same |
 | `reachability_requirement_unresolved` | Error · Operational, Full | **NO COUNTERPART.** Same, malformed-requirement case |
 | `duplicate_id` | Error · all | **NO COUNTERPART.** File-format hygiene; a Lean `Set` has no repeated members |

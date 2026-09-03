@@ -55,9 +55,9 @@ risk.
   the spec's own taxonomy (drivers = source-originating amounts and forced
   series; allocations = process-outflow weights; signals) edits the canvas
   and re-runs through this seam — no second parameter store.
-- **Scenarios ([#202](https://github.com/halcyonic-systems/bert-lenses/issues/202)):**
+- **Scenarios ([#202](https://github.com/halcyonic-systems/facets/issues/202)):**
   named sets of departures from baseline, compared across runs.
-- **Typed parameters ([#112](https://github.com/halcyonic-systems/bert-lenses/issues/112))**
+- **Typed parameters ([#112](https://github.com/halcyonic-systems/facets/issues/112))**
   slot underneath without changing the seam.
 
 ## Non-goals

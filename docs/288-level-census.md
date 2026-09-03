@@ -1,6 +1,6 @@
 # #288 — Klir level census over the corpus and examples
 
-**Status: ADOPTED.** Ratified 2026-08-08 by Shingai; the draft's eight FORKs each received a decision, recorded below with its reasoning. Every shipped `.sl` entry now carries a `level` declaration matching this table — the [#288](https://github.com/halcyonic-systems/bert-lenses/issues/288) definition of done. Provenance: `strategy/research/klir-epistemological-levels-in-the-lens.md` (vault) · [`216-cross-lens-findings.md`](216-cross-lens-findings.md).
+**Status: ADOPTED.** Ratified 2026-08-08 by Shingai; the draft's eight FORKs each received a decision, recorded below with its reasoning. Every shipped `.sl` entry now carries a `level` declaration matching this table — the [#288](https://github.com/halcyonic-systems/facets/issues/288) definition of done. Provenance: `strategy/research/klir-epistemological-levels-in-the-lens.md` (vault) · [`216-cross-lens-findings.md`](216-cross-lens-findings.md).
 
 The hierarchy (*Facets* §4.5): **source → data → generative → structure → metasystem.** A source system is variables and observation channels with no relations among them yet; data adds observations; generative adds a rule that produces them; structure adds coupled subsystems; metasystem adds a rule for how the rule changes. Why the level matters (§5.4): "the modeling relation can be defined only within each particular epistemological category of systems" — which is the sentence the kernel's cross-level refusal prints (`lenses::check_cross_level`).
 

@@ -1,6 +1,6 @@
 # SL 2.0 — A Language for Authoring System Models in bert-lenses
 
-**Status: RESEARCH** (2026-07-18). The research foundation behind [`language/spec.md`](../language/spec.md) (LIVE); Rungs 1–3 shipped 2026-07-18 via [#82](https://github.com/halcyonic-systems/bert-lenses/issues/82), and this doc's 8 open questions remain closeable work. No supersession.
+**Status: RESEARCH** (2026-07-18). The research foundation behind [`language/spec.md`](../language/spec.md) (LIVE); Rungs 1–3 shipped 2026-07-18 via [#82](https://github.com/halcyonic-systems/facets/issues/82), and this doc's 8 open questions remain closeable work. No supersession.
 
 *Research & first-principles foundation. Research + design only — NO implementation. Written 2026-07-18 as the foundation for a deliberate first rung, companion to `llm-integration-research.md` (which owns the LLM-assist story this doc leans on) and `lens-palettes.md` (which owns the graphical surface). The question, in Shingai's framing: "from first principles, what is the minimal and most elegant way to have model specs that can be authored in words, or graphics, or formal syntax — that compile into live bert-lenses models? What do we keep, what do we shed, what is the fastest path to an MVP that has all the qualities of a systems modeling language like Stella?"*
 
