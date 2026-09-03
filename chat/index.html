@@ -2336,7 +2336,7 @@ function selectComposerLens(mode) {
 }
 
 // Route a query through the integrated default, or a single lens if one is selected.
-function sendDefault(q) { return composerLens ? sendQueryStream(q) : sendIntegrated(q); }
+function sendDefault(q, msgId) { return composerLens ? sendQueryStream(q, msgId) : sendIntegrated(q, msgId); }
 
 const EXAMPLE_POOL = [
   // Abstract / conceptual
@@ -2474,7 +2474,7 @@ function init() {
   // Nav-home is a plain link to the portal; new conversations live on the New button.
   // Dimension Explorer (dim-bar-btn handlers wired in rebuildDimBar)
   replayDiagramState();
-  claimLegacyIdentity();
+  claimLegacyIdentity().then(hydrateConversations).then(flushOutbox);
 }
 
 // Render a shared answer (/a/<id>) as a faithful, read-only snapshot — fetch the stored payload
@@ -2559,6 +2559,149 @@ function replayDiagramState() {
   }
 }
 
+// ── Server-authoritative history (facets#371, gsr#48) ──
+// The server holds the record; what is in localStorage is a read-through cache
+// painted first so the page is never blank. Reconciliation: server wins for
+// committed messages, titles and deletions, a tombstone always beats a local
+// copy, and the client keeps only what has not been committed yet.
+const CONV_PAGE = 50;
+
+async function hydrateConversations() {
+  if (READONLY) return;
+  let r;
+  try { r = await authFetch('/v1/conversations?limit=' + CONV_PAGE); } catch (e) { return; }
+  if (!r.ok) return;
+  let list;
+  try { list = (await r.json()).conversations || []; } catch (e) { return; }
+  const byId = new Map(list.map(c => [c.id, c]));
+
+  tabs = tabs.filter(t => !t.serverId || byId.has(t.serverId));
+  tabs.forEach(t => {
+    const c = t.serverId && byId.get(t.serverId);
+    if (c) { t.name = c.title || t.name; t.updatedAt = c.updated_at; }
+  });
+  const known = new Set(tabs.map(t => t.serverId).filter(Boolean));
+  list.forEach(c => {
+    if (known.has(c.id)) return;
+    tabs.push({
+      id: c.id, serverId: c.id, name: c.title || 'Untitled',
+      sessionId: crypto.randomUUID(), messages: [], hydrated: false, updatedAt: c.updated_at,
+    });
+  });
+
+  if (!tabs.length) createTab(true);
+  if (!tabs.find(t => t.id === activeTab)) activeTab = tabs[0].id;
+  saveTabs();
+  renderTabs();
+  renderMessages();
+  const cur = getTab();
+  if (cur && cur.serverId && !cur.hydrated) hydrateConversation(cur);
+}
+
+async function hydrateConversation(tab) {
+  if (!tab || !tab.serverId) return;
+  let r;
+  try { r = await authFetch('/v1/conversations/' + encodeURIComponent(tab.serverId)); } catch (e) { return; }
+  if (r.status === 404) { dropTabLocally(tab.id); return; }
+  if (!r.ok) return;
+  let c;
+  try { c = await r.json(); } catch (e) { return; }
+  const server = (c.messages || []).slice().sort((a, b) => (a.seq || 0) - (b.seq || 0))
+    .map(m => ({ id: m.id, seq: m.seq, role: m.role, text: m.content || '', meta: m.model_meta || null }));
+  const pending = tab.messages.filter(m => m.pending && !server.some(s => s.id === m.id));
+  tab.messages = server.concat(pending);
+  tab.name = c.title || tab.name;
+  tab.hydrated = true;
+  saveTabs();
+  if (tab.id === activeTab) renderMessages();
+  renderConvRail();
+}
+
+function dropTabLocally(id) {
+  tabs = tabs.filter(t => t.id !== id);
+  if (!tabs.length) createTab(true);
+  if (!tabs.find(t => t.id === activeTab)) activeTab = tabs[0].id;
+  saveTabs();
+  renderTabs();
+  renderMessages();
+}
+
+// The send that just landed tells us which conversation it belongs to. If the
+// server did not echo the id we sent, our picture of the thread is wrong and the
+// answer is to refetch it, not to guess a merge.
+function reconcileAfterSend(tab, payload, clientMsgId, botMsg) {
+  if (!tab || !payload) return;
+  if (payload.conversation_id) {
+    tab.serverId = payload.conversation_id;
+    // The URL was pushed before the server named the conversation; correct it in place.
+    if (tab.id === activeTab && window.location.pathname === '/chat/c/' + tab.id) {
+      try { history.replaceState({ tabId: tab.id }, '', '/chat/c/' + tab.serverId); } catch (e) {}
+    }
+  }
+  if (payload.bot_message_id && botMsg) botMsg.id = payload.bot_message_id;
+  const user = tab.messages.find(m => m.id === clientMsgId);
+  if (user) delete user.pending;
+  tab.hydrated = true;
+  saveTabs();
+  if (payload.message_id && clientMsgId && payload.message_id !== clientMsgId) hydrateConversation(tab);
+}
+
+// ── Multi-tab send lock (gsr#48) ──
+// Two tabs of the same browser share one thread; only one of them may be sending.
+const SEND_LOCK = 'facets_send_lock';
+const BROWSER_TAB = crypto.randomUUID();
+const LOCK_TTL = 120000;
+let foreignSendUntil = 0;
+
+window.addEventListener('storage', (e) => {
+  if (e.key === SEND_LOCK) {
+    let v = null;
+    try { v = e.newValue ? JSON.parse(e.newValue) : null; } catch (err) {}
+    foreignSendUntil = (v && v.holder !== BROWSER_TAB) ? v.ts + LOCK_TTL : 0;
+    renderSessionState();
+    return;
+  }
+  if (e.key === LS_KEY && !inFlight && !READONLY) { loadTabs(); renderTabs(); renderMessages(); }
+});
+
+function sendLocked() { return Date.now() < foreignSendUntil; }
+function takeSendLock() {
+  try { localStorage.setItem(SEND_LOCK, JSON.stringify({ holder: BROWSER_TAB, ts: Date.now() })); } catch (e) {}
+}
+function releaseSendLock() { try { localStorage.removeItem(SEND_LOCK); } catch (e) {} }
+
+// ── Offline queue ──
+// A message that never reached the engine keeps its client UUID and stays in the
+// cache marked pending; reconnecting replays it, and the server dedupes on that id.
+const QUEUED_LINE = 'Offline — this question is queued and will send when you reconnect.';
+function isOffline(err) {
+  return !navigator.onLine || (err && err.name === 'TypeError');
+}
+function markPending(tabId, msgId) {
+  const tab = tabs.find(t => t.id === tabId);
+  const m = tab && tab.messages.find(mm => mm.id === msgId);
+  if (m) { m.pending = true; saveTabs(); }
+}
+function pendingQuestion() {
+  for (const t of tabs) {
+    const m = t.messages.find(mm => mm.role === 'user' && mm.pending);
+    if (m) return { tab: t, msg: m };
+  }
+  return null;
+}
+async function flushOutbox() {
+  if (READONLY || inFlight || SESSION_EXPIRED) return;
+  const next = pendingQuestion();
+  if (!next) return;
+  const { tab, msg } = next;
+  tab.messages = tab.messages.filter(m => m !== msg && !(m.role === 'system' && m.text === QUEUED_LINE));
+  saveTabs();
+  activeTab = tab.id;
+  await sendDefault(msg.text, msg.id);
+  if (pendingQuestion()) setTimeout(flushOutbox, 2000);
+}
+window.addEventListener('online', () => setTimeout(flushOutbox, 500));
+
 // ── LocalStorage (persists activeTab) ──
 function saveTabs() {
   if (READONLY) return;  // a shared snapshot must not pollute the recipient's stored history
@@ -2568,7 +2711,7 @@ function saveTabs() {
 function pushConversationUrl() {
   const tab = getTab();
   if (tab && tab.messages.some(m => m.role === 'user')) {
-    const path = '/chat/c/' + tab.id;
+    const path = '/chat/c/' + (tab.serverId || tab.id);
     if (window.location.pathname !== path) {
       history.pushState({ tabId: tab.id }, '', path);
     }
@@ -2579,8 +2722,14 @@ function restoreFromUrl() {
   const match = window.location.pathname.match(/^\/chat\/c\/(.+)$/);
   if (match) {
     const tabId = match[1];
-    const tab = tabs.find(t => t.id === tabId);
+    const tab = tabs.find(t => t.serverId === tabId) || tabs.find(t => t.id === tabId);
     if (tab) {
+      activeTab = tab.id;
+      return true;
+    }
+    if (/^[0-9a-f-]{36}$/i.test(tabId)) {
+      // A conversation this browser has not cached yet — hydration will fill it in.
+      tabs.push({ id: tabId, serverId: tabId, name: 'Conversation', sessionId: crypto.randomUUID(), messages: [], hydrated: false });
       activeTab = tabId;
       return true;
     }
@@ -2612,6 +2761,9 @@ function loadTabs() {
     tabs.forEach(t => {
       t.messages = t.messages.filter(m => m.role !== 'thinking');
       if (!t.sessionId) t.sessionId = crypto.randomUUID();
+      // Caches written before message identity existed get ids now, so the
+      // reconciler has something to compare against.
+      t.messages.forEach(m => { if (!m.id) m.id = crypto.randomUUID(); });
     });
   } catch(e) {}
 }
@@ -2621,7 +2773,7 @@ function createTab(silent) {
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
   const sessionId = crypto.randomUUID();
   const name = 'Chat ' + (tabs.length + 1);
-  tabs.push({ id, name, sessionId, messages: [] });
+  tabs.push({ id, name, sessionId, messages: [], serverId: null, hydrated: true });
   activeTab = id;
   saveTabs();
   if (!silent) { renderTabs(); renderMessages(); }
@@ -2632,8 +2784,9 @@ function switchTab(id) {
   renderTabs();
   renderMessages();
   const tab = tabs.find(t => t.id === id);
-  if (tab && tab.messages.some(m => m.role === 'user')) {
-    history.pushState({ tabId: id }, '', '/chat/c/' + id);
+  if (tab && tab.serverId && !tab.hydrated) hydrateConversation(tab);
+  if (tab && (tab.serverId || tab.messages.some(m => m.role === 'user'))) {
+    history.pushState({ tabId: id }, '', '/chat/c/' + (tab.serverId || id));
   } else {
     history.pushState(null, '', '/');
   }
@@ -2642,6 +2795,10 @@ function switchTab(id) {
 }
 function deleteTab(id) {
   if (tabs.length <= 1) return;
+  const gone = tabs.find(t => t.id === id);
+  if (gone && gone.serverId) {
+    authFetch('/v1/conversations/' + encodeURIComponent(gone.serverId), { method: 'DELETE' }).catch(() => {});
+  }
   tabs = tabs.filter(t => t.id !== id);
   if (activeTab === id) activeTab = tabs[0].id;
   saveTabs();
@@ -2651,8 +2808,16 @@ function deleteTab(id) {
 function renameTab(id) {
   const tab = tabs.find(t => t.id === id);
   if (!tab) return;
-  const name = prompt('Rename tab:', tab.name);
-  if (name && name.trim()) { tab.name = name.trim(); saveTabs(); renderTabs(); }
+  const name = prompt('Rename conversation:', tab.name);
+  if (!name || !name.trim()) return;
+  tab.name = name.trim();
+  saveTabs(); renderTabs(); renderConvRail();
+  if (tab.serverId) {
+    authFetch('/v1/conversations/' + encodeURIComponent(tab.serverId), {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: tab.name }),
+    }).catch(() => {});
+  }
 }
 function getTab() { return tabs.find(t => t.id === activeTab); }
 
@@ -3088,12 +3253,14 @@ async function askAll(question, btn) {
   }
 }
 
-function addMessage(role, text, meta, tabId) {
+function addMessage(role, text, meta, tabId, id) {
   const tab = tabId ? tabs.find(t => t.id === tabId) : getTab();
-  if (!tab) return;
-  tab.messages.push({ role, text, meta: meta || null });
+  if (!tab) return null;
+  const m = { id: id || crypto.randomUUID(), role, text, meta: meta || null };
+  tab.messages.push(m);
   saveTabs();
   if (!tabId || tabId === activeTab) renderMessages();
+  return m;
 }
 
 // ── Export ──
@@ -3186,9 +3353,10 @@ function getRecentHistory(maxTurns) {
     .map(m => ({ role: m.role, text: m.text.slice(0, 1000) }));
 }
 
-async function sendQuery(question) {
-  if (inFlight) return;
+async function sendQuery(question, msgId) {
+  if (inFlight || sendLocked() || SESSION_EXPIRED) return;
   inFlight = true;
+  takeSendLock();
 
   const originTabId = activeTab;  // Lock response to this tab
   const btn = document.getElementById('send-btn');
@@ -3196,7 +3364,8 @@ async function sendQuery(question) {
   btn.disabled = true;
   dot.className = 'status-dot loading';
 
-  addMessage('user', question, null, originTabId);
+  const clientMsgId = msgId || crypto.randomUUID();
+  addMessage('user', question, null, originTabId, clientMsgId);
 
   // Auto-name tab from first query
   const tab = tabs.find(t => t.id === originTabId);
@@ -3224,6 +3393,8 @@ async function sendQuery(question) {
         question,
         history: getRecentHistory(6),
         session_id: (tabs.find(t => t.id === originTabId) || {}).sessionId || '',
+        conversation_id: (tabs.find(t => t.id === originTabId) || {}).serverId || null,
+        message_id: clientMsgId,
         mode: activeMode
       })
     });
@@ -3242,7 +3413,8 @@ async function sendQuery(question) {
       originTab.messages = originTab.messages.filter(m => m.role !== 'thinking');
     }
 
-    addMessage('bot', answer, { route, confidence, dimensions: dims, intensity, reasoning, sources: data.sources || [], web_search: data.web_search, answer_id: data.answer_id, asked: composerLens || activeMode }, originTabId);
+    const botMsg = addMessage('bot', answer, { route, confidence, dimensions: dims, intensity, reasoning, sources: data.sources || [], web_search: data.web_search, answer_id: data.answer_id, asked: composerLens || activeMode }, originTabId);
+    reconcileAfterSend(originTab, data, clientMsgId, botMsg);
     updateDimBar(dims);
     dot.className = 'status-dot online';
   } catch(e) {
@@ -3250,17 +3422,24 @@ async function sendQuery(question) {
     if (originTab) {
       originTab.messages = originTab.messages.filter(m => m.role !== 'thinking');
     }
-    addMessage('system', 'Error: Could not reach the API.', null, originTabId);
+    if (isOffline(e)) {
+      markPending(originTabId, clientMsgId);
+      addMessage('system', QUEUED_LINE, null, originTabId);
+    } else {
+      addMessage('system', 'Error: Could not reach the API.', null, originTabId);
+    }
     clearDiagramHighlights();
     dot.className = 'status-dot';
   }
+  releaseSendLock();
   btn.disabled = false;
   inFlight = false;
 }
 
-async function sendQueryStream(question) {
-  if (inFlight) return;
+async function sendQueryStream(question, msgId) {
+  if (inFlight || sendLocked() || SESSION_EXPIRED) return;
   inFlight = true;
+  takeSendLock();
   userScrolledUp = false;
 
   const originTabId = activeTab;
@@ -3269,7 +3448,8 @@ async function sendQueryStream(question) {
   btn.disabled = true;
   dot.className = 'status-dot loading';
 
-  addMessage('user', question, null, originTabId);
+  const clientMsgId = msgId || crypto.randomUUID();
+  addMessage('user', question, null, originTabId, clientMsgId);
 
   // Auto-name tab from first query
   const tab = tabs.find(t => t.id === originTabId);
@@ -3297,6 +3477,8 @@ async function sendQueryStream(question) {
         question,
         history: getRecentHistory(6),
         session_id: (tabs.find(t => t.id === originTabId) || {}).sessionId || '',
+        conversation_id: (tabs.find(t => t.id === originTabId) || {}).serverId || null,
+        message_id: clientMsgId,
         mode: activeMode
       })
     });
@@ -3462,7 +3644,8 @@ async function sendQueryStream(question) {
 
             updateDiagram('response', { route, confidence, dims });
 
-            addMessage('bot', cleanAnswer, { route, confidence, dimensions: dims, intensity, reasoning, sources, pathology, web_search: payload.web_search, answer_id: payload.answer_id, asked: composerLens || activeMode }, originTabId);
+            const botMsg = addMessage('bot', cleanAnswer, { route, confidence, dimensions: dims, intensity, reasoning, sources, pathology, web_search: payload.web_search, answer_id: payload.answer_id, asked: composerLens || activeMode }, originTabId);
+            reconcileAfterSend(tabs.find(t => t.id === originTabId), payload, clientMsgId, botMsg);
             updateDimBar(dims);
             dot.className = 'status-dot online';
             logFunnelEvent('answer_rendered');
@@ -3483,12 +3666,19 @@ async function sendQueryStream(question) {
     if (streamEl) streamEl.remove();
     // Try non-streaming fallback
     inFlight = false;
+    releaseSendLock();
     btn.disabled = false;
     dot.className = 'status-dot';
     clearDiagramHighlights();
+    if (isOffline(e)) {
+      markPending(originTabId, clientMsgId);
+      addMessage('system', QUEUED_LINE, null, originTabId);
+      return;
+    }
     addMessage('system', 'Streaming failed — retrying...', null, originTabId);
-    return sendQuery(question);
+    return sendQuery(question, clientMsgId);
   }
+  releaseSendLock();
   btn.disabled = false;
   inFlight = false;
 }
@@ -3497,16 +3687,17 @@ async function sendQueryStream(question) {
 const LENS_LABEL = { mobus: 'Mobus', klir: 'Klir', bunge: 'Bunge', spt: 'Troncale', ct: 'CT' };
 const LENS_ROLE = { mobus: 'the anatomist', klir: 'the epistemologist', bunge: 'the ontologist', spt: 'the process theorist', ct: 'the compositionalist' };
 
-async function sendIntegrated(question) {
-  if (inFlight) return;
-  inFlight = true; userScrolledUp = false;
+async function sendIntegrated(question, msgId) {
+  if (inFlight || sendLocked() || SESSION_EXPIRED) return;
+  inFlight = true; takeSendLock(); userScrolledUp = false;
 
   const originTabId = activeTab;
   const btn = document.getElementById('send-btn');
   const dot = document.getElementById('status-dot');
   btn.disabled = true; dot.className = 'status-dot loading';
 
-  addMessage('user', question, null, originTabId);
+  const clientMsgId = msgId || crypto.randomUUID();
+  addMessage('user', question, null, originTabId, clientMsgId);
 
   const tab = tabs.find(t => t.id === originTabId);
   const userMsgCount = tab ? tab.messages.filter(m => m.role === 'user').length : 1;
@@ -3548,6 +3739,8 @@ async function sendIntegrated(question) {
       body: JSON.stringify({
         question, history: getRecentHistory(6),
         session_id: (tab || {}).sessionId || '',
+        conversation_id: (tab || {}).serverId || null,
+        message_id: clientMsgId,
       })
     });
     if (!r.ok || !r.body) throw new Error('integrated stream failed');
@@ -3596,7 +3789,7 @@ async function sendIntegrated(question) {
           if (payload.timing) console.log('%c⏱ Facets Integrated', 'font-weight:bold;color:#3a6e62', payload.timing);
           if (streamEl) { streamEl.remove(); streamEl = null; }
           const answer = (payload.answer || accText).replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
-          addMessage('bot', answer, {
+          const botMsg = addMessage('bot', answer, {
             route: payload.route || 'integrated',
             confidence: payload.confidence || '',
             dimensions: [],
@@ -3606,6 +3799,7 @@ async function sendIntegrated(question) {
             answer_id: payload.answer_id,
             asked: 'integrated'
           }, originTabId);
+          reconcileAfterSend(tabs.find(t => t.id === originTabId), payload, clientMsgId, botMsg);
           dot.className = 'status-dot online';
           logFunnelEvent('answer_rendered');
         }
@@ -3618,9 +3812,15 @@ async function sendIntegrated(question) {
     const ot = tabs.find(t => t.id === originTabId);
     if (ot) ot.messages = ot.messages.filter(m => m.role !== 'thinking');
     if (streamEl) streamEl.remove();
-    addMessage('system', 'Could not reach the reasoning engine. Please try again.', null, originTabId);
+    if (isOffline(e)) {
+      markPending(originTabId, clientMsgId);
+      addMessage('system', QUEUED_LINE, null, originTabId);
+    } else {
+      addMessage('system', 'Could not reach the reasoning engine. Please try again.', null, originTabId);
+    }
     dot.className = 'status-dot';
   }
+  releaseSendLock();
   btn.disabled = false; inFlight = false;
 }
 
