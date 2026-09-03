@@ -5,10 +5,11 @@ LLM. A formal kernel then judges whether what you described holds as a *system*,
 and cites the rule when it doesn't.**
 
 Facets is one instrument with two doors, served at
-[facets.systems](https://facets.systems): **Chat** asks questions of the
-systems-science corpus through the [General Systems Reasoner](https://github.com/halcyonic-systems/general-systems-reasoner)
-(client in [`chat/`](chat/)), and **Model** — most of this repository — builds
-and runs the models. The name changed in August 2026; this codebase was
+[facets.systems](https://facets.systems): [**Chat**](https://facets.systems/chat/)
+asks questions of the systems-science corpus through the [General Systems Reasoner](https://github.com/halcyonic-systems/general-systems-reasoner)
+(client in [`chat/`](chat/)), and [**Model**](https://facets.systems/model/) — most
+of this repository — builds and runs the models. The reference layer behind both
+is at [facets.systems/docs](https://facets.systems/docs/). The name changed in August 2026; this codebase was
 `bert-lenses`, and the kernel crates still carry that name.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
@@ -53,10 +54,20 @@ accept or discard it. No generated text reaches a verdict.
 
 ## Try it
 
-There is no hosted instance to click today: this repo is the whole distribution,
-so running it means cloning it. That is the honest floor, and it is a short one —
-the only tool you install by hand is `just`, because nothing in the repo can
-check for `just` itself.
+Open [**facets.systems/model**](https://facets.systems/model/) and draw a
+system, or describe one in a few lines of SL. The kernel runs in your browser as
+WebAssembly; nothing you author leaves the page. The [**Sandbox**](https://facets.systems/model/?sandbox=1)
+door is the fastest way to feel it: drop in work processes, wire them, press
+Run, and change a rate mid-run.
+
+Then take the [**ten-minute quickstart**](https://facets.systems/docs/quickstart.html):
+author a model, read its verdicts, break it on purpose, fix what the refusal
+names, and open one that runs against real data. The rest of the reference
+layer is at [facets.systems/docs](https://facets.systems/docs/).
+
+To run the LLM co-author against a local reasoner, or to change the kernel,
+clone it. The only tool you install by hand is `just`, because nothing in the
+repo can check for `just` itself:
 
 ```bash
 brew install just     # sudo apt install just · cargo install just also fine
@@ -65,18 +76,7 @@ just dev              # builds the wasm kernel, installs web deps, opens the app
 ```
 
 About forty seconds from a cold clone to a running instrument; the full
-prerequisite table is under [Prerequisites](#prerequisites). Then take the
-[**ten-minute quickstart**](docs/quickstart.md): author a model, read its
-verdicts, break it on purpose, fix what the refusal names, and open one that runs
-against real data.
-
-Or skip the quickstart and **touch the system first**: the **Sandbox** door on
-the Home screen (or `?sandbox=1`) opens a live free-play surface — drop Mobus
-work processes, wire them, press Run, and tweak parameters *while it flows*.
-Troncale systems-process stamps (Flows, Feedback, Oscillation, …) drop known
-arrangements you can edit freely; each node's transfer function renders with its
-live values; a saved sandbox is an ordinary model, so play graduates into
-authoring. Design record: [`docs/design/sandbox-surface.md`](docs/design/sandbox-surface.md).
+prerequisite table is under [Prerequisites](#prerequisites).
 
 ## See it refuse
 
