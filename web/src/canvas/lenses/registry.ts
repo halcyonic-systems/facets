@@ -32,6 +32,9 @@ export interface LensNodeProps {
   sim?: { value: number; unit: string; frac: number };
   onPointerDown: (e: ReactPointerEvent) => void;
   onHandlePointerDown: (e: ReactPointerEvent) => void;
+  /** Stage scale — marks that must stay a hand's size (the connect handle)
+   *  hold a screen size above 1× instead of growing with the world. */
+  scale?: number;
 }
 
 export interface LensEdgeProps {

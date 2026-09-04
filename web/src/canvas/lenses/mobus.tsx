@@ -13,7 +13,7 @@ import { STYLE, elideEdgeLabel } from "../style";
 import { EdgeScaffold, NodeBody, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
 
-function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointerDown }: LensNodeProps) {
+function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointerDown, scale }: LensNodeProps) {
   // #100 phase 4: the decision/regulator process is the ONE sub-kind Mobus's
   // own drawings give a shape — the warm triangle of Fig 4.17. Kernel taxonomy:
   // Modulating IS that decision/regulation primitive (the regulator monitor;
@@ -26,6 +26,7 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
   const iface = thing.role === "Component" && thing.interface === true;
   return (
     <NodeBody
+      scale={scale}
       pending={isOrphan}
       thing={thing}
       hovered={hovered}

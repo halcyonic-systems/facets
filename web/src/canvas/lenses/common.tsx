@@ -11,6 +11,14 @@ import { STYLE } from "../style";
 import type { ReactNode, PointerEvent as ReactPointerEvent } from "react";
 import { useState } from "react";
 
+/** Past 1.5× a world-sized mark would keep growing with the zoom; this factor
+ *  holds it at the size it had there. Identity at and below 1.5×, so nothing
+ *  about a fitted or zoomed-out model changes. */
+export const HOLD_FROM = 1.5;
+export function screenHold(scale: number): number {
+  return Math.min(1, HOLD_FROM / Math.max(scale, 0.0001));
+}
+
 /** Resolved per-lens stroke styling for a visible edge path. */
 export interface EdgeStyle {
   color: string;
@@ -29,6 +37,8 @@ export interface EdgeStyle {
 }
 
 interface NodeBodyProps {
+  /** Stage scale (see LensNodeProps.scale). */
+  scale?: number;
   /** role/env_kind feed the run-time role grammar (source = emitter, never a
    *  fill); optional so glyph-only callers stay valid. */
   thing: { id: number; x: number; y: number; name: string; role?: CanvasRole; env_kind?: EnvKind };
@@ -104,6 +114,7 @@ export function NodeBody({
   thing,
   hovered,
   sim,
+  scale = 1,
   onPointerDown,
   onHandlePointerDown,
   isSquare,
@@ -387,10 +398,10 @@ export function NodeBody({
       <circle
         cx={NODE_R * 0.75 * bodyScale}
         cy={NODE_R * 0.75 * bodyScale}
-        r={STYLE.handle.r}
+        r={STYLE.handle.r * screenHold(scale)}
         fill="var(--bg-primary)"
         stroke="var(--lens-accent)"
-        strokeWidth={STYLE.handle.width}
+        strokeWidth={STYLE.handle.width * screenHold(scale)}
         className="cursor-crosshair"
         onPointerDown={onHandlePointerDown}
       />
@@ -515,6 +526,7 @@ export function EdgeScaffold({
           strokeOpacity={0.3}
           strokeWidth={1.25}
           strokeDasharray="4 4"
+          vectorEffect="non-scaling-stroke"
           pointerEvents="none"
         />
       )}
@@ -527,6 +539,7 @@ export function EdgeScaffold({
           strokeOpacity={style.opacity}
           strokeWidth={style.width}
           strokeDasharray={style.dash}
+          vectorEffect="non-scaling-stroke"
           filter={style.filter}
           markerEnd={seg.markered ? `url(#${style.marker ?? "arrow"})` : undefined}
           markerStart={seg.markered && style.markerStart ? `url(#${style.markerStart})` : undefined}

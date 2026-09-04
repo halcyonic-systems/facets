@@ -12,9 +12,10 @@ import { STYLE, elideEdgeLabel } from "../style";
 import { EdgeScaffold, NodeBody, NullPortView, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
 
-function NodeView({ thing, isBoundary, isOrphan, hovered, sim, onPointerDown, onHandlePointerDown }: LensNodeProps) {
+function NodeView({ thing, isBoundary, isOrphan, hovered, sim, onPointerDown, onHandlePointerDown, scale }: LensNodeProps) {
   return (
     <NodeBody
+      scale={scale}
       pending={isOrphan}
       thing={thing}
       hovered={hovered}

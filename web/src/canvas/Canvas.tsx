@@ -48,6 +48,7 @@ import { EmbeddedFrame } from "./EmbeddedFrame";
 import { STYLE } from "./style";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
 import { MassOverlay } from "./MassOverlay";
+import { screenHold } from "./lenses/common";
 
 /** #335: the "nothing is crowded" set. Hoisted to module scope so the common
  *  case allocates nothing per render; the size-and-membership guard on
@@ -527,6 +528,10 @@ export default function Canvas({
   // Only frames in view are drawn. Read off the live element rather than kept
   // in state — every pan and zoom re-renders this anyway, so the numbers cannot
   // go stale, and before mount nothing is culled.
+  // Arrowheads are sized in stroke units (markerUnits' default), so past 1.5×
+  // they would grow with the world; edges hold a screen stroke and the heads
+  // hold with them.
+  const headHold = screenHold(scale);
   const viewW = svgRef.current?.clientWidth ?? 0;
   const viewH = svgRef.current?.clientHeight ?? 0;
   const inViewport = (t: Thing) => {
@@ -769,8 +774,8 @@ export default function Canvas({
           viewBox="0 0 10 10"
           refX="8"
           refY="5"
-          markerWidth={STYLE.arrowSize}
-          markerHeight={STYLE.arrowSize}
+          markerWidth={STYLE.arrowSize * headHold}
+          markerHeight={STYLE.arrowSize * headHold}
           orient="auto-start-reverse"
         >
           <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-slate)" />
@@ -785,8 +790,8 @@ export default function Canvas({
             viewBox="0 0 10 10"
             refX="8"
             refY="5"
-            markerWidth={STYLE.arrowSize}
-            markerHeight={STYLE.arrowSize}
+            markerWidth={STYLE.arrowSize * headHold}
+            markerHeight={STYLE.arrowSize * headHold}
             orient="auto-start-reverse"
           >
             <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
@@ -809,8 +814,8 @@ export default function Canvas({
             viewBox="0 0 10 10"
             refX="8"
             refY="5"
-            markerWidth={STYLE.arrowSize * EXO_ARROW_GAIN}
-            markerHeight={STYLE.arrowSize * EXO_ARROW_GAIN}
+            markerWidth={STYLE.arrowSize * EXO_ARROW_GAIN * headHold}
+            markerHeight={STYLE.arrowSize * EXO_ARROW_GAIN * headHold}
             orient="auto-start-reverse"
           >
             <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
@@ -1106,6 +1111,7 @@ export default function Canvas({
               isOrphan={orphanSet.has(t.id)}
               hovered={hoverTarget === t.id}
               sim={sim?.nodes[t.name]}
+              scale={scale}
               onPointerDown={(e) => gestures.onNodePointerDown(e, t)}
               onHandlePointerDown={(e) => gestures.onHandlePointerDown(e, t)}
             />
@@ -1149,10 +1155,10 @@ export default function Canvas({
             <circle
               cx={f.thing.x + NODE_R * 0.75}
               cy={f.thing.y + NODE_R * 0.75}
-              r={STYLE.handle.r}
+              r={STYLE.handle.r * headHold}
               fill="var(--bg-primary)"
               stroke="var(--lens-accent)"
-              strokeWidth={STYLE.handle.width}
+              strokeWidth={STYLE.handle.width * headHold}
               pointerEvents="none"
             />
           </g>

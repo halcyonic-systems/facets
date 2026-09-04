@@ -55,6 +55,9 @@ export function EmbeddedFrame({ node, frameScale, register, caption: captionText
   if (components.length === 0) return null;
   const flows: Relation[] = drawnFlows(node, tier);
   const caption = CAPTION_PX / Math.max(screenScale, 0.0001);
+  // A component that is itself an open frame carries its name on that frame's
+  // rim; a second caption under it would collide with the first.
+  const openBelow = new Set(node.children.map((sub) => sub.thing.id));
   const rim = CAPTION_PX / Math.max(frameScale, 0.0001);
   const bodyR = (t: Thing) => (t.interface === true ? NODE_R * INTERFACE_SCALE : NODE_R);
 
@@ -97,7 +100,7 @@ export function EmbeddedFrame({ node, frameScale, register, caption: captionText
             />
           ))}
           {tier === "full" &&
-            components.map((t) => (
+            components.filter((t) => !openBelow.has(t.id)).map((t) => (
               <text
                 key={t.id}
                 x={t.x}
