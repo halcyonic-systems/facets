@@ -6,6 +6,7 @@ import { edgeGeometry } from "../geometry";
 import { STYLE, elideEdgeLabel } from "../style";
 import { EdgeScaffold, NodeBody, NullPortView, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
+import { useStageHold } from "../stageScale";
 
 function NodeView({ thing, hovered, sim, onPointerDown, onHandlePointerDown, scale }: LensNodeProps) {
   return (
@@ -32,6 +33,7 @@ function NodeView({ thing, hovered, sim, onPointerDown, onHandlePointerDown, sca
 const KLIR_STYLE: EdgeStyle = { color: "var(--text-secondary)", width: STYLE.edge.klir, opacity: 0.9 };
 
 function EdgeView({ model, relation, sigIndex, selected, driven, sim, crowded, onSelect }: LensEdgeProps) {
+  const hold = useStageHold();
   const geo = edgeGeometry(model, relation, false);
   if (!geo) return null;
   const { d, labelAt } = geo;
@@ -52,10 +54,10 @@ function EdgeView({ model, relation, sigIndex, selected, driven, sim, crowded, o
   const label = relation.name ? (
     <text x={labelAt.x} y={labelAt.y - 12} textAnchor="middle" className="font-mono">
       <title>{relation.name}</title>
-      <tspan x={labelAt.x} fontSize={11} fill="var(--text-secondary)">
+      <tspan x={labelAt.x} fontSize={11 * hold} fill="var(--text-secondary)">
         {elideEdgeLabel(relation.name)}
       </tspan>
-      <tspan x={labelAt.x} dy={11} fontSize={9} fill="var(--text-muted)">
+      <tspan x={labelAt.x} dy={11 * hold} fontSize={9 * hold} fill="var(--text-muted)">
         {sig}
       </tspan>
     </text>
@@ -64,7 +66,7 @@ function EdgeView({ model, relation, sigIndex, selected, driven, sim, crowded, o
       x={labelAt.x}
       y={labelAt.y - 8}
       textAnchor="middle"
-      fontSize={10}
+      fontSize={10 * hold}
       fill="var(--text-secondary)"
       className="font-mono pointer-events-none"
     >

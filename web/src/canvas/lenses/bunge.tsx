@@ -11,6 +11,7 @@ import { edgeGeometry } from "../geometry";
 import { STYLE, elideEdgeLabel } from "../style";
 import { EdgeScaffold, NodeBody, NullPortView, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
+import { useStageHold } from "../stageScale";
 
 function NodeView({ thing, isBoundary, isOrphan, hovered, sim, onPointerDown, onHandlePointerDown, scale }: LensNodeProps) {
   return (
@@ -95,6 +96,7 @@ export function channelCopy(fact: EdgeFact | undefined, isBond: boolean): string
 }
 
 function EdgeView({ model, relation, fact, selected, driven, sim, crowded, onSelect }: LensEdgeProps) {
+  const hold = useStageHold();
   const geo = edgeGeometry(model, relation, true);
   if (!geo) return null;
   const { d, labelAt } = geo;
@@ -107,7 +109,7 @@ function EdgeView({ model, relation, fact, selected, driven, sim, crowded, onSel
       <g transform={`translate(${labelAt.x + 16}, ${labelAt.y - 6})`} pointerEvents="all">
         <title>Bunge diagonal bond — no Mobus preimage (FlowNetwork.lean no_self_loops, §4.3 k ≠ o)</title>
         <circle r={9} fill="var(--bg-secondary)" stroke="var(--verdict-error)" strokeWidth={1.25} />
-        <text textAnchor="middle" dominantBaseline="central" fontSize={8} fill="var(--verdict-error)" className="font-mono">
+        <text textAnchor="middle" dominantBaseline="central" fontSize={8 * hold} fill="var(--verdict-error)" className="font-mono">
           ⊘M
         </text>
       </g>
@@ -120,7 +122,7 @@ function EdgeView({ model, relation, fact, selected, driven, sim, crowded, onSel
       x={labelAt.x + (driven ? 9 : 0)}
       y={labelAt.y - 6}
       textAnchor={driven ? "start" : "middle"}
-      fontSize={10}
+      fontSize={10 * hold}
       fill="var(--text-muted)"
       className="font-mono"
     >

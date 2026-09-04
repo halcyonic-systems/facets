@@ -12,6 +12,7 @@ import { edgeGeometry, INTERFACE_SCALE, portHalfWidth, rimPoint, ringPoint, sibl
 import { STYLE, elideEdgeLabel } from "../style";
 import { EdgeScaffold, NodeBody, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
+import { screenHold, useStageHold } from "../stageScale";
 
 function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointerDown, scale }: LensNodeProps) {
   // #100 phase 4: the decision/regulator process is the ONE sub-kind Mobus's
@@ -99,6 +100,7 @@ function edgeStyle(relation: Relation, fact?: EdgeFact): EdgeStyle {
 }
 
 function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded, onSelect }: LensEdgeProps) {
+  const hold = useStageHold();
   const geo = edgeGeometry(model, relation, true);
   if (!geo) return null;
   let { d, labelAt } = geo;
@@ -189,7 +191,7 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
         x={labelAt.x + (driven ? 9 : 0)}
         y={labelAt.y - 6}
         textAnchor={driven ? "start" : "middle"}
-        fontSize={10}
+        fontSize={10 * hold}
         fill="var(--text-muted)"
         className="font-mono pointer-events-none"
       >
@@ -260,7 +262,7 @@ function PortView({
   // the full notch — a pass-way in the boundary, not a peer of the processes.
   const hw = screenHw !== undefined
     ? Math.min(portHalfWidth(scale), screenHw / Math.max(scale, 0.05)) * (compact ? 0.66 : 1)
-    : portHalfWidth(scale) * (compact ? 0.66 : 1);
+    : portHalfWidth(scale) * screenHold(scale) * (compact ? 0.66 : 1);
   const hh = hw * (compact ? 0.62 : 0.58);
   // The glyph is drawn against a 7px half-height and scaled with the capsule, so
   // enlarging the notch enlarges the one mark that carries direction.
@@ -315,7 +317,7 @@ function PortView({
           y={out.y * 16}
           textAnchor={out.x > 0.25 ? "start" : out.x < -0.25 ? "end" : "middle"}
           dominantBaseline="central"
-          fontSize={9}
+          fontSize={9 * screenHold(scale)}
           fill="var(--text-muted)"
           className="font-mono pointer-events-none"
         >
