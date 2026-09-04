@@ -112,26 +112,35 @@ function membraneBounds(child: CanvasModel): Box | null {
 // decides whether an interior is worth drawing is how big it lands, and a model
 // laid out large and one laid out small should behave the same way at the same
 // apparent size.
+//
+// The numbers are set against the shipped node radius of 24 on a stage a little
+// under eight hundred pixels tall, where they put the skeleton at about two and
+// a half times, the full tier just under six, and the crossing around thirteen —
+// a pull with three distinct stages in it rather than one long nothing followed
+// by a jump.
 
 export type ApertureTier = "sealed" | "skeleton" | "full";
 
 /** Below this a top-level aperture is an ordinary node. */
-export const SKELETON_PX = 120;
+export const SKELETON_PX = 100;
 /** …and below THIS for a frame already inside one. A nested interior is
  *  orientation — "there is more in here" — not a reading, and it has to be
- *  legible before the crossing rather than after it: at the size an aperture
+ *  legible BEFORE the crossing rather than after it: at the size an aperture
  *  takes the stage its own children land around fifty pixels, so holding them
  *  to the top-level line would mean depth 2 could never be seen from depth 0.
- *  This is the brief's own sealed line, which is where a mark stops being
- *  worth drawing at all. */
-export const NESTED_SKELETON_PX = 40;
+ *  Set low enough that the second level opens well short of the crossing rather
+ *  than in its last notch — the point of the preview is to say what is coming,
+ *  and a mark that appears only as you arrive says nothing. Below a stage of
+ *  roughly six hundred pixels the third level lands under this line and is not
+ *  drawn; there is nothing legible to draw there. */
+export const NESTED_SKELETON_PX = 28;
 
 /** The skeleton line for a frame `level` deep inside the focused one. */
 export function skeletonPxAt(level: number): number {
   return level === 0 ? SKELETON_PX : NESTED_SKELETON_PX;
 }
 /** Above this the frame earns edges and labels. */
-export const FULL_PX = 260;
+export const FULL_PX = 230;
 /** Resolve the child a little before it is drawn — the hysteresis band above
  *  the skeleton line is exactly that head start, so the model is parsed by the
  *  time the tier opens rather than arriving a frame late mid-gesture. The line
