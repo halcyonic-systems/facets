@@ -16,11 +16,13 @@ import type { Lens, ProcessPrimitive, Thing } from "../kernel/types";
 import { DescriptionField, InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 
 /** The decomposition door as the shell hands it to the inspector (#89 step 5b).
- *  Which case applies is decided upstream off KERNEL facts (boundary membership
- *  = lens_facts.boundary_thing_ids); the popover only renders the affordance. */
+ *  Two cases: a component that has a child to enter, and one that does not yet.
+ *  The third — the v1 refusal for a boundary component — is gone: SSF #43
+ *  extended the contract to membrane crossings, so a component on the boundary
+ *  decomposes like any other and the kernel says so in its own words if a
+ *  particular seam does not hold. */
 export type DecomposeAffordance =
   | { kind: "ready"; onDecompose: () => void }
-  | { kind: "interface" }
   | { kind: "entered"; label: string; onEnter: () => void };
 
 const PRIMITIVES: ProcessPrimitive[] = [
@@ -170,22 +172,6 @@ export function DecomposeRows({ decompose }: { decompose: DecomposeAffordance })
         >
           decompose this component
         </button>
-      )}
-      {decompose.kind === "interface" && (
-        <>
-          <button
-            disabled
-            className="w-full rounded-md px-2 py-1 text-left text-xs"
-            style={{ color: "var(--text-muted)", border: "1px dashed var(--border)", opacity: 0.6, cursor: "not-allowed" }}
-          >
-            decompose this component
-          </button>
-          <p className="mt-1 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }}>
-            v1 can't decompose an interface component — its membrane-crossing
-            flows aren't in the checked boundary contract yet. Decompose an
-            interior component instead.
-          </p>
-        </>
       )}
       {decompose.kind === "entered" && (
         <div className="flex items-center justify-between gap-2">

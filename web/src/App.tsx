@@ -1881,16 +1881,18 @@ function Workspace() {
   // the pixel popovers yield to the registers' inline editors.
   const registerActive = isKlir || isBungeMatrix;
 
-  // The decomposition door's case, decided off KERNEL facts (boundary
-  // membership = lens_facts.boundary_thing_ids — the same set the kernel's v1
-  // refusal checks). One function, read by the NodePopover AND the Klir
-  // register's inline thing editor.
+  // The decomposition door's case. It used to consult boundary membership and
+  // refuse there: v1's contract covered a component's interior network only, so
+  // a component touching the membrane had no checkable seam. SSF #43 extended
+  // the contract to the crossings themselves (bert-core decomposition.rs,
+  // `comp_interface`), so every component offers the door and a seam that does
+  // not hold is refused by the kernel, in its own words, where the verdict
+  // belongs. One function, read by the NodePopover AND the Klir register's
+  // inline thing editor.
   function decomposeFor(thing: Thing): DecomposeAffordance | null {
     if (thing.role !== "Component") return null;
     if (thing.child_model)
       return { kind: "entered", label: thing.child_model.name, onEnter: () => enterThingChild(thing) };
-    if (!facts) return null;
-    if (facts.boundary_thing_ids.includes(thing.id)) return { kind: "interface" };
     return { kind: "ready", onDecompose: () => decomposeThing(thing) };
   }
 
