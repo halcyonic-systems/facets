@@ -18,9 +18,9 @@
 
 /** Diameter, as a fraction of the smaller viewport side, at which an open
  *  aperture has taken the view and the walk enters its child. */
-export const ENTER_FRACTION = 0.85;
+export const ENTER_FRACTION = 0.6;
 /** …and where that latch releases. */
-export const ENTER_RESET_FRACTION = 0.6;
+export const ENTER_RESET_FRACTION = 0.4;
 /** Drawn extent, same fraction, below which the current model has receded far
  *  enough that the walk rises to its parent. */
 export const EXIT_FRACTION = 0.33;

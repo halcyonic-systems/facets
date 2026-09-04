@@ -128,7 +128,7 @@ function nextId(ids: number[]): number {
  *  seam wanted to be crossed, which made it the wall rather than the limit. The
  *  floor is unchanged; zooming OUT never crosses a seam. */
 export const ZOOM_MIN = 0.15;
-export const ZOOM_MAX = 12;
+export const ZOOM_MAX = 16;
 
 /** Pure zoom math, exported for testing: given the scale/pan a gesture is
  *  currently reasoning from, a wheel event's deltaY, and whether it arrived as
