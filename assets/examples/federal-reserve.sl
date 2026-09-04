@@ -177,9 +177,9 @@ flow "U.S. Treasury" -> "Balance Sheet" : matter "TGA deposits" unit "USD millio
 # Friendshuh's citation, 2026-08-06:
 #   https://www.federalreserve.gov/econres/notes/feds-notes/use-of-the-federal-reserves-repo-operations-and-changes-in-dealer-balance-sheets-20210806.html
 #
-# Companion model: `policy-channels.sl` stays OUTSIDE this boundary and
-# asks who can pay whom, drawing Congress beside the Fed. Where this
-# model opens the Fed, that one compares its channel with the fiscal
-# one. Read together they separate credit from transfer.
+# The Federal Reserve is the system of interest here. A wider companion
+# (`policy-channels.sl`, U.S. Federal Economic Policy, which held this system
+# as one modulating component beside Congress) was retired from the shelf on
+# 2026-09-04 so the shelf carries one Fed, this one.
 
 @lens mobus

@@ -64,8 +64,10 @@ const structural: Demo[] = Object.entries(files).map(([path, text]) => parseExam
 // assets/examples/ — so it is registered here by hand rather than by the glob,
 // and that is the whole reason its title and blurb are written rather than
 // parsed. The file's own `system` line names the editorial walkthrough; the
-// gallery row has to say what opening it gets you, which is depth. The corpus
-// card next to it stays Mobus's own Fig. 4.14 stopping point.
+// gallery row has to say what opening it gets you, which is depth. It is the
+// shelf's one steel plant: the corpus transcription of Fig. 4.14 stays in the
+// corpus (cited, linted, Bunge-refused for the README's lesson) but off the
+// shelf, and this card carries the citation for both.
 const STEEL_PLANT_WALK: Demo = {
   key: "example:steel-plant-walk",
   title: "The Steel-Plant, three levels deep",
@@ -74,7 +76,8 @@ const STEEL_PLANT_WALK: Demo = {
     "Mobus's ch. 4 procedure as a walkable hierarchy: the opaque SOI of Fig. 4.14, " +
     "its interior at Fig. 4.16, and Iron-Inventory's room at Fig. 4.17 — three models " +
     "joined by decomposition references whose seams the kernel checks. Zoom into a " +
-    "decomposed component to see its interior in place, or double-click to enter it.",
+    "decomposed component to see its interior in place, or double-click to enter it. " +
+    "George Mobus, Systems Science: Theory, Analysis, Modeling, and Design (2022), Ch. 4 §4.5.",
   sl: steelPlantWalk,
 };
 

@@ -574,7 +574,7 @@ export interface LabelBox {
  *
  *    llm-market        38 labels   30 quieted -> 23   (7 returned)
  *    federal-reserve   15 labels   11 quieted ->  9   (2 returned)
- *    ribosome, bitcoin, jung-functions, predator-prey, policy-channels: identical
+ *    ribosome, bitcoin, jung-functions, predator-prey: identical
  *
  *  The pattern is the argument. The pad is inert on every sparse model and
  *  fires only on the CROWDED ones — where what it quiets are labels with zero

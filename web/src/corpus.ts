@@ -23,6 +23,10 @@ export interface CorpusEntry {
    *  (Klir's goal-oriented paradigms, Bunge's two-thing structures). Absent =
    *  a standalone entry. The gallery renders a set as one labelled cluster. */
   set?: string;
+  /** `false` keeps an entry in the corpus — cited, linted, part of the
+   *  formalization's empirical arm — but off the gallery shelf, where another
+   *  card already carries its figure. The steel-plant walk carries Fig. 4.14. */
+  shelf?: boolean;
 }
 
 const files = import.meta.glob("../../assets/corpus/**/*.sl", {

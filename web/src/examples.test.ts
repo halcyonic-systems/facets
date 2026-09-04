@@ -111,7 +111,6 @@ describe("the shipped library", () => {
       // component shows its interior without leaving the model.
       "The Steel-Plant, three levels deep",
       "Translation Apparatus",
-      "U.S. Federal Economic Policy",
       "hal",
     ]);
   });

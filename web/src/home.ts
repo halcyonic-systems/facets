@@ -105,7 +105,7 @@ export function shippedModels(): ShippedModel[] {
   }
   for (const g of groupedCorpus()) {
     const tag = traditionTag(g.tradition);
-    const entries = [...g.sets.flatMap((s) => s.entries), ...g.loose];
+    const entries = [...g.sets.flatMap((s) => s.entries), ...g.loose].filter((e) => e.shelf !== false);
     for (const e of entries) {
       rows.push({
         key: e.file,
