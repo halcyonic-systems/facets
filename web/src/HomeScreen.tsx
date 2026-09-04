@@ -945,10 +945,10 @@ function CardThumb({
       className="flex h-11 w-11 shrink-0 items-center justify-center border"
       style={{
         borderColor: well?.edge ?? hue ?? "var(--rule-soft)",
-        // 14% is the register's filled-region strength: enough that three
-        // shelves read as three colours at a glance, light enough that the
-        // drawing inside the well still reads as ink on paper.
-        background: well?.fill ?? (hue ? `color-mix(in oklab, ${hue} 14%, var(--paper))` : "var(--paper-edge)"),
+        // 22% (operator, 2026-09-04: 14 read as bland): three shelves read as
+        // three colours at a glance, and the drawing inside the well still
+        // reads as ink on paper.
+        background: well?.fill ?? (hue ? `color-mix(in oklab, ${hue} 22%, var(--paper))` : "var(--paper-edge)"),
       }}
     >
       {compiled && <Thumbnail model={compiled} size={34} />}

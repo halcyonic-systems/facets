@@ -48,8 +48,8 @@ export interface ShippedModel {
   citation?: string;
   /** #148 sibling-set: models that teach by diff over one fixed composition. */
   set?: string;
-  /** The tradition key, for the world hue. Absent on an example — an example is
-   *  ours and belongs to no tradition, and the absence is the fact. */
+  /** The tradition key, for the world hue: the corpus entry's author, or the
+   *  lens an example was written under. */
   tradition?: CorpusEntry["tradition"];
   /** Carries dynamics as well as structure. The EXCEPTION, never the rule. */
   runs: boolean;
@@ -70,15 +70,34 @@ function traditionTag(key: CorpusEntry["tradition"]): Tag {
 /** Every model on the standard library's shelves, flattened into one list in
  *  the canonical reading order: examples by genus (Bunge's order), then the
  *  corpus by tradition (the K≅2 ladder), sibling-sets before loose entries. */
+/** The lens an example ships under — its own `@lens` line, or the lens its
+ *  bundle was minted with. An example is ours, but it is still written in one
+ *  reading, and a model that ships with a lens should say which. */
+function exampleTradition(d: Demo): CorpusEntry["tradition"] | undefined {
+  const fromSl = d.sl && /^@lens\s+(klir|bunge|mobus)\b/im.exec(d.sl)?.[1];
+  if (fromSl) return fromSl.toLowerCase() as CorpusEntry["tradition"];
+  if (d.modelJson) {
+    try {
+      const lens = String((JSON.parse(d.modelJson) as { lens?: string }).lens ?? "").toLowerCase();
+      if (lens === "klir" || lens === "bunge" || lens === "mobus") return lens;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
 export function shippedModels(): ShippedModel[] {
   const rows: ShippedModel[] = [];
   for (const g of groupedExamples()) {
     for (const d of g.entries) {
+      const tradition = exampleTradition(d);
       rows.push({
         key: d.key,
         name: d.title,
         description: d.blurb,
-        tags: [genusTag(g.genus)],
+        tags: tradition ? [genusTag(g.genus), traditionTag(tradition)] : [genusTag(g.genus)],
+        tradition,
         runs: isRunnable(d),
         open: { kind: "example", demo: d },
       });
