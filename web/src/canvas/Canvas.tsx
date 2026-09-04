@@ -48,7 +48,7 @@ import { EmbeddedFrame } from "./EmbeddedFrame";
 import { STYLE } from "./style";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
 import { MassOverlay } from "./MassOverlay";
-import { screenHold } from "./lenses/common";
+import { screenHold, StageScale } from "./stageScale";
 
 /** #335: the "nothing is crowded" set. Hoisted to module scope so the common
  *  case allocates nothing per render; the size-and-membership guard on
@@ -768,6 +768,7 @@ export default function Canvas({
         gestures.onStageDoubleClick(e);
       }}
     >
+      <StageScale.Provider value={scale}>
       <defs>
         <marker
           id="arrow"
@@ -911,7 +912,7 @@ export default function Canvas({
               <text
                 x={hull.x + 12}
                 y={hull.y - 10}
-                fontSize={11}
+                fontSize={11 * headHold}
                 fill="var(--text-secondary)"
                 className="font-mono cursor-text"
                 pointerEvents="auto"
@@ -982,7 +983,7 @@ export default function Canvas({
                   x={ring.cx}
                   y={ring.cy + ring.ry + 48}
                   textAnchor="middle"
-                  fontSize={STYLE.label.size - 1}
+                  fontSize={(STYLE.label.size - 1) * headHold}
                   fontStyle="italic"
                   fill="var(--milieu)"
                   paintOrder="stroke"
@@ -1038,7 +1039,7 @@ export default function Canvas({
                 y={ring.cy - ring.ry}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fontSize={STYLE.label.size}
+                fontSize={STYLE.label.size * headHold}
                 fill="var(--accent-slate)"
                 paintOrder="stroke"
                 stroke="var(--bg-primary)"
@@ -1129,7 +1130,7 @@ export default function Canvas({
                   </title>
                   <text
                     textAnchor="middle"
-                    fontSize={8}
+                    fontSize={8 * headHold}
                     fill="var(--verdict-warning)"
                     className="font-mono"
                     letterSpacing={0.5}
@@ -1257,7 +1258,7 @@ export default function Canvas({
           x="50%"
           y={24}
           textAnchor="middle"
-          fontSize={11}
+          fontSize={11 * headHold}
           fill="var(--text-muted)"
           className="font-mono cursor-text"
           onPointerDown={(e) => e.stopPropagation()}
@@ -1267,6 +1268,7 @@ export default function Canvas({
           viewing: {placeName}
         </text>
       )}
+    </StageScale.Provider>
     </svg>
   );
 }

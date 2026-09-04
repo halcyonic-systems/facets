@@ -10,14 +10,8 @@ import { NODE_R, type Pt } from "../geometry";
 import { STYLE } from "../style";
 import type { ReactNode, PointerEvent as ReactPointerEvent } from "react";
 import { useState } from "react";
+import { screenHold, useStageHold } from "../stageScale";
 
-/** Past 1.5× a world-sized mark would keep growing with the zoom; this factor
- *  holds it at the size it had there. Identity at and below 1.5×, so nothing
- *  about a fitted or zoomed-out model changes. */
-export const HOLD_FROM = 1.5;
-export function screenHold(scale: number): number {
-  return Math.min(1, HOLD_FROM / Math.max(scale, 0.0001));
-}
 
 /** Resolved per-lens stroke styling for a visible edge path. */
 export interface EdgeStyle {
@@ -114,7 +108,7 @@ export function NodeBody({
   thing,
   hovered,
   sim,
-  scale = 1,
+  scale,
   onPointerDown,
   onHandlePointerDown,
   isSquare,
@@ -134,6 +128,8 @@ export function NodeBody({
   envHint = false,
   bodyScale = 1,
 }: NodeBodyProps) {
+  const ctxHold = useStageHold();
+  const hold = scale === undefined ? ctxHold : screenHold(scale);
   const frac = sim ? Math.max(0, Math.min(1, sim.frac)) : null;
   const clipId = `fill-clip-${thing.id}`;
   const [selfHover, setSelfHover] = useState(false);
@@ -372,7 +368,7 @@ export function NodeBody({
         <text
           y={-NODE_R * bodyScale - 10}
           textAnchor="middle"
-          fontSize={STYLE.simReadoutSize}
+          fontSize={STYLE.simReadoutSize * hold}
           fill="var(--accent-strong)"
           className="font-mono tabular pointer-events-none"
         >
@@ -387,7 +383,7 @@ export function NodeBody({
         data-node-label={thing.id}
         y={NODE_R * bodyScale + 16}
         textAnchor="middle"
-        fontSize={labelSmall ? STYLE.label.smallSize : STYLE.label.size}
+        fontSize={(labelSmall ? STYLE.label.smallSize : STYLE.label.size) * hold}
         fill={labelSmall ? "var(--text-muted)" : STYLE.label.fill}
         letterSpacing={STYLE.label.tracking}
         className={`${STYLE.label.mono ? "font-mono" : "font-body"} pointer-events-none`}
@@ -398,10 +394,10 @@ export function NodeBody({
       <circle
         cx={NODE_R * 0.75 * bodyScale}
         cy={NODE_R * 0.75 * bodyScale}
-        r={STYLE.handle.r * screenHold(scale)}
+        r={STYLE.handle.r * hold}
         fill="var(--bg-primary)"
         stroke="var(--lens-accent)"
-        strokeWidth={STYLE.handle.width * screenHold(scale)}
+        strokeWidth={STYLE.handle.width * hold}
         className="cursor-crosshair"
         onPointerDown={onHandlePointerDown}
       />
@@ -456,6 +452,7 @@ export function EdgeScaffold({
   crowded = false,
   title,
 }: EdgeScaffoldProps) {
+  const hold = useStageHold();
   const [hover, setHover] = useState(false);
   // Hit, hover, and selection must trace the strokes the reader can SEE. An exo
   // flow's `d` is the rim-to-rim curve, but its drawn geometry is the crossing
@@ -568,9 +565,9 @@ export function EdgeScaffold({
       {ample ? (
         <text
           x={labelAt.x}
-          y={labelAt.y + 14}
+          y={labelAt.y + 14 * hold}
           textAnchor="middle"
-          fontSize={10}
+          fontSize={10 * hold}
           fill="var(--text-muted)"
           fontStyle="italic"
           className="font-body pointer-events-none"
@@ -581,9 +578,9 @@ export function EdgeScaffold({
         sim && (
           <text
             x={labelAt.x}
-            y={labelAt.y + 14}
+            y={labelAt.y + 14 * hold}
             textAnchor="middle"
-            fontSize={10}
+            fontSize={10 * hold}
             fill="var(--accent-strong)"
             className="font-mono tabular pointer-events-none"
           >
