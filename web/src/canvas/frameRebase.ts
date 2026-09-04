@@ -48,10 +48,10 @@ export interface View {
 
 /** Diameter, as a fraction of the smaller viewport side, at which an open
  *  aperture has taken the stage and its child becomes the render root. */
-export const RB_IN = 0.9;
+export const RB_IN = 0.75;
 /** The same quantity for the focused frame's own drawn extent, below which it
  *  is read from its parent again. */
-export const RB_OUT = 0.4;
+export const RB_OUT = 0.22;
 /** How far short of its firing line a decision re-arms. Wide enough that a
  *  gesture resting on the line cannot wander back across it, narrow enough that
  *  a frame arriving at fit scale is on the armed side. */
