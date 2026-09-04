@@ -246,7 +246,8 @@ body {
 /* #139: a component drawn as an aperture demotes its own label to the frame's
    rim caption and drops the protocol notice — the interior is what it says now. */
 .aperture-open [data-node-label],
-.aperture-open [data-protocols-notice] {
+.aperture-open [data-protocols-notice],
+.aperture-open [data-decompose-door] {
   display: none;
 }
 

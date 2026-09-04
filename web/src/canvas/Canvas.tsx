@@ -49,6 +49,7 @@ import { STYLE } from "./style";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
 import { MassOverlay } from "./MassOverlay";
 import { screenHold, StageScale } from "./stageScale";
+import type { DecomposeAffordance } from "./NodeEditor";
 
 /** #335: the "nothing is crowded" set. Hoisted to module scope so the common
  *  case allocates nothing per render; the size-and-membership guard on
@@ -76,6 +77,68 @@ const RIDE_CENTER_EASE = 0.14;
 const prefersReducedMotion = () =>
   typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+/** The decomposition door, on the diagram. It used to live only in the
+ *  inspector, which meant the way into a component was somewhere other than the
+ *  component. The glyph sits on the rim at 45°, opposite the connect handle at
+ *  lower-right, and says the same two things the inspector rows say: enter the
+ *  child, or mint one. A decomposed component keeps it faintly lit — that is the
+ *  ▸ the registers already taught people to look for — and everything else shows
+ *  it on hover or while selected. The inspector keeps its verbose version. */
+const DOOR_R = 7;
+
+function DecomposeDoor({
+  thing,
+  door,
+  hold,
+  lit,
+  onOpen,
+}: {
+  thing: Thing;
+  door: DecomposeAffordance;
+  hold: number;
+  lit: boolean;
+  onOpen: () => void;
+}) {
+  const r = DOOR_R * hold;
+  const cx = thing.x + NODE_R * Math.SQRT1_2;
+  const cy = thing.y - NODE_R * Math.SQRT1_2;
+  const entered = door.kind === "entered";
+  const opacity = lit ? 1 : entered ? 0.45 : 0;
+  return (
+    <g
+      data-decompose-door={thing.id}
+      data-export-ignore
+      opacity={opacity}
+      pointerEvents={opacity > 0 ? "all" : "none"}
+      className="cursor-pointer"
+      onPointerDown={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpen();
+      }}
+    >
+      <title>{entered ? `Enter ${door.label}` : "Decompose this component"}</title>
+      <circle
+        cx={cx}
+        cy={cy}
+        r={r}
+        fill="var(--bg-primary)"
+        stroke="var(--lens-accent)"
+        strokeWidth={1.25 * hold}
+      />
+      <path
+        d={`M ${cx - r * 0.15} ${cy - r * 0.35} L ${cx + r * 0.25} ${cy} L ${cx - r * 0.15} ${cy + r * 0.35}`}
+        fill="none"
+        stroke="var(--lens-accent)"
+        strokeWidth={1.5 * hold}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </g>
+  );
+}
+
 interface Props {
   model: CanvasModel;
   lens: Lens;
@@ -96,6 +159,13 @@ interface Props {
    *  5b). The canvas only reports the gesture; whether the thing has a child to
    *  enter (and what entering means) is the shell's call. */
   onEnterThing?: (thing: Thing) => void;
+  /** The decomposition door's case for a thing, as the shell reads it — the
+   *  same `decomposeFor` the inspector rows take. Absent = no rim door. */
+  doorFor?: (thing: Thing) => DecomposeAffordance | null;
+  /** The selected thing, so its door stays up while the inspector is open on
+   *  it. Selection is otherwise the shell's business; the canvas only reports
+   *  the click. */
+  selectedThingId?: number | null;
   /** #109 exit gesture: while walking, double-click on the EMPTY stage (not on
    *  any thing/relation/boundary) exits one level up — the mirror of
    *  double-click-to-enter. Null/undefined = not walking, and the stage
@@ -177,6 +247,8 @@ export default function Canvas({
   armed = null,
   onSelectThing,
   onEnterThing,
+  doorFor,
+  selectedThingId = null,
   onExitUp = null,
   onSelectBoundary,
   onSelectMilieu,
@@ -452,6 +524,11 @@ export default function Canvas({
   // uniform scale, which is why zoom-aware labels were a dead end — but the pan
   // and scale state that this effect reruns on keep the rects honest.
   const [crowded, setCrowded] = useState<ReadonlySet<number>>(EMPTY_CROWD);
+
+  // Plain pointer hover over a node, which the gesture reducer does not track —
+  // its `hoverTarget` is the drop target of a flow being dragged. The rim door
+  // needs the ordinary reading: the pointer is on this component.
+  const [hoverNodeId, setHoverNodeId] = useState<number | null>(null);
   useLayoutEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
@@ -499,6 +576,15 @@ export default function Canvas({
   const boundarySet = new Set(facts?.boundary_thing_ids ?? []);
   const orphanSet = new Set(facts?.orphan_env_thing_ids ?? []);
   const edgeFactById = new Map<number, EdgeFact>((facts?.edges ?? []).map((e) => [e.id, e]));
+
+  // The rim doors, asked of the shell once per render. The case is read off the
+  // AUTHORED thing, not the projected one — the door's closures act on the
+  // model, and a register's projection moves pixels, not identity. Klir draws
+  // flat, so it gets none.
+  const doorByThing =
+    doorFor && lens !== "Klir"
+      ? new Map(dModel.things.map((t) => [t.id, doorFor(thingById(model, t.id) ?? t)] as const))
+      : null;
 
   // The per-lens container (#100 phase 0) — one mechanism, three honest
   // renderings. Mobus: B = ⟨P, I⟩ reified, a membrane around the components,
@@ -1094,6 +1180,8 @@ export default function Canvas({
           <g
             key={t.id}
             className={openApertureIds.has(t.id) ? "aperture-open" : undefined}
+            onPointerEnter={() => setHoverNodeId(t.id)}
+            onPointerLeave={() => setHoverNodeId((id) => (id === t.id ? null : id))}
             onDoubleClick={(e) => {
               e.stopPropagation();
               // The accelerator rides the zoom path to the seam rather than
@@ -1139,6 +1227,19 @@ export default function Canvas({
                   </text>
                 </g>
               )}
+            {doorByThing?.get(t.id) && (
+              <DecomposeDoor
+                thing={t}
+                door={doorByThing.get(t.id)!}
+                hold={headHold}
+                lit={hoverNodeId === t.id || hoverTarget === t.id || selectedThingId === t.id}
+                onOpen={() => {
+                  const door = doorByThing.get(t.id)!;
+                  if (door.kind === "entered") door.onEnter();
+                  else door.onDecompose();
+                }}
+              />
+            )}
           </g>
         ))}
 

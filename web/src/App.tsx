@@ -2708,6 +2708,10 @@ function Workspace() {
                       onEnterThing={(t) => {
                         if (t.child_model) enterThingChild(t);
                       }}
+                      // The rim door: the same affordance the inspector shows,
+                      // put on the component it is about.
+                      doorFor={decomposeFor}
+                      selectedThingId={selectedThingId}
                       // #109 exit gesture (a): while walking, double-click on
                       // the empty stage exits one level — the mirror of
                       // double-click-to-enter. Null when not walking, so the
