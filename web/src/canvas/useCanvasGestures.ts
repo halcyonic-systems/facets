@@ -128,7 +128,13 @@ function nextId(ids: number[]): number {
  *  seam wanted to be crossed, which made it the wall rather than the limit. The
  *  floor is unchanged; zooming OUT never crosses a seam. */
 export const ZOOM_MIN = 0.15;
-export const ZOOM_MAX = 16;
+// #139 M2: the ceiling is a per-FRAME band, not a depth limit. Frame rebasing
+// re-expresses the view on a child once its aperture takes the stage, so the
+// number restarts near 1 at every level and depth costs nothing numerically.
+// The band only has to reach the rebase line from a fitted model: on the
+// tallest viewport this build targets that is `RB_IN · minView / (2 · NODE_R)`
+// ≈ 17, so 24 leaves the gesture room to overshoot it.
+export const ZOOM_MAX = 24;
 
 /** Pure zoom math, exported for testing: given the scale/pan a gesture is
  *  currently reasoning from, a wheel event's deltaY, and whether it arrived as
@@ -335,6 +341,19 @@ export function useCanvasGestures({
     dispatch({ type: "zoom", scale, pan });
   }
 
+  /** Put the view exactly here (#139 M2). The rebase's arrival and the ride
+   *  that reaches it both need to SET the transform rather than nudge it, and
+   *  a rebase in particular has to land on the pixel it left — so this is a
+   *  plain assignment through the same `zoom` action, with any in-flight ease
+   *  cancelled so a stale frame cannot arrive on top of it. */
+  function setView(pan: Pt, scale: number) {
+    if (zoomAnimRef.current) {
+      cancelAnimationFrame(zoomAnimRef.current.raf);
+      zoomAnimRef.current = null;
+    }
+    dispatch({ type: "zoom", scale, pan });
+  }
+
   function hitTest(p: Pt, exclude?: number): Thing | undefined {
     return connectionTargetAt(model, portTargets, p, exclude, state.scale);
   }
@@ -529,6 +548,7 @@ export function useCanvasGestures({
   return {
     state,
     fitToViewport,
+    setView,
     onStageWheel,
     onNodePointerDown,
     onHandlePointerDown,

@@ -29,6 +29,8 @@ import type {
 import { DEMOS, isRunnable, type Demo } from "./demos";
 import type { CorpusEntry } from "./corpus";
 import Canvas from "./canvas/Canvas";
+import type { Embed } from "./canvas/embed";
+import { rebaseOut, type View } from "./canvas/frameRebase";
 import { edgeGeometry, thingById } from "./canvas/geometry";
 import { EdgePopover } from "./canvas/EdgePopover";
 import { flowParamFor, forcedByColumn } from "./kernel/params";
@@ -166,6 +168,10 @@ interface WalkSegment {
   t: number;
   currentName: string | null;
   dirty: boolean;
+  /** #139 M2: how this ancestor's aperture placed the frame below it. Present
+   *  when the crossing was a REBASE, which is what lets the way back out be the
+   *  same picture rather than a fit. Null for a plain document swap. */
+  embed: Embed | null;
 }
 
 // The SL pane's seed text — Mobus's steel plant (Ch.4 §4.3.1) as a system
@@ -337,6 +343,12 @@ function Workspace() {
   // viewport (its auto-layout centers on a fixed point that can otherwise land
   // outside the narrower SL-pane view — #83). Canvas fits once per new value.
   const [fitToken, setFitToken] = useState<number | undefined>(undefined);
+  // #139 M2: a crossing's arrival. The claim of a rebase is that the picture
+  // does not move, so the canvas is handed the exact view rather than asked to
+  // fit — and a fit request would undo precisely what the crossing bought.
+  const [viewCommand, setViewCommand] = useState<{ token: number; pan: Pt; scale: number } | null>(null);
+  const rebaseView = (v: View) => setViewCommand((c) => ({ token: (c?.token ?? 0) + 1, pan: v.pan, scale: v.scale }));
+
   // Recomposition (2026-08-16): entering or leaving Run re-frames the diagram
   // — the dock claims the lower band on the way in and returns it on the way
   // out, and the fit should follow both moves.
@@ -2039,33 +2051,42 @@ function Workspace() {
   // only the breadcrumb makes it read as a hierarchical dive. A referent that
   // resolves nowhere surfaces the kernel's defined issue in place — never a
   // crash, never a silent no-op.
-  async function enterThingChild(thing: Thing) {
+  async function enterThingChild(thing: Thing, arrival?: { view: View; embed: Embed; child: CanvasModel }) {
     const ref = thing.child_model;
     if (!ref || !canvasModel) return;
+    // A REBASE arrives with the child already parsed (it was being drawn) and
+    // with the view that keeps the picture still, so it runs synchronously and
+    // without choreography — the dive exists to paper over a discontinuity
+    // there isn't one of.
     // The dive choreography (#109): the view presses toward the clicked
     // component (dive-out, origin at the component's screen position) while
     // the child resolves CONCURRENTLY — resolution races the beat, never the
     // other way round. If resolution is slow the out-phase completes (fill:
     // forwards holds it) and the child arrives when ready, exactly the
     // existing async enter path. Reduced motion: no phases, instant swap.
-    const animate = !prefersReducedMotion();
+    const animate = !arrival && !prefersReducedMotion();
     if (animate) {
       const at = toScreen({ x: thing.x, y: thing.y });
       setWalkFx({ phase: "dive-out", origin: `${at.x}px ${at.y}px` });
     }
     try {
-      const [resolved] = await Promise.all([
-        resolveModelRefs([ref.id], dirHandle),
-        animate ? delay(WALK_OUT_MS) : undefined,
-      ]);
-      const json = resolved[ref.id];
-      if (json === undefined) {
-        setWalkFx(null);
-        const row = decomposition.issues.find((_, i) => decomposition.targets[i]?.thing === thing.id);
-        setToast(row?.message ?? `child model ${ref.id} could not be resolved`);
-        return;
+      let cm: CanvasModel;
+      if (arrival) {
+        cm = arrival.child;
+      } else {
+        const [resolved] = await Promise.all([
+          resolveModelRefs([ref.id], dirHandle),
+          animate ? delay(WALK_OUT_MS) : undefined,
+        ]);
+        const json = resolved[ref.id];
+        if (json === undefined) {
+          setWalkFx(null);
+          const row = decomposition.issues.find((_, i) => decomposition.targets[i]?.thing === thing.id);
+          setToast(row?.message ?? `child model ${ref.id} could not be resolved`);
+          return;
+        }
+        cm = openModel(json);
       }
-      const cm = openModel(json);
       setWalk((w) => [
         ...w,
         {
@@ -2082,6 +2103,7 @@ function Workspace() {
           t,
           currentName,
           dirty,
+          embed: arrival?.embed ?? null,
         },
       ]);
       setDemo(null); setAttachedCsv(null);
@@ -2100,7 +2122,8 @@ function Workspace() {
       // child's first committed frame already centers its membrane with the
       // G′ stand-ins framed — and the dive-in phase starts from opacity 0,
       // so the one pre-fit paint the fit effect allows is never visible.
-      setFitToken((n) => (n ?? 0) + 1);
+      if (arrival) rebaseView(arrival.view);
+      else setFitToken((n) => (n ?? 0) + 1);
       setWalkFx(animate ? { phase: "dive-in", origin: "50% 50%" } : null);
     } catch (e) {
       setWalkFx(null);
@@ -2108,19 +2131,42 @@ function Workspace() {
     }
   }
 
+  // #139 M2/M3: the crossing as the canvas reports it. Both directions go
+  // through the very functions the click paths use, so the walk stack, the
+  // autosave and the dirty-state discipline exist in one place and a wheel
+  // cannot take a shortcut around them. What a rebase adds is the arrival view
+  // — and, on the way in, a child that is already parsed, so the swap is
+  // synchronous and the picture never blinks through a fit.
+  function rebaseInto(thing: Thing, view: View, embed: Embed) {
+    const ref = thing.child_model;
+    const child = ref ? childCache.current.get(ref.id) : null;
+    if (!child) return;
+    void enterThingChild(thing, { view, embed, child });
+  }
+
+  async function rebaseUp(view: View) {
+    if (walk.length === 0) return;
+    const seg = walk[walk.length - 1];
+    await exitTo(walk.length - 1, seg.embed ? rebaseOut(view, seg.embed) : undefined);
+  }
+
   // Exit to an ancestor (breadcrumb click). AUTOSAVES before navigating — the
   // current child and every deeper segment being popped, dirty-only, so work is
   // never lost and an untouched newborn is never rewritten. No confirm dialog;
   // explicit save is unchanged. Restoring the ancestor re-runs its seam check
   // against the just-saved children.
-  async function exitTo(index: number) {
+  async function exitTo(index: number, arrival?: View) {
     if (!canvasModel || index >= walk.length) return;
     // The reverse choreography (#109): the child recedes (rise-out) and the
     // restored ancestor arrives pulling back to rest (rise-in). Same racing
     // discipline as enter — the autosaves run concurrently with the beat and
     // are never delayed by it. Center-origin on both phases (the entered
     // component's post-fit screen position isn't knowable pre-render).
-    const animate = !prefersReducedMotion();
+    // Same reason as the enter path: a rebase is already the frame it lands on,
+    // so it takes no beat. The autosaves below are untouched — a crossing by
+    // wheel loses no more work than a crossing by click, because it IS the
+    // crossing by click.
+    const animate = !arrival && !prefersReducedMotion();
     if (animate) setWalkFx({ phase: "rise-out", origin: "50% 50%" });
     try {
       const saves = (async () => {
@@ -2149,9 +2195,10 @@ function Workspace() {
       setArmed(null);
       setCurrentName(target.currentName);
       setDirty(target.dirty);
-      await refreshLibrary();
-      setFitToken((n) => (n ?? 0) + 1);
+      if (arrival) rebaseView(arrival);
+      else setFitToken((n) => (n ?? 0) + 1);
       setWalkFx(animate ? { phase: "rise-in", origin: "50% 50%" } : null);
+      await refreshLibrary();
     } catch (e) {
       setWalkFx(null);
       setToast(e instanceof Error ? e.message : String(e));
@@ -2660,6 +2707,9 @@ function Workspace() {
                       // swap, no walk segment, no breadcrumb change.
                       childModel={childModelFor}
                       onApproachChild={approachChild}
+                      onRebaseIn={rebaseInto}
+                      onRebaseOut={(v) => void rebaseUp(v)}
+                      viewCommand={viewCommand}
                       onPanChange={setCanvasPan}
                       onScaleChange={setCanvasScale}
                       fitToken={fitToken}

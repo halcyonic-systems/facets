@@ -1,28 +1,33 @@
-// A decomposed component's interior, drawn INSIDE it (#139 M1). Past a size
-// threshold the component's disc stops being a filled body and becomes an
-// aperture: the child model's membrane and its components are drawn in the
-// child's own coordinates, mapped into the parent's frame by one embedding and
-// clipped to the circle. No state changes when this appears — the model on the
-// canvas, the breadcrumb and the walk stack are all untouched. It is a picture
-// of the hierarchy the language already asserts.
+// A decomposed component's interior, drawn INSIDE it (#139 M1, recursive at
+// M2). Past a size threshold the component's disc stops being a filled body and
+// becomes an aperture: the child model's container and its components are drawn
+// in the child's own coordinates, mapped into the enclosing frame by one
+// embedding and clipped to the circle. Nothing about the document changes when
+// this appears — the model on the canvas, the breadcrumb and the walk stack are
+// untouched until the view rebases onto the child (`frameRebase`).
 //
 // Read-only and pointer-transparent by construction: hit-testing stays on the
-// parent model, so what the author drags, selects and edits is exactly what it
+// focused frame, so what the author drags, selects and edits is exactly what it
 // was before the aperture opened.
+//
+// Depth is the same code twice. A frame renders its own sub-frames INSIDE its
+// clipped group, so nesting the clips is nesting the elements and the sub-
+// frame's coordinates are already the ones its `thing` and `embed` are written
+// in — no depth appears in any expression below.
 //
 // The child's ENVIRONMENT stand-ins are not drawn. They are the seam's other
 // half — by the boundary contract each one names an interior neighbour of this
 // very component (`derived_env`), so inside the parent's picture they would
 // restate objects already on the stage, one aperture-width away from
-// themselves. Membrane plus components is what the composed picture asserts.
+// themselves. Container plus components is what the composed picture asserts.
 //
 // The child's own marks are NOT the lens views. Those carry per-thing element
 // ids and a `data-node-label` the stage's crowding pass measures, and a child's
 // thing ids collide with the parent's — so an embedded frame draws its own
 // quiet marks instead, and nothing about the parent's rendering shifts.
-import type { CanvasModel, Relation, Thing } from "../kernel/types";
+import type { Relation, Thing } from "../kernel/types";
 import { KIND_COLOR } from "./types";
-import { embedTransformAttr, type ApertureTier, type Embed } from "./embed";
+import { embedTransformAttr, type ApertureRegister, type FrameNode } from "./embed";
 import { INTERFACE_SCALE, membraneRing, NODE_R, thingById } from "./geometry";
 import { STYLE, elideEdgeLabel } from "./style";
 
@@ -32,56 +37,35 @@ const CAPTION_PX = 9;
 const CAPTION_CHARS = 14;
 
 interface Props {
-  child: CanvasModel;
-  /** The child frame's placement in the PARENT's world coordinates. */
-  embed: Embed;
-  /** Where the aperture sits and how wide, in parent world coordinates. */
-  at: { x: number; y: number };
-  apertureR: number;
-  /** Skeleton draws the membrane and the components; full adds the flows
-   *  between them and short labels. Sealed never reaches here. */
-  tier: ApertureTier;
-  /** Total on-screen scale of the child's own coordinates — the view scale
-   *  times the embedding. Captions and hairlines are divided by it so they
-   *  hold a screen size instead of shrinking into the seam. */
-  screenScale: number;
-  /** The stage's own scale — the rim caption holds a screen size in the parent's frame. */
-  viewScale: number;
-  /** The parent component's name, demoted from a label under a body to a caption on a rim. */
+  node: FrameNode;
+  /** On-screen scale of the ENCLOSING frame's coordinates — the space this
+   *  aperture's disc and rim caption live in, so their screen-held sizes
+   *  divide by it. */
+  frameScale: number;
+  /** Which container the child is read through (#139 rule 5). */
+  register: ApertureRegister;
+  /** The component's name, demoted from a label under a body to a caption on a rim. */
   caption?: string;
-  clipId: string;
 }
 
-export function EmbeddedFrame({ child, embed, at, apertureR, tier, screenScale, viewScale, caption: captionText, clipId }: Props) {
+export function EmbeddedFrame({ node, frameScale, register, caption: captionText }: Props) {
+  const { child, embed, thing: at, tier, screenScale } = node;
+  const clipId = `aperture-${node.key}`;
   const components = child.things.filter((t) => t.role === "Component");
   if (components.length === 0) return null;
-  const ring = membraneRing(components);
-  const drawn = new Set(components.map((t) => t.id));
-  const flows: Relation[] =
-    tier === "full" ? child.relations.filter((r) => drawn.has(r.a) && drawn.has(r.b) && r.a !== r.b) : [];
+  const flows: Relation[] = drawnFlows(node, tier);
   const caption = CAPTION_PX / Math.max(screenScale, 0.0001);
+  const rim = CAPTION_PX / Math.max(frameScale, 0.0001);
   const bodyR = (t: Thing) => (t.interface === true ? NODE_R * INTERFACE_SCALE : NODE_R);
 
   return (
     <g pointerEvents="none" data-aperture={clipId}>
-      {/* The parent's own face is behind this; the aperture is a hole, not a
+      {/* The component's own face is behind this; the aperture is a hole, not a
           translucent overlay, so the body it replaces must not read through. */}
-      <circle cx={at.x} cy={at.y} r={apertureR} fill="var(--bg-primary)" />
+      <circle cx={at.x} cy={at.y} r={NODE_R} fill="var(--bg-primary)" />
       <g clipPath={`url(#${clipId})`}>
         <g transform={embedTransformAttr(embed)}>
-          {/* The child's membrane IS the aperture's inner border — the same
-              mark the child draws for itself one level down. */}
-          <ellipse
-            cx={ring.cx}
-            cy={ring.cy}
-            rx={ring.rx}
-            ry={ring.ry}
-            fill="var(--accent-soft)"
-            fillOpacity={STYLE.ring.fillOpacity}
-            stroke="var(--accent-slate)"
-            strokeWidth={STYLE.ring.strokeWidth}
-            vectorEffect="non-scaling-stroke"
-          />
+          <Membrane components={components} />
           {flows.map((r) => {
             const a = thingById(child, r.a);
             const b = thingById(child, r.b);
@@ -126,6 +110,16 @@ export function EmbeddedFrame({ child, embed, at, apertureR, tier, screenScale, 
                 {elideEdgeLabel(t.name, CAPTION_CHARS)}
               </text>
             ))}
+          {/* One level deeper, in the coordinates this group already establishes. */}
+          {node.children.map((sub) => (
+            <EmbeddedFrame
+              key={sub.key}
+              node={sub}
+              frameScale={screenScale}
+              register={register}
+              caption={sub.thing.name}
+            />
+          ))}
         </g>
       </g>
       {/* The rim the child is read through. Thin and unfilled: the component's
@@ -133,7 +127,7 @@ export function EmbeddedFrame({ child, embed, at, apertureR, tier, screenScale, 
       <circle
         cx={at.x}
         cy={at.y}
-        r={apertureR}
+        r={NODE_R}
         fill="none"
         stroke="var(--lens-accent)"
         strokeOpacity={0.7}
@@ -142,11 +136,11 @@ export function EmbeddedFrame({ child, embed, at, apertureR, tier, screenScale, 
       {captionText && (
         <text
           x={at.x}
-          y={at.y + apertureR + (CAPTION_PX * 1.6) / Math.max(viewScale, 0.0001)}
+          y={at.y + NODE_R + rim * 1.6}
           textAnchor="middle"
-          fontSize={(CAPTION_PX + 1) / Math.max(viewScale, 0.0001)}
+          fontSize={rim + 1 / Math.max(frameScale, 0.0001)}
           fill="var(--text-secondary)"
-          letterSpacing={0.4 / Math.max(viewScale, 0.0001)}
+          letterSpacing={0.4 / Math.max(frameScale, 0.0001)}
           className="font-mono"
         >
           {captionText.toUpperCase()}
@@ -154,4 +148,31 @@ export function EmbeddedFrame({ child, embed, at, apertureR, tier, screenScale, 
       )}
     </g>
   );
+}
+
+/** Mobus: B = ⟨P, I⟩ reified. The child's membrane IS the aperture's inner
+ *  border — the same mark the child draws for itself one level down. */
+function Membrane({ components }: { components: Thing[] }) {
+  const ring = membraneRing(components);
+  return (
+    <ellipse
+      cx={ring.cx}
+      cy={ring.cy}
+      rx={ring.rx}
+      ry={ring.ry}
+      fill="var(--accent-soft)"
+      fillOpacity={STYLE.ring.fillOpacity}
+      stroke="var(--accent-slate)"
+      strokeWidth={STYLE.ring.strokeWidth}
+      vectorEffect="non-scaling-stroke"
+    />
+  );
+}
+
+/** Edges earn their place at the full tier only, and only between things the
+ *  frame actually draws. */
+function drawnFlows(node: FrameNode, tier: FrameNode["tier"]): Relation[] {
+  if (tier !== "full") return [];
+  const drawn = new Set(node.child.things.filter((t) => t.role === "Component").map((t) => t.id));
+  return node.child.relations.filter((r) => drawn.has(r.a) && drawn.has(r.b) && r.a !== r.b);
 }

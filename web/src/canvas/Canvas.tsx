@@ -18,7 +18,6 @@ import {
   straightPath,
   thingById,
   crowdedLabelIds,
-  contentBounds,
   NODE_R,
   type LabelBox,
   type Hull,
@@ -29,13 +28,15 @@ import {
 import { useCanvasGestures } from "./useCanvasGestures";
 import {
   apertureScreenPx,
-  apertureTier,
-  embedTransform,
-  embeddedBounds,
-  PREFETCH_PX,
+  buildFrames,
+  flattenFrames,
+  frameExtentPx,
+  type ApertureRegister,
   type ApertureTier,
+  type Embed,
+  type FrameNode,
 } from "./embed";
-import { wantsEnter, wantsExit } from "./seamCrossing";
+import { rebaseIn, wantsRebaseIn, wantsRebaseOut, type View } from "./frameRebase";
 import { EmbeddedFrame } from "./EmbeddedFrame";
 import { STYLE } from "./style";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
@@ -119,6 +120,17 @@ interface Props {
   onApproachChild?: (id: string) => void;
   /** Starting zoom (tests). */
   initialScale?: number;
+  /** #139 M2: an aperture has taken the stage and its child becomes the render
+   *  root. Carries the composed view (pixel-identical to the frame it fires on)
+   *  and the embed that produced it, which is what the shell inverts on the way
+   *  back out. */
+  onRebaseIn?: (thing: Thing, next: View, embed: Embed) => void;
+  /** …and outward: the focused frame has receded far enough to be read from its
+   *  parent again, with the view to invert. */
+  onRebaseOut?: (view: View) => void;
+  /** Put the view exactly here — a rebase's arrival. Each distinct token
+   *  applies once, and it must win over the fit a swap would otherwise do. */
+  viewCommand?: { token: number; pan: Pt; scale: number } | null;
 }
 
 export default function Canvas({
@@ -148,6 +160,9 @@ export default function Canvas({
   childModel,
   onApproachChild,
   initialScale,
+  onRebaseIn,
+  onRebaseOut,
+  viewCommand = null,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -168,9 +183,22 @@ export default function Canvas({
   // has to run BEFORE the gesture hook that owns the scale, so it reads the
   // PREVIOUS render's tiers. A tier only changes on a scale change, which is
   // itself a render, so the lag is one frame and self-correcting.
-  const tiersRef = useRef(new Map<number, ApertureTier>());
+  const tiersRef = useRef(new Map<string, ApertureTier>());
+  // Tier memory is the hysteresis, and hysteresis is about ONE frame's history.
+  // A crossing puts a different document under the same component ids, so
+  // carrying the memory across would open an aperture on whatever now holds the
+  // id that was open before. Cleared on the document, not on every edit — a
+  // drag must not make an open interior blink.
+  const tierDocRef = useRef<string | null>(null);
+  const tierDocKey = `${model.model_id ?? model.name ?? ""}|${model.things.map((t) => t.id).join(",")}`;
+  if (tierDocRef.current !== tierDocKey) {
+    tierDocRef.current = tierDocKey;
+    tiersRef.current.clear();
+  }
   const openApertureIds = new Set(
-    [...tiersRef.current].filter(([, tier]) => tier !== "sealed").map(([id]) => id),
+    [...tiersRef.current]
+      .filter(([key, tier]) => tier !== "sealed" && !key.includes("-"))
+      .map(([key]) => Number(key)),
   );
   // An on-membrane interface draws a small body and hangs its notches on THAT
   // rim (#306). When the component opens into an aperture, the face grows to
@@ -476,30 +504,25 @@ export default function Canvas({
     const sy = pan.y + t.y * scale;
     return sx + r >= 0 && sx - r <= viewW && sy + r >= 0 && sy - r <= viewH;
   };
-  const decomposed =
-    lens === "Mobus" && childModel
-      ? dModel.things.filter((t) => t.role === "Component" && t.child_model && inViewport(t))
+  // Mobus only, for now. The membrane is what an aperture is read through, and
+  // Bunge's hull is the observer's cut rather than a border a child could be
+  // seen inside; Klir draws no container at all.
+  const register: ApertureRegister | null = lens === "Mobus" ? lens : null;
+  const approaching: string[] = [];
+  const frames: FrameNode[] =
+    register && childModel
+      ? buildFrames(dModel, scale, {
+          childModel,
+          register,
+          tierOf: (key) => tiersRef.current.get(key) ?? "sealed",
+          setTier: (key, tier) => tiersRef.current.set(key, tier),
+          approach: (id) => approaching.push(id),
+          visible: inViewport,
+        })
       : [];
-  // Resolution fires BELOW the tier that draws (the hysteresis band is the head
-  // start), so the child is parsed before the aperture opens rather than
-  // arriving a frame late in the middle of a gesture. One level: nothing deeper
-  // is drawn yet, so nothing deeper is fetched.
-  const approaching =
-    aperturePx >= PREFETCH_PX
-      ? decomposed.map((t) => t.child_model!.id).filter((id) => childModel!(id) === undefined)
-      : [];
-  const apertures = decomposed.flatMap((t) => {
-    const tier = apertureTier(aperturePx, tiersRef.current.get(t.id) ?? "sealed");
-    tiersRef.current.set(t.id, tier);
-    if (tier === "sealed") return [];
-    const child = childModel!(t.child_model!.id);
-    if (!child) return [];
-    const bounds = embeddedBounds(child);
-    if (!bounds) return [];
-    return [{ thing: t, child, tier, embed: embedTransform(t, NODE_R, bounds) }];
-  });
+  const allFrames = flattenFrames(frames);
 
-  const approachKey = approaching.join(" ");
+  const approachKey = [...new Set(approaching)].join(" ");
   useEffect(() => {
     if (!approachKey) return;
     for (const id of approachKey.split(" ")) onApproachChild?.(id);
@@ -510,70 +533,80 @@ export default function Canvas({
   // the small interface rim. One more render settles it — and it terminates,
   // because that render reads the tiers this one just wrote.
   const [, settleApertures] = useState(0);
-  const openNow = apertures.map((a) => a.thing.id).sort().join(" ");
+  const openNow = frames.map((f) => f.thing.id).sort().join(" ");
   const openWhenPortsWerePlaced = [...openApertureIds].sort().join(" ");
   useEffect(() => {
     if (openNow !== openWhenPortsWerePlaced) settleApertures((n) => n + 1);
   }, [openNow, openWhenPortsWerePlaced]);
 
-  // Zoom drives the walk. Keep pushing into an open aperture and the gesture
-  // hands off to `onEnterThing` — the same door the double-click opens, with
-  // the same dive, breadcrumb and autosave; keep pulling back out of a model
-  // that no longer fills its viewport and it hands off to `onExitUp`. The
-  // canvas only reports the crossing, exactly as it does for the double-click;
-  // the shell still owns what entering and rising mean.
+  // The crossing IS the rebase (#139 M2/M3). Keep pushing into an open aperture
+  // and the child stops being drawn through its parent and becomes the render
+  // root: the composite screen transform is unchanged, so the frame is
+  // pixel-identical and only what is editable and what the breadcrumb says
+  // change. Keep pulling back and the mirror runs. The canvas reports the
+  // crossing and the composed view; the shell still owns what entering and
+  // rising mean, which is how the autosave and dirty-state discipline stay in
+  // exactly one place.
   //
-  // Latches are keyed on the AUTHORED model's `things` — the display model is
-  // rebuilt every render and would re-arm on every frame, while a name is
-  // absent on a model nobody has saved. A swap arrives at fit scale, so every
-  // latch is re-armed as already fired and the new frame has to be read from
-  // the other side before it can fire — otherwise the fit answers the gesture
-  // and the walk runs away down the tree.
+  // The arming bits are keyed on the AUTHORED model's `things` — the display
+  // model is rebuilt every render and would re-arm on every frame. A rebase
+  // arrives at a view that is already past the line it fired on, so a fresh
+  // frame starts DISARMED and has to be read on the near side before it can
+  // fire; without that the arrival answers the gesture and the walk runs away.
   const seamDocRef = useRef<readonly Thing[] | null>(null);
-  const enterLatchRef = useRef(new Map<number, boolean>());
-  const exitLatchRef = useRef(true);
+  const inArmRef = useRef(new Map<number, boolean>());
+  const outArmRef = useRef(false);
   useEffect(() => {
     const minView = Math.min(viewW, viewH);
     if (minView <= 0) return;
     if (seamDocRef.current !== model.things) {
       seamDocRef.current = model.things;
-      enterLatchRef.current.clear();
-      exitLatchRef.current = true;
+      inArmRef.current.clear();
+      outArmRef.current = false;
     }
-    // Every decomposed component's latch is read each pass, whatever tier it is
-    // in — a latch that is only touched once its aperture is already full can
-    // never fall back below the reset line, and so never re-arms. Only the
-    // aperture under the middle of the stage can be the one being pushed into,
-    // and only a genuinely open one is a door.
-    let target: Thing | null = null;
+    // Every door's bit is read each pass, whatever tier it is in — a bit only
+    // touched once its aperture is already open can never fall back below its
+    // own line, and so never arms. Only the aperture nearest the middle of the
+    // stage can be the one being pushed into, and only an open one is a door.
+    let target: FrameNode | null = null;
     let nearest = Infinity;
-    const doors = dModel.things.filter((t) => t.child_model);
-    for (const t of doors) {
-      const dx = pan.x + t.x * scale - viewW / 2;
-      const dy = pan.y + t.y * scale - viewH / 2;
+    for (const f of frames) {
+      const dx = pan.x + f.thing.x * scale - viewW / 2;
+      const dy = pan.y + f.thing.y * scale - viewH / 2;
       if (dx * dx + dy * dy < nearest) {
         nearest = dx * dx + dy * dy;
-        target = t;
+        target = f;
       }
     }
-    const openFull = new Set(apertures.filter((a) => a.tier === "full").map((a) => a.thing.id));
-    for (const t of doors) {
-      const next = wantsEnter(aperturePx, minView, enterLatchRef.current.get(t.id) ?? true);
-      enterLatchRef.current.set(t.id, next.latched);
-      if (next.fire && t === target && openFull.has(t.id) && onEnterThing) {
-        onEnterThing(t);
+    for (const t of dModel.things) {
+      if (!t.child_model) continue;
+      const next = wantsRebaseIn(aperturePx, minView, inArmRef.current.get(t.id) ?? false);
+      inArmRef.current.set(t.id, next.armed);
+      if (next.fire && target && t.id === target.thing.id && onRebaseIn) {
+        onRebaseIn(t, rebaseIn({ pan, scale }, target.embed), target.embed);
         return;
       }
     }
-    if (onExitUp) {
-      const box = contentBounds(dModel);
-      const extent = box ? Math.max(box.maxX - box.minX, box.maxY - box.minY) * scale : 0;
-      const next = wantsExit(extent, minView, exitLatchRef.current);
-      exitLatchRef.current = next.latched;
-      if (next.fire) onExitUp();
+    if (onRebaseOut && register) {
+      const extent = frameExtentPx(dModel, scale, register);
+      const next = wantsRebaseOut(extent, minView, outArmRef.current);
+      outArmRef.current = next.armed;
+      if (next.fire) onRebaseOut({ pan, scale });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scale, pan, aperturePx, viewW, viewH, model.things, openNow, onEnterThing, onExitUp]);
+  }, [scale, pan, aperturePx, viewW, viewH, model.things, openNow, onRebaseIn, onRebaseOut]);
+
+  // An arriving rebase sets the view outright — the whole claim of the crossing
+  // is that the picture does not move, so this must land before paint and must
+  // beat the fit a model swap would otherwise run.
+  const { setView } = gestures;
+  useLayoutEffect(() => {
+    if (!viewCommand) return;
+    setView(viewCommand.pan, viewCommand.scale);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewCommand?.token]);
+
+
 
   return (
     <svg
@@ -678,9 +711,14 @@ export default function Canvas({
         {/* #139: an aperture clips its child to the component's own circle.
             The decision was the disc, not a box — a decomposition must not
             invent a second node shape for the thing it is already drawing. */}
-        {apertures.map(({ thing }) => (
-          <clipPath key={thing.id} id={`aperture-${thing.id}`}>
-            <circle cx={thing.x} cy={thing.y} r={NODE_R} />
+        {allFrames.map((f) => (
+          <clipPath key={f.key} id={`aperture-${f.key}`}>
+            {/* A clip path is read in the user space of whatever REFERENCES it,
+                and a nested frame references this from inside its ancestors'
+                embeddings — so the circle is written in the frame's own
+                coordinates at every depth, and the ancestors' clips come from
+                the elements it is nested inside. */}
+            <circle cx={f.thing.x} cy={f.thing.y} r={NODE_R} />
           </clipPath>
         ))}
         {/* energy flows glow (Mobus typed strokes) */}
@@ -968,24 +1006,14 @@ export default function Canvas({
             author still works the parent model through it. The node's name goes
             on drawing beneath the rim, which is what demotes it to a caption:
             the disc it used to sit under is now a way in. */}
-        {apertures.map(({ thing, child, embed, tier }) => (
-          <g key={`aperture-${thing.id}`}>
-            <EmbeddedFrame
-              child={child}
-              embed={embed}
-              at={thing}
-              apertureR={NODE_R}
-              tier={tier}
-              screenScale={scale * embed.s}
-              viewScale={scale}
-              caption={thing.name}
-              clipId={`aperture-${thing.id}`}
-            />
+        {frames.map((f) => (
+          <g key={`aperture-${f.key}`}>
+            <EmbeddedFrame node={f} frameScale={scale} register={register!} caption={f.thing.name} />
             {/* The handle stays clickable through the frame, so it must stay
                 visible through it too — an echo of the one underneath. */}
             <circle
-              cx={thing.x + NODE_R * 0.75}
-              cy={thing.y + NODE_R * 0.75}
+              cx={f.thing.x + NODE_R * 0.75}
+              cy={f.thing.y + NODE_R * 0.75}
               r={STYLE.handle.r}
               fill="var(--bg-primary)"
               stroke="var(--lens-accent)"

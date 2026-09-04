@@ -113,8 +113,8 @@ describe("embeddedBounds", () => {
 describe("apertureTier", () => {
   it("seals, skeletons and fills at the stated sizes", () => {
     expect(apertureTier(10)).toBe("sealed");
-    expect(apertureTier(120)).toBe("skeleton");
-    expect(apertureTier(400)).toBe("full");
+    expect(apertureTier(SKELETON_PX * 1.2)).toBe("skeleton");
+    expect(apertureTier(FULL_PX * 1.2)).toBe("full");
   });
 
   it("needs an overshoot to enter a tier and an undershoot to leave it", () => {
