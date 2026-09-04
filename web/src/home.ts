@@ -136,3 +136,70 @@ export function matchesFacet(row: ShippedModel, facet: Tag | null): boolean {
 export function standardLibraryCount(): number {
   return shippedModels().length;
 }
+
+// ---------------------------------------------------------------------------
+// shelves — the two ways in
+// ---------------------------------------------------------------------------
+
+/** Which fact the shelves are cut on. BY LENS is the default because the
+ *  instrument's claim is about readings, not subject matter: a reader who comes
+ *  in through Mobus learns what the Mobus lens shows before learning what a
+ *  steel plant is. BY DOMAIN is the other door for a reader who arrived with a
+ *  subject already in mind. */
+export type Arrange = "lens" | "domain";
+
+/** One shelf on the "start from one of ours" section: a facet, and the models
+ *  carrying it in the order the shelf offers them. */
+export interface Shelf {
+  kind: "genus" | "tradition";
+  id: string;
+  label: string;
+  /** The author's reading, on a lens shelf. Empty on a domain shelf, which
+   *  names a subject rather than a way of seeing. */
+  note: string;
+  models: ShippedModel[];
+}
+
+/** The model that opens each shelf — an EDITORIAL pin, not a derived first.
+ *  The rest of the shelf is the tag's own list in its authored order, so this
+ *  is the only hand-made list on the page and it holds exactly one key per
+ *  shelf.
+ *
+ *  Mobus's lead is the exception worth reading twice: the three-level
+ *  steel-plant walk is one of OURS (an example, so it carries a genus and no
+ *  tradition), and it is still the best door into the Mobus reading, because
+ *  the thing that reading is FOR is depth. So it is hoisted onto the shelf that
+ *  its tags do not put it on — a stated editorial call, made here, once. */
+const SHELF_LEAD: Record<string, string> = {
+  mobus: "example:steel-plant-walk",
+  bunge: "bunge/two-thing-ab.sl",
+  klir: "klir/students-in-a-course.sl",
+  Biological: "example:ribosome-centers",
+  Social: "example:bitcoin",
+  Technical: "example:steel-plant-walk",
+};
+
+/** The shelves for one arrangement, in the canonical facet order. A facet with
+ *  no models has no shelf. */
+export function shelves(rows: ShippedModel[] = shippedModels(), arrange: Arrange = "lens"): Shelf[] {
+  const kind = arrange === "lens" ? "tradition" : "genus";
+  const out: Shelf[] = [];
+  for (const f of facets(rows).filter((f) => f.kind === kind)) {
+    const carried = rows.filter((r) => matchesFacet(r, f));
+    const lead = SHELF_LEAD[f.id];
+    const pinned = lead ? (carried.find((r) => r.key === lead) ?? rows.find((r) => r.key === lead)) : undefined;
+    const models = pinned ? [pinned, ...carried.filter((r) => r.key !== pinned.key)] : carried;
+    out.push({ kind: f.kind, id: f.id, label: f.label, note: f.note, models });
+  }
+  return out;
+}
+
+/** Does this model answer the search? Name, gloss (the teaches-line on a corpus
+ *  entry), and every tag label — the facts the page shows, so a reader can
+ *  search for what they can see and nothing else. */
+export function matchesQuery(row: ShippedModel, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const hay = [row.name, row.description, ...row.tags.map((t) => t.label)].join(" ").toLowerCase();
+  return hay.includes(q);
+}

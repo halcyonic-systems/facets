@@ -3,29 +3,32 @@
 //
 //   home     Start (Draw your system · Build from data) · Continue (Open a model)
 //            · Try (Sandbox) — documentation and provenance in the colophon
-//   library  ONE FLAT LIST of every model, partitioned by provenance —
-//            Ships with the app / Yours / Drafted with the co-author — plus a
-//            file from disk
+//   library  DOORS: what you had open last, the shelves of ours cut by lens or
+//            by domain, your own saved models, a file — and, one control away,
+//            the flat ledger of everything
 //
-// The library is not a browsing hierarchy any more. Genus and tradition are
-// facts ABOUT a model, not places a model lives, so they ride the row as tags
-// and narrow the list through a filter; the page opens on openable models.
-// The partition that survives is PROVENANCE, because it is the one that will
-// matter on release: a bundle ships a handful of models and everything else is
-// the user's own.
+// The library used to open on that ledger: one flat list of every model, with
+// a facet filter above it. The list was right about what a library IS and
+// wrong about what opening one is FOR. Forty rows in one column answers "show
+// me everything" — a question a returning reader never asks. What they ask is
+// "where was I", or "what does the Mobus lens look like", or "what have I got
+// about ecosystems", and each of those is a DOOR.
 //
-// Rows and facets are both derived (home.ts) from the same groupings the
-// gallery has always read — a new example or a new corpus tradition appears
-// with no edit here.
+// So the page is doors now, in the order those questions get asked: Recent,
+// then ours (cut by the reading a model is transcribed under, or by the
+// subject it is about — one toggle, remembered), then yours, then a file. The
+// ledger keeps every line it had and sits behind "browse all as a list",
+// because it is still the only view that shows the whole library at once and
+// the only one that has room for citations and tags.
+//
+// Two facts the doors need that the ledger did not: what was opened WHEN
+// (recent.ts — per-reader, so it cannot live where the models live) and what a
+// saved copy was made FROM (a `from` on the library record, set at the save
+// that makes the copy and carried forward). Neither touches the model format.
 //
 // The examples/corpus separation is still the point: an example is ours, a
-// corpus entry is an author's. The CITATION LINE is what tells them apart on
-// the page — identical row layout, corpus rows render a citation and example
-// rows do not.
-//
-// The row's left cell is a fixed 3rem gutter holding the folio numeral. It is
-// sized to take a diagram thumbnail later (#311) without the rest of the row
-// moving.
+// corpus entry is an author's. The CITATION LINE is what tells them apart, and
+// it reads in the list view, on identical rows.
 //
 // Visual language: docs/design/visual-language.md. A white sheet on a neutral
 // ground, hairline rules for structure, and colour ONLY where it names
@@ -48,13 +51,15 @@ import { draftedModels, type DraftedModel } from "./drafted";
 import {
   facets,
   matchesFacet,
+  matchesQuery,
+  shelves,
   shippedModels,
-  CORPUS_NOTE,
-  EXAMPLES_NOTE,
+  type Arrange,
   type Facet,
   type ShippedModel,
   type Tag,
 } from "./home";
+import { noteArrange, readArrange, readRecent, type RecentEntry } from "./recent";
 import { openExternal } from "./desktop";
 import { buildInfo, provenanceLines } from "./buildInfo";
 import Thumbnail from "./canvas/Thumbnail";
@@ -229,6 +234,7 @@ function Masthead({
   note,
   stat,
   statLabel,
+  aside,
   back,
 }: {
   eyebrow?: string;
@@ -241,6 +247,11 @@ function Masthead({
   note?: string;
   stat?: number;
   statLabel?: string;
+  /** A control set against the title rather than a fact about the page — the
+   *  library's search field. It takes the place the count occupies elsewhere,
+   *  and the two are alternatives: a page that can be searched does not also
+   *  need to announce how many things are in it. */
+  aside?: ReactNode;
   back?: { label: string; onClick: () => void };
 }) {
   return (
@@ -271,6 +282,7 @@ function Masthead({
             </h1>
           </div>
         </div>
+        {aside && <div className="shrink-0 pt-2">{aside}</div>}
         {stat !== undefined && (
           <div className="shrink-0 pt-1 text-right">
             <div
@@ -835,9 +847,181 @@ function FilterLine({
   );
 }
 
-/** How many saved roots list inline before the browser folds the rest behind a
- *  "show all" — enough that a normal library never folds at all. */
+/** How many saved roots list inline before the LIST view folds the rest behind
+ *  a "show all" — enough that a normal library never folds at all. */
 const INLINE_LIBRARY_ROOTS = 12;
+
+/** How many cards a shelf offers before "all N →" opens the rest, and how many
+ *  saved models the Yours grid offers before "and N more →". One row of three,
+ *  because a shelf is a door and a door does not need to be a catalogue. */
+const SHELF_CARDS = 3;
+
+/** How many opens the Recent strip shows. Four, one row. */
+const RECENT_CARDS = 4;
+
+/** When something happened, as a person says it. Minutes and hours while the
+ *  memory is fresh, then the weekday while "Tuesday" still locates it, then a
+ *  date. `relTime` (below) stays the LIST view's phrasing — "saved 3d ago" is a
+ *  record's fact; this is a reader's. */
+function whenLabel(ts: number, now = Date.now()): string {
+  const m = Math.floor((now - ts) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d === 1) return "yesterday";
+  if (d < 7) return new Date(ts).toLocaleDateString(undefined, { weekday: "short" });
+  return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+/** The card's left cell: the model's own diagram at card scale, in a frame that
+ *  holds its place before (and if) the drawing arrives. A saved model has no SL
+ *  on this page — the library store holds its archive and the tree carries only
+ *  the name — so its frame stays empty rather than showing a stand-in glyph
+ *  that would claim a shape the model may not have. */
+function CardThumb({ cacheKey, sl }: { cacheKey: string; sl?: string }) {
+  const compiled = useThumbnailModel(cacheKey, sl);
+  return (
+    <span
+      className="flex h-11 w-11 shrink-0 items-center justify-center border"
+      style={{ borderColor: "var(--rule-soft)", background: "var(--paper-edge)" }}
+    >
+      {compiled && <Thumbnail model={compiled} size={34} />}
+    </span>
+  );
+}
+
+/** One model as a card: its drawing, its name, and ONE line under it. Which
+ *  line depends on the section, and that is the section's business — Recent
+ *  says when and whose, a shelf says what the model teaches, Yours says when it
+ *  was saved. A card never says two of those at once; the row in the list view
+ *  is where a model's full record is read. */
+function ModelCard({
+  name,
+  sub,
+  runs,
+  cacheKey,
+  sl,
+  onClick,
+  trailing,
+}: {
+  name: string;
+  sub: ReactNode;
+  runs?: boolean;
+  cacheKey: string;
+  sl?: string;
+  onClick?: () => void;
+  /** Manage-mode controls. Present only where the section put them there. */
+  trailing?: ReactNode;
+}) {
+  const body = (
+    <>
+      <CardThumb cacheKey={cacheKey} sl={sl} />
+      <span className="block min-w-0 flex-1">
+        <span className="flex min-w-0 items-baseline gap-2">
+          <span className="truncate text-lg leading-tight" style={nameStyle}>
+            {name}
+          </span>
+          {runs && (
+            <span
+              className="shrink-0 text-[10px]"
+              style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--seal)" }}
+            >
+              runs
+            </span>
+          )}
+        </span>
+        <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--ink-secondary)" }}>
+          {sub}
+        </span>
+      </span>
+    </>
+  );
+  const style: CSSProperties = {
+    borderColor: "var(--rule-soft)",
+    borderRadius: "var(--radius-sm)",
+    background: "var(--paper)",
+  };
+  return trailing ? (
+    <div className="home-panel flex min-w-0 items-center gap-3 border px-3 py-2.5 text-left" style={style}>
+      {body}
+      {trailing}
+    </div>
+  ) : (
+    <button
+      onClick={onClick}
+      title={name}
+      className="home-panel flex min-w-0 items-center gap-3 border px-3 py-2.5 text-left"
+      style={style}
+    >
+      {body}
+    </button>
+  );
+}
+
+/** A grid of cards. Three across on a shelf and in Yours, four across in the
+ *  Recent strip. */
+function CardGrid({ across, children }: { across: 3 | 4; children: ReactNode }) {
+  return (
+    <div className={`grid gap-2.5 ${across === 4 ? "grid-cols-4" : "grid-cols-3"}`}>{children}</div>
+  );
+}
+
+/** A section mark with something set against it at the right — the Recent
+ *  strip's gloss, the arrangement toggle, the Yours count and its manage link.
+ *  `BlockHeader` above is the same object with a count; this one takes a node,
+ *  because these are controls rather than facts. */
+function SectionHead({ label, right, lead }: { label: string; right?: ReactNode; lead?: boolean }) {
+  return (
+    <div className="flex items-baseline gap-4 pb-3">
+      <span
+        className="shrink-0 text-[11px] uppercase tracking-[0.28em]"
+        style={{ ...folioStyle, color: lead ? "var(--accent)" : "var(--ink-muted)" }}
+      >
+        {label}
+      </span>
+      <span className="h-px min-w-6 flex-1" style={{ background: "var(--rule-soft)" }} />
+      {right}
+    </div>
+  );
+}
+
+/** A shelf's own head: the tradition's world hue as a 3px bar, the shelf's
+ *  name, and the control that opens the rest of it. A DOMAIN shelf carries no
+ *  bar — a genus is not a reading, and lending it a world hue would say that it
+ *  is. */
+function ShelfHead({
+  label,
+  note,
+  hue,
+  total,
+  shown,
+  onExpand,
+}: {
+  label: string;
+  note: string;
+  hue?: string;
+  total: number;
+  shown: number;
+  onExpand: () => void;
+}) {
+  return (
+    <div className="flex items-baseline gap-2.5 pb-2">
+      {hue && <span aria-hidden className="h-3 w-[3px] shrink-0 self-center" style={{ background: hue }} />}
+      <span className="text-[10px] uppercase tracking-[0.2em]" style={folioStyle}>
+        {label}
+        {note ? ` · ${note}` : ""}
+      </span>
+      <span className="flex-1" />
+      {shown < total && (
+        <button onClick={onExpand} className="record-folio shrink-0 text-[10px] tracking-[0.1em]" style={folioStyle}>
+          all {total} →
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function LibraryBrowser({
   tree,
@@ -853,6 +1037,16 @@ export function LibraryBrowser({
    *  passes it today, and it exists so a caller (or a test) can enter the
    *  library on a narrowed view without a page of its own. */
   initialFacet,
+  /** The same door for the rest of this page's state: the view, the search, the
+   *  arrangement, manage mode, and the recency list. Every one of them has a
+   *  live default (state, storage, or both) — these exist so a test can render
+   *  one configuration to static markup, and so the recency list can be handed
+   *  in rather than read out of a browser this page may not be running in. */
+  initialView = "doors",
+  initialQuery = "",
+  initialArrange,
+  initialManage = false,
+  recent,
 }: {
   tree: LibraryNode[];
   onBack: () => void;
@@ -864,6 +1058,11 @@ export function LibraryBrowser({
   onDelete: (name: string) => void;
   onRename: (from: string, to: string) => Promise<boolean>;
   initialFacet?: Tag | null;
+  initialView?: "doors" | "list";
+  initialQuery?: string;
+  initialArrange?: Arrange;
+  initialManage?: boolean;
+  recent?: RecentEntry[];
 }) {
   const all = shippedModels();
   const allFacets = facets(all);
@@ -881,10 +1080,523 @@ export function LibraryBrowser({
       live = false;
     };
   }, []);
-  const [facet, setFacet] = useState<Tag | null>(initialFacet ?? null);
-  const shown = all.filter((m) => matchesFacet(m, facet));
-  const savedCount = countLibrary(tree);
+  const [view, setView] = useState<"doors" | "list">(initialView);
+  const [query, setQuery] = useState(initialQuery);
+  const [arrange, setArrange] = useState<Arrange>(() => initialArrange ?? readArrange());
+  const [manage, setManage] = useState(initialManage);
+  const [opened, setOpened] = useState<string[]>([]);
   const [showAllSaved, setShowAllSaved] = useState(false);
+  const [facet, setFacet] = useState<Tag | null>(initialFacet ?? null);
+  const [visits] = useState<RecentEntry[]>(() => recent ?? readRecent());
+
+  const q = query.trim().toLowerCase();
+  const savedCount = countLibrary(tree);
+  const saved = flattenSaved(tree);
+  const shownShipped = all.filter((m) => matchesQuery(m, q));
+  const shownSaved = saved.filter((n) => n.name.toLowerCase().includes(q));
+  const shownDrafted = drafted.filter((d) => d.description.toLowerCase().includes(q));
+
+  // A visit becomes a card only if its address still resolves — a deleted slot
+  // or a renamed one simply drops out, which is why nothing here migrates the
+  // stored list. The name comes from the model, never from the visit.
+  const recentCards = visits
+    .map((v) => {
+      if (v.kind === "library") {
+        const node = shownSaved.find((n) => n.name === v.key);
+        return node ? { visit: v, node, model: undefined } : null;
+      }
+      const model = shownShipped.find((m) => m.key === v.key);
+      return model ? { visit: v, node: undefined, model } : null;
+    })
+    .filter((c): c is NonNullable<typeof c> => c !== null)
+    .slice(0, RECENT_CARDS);
+
+  const chooseArrange = (next: Arrange) => {
+    setArrange(next);
+    noteArrange(next);
+  };
+  const openShipped = (m: ShippedModel) =>
+    m.open.kind === "example" ? onOpenExample(m.open.demo) : onOpenCorpus(m.open.entry);
+  const slOf = (m: ShippedModel) => (m.open.kind === "example" ? m.open.demo.sl : m.open.entry.sl);
+
+  return (
+    <div>
+      <Masthead
+        eyebrow="Library"
+        title="Open a model"
+        lede="Pick up where you left off, or come in through a lens or a domain."
+        back={{ label: "Home", onClick: onBack }}
+        aside={<SearchField value={query} onChange={setQuery} />}
+      />
+
+      <Column className="pb-16 pt-6">
+        {view === "list" ? (
+          <LedgerView
+            all={all}
+            allFacets={allFacets}
+            facet={facet}
+            setFacet={setFacet}
+            tree={tree}
+            savedCount={savedCount}
+            drafted={drafted}
+            showAllSaved={showAllSaved}
+            setShowAllSaved={setShowAllSaved}
+            onOpenExample={onOpenExample}
+            onOpenCorpus={onOpenCorpus}
+            onOpenDrafted={onOpenDrafted}
+            onLoad={onLoad}
+            onDelete={onDelete}
+            onRename={onRename}
+            onOpenFile={onOpenFile}
+            onBackToDoors={() => setView("doors")}
+          />
+        ) : (
+          <>
+            {/* Recent. Absent on a first visit rather than empty: a reader who
+                has opened nothing is not missing anything, and a headed strip of
+                four blanks would say that they are. */}
+            {recentCards.length > 0 && (
+              <section>
+                <SectionHead
+                  lead
+                  label="Recent"
+                  right={
+                    <span className="shrink-0 text-[10px] tracking-[0.12em]" style={{ fontFamily: mono, color: "var(--ink-muted)" }}>
+                      yours, and ours you have touched
+                    </span>
+                  }
+                />
+                <CardGrid across={4}>
+                  {recentCards.map(({ visit, node, model }) =>
+                    node ? (
+                      <ModelCard
+                        key={`recent:${visit.kind}:${visit.key}`}
+                        cacheKey={`saved:${node.name}`}
+                        name={node.name}
+                        sub={savedSubline(node, visit.at)}
+                        onClick={() => onLoad(node.name)}
+                      />
+                    ) : model ? (
+                      <ModelCard
+                        key={`recent:${visit.kind}:${visit.key}`}
+                        cacheKey={model.key}
+                        sl={slOf(model)}
+                        name={model.name}
+                        runs={model.runs}
+                        sub={`ours · ${whenLabel(visit.at)}`}
+                        onClick={() => openShipped(model)}
+                      />
+                    ) : null,
+                  )}
+                </CardGrid>
+              </section>
+            )}
+
+            {/* Start from one of ours. Two cuts of the same shelf of models —
+                by the READING a model is transcribed under, or by the subject
+                it is about. The toggle is one control, not two pages, because
+                these are two views of one list and the reader should be able to
+                change their mind without losing their place. */}
+            <section className="mt-9">
+              <SectionHead
+                label="Start from one of ours"
+                right={<ArrangeToggle value={arrange} onChange={chooseArrange} />}
+              />
+              {shownShipped.length === 0 ? (
+                <EmptyLine>no model of ours matches “{query.trim()}”</EmptyLine>
+              ) : q ? (
+                // A search is a different way of finding than a shelf is. The
+                // shelves are DOORS — a reader who has named what they want has
+                // already gone through one, and cutting their eight matches
+                // across three headed shelves (two of which would be empty,
+                // because an example carries a genus and a corpus entry carries
+                // a tradition and neither carries both) would hide the answer
+                // behind the furniture. One grid, every match.
+                <CardGrid across={3}>
+                  {shownShipped.map((m) => (
+                    <ModelCard
+                      key={m.key}
+                      cacheKey={m.key}
+                      sl={slOf(m)}
+                      name={m.name}
+                      runs={m.runs}
+                      sub={m.description}
+                      onClick={() => openShipped(m)}
+                    />
+                  ))}
+                </CardGrid>
+              ) : (
+                shelves(shownShipped, arrange).map((shelf) => {
+                  const expanded = opened.includes(shelf.id);
+                  const cards = expanded ? shelf.models : shelf.models.slice(0, SHELF_CARDS);
+                  return (
+                    <div key={`${arrange}:${shelf.id}`} className="mt-4 first:mt-3">
+                      <ShelfHead
+                        label={shelf.label}
+                        note={shelf.note}
+                        hue={shelf.kind === "tradition" ? WORLD_HUE[shelf.id] : undefined}
+                        total={shelf.models.length}
+                        shown={cards.length}
+                        onExpand={() => setOpened((o) => [...o, shelf.id])}
+                      />
+                      <CardGrid across={3}>
+                        {cards.map((m) => (
+                          <ModelCard
+                            key={m.key}
+                            cacheKey={m.key}
+                            sl={slOf(m)}
+                            name={m.name}
+                            runs={m.runs}
+                            sub={m.description}
+                            onClick={() => openShipped(m)}
+                          />
+                        ))}
+                      </CardGrid>
+                    </div>
+                  );
+                })
+              )}
+            </section>
+
+            {/* Yours. The half that grows. Manage is a MODE rather than a
+                control on every card: renaming and deleting are not what a
+                reader came here to do, and a × on every card invites the one
+                click this page cannot undo. */}
+            <section className="mt-9">
+              <SectionHead
+                label="Yours"
+                right={
+                  <span className="flex shrink-0 items-baseline gap-3 text-[10px] tracking-[0.12em]" style={{ fontFamily: mono, color: "var(--ink-muted)" }}>
+                    <span>
+                      {savedCount} · newest first
+                    </span>
+                    {savedCount > 0 && (
+                      <button onClick={() => setManage((m) => !m)} className="record-folio" style={folioStyle}>
+                        {manage ? "done" : "manage →"}
+                      </button>
+                    )}
+                  </span>
+                }
+              />
+              {savedCount === 0 ? (
+                <EmptyLine>nothing saved yet — a model you save lands here, under its own name</EmptyLine>
+              ) : shownSaved.length === 0 ? (
+                <EmptyLine>none of your models matches “{query.trim()}”</EmptyLine>
+              ) : (
+                <>
+                  <CardGrid across={3}>
+                    {(showAllSaved || q ? shownSaved : shownSaved.slice(0, SHELF_CARDS)).map((node) => (
+                      <SavedCard
+                        key={node.name}
+                        node={node}
+                        manage={manage}
+                        onLoad={onLoad}
+                        onDelete={onDelete}
+                        onRename={onRename}
+                      />
+                    ))}
+                  </CardGrid>
+                  {!showAllSaved && !q && shownSaved.length > SHELF_CARDS && (
+                    <button
+                      onClick={() => setShowAllSaved(true)}
+                      className="record-folio mt-2.5 text-[10px] tracking-[0.12em]"
+                      style={folioStyle}
+                    >
+                      and {shownSaved.length - SHELF_CARDS} more →
+                    </button>
+                  )}
+                </>
+              )}
+              {/* Drafted models are the reader's own asks, answered — they
+                  belong under Yours and keep their marker, which is the model
+                  that answered. Absent, not empty, when the co-author has never
+                  been used (#324). */}
+              {shownDrafted.length > 0 && (
+                <div className="mt-5">
+                  <ShelfHead
+                    label="drafted with the co-author"
+                    note=""
+                    total={shownDrafted.length}
+                    shown={shownDrafted.length}
+                    onExpand={() => {}}
+                  />
+                  <CardGrid across={3}>
+                    {shownDrafted.slice(0, q ? shownDrafted.length : SHELF_CARDS).map((d) => (
+                      <ModelCard
+                        key={d.key}
+                        cacheKey={d.key}
+                        sl={d.sl}
+                        name={d.description}
+                        sub={`${draftedGloss(d)} · ${d.model}`}
+                        onClick={() => onOpenDrafted(d.sl)}
+                      />
+                    ))}
+                  </CardGrid>
+                </div>
+              )}
+            </section>
+
+            <section className="mt-9">
+              <SectionHead label="From a file" />
+              <button
+                onClick={onOpenFile}
+                className="home-panel flex w-full items-center gap-4 border px-3 py-2.5 text-left"
+                style={{ borderColor: "var(--rule-soft)", borderRadius: "var(--radius-sm)", background: "var(--paper)" }}
+              >
+                <span
+                  className="flex h-11 w-11 shrink-0 items-center justify-center border text-[11px]"
+                  style={{ borderColor: "var(--rule-soft)", background: "var(--paper-edge)", fontFamily: mono, color: "var(--ink-muted)" }}
+                >
+                  ·
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-lg leading-tight" style={doorStyle}>
+                    Open a file…
+                  </span>
+                  <span className="mt-0.5 block truncate text-[11px]" style={{ color: "var(--ink-secondary)" }}>
+                    a model .json from your computer
+                  </span>
+                </span>
+              </button>
+            </section>
+
+            <div className="mt-9 pt-3.5" style={{ borderTop: "1px solid var(--rule-soft)" }}>
+              <button
+                onClick={() => setView("list")}
+                className="record-folio text-[11px] uppercase tracking-[0.2em]"
+                style={folioStyle}
+              >
+                Browse all {all.length + savedCount} as a list
+              </button>
+            </div>
+          </>
+        )}
+      </Column>
+    </div>
+  );
+}
+
+/** The search field, set in the masthead opposite the title. It narrows every
+ *  section on the page at once rather than filtering one of them, because the
+ *  reader searching for "ribosome" does not know or care which section holds
+ *  it. */
+function SearchField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <label
+      className="flex min-w-[18rem] items-center gap-2.5 border px-3.5 py-2.5"
+      style={{ borderColor: "var(--rule-soft)", borderRadius: "var(--radius-sm)" }}
+    >
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden style={{ color: "var(--ink-muted)" }}>
+        <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+        <line x1="11" y1="11" x2="15" y2="15" stroke="currentColor" strokeWidth="1.4" />
+      </svg>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Find a model"
+        aria-label="Find a model"
+        className="w-full min-w-0 bg-transparent text-sm outline-none"
+        style={{ color: "var(--ink)" }}
+      />
+    </label>
+  );
+}
+
+/** By lens | By domain. One control with two states, set as a printed toggle:
+ *  the chosen half is reversed out of the ink, the other sits on the paper. */
+function ArrangeToggle({ value, onChange }: { value: Arrange; onChange: (v: Arrange) => void }) {
+  const cell = (v: Arrange, label: string) => (
+    <button
+      onClick={() => onChange(v)}
+      aria-pressed={value === v}
+      className="px-2.5 py-1 text-[10px] uppercase tracking-[0.16em]"
+      style={{
+        fontFamily: mono,
+        background: value === v ? "var(--ink)" : "transparent",
+        color: value === v ? "var(--paper)" : "var(--ink-muted)",
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <span className="inline-flex shrink-0 border" style={{ borderColor: "var(--rule-soft)" }}>
+      {cell("lens", "By lens")}
+      {cell("domain", "By domain")}
+    </span>
+  );
+}
+
+/** A section that has nothing to show, saying so in one line on the rule. The
+ *  page keeps its shape: an empty section is a sentence, never a gap. */
+function EmptyLine({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="border-t py-3 text-sm"
+      style={{
+        borderColor: "var(--rule-soft)",
+        color: "var(--ink-muted)",
+        fontFamily: display,
+        fontStyle: "italic",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** The saved tree, flattened to the grid's reading order — newest first, a
+ *  child no less openable than its root. The nesting is the LIST view's
+ *  subject; a card grid has no place to draw it and should not pretend. */
+function flattenSaved(tree: LibraryNode[]): LibraryNode[] {
+  const out: LibraryNode[] = [];
+  const walk = (n: LibraryNode) => {
+    out.push(n);
+    n.children.forEach(walk);
+  };
+  tree.forEach(walk);
+  return out.sort((a, b) => b.savedAt - a.savedAt);
+}
+
+/** What a saved model's card says under its name. Lineage when the record has
+ *  it — "your copy · from The Steel-Plant…" is the fact that a reader looking
+ *  at two similar names most needs. */
+function savedSubline(node: LibraryNode, at?: number): string {
+  const when = whenLabel(at ?? node.savedAt);
+  return node.from ? `your copy · from ${node.from} · ${when}` : `yours · ${when}`;
+}
+
+/** One saved model as a card. In manage mode it grows the two controls the list
+ *  view has always carried — rename in place (Enter or blur commits, Esc
+ *  cancels, a refused name keeps the field open) and delete — running through
+ *  the same handlers, so there is one delete in this app and not two. */
+function SavedCard({
+  node,
+  manage,
+  onLoad,
+  onDelete,
+  onRename,
+}: {
+  node: LibraryNode;
+  manage: boolean;
+  onLoad: (name: string) => void;
+  onDelete: (name: string) => void;
+  onRename: (from: string, to: string) => Promise<boolean>;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const cancelled = useRef(false);
+  const commit = async () => {
+    if (draft === null || cancelled.current) return;
+    if (await onRename(node.name, draft)) setDraft(null);
+  };
+  if (draft !== null) {
+    return (
+      <div
+        className="flex min-w-0 items-center gap-3 border px-3 py-2.5"
+        style={{ borderColor: "var(--rule-soft)", borderRadius: "var(--radius-sm)", background: "var(--paper)" }}
+      >
+        <CardThumb cacheKey={`saved:${node.name}`} />
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void commit();
+            if (e.key === "Escape") {
+              cancelled.current = true;
+              setDraft(null);
+            }
+          }}
+          onBlur={() => void commit()}
+          aria-label={`Rename ${node.name}`}
+          className="min-w-0 flex-1 px-1 text-sm outline-none"
+          style={{ background: "var(--paper-edge)", border: "1px solid var(--rule-soft)", color: "var(--ink)" }}
+        />
+      </div>
+    );
+  }
+  return (
+    <ModelCard
+      cacheKey={`saved:${node.name}`}
+      name={node.name}
+      sub={savedSubline(node)}
+      onClick={manage ? undefined : () => onLoad(node.name)}
+      trailing={
+        manage ? (
+          <span className="flex shrink-0 items-center gap-0.5">
+            <button
+              onClick={() => {
+                cancelled.current = false;
+                setDraft(node.name);
+              }}
+              title={`Rename ${node.name} — same model, new library name`}
+              className="px-1.5 text-sm"
+              style={{ color: "var(--ink-muted)" }}
+            >
+              ✎
+            </button>
+            <button
+              onClick={() => onDelete(node.name)}
+              title={`Delete ${node.name}`}
+              className="px-1.5 text-sm"
+              style={{ color: "var(--ink-muted)" }}
+            >
+              ×
+            </button>
+          </span>
+        ) : undefined
+      }
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// the list view
+// ---------------------------------------------------------------------------
+
+/** The flat ledger the library used to open on: every model on one page in the
+ *  canonical reading order, partitioned by provenance, with the facet filter
+ *  above it. It is no longer the front door — the doors are — but it is the
+ *  only view that shows the WHOLE library at once, and citations, sibling-set
+ *  names and tags all read here, so it keeps every line it had. */
+function LedgerView({
+  all,
+  allFacets,
+  facet,
+  setFacet,
+  tree,
+  savedCount,
+  drafted,
+  showAllSaved,
+  setShowAllSaved,
+  onOpenExample,
+  onOpenCorpus,
+  onOpenDrafted,
+  onLoad,
+  onDelete,
+  onRename,
+  onOpenFile,
+  onBackToDoors,
+}: {
+  all: ShippedModel[];
+  allFacets: Facet[];
+  facet: Tag | null;
+  setFacet: (f: Tag | null) => void;
+  tree: LibraryNode[];
+  savedCount: number;
+  drafted: DraftedModel[];
+  showAllSaved: boolean;
+  setShowAllSaved: (v: boolean) => void;
+  onOpenExample: (d: Demo) => void;
+  onOpenCorpus: (e: CorpusEntry) => void;
+  onOpenDrafted: (sl: string) => void;
+  onLoad: (name: string) => void;
+  onDelete: (name: string) => void;
+  onRename: (from: string, to: string) => Promise<boolean>;
+  onOpenFile: () => void;
+  onBackToDoors: () => void;
+}) {
+  const shown = all.filter((m) => matchesFacet(m, facet));
   const shownRoots = showAllSaved ? tree : tree.slice(0, INLINE_LIBRARY_ROOTS);
   const foldedRoots = tree.length - shownRoots.length;
   const genera = allFacets.filter((f) => f.kind === "genus");
@@ -892,178 +1604,155 @@ export function LibraryBrowser({
   const isSelected = (f: Facet) => facet?.kind === f.kind && facet?.id === f.id;
   const toggle = (f: Facet) => setFacet(isSelected(f) ? null : f);
   return (
-    <div>
-      <Masthead
-        eyebrow="Library"
-        title="Open a model"
-        note={`${EXAMPLES_NOTE} ${CORPUS_NOTE}`}
-        stat={all.length + savedCount}
-        statLabel="models"
-        back={{ label: "Home", onClick: onBack }}
-      />
+    <>
+      <button
+        onClick={onBackToDoors}
+        className="record-folio mb-4 block text-[11px] uppercase tracking-[0.2em]"
+        style={folioStyle}
+      >
+        ‹ Doors
+      </button>
 
-      <Column className="pb-20 pt-6">
-        {/* The filter, immediately under the masthead and immediately above the
-            models — genus and tradition are facts about a model, not places a
-            model lives, so they narrow the list in place. Counts come off the
-            same list the section below renders (home.ts), so a facet's number
-            cannot drift from what selecting it shows. */}
-        <section className="pb-2">
-          <FilterLine label="Genus">
-            {genera.map((f) => (
-              <FacetButton key={`genus:${f.id}`} facet={f} selected={isSelected(f)} onClick={() => toggle(f)} />
-            ))}
-          </FilterLine>
-          <FilterLine label="Tradition">
-            {traditions.map((f) => (
-              <FacetButton
-                key={`tradition:${f.id}`}
-                facet={f}
-                selected={isSelected(f)}
-                onClick={() => toggle(f)}
+      {/* The filter, immediately above the models — genus and tradition are
+          facts about a model, not places a model lives, so they narrow the list
+          in place. Counts come off the same list the section below renders
+          (home.ts), so a facet's number cannot drift from what selecting it
+          shows. */}
+      <section className="pb-2">
+        <FilterLine label="Genus">
+          {genera.map((f) => (
+            <FacetButton key={`genus:${f.id}`} facet={f} selected={isSelected(f)} onClick={() => toggle(f)} />
+          ))}
+        </FilterLine>
+        <FilterLine label="Tradition">
+          {traditions.map((f) => (
+            <FacetButton
+              key={`tradition:${f.id}`}
+              facet={f}
+              selected={isSelected(f)}
+              onClick={() => toggle(f)}
+            />
+          ))}
+          {facet && (
+            <button
+              onClick={() => setFacet(null)}
+              className="record-folio pb-1.5 pt-1 text-[11px] uppercase tracking-[0.2em]"
+              style={folioStyle}
+            >
+              clear · show all {all.length}
+            </button>
+          )}
+        </FilterLine>
+      </section>
+
+      {/* Ships. One flat list — every model that comes with the app, opened
+          from the row it is listed on. */}
+      <section className="mt-8">
+        <BlockHeader label="Ships with the app" count={`${shown.length} model${shown.length === 1 ? "" : "s"}`} />
+        {shown.length === 0 ? (
+          <EmptyLine>no model carries that tag</EmptyLine>
+        ) : (
+          <Ledger>
+            {shown.map((m, i) => (
+              <ModelRow
+                key={m.key}
+                model={m}
+                index={i + 1}
+                onClick={() =>
+                  m.open.kind === "example" ? onOpenExample(m.open.demo) : onOpenCorpus(m.open.entry)
+                }
               />
             ))}
-            {facet && (
-              <button
-                onClick={() => setFacet(null)}
-                className="record-folio pb-1.5 pt-1 text-[11px] uppercase tracking-[0.2em]"
-                style={folioStyle}
+          </Ledger>
+        )}
+      </section>
+
+      {/* Yours. The other half of the partition, and the half that grows:
+          a release ships a handful of models and everything else is the
+          user's own. Saved models carry no genus or tradition, so a facet
+          selection empties this section rather than silently ignoring it. */}
+      <section className="mt-16">
+        <BlockHeader label="Yours" count={`${savedCount} model${savedCount === 1 ? "" : "s"}`} />
+        {facet ? (
+          <EmptyLine>your models carry no genus or tradition tag — clear the filter to see them</EmptyLine>
+        ) : tree.length === 0 ? (
+          <EmptyLine>no saved models yet</EmptyLine>
+        ) : (
+          <div style={{ borderTop: "1px solid var(--rule)" }}>
+            {shownRoots.map((root, i) => (
+              <div
+                key={root.name}
+                className="grid w-full grid-cols-[3rem_1fr] items-stretch border-b"
+                style={{ borderColor: "var(--rule-soft)" }}
               >
-                clear · show all {all.length}
+                <span
+                  className="flex items-start justify-end pr-5 pt-3 text-[11px] tabular"
+                  style={{ color: "var(--ink-muted)" }}
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <div className="py-2.5 pr-2">
+                  <LibraryRow node={root} depth={0} onLoad={onLoad} onDelete={onDelete} onRename={onRename} />
+                </div>
+              </div>
+            ))}
+            {foldedRoots > 0 && (
+              <button
+                onClick={() => setShowAllSaved(true)}
+                className="block w-full border-b py-2.5 text-left text-[11px] uppercase tracking-[0.18em]"
+                style={{ borderColor: "var(--rule-soft)", ...folioStyle }}
+              >
+                show all {tree.length} saved models
               </button>
             )}
-          </FilterLine>
-        </section>
+          </div>
+        )}
+      </section>
 
-        {/* Ships. One flat list — every model that comes with the app, opened
-            from the row it is listed on. */}
-        <section className="mt-8">
-          <BlockHeader label="Ships with the app" count={`${shown.length} model${shown.length === 1 ? "" : "s"}`} />
-          {shown.length === 0 ? (
-            <div
-              className="border-t py-3 text-sm"
-              style={{ borderColor: "var(--rule-soft)", color: "var(--ink-muted)", fontFamily: display, fontStyle: "italic" }}
-            >
-              no model carries that tag
-            </div>
+      {/* Drafted. The third provenance (#324), and the only one that can be
+          absent: it is read from the reasoner, which is off until the user
+          turns it on. No turns means no section — not an empty state and not
+          an explanation, because a user who has never used the co-author is
+          not missing anything and should not be told that they are. */}
+      {drafted.length > 0 && (
+        <section className="mt-16">
+          <BlockHeader
+            label="Drafted with the co-author"
+            count={`${drafted.length} draft${drafted.length === 1 ? "" : "s"}`}
+          />
+          {facet ? (
+            <EmptyLine>your drafts carry no genus or tradition tag — clear the filter to see them</EmptyLine>
           ) : (
             <Ledger>
-              {shown.map((m, i) => (
-                <ModelRow
-                  key={m.key}
-                  model={m}
+              {drafted.map((d, i) => (
+                <LedgerRow
+                  key={d.key}
                   index={i + 1}
-                  onClick={() =>
-                    m.open.kind === "example" ? onOpenExample(m.open.demo) : onOpenCorpus(m.open.entry)
-                  }
+                  name={d.description}
+                  description={draftedGloss(d)}
+                  tag={d.model}
+                  onClick={() => onOpenDrafted(d.sl)}
                 />
               ))}
             </Ledger>
           )}
         </section>
+      )}
 
-        {/* Yours. The other half of the partition, and the half that grows:
-            a release ships a handful of models and everything else is the
-            user's own. Saved models carry no genus or tradition, so a facet
-            selection empties this section rather than silently ignoring it. */}
-        <section className="mt-16">
-          <BlockHeader label="Yours" count={`${savedCount} model${savedCount === 1 ? "" : "s"}`} />
-          {facet ? (
-            <div
-              className="border-t py-3 text-sm"
-              style={{ borderColor: "var(--rule-soft)", color: "var(--ink-muted)", fontFamily: display, fontStyle: "italic" }}
-            >
-              your models carry no genus or tradition tag — clear the filter to see them
-            </div>
-          ) : tree.length === 0 ? (
-            <div
-              className="border-t py-3 text-sm"
-              style={{ borderColor: "var(--rule-soft)", color: "var(--ink-muted)", fontFamily: display, fontStyle: "italic" }}
-            >
-              no saved models yet
-            </div>
-          ) : (
-            <div style={{ borderTop: "1px solid var(--rule)" }}>
-              {shownRoots.map((root, i) => (
-                <div
-                  key={root.name}
-                  className="grid w-full grid-cols-[3rem_1fr] items-stretch border-b"
-                  style={{ borderColor: "var(--rule-soft)" }}
-                >
-                  <span
-                    className="flex items-start justify-end pr-5 pt-3 text-[11px] tabular"
-                    style={{ color: "var(--ink-muted)" }}
-                  >
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <div className="py-2.5 pr-2">
-                    <LibraryRow node={root} depth={0} onLoad={onLoad} onDelete={onDelete} onRename={onRename} />
-                  </div>
-                </div>
-              ))}
-              {foldedRoots > 0 && (
-                <button
-                  onClick={() => setShowAllSaved(true)}
-                  className="block w-full border-b py-2.5 text-left text-[11px] uppercase tracking-[0.18em]"
-                  style={{ borderColor: "var(--rule-soft)", ...folioStyle }}
-                >
-                  show all {tree.length} saved models
-                </button>
-              )}
-            </div>
-          )}
-        </section>
-
-        {/* Drafted. The third provenance (#324), and the only one that can be
-            absent: it is read from the reasoner, which is off until the user
-            turns it on. No turns means no section — not an empty state and not
-            an explanation, because a user who has never used the co-author is
-            not missing anything and should not be told that they are. */}
-        {drafted.length > 0 && (
-          <section className="mt-16">
-            <BlockHeader
-              label="Drafted with the co-author"
-              count={`${drafted.length} draft${drafted.length === 1 ? "" : "s"}`}
-            />
-            {facet ? (
-              <div
-                className="border-t py-3 text-sm"
-                style={{ borderColor: "var(--rule-soft)", color: "var(--ink-muted)", fontFamily: display, fontStyle: "italic" }}
-              >
-                your drafts carry no genus or tradition tag — clear the filter to see them
-              </div>
-            ) : (
-              <Ledger>
-                {drafted.map((d, i) => (
-                  <LedgerRow
-                    key={d.key}
-                    index={i + 1}
-                    name={d.description}
-                    description={draftedGloss(d)}
-                    tag={d.model}
-                    onClick={() => onOpenDrafted(d.sl)}
-                  />
-                ))}
-              </Ledger>
-            )}
-          </section>
-        )}
-
-        <section className="mt-16">
-          <BlockHeader label="From a file" />
-          <Ledger>
-            <LedgerRow
-              door
-              folio="·"
-              name="Open a file…"
-              description="a model .json from your computer"
-              tag="disk"
-              onClick={onOpenFile}
-            />
-          </Ledger>
-        </section>
-      </Column>
-    </div>
+      <section className="mt-16">
+        <BlockHeader label="From a file" />
+        <Ledger>
+          <LedgerRow
+            door
+            folio="·"
+            name="Open a file…"
+            description="a model .json from your computer"
+            tag="disk"
+            onClick={onOpenFile}
+          />
+        </Ledger>
+      </section>
+    </>
   );
 }
 

@@ -19,7 +19,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AboutPage, HomeMenu, LibraryBrowser } from "./HomeScreen";
-import { facets, matchesFacet, shippedModels, type Tag } from "./home";
+import { facets, matchesFacet, shelves, shippedModels, type Arrange, type Tag } from "./home";
+import type { RecentEntry } from "./recent";
 import { CORPUS } from "./corpus";
 import type { LibraryNode } from "./libraryTree";
 
@@ -30,10 +31,18 @@ vi.mock("./drafted", () => ({ draftedModels: async () => [] }));
 
 const noop = () => {};
 const asyncTrue = async () => true;
-const browser = (tree: LibraryNode[] = [], initialFacet: Tag | null = null) =>
+const page = (opts: {
+  tree?: LibraryNode[];
+  initialFacet?: Tag | null;
+  initialView?: "doors" | "list";
+  initialQuery?: string;
+  initialArrange?: Arrange;
+  initialManage?: boolean;
+  recent?: RecentEntry[];
+}) =>
   renderToStaticMarkup(
     <LibraryBrowser
-      tree={tree}
+      tree={opts.tree ?? []}
       onBack={noop}
       onOpenExample={noop}
       onOpenCorpus={noop}
@@ -42,9 +51,23 @@ const browser = (tree: LibraryNode[] = [], initialFacet: Tag | null = null) =>
       onLoad={noop}
       onDelete={noop}
       onRename={asyncTrue}
-      initialFacet={initialFacet}
+      initialFacet={opts.initialFacet ?? null}
+      initialView={opts.initialView ?? "doors"}
+      initialQuery={opts.initialQuery ?? ""}
+      initialArrange={opts.initialArrange}
+      initialManage={opts.initialManage ?? false}
+      recent={opts.recent ?? []}
     />,
   );
+
+/** The LIST view — the flat ledger the library keeps behind "browse all as a
+ *  list". Every claim about citations, tags, facets and folios is a claim about
+ *  this view. */
+const browser = (tree: LibraryNode[] = [], initialFacet: Tag | null = null) =>
+  page({ tree, initialFacet, initialView: "list" });
+
+/** The DOORS — what opening the library now shows. */
+const doors = (opts: Parameters<typeof page>[0] = {}) => page({ ...opts, initialView: "doors" });
 
 describe("home", () => {
   it("is four doors in three groups, with the docs in the colophon", () => {
@@ -90,7 +113,7 @@ describe("home", () => {
   });
 });
 
-describe("the library is one flat list", () => {
+describe("the list view is one flat list", () => {
   const html = browser();
 
   // The whole point of the rebuild: opening the library puts openable models on
@@ -269,6 +292,131 @@ describe("yours", () => {
     );
     expect(html).not.toContain("steel plant");
     expect(html).toContain("clear the filter");
+  });
+});
+
+describe("the doors", () => {
+  const shipped = shippedModels();
+  const at = (days: number) => Date.now() - days * 86_400_000;
+  // Only what the Recent strip itself renders — every model on this page also
+  // appears on a shelf below, so "is it in Recent" is a question about a REGION
+  // of the page and not about the page.
+  const recentRegion = (html: string) =>
+    html.slice(html.indexOf("Recent"), html.indexOf("Start from one of ours"));
+
+  it("opens on doors rather than on the ledger", () => {
+    const html = doors();
+    expect(html).toContain("Start from one of ours");
+    expect(html).toContain("By lens");
+    expect(html).toContain("From a file");
+    // The ledger is still there, one control away, and it still says how much
+    // it holds.
+    expect(html).toContain(`Browse all ${shipped.length} as a list`);
+    expect(html).not.toContain("Ships with the app");
+  });
+
+  it("reads as a page, not as gaps, on a first visit", () => {
+    const html = doors();
+    // Nothing opened and nothing saved: Recent is ABSENT (a reader who has
+    // opened nothing is not missing anything), Yours is a sentence.
+    expect(html).not.toContain("yours, and ours you have touched");
+    expect(html).toContain("nothing saved yet");
+  });
+
+  it("orders Recent by when it was opened and caps it at four", () => {
+    const five = shipped.slice(0, 5);
+    const recent: RecentEntry[] = five.map((m, i) => ({
+      kind: m.open.kind === "example" ? "example" : "corpus",
+      key: m.key,
+      at: at(i), // index 0 is the newest
+    }));
+    const region = recentRegion(doors({ recent }));
+    const positions = five.map((m) => region.indexOf(escapeHtml(m.name)));
+    // The fifth is over the cap and is not in the strip at all.
+    expect(positions[4]).toBe(-1);
+    // The other four are in newest-first order.
+    for (const p of positions.slice(0, 4)) expect(p).toBeGreaterThan(-1);
+    expect([...positions.slice(0, 4)].sort((a, b) => a - b)).toEqual(positions.slice(0, 4));
+  });
+
+  it("says where a copy came from", () => {
+    const tree: LibraryNode[] = [
+      { name: "my steel plant", savedAt: at(1), from: "The Steel-Plant in its environment", missingReferents: 0, children: [] },
+      { name: "drawn from nothing", savedAt: at(2), missingReferents: 0, children: [] },
+    ];
+    const html = doors({ tree });
+    expect(html).toContain("your copy · from The Steel-Plant in its environment");
+    expect(html).toContain("yours · ");
+    // Lineage rides the Recent card too, which is where two similar names are
+    // most likely to be confused for each other.
+    const region = recentRegion(
+      doors({ tree, recent: [{ kind: "library", key: "my steel plant", at: at(1) }] }),
+    );
+    expect(region).toContain("your copy · from The Steel-Plant in its environment");
+  });
+
+  it("switches the shelves between the lens cut and the domain cut", () => {
+    const lens = doors({ initialArrange: "lens" });
+    const domain = doors({ initialArrange: "domain" });
+    for (const shelf of shelves(shipped, "lens")) {
+      expect(lens).toContain(escapeHtml(shelf.note));
+      // A tradition shelf wears its world hue; a domain shelf wears none.
+      expect(lens).toContain(`var(--world-${shelf.id})`);
+      expect(domain).not.toContain(`var(--world-${shelf.id})`);
+    }
+    for (const shelf of shelves(shipped, "domain")) {
+      expect(domain).toContain(`>${escapeHtml(shelf.label)}<`);
+    }
+  });
+
+  it("leads each shelf with the model that teaches it", () => {
+    // The one hand-made list on the page: every shelf opens on a model, and
+    // that model is the shelf's first card.
+    for (const arrange of ["lens", "domain"] as const) {
+      for (const shelf of shelves(shipped, arrange)) {
+        expect(shelf.models.length).toBeGreaterThan(0);
+      }
+    }
+    // Mobus's lead is one of OURS, hoisted onto a shelf its tags do not put it
+    // on — the editorial call, pinned so it cannot drift unnoticed.
+    const mobus = shelves(shipped, "lens").find((s) => s.id === "mobus");
+    expect(mobus?.models[0]?.key).toBe("example:steel-plant-walk");
+  });
+
+  it("narrows every section at once", () => {
+    const tree: LibraryNode[] = [
+      { name: "steel plant", savedAt: at(1), missingReferents: 0, children: [] },
+    ];
+    const html = doors({ tree, initialQuery: "ribosome" });
+    expect(html).toContain("Ribosome");
+    expect(html).not.toContain("Bitcoin");
+    // Yours is narrowed by the same string, and says so rather than emptying.
+    expect(html).not.toContain(">steel plant<");
+    expect(html).toContain("none of your models matches");
+  });
+
+  it("exposes rename and delete only in manage mode", () => {
+    const tree: LibraryNode[] = [
+      { name: "steel plant", savedAt: at(1), missingReferents: 0, children: [] },
+    ];
+    expect(doors({ tree })).not.toContain("Delete steel plant");
+    const managed = doors({ tree, initialManage: true });
+    expect(managed).toContain("Delete steel plant");
+    expect(managed).toContain("Rename steel plant");
+  });
+
+  it("lists a saved child as openable as its root", () => {
+    const tree: LibraryNode[] = [
+      {
+        name: "steel plant",
+        savedAt: at(1),
+        missingReferents: 0,
+        children: [{ name: "boiler", savedAt: at(3), missingReferents: 0, children: [] }],
+      },
+    ];
+    const html = doors({ tree });
+    expect(html).toContain("steel plant");
+    expect(html).toContain("boiler");
   });
 });
 
