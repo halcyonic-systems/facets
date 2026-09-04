@@ -18,6 +18,7 @@ import {
   straightPath,
   thingById,
   crowdedLabelIds,
+  contentBounds,
   NODE_R,
   type LabelBox,
   type Hull,
@@ -34,6 +35,7 @@ import {
   PREFETCH_PX,
   type ApertureTier,
 } from "./embed";
+import { wantsEnter, wantsExit } from "./seamCrossing";
 import { EmbeddedFrame } from "./EmbeddedFrame";
 import { STYLE } from "./style";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
@@ -513,6 +515,65 @@ export default function Canvas({
   useEffect(() => {
     if (openNow !== openWhenPortsWerePlaced) settleApertures((n) => n + 1);
   }, [openNow, openWhenPortsWerePlaced]);
+
+  // Zoom drives the walk. Keep pushing into an open aperture and the gesture
+  // hands off to `onEnterThing` — the same door the double-click opens, with
+  // the same dive, breadcrumb and autosave; keep pulling back out of a model
+  // that no longer fills its viewport and it hands off to `onExitUp`. The
+  // canvas only reports the crossing, exactly as it does for the double-click;
+  // the shell still owns what entering and rising mean.
+  //
+  // Latches are keyed on the AUTHORED model's `things` — the display model is
+  // rebuilt every render and would re-arm on every frame, while a name is
+  // absent on a model nobody has saved. A swap arrives at fit scale, so every
+  // latch is re-armed as already fired and the new frame has to be read from
+  // the other side before it can fire — otherwise the fit answers the gesture
+  // and the walk runs away down the tree.
+  const seamDocRef = useRef<readonly Thing[] | null>(null);
+  const enterLatchRef = useRef(new Map<number, boolean>());
+  const exitLatchRef = useRef(true);
+  useEffect(() => {
+    const minView = Math.min(viewW, viewH);
+    if (minView <= 0) return;
+    if (seamDocRef.current !== model.things) {
+      seamDocRef.current = model.things;
+      enterLatchRef.current.clear();
+      exitLatchRef.current = true;
+    }
+    // Every decomposed component's latch is read each pass, whatever tier it is
+    // in — a latch that is only touched once its aperture is already full can
+    // never fall back below the reset line, and so never re-arms. Only the
+    // aperture under the middle of the stage can be the one being pushed into,
+    // and only a genuinely open one is a door.
+    let target: Thing | null = null;
+    let nearest = Infinity;
+    const doors = dModel.things.filter((t) => t.child_model);
+    for (const t of doors) {
+      const dx = pan.x + t.x * scale - viewW / 2;
+      const dy = pan.y + t.y * scale - viewH / 2;
+      if (dx * dx + dy * dy < nearest) {
+        nearest = dx * dx + dy * dy;
+        target = t;
+      }
+    }
+    const openFull = new Set(apertures.filter((a) => a.tier === "full").map((a) => a.thing.id));
+    for (const t of doors) {
+      const next = wantsEnter(aperturePx, minView, enterLatchRef.current.get(t.id) ?? true);
+      enterLatchRef.current.set(t.id, next.latched);
+      if (next.fire && t === target && openFull.has(t.id) && onEnterThing) {
+        onEnterThing(t);
+        return;
+      }
+    }
+    if (onExitUp) {
+      const box = contentBounds(dModel);
+      const extent = box ? Math.max(box.maxX - box.minX, box.maxY - box.minY) * scale : 0;
+      const next = wantsExit(extent, minView, exitLatchRef.current);
+      exitLatchRef.current = next.latched;
+      if (next.fire) onExitUp();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scale, pan, aperturePx, viewW, viewH, model.things, openNow, onEnterThing, onExitUp]);
 
   return (
     <svg
