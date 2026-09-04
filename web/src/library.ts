@@ -31,8 +31,10 @@ export interface LibraryBackend {
   list(): Promise<ModelRecord[]>;
   /** The stored archive text for one slot. Throws if the slot is empty. */
   load(name: string): Promise<string>;
-  /** Write `json` to `name`, overwriting whatever was there. */
-  save(name: string, json: ArchiveText): Promise<void>;
+  /** Write `json` to `name`, overwriting whatever was there. `from` names the
+   *  shipped model the slot descends from, on the save that first makes the
+   *  copy; a later save may omit it and the backend carries it forward. */
+  save(name: string, json: ArchiveText, from?: string): Promise<void>;
   remove(name: string): Promise<void>;
   /** Move a slot. Refuses a taken target rather than clobbering it. */
   rename(from: string, to: string): Promise<void>;
@@ -62,7 +64,7 @@ export function setLibraryBackend(next: LibraryBackend): void {
 export const library: LibraryBackend = {
   list: () => backend.list(),
   load: (name) => backend.load(name),
-  save: (name, json) => backend.save(name, json),
+  save: (name, json, from) => backend.save(name, json, from),
   remove: (name) => backend.remove(name),
   rename: (from, to) => backend.rename(from, to),
   loadByRef: (id) => backend.loadByRef(id),
@@ -89,9 +91,16 @@ export function memoryBackend(): LibraryBackend {
       if (!record) throw new Error(`no saved model named "${name}"`);
       return record.json;
     },
-    async save(name, json) {
+    async save(name, json, from) {
       const id = idOf(json);
-      slots.set(name, { name, json, savedAt: Date.now(), ...(id ? { modelId: id } : {}) });
+      const lineage = from ?? slots.get(name)?.from;
+      slots.set(name, {
+        name,
+        json,
+        savedAt: Date.now(),
+        ...(id ? { modelId: id } : {}),
+        ...(lineage ? { from: lineage } : {}),
+      });
     },
     async remove(name) {
       slots.delete(name);

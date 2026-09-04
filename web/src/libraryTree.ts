@@ -19,11 +19,16 @@ export interface LibraryRecordLike {
   /** The stamped base58 id; absent on legacy records, whose identity is read
    *  from the JSON's own `model_id` field instead (same encoding). */
   modelId?: string;
+  /** The shipped model this slot was first saved from, if any. Carried through
+   *  the reading untouched — lineage is a stored fact, not a derived one. */
+  from?: string;
 }
 
 export interface LibraryNode {
   name: string;
   savedAt: number;
+  /** The shipped model this one descends from, as the record recorded it. */
+  from?: string;
   /** How many of this model's `decomposes` references resolve to no saved
    *  record — the library-level echo of the kernel's missing-referent issue. */
   missingReferents: number;
@@ -107,6 +112,7 @@ export function buildLibraryTree(records: LibraryRecordLike[]): LibraryNode[] {
     return {
       name: r.name,
       savedAt: r.savedAt,
+      ...(r.from ? { from: r.from } : {}),
       missingReferents: missing.get(r.name) ?? 0,
       children: ordered
         .filter((c) => parentOf.get(c.name) === r.name && !emitted.has(c.name))

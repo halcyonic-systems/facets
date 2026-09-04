@@ -82,6 +82,8 @@ import { Banner, ConfirmDialog, Pill, ToolButton } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 import { isFolderSupported, pickDirectory, writeModel, type DirHandleLike } from "./fsAccess";
 import { library } from "./library";
+import { shippedModels } from "./home";
+import { noteOpened } from "./recent";
 import { HomeScreen, type HomeRoute } from "./HomeScreen";
 import { buildLibraryTree, flattenLibraryTree, type LibraryNode } from "./libraryTree";
 import {
@@ -538,6 +540,23 @@ function Workspace() {
     [pins, libraryList],
   );
   const openPinned = openRef != null && pins.some((p) => samePin(p, openRef));
+  // Every successful open passes through here: it names what is on the canvas
+  // (for the pin control) and records the visit (for the library's Recent
+  // section). The two facts are set together so a new open seam cannot acquire
+  // one and forget the other — which is exactly how a "recently opened" list
+  // goes quietly stale. Saving is NOT an open and does not come through here.
+  const markOpen = (pin: Pin) => {
+    setOpenRef(pin);
+    noteOpened(pin.kind, pin.ref);
+  };
+  /** The title of the shipped model a save descends FROM, or undefined when the
+   *  canvas holds something of the author's own. Read off `openRef`, which is
+   *  the open model's address — so a copy records its origin at the moment the
+   *  origin is still what is open. */
+  const lineage = (): string | undefined => {
+    if (!openRef || openRef.kind === "library") return undefined;
+    return shippedModels().find((m) => m.key === openRef.ref)?.name;
+  };
   function setPinsPersisted(next: Pin[]) {
     setPins(next);
     savePins(next);
@@ -822,7 +841,7 @@ function Workspace() {
           `your copy is still in the library as "${d.key}" (Cmd-S will overwrite it with this one)`,
       );
     }
-    setOpenRef({ kind: "example", ref: d.key });
+    markOpen({ kind: "example", ref: d.key });
     setManifest(d.manifest);
     setDt(d.manifest.dt ?? 1);
     setT(d.t);
@@ -874,7 +893,7 @@ function Workspace() {
     }
     await onSlCompiled(outcome.ok, outcome.lens_explicit);
     syncSlPane(e.sl, outcome.ok);
-    setOpenRef({ kind: "corpus", ref: e.file });
+    markOpen({ kind: "corpus", ref: e.file });
     setHomeOpen(false);
     setDirty(false);
   };
@@ -916,7 +935,7 @@ function Workspace() {
     }
     await onSlCompiled(outcome.ok, outcome.lens_explicit);
     syncSlPane(d.sl, outcome.ok);
-    setOpenRef({ kind: "example", ref: d.key });
+    markOpen({ kind: "example", ref: d.key });
     setHomeOpen(false);
     setDirty(false);
   };
@@ -1313,7 +1332,7 @@ function Workspace() {
     const json = writeArchive(copy);
     try {
       if (saveTarget === "library") {
-        await library.save(stem, json);
+        await library.save(stem, json, lineage());
         await refreshLibrary();
         setCurrentName(stem);
         setOpenRef({ kind: "library", ref: stem }); // now addressable — pinnable
@@ -1350,7 +1369,7 @@ function Workspace() {
       setDemo(null); setAttachedCsv(null);
       setCanvasModel(cm);
       syncSlPane(null, cm);
-      setOpenRef({ kind: "library", ref: name });
+      markOpen({ kind: "library", ref: name });
       setManifest({ model: "", data: "", t: 12, mapping: [] });
       setResult(null);
       setRunError(null);
@@ -1939,7 +1958,8 @@ function Workspace() {
   // #140: the ONE place a model becomes stored text. Every storage write
   // funnels here, so the archive encoding is chosen once — the seam that was
   // spread across seven separate call sites before it had a name.
-  const persist = (name: string, model: CanvasModel) => library.save(name, writeArchive(model));
+  const persist = (name: string, model: CanvasModel) =>
+    library.save(name, writeArchive(model), lineage());
 
   // Walk-reset autosave (#111): every path that discards the walk gets the
   // breadcrumb-exit discipline — dirty ancestor segments are saved before

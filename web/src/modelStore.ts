@@ -24,6 +24,12 @@ export interface ModelRecord {
    *  never minted one — `loadModelByRef` decodes those on the fly, and the next
    *  save of the slot backfills this field (put overwrites the whole record). */
   modelId?: string;
+  /** The shipped model this slot was first saved FROM — its title, as the
+   *  library lists it. Set when the author saves while one of ours is open, and
+   *  carried forward on every later save of the slot, because lineage is a fact
+   *  about where the copy came from and does not expire when the copy is
+   *  edited. Absent on a model drawn from nothing, which is most of them. */
+  from?: string;
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -62,11 +68,20 @@ async function withStore<T>(
  *
  *  Takes `ArchiveText`, not `string` (#140, ADR 0004): an archive must not be a
  *  lens's projection, and the type is what enforces it — a WorldModel cannot
- *  reach this function without a deliberate cast. */
-export async function saveModel(name: string, json: ArchiveText): Promise<void> {
+ *  reach this function without a deliberate cast.
+ *
+ *  `from` names the shipped model this slot descends from. A put overwrites the
+ *  whole record, so an unstated `from` READS THE OLD ONE FORWARD rather than
+ *  dropping it: the second save of a slot happens with the library model open,
+ *  not the shipped one, and lineage that survived only until the next ⌘S would
+ *  be worse than none. */
+export async function saveModel(name: string, json: ArchiveText, from?: string): Promise<void> {
+  const prior = await withStore<ModelRecord | undefined>("readonly", (store) => store.get(name));
   const record: ModelRecord = { name, json, savedAt: Date.now() };
   const id = identityOf(json);
   if (id) record.modelId = id;
+  const lineage = from ?? prior?.from;
+  if (lineage) record.from = lineage;
   await withStore("readwrite", (store) => store.put(record));
 }
 
