@@ -121,11 +121,14 @@ function nextId(ids: number[]): number {
 
 /** #139: view-zoom bounds — widened from the old [0.25, 4] so a long zoom
  *  gesture has room to run continuously instead of hitting a hard wall.
- *  Still a hand-authoring canvas, not the cross-decomposition seam zoom the
- *  issue also describes (nesting a child model's frame into the parent's) —
- *  that part stays out of scope here; see #139 for the "why not now". */
+ *
+ *  The ceiling doubled again with M1 (6 → 12). A child model's drawn extent is
+ *  an order of magnitude wider than the node it is embedded in, so its interior
+ *  only becomes legible in the top of the old range — the ceiling was where the
+ *  seam wanted to be crossed, which made it the wall rather than the limit. The
+ *  floor is unchanged; zooming OUT never crosses a seam. */
 export const ZOOM_MIN = 0.15;
-export const ZOOM_MAX = 6;
+export const ZOOM_MAX = 12;
 
 /** Pure zoom math, exported for testing: given the scale/pan a gesture is
  *  currently reasoning from, a wheel event's deltaY, and whether it arrived as

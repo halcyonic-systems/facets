@@ -93,6 +93,7 @@ import {
   type WorkbenchEntry,
 } from "./workbench";
 import { mintLibraryName, parentSlotName } from "./libraryNames";
+import { ChildCache } from "./canvas/childCache";
 import { resolveModelRefs } from "./modelResolve";
 import { diagramFilename, exportDiagramSvg, exportDiagramPng } from "./canvas/exportDiagram";
 
@@ -481,6 +482,17 @@ function Workspace() {
   // Chrome-only, and the home screen's two libraries plus Open a file… cover
   // its job in every browser.
   const [dirHandle, setDirHandle] = useState<DirHandleLike | null>(null);
+  // #139: children resolved for the seam apertures, held parsed so a zoom
+  // gesture never waits on I/O. Resolution stays `resolveModelRefs` — this only
+  // remembers its answer, which is why every input to that answer (the library,
+  // the working folder) has to drop it when it moves.
+  const childCache = useRef(new ChildCache());
+  // Bumped when a child lands, so the canvas re-renders and the aperture opens.
+  const [childrenResolved, setChildrenResolved] = useState(0);
+  useEffect(() => {
+    childCache.current.clear();
+    setChildrenResolved((n) => n + 1);
+  }, [dirHandle]);
   const [currentName, setCurrentName] = useState<string | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   // The browser-local model library (IndexedDB, fsAccess.ts's flag-free sibling):
@@ -527,6 +539,13 @@ function Workspace() {
     }
   };
   async function refreshLibrary() {
+    // #139: the library is the first backend `resolveModelRefs` consults, so
+    // anything that moves it can change what a ref resolves TO. Held children
+    // are dropped rather than reconciled — re-resolving costs one read, and a
+    // child that keeps rendering its shipped copy after a save is the failure
+    // worth spending it on.
+    childCache.current.clear();
+    setChildrenResolved((n) => n + 1);
     setLibraryTree(buildLibraryTree(await library.list()));
   }
   // A soft, informational message channel, distinct from `toast` (which the
@@ -1287,6 +1306,12 @@ function Workspace() {
       }
       if (!dirHandle) return;
       await writeModel(dirHandle, stem, json);
+      // The working folder outranks the shelf, so a child written here must
+      // stop rendering as its shipped copy (#139).
+      if (copy.model_id) {
+        childCache.current.invalidate(copy.model_id);
+        setChildrenResolved((n) => n + 1);
+      }
       setCurrentName(stem);
       setSaveDialogOpen(false);
       setDirty(false);
@@ -1434,6 +1459,41 @@ function Workspace() {
       stale = true;
     };
   }, [canvasModel, dirHandle]);
+
+  // #139 M1: the aperture's two seams with the store layer. `childModelFor` is
+  // the synchronous read the canvas makes while it draws — an aperture opens
+  // mid-gesture and cannot wait on I/O — and `approachChild` is the fill, fired
+  // as a decomposed component nears the size at which its interior would be
+  // drawn. Resolution is the same `resolveModelRefs` the walk and the seam
+  // check use, so the shadowing order is honoured by being the same call.
+  const childModelFor = useMemo(() => {
+    // A child landing in the cache is invisible to React (it is a ref); this
+    // dependency is what republishes the lookup when one arrives.
+    void childrenResolved;
+    return (id: string) => childCache.current.get(id);
+  }, [childrenResolved]);
+  const childrenInFlight = useRef(new Set<string>());
+  const approachChild = useCallback(
+    (id: string) => {
+      if (childrenInFlight.current.has(id) || childCache.current.get(id) !== undefined) return;
+      childrenInFlight.current.add(id);
+      void (async () => {
+        try {
+          const json = (await resolveModelRefs([id], dirHandle))[id];
+          // A referent that resolves nowhere is not an error on this path: the
+          // kernel's decomposition issue stays the only complaint a broken seam
+          // earns, and the component goes on drawing as an ordinary node.
+          childCache.current.set(id, json === undefined ? null : openModel(json));
+        } catch {
+          childCache.current.set(id, null);
+        } finally {
+          childrenInFlight.current.delete(id);
+          setChildrenResolved((n) => n + 1);
+        }
+      })();
+    },
+    [dirHandle],
+  );
 
   // The kernel's lens-gate verdict plus the resolution-time decomposition
   // issues, one list — the issues Pill, the review panel, and the dock all read
@@ -2593,6 +2653,11 @@ function Workspace() {
                       driven={drivenNames}
                       sim={simFrame}
                       mass={massFrame}
+                      // #139 M1: keep zooming and a decomposed component
+                      // becomes an aperture onto its child, in place — no
+                      // swap, no walk segment, no breadcrumb change.
+                      childModel={childModelFor}
+                      onApproachChild={approachChild}
                       onPanChange={setCanvasPan}
                       onScaleChange={setCanvasScale}
                       fitToken={fitToken}

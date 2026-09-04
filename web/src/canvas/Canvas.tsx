@@ -26,6 +26,15 @@ import {
   type Ring,
 } from "./geometry";
 import { useCanvasGestures } from "./useCanvasGestures";
+import {
+  apertureScreenPx,
+  apertureTier,
+  embedTransform,
+  embeddedBounds,
+  PREFETCH_PX,
+  type ApertureTier,
+} from "./embed";
+import { EmbeddedFrame } from "./EmbeddedFrame";
 import { STYLE } from "./style";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
 import { MassOverlay } from "./MassOverlay";
@@ -98,6 +107,14 @@ interface Props {
    *  the per-lens container labels itself with it (#100 phase 0), so a model
    *  can never impersonate its only component. */
   placeName?: string | null;
+  /** #139 M1: a resolved child model by ref id, SYNCHRONOUSLY — the aperture is
+   *  drawn mid-gesture, so it cannot wait on I/O. `undefined` = not resolved
+   *  yet (ask for it), `null` = does not resolve (the kernel's decomposition
+   *  issue stays the only complaint, and the node draws as an ordinary node). */
+  childModel?: (id: string) => CanvasModel | null | undefined;
+  /** A decomposed component is approaching the size at which its interior
+   *  would be drawn. Resolution is the shell's; this is the ask. */
+  onApproachChild?: (id: string) => void;
 }
 
 export default function Canvas({
@@ -124,6 +141,8 @@ export default function Canvas({
   fitToken,
   fitBottomFraction,
   placeName = null,
+  childModel,
+  onApproachChild,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -407,6 +426,64 @@ export default function Canvas({
   // artifact, not a semantic error: C ∩ E = ∅ is enforced by the kernel's roles).
   const hull: Hull | null = lens === "Bunge" ? bungeHull(dModel.things) : null;
 
+  // #139 M1: which decomposed components are open, and how far. Keep zooming
+  // and a component stops being a filled body and becomes an APERTURE — its
+  // child model drawn inside its own circle, in place, with no swap, no walk
+  // segment and no breadcrumb change. Nothing here decides a systems fact: the
+  // hierarchy is the language's (`decomposes @id`) and the seam's verdict is
+  // the kernel's; this only chooses what is worth drawing at this size.
+  //
+  // Mobus only, for now. The membrane is what an aperture is read through, and
+  // Bunge's hull is the observer's cut rather than a border a child could be
+  // seen inside; Klir draws no container at all.
+  const aperturePx = apertureScreenPx(scale);
+  // Per-node tier memory, so the hysteresis band has something to be hysteretic
+  // ABOUT. A ref, not state: the tier is derived from a scale that already
+  // rendered, so recording it must not schedule another render.
+  const tiersRef = useRef(new Map<number, ApertureTier>());
+  // Only frames in view are drawn. Read off the live element rather than kept
+  // in state — every pan and zoom re-renders this anyway, so the numbers cannot
+  // go stale, and before mount nothing is culled.
+  const viewW = svgRef.current?.clientWidth ?? 0;
+  const viewH = svgRef.current?.clientHeight ?? 0;
+  const inViewport = (t: Thing) => {
+    if (viewW === 0 || viewH === 0) return true;
+    const r = aperturePx / 2;
+    const sx = pan.x + t.x * scale;
+    const sy = pan.y + t.y * scale;
+    return sx + r >= 0 && sx - r <= viewW && sy + r >= 0 && sy - r <= viewH;
+  };
+  const decomposed =
+    lens === "Mobus" && childModel
+      ? dModel.things.filter((t) => t.role === "Component" && t.child_model && inViewport(t))
+      : [];
+  // Resolution fires BELOW the tier that draws (the hysteresis band is the head
+  // start), so the child is parsed before the aperture opens rather than
+  // arriving a frame late in the middle of a gesture. One level: nothing deeper
+  // is drawn yet, so nothing deeper is fetched.
+  const approaching =
+    aperturePx >= PREFETCH_PX
+      ? decomposed
+          .map((t) => t.child_model!.id)
+          .filter((id) => childModel!(id) === undefined)
+      : [];
+  const apertures = decomposed.flatMap((t) => {
+    const tier = apertureTier(aperturePx, tiersRef.current.get(t.id) ?? "sealed");
+    tiersRef.current.set(t.id, tier);
+    if (tier === "sealed") return [];
+    const child = childModel!(t.child_model!.id);
+    if (!child) return [];
+    const bounds = embeddedBounds(child);
+    if (!bounds) return [];
+    return [{ thing: t, child, tier, embed: embedTransform(t, NODE_R, bounds) }];
+  });
+
+  const approachKey = approaching.join(" ");
+  useEffect(() => {
+    if (!approachKey) return;
+    for (const id of approachKey.split(" ")) onApproachChild?.(id);
+  }, [approachKey, onApproachChild]);
+
   return (
     <svg
       ref={svgRef}
@@ -507,6 +584,14 @@ export default function Canvas({
         <filter id="ring-blur" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation={facts ? facts.boundary_props.perceptive_fuzziness * 6 : 0} />
         </filter>
+        {/* #139: an aperture clips its child to the component's own circle.
+            The decision was the disc, not a box — a decomposition must not
+            invent a second node shape for the thing it is already drawing. */}
+        {apertures.map(({ thing }) => (
+          <clipPath key={thing.id} id={`aperture-${thing.id}`}>
+            <circle cx={thing.x} cy={thing.y} r={NODE_R} />
+          </clipPath>
+        ))}
         {/* energy flows glow (Mobus typed strokes) */}
         <filter id="energy-glow" x="-40%" y="-40%" width="180%" height="180%">
           <feDropShadow
@@ -782,6 +867,37 @@ export default function Canvas({
                   </text>
                 </g>
               )}
+          </g>
+        ))}
+
+        {/* #139 M1: the open apertures, over the nodes whose faces they take.
+            Drawn AFTER the node so the component keeps its hit disc, its drag
+            and its connect handle — the frame is pointer-transparent, so the
+            author still works the parent model through it. The node's name goes
+            on drawing beneath the rim, which is what demotes it to a caption:
+            the disc it used to sit under is now a way in. */}
+        {apertures.map(({ thing, child, embed, tier }) => (
+          <g key={`aperture-${thing.id}`}>
+            <EmbeddedFrame
+              child={child}
+              embed={embed}
+              at={thing}
+              apertureR={NODE_R}
+              tier={tier}
+              screenScale={scale * embed.s}
+              clipId={`aperture-${thing.id}`}
+            />
+            {/* The handle stays clickable through the frame, so it must stay
+                visible through it too — an echo of the one underneath. */}
+            <circle
+              cx={thing.x + NODE_R * 0.75}
+              cy={thing.y + NODE_R * 0.75}
+              r={STYLE.handle.r}
+              fill="var(--bg-primary)"
+              stroke="var(--lens-accent)"
+              strokeWidth={STYLE.handle.width}
+              pointerEvents="none"
+            />
           </g>
         ))}
 
