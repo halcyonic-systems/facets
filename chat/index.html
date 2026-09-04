@@ -1724,12 +1724,13 @@ const API = LOCAL_HOST ? 'http://localhost:5010' : 'https://api.facets.systems';
 // ── Identity (facets#369) ──
 // The client no longer invents a user. A managed provider mints the subject and
 // GSR verifies the token at one seam (gsr#47); everything below that seam is
-// getAccessToken(). Fill these two in when the Supabase project exists — until
-// then the local minter runs, matching GSR's AUTH_MODE=local claim shape so the
-// whole stack works offline.
-const SUPABASE_URL = '';
-const SUPABASE_ANON_KEY = '';
-const AUTH_MODE = SUPABASE_URL ? 'supabase' : 'local';
+// getAccessToken(). The publishable key is public by design (it only identifies
+// the project; row access never goes through it). On localhost the local minter
+// runs instead, matching GSR's AUTH_MODE=local claim shape so the whole stack
+// works offline against a dev server.
+const SUPABASE_URL = 'https://xezkcsntepjnvdxhkdwi.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_7xS0HratrVUgOuZz5yIzpQ_AS4F2JU-';
+const AUTH_MODE = (SUPABASE_URL && !LOCAL_HOST) ? 'supabase' : 'local';
 const DEV_AUTH_SECRET = 'facets-dev-secret';
 const TOKEN_TTL = 7 * 24 * 3600;
 
