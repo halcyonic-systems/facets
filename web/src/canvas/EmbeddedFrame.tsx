@@ -45,10 +45,14 @@ interface Props {
    *  times the embedding. Captions and hairlines are divided by it so they
    *  hold a screen size instead of shrinking into the seam. */
   screenScale: number;
+  /** The stage's own scale — the rim caption holds a screen size in the parent's frame. */
+  viewScale: number;
+  /** The parent component's name, demoted from a label under a body to a caption on a rim. */
+  caption?: string;
   clipId: string;
 }
 
-export function EmbeddedFrame({ child, embed, at, apertureR, tier, screenScale, clipId }: Props) {
+export function EmbeddedFrame({ child, embed, at, apertureR, tier, screenScale, viewScale, caption: captionText, clipId }: Props) {
   const components = child.things.filter((t) => t.role === "Component");
   if (components.length === 0) return null;
   const ring = membraneRing(components);
@@ -135,6 +139,19 @@ export function EmbeddedFrame({ child, embed, at, apertureR, tier, screenScale, 
         strokeOpacity={0.7}
         strokeWidth={STYLE.nodeStrokeWidth}
       />
+      {captionText && (
+        <text
+          x={at.x}
+          y={at.y + apertureR + (CAPTION_PX * 1.6) / Math.max(viewScale, 0.0001)}
+          textAnchor="middle"
+          fontSize={(CAPTION_PX + 1) / Math.max(viewScale, 0.0001)}
+          fill="var(--text-secondary)"
+          letterSpacing={0.4 / Math.max(viewScale, 0.0001)}
+          className="font-mono"
+        >
+          {captionText.toUpperCase()}
+        </text>
+      )}
     </g>
   );
 }

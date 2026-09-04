@@ -134,6 +134,6 @@ describe("flow-carrying interface capsule click (2026-08-09)", () => {
       <Canvas model={model} lens="Mobus" facts={facts} onModelChange={() => {}} onReject={() => {}} />,
     );
     expect(html).toContain("2 protocols");
-    expect(html).toContain("SSF #43");
+    expect(html).toContain("refine each crossing");
   });
 });

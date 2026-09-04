@@ -50,6 +50,7 @@ const render = (props: Partial<React.ComponentProps<typeof Canvas>> = {}) =>
       onModelChange={() => {}}
       onReject={() => {}}
       childModel={() => child}
+      initialScale={3}
       {...props}
     />,
   );

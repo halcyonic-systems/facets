@@ -236,6 +236,7 @@ function PortView({
   onSelect,
   compact = false,
   scale = 1,
+  screenHw,
 }: {
   port: PortFact;
   at: Pt;
@@ -249,13 +250,16 @@ function PortView({
    *  chevron is the only mark that says which way a flow crosses, and it
    *  measured under 6 screen px at the Fed model's own fit zoom. */
   scale?: number;
+  screenHw?: number;
 }) {
   const label = port.protocol.length > 22 ? `${port.protocol.slice(0, 21)}…` : port.protocol;
   const out = { x: Math.cos(angle), y: Math.sin(angle) };
   // Capsule half-width along the normal, floored on SCREEN so the chevron stays
   // readable when the model is fitted. `compact` keeps its #306 proportion of
   // the full notch — a pass-way in the boundary, not a peer of the processes.
-  const hw = portHalfWidth(scale) * (compact ? 0.66 : 1);
+  const hw = screenHw !== undefined
+    ? Math.min(portHalfWidth(scale), screenHw / Math.max(scale, 0.05)) * (compact ? 0.66 : 1)
+    : portHalfWidth(scale) * (compact ? 0.66 : 1);
   const hh = hw * (compact ? 0.62 : 0.58);
   // The glyph is drawn against a 7px half-height and scaled with the capsule, so
   // enlarging the notch enlarges the one mark that carries direction.

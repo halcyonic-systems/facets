@@ -64,6 +64,9 @@ export interface LensPortProps {
   /** Stage scale — the capsule holds a screen-size floor so its direction
    *  chevron stays readable at a fitted zoom. Presentation only. */
   scale?: number;
+  /** #139: the notch rides an open aperture — hold this half-width in SCREEN
+   *  pixels so the capsules stay a rim detail while the interior fills the disc. */
+  screenHw?: number;
 }
 
 export interface LensViews {

@@ -92,9 +92,9 @@ export function embeddedBounds(child: CanvasModel): Box | null {
 export type ApertureTier = "sealed" | "skeleton" | "full";
 
 /** Below this the aperture is an ordinary node. */
-export const SKELETON_PX = 40;
+export const SKELETON_PX = 96;
 /** Above this the frame earns edges and labels. */
-export const FULL_PX = 200;
+export const FULL_PX = 260;
 /** Resolve the child a little before it is drawn — the hysteresis band below
  *  is exactly that head start, so the model is parsed by the time the skeleton
  *  tier opens rather than arriving a frame late mid-gesture. */

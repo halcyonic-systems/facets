@@ -115,6 +115,8 @@ interface Props {
   /** A decomposed component is approaching the size at which its interior
    *  would be drawn. Resolution is the shell's; this is the ask. */
   onApproachChild?: (id: string) => void;
+  /** Starting zoom (tests). */
+  initialScale?: number;
 }
 
 export default function Canvas({
@@ -143,6 +145,7 @@ export default function Canvas({
   placeName = null,
   childModel,
   onApproachChild,
+  initialScale,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -173,6 +176,9 @@ export default function Canvas({
   // rim, and the rim is what moved. Without this they sit inside the aperture
   // and cover the interior they are supposed to frame.
   const interfaceRim = (id: number) => NODE_R * (openApertureIds.has(id) ? 1 : INTERFACE_SCALE);
+  // While the interior fills the disc, the notches on its rim hold a screen size:
+  // they are the seam's pass-ways, a rim detail, not peers of what is inside.
+  const APERTURE_PORT_SCREEN_HW = 9;
   // Ring extent comes from the INTERIOR components alone (#226, 2026-08-16):
   // an interface lives ON the ring, so its position must never feed the fit —
   // that feedback was why dragging an interface resized the whole membrane.
@@ -283,6 +289,7 @@ export default function Canvas({
     armed,
     onSelectThing,
     portTargets,
+    initialScale,
   });
   const { pan, scale, connectFrom, connectPos, hoverTarget, draft } = gestures.state;
 
@@ -853,6 +860,7 @@ export default function Canvas({
         {dModel.things.map((t) => (
           <g
             key={t.id}
+            className={openApertureIds.has(t.id) ? "aperture-open" : undefined}
             onDoubleClick={(e) => {
               e.stopPropagation();
               onEnterThing?.(t);
@@ -875,9 +883,9 @@ export default function Canvas({
                 Bunge ⊘M pattern); the remedy lives in the title. */}
             {authoredInterfaceIds.has(t.id) &&
               (facts?.ports.filter((p) => p.component === t.id).length ?? 0) >= 2 && (
-                <g transform={`translate(${t.x}, ${t.y - NODE_R - 11})`} pointerEvents="all">
+                <g data-protocols-notice transform={`translate(${t.x}, ${t.y - NODE_R - 11})`} pointerEvents="all">
                   <title>
-                    {`one interface carrying ${facts!.ports.filter((p) => p.component === t.id).length} protocols — decompose it when the seam contract supports interface decomposition (SSF #43); or split into sibling interfaces now`}
+                    {`one interface carrying ${facts!.ports.filter((p) => p.component === t.id).length} protocols — split it into sibling interfaces, or decompose it and let the child's boundary refine each crossing`}
                   </title>
                   <text
                     textAnchor="middle"
@@ -908,6 +916,8 @@ export default function Canvas({
               apertureR={NODE_R}
               tier={tier}
               screenScale={scale * embed.s}
+              viewScale={scale}
+              caption={thing.name}
               clipId={`aperture-${thing.id}`}
             />
             {/* The handle stays clickable through the frame, so it must stay
@@ -935,6 +945,7 @@ export default function Canvas({
             angle={angle}
             compact={compact}
             scale={scale}
+            screenHw={openApertureIds.has(port.component) ? APERTURE_PORT_SCREEN_HW : undefined}
             onSelect={onSelectInterface ? () => onSelectInterface(port, at) : undefined}
           />
         ))}
@@ -977,6 +988,7 @@ export default function Canvas({
               angle={angle}
               compact={compact}
               scale={scale}
+              screenHw={openApertureIds.has(port.component) ? APERTURE_PORT_SCREEN_HW : undefined}
               onSelect={onSelectThing ? () => onSelectThing(port.component) : undefined}
             />
           </g>

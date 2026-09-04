@@ -243,6 +243,13 @@ body {
 /* The printed record's interaction: a row of a printed table cannot light up,
    so the hover is the faintest possible tint of the page itself and the rubric
    arriving on the folio numeral. No lift, no border change, no motion. */
+/* #139: a component drawn as an aperture demotes its own label to the frame's
+   rim caption and drops the protocol notice — the interior is what it says now. */
+.aperture-open [data-node-label],
+.aperture-open [data-protocols-notice] {
+  display: none;
+}
+
 .record-row {
   transition: background-color var(--transition-base);
 }

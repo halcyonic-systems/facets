@@ -227,6 +227,8 @@ interface GestureDeps {
   /** Where the Mobus interface ports are drawn, and whose they are (#213). The
    *  canvas computes the pixels; the hook only needs them to hit-test. */
   portTargets?: PortTarget[];
+  /** Starting zoom — tests render above a threshold without a gesture. */
+  initialScale?: number;
 }
 
 export function useCanvasGestures({
@@ -238,8 +240,9 @@ export function useCanvasGestures({
   armed = null,
   onSelectThing,
   portTargets = [],
+  initialScale = 1,
 }: GestureDeps) {
-  const [state, dispatch] = useReducer(reducer, INITIAL);
+  const [state, dispatch] = useReducer(reducer, { ...INITIAL, scale: initialScale });
 
   // #139: wheel/pinch zoom is eased toward a target rather than snapped —
   // a raw mouse-wheel notch (large, sparse deltaY) would otherwise still read
