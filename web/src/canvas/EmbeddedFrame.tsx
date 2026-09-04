@@ -28,7 +28,7 @@
 import type { Relation, Thing } from "../kernel/types";
 import { KIND_COLOR } from "./types";
 import { embedTransformAttr, type ApertureRegister, type FrameNode } from "./embed";
-import { INTERFACE_SCALE, membraneRing, NODE_R, thingById } from "./geometry";
+import { bungeHull, INTERFACE_SCALE, membraneRing, NODE_R, thingById } from "./geometry";
 import { STYLE, elideEdgeLabel } from "./style";
 
 /** Screen pixels a nested caption holds, whatever the depth scales it to. */
@@ -65,7 +65,7 @@ export function EmbeddedFrame({ node, frameScale, register, caption: captionText
       <circle cx={at.x} cy={at.y} r={NODE_R} fill="var(--bg-primary)" />
       <g clipPath={`url(#${clipId})`}>
         <g transform={embedTransformAttr(embed)}>
-          <Membrane components={components} />
+          {register === "Mobus" ? <Membrane components={components} /> : <Hull child={child} />}
           {flows.map((r) => {
             const a = thingById(child, r.a);
             const b = thingById(child, r.b);
@@ -164,6 +164,28 @@ function Membrane({ components }: { components: Thing[] }) {
       fillOpacity={STYLE.ring.fillOpacity}
       stroke="var(--accent-slate)"
       strokeWidth={STYLE.ring.strokeWidth}
+      vectorEffect="non-scaling-stroke"
+    />
+  );
+}
+
+/** Bunge: the observer's cut, dashed and unfilled, in the register's own hull
+ *  style. Never a membrane — the child is seen through the same distinction the
+ *  parent is drawn with, which is the point of the second register. */
+function Hull({ child }: { child: FrameNode["child"] }) {
+  const h = bungeHull(child.things);
+  return (
+    <rect
+      x={h.x}
+      y={h.y}
+      width={h.w}
+      height={h.h}
+      rx={8}
+      fill="none"
+      stroke="var(--lens-accent)"
+      strokeOpacity={0.55}
+      strokeWidth={1.5}
+      strokeDasharray="8 6"
       vectorEffect="non-scaling-stroke"
     />
   );

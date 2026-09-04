@@ -25,7 +25,7 @@ import {
   type Pt,
   type Ring,
 } from "./geometry";
-import { useCanvasGestures } from "./useCanvasGestures";
+import { useCanvasGestures, ZOOM_MAX, ZOOM_MIN } from "./useCanvasGestures";
 import {
   apertureScreenPx,
   buildFrames,
@@ -36,7 +36,14 @@ import {
   type Embed,
   type FrameNode,
 } from "./embed";
-import { rebaseIn, wantsRebaseIn, wantsRebaseOut, type View } from "./frameRebase";
+import {
+  rebaseIn,
+  rebaseInScale,
+  rebaseOutScale,
+  wantsRebaseIn,
+  wantsRebaseOut,
+  type View,
+} from "./frameRebase";
 import { EmbeddedFrame } from "./EmbeddedFrame";
 import { STYLE } from "./style";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
@@ -52,6 +59,21 @@ const EMPTY_CROWD: ReadonlySet<number> = new Set<number>();
  *  register it renders 3-4 screen px on a fitted model — correct and
  *  unreadable, the same failure the port chevron had. */
 const EXO_ARROW_GAIN = 2;
+
+// #139 rule 7 — the ride an accelerator takes to a crossing. One notch per
+// frame at roughly the wheel's own rate, so a double-click and a hand on the
+// wheel arrive by the same path; the overshoot lands past the line the rebase
+// reads rather than resting on it; and the component being ridden into closes
+// a fraction of its distance to the middle each frame, which is what makes the
+// motion read as going somewhere.
+const RIDE_STEP = 1.09;
+const RIDE_OVERSHOOT = 1.02;
+const RIDE_CENTER_EASE = 0.14;
+
+// Instant arrival under prefers-reduced-motion, matching the walk choreography
+// the shell already gates the same way (#109).
+const prefersReducedMotion = () =>
+  typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 interface Props {
   model: CanvasModel;
@@ -131,7 +153,16 @@ interface Props {
   /** Put the view exactly here — a rebase's arrival. Each distinct token
    *  applies once, and it must win over the fit a swap would otherwise do. */
   viewCommand?: { token: number; pan: Pt; scale: number } | null;
+  /** Ride the zoom path until a rebase fires (#139 rule 7): `in` toward a
+   *  component's aperture, `out` until the frame recedes. Each token rides once. */
+  ride?: RideOrder | null;
 }
+
+/** A ride along the zoom path to the next crossing (#139 rule 7): toward a
+ *  component's aperture, or back out until the frame recedes. */
+export type RideOrder =
+  | { token: number; dir: "in"; thingId: number }
+  | { token: number; dir: "out" };
 
 export default function Canvas({
   model,
@@ -163,6 +194,7 @@ export default function Canvas({
   onRebaseIn,
   onRebaseOut,
   viewCommand = null,
+  ride = null,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -504,10 +536,9 @@ export default function Canvas({
     const sy = pan.y + t.y * scale;
     return sx + r >= 0 && sx - r <= viewW && sy + r >= 0 && sy - r <= viewH;
   };
-  // Mobus only, for now. The membrane is what an aperture is read through, and
-  // Bunge's hull is the observer's cut rather than a border a child could be
-  // seen inside; Klir draws no container at all.
-  const register: ApertureRegister | null = lens === "Mobus" ? lens : null;
+  // Klir draws no container at all, so it has nothing for a child to be seen
+  // inside and opens no aperture (#139 rule 5).
+  const register: ApertureRegister | null = lens === "Klir" ? null : lens;
   const approaching: string[] = [];
   const frames: FrameNode[] =
     register && childModel
@@ -553,6 +584,10 @@ export default function Canvas({
   // arrives at a view that is already past the line it fired on, so a fresh
   // frame starts DISARMED and has to be read on the near side before it can
   // fire; without that the arrival answers the gesture and the walk runs away.
+  // An in-flight ride (below) is abandoned the moment the crossing it was
+  // heading for happens — the destination is on the far side of the line, and
+  // continuing to chase it would keep zooming after the frame changed.
+  const rideRef = useRef<{ raf: number; token: number } | null>(null);
   const seamDocRef = useRef<readonly Thing[] | null>(null);
   const inArmRef = useRef(new Map<number, boolean>());
   const outArmRef = useRef(false);
@@ -583,6 +618,7 @@ export default function Canvas({
       const next = wantsRebaseIn(aperturePx, minView, inArmRef.current.get(t.id) ?? false);
       inArmRef.current.set(t.id, next.armed);
       if (next.fire && target && t.id === target.thing.id && onRebaseIn) {
+        rideRef.current = null;
         onRebaseIn(t, rebaseIn({ pan, scale }, target.embed), target.embed);
         return;
       }
@@ -591,7 +627,10 @@ export default function Canvas({
       const extent = frameExtentPx(dModel, scale, register);
       const next = wantsRebaseOut(extent, minView, outArmRef.current);
       outArmRef.current = next.armed;
-      if (next.fire) onRebaseOut({ pan, scale });
+      if (next.fire) {
+        rideRef.current = null;
+        onRebaseOut({ pan, scale });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scale, pan, aperturePx, viewW, viewH, model.things, openNow, onRebaseIn, onRebaseOut]);
@@ -606,6 +645,94 @@ export default function Canvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewCommand?.token]);
 
+  // The accelerators ride the same path the wheel does (#139 rule 7). A
+  // double-click, or a breadcrumb click, does not swap anything: it animates
+  // the view until the rebase decision above fires on its own, so there is one
+  // crossing mechanism and the shortcut is only a faster hand on it. Reduced
+  // motion takes the ride's last frame directly, which fires the same way.
+  const rideStateRef = useRef({ pan, scale, viewW, viewH, dModel, register, frames });
+  rideStateRef.current = { pan, scale, viewW, viewH, dModel, register, frames };
+  // One queue for both callers — the shell asks through `ride` (a breadcrumb
+  // click), the stage asks through a double-click, and neither can tell the
+  // difference afterwards because there is only the one path.
+  const [order, setOrder] = useState<RideOrder | null>(null);
+  const orderSeq = useRef(0);
+  const startRide = (r: { dir: "in"; thingId: number } | { dir: "out" }) =>
+    setOrder({ ...r, token: (orderSeq.current += 1) });
+  useEffect(() => {
+    if (ride) startRide(ride);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ride?.token]);
+  useEffect(() => {
+    if (!order) return;
+    const ride = order;
+    const stop = () => {
+      if (rideRef.current) cancelAnimationFrame(rideRef.current.raf);
+      rideRef.current = null;
+    };
+    /** Where the ride is heading: past the line the rebase reads, so the
+     *  arrival is unambiguous rather than resting exactly on it. */
+    const destination = () => {
+      const st = rideStateRef.current;
+      const minView = Math.min(st.viewW, st.viewH);
+      if (minView <= 0) return null;
+      if (ride.dir === "in") return Math.min(ZOOM_MAX, rebaseInScale(minView, NODE_R) * RIDE_OVERSHOOT);
+      const extentWorld = st.register ? frameExtentPx(st.dModel, 1, st.register) : 0;
+      return Math.max(ZOOM_MIN, rebaseOutScale(minView, extentWorld) / RIDE_OVERSHOOT);
+    };
+    /** The view one ride frame on. Zooming in pulls the component toward the
+     *  middle of the stage; zooming out holds the middle still — the anchor is
+     *  what makes a ride read as a move toward something rather than a rescale. */
+    const frame = (next: number, ease: number): View => {
+      const st = rideStateRef.current;
+      const at = ride.dir === "in" ? thingById(st.dModel, ride.thingId) : undefined;
+      if (!at) {
+        const k = next / st.scale;
+        const cx = st.viewW / 2;
+        const cy = st.viewH / 2;
+        return { scale: next, pan: { x: cx - (cx - st.pan.x) * k, y: cy - (cy - st.pan.y) * k } };
+      }
+      const cur = { x: st.pan.x + at.x * st.scale, y: st.pan.y + at.y * st.scale };
+      const want = {
+        x: cur.x + (st.viewW / 2 - cur.x) * ease,
+        y: cur.y + (st.viewH / 2 - cur.y) * ease,
+      };
+      return { scale: next, pan: { x: want.x - at.x * next, y: want.y - at.y * next } };
+    };
+    const step = () => {
+      const st = rideStateRef.current;
+      // Nothing above the outermost frame to ride to. Without this the ride
+      // that answered the last crossing goes on shrinking the model afterwards.
+      if (ride.dir === "out" && !onExitUp) return stop();
+      const to = destination();
+      if (to === null) return stop();
+      if (ride.dir === "in" ? st.scale >= to : st.scale <= to) {
+        // Reaching the destination without a crossing means the seam never
+        // opened — an unresolved child, most often. The gesture still meant
+        // "go in", so it falls back to the shell's own door rather than
+        // leaving the view zoomed at a thing it could not enter.
+        const crossed = rideRef.current === null;
+        stop();
+        const t = ride.dir === "in" ? thingById(st.dModel, ride.thingId) : undefined;
+        if (!crossed && t) onEnterThing?.(t);
+        return;
+      }
+      const next = ride.dir === "in" ? Math.min(to, st.scale * RIDE_STEP) : Math.max(to, st.scale / RIDE_STEP);
+      const v = frame(next, RIDE_CENTER_EASE);
+      setView(v.pan, v.scale);
+      if (rideRef.current) rideRef.current.raf = requestAnimationFrame(step);
+    };
+    if (prefersReducedMotion()) {
+      const to = destination();
+      if (to === null) return;
+      const v = frame(to, 1);
+      setView(v.pan, v.scale);
+      return;
+    }
+    rideRef.current = { raf: requestAnimationFrame(step), token: ride.token };
+    return stop;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.token]);
 
 
   return (
@@ -629,7 +756,8 @@ export default function Canvas({
         // for them — a double-click ON a thing still enters via its own
         // handler). Not walking → the gesture stays the node-draft creator.
         if (onExitUp && e.target === e.currentTarget) {
-          onExitUp();
+          if (onRebaseOut) startRide({ dir: "out" });
+          else onExitUp();
           return;
         }
         gestures.onStageDoubleClick(e);
@@ -962,7 +1090,14 @@ export default function Canvas({
             className={openApertureIds.has(t.id) ? "aperture-open" : undefined}
             onDoubleClick={(e) => {
               e.stopPropagation();
-              onEnterThing?.(t);
+              // The accelerator rides the zoom path to the seam rather than
+              // swapping across it (#139 rule 7). The ride resolves the child
+              // on the way — it passes the prefetch line long before the
+              // crossing — and falls back to the shell's door if it arrives
+              // without one, so a register that opens no aperture and a
+              // referent that resolves nowhere both still work.
+              if (onRebaseIn && t.child_model && register) startRide({ dir: "in", thingId: t.id });
+              else onEnterThing?.(t);
             }}
           >
             <views.NodeView

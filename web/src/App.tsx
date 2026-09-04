@@ -28,9 +28,10 @@ import type {
 } from "./kernel/types";
 import { DEMOS, isRunnable, type Demo } from "./demos";
 import type { CorpusEntry } from "./corpus";
-import Canvas from "./canvas/Canvas";
+import Canvas, { type RideOrder } from "./canvas/Canvas";
 import type { Embed } from "./canvas/embed";
 import { rebaseOut, type View } from "./canvas/frameRebase";
+import { frameChain } from "./canvas/frameChain";
 import { edgeGeometry, thingById } from "./canvas/geometry";
 import { EdgePopover } from "./canvas/EdgePopover";
 import { flowParamFor, forcedByColumn } from "./kernel/params";
@@ -348,7 +349,12 @@ function Workspace() {
   // fit — and a fit request would undo precisely what the crossing bought.
   const [viewCommand, setViewCommand] = useState<{ token: number; pan: Pt; scale: number } | null>(null);
   const rebaseView = (v: View) => setViewCommand((c) => ({ token: (c?.token ?? 0) + 1, pan: v.pan, scale: v.scale }));
-
+  // #139 M3: a ride the shell asked for (a breadcrumb click), and how far up it
+  // is going — the ride only ever crosses one seam, so a click two levels up
+  // re-issues it after each crossing until the chain is the right length.
+  const [ride, setRide] = useState<RideOrder | null>(null);
+  const rideOut = () => setRide((r) => ({ token: (r?.token ?? 0) + 1, dir: "out" }));
+  const rideTargetRef = useRef<number | null>(null);
   // Recomposition (2026-08-16): entering or leaving Run re-frames the diagram
   // — the dock claims the lower band on the way in and returns it on the way
   // out, and the fit should follow both moves.
@@ -2148,6 +2154,12 @@ function Workspace() {
     if (walk.length === 0) return;
     const seg = walk[walk.length - 1];
     await exitTo(walk.length - 1, seg.embed ? rebaseOut(view, seg.embed) : undefined);
+    // A breadcrumb click may be aiming further up than one seam; the ride is
+    // re-issued per crossing rather than run through several at once, so every
+    // level's autosave happens on the way past it.
+    const target = rideTargetRef.current;
+    if (target !== null && walk.length - 1 > target) rideOut();
+    else rideTargetRef.current = null;
   }
 
   // Exit to an ancestor (breadcrumb click). AUTOSAVES before navigating — the
@@ -2353,29 +2365,54 @@ function Workspace() {
             className="flex flex-wrap items-center gap-1.5 border-b px-4 py-1.5 text-xs"
             style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)", fontFamily: "var(--font-mono)" }}
           >
-            {walk.map((seg, i) => (
-              <span key={i} className="flex items-center gap-1.5">
-                {i > 0 && <span style={{ color: "var(--text-muted)" }}>›</span>}
-                <button
-                  onClick={() => exitTo(i)}
-                  className="flex items-center gap-1"
-                  style={{ color: "var(--text-secondary)" }}
-                  title={seg.modelId ? `${seg.label} @${seg.modelId}` : seg.label}
-                >
-                  <SeamGlyph clean={seg.clean} />
-                  {seg.label}
-                </button>
+            {frameChain(
+              walk.map((seg) => ({
+                label: seg.label,
+                modelId: seg.modelId,
+                clean: seg.clean,
+                continuous: seg.embed !== null,
+              })),
+              {
+                label: currentLabel ?? "untitled",
+                modelId: canvasModel.model_id ?? null,
+                clean: decomposition.issues.length === 0 && decomposition.error === null,
+                continuous: walk[walk.length - 1]?.embed !== null,
+              },
+            ).map((crumb) => (
+              <span key={crumb.depth} className="flex items-center gap-1.5">
+                {crumb.depth > 0 && <span style={{ color: "var(--text-muted)" }}>›</span>}
+                {crumb.focused ? (
+                  <span
+                    className="flex items-center gap-1 font-semibold"
+                    style={{ color: "var(--text-primary)" }}
+                    title={crumb.modelId ? `${crumb.label} @${crumb.modelId}` : crumb.label}
+                  >
+                    <SeamGlyph clean={crumb.clean} />
+                    {crumb.label}
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => {
+                      // The crumb is a place in the view, so going there is a
+                      // ride out to it — the same crossing a wheel makes, not a
+                      // swap that lands beside it. Only where the chain is
+                      // continuous: a frame entered by a document swap has no
+                      // embed to invert, so it still exits by fit.
+                      if (crumb.continuous) {
+                        rideTargetRef.current = crumb.depth;
+                        rideOut();
+                      } else void exitTo(crumb.depth);
+                    }}
+                    className="flex items-center gap-1"
+                    style={{ color: "var(--text-secondary)" }}
+                    title={crumb.modelId ? `${crumb.label} @${crumb.modelId}` : crumb.label}
+                  >
+                    <SeamGlyph clean={crumb.clean} />
+                    {crumb.label}
+                  </button>
+                )}
               </span>
             ))}
-            <span style={{ color: "var(--text-muted)" }}>›</span>
-            <span
-              className="flex items-center gap-1 font-semibold"
-              style={{ color: "var(--text-primary)" }}
-              title={canvasModel.model_id ? `${currentLabel} @${canvasModel.model_id}` : currentLabel ?? undefined}
-            >
-              <SeamGlyph clean={decomposition.issues.length === 0 && decomposition.error === null} />
-              {currentLabel}
-            </span>
           </nav>
         )}
 
@@ -2710,6 +2747,7 @@ function Workspace() {
                       onRebaseIn={rebaseInto}
                       onRebaseOut={(v) => void rebaseUp(v)}
                       viewCommand={viewCommand}
+                      ride={ride}
                       onPanChange={setCanvasPan}
                       onScaleChange={setCanvasScale}
                       fitToken={fitToken}

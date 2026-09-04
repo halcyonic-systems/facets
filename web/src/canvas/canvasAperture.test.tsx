@@ -73,8 +73,13 @@ describe("the decomposition aperture", () => {
     expect(render({ childModel: undefined })).not.toContain("data-aperture");
   });
 
-  it("is a Mobus reading — the other registers draw the plain node", () => {
-    expect(render({ lens: "Bunge" })).not.toContain("data-aperture");
+  it("reads through the register's own container — Bunge's hull, and never Klir", () => {
+    // #139 rule 5: the seam is the language's, so both registers that draw a
+    // container can show it. Bunge's is the observer's cut, dashed and
+    // unfilled; Klir draws no container at all, so it opens no aperture.
+    const bunge = render({ lens: "Bunge" });
+    expect(bunge).toContain("data-aperture");
+    expect(bunge).toContain('stroke-dasharray="8 6"');
     expect(render({ lens: "Klir" })).not.toContain("data-aperture");
   });
 
