@@ -282,6 +282,22 @@ body {
 .home-panel:hover .home-glyph {
   color: var(--accent);
 }
+/* the library's model cards: the same door, wearing the colour of the thing it
+   opens onto rather than the app's own accent. `--card-hue` is set on the card
+   (a tradition's --world-*, a genus's --chart-*), so the shelf a card sits on
+   is legible from the card alone once it is off the shelf — in search results,
+   in Recent — and one rule serves every hue. */
+.hue-panel {
+  transition:
+    background-color var(--transition-base),
+    border-color var(--transition-base);
+}
+.hue-panel:hover,
+.hue-panel:focus-visible {
+  background-color: color-mix(in oklab, var(--card-hue) 6%, var(--paper));
+  border-color: var(--card-hue) !important;
+}
+
 .home-lede-link {
   transition: color var(--transition-base);
 }

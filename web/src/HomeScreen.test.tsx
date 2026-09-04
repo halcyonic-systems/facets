@@ -369,6 +369,40 @@ describe("the doors", () => {
     }
   });
 
+  it("keeps the two colour channels apart", () => {
+    const lens = doors({ initialArrange: "lens" });
+    const domain = doors({ initialArrange: "domain" });
+    // A tradition is a reading and wears --world-*; a genus is a kingdom and
+    // wears a chart ink. Neither channel appears in the other's cut.
+    for (const id of ["klir", "bunge", "mobus"]) {
+      expect(lens).toContain(`var(--world-${id})`);
+      expect(domain).not.toContain(`var(--world-${id})`);
+    }
+    for (const ink of ["--chart-1", "--chart-3", "--chart-4"]) {
+      expect(domain).toContain(`var(${ink})`);
+      expect(lens).not.toContain(`var(${ink})`);
+    }
+    // The colour is a fill with an edge, never a gradient or a left border.
+    expect(lens).toContain("color-mix(in oklab, var(--world-mobus) 14%, var(--paper))");
+    expect(lens).not.toContain("gradient");
+  });
+
+  it("colours Recent by the reader and Yours by nothing at all", () => {
+    const tree: LibraryNode[] = [
+      { name: "steel plant", savedAt: at(1), missingReferents: 0, children: [] },
+    ];
+    const html = doors({
+      tree,
+      recent: [{ kind: "corpus", key: "mobus/steel-plant.sl", at: at(0) }],
+    });
+    // Recent is about the reader, so its wells take the app's own accent…
+    expect(html).toContain("var(--accent-soft)");
+    // …and a saved model, which belongs to no shelf, takes no shelf's colour.
+    expect(html).toContain("var(--accent-slate)");
+    // Delete is the one destructive control on the page and is marked as one.
+    expect(doors({ tree, initialManage: true })).toContain("var(--verdict-error)");
+  });
+
   it("leads each shelf with the model that teaches it", () => {
     // The one hand-made list on the page: every shelf opens on a model, and
     // that model is the shelf's first card.

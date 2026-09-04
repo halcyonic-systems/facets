@@ -56,6 +56,7 @@ import {
   shippedModels,
   type Arrange,
   type Facet,
+  type Shelf,
   type ShippedModel,
   type Tag,
 } from "./home";
@@ -787,8 +788,29 @@ const WORLD_HUE: Record<string, string> = {
   mobus: "var(--world-mobus)",
 };
 
+/** The GENUS hues. A genus is not a reading, so it must not borrow a world
+ *  hue — Bunge's kingdoms get the chart inks instead, which is the other place
+ *  this instrument already names disjoint categories in colour. Distinct
+ *  channel, distinct palette, and the two never trade. */
+const GENUS_HUE: Record<string, string> = {
+  Biological: "var(--chart-4)",
+  Social: "var(--chart-3)",
+  Technical: "var(--chart-1)",
+};
+
 function hueOf(tag: Tag): string | undefined {
   return tag.kind === "tradition" ? WORLD_HUE[tag.id] : undefined;
+}
+
+/** A card's own hue: the tradition it transcribes, or failing that the kingdom
+ *  it belongs to. Read from the model's tags, so a card carries its colour off
+ *  the shelf as well as on it. */
+function hueOfModel(m: ShippedModel): string | undefined {
+  for (const t of m.tags) {
+    const hue = t.kind === "tradition" ? WORLD_HUE[t.id] : GENUS_HUE[t.id];
+    if (hue) return hue;
+  }
+  return undefined;
 }
 
 /** One facet in the filter line: the tag's name and how many models carry it.
@@ -864,6 +886,21 @@ const SHELF_CARDS = 3;
 /** How many opens the Recent strip shows. Four, one row. */
 const RECENT_CARDS = 4;
 
+/** Recent is about the READER, not about any shelf, so its wells wear the app's
+ *  own accent — the same colour its section label takes, and the same one the
+ *  home page's Start group wears. */
+const RECENT_WELL = { fill: "var(--accent-soft)", edge: "var(--accent)" };
+
+/** A saved model belongs to no shelf and no tradition, and inventing a colour
+ *  for it would invent a fact. Its well is the page's own paper edge, drawn
+ *  round in slate so it still reads as a well and not as a hole. */
+const YOURS_WELL = { fill: "var(--paper-edge)", edge: "var(--accent-slate)" };
+
+/** A shelf's colour: a tradition's world hue, or a genus's chart ink. */
+function shelfHue(shelf: Shelf): string | undefined {
+  return shelf.kind === "tradition" ? WORLD_HUE[shelf.id] : GENUS_HUE[shelf.id];
+}
+
 /** When something happened, as a person says it. Minutes and hours while the
  *  memory is fresh, then the weekday while "Tuesday" still locates it, then a
  *  date. `relTime` (below) stays the LIST view's phrasing — "saved 3d ago" is a
@@ -890,16 +927,29 @@ function CardThumb({
   cacheKey,
   source,
   kind = "sl",
+  hue,
+  well,
 }: {
   cacheKey: string;
   source?: string;
   kind?: "sl" | "archive";
+  /** The well's fill and edge — a shelf's colour. */
+  hue?: string;
+  /** An already-mixed fill, for the wells that name something other than a
+   *  shelf: Recent's are the app's own accent, yours are neutral. */
+  well?: { fill: string; edge: string };
 }) {
   const compiled = useThumbnailModel(cacheKey, source, kind);
   return (
     <span
       className="flex h-11 w-11 shrink-0 items-center justify-center border"
-      style={{ borderColor: "var(--rule-soft)", background: "var(--paper-edge)" }}
+      style={{
+        borderColor: well?.edge ?? hue ?? "var(--rule-soft)",
+        // 14% is the register's filled-region strength: enough that three
+        // shelves read as three colours at a glance, light enough that the
+        // drawing inside the well still reads as ink on paper.
+        background: well?.fill ?? (hue ? `color-mix(in oklab, ${hue} 14%, var(--paper))` : "var(--paper-edge)"),
+      }}
     >
       {compiled && <Thumbnail model={compiled} size={34} />}
     </span>
@@ -918,6 +968,8 @@ function ModelCard({
   cacheKey,
   source,
   sourceKind,
+  hue,
+  well,
   onClick,
   trailing,
 }: {
@@ -927,13 +979,15 @@ function ModelCard({
   cacheKey: string;
   source?: string;
   sourceKind?: "sl" | "archive";
+  hue?: string;
+  well?: { fill: string; edge: string };
   onClick?: () => void;
   /** Manage-mode controls. Present only where the section put them there. */
   trailing?: ReactNode;
 }) {
   const body = (
     <>
-      <CardThumb cacheKey={cacheKey} source={source} kind={sourceKind} />
+      <CardThumb cacheKey={cacheKey} source={source} kind={sourceKind} hue={hue} well={well} />
       <span className="block min-w-0 flex-1">
         <span className="flex min-w-0 items-baseline gap-2">
           {/* Two lines, not one with an ellipsis. Bunge's three two-thing
@@ -958,23 +1012,22 @@ function ModelCard({
       </span>
     </>
   );
-  const style: CSSProperties = {
+  const style = {
     borderColor: "var(--rule-soft)",
     borderRadius: "var(--radius-sm)",
     background: "var(--paper)",
-  };
+    // The hover hue, read by .hue-panel in index.css. A card with no hue falls
+    // back to the app accent, which is what .home-panel does everywhere else.
+    ...(hue ? { "--card-hue": hue } : {}),
+  } as CSSProperties;
+  const panel = `${hue ? "hue-panel" : "home-panel"} flex min-w-0 items-center gap-3 border px-3 py-2.5 text-left`;
   return trailing ? (
-    <div className="home-panel flex min-w-0 items-center gap-3 border px-3 py-2.5 text-left" style={style}>
+    <div className={panel} style={style}>
       {body}
       {trailing}
     </div>
   ) : (
-    <button
-      onClick={onClick}
-      title={name}
-      className="home-panel flex min-w-0 items-center gap-3 border px-3 py-2.5 text-left"
-      style={style}
-    >
+    <button onClick={onClick} title={name} className={panel} style={style}>
       {body}
     </button>
   );
@@ -1007,10 +1060,11 @@ function SectionHead({ label, right, lead }: { label: string; right?: ReactNode;
   );
 }
 
-/** A shelf's own head: the tradition's world hue as a 3px bar, the shelf's
- *  name, and the control that opens the rest of it. A DOMAIN shelf carries no
- *  bar — a genus is not a reading, and lending it a world hue would say that it
- *  is. */
+/** A shelf's own head: the shelf's colour as a 3px bar, its name, and the
+ *  control that opens the rest of it. A lens shelf wears its tradition's
+ *  --world-* hue and a domain shelf its genus's chart ink — two channels, never
+ *  traded, so a green bar over "Mobus" and a green bar over "Biological" are
+ *  visibly the same device saying two different kinds of thing. */
 function ShelfHead({
   label,
   note,
@@ -1195,6 +1249,7 @@ export function LibraryBrowser({
                         cacheKey={`saved:${node.name}`}
                         source={node.json}
                         sourceKind="archive"
+                        well={RECENT_WELL}
                         name={node.name}
                         sub={savedSubline(node, visit.at)}
                         onClick={() => onLoad(node.name)}
@@ -1204,6 +1259,7 @@ export function LibraryBrowser({
                         key={`recent:${visit.kind}:${visit.key}`}
                         cacheKey={model.key}
                         source={slOf(model)}
+                        well={RECENT_WELL}
                         name={model.name}
                         runs={model.runs}
                         sub={`ours · ${whenLabel(visit.at)}`}
@@ -1246,6 +1302,7 @@ export function LibraryBrowser({
                     <ModelCard
                       key={m.key}
                       cacheKey={m.key}
+                      hue={hueOfModel(m)}
                       source={slOf(m)}
                       name={m.name}
                       runs={m.runs}
@@ -1263,7 +1320,7 @@ export function LibraryBrowser({
                       <ShelfHead
                         label={shelf.label}
                         note={shelf.note}
-                        hue={shelf.kind === "tradition" ? WORLD_HUE[shelf.id] : undefined}
+                        hue={shelfHue(shelf)}
                         total={shelf.models.length}
                         shown={cards.length}
                         onExpand={() => setOpened((o) => [...o, shelf.id])}
@@ -1273,6 +1330,7 @@ export function LibraryBrowser({
                           <ModelCard
                             key={m.key}
                             cacheKey={m.key}
+                            hue={shelfHue(shelf)}
                             source={slOf(m)}
                             name={m.name}
                             runs={m.runs}
@@ -1524,7 +1582,7 @@ function SavedCard({
         className="flex min-w-0 items-center gap-3 border px-3 py-2.5"
         style={{ borderColor: "var(--rule-soft)", borderRadius: "var(--radius-sm)", background: "var(--paper)" }}
       >
-        <CardThumb cacheKey={`saved:${node.name}`} source={node.json} kind="archive" />
+        <CardThumb cacheKey={`saved:${node.name}`} source={node.json} kind="archive" well={YOURS_WELL} />
         <input
           autoFocus
           value={draft}
@@ -1549,6 +1607,7 @@ function SavedCard({
       cacheKey={`saved:${node.name}`}
       source={node.json}
       sourceKind="archive"
+      well={YOURS_WELL}
       name={node.name}
       sub={savedSubline(node)}
       onClick={manage ? undefined : () => onLoad(node.name)}
@@ -1570,7 +1629,7 @@ function SavedCard({
               onClick={() => onDelete(node.name)}
               title={`Delete ${node.name}`}
               className="px-1.5 text-sm"
-              style={{ color: "var(--ink-muted)" }}
+              style={{ color: "var(--verdict-error)" }}
             >
               ×
             </button>
