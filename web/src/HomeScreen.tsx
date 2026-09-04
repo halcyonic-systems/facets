@@ -235,6 +235,7 @@ function Masthead({
   stat,
   statLabel,
   aside,
+  dense,
   back,
 }: {
   eyebrow?: string;
@@ -252,20 +253,24 @@ function Masthead({
    *  and the two are alternatives: a page that can be searched does not also
    *  need to announce how many things are in it. */
   aside?: ReactNode;
+  /** Close the title block's air. The home and about pages open like a title
+   *  page and want it; the library is a menu the reader scrolls, and every
+   *  line of air above the first door is a door pushed off the screen. */
+  dense?: boolean;
   back?: { label: string; onClick: () => void };
 }) {
   return (
-    <Column className="pt-12">
+    <Column className={dense ? "pt-8" : "pt-12"}>
       {back && (
         <button
           onClick={back.onClick}
-          className="mb-10 block text-[11px] uppercase tracking-[0.22em]"
+          className={`${dense ? "mb-6" : "mb-10"} block text-[11px] uppercase tracking-[0.22em]`}
           style={folioStyle}
         >
           ‹ {back.label}
         </button>
       )}
-      <div className="flex items-start justify-between gap-10 pt-6">
+      <div className={`flex items-start justify-between gap-10 ${dense ? "pt-1" : "pt-6"}`}>
         <div className="flex min-w-0 items-center gap-6">
           {mark}
           <div className="min-w-0">
@@ -275,7 +280,7 @@ function Masthead({
               </div>
             )}
             <h1
-              className="text-6xl leading-[0.95] tracking-tight"
+              className={`${dense ? "text-5xl" : "text-6xl"} leading-[0.95] tracking-tight`}
               style={{ fontWeight: 600, color: "var(--ink)", letterSpacing: "-0.02em" }}
             >
               {title}
@@ -299,7 +304,7 @@ function Masthead({
       </div>
       {lede && (
         <p
-          className="mt-6 max-w-xl text-xl leading-snug"
+          className={`${dense ? "mt-4 max-w-2xl text-lg" : "mt-6 max-w-xl text-xl"} leading-snug`}
           style={{ color: "var(--ink-secondary)" }}
         >
           {lede}
@@ -311,7 +316,7 @@ function Masthead({
           {note}
         </p>
       )}
-      <div className="mt-8" style={{ borderTop: "1px solid var(--rule)" }} />
+      <div className={dense ? "mt-6" : "mt-8"} style={{ borderTop: "1px solid var(--rule)" }} />
     </Column>
   );
 }
@@ -876,12 +881,21 @@ function whenLabel(ts: number, now = Date.now()): string {
 }
 
 /** The card's left cell: the model's own diagram at card scale, in a frame that
- *  holds its place before (and if) the drawing arrives. A saved model has no SL
- *  on this page — the library store holds its archive and the tree carries only
- *  the name — so its frame stays empty rather than showing a stand-in glyph
- *  that would claim a shape the model may not have. */
-function CardThumb({ cacheKey, sl }: { cacheKey: string; sl?: string }) {
-  const compiled = useThumbnailModel(cacheKey, sl);
+ *  holds its place before (and if) the drawing arrives. One of ours draws from
+ *  its SL and one of yours from its stored archive — a saved model is a model
+ *  and should be recognisable by its shape here too. A source that will not
+ *  read leaves the frame empty rather than showing a stand-in glyph that would
+ *  claim a shape the model may not have. */
+function CardThumb({
+  cacheKey,
+  source,
+  kind = "sl",
+}: {
+  cacheKey: string;
+  source?: string;
+  kind?: "sl" | "archive";
+}) {
+  const compiled = useThumbnailModel(cacheKey, source, kind);
   return (
     <span
       className="flex h-11 w-11 shrink-0 items-center justify-center border"
@@ -902,7 +916,8 @@ function ModelCard({
   sub,
   runs,
   cacheKey,
-  sl,
+  source,
+  sourceKind,
   onClick,
   trailing,
 }: {
@@ -910,17 +925,22 @@ function ModelCard({
   sub: ReactNode;
   runs?: boolean;
   cacheKey: string;
-  sl?: string;
+  source?: string;
+  sourceKind?: "sl" | "archive";
   onClick?: () => void;
   /** Manage-mode controls. Present only where the section put them there. */
   trailing?: ReactNode;
 }) {
   const body = (
     <>
-      <CardThumb cacheKey={cacheKey} sl={sl} />
+      <CardThumb cacheKey={cacheKey} source={source} kind={sourceKind} />
       <span className="block min-w-0 flex-1">
         <span className="flex min-w-0 items-baseline gap-2">
-          <span className="truncate text-lg leading-tight" style={nameStyle}>
+          {/* Two lines, not one with an ellipsis. Bunge's three two-thing
+              structures differ in their last three words, so a single truncated
+              line prints the same string on three cards and the shelf stops
+              being readable. */}
+          <span className="line-clamp-2 text-lg leading-tight" style={nameStyle}>
             {name}
           </span>
           {runs && (
@@ -1127,9 +1147,10 @@ export function LibraryBrowser({
         lede="Pick up where you left off, or come in through a lens or a domain."
         back={{ label: "Home", onClick: onBack }}
         aside={<SearchField value={query} onChange={setQuery} />}
+        dense
       />
 
-      <Column className="pb-16 pt-6">
+      <Column className="pb-14 pt-5">
         {view === "list" ? (
           <LedgerView
             all={all}
@@ -1172,6 +1193,8 @@ export function LibraryBrowser({
                       <ModelCard
                         key={`recent:${visit.kind}:${visit.key}`}
                         cacheKey={`saved:${node.name}`}
+                        source={node.json}
+                        sourceKind="archive"
                         name={node.name}
                         sub={savedSubline(node, visit.at)}
                         onClick={() => onLoad(node.name)}
@@ -1180,7 +1203,7 @@ export function LibraryBrowser({
                       <ModelCard
                         key={`recent:${visit.kind}:${visit.key}`}
                         cacheKey={model.key}
-                        sl={slOf(model)}
+                        source={slOf(model)}
                         name={model.name}
                         runs={model.runs}
                         sub={`ours · ${whenLabel(visit.at)}`}
@@ -1197,10 +1220,16 @@ export function LibraryBrowser({
                 it is about. The toggle is one control, not two pages, because
                 these are two views of one list and the reader should be able to
                 change their mind without losing their place. */}
-            <section className="mt-9">
+            {/* No Recent means this is the first section, and a top margin
+                under the masthead rule would print as a gap rather than as
+                air. */}
+            <section className={recentCards.length > 0 ? "mt-8" : ""}>
               <SectionHead
                 label="Start from one of ours"
-                right={<ArrangeToggle value={arrange} onChange={chooseArrange} />}
+                // A search has put the shelves away, and the toggle only cuts
+                // shelves — offering it here would be a control that does
+                // nothing.
+                right={q ? undefined : <ArrangeToggle value={arrange} onChange={chooseArrange} />}
               />
               {shownShipped.length === 0 ? (
                 <EmptyLine>no model of ours matches “{query.trim()}”</EmptyLine>
@@ -1217,7 +1246,7 @@ export function LibraryBrowser({
                     <ModelCard
                       key={m.key}
                       cacheKey={m.key}
-                      sl={slOf(m)}
+                      source={slOf(m)}
                       name={m.name}
                       runs={m.runs}
                       sub={m.description}
@@ -1244,7 +1273,7 @@ export function LibraryBrowser({
                           <ModelCard
                             key={m.key}
                             cacheKey={m.key}
-                            sl={slOf(m)}
+                            source={slOf(m)}
                             name={m.name}
                             runs={m.runs}
                             sub={m.description}
@@ -1262,7 +1291,7 @@ export function LibraryBrowser({
                 control on every card: renaming and deleting are not what a
                 reader came here to do, and a × on every card invites the one
                 click this page cannot undo. */}
-            <section className="mt-9">
+            <section className="mt-8">
               <SectionHead
                 label="Yours"
                 right={
@@ -1325,7 +1354,7 @@ export function LibraryBrowser({
                       <ModelCard
                         key={d.key}
                         cacheKey={d.key}
-                        sl={d.sl}
+                        source={d.sl}
                         name={d.description}
                         sub={`${draftedGloss(d)} · ${d.model}`}
                         onClick={() => onOpenDrafted(d.sl)}
@@ -1336,7 +1365,7 @@ export function LibraryBrowser({
               )}
             </section>
 
-            <section className="mt-9">
+            <section className="mt-8">
               <SectionHead label="From a file" />
               <button
                 onClick={onOpenFile}
@@ -1360,7 +1389,7 @@ export function LibraryBrowser({
               </button>
             </section>
 
-            <div className="mt-9 pt-3.5" style={{ borderTop: "1px solid var(--rule-soft)" }}>
+            <div className="mt-8 pt-3.5" style={{ borderTop: "1px solid var(--rule-soft)" }}>
               <button
                 onClick={() => setView("list")}
                 className="record-folio text-[11px] uppercase tracking-[0.2em]"
@@ -1495,7 +1524,7 @@ function SavedCard({
         className="flex min-w-0 items-center gap-3 border px-3 py-2.5"
         style={{ borderColor: "var(--rule-soft)", borderRadius: "var(--radius-sm)", background: "var(--paper)" }}
       >
-        <CardThumb cacheKey={`saved:${node.name}`} />
+        <CardThumb cacheKey={`saved:${node.name}`} source={node.json} kind="archive" />
         <input
           autoFocus
           value={draft}
@@ -1518,6 +1547,8 @@ function SavedCard({
   return (
     <ModelCard
       cacheKey={`saved:${node.name}`}
+      source={node.json}
+      sourceKind="archive"
       name={node.name}
       sub={savedSubline(node)}
       onClick={manage ? undefined : () => onLoad(node.name)}

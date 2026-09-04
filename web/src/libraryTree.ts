@@ -29,6 +29,12 @@ export interface LibraryNode {
   savedAt: number;
   /** The shipped model this one descends from, as the record recorded it. */
   from?: string;
+  /** The archive text, so a surface can DRAW a saved model and not only name
+   *  it. The reading already parses every record for its references, so handing
+   *  the text on costs nothing and saves the library page a second read of the
+   *  store. Optional so a hand-made node (a test, a menu row) need not carry
+   *  one — a node without it simply has nothing to draw. */
+  json?: string;
   /** How many of this model's `decomposes` references resolve to no saved
    *  record — the library-level echo of the kernel's missing-referent issue. */
   missingReferents: number;
@@ -112,6 +118,7 @@ export function buildLibraryTree(records: LibraryRecordLike[]): LibraryNode[] {
     return {
       name: r.name,
       savedAt: r.savedAt,
+      json: r.json,
       ...(r.from ? { from: r.from } : {}),
       missingReferents: missing.get(r.name) ?? 0,
       children: ordered

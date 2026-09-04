@@ -12,16 +12,24 @@
 // to show, the row keeps its numeral, and the real complaint about it belongs on
 // the canvas that opens it, not in a 40px gutter.
 import { useEffect, useState } from "react";
-import { compileSl } from "../kernel";
+import { compileSl, openModel } from "../kernel";
 import type { CanvasModel } from "../kernel/types";
 
 const cache = new Map<string, CanvasModel | null>();
 
-export function useThumbnailModel(key: string, sl: string | undefined): CanvasModel | null {
+/** The same deferred, memoised read for a SAVED model, whose shape lives in a
+ *  stored archive rather than in SL text. A hand-imported or legacy record that
+ *  the decoder refuses draws nothing, exactly as an SL that will not compile
+ *  draws nothing. */
+export function useThumbnailModel(
+  key: string,
+  source: string | undefined,
+  kind: "sl" | "archive" = "sl",
+): CanvasModel | null {
   const [model, setModel] = useState<CanvasModel | null>(() => cache.get(key) ?? null);
 
   useEffect(() => {
-    if (!sl) return;
+    if (!source) return;
     const hit = cache.get(key);
     if (hit !== undefined) {
       setModel(hit);
@@ -33,8 +41,11 @@ export function useThumbnailModel(key: string, sl: string | undefined): CanvasMo
     const id = setTimeout(() => {
       let out: CanvasModel | null = null;
       try {
-        const res = compileSl(sl);
-        out = "ok" in res ? res.ok : null;
+        if (kind === "archive") out = openModel(source);
+        else {
+          const res = compileSl(source);
+          out = "ok" in res ? res.ok : null;
+        }
       } catch {
         out = null;
       }
@@ -45,7 +56,7 @@ export function useThumbnailModel(key: string, sl: string | undefined): CanvasMo
       live = false;
       clearTimeout(id);
     };
-  }, [key, sl]);
+  }, [key, source, kind]);
 
   return model;
 }
