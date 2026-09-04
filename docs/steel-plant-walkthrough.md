@@ -24,12 +24,15 @@ fresh browser with an empty library. Both seams are held clean in CI by
 
 ## The click path
 
-1. **Home → Open a model → Open a file… → `assets/walkthroughs/steel-plant/level-0.sl`.**
-   (Until #318, level 0 was a gallery card. The consolidation curated the
-   shipped examples down to a named keep set, and a second steel plant was the
-   duplication it was called to remove — the citation-gated corpus entry is now
-   the library's only steel-plant card. Level 0 moved beside the two levels it
-   opens onto; putting it back on a shelf is one glob, if the demo wants it.)
+1. **Home → Open a model → "The Steel-Plant, three levels deep".**
+   (Level 0 was a gallery card until #318, then moved beside the two levels it
+   opens onto — a second steel plant was the duplication that consolidation was
+   called to remove. #139 put it back on the shelf and the duplication argument
+   no longer holds: the two cards now teach different things, since this one
+   shows its interior without leaving the model. The citation-gated corpus card
+   still stops at Fig. 4.14, where Mobus stops. The file has not moved; it is
+   registered by hand in `web/src/examples.ts`. `Open a file… →
+   assets/walkthroughs/steel-plant/level-0.sl` still works.)
    It opens Fig. 4.14 at the chapter's own pause: one Combining process
    among the six entities of level −1, F-numbers on every flow, substances
    from Listing 4.1's own subtype attributes.

@@ -5,6 +5,7 @@
 // dropped in assets/examples/ — it self-sorts into its genus with no code
 // change, because the genus is parsed from the file's own `system` line.
 import { DEMOS, type Demo } from "./demos";
+import steelPlantWalk from "../../assets/walkthroughs/steel-plant/level-0.sl?raw";
 
 const files = import.meta.glob("../../assets/examples/*.sl", {
   eager: true,
@@ -57,6 +58,26 @@ function firstComment(lines: string[]): string {
 
 const structural: Demo[] = Object.entries(files).map(([path, text]) => parseExample(path, text));
 
+// The three-level steel-plant walk's entry level. It ships beside the two
+// levels it opens onto (assets/walkthroughs/, where the kernel's
+// steel_walkthrough gate holds the seams and the pinned child ids), not in
+// assets/examples/ — so it is registered here by hand rather than by the glob,
+// and that is the whole reason its title and blurb are written rather than
+// parsed. The file's own `system` line names the editorial walkthrough; the
+// gallery row has to say what opening it gets you, which is depth. The corpus
+// card next to it stays Mobus's own Fig. 4.14 stopping point.
+const STEEL_PLANT_WALK: Demo = {
+  key: "example:steel-plant-walk",
+  title: "The Steel-Plant, three levels deep",
+  genus: "Technical",
+  blurb:
+    "Mobus's ch. 4 procedure as a walkable hierarchy: the opaque SOI of Fig. 4.14, " +
+    "its interior at Fig. 4.16, and Iron-Inventory's room at Fig. 4.17 — three models " +
+    "joined by decomposition references whose seams the kernel checks. Zoom into a " +
+    "decomposed component to see its interior in place, or double-click to enter it.",
+  sl: steelPlantWalk,
+};
+
 /** An `.sl` file that also ships a run bundle lists once, as the runnable
  *  entry — the `.sl` stays its SOURCE (`sl_demos.rs` pins the bundled model
  *  to the projection of the `.sl`), the gallery just must not show the same
@@ -66,7 +87,11 @@ const demoTitles = new Set(DEMOS.map((d) => d.title));
 /** The merged library: runnable demos + structural examples, each carrying its
  *  genus. Order within the list is demos-first, then structural — the gallery
  *  regroups by genus, so this order only affects within-genus card order. */
-export const EXAMPLES: Demo[] = [...DEMOS, ...structural.filter((s) => !demoTitles.has(s.title))];
+export const EXAMPLES: Demo[] = [
+  ...DEMOS,
+  ...structural.filter((s) => !demoTitles.has(s.title)),
+  STEEL_PLANT_WALK,
+];
 
 /** Group the library by genus in the canonical order, dropping empty genera.
  *  The shape the gallery renders (#148). */

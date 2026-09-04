@@ -52,6 +52,24 @@ describe("groupedExamples", () => {
   });
 });
 
+describe("the three-level walk on the shelf (#139)", () => {
+  it("carries the walk's level 0, titled for its depth and sorted Technical", () => {
+    const walk = EXAMPLES.find((e) => e.key === "example:steel-plant-walk")!;
+    expect(walk.title).toBe("The Steel-Plant, three levels deep");
+    expect(walk.genus).toBe("Technical");
+    // It opens as a diagram; the depth is in the `decomposes` references.
+    expect(isRunnable(walk)).toBe(false);
+    expect(walk.sl).toMatch(/decomposes\s+"[^"]+"\s+@/);
+  });
+
+  it("does not displace the corpus card, which stops where Mobus stops", () => {
+    const titles = groupedCorpus()
+      .flatMap((g) => [...g.sets.flatMap((s) => s.entries), ...g.loose])
+      .map((e) => e.title);
+    expect(titles).toContain("The Steel-Plant in its environment");
+  });
+});
+
 describe("the shipped library", () => {
   it("merges runnable demos and structural examples, every entry carrying a genus", () => {
     expect(EXAMPLES.length).toBeGreaterThan(0);
@@ -89,6 +107,9 @@ describe("the shipped library", () => {
       "LLM Market",
       "Predator-Prey Ecosystem",
       "Ribosome",
+      // #139: the walk's level 0, back on a shelf now that a decomposed
+      // component shows its interior without leaving the model.
+      "The Steel-Plant, three levels deep",
       "Translation Apparatus",
       "U.S. Federal Economic Policy",
       "hal",
