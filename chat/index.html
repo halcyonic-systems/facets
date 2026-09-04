@@ -1731,7 +1731,7 @@ const API = LOCAL_HOST ? 'http://localhost:5010' : 'https://api.facets.systems';
 const SUPABASE_URL = 'https://xezkcsntepjnvdxhkdwi.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_7xS0HratrVUgOuZz5yIzpQ_AS4F2JU-';
 const AUTH_MODE = (SUPABASE_URL && !LOCAL_HOST) ? 'supabase' : 'local';
-const DEV_AUTH_SECRET = 'facets-dev-secret';
+const DEV_AUTH_SECRET = 'facets-dev-secret'; // local mode only; AUTH_MODE is a hostname check, so this is unreachable in production
 const TOKEN_TTL = 7 * 24 * 3600;
 
 // Read-only shared-answer mode (/a/<id>): render a stored snapshot, suppress re-run affordances,
@@ -2458,7 +2458,9 @@ async function renderSharedAnswer(shareId) {
 
   let data = null;
   try {
-    const r = await authFetch('/a/' + encodeURIComponent(shareId));
+    // A public snapshot needs no identity: plain fetch, so viewing someone's link never
+    // mints or sends the viewer's own token.
+    const r = await fetch(API + '/a/' + encodeURIComponent(shareId));
     if (!r.ok) throw new Error('not found');
     data = await r.json();
   } catch (e) {
@@ -4270,6 +4272,9 @@ function openYouPanel() {
     try {
       const r = await authFetch('/v1/me?revoke_shares=' + revoke, { method: 'DELETE' });
       if (!r.ok) throw new Error('erasure failed');
+      // The provider keeps its own session cache; without signing out, the next load
+      // would present the deleted subject's token forever and sit in "session expired".
+      if (sbClient) { try { await sbClient.auth.signOut(); } catch (e) {} }
       ['facets_chats', 'facets_shares', 'facets_display_name', 'facets_auth_sub', 'facets_auth_token', 'facets_user_id']
         .forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
       window.location.replace('/chat/');
