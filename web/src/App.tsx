@@ -2043,9 +2043,13 @@ function Workspace() {
       setSelectedThingId(null);
       setNotice(
         parent.isNew
-          ? `decomposed → saved "${name}" to the library; parent saved as "${parent.name}" — double-click the component to enter`
-          : `decomposed → saved "${name}" to the library — double-click the component to enter`,
+          ? `decomposed → saved "${name}" to the library; parent saved as "${parent.name}"`
+          : `decomposed → saved "${name}" to the library`,
       );
+      // Decomposing IS the first step into the child: ride in once the stamped
+      // parent has committed, so the walk segment it pushes carries the
+      // reference it just minted rather than the model from before it.
+      enterAfterStampRef.current = thing.id;
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
@@ -2057,6 +2061,17 @@ function Workspace() {
   // only the breadcrumb makes it read as a hierarchical dive. A referent that
   // resolves nowhere surfaces the kernel's defined issue in place — never a
   // crash, never a silent no-op.
+  const enterAfterStampRef = useRef<number | null>(null);
+  useEffect(() => {
+    const id = enterAfterStampRef.current;
+    if (id === null || !canvasModel) return;
+    const t = canvasModel.things.find((x) => x.id === id);
+    if (!t?.child_model) return;
+    enterAfterStampRef.current = null;
+    void enterThingChild(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canvasModel]);
+
   async function enterThingChild(thing: Thing, arrival?: { view: View; embed: Embed; child: CanvasModel }) {
     const ref = thing.child_model;
     if (!ref || !canvasModel) return;

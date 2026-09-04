@@ -100,8 +100,11 @@ function DecomposeDoor({
   onOpen: () => void;
 }) {
   const r = DOOR_R * hold;
-  const cx = thing.x + NODE_R * Math.SQRT1_2;
-  const cy = thing.y - NODE_R * Math.SQRT1_2;
+  // Just outside the rim, where the port capsules are not: on a busy interface
+  // the notches ring the node and a door on the rim vanishes among them.
+  const reach = NODE_R + r + 4 * hold;
+  const cx = thing.x + reach * Math.SQRT1_2;
+  const cy = thing.y - reach * Math.SQRT1_2;
   const entered = door.kind === "entered";
   const opacity = lit ? 1 : entered ? 0.45 : 0;
   return (
