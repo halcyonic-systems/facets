@@ -158,6 +158,21 @@ export default function Canvas({
   // presentation: the authored position survives in the model and dragging an
   // interface slides it along the ring (the constraint teaches the ontology).
   const authoredInterfaceIds = new Set(facts?.authored_interface_thing_ids ?? []);
+  // #139: which components are currently drawn as apertures. Declared here, and
+  // filled further down where the view scale is known — the port geometry below
+  // has to run BEFORE the gesture hook that owns the scale, so it reads the
+  // PREVIOUS render's tiers. A tier only changes on a scale change, which is
+  // itself a render, so the lag is one frame and self-correcting.
+  const tiersRef = useRef(new Map<number, ApertureTier>());
+  const openApertureIds = new Set(
+    [...tiersRef.current].filter(([, tier]) => tier !== "sealed").map(([id]) => id),
+  );
+  // An on-membrane interface draws a small body and hangs its notches on THAT
+  // rim (#306). When the component opens into an aperture, the face grows to
+  // the node's circle and the notches ride out with it — they belong on the
+  // rim, and the rim is what moved. Without this they sit inside the aperture
+  // and cover the interior they are supposed to frame.
+  const interfaceRim = (id: number) => NODE_R * (openApertureIds.has(id) ? 1 : INTERFACE_SCALE);
   // Ring extent comes from the INTERIOR components alone (#226, 2026-08-16):
   // an interface lives ON the ring, so its position must never feed the fit —
   // that feedback was why dragging an interface resized the whole membrane.
@@ -209,7 +224,7 @@ export default function Canvas({
           if (authoredInterfaceIds.has(port.component)) {
             const comp = thingById(dModel, port.component);
             if (!comp) return [];
-            const at = rimPoint(comp, env, NODE_R * INTERFACE_SCALE);
+            const at = rimPoint(comp, env, interfaceRim(comp.id));
             return [{ port, at, angle: Math.atan2(env.y - comp.y, env.x - comp.x), tetherTo: null, compact: true }];
           }
           const at = ringPoint(ring, env);
@@ -229,7 +244,7 @@ export default function Canvas({
             const comp = thingById(dModel, id);
             if (!comp) return [];
             const angle = outwardNormal(ring, comp);
-            const r = NODE_R * INTERFACE_SCALE;
+            const r = interfaceRim(comp.id);
             const at = { x: comp.x + Math.cos(angle) * r, y: comp.y + Math.sin(angle) * r };
             return [
               {
@@ -436,11 +451,10 @@ export default function Canvas({
   // Mobus only, for now. The membrane is what an aperture is read through, and
   // Bunge's hull is the observer's cut rather than a border a child could be
   // seen inside; Klir draws no container at all.
+  //
+  // The aperture is the node's circle, always — a decomposition must not invent
+  // a second node shape for the thing it is already drawing.
   const aperturePx = apertureScreenPx(scale);
-  // Per-node tier memory, so the hysteresis band has something to be hysteretic
-  // ABOUT. A ref, not state: the tier is derived from a scale that already
-  // rendered, so recording it must not schedule another render.
-  const tiersRef = useRef(new Map<number, ApertureTier>());
   // Only frames in view are drawn. Read off the live element rather than kept
   // in state — every pan and zoom re-renders this anyway, so the numbers cannot
   // go stale, and before mount nothing is culled.
@@ -463,9 +477,7 @@ export default function Canvas({
   // is drawn yet, so nothing deeper is fetched.
   const approaching =
     aperturePx >= PREFETCH_PX
-      ? decomposed
-          .map((t) => t.child_model!.id)
-          .filter((id) => childModel!(id) === undefined)
+      ? decomposed.map((t) => t.child_model!.id).filter((id) => childModel!(id) === undefined)
       : [];
   const apertures = decomposed.flatMap((t) => {
     const tier = apertureTier(aperturePx, tiersRef.current.get(t.id) ?? "sealed");
@@ -483,6 +495,17 @@ export default function Canvas({
     if (!approachKey) return;
     for (const id of approachKey.split(" ")) onApproachChild?.(id);
   }, [approachKey, onApproachChild]);
+
+  // The port geometry above read the PREVIOUS render's open set, so the frame
+  // in which an aperture first opens still hangs that component's notches on
+  // the small interface rim. One more render settles it — and it terminates,
+  // because that render reads the tiers this one just wrote.
+  const [, settleApertures] = useState(0);
+  const openNow = apertures.map((a) => a.thing.id).sort().join(" ");
+  const openWhenPortsWerePlaced = [...openApertureIds].sort().join(" ");
+  useEffect(() => {
+    if (openNow !== openWhenPortsWerePlaced) settleApertures((n) => n + 1);
+  }, [openNow, openWhenPortsWerePlaced]);
 
   return (
     <svg
