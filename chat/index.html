@@ -181,89 +181,6 @@
     margin-top: 8px;
     cursor: default;
   }
-  .chat-welcome-name { margin-top: 16px; }
-  .welcome-name-input {
-    font-family: var(--ui);
-    font-size: 0.72rem;
-    color: var(--ink-dim);
-    background: var(--ground);
-    border: 1px solid var(--ground-border);
-    border-radius: 6px;
-    padding: 6px 12px;
-    text-align: center;
-    outline: none;
-    width: 180px;
-    transition: border-color 0.2s ease;
-  }
-  .welcome-name-input:focus { border-color: var(--flow); }
-  .welcome-name-input::placeholder { color: var(--ink-faint); }
-  .name-gate-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(10, 12, 14, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-  .name-gate-card {
-    background: var(--ground);
-    border: 1px solid var(--ground-border);
-    border-radius: 12px;
-    padding: 32px;
-    max-width: 360px;
-    text-align: center;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-  }
-  .name-gate-card h3 {
-    font-family: var(--display);
-    font-size: 1.3rem;
-    color: var(--ink);
-    margin: 0 0 8px 0;
-  }
-  .name-gate-card p {
-    font-family: var(--serif);
-    font-size: 0.85rem;
-    color: var(--ink-dim);
-    margin: 0 0 20px 0;
-    line-height: 1.5;
-  }
-  .name-gate-input {
-    font-family: var(--ui);
-    font-size: 0.82rem;
-    color: var(--ink);
-    background: white;
-    border: 1px solid var(--ground-border);
-    border-radius: 8px;
-    padding: 10px 14px;
-    width: 100%;
-    box-sizing: border-box;
-    outline: none;
-    transition: border-color 0.2s;
-    margin-bottom: 12px;
-  }
-  .name-gate-input:focus { border-color: var(--flow); }
-  .name-gate-btn {
-    font-family: var(--ui);
-    font-size: 0.75rem;
-    color: white;
-    background: var(--flow);
-    border: none;
-    border-radius: 8px;
-    padding: 10px 24px;
-    cursor: pointer;
-    width: 100%;
-    transition: opacity 0.2s;
-  }
-  .name-gate-btn:disabled { opacity: 0.4; cursor: default; }
-  .name-gate-btn:hover:not(:disabled) { opacity: 0.85; }
-  .name-gate-actions { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
-  .name-gate-actions .name-gate-btn { width: auto; flex: 1; margin: 0; }
-  .name-gate-skip {
-    font-family: var(--ui); font-size: 0.72rem; color: var(--ink-faint);
-    background: none; border: none; padding: 10px 8px; cursor: pointer; white-space: nowrap;
-  }
-  .name-gate-skip:hover { color: var(--ink-dim); }
   .chat-welcome-chips {
     display: flex;
     flex-wrap: wrap;
@@ -287,6 +204,18 @@
     color: var(--flow);
     background: color-mix(in srgb, var(--flow) 6%, transparent);
   }
+
+  .session-note {
+    font-family: var(--ui);
+    font-size: 0.74rem;
+    color: var(--ink-dim);
+    background: var(--ground-raised);
+    border: 1px solid var(--ground-border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+  }
+  .chat-pane.session-expired .chat-input-area { opacity: 0.5; }
 
   /* ══════════════════════════════════════════
      MAIN LAYOUT
@@ -555,33 +484,105 @@
     .dock-note { margin-top: auto; font-family: var(--ui); font-size: 0.7rem; font-style: italic; color: var(--ink-faint); }
   }
 
-  /* ── Conversations rail (the mock's left rail, 2026-08-31): History stands
-     open when the screen affords the full triple ensemble — 236 rail + 16 ·
-     760 pane · 22 + 270 dock = 1304 — and stays a drawer below that. ── */
-  .conv-rail { display: none; }
+  /* ── Conversations rail (facets#370): "your stuff" exists at every width now.
+     It was gated at 1360px, which left narrow screens with a drawer and no
+     standing surface for identity. Collapsed it is an icon strip; open below
+     the wide gate it overlays the pane like a drawer; at 1360 and up it docks
+     beside the pane and the centred triple ensemble is unchanged. ── */
+  .conv-rail {
+    position: fixed; top: 41px; left: 0; bottom: 0;
+    width: 236px; box-sizing: border-box; z-index: 150;
+    display: flex; flex-direction: column;
+    background: var(--paper);
+    border-right: 1px solid var(--ground-border);
+    overflow: hidden;
+  }
+  .conv-rail.collapsed { width: 52px; }
+  /* Below the docked gate the strip stands over the pane's left edge, so the
+     pane gives it that gutter rather than letting it sit on the text. */
+  @media (max-width: 1359px) {
+    body.rail-strip .chat-pane { padding-left: 52px; }
+  }
+  .rail-backdrop { display: none; position: fixed; inset: 41px 0 0 0; z-index: 140; background: rgba(10, 12, 14, 0.35); }
+  body.rail-open .rail-backdrop { display: block; }
   @media (min-width: 1360px) {
     main .chat-pane { margin: 0 0 0 calc(50vw - 400px); }
-    /* The standing rail IS history — the drawer's trigger is redundant here.
-       The drawer itself stays; it is the only door below this gate. */
-    #chat-history-btn { display: none; }
     .context-dock.has-content { left: calc(50vw + 382px); }
-    .conv-rail.has-content {
-      display: flex; flex-direction: column; gap: 2px;
-      position: fixed; top: 41px; left: calc(50vw - 652px);
-      width: 236px; box-sizing: border-box;
-      height: calc(100vh - 41px);
-      height: calc(100dvh - 41px);
-      overflow-y: auto; padding: 18px 0;
+    body.rail-open .rail-backdrop { display: none; }
+    /* Docked: the rail rides beside the pane rather than against the window edge. */
+    .conv-rail:not(.collapsed) {
+      left: max(0px, calc(50vw - 652px));
+      background: transparent; border-right-color: transparent;
     }
-    .conv-rail-label { font-family: var(--ui); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); padding: 0 14px 8px; }
-    .conv-rail-item { display: block; width: 100%; text-align: left; border: none; background: none; cursor: pointer; padding: 8px 14px 8px 11px; border-left: 3px solid transparent; border-radius: 0 6px 6px 0; }
-    .conv-rail-item:hover { background: var(--ground-raised); }
-    .conv-rail-item.active { background: var(--ground-raised); border-left-color: var(--flow); }
-    .conv-rail-name { font-family: var(--ui); font-size: 0.82rem; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .conv-rail-sub { font-family: var(--mono); font-size: 0.65rem; color: var(--ink-faint); margin-top: 1px; }
-    .conv-rail-new { margin-top: auto; border: none; background: none; cursor: pointer; text-align: left; padding: 10px 14px; font-family: var(--ui); font-size: 0.8rem; font-weight: 500; color: var(--flow); }
-    .conv-rail-new:hover { color: var(--flow-bright); }
   }
+  .conv-rail-head { display: flex; align-items: center; gap: 4px; padding: 12px 8px 6px; }
+  .conv-rail.collapsed .conv-rail-head { flex-direction: column; padding: 12px 4px 6px; }
+  .rail-icon-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; flex-shrink: 0;
+    border: none; background: none; border-radius: 6px;
+    color: var(--ink-faint); cursor: pointer;
+  }
+  .rail-icon-btn:hover { background: var(--ground-raised); color: var(--flow); }
+  .conv-rail-body { flex: 1; overflow-y: auto; padding-bottom: 8px; }
+  .conv-rail.collapsed .conv-rail-body { display: none; }
+  .conv-rail-label { font-family: var(--ui); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); padding: 12px 14px 6px; }
+  .conv-rail-empty { font-family: var(--ui); font-size: 0.76rem; color: var(--ink-faint); padding: 2px 14px 6px; line-height: 1.45; }
+  .conv-rail-item { display: block; width: 100%; text-align: left; border: none; background: none; cursor: pointer; padding: 8px 14px 8px 11px; border-left: 3px solid transparent; border-radius: 0 6px 6px 0; }
+  .conv-rail-item:hover { background: var(--ground-raised); }
+  .conv-rail-item.active { background: var(--ground-raised); border-left-color: var(--flow); }
+  .conv-rail-name { font-family: var(--ui); font-size: 0.82rem; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .conv-rail-sub { font-family: var(--mono); font-size: 0.65rem; color: var(--ink-faint); margin-top: 1px; }
+  .conv-rail-new { border: none; background: none; cursor: pointer; text-align: left; padding: 8px 14px; font-family: var(--ui); font-size: 0.8rem; font-weight: 500; color: var(--flow); }
+  .conv-rail-new:hover { color: var(--flow-bright); }
+  .conv-rail-foot { border-top: 1px solid var(--ground-border); padding: 6px; }
+  .conv-rail-you {
+    display: flex; align-items: center; gap: 9px; width: 100%;
+    border: none; background: none; cursor: pointer;
+    padding: 8px; border-radius: 6px; text-align: left;
+  }
+  .conv-rail-you:hover { background: var(--ground-raised); }
+  .conv-rail.collapsed .conv-rail-you { justify-content: center; padding: 8px 0; }
+  .conv-rail.collapsed .you-text { display: none; }
+  .you-avatar {
+    width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%;
+    border: 1px solid var(--ground-border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--ui); font-size: 0.62rem; color: var(--ink-faint);
+  }
+  .you-text { font-family: var(--ui); font-size: 0.8rem; color: var(--ink-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── You panel: identity actions sit behind their own door, never one tap
+     from casual browsing (council §4.2). ── */
+  .you-overlay { position: fixed; inset: 0; z-index: 300; background: rgba(10, 12, 14, 0.45); display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .you-card {
+    background: var(--ground); border: 1px solid var(--ground-border); border-radius: 8px;
+    width: min(420px, 100%); max-height: 90vh; overflow-y: auto; padding: 22px;
+  }
+  .you-card h3 { font-family: var(--display); font-size: 1.25rem; font-weight: 500; color: var(--ink); margin-bottom: 4px; }
+  .you-status { font-family: var(--ui); font-size: 0.78rem; color: var(--ink-dim); margin-bottom: 18px; }
+  .you-section { border-top: 1px solid var(--ground-border); padding-top: 14px; margin-top: 14px; }
+  .you-label { font-family: var(--ui); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 7px; }
+  .you-note { font-family: var(--ui); font-size: 0.74rem; color: var(--ink-faint); line-height: 1.5; margin-top: 7px; }
+  .you-row { display: flex; gap: 8px; align-items: center; }
+  .you-input {
+    flex: 1; font-family: var(--ui); font-size: 0.82rem; color: var(--ink);
+    background: var(--paper); border: 1px solid var(--ground-border); border-radius: 6px;
+    padding: 8px 11px; outline: none; min-width: 0;
+  }
+  .you-input:focus { border-color: var(--flow); }
+  .you-btn {
+    font-family: var(--ui); font-size: 0.76rem; color: var(--ink-dim);
+    background: none; border: 1px solid var(--ground-border); border-radius: 6px;
+    padding: 8px 14px; cursor: pointer; white-space: nowrap;
+  }
+  .you-btn:hover:not(:disabled) { border-color: var(--flow); color: var(--flow); }
+  .you-btn:disabled { opacity: 0.4; cursor: default; }
+  .you-btn-danger { color: var(--verdict-warning); border-color: var(--ground-border); }
+  .you-btn-danger:hover:not(:disabled) { border-color: var(--verdict-warning); color: var(--verdict-warning); }
+  .you-check { display: flex; align-items: flex-start; gap: 8px; font-family: var(--ui); font-size: 0.76rem; color: var(--ink-dim); margin: 9px 0; line-height: 1.45; }
+  .you-close { float: right; border: none; background: none; font-size: 0.95rem; color: var(--ink-faint); cursor: pointer; }
+  .you-close:hover { color: var(--ink); }
 
   /* ── Chat pane ── */
   .chat-pane {
@@ -686,108 +687,7 @@
     color: var(--flow);
   }
 
-  /* ── Chat history panel (slides from right) ── */
   .chat-tabs { display: none; }
-  .history-panel {
-    position: fixed;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: min(320px, 85vw);
-    z-index: 200;
-    transform: translateX(100%);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: var(--paper);
-    border-left: 1px solid var(--ground-border);
-    box-shadow: -4px 0 24px rgba(10, 12, 14, 0.10);
-    display: flex;
-    flex-direction: column;
-  }
-  .history-panel.open { transform: translateX(0); }
-  .history-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 190;
-    background: rgba(10, 12, 14, 0.35);
-  }
-  .history-backdrop.visible { display: block; }
-  .history-header {
-    padding: 16px 18px;
-    border-bottom: 1px solid var(--ground-border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .history-header h3 {
-    font-family: var(--display);
-    font-size: 1.1rem;
-    font-weight: 400;
-    color: var(--ink);
-  }
-  .history-close-btn {
-    background: none;
-    border: none;
-    font-size: 1.2rem;
-    color: var(--ink-faint);
-    cursor: pointer;
-  }
-  .history-close-btn:hover { color: var(--ink); }
-  .history-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 8px 0;
-  }
-  .history-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 18px;
-    cursor: pointer;
-    border: none;
-    background: none;
-    width: 100%;
-    text-align: left;
-    transition: background 0.15s ease;
-  }
-  .history-item:hover { background: var(--ground-raised); }
-  .history-item.active { background: var(--ground-raised); border-left: 3px solid var(--flow); }
-  .history-item-name {
-    font-family: var(--serif);
-    font-size: 0.88rem;
-    color: var(--ink);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    flex: 1;
-  }
-  .history-item-close {
-    font-size: 0.7rem;
-    color: var(--ground-border);
-    cursor: pointer;
-    border: none;
-    background: none;
-    padding: 2px 6px;
-    flex-shrink: 0;
-    opacity: 0;
-    transition: opacity 0.15s ease;
-  }
-  .history-item:hover .history-item-close { opacity: 1; }
-  .history-item-close:hover { color: #c55; }
-  .history-new-btn {
-    margin: 8px 18px;
-    padding: 8px;
-    font-family: var(--ui);
-    font-size: 0.76rem;
-    color: var(--flow);
-    background: none;
-    border: 1px dashed var(--ground-border);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: border-color 0.2s ease;
-  }
-  .history-new-btn:hover { border-color: var(--flow); }
-  /* History button in header */
   .chat-history-btn {
     display: flex;
     align-items: center;
@@ -1263,6 +1163,8 @@
   .chat-input-area button:disabled { background: var(--ground-border); cursor: not-allowed; }
 
   @media (max-width: 600px) {
+    /* Sub-16px inputs trigger iOS focus-zoom */
+    .you-input { font-size: 16px; }
     .chat-welcome-title { font-size: 1.6rem; }
     .chat-welcome-chips { flex-direction: column; align-items: stretch; max-width: 280px; }
     .diagram-pane { width: 92vw; padding: 20px 16px 24px; }
@@ -1281,8 +1183,6 @@
       text-align: center;
       font-size: 0.8rem;
     }
-    /* Sub-16px inputs trigger iOS focus-zoom; force 16px on the first-touch fields */
-    .name-gate-input, .welcome-name-input { font-size: 16px; }
   }
 
 
@@ -1671,6 +1571,9 @@
   @media (hover: none), (pointer: coarse) {
     .dim-bar-btn,
     .chat-history-btn,
+    .rail-icon-btn,
+    .conv-rail-item,
+    .conv-rail-you,
     .export-trigger,
     .conv-lens-head,
     .msg-copy-btn,
@@ -1743,10 +1646,6 @@
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>
           New
         </button>
-        <button class="chat-history-btn" id="chat-history-btn" aria-label="Chat history" title="Chat history">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
-          History
-        </button>
         <button class="chat-history-btn" id="lens-toggle" aria-label="Choose a lens" aria-pressed="false" title="Ask through a single thinker's lens">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="8,1.5 13.5,4.5 13.5,11.5 8,14.5 2.5,11.5 2.5,4.5"/><line x1="8" y1="1.5" x2="8" y2="14.5"/></svg>
           Lenses
@@ -1806,16 +1705,7 @@
     </div>
   </div>
 
-  <!-- Chat history panel (slides from right) -->
-  <div class="history-panel" id="history-panel">
-    <div class="history-header">
-      <h3>Conversations</h3>
-      <button class="history-close-btn" id="history-close" aria-label="Close history">✕</button>
-    </div>
-    <div class="history-list" id="history-list"></div>
-    <button class="history-new-btn" id="history-new-btn">+ New conversation</button>
-  </div>
-  <div class="history-backdrop" id="history-backdrop"></div>
+  <div class="rail-backdrop" id="rail-backdrop"></div>
 
 </div>
 <aside class="context-dock" id="context-dock" aria-label="Answer context"></aside>
@@ -1828,22 +1718,173 @@
 // Tab-locked responses. No duplicate submissions.
 // ══════════════════════════════════════════
 
-const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')
-  ? 'http://localhost:5010' : 'https://reasoner.halcyonic.systems';
+const LOCAL_HOST = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:');
+const API = LOCAL_HOST ? 'http://localhost:5010' : 'https://reasoner.halcyonic.systems';
+
+// ── Identity (facets#369) ──
+// The client no longer invents a user. A managed provider mints the subject and
+// GSR verifies the token at one seam (gsr#47); everything below that seam is
+// getAccessToken(). The publishable key is public by design (it only identifies
+// the project; row access never goes through it). On localhost the local minter
+// runs instead, matching GSR's AUTH_MODE=local claim shape so the whole stack
+// works offline against a dev server.
+const SUPABASE_URL = 'https://xezkcsntepjnvdxhkdwi.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_7xS0HratrVUgOuZz5yIzpQ_AS4F2JU-';
+const AUTH_MODE = (SUPABASE_URL && !LOCAL_HOST) ? 'supabase' : 'local';
+const DEV_AUTH_SECRET = 'facets-dev-secret'; // local mode only; AUTH_MODE is a hostname check, so this is unreachable in production
+const TOKEN_TTL = 7 * 24 * 3600;
 
 // Read-only shared-answer mode (/a/<id>): render a stored snapshot, suppress re-run affordances,
 // and never write to the recipient's local history.
 let READONLY = false;
+// Set when the seam rejects our token. The cache stays readable; the composer closes.
+let SESSION_EXPIRED = false;
+
+function b64url(bytes) {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64urlJson(obj) { return b64url(new TextEncoder().encode(JSON.stringify(obj))); }
+
+function authSubject() {
+  let sub = localStorage.getItem('facets_auth_sub');
+  if (!sub) { sub = crypto.randomUUID(); localStorage.setItem('facets_auth_sub', sub); }
+  return sub;
+}
+
+async function mintLocalToken() {
+  const now = Math.floor(Date.now() / 1000);
+  const body = b64urlJson({ alg: 'HS256', typ: 'JWT' }) + '.' + b64urlJson({
+    sub: authSubject(), aud: 'authenticated', role: 'authenticated',
+    iat: now, exp: now + TOKEN_TTL, is_anonymous: true,
+  });
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(DEV_AUTH_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
+  return body + '.' + b64url(new Uint8Array(sig));
+}
+
+function tokenExpiry(tok) {
+  try { return JSON.parse(atob(tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).exp || 0; }
+  catch (e) { return 0; }
+}
+
+let localTokenPromise = null;
+function localToken() {
+  const cached = localStorage.getItem('facets_auth_token');
+  if (cached && tokenExpiry(cached) - 300 > Date.now() / 1000) return Promise.resolve(cached);
+  if (!localTokenPromise) {
+    localTokenPromise = mintLocalToken().then(tok => {
+      try { localStorage.setItem('facets_auth_token', tok); } catch (e) {}
+      localTokenPromise = null;
+      return tok;
+    }, e => { localTokenPromise = null; throw e; });
+  }
+  return localTokenPromise;
+}
+
+// The vendored SDK is 200KB and only the provider path needs it, so it loads on demand.
+let sbLoad = null;
+function loadSupabaseSdk() {
+  if (window.supabase) return Promise.resolve(window.supabase);
+  if (!sbLoad) sbLoad = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'vendor/supabase.js';
+    s.onload = () => resolve(window.supabase);
+    s.onerror = () => reject(new Error('supabase sdk unavailable'));
+    document.head.appendChild(s);
+  });
+  return sbLoad;
+}
+
+let sbClient = null;
+async function supabaseToken() {
+  const sdk = await loadSupabaseSdk();
+  if (!sbClient) sbClient = sdk.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  let { data } = await sbClient.auth.getSession();
+  if (!data.session) {
+    const r = await sbClient.auth.signInAnonymously();
+    if (r.error) throw r.error;
+    data = r.data;
+  }
+  return data.session ? data.session.access_token : null;
+}
+
+// The one seam. Every GSR call goes through authFetch, which goes through here.
+async function getAccessToken() {
+  try {
+    return AUTH_MODE === 'supabase' ? await supabaseToken() : await localToken();
+  } catch (e) {
+    return null;
+  }
+}
+
+async function authFetch(path, opts) {
+  const o = Object.assign({}, opts || {});
+  o.headers = Object.assign({}, o.headers || {});
+  const tok = await getAccessToken();
+  if (tok) o.headers['Authorization'] = 'Bearer ' + tok;
+  const r = await fetch(API + path, o);
+  if (r.status === 401) onSessionExpired();
+  else if (SESSION_EXPIRED && r.ok) { SESSION_EXPIRED = false; renderSessionState(); }
+  return r;
+}
+
+// A rejected token is not a reason to mint a second user (council §4.4). The cache
+// stays on screen; the composer closes until the session is restored.
+function onSessionExpired() {
+  if (SESSION_EXPIRED) return;
+  SESSION_EXPIRED = true;
+  renderSessionState();
+}
+
+function renderSessionState() {
+  const pane = document.querySelector('.chat-pane');
+  if (pane) pane.classList.toggle('session-expired', SESSION_EXPIRED);
+  const input = document.getElementById('chat-input');
+  const send = document.getElementById('send-btn');
+  if (input) input.disabled = SESSION_EXPIRED;
+  if (send) send.disabled = SESSION_EXPIRED || inFlight;
+  let note = document.getElementById('session-note');
+  if (!SESSION_EXPIRED) { if (note) note.remove(); return; }
+  if (note) return;
+  const composer = document.querySelector('.composer');
+  if (!composer) return;
+  note = document.createElement('div');
+  note.id = 'session-note';
+  note.className = 'session-note';
+  note.textContent = "This browser's session expired. Keep chatting as new, or restore from another device.";
+  composer.insertBefore(note, composer.firstChild);
+}
+
+// One-shot migration (gsr#47): the browser's old client-minted UUID is offered to
+// the seam once, so history written before identity existed follows the subject.
+async function claimLegacyIdentity() {
+  const legacy = localStorage.getItem('facets_user_id');
+  if (!legacy) return;
+  try {
+    const r = await authFetch('/v1/auth/claim-legacy', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ legacy_user_id: legacy }),
+    });
+    // A refusal is final; only a route that is not there yet earns another try.
+    if (r.ok || (r.status >= 400 && r.status < 500 && r.status !== 404)) {
+      localStorage.removeItem('facets_user_id');
+      localStorage.removeItem('facets_user_name');
+    }
+  } catch (e) {}
+}
 
 function logFunnelEvent(event, meta) {
   try {
-    fetch(API + '/log-event', {
+    authFetch('/log-event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         event,
         session_id: (getTab() || {}).sessionId || null,
-        user_id: typeof FACETS_USER_ID !== 'undefined' ? FACETS_USER_ID : getUserId(),
         meta: meta || null,
       }),
     }).catch(() => {});
@@ -2260,7 +2301,7 @@ function selectComposerLens(mode) {
 }
 
 // Route a query through the integrated default, or a single lens if one is selected.
-function sendDefault(q) { return composerLens ? sendQueryStream(q) : sendIntegrated(q); }
+function sendDefault(q, msgId) { return composerLens ? sendQueryStream(q, msgId) : sendIntegrated(q, msgId); }
 
 const EXAMPLE_POOL = [
   // Abstract / conceptual
@@ -2310,53 +2351,6 @@ function pickWelcomeChips(n = 4) {
 }
 const WELCOME_CHIPS = pickWelcomeChips(2);
 const LS_KEY = 'facets_chats';
-
-// ── User Identity ──
-function getUserId() {
-  let id = localStorage.getItem('facets_user_id');
-  if (!id) { id = crypto.randomUUID(); localStorage.setItem('facets_user_id', id); }
-  return id;
-}
-function getUserName() { return localStorage.getItem('facets_user_name') || ''; }
-function setUserName(name) { localStorage.setItem('facets_user_name', name || ''); }
-
-// Dismissible name prompt. Never blocks asking — surfaced AFTER the first answer via
-// maybePromptName(), and closable ("Maybe later" / Escape) so it can't interrupt a first query.
-function ensureUserName() {
-  return new Promise((resolve) => {
-    if (getUserName()) { resolve(getUserName()); return; }
-    const overlay = document.createElement('div');
-    overlay.className = 'name-gate-overlay';
-    overlay.innerHTML = `<div class="name-gate-card">
-      <h3>What should we call you?</h3>
-      <p>A first name, nickname, or pseudonym. This helps us understand how people use the tool. Your real identity is never required.</p>
-      <input class="name-gate-input" type="text" placeholder="e.g. Jo, curious_engineer, anon42" autofocus>
-      <div class="name-gate-actions">
-        <button class="name-gate-skip" type="button">Maybe later</button>
-        <button class="name-gate-btn" disabled>Continue</button>
-      </div>
-    </div>`;
-    document.body.appendChild(overlay);
-    const input = overlay.querySelector('.name-gate-input');
-    const btn = overlay.querySelector('.name-gate-btn');
-    const skip = overlay.querySelector('.name-gate-skip');
-    input.addEventListener('input', () => { btn.disabled = !input.value.trim(); });
-    function close(val) { overlay.remove(); document.removeEventListener('keydown', onKey); resolve(val); }
-    function submit() { const name = input.value.trim(); if (!name) return; setUserName(name); close(name); }
-    function onKey(e) { if (e.key === 'Escape') close(null); }
-    btn.addEventListener('click', submit);
-    skip.addEventListener('click', () => close(null));
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
-    document.addEventListener('keydown', onKey);
-  });
-}
-// Prompt for a name once per session, only after the user has seen value (the first answer).
-function maybePromptName() {
-  if (getUserName() || sessionStorage.getItem('facets-name-prompted')) return;
-  sessionStorage.setItem('facets-name-prompted', '1');
-  ensureUserName();
-}
-const FACETS_USER_ID = getUserId();
 
 // ── State ──
 let tabs = [];
@@ -2432,7 +2426,7 @@ function init() {
   loadTabs();
   if (!tabs.length) createTab(true);
   restoreFromUrl();
-  renderTabs();
+  renderConvRail();
   renderMessages();
   checkStatus();
   setInterval(checkStatus, 15000);
@@ -2445,6 +2439,7 @@ function init() {
   // Nav-home is a plain link to the portal; new conversations live on the New button.
   // Dimension Explorer (dim-bar-btn handlers wired in rebuildDimBar)
   replayDiagramState();
+  claimLegacyIdentity().then(hydrateConversations).then(flushOutbox);
 }
 
 // Render a shared answer (/a/<id>) as a faithful, read-only snapshot — fetch the stored payload
@@ -2463,6 +2458,8 @@ async function renderSharedAnswer(shareId) {
 
   let data = null;
   try {
+    // A public snapshot needs no identity: plain fetch, so viewing someone's link never
+    // mints or sends the viewer's own token.
     const r = await fetch(API + '/a/' + encodeURIComponent(shareId));
     if (!r.ok) throw new Error('not found');
     data = await r.json();
@@ -2529,6 +2526,149 @@ function replayDiagramState() {
   }
 }
 
+// ── Server-authoritative history (facets#371, gsr#48) ──
+// The server holds the record; what is in localStorage is a read-through cache
+// painted first so the page is never blank. Reconciliation: server wins for
+// committed messages, titles and deletions, a tombstone always beats a local
+// copy, and the client keeps only what has not been committed yet.
+const CONV_PAGE = 50;
+
+async function hydrateConversations() {
+  if (READONLY) return;
+  let r;
+  try { r = await authFetch('/v1/conversations?limit=' + CONV_PAGE); } catch (e) { return; }
+  if (!r.ok) return;
+  let list;
+  try { list = (await r.json()).conversations || []; } catch (e) { return; }
+  const byId = new Map(list.map(c => [c.id, c]));
+
+  tabs = tabs.filter(t => !t.serverId || byId.has(t.serverId));
+  tabs.forEach(t => {
+    const c = t.serverId && byId.get(t.serverId);
+    if (c) { t.name = c.title || t.name; t.updatedAt = c.updated_at; }
+  });
+  const known = new Set(tabs.map(t => t.serverId).filter(Boolean));
+  list.forEach(c => {
+    if (known.has(c.id)) return;
+    tabs.push({
+      id: c.id, serverId: c.id, name: c.title || 'Untitled',
+      sessionId: crypto.randomUUID(), messages: [], hydrated: false, updatedAt: c.updated_at,
+    });
+  });
+
+  if (!tabs.length) createTab(true);
+  if (!tabs.find(t => t.id === activeTab)) activeTab = tabs[0].id;
+  saveTabs();
+  renderConvRail();
+  renderMessages();
+  const cur = getTab();
+  if (cur && cur.serverId && !cur.hydrated) hydrateConversation(cur);
+}
+
+async function hydrateConversation(tab) {
+  if (!tab || !tab.serverId) return;
+  let r;
+  try { r = await authFetch('/v1/conversations/' + encodeURIComponent(tab.serverId)); } catch (e) { return; }
+  if (r.status === 404) { dropTabLocally(tab.id); return; }
+  if (!r.ok) return;
+  let c;
+  try { c = await r.json(); } catch (e) { return; }
+  const server = (c.messages || []).slice().sort((a, b) => (a.seq || 0) - (b.seq || 0))
+    .map(m => ({ id: m.id, seq: m.seq, role: m.role === 'assistant' ? 'bot' : m.role, text: m.content || '', meta: m.model_meta || null }));
+  const pending = tab.messages.filter(m => m.pending && !server.some(s => s.id === m.id));
+  tab.messages = server.concat(pending);
+  tab.name = c.title || tab.name;
+  tab.hydrated = true;
+  saveTabs();
+  if (tab.id === activeTab) renderMessages();
+  renderConvRail();
+}
+
+function dropTabLocally(id) {
+  tabs = tabs.filter(t => t.id !== id);
+  if (!tabs.length) createTab(true);
+  if (!tabs.find(t => t.id === activeTab)) activeTab = tabs[0].id;
+  saveTabs();
+  renderConvRail();
+  renderMessages();
+}
+
+// The send that just landed tells us which conversation it belongs to. If the
+// server did not echo the id we sent, our picture of the thread is wrong and the
+// answer is to refetch it, not to guess a merge.
+function reconcileAfterSend(tab, payload, clientMsgId, botMsg) {
+  if (!tab || !payload) return;
+  if (payload.conversation_id) {
+    tab.serverId = payload.conversation_id;
+    // The URL was pushed before the server named the conversation; correct it in place.
+    if (tab.id === activeTab && window.location.pathname === '/chat/c/' + tab.id) {
+      try { history.replaceState({ tabId: tab.id }, '', '/chat/c/' + tab.serverId); } catch (e) {}
+    }
+  }
+  if (payload.bot_message_id && botMsg) botMsg.id = payload.bot_message_id;
+  const user = tab.messages.find(m => m.id === clientMsgId);
+  if (user) delete user.pending;
+  tab.hydrated = true;
+  saveTabs();
+  if (payload.message_id && clientMsgId && payload.message_id !== clientMsgId) hydrateConversation(tab);
+}
+
+// ── Multi-tab send lock (gsr#48) ──
+// Two tabs of the same browser share one thread; only one of them may be sending.
+const SEND_LOCK = 'facets_send_lock';
+const BROWSER_TAB = crypto.randomUUID();
+const LOCK_TTL = 120000;
+let foreignSendUntil = 0;
+
+window.addEventListener('storage', (e) => {
+  if (e.key === SEND_LOCK) {
+    let v = null;
+    try { v = e.newValue ? JSON.parse(e.newValue) : null; } catch (err) {}
+    foreignSendUntil = (v && v.holder !== BROWSER_TAB) ? v.ts + LOCK_TTL : 0;
+    renderSessionState();
+    return;
+  }
+  if (e.key === LS_KEY && !inFlight && !READONLY) { loadTabs(); renderConvRail(); renderMessages(); }
+});
+
+function sendLocked() { return Date.now() < foreignSendUntil; }
+function takeSendLock() {
+  try { localStorage.setItem(SEND_LOCK, JSON.stringify({ holder: BROWSER_TAB, ts: Date.now() })); } catch (e) {}
+}
+function releaseSendLock() { try { localStorage.removeItem(SEND_LOCK); } catch (e) {} }
+
+// ── Offline queue ──
+// A message that never reached the engine keeps its client UUID and stays in the
+// cache marked pending; reconnecting replays it, and the server dedupes on that id.
+const QUEUED_LINE = 'Offline — this question is queued and will send when you reconnect.';
+function isOffline(err) {
+  return !navigator.onLine || (err && err.name === 'TypeError');
+}
+function markPending(tabId, msgId) {
+  const tab = tabs.find(t => t.id === tabId);
+  const m = tab && tab.messages.find(mm => mm.id === msgId);
+  if (m) { m.pending = true; saveTabs(); }
+}
+function pendingQuestion() {
+  for (const t of tabs) {
+    const m = t.messages.find(mm => mm.role === 'user' && mm.pending);
+    if (m) return { tab: t, msg: m };
+  }
+  return null;
+}
+async function flushOutbox() {
+  if (READONLY || inFlight || SESSION_EXPIRED) return;
+  const next = pendingQuestion();
+  if (!next) return;
+  const { tab, msg } = next;
+  tab.messages = tab.messages.filter(m => m !== msg && !(m.role === 'system' && m.text === QUEUED_LINE));
+  saveTabs();
+  activeTab = tab.id;
+  await sendDefault(msg.text, msg.id);
+  if (pendingQuestion()) setTimeout(flushOutbox, 2000);
+}
+window.addEventListener('online', () => setTimeout(flushOutbox, 500));
+
 // ── LocalStorage (persists activeTab) ──
 function saveTabs() {
   if (READONLY) return;  // a shared snapshot must not pollute the recipient's stored history
@@ -2538,7 +2678,7 @@ function saveTabs() {
 function pushConversationUrl() {
   const tab = getTab();
   if (tab && tab.messages.some(m => m.role === 'user')) {
-    const path = '/chat/c/' + tab.id;
+    const path = '/chat/c/' + (tab.serverId || tab.id);
     if (window.location.pathname !== path) {
       history.pushState({ tabId: tab.id }, '', path);
     }
@@ -2549,8 +2689,14 @@ function restoreFromUrl() {
   const match = window.location.pathname.match(/^\/chat\/c\/(.+)$/);
   if (match) {
     const tabId = match[1];
-    const tab = tabs.find(t => t.id === tabId);
+    const tab = tabs.find(t => t.serverId === tabId) || tabs.find(t => t.id === tabId);
     if (tab) {
+      activeTab = tab.id;
+      return true;
+    }
+    if (/^[0-9a-f-]{36}$/i.test(tabId)) {
+      // A conversation this browser has not cached yet — hydration will fill it in.
+      tabs.push({ id: tabId, serverId: tabId, name: 'Conversation', sessionId: crypto.randomUUID(), messages: [], hydrated: false });
       activeTab = tabId;
       return true;
     }
@@ -2565,7 +2711,7 @@ window.addEventListener('popstate', (e) => {
   }
   const restored = restoreFromUrl();
   if (!restored && (window.location.pathname === '/chat/' || window.location.pathname === '/chat')) {
-    renderTabs();
+    renderConvRail();
     renderMessages();
   }
 });
@@ -2582,6 +2728,9 @@ function loadTabs() {
     tabs.forEach(t => {
       t.messages = t.messages.filter(m => m.role !== 'thinking');
       if (!t.sessionId) t.sessionId = crypto.randomUUID();
+      // Caches written before message identity existed get ids now, so the
+      // reconciler has something to compare against.
+      t.messages.forEach(m => { if (!m.id) m.id = crypto.randomUUID(); });
     });
   } catch(e) {}
 }
@@ -2591,19 +2740,20 @@ function createTab(silent) {
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
   const sessionId = crypto.randomUUID();
   const name = 'Chat ' + (tabs.length + 1);
-  tabs.push({ id, name, sessionId, messages: [] });
+  tabs.push({ id, name, sessionId, messages: [], serverId: null, hydrated: true });
   activeTab = id;
   saveTabs();
-  if (!silent) { renderTabs(); renderMessages(); }
+  if (!silent) { renderConvRail(); renderMessages(); }
 }
 function switchTab(id) {
   activeTab = id;
   saveTabs();
-  renderTabs();
+  renderConvRail();
   renderMessages();
   const tab = tabs.find(t => t.id === id);
-  if (tab && tab.messages.some(m => m.role === 'user')) {
-    history.pushState({ tabId: id }, '', '/chat/c/' + id);
+  if (tab && tab.serverId && !tab.hydrated) hydrateConversation(tab);
+  if (tab && (tab.serverId || tab.messages.some(m => m.role === 'user'))) {
+    history.pushState({ tabId: id }, '', '/chat/c/' + (tab.serverId || id));
   } else {
     history.pushState(null, '', '/');
   }
@@ -2612,60 +2762,31 @@ function switchTab(id) {
 }
 function deleteTab(id) {
   if (tabs.length <= 1) return;
+  const gone = tabs.find(t => t.id === id);
+  if (gone && gone.serverId) {
+    authFetch('/v1/conversations/' + encodeURIComponent(gone.serverId), { method: 'DELETE' }).catch(() => {});
+  }
   tabs = tabs.filter(t => t.id !== id);
   if (activeTab === id) activeTab = tabs[0].id;
   saveTabs();
-  renderTabs();
+  renderConvRail();
   renderMessages();
 }
 function renameTab(id) {
   const tab = tabs.find(t => t.id === id);
   if (!tab) return;
-  const name = prompt('Rename tab:', tab.name);
-  if (name && name.trim()) { tab.name = name.trim(); saveTabs(); renderTabs(); }
+  const name = prompt('Rename conversation:', tab.name);
+  if (!name || !name.trim()) return;
+  tab.name = name.trim();
+  saveTabs(); renderConvRail(); renderConvRail();
+  if (tab.serverId) {
+    authFetch('/v1/conversations/' + encodeURIComponent(tab.serverId), {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: tab.name }),
+    }).catch(() => {});
+  }
 }
 function getTab() { return tabs.find(t => t.id === activeTab); }
-
-function renderTabs() {
-  const histBtn = document.getElementById('chat-history-btn');
-  const hasConversations = tabs.some(t => t.messages.some(m => m.role === 'user'));
-  if (histBtn) histBtn.style.display = hasConversations ? '' : 'none';
-
-  // Update history panel list
-  const el = document.getElementById('history-list');
-  if (!el) return;
-  el.innerHTML = '';
-  tabs.forEach(t => {
-    const item = document.createElement('button');
-    item.className = 'history-item' + (t.id === activeTab ? ' active' : '');
-    const name = document.createElement('span');
-    name.className = 'history-item-name';
-    name.textContent = t.name;
-    name.title = 'Double-click to rename';
-    name.ondblclick = (e) => { e.stopPropagation(); renameTab(t.id); };
-    item.appendChild(name);
-    if (tabs.length > 1) {
-      const x = document.createElement('button');
-      x.className = 'history-item-close';
-      x.textContent = '\u00d7';
-      x.setAttribute('aria-label', 'Delete: ' + t.name);
-      x.onclick = (e) => { e.stopPropagation(); deleteTab(t.id); };
-      item.appendChild(x);
-    }
-    item.onclick = () => { switchTab(t.id); closeHistory(); };
-    el.appendChild(item);
-  });
-}
-
-function openHistory() {
-  document.getElementById('history-panel').classList.add('open');
-  document.getElementById('history-backdrop').classList.add('visible');
-  renderTabs();
-}
-function closeHistory() {
-  document.getElementById('history-panel').classList.remove('open');
-  document.getElementById('history-backdrop').classList.remove('visible');
-}
 
 // ── Messages ──
 function renderMessages() {
@@ -2708,9 +2829,8 @@ function renderMessages() {
       <div class="chat-welcome-title">Facets</div>
       <div class="chat-welcome-tagline">${wt ? `Ask through ${wt.name}\u2019s lens.` : 'Ask about any system.'}</div>
       <div class="chat-welcome-subline">${wt ? wt.asks : 'A cell, a market, a machine, an idea. Facets shows you the parts, the flows, and the structure that make it work, and names the sources it drew on.'}</div>
-      <div class="chat-welcome-name"></div>`;
-    // No example chips — let people ask whatever comes to mind. Name is collected via
-    // ensureUserName() gate on first query.
+      `;
+    // No example chips — let people ask whatever comes to mind.
     el.appendChild(welcome);
     document.querySelectorAll('.dim-bar-btn').forEach(b => b.classList.add('disabled'));
     document.querySelector('.composer').classList.add('welcome-mode');
@@ -2922,6 +3042,7 @@ function renderMessages() {
         shareBtn.textContent = 'Share';
         shareBtn.onclick = () => {
           const url = window.location.origin + '/chat/a/' + m.meta.answer_id;
+          recordShare(m.meta.answer_id, questionFor(tab, m));
           navigator.clipboard.writeText(url).then(() => {
             shareBtn.textContent = '✓ Link copied';
             setTimeout(() => { shareBtn.textContent = 'Share'; }, 2000);
@@ -3041,9 +3162,9 @@ async function askAll(question, btn) {
   if (btn) { btn.disabled = true; btn.textContent = 'Comparing 5 lenses…'; }
   addMessage('thinking', 'Comparing across all five lenses…', null, originTabId);
   try {
-    const r = await fetch(API + '/ask-all', {
+    const r = await authFetch('/ask-all', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, user_id: FACETS_USER_ID, user_name: getUserName(), session_id: (tabs.find(t => t.id === originTabId) || {}).sessionId || '' })
+      body: JSON.stringify({ question, session_id: (tabs.find(t => t.id === originTabId) || {}).sessionId || '' })
     });
     const data = await r.json();
     const tab = tabs.find(t => t.id === originTabId);
@@ -3059,12 +3180,14 @@ async function askAll(question, btn) {
   }
 }
 
-function addMessage(role, text, meta, tabId) {
+function addMessage(role, text, meta, tabId, id) {
   const tab = tabId ? tabs.find(t => t.id === tabId) : getTab();
-  if (!tab) return;
-  tab.messages.push({ role, text, meta: meta || null });
+  if (!tab) return null;
+  const m = { id: id || crypto.randomUUID(), role, text, meta: meta || null };
+  tab.messages.push(m);
   saveTabs();
   if (!tabId || tabId === activeTab) renderMessages();
+  return m;
 }
 
 // ── Export ──
@@ -3111,7 +3234,7 @@ function exportChatMarkdown() {
 async function checkStatus() {
   const dot = document.getElementById('status-dot');
   try {
-    const r = await fetch(API + '/status');
+    const r = await authFetch('/status');
     if (r.ok) {
       const data = await r.json();
       dot.className = 'status-dot online';
@@ -3157,9 +3280,10 @@ function getRecentHistory(maxTurns) {
     .map(m => ({ role: m.role, text: m.text.slice(0, 1000) }));
 }
 
-async function sendQuery(question) {
-  if (inFlight) return;
+async function sendQuery(question, msgId) {
+  if (inFlight || sendLocked() || SESSION_EXPIRED) return;
   inFlight = true;
+  takeSendLock();
 
   const originTabId = activeTab;  // Lock response to this tab
   const btn = document.getElementById('send-btn');
@@ -3167,7 +3291,8 @@ async function sendQuery(question) {
   btn.disabled = true;
   dot.className = 'status-dot loading';
 
-  addMessage('user', question, null, originTabId);
+  const clientMsgId = msgId || crypto.randomUUID();
+  addMessage('user', question, null, originTabId, clientMsgId);
 
   // Auto-name tab from first query
   const tab = tabs.find(t => t.id === originTabId);
@@ -3176,7 +3301,7 @@ async function sendQuery(question) {
   if (tab && userMsgCount === 1) {
     tab.name = question.length > 30 ? question.slice(0, 28) + '…' : question;
     saveTabs();
-    renderTabs();
+    renderConvRail();
   }
 
   pushConversationUrl();
@@ -3188,15 +3313,15 @@ async function sendQuery(question) {
   animateFlow('query');
 
   try {
-    const r = await fetch(API + '/ask', {
+    const r = await authFetch('/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         question,
         history: getRecentHistory(6),
         session_id: (tabs.find(t => t.id === originTabId) || {}).sessionId || '',
-        user_id: FACETS_USER_ID,
-        user_name: getUserName(),
+        conversation_id: (tabs.find(t => t.id === originTabId) || {}).serverId || null,
+        message_id: clientMsgId,
         mode: activeMode
       })
     });
@@ -3215,7 +3340,8 @@ async function sendQuery(question) {
       originTab.messages = originTab.messages.filter(m => m.role !== 'thinking');
     }
 
-    addMessage('bot', answer, { route, confidence, dimensions: dims, intensity, reasoning, sources: data.sources || [], web_search: data.web_search, answer_id: data.answer_id, asked: composerLens || activeMode }, originTabId);
+    const botMsg = addMessage('bot', answer, { route, confidence, dimensions: dims, intensity, reasoning, sources: data.sources || [], web_search: data.web_search, answer_id: data.answer_id, asked: composerLens || activeMode }, originTabId);
+    reconcileAfterSend(originTab, data, clientMsgId, botMsg);
     updateDimBar(dims);
     dot.className = 'status-dot online';
   } catch(e) {
@@ -3223,17 +3349,24 @@ async function sendQuery(question) {
     if (originTab) {
       originTab.messages = originTab.messages.filter(m => m.role !== 'thinking');
     }
-    addMessage('system', 'Error: Could not reach the API.', null, originTabId);
+    if (isOffline(e)) {
+      markPending(originTabId, clientMsgId);
+      addMessage('system', QUEUED_LINE, null, originTabId);
+    } else {
+      addMessage('system', 'Error: Could not reach the API.', null, originTabId);
+    }
     clearDiagramHighlights();
     dot.className = 'status-dot';
   }
+  releaseSendLock();
   btn.disabled = false;
   inFlight = false;
 }
 
-async function sendQueryStream(question) {
-  if (inFlight) return;
+async function sendQueryStream(question, msgId) {
+  if (inFlight || sendLocked() || SESSION_EXPIRED) return;
   inFlight = true;
+  takeSendLock();
   userScrolledUp = false;
 
   const originTabId = activeTab;
@@ -3242,7 +3375,8 @@ async function sendQueryStream(question) {
   btn.disabled = true;
   dot.className = 'status-dot loading';
 
-  addMessage('user', question, null, originTabId);
+  const clientMsgId = msgId || crypto.randomUUID();
+  addMessage('user', question, null, originTabId, clientMsgId);
 
   // Auto-name tab from first query
   const tab = tabs.find(t => t.id === originTabId);
@@ -3251,7 +3385,7 @@ async function sendQueryStream(question) {
   if (tab && userMsgCount === 1) {
     tab.name = question.length > 30 ? question.slice(0, 28) + '…' : question;
     saveTabs();
-    renderTabs();
+    renderConvRail();
   }
 
   pushConversationUrl();
@@ -3263,15 +3397,15 @@ async function sendQueryStream(question) {
   animateFlow('query');
 
   try {
-    const r = await fetch(API + '/ask-stream', {
+    const r = await authFetch('/ask-stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         question,
         history: getRecentHistory(6),
         session_id: (tabs.find(t => t.id === originTabId) || {}).sessionId || '',
-        user_id: FACETS_USER_ID,
-        user_name: getUserName(),
+        conversation_id: (tabs.find(t => t.id === originTabId) || {}).serverId || null,
+        message_id: clientMsgId,
         mode: activeMode
       })
     });
@@ -3437,11 +3571,11 @@ async function sendQueryStream(question) {
 
             updateDiagram('response', { route, confidence, dims });
 
-            addMessage('bot', cleanAnswer, { route, confidence, dimensions: dims, intensity, reasoning, sources, pathology, web_search: payload.web_search, answer_id: payload.answer_id, asked: composerLens || activeMode }, originTabId);
+            const botMsg = addMessage('bot', cleanAnswer, { route, confidence, dimensions: dims, intensity, reasoning, sources, pathology, web_search: payload.web_search, answer_id: payload.answer_id, asked: composerLens || activeMode }, originTabId);
+            reconcileAfterSend(tabs.find(t => t.id === originTabId), payload, clientMsgId, botMsg);
             updateDimBar(dims);
             dot.className = 'status-dot online';
             logFunnelEvent('answer_rendered');
-            setTimeout(maybePromptName, 1200);
           }
           currentEvent = null;
         }
@@ -3459,12 +3593,19 @@ async function sendQueryStream(question) {
     if (streamEl) streamEl.remove();
     // Try non-streaming fallback
     inFlight = false;
+    releaseSendLock();
     btn.disabled = false;
     dot.className = 'status-dot';
     clearDiagramHighlights();
+    if (isOffline(e)) {
+      markPending(originTabId, clientMsgId);
+      addMessage('system', QUEUED_LINE, null, originTabId);
+      return;
+    }
     addMessage('system', 'Streaming failed — retrying...', null, originTabId);
-    return sendQuery(question);
+    return sendQuery(question, clientMsgId);
   }
+  releaseSendLock();
   btn.disabled = false;
   inFlight = false;
 }
@@ -3473,23 +3614,24 @@ async function sendQueryStream(question) {
 const LENS_LABEL = { mobus: 'Mobus', klir: 'Klir', bunge: 'Bunge', spt: 'Troncale', ct: 'CT' };
 const LENS_ROLE = { mobus: 'the anatomist', klir: 'the epistemologist', bunge: 'the ontologist', spt: 'the process theorist', ct: 'the compositionalist' };
 
-async function sendIntegrated(question) {
-  if (inFlight) return;
-  inFlight = true; userScrolledUp = false;
+async function sendIntegrated(question, msgId) {
+  if (inFlight || sendLocked() || SESSION_EXPIRED) return;
+  inFlight = true; takeSendLock(); userScrolledUp = false;
 
   const originTabId = activeTab;
   const btn = document.getElementById('send-btn');
   const dot = document.getElementById('status-dot');
   btn.disabled = true; dot.className = 'status-dot loading';
 
-  addMessage('user', question, null, originTabId);
+  const clientMsgId = msgId || crypto.randomUUID();
+  addMessage('user', question, null, originTabId, clientMsgId);
 
   const tab = tabs.find(t => t.id === originTabId);
   const userMsgCount = tab ? tab.messages.filter(m => m.role === 'user').length : 1;
   logFunnelEvent(userMsgCount <= 1 ? 'query_submitted' : 'query_submitted_second');
   if (tab && userMsgCount === 1) {
     tab.name = question.length > 30 ? question.slice(0, 28) + '…' : question;
-    saveTabs(); renderTabs();
+    saveTabs(); renderConvRail();
   }
   pushConversationUrl();
   addMessage('thinking', '', null, originTabId);
@@ -3519,12 +3661,13 @@ async function sendIntegrated(question) {
   }
 
   try {
-    const r = await fetch(API + '/ask-integrated', {
+    const r = await authFetch('/ask-integrated', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         question, history: getRecentHistory(6),
         session_id: (tab || {}).sessionId || '',
-        user_id: FACETS_USER_ID, user_name: getUserName()
+        conversation_id: (tab || {}).serverId || null,
+        message_id: clientMsgId,
       })
     });
     if (!r.ok || !r.body) throw new Error('integrated stream failed');
@@ -3573,7 +3716,7 @@ async function sendIntegrated(question) {
           if (payload.timing) console.log('%c⏱ Facets Integrated', 'font-weight:bold;color:#3a6e62', payload.timing);
           if (streamEl) { streamEl.remove(); streamEl = null; }
           const answer = (payload.answer || accText).replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
-          addMessage('bot', answer, {
+          const botMsg = addMessage('bot', answer, {
             route: payload.route || 'integrated',
             confidence: payload.confidence || '',
             dimensions: [],
@@ -3583,9 +3726,9 @@ async function sendIntegrated(question) {
             answer_id: payload.answer_id,
             asked: 'integrated'
           }, originTabId);
+          reconcileAfterSend(tabs.find(t => t.id === originTabId), payload, clientMsgId, botMsg);
           dot.className = 'status-dot online';
           logFunnelEvent('answer_rendered');
-          setTimeout(maybePromptName, 1200);
         }
         currentEvent = null;
       }
@@ -3596,9 +3739,15 @@ async function sendIntegrated(question) {
     const ot = tabs.find(t => t.id === originTabId);
     if (ot) ot.messages = ot.messages.filter(m => m.role !== 'thinking');
     if (streamEl) streamEl.remove();
-    addMessage('system', 'Could not reach the reasoning engine. Please try again.', null, originTabId);
+    if (isOffline(e)) {
+      markPending(originTabId, clientMsgId);
+      addMessage('system', QUEUED_LINE, null, originTabId);
+    } else {
+      addMessage('system', 'Could not reach the reasoning engine. Please try again.', null, originTabId);
+    }
     dot.className = 'status-dot';
   }
+  releaseSendLock();
   btn.disabled = false; inFlight = false;
 }
 
@@ -3606,9 +3755,9 @@ async function sendIntegrated(question) {
 async function drillLens(bodyEl, question, mode) {
   bodyEl.innerHTML = '<div class="lens-loading">Consulting ' + (LENS_LABEL[mode] || mode) + '…</div>';
   try {
-    const r = await fetch(API + '/ask-stream', {
+    const r = await authFetch('/ask-stream', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, history: [], user_id: FACETS_USER_ID, user_name: getUserName(), mode })
+      body: JSON.stringify({ question, history: [], mode })
     });
     if (!r.ok || !r.body) throw new Error('drill stream failed');
     const reader = r.body.getReader();
@@ -3636,7 +3785,7 @@ async function drillLens(bodyEl, question, mode) {
           // The drilled answer is persisted under its OWN share id — the parent integrated
           // answer's Share button carries a different id, so without this button a consultation
           // could only ever be shared as its parent.
-          if (payload.answer_id) appendDrillShare(bodyEl, payload.answer_id);
+          if (payload.answer_id) appendDrillShare(bodyEl, payload.answer_id, question);
         }
         currentEvent = null;
       }
@@ -3646,7 +3795,7 @@ async function drillLens(bodyEl, question, mode) {
   }
 }
 
-function appendDrillShare(bodyEl, answerId) {
+function appendDrillShare(bodyEl, answerId, question) {
   const actions = document.createElement('div');
   actions.className = 'msg-actions';
   const shareBtn = document.createElement('button');
@@ -3654,6 +3803,7 @@ function appendDrillShare(bodyEl, answerId) {
   shareBtn.textContent = 'Share';
   shareBtn.onclick = () => {
     const url = window.location.origin + '/chat/a/' + answerId;
+    recordShare(answerId, question);
     navigator.clipboard.writeText(url).then(() => {
       shareBtn.textContent = '✓ Link copied';
       setTimeout(() => { shareBtn.textContent = 'Share'; }, 2000);
@@ -3713,16 +3863,9 @@ function animateFlow(stage) {}
 
 function updateDiagram(stage, data) {}
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHistory(); });
-
 // ── New conversation button ──
 document.getElementById('new-conv-btn').addEventListener('click', () => createTab());
-
-// ── History panel ──
-document.getElementById('chat-history-btn').addEventListener('click', openHistory);
-document.getElementById('history-close').addEventListener('click', closeHistory);
-document.getElementById('history-backdrop').addEventListener('click', closeHistory);
-document.getElementById('history-new-btn').addEventListener('click', () => { createTab(); closeHistory(); });
+document.getElementById('rail-backdrop').addEventListener('click', () => setRailOpen(false));
 
 // ── Dimension bar ──
 document.querySelectorAll('.dim-bar-btn').forEach(btn => {
@@ -3825,6 +3968,7 @@ document.getElementById('share-link-btn').addEventListener('click', () => {
     return;
   }
   const url = window.location.origin + '/chat/a/' + lastShared.meta.answer_id;
+  recordShare(lastShared.meta.answer_id, questionFor(tab, lastShared));
   navigator.clipboard.writeText(url).then(() => {
     btn.textContent = 'Link copied!';
     setTimeout(() => { btn.textContent = 'Copy share link'; }, 1500);
@@ -3854,7 +3998,7 @@ document.getElementById('model-this-btn').addEventListener('click', async () => 
     setTimeout(() => { btn.textContent = LABEL; btn.disabled = false; menu.classList.remove('open'); }, 2800);
   };
   try {
-    const r = await fetch(API + '/extract', {
+    const r = await authFetch('/extract', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ description: firstQ.text, model: '' })
@@ -3888,35 +4032,257 @@ let dockLens = null;     // integrated answers only: which lens's reading the do
 let dockLensFor = null;  // the answer index dockLens belongs to — focus moves reset it
 // The standing conversations rail — same data and actions as the History
 // drawer, permanently open where the triple ensemble fits.
+const ICON_CHEVRON = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3l5 5-5 5"/></svg>';
+const ICON_CHEVRON_BACK = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3L5 8l5 5"/></svg>';
+const ICON_NEW = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>';
+
+let railOpen = (function () {
+  const saved = localStorage.getItem('facets_rail_open');
+  return saved === null ? window.innerWidth >= 1360 : saved === '1';
+})();
+
+function setRailOpen(open) {
+  railOpen = open;
+  try { localStorage.setItem('facets_rail_open', open ? '1' : '0'); } catch (e) {}
+  renderConvRail();
+}
+
+function recordedShares() {
+  try { return JSON.parse(localStorage.getItem('facets_shares') || '[]'); } catch (e) { return []; }
+}
+// The server knows which answers were shared; until that read exists the rail
+// lists the ones this browser sent, which is what the sharer wants to find again.
+function recordShare(answerId, question) {
+  if (!answerId) return;
+  const list = recordedShares();
+  if (!list.some(sh => sh.id === answerId)) {
+    list.unshift({ id: answerId, q: question || '' });
+    try { localStorage.setItem('facets_shares', JSON.stringify(list.slice(0, 50))); } catch (e) {}
+  }
+  renderConvRail();
+}
+
+function questionFor(tab, msg) {
+  const i = tab.messages.indexOf(msg);
+  for (let j = i - 1; j >= 0; j--) if (tab.messages[j].role === 'user') return tab.messages[j].text;
+  return '';
+}
+
+function railIcon(html, label, onClick) {
+  const b = document.createElement('button');
+  b.className = 'rail-icon-btn';
+  b.innerHTML = html;
+  b.setAttribute('aria-label', label);
+  b.title = label;
+  b.onclick = onClick;
+  return b;
+}
+
 function renderConvRail() {
   const rail = document.getElementById('conv-rail');
   if (!rail) return;
   rail.innerHTML = '';
-  if (READONLY || !tabs.length) { rail.classList.remove('has-content'); return; }
-  rail.classList.add('has-content');
-  const label = document.createElement('div');
-  label.className = 'conv-rail-label';
-  label.textContent = 'Conversations';
-  rail.appendChild(label);
-  tabs.forEach(t => {
+  document.body.classList.toggle('rail-open', railOpen && !READONLY);
+  document.body.classList.toggle('rail-strip', !railOpen && !READONLY);
+  if (READONLY) { rail.style.display = 'none'; return; }
+  rail.style.display = '';
+  rail.classList.toggle('collapsed', !railOpen);
+  rail.setAttribute('aria-expanded', String(railOpen));
+
+  const head = document.createElement('div');
+  head.className = 'conv-rail-head';
+  head.appendChild(railIcon(railOpen ? ICON_CHEVRON_BACK : ICON_CHEVRON,
+    railOpen ? 'Collapse conversations' : 'Open conversations', () => setRailOpen(!railOpen)));
+  head.appendChild(railIcon(ICON_NEW, 'New conversation', () => { createTab(); if (window.innerWidth < 1360) setRailOpen(false); }));
+  rail.appendChild(head);
+
+  const body = document.createElement('div');
+  body.className = 'conv-rail-body';
+
+  const convLabel = document.createElement('div');
+  convLabel.className = 'conv-rail-label';
+  convLabel.textContent = 'Conversations';
+  body.appendChild(convLabel);
+
+  // A conversation the server named belongs in the list before its messages arrive.
+  const live = tabs.filter(t => t.serverId || t.messages.length || t.id === activeTab);
+  if (!live.some(t => t.serverId || t.messages.length)) {
+    const empty = document.createElement('div');
+    empty.className = 'conv-rail-empty';
+    empty.textContent = 'Ask something and it is kept here.';
+    body.appendChild(empty);
+  }
+  live.forEach(t => {
     const item = document.createElement('button');
     item.className = 'conv-rail-item' + (t.id === activeTab ? ' active' : '');
     const nm = document.createElement('div');
     nm.className = 'conv-rail-name';
     nm.textContent = t.name || 'Untitled';
+    nm.title = 'Double-click to rename';
+    nm.ondblclick = (e) => { e.stopPropagation(); renameTab(t.id); };
     const sub = document.createElement('div');
     sub.className = 'conv-rail-sub';
     const nb = t.messages.filter(mm => mm.role === 'bot').length;
-    sub.textContent = nb ? nb + ' sheet' + (nb === 1 ? '' : 's') : 'empty';
+    // A server conversation whose messages have not been fetched is not empty, we just do not know its size yet.
+    sub.textContent = nb ? nb + ' sheet' + (nb === 1 ? '' : 's') : (t.serverId && !t.hydrated ? '' : 'empty');
     item.appendChild(nm); item.appendChild(sub);
-    item.onclick = () => switchTab(t.id);
-    rail.appendChild(item);
+    item.onclick = () => { switchTab(t.id); if (window.innerWidth < 1360) setRailOpen(false); };
+    body.appendChild(item);
   });
+
   const nb = document.createElement('button');
   nb.className = 'conv-rail-new';
   nb.textContent = '+ New conversation';
-  nb.onclick = () => createTab();
-  rail.appendChild(nb);
+  nb.onclick = () => { createTab(); if (window.innerWidth < 1360) setRailOpen(false); };
+  body.appendChild(nb);
+
+  const shares = recordedShares();
+  if (shares.length) {
+    const sl = document.createElement('div');
+    sl.className = 'conv-rail-label';
+    sl.textContent = 'Shared';
+    body.appendChild(sl);
+    shares.slice(0, 10).forEach(sh => {
+      const item = document.createElement('button');
+      item.className = 'conv-rail-item';
+      const nm2 = document.createElement('div');
+      nm2.className = 'conv-rail-name';
+      nm2.textContent = sh.q || 'Shared answer';
+      const sub2 = document.createElement('div');
+      sub2.className = 'conv-rail-sub';
+      sub2.textContent = 'permalink';
+      item.appendChild(nm2); item.appendChild(sub2);
+      item.onclick = () => window.open('/chat/a/' + sh.id, '_blank', 'noopener');
+      body.appendChild(item);
+    });
+  }
+  rail.appendChild(body);
+
+  const foot = document.createElement('div');
+  foot.className = 'conv-rail-foot';
+  const you = document.createElement('button');
+  you.className = 'conv-rail-you';
+  you.setAttribute('aria-label', 'You');
+  you.title = 'You';
+  const av = document.createElement('div');
+  av.className = 'you-avatar';
+  av.textContent = accountName ? accountName.trim().slice(0, 2).toUpperCase() : '○';
+  const label = document.createElement('span');
+  label.className = 'you-text';
+  label.textContent = accountName || 'You';
+  you.appendChild(av); you.appendChild(label);
+  you.onclick = openYouPanel;
+  foot.appendChild(you);
+  rail.appendChild(foot);
+}
+
+// ── You panel (facets#370): status, name, export, erasure, retention ──
+const RETENTION_LINE = 'Anonymous history is kept for a year of inactivity. Add an email to keep it.';
+let accountName = localStorage.getItem('facets_display_name') || '';
+
+function setAccountName(name) {
+  accountName = name || '';
+  try {
+    if (accountName) localStorage.setItem('facets_display_name', accountName);
+    else localStorage.removeItem('facets_display_name');
+  } catch (e) {}
+  renderConvRail();
+}
+
+function openYouPanel() {
+  if (document.querySelector('.you-overlay')) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'you-overlay';
+  overlay.innerHTML = '<div class="you-card" role="dialog" aria-modal="true" aria-label="You">'
+    + '<button class="you-close" aria-label="Close">✕</button>'
+    + '<h3>You</h3>'
+    + '<div class="you-status" id="you-status">' + (accountName
+        ? dockEsc(accountName) + ' · saved in this browser'
+        : 'Anonymous · saved in this browser') + '</div>'
+    + '<div class="you-section"><div class="you-label">Display name</div>'
+    + '<div class="you-row"><input class="you-input" id="you-name" type="text" placeholder="Optional" value="' + dockEsc(accountName) + '">'
+    + '<button class="you-btn" id="you-name-save">Save</button></div>'
+    + '<div class="you-note">Shown to you only. It is not required and never used to identify you.</div></div>'
+    + '<div class="you-section"><div class="you-label">Your data</div>'
+    + '<div class="you-row"><button class="you-btn" id="you-export">Export everything</button></div>'
+    + '<div class="you-note">' + RETENTION_LINE + '</div></div>'
+    + '<div class="you-section"><div class="you-label">Forget me</div>'
+    + '<div class="you-note">This deletes your account and every conversation on it. Answers you shared stay reachable as detached snapshots unless you also revoke them.</div>'
+    + '<label class="you-check"><input type="checkbox" id="you-revoke"> also remove my shared links</label>'
+    + '<div class="you-row"><input class="you-input" id="you-confirm" type="text" placeholder="type: forget me" autocomplete="off">'
+    + '<button class="you-btn you-btn-danger" id="you-forget" disabled>Forget me</button></div></div>'
+    + '</div>';
+  document.body.appendChild(overlay);
+
+  const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); };
+  function onKey(e) { if (e.key === 'Escape') close(); }
+  document.addEventListener('keydown', onKey);
+  overlay.querySelector('.you-close').onclick = close;
+  overlay.onclick = (e) => { if (e.target === overlay) close(); };
+
+  // The server's copy of the name is the real one; the cached value paints first.
+  authFetch('/v1/me').then(r => r.ok ? r.json() : null).then(me => {
+    if (!me) return;
+    const input = overlay.querySelector('#you-name');
+    if (me.display_name && input && !input.value) input.value = me.display_name;
+    if (me.display_name) setAccountName(me.display_name);
+    const st = overlay.querySelector('#you-status');
+    if (st) st.textContent = (me.display_name ? me.display_name : 'Anonymous') + ' · saved in this browser';
+  }).catch(() => {});
+
+  const saveBtn = overlay.querySelector('#you-name-save');
+  saveBtn.onclick = async () => {
+    const val = overlay.querySelector('#you-name').value.trim();
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+    try {
+      const r = await authFetch('/v1/me', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ display_name: val || null }),
+      });
+      saveBtn.textContent = r.ok ? 'Saved' : 'Could not save';
+      if (r.ok) setAccountName(val);
+    } catch (e) { saveBtn.textContent = 'Could not save'; }
+    setTimeout(() => { saveBtn.textContent = 'Save'; saveBtn.disabled = false; }, 1600);
+  };
+
+  const exportBtn = overlay.querySelector('#you-export');
+  exportBtn.onclick = async () => {
+    exportBtn.disabled = true; exportBtn.textContent = 'Preparing…';
+    try {
+      const r = await authFetch('/v1/me/export');
+      if (!r.ok) throw new Error('export failed');
+      const blob = new Blob([JSON.stringify(await r.json(), null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'facets-export.json'; a.click();
+      URL.revokeObjectURL(url);
+      exportBtn.textContent = 'Downloaded';
+    } catch (e) { exportBtn.textContent = 'Could not export'; }
+    setTimeout(() => { exportBtn.textContent = 'Export everything'; exportBtn.disabled = false; }, 1800);
+  };
+
+  const confirmInput = overlay.querySelector('#you-confirm');
+  const forgetBtn = overlay.querySelector('#you-forget');
+  confirmInput.addEventListener('input', () => {
+    forgetBtn.disabled = confirmInput.value.trim().toLowerCase() !== 'forget me';
+  });
+  forgetBtn.onclick = async () => {
+    forgetBtn.disabled = true; forgetBtn.textContent = 'Deleting…';
+    const revoke = overlay.querySelector('#you-revoke').checked ? '1' : '0';
+    try {
+      const r = await authFetch('/v1/me?revoke_shares=' + revoke, { method: 'DELETE' });
+      if (!r.ok) throw new Error('erasure failed');
+      // The provider keeps its own session cache; without signing out, the next load
+      // would present the deleted subject's token forever and sit in "session expired".
+      if (sbClient) { try { await sbClient.auth.signOut(); } catch (e) {} }
+      ['facets_chats', 'facets_shares', 'facets_display_name', 'facets_auth_sub', 'facets_auth_token', 'facets_user_id']
+        .forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+      window.location.replace('/chat/');
+    } catch (e) {
+      forgetBtn.textContent = 'Could not delete';
+      setTimeout(() => { forgetBtn.textContent = 'Forget me'; forgetBtn.disabled = false; }, 1800);
+    }
+  };
 }
 
 function focusSheet(bi) {

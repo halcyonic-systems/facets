@@ -8,7 +8,8 @@
 // bytes change, so an unbumped cache serves the old UI to offline users forever.
 // v3: Frost unification — fonts self-hosted via /shared/ (no more Google Fonts),
 // so the shared sheet + faces join the precached shell.
-const CACHE = 'facets-shell-v3';
+// v4: identity (facets#369) — the shell now carries the vendored auth SDK.
+const CACHE = 'facets-shell-v4';
 const CORE = [
   './',
   './index.html',
@@ -16,6 +17,7 @@ const CORE = [
   './icon-192.png',
   './icon-512.png',
   './icon-180.png',
+  './vendor/supabase.js',
   '../shared/frost.css',
   '../shared/fonts/cormorant-garamond-latin.woff2',
   '../shared/fonts/inter-latin.woff2',
