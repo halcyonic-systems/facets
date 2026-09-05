@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>#288 — Klir level census over the corpus and examples · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="./" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">ADOPTED</span></div>
+    <h1 class="title">#288 — Klir level census over the corpus and examples</h1>
+    <article><p><strong>Status: ADOPTED.</strong> Ratified 2026-08-08 by Shingai; the draft&#39;s eight FORKs each received a decision, recorded below with its reasoning. Every shipped <code>.sl</code> entry now carries a <code>level</code> declaration matching this table — the <a href="https://github.com/halcyonic-systems/facets/issues/288">#288</a> definition of done. Provenance: <code>strategy/research/klir-epistemological-levels-in-the-lens.md</code> (vault) · <a href="./216-cross-lens-findings.html"><code>216-cross-lens-findings.md</code></a>.</p>
+<p>The hierarchy (<em>Facets</em> §4.5): <strong>source → data → generative → structure → metasystem.</strong> A source system is variables and observation channels with no relations among them yet; data adds observations; generative adds a rule that produces them; structure adds coupled subsystems; metasystem adds a rule for how the rule changes. Why the level matters (§5.4): &quot;the modeling relation can be defined only within each particular epistemological category of systems&quot; — which is the sentence the kernel&#39;s cross-level refusal prints (<code>lenses::check_cross_level</code>).</p>
+<p><strong>Paths updated 2026-08-12 (#318).</strong> The census&#39;s <em>decisions</em> are untouched — no
+entry changed level, and none was deleted. What changed is where eleven of them
+live: the shipped examples library was curated down to a keep set, so the rest
+moved to <code>assets/archive/</code> and the steel-plant walk&#39;s level 0 moved to
+<code>assets/walkthroughs/steel-plant/level-0.sl</code>. <code>cell-metabolism.sl</code> is now
+<code>respiring-cell.sl</code> (a system is a thing, not a process). Both Source entries
+and the single Generative entry are among the moved, which is why they are named
+here: the counts below are still 39, and the library&#39;s whole level spread now
+depends on files outside <code>assets/examples/</code>.</p>
+<h2>Final counts (39 entries: 19 corpus · 18 examples · 2 walkthrough levels)</h2>
+<ul>
+<li><strong>source</strong>: 2 — <code>corpus/mobus/steel-plant.sl</code>, <code>archive/lake-observation.sl</code></li>
+<li><strong>data</strong>: 0</li>
+<li><strong>generative</strong>: 1 — <code>archive/parity-automaton.sl</code></li>
+<li><strong>structure</strong>: 36 — everything else</li>
+<li><strong>metasystem</strong>: 0</li>
+</ul>
+<p>The draft censused 34 entries; five landed between draft and ratification (<code>federal-reserve.sl</code>, <code>bitcoin.sl</code>, <code>steel-plant-walk.sl</code>, and the two walkthrough levels) and were assigned by the ratified test below — all five Structure: each is coupled subsystems with no authored rule, and <code>bitcoin.sl</code>&#39;s own pass-2 note says it outright (&quot;until then this entry is structure only&quot;).</p>
+<h2>The four ratified decisions (2026-08-08)</h2>
+<p><strong>1. The cross-cutting test: is the complete generating rule in the file?</strong> This decides generative vs structure, and it resolves five forks at once. Engine-run dynamics over declared amounts is NOT an authored generating rule: the conservation stepping belongs to the engine, and the entry authors <em>parameters</em> — meaning once, mechanics machine. Therefore <code>llm-market</code>, <code>watershed</code>, <code>supply-chain</code> → <strong>Structure</strong>. <code>parity-automaton</code> → <strong>Generative</strong>: its four labeled flows are the complete transition table — the rule is authored, in full, in the file. <code>fsm-traffic</code> → <strong>Structure</strong>: the wiring is authored but no rule is (the states live in a comment); its own header reads it as &quot;the STRUCTURE that generates the observed behavior&quot;; and the vault doc&#39;s generative line most likely aimed at parity-automaton, the actual #67 DTMC entry.</p>
+<p><strong>2. <code>corpus/mobus/steel-plant.sl</code> → Source.</strong> An opaque box with only its boundary variables characterized is verbatim Klir&#39;s source system. The decision documents a cross-tradition rhyme: Mobus&#39;s stage-one environment-and-boundary analysis and Klir&#39;s lowest epistemological level are <em>the same object seen through two traditions</em> — which is why the corpus entry pairs with <code>lake-observation.sl</code>, the entry that reached Source from Klir&#39;s side and named it in prose. (The walkthrough&#39;s <code>steel-plant-walk.sl</code> is Structure precisely because it opens the box: coupled residents and a checked decomposition seam are Klir&#39;s step up.)</p>
+<p><strong>3. <code>corpus/mobus/typical-neuron.sl</code> → Structure.</strong> The entry&#39;s <em>lesson</em> is adaptation — a synapse&#39;s response depends on its activation history, which in Klir&#39;s terms is a metasystem claim. But what is <em>authored</em> is one structural feedback edge; the changing rule lives in prose only. Claim hygiene decides: declare what is authored, and record the metasystem reading as declared-but-not-authored. (The in-file comment above its <code>level</code> line carries this.)</p>
+<p><strong>4. <code>corpus/klir/students-in-a-course.sl</code> → Structure.</strong> Klir derived the relation Rg from Table 2.1&#39;s observed grades, so a data-system reading was arguable — but the authored artifact is elements + relation with no observation data in the file. The derivation history is not in the entry, and the level declares the entry.</p>
+<h2>The empty levels are a finding</h2>
+<p><strong>SL currently authors no data systems and no metasystems.</strong> No entry carries observation records in-file (a data system needs observed states over a named support — nothing in the grammar holds a data table), and no entry authors a rule-changing rule (typical-neuron gestures at one and its declaration honestly declines the claim). This is a statement of the language&#39;s reach, not of the library&#39;s taste: the corpus spans exactly three of Klir&#39;s five levels because those are the three the notation can carry. Two consequences worth keeping visible:</p>
+<ol>
+<li><strong>Roadmap hint.</strong> A data-system entry would need SL (or the tether seam, which already carries observation series <em>outside</em> the file) to hold observations as content; a metasystem entry would need a rule-about-rules production, which is further from C5 than anything yet proposed. Either extension would come with its own separating instance.</li>
+<li><strong>Honest-instrument statement.</strong> The Klir face&#39;s derived GSPS diagnostic already said the surface flattens to roughly one level; the census now says it with declarations over the whole library, and the two empty levels quantify what &quot;one level of five&quot; costs in practice.</li>
+</ol>
+<h2>The census</h2>
+<table>
+<thead>
+<tr>
+<th>Entry</th>
+<th>Level</th>
+<th>Reason / citation</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>corpus/klir/criminal-court.sl</code></td>
+<td>structure</td>
+<td>Named in prose: &quot;A <strong>structure system in Klir&#39;s own sense</strong>… Klir&#39;s own legality rule for structure systems.&quot;</td>
+</tr>
+<tr>
+<td><code>corpus/klir/cellular-array-cell.sl</code></td>
+<td>structure</td>
+<td>Prose names both; structure is the authored one — the generative standing is what the entry <em>omits</em> (&quot;Klir makes each cell a deterministic generative system… and none of that is structure&quot;).</td>
+</tr>
+<tr>
+<td><code>corpus/klir/serial-binary-adder.sl</code></td>
+<td>structure</td>
+<td>&quot;If these elements are viewed as generative systems, the resulting <strong>structure system</strong> is of first order&quot; — the shipped model is that first-order structure system.</td>
+</tr>
+<tr>
+<td><code>corpus/klir/students-in-a-course.sl</code></td>
+<td>structure</td>
+<td><strong>Decision 4.</strong> The authored artifact is elements + relation; the grade data Rg was derived from is not in the file.</td>
+</tr>
+<tr>
+<td><code>corpus/klir/goal-oriented-feedback.sl</code></td>
+<td>structure</td>
+<td>Two elements + directed variables, the criminal-court block-diagram form; behavior functions in <code>omits</code>.</td>
+</tr>
+<tr>
+<td><code>corpus/klir/goal-oriented-feedforward.sl</code></td>
+<td>structure</td>
+<td>Same set, same form.</td>
+</tr>
+<tr>
+<td><code>corpus/klir/goal-oriented-full-information.sl</code></td>
+<td>structure</td>
+<td>Same set, same form.</td>
+</tr>
+<tr>
+<td><code>corpus/klir/goal-oriented-informationless.sl</code></td>
+<td>structure</td>
+<td>Same set, same form.</td>
+</tr>
+<tr>
+<td><code>corpus/mobus/steel-plant.sl</code></td>
+<td><strong>source</strong></td>
+<td><strong>Decision 2.</strong> One opaque box, boundary variables only — verbatim Klir&#39;s source system; the Mobus↔Klir rhyme.</td>
+</tr>
+<tr>
+<td><code>corpus/mobus/digital-computing-system.sl</code></td>
+<td>structure</td>
+<td>Three coupled components; everything below level 1 in <code>omits</code>.</td>
+</tr>
+<tr>
+<td><code>corpus/mobus/typical-neuron.sl</code></td>
+<td>structure</td>
+<td><strong>Decision 3.</strong> The adaptation lesson is metasystem-shaped; the authored artifact is one structural feedback edge.</td>
+</tr>
+<tr>
+<td><code>corpus/mobus/mammalian-brain.sl</code></td>
+<td>structure</td>
+<td>Coupled components on one afferent path; no rule, no data.</td>
+</tr>
+<tr>
+<td><code>corpus/mobus/human-social-system.sl</code></td>
+<td>structure</td>
+<td>Two coupled components + aggregated environment; the missing product output is a structural absence.</td>
+</tr>
+<tr>
+<td><code>corpus/bunge/coupling-sigma1.sl</code></td>
+<td>structure</td>
+<td>A coupling graph IS coupled elements — Klir&#39;s structure notion in Bunge&#39;s notation.</td>
+</tr>
+<tr>
+<td><code>corpus/bunge/coupling-sigma2.sl</code></td>
+<td>structure</td>
+<td>Same form (polarity survives only in flow names).</td>
+</tr>
+<tr>
+<td><code>corpus/bunge/coupling-sigma3.sl</code></td>
+<td>structure</td>
+<td>Same form; the diagonal changes which traditions accept it, not its level.</td>
+</tr>
+<tr>
+<td><code>corpus/bunge/two-thing-ab.sl</code></td>
+<td>structure</td>
+<td>Def 1.2&#39;s C/E/S triple is a structure claim.</td>
+</tr>
+<tr>
+<td><code>corpus/bunge/two-thing-ba.sl</code></td>
+<td>structure</td>
+<td>Same set.</td>
+</tr>
+<tr>
+<td><code>corpus/bunge/two-thing-bidirectional.sl</code></td>
+<td>structure</td>
+<td>Same set.</td>
+</tr>
+<tr>
+<td><code>archive/bank-run.sl</code></td>
+<td>structure</td>
+<td>Coupled components with a declared feedback loop; no amounts, no rule.</td>
+</tr>
+<tr>
+<td><code>archive/two-sided-market.sl</code></td>
+<td>structure</td>
+<td>Coupled mechanisms; bonds and mere relations, no rule.</td>
+</tr>
+<tr>
+<td><code>archive/thermostat.sl</code></td>
+<td>structure</td>
+<td>The control loop as coupled components; no transfer function authored.</td>
+</tr>
+<tr>
+<td><code>examples/predator-prey.sl</code></td>
+<td>structure</td>
+<td>Two stocks + food-chain flows, no quantities or rule.</td>
+</tr>
+<tr>
+<td><code>archive/parity-automaton.sl</code></td>
+<td><strong>generative</strong></td>
+<td><strong>Decision 1.</strong> The four labeled flows ARE the complete transition table — the rule is authored, in full. The library&#39;s one generative entry.</td>
+</tr>
+<tr>
+<td><code>archive/fsm-traffic.sl</code></td>
+<td>structure</td>
+<td><strong>Decision 1.</strong> Wiring authored, rule not (states in a comment); its own header: &quot;the STRUCTURE that generates.&quot;</td>
+</tr>
+<tr>
+<td><code>examples/hal-harness.sl</code></td>
+<td>structure</td>
+<td>Five coupled subsystems; the endo/exo split is the lesson.</td>
+</tr>
+<tr>
+<td><code>archive/respiring-cell.sl</code></td>
+<td>structure</td>
+<td>Two coupled components + environment; no rule.</td>
+</tr>
+<tr>
+<td><code>examples/llm-market.sl</code></td>
+<td>structure</td>
+<td><strong>Decision 1.</strong> Declared amounts parameterize a run; the stepping is the engine&#39;s — the complete rule is not in the file.</td>
+</tr>
+<tr>
+<td><code>archive/transformer-block.sl</code></td>
+<td>structure</td>
+<td>Five coupled components around a stock; no rule.</td>
+</tr>
+<tr>
+<td><code>archive/watershed.sl</code></td>
+<td>structure</td>
+<td><strong>Decision 1.</strong> Same call as llm-market.</td>
+</tr>
+<tr>
+<td><code>archive/workshop-crew.sl</code></td>
+<td>structure</td>
+<td>Bunge CES triple with B and B̄ as content; no rule.</td>
+</tr>
+<tr>
+<td><code>examples/jung-functions.sl</code></td>
+<td>structure</td>
+<td>Four coupled functions cascading energy; no rule.</td>
+</tr>
+<tr>
+<td><code>archive/lake-observation.sl</code></td>
+<td><strong>source</strong></td>
+<td>Named in prose (#284): &quot;variables and observation channels, no generating rule declared&quot; — the tension with its declared relations was weighed and the named level ratified; the relations are the investigator&#39;s, which is Klir&#39;s whole point. Pairs with steel-plant (decision 2).</td>
+</tr>
+<tr>
+<td><code>archive/supply-chain.sl</code></td>
+<td>structure</td>
+<td><strong>Decision 1.</strong> The reorder loop is wiring; its logic lives in comments, the stepping in the engine.</td>
+</tr>
+<tr>
+<td><code>examples/bitcoin.sl</code></td>
+<td>structure</td>
+<td>Ratified test applied post-draft: two loops drawn as flows, no rule; its own note says &quot;structure only&quot; until the tether.</td>
+</tr>
+<tr>
+<td><code>examples/federal-reserve.sl</code></td>
+<td>structure</td>
+<td>Ratified test applied post-draft: coupled subsystems, no authored rule; opens its box where steel-plant keeps it shut.</td>
+</tr>
+<tr>
+<td><code>walkthroughs/steel-plant/level-0.sl</code></td>
+<td>structure</td>
+<td>Ratified test applied post-draft: the walk opens the corpus entry&#39;s box — coupled residents and a checked seam are the step up from source.</td>
+</tr>
+<tr>
+<td><code>walkthroughs/steel-plant/level-1.sl</code></td>
+<td>structure</td>
+<td>Fig. 4.16&#39;s four subsystems + six interfaces, coupled; no rule.</td>
+</tr>
+<tr>
+<td><code>walkthroughs/steel-plant/level-2.sl</code></td>
+<td>structure</td>
+<td>Fig. 4.17&#39;s pumps, stock, sensor and decider, coupled; no rule.</td>
+</tr>
+</tbody></table>
+<h2>The fork ledger, resolved (kept as the record of what was decided)</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Entry</th>
+<th>Draft alternatives (draft&#39;s pick in bold)</th>
+<th>Ratified</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>students-in-a-course</td>
+<td>data · <strong>structure</strong></td>
+<td>structure (decision 4)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>steel-plant</td>
+<td>source · <strong>structure</strong></td>
+<td><strong>source</strong> (decision 2 — draft overturned)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>typical-neuron</td>
+<td><strong>structure</strong> · metasystem</td>
+<td>structure (decision 3)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>parity-automaton</td>
+<td><strong>generative</strong> · structure</td>
+<td>generative (decision 1)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>fsm-traffic</td>
+<td><strong>generative</strong> · structure</td>
+<td><strong>structure</strong> (decision 1 — draft overturned; the vault doc&#39;s generative line read as aimed at parity-automaton, the actual #67 DTMC entry)</td>
+</tr>
+<tr>
+<td>6</td>
+<td>llm-market</td>
+<td>generative · <strong>structure</strong></td>
+<td>structure (decision 1)</td>
+</tr>
+<tr>
+<td>7</td>
+<td>watershed</td>
+<td>generative · <strong>structure</strong></td>
+<td>structure (decision 1)</td>
+</tr>
+<tr>
+<td>8</td>
+<td>supply-chain</td>
+<td>generative · <strong>structure</strong></td>
+<td>structure (decision 1)</td>
+</tr>
+</tbody></table>
+<p>Rows 4–8 were one question — the draft&#39;s &quot;cross-cutting fork&quot; — and were settled by one test: <em>is the complete generating rule in the file?</em> The draft&#39;s framing of each fork is preserved in this table and in git history (<code>288-level-census-draft.md</code>, moved here on ratification) as the record of the alternatives actually weighed.</p>
+<h2>What the refusal can now do</h2>
+<p>With the declarations shipped, the §5.4 refusal has live instances in the library: <code>steel-plant</code> (source) against <code>criminal-court</code> (structure) is a comparison the modeling relation does not define, and the kernel refuses it with Klir&#39;s sentence; <code>steel-plant</code> against <code>lake-observation</code> (both source, reached from two traditions) compares within one level. Both are held by <code>crates/bert-canvas/tests/sl_level.rs</code> on the shipped files. No <code>set:</code> in the corpus spans levels — the sets were built to vary structure within a fixed claim, and the census confirms they do — so the set-distinguishability gate refuses nothing, which is the correct silence rather than an idle check: the same gate would now trip on any future set whose members disagree about their level.</p>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/288-level-census.md">Source · docs/288-level-census.md</a>
+      <span>Rendered from 0bb7de4</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

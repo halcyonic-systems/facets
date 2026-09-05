@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vendoring — where bert-core and bert-compose came from · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="./" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">LIVE</span></div>
+    <h1 class="title">Vendoring — where <code>bert-core</code> and <code>bert-compose</code> came from</h1>
+    <article><p><strong>Status: LIVE.</strong> The provenance record for the two vendored crates: the branch point, what was changed on the way in, how far the copies have drifted, and what happens when upstream moves. Written to answer one question mechanically — <em>what here is ours?</em> (#234 F13.)</p>
+<h2>The branch point</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Upstream</strong></td>
+<td><code>halcyonic-systems/bert</code></td>
+</tr>
+<tr>
+<td><strong>Branch-point commit</strong></td>
+<td><strong><code>40de7a7203ef3aa6300f72d7f37bc5a2e93c70ee</code></strong></td>
+</tr>
+<tr>
+<td></td>
+<td><em>feat(compose): carry dt_stride across the seam — a slow channel&#39;s Δt survives to the wire […]</em> · 2026-07-14 17:06 −0400</td>
+</tr>
+<tr>
+<td><strong>Vendored in</strong></td>
+<td><code>5175835eb486fca0deb023645698761676db59cb</code> — <em>feat: rebuild bert-lenses web-first — self-contained wasm kernel (Phase 0)</em> · 2026-07-14 19:56 −0400</td>
+</tr>
+<tr>
+<td><strong>Crates taken</strong></td>
+<td><code>bert-core</code>, <code>bert-compose</code></td>
+</tr>
+</tbody></table>
+<p><strong>Established by content, not by timestamp.</strong> Comparing the vendored <code>bert-compose/src/circuit.rs</code> against upstream candidates from that day: <code>40de7a7</code> and its parent differ by 12 lines, the commit before that by 79, and the one before that by 179. The minimal-diff commit that is also the last one touching either crate before the vendoring is the branch point. (<code>bert-core/src/lib.rs</code> was stable across all four candidates and cannot discriminate on its own — its constant 49-line delta is the vendoring edit, not upstream drift.)</p>
+<p>(The subject is elided at <code>[…]</code>; the SHA is the identifier. The elided words use
+the mode-entry vocabulary retired in #90, which the doc gate refuses in a LIVE
+doc even inside a quotation. Trimming the quote was the honest fix — widening
+the gate&#39;s exemption list to admit quotations would blunt a check that is
+working.)</p>
+<p>Reproduce it:</p>
+<pre><code class="language-bash">git -C bert-lenses show 5175835:crates/bert-compose/src/circuit.rs &gt; /tmp/vendored.rs
+git -C bert     show 40de7a7:bert-compose/src/circuit.rs         &gt; /tmp/upstream.rs
+diff /tmp/vendored.rs /tmp/upstream.rs        # 12 lines: the glam-for-egui swap
+</code></pre>
+<h2>What changed on the way in</h2>
+<p>The vendoring is not a verbatim copy. Two deliberate edits, both in service of one goal — <strong>the kernel must compile to <code>wasm32-unknown-unknown</code> and pull in no UI crate at all</strong>:</p>
+<ol>
+<li><strong><code>egui::Pos2</code> → <code>glam::Vec2</code></strong> for node geometry. This is the entire 12-line delta in <code>circuit.rs</code>: a field type, a constructor signature, and a test-local import alias. <code>bert-compose</code> upstream depended on <code>egui</code> purely to name a point.</li>
+<li><strong>The native egui shell was not taken.</strong> Upstream <code>bert-compose</code> carries <code>app.rs</code>, <code>askhal.rs</code>, <code>docs.rs</code>, <code>glyph.rs</code>, <code>main.rs</code>, <code>sweep.rs</code>, <code>theme.rs</code>, and <code>ui/</code>. None of it came across. What is here is engine-only.</li>
+</ol>
+<p>Recorded in <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/decisions/0002-web-first-rebuild.md"><code>docs/decisions/0002-web-first-rebuild.md</code></a>.</p>
+<h2>Drift since the branch point</h2>
+<p><strong>Ours has moved. Upstream&#39;s has not.</strong></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>vendored here</th>
+<th>upstream at branch point</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>bert-core</code> total</td>
+<td>~10,300 lines</td>
+<td>~5,600</td>
+</tr>
+<tr>
+<td><code>bert-core/src/validate.rs</code></td>
+<td>3,775</td>
+<td>1,750 (<strong>2.2×</strong>)</td>
+</tr>
+<tr>
+<td>Modules that exist only here</td>
+<td><code>decomposition.rs</code>, <code>model_id.rs</code>, <code>units.rs</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>bert-compose</code></td>
+<td>engine-only, plus <code>markov.rs</code></td>
+<td>full app</td>
+</tr>
+</tbody></table>
+<p><strong>Upstream <code>bert</code> has made two commits since <code>40de7a7</code>, both documentation, and zero touching <code>bert-core/</code> or <code>bert-compose/</code>:</strong></p>
+<pre><code class="language-bash">git -C bert rev-list --count 40de7a7..HEAD -- bert-core/ bert-compose/    # 0
+</code></pre>
+<p>This corrects the W30 audit, which recorded that &quot;upstream is not dormant — it has continued shipping into <code>bert-core/</code>, including a breaking <code>refactor(core)!</code>&quot;. Every commit it cited (<code>refactor(core)!: collapse AgentModel.primitives</code>, <code>§4.2 bert#108 identity-default lowering</code>, <code>§A5 mode-transition validators</code>) lands on <strong>2026-07-10 and 07-11 — before the branch point</strong>, and is therefore already included in what was vendored. The audit read the log without checking which side of the vendoring each commit fell on.</p>
+<h2>What this repository is, then</h2>
+<p><strong>A successor, not a fork under maintenance.</strong> At 2.2× on the file that carries the semantics, with three modules that exist nowhere upstream and an engine deliberately stripped of its host, these crates are no longer a copy that tracks something. Nothing here promises to follow upstream, and nothing upstream promises to follow this.</p>
+<p>Said plainly because a dissertation committee will ask <em>what is yours</em>, and the answer should be mechanical rather than narrative: <strong>diverged at <code>40de7a7</code> on 2026-07-14; <code>decomposition.rs</code>, <code>model_id.rs</code> and <code>units.rs</code> are original to this repository; <code>validate.rs</code> is 2.2× its upstream size; upstream has not touched either crate since.</strong></p>
+<h2>What happens when upstream moves</h2>
+<p>There is no sync mechanism and none is planned. <strong>Read the changelog, not the diff</strong> — quarterly, or when upstream announces something relevant — and port only entries that name a bug this repository also has. That is what ADR-0002&#39;s phrase &quot;pulled in deliberately, not tracked live&quot; means, stated as a procedure rather than a posture.</p>
+<p>A port is a normal change: it arrives as a PR, passes <code>just check</code> and <code>just wasm-exec</code>, and says in its message which upstream commit it corresponds to. It is not a merge and it is not a rebase.</p>
+<p><strong>If a port ever happens, add a row here.</strong> A provenance file with one row and no history is a file nobody thought to update.</p>
+<h2>Licence</h2>
+<p>Every crate under <code>crates/</code> was written for this repository, and all five are MIT under the root <a href="https://github.com/halcyonic-systems/facets/blob/main/LICENSE"><code>LICENSE</code></a> — see the lineage note in <a href="https://github.com/halcyonic-systems/facets/blob/main/THIRD_PARTY_NOTICES.md"><code>THIRD_PARTY_NOTICES.md</code></a>. The upstream repository carries its own MIT licence naming a different original author for the <strong>2024 Bevy application</strong>, which is not vendored here and none of whose code is present in these crates.</p>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/VENDORING.md">Source · docs/VENDORING.md</a>
+      <span>Rendered from 0bb7de4</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

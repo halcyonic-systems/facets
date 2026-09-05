@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Facets</title>
+<meta name="description" content="One system, many true descriptions. Ask a question, or build a model and watch it run.">
+<link rel="icon" href="/chat/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="shared/frost.css">
+<style>
+  /* The portal: the gem is the interface. Its two lit facets are the doors; the
+     five unlit ones are room for what ships next. Chosen 2026-08-29 from the
+     three-candidate final (winner A; runner-up B preserved at portal/alt-b.html).
+     Copy is a work in progress by declaration — tagline and door lines especially. */
+  :root {
+    /* Frost aliases (2026-08-31 unification) — values come from shared/frost.css,
+       generated from web/src/index.css. The gem SVG needs literal fills
+       (presentation attributes can't read var()), so the portal is pinned light
+       until the gem's fills move into CSS; the literals below mirror the
+       light-theme Frost values and change with the generator's source. */
+    color-scheme: light;
+    --ground: var(--bg-secondary); --ink-soft: var(--text-secondary);
+    --teal: var(--accent); --indigo: var(--accent-indigo);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--ground); color: var(--ink);
+    font-family: "Inter", system-ui, sans-serif;
+    min-height: 100vh; min-height: 100svh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 2rem 1.5rem; overflow-x: hidden;
+  }
+  main {
+    display: flex; align-items: center; gap: 4rem;
+    width: 100%; max-width: 72rem; justify-content: center;
+  }
+  .intro { max-width: 30rem; flex-shrink: 0; }
+  h1 {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: clamp(3.4rem, 7vw, 6rem); font-weight: 600; line-height: 1;
+  }
+  .tagline { margin-top: 1.1rem; color: var(--ink-soft); font-size: 1.15rem; line-height: 1.55; }
+  .gem { width: min(40vw, 560px, 64vh); flex-shrink: 0; }
+  .gem svg { display: block; width: 100%; height: auto; }
+  svg a { cursor: pointer; outline: none; }
+  svg a .facet { transition: opacity 140ms ease; }
+  svg text {
+    font-family: "Cormorant Garamond", Georgia, serif; font-weight: 600;
+    fill: var(--ink); font-size: 6.6px; text-anchor: middle;
+  }
+  svg .go { font-family: "Inter", system-ui, sans-serif; font-weight: 600; font-size: 2.6px; }
+  svg a:hover .facet, svg a:focus-visible .facet { opacity: 0.55; }
+  svg a:hover text.label, svg a:focus-visible text.label { text-decoration: underline; text-underline-offset: 2px; }
+  /* a slow shimmer says "alive" without shouting */
+  @keyframes breathe { from { opacity: 0.30; } to { opacity: 0.42; } }
+  .facet-chat { animation: breathe 3.2s ease-in-out infinite alternate; }
+  .facet-model { animation: breathe 3.2s ease-in-out 1.6s infinite alternate; }
+  svg a:hover .facet-chat, svg a:hover .facet-model { animation: none; }
+  /* Model dark (pre-launch): the facet waits, unlit and unlinked */
+  .model-dark .facet-model { animation: none; fill: #5d6f7b; opacity: 0.14; }
+  .model-dark #model-door { cursor: default; pointer-events: none; }
+  .model-dark #model-go { fill: #5d6f7b; }
+  @media (max-width: 760px) {
+    body { padding: 1.25rem 1.5rem; }
+    main { flex-direction: column; gap: 1.6rem; align-items: center; }
+    .gem { width: min(82vw, 400px, 52svh); }
+    .intro { text-align: center; }
+    h1 { font-size: 3.8rem; }
+    .tagline { font-size: 1.08rem; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="intro">
+    <h1>Facets</h1>
+    <p class="tagline">One system, many true descriptions. Ask a question, or build a model and watch it run.</p>
+  </div>
+  <div class="gem">
+    <svg viewBox="0 0 80 80" aria-label="Choose a door: Chat or Model">
+      <polygon points="40,4 71,19 78,52 57,76 23,76 2,52 9,19" fill="#ffffff" stroke="#17181a" stroke-width="0.35"></polygon>
+      <polygon points="71,19 78,52 40,40" fill="#545c93" opacity="0.07"></polygon>
+      <polygon points="78,52 57,76 40,40" fill="#3d6373" opacity="0.08"></polygon>
+      <polygon points="23,76 2,52 40,40" fill="#5d6f7b" opacity="0.05"></polygon>
+      <polygon points="2,52 9,19 40,40" fill="#5d6f7b" opacity="0.03"></polygon>
+      <polygon points="9,19 40,4 40,40" fill="#545c93" opacity="0.05"></polygon>
+      <a href="/chat/" aria-label="Chat: ask a question about any system">
+        <polygon class="facet facet-chat" points="40,4 71,19 40,40" fill="#545c93" opacity="0.30"></polygon>
+        <text class="label" x="51.5" y="19.6">Chat</text>
+        <text class="go" x="51.5" y="24" fill="#545c93">ask &#8594;</text>
+      </a>
+      <a href="/model/" id="model-door" aria-label="Model: build a system and run it">
+        <polygon class="facet facet-model" points="57,76 23,76 40,40" fill="#3d6373" opacity="0.32"></polygon>
+        <text class="label" x="40" y="62">Model</text>
+        <text class="go" id="model-go" x="40" y="66.6" fill="#3d6373">build &#8594;</text>
+      </a>
+      <line x1="40" y1="4" x2="40" y2="40" stroke="#17181a" stroke-width="0.2" opacity="0.5"></line>
+      <line x1="71" y1="19" x2="40" y2="40" stroke="#17181a" stroke-width="0.2" opacity="0.5"></line>
+      <line x1="78" y1="52" x2="40" y2="40" stroke="#17181a" stroke-width="0.2" opacity="0.5"></line>
+      <line x1="57" y1="76" x2="40" y2="40" stroke="#17181a" stroke-width="0.2" opacity="0.5"></line>
+      <line x1="23" y1="76" x2="40" y2="40" stroke="#17181a" stroke-width="0.2" opacity="0.5"></line>
+      <line x1="2" y1="52" x2="40" y2="40" stroke="#17181a" stroke-width="0.2" opacity="0.5"></line>
+      <line x1="9" y1="19" x2="40" y2="40" stroke="#17181a" stroke-width="0.2" opacity="0.5"></line>
+    </svg>
+  </div>
+</main>
+<script>
+  // Flipped to true by publish-site.sh --with-model; until then the Model facet
+  // waits unlit, its line reading "coming soon".
+  var MODEL_LIVE = false;
+  if (!MODEL_LIVE) {
+    document.body.classList.add('model-dark');
+    var door = document.getElementById('model-door');
+    door.removeAttribute('href');
+    door.setAttribute('aria-label', 'Model: coming soon');
+    document.getElementById('model-go').textContent = 'coming soon';
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glossary · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="./" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">LIVE</span></div>
+    <h1 class="title">Glossary</h1>
+    <article><p><strong>Status: LIVE.</strong> Fast definitions for the terms the docs use as load-bearing. Each is grounded in a fuller source; follow the link when the one-liner isn&#39;t enough. See the <a href="./quickstart.html">quickstart</a> for these terms in motion and the <a href="./language/terminology-concordance.html">terminology concordance</a> for the Klir·Bunge·Mobus lineage of each word.</p>
+<h3>System</h3>
+<p>A thing-in-relation that holds under a tradition&#39;s precondition — not any collection of parts. Whether a described structure <em>is</em> a system is the kernel&#39;s verdict, decided per lens, never assumed. See <a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a>.</p>
+<h3>Lens</h3>
+<p>One of the three faithful views the kernel generates from a single model: Klir, Bunge, Mobus. They are not styles or skins — each is a mathematically faithful view entered through its own machine-checked <a href="#precondition">precondition</a>. Author once; read the model as any tradition. See <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/lens-palettes.md"><code>design/lens-palettes.md</code></a>.</p>
+<h3>Bond / mere</h3>
+<p>Bunge&#39;s distinction between two kinds of relation. A <strong>bond</strong> couples distinct components so that one modifies the other&#39;s history (Lean criterion <code>FlowInducesAction</code>); a <strong>mere</strong> relation is any other relation, carrying no such coupling. Bond-vs-mere is author-declared and checked for legality against <code>HasBond</code>, not derived from a run. See <a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a> (Bunge).</p>
+<h3>Conservation invariant (declared)</h3>
+<p>A conserved quantity or bound the <em>model</em> declares on its state space — not a premise the engine assumes. Conservation is one optional declaration among several possible invariants, per the adopted <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/dynamics-principled-position.md">dynamics position</a>. The current engine interprets one such declaration (an additive invariant over ℝⁿ stocks).</p>
+<h3>WorldModel</h3>
+<p>The mode-stamped artifact that Export writes: what the author asserts is true as of a given lens, and the object other tools consume. Its <code>mode</code> field records the lens committed to; it does not constrain the data (every model is a valid Core model regardless). See <a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a> (mode-stamp semantics).</p>
+<h3>Save vs Export</h3>
+<p><strong>Save</strong> keeps working canvas state — the shape mid-authoring. <strong>Export</strong> writes a mode-stamped <a href="#worldmodel"><code>WorldModel</code></a>: a committed assertion under a lens. A <a href="#run-ledger">run ledger</a> is neither; it is a result shown in the run panel, not a saved tier. See the README, &quot;What this tool believes&quot;.</p>
+<h3>Run ledger</h3>
+<p>The per-step accounting a run produces in the run panel: the declared <a href="#conservation-invariant-declared">conservation invariant</a> tracked across the run, showing it holds (or where it breaks). A result, not a saved artifact.</p>
+<h3>SL</h3>
+<p>The bert-lenses <strong>s</strong>ystem <strong>l</strong>anguage: a human-writable, line-oriented textual notation that compiles deterministically (a compiler, never an LLM) into a model. The third concrete syntax over the <a href="#neutral-spec">neutral spec</a>, alongside canvas and JSON. See <a href="https://github.com/halcyonic-systems/facets/tree/main/docs/language"><code>language/</code></a>.</p>
+<h3>Systemhood</h3>
+<p>The property the kernel decides: whether a model holds as a system under a given lens, versus being a mere aggregate. The SL parser judges no systemhood — legality stays the kernel&#39;s verdict. See <a href="./kernel-architecture.html"><code>kernel-architecture.md</code></a>.</p>
+<h3>Mode / lens</h3>
+<p>A <strong>mode</strong> is the lens an author commits a model to (Core, Structural/Bunge, Operational/Mobus, Full). The modes are parallel lenses sharing only Core&#39;s on-ness — a meet-semilattice, not a linear tower — so committing to one lens implies nothing about the others; each is an independent precondition over the same kernel. See <a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a>.</p>
+<h3>Neutral spec</h3>
+<p>The single abstract model that canvas gestures, SL text, and JSON are all concrete syntaxes over. None of the three is the source of truth — the neutral spec is. See <a href="./language/index.html"><code>language/README.md</code></a>.</p>
+<h3>Golden</h3>
+<p>A committed fixture whose exact output is pinned by a test. The three <a href="https://github.com/halcyonic-systems/facets/tree/main/fixtures/sl"><code>fixtures/sl/</code></a> files are round-trip goldens: each parses, emits, and re-parses identically (<code>crates/bert-canvas/tests/sl_roundtrip.rs</code>). See <a href="./language/index.html"><code>language/README.md</code></a>, &quot;Corpus precedence&quot;.</p>
+<h3>Dynamics-kind</h3>
+<p>The shape of a dynamics record&#39;s transition functor — deterministic map, input-driven table, distribution, and so on. A model <em>declares</em> its kind; engines interpret declarations and are separately verified against the semigroup contract. The current engine supports one kind (Id-functor over ℝⁿ stocks). See <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/dynamics-principled-position.md"><code>design/dynamics-principled-position.md</code></a>.</p>
+<h3>Precondition</h3>
+<p>The named, machine-checked hypothesis a lens&#39;s entry gate requires: <code>HasBond</code> for Bunge (Structural), <code>Irreflexive</code> for Mobus (Operational). A refusal cites its failed precondition rather than shrugging. Klir is unconditional. See <a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a>.</p>
+<h3>Concordance</h3>
+<p>The Klir·Bunge·Mobus terminology grid: 12 kernel distinctions × 3 traditions, every cell primary-cited. The SSOT for the spec&#39;s lexicon attribution and the K≅2 convergence exhibits. See <a href="./language/terminology-concordance.html"><code>language/terminology-concordance.md</code></a>.</p>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/glossary.md">Source · docs/glossary.md</a>
+      <span>Rendered from 0bb7de4</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Steel-Plant walk — demo script · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="./" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">LIVE</span></div>
+    <h1 class="title">The Steel-Plant walk — demo script</h1>
+    <article><p><strong>Status: LIVE.</strong></p>
+<p>A live-demo companion for showing George Mobus his own ch. 4 procedure running
+end to end: open the Steel-Plant, decompose it, and walk the hierarchy —
+Fig. 4.14&#39;s opaque box, Fig. 4.16&#39;s transparent box, Fig. 4.17&#39;s inventory
+room — with the boundary contract checked at every seam.</p>
+<p>Three shipped artifacts carry it, all editorial (the citation-gated corpus
+entry <code>assets/corpus/mobus/steel-plant.sl</code> is untouched and stops at Fig. 4.14
+on purpose):</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Model</th>
+<th>Where it ships</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0</td>
+<td>Steel-Plant — Deep Systems Analysis (opaque SOI among its six transaction partners)</td>
+<td><code>assets/walkthroughs/steel-plant/level-0.sl</code> — beside the levels it opens onto</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Steel-Plant (Figs. 4.15 + 4.16: six boundary interfaces, four subsystems)</td>
+<td><code>assets/walkthroughs/steel-plant/level-1.{sl,json}</code> — bundled shelf</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Iron-Inventory (Fig. 4.17: pumps, stock, sensor, decider)</td>
+<td><code>assets/walkthroughs/steel-plant/level-2.{sl,json}</code> — bundled shelf</td>
+</tr>
+</tbody></table>
+<p>The hierarchy needs no setup: the parent&#39;s <code>decomposes @id</code> references resolve
+against the bundled shelf (<code>web/src/walkthroughs.ts</code>), so the walk works in a
+fresh browser with an empty library. Both seams are held clean in CI by
+<code>crates/bert-lenses-kernel/tests/steel_walkthrough.rs</code>.</p>
+<h2>The click path</h2>
+<ol>
+<li><p><strong>Home → Open a model → &quot;The Steel-Plant, three levels deep&quot;.</strong>
+(Level 0 was a gallery card until #318, then moved beside the two levels it
+opens onto — a second steel plant was the duplication that consolidation was
+called to remove. #139 put it back on the shelf and the duplication argument
+no longer holds: the two cards now teach different things, since this one
+shows its interior without leaving the model. The citation-gated corpus card
+still stops at Fig. 4.14, where Mobus stops. The file has not moved; it is
+registered by hand in <code>web/src/examples.ts</code>. <code>Open a file… → assets/walkthroughs/steel-plant/level-0.sl</code> still works.)
+It opens Fig. 4.14 at the chapter&#39;s own pause: one Combining process
+among the six entities of level −1, F-numbers on every flow, substances
+from Listing 4.1&#39;s own subtype attributes.</p>
+<p><em>Say:</em> this is the SOI as an opaque box. Two departures from the figure,
+both owned aloud. First: S0 appears twice over — as the frame that names
+the model and as the single work process carrying every flow. Listing 4.1
+declares the SOI itself as <code>type=PROCESS</code>, so &quot;the whole plant is one
+work process&quot; is Mobus&#39;s own declaration; Fig. 4.14 draws one box where
+we draw the declaration and its frame (#308 tracks collapsing the two).
+The box inside the frame is also the door the walk needs — it is what
+carries <code>decomposes</code>. Second: the sources and sinks are drawn as
+residents, because each is a system in its own right — the same promotion his Listing 4.4 makes when it
+writes Src-1.1 into Iron-Inventory&#39;s environment. The message traffic
+(purchase orders out, shipping documents in) is Listing 4.1&#39;s
+<code>subtype=MESSAGE</code> announcement, cashed early so the seam below can carry it.</p>
+</li>
+<li><p><strong>Click the Steel-Plant component.</strong> The node inspector shows
+<code>decomposes &quot;Steel-Plant&quot;</code> with an <strong>enter</strong> affordance — the door is
+already stamped.</p>
+</li>
+<li><p><strong>Double-click Steel-Plant.</strong> The view dives through the component and the
+level-1 model arrives: the breadcrumb appears —
+<code>✓ Steel-Plant — Deep Systems Analysis › Steel-Plant</code> — and the ✓ on each
+segment is the kernel&#39;s live verdict on that descent&#39;s seam, not
+decoration.</p>
+<p><em>Say:</em> the seam is the boundary contract from the Lean <code>Decomposition</code>
+structure: same number of crossings in and out, kind for kind
+(five in — one energy, two matter, two message — five out), and the child&#39;s
+environment must be exactly the parent&#39;s neighborhood of the decomposed
+component, name for name. Point at the six stand-ins ringing the model:
+Energy-Source through ATMOSPHERE, the level-0 residents seen from inside.
+Then point at what the level reveals: Fig. 4.15&#39;s six interfaces (FuseBox,
+the two loading docks, the two shipping docks, Ventilation) and Fig. 4.16&#39;s
+four subsystems, including Material-Purchasing — the messages-only hybrid
+interface, &quot;an often overlooked one in real life.&quot;</p>
+</li>
+<li><p><strong>Double-click Iron-Inventory.</strong> Second dive; the breadcrumb reads
+<code>✓ … › ✓ Steel-Plant › Iron-Inventory</code>. Fig. 4.17&#39;s room: Move-In and
+Move-Out (the pump shapes, Propelling), Iron-Stock (Buffering, stock unit
+tons from Listing 4.3&#39;s <code>units=TONS</code>), the Level-Sensor on the stock, and
+the Inventory-Decider — Listing 4.4&#39;s <code>type=AGENT</code> — managing both pumps
+and sending the purchase request out through the membrane to
+Material-Purchasing.</p>
+<p><em>Say:</em> this is the recursion of Eq. 4.3 made navigable — every subsystem a
+system in its own right, with its own boundary, its own environment (the
+level-1 neighbors, exactly), and its own faster clock: <code>time unit week</code>,
+Listing 4.4&#39;s <code>delta_t WEEKLY</code>, against the parent&#39;s month.</p>
+</li>
+<li><p><strong>Breadcrumb back up.</strong> Click <code>Steel-Plant</code>, then the root segment. Each
+exit re-runs the seam check against the stored children — the ✓ glyphs are
+recomputed, not remembered. Reduced-motion users get instant swaps; everyone
+else gets the dive/rise choreography.</p>
+</li>
+<li><p><strong>Optional coda — show the text.</strong> Open the SL pane at any level: every
+modeling choice is justified in the file&#39;s own comments, with the figure
+and listing citations inline. The <code>decomposes &quot;Iron-Inventory&quot; @…</code> line is
+the whole mechanism: a name for humans, an id for the store, a contract for
+the kernel.</p>
+</li>
+</ol>
+<h2>Where the glyphs live</h2>
+<ul>
+<li><strong>Breadcrumb segments</strong> (only while walking): ✓ seams hold / ⚠ violations,
+per level, kernel-fed (<code>SeamGlyph</code> in <code>web/src/App.tsx</code>).</li>
+<li><strong>The verdict pill</strong> on the control strip folds seam issues into the same
+list as every other validation verdict; a broken referent is as loud as a
+dangling flow.</li>
+<li><strong>The node inspector</strong> on a decomposed component names its child. Interface
+components decompose too since #307 lifted the v1 refusal (the crossing
+contract transcribed from SSF #43) — the walkable boxes at levels 0 and 1
+being interior components is a fact about these models, not a limit of the
+contract.</li>
+</ul>
+<h2>If something looks wrong</h2>
+<ul>
+<li>A ⚠ on a breadcrumb segment means a seam violation — check the review panel;
+every row navigates to its component. The shipped models cannot do this
+(CI holds both seams clean); a library model shadowing a pinned id can.
+Deleting the like-named library records restores the shipped resolution.</li>
+<li>The walk saves nothing at these levels unless a model is edited: exits
+autosave dirty models only, and only into named library slots.</li>
+</ul>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/steel-plant-walkthrough.md">Source · docs/steel-plant-walkthrough.md</a>
+      <span>Rendered from 0bb7de4</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

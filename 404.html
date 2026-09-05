@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facets — Systems Reasoning Engine</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233a6e62' stroke-width='2' fill='%23f7f4ef'/%3E%3C/svg%3E">
+<meta property="og:title" content="Facets — Systems Reasoning Engine">
+<meta property="og:description" content="Ask a question. See which facets of systems science it touches.">
+<script>
+  // GitHub Pages SPA fallback, deployed at the SITE ROOT of facets.systems (Pages
+  // serves one 404 per site). This file must stay a stub — app code lives ONLY in
+  // chat/index.html. (Its previous life as a full copy drifted 160+ lines behind and
+  // served stale UI on every /a/<id> permalink.) Chat deep links (/chat/a/<id>,
+  // /chat/c/<id>) are stashed and bounced to the chat shell, which restores the path
+  // via history.replaceState before routing; anything else bounces to the portal.
+  var p = location.pathname + location.search;
+  if (location.pathname.indexOf('/chat/') === 0) {
+    sessionStorage.setItem('facets-deep-link', p);
+    location.replace('/chat/');
+  } else {
+    location.replace('/');
+  }
+</script>
+</head>
+<body></body>
+</html>

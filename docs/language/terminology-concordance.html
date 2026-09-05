@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terminology Concordance — Klir · Bunge · Mobus · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="../">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="../" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">LIVE</span></div>
+    <h1 class="title">Terminology Concordance — Klir · Bunge · Mobus</h1>
+    <article><p><strong>Status: LIVE.</strong> The reference grid, compiled 2026-07-18 from primary sources and primary-read notes; every cell carries a <strong>VERIFIED</strong> mark or an explicit attribution <strong>ruling</strong> (the §14 ledger closed same day), and no cell is filled from general knowledge. This is the SSOT the SL lexicon table (<code>spec.md</code> §3) summarizes; it also serves the per-lens UI copy (palette labels, <code>describe()</code> typesetting) and the K≅2 convergence program — a filled-in concordance <em>is</em> a compact convergence exhibit.</p>
+<p><strong>How to read it.</strong> For each kernel distinction, the row gives each tradition&#39;s term and its grounding. Convergence rows (all traditions share a word or an isomorphic concept) are evidence for the common core; divergence cells (a tradition lacks the distinction) are equally informative — they are exactly what the corresponding lens <em>drops</em>, and they explain the lens&#39;s rendering choices. <strong>VERIFIED</strong> = the term was found in a primary text on disk, or in a primary-read note that itself cites the book by page/line. <strong>UNGROUNDED</strong> = not found in an available source this pass; listed honestly in §14 rather than filled in.</p>
+<p><strong>Two verification targets, marked separately</strong> (council outside-pass, 2026-07-18): <em>source-verified</em> — the tradition&#39;s own text says this (the default meaning of VERIFIED above); <em>repo-verified</em> — the instrument implements this. They fail independently: a cell can be repo-verified yet source-UNGROUNDED (row 1&#39;s Bunge M was, until §14.1 closed) or source-verified yet unimplemented. Where the split matters, the row says which target a mark hits; a bare VERIFIED is source-verified.</p>
+<p><strong>Citation roots</strong> (sibling repos):</p>
+<ul>
+<li><code>GSR/</code> = <code>halcyonic-projects/active/general-systems-reasoner/</code></li>
+<li><code>VAULT/</code> = the Obsidian vault, <code>operations/systems-science/</code></li>
+<li><code>SSF/</code> = <code>halcyonic-projects/active/systems-science-foundations/</code></li>
+<li>bare paths = this repo</li>
+</ul>
+<hr>
+<h2>The grid (summary; per-row notes below)</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Distinction</th>
+<th>Klir</th>
+<th>Bunge</th>
+<th>Mobus</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>The system</td>
+<td><code>S = (T, R)</code></td>
+<td><code>σ = ⟨C, E, S⟩</code> (1979); CESM <code>µ(σ)</code> (2004)</td>
+<td>7-tuple <code>⟨C,N,G,B,T,H,Δt⟩</code>; SOI <code>S₀,₀</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Part inside</td>
+<td><strong>thing</strong> (element of T)</td>
+<td><strong>component</strong> (C)</td>
+<td><strong>component</strong> (C)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Thing outside</td>
+<td>environment (observer-side, not a coordinate)</td>
+<td><strong>environment</strong> (E)</td>
+<td><strong>environment</strong> = sources &amp; sinks</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Connection</td>
+<td><strong>relation</strong> (R)</td>
+<td>connection / coupling / <strong>bond</strong> (▷)</td>
+<td>interaction / <strong>flow</strong> (N, G edges)</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Bond vs mere</td>
+<td>— (one undifferentiated R)</td>
+<td><strong>bondage B vs B̄</strong></td>
+<td>— (no such split)</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Connection kind</td>
+<td>— (thinghood, excluded)</td>
+<td>flows of <strong>energy, matter, fields; informational</strong></td>
+<td>substances: <strong>material, energy, message</strong></td>
+</tr>
+<tr>
+<td>7</td>
+<td>Direction</td>
+<td><strong>directed vs neutral systems</strong> (observer)</td>
+<td>asymmetry of action ▷ (agent/patient)</td>
+<td>inherent flow direction (k→o)</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Boundary</td>
+<td>observer-drawn distinction</td>
+<td><strong>topological boundary</strong> (1992), link-type-relative</td>
+<td><strong>B = ⟨P, I⟩</strong></td>
+</tr>
+<tr>
+<td>9</td>
+<td>Interface</td>
+<td>—</td>
+<td><strong>interface points</strong> = i/o terminals ∈ boundary</td>
+<td><strong>interfaces I</strong> (2nd coordinate of B)</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Work-process primitives</td>
+<td>—</td>
+<td>—</td>
+<td><strong>atomic process taxonomy</strong> (combine, split, buffer, …)</td>
+</tr>
+<tr>
+<td>11</td>
+<td>System types</td>
+<td>two-axis §2.4 (restrict T / restrict R)</td>
+<td><strong>kingdoms + five genera</strong> (Post. 6.4)</td>
+<td>concrete/abstract + texture axes</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Milieu vs objects</td>
+<td>—</td>
+<td>— (E is discrete things only)</td>
+<td>discrete Src/Snk + <strong>channels/fields</strong></td>
+</tr>
+</tbody></table>
+<p>Bold marks the term SL adopted (or, in row 1, the formal object each lens typesets). Rows 2, 3, 6, 9, 11 are the strong convergence rows; rows 5, 7 (Klir), 10, 12 are single-tradition contributions — each is exactly one lens&#39;s distinctive vocabulary.</p>
+<hr>
+<h2>1. The system itself</h2>
+<ul>
+<li><strong>Klir — <code>S = (T, R)</code>. VERIFIED.</strong> &quot;S = (T, R) — where T is &#39;a set of things distinguished within S&#39; and R &#39;a relation … defined on T&#39;&quot; (<code>GSR/klir_markdowns/Klir-Systemhood-vs-Thinghood-(2001).md:19</code>).</li>
+<li><strong>Bunge — <code>σ = ⟨C, E, S⟩</code>. VERIFIED.</strong> &quot;the ordered triple σ = ⟨C, E, S⟩ is (or represents) a system over T iff C and E are mutually disjoint subsets of T … and S is a nonempty set of relations on the union of C and E&quot; (<code>SSF/docs/reference/mobus-bunge-system-definitions-reference.md:185</code>; minimal model at <code>GSR/bunge_markdowns/Bunge-Concrete-System-Definition-CES-(1979).md:77-79</code>). The fourth CESM coordinate M (Mechanism) is now <strong>VERIFIED verbatim</strong> (2004, not the 1979 CES paper): &quot;The simplest sketch or model of a concrete system σ is the list of its composition, environment, structure, and mechanism, or µ(σ) = ⟨C(σ), E(σ), S(σ), M(σ)⟩ … M(σ) stands for the mechanisms, or characteristic processes of σ&quot; (<code>GSR/bunge_markdowns/Bunge-How-Does-It-Work-(2004).md:289-294</code>); &quot;M(σ) is empty for conceptual systems&quot; (<code>:300</code>). So CES (1979) and CESM (2004) are both Bunge&#39;s, a quarter-century apart — the kernel&#39;s CES-with-mechanism-note is faithful to the 1979 formal object while acknowledging the 2004 extension.</li>
+<li><strong>Mobus — the 7-tuple, SOI. VERIFIED, with the provenance nuance this repo already carries:</strong> the book prints a <strong>7</strong>-tuple <code>⟨C,N,G,B,T,H,Δt⟩</code> (<code>VAULT/mobus/4-a-model-of-system.md:196-199</code>); the 8-tuple with E first-class is the Lean formalization&#39;s deliberate improvement (<code>SSF/Systems/Mobus/Tuple.lean</code>), credited as such in anything published. &quot;S₀,₀ is the designated SOI&quot; (<code>SSF/docs/reference/mobus-bunge-system-definitions-reference.md:133</code>).</li>
+</ul>
+<p><strong>Convergence reading:</strong> three formal objects, one referent — this is the K≅2 claim itself, and the three <code>describe()</code> typesettings render exactly these three signatures.</p>
+<p><strong>The named referent (#84, shipped 2026-07-18):</strong> SL now names the SOI — <code>system &quot;Name&quot; [: Kingdom/Genus]</code> → <code>CanvasModel.name</code> → the root system&#39;s <code>info.name</code>. The name is the one place all three traditions already agreed without a shared word: Mobus&#39;s designated SOI <code>S₀,₀</code>, Bunge&#39;s <code>σ</code>, Klir&#39;s <code>S</code> each denote <em>this</em> system, and the paragraph&#39;s proper name (&quot;Process M&quot;, &quot;Steel-Plant&quot;) is what the denotation binds to.</p>
+<h2>2. A thing inside the system — the strongest shared word</h2>
+<ul>
+<li><strong>Klir — &quot;thing.&quot; VERIFIED.</strong> T = &quot;a set of things distinguished within S&quot;; thinghood resides in T (<code>Klir-Systemhood-vs-Thinghood-(2001).md:19</code>).</li>
+<li><strong>Bunge — &quot;component,&quot; composition C. VERIFIED.</strong> &quot;the A-composition of σ at a given time t is the set of its A-parts at t&quot; (<code>Bunge-Concrete-System-Definition-CES-(1979).md:55-56</code>).</li>
+<li><strong>Mobus — &quot;component,&quot; C. VERIFIED.</strong> &quot;C is a set of components and their &#39;type&#39; … may have partial inclusion&quot; (<code>mobus-bunge-system-definitions-reference.md:137</code>).</li>
+</ul>
+<p><strong>Convergence reading:</strong> Bunge and Mobus <em>share the word and the letter</em> — SL&#39;s <code>component</code> is a two-tradition word. Klir&#39;s divergence (&quot;thing&quot;) is principled, not lexical accident: his T carries thinghood, which he excludes from systemhood — which is why the Klir lens relabels what the other two share.</p>
+<h2>3. A thing outside the system</h2>
+<ul>
+<li><strong>Klir — &quot;environment,&quot; observer-side. VERIFIED, not a coordinate.</strong> &quot;an agent that is not part of the system … referred to as an environment of the system; it includes in many cases the investigator&quot; (<code>VAULT/klir/klir-facets.md:3648-3656</code>). The bare <code>S=(T,R)</code> has no environment slot; environment enters through input variables.</li>
+<li><strong>Bunge — &quot;environment,&quot; E. VERIFIED.</strong> E_A = the things outside C that act on or are acted on by a component (<code>Bunge-Concrete-System-Definition-CES-(1979).md:58-59</code>).</li>
+<li><strong>Mobus — &quot;environment&quot; = sources and sinks. VERIFIED.</strong> &quot;The environment contains all of the sources of inputs … and the sinks for outputs … all of the channels (or fields) through which flows occur&quot; (<code>mobus-bunge-system-definitions-reference.md:40</code>).</li>
+</ul>
+<p><strong>Convergence reading:</strong> <code>environment</code> is a Bunge–Mobus shared word (with Bunge&#39;s E the formal coordinate SL&#39;s <code>Role::Environment</code> mirrors); Mobus contributes the source/sink refinement SL uses as author-intent words, with identity edge-derived (<code>spec.md</code> §5.2).</p>
+<h2>4. A connection between parts</h2>
+<ul>
+<li><strong>Klir — &quot;relation,&quot; the seat of systemhood. VERIFIED.</strong> Binary <code>R ⊆ T×T</code> (<code>GSR/klir_markdowns/Klir-Relations-(2001).md:5-7</code>); Klir explicitly subsumes &quot;interaction, interconnection, coupling, linkage, cohesion, constraint, interdependence, function, organization, structure…&quot; under mathematical relation (<code>:63</code>).</li>
+<li><strong>Bunge — &quot;connected (or coupled, or linked, or bonded).&quot; VERIFIED.</strong> &quot;two things are connected … if at least one of them acts on the other&quot;; action <code>a▷b</code> &quot;modifies the latter&#39;s behavior line, or trajectory, or history&quot; (<code>Bunge-Concrete-System-Definition-CES-(1979).md:27-29</code>).</li>
+<li><strong>Mobus — &quot;interactions&quot;/flows. VERIFIED.</strong> &quot;N is generally a flow network through which real substances are moving from one node (component) to the next with causal influence&quot; (<code>mobus-bunge-system-definitions-reference.md:157-161</code>); boundary flows form the bipartite graph G (<code>:167</code>).</li>
+</ul>
+<p><strong>Convergence reading:</strong> one concept, three vocabularies at three levels of commitment — Klir&#39;s bare relation, Bunge&#39;s action-backed connection, Mobus&#39;s substance-carrying flow. SL&#39;s <code>flow</code> keyword is Mobus&#39;s word; the kernel&#39;s <code>Relation</code> is Klir&#39;s object; the bond semantics are Bunge&#39;s. One line of SL touches all three, which is the unified-language thesis in miniature.</p>
+<h2>5. Bond vs mere relation — Bunge&#39;s alone</h2>
+<ul>
+<li><strong>Bunge — VERIFIED, verbatim.</strong> &quot;the total set of relations among the components … may be decomposed into its bondage B_A and the set B̄_A of nonbonding relations&quot;; &quot;Unlike a mere relation, a connection makes some difference to its relata&quot;; systemhood requires B_A ≠ ∅ (<code>Bunge-Concrete-System-Definition-CES-(1979).md:23, 33, 62-69</code>).</li>
+<li><strong>Klir — absent, VERIFIED.</strong> All of systemhood collapses into one undifferentiated R (<code>Klir-Relations-(2001).md:63</code>); the Klir lens drops bond-vs-mere (<code>docs/theory-fidelity.md:20</code>).</li>
+<li><strong>Mobus — absent, VERIFIED by scoped sweep</strong> (§14.5). Chapters 3–4 swept for bond/bonding, coupling, connection/relation type, mere aggregate, glue, &quot;makes a difference&quot;: every bond hit is physical/chemical/social bonding in the ontogenesis narrative, never a structural typology partitioning relations. His nearest device — boundaries implied where interrelations are &quot;much stronger&quot; among internal components (<code>VAULT/mobus/3-system-ontology.md:1182</code>) — is an interaction-strength/endo-exo criterion, not Bunge&#39;s difference-making partition.</li>
+</ul>
+<p>SL&#39;s <code>mere</code> is therefore a <strong>single-tradition contribution</strong>, and the aggregate/system verdict it feeds (Bunge Def 1.1 in the UI) is the most lens-specific rule in the tool.</p>
+<h2>6. The kind of a connection — SL&#39;s kind words are Bunge&#39;s, verbatim</h2>
+<ul>
+<li><strong>Bunge — VERIFIED, verbatim.</strong> &quot;Dynamic connections are often called flows — of <strong>energy, matter, or fields</strong>. If a physical flow happens to carry information, the connection is called <strong>informational</strong> … the physical/informational distinction is one of emphasis, not a dichotomy, for every information flow rides on some energy flow&quot; (<code>Bunge-Concrete-System-Definition-CES-(1979).md:92</code>). SL&#39;s <code>energy | matter | field | informational</code> is this sentence as an enum (<code>crates/bert-canvas/src/canvas.rs:52-62</code>).</li>
+<li><strong>Mobus — material / energy / message. VERIFIED.</strong> &quot;All processes transform low-quality material, energy, or messages into high-quality versions of the same&quot; (<code>dynamics-research/read-mobus.md:120-124</code>); messages copy rather than conserve (<code>read-mobus.md:305-324</code>). The 1:1 mapping Kind→Substance is code (<code>canvas.rs:64-70</code>): Matter→Material, Informational→Message, Energy/Field→Energy.</li>
+<li><strong>Klir — absent, VERIFIED.</strong> Kind is a thinghood property, excluded from R (<code>docs/theory-fidelity.md:20</code>).</li>
+</ul>
+<p><strong>Convergence reading:</strong> a genuine two-tradition near-isomorphism (4 Bunge kinds ↔ 3 Mobus substances, collapse documented in code), with Klir&#39;s principled abstention explaining why the Klir lens shows untyped edges.</p>
+<h2>7. Direction</h2>
+<ul>
+<li><strong>Klir — &quot;directed&quot; vs &quot;neutral&quot; systems. VERIFIED, verbatim.</strong> &quot;Systems whose variables are classified into input and output variables are called directed systems; those for which no such classification is given are called neutral systems&quot; (<code>VAULT/klir/klir-facets.md:3657-3659</code>). An observer&#39;s commitment, added to the source system — exactly why SL carries it as the <code>@directed</code> <em>annotation</em> (view state), not a structure word.</li>
+<li><strong>Bunge — asymmetry of ▷. VERIFIED.</strong> Agent/patient: &quot;If a thing acts upon another, and the latter does not react back, the former is called the agent and the latter the patient&quot; (<code>Bunge-Concrete-System-Definition-CES-(1979).md:29</code>).</li>
+<li><strong>Mobus — inherent flow direction. VERIFIED.</strong> &quot;the direction is assumed from k to o&quot; (<code>mobus-bunge-system-definitions-reference.md:159</code>).</li>
+</ul>
+<p><strong>Divergence reading — the most instructive row:</strong> the <em>same arrow</em> is observer-optional for Klir, action-asymmetry for Bunge, and substance-transport for Mobus. SL&#39;s <code>-&gt;</code> (structural, always present) plus <code>@directed</code> (view state, Klir&#39;s toggle) encodes the difference precisely.</p>
+<h2>8. The boundary — Bunge formalized it too (correction to earlier framing)</h2>
+<ul>
+<li><strong>Mobus — <code>B = ⟨P, I⟩</code>. VERIFIED.</strong> &quot;B_{i,l}=⟨P_{i,l},I_{i,l}⟩ where P is the set of properties and … I_{i,l} is the set of interfaces. The exact form of P is still an object of research&quot; (<code>mobus-bunge-system-definitions-reference.md:175-177</code>). The property words are now <strong>VERIFIED verbatim</strong>: &quot;as porosity (0 being completely non-porous) and &#39;perceptive fuzziness,&#39; meaning the degree to which it is easily perceived&quot; (<code>VAULT/mobus/4-a-model-of-system.md:376</code>).</li>
+<li><strong>Bunge — a topological boundary, VERIFIED verbatim (1992).</strong> &quot;A boundary component of a system is … one every neighborhood of which contains at least one system component and at least one thing in the environment&quot;; boundaries are <strong>link-type-relative</strong> (&quot;different link types induce different boundaries&quot;) and universal (&quot;every concrete system, except for the universe as a whole, has at least one boundary&quot;) (<code>GSR/bunge_markdowns/Bunge-System-Boundary-(1992).md:47-51</code>). <em>Earlier repo framing (&quot;Bunge&#39;s boundary is informal&quot;) is corrected by this source.</em></li>
+<li><strong>Klir — an observer-drawn distinction. VERIFIED.</strong> &quot;A distinction splits the world into two parts … &#39;environment&#39; and … system of interest&quot; (<code>VAULT/klir/klir-facets.md:1442-1446</code>, <code>9851</code>).</li>
+</ul>
+<p><strong>Convergence reading:</strong> stronger than previously credited — Bunge&#39;s boundary-as-set-of-boundary-<em>components</em> independently anticipates the boundary-identity result the lenses already render (boundary(Bunge) = interfaces(Mobus) as a component set), and his link-type relativity resonates with kind-typed membranes. A genuine two-tradition convergence with Klir&#39;s observer reading as the Core-level floor.</p>
+<h2>9. Interface</h2>
+<ul>
+<li><strong>Mobus — &quot;interfaces,&quot; I. VERIFIED</strong> as the second coordinate of B (<code>mobus-bunge-system-definitions-reference.md:177</code>). <strong>Ruling on I ⊆ C (§14.3, resolved 2026-07-18):</strong> the book&#39;s claim is that interfaces are components <em>of the boundary subsystem</em> and systems in their own right — &quot;the set of interfaces embedded in the boundary are components in the boundary subsystem and are themselves subsystems. That is, every r_{i,l} ∈ I_{i,l} is an S itself&quot; (<code>VAULT/mobus/4-a-model-of-system.md:386</code>; also <code>:334</code>). The <strong>flat subset I ⊆ C over the system&#39;s own component set</strong> is the Lean formalization&#39;s choice (<code>SSF/Systems/Mobus/Tuple.lean</code>, <code>iface_sub</code>) — a faithful simplification (the boundary subsystem&#39;s components are components), credited as the Lean&#39;s, same pattern as the 8th tuple slot. Cite the book for interfaces-as-(boundary-)components, the Lean for the flat subset constraint.</li>
+<li><strong>Bunge — &quot;interface points.&quot; VERIFIED.</strong> &quot;it has some boundary or interface points … the input and output terminals of a system are members of its boundary&quot; (<code>Bunge-System-Boundary-(1992).md:168, 236-237</code>).</li>
+<li><strong>Klir — absent</strong> (§14).</li>
+</ul>
+<p><strong>Convergence reading:</strong> <code>interface</code> turns out to be a <em>shared</em> Bunge–Mobus word too — Bunge&#39;s i/o terminals as boundary members is structurally the same claim as Mobus&#39;s I inside B, and both agree with the Lean&#39;s identification of interfaces with (boundary) components.</p>
+<h2>10. Work-process primitives — Mobus&#39;s alone</h2>
+<ul>
+<li><strong>Mobus — VERIFIED.</strong> The atomic work-process taxonomy and the simplest-process stopping rule (<code>dynamics-research/read-mobus.md:129-135</code>, citing <code>VAULT/mobus/4-a-model-of-system.md:250-251</code> and <code>3-system-ontology.md:1195</code>); general process definition: &quot;A process is a system that performs a transformation on its inputs to produce outputs that are different in form, quantity, or organization&quot; (<code>read-mobus.md:76-77</code>). Shipped as <code>ProcessPrimitive</code> (<code>crates/bert-core/src/lib.rs:1263</code>).</li>
+<li><strong>Bunge — absent</strong> (process = trajectory in state space, no primitive taxonomy; <code>dynamics-research/read-bunge.md:29-30</code>). <strong>Klir — absent</strong> (behavior functions, not functional primitives; <code>read-klir.md:158-172</code>).</li>
+</ul>
+<h2>11. System types</h2>
+<ul>
+<li><strong>Bunge — kingdoms + genera, VERIFIED verbatim.</strong> &quot;These are the only system kingdoms we recognize: conceptual and concrete&quot;; &quot;there are five system genera: physical, chemical, biological, social, and technical&quot; (Postulate 6.4; <code>SSF/docs/reference/system-type-typologies.md:15, 23</code>).</li>
+<li><strong>Klir — the §2.4 two-axis scheme. VERIFIED.</strong> Classify &quot;by restricting T to certain kinds of things; by restricting R to certain kinds of relations&quot;; the type-(a) list &quot;physical, chemical, biological, economic, social, etc.&quot; (<code>system-type-typologies.md:66-71</code>). The Bunge-genera ≅ Klir-type-(a) convergence table already exists at <code>system-type-typologies.md:84-92</code> — this row defers to it.</li>
+<li><strong>Mobus — concrete/abstract + texture axes. VERIFIED.</strong> (<code>system-type-typologies.md:45, 53-56</code>).</li>
+</ul>
+<h2>12. Milieu vs discrete objects — Mobus&#39;s alone</h2>
+<ul>
+<li><strong>Mobus — VERIFIED for the distinction; letters RULED Lean-side (§14.4, resolved 2026-07-18).</strong> Environment = discrete sources/sinks <em>plus</em> &quot;all of the channels (or fields) through which flows occur&quot; (<code>mobus-bunge-system-definitions-reference.md:40</code>). The letter-names O (objects) and M (milieu) do <strong>not</strong> appear in the book as environment letters — chapters 3–4 denote the environment <code>G = ⟨Src, Snk⟩</code> throughout (<code>VAULT/mobus/4-a-model-of-system.md:285, 301, 304</code>; the E/M letters near Fig. 4.7 label <em>internal</em> processes, not environment sets). The O/M lettering is the Lean layer&#39;s convention (<code>SSF/Systems/Mobus/Interface.lean:7</code>), credited as such.</li>
+<li><strong>Bunge — no such split, VERIFIED.</strong> E is discrete acting things only; &quot;field&quot; appears as a flow substance, not an environment partition (<code>Bunge-Concrete-System-Definition-CES-(1979).md:58-59, 92</code>). <strong>Klir — absent</strong> (<code>klir-facets.md:4153</code>).</li>
+</ul>
+<hr>
+<h2>13. Existing partial mappings (what this doc federates, not duplicates)</h2>
+<ul>
+<li><code>SSF/docs/reference/system-type-typologies.md</code> §4 — the row-11 Bunge≅Klir convergence table (two traditions, one row). Deferred to above.</li>
+<li><code>SSF/docs/reference/mobus-bunge-system-definitions-reference.md</code> §8 — Mobus-tuple ↔ Bunge-CES definitional side-by-side (two traditions).</li>
+<li><code>docs/theory-fidelity.md</code> — per-tradition keep/drop and the three canonical signatures (framing, not a term grid).</li>
+<li><code>SSF/docs/reference/mobus-bunge-mathematical-reformulation-guide.md</code> — Mobus→Bunge reformulation (not incorporated this pass).</li>
+</ul>
+<p>This document is the first full three-way, twelve-row grid; those four remain the deeper dives per pair.</p>
+<h2>14. Verification ledger (all cells resolved 2026-07-18)</h2>
+<p>The five UNGROUNDED cells of the first pass, each now closed as VERIFIED-with-citation or as an explicit attribution ruling. The distinction between the two outcomes is deliberate: a ruling is not a failure — it records that the constraint is the formalization&#39;s contribution, credited as such.</p>
+<ol>
+<li>Bunge&#39;s fourth CESM coordinate <strong>M (Mechanism)</strong> — <strong>VERIFIED verbatim.</strong> µ(σ) = ⟨C(σ), E(σ), S(σ), M(σ)⟩ with M the &quot;mechanisms, or characteristic processes&quot; (<code>GSR/bunge_markdowns/Bunge-How-Does-It-Work-(2004).md:289-294, 311-316</code>). Source is the 2004 paper, not the 1979 CES definition — row 1 now carries the two-paper provenance.</li>
+<li>Mobus <strong>porosity / perceptive fuzziness</strong> — <strong>VERIFIED verbatim</strong> (<code>VAULT/mobus/4-a-model-of-system.md:376</code>; further porosity usages <code>:664, :677, :736, :738</code>). Row 8 updated.</li>
+<li>Mobus <strong>I ⊆ C</strong> — <strong>RULED.</strong> Book states interfaces are components of the <em>boundary subsystem</em> and systems in their own right (<code>4-a-model-of-system.md:386</code>); the flat subset over the system&#39;s own C is the Lean&#39;s formalization choice (<code>Tuple.lean</code>, <code>iface_sub</code>), credited as such. Row 9 updated; <code>spec.md</code> §3 wording aligned.</li>
+<li>Mobus environment letters <strong>O / M</strong> — <strong>RULED.</strong> Not the book&#39;s (environment is <code>G = ⟨Src, Snk⟩</code>; <code>4-a-model-of-system.md:285-304</code>); Lean-side convention (<code>Interface.lean:7</code>). Row 12 updated.</li>
+<li>Mobus <strong>bond-vs-nonbond counterpart</strong> — <strong>absence VERIFIED, scoped.</strong> Sweep of <code>VAULT/mobus/3-system-ontology.md</code> + <code>4-a-model-of-system.md</code> for: bond, bonding, coupling, connection type, relation type, structural relation, mere aggregate, aggregate vs system, glue, non-bond, &quot;makes a difference,&quot; &quot;hold together,&quot; internal/external relation. No structural bonding/nonbonding partition exists; nearest device is the interaction-strength boundary criterion (<code>3-system-ontology.md:1182</code>), a location criterion rather than a difference-making one. Row 5 updated.</li>
+</ol>
+<p><strong>Bibliographic independence (the empty citation edge).</strong> Mobus does not cite Bunge: a case-insensitive sweep for &quot;Bunge&quot; across all 16 chapter bodies of <em>Systems Science: Theory, Analysis, Modeling, and Design</em> in <code>VAULT/mobus/</code> returns zero hits, against a text that cites heavily inline (Checkland, Shannon &amp; Weaver, Smith &amp; Morowitz, Mobus 2019 ×10). Caveat, stated honestly: the end-of-book reference list is not on disk (the vault holds chapter bodies only; the full PDF is not in Zotero), so the finding covers the chapter bodies, not the printed bibliography. Why it matters: rows 2, 8, and 9 show Bunge and Mobus converging on <em>component</em>, a formalized <em>boundary</em>, and <em>interface</em> — and the empty citation edge is what makes that convergence evidential rather than genealogical. Independent arrivals at the same distinctions are K≅2 evidence; borrowed vocabulary would not be.</p>
+<h2>15. Consumers</h2>
+<ul>
+<li><strong>SL lexicon</strong> (<code>spec.md</code> §3) — summarizes the &quot;Contributed by&quot; column from this grid.</li>
+<li><strong>Per-lens UI copy</strong> — palette labels and <code>describe()</code> typesetting should match column vocabulary per lens (Klir says <em>thing/relation</em>, Bunge says <em>component/bond</em>, Mobus says <em>component/flow</em>): this grid is the check. The audit against the web app is §15.1.</li>
+<li><strong>K≅2 convergence program</strong> — rows 2, 3, 6, 8, 9, 11 are citable convergence exhibits; rows 5, 7, 10, 12 are the honest divergence ledger that keeps the convergence claim falsifiable.</li>
+</ul>
+<h3>15.1 Per-lens UI-copy audit (2026-07-20)</h3>
+<p>The web app&#39;s user-facing lens strings, audited against the settled terms above, per lens. Where a string is <em>authored</em> (palette, node inspector, edge-editor titles) a mismatch would be fixed here; none were — every authored label already speaks its lens&#39;s column. Where a mismatch lived in a <em>code string</em> (<code>describe()</code> typesetting or the shared edge-editor enum), it is recorded below; all three were fixed by #80&#39;s build, which consumed this stabilized section rather than the doc re-deriving it.</p>
+<p><strong>Matched — authored labels are settled-term-faithful.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Surface (<code>web/src/…</code>)</th>
+<th>Klir</th>
+<th>Bunge</th>
+<th>Mobus</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>palette place / connect (<code>canvas/lenses/registry.ts</code>)</td>
+<td>thing · relation</td>
+<td>component · environment thing · bond ⁄ mere relation</td>
+<td>component · environment object · typed flow · interface · primitives</td>
+</tr>
+<tr>
+<td>node inspector (<code>canvas/NodePopover.tsx:56</code>)</td>
+<td>thing</td>
+<td>component · environment thing</td>
+<td>component · environment object</td>
+</tr>
+<tr>
+<td>edge-editor title (<code>canvas/EdgePopover.tsx</code>)</td>
+<td>relation rₙ ⊆ T×T · neutral / directed</td>
+<td>bond ⁄ mere relation · connection kind</td>
+<td>flow · substance</td>
+</tr>
+<tr>
+<td>formal face (<code>FormalPanel.tsx</code>)</td>
+<td>|T| things (thinghood) · |R| relations (systemhood)</td>
+<td>𝒞 · ℰ · bonds (endo/exo) + mere · boundary (1992)</td>
+<td>C · N · E=⟨O,M⟩ · G · B=⟨P,I⟩ · porosity / fuzziness</td>
+</tr>
+</tbody></table>
+<p>Each cell traces to a row: thing/relation (rows 2, 4) and Klir neutral/directed (row 7); component/bond, environment thing, and boundary-1992 (rows 2, 3, 5, 8); component/flow, environment object, B=⟨P,I⟩, interfaces, and primitives (rows 2, 3, 9, 10). The Bunge/Mobus environment split — Bunge says &quot;thing,&quot; Mobus says &quot;object&quot; — is itself row-12-faithful (milieu-vs-object is Mobus&#39;s alone).</p>
+<p><strong>Mismatched — code strings, since fixed.</strong> The authored labels above were correct; these three lived in <code>describe()</code> typesetting and the shared edge enum, so they belonged to #80&#39;s pair-names-with-math build rather than a doc fix. <strong>All three shipped 2026-07-20 with #80</strong> and are kept here as the record of the audit, not as open items — the line numbers below are the pre-fix ones:</p>
+<ol>
+<li><strong>The Mobus &quot;substance&quot; picker offers Bunge&#39;s kind enum, not Mobus&#39;s substances.</strong> The Mobus edge editor&#39;s <code>substance</code> select (<code>web/src/canvas/EdgePopover.tsx:13,277</code>) lists the raw <code>Kind</code> enum <code>{unspecified, energy, matter, field, informational}</code>. Per row 6, the Mobus lens&#39;s substance words are <strong>material · energy · message</strong>, and the collapse already exists in Rust (<code>kind_to_substance</code>, <code>crates/bert-canvas/src/canvas.rs:64-68</code>: Matter→Material, Informational→Message, Energy/Field→Energy). The Mobus picker should present the substance names through that map. The same enum under the Bunge lens (<code>connection kind</code>, <code>EdgePopover.tsx:209</code>) is correct as-is — row 6 has energy/matter/field/informational as Bunge verbatim.</li>
+<li><strong>The Bunge formal object labels the four-coordinate object with the symbol σ.</strong> <code>FormalPanel.tsx:73</code> and <code>kernel/context.ts:48</code> print the Bunge object as a four-coordinate σ (composition, environment, structure, mechanism). Per row 1 / §14.1, σ is the 1979 CES triple; the four-coordinate object is µ(σ) (Bunge 2004, the <code>mechanism_note</code> provenance). The formal face should carry µ(σ) for the four-tuple, or keep σ to the triple and hold M as the mechanism note.</li>
+<li><strong>The Mobus formal object prints the eight-tuple without crediting E as the Lean&#39;s improvement.</strong> The Mobus formal face (<code>FormalPanel.tsx:106</code>, <code>kernel/context.ts:49</code>) prints <code>⟨C, N, E, G, B, T, H, Δt⟩</code> as &quot;S&quot;. Per row 1, the book prints the seven-tuple; E-as-first-class is the Lean formalization&#39;s deliberate improvement (<code>SSF/Systems/Mobus/Tuple.lean</code>), to be credited as such on any published surface. The formal face is a published surface, so it should carry that credit (a source-note or the &quot;Lean improvement&quot; label), not present the eight-tuple as the book&#39;s own.</li>
+</ol>
+<p>A fourth, lower-priority note: <code>kernel/context.ts</code> (<code>renderElements</code>) labels every element <code>[thing:id]</code> / <code>[relation:id]</code> regardless of lens. This is a lens-invariant serialization prefix for the LLM context, not lens chrome, and was flagged so #80 could rule on it explicitly. <strong>It did:</strong> ruled LLM-context-only and left unchanged.</p>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/language/terminology-concordance.md">Source · docs/language/terminology-concordance.md</a>
+      <span>Rendered from 0bb7de4</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

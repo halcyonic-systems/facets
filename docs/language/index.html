@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SL — the bert-lenses system language · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="../">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="../" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">LIVE</span></div>
+    <h1 class="title">SL — the bert-lenses system language</h1>
+    <article><p><strong>Status: LIVE.</strong> SL v1.0 is specified and shipped (2026-07-18). Write SL in the app&#39;s text pane, compile, and the model renders and is judged like any other. Round-trip goldens pass. The language is under active development; §&quot;Known gaps&quot; in the spec lists what v1.1 owes.</p>
+<p>The text IS the model. Not a config format that happens to describe one, not a serialization of something else: the words on the page are the source, and everything else (the canvas, the JSON, the run) is a view onto them.</p>
+<h2>Read a paragraph become a system</h2>
+<p>Here is a sentence from George Mobus&#39;s <em>Systems Science</em> (Ch. 4 §4.3.1):</p>
+<blockquote>
+<p>&quot;Process M takes in materials A and B from sources 1 and 2 along with energy E from source 3 to make product Z with waste product X going to sinks 5 and 6.&quot;</p>
+</blockquote>
+<p>One sentence, one system, in the author&#39;s own words. SL turns it into eleven lines, each one earning its place from a clause in the paragraph.</p>
+<p>The system gets a name and a kind:</p>
+<pre><code>system &quot;Process M&quot; : Concrete
+</code></pre>
+<p>The process itself is a component, and Mobus&#39;s verb (&quot;takes in... to make...&quot;) names the kind of work it does:</p>
+<pre><code>component Work primitive Combining interface
+</code></pre>
+<p>The sources and sinks the sentence lists, in order:</p>
+<pre><code>source &quot;Source 1&quot;
+source &quot;Source 2&quot;
+source &quot;Source 3&quot;
+sink &quot;Sink 5&quot;
+sink &quot;Sink 6&quot;
+</code></pre>
+<p>And the flows, each one a clause of the sentence turned into an arrow with what moves and what it is:</p>
+<pre><code>flow &quot;Source 1&quot; -&gt; Work : matter &quot;material A&quot;
+flow &quot;Source 2&quot; -&gt; Work : matter &quot;material B&quot;
+flow &quot;Source 3&quot; -&gt; Work : energy &quot;energy E&quot;
+flow Work -&gt; &quot;Sink 5&quot; : matter &quot;product Z&quot;
+flow Work -&gt; &quot;Sink 6&quot; : matter &quot;waste X&quot;
+
+@lens mobus
+</code></pre>
+<p>Put the pieces back together and you have the whole file:</p>
+<pre><code>system &quot;Process M&quot; : Concrete
+component Work primitive Combining interface
+source &quot;Source 1&quot;
+source &quot;Source 2&quot;
+source &quot;Source 3&quot;
+sink &quot;Sink 5&quot;
+sink &quot;Sink 6&quot;
+flow &quot;Source 1&quot; -&gt; Work : matter &quot;material A&quot;
+flow &quot;Source 2&quot; -&gt; Work : matter &quot;material B&quot;
+flow &quot;Source 3&quot; -&gt; Work : energy &quot;energy E&quot;
+flow Work -&gt; &quot;Sink 5&quot; : matter &quot;product Z&quot;
+flow Work -&gt; &quot;Sink 6&quot; : matter &quot;waste X&quot;
+
+@lens mobus
+</code></pre>
+<p>That is not a transcription for the README. It is <a href="https://github.com/halcyonic-systems/facets/blob/main/fixtures/sl/process-m.sl"><code>fixtures/sl/process-m.sl</code></a>. Compile it, and the diagram Mobus describes in prose is what renders, with the same verdict a canvas gesture would earn.</p>
+<h2>Semantics: what a file means</h2>
+<p>Syntax (next section) fixes what you may write; semantics is what a written file denotes, and SL keeps the two separable on purpose. A parsed file denotes one model: things and flows in the order you wrote them, nothing more. What that model <em>means as a system</em> is not SL&#39;s call to make. Compiling hands the model to the kernel, which projects it to the active lens (Klir, Bunge, or Mobus) and renders the verdict: legal, illegal, and why. SL&#39;s parser checks only that the words are spelled right and the names exist; whether what you described is a system is the kernel&#39;s judgment, reached the same way a canvas drag reaches it. One concrete taste of the split: <code>source</code>, <code>sink</code>, and <code>environment</code> are author intent, not stored identity — the kernel reads a thing&#39;s role off the flows actually drawn, so a mislabeled <code>source</code> re-emits under the reading the graph supports (spec §5.2). Full statement: spec <a href="./spec.html#5-semantics">§5</a>.</p>
+<h2>Syntax at a glance</h2>
+<p>A file is a flat sequence of lines. Structure lines carry meaning; a blank line, then annotation lines, carry only how it looks. <code>emit_sl</code> always writes them in this order:</p>
+<table>
+<thead>
+<tr>
+<th>Band</th>
+<th>Carries</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>system</code> / <code>domain</code> / <code>time unit</code> / <code>level</code></td>
+<td>the header: what kind of thing this is, in what vocabulary, over what time base</td>
+</tr>
+<tr>
+<td>things (<code>component</code>, <code>source</code>, <code>sink</code>, <code>environment</code>, <code>interface</code>, <code>milieu</code>)</td>
+<td>what&#39;s inside the boundary and what&#39;s outside it</td>
+</tr>
+<tr>
+<td><code>flow</code></td>
+<td>the connections between them, directed</td>
+</tr>
+<tr>
+<td><code>param</code> / <code>metric</code></td>
+<td>declared names over input knobs and output readouts</td>
+</tr>
+<tr>
+<td><code>boundary</code></td>
+<td>the membrane&#39;s porosity and fuzziness</td>
+</tr>
+<tr>
+<td><em>(blank line)</em></td>
+<td>the seam between meaning and view</td>
+</tr>
+<tr>
+<td><code>@pos</code> / <code>@lens</code> / <code>@directed</code></td>
+<td>positions, active lens, observer orientation (never read by a verdict)</td>
+</tr>
+</tbody></table>
+<p>Every emitted structure line starts with a keyword: <code>system</code>, <code>component</code>, <code>flow</code>, <code>param</code>, and so on. There is no bare expression, no punctuation-led syntax to parse around: you can read the shape of a file by scanning its left margin. The full lexicon is spec <a href="./spec.html#3-lexicon">§3</a>; the grammar that assembles it is spec <a href="./spec.html#4-grammar">§4</a>.</p>
+<h2>The round-trip contract, and why the docs can&#39;t drift</h2>
+<p>Write a model in SL and compile it: <code>parse(emit(m)) = m</code>, digit for digit, positions included. Load an arbitrary model built by other means (the canvas, JSON, a decade of authoring history) and canonicalize it: one pass through <code>emit</code>/<code>parse</code> lands in stable canonical form and stays there. Neither claim is &quot;proven.&quot; Both are <strong>golden-tested</strong>, over the same corpus this README quotes from, in <a href="https://github.com/halcyonic-systems/facets/blob/main/crates/bert-canvas/tests/sl_roundtrip.rs"><code>crates/bert-canvas/tests/sl_roundtrip.rs</code></a>. Full statement: spec <a href="./spec.html#72-the-contract-golden-tested">§7.2</a>.</p>
+<p>The vocabulary itself is under the same discipline. SL&#39;s 53 words (39 reserved keywords plus 14 position-bound words like <code>param</code> and <code>range</code>) are held equal, in both directions, against the EBNF terminals in spec §4 by <a href="https://github.com/halcyonic-systems/facets/blob/main/crates/bert-canvas/tests/keyword_parity.rs"><code>tests/keyword_parity.rs</code></a>: a word can&#39;t enter the language without entering the spec, and vice versa. That vocabulary is published machine-readably at <a href="https://github.com/halcyonic-systems/facets/blob/main/fixtures/contract/sl_keywords.json"><code>fixtures/contract/sl_keywords.json</code></a>, so tooling (the VS Code extension, below) reads the same list the compiler enforces rather than a hand-copied guess.</p>
+<p>This is why the example above is a real fixture and not a hand-typed illustration: the spec&#39;s worked examples <em>are</em> the test corpus. A documentation change that broke the language would break a test, not just a reader&#39;s expectations.</p>
+<h2>Try it</h2>
+<p>In the app: open the SL pane, type the file above (or start from scratch), and compile with <code>⌘⏎</code>. The model renders and is judged exactly as if you had drawn it.</p>
+<p>From the command line:</p>
+<pre><code>cargo run -p bert-cli -- compile fixtures/sl/process-m.sl
+cargo run -p bert-cli -- verdict fixtures/sl/process-m.sl --lens mobus
+</code></pre>
+<p><code>compile</code> parses the file and prints the model; <code>verdict</code> compiles, projects to a lens, and prints the systemhood judgment. Also available: <code>describe</code> (the formal 8-tuple), <code>run</code> (step the trajectory), and <code>layout</code> (node positions). <code>just bert &lt;args&gt;</code> is the repo&#39;s shorthand for all of them.</p>
+<h2>Editor support</h2>
+<p>The VS Code extension at <a href="https://github.com/halcyonic-systems/facets/tree/main/editors/vscode"><code>editors/vscode/</code></a> ships a TextMate grammar for syntax highlighting. Its keyword list is contract-gated: <a href="https://github.com/halcyonic-systems/facets/blob/main/scripts/check_tm_grammar.mjs"><code>scripts/check_tm_grammar.mjs</code></a> holds the grammar&#39;s word alternations equal to <code>fixtures/contract/sl_keywords.json</code>, so the highlighting can&#39;t quietly diverge from what the compiler actually accepts.</p>
+<p>Two more worked examples, the minimal stock-and-flow bathtub and a real infrastructure model with an authored membrane, are in spec <a href="./spec.html#9-worked-examples-the-golden-corpus">§9</a>, alongside Process M.</p>
+<h2>The corpus</h2>
+<p>Three <code>.sl</code> files in <a href="https://github.com/halcyonic-systems/facets/tree/main/fixtures/sl"><code>fixtures/sl/</code></a> serve simultaneously as the spec&#39;s worked examples, the round-trip goldens, and the teaching set:</p>
+<ul>
+<li><code>process-m.sl</code> — Mobus&#39;s system paragraph (above); the canonical multi-input work process</li>
+<li><code>bathtub.sl</code> — the minimal stock-and-flow system</li>
+<li><code>hal-projection.sl</code> — a real structural model: hal published as a projection, with a retained-SSOT boundary</li>
+</ul>
+<p><strong>Corpus precedence.</strong> Because the three <code>.sl</code> files carry all three roles at once — round-trip golden, spec example, teaching set — the roles are ranked when they conflict: round-trip correctness comes first. Do not modify SL syntax for pedagogical reasons; a teaching improvement that would perturb a golden&#39;s round-trip is out of scope for these files.</p>
+<p><strong>Where pedagogy edits go.</strong> That dedicated home is <a href="https://github.com/halcyonic-systems/facets/tree/main/fixtures/sl/teaching"><code>fixtures/sl/teaching/</code></a> — a graded set (a two-thing first model, a copy-adaptation of the bathtub, and two files that fail on purpose so a learner can read the error). Those fixtures carry no round-trip or spec obligation, so teaching-motivated edits land there rather than on the goldens.</p>
+<h2>Why SL, and when SysML</h2>
+<p>SysML v2 (Part 1, formally adopted March 2026) is the obvious question: why write SL when a 691-page standards-body language for systems already exists? The two are built for different people and make opposite bets, and each bet is right for its own job.</p>
+<p><strong>Audience.</strong> SysML v2 is for engineers building engineered systems; its construct list <em>is</em> the engineering-document universe — requirements, verification cases, allocations, trade-off analyses. SL is for scientists, researchers, and systems theorists studying <em>systemness</em>, and for people with no modeling background who want to describe a system they already live inside. SL has no requirements construct and never will; SysML has no bond/mere distinction, no kingdom or genus, no lens.</p>
+<p><strong>Ontological commitment is the difference.</strong> SysML v2 is agnostic on purpose: an entity with structure and behavior &quot;is represented simply as a part,&quot; and meaning arrives through user-defined metadata (§7.1, §7.27). That is correct for a language that must span aerospace, defense, automotive, and enterprise IT. SL takes the opposite bet — every word is licensed by a single kernel distinction with a primary citation (<a href="./terminology-concordance.html">the concordance</a>), legality is the kernel&#39;s own systemhood verdict rather than a type-match, and the semantics are machine-checked (<code>Tuple.lean</code>) instead of supplied by a model library. General by being precise, not general by being vague.</p>
+<p><strong>Scale is a feature, not immaturity.</strong> SysML v2 is 691 pages over KerML; SL is a lexicon of about twenty words and a spec you read in one sitting and write in minutes. The smallness is guaranteed, not provisional: C3 lets the lexicon grow only when the kernel earns a new distinction, so it cannot sprawl. For the non-modeler audience, that property is the whole product.</p>
+<p><strong>What SL takes from SysML v2, credited.</strong> The architecture — one abstract syntax, concrete surfaces as projections of it, the text privileged because it maps losslessly — is SysML v2&#39;s shape, scoped to the K≅2 kernel and vastly smaller. The debt is real, and the <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/sl2-authoring-language.md">design survey</a> (§4) documents it. Spec <a href="./spec.html#10-lineage">§10</a> records the same foil from the specification side.</p>
+<p><strong>Interoperability: a hint, not a promise.</strong> The posture is export-not-import, already practiced in <code>bert/sysml-interop/</code>, where the K≅2 kernel was rendered as a real SysML diagram to make our foundations legible in that notation — never to ingest theirs. A plausible bridge is emit-only: <code>component</code> / <code>interface</code> / <code>flow</code> project onto part / port / connection as a lossy partial view, where nothing carries porosity, the bond/mere distinction, or the lens, and nothing of theirs comes back. Worth building only when a real MBSE audience asks; the long-horizon marker is a BERT-JSON-to-KerML translator.</p>
+<h2>Read next</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Document</th>
+<th>What it gives you</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><strong><a href="./spec.html"><code>spec.md</code></a></strong>, the SL v1.0 specification</td>
+<td>The normative document: five design commitments, lexicon, EBNF grammar, semantics, the annotation layer, the round-trip contract, the structure/dynamics boundary, three worked examples, lineage, known gaps.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/sl2-authoring-language.md"><code>../design/sl2-authoring-language.md</code></a></td>
+<td>The research foundation behind the spec: why three syntaxes over one neutral spec, the precedent survey (SysML v2, Modelica, Stella, Quint, gpt-jargon as negative control), the keep/shed analysis against Mobus and BERT SL v0.1, and the staged rung plan.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/dynamics-principled-position.md"><code>../design/dynamics-principled-position.md</code></a></td>
+<td>Why SL v1 stops at structure. Dynamics as a state-transition family; conservation as an invariant the model <em>declares</em> rather than one the engine assumes.</td>
+</tr>
+<tr>
+<td>4</td>
+<td><a href="./terminology-concordance.html"><code>terminology-concordance.md</code></a></td>
+<td>The homage ledger behind the lexicon: 12 kernel distinctions × {Klir, Bunge, Mobus}, every cell primary-cited.</td>
+</tr>
+</tbody></table>
+<h2>Where the language lives in the code</h2>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Location</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Parser and serializer</td>
+<td><a href="https://github.com/halcyonic-systems/facets/blob/main/crates/bert-canvas/src/sl.rs"><code>crates/bert-canvas/src/sl.rs</code></a></td>
+</tr>
+<tr>
+<td>Compile target (the neutral spec)</td>
+<td><code>CanvasModel</code>, <code>crates/bert-canvas/src/canvas.rs</code></td>
+</tr>
+<tr>
+<td>JS↔wasm boundary</td>
+<td><code>compile_sl</code> / <code>emit_sl</code>, see <a href="https://github.com/halcyonic-systems/facets/blob/main/crates/bert-lenses-kernel/API.md"><code>crates/bert-lenses-kernel/API.md</code></a>, &quot;SL surface&quot;</td>
+</tr>
+<tr>
+<td>Editor surface</td>
+<td><code>web/src/SlPane.tsx</code></td>
+</tr>
+<tr>
+<td>Round-trip goldens</td>
+<td><code>crates/bert-canvas/tests/sl_roundtrip.rs</code></td>
+</tr>
+</tbody></table>
+<h2>Lineage and open work</h2>
+<p>SL stands in a line: Mobus&#39;s SL proposal (Ch. 4) → BERT SL v0.1 (<code>bert/docs/system-language-spec.md</code>, a lexicon and grammar for the data model, with no human-writable syntax) → SL v1.0 here, which adds exactly the missing piece: a notation a person writes, reads, and diffs. What was inherited, what was shed, and why is spec §10.</p>
+<p>Tracked on the <a href="https://github.com/orgs/halcyonic-systems/projects/12">roadmap board</a>; the spec&#39;s §11 table maps each gap to its issue. The near ones: decomposition syntax (gated on the 8-tuple decomposition math, not on the parser) and the controlled systems-English tier that would make the <em>verbal</em> surface real.</p>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/language/README.md">Source · docs/language/README.md</a>
+      <span>Rendered from 0bb7de4</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

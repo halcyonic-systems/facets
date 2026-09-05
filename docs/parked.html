@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parked — the research ledger · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="./" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">LIVE</span></div>
+    <h1 class="title">Parked — the research ledger</h1>
+    <article><p><strong>Status: LIVE.</strong> The permanent record of work that was thought through, decided
+on, or found out — and then deliberately not scheduled. Each entry below closed a
+GitHub issue; this file is where its substance lives now.</p>
+<h2>Why this file exists</h2>
+<p>The repo&#39;s doctrine is <em>keep only a few open issues at a time — no sprawling
+backlog</em>. GitHub has no parked state, so a <code>parked</code> label removes an issue from
+nothing: not the open count, not a board view, not an agent&#39;s context. In the W30
+ratification audit (2026-07-25/26) 11 of 24 open issues were parked, and <strong>8 of
+them recorded a finding or a decision rather than a task</strong>. An issue is the wrong
+container for a finding. A finding does not get done; it gets <em>known</em>.</p>
+<p>So the finding moves here and the issue closes. Two rules make that lossless
+rather than a discard:</p>
+<ol>
+<li><strong>Every closed issue links to its entry here</strong>, so the trail from the board to
+the record is never broken.</li>
+<li><strong>Every entry stands alone.</strong> You should not need to open the closed issue to
+learn what was decided, what settled it, or what would change the answer.</li>
+</ol>
+<p><strong>An entry here is not a backlog item.</strong> Where an entry has a named condition
+that would put the work back on the board, it is written under <strong>Unpark
+trigger</strong>. Where it has none, that is stated plainly rather than implied — a
+finding with no trigger is a finding, and it is finished.</p>
+<p><strong>Unparking is cheap.</strong> Nothing here is foreclosed. If a trigger fires, or the
+situation changes, open a fresh issue for the <em>requirement</em> and link back to the
+entry for the reasoning.</p>
+<hr>
+<h2>Index</h2>
+<table>
+<thead>
+<tr>
+<th>Entry</th>
+<th>What it is</th>
+<th>Trigger</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a href="#i88">#88 — SpacetimeDB as shared authority</a></td>
+<td>Decision (vendor rejected)</td>
+<td><strong>Live</strong> — named second editor, or a dated demo</td>
+</tr>
+<tr>
+<td><a href="#i105">#105 — Constellation authoring</a></td>
+<td>Future epic + a shipped near-term slice</td>
+<td><strong>Already fired</strong> — needs restating, not parking</td>
+</tr>
+<tr>
+<td><a href="#i121">#121 — RA bridge: ensemble dataset export</a></td>
+<td>Plan, subsumed as a consumer of #172</td>
+<td>Conditional on #172, which has no trigger</td>
+</tr>
+<tr>
+<td><a href="#i125">#125 — Two-reader fork in the README</a></td>
+<td>Approved task — <strong>done in this change</strong></td>
+<td>None (retired)</td>
+</tr>
+<tr>
+<td><a href="#i126">#126 — Illustrated quickstart</a></td>
+<td>Approved task, unbuilt</td>
+<td>None</td>
+</tr>
+<tr>
+<td><a href="#i127">#127 — Symbol-anchored citations + issue-link liveness</a></td>
+<td>Approved task, partly overtaken</td>
+<td>None as filed; a candidate is proposed below</td>
+</tr>
+<tr>
+<td><a href="#i144">#144 — Formalizing the system life cycle</a></td>
+<td>Research position + findings against a published paper</td>
+<td>None (the paper is the live work, elsewhere)</td>
+</tr>
+<tr>
+<td><a href="#i150">#150 — Rung 3: the extraction theorem</a></td>
+<td>Decision (rung 2 rejected) + a scoped fidelity upgrade</td>
+<td>None; two open decisions gate any start</td>
+</tr>
+<tr>
+<td><a href="#i166">#166 — External↔external flows render as stubs</a></td>
+<td>Bug-shaped finding with an unresolved design question</td>
+<td>None</td>
+</tr>
+<tr>
+<td><a href="#i172">#172 — The neutral interchange</a></td>
+<td>Parked epic / design frame</td>
+<td>None, by its own text</td>
+</tr>
+<tr>
+<td><a href="#i197">#197 — Mobus&#39;s illustrative models as executable examples</a></td>
+<td>Program + the rule it established</td>
+<td>None; a precondition on doing it well</td>
+</tr>
+</tbody></table>
+<hr>
+<p><a id="i88"></a></p>
+<h2>#88 — SpacetimeDB as shared authority: realtime collaboration via kernel-in-the-database</h2>
+<p><em>Opened 2026-07-18 · closed 2026-07-26 · the precedent this file is modelled on.</em></p>
+<p><strong>What it is.</strong> An R&amp;D investigation into whether bert-lenses could go
+realtime-collaborative on SpacetimeDB without compromising the architecture. It
+is the model entry for this file because it states three things: what was
+decided, what evidence settled it, and <strong>which half of its own findings was not
+real</strong>.</p>
+<h3>What was decided</h3>
+<p><strong>The vendor question is closed. Do not run the SpacetimeDB spike. Do not build
+the relay.</strong> Rejected on <strong>sovereignty grounds</strong>, not on a license-audit outcome:
+adopting a BSL-family vendor as <em>the shared authority</em> for a program whose spine
+is ontology sovereignty costs more in the argument than the feature earns. Two
+sharper forms of the same point:</p>
+<ul>
+<li>The refusal guarantee is the tool&#39;s identity. &quot;No CRDT needed&quot; rests on the
+vendor&#39;s <strong>reducer serialization semantics</strong> — so the load-bearing property
+would sit downstream of an unverified third-party concurrency contract.</li>
+<li>A spike whose best outcome is <em>&quot;works, but we probably shouldn&#39;t ship it&quot;</em> <strong>is
+not a spike, it&#39;s an attractive nuisance.</strong> The fallback (a relay running
+<code>bert-core</code> natively) already delivers the core property — server-side refusal
+plus ordered SL replay — so the vendor spike answers a question we do not have.</li>
+</ul>
+<p>The seam design is retained, and a <strong>relay is pre-designated</strong> as the answer if
+realtime is ever unparked. It is not built now: <em>&quot;a plain WebSocket relay running
+bert-core natively&quot;</em> is a sentence, not a scope — auth, session lifecycle,
+presence, reconnect/backfill, persistence, deploy, ops surface. That is the
+substrate SpacetimeDB exists to sell, which is the tell that it is a product, not
+a weekend.</p>
+<h3>The evidence that settled it</h3>
+<p>A blind three-model bake-off, 2026-07-24 (halcyonic vault,
+<code>operations/calibration/blind-pick-ledger.md</code>). Three models answered an
+identical brief in isolated contexts and were ranked without provenance. The
+brief deliberately put a live NO on the table and invited them to call the
+kernel-in-the-database story flattery if it was. <strong>Unanimous across all three
+arms: leave realtime parked.</strong></p>
+<p>All three arms also <strong>volunteered, unprompted, that a solo researcher does not
+walk away from a half-working spike</strong> — it converts into sunk cost plus a
+maintenance obligation plus a genuinely interesting unsolved problem, which is
+precisely this repo&#39;s named failure mode. A kill criterion you will not honor is
+theater; the only reliable kill is a spike never begun. So the kill criterion was
+replaced by an unpark trigger.</p>
+<h3>Which half of the findings was real</h3>
+<ul>
+<li><strong>GENUINELY DEEP, and ours: SL-as-wire-protocol.</strong> SL is line-oriented and
+compiles deterministically, so <code>flow &quot;Source 1&quot; -&gt; &quot;Process M&quot; : matter &quot;material A&quot;</code> already <em>is</em> an operation. Server-authoritative ordering plus a
+deterministic compile means replaying the statement log rebuilds the model
+bit-for-bit — no CRDT library, no operational transforms — and the
+collaboration log is human-readable SL, so a session&#39;s edit history is itself a
+document in the language. This comes from the tool&#39;s own semantics, not a sync
+library, which is why it survives parking. One arm noted it is <em>itself an
+argument against the vendor</em>: the harder our own semantics carry the load, the
+less SpacetimeDB contributes.</li>
+<li><strong>COINCIDENCE DRESSED AS DESTINY: &quot;bert-core is already SpacetimeDB-shaped.&quot;</strong> A
+pure Rust crate with no I/O and no async runtime compiles into <em>any</em> WASM host
+— that is what purity buys, and it is true of every well-factored pure crate.
+It is the <em>absence</em> of coupling reading as the <em>presence</em> of destiny.
+SpacetimeDB makes validator-in-the-authority convenient, not possible;
+convenience is not alignment.</li>
+<li><strong>Multiplayer is currently a solution in search of a problem here.</strong>
+Credibility rests on refusal, and refusal is already fully enforced client-side
+by the Lean-bound validator plus the gates oracle. Moving it to a shared
+authority makes it <em>more social</em>, not more true — &quot;the shared world refuses
+loudly&quot; is a great sentence about an empty world.</li>
+</ul>
+<h3>A cost the original findings undercounted</h3>
+<p>Server-side validation means an optimistic local edit can be <strong>rejected after the
+fact</strong>. Serialization removes <em>merge</em>, but it does not remove <em>conflict</em> — it
+relocates it into optimistic-apply-and-rollback UX in the React store. <strong>&quot;No
+CRDT&quot; is not &quot;no concurrency work.&quot;</strong> Record this against any future relay build.</p>
+<h3>What the arc became instead</h3>
+<p>The Phase-0 invariants were already adopted, which captured the issue&#39;s entire
+strategic value at zero ongoing cost. Realtime is a one-milestone-away option,
+indefinitely, and <strong>we do not need to cash the option to own it.</strong> What is worth
+doing is justified by the resident co-author (#10) and single-player provenance,
+not by multiplayer:</p>
+<ul>
+<li><strong>Edits as named ops / SL statements</strong>; model on disk = <strong>log + materialized
+state</strong> rather than blob. Buys undo/redo, model diffs, statement-granularity
+accept/reject of agent proposals, and a replayable provenance trail — all
+single-player, all wanted regardless of a second user, and all the same work
+realtime would need later.</li>
+<li><strong>UUID minting out of <code>bert-core</code></strong> — correct independently; a kernel that
+mints identifiers is a kernel with a hidden clock. Also required for
+reproducible replay.</li>
+<li><strong>CI property test: <code>replay(log) == model</code>, bit-for-bit.</strong> The cheap binary
+check on the load-bearing claim, with no server and no vendor: if replay is not
+bit-exact, the realtime design is unsound regardless of backend. Unlike a
+spike, it has no half-works failure mode.</li>
+</ul>
+<h3>The Phase-0 audit, corrected against the code (2026-07-23)</h3>
+<p>The issue&#39;s own premises were wrong in two of three places; the read-only audit
+is recorded here because it is the true starting state for any future work:</p>
+<ul>
+<li><strong>Kernel purity (uuid)</strong> — <em>partially</em> done. <code>Parameter</code>/<code>SmartParameter</code> ids
+already default to <code>Uuid::nil()</code> with a determinism test. The one live impurity
+is <code>ModelId::mint()</code> → <code>Uuid::new_v4()</code>, reached from
+<code>decomposition::derive_child</code> — genuinely in the semantic path. Small
+mechanical fix (push the RNG to the caller/edge), standalone value for
+replay/undo.</li>
+<li><strong>Storage isolation</strong> — <em>not</em> satisfied, contrary to the issue&#39;s own claim.
+<code>App.tsx</code> imports and branches between both backends; <code>AnalystPanel.tsx</code> hits
+<code>localStorage</code> directly. A contained <code>modelStore</code>-owned facade would fix it.
+Standalone win.</li>
+<li><strong>Ops vocabulary</strong> — <em>not</em> satisfied (<code>modelStore.ts</code> still blob-puts).
+Correctly gated behind editing-surface work; SL (#82, closed) exists but is not
+wired as the mutation vocabulary.</li>
+</ul>
+<h3>The autosave policy tiers, recorded here because tier 3 is native to this world</h3>
+<p>From Shingai&#39;s field question, 2026-07-21, after walking the #111 fix — <em>&quot;the
+door&#39;s save-on-decompose is really useful, and I&#39;m questioning if decompose is the
+right place to put it; is there a more logical higher level?&quot;</em> Stated as policy
+rather than accreted fixes:</p>
+<ol>
+<li><strong>Door save = referential integrity, not autosave</strong> — writing a <code>decomposes</code>
+reference into a model obligates persisting both ends. Stays at the door
+permanently.</li>
+<li><strong>Navigation-boundary autosave = the current policy</strong>, now uniformly
+implemented (breadcrumb exits since #108; all 7 walk-reset paths since #113):
+crossing any document boundary persists what you are leaving. This is the
+&quot;higher level&quot; the field instinct pointed at — the system reached it via three
+fixes; this states it as the principle.</li>
+<li><strong>Continuous autosave</strong> (every edit persists; the dirty flag disappears) is
+<strong>deliberately parked</strong>. The blocker is structural: the library is
+put-overwrite with no version history, so continuous autosave makes <em>exploring
+= editing</em> — idle drags silently rewrite saved models with no way back.
+Versioning-as-substrate is native to the kernel-in-the-database direction; if
+realtime is ever unparked, tier 3 is a design input, not an afterthought.</li>
+</ol>
+<h3>Unpark trigger — LIVE, and the best-written one on the board</h3>
+<blockquote>
+<p>A <strong>named second person</strong> needs to edit a <strong>named specific model</strong>
+concurrently — or a hosted multi-viewer demo becomes a <strong>required deliverable
+for a specific audience on a specific date</strong>. The resident co-author (#10)
+becoming real enough to need server-side write gating also counts.</p>
+</blockquote>
+<p>Until one of those blanks is filled, this stays parked. If it fires, <strong>open a
+fresh issue for the requirement — not for the vendor.</strong></p>
+<h3>Why it was closed rather than left open</h3>
+<p>The decision was made 2026-07-24; the board still said &quot;SpacetimeDB as shared
+authority&quot; and said it as an <strong>open</strong> issue. To an outside reader that reads as an
+open intention to adopt a BSL-licensed vendor — the exact reputational cost the
+decision was made to avoid. The decision was right; the board was wrong.</p>
+<p>One arm&#39;s closing observation, worth keeping: <strong>#88 as written already
+demonstrates the architectural judgment a build would demonstrate — at zero
+engineering cost. The design is the artifact.</strong></p>
+<hr>
+<p><a id="i105"></a></p>
+<h2>#105 — Constellation authoring: the library as a systems-of-systems instrument</h2>
+<p><em>Opened 2026-07-20 · a future epic whose stated gate has already opened.</em></p>
+<h3>The trigger has already fired — this needs restating, not parking</h3>
+<p>The issue gates itself on <em>&quot;Nothing here starts until the current issue-closing
+sweep and the #89 dependency ladder are done&quot;</em> and <em>&quot;Once #89 ships…&quot;</em>. <strong>#89
+closed 2026-07-21.</strong> So the gate is open and the issue was parked anyway, on a
+different and unstated basis: that the epic is large, unstarted, and not yet
+demanded by usage.</p>
+<p>That is a defensible reason to not do it. It is not the reason written down. The
+honest restatement, adopted here:</p>
+<blockquote>
+<p>The #89 gate is open. The epic is deferred on <strong>demand</strong>, not on dependency:
+it waits until the constellation scale actually arrives in usage — enough
+linked models that the flat library becomes the thing in the way.</p>
+</blockquote>
+<p>Recording this matters beyond bookkeeping. A trigger that has fired and was not
+honoured is indistinguishable, six months later, from a trigger that was wrong.</p>
+<h3>What the epic is</h3>
+<p>Post-#89 the unit of authorship stops being a file and becomes a <strong>constellation
+of flat models linked by <code>decomposes</code> references</strong>. Every level stays one clean SL
+paragraph; hierarchy lives in the edges between documents — Mobus&#39;s own
+presentation, recursion in the index scheme, never on the page. The epic is the
+tooling that makes authoring at that scale elegant, for humans and LLM co-authors
+alike: models of models, managed beautifully.</p>
+<p><strong>The four surfaces:</strong></p>
+<ol>
+<li><strong>Library as map.</strong> Post-#89 the library is a graph — models as nodes,
+references as edges. Browsing should read like a map of your
+systems-of-systems: roots, shared interiors, orphans nothing references. (Reuse
+— one child decomposing two matching components — is a recorded open design
+decision; the map is where it would become visible.)</li>
+<li><strong>Seam health as ambient status.</strong> Every reference edge carries a boundary
+contract (β) that holds, fails, or is unresolved. The library shows it — green
+seam / broken seam / missing referent — the constellation-scale analog of the
+per-canvas residue register: <em>nothing partial is ever silent</em>. Because
+contracts are checkable per pair (foundations doc §3), this is O(edges) with no
+global pass — the math is why the tooling stays simple.</li>
+<li><strong>Navigation as reading.</strong> Enter/exit plus breadcrumbs is the floor. The
+art-form version: a tour through the tree reads like Mobus&#39;s book — one
+paragraph per level, the index carrying you. Candidate: a tiny declarative
+manifest paragraph (root model plus its tree) in SL&#39;s own style.</li>
+<li><strong>Per-level context as the LLM contract.</strong> A co-author working on one level
+needs exactly one flat paragraph plus its contract terminals — never the whole
+tree. Flat-per-level is what makes each level fit a small local model&#39;s context
+window: the 12B floor and Option B are secretly the same design decision.</li>
+</ol>
+<p>Relations as filed: #89 (the mechanism; steps 4/5a/5b are prerequisites, not
+parts), #100 (residue register — surface 2 is its constellation-scale sibling),
+#10 (resident co-author — surface 4 is its context contract), #12
+(usage-seeded vocabulary), #88 (a shared library <em>is</em> the multiplayer
+constellation). Vault: <code>operations/sessions/2026-07-20/references/sl-joy-design-seeds.md</code>
+(lever 7).</p>
+<h3>The field note that sharpened it</h3>
+<p>Shingai, 2026-07-21, first live walk day — the library-flattening problem arrived
+on day one of real decomposition use. Every child created by the door lands as a
+top-level peer on the home screen:</p>
+<blockquote>
+<p>&quot;In one sense this is logical, and it seems to be proof that the
+systems-of-systems vision is emerging — and yet there&#39;s something about intent
+and purpose that is missing. I want to navigate by system of interest, not a
+sprawling screen of every subsystem I&#39;ve ever created.&quot;</p>
+</blockquote>
+<p>The frame that follows: the landing surface should be organized by <strong>intent</strong>
+(choose an SOI, walk down), not <strong>inventory</strong> (all models flat). <strong>SOI vs
+subsystem is the load-bearing distinction.</strong></p>
+<h3>The near-term slice shipped — this is not all unbuilt</h3>
+<p>PR #119, merged 2026-07-21. The library and Switch menu render the
+reference-graph tree: root SOIs as cards, children nested beneath with
+connectors, recursive to any depth; &quot;pick your SOI&quot; = pick a card. Cycles,
+self-references and corrupt records are handled; parents with unresolvable
+referents get a quiet &quot;<em>n</em> referents missing&quot; meta note. Pure read-side — the
+store already held every <code>decomposes</code> reference, so the referenced-as-child set
+is computed at library-list time. No schema change, no new metadata.</p>
+<p><strong>One honest deviation, and it is a finding, not a shortfall.</strong> The spec&#39;d orphan
+badge (a child whose parent was deleted) is <strong>unimplementable read-side</strong>: the
+parent&#39;s refs are the <em>only</em> record of the relationship, so an ex-child is
+graph-indistinguishable from a hand-authored root. Doctrinally that is consistent
+— <em>SOI-ness is a reading</em>, so unreferenced ⇒ root. A true badge would need stored
+parentage, which is write-side metadata the field note forbade. If ever wanted,
+that is a deliberate rider on the epic, not a bug. Shared children currently show
+under their newest parent only; multi-parent rendering belongs to the epic&#39;s map
+surface.</p>
+<p>The same caveat governs the real design: a model can be a child today and
+promoted tomorrow (#89&#39;s promotion rider), so SOI-ness is a reading, not an
+intrinsic property. That fits the lens doctrine exactly.</p>
+<h3>Status</h3>
+<p>The near-term slice is <strong>shipped</strong>. The epic — the four constellation-authoring
+surfaces — is <strong>unbuilt</strong>, and confirmed so: no library-as-graph map, no
+seam-health surface. Deferred on demand, per the restatement above.</p>
+<hr>
+<p><a id="i121"></a></p>
+<h2>#121 — RA bridge: ensemble dataset export and the independent-study toolchain</h2>
+<p><em>Opened 2026-07-21 · a plan, subsumed as a consumer of <a href="#i172">#172</a>.</em></p>
+<h3>What it is</h3>
+<p>Make lenses/compose the data generator and companion instrument for the Fall 2026
+Joslyn independent study (<em>&quot;Parts and Wholes in Complex Multivariate Systems:
+From GSPS to Causal Models&quot;</em>) and, more durably, give BERT a Reconstructability
+Analysis bridge. Plan: halcyonic vault,
+<code>strategy/phd/joslyn-ra-independent-study-plan.md</code>.</p>
+<p><strong>The core capability — RA-ready ensemble export.</strong> Given an authored model,
+generate a multivariate categorical dataset with known ground-truth structure:</p>
+<ol>
+<li><strong>Ensemble sampling, not trajectory sampling.</strong> N independent bert-compose
+runs with exogenous inputs/parameters drawn from documented distributions;
+record designated variables at steady state (or a fixed horizon); one row per
+run, giving iid-ish rows — which is what RA&#39;s sampling frame assumes.</li>
+<li><strong>Discretization by design.</strong> Variable state cardinalities (3–5 levels) chosen
+in the generator config, not binned post hoc.</li>
+<li><strong>Provenance bundle.</strong> Seeds, generator version, model JSON hash and sampling
+config exported alongside the data (CSV/parquet plus metadata) —
+reproducible and pre-registerable.</li>
+<li><strong>A graded difficulty series as the fixture set</strong> (primitive-test-models discipline):
+(a) deterministic decomposable; (b) noisy decomposable; (c) synergistic
+coupling (parity/XOR — pairwise methods must fail); (d) nested/hierarchical
+decomposition; (e) a minimal pair with identical pairwise margins and
+different higher-order structure.</li>
+</ol>
+<p><strong>Toolchain wiring</strong>, thin and notebook-level, not deep integrations: <strong>dit</strong>
+(James/Crutchfield discrete information theory) for entropies, co-information,
+O-information, PID; <strong>PyOCCAM</strong>, with the export format compatible with its input
+so the round trip asks &quot;does RA recover the authored decomposition?&quot;;
+<strong>HyperNetX</strong> (PNNL) to render candidate structure hypotheses and RA lattice
+neighborhoods as hypergraphs; <strong>marimo notebook templates</strong>, one per difficulty tier,
+following the finite-toy → compute → name-the-concept → positive-check plus
+negative-control format.</p>
+<p><strong>Why it is lenses-native, not a side quest.</strong> The round trip is the first
+empirical test of the two-faces loop: lenses authors structure → compose generates
+behavior → RA (the epistemic inverse) recovers structure → score against ground
+truth. <strong>Reconstruction error = lens fidelity, measured.</strong> Scope guard: learning
+instrument first — a CLI/script plus notebooks is enough, no UI work implied.</p>
+<h3>The feasibility check, and what it changed (2026-07-21)</h3>
+<p>Checked against bert-compose. The headless engine already exists (<code>circuit.rs</code>,
+UI-free; operational gate plus 30-tick conservation proven in tests since 7/09),
+and the Troncale sweep is an in-repo precedent for programmatic headless runs with
+artifact emission — ensemble export is <em>&quot;sweep, but emitting rows.&quot;</em> Two
+refinements came out of it:</p>
+<ol>
+<li><strong>A hierarchy tier without nesting.</strong> Build holarchy as weakly-coupled
+clusters in flat wiring — dense intra-cluster, thin inter-cluster flows.
+Near-decomposability constructed per Simon&#39;s actual definition; dial the
+inter-cluster coupling to trace where RA recovery breaks. The limitation
+becomes the best experiment in the series.</li>
+<li><strong>A two-generator strategy.</strong> (a) compose-dynamical ensembles for the
+realistic rungs — conservation-faithful, the two-faces-loop story; (b) direct
+structural sampling from the authored BERT coupling graph — SCM-style,
+exogenous draws pushed through typed couplings, parity where needed,
+controlled noise — for the logical rungs. XOR/synergy fights compose&#39;s
+continuous physics, and structural sampling matches the causal-discovery
+benchmark idiom anyway. Both generators share kernel-validated ground truth.</li>
+</ol>
+<h3>Why it closed</h3>
+<p><strong>Subsumed as a consumer of <a href="#i172">#172</a></strong>, the neutral-interchange epic. The
+ensemble dataset export rides on the interchange&#39;s <code>trajectory</code>/<code>entities</code>
+serialization rather than a bespoke pipeline; the RA-specific toolchain is then a
+thin adapter over it.</p>
+<h3>Trigger — named, but it cannot fire on its own</h3>
+<p>The stated condition is <em>&quot;parked until #172 provides the export substrate.&quot;</em> That
+is a real trigger with a real subject, but #172 is itself parked with <strong>no</strong>
+trigger, so this one is conditioned on something nothing will start. Two things
+would move it: #172 being scheduled, or the Fall 2026 independent study arriving
+with a date, at which point the bespoke pipeline is worth revisiting on its own
+merits rather than waiting for the general substrate.</p>
+<hr>
+<p><a id="i125"></a></p>
+<h2>#125 — Put the two-reader fork in the README&#39;s first screenful</h2>
+<p><em>Opened 2026-07-21 · <strong>approved by @rsthornton</strong>, then parked · <strong>done</strong> in the
+change that created this file.</em></p>
+<h3>The approved-then-parked problem, stated honestly</h3>
+<p>The body carries <em>&quot;approved by @rsthornton&quot;</em> and the issue was then parked with no
+trigger. An approved-then-parked issue is <strong>neither a decision nor a plan</strong> — it
+has the authority of the first and the schedule of the second, and reads as
+either depending on which line you stop at. Three issues were in this state
+(#125, #126, #127). Recording it is the point: the state was reached by drift, not
+by a call.</p>
+<h3>The finding</h3>
+<p>The README&#39;s newcomer-vs-auditor framing (<em>&quot;Who this is for&quot;</em>) is its best
+structural idea, and it arrived <strong>after</strong> the dense material. By line 27 a
+first-time reader had met &quot;K≅2&quot;, &quot;Id-functor over ℝⁿ stocks&quot; and three
+philosophers&#39; names; the fork sat at line 93, after four Lean identifiers
+(<code>toKlir</code>, <code>toBunge</code>/<code>HasBond</code>, <code>toMobus</code>/<code>Irreflexive</code>, <code>toMobus_toBunge</code>) and a
+category-theoretic claim. <strong>Density before orientation.</strong></p>
+<p>Proposed order: <strong>value proposition → audience → mechanics → theory.</strong> The <em>what</em>
+and the <em>why-not-something-else</em> already landed by line 29 and are the strongest
+part of the document, so the fork belongs immediately after.</p>
+<p>Acceptance as written: a newcomer can pick their path without scrolling; <strong>no
+claims weakened or removed — rigor reordered, not diluted.</strong></p>
+<p>The second half of the proposal — <em>a light shorter-declaratives pass on the
+newcomer-facing sections only (README top and <code>docs/quickstart.md</code>), several
+paragraphs currently packing three qualified claims into one sentence, with full
+nuance staying in <code>theory-fidelity.md</code> where the auditor already goes</em> — is
+<strong>not</strong> done. It is a real observation and is left here rather than carried
+forward as a task; do it opportunistically when next editing those sections.</p>
+<p>Provenance: proposed by the Buzz agent team (Fizz/Honey/Bumble) from a doc review
+session, 2026-07-21.</p>
+<h3>Status</h3>
+<p>The fork now sits immediately after the three-bullet value proposition, before
+the Lean identifiers. <strong>No unpark trigger — retired.</strong></p>
+<hr>
+<p><a id="i126"></a></p>
+<h2>#126 — Illustrated quickstart: annotated screenshots, refusal front and centre</h2>
+<p><em>Opened 2026-07-21 · <strong>approved by @rsthornton</strong>, then parked · unbuilt.</em></p>
+<h3>The finding</h3>
+<p>bert-lenses is a <strong>visual instrument whose quickstart is text-only</strong>. The
+product&#39;s core idea — a verdict panel refusing loudly and citing the formal
+precondition it rests on — is conveyed only in prose, and no paragraph
+communicates it as fast as one annotated image.</p>
+<p>The proposal: 3–4 annotated figures in <code>docs/quickstart.md</code> covering the core
+loop — (1) author <code>fixtures/sl/bathtub.sl</code>; (2) the canvas render; (3) <strong>a
+verdict panel citing a failed precondition — the money shot</strong>; (4) the fix, and a
+passing verdict or run.</p>
+<p>Acceptance as written: the quickstart <em>shows</em>, not just tells, at least one
+refusal and one passing verdict; and the stale #80 references in README and
+quickstart are updated or removed.</p>
+<h3>What was true when it was filed, and what changed</h3>
+<p>The quickstart deferred illustration to <strong>#80</strong>, which closed 2026-07-20 without
+the walkthrough shipping — so the gap was untracked and the #80 pointers in README
+and quickstart were stale. <strong>That half is now fixed</strong>: the stale pointers were
+corrected in the change that created this file, and the quickstart no longer
+defers to a closed issue. The figures themselves remain unbuilt.</p>
+<p>This is the same approved-then-parked state as <a href="#i125">#125</a> — see there for why
+that state is worth naming.</p>
+<p>Provenance: proposed by the Buzz agent team (Fizz/Honey/Bumble), 2026-07-21.</p>
+<h3>Status</h3>
+<p>Unbuilt, no trigger. The obvious moment to do it is the next time the quickstart
+is walked end to end on a real machine — the screenshots are a by-product of that
+walk, not a separate project.</p>
+<hr>
+<p><a id="i127"></a></p>
+<h2>#127 — Symbol-anchored citations and issue-link liveness in <code>doc_lint</code></h2>
+<p><em>Opened 2026-07-21 · <strong>approved and rescoped onto <code>doc_lint</code> by @rsthornton</strong>,
+then parked · partly overtaken by later work.</em></p>
+<h3>The finding</h3>
+<p>Doc citations drift. A spot-check of <code>docs/theory-fidelity.md</code> found the <strong>claims
+hold but the <code>file:line</code> pointers lag the code</strong> — <code>validate_mode</code> cited at
+123–146, since moved to ~254 in <code>crates/bert-core/src/validate.rs</code>. Separately,
+README and quickstart still pointed at <strong>#80</strong>, which was closed: the same
+disease, second symptom.</p>
+<p>The proposal was to <strong>extend the existing gate</strong> — <code>scripts/doc_lint.py</code>, already
+run by <code>just check</code> and CI — with two detectors, and explicitly <em>no new parallel
+script</em>:</p>
+<ol>
+<li><strong>Symbol-anchored citations.</strong> Citations name a symbol (e.g.
+<code>validate.rs::validate_mode</code>); the lint fails only if the symbol is gone from
+the cited file. No line-number fuzz window, so zero false positives from
+routine code motion, while still catching real rot. Requires a one-time
+migration of existing <code>file:line</code> cites to symbol anchors.</li>
+<li><strong>Issue-link liveness.</strong> Flag references to closed issues in the scanned docs
+— via <code>gh</code>/API lookup or a committed issue-state snapshot, whichever fits CI.</li>
+</ol>
+<p>Scope as filed: <code>docs/theory-fidelity.md</code>, <code>docs/kernel-architecture.md</code>,
+<code>README.md</code>, <code>docs/quickstart.md</code>. Acceptance: current docs pass after the
+one-time citation migration; a removed symbol, or a newly-closed referenced issue,
+fails <code>just check</code>.</p>
+<p>Provenance: Buzz agent team — drift found by Bumble, stale-issue links by Honey,
+2026-07-21.</p>
+<h3>What has since overtaken part of it</h3>
+<p>The cross-repo half of the citation problem was solved differently and better.
+<code>docs/lean-provenance.md</code> plus <code>docs/lean-manifest.json</code> anchor every SSF citation
+<strong>by declaration name and Lean kind</strong>, generated rather than hand-written, with
+Gate A resolving them at the pin and Gate B against SSF HEAD. That is
+symbol-anchoring for the citations that cross a repo boundary — the ones where a
+line number is, in <code>theory-fidelity.md</code>&#39;s own phrase, <em>&quot;a coincidence with a
+timestamp.&quot;</em></p>
+<p>What is <strong>not</strong> covered is the in-repo half: <code>docs/*.md</code> citing
+<code>crates/**/*.rs</code> by <code>file:line</code>. Those still rot silently, and the
+<code>validate_mode</code> example is still the live instance.</p>
+<p>The issue-link-liveness half is untouched, and the #80 sweep in this change is the
+manual version of it — done by hand this time.</p>
+<h3>Why it closed without a trigger, and what a real one would look like</h3>
+<p>Issue #234 observes that #127 documents a risk and then disables the reminder.
+The durable fix for the citation-drift class is the generated provenance manifest,
+and <strong>Gate B failing is the natural trigger</strong> — that is the moment a citation
+demonstrably stopped resolving. That is a trigger for the <em>cross-repo</em> half,
+which is already built; it does not cover in-repo <code>file:line</code> cites.</p>
+<p>For those, the honest statement is: no trigger exists, and the cheap version is
+smaller than the issue proposed — a <code>path.rs:NNN</code> line-number citation in a LIVE
+doc could simply be <strong>banned in favour of a symbol name</strong>, checkable with the same
+machinery <code>doc_lint</code> already uses for the status carrier. That is a candidate, not
+a decision.</p>
+<hr>
+<p><a id="i144"></a></p>
+<h2>#144 — Formalizing the system life cycle: finishing Mobus&#39;s unfinished paper</h2>
+<p><em>Opened 2026-07-23 · research position with findings against a published paper ·
+the largest entry here, and the least compressible.</em></p>
+<h3>What it is</h3>
+<p>Picking back up a thread that ran 2025-02 → 2026-05 and stopped: formalizing the
+system life cycle, and finishing George Mobus&#39;s unfinished paper <strong>with him</strong>.
+Parked deliberately as post-sweep work, and filed at the time because <em>&quot;the
+research is done and the findings are perishable if they stay in a session log.&quot;</em></p>
+<p>The design docs landed in <code>c5fda0b</code>:
+<a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/mobus-lifecycle-formalization.md"><code>design/mobus-lifecycle-formalization.md</code></a>
+(the position) and
+<a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/lifecycle-prior-art.md"><code>design/lifecycle-prior-art.md</code></a> (consolidated
+prior art, corrected). Subordinate to #86 (the adopted dynamics position), which
+it <strong>amends in nothing</strong> — it lands in a cell that document already names.</p>
+<p><strong>The situation.</strong> Mobus&#39;s paper revises the 7-tuple to the 8-tuple — the repo&#39;s
+semantic authority for that tuple is <code>Tuple.lean</code>, not the book&#39;s printed form,
+per the terminology concordance — then opens a life-cycle extension it does not
+finish: <code>S_{t+1} = S_t ∪ ⟨ΔS⟩</code>, four operators
+sketched, <strong>and five stage headers with nothing under them.</strong> He appears to have
+been waiting on the formalization. Two things have changed since: the Lean 8-tuple
+exists, and #86 settled what counts as dynamics.</p>
+<h3>The thesis</h3>
+<blockquote>
+<p><strong>F(S) = F_coh(S) ∩ F_φ(S)</strong></p>
+<p><code>F_coh</code> is <strong>derivable</strong> — the set of changes yielding a well-formed 8-tuple is
+fully determined by the coherence fields of <code>MobusSystem</code>. Nothing is chosen;
+the type is the specification.</p>
+<p><code>F_φ</code> (phase constraints) is <strong>stipulated</strong>, and every arbitrary threshold in
+the informal treatment lives there.</p>
+</blockquote>
+<p>The derivable/stipulated boundary <em>is</em> the principled/arbitrary boundary. It gives
+the empty stage sections an organizing distinction, and gives Lean a job prose
+cannot do: force stipulations to appear as explicit hypotheses rather than
+dissolve into a bullet list.</p>
+<h3>The five findings against the paper, each with the line that licenses it</h3>
+<ol>
+<li><strong>Union cannot express three of his own five stages.</strong> <code>∪</code> is monotone;
+Decline and Dissolution require removal. His own <code>ΔB = ⟨B \ {b_k}, …⟩</code> uses set
+difference three lines later. <strong>The stages section is empty because the
+equation preceding it cannot reach them.</strong> The obvious add/remove patch
+<em>provably fails</em> on his own <code>replaceInterface</code> (atomic — as add-then-remove it
+passes through a tuple violating <code>interfaces_sub</code>) and on his own capacity
+modification (a relabel, neither add nor remove). The repair is structural:
+replace <code>∪</code> with operator application, deletion as a first-class constructor.</li>
+<li><strong>His one asymmetry claim is one of three.</strong> <code>ΔC ⟹ ΔN</code> is a theorem,
+essentially definitional — forced by his own Eq. 4.4 from 2022. The
+constraints generate a three-way taxonomy by <em>logical shape</em>: <strong>equality</strong>
+forces unconditionally (<code>network_components</code>); <strong>subset</strong> forces conditionally
+(<code>interfaces_sub</code> → ΔC ⟹ ΔB, <code>externalFlows_nodes</code> → ΔB ⟹ ΔG — neither stated
+by him); <strong>disjointness</strong> forces nothing (<code>disjoint</code> is a legality
+precondition, not a consequence).</li>
+<li><strong>Origination is threshold-free.</strong> <code>MobusSystem</code> admits a composition-empty
+pre-system; <code>ConcreteSystem</code> requires <code>bondage_nonempty</code> and <code>toBunge</code> demands
+a nonempty edge set. So <strong>Origination is exactly the tick at which the Bunge
+bridge becomes definable</strong>, Dissolution its dual. Two of the five empty
+sections filled with no free parameters — <code>F_coh</code> doing work <code>F_φ</code> was being
+asked to do.</li>
+<li><strong>ΔT and ΔH presuppose what the 8-tuple does not assert.</strong> <code>transforms : τ</code> is
+opaque carried data; there is no <code>∪</code> on <code>τ</code>.</li>
+<li><strong>Precondition catalogue</strong> — his informal operators omit legality conditions
+entirely.</li>
+</ol>
+<h3>Sequencing (both increments outstanding)</h3>
+<p><strong>Increment 1 — self-contained, and it is the entire paper contribution.</strong>
+Forced-change taxonomy, non-reciprocity witness, stage predicates,
+<code>originates_iff_bunge_definable</code>. Depends only on <code>Tuple.lean</code>; <strong>does not require
+<code>apply</code>.</strong></p>
+<p><strong>Increment 2.</strong> Primitive operators, <code>F_coh</code>, <code>apply</code> (hard: the
+<code>removeComponent</code> B/G repair cascade), an ordered <code>List Δ</code> — the primitives do not
+commute, so the informal <code>P(ΔS)</code> cannot name a transition — and <code>reach_semigroup</code>,
+Kleisli composition in the powerset monad, discharging #86&#39;s Mesarovic–Takahara
+acceptance test.</p>
+<p><strong>Dynamics typing, no amendment to #86:</strong> axis B = bare set · axis C = <code>P(X)</code>, the
+powerset functor (a discrete inclusion <em>is</em> the <code>P(X)</code> kind, already listed) ·
+axis D = no declared invariants, correct, since with no additive carrier
+conservation is not expressible · axis E = generative. Adjacent: #112 (universal
+coalgebra), #67 (FSA/Markov).</p>
+<p><strong>Explicitly not doing:</strong> ΔT/ΔH (blocked on τ-refinement, scheduled separately in
+#86); a symmetric operator suite over all seven Δ-components; the phase constraint
+sets as written — importing &quot;optimal&quot; / &quot;higher rate&quot; / &quot;rapid&quot; into Lean as
+opaque predicates <em>looks</em> rigorous and is <strong>worse than prose</strong>; a five-stage
+partition theorem, which is false, since stages are interval predicates and a
+trajectory may satisfy none, some, or several in alternation; numeric life-cycle
+shapes; fitness-directed decline (that is <code>Evolution.lean</code>&#39;s territory).</p>
+<h3>The architecture pass, and three corrections it forced (<code>860efc7</code>)</h3>
+<p><strong>Verdict: a bert-lenses extension</strong> — not compose, not a third face, not a kernel
+change.</p>
+<ul>
+<li><strong>The decisive evidence against &quot;structure is just more state&quot; is empirical.</strong>
+bert-compose already meets structural change at runtime and its considered
+answer is to <em>destroy the history</em> — history rows are indexed by node count and
+cleared on topology change. Dragging a node onto a running canvas <em>is</em> ΔC, and
+the engine says &quot;this is a different system, start over.&quot; Corroborated by this
+repo already listing carrier-shape change as explicitly out of scope, and by
+compose&#39;s own sweep bucket for &quot;structural, not flow-dynamical.&quot;</li>
+<li><strong>Fixed: the Origination result built a tower.</strong> <em>&quot;Origination = the tick the
+Bunge bridge becomes definable&quot;</em> defines a <em>Mobus-side</em> boundary via a
+<em>Bunge-side</em> precondition. <code>HasBond</code> and <code>Irreflexive</code> are independent, the mode
+poset is a meet-semilattice with no joins by design, and mode language must
+never be read as an ascending path. Re-stated as a theorem <strong>about the bridge</strong>,
+caveat attached. Still the best result here — <em>the pre-system is
+Mobus-representable and Bunge-inadmissible</em> is a real finding about where the
+lenses come apart — but it is a cross-lens claim and now says so.</li>
+<li><strong>Fixed: coherence is axis B, not &quot;the structural conservation law.&quot;</strong>
+Conservation is <em>declared</em>, optional and violable, hence a real-valued residual.
+Coherence is a Lean structure field that <strong>cannot be violated, because a bad
+tuple does not typecheck</strong>. As axis B, <code>f : X → P(X)</code> is coherence-preserving
+<em>by typing</em> — no ledger, no residual, free. And nothing obvious is conserved
+across a Δ; the slot is reported empty rather than filled.</li>
+<li><strong>Corrected: &quot;Bunge and Klir are static, Mobus extends them&quot; is false</strong>, and
+refuted by citations in this repo. Klir&#39;s metasystem is precisely the apparatus
+for structural change, excluded by a <em>named scope decision</em>; Bunge&#39;s qualitative
+change is a <em>deliberate drop</em>. So this is where all three traditions have an
+account and the formalization has taken none — which makes structural change
+<strong>the next real test of K≅2</strong>, a stronger test than anything the static core has
+faced. Hard rule: <strong>the delta renders in all three vocabularies or it does not
+ship.</strong></li>
+</ul>
+<h3>The first increment is narrower than the sequencing above</h3>
+<p><strong>A typed structural diff between two models already in the library.</strong> No sequence
+metadata, no schema change, no SL syntax, no stage vocabulary, no run
+integration, no H. Seam: <code>StructuralDelta</code> in <code>transition.rs</code> as a sibling to
+<code>LossWitness</code> over <code>CanvasModel</code>s; coherence-preservation joining the <code>check_*</code>
+family in <code>validate.rs</code>; rendered through <code>describe()</code> in all three vocabularies.</p>
+<p><strong>What it teaches, and why it goes first.</strong> <code>ΔC = ⟨C ∪ c_new⟩</code> presupposes you can
+say which <code>c</code> at <em>t+1</em> <strong>is</strong> which <code>c</code> at <em>t</em>. In Lean that is free (<code>Set α</code>, α
+stable by assumption); <strong>in the tool it is not</strong> — ids are renumbered on
+canonicalization and names are author-editable, so <em>&quot;renamed a component&quot;</em> and
+<em>&quot;deleted one, added another&quot;</em> are the same diff. If the diff is stable on two
+real saved versions, everything downstream is buildable. If it drowns in renames,
+<strong>Mobus&#39;s ΔS algebra has an unsolved identity problem at its base and we learned
+it in days rather than a quarter.</strong> Publishable either way.</p>
+<p>Validate it free against the corpus: Klir&#39;s four paradigms and Bunge&#39;s three
+structures are ΔN with ΔC = ∅ — the degenerate case, two traditions, known-correct
+answers. <strong>But that rhyme is a pun in modality</strong>: those are <em>alternatives</em> (what a
+composition admits), a life cycle is a <em>succession</em>. Identical diff, opposite
+semantics. Relation kind must be author-declared — <code>variant-of</code> / <code>revision-of</code> /
+<code>succeeds</code> — which also stops a typo fix from reporting a life-cycle event.</p>
+<p><strong>The git test:</strong> without stage semantics ΔS <em>is</em> <code>git diff</code>. The three things git
+does not give are typing by tuple coordinate, checking against the constraints,
+and readability in three traditions. Deliver all three or use git.</p>
+<p><strong>Hard line:</strong> none of this reaches <code>circuit.rs</code>. A life-cycle step drives a run
+only as a metasystem replacement — stop φ₁, re-base, start φ₂, discontinuity
+witnessed — never as mutation inside the stepping loop.</p>
+<h3>The paper plan, and how it is presented to George</h3>
+<p>The paper plan lives in SSF, not here — this is a formalization paper, and
+<code>Tuple.lean</code> and the closure theorem live there:
+<code>systems-science-foundations/docs/paper/mobus-lifecycle-paper-plan.md</code>.
+Provenance: synthesized winner of a blind model bake-off, 2026-07-24 (halcyonic
+vault <code>operations/calibration/blind-pick-ledger.md</code>) — three models answered the
+identical framing brief blind, ranked without provenance.</p>
+<ul>
+<li><strong>Spine = closure under lawful change.</strong> Central theorem, machine-checked:
+<code>S ⊨ WF ∧ S&#39; ∈ F(S) ⟹ S&#39; ⊨ WF</code>. The typed relations are the <code>WF</code> predicate;
+Veliov&#39;s <code>ΔS ∈ F(S)</code> is the admissibility relation; their composition fills the
+five empty stage sections. <strong>Neither horn</strong> — not the elegant-accounting win
+(static, footnote-grade), not defect-and-repair (adversarial to a senior
+co-author).</li>
+<li><strong>Generous reading of ∪:</strong> union is <code>F</code> restricted to the Growth regime — a
+special case, not an error. His own <code>ΔB</code> already uses set difference; the repair
+recovers his intent.</li>
+<li><strong>Scope:</strong> §2 WellFormed tuple / §3 <code>∈ F</code> replaces ∪ / §4 closure theorem / §5
+the five stages as constraints on <code>F</code> (the deliverable) / Lean in an appendix.
+<strong><code>F_φ</code> deferred to the sequel</strong>, consistent with the <code>F = F_coh ∩ F_φ</code> split:
+paper 1 ships <code>F_coh</code> (derivable) plus the stages structurally; <code>F_φ</code> (the
+stipulated φ machinery) is the dynamics follow-up. Also cut: <code>V_min</code>/<code>V_opt</code>
+(hand to Aubin viability theory as the sequel&#39;s thesis), history/adaptrode (keep
+<code>H</code> opaque, require only that <code>F</code> may depend on <code>H</code>), BERT (one line). <strong>George
+first author.</strong></li>
+<li><strong>Presentation:</strong> send the five written sections plus a 2-page cover memo — not
+the Lean, not a full draft. Two-beat opener: his Milieu &quot;you were right&quot;
+membership quote, then the <code>ΔB</code> closure catch. Quote his Knowledge/History note
+back as prose-<code>F(S)</code>. Lean mentioned once. Send inside two weeks. Contingency:
+<strong>die on closure, not on the Veliov citation.</strong></li>
+</ul>
+<h3>Status correction — the closure theorem landed, and four points went stale</h3>
+<p>SSF #30 / PR #34 merged 2026-07-25 (<code>8e2f5fa</code>). <code>Systems/Mobus/Lifecycle.lean</code>,
+zero <code>sorry</code>, CI green.</p>
+<p><strong>What landed is NOT Increment 1.</strong> Increment 1&#39;s deliverables — forced-change
+taxonomy, non-reciprocity witness, stage predicates,
+<code>originates_iff_bunge_definable</code> — were <strong>none of them built</strong>. What landed is the
+closure theorem and its scaffolding: <code>wellFormed_of_reaches</code> (well-formedness
+persists along a trajectory of any length); <code>PreTuple</code>/<code>WellFormed</code> (the tuple as
+raw data with the coherence constraints reified as a predicate); adequacy both
+ways — <code>wellFormed_toPre</code> (no stronger than the type), <code>toMobus</code>/<code>toPre_toMobus</code>
+(no weaker); and <code>additive_components_monotone</code>, <code>growthStep_additive</code>,
+<code>step_not_additive</code> (the ∪ monotonicity argument plus a non-vacuity witness).
+Overlapping motivation, disjoint deliverables. <strong>Increments 1 and 2 remain fully
+outstanding.</strong></p>
+<p>Four corrections to the body above:</p>
+<ol>
+<li><strong>&quot;Five coherence fields&quot; is now six.</strong> SSF #31 added <code>interfaces_carry_flow</code>
+(every interface must carry an external flow — the converse of <code>bipartite</code>,
+which only ever quantified over edges). Load-bearing, not cosmetic: the thesis
+<code>F_coh</code> is <em>derivable from the coherence fields</em>, so <strong>the field set is the
+specification</strong>, and any <code>F_coh</code> derived against five fields is now
+under-constrained.</li>
+<li><strong>&quot;The repo has never constructed a <code>MobusSystem</code>&quot; is partly discharged.</strong>
+<code>PreTuple.toMobus</code> builds one from any well-formed <code>PreTuple</code>, discharging all
+six coherence fields, and <code>witness</code> is a concrete instance (two components, one
+internal flow). The cost note stands for a <em>derived</em> tuple from an operator
+application; it no longer stands in general.</li>
+<li><strong>The <code>∪</code> finding is now a theorem, and more generous than the body puts it.</strong>
+<code>additive_components_monotone</code>: under <em>any</em> additive regime, no trajectory of
+any length ever loses a component — so Decline and Dissolution are
+<strong>unreachable</strong>, not merely awkward. But <code>growthStep_additive</code> gives the
+reading to actually use with George: <strong>union is not wrong, it is <code>F</code> restricted
+to the Growth regime</strong>, and his own <code>ΔB</code> already used set difference. Frame it
+as his notation having been ahead of his master equation.</li>
+<li><strong>The derivable/stipulated boundary got an unplanned datapoint.</strong> #31 landed
+while the closure work was in progress; on rebase the file stopped compiling at
+<code>toMobus</code> <strong>and nowhere else</strong>, because <code>WellFormed</code> no longer matched the type.
+<code>wellFormed_toPre</code> kept compiling — a weaker predicate of a strengthened
+structure still is one — so the &quot;no stronger&quot; direction is <strong>structurally blind
+to that drift</strong>. Two-way adequacy is what couples a reified predicate to a type
+someone else is still editing. Any <code>F_coh</code> reification in Increment 2 needs the
+same, or it rots silently while passing <code>#print axioms</code>.</li>
+</ol>
+<h3>A limitation this issue predicted, and which the merged work has</h3>
+<p>Finding 1 warns that an add/remove patch <em>&quot;provably fails on his own
+<code>replaceInterface</code>.&quot;</em> <strong><code>Step</code> has exactly that shape</strong>, and its <code>decline</code> side
+condition <code>a ∉ p.interfaces</code> is precisely the dodge. So <code>replaceInterface</code> —
+Mobus&#39;s own operator — <strong>is not expressible as a <code>Step</code> sequence</strong>, and neither is
+anything else atomic that transits an ill-formed intermediate. Also out: interface
+removal (needs external-flow retraction as a second edit) and
+Dissolution-as-terminal. Reachable today: <strong>Growth, Decline</strong>; Maturity near-free.
+Formation is newly <em>expressible</em> (reification supplies the not-yet-a-system to
+form from) but nothing about it is proved. <strong>§5 must not claim more than this.</strong></p>
+<h3>Owed to George, and routed internally</h3>
+<ul>
+<li><strong>His H insight is the direction we took</strong>: <em>&quot;the history of the system
+represents the knowledge of the system&#39;s possible states and trajectories, that
+is probable state transitions.&quot;</em> He described a set-valued transition structure
+in prose before the formalism was chosen. <strong>Cite as his.</strong></li>
+<li><strong>His adaptrode/EWMA history mechanism is unintegrated</strong> — multi-timescale tacit
+memory, periodically sampled to trace the history of the life cycle.
+Architecturally different from our settled H position, and from his own.
+Honouring the contribution means addressing it, not routing around it.</li>
+<li><strong>Route internally, not to Mobus:</strong> two defects in <code>bert</code> docs, both predating
+#86 and unreconciled with it — the φ-definition inconsistency in
+<code>lifecycle-dynamics.md</code> (φ cannot be both a total function of the state and
+dependent on the previous phase; fix by carrying the phase, <code>PhasedSystem := MobusSystem × Fin 5</code>), and <code>h-element-theory.md</code>&#39;s
+<code>T(t+1) = f(T(t), H(t), Input(t))</code>, which #86 forbids — if T reads H the
+semigroup axiom fails.</li>
+</ul>
+<h3>Status</h3>
+<p>No unpark trigger, and it does not need one: <strong>the live work is the paper, and it
+lives in SSF.</strong> That plan&#39;s gate was &quot;only results that are done or directly
+entailed&quot;; §4 was the unmet one and is now met, so <strong>the next move is drafting §5,
+not more formalization.</strong> The Increment 1/2 work is deliberately <em>after</em> George has
+the paper. If it resumes, it resumes as a bert-lenses extension per the
+architecture pass, starting from the typed structural diff.</p>
+<hr>
+<p><a id="i150"></a></p>
+<h2>#150 — Rung 3: the extraction theorem (Aeneas-translated gates proved against the Lean preconditions)</h2>
+<p><em>Opened 2026-07-23, split out of #24 · the last of that issue&#39;s series still
+open, and the only part that is a fidelity upgrade rather than a performance
+escape hatch.</em></p>
+<h3>What it is</h3>
+<p>Aeneas-translate the Rust mode gates and prove <code>extracted_gate ⟺ named_precondition</code> in Lean.</p>
+<p>Today the binding is <strong>falsifiable in both directions</strong> — the Lean-emitted truth
+table and the live oracle would both catch drift as a CI regression
+(<a href="https://github.com/halcyonic-systems/facets/blob/main/spec/LENS_ENTRY_SPEC.md"><code>../spec/LENS_ENTRY_SPEC.md</code></a> §D,
+<a href="./lean-provenance.html"><code>lean-provenance.md</code></a>). But it is still a <strong>correspondence
+checked on vectors</strong>, not a proof about the shipped code. Rung 3 would retire the
+hand-mirroring in §C&#39;s mapping table by making the shipped Rust <em>the proved
+object</em>.</p>
+<p><strong>Feasibility is favourable</strong>: the gates are pure predicates over <code>(T, R)</code> —
+exactly the fragment Aeneas handles.</p>
+<h3>The decision that closed Rung 2</h3>
+<p><strong>Rung 2 (embedded oracle) is decided: not adopted.</strong> The recorded rule was &quot;only
+if oracle latency bites.&quot; Measured 2026-07-21 — the full 365-model corpus is one
+batched subprocess call, ~30 ms of oracle process time, 0.29 s total test wall
+time. <strong>Re-open only if call volume grows orders of magnitude</strong>, e.g. per-model
+property tests replacing the batched corpus. That is a live, named condition, and
+it belongs to Rung 2, not to Rung 3.</p>
+<h3>Two open decisions, before any work starts</h3>
+<ol>
+<li><strong>Where do the extracted Lean artifacts and theorems live?</strong> SSF, or a Lake
+package inside this repo? A real fork: SSF keeps all Lean in one place and one
+toolchain but couples this repo&#39;s CI to an external pin; a local Lake package
+inverts both.</li>
+<li><strong>Toolchain pinning.</strong> Charon/Aeneas/Lean version drift is the pipeline&#39;s
+<em>documented</em> failure mode. Pin hard, and decide who owns the bump.</li>
+</ol>
+<h3>The status quo is honest without this</h3>
+<p>Worth stating so the entry does not read as a gap: Rungs 1 and 1.5 already give
+two-sided falsifiability, and <code>spec/LENS_ENTRY_SPEC.md</code> §C presents the mapping as
+<strong>hand-mirrored rather than proved</strong>. <strong>Nothing currently overclaims.</strong> This work
+would remove the hand-mirroring; it does not fix a misstatement.</p>
+<p>Provenance complement: #128, <a href="./lean-provenance.html"><code>lean-provenance.md</code></a>.</p>
+<h3>Status</h3>
+<p>No unpark trigger. The two open decisions above are the real gate — either would
+have to be settled before an hour of work is worth spending, and neither is
+urgent while the two-sided falsifiability holds.</p>
+<hr>
+<p><a id="i166"></a></p>
+<h2>#166 — External↔external flows render as non-interactive unlabeled stubs</h2>
+<p><em>Opened 2026-07-24 · a bug-shaped finding whose fix is an unresolved design
+question.</em></p>
+<h3>What was observed</h3>
+<p>In <code>predator-prey</code> (declared <code>Concrete/Biological</code>), the flow <code>Sunlight -&gt; Grass</code>
+— a source → environment flow, <strong>both endpoints outside the boundary</strong> — renders
+as a dashed, <code>pointer-events: none</code>, <strong>label-less</strong> stub. It cannot be selected,
+unlike every flow that touches the boundary.</p>
+<p>Confirmed by live DOM inspection of the rendered canvas: <code>predation</code>
+(internal→internal), <code>grazing</code> (environment→internal) and <code>mortality</code>
+(internal→environment) each render a first-class edge — a clickable hit path
+(<code>pointer-events: auto</code>) <strong>and</strong> a rendered label. <code>photosynthesis</code>
+(<code>Sunlight → Grass</code>, external→external) has <strong>no label rendered at all</strong> and is
+one of three dashed <code>pointer-events: none</code> paths. Not a missed hit-target — it is
+<strong>degraded by construction</strong>.</p>
+<h3>Root cause</h3>
+<p>Edge classification is <strong>boundary-relative</strong> — endo / exo / bond / self-loop
+(<code>edgeFactById</code> in <code>Canvas.tsx</code>, kernel edge facts). A flow whose <strong>both</strong>
+endpoints are external has no boundary relationship to anchor to, so <code>EdgeView</code>
+falls through to a non-interactive dashed stub instead of a first-class edge. The
+renderer also routes it toward the boundary before degrading (observed: solid
+Sunlight→boundary, then dashed toward Grass).</p>
+<h3>Why it matters</h3>
+<p>The underlying <strong>tuple and formalism permit environment↔environment relations</strong> —
+the flow is well-formed and the model <strong>compiles clean</strong> (<code>✓ clean</code>, zero faults).
+The lens just cannot draw it. Motivating cases: feedback loops among environment
+objects (wanted in earlier BERT), and systems-of-systems, where relationships
+<em>between</em> external objects are exactly what you model. Right now the tool
+<strong>silently degrades</strong> such a flow rather than rendering it first-class or flagging
+it at author time.</p>
+<h3>The Mobus-lens tension — the design question to resolve</h3>
+<p>Mobus centres a single concrete <strong>system of interest</strong>, with the environment as
+sources and sinks: boundary conditions, not a place to trace internal mechanism.
+Under that framing, mechanism <em>within</em> the environment (Sunlight→Grass) is
+arguably out of frame. But it is <strong>orthogonal to concrete-vs-conceptual</strong> — the
+concrete model trips it while the one Conceptual/Social model (<code>jung-functions</code>)
+has zero external↔external flows — and the <strong>general tuple does not forbid</strong>
+environment↔environment relations, which systems-of-systems genuinely need. So the
+boundary-relative edge model is a <strong>Mobus-lens simplification, not a formalism
+limit.</strong></p>
+<p>Three candidate semantics, one to be picked:</p>
+<ul>
+<li>(a) render external↔external as a first-class edge type (needed for
+systems-of-systems and environment feedback loops);</li>
+<li>(b) reject or warn at author time when a flow leaves the SOI frame;</li>
+<li>(c) keep it degraded but make it <strong>explicit</strong> — labelled and documented, never
+silent.</li>
+</ul>
+<h3>Not systemic, and where the doctrine now lives</h3>
+<p>Only <code>predator-prey</code> among the 10 #14 sweep candidates has an external↔external
+flow; every flow in the other nine touches at least one <code>component</code>. Low urgency.</p>
+<p>The canonical <strong>why</strong> is recorded in
+<a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a> → <em>The single system-of-interest scope
+(Mobus lens) and the systems-of-systems seam</em>, plus an Honest-boundary-table row
+(PR #167). This entry is the tracked <strong>tool gap</strong>; that section is the load-bearing
+doctrine.</p>
+<h3>Status</h3>
+<p>No unpark trigger. The doctrine is recorded and the tool behaviour is known and
+documented; what remains is a semantics choice between (a), (b) and (c), which
+wants a real systems-of-systems modelling need to decide it rather than an
+argument.</p>
+<hr>
+<p><a id="i172"></a></p>
+<h2>#172 — The neutral interchange: CSV as a serialization of the kernel</h2>
+<p><em>Opened 2026-07-24 · a parked epic, captured while the thinking was hot, to design
+against.</em></p>
+<h3>What it is</h3>
+<p>A neutral data interchange that is a <strong>serialization of the kernel</strong> — <code>(T, R)</code>
+plus the coalgebraic dynamics — with domain-legibility falling out of the lenses.
+A small sheet family (<strong>entities / relations / transitions / trajectory</strong>),
+grounded in Klir&#39;s epistemological hierarchy. Composition = gluing on shared
+variables (cospan pushout). A first-class <strong>Proven / Observed / Generated</strong>
+provenance trichotomy, per cell, that composes.</p>
+<p>The spec and framing are the design doc:
+<a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/neutral-interchange.md"><code>design/neutral-interchange.md</code></a>, seeded
+2026-07-24. Its core claim: the interchange is <strong>not &quot;CSV for a domain,&quot; it is a
+serialization of the kernel</strong> — everything domain-specific is a <em>lens over</em> that
+serialization, so &quot;legible across many domains&quot; falls out for free. A domain
+author reads and writes tables, the tool ingests them as a kernel object, and the
+<strong>lenses do the domain interpretation on ingest</strong>. (Lineage: Cliff&#39;s point that a
+pandas DataFrame is another view of Klir&#39;s things-and-relations — the same K≅2
+discipline pushed down to the file format.)</p>
+<h3>Why it is one epic and not many issues</h3>
+<p>It <strong>consolidates</strong>, and that consolidation is the finding:</p>
+<ul>
+<li><strong>Subsumes as consumers:</strong> #67-thread-1 (model CSV round-trip) and
+<a href="#i121">#121</a> (ensemble dataset export) are special cases of this general
+interchange.</li>
+<li><strong>Compose semantics live in #112</strong> (universal coalgebra); the Baez cospan
+mapping feeds it.</li>
+<li><strong><a href="#i166">#166</a></strong> (env↔env, systems-of-systems) is the same &quot;compose by shared
+variables&quot; seam.</li>
+<li><strong>#67 lays the first brick</strong> — the minimal transition round-trip the DTMC needs
+is forward-compatible with this.</li>
+</ul>
+<h3>Deliberately out of scope — &quot;the long conversation&quot;</h3>
+<p>Exact schema; 3-vs-4 sheets; the tether refactor (subsume, do not extend); the
+provenance UI grammar; the LLM ingest(Observed)/generate(Generated) discipline;
+and how far to lean on decorated cospans versus a pragmatic first cut.</p>
+<h3>Status</h3>
+<p><strong>Blocked on nothing; blocks nothing.</strong> No unpark trigger, by its own text — it
+was filed as a frame to design against, not as scheduled work. The design doc is
+the durable artifact; this entry records that the consolidation call (four
+issues become consumers of one interchange) was made deliberately.</p>
+<hr>
+<p><a id="i197"></a></p>
+<h2>#197 — Finish Mobus&#39;s illustrative models as executable examples</h2>
+<p><em>Opened 2026-07-25 · explicitly filed as PARKED — recorded, not scheduled.</em></p>
+<h3>The idea</h3>
+<p>Mobus&#39;s models are <strong>illustrative</strong>. He never stamped them with his own
+work-process primitives, never attached dynamics, never made them runnable — he
+was teaching a method, not shipping executable models. Ch. 7 says so itself: each
+analysis goes only <em>&quot;sufficiently deep to give a good accounting of the first few
+levels,&quot;</em> and §7.5 is left to the reader as an exercise.</p>
+<p>The corpus preserves that faithfully, and authoring <code>mobus/</code> (#191, #192) forced
+the discipline explicitly: <strong>no <code>primitive</code> on any ch. 7 component</strong> — the taxonomy
+is Mobus&#39;s, but he does not apply it there, and stamping it would have been our
+reading, not his; one <code>gate: core</code> on the brain, because the source walks only the
+afferent path; and an untyped disturbance flow on the HSS, because typing it would
+be our commitment.</p>
+<h3>The rule this established</h3>
+<blockquote>
+<p><strong>The corpus holds what the source says. Examples hold what we say.</strong></p>
+</blockquote>
+<p>Which is exactly what makes the work possible: the faithful transcription is
+preserved <em>and</em> the finishing work has a legitimate home.</p>
+<h3>The work, if unparked</h3>
+<p>A parallel set under <code>assets/examples/</code> — the same systems Mobus drew,
+<strong>finished</strong>: primitives applied (what work process <em>is</em> the neuron&#39;s Σ? the
+axonal hillock? the HSS&#39;s governance?), dynamics attached where the structure
+supports it, and actually executable — run, not just drawn.</p>
+<p>Each one would be a claim: <em>this is what Mobus&#39;s illustration becomes when you
+carry it through.</em> <strong>The diff between the corpus entry and its finished example is
+itself the teaching artifact</strong> — the same &quot;one lesson by diff&quot; device the Klir set
+uses, but across the faithful/finished boundary instead of across structures.</p>
+<h3>Why it is parked rather than scheduled</h3>
+<p>It is a <strong>real program, not a task</strong>: 5 models × (primitive assignment + dynamics</p>
+<ul>
+<li>validation), each a genuine modelling judgment that wants Shingai&#39;s eye rather
+than an agent&#39;s. It also gets easier as the dynamics work matures (#112 — the
+typed transition, homogeneous composition). <strong>Unparking is cheap; doing it badly
+is not.</strong></li>
+</ul>
+<h3>The companion, and the standard they share</h3>
+<p>The <strong>build</strong> half is this entry. The <strong>consolidation</strong> half is separate: running
+the existing corpus through all three lenses and recording where they disagree —
+the K≅2 cross-check, systematically. Different work, different outputs — one adds
+dynamics to faithful structural models, the other crosses existing models between
+traditions — so they are deliberately not bundled. They share a standard, recorded
+in <code>assets/corpus/README.md</code>: <strong>a model that cannot embarrass us is not testing
+anything.</strong></p>
+<p>Worth restating for this entry specifically, since it is the one that <em>adds</em> our
+own reading: <strong>the diffs between a corpus entry and its finished example are the
+findings.</strong> If finishing a model produces no surprise — no primitive that turns out
+ambiguous, no dynamics that refuse to close, no invariant that fails — then either
+the model was already complete or we finished it toward what the tool made
+convenient. Both are worth noticing.</p>
+<h3>Precondition for unparking (not a trigger)</h3>
+<p>The primitive assignments must be <strong>defensible as <em>our</em> reading, stated as such,
+and not smuggled back into the corpus.</strong> That is a condition on doing it well, not
+an event that fires. Related: #14 (the modeling target queue), #112 (dynamics),
+#194 (corpus drift-gates, closed 2026-07-25).</p>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/parked.md">Source · docs/parked.md</a>
+      <span>Rendered from 0bb7de4</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

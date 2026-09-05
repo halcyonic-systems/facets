@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lean provenance — the pinned proof base behind every &quot;machine-checked&quot; claim · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="./" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">LIVE</span></div>
+    <h1 class="title">Lean provenance — the pinned proof base behind every &quot;machine-checked&quot; claim</h1>
+    <article><p><strong>Status: LIVE.</strong></p>
+<p><em>This repo&#39;s &quot;machine-checked&quot; story rests on proofs that live in a separate repo, <code>systems-science-foundations</code> (SSF). This document is the pin: the exact SSF commit the current claims refer to, a per-claim map from each claim to the Lean declaration that proves it, and the commands an auditor starting from this repo alone runs to check every one. It is the provenance complement to <a href="https://github.com/halcyonic-systems/facets/blob/main/spec/LENS_ENTRY_SPEC.md"><code>spec/LENS_ENTRY_SPEC.md</code></a> §D&#39;s extraction half (issue <a href="https://github.com/halcyonic-systems/facets/issues/24">#24</a>): §D says how the truth-table fixture and oracle are produced from SSF; this doc says which SSF, at which commit, and how to audit it. Issues <a href="https://github.com/halcyonic-systems/facets/issues/128">#128</a>, <a href="https://github.com/halcyonic-systems/facets/issues/232">#232</a>.</em></p>
+<h2>The pin</h2>
+<!-- BEGIN GENERATED: pin — from docs/lean-manifest.json, `just provenance` --><pre><code>repo:           https://github.com/halcyonic-systems/systems-science-foundations
+pinned-commit:  71a7883b3bbe15b91ad137b81bb80a77915e0da1
+pinned-date:    2026-07-20
+lean-toolchain: leanprover/lean4:v4.28.0  (SSF&#39;s lean-toolchain file at the pin)
+</code></pre>
+<p><strong>Staleness budget.</strong> Pinned at <code>71a7883</code>; SSF HEAD replayed 2026-07-26 at <code>dbf4524</code>, <strong>24 commits ahead</strong>; the delta was reviewed declaration by declaration. Drift that touches a claim in the tables below:</p>
+<ul>
+<li><strong>One material addition: <code>MobusSystem.interfaces_carry_flow</code></strong> (SSF #31, proven non-redundant in SSF #35). At the pin, <code>MobusSystem</code> carries five coherence constraints; at HEAD it carries six. Every claim in the tables below still holds — no theorem weakened, <code>Kernel.toMobus</code> discharges the new field — but <em>the pinned description of the 8-tuple contract under-reports it by one constraint</em>, and any statement that the constraints contain no interface ⇒ flow requirement is <strong>false at HEAD</strong>, not merely stale. Corrected in <code>design/lens-palettes.md</code> §Q2.</li>
+<li><code>Systems/Category/</code> — the categorification machinery, including the eight faithfulness theorems and the maximality repair — <strong>did not exist at the pin</strong> and is outside this repo&#39;s citation set. See the K≅2 scope fence below.</li>
+<li><code>Systems/Mobus/Lifecycle.lean</code>, <code>Systems/Mobus/Interface.lean</code>, <code>Systems/Dynamics/Transition.lean</code> are new at HEAD. This repo cites none of them.</li>
+<li>No symbol in the tables below was renamed, deleted, or changed kind between the pin and HEAD (Gate B, run 2026-07-26).</li>
+</ul>
+<p>Next replay due 2026-08-26. This paragraph is the budget: the pin is allowed to be behind, and is not allowed to be behind <em>silently</em>. Gate B (below) fails when a manifest symbol stops resolving at HEAD, which is the trigger to replay and rewrite this paragraph.</p>
+<!-- END GENERATED: pin --><h2>How these citations are kept true</h2>
+<p>The tables below are <strong>generated</strong> from <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/lean-manifest.json"><code>lean-manifest.json</code></a>, which holds one machine-readable row per claim: <code>{claim_id, ssf_symbol, declared_kind, file}</code>. Prose elsewhere in this repo cites a <code>claim_id</code> and nothing else. Nobody hand-edits a citation string, because hand-editing citation strings is what put <code>externalFlows_within</code> — a field name that exists at no commit of SSF — into a table sitting under a sentence certifying that every citation had been checked. That sentence is gone. What replaces it is two gates on two clocks:</p>
+<ul>
+<li><strong>Gate A — blocking.</strong> <code>python3 scripts/lean_provenance.py resolve</code> checks every manifest symbol against SSF <strong>at the pin</strong>: it must resolve in the file the manifest names, and it must carry the <strong>kind</strong> the manifest declares. Runs in <a href="https://github.com/halcyonic-systems/facets/blob/main/.github/workflows/lean-provenance.yml"><code>.github/workflows/lean-provenance.yml</code></a> on every push and pull request, and in <code>just check</code> whenever an SSF checkout is present. The kind half is the part that earns its keep: it is what fails when a doc says a Rust check &quot;mirrors Lean <strong>theorems</strong>&quot; over predicates that are Lean <code>def</code>s — an overstatement by exactly one type, invisible to any check that only asks whether the name exists.</li>
+<li><strong>Gate B — scheduled, loud, non-blocking.</strong> The same resolution against <strong>SSF HEAD</strong>, weekly, in <a href="https://github.com/halcyonic-systems/facets/blob/main/.github/workflows/lean-provenance-head.yml"><code>.github/workflows/lean-provenance-head.yml</code></a>. It cannot block a merge, because upstream moving is not a defect in a pull request. <strong>A Gate B failure is the unpark trigger issue <a href="https://github.com/halcyonic-systems/facets/issues/127">#127</a> is missing</strong>: it is the event that says the pin must be replayed, the staleness paragraph rewritten, and any affected claim repaired — same day, per the citation law in <code>transition.rs</code> (<em>a citation must never outlive its referent</em>).</li>
+</ul>
+<p><strong>What resolution does and does not establish, stated plainly.</strong> The gate parses Lean <em>source text</em>: it tracks <code>namespace</code>/<code>end</code> to compute each declaration&#39;s full name and reads <code>structure</code> bodies for field names. It does not elaborate Lean. Passing Gate A means every cited symbol exists, in the named file, declared with the stated keyword. It does <strong>not</strong> mean the proofs compile, that they are sorry-free, or that they say what the &quot;What the Lean gives&quot; column says they say. Compilation and the zero-sorry property are what <code>lake build</code> and step 3 of the audit path below establish; the semantic reading of each theorem is a human claim, and the <strong>Shape relied on</strong> notes in the tables are where that claim is made explicit rather than smuggled into a summary.</p>
+<p>Two further mechanical checks bind this repo to SSF and run in CI or on any checkout with SSF present:</p>
+<ul>
+<li><code>crates/bert-core/tests/gates_truth_table.rs</code> — Rust gates vs the committed Lean-emitted fixture, every row, both directions.</li>
+<li><code>crates/bert-core/src/transition.rs</code> (<code>lean_citations_resolve_or_skip_gracefully</code>) — every Lean name that module cites must still exist in <code>ViewGeneration.lean</code>.</li>
+</ul>
+<p><strong>Citations are anchored by declaration name, never by line number.</strong> A line number into another repository is not a citation; it is a coincidence with a timestamp (issue <a href="https://github.com/halcyonic-systems/facets/issues/127">#127</a>). The manifest has no field to put one in, which is deliberate. Where a <code>file:line</code> into SSF survives in this repo it is in <code>docs/design/**</code> and <code>docs/archive/**</code> — research and historical documents, outside the LIVE doc set and outside the manifest.</p>
+<h2>Per-claim map</h2>
+<p>Column 1 is the <code>claim_id</code> prose cites. Columns 2–5 are the claim as this repo states it, the SSF file, the declaration(s) <strong>with the Lean keyword each one actually carries</strong>, and what the Lean gives. All paths are relative to the SSF repo root. Declarations live in the <code>Systems</code> namespace unless the row says otherwise.</p>
+<p>Read the <em>kind</em> column adversarially, because it is the column that constrains the prose. A <code>def</code> is a definition — a Rust function that &quot;mirrors&quot; one mirrors a definition and inherits none of its neighbours&#39; proof status. A <code>structure</code> field is a constraint discharged at construction, not a standalone theorem. <code>theorem</code> and <code>lemma</code> are the same declaration in Lean 4 and the gate treats them as interchangeable; where the <em>shape</em> of a statement is what a claim leans on — how many hypotheses, under which instance — the row says so under <strong>Shape relied on</strong>.</p>
+<!-- BEGIN GENERATED: table-kernel-views — from docs/lean-manifest.json, `just provenance` --><h3>The kernel and the three generated views</h3>
+<p>Stated in: <a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a> (&quot;What the kernel actually is&quot;), <a href="https://github.com/halcyonic-systems/facets/blob/main/spec/LENS_ENTRY_SPEC.md"><code>spec/LENS_ENTRY_SPEC.md</code></a> §A/§C, <code>README.md</code>, <code>crates/bert-core/src/transition.rs</code> header table.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Claim</th>
+<th>SSF file</th>
+<th>Declaration(s) — <em>kind</em></th>
+<th>What the Lean gives</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>kernel.object</code></td>
+<td>The kernel is Klir&#39;s <code>(T, R)</code> plus on-ness — the K ≅ <strong>2</strong> arrow</td>
+<td><code>Systems/Klir/ViewGeneration.lean</code></td>
+<td><code>Kernel</code> — <em>structure</em>, <code>Kernel.things</code> — <em>field</em>, <code>Kernel.dep</code> — <em>field</em>, <code>Kernel.dep_on</code> — <em>field</em></td>
+<td>A definition, not a theorem: <code>dep_on</code> is the field forcing every dependency endpoint to be a thing. This is the structure everything below is generated from.</td>
+</tr>
+<tr>
+<td><code>kernel.klir-free</code></td>
+<td>The Klir view is free, and it round-trips</td>
+<td><code>Systems/Klir/ViewGeneration.lean</code></td>
+<td><code>Kernel.toKlir</code> — <em>def</em>, <code>KlirSystem.toKernel</code> — <em>def</em>, <code>Kernel.toKlir_toKernel</code> — <em>theorem</em>, <code>KlirSystem.toKernel_toKlir</code> — <em>theorem</em></td>
+<td>Generation with no hypothesis (the maps are <code>def</code>s), and both round-trip identities as proved equalities (<code>rfl</code>).</td>
+</tr>
+<tr>
+<td><code>kernel.bunge-gate</code></td>
+<td>Structural entry costs a bond</td>
+<td><code>Systems/Klir/ViewGeneration.lean</code></td>
+<td><code>Kernel.HasBond</code> — <em>def</em>, <code>Kernel.toBunge</code> — <em>def</em></td>
+<td>A kernel whose dependency contains a bonded pair of <em>distinct</em> relata generates a Bunge CES view (Def 1.1: unbonded collection = aggregate). <strong>Shape relied on:</strong> a <code>Prop</code>-valued <code>def</code> used as a hypothesis — <code>toBunge (k) (hb : k.HasBond)</code>. Rust&#39;s <code>check_bond</code> is <strong>strictly stronger than this definition, and the gap is unproved</strong>: <code>HasBond</code> quantifies over relata with no type restriction (the kernel has no composition/environment split), while <code>check_bond</code> additionally requires both endpoints to be `System</td>
+</tr>
+<tr>
+<td><code>kernel.bunge-faithful</code></td>
+<td>The Bunge view is faithful</td>
+<td><code>Systems/Klir/ViewGeneration.lean</code></td>
+<td><code>Kernel.toBunge_toKlir</code> — <em>theorem</em>, <code>Kernel.toBunge_injective</code> — <em>theorem</em>, <code>Kernel.toBunge_isClosed</code> — <em>theorem</em></td>
+<td>Projecting the generated view back fixes the kernel; distinct kernels generate distinct views; the generated system is closed.</td>
+</tr>
+<tr>
+<td><code>kernel.mobus-gate</code></td>
+<td>Operational entry costs irreflexivity</td>
+<td><code>Systems/Klir/ViewGeneration.lean</code></td>
+<td><code>Kernel.Irreflexive</code> — <em>def</em>, <code>Kernel.toFlowNetwork</code> — <em>def</em>, <code>Kernel.toMobus</code> — <em>def</em></td>
+<td>A kernel with no self-dependency (§4.3, k ≠ o) generates a Mobus view via its flow network. <strong>Shape relied on:</strong> as above — a <code>Prop</code>-valued <code>def</code> consumed as a hypothesis, <code>toMobus (k) (hi : k.Irreflexive)</code>. <code>check_self_loops</code> mirrors the <strong>definition</strong>.</td>
+</tr>
+<tr>
+<td><code>kernel.mobus-faithful</code></td>
+<td>The Mobus view is faithful</td>
+<td><code>Systems/Klir/ViewGeneration.lean</code></td>
+<td><code>Kernel.toMobus_totalRelation</code> — <em>theorem</em>, <code>Kernel.toMobus_toKlir</code> — <em>theorem</em>, <code>Kernel.toMobus_injective</code> — <em>theorem</em></td>
+<td>The generated view&#39;s total relation is exactly <code>dep</code>; projection fixes the kernel; distinct kernels generate distinct views.</td>
+</tr>
+<tr>
+<td><code>kernel.one-composite</code></td>
+<td>Exactly one composite is proven</td>
+<td><code>Systems/Klir/ViewGeneration.lean</code></td>
+<td><code>Kernel.toMobus_toBunge</code> — <em>theorem</em>, <code>Kernel.DepActs</code> — <em>def</em>, <code>Kernel.toFlowNetwork_inducesAction</code> — <em>theorem</em>, <code>Kernel.toFlowNetwork_edges_nonempty</code> — <em>theorem</em></td>
+<td>When all three hold, generating Mobus then projecting to Bunge equals generating Bunge directly — the commuting triangle with the kernel at the apex. <strong>Shape relied on:</strong> a proved implication under <strong>three</strong> hypotheses — <code>HasBond</code>, <code>Irreflexive</code>, and <code>DepActs</code>. Drop any one and the triangle is not claimed; this is where a hostile reader pushes, so the hypotheses are named here rather than summarized as &quot;both preconditions&quot;.</td>
+</tr>
+<tr>
+<td><code>kernel.gates-independent</code></td>
+<td><code>HasBond</code> and <code>Irreflexive</code> are independent — parallel lenses, no tower</td>
+<td><code>Systems/Klir/GatesTruthTable.lean</code></td>
+<td><em>(none — negative claim; see below)</em></td>
+<td><code>fixtures/gates_truth_table.json</code> (this repo) contains rows passing each gate while failing the other — <code>n=2, dep=[[0,1],[1,1]]</code> bonded-but-reflexive; <code>n=1, dep=[]</code> irreflexive-but-unbonded — and those rows report the real predicates via the <code>_iff</code> bridges in <code>gates.iff-bridges</code>. <strong>Shape relied on:</strong> <strong>a negative claim, checked by exhibition, not by a theorem.</strong> No entailment theorem exists in either direction, by design; nothing here is proven, and this row must never be cited as proof of independence.</td>
+</tr>
+</tbody></table>
+<!-- END GENERATED: table-kernel-views --><!-- BEGIN GENERATED: table-gates — from docs/lean-manifest.json, `just provenance` --><h3>The truth-table and oracle bindings (spec §D)</h3>
+<p>Stated in: <a href="https://github.com/halcyonic-systems/facets/blob/main/spec/LENS_ENTRY_SPEC.md"><code>spec/LENS_ENTRY_SPEC.md</code></a> §C–§D, <code>fixtures/gates_truth_table.json</code> (<code>_generator</code>), <code>crates/bert-core/tests/gates_truth_table.rs</code>, <code>crates/bert-core/tests/gates_oracle.rs</code>.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Claim</th>
+<th>SSF file</th>
+<th>Declaration(s) — <em>kind</em></th>
+<th>What the Lean gives</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>gates.iff-bridges</code></td>
+<td>The fixture&#39;s gate booleans report the real ViewGeneration predicates, not look-alikes</td>
+<td><code>Systems/Klir/GatesTruthTable.lean</code></td>
+<td><code>GatesTruthTable.hasBondB_iff</code> — <em>theorem</em>, <code>GatesTruthTable.irreflexiveB_iff</code> — <em>theorem</em></td>
+<td><code>hasBondB D = true ↔ (kernelOf D).HasBond</code> and <code>irreflexiveB D = true ↔ (kernelOf D).Irreflexive</code>. <strong>Shape relied on:</strong> two proved bi-implications. <code>hasBondB_iff</code> holds <strong>under the total <code>ActsOn</code> instance</strong> (the pinning of spec §C) — it is not instance-independent, and citing it without that hypothesis overstates it.</td>
+</tr>
+<tr>
+<td><code>gates.one-definition-site</code></td>
+<td>Fixture and oracle evaluate the SAME declarations</td>
+<td><code>Systems/Klir/Gates.lean</code></td>
+<td><code>GatesTruthTable.hasBondB</code> — <em>def</em>, <code>GatesTruthTable.irreflexiveB</code> — <em>def</em>, <code>GatesTruthTable.ModeVerdicts</code> — <em>structure</em>, <code>GatesTruthTable.modesOf</code> — <em>def</em></td>
+<td>One definition site for the boolean gates and the mode-verdict map both emitters import, so fixture and oracle cannot disagree with each other. Definitions, not theorems — the agreement is structural, not proved.</td>
+</tr>
+<tr>
+<td><code>gates.fixture-emitted</code></td>
+<td>The fixture is Lean-emitted, not hand-written</td>
+<td><code>Systems/Klir/GatesTruthTable.lean</code></td>
+<td><code>GatesTruthTable.fixtureJson</code> — <em>def</em>, <code>GatesTruthTable.emit</code> — <em>def</em>, <code>main</code> — <em>def</em></td>
+<td>The enumerator over every <code>(T, R)</code> kernel on <code>Fin n</code>, <code>n ≤ 2</code> (19 rows) that prints <code>fixtures/gates_truth_table.json</code> verbatim. (<code>main</code> sits outside the namespace, as an executable entry point.)</td>
+</tr>
+<tr>
+<td><code>gates.oracle</code></td>
+<td>The subprocess oracle exists and speaks the documented contract</td>
+<td><code>Systems/Klir/GatesOracle.lean</code></td>
+<td><code>gates-oracle</code> — <em>lean_exe</em></td>
+<td><code>lake exe gates-oracle</code> evaluates <code>hasBondB</code> / <code>irreflexiveB</code> on arbitrary stdin models — the unbounded cross-check above the fixture&#39;s 19 rows. A build target and a prose contract at the head of <code>GatesOracle.lean</code>, not a theorem.</td>
+</tr>
+</tbody></table>
+<!-- END GENERATED: table-gates --><!-- BEGIN GENERATED: table-bond-tuple — from docs/lean-manifest.json, `just provenance` --><h3>Bond semantics and the Mobus tuple</h3>
+<p>Stated in: <a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a> (Bunge and Mobus sections), <code>crates/bert-canvas/src/lenses.rs</code> (bond criterion), this repo&#39;s <code>CLAUDE.md</code> §&quot;Semantic authority&quot;. Tuple slot attribution is the terminology concordance&#39;s job (<a href="./language/terminology-concordance.html"><code>language/terminology-concordance.md</code></a>, row 1); this table maps only claim → proof.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Claim</th>
+<th>SSF file</th>
+<th>Declaration(s) — <em>kind</em></th>
+<th>What the Lean gives</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>bond.criterion</code></td>
+<td>&quot;A flow that modifies history is a bond&quot; — the bond criterion the kernel validates against</td>
+<td><code>Systems/Mobus/Bridge.lean</code></td>
+<td><code>FlowInducesAction</code> — <em>def</em></td>
+<td>The predicate connecting a flow network to action pairs — the semantic side <code>check_bond</code>&#39;s syntactic test is pinned to. A definition; nothing here proves that an author&#39;s <code>is_bond</code> declaration is <em>true</em> of the modeled world.</td>
+</tr>
+<tr>
+<td><code>bond.acts-on</code></td>
+<td>Bondhood is action both ways</td>
+<td><code>Systems/Core/Bond.lean</code></td>
+<td><code>ActsOn</code> — <em>class</em>, <code>Bonded</code> — <em>def</em></td>
+<td>The action typeclass and the bonded-pair predicate <code>HasBond</code> quantifies over.</td>
+</tr>
+<tr>
+<td><code>tuple.structure</code></td>
+<td>The tuple is a structure with E first-class, components and environment disjoint</td>
+<td><code>Systems/Mobus/Tuple.lean</code></td>
+<td><code>MobusSystem</code> — <em>structure</em>, <code>MobusSystem.environment</code> — <em>field</em>, <code>MobusSystem.disjoint</code> — <em>field</em>, <code>MobusSystem.bipartite</code> — <em>field</em>, <code>MobusSystem.externalFlows_nodes</code> — <em>field</em></td>
+<td>The machine-checked tuple (concordance row 1: E first-class is a Lean improvement over the printed 7-tuple); environment is a field, not an afterthought, and cannot overlap components. <strong>Shape relied on:</strong> a <code>structure</code> whose coherence constraints are <strong>fields</strong>, discharged at construction — not standalone theorems. The named fields are the ones this repo relies on; <strong>the list is not an enumeration of the tuple&#39;s constraints</strong>, which is why the post-pin sixth constraint (<code>interfaces_carry_flow</code>) leaves every claim here intact.</td>
+</tr>
+<tr>
+<td><code>tuple.boundary</code></td>
+<td>Boundary completeness and the total relation</td>
+<td><code>Systems/Mobus/Tuple.lean</code></td>
+<td><code>MobusSystem.boundaryComplete</code> — <em>theorem</em>, <code>MobusSystem.totalRelation</code> — <em>def</em>, <code>MobusSystem.totalRelation_on</code> — <em>theorem</em>, <code>MobusSystem.internal_edges_in_components</code> — <em>theorem</em></td>
+<td>Every external flow crosses the boundary at an interface (<strong>derived</strong> from the bipartite field, not assumed); the system&#39;s total relation stays on its own furniture; internal edges connect components only.</td>
+</tr>
+</tbody></table>
+<!-- END GENERATED: table-bond-tuple --><!-- BEGIN GENERATED: table-decomposition — from docs/lean-manifest.json, `just provenance` --><h3>The decomposition seam (bert-lenses#89)</h3>
+<p>Stated in: <code>crates/bert-core/src/decomposition.rs</code> (header transcription table — the Rust check is a literal transcription, row by row), <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/decomposition-foundations.md"><code>design/decomposition-foundations.md</code></a>.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Claim</th>
+<th>SSF file</th>
+<th>Declaration(s) — <em>kind</em></th>
+<th>What the Lean gives</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>decomp.contract</code></td>
+<td>The boundary contract is the eight fields of a structure, not prose</td>
+<td><code>Systems/Core/Decomposition.lean</code></td>
+<td><code>Decomposition</code> — <em>structure</em>, <code>Decomposition.comp_mem</code> — <em>field</em>, <code>Decomposition.βsrc</code> — <em>field</em>, <code>Decomposition.βsnk</code> — <em>field</em>, <code>Decomposition.src_preserves_kind</code> — <em>field</em>, <code>Decomposition.snk_preserves_kind</code> — <em>field</em>, <code>Decomposition.src_lands</code> — <em>field</em>, <code>Decomposition.snk_lands</code> — <em>field</em>, <code>Decomposition.derived_env</code> — <em>field</em>, <code>inflows</code> — <em>def</em>, <code>outflows</code> — <em>def</em>, <code>childSources</code> — <em>def</em>, <code>childSinks</code> — <em>def</em></td>
+<td>Child sources/sinks biject with the component&#39;s inflows/outflows, kind-preserving, landing on interfaces, with <code>E′</code> derived as the parent&#39;s interior neighborhood — the contract <code>check_decomposition</code> transcribes. <strong>Shape relied on:</strong> the count <em>eight</em> is a closed enumeration of this structure&#39;s constraint fields, and Gate A holds it closed: adding a ninth field upstream does not fail resolution, so <strong>this row&#39;s count is re-checked by hand at each replay</strong> (the one number the gate cannot defend).</td>
+</tr>
+<tr>
+<td><code>decomp.seam</code></td>
+<td>The seam is sound</td>
+<td><code>Systems/Core/Decomposition.lean</code></td>
+<td><code>Decomposition.seam</code> — <em>def</em>, <code>Decomposition.seam_bijective</code> — <em>theorem</em>, <code>Decomposition.inflow_continues</code> — <em>theorem</em>, <code>Decomposition.outflow_continues</code> — <em>theorem</em>, <code>Decomposition.seam_preserves_kind</code> — <em>theorem</em></td>
+<td>The combined source+sink correspondence is a bijection; every parent boundary flow continues into the child with its substance kind intact.</td>
+</tr>
+<tr>
+<td><code>decomp.substitution</code></td>
+<td>Substitution is sound; depth-1 assembly is well-formed</td>
+<td><code>Systems/Core/Decomposition.lean</code></td>
+<td><code>Decomposition.substitution_sound</code> — <em>theorem</em>, <code>assembleDepth1</code> — <em>def</em>, <code>assembleDepth1_wellFormed</code> — <em>theorem</em>, <code>decompose_one_wellFormed</code> — <em>theorem</em></td>
+<td>Replacing the component by its child preserves the contract&#39;s guarantees; the depth-1 assembly of a decomposed model is itself a well-formed tuple.</td>
+</tr>
+</tbody></table>
+<!-- END GENERATED: table-decomposition --><h3>Prose references (not proofs)</h3>
+<ul>
+<li><code>docs/reference/system-type-typologies.md</code> (SSF) — the author-grounded typology behind the asserted <code>system_type</code> metadata (<a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a> §&quot;Asserted system type&quot;). A document, not a Lean artifact: cite it as scholarship, not as machine-checked. It carries no manifest row, because there is no symbol to resolve.</li>
+</ul>
+<h2>The K ≅ 2 scope fence</h2>
+<p>&quot;K≅2&quot; appears in forty-odd places in this repo. It is a conjunction, and <strong>this repo depends on one conjunct only</strong>. Saying which is not pedantry: the tool is named for the thesis, the other conjunct was the headline claim in the wider research program, and the repair to it is days old.</p>
+<ul>
+<li><strong>Existence — what this repo rests on, and what the tables above are about.</strong> One kernel object, <code>(T, R)</code> under <code>ActsOn</code>, generates faithful Klir, Bunge and Mobus views by proved maps; the two gated entries have named preconditions and the one composite has three named hypotheses (<code>kernel.klir-free</code>, <code>kernel.bunge-faithful</code>, <code>kernel.mobus-faithful</code>, <code>kernel.one-composite</code>). Every claim this instrument makes about lenses is a claim about <em>those</em> generations.</li>
+<li><strong>Maximality — not relied on here, and false in its headline form.</strong> The claim that nothing larger than the single arrow is shared across the traditions <strong>is false as stated</strong>, and has a machine-checked counterexample: <code>free_category_maximality_fails</code> in SSF&#39;s <code>Systems/Category/SharedPrimitive.lean</code>. Compared as free categories, a three-object fork embeds into every tradition because every path is a morphism, so it enters through a composite no tradition asserts. The repaired statement is <strong>quiver-level</strong> — the only dependency all the encoded traditions <em>directly assert</em> is one. The pigeonhole lemma is not a maximality proof and must not be cited as one.</li>
+<li><strong>Why this repo is clean of the refuted claim, and why that is luck rather than hygiene.</strong> The whole <code>Systems/Category/</code> machinery — the faithfulness theorems, the maximality repair, and the counterexample — <strong>did not exist at the pin</strong> and appears in no manifest row. This repo never made the maximality claim because it never had the vocabulary to make it. Silence is not neutrality, so: it is not claimed, it is not needed, and if a future doc reaches for it, the quiver-level statement is the only form available.</li>
+</ul>
+<h2>The audit path</h2>
+<p>Starting from this repo alone, with <code>git</code>, <code>curl</code>-less patience, and the Lean toolchain manager (<code>elan</code>):</p>
+<pre><code class="language-bash"># 0. The gates, from this repo, before touching Lean at all. Gate A resolves
+#    every manifest symbol (name AND kind) at the pin; `check` proves the tables
+#    above were generated from the manifest and not hand-edited since.
+python3 scripts/lean_provenance.py check
+python3 scripts/lean_provenance.py resolve                    # Gate A, at the pin
+python3 scripts/lean_provenance.py resolve --rev origin/main \
+  --label &quot;Gate B (SSF HEAD)&quot;                                 # Gate B, at HEAD
+
+# 1. Fetch SSF at the pin (beside this repo — the default location the tests probe)
+git clone https://github.com/halcyonic-systems/systems-science-foundations.git
+cd systems-science-foundations
+git checkout 71a7883b3bbe15b91ad137b81bb80a77915e0da1
+
+# 2. Build every proof. elan reads lean-toolchain (v4.28.0) automatically.
+#    `lake build` compiles the whole Systems library AND the gates-oracle
+#    executable; any broken or missing proof is a hard build failure.
+lake exe cache get   # pre-built mathlib (hours → minutes)
+lake build
+
+# 3. Zero-sorry check: no cited proof may be a stub.
+grep -rn &quot;sorry&quot; Systems/ &amp;&amp; echo &quot;FAIL: sorry found&quot; || echo &quot;OK: zero sorries&quot;
+
+# 4. Per-claim existence, kernel-checked rather than text-matched. Gate A&#39;s parse
+#    catches a rename; this is what establishes the axiom footprint:
+echo &#39;import Systems.Klir.ViewGeneration
+#print axioms Systems.Kernel.toMobus_toBunge&#39; | lake env lean --stdin
+#    → prints the axiom footprint (propext/Quot.sound/Classical.choice at most);
+#      `sorryAx` in the output would mean an unsound stub. SSF ships
+#      scripts/axiom-profile.sh to run this over its headline theorems.
+
+# 5. Cross-check the committed fixture is what the pinned Lean emits (spec §D):
+lake env lean --run Systems/Klir/GatesTruthTable.lean \
+  | diff - ../bert-lenses/fixtures/gates_truth_table.json &amp;&amp; echo &quot;fixture matches pin&quot;
+
+# 6. Run the Rust-side bindings against the pinned checkout (from bert-lenses):
+cd ../bert-lenses
+cargo test -p bert-core --test gates_truth_table          # fixture rows
+SSF_DIR=../systems-science-foundations \
+  cargo test -p bert-core --test gates_oracle             # the live oracle
+cargo test -p bert-core transition                        # includes lean_citations_resolve
+</code></pre>
+<p>Step 0 needs no Lean toolchain and no SSF build, only an SSF checkout. Steps 1–4 need no part of this repo; steps 5–6 close the loop back into it. If SSF is checked out at the default sibling path, steps 5–6&#39;s tests find it without any env var, and the citation-drift gate in <code>transition.rs</code> runs on every <code>cargo test --workspace</code> instead of skipping.</p>
+<h2>Update discipline — when the pin moves</h2>
+<p>The pin, the manifest, and the fixture move <strong>together</strong>, never separately. Advancing to a new SSF commit is one atomic change:</p>
+<ol>
+<li>Check out the new SSF commit; <code>lake build</code> must pass there.</li>
+<li>Regenerate the fixture with the <code>_generator.command</code> recorded inside it (spec §D): <code>lake env lean --run Systems/Klir/GatesTruthTable.lean &gt; ../bert-lenses/fixtures/gates_truth_table.json</code>. Commit the diff (or its absence).</li>
+<li>Re-run the audit path steps 3–6 against the new checkout — in particular the oracle test with <code>SSF_DIR</code> pointed at it, and <code>lean_citations_resolve</code>.</li>
+<li>Update <code>pin</code> <strong>and</strong> <code>staleness</code> in <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/lean-manifest.json"><code>lean-manifest.json</code></a>: the new commit and date, the replay date, the new commits-ahead count, and the material-delta list rewritten to say what actually changed. An empty delta list is a claim in its own right — write it only after reading the diff.</li>
+<li><code>python3 scripts/lean_provenance.py render</code>, then <code>resolve</code>. Both must pass before the commit. Nothing else in this repo restates the pin hash.</li>
+<li>Read the diff for <strong>additions to structures this repo describes</strong>. Gate A cannot catch these: a new field upstream breaks no citation, but it can falsify a <em>closed enumeration</em> in prose — a sentence saying &quot;the constraints are…&quot;, or worse, &quot;there is no such constraint&quot;. That is how <code>interfaces_carry_flow</code> turned a sentence in <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/lens-palettes.md"><code>design/lens-palettes.md</code></a> from stale into false. Closed counts are flagged under <strong>Shape relied on</strong> in the tables and re-checked by hand at every replay.</li>
+</ol>
+<p>A PR that regenerates the fixture without moving this pin, moves this pin without re-running the fixture diff, or edits a generated table without editing the manifest, is incomplete by definition.</p>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/lean-provenance.md">Source · docs/lean-provenance.md</a>
+      <span>Rendered from 0bb7de4</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

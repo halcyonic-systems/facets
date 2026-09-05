@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SL — The bert-lenses System Language, v1.0 · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="../">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="../" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">LIVE</span></div>
+    <h1 class="title">SL — The bert-lenses System Language, v1.0</h1>
+    <article><p><strong>Status: LIVE.</strong> Normative, and specified from the working implementation (2026-07-18). Parser and serializer: <code>crates/bert-canvas/src/sl.rs</code>. Boundary: <code>compile_sl</code> / <code>emit_sl</code> (<code>crates/bert-lenses-kernel/API.md</code>, &quot;SL surface&quot;). Round-trip goldens: <code>crates/bert-canvas/tests/sl_roundtrip.rs</code> over <code>fixtures/sl/</code>. Design rationale and precedent research: <code>docs/design/sl2-authoring-language.md</code>. Issue: #82.</p>
+<p>SL is a human-writable textual notation that compiles deterministically into a bert-lenses model. It is the third concrete syntax over the one neutral abstract spec the repo already holds — the canvas authors it by gesture, JSON serializes it, SL writes it as text. This document specifies the v1.0 language: its lexicon, grammar, semantics, the annotation layer, the round-trip contract, and the structure/dynamics boundary. Three worked examples (the golden corpus) and a lineage section close it.</p>
+<hr>
+<h2>1. Design commitments</h2>
+<p><em>Status: normative.</em> Each commitment is enforced by the implementation, and binds any second implementer of this core (germen already implements it).</p>
+<p>Five commitments govern every rule below. Each is enforced by the implementation, not merely stated.</p>
+<p><strong>C1 — The compile step is a compiler, never an LLM.</strong> <code>parse_sl</code> is a deterministic function of the text: same input, same model, every run. An LLM may help a human <em>write</em> SL (<code>docs/design/llm-integration-research.md</code>), but nothing between the text and the model interprets, guesses, or smooths. The negative control is gpt-jargon, where the LLM <em>is</em> the interpreter on every run; SL is precisely not that.</p>
+<p><strong>C2 — The parser judges nothing about systemhood.</strong> SL&#39;s parser enforces only lexical and referential rules (tokens, declare-before-use, unique names). Legality — whether the described structure is a <em>system</em> under a lens — is the kernel&#39;s verdict, reached the same way canvas gestures reach it: the compiled <code>CanvasModel</code> flows through <code>analyze_canvas</code>, which projects and runs <code>validate_mode</code>. This is Mobus&#39;s own syntax doctrine operationalized: &quot;The structure of a system being described is governed by the mathematical definition… Everything is determined a priori by the ontological commitments&quot; (Ch. 4 §4.4.1.3). SL has no free grammar to enforce; structural legality <em>is</em> the syntax, and the kernel owns it.</p>
+<p><strong>C3 — The lexicon is the kernel&#39;s vocabulary, nothing more.</strong> A word earns a place in SL only if it names a distinction the neutral spec already carries (§3). Nothing in the language is programming-language furniture: no expressions, no variables, no control flow, no macros. Mobus classifies SL correctly: &quot;SL is a &#39;description&#39; language… different from a typical programming language, which is designed to describe algorithms&quot; (§4.4.1); it &quot;has more in common with… XML&quot; (§4.5). Every SL statement is a declaration, not an instruction.</p>
+<p><strong>C4 — Presentation never contaminates meaning.</strong> Structure lines (§4) carry model content; <code>@</code>-prefixed annotation lines (§6) carry view state — positions, the active lens, an observer&#39;s direction toggle. The parser applies annotations but no systemhood-bearing fact depends on them; a diff of the structure lines shows systems changing, never node drags. One file holds both, annotations last (the Modelica precedent: layout is syntactically present, semantically null).</p>
+<p><strong>C5 — Structure only; dynamics are declared elsewhere, and never as scripts.</strong> SL v1 describes C, N, E, G, B — the structural face. It contains no dynamical syntax and, by design, never an embedded simulator. §8 states this boundary precisely and argues it against Mobus&#39;s own embedded-scripts proposal.</p>
+<h2>2. The neutral spec (compile target)</h2>
+<p><em>Status: normative.</em></p>
+<p>SL compiles to <code>CanvasModel</code> (<code>crates/bert-canvas/src/canvas.rs:165</code>), the editing model all three surfaces share. Its content divides into model content and view state:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Layer</th>
+<th>SL realization</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>things</code> — id, name, <code>role</code> (Component/Environment), optional <code>primitive</code>, <code>interface</code> flag, optional <code>child_model</code> decomposition reference, optional <code>stock_unit</code> declared unit, optional Klir source-system metadata (<code>scale</code>, <code>states</code>, <code>variable_kind</code>)</td>
+<td>model</td>
+<td><code>component</code> / <code>source</code> / <code>sink</code> / <code>environment</code> lines (§4.3)</td>
+</tr>
+<tr>
+<td><code>time_unit</code> — the model&#39;s time-unit symbol</td>
+<td>model</td>
+<td><code>time unit</code> line (§4.8)</td>
+</tr>
+<tr>
+<td><code>klir_level</code> — the declared Klir epistemological level</td>
+<td>model</td>
+<td><code>level</code> line (§4.9)</td>
+</tr>
+<tr>
+<td><code>relations</code> — a, b, name, <code>is_bond</code>, <code>kind</code></td>
+<td>model</td>
+<td><code>flow</code> lines (§4.4)</td>
+</tr>
+<tr>
+<td><code>params</code> / <code>metrics</code> — declared domain names over input knobs and computed readouts (walkthrough #18, #203)</td>
+<td>model</td>
+<td><code>param</code> lines (§4.5), <code>metric</code> lines (§4.6)</td>
+</tr>
+<tr>
+<td><code>boundary</code> — porosity, perceptive_fuzziness</td>
+<td>model</td>
+<td><code>boundary</code> line (§4.7)</td>
+</tr>
+<tr>
+<td><code>system_type</code> — kingdom, genus, domain</td>
+<td>model</td>
+<td><code>system</code> / <code>domain</code> lines (§4.1–4.2)</td>
+</tr>
+<tr>
+<td><code>things[].x, y</code> (pixel positions)</td>
+<td>view</td>
+<td><code>@pos</code> annotations, else auto-layout (§6.1)</td>
+</tr>
+<tr>
+<td><code>lens</code> (active reading)</td>
+<td>view</td>
+<td><code>@lens</code> annotation, else caller-preserved (§6.2)</td>
+</tr>
+<tr>
+<td><code>relations[].klir_directed</code> (observer toggle)</td>
+<td>view</td>
+<td><code>@directed</code> annotations (§6.3)</td>
+</tr>
+</tbody></table>
+<p>The model-content rows are the neutral spec proper; the view rows are the annotation layer. The compiled model is then <em>compiled again</em> by the existing deterministic <code>project()</code> into a <code>WorldModel</code> for validation and the lens palettes — SL adds a surface above an unchanged pipeline.</p>
+<p>A concept-by-concept table setting each SL line beside its canvas gesture, JSON fragment, and kernel referent — &quot;three concrete syntaxes, one neutral spec&quot; made visible rather than asserted — lives in the <a href="../tour.html#the-notation-table">reader&#39;s tour</a> (#95), its single didactic home. The lexicon table (§3) already carries the kernel-referent column that table extends.</p>
+<h2>3. Lexicon</h2>
+<p><em>Status: normative.</em></p>
+<p>Every SL word, with the kernel distinction that licenses it and the tradition(s) that contributed it. There are no other words.</p>
+<p>SL is one unified language: the traditions <em>contributed</em> the words, and the language owns them now, with derivation acknowledged. Attribution is therefore a ledger, not a partition — and it is deliberately <strong>multi-tradition where the traditions converge</strong>. That <code>component</code> is both Bunge&#39;s word (composition C) and Mobus&#39;s (C in the tuple) is not an ambiguity to resolve; it is convergence evidence of exactly the kind the K≅2 program runs on. Rows crediting a single tradition mark a distinction that tradition alone contributed (<code>mere</code> is Bunge&#39;s; the work-process taxonomy is Mobus&#39;s; the observer&#39;s direction toggle is Klir&#39;s). Per-cell primary citations live in the terminology concordance (<a href="./terminology-concordance.html"><code>terminology-concordance.md</code></a>), the SSOT this column summarizes.</p>
+<table>
+<thead>
+<tr>
+<th>Word</th>
+<th>Kernel distinction</th>
+<th>Contributed by</th>
+<th>Kernel referent</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>system</code></td>
+<td>the bounded whole being modeled; optionally names the SOI (v1.1, #84)</td>
+<td>Klir, Bunge, Mobus — the convergence word; the name is Mobus&#39;s SOI · Bunge&#39;s σ · Klir&#39;s S, bound to a proper name</td>
+<td><code>SystemType</code> + <code>CanvasModel.name</code></td>
+</tr>
+<tr>
+<td><code>Conceptual</code>, <code>Concrete</code></td>
+<td>the two kingdoms of systems</td>
+<td>Bunge (Treatise Vol. 4, Post. 6.4)</td>
+<td><code>Kingdom</code></td>
+</tr>
+<tr>
+<td><code>Physical</code>, <code>Chemical</code>, <code>Biological</code>, <code>Social</code>, <code>Technical</code></td>
+<td>the five genera of concrete systems</td>
+<td>Bunge (Post. 6.4); Klir&#39;s §2.4 type-(a) axis lands on nearly the same list</td>
+<td><code>Genus</code></td>
+</tr>
+<tr>
+<td><code>domain</code></td>
+<td>the analyst&#39;s subject-area framing</td>
+<td>Mobus (the generic lexicon translated into domain-specific terms, §4.4)</td>
+<td><code>SystemType.domain</code></td>
+</tr>
+<tr>
+<td><code>component</code></td>
+<td>a thing inside the boundary</td>
+<td><strong>Bunge (composition C) and Mobus (C in the tuple)</strong> — shared; Klir diverges (things/elements)</td>
+<td><code>Role::Component</code></td>
+</tr>
+<tr>
+<td><code>source</code>, <code>sink</code>, <code>environment</code></td>
+<td>a thing outside the boundary</td>
+<td>Mobus (Src/Snk environment objects); <code>environment</code> shared with Bunge (E)</td>
+<td><code>Role::Environment</code> (§5.2 on the three words)</td>
+</tr>
+<tr>
+<td><code>interface</code></td>
+<td>membership in the root membrane&#39;s I (flat I ⊆ C is the Lean&#39;s convention, Tuple.lean; the book makes interfaces components of the <em>boundary subsystem</em> — concordance row 9). The word is a <strong>claim, not a label</strong>: since #213/#225 an interface must carry a boundary-crossing flow or the kernel refuses the model at Operational — see §5.4. <strong>RESOLVED(<a href="https://github.com/halcyonic-systems/facets/issues/226">#226</a>, 2026-08-16)</strong>: the pass-way declares as its own object (<code>interface &quot;Name&quot; [protocol &quot;…&quot;]</code>) and the processor it serves sits inside, associated by an interior flow — the split is the default authoring pattern; the stamped suffix form remains the merged special case for a component that IS a pass-way. No new node sort: both are components, I ⊆ C intact (the split is the <code>InterfaceDecomposition.lean</code> shape, SSF #43)</td>
+<td><strong>Mobus (I in B; Fig 4.10&#39;s interface-serves-a-receiver/exporter-process) and Bunge (&quot;interface points&quot; = i/o terminals ∈ boundary, 1992)</strong> — shared</td>
+<td><code>Thing.interface</code> + <code>Thing.protocol</code></td>
+</tr>
+<tr>
+<td><code>milieu</code></td>
+<td>one ambient condition variable in M — E = ⟨O, M⟩ per the lifecycle working paper (2026 oct-tuple revision; the Lean core carries the slot, <code>MobusEnvironment.milieu</code>, and proves the Mobus→Bunge projection discards it). Variables &quot;surround or &#39;bathe&#39; the system&quot; and need no interface: a milieu line takes no flows and no position — the absence of edges IS the ontology. <code>value</code> declares a snapshot of the condition (<code>milieu pH value 7.2</code>); nothing dynamical reads it, deliberately (the paper marks that coupling an open research area)</td>
+<td>Mobus (lifecycle paper, M in E)</td>
+<td><code>CanvasModel.milieu</code> / <code>Environment.milieu</code> (<code>MilieuVariable</code>)</td>
+</tr>
+<tr>
+<td><code>usability</code> + one of <code>Resource</code>, <code>Disruption</code>, <code>Product</code>, <code>Waste</code></td>
+<td>what a boundary crossing IS to the system — a 2×2 of direction against value: useful in, harmful in, useful out, harmful out (v1.4, #331). The kernel has carried <code>InteractionUsability</code> from its first version; <code>project()</code> hardcoded every flow to <code>Resource</code>, so the distinction was unauthorable and a model needing it had to assert it in a comment. Undeclared is UNDECLARED, never <code>Resource</code> — only projection supplies the default</td>
+<td>Mobus (resources in, products and wastes out — ch. 10&#39;s archetypes, ch. 12&#39;s tactical coordination)</td>
+<td><code>Relation.usability</code> → <code>Interaction.usability</code></td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>prose about a thing or a flow, in the author&#39;s own words — restored in v1.4 (#326) after the rebuild dropped what the original BERT carried on every entity. <strong>Never semantics</strong>: no verdict reads it, and two models differing only here are the same system. It projects into <code>Info.description</code>, a bert-core field that existed from the start and received an empty string until this clause reached it</td>
+<td>house word; the DISTINCTION is old-bert&#39;s, and the destination field is bert-core&#39;s</td>
+<td><code>Thing.description</code> / <code>Relation.description</code> → <code>Info.description</code></td>
+</tr>
+<tr>
+<td><code>primitive</code> + one of <code>Combining</code>, <code>Splitting</code>, <code>Buffering</code>, <code>Impeding</code>, <code>Propelling</code>, <code>Copying</code>, <code>Sensing</code>, <code>Modulating</code>, <code>Amplifying</code>, <code>Inverting</code></td>
+<td>the work-process taxonomy</td>
+<td>Mobus</td>
+<td><code>ProcessPrimitive</code></td>
+</tr>
+<tr>
+<td><code>decomposes</code></td>
+<td>a component carries a child model that realizes it, gated by the boundary contract (β)</td>
+<td><strong>Mobus (Eq. 4.3, the word&#39;s primary source) and Bunge (every system a component of its next supersystem)</strong> — shared; Klir least (his hierarchy is epistemological levels, not part-whole)</td>
+<td><code>System.child_model</code> (<code>ModelRef</code>), checked by <code>decomposition::check_decomposition</code></td>
+</tr>
+<tr>
+<td><code>flow</code></td>
+<td>a drawn connection (edge in N or G)</td>
+<td>word: Mobus; the underlying relation is three-tradition (Klir dependency, Bunge connection/bond, Mobus flow)</td>
+<td><code>Relation</code></td>
+</tr>
+<tr>
+<td><code>-&gt;</code></td>
+<td>direction (from, to)</td>
+<td>Mobus (flows carry direction); contrast the observer&#39;s <code>@directed</code></td>
+<td><code>Relation.a</code> / <code>.b</code></td>
+</tr>
+<tr>
+<td><code>energy</code>, <code>matter</code>, <code>field</code>, <code>informational</code></td>
+<td>the connection-kind taxonomy</td>
+<td>Bunge, <strong>verbatim</strong> (&quot;flows — of energy, matter, or fields … informational&quot;, CES 1979), mapping 1:1 onto Mobus substances (Material/Energy/Message; <code>canvas.rs:64</code>)</td>
+<td><code>Kind</code> (the fifth value, <code>Unspecified</code>, is the <em>absence</em> of the clause)</td>
+</tr>
+<tr>
+<td><code>mere</code></td>
+<td>bond vs mere-relation (B vs B̄)</td>
+<td>Bunge</td>
+<td><code>Relation.is_bond = false</code></td>
+</tr>
+<tr>
+<td><code>ample</code></td>
+<td>availability assertion on an informational flow — present, never binding; no magnitude (#9)</td>
+<td>Mobus (Amplifying&#39;s min-selection, §Fig 3.19 signal+power semantics); the word is the model&#39;s, discovered by llm-market</td>
+<td><code>Interaction::ample</code></td>
+</tr>
+<tr>
+<td><code>substance</code></td>
+<td>what flows, named apart from what the flow is <em>called</em> — &quot;F-1.1 — iron-input&quot; is a label, <code>iron</code> is a substance (#216, C4)</td>
+<td>Mobus (substances are what work processes transform); Bunge&#39;s flows are &quot;of&quot; something by construction</td>
+<td><code>Relation.substance</code> → <code>Substance.sub_type</code></td>
+</tr>
+<tr>
+<td><code>amount</code></td>
+<td>the flow&#39;s magnitude per Δt — a structural attribute of the edge (it does not vary during a run), whose absence capped every SL model at rate 1.0 (#216, C1). A non-positive value is a parse fault; on a <code>mere</code> relation it is a contradiction and refused. Omitted ≠ 1: unauthored survives as its own state, and only projection supplies the kernel default</td>
+<td>Mobus (flows carry magnitude — §8.2&#39;s rate field, structural half)</td>
+<td><code>Relation.amount</code> → <code>Interaction.amount</code></td>
+</tr>
+<tr>
+<td><code>unit</code> (flow clause)</td>
+<td>the magnitude&#39;s unit (#216, C1); same word as the <code>time unit</code> header line, disambiguated by position</td>
+<td>Mobus (dimensional bookkeeping on flows)</td>
+<td><code>Relation.unit</code> → <code>Interaction.unit</code></td>
+</tr>
+<tr>
+<td><code>weight</code></td>
+<td>per-transition count for the DTMC read (#67) — a non-negative integer; absent reads as the uniform 1</td>
+<td>Klir (the directed-system observer&#39;s transition structure); SSF&#39;s <code>kindCodomain .markov</code></td>
+<td><code>Relation.weight</code></td>
+</tr>
+<tr>
+<td><code>boundary</code>, <code>porosity</code>, <code>fuzziness</code></td>
+<td>B&#39;s properties P = ⟨porosity, perceptive_fuzziness⟩</td>
+<td><strong>Mobus (B = ⟨P, I⟩) and Bunge (topological boundary, 1992)</strong> — shared concept; the property words are Mobus&#39;s</td>
+<td><code>CanvasBoundaryProps</code></td>
+</tr>
+<tr>
+<td><code>stock</code></td>
+<td>a Buffering stock&#39;s declared unit — the stock accumulates its inflow over Δt, so its dimension differs from the flow&#39;s and carries its own unit (#76/#94)</td>
+<td>Mobus (stocks/buffers, the Buffering work process); the Stella/Vensim stock-flow convention</td>
+<td><code>Thing.stock_unit</code> → <code>AgentModel.stock_unit</code></td>
+</tr>
+<tr>
+<td><code>initial</code></td>
+<td>the stock&#39;s starting level, welded to the <code>stock</code> clause so a dimensionless initial is unwritable (#112) — the archived reservoir&#39;s fact (&quot;starts with a stock already full&quot;), now sayable; the tether&#39;s t0 observation writes the same field, so an authored initial and a measured one are one kind of fact</td>
+<td>Mobus (a run&#39;s initial condition; the pointed-coalgebra reading, #112 proposal §2.a)</td>
+<td><code>Thing.initial_state[&quot;storage&quot;]</code> → <code>AgentModel.initial_state[&quot;storage&quot;]</code></td>
+</tr>
+<tr>
+<td><code>release</code></td>
+<td>a Buffering stock&#39;s drain per <code>time unit</code> (#112) — the archived homeostat&#39;s fact, now sayable; Buffering-only, since no other primitive reads it. ≤ 0 is a parse fault (same rule as <code>amount</code>)</td>
+<td>Mobus (Buffering&#39;s release behavior); a parameter of the transition map (#112 proposal §2.b)</td>
+<td><code>Thing.cognitive_params[&quot;release_rate&quot;]</code> → <code>AgentModel.cognitive_params[&quot;release_rate&quot;]</code></td>
+</tr>
+<tr>
+<td><code>capacity</code></td>
+<td>a Buffering stock&#39;s overflow ceiling (#112) — the storage clamp: a bounded tank overflows and the excess dissipates (Mobus Fig 3.17). Buffering-only; ≤ 0 is a parse fault</td>
+<td>Mobus (containers have capacity — Ch. 4)</td>
+<td><code>Thing.cognitive_params[&quot;capacity&quot;]</code> → <code>AgentModel.cognitive_params[&quot;capacity&quot;]</code></td>
+</tr>
+<tr>
+<td><code>time constant</code></td>
+<td>a Buffering stock&#39;s first-order drain coefficient τ (#112) — <code>release ≈ stock/τ</code>, an exponential decay in place of the fixed-rate drain. Buffering-only; ≤ 0 is a parse fault; MUTUALLY EXCLUSIVE with <code>release</code> on one component (the engine prefers time_constant whenever both are set, so a co-declared <code>release</code> would never be honored — refused rather than silently overridden). <code>constant</code> is positional (§7.1), sitting behind the already-reserved <code>time</code> head</td>
+<td>Mobus (Fig 4.12&#39;s first-order regulator dynamics)</td>
+<td><code>Thing.cognitive_params[&quot;time_constant&quot;]</code> → <code>AgentModel.cognitive_params[&quot;time_constant&quot;]</code></td>
+</tr>
+<tr>
+<td><code>setpoint</code></td>
+<td>an Inverting comparator&#39;s reference value (#112) — <code>(setpoint − signal).max(0)</code>, Mobus Fig 4.12; the engine&#39;s own default is 1.0 (the bare <code>1 − signal</code>). Inverting-only; ≤ 0 is a parse fault</td>
+<td>Mobus (Fig 4.12, the comparator)</td>
+<td><code>Thing.cognitive_params[&quot;setpoint&quot;]</code> → <code>AgentModel.cognitive_params[&quot;setpoint&quot;]</code></td>
+</tr>
+<tr>
+<td><code>maintenance</code></td>
+<td>a Buffering stock&#39;s per-tick upkeep loss (#112) — Odum&#39;s depreciation outflow, charged from the stock every tick and dissipated (Mobus Fig 3.17: &quot;every store has one&quot;). Buffering-only; ≤ 0 is a parse fault</td>
+<td>Mobus (Fig 3.17, Odum depreciation)</td>
+<td><code>Thing.cognitive_params[&quot;maintenance&quot;]</code> → <code>AgentModel.cognitive_params[&quot;maintenance&quot;]</code></td>
+</tr>
+<tr>
+<td><code>backpressure</code></td>
+<td>a Modulating valve&#39;s throttle flag (#112) — a downstream throttled valve holds its release back rather than shedding it. Bare (no value); Modulating-only</td>
+<td>Mobus (the throttled-valve regulator)</td>
+<td><code>Thing.cognitive_params[&quot;back_pressure&quot;]</code> → <code>AgentModel.cognitive_params[&quot;back_pressure&quot;]</code></td>
+</tr>
+<tr>
+<td><code>scale</code> + one of <code>Nominal</code>, <code>Ordinal</code>, <code>Interval</code>, <code>Ratio</code></td>
+<td>the measurement scale of a variable&#39;s state set — the level at which its values are comparable (v1.2, #154)</td>
+<td>Klir (the source-system characterization of a variable — §4, Table 4.1, the ground floor of his epistemological hierarchy)</td>
+<td><code>Thing.scale</code> (<code>ScaleType</code>) — authored canvas-side metadata, read in the Klir register only; never projects</td>
+</tr>
+<tr>
+<td><code>states</code></td>
+<td>the variable&#39;s state set, in Klir&#39;s set notation — <code>{Green, Red}</code>; <code>{}</code> is the explicit empty set (v1.2, #154)</td>
+<td>Klir (a source-system variable <em>is</em> characterized by its state set — §4, Table 4.1)</td>
+<td><code>Thing.states</code> — same register-only standing as <code>scale</code></td>
+</tr>
+<tr>
+<td><code>kind</code> (thing clause) + one of <code>Basic</code>, <code>Support</code></td>
+<td>the basic-vs-supporting partition of the source variables — a semantic role the modeler declares, never readable off R; omitted reads as <code>Basic</code>, so the clause declares the rare support variable (v1.2, #154)</td>
+<td>Klir (basic variables are the observed quantities; supporting variables encode the support set — time, space, population — §4, Table 4.1)</td>
+<td><code>Thing.variable_kind</code> (<code>KlirVarKind</code>) — same register-only standing as <code>scale</code></td>
+</tr>
+<tr>
+<td><code>time unit</code></td>
+<td>the model&#39;s time-unit symbol — what one Δt is called, so an intrinsic rate integrates in the author&#39;s vocabulary (<code>kW</code> → <code>kW·h</code>, #94)</td>
+<td>Mobus (Δt in the 8-tuple&#39;s time base); the symbol is display vocabulary, never a rescaling</td>
+<td><code>CanvasModel.time_unit</code> → <code>WorldModel.time_unit</code></td>
+</tr>
+<tr>
+<td><code>level</code> + one of <code>Source</code>, <code>Data</code>, <code>Generative</code>, <code>Structure</code>, <code>Metasystem</code></td>
+<td>the model&#39;s declared epistemological level — where on Klir&#39;s hierarchy the author claims this model stands (v1.3, #288). The modeling relation is defined only within a level (§5.4 of <em>Facets</em>), so the declaration is what the cross-level refusal reads; undeclared gates nothing</td>
+<td>Klir (the epistemological hierarchy of systems — §4.5, and §5.4&#39;s &quot;true categories in the sense of category theory&quot;)</td>
+<td><code>CanvasModel.klir_level</code> (<code>KlirLevel</code>) — authored canvas-side metadata, read in the Klir register only; never projects</td>
+</tr>
+<tr>
+<td><code>param</code> (+ <code>shares</code>, <code>range</code>)</td>
+<td>a declared name over an input knob — one flow&#39;s declared amount, or a process&#39;s out-fanout presented as % shares, in the model&#39;s own vocabulary (walkthrough #18). Stores no value: the anchored amount IS the value</td>
+<td>house words (the distinction is the instrument&#39;s: domain names over declared inputs); the amounts themselves are Mobus&#39;s edge attributes (§4.4)</td>
+<td><code>ParamDecl</code> / <code>ParamAnchor</code> — canvas-side; never projects</td>
+</tr>
+<tr>
+<td><code>metric</code> + <code>share of flow</code> / <code>sum into</code></td>
+<td>a declared readout over the run — the output twin of <code>param</code> (#203): <code>share</code> reads composition (one flow as a fraction of its source&#39;s outflow), <code>sum</code> reads throughput (everything arriving at a thing); both evaluate over the recorder&#39;s executed per-flow series, never a free-floating number. The verb set is closed and grows one checkable verb at a time (ADR 0006)</td>
+<td>house words (the distinction is the instrument&#39;s: declared observables over the trace); Mobus&#39;s H supplies the record they read</td>
+<td><code>MetricDecl</code> / <code>MetricExpr</code> — canvas-side; never projects</td>
+</tr>
+<tr>
+<td><code>@pos</code>, <code>@lens</code>, <code>@directed</code></td>
+<td>view state (§6)</td>
+<td><code>@directed</code> is Klir&#39;s observer commitment (Facets Ch. 4); <code>@pos</code>/<code>@lens</code> are house words</td>
+<td><code>x</code>/<code>y</code>, <code>lens</code>, <code>klir_directed</code></td>
+</tr>
+</tbody></table>
+<p>Three absences resolved:</p>
+<ul>
+<li><strong>The system name landed (v1.1, #84 — closed 2026-07-18).</strong> Mobus&#39;s paragraph names its subject (&quot;Process M&quot;, &quot;Steel-Plant&quot;); the kernel gained <code>CanvasModel.name</code> and SL gained <code>system &quot;Name&quot; [: Kingdom[/Genus]]</code> the same day, exactly on the C3 schedule the v1 spec committed to: the word entered the lexicon only once the kernel carried the distinction. The name is a quoted string, projects into the root system&#39;s <code>info.name</code>, and round-trips both ways (concordance row 1, &quot;the named referent&quot;).</li>
+<li><strong>Klir source-system metadata landed (v1.2, #154 — 2026-07-24).</strong> The Klir lens could name a thing and its relations but not <em>characterize its variables</em>: Table 4.1 fixes a variable by its state set, its measurement scale, and its basic-vs-supporting standing, and none of the three had a word. <code>scale</code>, <code>states</code>, and <code>kind</code> entered the lexicon the day the neutral spec gained the three fields (<code>ScaleType</code>, <code>Thing.states</code>, <code>KlirVarKind</code> — the C3 schedule again). Unlike every other thing attribute they ride environment lines too (a revision within #154: Table 4.1 most wants the <em>input</em> variables characterized, and those are frequently the environmental drivers). All three are authored metadata read in the Klir register only — none projects to the kernel, so no systemhood verdict reads them (C2 untouched).</li>
+<li><strong>Decomposition by reference landed (#89 step 4 — merged 2026-07-20).</strong> Mobus&#39;s sub-paragraphs (§4.3.1) needed the kernel to carry the part-whole distinction first; it did once <code>System.child_model</code> (a <code>ModelRef</code>) and the Lean decomposition contract merged (steps 2–3, same day), so <code>decomposes</code> entered the lexicon on exactly the C3 schedule the name waited on — the word earns its place only once the kernel names the distinction. SL takes the <em>reference</em> form (the child is its own flat model, keyed by a stamped id — §4.3, §6 of <code>decomposition-foundations.md</code>), never nested block text: each SL file stays one flat paragraph, the recursion living in the reference index and not the page layout. The block form is the road not taken.</li>
+</ul>
+<h2>4. Grammar</h2>
+<p><em>Status: normative.</em></p>
+<p>SL is line-oriented. A file is a sequence of lines, each independently one of: blank, comment, structure line, or annotation line. In EBNF (terminals case-insensitive for keywords; names case-sensitive):</p>
+<pre><code class="language-ebnf">model       = { line } ;
+line        = blank | comment | structure | annotation ;
+
+structure   = system | domain | timeunit | level | thing | iface | milieuvar | flow | param | metric | boundary ;
+system      = &quot;system&quot; [ string ] [ &quot;:&quot; kingdom [ &quot;/&quot; genus ] ] ;
+domain      = &quot;domain&quot; string ;
+timeunit    = &quot;time&quot; &quot;unit&quot; name ;                     (* the Δt symbol, #94 *)
+level       = &quot;level&quot; levelword ;                      (* the declared Klir level, #288 *)
+thing       = thingword name { attr } ;
+thingword   = &quot;component&quot; | &quot;source&quot; | &quot;sink&quot; | &quot;environment&quot; ;
+iface       = &quot;interface&quot; name [ &quot;protocol&quot; string ]   (* the pass-way as its own object, #226; *)
+              [ &quot;description&quot; string ] ;               (*   resolves the stamped-vs-placed fork *)
+milieuvar   = &quot;milieu&quot; name [ &quot;value&quot; number ]         (* one ambient variable in M — E = ⟨O,M⟩, *)
+              [ &quot;unit&quot; name ]                          (*   lifecycle-paper revision; no flows,  *)
+              [ &quot;description&quot; string ] ;               (*   no position: it bathes, not plugs   *)
+attr        = &quot;interface&quot; [ &quot;protocol&quot; string ]        (* merged form: this component IS the pass-way *)
+            | &quot;primitive&quot; primword
+            | &quot;description&quot; string                     (* prose, #326 *)
+            | &quot;stock&quot; name [ &quot;initial&quot; number ]        (* declared stock unit; starting level, #112 *)
+            | &quot;release&quot; number                         (* Buffering drain per time unit, #112 *)
+            | &quot;capacity&quot; number                        (* Buffering overflow ceiling, #112 *)
+            | &quot;time&quot; &quot;constant&quot; number                 (* Buffering drain coefficient τ, #112 *)
+            | &quot;setpoint&quot; number                         (* Inverting comparator reference, #112 *)
+            | &quot;maintenance&quot; number                      (* Buffering per-tick upkeep loss, #112 *)
+            | &quot;backpressure&quot;                            (* Modulating throttle flag, #112 *)
+            | &quot;scale&quot; scaleword                        (* Klir source-system metadata, #154; *)
+            | &quot;states&quot; &quot;{&quot; [ name { &quot;,&quot; name } ] &quot;}&quot;   (*   these three ride environment    *)
+            | &quot;kind&quot; varkindword                       (*   lines too — §4.3                *)
+            | &quot;decomposes&quot; string modelid ;            (* component lines only *)
+flow        = &quot;flow&quot; name &quot;-&gt;&quot; name [ &quot;:&quot; kindword ] [ string ]
+              [ &quot;substance&quot; name ] [ &quot;amount&quot; decimal | &quot;ample&quot; ] [ &quot;unit&quot; name ]
+              [ &quot;mere&quot; ] [ &quot;weight&quot; integer ]
+              [ &quot;usability&quot; usabilityword ]              (* #331 *)
+              [ &quot;description&quot; string ] ;          (* ample: informational only, no unit *)
+decimal     = nonnegative decimal number ;             (* &quot;1.5&quot;; 0 = arrested supply; negative refused *)
+param       = &quot;param&quot; string &quot;:&quot; &quot;flow&quot; name &quot;-&gt;&quot; name [ string ]
+              [ &quot;range&quot; number &quot;..&quot; number ]           (* walkthrough #18 *)
+            | &quot;param&quot; &quot;shares&quot; string &quot;:&quot; &quot;from&quot; name ;
+metric      = &quot;metric&quot; string &quot;:&quot; &quot;share&quot; &quot;of&quot; &quot;flow&quot; name &quot;-&gt;&quot; name [ string ]
+            | &quot;metric&quot; string &quot;:&quot; &quot;sum&quot; &quot;into&quot; name ;  (* #203; verb set closed, ADR 0006 *)
+boundary    = &quot;boundary&quot; { propword number } ;
+propword    = &quot;porosity&quot; | &quot;fuzziness&quot; ;
+
+annotation  = &quot;@pos&quot; name number number
+            | &quot;@lens&quot; ( &quot;klir&quot; | &quot;bunge&quot; | &quot;mobus&quot; )
+            | &quot;@directed&quot; integer                        (* 1-based flow index *)
+            | &quot;@&quot; word { token } ;                       (* unknown: skipped *)
+
+usabilityword = &quot;Resource&quot; | &quot;Disruption&quot; | &quot;Product&quot; | &quot;Waste&quot; ;
+kingdom     = &quot;Conceptual&quot; | &quot;Concrete&quot; ;
+genus       = &quot;Physical&quot; | &quot;Chemical&quot; | &quot;Biological&quot; | &quot;Social&quot; | &quot;Technical&quot; ;
+kindword    = &quot;energy&quot; | &quot;matter&quot; | &quot;field&quot; | &quot;informational&quot; ;
+primword    = &quot;Combining&quot; | &quot;Splitting&quot; | &quot;Buffering&quot; | &quot;Impeding&quot; | &quot;Propelling&quot;
+            | &quot;Copying&quot; | &quot;Sensing&quot; | &quot;Modulating&quot; | &quot;Amplifying&quot; | &quot;Inverting&quot; ;
+scaleword   = &quot;Nominal&quot; | &quot;Ordinal&quot; | &quot;Interval&quot; | &quot;Ratio&quot; ;
+varkindword = &quot;Basic&quot; | &quot;Support&quot; ;
+levelword   = &quot;Source&quot; | &quot;Data&quot; | &quot;Generative&quot; | &quot;Structure&quot; | &quot;Metasystem&quot; ;
+modelid     = &quot;@&quot; base58                              (* a stamped model id, model_id.rs *) ;
+
+name        = word | string ;
+string      = &#39;&quot;&#39; { any character except &#39;&quot;&#39; and newline } &#39;&quot;&#39; ;
+word        = run of non-whitespace characters excluding &#39;&quot;&#39;, &#39;:&#39;, &#39;#&#39; ;
+comment     = &quot;#&quot; to end of line (outside strings; also trailing) ;
+</code></pre>
+<p>Tokenization: whitespace separates tokens; <code>&quot;…&quot;</code> groups (no escape sequences — a name containing <code>&quot;</code> or a newline is not expressible, §7.3); <code>:</code> is a standalone token; <code>{</code>, <code>}</code>, and <code>,</code> are standalone tokens (the set-literal punctuation, #154); <code>-&gt;</code> is recognized as an arrow; <code>#</code> begins a comment outside strings.</p>
+<h3>4.1 <code>system</code></h3>
+<p>At most one per file. Optionally names the SOI and asserts the modeler&#39;s ontological type: <code>system &quot;Steel-Plant&quot; : Concrete/Technical</code>. The name is a quoted string (never a bare word — the bare token after <code>system</code> is reserved against ambiguity with the type clause) and lands in <code>CanvasModel.name</code>; either part may appear alone (<code>system &quot;Bathtub&quot;</code>, <code>system : Concrete</code>). Kingdom alone is legal; genus alone is not (genus is meaningful only within a kingdom — matching the kernel, where no validator gates <code>system_type</code> at all: it is semantic metadata, not a systemhood verdict). An empty name (<code>system &quot;&quot;</code>) is a parse fault.</p>
+<h3>4.2 <code>domain</code></h3>
+<p>At most one per file. The free-text subject area that frames narration: <code>domain &quot;steel manufacturing&quot;</code>.</p>
+<h3>4.3 Thing lines</h3>
+<p><code>interface &quot;Ore Gate&quot; protocol &quot;graded ore only&quot;</code> declares a pass-way as its own object (#226, resolved 2026-08-16): a component in I with no work-process character of its own. The split authoring pattern routes a crossing flow through it (<code>flow Mine -&gt; &quot;Ore Gate&quot;</code>, <code>flow &quot;Ore Gate&quot; -&gt; Furnace</code>), so the processor the pass-way serves sits inside the boundary and the interface emerges from the act of writing the crossing flow. <code>protocol</code> is the pass-way&#39;s admission rule in the author&#39;s words (#333, Mobus Listing 4.2); it also rides the merged form (<code>component X interface protocol &quot;…&quot;</code>), and <code>protocol</code> without <code>interface</code> is a fault. Emit prefers the split form: an interface-designated component with no primitive, stock, engine params, or child emits as an <code>interface</code> declaration.</p>
+<p><code>component Furnace primitive Combining interface</code> declares a component, optionally designating it a work process of a named primitive kind and/or a member of the boundary interface set — the merged special case for a component that IS a pass-way. <code>source</code> / <code>sink</code> / <code>environment</code> declare environment things; the attribute words are rejected there (environment internals are opaque — Mobus §4.3.3.2.2, mirrored at <code>canvas.rs:84</code>). Names are unique per file; things must be declared before any flow references them.</p>
+<p><code>component Furnace primitive Combining decomposes &quot;furnace-interior&quot; @Hrs6K91KnZZsiPcWzftv8U</code> designates the component as decomposed: it carries a child model that realizes it (<code>System.child_model</code>, the reference form of §6 in <code>decomposition-foundations.md</code> — Option B, the child is its own model). Both halves are mandatory. The quoted string is a human label (it may drift under renames — the toolchain re-stamps, the compiler never resolves it); the <code>@</code>-prefixed token is the child&#39;s stamped model id, base58 per <code>model_id.rs</code>, and is the key. A name with no <code>@id</code> is a fault (<code>unstamped reference — resolve via the library</code>; stamping is later tooling, not the compiler&#39;s job); an id that fails the base58 decoder is a fault; a second <code>decomposes</code> on one line is a fault; <code>decomposes</code> on an environment thing is a fault (its internals are opaque). <code>decomposes</code> and <code>interface</code> on the same component is a fault in v1: the Lean contract covers a component&#39;s internal network only, not flows crossing the parent membrane through an interface component (the gate-open narrowing, #89) — parent-side knowledge the store-free compiler rejects early rather than deferring. <code>decomposes</code> emits last, after <code>primitive</code> and <code>interface</code> (§7.1).</p>
+<p><code>component Battery description &quot;the pack that rides out a cloudy week&quot;</code> declares what the thing IS, in the author&#39;s own words (v1.4, #326). Quoted, at most once per line, and — unlike every other attribute — it <strong>rides environment lines too</strong> (<code>source Sunlight description &quot;the only energy entering&quot;</code> is legal): the opacity rule of §4.3.3.2.2 is about an environment thing&#39;s INTERNALS, not about naming what it is, and the original BERT&#39;s descriptions sit mostly on environment entities. It is prose and never semantics: <code>validate</code> never reads it, so two models differing only in their descriptions are the same system and receive the same verdict. It DOES project — into <code>Info.description</code>, a bert-core field that has existed from the beginning and received <code>String::new()</code> at every construction site until this clause reached it — and it round-trips, which is the difference between a description and a <code>#</code> comment. A second <code>description</code> on one line is a fault; an unquoted value is a fault.</p>
+<p><code>component Battery primitive Buffering stock &quot;kW·h&quot;</code> declares the stock&#39;s unit (#76/#94): a Buffering component&#39;s stock accumulates its inflow over Δt, so its dimension differs from the flow&#39;s, and the modeler declares the stock&#39;s own unit rather than the run copying the flow&#39;s. The unit is a name token — bare when identifier-shaped (<code>stock ML</code>), quoted otherwise (<code>stock &quot;kW·h&quot;</code>). A second <code>stock</code> on one line is a fault; <code>stock</code> on an environment thing is a fault (its internals are opaque). Undeclared, the run <em>derives</em> a display unit from the inflow and flags its provenance; the run panel&#39;s accept affordance writes the derived unit back as this clause.</p>
+<p><code>component Reservoir primitive Buffering stock ML capacity 10 maintenance 0.2</code> extends the Buffering vocabulary (#112 slice 2): <code>capacity &lt;n&gt;</code> declares the stock&#39;s overflow ceiling (the storage clamp reads it — overflow dissipates rather than accumulating past it) and <code>maintenance &lt;n&gt;</code> declares its per-tick upkeep loss (charged from the stock every tick, dissipated, never delivered). <code>component Reservoir primitive Buffering stock ML time constant 3</code> declares the first-order drain coefficient τ in place of a fixed <code>release</code> rate — <code>time constant</code> is two tokens, <code>constant</code> sitting behind the already-reserved <code>time</code> head. All three are Buffering-only and ≤ 0 is a parse fault; <code>time constant</code> and <code>release</code> on the same component is also a parse fault, because the engine&#39;s drain arm prefers <code>time_constant</code> whenever both are declared, so the <code>release</code> would never be honored. <code>component Thermostat primitive Inverting setpoint 0.8</code> declares the comparator&#39;s reference value (Inverting-only, ≤ 0 a parse fault; the engine&#39;s own default is 1.0, the bare <code>1 − signal</code>). <code>component Valve primitive Modulating backpressure</code> declares the throttle flag (Modulating-only, bare — there is no magnitude to decline). Each of the five is a fault on any other primitive, on an environment thing, or given twice on one line — the same discipline <code>release</code> already follows.</p>
+<p><code>component Light scale Nominal states {Green, Yellow, Red}</code> characterizes the thing as a Klir source-system variable (#154). Three clauses, each at most once per line, in any order among the attributes: <code>scale &lt;Nominal|Ordinal|Interval|Ratio&gt;</code> declares the measurement scale; <code>states {A, B, C}</code> declares the state set in Klir&#39;s set notation — a brace-enclosed, comma-separated list of value labels (bare or quoted; <code>{}</code> is a legal, explicit empty set; a trailing comma or a missing brace is a fault); <code>kind &lt;Basic|Support&gt;</code> declares the basic-vs-supporting standing (<code>Basic</code> is the default, so the clause exists to declare the rare support variable). The value words are keyword-case-insensitive like everything else and emit in the canonical capitalization shown. Unlike every other attribute, all three ride <strong>environment lines too</strong> — <code>source Battery kind Support scale Ratio</code> is legal — because Table 4.1 most wants the <em>input</em> variables characterized, and those are frequently the environmental drivers. A duplicate clause and an unknown scale or kind value are faults. The three are authored Klir metadata, read in the Klir register only: none projects to the kernel, so no systemhood verdict reads them (C2).</p>
+<h3>4.4 <code>flow</code></h3>
+<p><code>flow &quot;Iron Vendor&quot; -&gt; Furnace : matter &quot;iron&quot;</code> declares a directed connection. The kind clause is optional (absent = <code>Unspecified</code>); the quoted label is optional (the flow&#39;s name); trailing <code>mere</code> declares a mere relation — Bunge&#39;s B̄, a relation that is not a bond, which exists only in the editing model and never projects.</p>
+<p>The quantity clauses (#216, C1/C4) follow the label, in canonical order: <code>substance water amount 1.5 unit &quot;ML/mo&quot;</code>. Each is independently omittable; each is a structural attribute of the edge, not dynamics — the test is that none varies during a run. <strong>Where <code>amount</code> acts, stated once so nobody decorates:</strong> on a flow originating at a <code>source</code> it is the absolute emission rate (per <code>time unit</code>); on a flow out of a component it is a <em>relative weight</em> for that node&#39;s fanout split — the absolute outflow of a stock is set by its release behavior, not by the edge. An amount on a single-outwire process edge is therefore inert, and authoring one is claiming something the run will not honor. Three rules the parser enforces rather than defaulting around: a non-positive or unreadable <code>amount</code> is a parse fault (the language refuses what it cannot mean — the same rule that will govern the #112 <code>param</code> clause); a quantity clause on a <code>mere</code> relation is a contradiction and refused (a non-bond never projects, so a magnitude on it could never mean anything); and <em>omitted is not 1</em> — an unauthored amount stays unauthored in the model, and only projection conflates it with the kernel&#39;s default. <code>weight &lt;n&gt;</code> (#67) trails: a non-negative integer transition count for the Klir DTMC read, uniform 1 when absent.</p>
+<p><code>usability &lt;Resource|Disruption|Product|Waste&gt;</code> declares what this crossing IS to the system (v1.4, #331) — Mobus&#39;s 2×2 of direction against value. <strong>Undeclared is not <code>Resource</code></strong>: an author who has not ruled has said nothing, and only <code>project()</code> supplies the historical default, exactly as <code>amount</code> does. It is read by the kernel: two edges between the same pair with the same substance but different usability are a genuine second channel and no longer warn as a duplicate (<code>check_duplicate_edges</code>), which is what the warning&#39;s own suggestion had promised since before the clause existed.</p>
+<p><code>description &quot;&lt;prose&gt;&quot;</code> trails the whole clause chain on a flow (v1.4, #326), for the same reason it emits last: it is the one clause whose value is a sentence, and keeping it at the end leaves the machine-readable clauses adjacent and scannable. Same standing as the thing-line clause — prose, never semantics, projects into the interaction&#39;s <code>Info.description</code>, round-trips.</p>
+<p><strong>The label is a NAME; the sentence goes in <code>description</code> (#335).</strong> <code>&quot;published measurements&quot;</code> is a label; <em>&quot;PCE inflation, payrolls and unemployment — the FOMC steers by measurements of the economy, with their lags and revisions, not by the thing itself&quot;</em> is a description. This is a convention on authors, <strong>not a parser rule</strong>: a long label is legal SL, the kernel reads nothing from it, and refusing one would be the language enforcing taste. It is stated here because the alternative is measurable. Labels became sentences for a structural reason rather than carelessness — before <code>description</code> existed there was nowhere else to put prose, so the label was the only slot — and on <code>federal-reserve.sl</code> that produced 23 labels with 7 overlapping pairs, the widest 224px against a 30px parallel-sibling fan; moving the prose took the widest to 83px. Crowding cannot be zoomed away, either: every label sits inside one <code>scale()</code> group and nothing counter-scales, so text and separation grow together. Past roughly 28 characters the canvas elides the label and keeps the full text on hover, so a sentence in this slot is not merely cramped — it is not shown. Our own shipped models are held to the budget by a test (<code>crates/bert-canvas/tests/examples.rs</code>); <code>assets/corpus/**</code> is exempt, because those labels are transcribed from published figures and are their authors&#39; words.</p>
+<p><strong><code>ample</code> (#9)</strong> takes the amount slot and asserts <em>availability</em> instead of a magnitude: the signal is present and never the binding constraint. It was discovered by llm-market, where the only way to say &quot;released weights never limit serving&quot; was <code>amount 100000 unit avail/day</code> — a magic number leaked into the diagram by the grammar&#39;s lack of the word. Ample is not a quantity, so everything quantity-shaped beside it is refused: <code>ample</code> with <code>amount</code> is a contradiction; <code>unit</code> on an ample flow measures nothing; a <code>mere</code> relation cannot carry it (nothing that never projects can assert availability); and only an <code>: informational</code> flow can be ample — information copies freely, so &quot;never binding&quot; is a coherent claim there and nowhere else (matter and energy are metered). A <code>param</code> (§4.5) cannot anchor an ample flow — there is no magnitude to adjust. Engine semantics (held by the bert-compose equivalence test): an ample wire delivers <strong>zero quantity</strong> and instead holds availability gates open — Amplifying&#39;s <code>min(signal·gain, power)</code> selects power exactly as it would under an absurdly large metered signal, and Modulating/Buffering control gates read fully open. Run surfaces render the word, never a number.</p>
+<h3>4.5 <code>param</code></h3>
+<p>A declared parameter (walkthrough #18): a domain name over an already-declared amount, so run surfaces can speak the model&#39;s own vocabulary (&quot;Developer demand&quot;) instead of the kernel&#39;s mechanism taxonomy (&quot;drivers · absolute rates&quot;). Two forms:</p>
+<p><code>param &quot;Developer demand&quot; : flow &quot;Developer workload&quot; -&gt; &quot;Developer clearing&quot; range 0..12000</code> names one flow&#39;s declared amount. The optional quoted label after the endpoint pair disambiguates when several flows run between the same pair (naming an ambiguous pair without it is a fault, with the candidate labels listed). The optional <code>range &lt;min&gt;..&lt;max&gt;</code> declares inclusive slider bounds in the flow&#39;s own unit — the author&#39;s statement of the sensible span, never engine-enforced; <code>min</code> must satisfy <code>0 &lt;= min &lt; max</code>, and a declared amount lying outside the range is a parse-time contradiction and refused.</p>
+<p><code>param shares &quot;Developer market share&quot; : from &quot;Developer clearing&quot;</code> names a component&#39;s whole out-fanout of declared amounts, to be presented as % shares. <code>from</code> must name a component (environment internals are opaque) with at least two outgoing declared amounts — a &quot;split&quot; of one thing is not a split. Normalization is presentation only: the model keeps raw weights (§4.4&#39;s fanout semantics are scale-free), and a share edit edits exactly one raw weight.</p>
+<p><strong>A param stores no value</strong> — the value IS the anchored declared amount, which is why every anchor that resolves to nothing adjustable is a fault rather than a bag: an undeclared endpoint, a flow with no <code>amount</code> (the repair is named: add one), a <code>mere</code> relation (already excluded by §4.4 — a non-bond cannot carry an amount). Param names are unique per file — they are the stable references scenario overrides (#202) will hold. <strong>Params never project</strong>: <code>project()</code> ignores them entirely, so a model with and without its <code>param</code> lines projects byte-identically. They are presentation semantics carried by the canvas model, serialized skip-if-empty so pre-existing files are byte-identical. Params must appear after the flows they anchor (the single-pass discipline of §4.3 — declare before reference — applied to flows).</p>
+<p>This clause is <strong>not</strong> the #112 typed-parameter territory (§8.2): those are the transition functor&#39;s own parameters (initial state, process constants), whose <em>types</em> await the functor decision. A <code>param</code> names a structural amount the grammar already carries; it adds vocabulary, never dynamics.</p>
+<h3>4.6 <code>metric</code></h3>
+<p>A declared metric (#203): a domain name over a computed <strong>output</strong> of the run — the output twin of §4.5. A param names an input knob in the model&#39;s vocabulary; a metric names what the author wants to watch come out, so a run answers the author&#39;s questions first (&quot;DeepSeek dev share&quot;) and the kernel-fidelity readouts second. Two verbs:</p>
+<p><code>metric &quot;DeepSeek dev share&quot; : share of flow &quot;Developer clearing&quot; -&gt; DeepSeek</code> reads the anchored flow&#39;s executed per-tick delivery as a fraction of everything leaving its source that tick. The optional quoted label after the endpoint pair disambiguates same-pair flows, exactly as in §4.5. The source must have <strong>at least two outgoing flows</strong> — a share over a single outflow is identically 1, and a metric that cannot vary watches nothing (the separating-instance rule: a declaration nothing could falsify is refused, not rendered). Share is deliberately named as a <em>produced</em> observable: when an allocation becomes endogenous (#269), the same declaration reads the produced result with no rewrite.</p>
+<p><code>metric &quot;Opus tokens served&quot; : sum into Opus</code> reads everything arriving at the named thing, per tick, plus the run-end cumulative. The thing must have <strong>at least one inflow</strong> — a sum over none names a value the run never produces. Inflows carrying mixed units refuse at evaluation (their sum names no quantity).</p>
+<p><strong>A metric is a derived reading, never a new source of truth.</strong> Evaluation is arithmetic over the recorder&#39;s executed per-flow series (<code>RunResultRich.flows</code> — the circuit&#39;s own per-tick <code>wire_history</code>); a metric can state nothing the trace does not carry, and it carries the trace&#39;s provenance. Metric names are unique per file — they are the stable references scenario comparisons (#202) will hold. <strong>Metrics never project</strong>: like params they are presentation semantics on the canvas model, serialized skip-if-empty, appearing after the params block in canonical form. Declare after the things and flows they reference.</p>
+<p><strong>The verb set is closed, and grows one verb at a time</strong> (ADR 0006). When a model asks a question these verbs cannot state, the answer is a new verb with its own separating instance and its own row here — never an open expression grammar. A ranking is deliberately not a verb: the run deck orders any same-verb family by endpoint, which delivers the leaderboard as a <em>view</em> of declared metrics rather than a third thing to specify.</p>
+<h3>4.7 <code>boundary</code></h3>
+<p>At most one per file: <code>boundary porosity 0.7 fuzziness 0.1</code>. Key-value pairs in any order, either omittable; values are the root membrane&#39;s P. Absent line = unauthored (0.0, the kernel default).</p>
+<h3>4.8 <code>time unit</code></h3>
+<p>At most one per file: <code>time unit h</code>. The model&#39;s time-unit symbol (#94) — what one unit of model time is called, landing in <code>CanvasModel.time_unit</code> and projecting to <code>WorldModel.time_unit</code>. The symbol is a name token (bare or quoted). It is display vocabulary, never a rescaling: Δt stays the pure number the run surface supplies; the symbol names what that number counts, so an undeclared kW-fed stock displays <code>kW·h</code> instead of the abstract <code>kW·Δt</code>. Absent = undeclared (the kernel never invents a symbol). An empty symbol is a parse fault.</p>
+<h3>4.9 <code>level</code></h3>
+<p>At most one per file: <code>level Structure</code>. The model&#39;s declared Klir epistemological level (#288) — the author&#39;s claim about where on the epistemological hierarchy (<em>Facets</em> §4.5: source → data → generative → structure → metasystem) this model stands, landing in <code>CanvasModel.klir_level</code>. The five values are Klir&#39;s own words, keyword-case-insensitive like everything else, emitted in the canonical capitalization shown. A second <code>level</code> line and an unknown value are faults.</p>
+<p>The declaration matters because of what Klir says about the hierarchy: &quot;the modeling relation can be defined only within each particular epistemological category of systems&quot; (§5.4). Comparing two models across declared levels is therefore <em>undefined in his framework</em>, and the kernel refuses it with that sentence as the printed reason (<code>lenses::check_cross_level</code>) — faithfulness, not strictness. The refusal reads only declared claims: a model with no <code>level</code> line compares exactly as it did before the word existed, so the declaration gates a claim, never an absence. Like the §4.3 Klir metadata, the level is authored canvas-side and read in the Klir register only — it never projects, so no systemhood verdict depends on it (C2). It is the <em>declared</em> counterpart of the Klir register&#39;s derived GSPS position (the letter-string diagnostic): the diagnostic reads what the model honestly contains, the level reports what the author asserts it to be, and daylight between the two is a finding rather than an error.</p>
+<h3>4.10 Errors</h3>
+<p>Parsing collects <strong>all</strong> faults in one pass and reports each with its 1-indexed line — never a first-error-only bail, and never a guess. Fault classes: lexical (unterminated quote), unknown keyword, malformed clause, duplicate name, undeclared flow endpoint, redeclared singleton (<code>system</code>/<code>domain</code>/<code>time unit</code>/<code>level</code>/<code>boundary</code>), an unknown level value, attribute on an environment thing, unstamped or malformed decomposition reference, <code>decomposes</code> on an interface component, duplicate <code>decomposes</code>, duplicate <code>stock</code>, an unknown <code>usability</code> value (#331), a duplicate or unquoted <code>description</code> (#326), duplicate or malformed Klir metadata clause (<code>scale</code>/<code>states</code>/<code>kind</code> — an unknown scale or kind value, a malformed state set), out-of-range <code>@directed</code>, malformed known annotation, the §4.5 param faults (unresolvable or ambiguous anchor, amountless anchor, degenerate or contradicted range, shares without a &gt;=2 component fanout, duplicate param name), the §4.6 metric faults (unresolvable or ambiguous anchor, share over a single-outflow source, sum into a thing with no inflows, duplicate metric name), the §4.4 ample faults (beside <code>amount</code>, with a <code>unit</code>, on a <code>mere</code> relation, on a non-informational kind), and the §4.3 engine-parameter faults (#112: <code>release</code>/<code>capacity</code>/<code>time constant</code>/<code>maintenance</code> off a Buffering component, <code>setpoint</code> off an Inverting component, <code>backpressure</code> off a Modulating component, a duplicate of any of the six on one line, a non-positive value where one is required, and <code>release</code> co-declared with <code>time constant</code> on the same component). The ACE/Gherkin discipline — deterministic parse, fail loud on anything ambiguous — is inherited deliberately.</p>
+<p><strong>These are <em>parse</em> faults, and they are not the only way a model is refused.</strong> A file can parse cleanly, compile to a model (§5.3), and still be refused by the kernel when a lens is entered — that refusal is the kernel&#39;s job, not SL&#39;s (§5.1), so it is deliberately absent from the list above. The list is complete for what the parser rejects and is not a map of every way a model can fail. §5.4 names the one class where a <em>word in this language</em> now carries an obligation the parser cannot check.</p>
+<h2>5. Semantics</h2>
+<p><em>Status: normative.</em></p>
+<h3>5.1 What a compiled model means</h3>
+<p>A parsed file denotes exactly one <code>CanvasModel</code>: things and relations in declaration order with sequentially assigned ids, the boundary and type assertion as written, view state per §6. What that model <em>means as a system</em> is not SL&#39;s to say: meaning is delivered by the kernel — <code>project()</code> compiles it to a <code>WorldModel</code>, <code>validate_mode</code> gates it at the active lens (Klir→Core, Bunge→Structural, Mobus→Operational), and the lens palettes render its formal object. SL is a notation for the model, not an authority over it (C2).</p>
+<h3>5.2 <code>source</code>, <code>sink</code>, <code>environment</code> — author intent, edge-derived identity</h3>
+<p>All three words compile to <code>Role::Environment</code>. The distinction they express — where flows originate and terminate — is <em>derived from the drawn bonds</em>, not stored: <code>project()</code> makes an environment thing a Source if it originates a bond, a Sink if a bond merely touches it, and omits it (an orphan) if no bond does. This is the Lean-proven canon from SL v0.1&#39;s own migration note (edge-derived role supersedes the stored <code>ExternalEntityType</code>). Consequently the three words are author-intent sugar: <code>source X</code> followed by flows <em>into</em> X is not a parse error — the kernel&#39;s reading simply differs from the label, and the canonical serializer (§7.1) rewrites the word to the kernel&#39;s reading. The text you get back tells you what you actually drew.</p>
+<h3>5.3 Compilation is total on parse success</h3>
+<p>A file that parses always yields a model — including a structurally <em>illegal</em> one (e.g. a self-loop, which the Operational gate rejects). This is deliberate and matches the canvas: authoring states are routinely mid-thought, and the verdict pill / audit panel carry the kernel&#39;s issues live. SL does not gate compilation on validity; it gates nothing (C2).</p>
+<h3>5.4 <code>interface</code> is a claim the kernel checks, not a label the parser accepts</h3>
+<p>Most words in the lexicon (§3) name a distinction the parser can settle on its
+own. <code>interface</code> no longer does. Since the 7/25 interfaces sweep
+(<a href="https://github.com/halcyonic-systems/facets/issues/213">#213</a>,
+<a href="https://github.com/halcyonic-systems/facets/pull/223">#223</a>,
+<a href="https://github.com/halcyonic-systems/facets/issues/225">#225</a>,
+<a href="https://github.com/halcyonic-systems/facets/pull/228">#228</a>) a <strong>flowless
+interface is ill-formed</strong>, and two kernel checks enforce it — both <strong>Error, at
+Operational and Full only</strong>:</p>
+<ul>
+<li><code>check_interfaces_carry_flow</code> asks a <strong>graph</strong> question: does any
+boundary-crossing flow touch this interface? Mobus&#39;s I is functional, not
+positional — an interface is a component that <em>transports a flow across the
+boundary</em> — so one that transports nothing is a mislabelled component. It
+mirrors the Lean structure field <code>MobusSystem.interfaces_carry_flow</code> (SSF #31),
+the converse of <code>bipartite</code>, which only ever quantified over edges.</li>
+<li><code>check_interface_declarations_match_flows</code> asks a <strong>consistency</strong> question:
+does an interface&#39;s own declared <code>receives_from</code>/<code>exports_to</code> agree with the
+interactions the model records? Neither check subsumes the other — a model
+satisfies the first and violates the second whenever an interface with a real
+crossing flow declares an <code>exports_to</code> naming a different sink than the flow
+goes to.</li>
+</ul>
+<p>Core and Structural stay silent: Klir and Bunge carry no interface concept, so a
+stamp without its flow is not yet a claim either lens can read.</p>
+<p><strong>This changes nothing in the grammar.</strong> <code>component X interface</code> parses exactly as
+before, compilation stays total on parse success (§5.3), and a half-drawn model
+that has stamped the interface before drawing its flow is a normal authoring
+state, not a parse error. What changed is that the word now <em>asserts</em> something
+checkable, and the assertion is checked where every other systemhood verdict is —
+in the kernel, on lens entry.</p>
+<h2>6. The annotation layer</h2>
+<p><em>Status: normative; the &quot;why a section, not a second file&quot; defense is rationale (argued, adopted).</em></p>
+<p>Annotations are <code>@</code>-prefixed lines, conventionally last in the file. Three are defined; unknown annotations are <em>skipped, not errors</em> — the ignorable contract that lets future view-state vocabulary degrade softly in old parsers. Malformed instances of a <em>known</em> annotation fail loud (§4.10).</p>
+<p><strong>Why a section, not a second file.</strong> The semantic requirement is only that presentation not contaminate meaning (C4), and a marked section satisfies it as fully as a separate file: the structure-lines diff is clean either way. Given that, one artifact wins — a model is one pasteable, reviewable, portable thing. Modelica made the same call (layout inline as <code>annotation(…)</code>, semantically null, preserved on save); SVG/HTML keep style separable but co-located. Decided for v1; recorded in the 2026-07-18 session log.</p>
+<h3>6.1 <code>@pos name x y</code></h3>
+<p>Pins a thing&#39;s pixel position. Things without <code>@pos</code> are placed by the deterministic auto-layout: components on an inner N-gon (a single component at the center), environment things on an outer ring, both in declaration order — same text, same picture. Positions are view state; no verdict reads them.</p>
+<h3>6.2 <code>@lens klir|bunge|mobus</code></h3>
+<p>Pins the active lens. The lens is a <em>reading</em> of the model, not a property of it — every model is a valid Core model regardless. Accordingly <code>compile_sl</code> reports whether the text pinned a lens (<code>lens_explicit</code>), and the reference UI preserves the author&#39;s current lens when it did not; the parser&#39;s own default (Mobus) applies only when there is no current lens to preserve.</p>
+<h3>6.3 <code>@directed n</code></h3>
+<p>Marks the <em>n</em>-th declared flow (1-based) with Klir&#39;s observer orientation toggle — &quot;directed systems&quot; add an orientation the observer commits to (Facets Ch. 4); the kernel&#39;s dependency relation is ordered regardless, so this changes what the Klir lens <em>shows</em>, not the model. Exists so a serialized model loses no view state.</p>
+<h2>7. Serialization and the round-trip contract</h2>
+<p><em>Status: normative (golden-tested, <code>tests/sl_roundtrip.rs</code>).</em></p>
+<h3>7.1 Canonical form</h3>
+<p><code>emit_sl</code> writes a model as: <code>system</code> / <code>domain</code> / <code>time unit</code> / <code>level</code> lines; thing lines in <code>things</code> order (environment words edge-derived per §5.2 — the emitted word is the kernel&#39;s reading); <code>flow</code> lines in <code>relations</code> order; <code>param</code> lines then <code>metric</code> lines in declaration order (the input/output twins read together, §4.5–4.6); <code>boundary</code> if authored; blank line; <code>@lens</code>; <code>@pos</code> per thing; <code>@directed</code> per directed flow. On a thing line the attributes emit in a fixed order: <code>primitive</code>, then <code>interface</code>, then <code>stock</code> (with its welded <code>initial</code>, component lines only), then the six typed engine parameters (#112) — <code>release</code>, <code>capacity</code>, <code>time constant</code>, <code>setpoint</code>, <code>maintenance</code>, <code>backpressure</code>, each present only when its key rides <code>cognitive_params</code> — then the Klir metadata — <code>kind</code>, then <code>scale</code>, then <code>states</code> (#154; the one attribute group environment lines also carry), then <code>decomposes</code> last (component lines only; the reference, quoted label plus <code>@</code>-id). Names emit bare when they read as identifiers and shadow no <em>reserved</em> word, quoted otherwise. The reserved set (<code>RESERVED_WORDS</code>, <code>sl.rs</code>) is §4&#39;s position-free keywords; the position-bound words — <code>param</code>, <code>metric</code>, <code>ample</code>, <code>range</code>, <code>shares</code>, <code>from</code>, the metric verb words <code>share</code>/<code>of</code>/<code>sum</code>/<code>into</code>, <code>constant</code> (sitting behind the <code>time</code> clause head), and the <code>@lens</code> values — never occupy a slot a name can reach, so a name matching one of them stays bare and still re-parses as itself. That the two lists together are exactly §4&#39;s terminals is held by <code>tests/keyword_parity.rs</code>. Floats emit via shortest-round-trip decimal representation, so re-parsing recovers them bit-exactly.</p>
+<h3>7.2 The contract (golden-tested)</h3>
+<p>Two guarantees, distinguished honestly (<code>tests/sl_roundtrip.rs</code>):</p>
+<ul>
+<li><strong>SL-born models: identity, digit for digit.</strong> For any model produced by parsing (things-first declaration order, hence sequential ids), <code>parse(emit(m)) = m</code> as JSON — every field, including positions. Text-level: <code>emit(parse(t))</code> is a fixpoint after one pass.</li>
+<li><strong>Arbitrary models: canonicalization.</strong> A canvas-born model may carry gap ids and interleaved authoring history; ids are machine mechanics, and names are the text surface&#39;s identifiers. The guarantee is <code>emit(parse(emit(m))) = emit(m)</code> — one pass lands in canonical form, and the canonical text is stable. Structure, names, kinds, bonds, positions, and view state all survive; only internal id numbering is normalized.</li>
+</ul>
+<h3>7.3 Unrepresentable shapes</h3>
+<p><code>emit_sl</code> refuses loudly rather than lose information silently: a name or label containing <code>&quot;</code> or a newline, and a <code>system_type</code> with genus but no kingdom, are errors. A third refusal since #216: a thing carrying the opaque engine-parameter maps (<code>cognitive_params</code> / <code>initial_state</code>, which the canvas carries so a loaded model&#39;s dynamical content survives) cannot be written down without narrowing when it holds anything SL has no production for. §4.3 now types <code>initial_state[&quot;storage&quot;]</code> and six <code>cognitive_params</code> keys (<code>release_rate</code>, <code>capacity</code>, <code>time_constant</code>, <code>setpoint</code>, <code>maintenance</code>, <code>back_pressure</code>, each gated to its one reading primitive, #112) — a bag holding exactly those, correctly gated, emits; anything else still refuses and names the JSON export as the lossless path. This refusal does not become dead code as the typed set grows: <code>cognitive_params</code> is a <code>HashMap</code> fed by both SL parsing and raw JSON loads (compose&#39;s exporter, §8.2), so a loaded model can always carry a key the parser has never heard of, and the check is what stops that key from being silently dropped on emit. Nothing else in <code>CanvasModel</code> is outside the language. One asymmetry is accepted knowingly: <code>primitive</code>/<code>interface</code> on an <em>environment</em> thing (expressible in JSON, semantically inert — the kernel ignores both) is dropped on emit rather than round-tripped.</p>
+<h2>8. The structure/dynamics boundary</h2>
+<p><em>Status: rationale (argued, adopted). §8.1 argues the departure from Mobus; §8.2 adopts the forward position from <code>dynamics-principled-position.md</code>. The C5 boundary it defends is normative.</em></p>
+<p><em>This section adopts <code>docs/design/dynamics-principled-position.md</code> (ADOPTED); that document is the single source of truth for the dynamics-record definition, and §8.2 references it normatively rather than restating it.</em></p>
+<h3>8.1 The departure from Mobus, argued</h3>
+<p>Mobus&#39;s answer to &quot;how does a model carry dynamics&quot; was embedded scripts: &quot;Behaviors or dynamics are implemented using embedded scripts… transformations (T in Eq. 4.1) are expressed in transfer functions or simulation programs&quot; (§4.4.1.2.3), inside a sysXML sketch he himself frames as &quot;playful exploration&quot; with &quot;research… continu[ing]&quot; (§4.5). SL rejects the mechanism while keeping the theory, and the rejection is not taste:</p>
+<ol>
+<li><strong>It is not the theory&#39;s mandate.</strong> T&#39;s formal definition — &quot;any suitable form, such as… formula, equation, or algorithm&quot; (§4.3.3.4) — is implementation-neutral. The narrowing to scripts happens in prose about one candidate description language, not in the tuple&#39;s mathematics. Rejecting embedded JavaScript rejects an engineering guess Mobus hedged, not a theorem.</li>
+<li><strong>Embedded scripts destroy checkability.</strong> A script is opaque to every validator: the semigroup contract, conservation ledgers, mode-transition witnesses, and the Lean structural theorems can say nothing about arbitrary code. The premise of this tool — a deterministic kernel owning truth — dies at the first <code>eval</code>.</li>
+<li><strong>Declaration subsumes the need.</strong> Everything a per-element script legitimately expresses is expressible as declared data: a rate constant, a transfer-function family name plus parameters, a transition table, a distribution plus seed.</li>
+</ol>
+<p>SL v0.1&#39;s §4 made the complementary error at the spec level: it named its runtime (System→Mesa agent classes, Bevy ECS targets, tick-modulo stepping). That coupling was the old headache, and it is the second thing this boundary is built to prevent: <strong>SL never names a simulator, and no simulator&#39;s shape leaks into SL.</strong></p>
+<h3>8.2 What SL declares if it ever gains dynamical syntax</h3>
+<p>§8.2 adopts the declaration model of <code>docs/design/dynamics-principled-position.md</code> (ADOPTED); the position doc is the single source of truth for the dynamics-record definition. In brief: an SL model never contains a simulator — it <strong>declares</strong> a dynamics record per system whose fields are the support, the carrier (state space), the kind (transition functor), the invariants (conserved quantities and bounds — where conservation lives), and the rates/parameters of a named transfer-function family; engines interpret those declarations and are separately verified against the semigroup contract.</p>
+<p>Four consequences the position doc establishes, recorded here so future SL versions do not regress:</p>
+<ul>
+<li><strong>Conservation is an invariant the model declares, not one the engine assumes</strong> (axis D of the dynamics taxonomy). The compose conservation engine is the <em>first interpreter of one declarable kind</em> — Id-functor, ℝⁿ carrier, additive conserved invariant — not the meaning of Run. An SL dynamics record must therefore treat conservation as one optional declaration among several, or it bakes in exactly the special-case-as-category error the research dismantled.</li>
+<li><strong>H is a record, never an input to T</strong> (three-tradition convergence: Willems, Bertalanffy, Mesarovic–Takahara). Any history-dependence belongs in the carrier; SL will never grow syntax that feeds H back into a transformation.</li>
+<li><strong>Δt is honored: <code>amount</code> is a rate per unit time, and the engine delivers the rate reading (#258/#259, closed 2026-07-27).</strong> Generated fluxes scale by Δt, forced series index by model time (a channel&#39;s own Δt is <code>dt_stride ×</code> the model&#39;s time unit), and wires transmit within the step — <strong>wires transmit, stocks remember</strong> — so the same file over the same horizon produces the same totals at any step size. The invariant is held by <code>crates/bert-canvas/tests/dt_invariance.rs</code> (green, with its refutability re-proven by <code>scripts/mutation_check.py</code>). Two riders: under Mobus §4.3.3.6 Δt remains a level-indexed <em>declaration</em>, not a free refinement knob — the gate checks dimensional coherence, not numerical convergence — and a wiring loop containing no stock or level read is <strong>refused</strong> at the run seams (a loop of pure relays has no deterministic step), never silently granted a per-step delay.</li>
+<li><strong>A run advances over a positive, finite slice, or it is not a run</strong> (position doc §4 rule 3). A slice of zero is not a small step, it is not a step: it defines no transition, so there is nothing to record and the run is refused. If SL ever gains syntax for the support, a declared step of zero or a non-finite horizon is a refusal at the language level too, not a value an engine is expected to cope with.</li>
+<li>In v1, the sanctioned path for dynamics is the tether/run-manifest (data + forcing, separately authored); the run is the machine&#39;s job. What is lost, stated honestly: the expressiveness of arbitrary protocol logic per element. That loss is the price of a checkable language, and it is paid knowingly.<ul>
+<li><strong>Scope of that path, narrower than it reads.</strong> The tether carries <em>forcing and comparison</em>, not parameterization. Only <code>Role::Flow</code> columns with <code>force: true</code> inject values into a run; <code>Role::Stock</code> and <code>Role::Param</code> columns are read for empirical-versus-simulated comparison and inject nothing. The manifest therefore cannot set an initial stock or a release rate, and was never able to. This is the right division of labour and should stay: a <strong>parameter</strong> is a property of the model&#39;s design and belongs inside it, while <strong>forcing and empirical data</strong> are facts about the world and belong outside it.</li>
+<li><strong>A bypass exists, and it is a defect rather than a second path (#216).</strong> <code>bert-compose</code>&#39;s exporter writes <code>AgentModel.initial_state</code> and <code>cognitive_params</code> directly as JSON, around SL, around the canvas, and around the manifest. Every quantity in the three original demos (reservoir, homeostat, allocation) arrives this way — the SL-authored demos do not cross it: their models are machine projections of their <code>.sl</code> files, held to that by <code>crates/bert-canvas/tests/sl_demos.rs</code> (<code>llm-market</code> since #318; <code>watershed</code> and <code>supply-chain</code> were the other two until they were archived out of the shipped library, and their projections are frozen in <code>assets/archive/demos/</code>) — and the canvas discards both maps on load — which is why a demo round-trips into a <em>different system</em> while still reporting <code>conserved=true</code>. It is named here because a spec describing a boundary the shipped artifacts cross is the silent failure: nothing breaks, the document just stops being true. It is <strong>not</strong> hereby sanctioned; closing it is a defect fix, not a spec revision.</li>
+<li><strong>What closes it.</strong> Those two maps are untyped <code>HashMap</code>s because nothing has yet decided what the transition functor is, and a functor&#39;s parameters cannot be typed before the functor is chosen — that decision is <a href="https://github.com/halcyonic-systems/facets/issues/112">#112</a>&#39;s subject. Note the corollary, which cuts the other way: flow <strong>amount</strong>, <strong>unit</strong>, and <strong>substance name</strong> are already typed fields on <code>Interaction</code> and are <em>not</em> blocked by #112. They are structural attributes of an edge — they do not vary during a run — and their absence from §4&#39;s grammar was the reason no SL-authored model could emit at any rate but 1.0. <strong>Paid 2026-07-27 (#216 Wave 4):</strong> §4&#39;s flow production now carries all three, the canvas relation keeps them, and the demo round-trip test (<code>canvas_round_trip.rs</code>) holds the seam closed — leaving <code>initial_state</code> / <code>cognitive_params</code> as exactly #112&#39;s remaining scope.</li>
+</ul>
+</li>
+</ul>
+<h2>9. Worked examples (the golden corpus)</h2>
+<p><em>Status: normative — the three examples are the round-trip goldens, so their behavior binds.</em></p>
+<p>The three corpus files are committed at <code>fixtures/sl/</code> and are the round-trip goldens; all three parse, emit, re-parse identically, and project clean at Core mode.</p>
+<h3>9.1 Process M (<code>process-m.sl</code>) — Mobus&#39;s own paragraph</h3>
+<p>Mobus&#39;s verbal exemplar: &quot;Process M takes in materials A and B from sources 1 and 2 along with energy E from source 3 to make product Z with waste product X going to sinks 5 and 6 respectively&quot; (§4.3.1). In SL, each clause becomes one line:</p>
+<pre><code>system &quot;Process M&quot; : Concrete
+component Work primitive Combining interface
+source &quot;Source 1&quot;
+source &quot;Source 2&quot;
+source &quot;Source 3&quot;
+sink &quot;Sink 5&quot;
+sink &quot;Sink 6&quot;
+flow &quot;Source 1&quot; -&gt; Work : matter &quot;material A&quot;
+flow &quot;Source 2&quot; -&gt; Work : matter &quot;material B&quot;
+flow &quot;Source 3&quot; -&gt; Work : energy &quot;energy E&quot;
+flow Work -&gt; &quot;Sink 5&quot; : matter &quot;product Z&quot;
+flow Work -&gt; &quot;Sink 6&quot; : matter &quot;waste X&quot;
+</code></pre>
+<p>With v1.1 (#84), &quot;Process M&quot; is finally the <em>system&#39;s</em> name, as in Mobus&#39;s own sentence; the lone component is its combining work process. What the paragraph carries that SL still does not: the efficiency figure — a process parameter in the §8.2 sense, waiting on #112&#39;s <code>param</code> clause. The rate refinement (&quot;one mass of delivery each 24 hours&quot;) stopped being an example on 2026-07-27: <code>amount 1 unit mass/day</code> is now a flow clause (#216, C1), because a rate that does not vary during a run is a structural attribute, not dynamics.</p>
+<h3>9.2 Bathtub (<code>bathtub.sl</code>) — the stock-and-flow first lesson</h3>
+<pre><code>system : Concrete/Physical
+component Tub primitive Buffering interface
+source Faucet
+sink Drain
+flow Faucet -&gt; Tub : matter &quot;inflow&quot;
+flow Tub -&gt; Drain : matter &quot;outflow&quot;
+</code></pre>
+<p>Six lines, one Buffering work process, the canonical first model of every system-dynamics curriculum — and the demonstration that bare names need no quotes.</p>
+<h3>9.3 The hal stack (<code>hal-projection.sl</code>) — a real infrastructure system</h3>
+<pre><code>system : Concrete/Technical
+domain &quot;sovereign AI infrastructure&quot;
+component Proxy interface
+component DailyLoop interface
+component Council
+source Operator
+sink UpstreamAPIs
+flow Council -&gt; Proxy : informational &quot;convene models&quot;
+flow Proxy -&gt; DailyLoop : informational &quot;tool calls&quot;
+flow Operator -&gt; DailyLoop : informational &quot;requests&quot;
+flow Proxy -&gt; UpstreamAPIs : informational &quot;model requests&quot;
+boundary porosity 0.15 fuzziness 0.05
+</code></pre>
+<p>A three-component decomposition with two boundary interfaces, an authored membrane, and a domain framing — the working shape of a real model, ten structure lines.</p>
+<h2>10. Lineage</h2>
+<p><em>Status: informative.</em></p>
+<p><strong>Mobus, Ch. 4 (2015/2022).</strong> SL inherits the load-bearing insight — one definition, three coequal views (verbal, graphical, mathematical; §4.3) — the ontology-drawn lexicon, the system-paragraph as the verbal form, and the syntax-as-structural-legality doctrine (§4.4.1.3). It sheds his sysXML/XML serialization (the neutral spec&#39;s JSON already fills that role), his embedded-JavaScript behaviors (§8), and the 7-tuple&#39;s folding of E into G — the machine-checked authority is the 8-tuple with E first-class (<code>Tuple.lean</code>; E-as-first-class is the Lean formalization&#39;s improvement on the printed tuple, credited as such).</p>
+<p><strong>BERT SL v0.1 (<code>bert/docs/system-language-spec.md</code>).</strong> The prior spec in this lineage: a publication-grade lexicon and grammar <em>for the data model</em> — 40 concepts, ID encoding, the four Lean coherence constraints (its §2.6), edge-derived source/sink roles (its §1.2 migration note, adopted here as §5.2). What it lacked is exactly what this spec adds: a human-writable concrete syntax; v0.1&#39;s &quot;speakable&quot; mode was natural-language-to-model via chat, not a notation a person writes and diffs. Its §4 execution mapping (Mesa/Bevy) is shed per §8.1.</p>
+<p><strong>SL v2.0 addendum (<code>system-language-spec-v2-addendum.md</code>).</strong> Contributed the kernel re-founding (the 8-tuple as a generated view over a proven kernel) and the mode lattice; its mode-declaration <em>surface syntax</em> stayed cut — in bert-lenses, modes are the three lenses, view state on the neutral spec, which is why <code>@lens</code> is an annotation and not a structure line.</p>
+<p><strong>SysML v2 (formal/2026-03-02) — the architecture precedent, and the ontological foil.</strong> SysML v2 Part 1, the language specification, was formally adopted in March 2026 (<em>OMG Systems Modeling Language, Part 1: Language Specification</em>, formal/2026-03-02, 691 pp). It is the standards-body validation of the architecture SL inherits: one abstract syntax, concrete syntaxes as projections of it, the textual notation privileged because it maps losslessly while a diagram is a partial projection, semantics anchored in a kernel artifact (their KerML plus a semantic library; here the kernel plus <code>Tuple.lean</code>). It is also the exact inverse of C3. §7.1 states outright that the language carries no construct named system, subsystem, or component — &quot;An entity with structure and behavior in SysML is represented simply as a part&quot; — with domain terminology supplied through user-defined metadata (§7.27). SL&#39;s lexicon is the opposite commitment: every word names a kernel-licensed ontological distinction and nothing else (§3, C3). SysML v2 is ontologically agnostic by design, and correct for its job of building engineered systems; SL is the ontologically committed counterpart, for studying systemness. Primary cites: §7.1 and Figure 1 (§6.1). The audience and interoperability consequences are drawn out for readers in the language README&#39;s &quot;Why SL, and when SysML&quot; section (#99).</p>
+<p><strong>Precedents</strong> (research and verification marks in <code>docs/design/sl2-authoring-language.md</code> §4): SysML v2 (formal/2026-03-02) for the architecture — text and diagrams as projections of one abstract syntax, text privileged because it maps losslessly (the ontological contrast is drawn out above); Modelica for one-artifact/two-concerns (§6); Stella for the bar the tool clears — two coequal views of one model with a live validity signal; Quint for approachable-surface-over-fixed-semantics via a deterministic transpiler; ACE/Gherkin for the fail-loud parse discipline; gpt-jargon as the negative control (C1). For the dynamics boundary: Petri-net P-invariants and CRN conservation laws as the prior art for invariant-on-structure independent of the transition rule — the position §8 applies is their pattern, cited as lineage, not a rediscovery.</p>
+<h2>11. Known gaps and v1.1 candidates</h2>
+<p><em>Status: informative (roadmap; the honesty mechanism in place of a conformance clause).</em></p>
+<table>
+<thead>
+<tr>
+<th>Gap</th>
+<th>Tracked</th>
+<th>Direction</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><del>No root-system name</del> shipped as v1.1</td>
+<td>#84 (closed 2026-07-18)</td>
+<td><code>CanvasModel.name</code> → <code>system &quot;Name&quot; [: type]</code> — see §3, §4.1</td>
+</tr>
+<tr>
+<td><del>No decomposition / sub-paragraphs</del> decompose-by-reference shipped (step 4)</td>
+<td>#89 (step 4 merged 2026-07-20)</td>
+<td><code>decomposes &quot;label&quot; @id</code> → <code>System.child_model</code> — see §3, §4.3, §7.1; the reference form keeps each file one flat paragraph, the recursion in the id index</td>
+</tr>
+<tr>
+<td><del>No Klir source-system variable characterization</del> shipped as v1.2</td>
+<td>#154 (landed 2026-07-24; spec caught up 2026-07-31 — the words shipped ahead of this document, the drift the keyword-parity gate now makes impossible)</td>
+<td><code>scale</code> / <code>states</code> / <code>kind</code> → <code>Thing.scale</code> / <code>.states</code> / <code>.variable_kind</code> — see §3, §4.3, §7.1</td>
+</tr>
+<tr>
+<td><del>No declared epistemological level</del> shipped as v1.3</td>
+<td>#288 (landed 2026-08-08, spec and parser together — the discipline #154&#39;s drift taught)</td>
+<td><code>level</code> → <code>CanvasModel.klir_level</code> — see §3, §4.9, §7.1; the cross-level refusal is <code>lenses::check_cross_level</code>, printing Klir §5.4</td>
+</tr>
+<tr>
+<td>milieu dynamics coupling absent by design</td>
+<td>lifecycle paper</td>
+<td>The paper marks how M&#39;s conditions influence the running system &quot;an area for much more research&quot;; a declared <code>value</code> is a snapshot, and nothing in the engine reads it until the theory states the coupling</td>
+</tr>
+<tr>
+<td><code>interface</code> + <code>decomposes</code> refused together (v1)</td>
+<td>#89</td>
+<td>The Lean contract covers a component&#39;s internal network only; when it grows the membrane-crossing case (flows through an interface component) the co-occurrence becomes legal and the <code>interface</code>/<code>decomposes</code> emission order (§7.1) gets revisited</td>
+</tr>
+<tr>
+<td>No controlled systems-English tier (the verbal surface proper)</td>
+<td>design doc §5 Rung 2</td>
+<td>Fixed-grammar system-paragraph parsing to the same neutral spec</td>
+</tr>
+<tr>
+<td>Compiled diagram can land partly off-viewport</td>
+<td>#83</td>
+<td>Zoom-to-fit after compile (UI, not language)</td>
+</tr>
+<tr>
+<td>Empty text compiles to an empty model silently</td>
+<td>session log 7/18</td>
+<td>Possibly a nonempty gate or confirm in the pane (UI, not language)</td>
+</tr>
+<tr>
+<td><code>Kind</code> (5 values) collapses to 3 substances under <code>project()</code></td>
+<td><code>canvas.rs:64</code></td>
+<td>Not an SL defect — Kind survives the text round trip; noted for any WorldModel-mediated path</td>
+</tr>
+<tr>
+<td>No dynamics declarations</td>
+<td>§8</td>
+<td>If ever: the §8.2 record, never scripts, never a named simulator</td>
+</tr>
+</tbody></table>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/language/spec.md">Source · docs/language/spec.md</a>
+      <span>Rendered from 0bb7de4</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

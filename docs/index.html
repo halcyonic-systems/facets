@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>facets · docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    
+    <div class="folio" style="margin-top:0rem">Documentation<span class="status">LIVE</span></div>
+    <h1 class="title">The reference layer</h1>
+    <article><h2>Start here</h2>
+<ul>
+<li><a href="./quickstart.html"><code>quickstart.md</code></a> — <strong>LIVE</strong> — ten minutes from <code>just dev</code> to a judged, running model, using the two smallest corpus files (bathtub, then process-m). The newcomer on-ramp.</li>
+<li><a href="./tour.html"><code>tour.md</code></a> — <strong>LIVE</strong> — the reader&#39;s tour: one running model (hal-projection) grown line by line, each step pairing SL with what the canvas and the three lenses render; three audience entry paths and the SL ↔ canvas ↔ JSON ↔ kernel notation table.</li>
+<li><a href="./authoring-models.html"><code>authoring-models.md</code></a> — <strong>LIVE</strong> — the author&#39;s path from a description to a running, gated, gallery-visible model: the <code>.sl</code> → mint → bundle loop and the five facts that bite everyone once (deaf receivers, the matter tap, where <code>amount</code> acts, stocks-start-at-zero, loops need memory).</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/predictions/llm-market.md"><code>predictions/llm-market.md</code></a> — <strong>PROPOSED</strong> — the llm-market prediction ledger: append-only entry format keyed to the spec content hash, calibration provenance, zero predictions recorded yet.</li>
+<li><a href="./glossary.html"><code>glossary.md</code></a> — <strong>LIVE</strong> — fast definitions of the ~15 load-bearing terms (system, lens, bond/mere, conservation invariant, WorldModel, Save vs Export, run ledger, SL, systemhood, mode/lens, neutral spec, golden, dynamics-kind, precondition, concordance), each grounded in a fuller doc.</li>
+</ul>
+<h2>The language</h2>
+<ul>
+<li><a href="https://github.com/halcyonic-systems/facets/tree/main/docs/language"><code>language/</code></a> — <strong>SL, the bert-lenses system language.</strong> Its <a href="./language/index.html"><code>README.md</code></a> is the front door: what SL is, what it looks like, reading order, the corpus, and where the language lives in the code.<ul>
+<li><a href="./language/spec.html"><code>language/spec.md</code></a> — <strong>LIVE</strong> — the SL v1.0 specification: five design commitments, lexicon, EBNF grammar, semantics, annotation layer, round-trip contract, structure/dynamics boundary, worked examples, lineage, known gaps. Normative. (Was <code>docs/sl2-spec.md</code>; moved 2026-07-18 when the language got its own home.)</li>
+<li><a href="./language/terminology-concordance.html"><code>language/terminology-concordance.md</code></a> — <strong>LIVE</strong> — the Klir·Bunge·Mobus terminology grid: 12 kernel distinctions × 3 traditions, every cell primary-cited and VERIFIED/UNGROUNDED-marked. SSOT for the spec&#39;s lexicon attribution, per-lens UI copy, and K≅2 convergence exhibits; federates the partial two-tradition mappings in SSF.</li>
+</ul>
+</li>
+</ul>
+<h2>Theory and kernel</h2>
+<ul>
+<li><p><a href="./kernel-architecture.html"><code>kernel-architecture.md</code></a> — <strong>LIVE</strong> — what the kernel <em>is</em> as a system: what <code>describe</code>/<code>lens_facts</code>/<code>validate_mode</code>/<code>analyze</code> actually compute, <strong>CODE-READ</strong> against source with confidence ratings (its two marks — CODE-READ vs MACHINE-CHECKED — are defined at the top of the doc). Read before trusting the substrate.</p>
+</li>
+<li><p><a href="./VENDORING.html"><code>VENDORING.md</code></a> — <strong>LIVE</strong> — where <code>bert-core</code> and <code>bert-compose</code> came from: the branch point (<code>40de7a7</code>, established by content), the two edits made on the way in, how far the copies have drifted, and why this is a successor rather than a fork under maintenance. Answers <em>what here is ours?</em> mechanically.</p>
+</li>
+<li><p><a href="./lean-provenance.html"><code>lean-provenance.md</code></a> — <strong>LIVE</strong> — the pinned <code>systems-science-foundations</code> commit behind every &quot;machine-checked&quot; claim, the <strong>generated</strong> per-claim map (rendered from <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/lean-manifest.json"><code>lean-manifest.json</code></a>, with each declaration&#39;s Lean <em>kind</em>), the staleness budget against SSF HEAD, the K ≅ 2 scope fence, the two resolution gates, the from-this-repo-alone audit path, and the pin-moves-with-the-fixture update discipline (issues <a href="https://github.com/halcyonic-systems/facets/issues/128">#128</a>, <a href="https://github.com/halcyonic-systems/facets/issues/232">#232</a>; the provenance complement to <a href="https://github.com/halcyonic-systems/facets/blob/main/spec/LENS_ENTRY_SPEC.md"><code>../spec/LENS_ENTRY_SPEC.md</code></a> §D).</p>
+</li>
+<li><p><code>lean-manifest.json</code> — <strong>LIVE</strong> — the machine-readable source of truth behind <code>lean-provenance.md</code>: one row per claim, carrying the SSF symbol and the Lean keyword it is declared with. The doc&#39;s tables are generated from it (<code>just provenance</code>); nobody hand-edits a citation string.</p>
+</li>
+<li><p><a href="./wellformedness-mapping.html"><code>wellformedness-mapping.md</code></a> — <strong>RESEARCH</strong> — the three well-formedness predicates compared in both directions: the eight-field Lean <code>WellFormed</code> structure, the 28 kernel codes, and the four conjuncts the life-cycle paper prints. Zero Lean fields map cleanly, six are partial, two are unviolable in the <code>WorldModel</code>; nineteen kernel codes check something other than well-formedness, which is the kernel doing more rather than less. Three gaps are demonstrated by executed probes, and the scope of the machine-checked closure result (two <code>Step</code> constructors against a fourteen-row table) is stated so it is hard to over-quote.</p>
+</li>
+<li><p><a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a> — <strong>LIVE</strong> — per-tradition (Klir/Bunge/Mobus) take/drop/where/why, the mode-stamp semantics, the perspectival-realist scope statement, and the #5 collapse as a worked example of the refuse-don&#39;t-truncate discipline. For a reader assessing the theory&#39;s quality, not just its UI.</p>
+</li>
+<li><p><a href="./216-cross-lens-findings.html"><code>216-cross-lens-findings.md</code></a> — <strong>RESEARCH</strong> — the first read of the <a href="https://github.com/halcyonic-systems/facets/issues/216">#216</a> cross-lens matrix over all 35 entries: every measurable model is read differently by each lens that accepts it (34 of 34, zero aligned), the per-lens count of authored content left unrendered (Klir 371 · Bunge 181 · Mobus 49), and why an all-green Klir column is evidence about the projection rather than about the models. The empirical companion to <a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a>; open questions at <a href="https://github.com/halcyonic-systems/facets/issues/284">#284</a>, <a href="https://github.com/halcyonic-systems/facets/issues/285">#285</a>, <a href="https://github.com/halcyonic-systems/facets/issues/286">#286</a>.</p>
+</li>
+<li><p><a href="./steel-plant-walkthrough.html"><code>steel-plant-walkthrough.md</code></a> — <strong>LIVE</strong> — the Steel-Plant walk demo script: the click path through Mobus&#39;s ch. 4 procedure (Figs. 4.14 → 4.16 → 4.17) as a three-level decomposition walk, what to say at each level, and where the seam glyphs live. Companion to <code>assets/walkthroughs/steel-plant/</code> (all three levels).</p>
+</li>
+<li><p><a href="./288-level-census.html"><code>288-level-census.md</code></a> — <strong>ADOPTED</strong> — the <a href="https://github.com/halcyonic-systems/facets/issues/288">#288</a> Klir epistemological-level census, ratified 2026-08-08: every shipped entry declares its level (source 2 · generative 1 · structure 36 · data and metasystem 0 — the empty levels being a finding about SL&#39;s reach), the four ratifying decisions with their reasoning, the draft&#39;s eight-fork ledger resolved, and the live §5.4 cross-level refusal the declarations make possible. Five of the eight forks fell to one test: is the complete generating rule in the file?</p>
+</li>
+<li><p><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/audits/seam-readiness-2026-09-04.md"><code>audits/seam-readiness-2026-09-04.md</code></a> — <strong>RESEARCH</strong> — which of the 29 shipped models could carry a decomposition seam today, run the day continuous zoom shipped (<a href="https://github.com/halcyonic-systems/facets/issues/139">#139</a>). Every model has crossings and none is network-first: 21 read as systems with 78 seam-ready components and no <code>decomposes</code> anywhere, 10 are corpus transcriptions of sources that were drawn as graphs, and only the Steel-Plant walk ships a seam. Regenerated by <code>scripts/seam_audit.py</code>, which compiles each model with the kernel and reports per component.</p>
+</li>
+</ul>
+<h2>Design positions and research</h2>
+<p><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/README.md"><code>design/README.md</code></a> is the status-grouped index of this section (LIVE · ADOPTED · PROPOSED · RESEARCH). The highlights follow.</p>
+<p>Positions — a stance the repo takes, or is being asked to take:</p>
+<ul>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/dynamics-principled-position.md"><code>design/dynamics-principled-position.md</code></a> — <strong>ADOPTED</strong> (adopted via <a href="https://github.com/halcyonic-systems/facets/issues/86">#86</a>) — what counts as dynamics: a state-transition family satisfying the semigroup axiom (Mesarovic–Takahara); a dynamics-<em>kind</em> is the transition functor; <strong>conservation is an invariant the model declares, not the engine&#39;s premise</strong>. Supersedes the &quot;dynamics = the conservation engine&quot; framing in the retired <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/archive/roadmap-pre-web-rebuild.md"><code>archive/roadmap-pre-web-rebuild.md</code></a> Arc 4. <code>language/spec.md</code> §8 is normatively bound to it. Research trail: <a href="https://github.com/halcyonic-systems/facets/tree/main/docs/design/dynamics-research"><code>design/dynamics-research/</code></a>.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/hierarchical-decomposition-investigation.md"><code>design/hierarchical-decomposition-investigation.md</code></a> — <strong>PROPOSED</strong> (<a href="https://github.com/halcyonic-systems/facets/issues/89">#89</a>) — the kernel&#39;s data model can carry arbitrary depth, but every active path is flat: <code>project()</code> forces level 1, <code>to_canvas()</code> drops deeper levels, <code>validate_operational()</code> refuses <code>level &gt; 1</code>. Recommends decomposition by reference; implementation gated on deriving the parent↔child boundary math from the Lean 8-tuple.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/decomposition-foundations.md"><code>design/decomposition-foundations.md</code></a> — <strong>RESEARCH</strong> (<a href="https://github.com/halcyonic-systems/facets/issues/89">#89</a>) — the math layer under the investigation&#39;s Option B: the Eq. 4.3 substitution slot by slot over the Lean 8-tuple, the boundary-contract bijection β, the three Lean statements that open the gate, and the Lean-first dependency order. Explicit non-goals: no grammar, kernel, or neutral-spec change.</li>
+</ul>
+<p>Research foundations — what others build on; not themselves decisions:</p>
+<ul>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/sl2-authoring-language.md"><code>design/sl2-authoring-language.md</code></a> — <strong>RESEARCH</strong> — the foundation behind <code>language/spec.md</code>: three concrete syntaxes over one neutral spec, the precedent survey (SysML v2, Modelica, Stella, Quint; gpt-jargon as negative control), keep/shed against Mobus and BERT SL v0.1, and the staged rung plan. Rungs 1–3 shipped 2026-07-18 (<a href="https://github.com/halcyonic-systems/facets/issues/82">#82</a>); its 8 open questions remain closeable work.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/tree/main/docs/design/dynamics-research"><code>design/dynamics-research/</code></a> — <strong>RESEARCH</strong> — the research trail behind the adopted dynamics position: six primary-source reads (Mobus, Bunge, Klir, Bertalanffy, category theory, external general-systems literature), a synthesis, and two adversarial critiques (<code>critique-novelty.md</code>, <code>critique-coverage.md</code>). Start at its <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/dynamics-research/README.md"><code>README.md</code></a> for the reading order.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/llm-integration-research.md"><code>design/llm-integration-research.md</code></a> — <strong>RESEARCH</strong> — LLM context/authoring/analysis (rests on <code>kernel-architecture.md</code>). §11 is the lens-fidelity mechanism; §12 is the recommended-first-rung plan the 2026-07-17 analysis rung executed.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/lens-palettes.md"><code>design/lens-palettes.md</code></a> — <strong>LIVE</strong> — the lens grounding for Phase 3/4 (Klir / Bunge / Mobus), and the two kernel primitives (boundary identity, edge classification) behind the faithful renderings.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/educational-model-suite.md"><code>design/educational-model-suite.md</code></a> — <strong>RESEARCH</strong> — a 13-model graded curriculum teaching systems concepts through the instrument (primitive-first; refusals as lessons), plus a faculty-appeal appendix. Not in-tool, and untracked: the curriculum was planned against #80 and #21, both of which closed in July 2026 having shipped narrower things.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/shape-vocabulary-research.md"><code>design/shape-vocabulary-research.md</code></a> — <strong>RESEARCH</strong> — notation precedents (Mobus&#39;s own icon set, Stella/Forrester, Odum, SysML ports, automata, Petri nets) for the palette shape vocabulary (<a href="https://github.com/halcyonic-systems/facets/issues/81">#81</a>).</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/design-system-draft.md"><code>design/design-system-draft.md</code></a> — <strong>RESEARCH</strong> — visual design system draft.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/sandbox-surface.md"><code>design/sandbox-surface.md</code></a> — <strong>ADOPTED</strong> — the sandbox surface: a Home document entry (never a third mode, #345), the boundary&#39;s one stateful wasm export (<code>SandboxSession</code>), and the WorldModel-as-document graduation path; conservation declared, not premised (ADR 0003).</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/proposals/112-transition-functor.md"><code>proposals/112-transition-functor.md</code></a> — <strong>ADOPTED</strong> (<a href="https://github.com/halcyonic-systems/facets/issues/112">#112</a>) — the transition functor as shipped: F = Id over the whole-circuit product state, Δt a family index, the shipped forcing read as the closed instance; slice 1 implemented 2026-08-15.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/proposals/trace-separation.md"><code>proposals/trace-separation.md</code></a> — <strong>PROPOSED</strong> — separating recorded trace from transition state (stage 0 applied 2026-08-15; stages 1–3 await a dedicated session with byte-identical float assertions as the acceptance bar).</li>
+<li><a href="./translation-apparatus-walkthrough.html"><code>translation-apparatus-walkthrough.md</code></a> — <strong>RESEARCH</strong> — the translation apparatus running end to end, every number reproducible via <code>bert run assets/examples/translation-apparatus.sl --t 15</code> (current as of 2026-08-15).</li>
+</ul>
+<h2>Decisions</h2>
+<ul>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/decisions/0001-canvas-rendering-svg.md"><code>decisions/0001-canvas-rendering-svg.md</code></a> — <strong>ADOPTED</strong> — the hand-rolled React+SVG canvas call (vs. a graph library), from the blind-pick spike.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/decisions/0002-web-first-rebuild.md"><code>decisions/0002-web-first-rebuild.md</code></a> — <strong>ADOPTED</strong> — the egui → React/wasm rebuild (Rust brain, React face); written retrospectively from the repo record.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/decisions/0003-conservation-declared-not-assumed.md"><code>decisions/0003-conservation-declared-not-assumed.md</code></a> — <strong>ADOPTED</strong> — conservation is an invariant a model declares, never the engine&#39;s premise; the compose engine is the first interpreter of one dynamics-kind. Records the #86 position in force.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/decisions/0006-closed-metric-verbs.md"><code>decisions/0006-closed-metric-verbs.md</code></a> — <strong>ADOPTED</strong> — declared metrics (#203) grow a closed verb vocabulary, one checkable verb at a time, each owing a separating instance — never an open expression language. Ranking is a panel view, not a verb.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/decisions/0005-vocabulary-tiers.md"><code>decisions/0005-vocabulary-tiers.md</code></a> — <strong>ADOPTED</strong> — four vocabulary tiers (primitives / compositions / faithful lenses / vocabulary packs) and the rule that decides them: a tradition that never defines <em>system</em> is not a lens. Places Troncale&#39;s SPT as a composition, and records the stranded-sweep gap.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/decisions/0004-neutral-archive-canvasmodel-json.md"><code>decisions/0004-neutral-archive-canvasmodel-json.md</code></a> — <strong>ADOPTED</strong> — the neutral archive format is <code>CanvasModel</code> JSON. Adopted, then indexed nowhere for four days; its only inbound link was from an orphan until <a href="https://github.com/halcyonic-systems/facets/issues/235">#235</a>.</li>
+</ul>
+<h2>The parked ledger</h2>
+<ul>
+<li><a href="./parked.html"><code>parked.md</code></a> — <strong>LIVE</strong> — the permanent record of work that was thought through, decided on, or found out, and then deliberately not scheduled. Eleven entries retired from the issue board in the W30 ratification audit (<a href="https://github.com/halcyonic-systems/facets/issues/234">#234</a>), each carrying what it is, what was decided, the evidence that settled it, and whether it has a live unpark trigger. It exists because 8 of 11 parked issues recorded a <em>finding</em>, and an issue is the wrong container for a finding.</li>
+</ul>
+<h2>Historical (pre-web-rebuild, kept as record)</h2>
+<ul>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/archive/canvas-architecture.md"><code>archive/canvas-architecture.md</code></a> — <strong>HISTORICAL</strong> — the standalone egui canvas (<code>src/main.rs</code>). Superseded by the web rebuild; its kernel-seam semantics (mode stamping, audit-panel verdict-quoting) carried forward and are still accurate, but the UI mechanics it describes are gone. (A stub remains at the old <code>canvas-architecture.md</code> path.)</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/archive/on-the-word-ladder.md"><code>archive/on-the-word-ladder.md</code></a> — <strong>HISTORICAL</strong> — the concordance of the three senses of &quot;ladder/rung/climb&quot; in this repo. Its mode-entry hazard (Bucket A) is retired: mode entry now speaks <strong>lens</strong> vocabulary (see <a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a>, gated by <code>scripts/doc_lint.py</code>); the doc survives as the record of the words that legitimately stay (compose dependency ladder, per-edge classification, project-phase &quot;rung&quot;). Issue <a href="https://github.com/halcyonic-systems/facets/issues/90">#90</a>. (A stub remains at the old <code>on-the-word-ladder.md</code> path.)</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/docs/archive/fidelity-audit.md"><code>archive/fidelity-audit.md</code></a> — <strong>HISTORICAL</strong> — faithfulness verdicts from the egui-era canvas; the current fidelity assessment is <a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a>.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/tree/main/docs/archive"><code>archive/</code></a> — <strong>HISTORICAL</strong> — superseded design docs; <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/archive/README.md"><code>archive/README.md</code></a> lists them all. One file there is <strong>RESEARCH</strong> rather than historical: <code>archive/gst-1968-full.md</code>, the Bertalanffy source extraction, which nothing superseded and which the dynamics research still reads against. It lives under <code>archive/</code> for its size.</li>
+</ul>
+<p>Three redirect stubs remain at the pre-move paths so old links do not rot. They are three lines each and carry no content: <a href="./canvas-architecture.html"><code>canvas-architecture.md</code></a>, <a href="./fidelity-audit.html"><code>fidelity-audit.md</code></a>, <a href="./on-the-word-ladder.html"><code>on-the-word-ladder.md</code></a>.</p>
+<h2>Root-level references</h2>
+<ul>
+<li><strong><a href="https://github.com/orgs/halcyonic-systems/projects/12">Roadmap board</a></strong> — <strong>LIVE</strong> — the forward-looking plan, organized by epic (Reality Interface · Joy Surface · Resident Co-author · Trusted Seam · Legible Foundations · The Language · What Runs · Notation · Teaching Surface). There is no roadmap <em>file</em>; the retired one is <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/archive/roadmap-pre-web-rebuild.md"><code>archive/roadmap-pre-web-rebuild.md</code></a>.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/crates/bert-lenses-kernel/API.md"><code>../crates/bert-lenses-kernel/API.md</code></a> — <strong>LIVE</strong> — the frozen JS↔wasm surface (append-only). Includes the SL surface (<code>compile_sl</code> / <code>emit_sl</code>).</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/web/DESIGN.md"><code>../web/DESIGN.md</code></a> — <strong>LIVE</strong> — Halcyonic Frost design tokens for the face, and the <strong>one owner</strong> of the design system. <code>design/design-system-draft.md</code>, <code>design/visual-language.md</code>, <code>design/lens-palettes.md</code>, and the retired <code>archive/design-system.md</code> are all subordinate to it.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/spec/LENS_ENTRY_SPEC.md"><code>../spec/LENS_ENTRY_SPEC.md</code></a> — <strong>LIVE</strong> — the lens-entry specification; §D is the provenance complement to <code>lean-provenance.md</code>.</li>
+<li><a href="./running-permanently.html"><code>running-permanently.md</code></a> — <strong>LIVE</strong> — how to keep the app running as a permanent local service rather than a <code>just dev</code> session.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/pipeline/README.md"><code>../pipeline/README.md</code></a> — <strong>LIVE</strong> — the corpus pipeline: its own venv, its own dependencies, and how to run it.</li>
+<li><a href="https://github.com/halcyonic-systems/facets/blob/main/examples/README.md"><code>../examples/README.md</code></a> — <strong>LIVE</strong> — what the worked examples are and how to open them.</li>
+</ul>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/README.md">Source · docs/README.md</a>
+      <span>Rendered from 0bb7de4</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

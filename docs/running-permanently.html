@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Running bert-lenses permanently · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="./" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">LIVE</span></div>
+    <h1 class="title">Running bert-lenses permanently</h1>
+    <article><p><strong>Status: LIVE.</strong></p>
+<p>Runs bert-lenses as a background service on <code>http://127.0.0.1:5190</code> instead of
+<code>npm run dev</code> on 5173. 5173 stays free for interactive dev.</p>
+<h2>Why publish outside ~/Desktop</h2>
+<p>This repo lives under <code>~/Desktop</code>, which macOS treats as TCC-protected: a
+launchd job has no Full Disk Access grant, so it can&#39;t read the repo (or the
+repo&#39;s <code>web/node_modules</code>) at all. The repo can&#39;t move (active dev, worktrees).
+So the build output moves instead: <code>scripts/publish-app.sh</code> builds <code>web/dist</code>
+inside the repo, then rsyncs it to <code>~/halcyonic-apps/bert-lenses/dist</code>, which
+launchd can read. The launchd job also runs a <em>standalone</em> vite install kept
+at <code>~/halcyonic-apps/bert-lenses/server</code> (its own throwaway <code>package.json</code>,
+outside <code>~/Desktop</code>) purely to run <code>vite preview</code> against the published dist —
+it never touches the repo&#39;s own vite in <code>web/node_modules</code>.</p>
+<h2>Install</h2>
+<pre><code class="language-bash">scripts/publish-app.sh
+cp launchd/com.halcyonic.bert-lenses.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.halcyonic.bert-lenses.plist
+</code></pre>
+<p>Check it&#39;s up: <code>curl -sf http://127.0.0.1:5190/ | head</code></p>
+<h2>Update</h2>
+<p>After any change to the app, re-run:</p>
+<pre><code class="language-bash">scripts/publish-app.sh
+</code></pre>
+<p>The running service already points at <code>~/halcyonic-apps/bert-lenses/dist</code>, but
+vite preview only reads the files at process start, so kick it after
+publishing:</p>
+<pre><code class="language-bash">launchctl kickstart -k gui/$(id -u)/com.halcyonic.bert-lenses
+</code></pre>
+<h2>Stop / uninstall</h2>
+<pre><code class="language-bash">launchctl bootout gui/$(id -u)/com.halcyonic.bert-lenses
+rm ~/Library/LaunchAgents/com.halcyonic.bert-lenses.plist
+</code></pre>
+<p>The published copy (<code>~/halcyonic-apps/bert-lenses/</code>) is left on disk; delete
+it too if fully decommissioning.</p>
+<h2>The desktop app</h2>
+<p>The same <code>web/dist</code> this doc publishes is what the macOS app wraps — Tauri v2,
+<code>src-tauri/</code>, no second build path. Build it:</p>
+<pre><code class="language-bash">just desktop
+</code></pre>
+<p>That rebuilds the wasm kernel, builds <code>web/dist</code>, and runs <code>cargo tauri build</code>.
+The artifact lands at:</p>
+<pre><code>src-tauri/target/release/bundle/macos/bert-lenses.app
+</code></pre>
+<p>Double-click it, or <code>open</code> it. ~5.4 MB, arm64, ad-hoc signed by the linker.
+Nothing is installed; drag it to <code>/Applications</code> if you want it in Spotlight.</p>
+<h3><code>cargo tauri dev</code> is a false positive — never verify with it</h3>
+<p>Dev serves the frontend over <code>http://127.0.0.1:1430</code> and applies <code>devCsp</code>, not
+the CSP in <code>tauri.conf.json</code>. The bundle serves over the <code>tauri://localhost</code>
+custom protocol and applies the real CSP. A wasm or CSP fault therefore passes
+green in dev and kills the bundle. Verify with <code>just desktop</code> and launch the
+<code>.app</code>, always.</p>
+<p>Two things the custom protocol changes, both already handled in
+<code>tauri.conf.json</code>:</p>
+<ul>
+<li><strong><code>script-src</code> must carry <code>&#39;wasm-unsafe-eval&#39;</code></strong> or the kernel dies on
+<code>WebAssembly.instantiateStreaming</code> and the app shows &quot;Failed to load the wasm
+kernel&quot;. (Tauri already serves <code>.wasm</code> as <code>application/wasm</code>, so no protocol
+handler is needed.)</li>
+<li><strong><code>connect-src</code> must name the reasoner origin.</strong> The app&#39;s origin is
+<code>tauri://localhost</code>, so an unnamed origin is blocked and surfaces as a bare
+<code>TypeError: Load failed</code> that reads like &quot;the reasoner is down.&quot; Named today:
+<code>http://localhost:5010</code> and <code>http://127.0.0.1:5010</code> — this machine, and
+nothing else. No remote host is named in the bundle (#229): a URL compiled
+into a distributed binary cannot be recalled once the binary is in someone&#39;s
+hands, so a reasoner reached over the network needs a build whose CSP names
+it.</li>
+</ul>
+<p>Fonts are self-hosted for the same reason — a bundle has no network. See
+<code>scripts/vendor-fonts.py</code>.</p>
+<h3>Unsigned, and what a stranger sees</h3>
+<p>The app is not Developer-ID signed and not notarized. Consequences:</p>
+<ul>
+<li><strong>Building it yourself, or copying it locally:</strong> nothing happens. No
+quarantine flag, no dialog. This is the state for us indefinitely.</li>
+<li><strong>Downloading a <code>.app</code> from the internet:</strong> macOS quarantines it and refuses
+to open it. On macOS 15 the old right-click → Open bypass is gone; the user
+must go to <strong>System Settings → Privacy &amp; Security</strong>, find the blocked-app
+notice, and press <strong>Open Anyway</strong>. Tell anyone you send a build to expect
+this.</li>
+<li>Removing the dialog entirely means a $99/yr Apple Developer ID plus
+notarization. That is env-vars-only in Tauri and needs zero rework here, so
+it can be added at any point.</li>
+</ul>
+<p><code>xattr -p com.apple.quarantine bert-lenses.app</code> reports the flag if a copy ever
+picks one up; <code>xattr -dr com.apple.quarantine bert-lenses.app</code> clears it.</p>
+<h3>What is deliberately absent</h3>
+<p>No native file dialog and no filesystem library backend. Saving means putting a
+model in <strong>My library</strong>, and that is one verb with one storage interface
+(<code>web/src/library.ts</code>, <code>setLibraryBackend()</code>) behind it. IndexedDB backs it in
+both the browser and the app today; a filesystem backend can be dropped in
+later without adding a second way to save. File import/export stays what it is:
+interchange between installs, not a competing save path.</p>
+<h3>Icon</h3>
+<p><code>scripts/make-icon.py</code> draws <code>src-tauri/icons/icon-src.png</code> from the app&#39;s own
+tokens and body face, then runs <code>cargo tauri icon</code> and drops the iOS/Android
+sets. It needs <code>fonttools</code> + <code>pillow</code>, which are not project dependencies — run
+it in a throwaway venv (the docstring has the two lines).</p>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/running-permanently.md">Source · docs/running-permanently.md</a>
+      <span>Rendered from 0bb7de4</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

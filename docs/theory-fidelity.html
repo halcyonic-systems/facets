@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theory fidelity — what each lens takes, drops, and why · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="./" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">LIVE</span></div>
+    <h1 class="title">Theory fidelity — what each lens takes, drops, and why</h1>
+    <article><p><strong>Status: LIVE.</strong></p>
+<p><em>For a reader already convinced the tool is useful and now assessing the quality of the theory underneath — independently, or with an LLM/expert&#39;s help. Claims about this repo&#39;s own code cite file:line, so they are checkable against the current source rather than taken on faith. Claims about the Lean cite a <strong><code>claim_id</code></strong> instead: a line number into another repository is a coincidence with a timestamp, so citations into <code>systems-science-foundations</code> are anchored by declaration name in a generated manifest — the pinned commit, the per-claim map, the declaration <em>kinds</em>, and the audit commands are in <a href="./lean-provenance.html"><code>lean-provenance.md</code></a>. A secondary, harder-nosed reading (a scholar looking for the weak points) is folded in where the two audiences ask the same question; where they diverge, this doc favors the assessing reader.</em></p>
+<h2>What the kernel actually is</h2>
+<p>The kernel (<code>crates/bert-core</code>, compiled to WASM) is a decision procedure, not a summary or a metaphor. Its verdicts are grounded in a machine-checked Lean formalization (<code>systems-science-foundations/Systems/Klir/ViewGeneration.lean</code>), not in house style or a reading of the source texts alone. One <code>Kernel</code> object (a <code>(T, R)</code> pair under <code>ActsOn</code>) generates three faithful views by three Lean-proven maps:</p>
+<ul>
+<li><code>Kernel.toKlir</code> — unconditional (every kernel is a valid Klir system).</li>
+<li><code>Kernel.toBunge</code>, gated on <code>Kernel.HasBond</code> (claim <code>kernel.bunge-gate</code>; both are Lean <code>def</code>s — the gate is a definition, the faithfulness theorems are <code>kernel.bunge-faithful</code>) — a system requires at least one bond between distinct components; an unbonded collection is an aggregate (Bunge Def 1.1).</li>
+<li><code>Kernel.toMobus</code>, gated on <code>Kernel.Irreflexive</code> (claim <code>kernel.mobus-gate</code>; likewise <code>def</code>s, with <code>kernel.mobus-faithful</code> carrying the theorems) — no interaction depends on itself (Mobus §4.3, <code>k ≠ o</code>).</li>
+<li><code>Kernel.toMobus_toBunge</code> (claim <code>kernel.one-composite</code>) — the one proven composite: under <strong>three</strong> named hypotheses (<code>HasBond</code>, <code>Irreflexive</code>, and <code>DepActs</code>, which the manifest row spells out rather than summarizing as &quot;both preconditions&quot;), going Mobus-then-Bunge factors through Klir. This is the only entailment the Lean file proves between the two gated views; <code>HasBond</code> and <code>Irreflexive</code> are otherwise independent predicates. There is no Lean theorem that <code>HasBond ⟹ Irreflexive</code> or the reverse: the modes are parallel lenses (a meet-semilattice), not a linear tower, so &quot;mode&quot; language must never be read as an ascending path where later modes presuppose earlier ones. (Historical note: <code>docs/archive/on-the-word-ladder.md</code> records why the retired &quot;ladder/rung/climb&quot; phrasing was misleading here.)</li>
+</ul>
+<p>Rust mirrors this exactly: <code>validate_mode</code> (<code>crates/bert-core/src/validate.rs:123-146</code>) gates entry per mode — <code>check_bond</code> for Structural (<code>:150-162</code>), <code>check_self_loops</code> for Operational (<code>:165-179</code>). <code>crates/bert-core/src/transition.rs:6-9</code> states the poset precisely: &quot;a meet-semilattice (tree-shaped); no joins by design — Core is the meet of every pair, Structural and Full are parallel leaves with no join.&quot; Treat that sentence as the canonical statement; everything else in the repo that talks about modes should agree with it.</p>
+<h2>Per-tradition: take / drop / where / why</h2>
+<p><strong>Klir — General Systems Problem Solver, <code>S = (T, R)</code></strong></p>
+<ul>
+<li><em>Takes:</em> things and relations, undirected, arity-agnostic. Exposed via <code>describe(model, Klir)</code> (<code>crates/bert-canvas/src/lenses.rs:305-347</code>) as <code>things</code>, <code>relations</code>, <code>directed</code>, <code>neutral</code>.</li>
+<li><em>Drops:</em> direction, substance/kind, bond-vs-mere distinction — everything Bunge and Mobus add. Klir is the unconditional floor; every kernel is a valid Klir system, which is precisely its scope: relational structure only.</li>
+<li><em>Where:</em> <code>Kernel.toKlir</code> (Lean, unconditional) → <code>Mode::Core</code> (<code>lib.rs:634-644</code>) → no gate in <code>validate_mode</code> beyond on-ness (reference integrity).</li>
+<li><em>Why this scope:</em> Klir&#39;s 1967 system is a single relational structure classifying things by relation-membership, not GSPS&#39;s later multi-level hierarchy (metasystem, structure system, etc.). This is a named scope decision — the kernel takes the 1967 kernel-system, not the full GSPS hierarchy of system types (see the perspectival-realist scope statement below).</li>
+</ul>
+<p><strong>Bunge — CES, <code>σ = ⟨C, E, S⟩</code></strong> (M carried as untyped <code>mechanism_note</code> prose — not a Lean-projected coordinate; see concordance §14)</p>
+<ul>
+<li><em>Takes:</em> composition (named components), environment (bonded externals), the bondage/mere-relation split, endo/exo-structure (locus), the aggregate-vs-system verdict. Exposed via <code>describe(model, Bunge)</code>: <code>composition[]</code>, <code>environment[]</code>, <code>endostructure</code>, <code>exostructure</code>, <code>bondage</code>, <code>mere_relations</code>, <code>boundary_components[]</code>, <code>verdict</code>, <code>mechanism_note</code>.</li>
+<li><em>Drops:</em> mechanism as anything beyond a structural note (<code>mechanism_note</code> is prose, not typed structure), and everything outside bondhood/composition — materialist ontology commitments, emergence-as-process, historicity.</li>
+<li><em>Where:</em> <code>Kernel.toBunge</code> gated on the Lean <code>def</code> <code>Kernel.HasBond</code> → <code>check_bond</code> (<code>validate.rs:150-162</code>) → <code>Mode::Structural</code> (claim <code>kernel.bunge-gate</code>).</li>
+<li><em>Why:</em> the bond-vs-mere predicate is author-declared, not derived from dynamics — <code>is_bond</code> is a declaration the kernel checks for legality against <code>HasBond</code>, not something computed from a run. <code>crates/bert-canvas/src/lenses.rs:37-39</code> states the Lean criterion directly: <code>FlowInducesAction</code> (claim <code>bond.criterion</code> — a <code>def</code>, so nothing there proves an author&#39;s <code>is_bond</code> declaration is <em>true</em> of the world) — a flow that modifies history is a bond. The kernel validates a claim about mechanism; it does not compute mechanism.</li>
+</ul>
+<p><strong>Mobus — 8-tuple, <code>S = ⟨C, N, E, G, B, T, H, Δt⟩</code></strong></p>
+<p>Provenance: Mobus&#39;s book prints a 7-tuple <code>⟨C, N, G, B, T, H, Δt⟩</code>; this formalization extends it to an 8-tuple with E first-class — a Lean improvement, not a claim that Mobus published 8. See concordance row 1.</p>
+<ul>
+<li><em>Takes:</em> components, endostructure (N), environment as first-class objects+milieu, exostructure (G), boundary/interfaces (B) with porosity and perceptive-fuzziness, and — thin — transformation/history/time-constant slots (T, H, Δt).</li>
+<li><em>Drops (deliberately, stated in code):</em> T/H/Δt are &quot;stringly-typed notes in v2.0 — typing deferred&quot; (<code>validate.rs:177</code>). The structural tuple (C·N·E·G·B) is real, machine-checked structure; the dynamical slots are not yet typed structure, only prose.</li>
+<li><em>Where:</em> <code>Kernel.toMobus</code> gated on the Lean <code>def</code> <code>Kernel.Irreflexive</code> (claim <code>kernel.mobus-gate</code>) → <code>check_self_loops</code> (<code>validate.rs:165-179</code>, <code>k ≠ o</code>) → <code>Mode::Operational</code>; <code>Mode::Full</code> adds <code>check_dynamical_face</code>, which only warns (never blocks) if no system populates T/H/Δt (<code>validate.rs:186-203</code>) — Full is the default view, so an empty face informs rather than blocks.</li>
+<li><em>Why:</em> bert-lenses&#39; own <code>CLAUDE.md</code> (<code>:28-34</code>) states the essential facts that get forgotten and must be cited from the Lean, not reconstructed from memory: <strong>E (environment) is first-class</strong>, <strong>H is History, not hierarchy</strong>, <strong>Messages are copyable / not conserved</strong> (unlike Material + Energy). Mobus&#39;s own knowledge is scattered across the book; <code>Systems/Mobus/Tuple.lean</code> is the single canonical, machine-checked source (claims <code>tuple.structure</code>, <code>tuple.boundary</code>) — a deliberate anti-hallucination discipline. Note what the manifest records there: those constraints are <code>structure</code> <strong>fields</strong>, discharged at construction, and the fields this repo relies on are not an enumeration of the tuple&#39;s constraints.</li>
+</ul>
+<h2>Mode-stamp semantics</h2>
+<p>A <code>WorldModel.mode</code> field (<code>lib.rs:598-605</code>) records the lens an author committed to. &quot;A mode is the lens an author committed to, not a constraint on the data: every model is a valid Core model regardless of this field&quot; (<code>lib.rs:602-603</code>). <code>validate_mode</code> &quot;never asks &#39;is the model valid&#39;; it asks &#39;may this model be authored <em>as</em> a Mode&#39;&quot; (<code>validate.rs:110</code>). The stamp is descriptive of authorial intent, checked for consistency against the Lean-proven precondition for that mode — it does not retroactively make a model something it structurally isn&#39;t, and it is not a promotion mechanism: stamping Operational doesn&#39;t add Mobus content, it asserts (and the kernel checks) that the existing structure already qualifies.</p>
+<p>The mode-transition machinery is honest about the shape. <code>transition.rs:16-22</code>: downgrade &quot;strips, it does not restamp&quot; — every out-of-mode field resets to a minimal witness, enumerated in a <code>LossWitness</code> so the transition is reversible field-for-field; upgrade &quot;never edits: it checks the target edge&#39;s named hypothesis... and refuses with that name, leaving the required edits to the author.&quot; Neither direction invents structure on the model&#39;s behalf.</p>
+<h2>The perspectival-realist scope statement</h2>
+<p>The kernel is the kernel of the <strong>structuralist thing-relation lineage</strong> — Klir, Bunge, Mobus, and the K ≅ <strong>2</strong> convergence thesis they instantiate. This is a scope claim, stated precisely, not a universal claim about systems science as a field:</p>
+<ol>
+<li><strong>What each lens&#39;s gate actually certifies.</strong> Each <code>describe()</code> output and <code>check_*</code> function targets a named, cited formal fragment of its tradition — never claims to <em>be</em> the tradition. A model passing <code>check_bond</code> has demonstrated the syntactic precondition Bunge&#39;s Def 1.1 requires; it has not been certified as materialist-ontologically correct, mechanistically complete, or emergence-faithful in the fuller sense of the <em>Treatise</em>. Similarly, Klir&#39;s Lean object is the 1967 single-structure kernel, not the full GSPS lattice of system types; Mobus&#39;s entry gate checks presence of irreflexive structure, not that operational commitments are semantically satisfied. The gates check <em>structure</em>, not <em>ontological furniture</em> — worth stating explicitly rather than letting a reader assume otherwise.</li>
+<li><strong>The convergence is a convergence of one lineage, not of the field.</strong> All seven traditions the K≅2 thesis surveys share the structuralist thing-relation lineage; second-order/autopoietic traditions — Varela&#39;s operational closure, Luhmann&#39;s communication systems, von Foerster&#39;s second-order observation — are outside its scope. Kernel <strong>2</strong> is the kernel <em>of a lineage</em>. The tool does not (yet, and makes no claim to) formalize operational closure or communication-as-the-unit-of-social-systems.</li>
+</ol>
+<h2>The single system-of-interest scope (Mobus lens) and the systems-of-systems seam</h2>
+<p>The kernel&#39;s edge classification is <strong>boundary-relative</strong>: every flow is read as endo (internal), exo (boundary-crossing), or bond, relative to one system of interest (<code>Canvas.tsx</code>, <code>edgeFactById</code> over the kernel&#39;s edge facts). This mirrors Mobus&#39;s own discipline — a single concrete system of interest, with the environment carried as sources and sinks (boundary conditions), never as a locus of internal mechanism.</p>
+<p>The general tuple does <strong>not</strong> inherit that narrowing. A relation between two environmental objects is well-formed: <code>predator-prey.sl</code>&#39;s <code>flow Sunlight -&gt; Grass</code> (source → environment, both outside the boundary) parses and <strong>compiles clean</strong> (<code>✓ clean</code>, zero faults). What has no place is not the <em>relation</em> but its <em>rendering</em>: with both endpoints external, the flow has no boundary relationship to anchor to, so the Mobus lens degrades it to a dashed, unlabeled, non-interactive stub rather than a first-class edge (confirmed by live DOM inspection; tracked in <a href="https://github.com/halcyonic-systems/facets/issues/166">#166</a>).</p>
+<p>Two consequences, stated precisely:</p>
+<ol>
+<li><strong>Orthogonal to the asserted kingdom (Conceptual/Concrete).</strong> The model that trips it, <code>predator-prey</code>, is <code>Concrete/Biological</code>; the one <code>Conceptual/Social</code> model in the #132/#14 sweeps, <code>jung-functions</code>, has no environment↔environment flow at all. The narrowing is about <em>how many systems of interest are in frame</em>, not about ontological kind.</li>
+<li><strong>Environment↔environment is the seam to systems of systems.</strong> Relationships <em>among</em> external objects — a feedback loop between two environmental things, or the couplings between peer systems — are exactly what a single-SoI frame sets aside and what a systems-of-systems frame must make first-class. The kernel already carries them (the tuple permits them); the <strong>Mobus lens</strong> is the narrowing, a faithful scope decision that centers one SoI. So &quot;the tool can&#39;t draw <code>Sunlight → Grass</code>&quot; is not a formalism limit; it is the lens being more Mobus-strict than the kernel requires. Lifting it (#166) is a lens/rendering decision, not a kernel change.</li>
+</ol>
+<h3>Implementation strategy: <code>E</code>-as-port (2026-07-24)</h3>
+<p>The single-SoI/SoS distinction has a concrete implementation, cross-checked against five sources in the categorical open-systems lineage — Myers (<em>Categorical Systems Theory</em>), Baez (<em>Double Categories of Open Systems</em>, arXiv:2509.22584v2), Willems (<em>Behavioral Approach</em>), Fong–Spivak (<em>Seven Sketches</em>), and <code>Span(Graph)</code> (Di Meglio–Sabadini–Walters). Full read + quotes: <code>operations/sessions/2026-07-24/references/categorical-environment.md</code>. <strong>Every one reduces &quot;environment&quot; to the composition interface</strong>; none gives it structure beyond &quot;the other side of an interface.&quot; <code>Span(Graph)</code> is the strongest witness — <em>zero</em> occurrences of &quot;environment,&quot; and it <em>proves</em> boundaries are optimally bare sets via a universal property (a free feedback category), even for stateful transition systems, rather than assuming it. And the <em>only</em> place the tradition reifies &quot;Environment&quot; as a box (Myers&#39;s Agent/Environment toy, p.14) does so precisely to declare a composite <strong>closed</strong> — functionally identical to Mobus&#39;s first-class <code>E</code>.</p>
+<p>So the doctrine&#39;s implementation: <strong>model <code>E</code> as a <em>port</em> — a stubbed/degenerate cospan-foot — not as a separate node type.</strong> Mobus&#39;s first-class <code>E</code> is then the <em>closed</em> face of a boundary (single-SoI: &quot;no further outside&quot;); the open port is the <em>same</em> boundary kept liquid for composition (SoS). The payoff: <strong>un-stubbing an <code>E</code> port simply <em>is</em> systems-of-systems composition — no new machinery.</strong> This collapses <code>E</code> (Mobus), the environment↔environment seam (#166), and the neutral-interchange&#39;s &quot;compose at shared entities&quot; (#172, <code>docs/design/neutral-interchange.md</code>) into <em>one</em> mechanism: environment is a port; composition is un-stubbing it.</p>
+<p>Caveat that travels with the citation: the <code>Span(Graph)</code> evidence is sourced via a descendant restatement (Di Meglio–Sabadini–Walters, arXiv:2010.10069), not the primary Katis–Sabadini–Walters 1997 AMAST paper (not in the library / paywalled). Strong triangulation, not a primary-text reading of that one line.</p>
+<h2>Independent convergence, observed in the sources (#132 corpus sweeps, 2026-07-22)</h2>
+<p>Three observations found while mining the source texts for the teaching corpus. Each is a place where the traditions arrive at the same move without contact — evidence for the lineage convergence rather than an argument for it. Word-lineage attribution stays where it belongs, in <code>docs/language/terminology-concordance.md</code>; these are structural observations about what the authors <em>do</em>.</p>
+<p><strong>1. Bunge writes an input/output/control/feedback model.</strong> <em>A World of Systems</em> (1979) Fig. 5.7, whose caption is complete in prose: &quot;Input-output model of the cultural system. <strong>Inputs:</strong> manpower (pivotal and auxiliary), artifacts (paint brushes, paper, pencils, books, archives, etc.), and <strong>energy</strong> (light, heat, etc.). <strong>Outputs:</strong> cultural artifacts (musical scores, sculptures, journals, etc.), people transformed by the latter, and waste products. <strong>Some of the outputs are fed back into the system. Controls:</strong> economy and polity.&quot; Sources, sinks, typed flows including energy, waste, feedback, and control — specified by Bunge, in a book that never uses that vocabulary as its primary apparatus. Fig. 5.6 does the same for the economic system. The corpus should hold these as cross-lens evidence rather than as Bunge-register entries, since their native register is arguably not his own.</p>
+<p><strong>2. Klir and Bunge draw the environment the same way.</strong> Klir&#39;s Fig. 4.7 (Facets, book p. 77) puts &quot;ENVIRONMENT OF S, x = 0&quot; in its own block outside a dashed <em>SYSTEM S</em> boundary. Bunge&#39;s §2.1 forms an (m+1)×(m+1) coupling matrix &quot;letting 0 stand for the environment en bloc&quot;. Same device, same index, different books.</p>
+<p><strong>3. Both use one-composition-many-structures as a teaching device.</strong> Klir&#39;s Fig. 10.1 shows four goal-oriented paradigms over the same two elements, differing only in the relation set. Bunge&#39;s Def 1.2 Example gives three internal structures over the same two things. Neither cites the other for it.</p>
+<p>None of these is decisive alone. Together they are the kind of thing the corpus can make <em>inspectable</em> rather than asserted — a reader meets them in the models instead of being told.</p>
+<h2>The #5 collapse — a worked example of the honesty discipline</h2>
+<p>GitHub issue #5 (bert-lenses) decided how a component carries a Mobus work-process primitive, shipped 2026-07-11 (bert-core <code>adbc6ddb</code>, bert-lenses <code>f07b3d9</code>). It&#39;s a concrete modeling-granularity decision, not a philosophical argument — but it&#39;s a useful worked example of a discipline this repo holds itself to elsewhere: refuse rather than silently drop authored structure.</p>
+<ul>
+<li><em>Take:</em> Mobus work-process granularity at exactly the resolution the 8-tuple licenses — one component performs one fundamental process. <code>AgentModel.primitive: Option&lt;ProcessPrimitive&gt;</code> (<code>crates/bert-core/src/lib.rs:1181</code>): &quot;One component, one fundamental process: a component that seems to need two primitives is a signal to decompose further — the plurality belongs one level down, expressed as structure, never as a list on one node&quot; (<code>lib.rs:1166-1170</code>).</li>
+<li><em>Drop:</em> multi-process components as a representable primitive-level construct. A component doing two Mobus primitives is, structurally, two components with a bond between them — decomposition <em>is</em> the representation of the plurality, not a list attached to one node.</li>
+<li><em>Where:</em> <code>AgentModel.primitive</code> was <code>Vec&lt;ProcessPrimitive&gt;</code> pre-#5, collapsed to <code>Option&lt;ProcessPrimitive&gt;</code>. Backward compatibility runs through <code>primitive_compat</code> (<code>lib.rs:1209-1234</code>): the legacy <code>primitives</code> array reads as empty → <code>None</code>, one entry → <code>Some</code>, and <strong>more than one entry is refused at deserialization</strong> — <code>lib.rs:1227-1231</code> cites &quot;a component performs exactly one fundamental process — decompose it into subsystems (one primitive each) and re-save.&quot; A legacy file with a 2+ entry array will not load; it will not silently keep the first entry.</li>
+<li><em>Why:</em> two disciplines converge. Decomposition faithfulness — a component doing two processes is a category mismatch with the 8-tuple unless it&#39;s actually two components, the same move as Bunge&#39;s bond/mere-relation split (plurality as more structure, not a richer label on one node). And refuse-don&#39;t-truncate — the repo-wide policy that the kernel errors loudly rather than silently drops authored content (see also <code>check_duplicate_edges</code>, and <code>LossWitness</code> on mode downgrade). The pre-#5 behavior in <code>validate_operational</code> took <code>.first()</code>; #5 replaced &quot;drop the extras&quot; with &quot;refuse and name what to do about it.&quot;</li>
+</ul>
+<h2>Honest boundary table</h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What it covers</th>
+<th>Confidence</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Hard / Lean-grounded</td>
+<td>Structural legality: reference integrity, the bond requirement (Bunge), irreflexivity (Mobus). The kernel will reject ill-formed or out-of-lens structure.</td>
+<td><strong>Solid, with the kinds named</strong> — <code>check_bond</code>/<code>check_self_loops</code> mirror the Lean <em>definitions</em> <code>Kernel.HasBond</code> / <code>Kernel.Irreflexive</code> (<code>def</code>s; claims <code>kernel.bunge-gate</code>, <code>kernel.mobus-gate</code>). What is machine-checked is the faithfulness of the views they gate (<code>kernel.bunge-faithful</code>, <code>kernel.mobus-faithful</code>); Rust-vs-Lean agreement is checked by fixture and oracle, not proved.</td>
+</tr>
+<tr>
+<td>Derived &amp; translated</td>
+<td>Boundary identity set, endo/exo locus, aggregate verdict, ports, per-edge facts — computed from the projection, surfaced to canvas ids, never re-derived in the face.</td>
+<td><strong>Solid</strong> — verified in <code>lens_facts</code>; single source.</td>
+</tr>
+<tr>
+<td>Declared &amp; validated</td>
+<td>Bond-vs-mere is author-declared (<code>is_bond</code>), checked for consistency against <code>HasBond</code> — not derived from dynamics. An LLM proposing bonds proposes a declaration, checked for legality, not something the kernel infers from behavior.</td>
+<td>Real but partial.</td>
+</tr>
+<tr>
+<td>Noted / thin</td>
+<td>The dynamical face T/H/Δt is stringly-typed notes in v2.0 (typing deferred); <code>check_dynamical_face</code> only warns. The structural tuple (C·N·E·G·B) is real; the dynamical slots are not yet typed structure.</td>
+<td>Thin — do not over-trust the dynamical face as machine-checked.</td>
+</tr>
+<tr>
+<td>Bunge M (mechanism)</td>
+<td>Delivered as CES: M is carried as untyped <code>mechanism_note</code> prose, not a Lean-projected coordinate. <code>describe(model, Bunge)</code> typesets <code>⟨C, E, S⟩</code>; the mechanism slot is authorial prose only (see concordance §14).</td>
+<td>Noted / thin — do not treat as machine-checked.</td>
+</tr>
+<tr>
+<td>Reachability / dead-end / duplicate-edge checks</td>
+<td><code>check_dead_ends</code>, <code>check_reachability</code>, <code>check_duplicate_edges</code> in <code>validate.rs</code> (<code>:134-135,141</code>), all Warning-severity (legitimate absorbing states stay legal), surfaced through <code>analyze</code> → <code>issue_targets</code>.</td>
+<td><strong>Landed 2026-07-17 (#66).</strong></td>
+</tr>
+<tr>
+<td>Declared reachability requirements</td>
+<td><code>check_reachability_requirements</code> in <code>validate.rs</code>: <code>MustReach</code> / <code>AlternativePath</code> properties the author asserts on the model (<code>reachability_requirements</code>), evaluated in Operational/Full. <strong>The severity doctrine:</strong> what the kernel merely <em>observes</em> warns (#66 — a lone graph fact cannot know intent); what the author <em>declares</em> refuses on violation (the declaration supplies the intent). Same posture as bond-vs-mere above: the kernel proves or refuses a stated fact, never invents one.</td>
+<td><strong>Landed 2026-07-20 (#69).</strong> Canvas-projection round-trip and SL authoring syntax for requirements not yet wired.</td>
+</tr>
+<tr>
+<td>Single-SoI edge scope (Mobus lens)</td>
+<td>Edge classification is boundary-relative (endo/exo/bond); a flow with both endpoints external degrades to a non-interactive stub, not a first-class edge. The <em>tuple</em> permits environment↔environment relations (they compile clean); the <em>lens</em> narrows to one system of interest. This is the seam to systems of systems — see the single-SoI scope section above.</td>
+<td>Lens/rendering scope decision, <strong>not</strong> a formalism limit. Tracked, parked: <a href="https://github.com/halcyonic-systems/facets/issues/166">#166</a>.</td>
+</tr>
+</tbody></table>
+<h2>Asserted system type (metadata, not a gate)</h2>
+<p>The model carries an author-asserted <code>system_type</code> (<code>CanvasModel.system_type</code> in <code>bert-canvas</code>): a <strong>kingdom</strong> (Conceptual | Concrete) + optional <strong>genus</strong> (Physical | Chemical | Biological | Social | Technical) + free-text <strong>domain</strong>. This is the modeler <em>asserting</em> the model&#39;s ontological kind — semantic metadata that travels with Save/Export and frames the analyst&#39;s narration. It is <strong>not</strong> a systemhood verdict and <strong>no <code>check_*</code> gates it</strong>; unlike the bond/irreflexivity checks above, nothing in the kernel validates or derives it. The genus vocabulary is Bunge&#39;s five genera (Postulate 6.4), chosen because it is a closed postulated list that Klir&#39;s §2.4 type-(a) classification independently corroborates — a K≅2 convergence on the thinghood axis. Full author grounding (Bunge kingdoms + genera, Mobus concrete/abstract + texture axes, Klir §2.4 + the convergence note): <code>systems-science-foundations/docs/reference/system-type-typologies.md</code>.</p>
+<h2>Cross-refs</h2>
+<ul>
+<li><code>systems-science-foundations/docs/reference/system-type-typologies.md</code> — author-grounded typology behind the asserted <code>system_type</code> property (Bunge / Mobus / Klir).</li>
+<li><code>docs/kernel-architecture.md</code> — the fuller verification pass this doc&#39;s claims are drawn from (file:line audit of <code>describe</code>/<code>lens_facts</code>/<code>validate_mode</code>/<code>analyze</code>).</li>
+<li><code>docs/archive/on-the-word-ladder.md</code> — <strong>HISTORICAL</strong> — the concordance of the three senses of &quot;ladder/rung/climb&quot;; the mode-entry sense is retired (mode entry now speaks lens vocabulary, #90), the doc kept as the record of the surviving senses.</li>
+<li><code>docs/design/llm-integration-research.md</code> §11 — how lens-fidelity is enforced for LLM-generated reasoning (<code>describe()</code> as injected, kernel-translated vocabulary).</li>
+<li><code>systems-science-foundations/Systems/Klir/ViewGeneration.lean</code>, <code>Systems/Mobus/Tuple.lean</code> — the machine-checked source. Cite it by <code>claim_id</code> through the manifest, never by line number.</li>
+<li><code>docs/lean-provenance.md</code> — the pinned SSF commit these citations refer to, the generated per-claim map (with declaration kinds), the staleness budget against SSF HEAD, the <strong>K ≅ 2 scope fence</strong> (this repo rests on the existence half only), and how an auditor checks every proof from this repo alone.</li>
+</ul>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/theory-fidelity.md">Source · docs/theory-fidelity.md</a>
+      <span>Rendered from 0bb7de4</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

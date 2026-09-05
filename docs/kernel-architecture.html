@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The bert-lenses Kernel as a System · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="./" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">LIVE</span></div>
+    <h1 class="title">The bert-lenses Kernel as a System</h1>
+    <article><p><strong>Status: LIVE.</strong></p>
+<p><em>What the kernel actually is, what it actually computes, and — honestly rated — how much of the LLM-integration story (<code>docs/design/llm-integration-research.md</code>) it can really bear. Written 2026-07-16 as a source-reading pass over <code>crates/</code>. Read this when you want to trust (or distrust) the substrate before building on it.</em></p>
+<h2>The two marks, and what each one is worth</h2>
+<p>This document carries two grades, and they are <strong>not</strong> the same grade. Until 2026-07-26 the stronger sections were headed <code>— VERIFIED</code> while the same document used &quot;machine-checked&quot; separately, with no legend and one line of body text disambiguating four headers. In a repo whose value proposition <em>is</em> the distinction between proof and inspection, one word doing both jobs is the worst word available (issue <a href="https://github.com/halcyonic-systems/facets/issues/232">#232</a>). So:</p>
+<ul>
+<li><strong>CODE-READ</strong> — a human read the Rust and reports what it does. That is all. It is defeasible by the next refactor and by a careless reading, and it is the mark on every section heading below. It is the same <em>strength</em> of claim as the concordance&#39;s source-verified <strong>VERIFIED</strong>, but about a different object (this repo&#39;s code, not a tradition&#39;s text), so it gets a different word rather than a second definition of the same one.</li>
+<li><strong>MACHINE-CHECKED</strong> — a named Lean declaration at the pinned SSF commit carries the weight, and <a href="./lean-provenance.html"><code>lean-provenance.md</code></a> maps the claim to that declaration by <code>claim_id</code>. Nothing in this document is machine-checked on its own authority; where the word appears, it points there.</li>
+</ul>
+<p>The negative mark, borrowed from the concordance&#39;s <code>UNGROUNDED</code>: rows in the layered-guarantee table marked <strong>Thin</strong> or <strong>Declared</strong> are claims the kernel <em>does not</em> make good on, listed rather than omitted.</p>
+<hr>
+<h2>What the kernel is (and isn&#39;t)</h2>
+<p>The kernel is the Rust core in <code>crates/</code>, compiled to WASM, that <strong>owns systemhood</strong> — it is a <em>decision procedure</em>, not a database and not a renderer. Given a model, it decides what is well-formed, what counts as a system vs an aggregate, what each faithful lens says, and (via the compose engine) what a deterministic dynamics run under a model-declared invariant does (current engine: one supported dynamics-kind — Id-functor over ℝⁿ stocks with an additive conservation invariant; further kinds are declarable). Its verdicts are grounded in a machine-checked Lean formalization (<code>systems-science-foundations/</code>), not in house style — claim by claim, by <code>claim_id</code>, in <a href="./lean-provenance.html"><code>lean-provenance.md</code></a>. The React face computes <strong>nothing</strong> about systems — it renders kernel verdicts (<code>web/src</code> = face, <code>crates/</code> = truth).</p>
+<p>Five crates:</p>
+<table>
+<thead>
+<tr>
+<th>Crate</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>bert-core</code></td>
+<td>The truth core: <code>WorldModel</code>, all validators, <code>project</code>, mode-gating (<code>validate.rs</code>, <code>lib.rs</code>)</td>
+</tr>
+<tr>
+<td><code>bert-canvas</code></td>
+<td>The lens/authoring domain: <code>CanvasModel</code>, <code>lens_facts</code>, <code>describe</code>, <code>analyze</code> (<code>lenses.rs</code>, <code>canvas.rs</code>)</td>
+</tr>
+<tr>
+<td><code>bert-tether</code></td>
+<td>Boundary interface: CSV import, run manifest, forcing</td>
+</tr>
+<tr>
+<td><code>bert-compose</code></td>
+<td>The dynamical engine: a dynamics run under the model&#39;s declared invariant (current engine: one supported dynamics-kind — Id-functor over ℝⁿ stocks with an additive conservation invariant; engine-only, wasm-clean)</td>
+</tr>
+<tr>
+<td><code>bert-lenses-kernel</code></td>
+<td>The JS↔wasm boundary — marshaling only; frozen append-only surface (<code>API.md</code>)</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>What it actually computes — the three things the LLM story rests on</h2>
+<p>All four sections below are CODE-READ: a direct read of the named source, nothing more. On the three the LLM story rests on, the code is <strong>richer than the research doc claimed</strong>, not thinner.</p>
+<h3>1. <code>describe(model, lens)</code> → the named per-lens formal object  — CODE-READ (rich)</h3>
+<p><code>lenses.rs:305-347</code>. Returns a <code>#[serde(tag=&quot;lens&quot;)]</code> discriminated union — the model typeset in <strong>each lens&#39;s own formal notation, with the actual named structure</strong>, not just counts:</p>
+<ul>
+<li><strong>Klir</strong> <code>S = (T, R)</code>: <code>things</code>, <code>relations</code>, <code>directed</code>, <code>neutral</code>, <code>note</code>.</li>
+<li><strong>Bunge</strong> <code>σ = ⟨C, E, S⟩</code> (CES; M carried as untyped <code>mechanism_note</code> prose, not a Lean-projected coordinate — see concordance §14): <code>composition[]</code> (named), <code>environment[]</code> (named), <code>endostructure</code>, <code>exostructure</code>, <code>bondage</code>, <code>mere_relations</code>, <code>boundary_components[]</code> (named), <code>verdict</code>, <code>mechanism_note</code>.</li>
+<li><strong>Mobus</strong> <code>S = ⟨C, N, E, G, B, T, H, Δt⟩</code> (8-tuple; Mobus&#39;s book prints a 7-tuple <code>⟨C, N, G, B, T, H, Δt⟩</code> — this formalization extends it to an 8-tuple with E first-class, a Lean improvement, not a claim that Mobus published 8; see concordance row 1): <code>c[]</code> (named), <code>n</code>, <code>e_objects[]</code> (named), <code>milieu_note</code>, <code>g</code>, <code>b_interfaces[]</code> (named), <code>porosity</code>, <code>perceptive_fuzziness</code>, <code>t_note</code>, <code>h_note</code>, <code>dt_note</code>, <code>self_loop_conflicts[]</code>.</li>
+</ul>
+<p>Counts are &quot;read off the same kernel facts the canvas renders — never re-derived&quot; (<code>lenses.rs:344</code>). <strong>This is the load-bearing fact for lens-faithful LLM reasoning: the kernel literally hands you the model in Bunge&#39;s or Mobus&#39;s vocabulary, named. The LLM never has to <em>know</em> a lens — it&#39;s fed the lens&#39;s own object.</strong></p>
+<h3>2. <code>lens_facts(model)</code> → faithful per-element facts  — CODE-READ</h3>
+<p><code>lenses.rs:83-106</code> (struct), <code>:124</code> (fn). Everything the renderings + a critic need, keyed to canvas ids: <code>boundary_thing_ids</code> (components with an external flow), <code>environment_thing_ids</code>, <code>orphan_env_thing_ids</code>, <code>authored_interface_thing_ids</code>, <code>boundary_props</code> (porosity/fuzziness), <code>aggregate</code> (the Bunge Def 1.1 verdict, <strong>surfaced verbatim from <code>validate_mode(Structural)</code></strong>), <code>edges: EdgeFact[]</code>, <code>ports: PortFact[]</code>. Each <code>EdgeFact</code> (<code>:33-48</code>) carries <code>bond</code>, <code>kind</code>, <code>locus</code> (endo ∈ N / exo ∈ G — kernel-computed), <code>self_loop</code>, and <code>mobus_ok</code> (false iff a self-loop with no Mobus preimage — a real cross-lens incompatibility the tool <em>states</em> rather than hides).</p>
+<h3>3. <code>validate_mode(model, mode)</code> → per-lens legality, gated on Lean-named preconditions  — CODE-READ</h3>
+<p><code>validate.rs:122-139</code>. This is the hard guarantee. It never asks &quot;is the model valid&quot; — it asks &quot;may this model be authored <em>as</em> this mode,&quot; each lens adding its own precondition — the named hypothesis its faithful-view theorem in <code>ViewGeneration.lean</code> is proved <em>under</em>:</p>
+<ul>
+<li><strong>Core</strong>: on-ness (every interaction endpoint resolves) — via <code>validate</code>&#39;s reference checks.</li>
+<li><strong>Structural (Bunge)</strong>: <code>check_bond</code> (<code>:143</code>) — requires ≥1 bond between <em>distinct</em> components, else an &quot;aggregate&quot; error. Mirrors the Lean <em>definition</em> <code>Kernel.HasBond</code> — a <code>Prop</code>-valued <code>def</code>, not a theorem (claim <code>kernel.bunge-gate</code>).</li>
+<li><strong>Operational (Mobus)</strong>: <code>check_self_loops</code> (<code>:158</code>) — no self-dependency (<code>k ≠ o</code>, Mobus §4.3), else error, canvas-navigable via <code>.with_subject</code>. Mirrors the Lean <em>definition</em> <code>Kernel.Irreflexive</code> — again a <code>def</code> (claim <code>kernel.mobus-gate</code>).</li>
+<li><strong>Full</strong>: self-loops + <code>check_dynamical_face</code> (warns if T/H/Δt nowhere populated).</li>
+</ul>
+<p><strong>Crucial subtlety (CODE-READ, <code>:107-116</code>; the Lean side is claim <code>kernel.gates-independent</code>, which is checked by exhibition and <em>not</em> by a theorem): the modes are parallel lenses, not a tower.</strong> Structural needs a bond, Operational needs irreflexivity, but <em>neither inherits the other</em> — they share only Core&#39;s on-ness. So &quot;valid in Bunge&quot; and &quot;valid in Mobus&quot; are separate claims about the same model, each gated on its own Lean-named precondition. Their independence is <strong>exhibited</strong> by the truth-table fixture&#39;s witness rows, not proved by any theorem — no entailment theorem exists in either direction, by design. That is what makes cross-lens disagreement meaningful.</p>
+<h3>4. <code>analyze(model, lens)</code> → all three from ONE projection  — CODE-READ (this is the substrate)</h3>
+<p><code>lenses.rs:356-407</code>. Bundles <code>{validation, issue_targets, facts, description}</code> from a single projection. Its own doc comment: &quot;the atomic canvas verdict … one round trip, not a three-call waterfall that re-projects the same model each time.&quot; <code>issue_targets</code> are resolved here to canvas <code>{thing, relation}</code> ids via the projection&#39;s id maps — so a critic&#39;s claim can point at the exact element. <strong>This is the <code>ModelContext</code> substrate the research doc calls for, already built — it just isn&#39;t exposed to an LLM yet.</strong></p>
+<hr>
+<h2>The layered guarantee — honestly rated</h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What it covers</th>
+<th>Confidence</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Hard / Lean-grounded</strong></td>
+<td>Structural legality: reference integrity, the bond requirement (Bunge), irreflexivity (Mobus). The kernel <strong>will reject</strong> ill-formed or out-of-lens structure.</td>
+<td><strong>Solid</strong> — <code>check_bond</code>/<code>check_self_loops</code> mirror the Lean <em>definitions</em> <code>Kernel.HasBond</code> / <code>Kernel.Irreflexive</code> (<code>def</code>s, claims <code>kernel.bunge-gate</code>, <code>kernel.mobus-gate</code>). What is MACHINE-CHECKED is that the views those preconditions gate are faithful (<code>kernel.bunge-faithful</code>, <code>kernel.mobus-faithful</code>); that the Rust predicates agree with the Lean ones is checked by the truth-table fixture and the oracle, not proved.</td>
+</tr>
+<tr>
+<td><strong>Derived &amp; translated</strong></td>
+<td>Boundary identity set, endo/exo locus, aggregate verdict, ports, per-edge facts — computed from the projection, surfaced to canvas ids, never re-derived in the face.</td>
+<td><strong>Solid</strong> — verified in <code>lens_facts</code>; single source.</td>
+</tr>
+<tr>
+<td><strong>Declared &amp; validated</strong> <em>(honesty)</em></td>
+<td>Bond-vs-mere is <strong>author-declared</strong> (<code>is_bond</code>; Lean criterion <code>FlowInducesAction</code> = a flow that modifies history is a bond), checked for consistency — <strong>not derived from dynamics</strong>. An LLM proposing bonds proposes a <em>declaration</em>, checked for legality, not something the kernel infers from behavior.</td>
+<td>Real but partial — the kernel validates the declaration; it doesn&#39;t compute bondhood from a run.</td>
+</tr>
+<tr>
+<td><strong>Noted / thin</strong> <em>(honesty)</em></td>
+<td>The dynamical face T/H/Δt is <strong>stringly-typed notes in v2.0</strong> (<code>validate.rs:177</code> — typing deferred); <code>describe</code>&#39;s <code>t_note</code>/<code>h_note</code>/<code>dt_note</code> are prose, and <code>check_dynamical_face</code> only <em>warns</em>. The structural tuple (C·N·E·G·B) is real; the dynamical slots are not yet typed structure.</td>
+<td>Thin — do not over-trust the dynamical face as machine-checked.</td>
+</tr>
+<tr>
+<td><strong>Was missing → LANDED</strong> <em>(2026-07-17, #66)</em></td>
+<td>Reachability, dead-end, and duplicate-<em>edge</em> checks now live in <code>validate.rs</code> (<code>check_reachability</code>, <code>check_dead_ends</code>, <code>check_duplicate_edges</code>), all <strong>Warning</strong>-severity, surfaced through <code>analyze</code>→<code>issue_targets</code> (<code>check_duplicate_ids</code> still catches duplicate <em>ids</em> only).</td>
+<td>Closed gap — Warnings, not Errors, so legitimate absorbing states stay legal.</td>
+</tr>
+<tr>
+<td><strong>Declared requirements refuse</strong> <em>(2026-07-20, #69)</em></td>
+<td><code>check_reachability_requirements</code> (<code>validate.rs</code>) evaluates author-asserted <code>MustReach</code>/<code>AlternativePath</code> properties (<code>WorldModel.reachability_requirements</code>) in Operational/Full; violations are <strong>Error</strong>-severity, citing the elements.</td>
+<td><strong>The rule to remember: observed warns, declared refuses.</strong> #66&#39;s unconditional checks stay Warnings because the graph alone cannot know intent; a stated requirement encodes the intent, so its violation is a refusal — the kernel proves/refuses stated facts, never invents them. Requirements do not yet survive the canvas projection and have no SL syntax (follow-ups).</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>What this means for feeding the LLM (answering the skepticism directly)</h2>
+<p><strong>What the kernel CAN reliably feed an LLM, today, from one <code>analyze</code> call:</strong> the model as each lens&#39;s <em>named formal object</em> (<code>describe</code>), the faithful per-element facts (<code>lens_facts</code>), and a Lean-grounded legality verdict (<code>validate_mode</code>), all keyed to canvas elements. That is real, deterministic, rich grounding — the LLM reasons over kernel-<em>translated</em> structure, not a raw graph it has to interpret. The lens-vocabulary guarantee (research doc §11) is <strong>as solid as claimed</strong>: the kernel does speak each lens, by name.</p>
+<p><strong>What it still cannot do, and where the LLM story is therefore thinner than the confident prose suggested:</strong></p>
+<ul>
+<li>It cannot derive bondhood from behavior — bonds are declared + checked, so LLM reasoning about &quot;is this really a bond&quot; is reasoning about a <em>declaration&#39;s plausibility</em>, not reading a kernel-derived fact.</li>
+<li>It cannot ground reasoning about the dynamical face — T/H/Δt are notes. LLM analysis of <em>dynamics</em> has thin kernel support until those slots are typed.</li>
+<li>Dead-ends, unreachable states, and duplicate edges are now caught (<strong>#66 landed 2026-07-17</strong> — see the layered-guarantee table above); the read-only analysis rung (Analyst panel, <code>web/src/AnalystPanel.tsx</code>) ships on top of this, live.</li>
+</ul>
+<p><strong>Honest bottom line:</strong> the substrate is real and <em>richer</em> than the research doc claimed for the two things that matter most — lens vocabulary and per-element structural facts. The remaining caveats are narrow and specific: the dynamical face is thin and bondhood is declared-not-derived. None of these undermine the analysis-first / lens-faithful plan; they scope it. Trust the structural + lens-vocabulary grounding; treat the dynamical face as aspirational.</p>
+<hr>
+<h2>Where the guarantees are documented (cross-refs)</h2>
+<ul>
+<li><code>crates/bert-lenses-kernel/API.md</code> — the frozen wasm boundary (every exported fn&#39;s shape + error contract).</li>
+<li><code>docs/archive/canvas-architecture.md</code> — the canvas/face side (HISTORICAL, egui-era).</li>
+<li><a href="./lean-provenance.html"><code>lean-provenance.md</code></a> — the pinned SSF commit, the generated per-claim map (every <code>claim_id</code> cited above), and the two gates that keep those citations resolving. Every MACHINE-CHECKED mark in this document points there.</li>
+<li><code>docs/design/llm-integration-research.md</code> — the LLM story that rests on this kernel (its §4 substrate and §11 lens-fidelity claims are the ones this doc verifies).</li>
+</ul>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/kernel-architecture.md">Source · docs/kernel-architecture.md</a>
+      <span>Rendered from 0bb7de4</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

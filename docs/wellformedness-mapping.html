@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Well-formedness, three ways — Lean, kernel, paper · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="./" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">RESEARCH</span></div>
+    <h1 class="title">Well-formedness, three ways — Lean, kernel, paper</h1>
+    <article><p><strong>Status: RESEARCH.</strong> An audit read, not a decision and not a normative contract. Nothing here changes kernel behaviour; where it finds a gap it says what an issue for it would claim and stops.</p>
+<p><em>Three well-formedness predicates are in circulation and nobody had compared them: the Lean <code>WellFormed</code> structure in <code>systems-science-foundations</code>, the ~28 checks the kernel enforces, and the four-conjunct predicate the life-cycle paper prints. This maps them in both directions. The discipline throughout: a row either cites the Lean field and the kernel code and says why they mean the same thing, or it is marked PARTIAL with an explicit &quot;covers X, does not cover Y&quot;, or UNKNOWN. Three of the gaps were demonstrated by running a probe rather than by reading; those rows say which probe.</em></p>
+<h2>What the three predicates are</h2>
+<p><strong>The Lean.</strong> <code>WellFormed</code> is a <code>structure</code> with <strong>eight</strong> fields, declared in <code>Systems/Mobus/Lifecycle.lean</code> (SSF commit <code>1f6ec1c</code>, 2026-07-25, &quot;the 8-tuple is closed under lawful change (#30)&quot;; read at SSF HEAD <code>7efa91b</code>, where <code>lake build Systems.Mobus.Lifecycle</code> completes and the file contains no <code>sorry</code>). It is a predicate on <code>PreTuple</code> — the eight slots as raw data with every law stripped — and it is <em>unconditional</em>: no mode, no lens, no gate. Two adequacy results pin it to the type: <code>wellFormed_toPre</code> (the predicate is no stronger than <code>MobusSystem</code> enforces) and <code>PreTuple.toMobus</code> + <code>toPre_toMobus</code> (no weaker).</p>
+<p>Attribution for the eight slots themselves is the concordance&#39;s job, not this doc&#39;s: see <a href="./language/terminology-concordance.html"><code>language/terminology-concordance.md</code></a> and <a href="./lean-provenance.html"><code>lean-provenance.md</code></a>.</p>
+<p><strong>Note on citation strength.</strong> <code>Systems/Mobus/Lifecycle.lean</code> is <strong>outside</strong> this repo&#39;s pinned citation set. <code>lean-manifest.json</code>&#39;s staleness block says so explicitly — the file is new at SSF HEAD and &quot;this repo cites none of them&quot; — so the claims below are cited by declaration name at a commit, not by <code>claim_id</code>, and they are not covered by Gate A. Adding them to the manifest means moving the pin, which is a separate decision.</p>
+<p><strong>The kernel.</strong> <code>crates/bert-core/src/validate.rs</code> emits 28 distinct <code>code</code>s (every issue has carried one since <a href="https://github.com/halcyonic-systems/facets/issues/319">#319</a>, so the set is enumerable rather than estimated). <code>validate</code> runs 13 universal checks; <code>validate_mode</code> adds one check at Structural and nine at Operational, ten at Full. Two sibling files carry checks that are <strong>not</strong> in scope here and are treated separately at the end: <code>operational.rs</code> (the executability seam, which emits <code>OperationalError</code>, not coded issues) and <code>decomposition.rs</code> (20 seam codes transcribing a <em>different</em> Lean structure, <code>Decomposition</code>).</p>
+<p><strong>The paper.</strong> <code>paper.tex</code> §&quot;Closure under lawful change&quot; prints <code>WF(S)</code> with <strong>four</strong> conjuncts. Read only; that repo is untouched.</p>
+<h2>Lean → kernel</h2>
+<p>Eight rows. Two map cleanly, four are PARTIAL, two have no kernel counterpart because the kernel&#39;s representation makes them unviolable.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Lean field (<code>WellFormed</code>)</th>
+<th>What it says</th>
+<th>Kernel</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><code>internal_lawful</code> (a)</td>
+<td><code>∀ e ∈ N.edges</code>, both endpoints ∈ <code>N.nodes</code></td>
+<td><code>interaction_endpoint_unresolved</code> (<code>validate.rs:976</code>, Error, all modes)</td>
+<td><strong>PARTIAL</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>internal_lawful</code> (b)</td>
+<td><code>∀ e ∈ N.edges</code>, <code>source ≠ target</code></td>
+<td><code>self_loop_flow</code> (<code>validate.rs:406</code>, Error)</td>
+<td><strong>PARTIAL</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>external_lawful</code> (a)</td>
+<td><code>∀ e ∈ G.edges</code>, both endpoints ∈ <code>G.nodes</code></td>
+<td>—</td>
+<td><strong>UNVIOLABLE</strong></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>external_lawful</code> (b)</td>
+<td><code>∀ e ∈ G.edges</code>, <code>source ≠ target</code></td>
+<td><code>self_loop_flow</code> (same check as row 2)</td>
+<td><strong>PARTIAL</strong></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>network_components</code></td>
+<td><code>N.nodes = C</code></td>
+<td>—</td>
+<td><strong>UNVIOLABLE</strong></td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>disjoint</code></td>
+<td><code>C ∩ O = ∅</code></td>
+<td>—</td>
+<td><strong>UNVIOLABLE</strong></td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>interfaces_sub</code></td>
+<td><code>I ⊆ C</code></td>
+<td><code>interface_without_processor</code> (<code>validate.rs:1647</code>, Warning, level-0 only)</td>
+<td><strong>PARTIAL</strong> — barely</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>bipartite</code> + <code>externalFlows_nodes</code></td>
+<td>every <code>G</code> edge runs <code>O ↔ I</code>; <code>G.nodes ⊆ O ∪ I</code></td>
+<td><code>crossing_flow_without_interface</code> (<code>validate.rs:1099</code>, Error, Operational/Full)</td>
+<td><strong>PARTIAL</strong></td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>interfaces_carry_flow</code></td>
+<td><code>∀ i ∈ I, ∃ e ∈ G.edges</code> with <code>i</code> an endpoint</td>
+<td><code>interface_carries_no_flow</code> (<code>validate.rs:1143</code>, Error, Operational/Full)</td>
+<td><strong>PARTIAL</strong></td>
+</tr>
+</tbody></table>
+<p>Rows 8 and 9 are the two the kernel enforces <em>by name</em> — <code>check_crossing_flows_route_through_interface</code> and <code>check_interfaces_carry_flow</code> both cite their Lean referents in their own doc comments. Everything else is either a representational coincidence or a gap.</p>
+<p>Counting the way a reader will want it: of the eight Lean fields, <strong>zero map cleanly</strong>, <strong>six are PARTIAL</strong> (rows 1, 2, 4, 7, 8, 9 — where rows 8 and 9 collapse the three interface-and-boundary fields into two entries), and <strong>two have no kernel check at all</strong> because the <code>WorldModel</code> cannot express their violation (rows 3, 5, 6). Splitting the conjunctions the other way — one row per Lean field — gives 8 fields: 6 PARTIAL, 2 UNVIOLABLE, 0 clean.</p>
+<h3>Row by row</h3>
+<p><strong>1 — <code>internal_lawful</code>, edges land on vertices.</strong> The Lean requires an internal edge&#39;s endpoints to be members of <code>N.nodes</code>, which row 5 pins to <code>C</code>. The kernel checks something weaker and something wider: <code>check_interaction_references</code> requires each endpoint to resolve against <code>collect_known_ids</code>, which is the <strong>union</strong> of systems, environment sources, environment sinks, per-system sources and sinks, <em>and interface records</em>. It never asks &quot;is this endpoint in C&quot;. Covers: a dangling id, in every mode, as an Error. Does not cover: an endpoint that resolves to something outside <code>C ∪ O</code>. The kernel has no declared N-vs-G split — locus is derived from endpoint type in <code>bert-canvas</code> — so most of the Lean&#39;s condition is carried by the representation rather than by a check.</p>
+<p>The exception is demonstrated. An interaction whose <code>source</code> and <code>sink</code> are both <strong>interface</strong> ids resolves (interface ids are in <code>collect_known_ids</code>), and then falls into neither derived class: <code>is_system_relatum</code> is false for <code>IdType::Interface</code>, so the internal-graph checks skip it, and <code>external()</code> is false too, so the crossing check skips it. Probe: <code>crates/bert-core/tests/wellformedness_probes.rs::an_interaction_endpointed_on_an_interface_is_in_neither_edge_class</code>. Whether that violates the Lean depends on how <code>I</code> is read into <code>C</code>, which the kernel&#39;s representation does not settle — so this is recorded as <strong>UNKNOWN</strong>, not as a gap. What is certain is the silence.</p>
+<p><strong>2 and 4 — no self-loops.</strong> <code>self_loop_flow</code> is an exact statement of <code>PreNetwork.Lawful</code>&#39;s second conjunct, and it applies to every interaction regardless of locus, so it covers <code>N</code> and <code>G</code> at once. Covers: any <code>source == sink</code> interaction, as an Error. Does not cover: Core and Structural mode, where the check does not run at all.</p>
+<p>Demonstrated: <code>fixtures/wellformedness/self-loop.sl</code> carries a genuine <code>A → A</code> flow. <code>bert verdict … --lens klir</code> exits <strong>0</strong> with zero issues; <code>--lens bunge</code> exits <strong>0</strong> with zero issues; <code>--lens mobus</code> exits <strong>4</strong> on <code>self_loop_flow</code>. The <code>lens_facts</code> payload names the edge <code>&quot;self_loop&quot;: true, &quot;mobus_ok&quot;: false</code> under all three lenses, so the kernel <em>sees</em> it and declines to rate it at two of them.</p>
+<p>This gap is arguable rather than plain. The Lean <code>WellFormed</code> is a predicate on a Mobus 8-tuple (attribution per the <a href="./language/terminology-concordance.html">concordance</a>), and a model authored at Klir&#39;s or Bunge&#39;s lens is not claiming to be one — the parallel-lens architecture (<a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a>) says a Klir model owes no Mobus constraint. The honest statement is therefore: <strong>the Lean predicate is unconditional and the kernel&#39;s enforcement is not</strong>, and whether that is a defect depends on a scope question the repo has already answered for the interface checks (&quot;Klir and Bunge carry no interface concept&quot;) but has never stated for self-loops.</p>
+<p><strong>3 and 5 — the node sets.</strong> <code>PreNetwork</code> carries <code>nodes</code> and <code>edges</code> as independent fields, so <code>edges_on</code> and <code>network_components</code> are real conditions there. A <code>WorldModel</code> carries no node set for either network: <code>C</code> is <code>model.systems</code>, and the vertices of <code>N</code> and <code>G</code> are read off the endpoints of <code>model.interactions</code>. Neither <code>N.nodes = C</code> nor <code>G.edges ⊆ G.nodes</code> can be written false, so there is nothing to check. Recorded as UNVIOLABLE rather than UNENFORCED, because the two are different findings and only the second would justify an issue.</p>
+<p><strong>6 — <code>C ∩ O = ∅</code>.</strong> Also unviolable, for two independent reasons. <code>systems</code> and <code>environment.sources</code> / <code>environment.sinks</code> are separate arrays, so nothing can be filed in both; and <code>Id</code> serializes with a type prefix (<code>Serialize for Id</code>, <code>lib.rs:987</code>), so a <code>Subsystem</code> id and a <code>Source</code> id cannot collide as strings even if they shared indices. <code>check_duplicate_ids</code> collects all four families into one map and would report a collision as <code>duplicate_id</code>, but it can never fire on a C/O pair for exactly that reason. On the canvas path the same holds one layer up: <code>Role</code> is an enum, and a <code>Thing</code> is <code>Component</code> or <code>Environment</code>, never both.</p>
+<p><strong>7 — <code>I ⊆ C</code>.</strong> This is the row where the two representations diverge most. In the Lean, <code>I</code> and <code>C</code> are two subsets of one carrier <code>Set α</code>, and <code>interfaces_sub</code> relates them. In the <code>WorldModel</code>, <code>Interface</code> is its own record type living on <code>System.boundary.interfaces</code>, tied to a component only by <em>another</em> system&#39;s <code>boundary.parent_interface</code> pointer. There is no subset relation to enforce, and the check nearest to the intent — <code>check_s0_interface_processors</code>, which asks whether some system claims each interface — is a <strong>Warning</strong>, looks only at the level-0 system, and is (per its own #220 note) unfireable for canvas-projected models because <code>project</code> claims every interface it mints.</p>
+<p>Demonstrated: an interface on a <em>level-1</em> subsystem&#39;s boundary that no system claims draws nothing, in any of the four modes. Probe: <code>wellformedness_probes.rs::an_unclaimed_interface_below_level_zero_draws_nothing</code>.</p>
+<p>On the canvas path alone, <code>I ⊆ C</code> does hold by construction: <code>Thing.interface</code> is a boolean flag on a thing whose <code>role</code> is <code>Component</code> (<code>canvas.rs:172</code>), and <code>project</code> only mints an <code>Interface</code> for a designated component (<code>canvas.rs:682</code>). So the authoring surface cannot violate it; a hand-authored or generated file can, and nothing below level 0 catches it.</p>
+<p><strong>8 — <code>bipartite</code> and <code>externalFlows_nodes</code>.</strong> These two Lean fields say the same thing from two sides: every external edge has one end in <code>O</code> and one in <code>I</code>, and <code>G</code>&#39;s nodes lie in <code>O ∪ I</code>. <code>check_crossing_flows_route_through_interface</code> enforces the half where a flow has one external end and one system end and the system end is routed through no interface. That half fires, as a control confirms: <code>fixtures/wellformedness/crossing-flow-no-interface.sl</code> exits <strong>4</strong> with <code>crossing_flow_without_interface</code> under the Mobus lens.</p>
+<p>It does <strong>not</strong> cover the case where <em>both</em> ends are environment objects. The check skips those deliberately — its comment says env→env flows &quot;are the direction checks&#39; subject, not this one&#39;s&quot; — and the direction checks it defers to do not do this job. <code>check_flow_direction</code>, named in two source comments (<code>lib.rs:1540</code>, <code>canvas.rs:644</code>), <strong>does not exist anywhere in the workspace</strong>; the direction rules that do exist live inline in <code>validate_operational</code> (<code>operational.rs:344-367</code>) and only reject a flow <em>leaving a sink</em> or <em>entering a source</em>. A <code>Source → Sink</code> edge violates neither.</p>
+<p>Demonstrated, and the strongest gap in this audit: <code>fixtures/wellformedness/env-to-env-flow.sl</code> adds <code>flow Src -&gt; Snk</code> alongside a normal in/out pair. Under the Mobus lens <code>bert verdict</code> exits <strong>0</strong> with <code>&quot;issues&quot;: []</code>, and the edge is counted in <code>G</code> (<code>&quot;g&quot;: 3</code>, <code>&quot;locus&quot;: &quot;Exo&quot;</code>). Under the Klir lens it is likewise clean. <code>bert run --t 3</code> produces a trajectory. So the edge passes <code>validate</code>, passes <code>validate_mode</code> at Operational, and passes the executability seam — while the Lean&#39;s <code>bipartite</code> forbids it outright.</p>
+<p>Also not covered at Core and Structural, which is a decided non-goal rather than a gap (<a href="https://github.com/halcyonic-systems/facets/issues/213">#213</a>, <a href="https://github.com/halcyonic-systems/facets/issues/219">#219</a>: Klir and Bunge carry no interface concept).</p>
+<p><strong>9 — <code>interfaces_carry_flow</code>.</strong> The closest correspondence in the table, and still not clean. The Lean&#39;s <code>InterfacesCarryEdges</code> (<code>Systems/Mobus/Interface.lean:53</code>) is a <strong>graph</strong> condition: for each <code>i ∈ I</code> there must exist an edge of <code>G</code> with <code>i</code> as an endpoint. <code>check_interfaces_carry_flow</code> accepts three ways of satisfying it — the interface is routed through by some interaction, <em>or</em> its <code>receives_from</code> is non-empty, <em>or</em> its <code>exports_to</code> is non-empty. The last two are declarations, not edges. The sibling <code>check_interface_declarations_match_flows</code> then backstops the declaration, but weakly: a declaration counts as recorded when <em>some</em> interaction has the declared entity at its far end and its near end merely &quot;reaches&quot; the interface — which includes landing on the system whose boundary carries it, not only being routed through it.</p>
+<p>Demonstrated: two interfaces on one membrane, one crossing flow routed through the first, the second carrying only an <code>exports_to</code> naming the same sink. The second interface is an endpoint of no edge in <code>G</code>, and the model is clean at Operational — both interface checks silent, zero errors. Probe: <code>wellformedness_probes.rs::an_interface_with_no_edge_in_g_passes_both_interface_checks</code>.</p>
+<p>Covers: an interface with no routing and no declaration. Does not cover: an interface whose declaration is corroborated by a flow that reaches the parent system rather than the interface.</p>
+<h2>Kernel → Lean</h2>
+<p>All 28 codes from <code>validate.rs</code>. Nineteen have <strong>no counterpart in <code>WellFormed</code></strong>, and that is not a defect — the kernel is checking more than well-formedness. Three families account for all nineteen: file-format and identity hygiene (things a Lean <code>structure</code> cannot be malformed in), Mobus-semantic observations about a model that is well-formed and still questionable, and author-declared requirements the <code>PreTuple</code> carries no slot for.</p>
+<table>
+<thead>
+<tr>
+<th>code</th>
+<th>severity · where</th>
+<th>Lean counterpart</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>self_loop_flow</code></td>
+<td>Error · Operational, Full</td>
+<td><code>internal_lawful</code> / <code>external_lawful</code>, second conjunct. Mode-gated where the Lean is unconditional</td>
+</tr>
+<tr>
+<td><code>crossing_flow_without_interface</code></td>
+<td>Error · Operational, Full</td>
+<td><code>bipartite</code> + <code>externalFlows_nodes</code>, forward half only</td>
+</tr>
+<tr>
+<td><code>interface_carries_no_flow</code></td>
+<td>Error · Operational, Full</td>
+<td><code>interfaces_carry_flow</code>, weakened by the declaration escape</td>
+</tr>
+<tr>
+<td><code>interaction_endpoint_unresolved</code></td>
+<td>Error · all</td>
+<td>nearest to <code>internal_lawful</code>/<code>external_lawful</code> first conjunct, but quantified over a wider carrier</td>
+</tr>
+<tr>
+<td><code>interface_without_processor</code></td>
+<td>Warning · all</td>
+<td>nearest to <code>interfaces_sub</code>; level-0 only, and a Warning</td>
+</tr>
+<tr>
+<td><code>aggregate_no_bond</code></td>
+<td>Error · Structural</td>
+<td><strong>NO WELLFORMED COUNTERPART.</strong> The Bunge lens gate, grounded in a different Lean object (<code>Kernel.HasBond</code>, a <code>def</code> in <code>Systems/Klir/ViewGeneration.lean</code>). Its own doc comment records that the Rust is deliberately <em>stronger</em> than that <code>def</code></td>
+</tr>
+<tr>
+<td><code>orphan_source</code></td>
+<td>Error · all</td>
+<td><strong>NO COUNTERPART — and the kernel is stronger.</strong> See the asymmetry note below</td>
+</tr>
+<tr>
+<td><code>orphan_sink</code></td>
+<td>Error · all</td>
+<td><strong>NO COUNTERPART — and the kernel is stronger.</strong> Same note</td>
+</tr>
+<tr>
+<td><code>interface_declaration_contradicts_flows</code></td>
+<td>Error · Operational, Full</td>
+<td><strong>NO COUNTERPART.</strong> <code>receives_from</code> / <code>exports_to</code> are representation fields with no Lean analogue; the check is internal consistency between two author declarations</td>
+</tr>
+<tr>
+<td><code>interface_reference_unresolved</code></td>
+<td>Error · all</td>
+<td><strong>NO COUNTERPART.</strong> Referential integrity on the routing annotation, which the Lean&#39;s <code>G</code> does not carry (an edge in the Lean simply <em>has</em> an interface endpoint)</td>
+</tr>
+<tr>
+<td><code>interface_processor_without_flows</code></td>
+<td>Warning · all</td>
+<td><strong>NO COUNTERPART.</strong> Hierarchical-model hygiene: a processor claiming a parent interface but wired to nothing</td>
+</tr>
+<tr>
+<td><code>dead_end</code></td>
+<td>Warning · Operational, Full</td>
+<td><strong>NO COUNTERPART.</strong> Mobus-semantic observation; an absorbing state is well-formed</td>
+</tr>
+<tr>
+<td><code>unreachable</code></td>
+<td>Warning · Operational, Full</td>
+<td><strong>NO COUNTERPART.</strong> Mobus-semantic observation; a disconnected island is well-formed</td>
+</tr>
+<tr>
+<td><code>flow_not_consumed</code></td>
+<td>Warning · Operational, Full</td>
+<td><strong>NO COUNTERPART.</strong> Mobus-semantic: the receiving primitive cannot read the substance. <code>PreTuple</code>&#39;s <code>τ</code> is opaque, so the Lean cannot state it</td>
+</tr>
+<tr>
+<td><code>duplicate_edge</code></td>
+<td>Warning · all</td>
+<td><strong>NO COUNTERPART.</strong> <code>N.edges</code> is a <code>Set</code>, so parallel identical edges are not expressible in the Lean at all</td>
+</tr>
+<tr>
+<td><code>dynamical_face_empty</code></td>
+<td>Warning · Full</td>
+<td><strong>NO COUNTERPART.</strong> An observation about <code>T</code>/<code>H</code>/<code>Δt</code> being unpopulated; the Lean&#39;s are opaque type parameters</td>
+</tr>
+<tr>
+<td><code>stock_unit_rate_like</code></td>
+<td>Warning · all</td>
+<td><strong>NO COUNTERPART.</strong> Dimensional analysis on declared units</td>
+</tr>
+<tr>
+<td><code>stock_unit_dimension_mismatch</code></td>
+<td>Error · Operational, Full</td>
+<td><strong>NO COUNTERPART.</strong> Dimensional analysis across two declarations. Per #220, unreachable from the canvas today</td>
+</tr>
+<tr>
+<td><code>reachability_requirement_unmet</code></td>
+<td>Error · Operational, Full</td>
+<td><strong>NO COUNTERPART.</strong> Author-declared requirement (<a href="https://github.com/halcyonic-systems/facets/issues/69">#69</a>); <code>PreTuple</code> has no slot for it</td>
+</tr>
+<tr>
+<td><code>alternative_path_unmet</code></td>
+<td>Error · Operational, Full</td>
+<td><strong>NO COUNTERPART.</strong> Same</td>
+</tr>
+<tr>
+<td><code>reachability_requirement_unresolved</code></td>
+<td>Error · Operational, Full</td>
+<td><strong>NO COUNTERPART.</strong> Same, malformed-requirement case</td>
+</tr>
+<tr>
+<td><code>duplicate_id</code></td>
+<td>Error · all</td>
+<td><strong>NO COUNTERPART.</strong> File-format hygiene; a Lean <code>Set</code> has no repeated members</td>
+</tr>
+<tr>
+<td><code>parent_unresolved</code></td>
+<td>Error · all</td>
+<td><strong>NO COUNTERPART.</strong> File-format hygiene on the hierarchy pointer</td>
+</tr>
+<tr>
+<td><code>environment_id_unexpected</code></td>
+<td>Warning · all</td>
+<td><strong>NO COUNTERPART.</strong> Convention (<code>E-1</code>), not structure</td>
+</tr>
+<tr>
+<td><code>model_version_stale</code></td>
+<td>Warning · all</td>
+<td><strong>NO COUNTERPART.</strong> File-format hygiene</td>
+</tr>
+<tr>
+<td><code>level_id_mismatch</code></td>
+<td>Warning · all</td>
+<td><strong>NO COUNTERPART.</strong> Consistency between two encodings of depth</td>
+</tr>
+<tr>
+<td><code>required_field_missing</code></td>
+<td>Error · pre-parse</td>
+<td><strong>NO COUNTERPART.</strong> A <code>PreTuple</code> cannot be missing a field</td>
+</tr>
+<tr>
+<td><code>field_not_an_object</code></td>
+<td>Error · pre-parse</td>
+<td><strong>NO COUNTERPART.</strong> Same</td>
+</tr>
+</tbody></table>
+<p><strong>The orphan asymmetry, worth naming.</strong> SSF #31 added a coverage constraint on <code>I</code> — every interface must be an endpoint of some external flow — and stated none on <code>O</code>. The kernel states the analogous constraint on <code>O</code> as well, at Error severity, in every mode: <code>orphan_source</code> and <code>orphan_sink</code> refuse an environment object that couples to nothing. Under the Lean, a <code>PreTuple</code> whose <code>envObjects</code> contains an object touched by no edge of <code>G</code> is perfectly well-formed. So on this one point the kernel is strictly stronger than the formalization it cites, and nothing in the repo says so. That is a claim-hygiene item, not a bug: it means &quot;the kernel enforces the Lean&#39;s well-formedness&quot; is false in <em>both</em> directions, and neither should be asserted without the qualifier.</p>
+<h3>The two sibling files</h3>
+<p><code>crates/bert-core/src/operational.rs</code> is the executability seam. It emits <code>OperationalError</code> — location, reason, hint — with <strong>no <code>code</code> field</strong>, so it is outside the code census above and outside any grouping a surface can do. Its checks are about whether a model can be <em>run</em> (level ≤ 1, a primitive on every process, endpoints that project to nodes, flow direction against declared source/sink roles), not about whether it is a well-formed 8-tuple. One of its rules is the nearest thing the repo has to a direction check, and it is the one row 8 shows is insufficient.</p>
+<p><code>crates/bert-core/src/decomposition.rs</code> emits 20 coded issues (<code>decomposition.beta_src</code>, <code>interface_decomposition.gamma_snk</code>, and so on). Every one transcribes a row of a <strong>different</strong> Lean structure — the boundary contract <code>Decomposition</code>, documented in <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/design/decomposition-foundations.md"><code>design/decomposition-foundations.md</code></a> — governing the parent↔child seam rather than a single tuple&#39;s internal coherence. It is out of scope here and would want its own mapping doc.</p>
+<h2>The paper&#39;s four</h2>
+<p><code>paper.tex</code> prints <code>WF(S)</code> as four conjuncts. They are not a different predicate; they are the same conditions with three pairs folded together, minus one.</p>
+<table>
+<thead>
+<tr>
+<th>paper conjunct</th>
+<th>Lean field(s)</th>
+<th>kernel</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>I ⊆ C</code></td>
+<td><code>interfaces_sub</code></td>
+<td>PARTIAL — row 7</td>
+</tr>
+<tr>
+<td><code>N</code> connects distinct members of <code>C</code> only</td>
+<td><code>network_components</code> + <code>internal_lawful</code> (both conjuncts)</td>
+<td>PARTIAL — rows 1, 2, 5</td>
+</tr>
+<tr>
+<td><code>G</code> connects members of <code>O</code> to members of <code>I</code></td>
+<td><code>bipartite</code> + <code>externalFlows_nodes</code> + <code>external_lawful</code></td>
+<td>PARTIAL — rows 3, 4, 8</td>
+</tr>
+<tr>
+<td><code>C ∩ O = ∅</code></td>
+<td><code>disjoint</code></td>
+<td>UNVIOLABLE — row 6</td>
+</tr>
+<tr>
+<td>—</td>
+<td><code>interfaces_carry_flow</code></td>
+<td><strong>not printed by the paper</strong></td>
+</tr>
+</tbody></table>
+<p>So the answer to &quot;why does the paper print fewer&quot; is two answers. Three of the four conjuncts are <strong>compressions</strong>: &quot;N connects distinct members of C only&quot; is one English clause carrying <code>network_components</code> and both halves of <code>internal_lawful</code>, which the Lean must separate because <code>PreNetwork</code> carries <code>nodes</code> and <code>edges</code> as independent fields. That is prose economy, not a weaker claim.</p>
+<p>The fourth is an <strong>omission</strong>. <code>interfaces_carry_flow</code> — the converse coverage constraint, added by SSF #31 and proved non-redundant by SSF #35 — appears nowhere in the paper&#39;s definition, and the appendix&#39;s case table has four columns matching the four printed conjuncts, so the omission is systematic rather than a slip in one sentence. It is also the conjunct the kernel enforces most directly (<code>interface_carries_no_flow</code> is the one check whose doc comment names its Lean field). A reader who takes the paper&#39;s <code>WF</code> as the whole of well-formedness will under-count by one, in the direction of the constraint the instrument leans on hardest.</p>
+<h2>What &quot;machine-checked&quot; covers, and what it does not</h2>
+<p><code>Step</code>, the admissible-successor relation in <code>Lifecycle.lean</code>, has <strong>exactly two constructors</strong>:</p>
+<pre><code class="language-lean">inductive Step … where
+  | grow    (p …) (a : α) (h : a ∉ p.envObjects)  : Step p (p.addComponent a)
+  | decline (p …) (a : α) (h : a ∉ p.interfaces)  : Step p (p.removeComponent a)
+</code></pre>
+<p>So <code>Step.preserves_wellFormed</code> and the closure theorem <code>wellFormed_of_reaches</code> are machine-checked for <strong>add component and remove component, and nothing else</strong>. The paper&#39;s appendix table <code>tab:cases</code> has <strong>14 rows</strong> (idle · add component · remove component · replace component · add connection · remove connection · add env. object · remove env. object · connect environment · disconnect environment · add / retire function · add / remove milieu var. · swap interface · modify). Two of those fourteen are in <code>Step</code>. The other twelve are argued by hand in the table.</p>
+<p>Say it that way when quoting the result. &quot;The closure theorem is machine-checked&quot; is true; &quot;the 14-row taxonomy is machine-checked&quot; is not, and the difference is twelve rows. The Lean file&#39;s own header is careful about a related point — the non-vacuity section exists precisely because every theorem above it &quot;would still be true of a regime that never removes anything&quot; — and <code>step_not_additive</code> is the separating instance that rules that out. That witness covers <code>decline</code>; it says nothing about the other twelve rows.</p>
+<p>Two further scope facts a quoter needs. The closure theorem is about <code>PreTuple</code>, not <code>MobusSystem</code>, and that is load-bearing: the file&#39;s <code>DOES NOT COUNT</code> note says a <code>Step</code> typed on <code>MobusSystem</code> &quot;makes this <code>fun _ h =&gt; h</code> and asserts nothing&quot;, because the structure enforces its constraints by construction. And <code>decline</code> carries the side condition <code>a ∉ p.interfaces</code> — removing an interface is explicitly out of the increment, so &quot;remove component&quot; is machine-checked for non-interface components only.</p>
+<h2>Probes</h2>
+<p>Every gap above that is stated as demonstrated has a file. The <code>.sl</code> probes are read through the CLI; the Rust probes construct <code>WorldModel</code>s directly, because a hand-authored <code>WorldModel</code> opened through the CLI is normalized by <code>archive::read</code> → <code>to_canvas</code> → <code>project</code> and the pathology is laundered on the way in. That normalization is itself worth knowing: <strong>the CLI cannot reach the checks that only fire on hand-authored models.</strong></p>
+<table>
+<thead>
+<tr>
+<th>probe</th>
+<th>what it shows</th>
+<th>how to run</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>fixtures/wellformedness/env-to-env-flow.sl</code></td>
+<td>a <code>Source → Sink</code> edge is admitted clean, counted in <code>G</code>, and runs — row 8&#39;s gap</td>
+<td><code>just bert verdict fixtures/wellformedness/env-to-env-flow.sl --lens mobus</code> → exit 0, <code>&quot;issues&quot;: []</code></td>
+</tr>
+<tr>
+<td><code>fixtures/wellformedness/crossing-flow-no-interface.sl</code></td>
+<td>the control: the half of row 8 the kernel <em>does</em> enforce</td>
+<td>same command → exit 4, <code>crossing_flow_without_interface</code></td>
+</tr>
+<tr>
+<td><code>fixtures/wellformedness/self-loop.sl</code></td>
+<td><code>self_loop_flow</code> is mode-gated where the Lean is unconditional — row 2</td>
+<td><code>--lens klir</code> → exit 0 · <code>--lens bunge</code> → exit 0 · <code>--lens mobus</code> → exit 4</td>
+</tr>
+<tr>
+<td><code>crates/bert-core/tests/wellformedness_probes.rs</code></td>
+<td>rows 7, 9, and the row-1 UNKNOWN, on hand-authored <code>WorldModel</code>s</td>
+<td><code>cargo test -p bert-core --test wellformedness_probes</code></td>
+</tr>
+</tbody></table>
+<p>The Rust probes pin <strong>current</strong> behaviour, and each assertion of silence names the row it belongs to. Repairing a gap turns them red, which is the intent: the doc row and the test move together or the doc is wrong.</p>
+<h2>What issues this audit would file</h2>
+<p>Recorded, not opened, and deliberately not fixed here.</p>
+<ol>
+<li><strong><code>bipartite</code>&#39;s environment-to-environment half is unenforced.</strong> A flow whose source and sink are both environment objects passes every layer. Claim: <code>check_crossing_flows_route_through_interface</code> should either own the env→env case or the deferral target should exist. Evidence: <code>env-to-env-flow.sl</code>, plus the fact that <code>check_flow_direction</code> — named in two source comments as the owner — is not a function in this workspace. That stale name should go regardless of whether the check is added.</li>
+<li><strong><code>interfaces_carry_flow</code> can be satisfied by a declaration alone.</strong> A non-empty <code>exports_to</code> substitutes for an edge of <code>G</code>, and the declaration check accepts corroboration by a flow that reaches the parent system rather than the interface. Claim: the graph condition and the declaration condition should be separable in the verdict, so a model can be told which one it satisfies. Evidence: <code>an_interface_with_no_edge_in_g_passes_both_interface_checks</code>.</li>
+<li><strong><code>interfaces_sub</code> has no check below level 0.</strong> Claim: either state that <code>I ⊆ C</code> is a canvas-path invariant and out of the validator&#39;s remit, or extend <code>check_s0_interface_processors</code> past level 0. The current state — a Warning that its own source calls unfireable on the models the app produces — is neither. Evidence: <code>an_unclaimed_interface_below_level_zero_draws_nothing</code>.</li>
+<li><strong>The self-loop scope question is unstated.</strong> The interface checks say in prose why they are silent at Core and Structural; <code>check_self_loops</code> says nothing about why it is silent there while the Lean predicate is unconditional. Claim: a one-line scope statement, not a behaviour change.</li>
+<li><strong>The orphan asymmetry is unrecorded.</strong> <code>orphan_source</code> / <code>orphan_sink</code> are strictly stronger than the Lean, and no doc says so. Claim: a line in <a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a>&#39;s take/drop section.</li>
+</ol>
+<p>Not filed, on purpose: rows 3, 5 and 6. An issue for an unviolable condition is an issue nobody can close.</p>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/wellformedness-mapping.md">Source · docs/wellformedness-mapping.md</a>
+      <span>Rendered from 0bb7de4</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Authoring models that run · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="./" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">LIVE</span></div>
+    <h1 class="title">Authoring models that run</h1>
+    <article><p><strong>Status: LIVE.</strong> The author&#39;s path from a description to a running, gated,
+gallery-visible model — and the five facts that bite everyone once. Written
+after the first real SL-authoring session (Watershed and Supply Chain,
+2026-07-27, #258/#259/#261); every trap below was hit that night, and every
+mitigation named here now exists.</p>
+<p>For <em>using</em> the app, start at <a href="./quickstart.html"><code>quickstart.md</code></a>. For the
+language itself, <a href="./language/spec.html"><code>language/spec.md</code></a> is normative. This doc
+is the working loop between them.</p>
+<h2>What actually makes a model run</h2>
+<p>Excavated in the #318 library consolidation by putting every bundled model
+through <code>bert run</code> and sorting the answers. Eighteen examples, eight of which
+ran; the ten that did not stopped at one of exactly <strong>three</strong> gates, in this
+order. Nothing else stops a model, and one thing widely assumed to stop one does
+not.</p>
+<p><strong>Gate 1 — the lens, before anything about the contents is read.</strong> <code>@lens</code>
+selects the representational mode (<code>Lens::mode()</code>): Klir → Core, Bunge →
+Structural, Mobus → Operational. Only Operational carries flow semantics, so
+<strong>only a Mobus-pinned model can reach <code>run</code> at all.</strong> Six of the ten stopped
+here, and all six were every non-Mobus model in the library — three Klir, three
+Bunge, no exceptions either way. This is not a defect in those files. It is a
+statement about which tradition they are written in, and the fix is a modelling
+decision, not a repair. (The one door around it is <code>run_markov</code>, which reads a
+Klir canvas as a DTMC. Different call, different meaning: it conserves
+probability, not substance.)</p>
+<p><strong>Gate 2 — the operational projection.</strong> Under Mobus, <code>validate_operational</code>
+must yield a spec: every component needs a <code>primitive</code>, every boundary-crossing
+flow needs an <code>interface</code>, and endpoints must be typed in the <em>declared</em>
+direction. The steel-plant walk stopped here on one line — its purchase-order
+flows run <strong>into</strong> <code>source Iron-Source</code>, and a source originates flow.</p>
+<p><strong>Gate 3 — no algebraic cycle</strong> (#259). <code>Circuit::eval_order</code> topologically
+sorts same-step dependencies, and a pushed wire adds a dependency edge <em>unless
+the receiver reads state instead of input</em>: an observation tap, a gradient wire,
+a <code>Source</code>&#39;s emission, or a <strong>non-Message inflow into a <code>Buffering</code> receiver</strong>.
+So a loop is well-posed exactly when it passes through a stock read as a level.
+Three stopped here.</p>
+<p>The last clause of gate 3 is the sharp part, and it is easy to get wrong:</p>
+<blockquote>
+<p><strong>The substance on the loop&#39;s return leg decides it, not the presence of a
+stock.</strong> A <code>Buffering</code> component fed <code>informational</code> around the loop is still
+an algebraic cycle. Only a <em>physical</em> inflow (matter or energy) lets the
+receiver read start-of-step storage instead of this step&#39;s input.</p>
+</blockquote>
+<p>Verified with a separating pair — identical topology, identical stock, one word
+different: <code>flow Valve -&gt; Store : matter &quot;return&quot;</code> runs; <code>flow Valve -&gt; Store : informational &quot;return&quot;</code> is refused, naming <code>Store → Valve</code>.</p>
+<p><strong>And what is NOT a gate: quantities.</strong> <code>archive/respiring-cell.sl</code> declares no
+<code>time unit</code>, no <code>amount</code>, no <code>stock</code>, and no parameter of any kind, and it runs
+— because its flow graph is acyclic, so gate 3 has nothing to fail on.
+Parameterization decides whether a run is <em>meaningful</em>; it has never decided
+whether one <em>happens</em> (#216, already withdrawn once).</p>
+<p>Which leaves two shapes, and among the eight that ran there were only these two:</p>
+<ul>
+<li><strong>acyclic</strong> — the component flow graph is a DAG. Nothing further is needed.</li>
+<li><strong>cyclic with a <code>Buffering</code> on every cycle</strong>, taking its loop inflow as
+matter or energy.</li>
+</ul>
+<p>The clearest way to see gate 3 is the pair the archive keeps deliberately:
+<code>archive/thermostat.sl</code> is the textbook control loop and it is <strong>refused</strong>,
+because <code>Furnace → Sensor → Thermostat → Furnace</code> is a loop of pure relays. The
+repair is not a parameter — it is a <strong>missing thing</strong>. The room is the regulated
+variable and it is not in the model, so the loop has nowhere to remember.
+<code>assets/archive/demos/homeostat.json</code> is the same system with the room present as a
+<code>Buffering</code> component between the valve and the thermostat, and it runs and
+converges. If a loop refuses, the first question is not &quot;which stock do I add&quot;
+but <strong>&quot;what is the regulated variable, and did I forget to draw it?&quot;</strong></p>
+<h2>The short path (a structural model)</h2>
+<p>Write a <code>.sl</code> file. The grammar is small and the parser&#39;s error messages state
+the exact clause syntax whenever you miss — lean on them; they are the
+documentation. Crib from <a href="https://github.com/halcyonic-systems/facets/tree/main/assets/examples"><code>../assets/examples/</code></a>
+(<code>predator-prey.sl</code> shows environment mediation; <code>archive/respiring-cell.sl</code> is
+the smallest thing in the repo that runs, and <code>archive/watershed.sl</code> is the one
+that separates the conservation ledger into all four channels at once). Drop the
+file in <code>assets/examples/</code> and it self-sorts
+into the gallery by its <code>system &quot;…&quot; : Kingdom/Genus</code> line. That&#39;s it — it opens
+as a diagram under all three lenses.</p>
+<h2>The full path (a model that RUNS in the gallery)</h2>
+<p>A runnable gallery entry is three artifacts, and the model one is <strong>never
+hand-written</strong>:</p>
+<ol>
+<li><strong>The <code>.sl</code> file</strong> in <code>assets/examples/</code> — the SOURCE. Declare a <code>time unit</code>,
+put <code>amount &lt;n&gt; unit &lt;u&gt;</code> on the source-originating flows, <code>primitive</code> on
+components, <code>interface</code> where flows cross the boundary.</li>
+<li><strong>The minted model</strong> in <code>assets/models/demos/&lt;name&gt;.json</code> — the machine
+projection of your <code>.sl</code>. Mint and re-mint with
+<code>BLESS_SL_DEMOS=1 cargo test -p bert-canvas --test sl_demos</code>
+after adding your name to the <code>DEMOS</code> list in
+<a href="https://github.com/halcyonic-systems/facets/blob/main/crates/bert-canvas/tests/sl_demos.rs"><code>../crates/bert-canvas/tests/sl_demos.rs</code></a>.
+That gate then holds, forever: the <code>.sl</code> parses → projects → runs conserved
+and Δt-invariant, and the stored model equals the current projection (edit
+the <code>.sl</code> without re-minting and CI fails, so the diagram and the run can
+never drift apart).</li>
+<li><strong>The bundle</strong> in <code>assets/demos/&lt;name&gt;.json</code> — title, blurb, genus, horizon
+<code>t</code>, a forcing CSV, and a mapping. The same gate runs your actual bundle
+through <code>force_and_run</code>, exactly the call the Run button makes, so a bundle
+mistake fails in CI rather than at click time.</li>
+</ol>
+<p>The web gallery picks all of this up by glob; no registration code.</p>
+<h2>Name the knobs and the readouts (<code>param</code>, <code>metric</code> — spec §4.5–4.6)</h2>
+<p>Without params, the run tab&#39;s Inputs card speaks the kernel&#39;s taxonomy
+(&quot;drivers · absolute rates&quot;, &quot;relative weights&quot;). A <code>param</code> line names an
+adjustable quantity in <strong>your model&#39;s own vocabulary</strong>, and the panel renders
+it first — a bounded slider for a single amount, % shares for a fanout:</p>
+<pre><code>param &quot;Developer demand&quot; : flow &quot;Developer workload&quot; -&gt; &quot;Developer clearing&quot; range 0..12000
+param shares &quot;Developer market share&quot; : from &quot;Developer clearing&quot;
+</code></pre>
+<p>The boundary to keep straight: <strong>a param is presentation over a declared
+amount, never dynamics.</strong> It stores no value (the flow&#39;s <code>amount</code> IS the
+value), it never projects (the engine cannot see it), and the % display of a
+shares group is derived — the model keeps raw weights, and a share edit edits
+exactly one of them. Declaring params is enrichment: undeclared magnitudes
+keep the taxonomy fallback, so nothing requires them. The gallery&#39;s
+&quot;reset to declared&quot; restores what your <code>.sl</code> declares — your declared amounts
+are the defaults, which is one more reason to calibrate them honestly and cite
+sources in comments.</p>
+<p>A <code>metric</code> line is the same move on the way OUT (#203): where a param names
+an input knob, a metric names a readout you want every run to answer, in your
+words — and the run deck renders declared metrics <strong>first</strong>, above the
+kernel-fidelity furniture:</p>
+<pre><code>metric &quot;DeepSeek dev share&quot; : share of flow &quot;Developer clearing&quot; -&gt; DeepSeek
+metric &quot;Opus tokens served&quot; : sum into Opus
+</code></pre>
+<p><code>share of flow</code> reads one flow as a fraction of everything leaving its source
+(composition — refuse yourself the temptation to declare it on a
+single-outflow source; the parser will anyway, because that share is
+identically 1). <code>sum into</code> reads everything arriving at a thing (throughput),
+as a per-tick series and a run-end total. Declare several of one verb and the
+deck sorts them by endpoint — your leaderboard. A metric is a <strong>derived
+reading of what the run executed</strong>, never a number of its own: it computes
+from the recorder&#39;s per-flow series and can state nothing the trace does not
+carry. When your model wants a question these two verbs cannot ask, that is a
+new verb for the language, not a formula — see ADR 0006 for the growth rule.</p>
+<h2>The five facts that bite</h2>
+<ol>
+<li><strong>A flow must land where its substance is read.</strong> Each primitive consumes
+specific substances (Mobus Figs 3.18–3.19): a <code>Combining</code> ignores messages,
+a <code>Copying</code> ignores matter. A flow into a deaf receiver is delivered every
+step and <em>ignored</em> — the model validates, runs, conserves, and regulates
+nothing. <code>check_flows_are_consumed</code> (#261) now warns with a fix-shaped hint;
+take the warning seriously, it found a shipped demo&#39;s dead control loop.</li>
+<li><strong>A sensor&#39;s coupling to a stock is <code>: matter</code>.</strong> Sensing is the
+substance-crossing primitive — a physical quantity in, a signal out. Declare
+the level-read flow <code>matter</code> (it is a non-draining observation tap); the
+<code>informational</code> part is everything <em>downstream</em> of the sensor.</li>
+<li><strong><code>amount</code> is an absolute rate only on source-originating flows.</strong> On flows
+out of processes it is a <em>relative weight</em> for the fanout split; the actual
+outflow of a stock is its <code>release</code>/time-constant behavior. Don&#39;t decorate
+downstream flows with amounts and expect them to act. And when a signal&#39;s
+availability is simply <em>never the constraint</em> — released weights feeding an
+Amplifying model, an always-on control line — say <code>ample</code> instead of
+inventing a huge number (spec §4.4): informational flows only, no unit, the
+gate reads held open and the diagram shows the word.</li>
+<li><strong>Stocks start at zero.</strong> SL&#39;s <code>stock &lt;unit&gt;</code> declares a unit, not a value —
+an initial stock value is typed parameter territory, gated on
+<a href="https://github.com/halcyonic-systems/facets/issues/112">#112</a> (C2).
+Until then, author systems that fill from empty, or force them.</li>
+<li><strong>Feedback loops need memory on the loop.</strong> Wires transmit; stocks remember
+(#259). A loop is well-posed when it passes through a stock&#39;s level read; a
+loop of pure relays has no deterministic step and the run <strong>refuses with the
+loop named</strong>. Time is honest everywhere else too: rates are per <code>time unit</code>,
+and a run&#39;s totals don&#39;t depend on Δt (<code>dt_invariance.rs</code> holds this).</li>
+</ol>
+<h2>The three pre-SL demos, and why they cannot be ported</h2>
+<p><code>allocation</code>, <code>homeostat</code> and <code>reservoir</code> (now in <code>assets/archive/demos/</code>,
+retired from the gallery in the August 2026 curation) predate System Language.
+They are bundled JSON with no <code>.sl</code> source, and the #318 pass asked whether to
+port them. The answer for two
+of them is that <strong>the language cannot say what they say</strong>, and that is worth
+knowing before anyone tries again:</p>
+<table>
+<thead>
+<tr>
+<th>demo</th>
+<th>carries</th>
+<th>portable?</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>reservoir</code></td>
+<td><code>initial_state.storage = 100</code> and <code>cognitive_params.release_rate = 1.5</code> on its Buffering component. The only model in the repo that <strong>starts with a stock already full</strong> — everywhere else stocks start at zero.</td>
+<td><strong>no</strong></td>
+</tr>
+<tr>
+<td><code>homeostat</code></td>
+<td><code>release_rate</code> on the Room. A closed regulatory loop that actually runs and converges — see the thermostat pair above.</td>
+<td><strong>no</strong></td>
+</tr>
+<tr>
+<td><code>allocation</code></td>
+<td>nothing but structure: one <code>Splitting</code> component fanning a forced total across three weighted sinks, all four columns driven from CSV.</td>
+<td>yes, but its fact already lives in <code>llm-market.sl</code>, richer, with <code>param shares</code></td>
+</tr>
+</tbody></table>
+<p><strong>Update, 2026-08-15 — the two productions exist.</strong> #112 slice 1 landed after
+the transition-functor derivation ruled both facts orthogonal to the functor
+(an initial stock is a choice of basepoint — a pointed coalgebra; a release
+rate is a parameter of the transition map). SL now says both: <code>stock &lt;unit&gt; initial &lt;n&gt;</code> and, on a Buffering component, <code>release &lt;n&gt;</code> — the emit refusal
+narrowed to the keys that remain untyped (<code>capacity</code>, <code>setpoint</code>,
+<code>time_constant</code>, …), each narrowing with its separating instance
+(<code>sl_stock_dynamics.rs</code>). The first user of both clauses is
+<code>examples/translation-apparatus.sl</code>&#39;s tRNA pool: <code>stock tRNA initial 100 release 20</code>, a self-contained dynamical model with no JSON bypass.</p>
+<p>What this means for the three archived demos: <strong>porting is now possible and
+remains open work</strong> — they stay in the archive, held by their gates, until
+someone ports them deliberately and re-blesses. Their history is the record
+of why the productions exist.</p>
+<h2>Where the semantics live</h2>
+<p>Authority order when a question gets deep: the <code>circuit.rs</code> module header
+(update rule, conservation ledger), <a href="./language/spec.html"><code>language/spec.md</code></a> §8
+(what SL declares vs what engines interpret), and the gates themselves —
+<code>sl_demos.rs</code>, <code>dt_invariance.rs</code>, and <code>scripts/mutation_check.py</code>, which
+proves the gates can fail.</p>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/authoring-models.md">Source · docs/authoring-models.md</a>
+      <span>Rendered from 0bb7de4</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

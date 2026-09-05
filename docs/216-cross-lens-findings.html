@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>#216 — the cross-lens matrix, read · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="./" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">RESEARCH</span></div>
+    <h1 class="title">#216 — the cross-lens matrix, read</h1>
+    <article><p><strong>Status: RESEARCH.</strong></p>
+<p><em>First full read of the matrix, 2026-07-29; label-diff read 2026-08-01 (#285). Reproduce with <code>cargo test -p bert-canvas --test matrix_report -- --nocapture</code>. Raw run archived outside this repo; the command is the source of truth.</em></p>
+<p>The matrix had been runnable for some time and was never read. Two things came out of reading it: the report was answering two of #216&#39;s three questions, and the third question — <em>travels but reads differently</em> — turns out to have an answer already computed on every call and thrown away.</p>
+<h2>The third outcome is measurable, and it was already in hand</h2>
+<p><code>analyze</code> returns four things. The report used one of them. <code>residue</code> (#100) is the count of authored content a lens does not render — what the face is silent about. That is the third outcome, stated as a quantity: a model legal under two lenses that hides eleven declared facts from one of them travels, and reads differently.</p>
+<p>The column added here is the <strong>spread</strong>: among the lenses that accept the model, the gap between the most and least blind. Zero means every accepting lens sees the same amount of what the author wrote.</p>
+<h2>What the read says</h2>
+<p><strong>35 models × 3 lenses. 34 measurable, 34 divergent, 0 aligned, 1 unmeasurable.</strong></p>
+<p>The unmeasurable row is <code>klir/cellular-array-cell.sl</code>: Klir accepts it with 5 facts unseen, Bunge refuses it (no bond between distinct components), Mobus refuses it (8 boundary crossings without interfaces). One accepting lens means no second reading to compare against — the spread is undefined, not zero.</p>
+<p>So the count to state is <strong>34 of 34, not 34 of 35</strong>. <strong>Nothing in this library is read the same way by two lenses that both accept it.</strong> Calling <code>cellular-array-cell</code> &quot;non-divergent&quot; would be the same error as reading an all-green Klir column as agreement: absence of a measurement is not a measurement of zero.</p>
+<p>This inverts the expectation in the task. The third outcome was framed as the rare and interesting case, the one worth hunting for. It is the default state of the corpus.</p>
+<p><strong>Authored facts unseen, by lens: Klir 371 · Bunge 181 · Mobus 49.</strong></p>
+<p>The ordering falls out in the direction the commitments predict. Each tradition asks for something beyond the shared fragment — Bunge for a bond and an environment, Mobus for a boundary and interfaces — so a lens that asks for more can render more, and leaves less of an authored model unsaid. These are the first numbers that measure that over published models rather than over the abstract kernel.</p>
+<p>Read this as three faces side by side. Nothing here says a model advances from Klir toward Mobus — only that the faces carry different amounts of what an author declared, which is a fact about the lenses and not a direction of travel through them (#90; see <a href="./theory-fidelity.html"><code>theory-fidelity.md</code></a>).</p>
+<p><strong>Klir refuses nothing — 0 of 35 — because it cannot see most of what it is accepting.</strong></p>
+<p>The worst case is <code>examples/llm-market.sl</code>: legal under Klir, and Klir is blind to <strong>70</strong> declared facts in it. Then <code>two-sided-market</code> at 25 and <code>hal-harness</code> at 24. The zero-refusal column is not permissiveness, it is lossy projection. By the standard this repo already applies to its own checks — a constraint nothing can fail proves nothing (#220) — the Klir lens is not currently acting as a gate, and the residue count is the reason rather than the symptom.</p>
+<p>That is not a defect to fix. Klir <em>is</em> the root, and the root is supposed to be permissive. What the number changes is the claim that can be made from an all-green Klir column: it is evidence about the projection, not about the models.</p>
+<p><strong>Which lens is blindest tracks the vocabulary the model was written in.</strong></p>
+<p>For the Mobus corpus and the examples, Klir is blindest (<code>klir&gt;mobus</code>). For the Bunge and Klir corpora, Bunge often is — <code>criminal-court</code> at 3/20, <code>serial-binary-adder</code> at 5/16. Whichever tradition a model was <em>not</em> authored in is the one that loses it.</p>
+<p>Stated for the thesis: <strong>legality travels, meaning does not.</strong> All 35 models are legal under the root, which is the existence half of K≅2 holding empirically over real entries for the first time. And every one of them means something different in each lens that accepts it, which is the part the abstract proof was always silent about.</p>
+<p><strong>Mobus is blind to nothing in any example it accepts — 0 across all fifteen.</strong> <em>(Historical as of 2026-08-05; kept because the gap it named shaped #284.)</em></p>
+<p>That was a fact about the corpus, not about Mobus: every example was authored in his own vocabulary, so there was no authored content for him to fail to render. <strong>Resolved by #284 (2026-08-05)</strong> — two foreign-native entries now put authored meaning where Mobus cannot see it:</p>
+<ul>
+<li><code>examples/lake-observation.sl</code> (Klir-native source system): Mobus blind <strong>10</strong> — 2 directed annotations (hidden), 4 substances + 4 process primitives (unspecified).</li>
+<li><code>examples/workshop-crew.sl</code> (Bunge-native CES triple): Mobus blind <strong>7</strong> — 2 mere relations (hidden; Bunge&#39;s B̄), the rest unspecified.</li>
+</ul>
+<p>The Mobus residue column is now load-bearing: &quot;legality travels, meaning does not&quot; rests on all three columns.</p>
+<h2>The labels, diffed (#285, 2026-08-01)</h2>
+<p>Every divergent row now continues onto detail lines that diff the residue labels between the most- and least-blind accepting lenses, so <code>DIVERGENT(70) klir&gt;mobus</code> on <code>llm-market</code> reads as: 10 environment roles, 38 connection kinds, 11 process primitives, 11 interfaces — the seventy facts, named.</p>
+<p>What the diff shows across the whole library: <strong>the divergence is categorical, not idiosyncratic.</strong> Every gap in the corpus decomposes into roughly eight recurring categories. Klir&#39;s blindness is always the same four structural ones — environment roles, connection kinds, process primitives, interfaces — which is the lossy-projection finding above, now itemized. Bunge rows add three of their own (directed annotations, interface designations, and the uncountable ⊘M line), and the few rows where Mobus is the blinder lens lose substances and unanswered process primitives. No model diverges for a reason outside this list. That means the third outcome is not thirty-four separate stories: it is a small set of question-mismatches between the traditions, instantiated thirty-four times.</p>
+<h2>What this does not establish</h2>
+<p>The spread is a count of unrendered items, not a semantic distance. Two models with the same spread can differ for unrelated reasons, and a low spread is not evidence that two lenses agree about meaning — only that they omit the same amount. The label diff names which categories differ and by how much, but a matched category is matched by label, not by content — two lenses each hiding &quot;4 connection kinds&quot; may be hiding different kinds. The extremes diff misses the middle lens, so since #284 a divergent row also prints the middle lens&#39;s <em>hidden</em> entries (&quot;also hidden from …&quot;) — hidden only, because unspecified is a declined question rather than a loss; the middle lens&#39;s unspecified residue is still printed nowhere.</p>
+<p>The refusal reasons also collapse harder than the counts suggest: 17 refused cells across 16 models, but only three distinct mechanisms — boundary-crossing without an interface (Mobus, ~11 models), self-dependency where <code>k = o</code> (Mobus, 2), and no bond between distinct components (Bunge, 4). Seventeen cells is not seventeen results.</p>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/216-cross-lens-findings.md">Source · docs/216-cross-lens-findings.md</a>
+      <span>Rendered from 0bb7de4</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>
