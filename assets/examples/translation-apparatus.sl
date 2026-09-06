@@ -1,4 +1,8 @@
 # Ribosome — the translation apparatus, with the tRNA cycle closed.
+# Ribosome and Translation Apparatus are ONE SYSTEM AT TWO BOUNDARY CHOICES,
+# not two systems: the Ribosome model is this machine at the level of its
+# centers, and this file is the same machine with the tRNA cycle closed.
+# Its four components all reappear here by name. Both blurbs say so.
 # Variant C of three. Same grain as A; the BOUNDARY is wider. The synthetase
 # that recharges spent tRNA is brought inside, so tRNA stops being an input
 # and becomes a carrier that circulates. That single move is what turns this
@@ -11,7 +15,7 @@
 # crossing flow enters through its pass-way and hands off interiorly.
 
 system "Translation Apparatus" : Concrete/Biological
-domain "molecular biology: mRNA translation with the tRNA charging cycle closed"
+domain "molecular biology: mRNA translation with the tRNA charging cycle closed — the same machine the Ribosome model draws, with the boundary widened until the synthetase that recharges spent tRNA falls inside it"
 time unit second
 
 # ── The pass-ways, on the membrane ────────────────────────────────────────
