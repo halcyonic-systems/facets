@@ -4,6 +4,7 @@
 // IN the context; the LLM narrates and never re-derives structure.
 import type { Lens } from "./kernel/types";
 import type { AnalysisResponse } from "./analysis/types";
+import { authHeaders, refreshAccessToken } from "./auth";
 import { isDesktop } from "./desktop";
 import { blockedOnDesktop, reasonerConfig } from "./reasoner";
 
@@ -18,17 +19,28 @@ export class ReasonerOffError extends Error {
 
 /** The one place a reasoner request is made. Off is off; an unreachable
  *  endpoint is named; the desktop CSP case is called by its name instead of
- *  arriving as a bare `TypeError: Load failed`. */
+ *  arriving as a bare `TypeError: Load failed`.
+ *
+ *  Every spending route is behind the reasoner's identity seam (#361), so the
+ *  bearer token rides here and nowhere else. A refused token is retried once
+ *  with a fresh one — an expired cache is the ordinary case — and a second
+ *  refusal is reported like any other failure rather than looped on. */
 async function post(route: string, body: unknown): Promise<Record<string, unknown>> {
   const { enabled, endpoint } = reasonerConfig();
   if (!enabled) throw new ReasonerOffError();
-  let res: Response;
-  try {
-    res = await fetch(`${endpoint}${route}`, {
+  const send = (auth: Record<string, string>) =>
+    fetch(`${endpoint}${route}`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...auth },
       body: JSON.stringify(body),
     });
+  let res: Response;
+  try {
+    res = await send(await authHeaders());
+    if (res.status === 401) {
+      const tok = await refreshAccessToken();
+      if (tok) res = await send({ Authorization: `Bearer ${tok}` });
+    }
   } catch {
     if (isDesktop() && blockedOnDesktop(endpoint)) {
       throw new Error(
@@ -38,6 +50,11 @@ async function post(route: string, body: unknown): Promise<Record<string, unknow
     }
     throw new Error(
       `Could not reach the reasoner at ${endpoint}. Check that it is running and that the address is right.`,
+    );
+  }
+  if (res.status === 401) {
+    throw new Error(
+      `The reasoner at ${endpoint} did not accept this session. Reload the page, or check that the reasoner is the one you expect.`,
     );
   }
   const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
@@ -115,7 +132,7 @@ export async function setTurnStatus(
   try {
     const res = await fetch(`${endpoint}/authoring-history/${encodeURIComponent(id)}/status`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...(await authHeaders()) },
       body: JSON.stringify({ status }),
     });
     return res.ok;
@@ -156,7 +173,9 @@ export async function authoringHistory(limit = 50): Promise<AuthoringTurn[]> {
   const { enabled, endpoint } = reasonerConfig();
   if (!enabled) return [];
   try {
-    const res = await fetch(`${endpoint}/authoring-history?limit=${encodeURIComponent(limit)}`);
+    const res = await fetch(`${endpoint}/authoring-history?limit=${encodeURIComponent(limit)}`, {
+      headers: await authHeaders(),
+    });
     if (!res.ok) return [];
     const data = (await res.json()) as { turns?: unknown };
     return Array.isArray(data.turns) ? (data.turns as AuthoringTurn[]) : [];
