@@ -561,7 +561,7 @@ function Panel({
   onClick?: () => void;
   href?: string;
 }) {
-  const cls = "home-panel flex w-full items-center gap-5 border px-6 py-5 text-left";
+  const cls = "home-panel flex h-full w-full items-center gap-5 border px-6 py-5 text-left";
   const style = { borderColor: "var(--rule-soft)", color: "var(--ink)" };
   const body = (
     <>
@@ -664,8 +664,8 @@ export function HomeMenu({
             />
           )}
         </div>
-        <div className="mt-9 grid grid-cols-2 gap-5">
-          <div>
+        <div className="mt-9 grid grid-cols-2 items-stretch gap-5">
+          <div className="flex flex-col">
             <GroupHeader label="Continue" />
             <Panel
               glyph={<OpenGlyph />}
@@ -674,7 +674,7 @@ export function HomeMenu({
               onClick={onOpenLibrary}
             />
           </div>
-          <div>
+          <div className="flex flex-col">
             <GroupHeader label="Try" />
             <Panel
               glyph={<SandboxGlyph />}
