@@ -101,6 +101,9 @@ describe("the shipped library", () => {
   // pre-SL demos"), and their run-bundle gates now hold them in the archive.
   it("ships the keep set, and nothing that was archived", () => {
     expect(EXAMPLES.map((e) => e.title).sort()).toEqual([
+      // The shelf's second walkable hierarchy: Mobus ch. 7, Figs. 7.3 and
+      // 7.4, its seam held by digital_computer_walkthrough.rs.
+      "A digital computer, two levels deep",
       "Bitcoin",
       "Federal Reserve",
       "Jungian Cognitive Function Stack",

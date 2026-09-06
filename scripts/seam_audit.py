@@ -100,6 +100,27 @@ def _sl_genus(text: str) -> str:
     return "Unclassified"
 
 
+# The hand-registered walks: folder → (level, gallery/audit title). A new walk
+# is two lines here, and its levels then audit like any other shipped model.
+WALKS: list[tuple[str, list[tuple[int, str]]]] = [
+    (
+        "steel-plant",
+        [
+            (0, "The Steel-Plant, three levels deep"),
+            (1, "Steel-Plant walk — level 1 (Fig. 4.16 interior)"),
+            (2, "Steel-Plant walk — level 2 (Iron-Inventory's room)"),
+        ],
+    ),
+    (
+        "digital-computer",
+        [
+            (0, "A digital computer, two levels deep"),
+            (1, "Digital-computer walk — level 1 (Fig. 7.4 hardware interior)"),
+        ],
+    ),
+]
+
+
 def shipped_models() -> list[Shipped]:
     rows: list[Shipped] = []
 
@@ -132,27 +153,24 @@ def shipped_models() -> list[Shipped]:
             )
         )
 
-    # Registered by hand in examples.ts, beside the two levels it opens onto.
-    # Level 0 is the gallery row; levels 1 and 2 ship with it and are what its
-    # `decomposes` references resolve to, so they are audited as their own rows
-    # even though the gallery never lists them. The `.json` beside each level is
-    # the archive of the same model (the steel_walkthrough gate pins them to the
-    # `.sl`), so auditing the `.sl` audits both.
-    walk = REPO / "assets" / "walkthroughs" / "steel-plant"
-    for level, title in (
-        (0, "The Steel-Plant, three levels deep"),
-        (1, "Steel-Plant walk — level 1 (Fig. 4.16 interior)"),
-        (2, "Steel-Plant walk — level 2 (Iron-Inventory's room)"),
-    ):
-        rows.append(
-            Shipped(
-                key=f"walkthrough:steel-plant-level-{level}",
-                title=title,
-                shelf="example" if level == 0 else "walkthrough",
-                group="Technical",
-                path=walk / f"level-{level}.sl",
+    # The walks, registered by hand in examples.ts beside the levels they open
+    # onto. Level 0 is the gallery row; the deeper levels ship with it and are
+    # what its `decomposes` references resolve to, so they are audited as their
+    # own rows even though the gallery never lists them. The `.json` beside each
+    # level is the archive of the same model (each walk's kernel gate pins them
+    # to the `.sl`), so auditing the `.sl` audits both.
+    for folder, levels in WALKS:
+        walk = REPO / "assets" / "walkthroughs" / folder
+        for level, title in levels:
+            rows.append(
+                Shipped(
+                    key=f"walkthrough:{folder}-level-{level}",
+                    title=title,
+                    shelf="example" if level == 0 else "walkthrough",
+                    group="Technical",
+                    path=walk / f"level-{level}.sl",
+                )
             )
-        )
 
     index = json.loads((REPO / "assets" / "corpus" / "corpus.json").read_text(encoding="utf-8"))
     for e in index["entries"]:
