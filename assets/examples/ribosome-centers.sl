@@ -1,9 +1,15 @@
 # Ribosome — the elongation cycle, read as functional centers.
 # Variant A of three. Boundary: the ribosome itself. Charging of tRNA and
 # regeneration of GTP happen outside it, so both arrive as inputs.
+#
+# Ribosome and Translation Apparatus are ONE SYSTEM AT TWO BOUNDARY CHOICES,
+# not two systems: this file is the machine at the level of its centers,
+# and Translation Apparatus is the same machine with the tRNA cycle closed.
+# All four components here reappear there by name. The pair is the shelf's
+# lesson in boundary choice, so both blurbs say so.
 
 system "Ribosome" : Concrete/Biological
-domain "molecular biology: mRNA translation into a polypeptide chain"
+domain "molecular biology: mRNA translation into a polypeptide chain — the same machine the Translation Apparatus model draws, at the level of its centers, with the tRNA charging cycle left outside the boundary"
 
 # The small subunit's business: hold the message and check each pairing.
 component "Decoding Site" primitive Sensing interface

@@ -1,0 +1,389 @@
+{
+  "format": "bert-lenses/canvas@1",
+  "lens": "Mobus",
+  "model_id": "Vf4yUhPg55VodT1f4n666S",
+  "things": [
+    {
+      "id": 1,
+      "name": "Power Source",
+      "x": 295.29388,
+      "y": 0.07952881,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+    },
+    {
+      "id": 2,
+      "name": "Ambient Air",
+      "x": 849.41235,
+      "y": 320.0,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+    },
+    {
+      "id": 3,
+      "name": "External File Device",
+      "x": 132.86597,
+      "y": 193.65353,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+    },
+    {
+      "id": 4,
+      "name": "Users",
+      "x": 132.86594,
+      "y": 446.3464,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+    },
+    {
+      "id": 5,
+      "name": "Firmware",
+      "x": 295.29382,
+      "y": 639.9204,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+    },
+    {
+      "id": 6,
+      "name": "Power-Connector",
+      "x": 480.0,
+      "y": 150.0,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+    },
+    {
+      "id": 7,
+      "name": "Heat-Dissipation",
+      "x": 571.90894,
+      "y": 176.98691,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+    },
+    {
+      "id": 8,
+      "name": "File-Port-In",
+      "x": 634.63745,
+      "y": 249.37946,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+    },
+    {
+      "id": 9,
+      "name": "File-Port-Out",
+      "x": 648.26965,
+      "y": 344.1935,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+    },
+    {
+      "id": 10,
+      "name": "User-Port-In",
+      "x": 608.4774,
+      "y": 431.32632,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+    },
+    {
+      "id": 11,
+      "name": "User-Port-Out",
+      "x": 527.89453,
+      "y": 483.11383,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+    },
+    {
+      "id": 12,
+      "name": "Firmware-Port-In",
+      "x": 432.10547,
+      "y": 483.1138,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+    },
+    {
+      "id": 13,
+      "name": "Firmware-Port-Out",
+      "x": 351.52252,
+      "y": 431.3263,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+    },
+    {
+      "id": 14,
+      "name": "CPU",
+      "x": 311.73035,
+      "y": 344.1935,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false
+    },
+    {
+      "id": 15,
+      "name": "RAM Memory",
+      "x": 325.36255,
+      "y": 249.37946,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false
+    },
+    {
+      "id": 16,
+      "name": "I/O Control",
+      "x": 388.0911,
+      "y": 176.98688,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false
+    }
+  ],
+  "relations": [
+    {
+      "id": 17,
+      "a": 1,
+      "b": 6,
+      "name": "line current from the A/C wall socket",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 18,
+      "a": 6,
+      "b": 14,
+      "name": "regulated supply",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 19,
+      "a": 6,
+      "b": 15,
+      "name": "regulated supply",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 20,
+      "a": 6,
+      "b": 16,
+      "name": "regulated supply",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 21,
+      "a": 14,
+      "b": 7,
+      "name": "switching heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 22,
+      "a": 15,
+      "b": 7,
+      "name": "switching heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 23,
+      "a": 16,
+      "b": 7,
+      "name": "switching heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 24,
+      "a": 7,
+      "b": 2,
+      "name": "heat of computation, radiated or convected away",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+    },
+    {
+      "id": 25,
+      "a": 3,
+      "b": 8,
+      "name": "programs and data read from files",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 26,
+      "a": 8,
+      "b": 16,
+      "name": "file data on the way in",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 27,
+      "a": 16,
+      "b": 9,
+      "name": "file data on the way out",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 28,
+      "a": 9,
+      "b": 3,
+      "name": "programs and data written back to files",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 29,
+      "a": 4,
+      "b": 10,
+      "name": "work of programmers and of end users",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 30,
+      "a": 10,
+      "b": 16,
+      "name": "user input on the way in",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 31,
+      "a": 16,
+      "b": 11,
+      "name": "results on the way out",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 32,
+      "a": 11,
+      "b": 4,
+      "name": "results returned to the user",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 33,
+      "a": 16,
+      "b": 14,
+      "name": "data delivered to the processor",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 34,
+      "a": 16,
+      "b": 15,
+      "name": "data written straight to memory",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 35,
+      "a": 14,
+      "b": 15,
+      "name": "stores over the internal bus",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 36,
+      "a": 15,
+      "b": 14,
+      "name": "loads over the internal bus",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 37,
+      "a": 15,
+      "b": 16,
+      "name": "data staged for output",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 38,
+      "a": 5,
+      "b": 12,
+      "name": "hardware control",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 39,
+      "a": 12,
+      "b": 14,
+      "name": "control programs fetched from ROM",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 40,
+      "a": 14,
+      "b": 13,
+      "name": "operation results on the way back",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    },
+    {
+      "id": 41,
+      "a": 13,
+      "b": 5,
+      "name": "results of hardware operations, returned through the firmware coupling",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+    }
+  ],
+  "boundary": {
+    "porosity": 0.0,
+    "perceptive_fuzziness": 0.0
+  },
+  "system_type": {
+    "kingdom": "Concrete",
+    "genus": "Technical",
+    "domain": "Digital computing"
+  },
+  "name": "Hardware",
+  "klir_level": "Structure"
+}

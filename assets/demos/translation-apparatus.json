@@ -1,6 +1,6 @@
 {
   "title": "Translation Apparatus",
-  "blurb": "The ribosome with its tRNA cycle closed: mRNA read at 20 codons/s, energy entering as GTP and ATP and leaving as waste heat, the charged-tRNA pool starting at its declared 100 and draining at the elongation rate.",
+  "blurb": "The ribosome with its tRNA cycle closed: mRNA read at 20 codons/s, energy entering as GTP and ATP and leaving as waste heat, the charged-tRNA pool starting at its declared 100 and draining at the elongation rate. The same machine the Ribosome model draws, with the boundary widened until the synthetase that recharges spent tRNA falls inside it.",
   "model": "translation-apparatus",
   "genus": "Biological",
   "t": 15,

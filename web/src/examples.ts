@@ -6,6 +6,7 @@
 // change, because the genus is parsed from the file's own `system` line.
 import { DEMOS, type Demo } from "./demos";
 import steelPlantWalk from "../../assets/walkthroughs/steel-plant/level-0.sl?raw";
+import digitalComputerWalk from "../../assets/walkthroughs/digital-computer/level-0.sl?raw";
 
 const files = import.meta.glob("../../assets/examples/*.sl", {
   eager: true,
@@ -81,6 +82,27 @@ const STEEL_PLANT_WALK: Demo = {
   sl: steelPlantWalk,
 };
 
+// The digital-computer walk's entry level, registered by hand for the same
+// reason: it ships in assets/walkthroughs/ beside the level it opens onto,
+// where digital_computer_walkthrough.rs holds the seam and the pinned child
+// id. Two levels rather than three — Mobus goes further (Fig. 7.5's CPU,
+// Fig. 7.6's tree down to the transistor) and the walk stops where the
+// figures stop being transcribable. The corpus keeps its own Fig. 7.3
+// transcription; this card is the walkable version and carries the citation.
+const DIGITAL_COMPUTER_WALK: Demo = {
+  key: "example:digital-computer-walk",
+  title: "A digital computer, two levels deep",
+  genus: "Technical",
+  blurb:
+    "Mobus's ch. 7 depth-first procedure as a walkable hierarchy: the machine as " +
+    "hardware, firmware and software (Fig. 7.3), and the hardware opened into CPU, " +
+    "RAM and I/O control (Fig. 7.4) — joined by a decomposition reference whose seam " +
+    "the kernel checks. Zoom into Hardware to see its interior in place, or " +
+    "double-click to enter it. " +
+    "George Mobus, Systems Science: Theory, Analysis, Modeling, and Design (2022), Ch. 7 §7.2.3.",
+  sl: digitalComputerWalk,
+};
+
 /** An `.sl` file that also ships a run bundle lists once, as the runnable
  *  entry — the `.sl` stays its SOURCE (`sl_demos.rs` pins the bundled model
  *  to the projection of the `.sl`), the gallery just must not show the same
@@ -94,6 +116,7 @@ export const EXAMPLES: Demo[] = [
   ...DEMOS,
   ...structural.filter((s) => !demoTitles.has(s.title)),
   STEEL_PLANT_WALK,
+  DIGITAL_COMPUTER_WALK,
 ];
 
 /** Group the library by genus in the canonical order, dropping empty genera.
