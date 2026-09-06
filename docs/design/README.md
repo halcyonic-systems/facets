@@ -12,6 +12,7 @@ Design positions and research foundations, grouped by status. See [`../README.md
 
 - [`lens-palettes.md`](lens-palettes.md) — the lens grounding for Phase 3/4 (Klir / Bunge / Mobus) and the two kernel primitives (boundary identity, edge classification) behind the faithful renderings.
 - [`visual-language.md`](visual-language.md) — the register the app's pages are written in (a ledger / spec sheet / monograph plate, not a dashboard). Adopted 2026-07-24 from a three-way treatment bake-off; referenced from `web/src/HomeScreen.tsx` and `scripts/make-icon.py`. Subordinate to `web/DESIGN.md`.
+- [`frost-shared.md`](frost-shared.md) — the shared Frost foundation for the static surfaces: `shared/frost.css` + `shared/fonts/` are GENERATED from `web/src/index.css` by `scripts/gen-frost-shared.mjs`; portal and chat link them; the shared/private token split. Built 2026-08-31.
 - [`dynamics-coalgebra-halfa.md`](dynamics-coalgebra-halfa.md) — the buildable half of [#112](https://github.com/halcyonic-systems/facets/issues/112): the coalgebra classification, merged. The step `T` the Klir register reads and the Bunge trajectory unfolds; cited from `KlirRegister.tsx` and `BungeStateSpace.tsx`.
 
 ## ADOPTED (a decision in force)
@@ -22,6 +23,7 @@ Design positions and research foundations, grouped by status. See [`../README.md
 
 ## PROPOSED (awaiting adoption)
 
+- [`kernel-seam.md`](kernel-seam.md) — the chat ↔ model seam over the shared GSR: two hand-offs (a sheet becomes a generated draft model; a ModelContext crosses into chat as a context chip), the mobus/klir/bunge vocabulary bridge, spt/ct refused. Designed 2026-08-31; tracked as [#360](https://github.com/halcyonic-systems/facets/issues/360) and [#367](https://github.com/halcyonic-systems/facets/issues/367).
 - [`mobus-lifecycle-formalization.md`](mobus-lifecycle-formalization.md) — the position on finishing the life-cycle extension Mobus's 8-tuple paper opens and abandons (five empty stage headers): what the kernel already answers, what is genuinely open, what is not ours to decide. Subordinate to `dynamics-principled-position.md`.
 - [`hierarchical-decomposition-investigation.md`](hierarchical-decomposition-investigation.md) — every active path is flat (`project()` forces level 1, `to_canvas()` drops deeper levels, `validate_operational()` refuses `level > 1`); recommends decomposition by reference, gated on deriving the parent↔child boundary math from the Lean 8-tuple. Tracked as [#89](https://github.com/halcyonic-systems/facets/issues/89).
 
