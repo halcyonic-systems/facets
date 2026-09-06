@@ -1,5 +1,7 @@
 # Workbench declutter — ranked options
 
+**Status: PROPOSED.**
+
 *2026-08-31 session observation, from live screenshots of the loaded
 workbench (Bitcoin model, Mobus lens, 1200px viewport). Proposal only — each
 item below touches a surface that carries a deliberate prior decision, so

@@ -1,5 +1,7 @@
 # The kernel seam — chat ↔ model (pivot phase 4)
 
+**Status: PROPOSED.**
+
 *2026-08-31 · DESIGN, not committed. Phases 1–3 of the chat workbench pivot
 are built (`docs/design/frost-shared.md` records the styling half; the dock,
 sheets, and focus behavior live in `chat/index.html`). This document designs

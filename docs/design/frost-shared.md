@@ -1,5 +1,7 @@
 # The shared Frost foundation
 
+**Status: LIVE.**
+
 *2026-08-31 — the unification seam between the three surfaces.*
 
 Facets has three faces — the portal (`portal/index.html`), chat
