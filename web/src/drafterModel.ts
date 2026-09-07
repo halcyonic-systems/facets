@@ -12,6 +12,8 @@
 // about availability would be a guess. The answering model is read off the
 // response instead (see coauthor.ts / CoAuthorMode.tsx).
 
+import { isHosted } from "./reasoner";
+
 export type DrafterModelOption = {
   /** Sent as `model` to /author-sl. "" = the reasoner's own default. */
   value: string;
@@ -38,6 +40,21 @@ export const DRAFTER_MODELS: DrafterModelOption[] = [
     where: "through the reasoner's cloud path",
   },
 ];
+
+/** The options a given reasoner can honour. The hosted facets reasoner has no
+ *  local model: its default is the frontier tier it runs on, and the local
+ *  names would only fail there — so they are not offered. Any other address
+ *  is a reasoner the user runs, where the full list stands. */
+export function drafterModelOptions(endpoint: string): DrafterModelOption[] {
+  if (!isHosted(endpoint)) return DRAFTER_MODELS;
+  return [
+    { value: "", label: "Reasoner default (claude-haiku-4-5)", where: "on Halcyonic's server, through Anthropic" },
+    ...DRAFTER_MODELS.filter((m) => m.value.startsWith("claude")).map((m) => ({
+      ...m,
+      where: "on Halcyonic's server, through Anthropic",
+    })),
+  ];
+}
 
 const KEY = "bert-lenses.coauthor-model";
 

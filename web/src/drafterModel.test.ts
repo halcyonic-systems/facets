@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   DRAFTER_MODELS,
+  drafterModelOptions,
   drafterModel,
   drafterModelLabel,
   drafterModelWhere,
@@ -67,5 +68,18 @@ describe("the drafting model preference", () => {
     for (const m of DRAFTER_MODELS) {
       expect(`${m.label} ${m.where}`).not.toMatch(/better|smarter|stronger|best|premium/i);
     }
+  });
+});
+
+describe("options follow the reasoner", () => {
+  it("the hosted reasoner offers its frontier default and no local names", () => {
+    const opts = drafterModelOptions("https://api.facets.systems");
+    expect(opts[0].value).toBe("");
+    expect(opts[0].label).toMatch(/haiku/);
+    expect(opts.some((o) => o.value === "qwen3:32b")).toBe(false);
+    expect(opts.every((o) => /Halcyonic/.test(o.where))).toBe(true);
+  });
+  it("a reasoner the user runs keeps the full list", () => {
+    expect(drafterModelOptions("http://localhost:5010")).toBe(DRAFTER_MODELS);
   });
 });

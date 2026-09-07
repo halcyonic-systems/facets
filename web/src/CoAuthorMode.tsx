@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { slChangeSummary, type CoauthorTurn, type DraftStage } from "./coauthor";
 import { ReasonerGate } from "./ReasonerGate";
 import { isLoopback, reasonerConfig, setReasonerConfig, subscribeReasoner } from "./reasoner";
-import { DRAFTER_MODELS, drafterModel, drafterModelWhere, setDrafterModel, subscribeDrafterModel } from "./drafterModel";
+import { drafterModel, drafterModelOptions, setDrafterModel, subscribeDrafterModel } from "./drafterModel";
 import { Pill } from "./ui";
 
 type Tone = "neutral" | "ok" | "warning" | "error";
@@ -263,13 +263,13 @@ export function CoAuthorMode({
                 className="rounded px-1 py-0.5 text-[11px]"
                 style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: "1px solid var(--hairline)" }}
               >
-                {DRAFTER_MODELS.map((o) => (
+                {drafterModelOptions(reasoner.endpoint).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
               </select>
-              <span>{drafterModelWhere(model) ?? ""}</span>
+              <span>{drafterModelOptions(reasoner.endpoint).find((o) => o.value === model)?.where ?? ""}</span>
             </label>
             <div className="mt-2 flex items-center gap-2">
               <button
