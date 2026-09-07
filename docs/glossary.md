@@ -32,7 +32,7 @@ The per-step accounting a run produces in the run panel: the declared [conservat
 
 ### SL
 
-The bert-lenses **s**ystem **l**anguage: a human-writable, line-oriented textual notation that compiles deterministically (a compiler, never an LLM) into a model. The third concrete syntax over the [neutral spec](#neutral-spec), alongside canvas and JSON. See [`language/`](language/).
+The Facets **s**ystem **l**anguage: a human-writable, line-oriented textual notation that compiles deterministically (a compiler, never an LLM) into a model. The third concrete syntax over the [neutral spec](#neutral-spec), alongside canvas and JSON. See [`language/`](language/).
 
 ### Systemhood
 

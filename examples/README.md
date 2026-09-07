@@ -2,7 +2,7 @@
 
 `llm-market-demo.csv` — **illustrative demo data, not real market figures.** Eight
 months of made-up observations for exercising the CSV tether's acceptance path
-(bert-lenses#7/#13). The numbers are invented to give the import + comparison
+(facets#7/#13). The numbers are invented to give the import + comparison
 surface something plausibly shaped to chew on; do not cite them.
 
 Columns, and how to map them onto a small hand-authored LLM-market model

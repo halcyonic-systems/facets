@@ -2,7 +2,7 @@
 
 Builds the monthly CSV panel defined in the verified deep-research report
 (`operations/sessions/2026-07-11/references/llm-market-data-foundation.md`
-in the vault) for bert-lenses#14 target 4 (LLM market, frontier + open).
+in the vault) for facets#14 target 4 (LLM market, frontier + open).
 
 Six research legs plus one derived tether leg, seven scripts, seven output
 CSVs. Data lives **outside this repo**, in

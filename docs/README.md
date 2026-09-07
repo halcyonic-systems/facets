@@ -12,10 +12,11 @@ Start at the main [`README.md`](../README.md) and [`CLAUDE.md`](../CLAUDE.md) fo
 
 ## Start here
 
+Four files are enough to use the instrument: the quickstart, the tour, the glossary, and the author's path. Everything after this section is the record behind them: the language spec, the theory and its provenance, design positions, decisions, and the parked ledger.
+
 - [`quickstart.md`](quickstart.md) — **LIVE** — ten minutes from `just dev` to a judged, running model, using the two smallest corpus files (bathtub, then process-m). The newcomer on-ramp.
 - [`tour.md`](tour.md) — **LIVE** — the reader's tour: one running model (hal-projection) grown line by line, each step pairing SL with what the canvas and the three lenses render; three audience entry paths and the SL ↔ canvas ↔ JSON ↔ kernel notation table.
 - [`authoring-models.md`](authoring-models.md) — **LIVE** — the author's path from a description to a running, gated, gallery-visible model: the `.sl` → mint → bundle loop and the five facts that bite everyone once (deaf receivers, the matter tap, where `amount` acts, stocks-start-at-zero, loops need memory).
-- [`predictions/llm-market.md`](predictions/llm-market.md) — **PROPOSED** — the llm-market prediction ledger: append-only entry format keyed to the spec content hash, calibration provenance, zero predictions recorded yet.
 - [`glossary.md`](glossary.md) — **LIVE** — fast definitions of the ~15 load-bearing terms (system, lens, bond/mere, conservation invariant, WorldModel, Save vs Export, run ledger, SL, systemhood, mode/lens, neutral spec, golden, dynamics-kind, precondition, concordance), each grounded in a fuller doc.
 
 ## The language
@@ -44,6 +45,7 @@ Start at the main [`README.md`](../README.md) and [`CLAUDE.md`](../CLAUDE.md) fo
 
 Positions — a stance the repo takes, or is being asked to take:
 
+- [`predictions/llm-market.md`](predictions/llm-market.md) — **PROPOSED** — the llm-market prediction ledger: append-only entry format keyed to the spec content hash, calibration provenance, zero predictions recorded yet.
 - [`design/dynamics-principled-position.md`](design/dynamics-principled-position.md) — **ADOPTED** (adopted via [#86](https://github.com/halcyonic-systems/facets/issues/86)) — what counts as dynamics: a state-transition family satisfying the semigroup axiom (Mesarovic–Takahara); a dynamics-*kind* is the transition functor; **conservation is an invariant the model declares, not the engine's premise**. Supersedes the "dynamics = the conservation engine" framing in the retired [`archive/roadmap-pre-web-rebuild.md`](archive/roadmap-pre-web-rebuild.md) Arc 4. `language/spec.md` §8 is normatively bound to it. Research trail: [`design/dynamics-research/`](design/dynamics-research/).
 - [`design/hierarchical-decomposition-investigation.md`](design/hierarchical-decomposition-investigation.md) — **PROPOSED** ([#89](https://github.com/halcyonic-systems/facets/issues/89)) — the kernel's data model can carry arbitrary depth, but every active path is flat: `project()` forces level 1, `to_canvas()` drops deeper levels, `validate_operational()` refuses `level > 1`. Recommends decomposition by reference; implementation gated on deriving the parent↔child boundary math from the Lean 8-tuple.
 - [`design/decomposition-foundations.md`](design/decomposition-foundations.md) — **RESEARCH** ([#89](https://github.com/halcyonic-systems/facets/issues/89)) — the math layer under the investigation's Option B: the Eq. 4.3 substitution slot by slot over the Lean 8-tuple, the boundary-contract bijection β, the three Lean statements that open the gate, and the Lean-first dependency order. Explicit non-goals: no grammar, kernel, or neutral-spec change.

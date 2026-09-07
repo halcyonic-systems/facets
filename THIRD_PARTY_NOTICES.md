@@ -11,11 +11,11 @@ The inventory tables are generated from `npm ls --prod` and `cargo metadata`
 (wasm32 platform filter) — the same metadata the build reads. Regenerate with
 `python3 scripts/gen_notices.py` after any dependency change.
 
-bert-lenses itself is MIT; see `LICENSE`. Every crate under `crates/` was
+Facets itself is MIT; see `LICENSE`. Every crate under `crates/` was
 written for this repository, so nothing here is owed for the kernel — this file
 covers the fonts, KaTeX, and the dependency graph that reaches the artifact.
 
-*Lineage, not an obligation: bert-lenses grew out of the BERT project
+*Lineage, not an obligation: Facets (bert-lenses until 2026-08-27) grew out of the BERT project
 (`halcyonic-systems/bert`). The kernel crates here were written for this
 repository.*
 
