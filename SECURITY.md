@@ -6,7 +6,9 @@ until this file existed the first finder's only channel was a public issue.
 
 ## Reporting a vulnerability
 
-Email **rsthornton@gmail.com** with `bert-lenses security` in the subject. That
+Email **rsthornton@gmail.com** with `facets security` in the subject, or use
+GitHub's [private vulnerability reporting](https://github.com/halcyonic-systems/facets/security/advisories/new)
+on this repository, which is the preferred channel. That
 address is the maintainer's, and appears on every commit in this repository, so
 it can be verified against the history rather than trusted from this file.
 
@@ -14,10 +16,8 @@ Please include what you did, what happened, and what you expected. A proof of
 concept helps and is not required. If you would rather not send details in
 plaintext, send a note asking for a key and one will be provided.
 
-**Please do not open a public issue for a vulnerability.** Once this repository
-is public, GitHub's private vulnerability reporting should be enabled and named
-here as the preferred channel; it is unavailable on private repositories, which
-is why email is the channel today.
+**Please do not open a public issue for a vulnerability.** Private vulnerability
+reporting was enabled on 2026-09-07; email remains open for anyone who prefers it.
 
 Expect an acknowledgement within a week. This is a small research project with
 no on-call rotation — that is the honest commitment, not a service level.
@@ -25,7 +25,10 @@ no on-call rotation — that is the honest commitment, not a service level.
 ## What is in scope
 
 The shipped artifacts: the wasm kernel under `crates/`, the web app under
-`web/`, and the macOS bundle built from `src-tauri/`.
+`web/`, the chat client under `chat/`, the macOS bundle built from `src-tauri/`,
+and the site assembled from them at facets.systems. The hosted reasoner the
+site's opt-in features talk to (`api.facets.systems`) is a separate service; a
+report about it is welcome through the same door and will be routed.
 
 Two properties this project asserts, and would treat a break of as a
 vulnerability even where no memory is corrupted and no data leaks:
@@ -33,9 +36,14 @@ vulnerability even where no memory is corrupted and no data leaks:
 - **The kernel is the only source of verdicts.** Any path by which LLM output,
   host-side code, or a crafted model file produces something the app presents as
   a machine-checked verdict is a security bug. See `web/src/kernel/types.ts`.
-- **Nothing leaves the machine until the user enables it.** Co-authoring is off
-  by default, and the artifact names no network address but this machine's. Any
-  outbound request from a default install is a security bug.
+- **Nothing leaves the machine until the user enables it.** The canvas, SL
+  compiler, and every verdict run in the page; a default install makes no
+  outbound request. The LLM co-author and Chat are explicit opt-ins whose
+  destination is shown at the moment of enabling (the hosted build names
+  `api.facets.systems`; a local build names `localhost:5010`; either can be
+  repointed). Any outbound request before that consent, or to an address other
+  than the one shown, is a security bug. What the hosted service receives and
+  keeps is in [`PRIVACY.md`](PRIVACY.md).
 
 ## Known dependency advisories
 

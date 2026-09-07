@@ -17,16 +17,11 @@ is at [facets.systems/docs](https://facets.systems/docs/). The name changed in A
 [![wasm boundary](https://github.com/halcyonic-systems/facets/actions/workflows/wasm-exec.yml/badge.svg)](https://github.com/halcyonic-systems/facets/actions/workflows/wasm-exec.yml)
 [![Lean provenance](https://github.com/halcyonic-systems/facets/actions/workflows/lean-provenance.yml/badge.svg)](https://github.com/halcyonic-systems/facets/actions/workflows/lean-provenance.yml)
 
-<!-- SCREENSHOT SLOT (#252) ────────────────────────────────────────────────
-     One image, here: a refusal on screen in the verdict panel, with the model
-     that provoked it visible beside it. The prose below stands alone without
-     it — the image is the proof that this is a running tool, not a claim the
-     reader has to take on faith.
+![The Toolbox model on the canvas, refused under the Bunge lens: two components joined by a relation declared mere, and the verdict panel citing Bunge Def 1.1](assets/readme/refusal.png)
 
-     Capture procedure: .claude/docs/desktop-app-automation.md
-
-     ![The kernel refusing a model, citing the precondition](assets/readme/refusal.png)
-──────────────────────────────────────────────────────────────────────── -->
+*The same four lines of SL pass under Klir and are refused under Bunge, which
+names the definition and the edit that clears it. Captured from facets.systems
+on 2026-09-07; the exchange itself is pinned by a test.*
 
 Modeling tools render what you author. This one also **judges** it: once a model
 exists, the kernel decides whether it holds as a system under three traditions of
@@ -56,16 +51,25 @@ accept or discard it. No generated text reaches a verdict.
 
 Open [**facets.systems/model**](https://facets.systems/model/) and draw a
 system, or describe one in a few lines of SL. The kernel runs in your browser as
-WebAssembly; nothing you author leaves the page. The [**Sandbox**](https://facets.systems/model/?sandbox=1)
+WebAssembly: the canvas, the compiler, every verdict, and every run stay on the
+page and make no network request. The [**Sandbox**](https://facets.systems/model/?sandbox=1)
 door is the fastest way to feel it: drop in work processes, wire them, press
 Run, and change a rate mid-run.
+
+The one thing that does leave the page is opt-in. The **LLM co-author** in the
+SL pane is off until you turn it on at its gate, and the gate says where the text
+goes: the hosted build talks to Halcyonic's reasoner at `api.facets.systems`
+under an anonymous session (ten requests a minute, a hundred a day), and a
+draft it returns is SL you accept or discard, never a verdict. Point it at a
+reasoner you run and nothing reaches Halcyonic. What the hosted service keeps
+is in [`PRIVACY.md`](PRIVACY.md).
 
 Then take the [**ten-minute quickstart**](https://facets.systems/docs/quickstart.html):
 author a model, read its verdicts, break it on purpose, fix what the refusal
 names, and open one that runs against real data. The rest of the reference
 layer is at [facets.systems/docs](https://facets.systems/docs/).
 
-To run the LLM co-author against a local reasoner, or to change the kernel,
+To change the kernel, or to run the co-author against a reasoner of your own,
 clone it. The only tool you install by hand is `just`, because nothing in the
 repo can check for `just` itself:
 
@@ -75,8 +79,18 @@ just preflight        # names anything else that is missing, with the install li
 just dev              # builds the wasm kernel, installs web deps, opens the app
 ```
 
-About forty seconds from a cold clone to a running instrument; the full
-prerequisite table is under [Prerequisites](#prerequisites).
+`just preflight` names what a cold machine still needs: Rust stable with the
+`wasm32` target, `wasm-pack`, and Node 22 or newer. The first `just dev` after
+that compiles six crates to wasm and installs the web dependencies, so budget a
+few minutes once; every run after it is seconds. The full prerequisite table is
+under [Prerequisites](#prerequisites).
+
+**The reasoner.** Chat and the co-author are backed by the General Systems
+Reasoner, a separate Python service that Halcyonic runs at `api.facets.systems`
+and that also runs locally on port 5010. Its repository is not public yet. The
+web build reads the address from `VITE_GSR_URL` at build time and defaults to
+`http://localhost:5010`; the co-author's gate lets a user override it at runtime.
+Everything else in this repository works with no reasoner at all.
 
 ## See it refuse
 
@@ -508,11 +522,14 @@ this tool believes" above.
 
 ## Status
 
-Rebuilt web-first (egui → React); the kernel + engine are consolidated here and
-wasm-ready. The per-lens authoring work (Phase 4) is in progress, and the
-read-only LLM analysis rung shipped 2026-07-17 (deterministic #66 graph checks +
-an Analyst panel that narrates kernel facts through GSR, read-only). The prior
-egui app lives on the `pre-web-rebuild` tag / `archive/egui-app` branch.
+*As of 2026-09-07.* The site serves three faces: the portal at
+[facets.systems](https://facets.systems), **Chat** at `/chat/` (in this
+repository since 2026-08-27, when the chat client was merged in and the project
+took the name Facets), and **Model** at `/model/`, whose door opened on
+2026-09-07 with the hosted co-author on and opt-in. The rendered reference layer
+is at `/docs/`. Per-lens authoring (Phase 4) is still in progress; the read-only
+LLM analysis rung shipped 2026-07-17; the prior egui app lives on the
+`pre-web-rebuild` tag / `archive/egui-app` branch.
 
 **Live status and roadmap → [Facets Roadmap board](https://github.com/orgs/halcyonic-systems/projects/12).**
 
