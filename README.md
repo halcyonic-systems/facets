@@ -275,17 +275,17 @@ docs/                       # see docs/README.md for the indexed tour
   design/                   #   research foundations + design positions
   decisions/                #   ADRs
   archive/                  #   superseded, kept as record
-spec/                       # the lens-entry spec the kernel's mode entry implements
+  spec/                     #   the lens-entry spec the kernel's mode entry implements
 scripts/                    # gate + build tooling: doc_lint.py (the first step of `just check`),
                             #   lean_provenance.py, wasm_exec.mjs, packaging helpers
+  launchd/                  #   OPTIONAL macOS agent that keeps the app running (docs/running-permanently.md)
 assets/models/              # sample BERT models (demos + blockchain examples)
 assets/demos/               # run bundles: the model + CSV + mapping a runnable example ships
 assets/examples/            # the structural examples (.sl) the library shelves are built from
 assets/corpus/              # models transcribed from the founding texts, each with its citation
 assets/fonts/               # STIX fonts for the formal face
-examples/                   # sample input data (the LLM-market CSV some demos are shaped around)
-launchd/                    # OPTIONAL macOS agent that keeps the app running (docs/running-permanently.md)
-pipeline/                   # OPTIONAL Python data-prep — off the product path, not in CI
+assets/examples-data/       # sample input data (the LLM-market CSV some demos are shaped around)
+tools/pipeline/             # OPTIONAL Python data-prep — off the product path, not in CI
 ```
 
 `bert-core`, `bert-compose`, `bert-canvas`, and `bert-tether` are **vendored**
@@ -294,7 +294,7 @@ the native egui shell it had upstream is dropped, so it carries no native
 dependency and compiles clean to `wasm32-unknown-unknown`. Node geometry uses
 `glam::Vec2` in place of `egui::Pos2`, so the engine pulls in no UI crate at all.
 
-`pipeline/` produces the LLM-market panel CSVs some demos are shaped around. It has
+`tools/pipeline/` produces the LLM-market panel CSVs some demos are shaped around. It has
 its own venv and README and is **not** load-bearing for the product or the gates.
 
 ## Publishing facets.systems
@@ -498,7 +498,7 @@ grows, so the wasm gate cannot quietly widen into one that skips things.
 ## Where to look
 
 **[`docs/README.md`](docs/README.md) is the index** — every document under
-`docs/` and `spec/`, status-marked (LIVE · ADOPTED · PROPOSED · CONTINGENT(#N) ·
+`docs/`, status-marked (LIVE · ADOPTED · PROPOSED · CONTINGENT(#N) ·
 RESEARCH · HISTORICAL) and grouped by what it is for. Start there to find
 anything.
 

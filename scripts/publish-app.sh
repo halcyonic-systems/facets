@@ -60,5 +60,5 @@ PKGJSON
   (cd "$SERVER_DIR" && npm install)
 fi
 
-echo "==> Published. Serve permanently via launchd/com.halcyonic.bert-lenses.plist,"
+echo "==> Published. Serve permanently via scripts/launchd/com.halcyonic.bert-lenses.plist,"
 echo "    or check it now: http://127.0.0.1:$PORT/ (once the launchd service is loaded)"

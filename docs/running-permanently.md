@@ -24,7 +24,7 @@ it never touches the repo's own vite in `web/node_modules`.
 
 ```bash
 scripts/publish-app.sh
-cp launchd/com.halcyonic.bert-lenses.plist ~/Library/LaunchAgents/
+cp scripts/launchd/com.halcyonic.bert-lenses.plist ~/Library/LaunchAgents/
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.halcyonic.bert-lenses.plist
 ```
 

@@ -281,7 +281,7 @@ def provenance_gates() -> list[str]:
 #                             least one other markdown file. Source-comment
 #                             references do not count: a doc a reader can only
 #                             find by grepping Rust is not findable.
-#   6. index-reachability   — every docs/ and spec/ file is reachable from
+#   6. index-reachability   — every docs/ file is reachable from
 #                             docs/README.md, the single canonical index,
 #                             walking *only* through index files (README.md).
 #
@@ -307,8 +307,8 @@ def repo_markdown() -> list[Path]:
 def indexed_docs() -> list[Path]:
     """The docs subject to the orphan check: the reference layer plus the two
     package READMEs the issue found referenced only in prose."""
-    out = sorted((REPO / "docs").rglob("*.md")) + sorted((REPO / "spec").rglob("*.md"))
-    for extra in ("pipeline/README.md", "examples/README.md"):
+    out = sorted((REPO / "docs").rglob("*.md"))
+    for extra in ("tools/pipeline/README.md", "assets/examples-data/README.md"):
         p = REPO / extra
         if p.is_file():
             out.append(p)
@@ -407,7 +407,7 @@ def ia_gates() -> tuple[list[str], list[str], list[str]]:
         f"(add it to that index, or to the README.md of its folder)"
         for p in sorted(targets)
         if p.resolve() not in reached
-        and (str(p.relative_to(REPO)).startswith("docs/") or str(p.relative_to(REPO)).startswith("spec/"))
+        and str(p.relative_to(REPO)).startswith("docs/")
         and p.resolve() != root
     ]
     return broken, orphans, unindexed
@@ -433,7 +433,7 @@ def ia_gates() -> tuple[list[str], list[str], list[str]]:
 #   **Status: LIVE** …            — the prose form (may be blockquoted: "> **Status: …")
 #   *date · phase · status: **ADOPTED*** — the ADR byline, whose format CONTRIBUTING fixes
 #
-# SCOPE: every .md under docs/ and spec/. The carrier must sit in the HEADER
+# SCOPE: every .md under docs/. The carrier must sit in the HEADER
 # REGION — the lines before the first `## ` heading — so it is on screen when the
 # file opens, and exactly one must be there.
 STATUS_WORDS = ("LIVE", "ADOPTED", "PROPOSED", "RESEARCH", "HISTORICAL")
@@ -453,7 +453,7 @@ STATUS_EXEMPT_DIRS = ("docs/parked-closing-comments",)
 
 
 def status_scope() -> list[Path]:
-    out = sorted((REPO / "docs").rglob("*.md")) + sorted((REPO / "spec").rglob("*.md"))
+    out = sorted((REPO / "docs").rglob("*.md"))
     return [
         p
         for p in out
@@ -606,7 +606,7 @@ def main() -> int:
         f"doc-lint: OK — {len(live_docs())} LIVE docs clean; mode-entry and hedge "
         f"vocabulary clean; provenance tables match the manifest; {gate_a}; "
         f"{len(indexed_docs())} indexed docs all reachable, linked, and link-resolving; "
-        f"{len(status_scope())} docs/ + spec/ files each carry exactly one "
+        f"{len(status_scope())} docs/ files each carry exactly one "
         f"status word{exempt_note}"
     )
     return 0

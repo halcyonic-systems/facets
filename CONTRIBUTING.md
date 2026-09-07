@@ -103,7 +103,7 @@ Research that others build on but that isn't itself a decision stays **RESEARCH*
 
 ## Status vocabulary
 
-Every doc under `docs/` and `spec/` carries exactly one status, and
+Every doc under `docs/` carries exactly one status, and
 `scripts/doc_lint.py` enforces it. The canonical definitions live in
 [`docs/README.md`](docs/README.md); in short:
 

@@ -2,7 +2,7 @@
 
 **Status: LIVE.**
 
-*This repo's "machine-checked" story rests on proofs that live in a separate repo, `systems-science-foundations` (SSF). This document is the pin: the exact SSF commit the current claims refer to, a per-claim map from each claim to the Lean declaration that proves it, and the commands an auditor starting from this repo alone runs to check every one. It is the provenance complement to [`spec/LENS_ENTRY_SPEC.md`](../spec/LENS_ENTRY_SPEC.md) §D's extraction half (issue [#24](https://github.com/halcyonic-systems/facets/issues/24)): §D says how the truth-table fixture and oracle are produced from SSF; this doc says which SSF, at which commit, and how to audit it. Issues [#128](https://github.com/halcyonic-systems/facets/issues/128), [#232](https://github.com/halcyonic-systems/facets/issues/232).*
+*This repo's "machine-checked" story rests on proofs that live in a separate repo, `systems-science-foundations` (SSF). This document is the pin: the exact SSF commit the current claims refer to, a per-claim map from each claim to the Lean declaration that proves it, and the commands an auditor starting from this repo alone runs to check every one. It is the provenance complement to [`spec/LENS_ENTRY_SPEC.md`](spec/LENS_ENTRY_SPEC.md) §D's extraction half (issue [#24](https://github.com/halcyonic-systems/facets/issues/24)): §D says how the truth-table fixture and oracle are produced from SSF; this doc says which SSF, at which commit, and how to audit it. Issues [#128](https://github.com/halcyonic-systems/facets/issues/128), [#232](https://github.com/halcyonic-systems/facets/issues/232).*
 
 ## The pin
 
@@ -52,7 +52,7 @@ Read the *kind* column adversarially, because it is the column that constrains t
 
 ### The kernel and the three generated views
 
-Stated in: [`theory-fidelity.md`](theory-fidelity.md) ("What the kernel actually is"), [`spec/LENS_ENTRY_SPEC.md`](../spec/LENS_ENTRY_SPEC.md) §A/§C, `README.md`, `crates/bert-core/src/transition.rs` header table.
+Stated in: [`theory-fidelity.md`](theory-fidelity.md) ("What the kernel actually is"), [`spec/LENS_ENTRY_SPEC.md`](spec/LENS_ENTRY_SPEC.md) §A/§C, `README.md`, `crates/bert-core/src/transition.rs` header table.
 
 | # | Claim | SSF file | Declaration(s) — *kind* | What the Lean gives |
 |---|---|---|---|---|
@@ -71,7 +71,7 @@ Stated in: [`theory-fidelity.md`](theory-fidelity.md) ("What the kernel actually
 
 ### The truth-table and oracle bindings (spec §D)
 
-Stated in: [`spec/LENS_ENTRY_SPEC.md`](../spec/LENS_ENTRY_SPEC.md) §C–§D, `fixtures/gates_truth_table.json` (`_generator`), `crates/bert-core/tests/gates_truth_table.rs`, `crates/bert-core/tests/gates_oracle.rs`.
+Stated in: [`spec/LENS_ENTRY_SPEC.md`](spec/LENS_ENTRY_SPEC.md) §C–§D, `fixtures/gates_truth_table.json` (`_generator`), `crates/bert-core/tests/gates_truth_table.rs`, `crates/bert-core/tests/gates_oracle.rs`.
 
 | # | Claim | SSF file | Declaration(s) — *kind* | What the Lean gives |
 |---|---|---|---|---|

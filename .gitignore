@@ -10,7 +10,7 @@ crates/*/pkg-probe/
 web/node_modules/
 web/dist/
 
-# Python (pipeline data-prep)
+# Python (tools/pipeline data-prep)
 __pycache__/
 .venv/
 

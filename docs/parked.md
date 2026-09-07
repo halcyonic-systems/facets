@@ -865,7 +865,7 @@ named_precondition` in Lean.
 
 Today the binding is **falsifiable in both directions** — the Lean-emitted truth
 table and the live oracle would both catch drift as a CI regression
-([`../spec/LENS_ENTRY_SPEC.md`](../spec/LENS_ENTRY_SPEC.md) §D,
+([`spec/LENS_ENTRY_SPEC.md`](spec/LENS_ENTRY_SPEC.md) §D,
 [`lean-provenance.md`](lean-provenance.md)). But it is still a **correspondence
 checked on vectors**, not a proof about the shipped code. Rung 3 would retire the
 hand-mirroring in §C's mapping table by making the shipped Rust *the proved
@@ -895,7 +895,7 @@ it belongs to Rung 2, not to Rung 3.
 ### The status quo is honest without this
 
 Worth stating so the entry does not read as a gap: Rungs 1 and 1.5 already give
-two-sided falsifiability, and `spec/LENS_ENTRY_SPEC.md` §C presents the mapping as
+two-sided falsifiability, and `docs/spec/LENS_ENTRY_SPEC.md` §C presents the mapping as
 **hand-mirrored rather than proved**. **Nothing currently overclaims.** This work
 would remove the hand-mirroring; it does not fix a misstatement.
 

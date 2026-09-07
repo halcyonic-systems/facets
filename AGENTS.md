@@ -48,7 +48,7 @@ bundle and the licence/advisory check.
 
 ## Docs have rules
 
-Every file under `docs/` and `spec/` carries exactly one status word and is
+Every file under `docs/` carries exactly one status word and is
 reachable from `docs/README.md`; `scripts/doc_lint.py` fails the build otherwise.
 Root files (this one, `CONTRIBUTING.md`, `SECURITY.md`) need no status but their
 relative links must resolve. How a proposal becomes a decision: `CONTRIBUTING.md`.
