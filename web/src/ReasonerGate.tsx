@@ -8,7 +8,7 @@
 // than a pick.
 import { useState } from "react";
 import { isDesktop } from "./desktop";
-import { DEFAULT_ENDPOINT, blockedOnDesktop, type ReasonerConfig } from "./reasoner";
+import { DEFAULT_ENDPOINT, blockedOnDesktop, isHosted, type ReasonerConfig } from "./reasoner";
 
 export function ReasonerGate({
   config,
@@ -45,7 +45,8 @@ function ReasonerStatus({
   return (
     <div className="mb-2 flex items-center justify-between gap-2 rounded p-2" style={panel}>
       <p className="min-w-0 text-[11px]" style={{ color: "var(--text-secondary)" }}>
-        Co-author is on, using <strong>your reasoner</strong> at{" "}
+        Co-author is on, using{" "}
+        <strong>{isHosted(config.endpoint) ? "the facets reasoner" : "your reasoner"}</strong> at{" "}
         <span className="font-mono break-all">{config.endpoint}</span>
       </p>
       <div className="flex shrink-0 items-center gap-1">
@@ -76,6 +77,7 @@ function ReasonerChoice({
   const [url, setUrl] = useState(config.endpoint || DEFAULT_ENDPOINT);
   const endpoint = url.trim();
   const cspWarning = isDesktop() && blockedOnDesktop(endpoint);
+  const hosted = isHosted(endpoint);
 
   return (
     <div className="mb-2 rounded p-3" style={panel}>
@@ -83,8 +85,9 @@ function ReasonerChoice({
         Turn on the co-author
       </p>
       <p className="mt-1 text-[11px]" style={{ color: "var(--text-secondary)" }}>
-        The co-author sends your description, and the model it is working on, to a
-        reasoner you run. It stays off until you say where that reasoner is.
+        {hosted
+          ? "The co-author sends your description, and the model it is working on, to the facets reasoner, which asks a frontier model on your behalf. It stays off until you turn it on."
+          : "The co-author sends your description, and the model it is working on, to a reasoner you run. It stays off until you say where that reasoner is."}
       </p>
 
       <label className="mt-3 block">
@@ -92,8 +95,9 @@ function ReasonerChoice({
           The reasoner's address
         </span>
         <span className="block text-[11px]" style={{ color: "var(--text-muted)" }}>
-          Your text goes only to the machine at this address. This app ships no other
-          one — nothing reaches Halcyonic.
+          {hosted
+            ? "Your text goes to Halcyonic's server at this address, under an anonymous session — nothing you draw on the canvas leaves the page. Point it at a reasoner you run and nothing reaches Halcyonic."
+            : "Your text goes only to the machine at this address. This app ships no other one — nothing reaches Halcyonic."}
         </span>
         <input
           value={url}

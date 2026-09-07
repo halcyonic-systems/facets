@@ -197,12 +197,14 @@ structure to read and judge. There are three runnable ones today — **Reservoir
 ## Optional: the co-author
 
 The SL pane's **Co-author** tab drafts SL from a description in prose. It is
-**off** until you tell it where a reasoner runs, and it sends your text only to
-that address — this app ships no default service, and nothing reaches Halcyonic.
-The kernel still judges everything the co-author produces: it drafts, it never
-decides systemhood.
+**off** until you turn it on, and it sends your text only to the address shown.
+At facets.systems that address is the facets reasoner, Halcyonic's own service,
+which asks a frontier model on your behalf under an anonymous session; nothing
+you draw on the canvas leaves the page. Change the address to a reasoner you run
+and nothing reaches Halcyonic. The kernel still judges everything the co-author
+produces: it drafts, it never decides systemhood.
 
-Turning it on needs a service of your own at that address, answering
+Running your own needs a service at that address, answering
 `POST /analyze` and `POST /author-sl`. The reference implementation, the General
 Systems Reasoner, is **not public**, so the co-author is currently out of reach
 for readers outside Halcyonic. Everything else in this document works without it.

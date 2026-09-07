@@ -112,6 +112,17 @@ export function resetReasonerForTest(): void {
  *  since #229, so the remaining distinction is whether the text stays on the
  *  machine — which is also the only case where the served model is known
  *  (the documented local GSR default), so it is the only case we name one. */
+/** True when the endpoint is the instrument's own hosted reasoner — the one
+ *  the site build names as its default. Text sent there reaches Halcyonic's
+ *  server (and the frontier model behind it), and the gate must say so. */
+export function isHosted(endpoint: string): boolean {
+  try {
+    return new URL(endpoint).hostname === "api.facets.systems";
+  } catch {
+    return false;
+  }
+}
+
 export function isLoopback(endpoint: string): boolean {
   const host = (() => {
     try {
