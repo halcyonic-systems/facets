@@ -1,0 +1,18 @@
+name: Docs
+description: Something in the README, the docs, or the rendered site at /docs/ is wrong, missing, or unclear.
+labels: ["documentation"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: The file path (e.g. `docs/quickstart.md`) or the URL.
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong or missing
+      description: Quote the sentence if there is one. If you already know the fix, a pull request is welcome instead; small doc changes need only a green `just check`.
+    validations:
+      required: true

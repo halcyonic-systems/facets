@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Roadmap
+    url: https://github.com/orgs/halcyonic-systems/projects/12
+    about: What is planned, grouped by milestone. Look here before proposing a feature.
+  - name: Security report
+    url: https://github.com/halcyonic-systems/facets/security/advisories/new
+    about: Vulnerabilities go through private reporting, never a public issue.

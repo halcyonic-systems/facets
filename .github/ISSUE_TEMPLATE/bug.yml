@@ -1,0 +1,34 @@
+name: Bug
+description: The app, the CLI, or the site did something wrong.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If the kernel gave a verdict you think is wrong, use the **Model refusal** template instead. Security issues go through SECURITY.md, not here.
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: facets.systems/model, /chat, the `bert` CLI, the macOS app, or a local `just dev`.
+      placeholder: facets.systems/model/, Safari 18
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What you did
+      description: The shortest path that reproduces it. If a model is involved, paste the SL or attach the exported JSON.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: Build
+      description: The commit or the value shown under "This build" in the app, if you can see it.

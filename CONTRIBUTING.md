@@ -1,10 +1,53 @@
-# Contributing to bert-lenses
+# Contributing to Facets
 
 The kernel is the brain, the web layer is the face, and decisions are written
 down. This page covers how to propose a change, how a proposal becomes a
 decision, what the status words mean, and what "done" means before a change lands.
 Read [`README.md`](README.md) for what the instrument is and
-[`docs/README.md`](docs/README.md) for the indexed docs tour first.
+[`docs/README.md`](docs/README.md) for the indexed docs tour first. Conduct is
+governed by [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md); security reports go
+through [`SECURITY.md`](SECURITY.md), never a public issue.
+
+## Filing an issue
+
+Pick the template that fits when you open a new issue: **bug** (the app or CLI
+did something wrong), **model refusal** (the kernel accepted or refused a model
+you believe it should not have; this one asks for the SL, the lens, and the rule
+you expected, because a verdict is only arguable against a cited definition),
+or **docs**. Anything else is a blank issue. Labels are applied by the
+maintainer; the ones that matter for finding work are `good first issue` and
+`help wanted`, and every such issue carries a comment saying why a stranger can
+do it and what green looks like. The forward plan is the
+[roadmap board](https://github.com/orgs/halcyonic-systems/projects/12), grouped
+by milestone.
+
+## Sending a change
+
+Fork or branch, make the change, run `just check`, open a pull request. The PR
+template asks four things and nothing more. Commit subjects follow conventional
+commits with a lowercase descriptive clause (`fix(run): step advances the
+cursor`, `docs(language): the missing param lexicon row`); the scope is the
+crate, face, or doc area. This is a one-maintainer research project: expect a
+first response within a week, and a review that reads the diff against the
+invariants in [`CLAUDE.md`](CLAUDE.md) rather than against taste. `main` is
+protected; nothing merges without the checks.
+
+By contributing you agree your contribution is licensed under the repository's
+[MIT licence](LICENSE), inbound the same as outbound. There is no CLA.
+
+## What not to touch
+
+- The **`live` branch** and **`_site/`**: build output of `scripts/publish-site.sh`,
+  force-pushed as an orphan snapshot. Never commit to it, never hand-edit it.
+- **`crates/*/pkg/`**: wasm-pack output; `just wasm` regenerates it.
+- **`shared/frost.css`**: generated from `web/src/index.css` by
+  `scripts/gen-frost-shared.mjs`; edit the source.
+- **Goldens** (`fixtures/cli/canonical.json`, the minted demo JSON under
+  `assets/demos/`) except through their bless variables (`BLESS_CLI_GOLDEN=1
+  cargo test -p bert-cli`, `BLESS_SL_DEMOS=1`), and only after reading the diff:
+  an unexplained change is the finding, not the fix.
+- The **generated tables in `docs/lean-provenance.md`**; `just provenance`
+  rewrites them from `docs/lean-manifest.json`.
 
 ## Before your first command
 
@@ -23,12 +66,16 @@ Small, self-evident changes (a bug fix, a doc typo, a test) just need a green
 A change that takes a **position** — a new invariant, a shift in what a lens
 requires, an architecture call, a normative doc — gets an **ADR** (Architecture
 Decision Record) in [`docs/decisions/`](docs/decisions/). ADRs are numbered and
-append-only; the format is fixed by the two that exist:
+append-only; the format was fixed by the first two and the six that exist follow
+it:
 
 - [`0001-canvas-rendering-svg.md`](docs/decisions/0001-canvas-rendering-svg.md) —
   hand-rolled React+SVG over a graph library.
 - [`0002-web-first-rebuild.md`](docs/decisions/0002-web-first-rebuild.md) —
   the egui → React/wasm rebuild (written retrospectively).
+- 0003 conservation declared, not assumed · 0004 the neutral archive is
+  `CanvasModel` JSON · 0005 vocabulary tiers · 0006 closed metric verbs — all
+  indexed under Decisions in [`docs/README.md`](docs/README.md).
 
 Copy an existing ADR's shape: a title line, a byline
 (`*date · phase · status: **…***`), then **Context · Decision · Rationale ·
@@ -109,6 +156,11 @@ Before a change lands, it must clear the gate and keep the docs honest:
 
 - **`just check` is green.** It is the full local gate — everything CI enforces
   that can run on this machine, in CI's order, now including the boundary gate.
+  One gate inside it is conditional: **Gate A** (every Lean `claim_id` resolves
+  at the pinned commit) runs only when a `systems-science-foundations` checkout
+  is present beside the repo or passed with `--ssf`; without one it prints
+  SKIPPED and CI runs it for you. A local green with that line skipped and a
+  red CI on push almost always means a citation moved.
   What a green run means, which is more than "it compiled":
 
   | | is checked by |
