@@ -95,4 +95,4 @@ Three redirect stubs remain at the pre-move paths so old links do not rot. They 
 - [`spec/LENS_ENTRY_SPEC.md`](spec/LENS_ENTRY_SPEC.md) — **LIVE** — the lens-entry specification; §D is the provenance complement to `lean-provenance.md`.
 - [`running-permanently.md`](running-permanently.md) — **LIVE** — how to keep the app running as a permanent local service rather than a `just dev` session.
 - [`../tools/pipeline/README.md`](../tools/pipeline/README.md) — **LIVE** — the corpus pipeline: its own venv, its own dependencies, and how to run it.
-- [`../assets/examples-data/README.md`](../assets/examples-data/README.md) — **LIVE** — what the worked examples are and how to open them.
+- [`../assets/examples-data/README.md`](../assets/examples-data/README.md) — **LIVE** — the tether demo data: one invented CSV shaped for the CSV import path, its column map, and why the numbers must not be cited.
