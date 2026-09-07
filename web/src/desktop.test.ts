@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import type { MouseEvent } from "react";
 import { isDesktop, openExternal } from "./desktop";
 
-const DOCS = "https://github.com/halcyonic-systems/bert-lenses/tree/main/docs";
+const DOCS = "https://github.com/halcyonic-systems/facets/tree/main/docs";
 
 const click = () =>
   ({

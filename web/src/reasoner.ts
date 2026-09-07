@@ -7,10 +7,11 @@
 // a filesystem is). The value is cached in memory after `initReasoner()` so
 // render paths and the fetch door can read it synchronously.
 
-/** The default seed, and since #229 the only shipped one: a reasoner the user
- *  runs. v0.1 names no remote endpoint anywhere in the artifact — a URL inside
- *  a distributed binary cannot be recalled, so none is published. Flipping the
- *  shipped pre-fill is a change to THIS line. */
+/** The default seed. A local build names the reasoner the user runs
+ *  (localhost:5010). The hosted site is built with VITE_GSR_URL set to
+ *  api.facets.systems (#361, 2026-09-07), still behind the opt-in gate, which
+ *  shows the address and lets the user replace it. Changing the shipped
+ *  pre-fill is a change to THIS line or that build variable. */
 export const DEFAULT_ENDPOINT: string = import.meta.env.VITE_GSR_URL ?? "http://localhost:5010";
 
 export type ReasonerConfig = {

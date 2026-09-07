@@ -23,7 +23,7 @@ import type { CanvasModel, Lens, LensDescription, ValidationResult } from "./ker
 import { MODE_BY_LENS } from "./review";
 import { openExternal } from "./desktop";
 
-const REPO_BASE = "https://github.com/halcyonic-systems/bert-lenses/blob/main/";
+const REPO_BASE = "https://github.com/halcyonic-systems/facets/blob/main/";
 const GRAMMAR_URL = `${REPO_BASE}docs/language/spec.md#4-grammar`;
 const PROVENANCE_URL = `${REPO_BASE}docs/lean-provenance.md`;
 

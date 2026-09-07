@@ -35,7 +35,7 @@ import { openExternal } from "./desktop";
 // Where the linked docs live. The anchors are repo-relative
 // (`docs/glossary.md#precondition`), pinned by the kernel's doc_anchors_resolve
 // test, so a rendered link can only die if this base moves.
-const DOCS_BASE = "https://github.com/halcyonic-systems/bert-lenses/blob/main/";
+const DOCS_BASE = "https://github.com/halcyonic-systems/facets/blob/main/";
 
 /** "docs/glossary.md#precondition" → "glossary § precondition" — presentation
  *  only (a shorter label for the same anchor). */
