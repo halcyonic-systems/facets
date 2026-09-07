@@ -1,6 +1,9 @@
 # Running bert-lenses permanently
 
-**Status: LIVE.**
+**Status: LIVE.** This is the maintainer's macOS runbook: the launchd label and
+the `~/halcyonic-apps/bert-lenses` paths below are one machine's and predate the
+rename. Nothing in it is needed to develop or use Facets; `just dev` is the
+normal path.
 
 Runs bert-lenses as a background service on `http://127.0.0.1:5190` instead of
 `npm run dev` on 5173. 5173 stays free for interactive dev.

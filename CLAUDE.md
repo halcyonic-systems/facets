@@ -1,4 +1,9 @@
-# CLAUDE — bert-lenses (web-first)
+# CLAUDE — Facets (web-first)
+
+This file is the agent runbook for the `facets` repository (named `bert-lenses`
+until 2026-08-27; the kernel crates keep that name). Everything it cites is in
+this clone unless a line says otherwise. `AGENTS.md` at the root is the short,
+vendor-neutral entry that points here.
 
 ## Invariants manifest
 
@@ -27,7 +32,9 @@ exists to keep it true.
    step at a time. Design system: Halcyonic Frost (`web/DESIGN.md`).
 7. **Mobus semantic authority = the Lean, not the book or memory.** Mobus's
    knowledge is scattered; the canonical, machine-checked source is
-   `systems-science-foundations/Systems/Mobus/Tuple.lean` — the **8-tuple**
+   `Systems/Mobus/Tuple.lean` in the systems-science-foundations repo, at the
+   commit pinned in `docs/lean-manifest.json` (a separate repo, not in this
+   clone; `docs/lean-provenance.md` says how to fetch it at the pin) — the **8-tuple**
    `⟨C, N, E, G, B, T, H, Δt⟩`. CITE it, don't reconstruct. Essential facts that
    get forgotten: **E (environment) is first-class** (objects + milieu, `C∩E=∅`);
    **H is History**, not hierarchy; **Messages are copyable / not conserved**
@@ -66,7 +73,7 @@ exists to keep it true.
   reference and future revamp (old bert peaked as a structure visual tool; its
   sim bolt-ons never landed — that executable frontier is what this rebuild cracks
   via the in-browser compose engine). They are structural, not executable. No
-  model here is precious; all bert-lenses models to date were toy demos.
+  model here is precious; all models to date were toy demos.
   **The shipped library is a curated KEEP SET since #318** (2026-08-12):
   `examples/` holds six entries and nothing else, `corpus/**` holds the 19
   author exemplars, and everything the library grew as a by-product of building
@@ -82,14 +89,39 @@ exists to keep it true.
   tap, where `amount` acts, stocks start at zero, loops need memory).
   `models/runnable-sample.json` is a throwaway minted from the engine.
 
+- `chat/` — the Chat face, served at facets.systems/chat/. One hand-written
+  `index.html` (no build step, no wasm, no framework) plus `sw.js`, icons, and
+  vendored libraries. It talks to the reasoner over HTTP; it holds no systems
+  logic and never computes a verdict. `chat/docs/` is research about its voice.
+- `portal/` — the front door at facets.systems/: one static `index.html` with the
+  three facets. `MODEL_LIVE` in it is flipped by the publish script, not by hand.
+- `shared/` — `frost.css` and the fonts the portal and chat load. **Generated**
+  by `scripts/gen-frost-shared.mjs` from `web/src/index.css` + `web/src/fonts.css`;
+  edit the source, re-run the generator, never edit `shared/frost.css`.
+- `scripts/publish-site.sh` — assembles `_site/` (portal → `/`, chat → `/chat/`,
+  the web build → `/model/`, rendered docs → `/docs/`) and force-pushes an orphan
+  snapshot to the **`live`** branch, which GitHub Pages serves. `main` is the
+  working branch; `live` is build output. **Never commit to or hand-edit `live`;
+  never commit `_site/`** (gitignored). Rehearse with `--dry-run` +
+  `scripts/preview-site.sh` on port 5321 (the port the local reasoner's CORS
+  list allows).
+- **The reasoner seam.** Chat and the Model co-author call the General Systems
+  Reasoner, a separate Python service (private repo, not in this clone; port 5010
+  locally, `api.facets.systems` hosted). The web build reads `VITE_GSR_URL` at
+  build time (`web/src/reasoner.ts`), defaulting to localhost; the user can
+  override the endpoint at the co-author's gate. Nothing in the kernel, the CLI,
+  or the gates needs a reasoner; only the two LLM features do.
+
 ## Working rules
 
 - After changing any crate, rebuild the wasm pkg (`just wasm`, or `wasm-pack build
   --target web --out-dir pkg` in `crates/bert-lenses-kernel`) before the web app
   will see it. A crate change must never silently serve stale wasm to `web/`.
-- Gate: `just check` runs the full suite (cargo test + clippy `-D warnings` +
-  wasm32 build + wasm pkg build + `tsc --noEmit` + `vite build`) — the same gates
-  CI enforces (`.github/workflows/ci.yml`). `cargo build --workspace --target
+- Gate: `just check` runs the full suite (`scripts/doc_lint.py` first, then cargo
+  test + clippy `-D warnings` + wasm32 build + wasm pkg build + `tsc --noEmit` +
+  `vitest` + `vite build` + `just wasm-exec`) — the same gates CI enforces
+  (`.github/workflows/ci.yml`). Gate A of doc_lint (Lean citations resolve at
+  the pin) skips locally without an SSF checkout and runs in CI. `cargo build --workspace --target
   wasm32-unknown-unknown` must stay green.
 - Many asset models are STRUCTURAL: they validate but do not project to a runnable
   spec. **"Only genuinely parameterized models run" was false and is withdrawn** (#216):
@@ -103,8 +135,8 @@ exists to keep it true.
   `examples` model that cannot run**, since examples hold what we say and have no source
   to hide behind.
 - The prior egui app is on tag `pre-web-rebuild` / branch `archive/egui-app`.
-- Full phase plan: `~/.claude/plans/cold-start-prompt-scalable-galaxy.md`;
-  GitHub issues #11 (plan) + #41/#42/#43/#44 (phases 0–3, all implemented).
+- The web rebuild's phase plan is recorded in GitHub issues #11 (plan) +
+  #41/#42/#43/#44 (phases 0–3, all implemented) and ADR 0002.
 - Phase 3 rule of thumb: every ontology-bearing visual reads a `lens_facts` /
   `describe` field (kernel verdicts, canvas-keyed). If a rendering branch needs
   a systems fact the kernel doesn't expose yet, extend `lenses.rs` — don't
@@ -242,8 +274,8 @@ Gotchas, each hit in practice: `screencapture -x -o a.png b.png c.png` (it grabs
 only the current display set, and the window is often on another); divide
 screenshot coordinates by the backing scale factor before clicking (screenshots
 are 2× on Retina, `System Events` wants logical points); quit with
-`pkill -f bert-lenses-desktop` (`quit app` does not terminate it). Fuller
-treatment, including the devtools workaround: `~/.claude/docs/desktop-app-automation.md`.
+`pkill -f bert-lenses-desktop` (`quit app` does not terminate it). The
+procedure above is the whole of it; there is no fuller writeup in this repo.
 
 ### The standard a new check has to meet
 
