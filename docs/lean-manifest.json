@@ -31,7 +31,7 @@
     {
       "id": "kernel-views",
       "title": "The kernel and the three generated views",
-      "stated_in": "[`theory-fidelity.md`](theory-fidelity.md) (\"What the kernel actually is\"), [`spec/LENS_ENTRY_SPEC.md`](../spec/LENS_ENTRY_SPEC.md) §A/§C, `README.md`, `crates/bert-core/src/transition.rs` header table.",
+      "stated_in": "[`theory-fidelity.md`](theory-fidelity.md) (\"What the kernel actually is\"), [`spec/LENS_ENTRY_SPEC.md`](spec/LENS_ENTRY_SPEC.md) §A/§C, `README.md`, `crates/bert-core/src/transition.rs` header table.",
       "claims": [
         {
           "claim_id": "kernel.object",
@@ -128,7 +128,7 @@
     {
       "id": "gates",
       "title": "The truth-table and oracle bindings (spec §D)",
-      "stated_in": "[`spec/LENS_ENTRY_SPEC.md`](../spec/LENS_ENTRY_SPEC.md) §C–§D, `fixtures/gates_truth_table.json` (`_generator`), `crates/bert-core/tests/gates_truth_table.rs`, `crates/bert-core/tests/gates_oracle.rs`.",
+      "stated_in": "[`spec/LENS_ENTRY_SPEC.md`](spec/LENS_ENTRY_SPEC.md) §C–§D, `fixtures/gates_truth_table.json` (`_generator`), `crates/bert-core/tests/gates_truth_table.rs`, `crates/bert-core/tests/gates_oracle.rs`.",
       "claims": [
         {
           "claim_id": "gates.iff-bridges",

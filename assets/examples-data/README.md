@@ -1,5 +1,7 @@
 # Tether demo data
 
+*Moved 2026-09-07 from `examples/` (Phase 4 of #378).*
+
 `llm-market-demo.csv` — **illustrative demo data, not real market figures.** Eight
 months of made-up observations for exercising the CSV tether's acceptance path
 (facets#7/#13). The numbers are invented to give the import + comparison

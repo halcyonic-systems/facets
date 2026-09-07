@@ -752,7 +752,7 @@ mod tests {
     fn demo_csv_maps_and_supplies_the_acceptance_path() {
         // The shipped acceptance file parses, maps total, and supplies the numbers
         // the projection reads — end to end, minus the GUI gestures.
-        let (headers, rows) = parse_csv(include_str!("../../../examples/llm-market-demo.csv")).unwrap();
+        let (headers, rows) = parse_csv(include_str!("../../../assets/examples-data/llm-market-demo.csv")).unwrap();
         assert_eq!(
             headers,
             [

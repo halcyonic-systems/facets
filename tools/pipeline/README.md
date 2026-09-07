@@ -1,5 +1,7 @@
 # LLM-market data pipeline
 
+*Moved 2026-09-07 from `pipeline/` (Phase 4 of #378).*
+
 Builds the monthly CSV panel defined in the verified deep-research report
 (`operations/sessions/2026-07-11/references/llm-market-data-foundation.md`
 in the vault) for facets#14 target 4 (LLM market, frontier + open).
@@ -12,7 +14,7 @@ CSVs. Data lives **outside this repo**, in
 ## Setup
 
 ```bash
-cd pipeline
+cd tools/pipeline
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt   # currently empty — stdlib only
