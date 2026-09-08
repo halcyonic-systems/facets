@@ -26,7 +26,7 @@ import type { CanvasModel, VerdictFields } from "./kernel/types";
 const authorSlMock = vi.hoisted(() => vi.fn());
 const compileSlMock = vi.hoisted(() => vi.fn());
 vi.mock("./gsr", () => ({ authorSl: authorSlMock }));
-vi.mock("./kernel", () => ({ compileSl: compileSlMock }));
+vi.mock("./kernel", () => ({ compileSl: compileSlMock, validateMode: () => ({ issues: [] }) }));
 
 const TARGET = {
   id: "t1",

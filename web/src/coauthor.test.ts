@@ -11,8 +11,11 @@ import type { CoauthorTurn } from "./coauthor";
 // that sequence IS the fix (a static "Drafting…" becomes three legible steps).
 const authorSlMock = vi.hoisted(() => vi.fn());
 const compileSlMock = vi.hoisted(() => vi.fn());
+// #377 M1: the loop asks the kernel after a clean compile. Default: no
+// findings, so every pre-M1 test reads exactly as it did.
+const validateModeMock = vi.hoisted(() => vi.fn((..._args: unknown[]) => ({ issues: [] as unknown[] })));
 vi.mock("./gsr", () => ({ authorSl: authorSlMock }));
-vi.mock("./kernel", () => ({ compileSl: compileSlMock }));
+vi.mock("./kernel", () => ({ compileSl: compileSlMock, validateMode: validateModeMock }));
 
 class MemoryStorage {
   private store = new Map<string, string>();
@@ -107,11 +110,15 @@ describe("draftSlWithRetry stage reporting (#218)", () => {
       .mockResolvedValueOnce({ sl: "v3", model: "gemma4:12b" });
     compileSlMock
       .mockReturnValueOnce({ errors: [{ line: 1, message: "bad" }] })
-      .mockReturnValueOnce({ errors: [{ line: 1, message: "still bad" }] });
+      .mockReturnValueOnce({ errors: [{ line: 1, message: "still bad" }] })
+      .mockReturnValueOnce({ errors: [{ line: 1, message: "and still bad" }] });
+    validateModeMock.mockClear();
     const stages: DraftStage[] = [];
     const { sl } = await draftSlWithRetry("a thermostat", undefined, (s) => stages.push(s));
-    // The loop caps at 2 kernel-reported heals (3 total asks); the 3rd draft's
-    // compile is the caller's job, not this function's — it is returned as-is.
+    // The loop caps at 2 parse heals (3 total asks). Since #377 M1 the third
+    // draft IS compiled here — the kernel pass needs the model — but a third
+    // parse failure asks nothing more; the text is returned as-is and the
+    // caller's own compile shows the faults.
     expect(sl).toBe("v3");
     expect(stages).toEqual([
       { kind: "asking" },
@@ -119,14 +126,136 @@ describe("draftSlWithRetry stage reporting (#218)", () => {
       { kind: "retrying", attempt: 2, maxAttempts: 3 },
       { kind: "compiling" },
       { kind: "retrying", attempt: 3, maxAttempts: 3 },
+      { kind: "compiling" },
     ]);
     expect(authorSlMock).toHaveBeenCalledTimes(3);
+    expect(validateModeMock).not.toHaveBeenCalled();
   });
 
   it("works with no onStage callback at all (manual/legacy callers)", async () => {
     authorSlMock.mockResolvedValueOnce({ sl: "system X", model: "gemma4:12b" });
     compileSlMock.mockReturnValueOnce({ ok: {}, lens_explicit: false });
     await expect(draftSlWithRetry("a thermostat")).resolves.toMatchObject({ sl: "system X" });
+  });
+});
+
+// #377 M1 — the drafter asks the kernel, not just the parser.
+//
+// The specimen (docs/design/coauthor-deep-analysis.md §1): "an aquarium" came
+// back with five of five components stamped `interface` and one with no flows.
+// It compiled clean, so the loop stopped and the four refusals waited behind
+// the Review button. The findings below are the kernel's own words for that
+// draft, copied from `bert verdict --lens mobus` on 2026-09-08 — the mock
+// carries what the real kernel said, not an invented message.
+const FLOWLESS_FILTER = {
+  severity: "Error",
+  code: "interface_carries_no_flow",
+  location: "systems[0].boundary.interfaces[1]",
+  message:
+    "interface 'Filter' carries no boundary-crossing flow — Mobus defines an interface as a component that transports a flow across the boundary, so one that transports nothing is a mislabelled component (Lean `MobusSystem.interfaces_carry_flow`)",
+};
+const FLOWLESS_PUMP = { ...FLOWLESS_FILTER, location: "systems[0].boundary.interfaces[3]", message: FLOWLESS_FILTER.message.replace("Filter", "Pump") };
+const PUMP_NO_FLOWS_WARNING = {
+  severity: "Warning",
+  code: "interface_processor_without_flows",
+  location: "systems.Pump",
+  message: "Processor 'Pump' has parent_interface but no connecting flows",
+};
+const MOBUS_MODEL = { lens: "Mobus", things: [], relations: [] };
+
+describe("draftSlWithRetry asks the kernel after a clean compile (#377 M1)", () => {
+  beforeEach(() => {
+    authorSlMock.mockReset();
+    compileSlMock.mockReset();
+    validateModeMock.mockReset();
+    validateModeMock.mockReturnValue({ issues: [] });
+  });
+
+  it("a flowless-interface draft triggers exactly one repair ask, carrying the kernel's own findings", async () => {
+    authorSlMock
+      .mockResolvedValueOnce({ sl: "flat aquarium", model: "claude-haiku-4-5" })
+      .mockResolvedValueOnce({ sl: "repaired aquarium", model: "claude-haiku-4-5" });
+    compileSlMock.mockReturnValue({ ok: MOBUS_MODEL, lens_explicit: true });
+    validateModeMock
+      .mockReturnValueOnce({ issues: [FLOWLESS_FILTER, FLOWLESS_PUMP, PUMP_NO_FLOWS_WARNING] })
+      .mockReturnValueOnce({ issues: [] });
+    const stages: DraftStage[] = [];
+    const out = await draftSlWithRetry("an aquarium", "Mobus", (s) => stages.push(s));
+
+    expect(out.sl).toBe("repaired aquarium");
+    expect(out.modelCalls).toBe(2);
+    expect(authorSlMock).toHaveBeenCalledTimes(2);
+    // Validated at the lens's mode — Mobus reads Operational, where the
+    // interface checks live.
+    expect(validateModeMock).toHaveBeenCalledWith(MOBUS_MODEL, "Operational");
+    const repair = authorSlMock.mock.calls[1][0];
+    expect(repair.priorSl).toBe("flat aquarium");
+    expect(repair.errors).toContain("2 errors");
+    expect(repair.errors).toContain("interface 'Filter' carries no boundary-crossing flow");
+    expect(repair.errors).toContain("interface 'Pump' carries no boundary-crossing flow");
+    // Warnings stay for the human.
+    expect(repair.errors).not.toContain("Processor 'Pump' has parent_interface");
+    expect(stages).toEqual([
+      { kind: "asking" },
+      { kind: "compiling" },
+      { kind: "kernel-retry", errors: 2 },
+      { kind: "compiling" },
+    ]);
+  });
+
+  it("a clean draft triggers no repair ask", async () => {
+    authorSlMock.mockResolvedValueOnce({ sl: "clean", model: "gemma4:12b" });
+    compileSlMock.mockReturnValueOnce({ ok: MOBUS_MODEL, lens_explicit: true });
+    validateModeMock.mockReturnValueOnce({ issues: [PUMP_NO_FLOWS_WARNING] });
+    const stages: DraftStage[] = [];
+    const out = await draftSlWithRetry("an aquarium", "Mobus", (s) => stages.push(s));
+    expect(out).toMatchObject({ sl: "clean", modelCalls: 1 });
+    expect(authorSlMock).toHaveBeenCalledTimes(1);
+    expect(stages).toEqual([{ kind: "asking" }, { kind: "compiling" }]);
+  });
+
+  it("asks the kernel once: a repair the kernel still refuses is returned, not re-healed", async () => {
+    authorSlMock
+      .mockResolvedValueOnce({ sl: "flat", model: "gemma4:12b" })
+      .mockResolvedValueOnce({ sl: "still flat", model: "gemma4:12b" });
+    compileSlMock.mockReturnValue({ ok: MOBUS_MODEL, lens_explicit: true });
+    validateModeMock.mockReturnValue({ issues: [FLOWLESS_FILTER] });
+    const out = await draftSlWithRetry("an aquarium", "Mobus");
+    expect(out).toMatchObject({ sl: "still flat", modelCalls: 2 });
+    expect(authorSlMock).toHaveBeenCalledTimes(2);
+    // The kernel is asked only about the FIRST compiling draft; the repaired
+    // draft is the caller's to compile and review.
+    expect(validateModeMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("a repair that no longer compiles is parse-healed on the same budget", async () => {
+    authorSlMock
+      .mockResolvedValueOnce({ sl: "flat", model: "gemma4:12b" })
+      .mockResolvedValueOnce({ sl: "repair with a typo", model: "gemma4:12b" })
+      .mockResolvedValueOnce({ sl: "repair", model: "gemma4:12b" });
+    compileSlMock
+      .mockReturnValueOnce({ ok: MOBUS_MODEL, lens_explicit: true })
+      .mockReturnValueOnce({ errors: [{ line: 3, message: "`Keeper` is not declared" }] })
+      .mockReturnValueOnce({ ok: MOBUS_MODEL, lens_explicit: true });
+    validateModeMock.mockReturnValueOnce({ issues: [FLOWLESS_FILTER] });
+    const stages: DraftStage[] = [];
+    const out = await draftSlWithRetry("an aquarium", "Mobus", (s) => stages.push(s));
+    expect(out).toMatchObject({ sl: "repair", modelCalls: 3 });
+    expect(stages).toEqual([
+      { kind: "asking" },
+      { kind: "compiling" },
+      { kind: "kernel-retry", errors: 1 },
+      { kind: "compiling" },
+      { kind: "retrying", attempt: 2, maxAttempts: 3 },
+      { kind: "compiling" },
+    ]);
+  });
+
+  it("reads the compiled model's own lens when the caller named none", async () => {
+    authorSlMock.mockResolvedValueOnce({ sl: "x", model: "gemma4:12b" });
+    compileSlMock.mockReturnValueOnce({ ok: { ...MOBUS_MODEL, lens: "Bunge" }, lens_explicit: true });
+    await draftSlWithRetry("a thing");
+    expect(validateModeMock).toHaveBeenCalledWith(expect.objectContaining({ lens: "Bunge" }), "Structural");
   });
 });
 
