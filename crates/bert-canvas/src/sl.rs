@@ -623,7 +623,38 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     continue;
                 }
                 let name = name.name();
-                if by_name.contains_key(&name) {
+                if let Some(&idx) = by_name.get(&name) {
+                    // One neighbour, both directions (facets#377). `source Room`
+                    // followed by `sink Room` is the author saying the room both
+                    // supplies and receives — the thing SL spells `environment`.
+                    // It was the single largest compile fault in every drafter
+                    // run (7 of 10 Haiku first-draft failures, 2026-09-08), and
+                    // teaching against it in the prompt did not take, so the
+                    // language folds the pair into the neutral word instead. A
+                    // description on the second line lands when the first had
+                    // none; anything else on the line is what the fault below
+                    // has always refused.
+                    let existing = &things[idx];
+                    let opposite = existing.role == Role::Environment
+                        && matches!(
+                            (existing.env_kind, env_kind),
+                            (EnvKind::Source, EnvKind::Sink) | (EnvKind::Sink, EnvKind::Source)
+                        );
+                    let carried = match attrs {
+                        [] => Some(None),
+                        [Tok::Word(w), Tok::Str(d)] if w.eq_ignore_ascii_case("description") => Some(Some(d.clone())),
+                        _ => None,
+                    };
+                    if let (true, Some(desc)) = (opposite, carried) {
+                        let thing = &mut things[idx];
+                        thing.env_kind = EnvKind::Neutral;
+                        if thing.description.is_empty() {
+                            if let Some(d) = desc {
+                                thing.description = d;
+                            }
+                        }
+                        continue;
+                    }
                     fail(
                         format!(
                             "`{name}` is already declared — fix: give this one a different \
