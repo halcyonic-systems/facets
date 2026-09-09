@@ -144,3 +144,59 @@ fn the_examples_blocked_by_derived_direction_now_validate() {
         broken.join("\n")
     );
 }
+
+// ---------------------------------------------------------------------------
+// facets#377: one neighbour, both directions. `source X` then `sink X` is the
+// author saying X supplies AND receives — SL's `environment X`. It was the
+// single largest compile fault in every co-author run (7 of 10 Haiku
+// first-draft failures on 2026-09-08) and a prompt rule did not remove it, so
+// the language folds the pair rather than refusing it.
+
+#[test]
+fn source_then_sink_of_one_name_is_one_neutral_neighbour() {
+    let m = bert_canvas::sl::parse_sl(
+        "component Stat interface\n\
+         source Room\n\
+         sink Room\n\
+         flow Room -> Stat : field \"temperature\"\n\
+         flow Stat -> Room : energy \"heat\"\n",
+    )
+    .unwrap();
+    let rooms: Vec<_> = m.things.iter().filter(|t| t.name == "Room").collect();
+    assert_eq!(rooms.len(), 1, "one neighbour, not two");
+    assert_eq!(rooms[0].role, bert_canvas::canvas::Role::Environment);
+    assert_eq!(rooms[0].env_kind, bert_canvas::canvas::EnvKind::Neutral);
+    // and it writes back as the word that means both
+    let text = bert_canvas::sl::emit_sl(&m).unwrap();
+    assert!(text.contains("environment Room"), "{text}");
+    assert!(!text.contains("source Room") && !text.contains("sink Room"), "{text}");
+}
+
+#[test]
+fn sink_then_source_folds_the_same_way_and_keeps_a_late_description() {
+    let m = bert_canvas::sl::parse_sl(
+        "component A interface\n\
+         sink Grid\n\
+         source Grid description \"the utility, both ways\"\n\
+         flow Grid -> A : energy \"power\"\n",
+    )
+    .unwrap();
+    let grid = m.things.iter().find(|t| t.name == "Grid").unwrap();
+    assert_eq!(grid.env_kind, bert_canvas::canvas::EnvKind::Neutral);
+    assert_eq!(grid.description, "the utility, both ways");
+}
+
+#[test]
+fn the_fold_is_only_for_the_opposite_pair() {
+    // same word twice, a component reusing an environment name, or an
+    // attribute the second line cannot carry: the duplicate-name fault stands.
+    for text in [
+        "source Room\nsource Room\n",
+        "source Room\ncomponent Room\n",
+        "sink Room\nsink Room\n",
+        "source Room\nsink Room primitive Buffering\n",
+    ] {
+        let err = bert_canvas::sl::parse_sl(text).unwrap_err();
+        assert!(err[0].message.contains("already declared"), "{text}: {}", err[0].message);
+    }
+}
