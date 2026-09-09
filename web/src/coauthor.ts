@@ -5,7 +5,7 @@
 // both call this. No new LLM plumbing — `authorSl` (GSR /author-sl) and
 // `compile_sl` (kernel, deterministic) already exist.
 import { authorSl } from "./gsr";
-import { compileSl } from "./kernel";
+import { compileSl, validateMode } from "./kernel";
 import type { CanvasModel, Lens, SlError, VerdictFields } from "./kernel/types";
 import { MODE_BY_LENS, findingsPhrase } from "./review";
 
@@ -112,7 +112,10 @@ export const DRAFT_MAX_ATTEMPTS = 3;
 export type DraftStage =
   | { kind: "asking" }
   | { kind: "compiling" }
-  | { kind: "retrying"; attempt: number; maxAttempts: number };
+  | { kind: "retrying"; attempt: number; maxAttempts: number }
+  /** #377 M1: the draft compiled, and the kernel refused it at the lens's
+   *  mode with `errors` Error-severity findings. One repair ask follows. */
+  | { kind: "kernel-retry"; errors: number };
 
 /** What one draft turn produced, and by whom. `answeredModel` is read off the
  *  reasoner's response — the model that wrote this SL — and is the only model
@@ -212,10 +215,24 @@ export async function correctSlWithRetry(req: {
   );
 }
 
-/** description -> SL text, healing up to 2 kernel-reported faults before
- *  returning. The kernel's own parse errors (which name the fix) are fed back
- *  to the drafter — the harness carries correctness, the model only needs to
- *  be plausible (llm-sl-authoring-plan.md, scaffolding item 4).
+/** description -> SL text, healing up to 2 parse faults and 1 kernel refusal
+ *  before returning. The kernel's own messages (which name the fix) are fed
+ *  back to the drafter — the harness carries correctness, the model only needs
+ *  to be plausible (llm-sl-authoring-plan.md, scaffolding item 4).
+ *
+ *  Two kinds of fault, two budgets, one seam (`priorSl` + `errors`):
+ *
+ *  - the text is not a model: `compileSl`'s parse faults go back, up to twice
+ *    (attempts "2 of 3", "3 of 3").
+ *  - the text IS a model and the kernel refuses it (#377 M1): after a clean
+ *    compile the model is validated at the lens's mode (`MODE_BY_LENS`), and
+ *    Error-severity findings go back ONCE, rendered by `kernelFindingsBrief`.
+ *    Warnings stay for the human. Before this pass the loop only ever asked the
+ *    parser, so a draft that stamped `interface` on five flowless components
+ *    compiled clean, drew, and left its four refusals behind the Review button.
+ *
+ *  The lens read is the one asked for, or the compiled model's own when the
+ *  caller named none — the same lens the canvas will judge the draft under.
  *
  *  `model` (the author's choice, "" = the reasoner's default) carries through
  *  every retry, so a heal never silently changes drafters; the answering model
@@ -238,13 +255,33 @@ export async function draftSlWithRetry(
     errors: prior?.findings,
   });
   latencies.push(latencyMs);
-  for (let i = 0; i < 2; i++) {
+  let parseHeals = 0;
+  let kernelHeals = 0;
+  for (;;) {
     onStage?.({ kind: "compiling" });
     const outcome = compileSl(sl);
-    if (!("errors" in outcome)) break;
-    const errs = outcome.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
-    onStage?.({ kind: "retrying", attempt: i + 2, maxAttempts: DRAFT_MAX_ATTEMPTS });
-    ({ sl, model: answeredModel, latencyMs } = await authorSl({ description, lens, model, priorSl: sl, errors: errs }));
+    if ("errors" in outcome) {
+      if (parseHeals >= DRAFT_MAX_ATTEMPTS - 1) break;
+      parseHeals++;
+      const errs = outcome.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
+      onStage?.({ kind: "retrying", attempt: parseHeals + 1, maxAttempts: DRAFT_MAX_ATTEMPTS });
+      ({ sl, model: answeredModel, latencyMs } = await authorSl({ description, lens, model, priorSl: sl, errors: errs }));
+      latencies.push(latencyMs);
+      continue;
+    }
+    if (kernelHeals >= 1) break;
+    const readLens = lens ?? outcome.ok.lens;
+    const errors = validateMode(outcome.ok, MODE_BY_LENS[readLens]).issues.filter((i) => i.severity === "Error");
+    if (errors.length === 0) break;
+    kernelHeals++;
+    onStage?.({ kind: "kernel-retry", errors: errors.length });
+    ({ sl, model: answeredModel, latencyMs } = await authorSl({
+      description,
+      lens,
+      model,
+      priorSl: sl,
+      errors: kernelFindingsBrief(readLens, errors),
+    }));
     latencies.push(latencyMs);
   }
   const complete = latencies.every((ms) => typeof ms === "number");

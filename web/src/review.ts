@@ -8,7 +8,8 @@ import type { CanvasModel, IssueTarget, Lens, Severity, ValidationIssue, Validat
  *  verdict without its mode is meaningless: Bunge runs Structural (bonding
  *  only) while Mobus runs Operational (self-loops, dead ends, reachability,
  *  stock dimensions), so the same model reads differently under each. */
-export const MODE_BY_LENS: Record<Lens, string> = {
+export type KernelMode = "Core" | "Structural" | "Operational" | "Full";
+export const MODE_BY_LENS: Record<Lens, KernelMode> = {
   Klir: "Core",
   Bunge: "Structural",
   Mobus: "Operational",

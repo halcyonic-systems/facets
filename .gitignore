@@ -22,3 +22,6 @@ __pycache__/
 # (A bare `git add -A` otherwise sweeps them in as embedded git repos.)
 .claude/worktrees/
 _site/
+
+# audit output (scripts/author_audit.py); the table goes in the issue, not the tree
+runs/

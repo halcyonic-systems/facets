@@ -56,10 +56,13 @@ describe("a correction cannot reach a verdict", () => {
   });
 
   // Forbidden shortcut 1: applying the correction to the model without
-  // recompiling. The correction module's ONLY door into the kernel is the
-  // deterministic compiler — it cannot ask for a verdict, so it cannot hand
-  // one on, and it cannot mint a model any other way.
-  it("the correction module's only kernel import is the compiler", () => {
+  // recompiling. The correction module's doors into the kernel are the
+  // deterministic compiler and, since #377 M1, the mode gate `validateMode`.
+  // The second is a READING door: it takes only a compiled model (the
+  // compiler's own output) and what comes back travels one way, rendered to
+  // text, into the next request. Nothing here can mint a model any other way,
+  // and the brand gate above still stops a verdict being minted from text.
+  it("the correction module's only kernel imports are the compiler and the mode gate", () => {
     const src = readFileSync(join(SRC, "coauthor.ts"), "utf8");
     const imports = [...src.matchAll(/import\s+(?:type\s+)?\{([^}]*)\}\s+from\s+"\.\/kernel"/g)];
     expect(imports.length, "coauthor.ts should import from ./kernel exactly once").toBe(1);
@@ -67,7 +70,7 @@ describe("a correction cannot reach a verdict", () => {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    expect(named).toEqual(["compileSl"]);
+    expect(named).toEqual(["compileSl", "validateMode"]);
   });
 
   // And it holds no verdict type at all, so there is nothing for a future

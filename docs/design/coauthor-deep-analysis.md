@@ -1,6 +1,6 @@
 # The co-author walks the deep-analysis procedure
 
-**Status: PROPOSED.**
+**Status: PROPOSED; §3.1 (M1) and §3.2 (M2) built 2026-09-08 (facets `coauthor/377-m1-m2`, GSR `d3bf4ab`), measured with `scripts/author_audit.py`; §3.3 and §3.4 open.**
 
 *2026-09-07. Tracking issue: [#377](https://github.com/halcyonic-systems/facets/issues/377). Written after the first stranger-run of the hosted co-author
 (the "aquarium" draft, below). Grounded in Mobus ch. 3 (ontology), ch. 4

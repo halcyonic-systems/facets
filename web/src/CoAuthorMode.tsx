@@ -35,6 +35,10 @@ export function stageLabel(stage: DraftStage | null, endpoint: string, requested
       return "Compiling the draft…";
     case "retrying":
       return `Draft did not compile, retrying (${stage.attempt} of ${stage.maxAttempts})…`;
+    case "kernel-retry":
+      // #377 M1: the draft compiled and the kernel refused it at the lens's
+      // mode. The count is the kernel's, and the repair is one more ask.
+      return `The kernel found ${stage.errors} error${stage.errors === 1 ? "" : "s"} in the draft, asking for a repair…`;
   }
 }
 
