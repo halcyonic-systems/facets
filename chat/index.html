@@ -528,7 +528,13 @@
   .conv-rail.collapsed .conv-rail-body { display: none; }
   .conv-rail-label { font-family: var(--ui); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); padding: 12px 14px 6px; }
   .conv-rail-empty { font-family: var(--ui); font-size: 0.76rem; color: var(--ink-faint); padding: 2px 14px 6px; line-height: 1.45; }
-  .conv-rail-item { display: block; width: 100%; text-align: left; border: none; background: none; cursor: pointer; padding: 8px 14px 8px 11px; border-left: 3px solid transparent; border-radius: 0 6px 6px 0; }
+  .conv-rail-item { display: flex; align-items: center; gap: 4px; width: 100%; text-align: left; border: none; background: none; cursor: pointer; padding: 8px 8px 8px 11px; border-left: 3px solid transparent; border-radius: 0 6px 6px 0; }
+  .conv-rail-item:focus-visible { outline: 2px solid var(--flow); outline-offset: -2px; }
+  .conv-rail-text { flex: 1; min-width: 0; }
+  .conv-rail-del { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: none; border-radius: 4px; background: none; color: var(--ink-faint); cursor: pointer; opacity: 0; }
+  .conv-rail-item:hover .conv-rail-del, .conv-rail-item:focus-within .conv-rail-del, .conv-rail-item.active .conv-rail-del { opacity: 1; }
+  .conv-rail-del:hover { color: var(--ink); background: var(--ground); }
+  @media (hover: none) { .conv-rail-del { opacity: 1; } }
   .conv-rail-item:hover { background: var(--ground-raised); }
   .conv-rail-item.active { background: var(--ground-raised); border-left-color: var(--flow); }
   .conv-rail-name { font-family: var(--ui); font-size: 0.82rem; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2761,12 +2767,14 @@ function switchTab(id) {
   updateDimBar(lastBot && lastBot.meta.dimensions ? lastBot.meta.dimensions : null);
 }
 function deleteTab(id) {
-  if (tabs.length <= 1) return;
   const gone = tabs.find(t => t.id === id);
-  if (gone && gone.serverId) {
+  if (!gone) return;
+  if (gone.messages.length && !confirm('Delete "' + (gone.name || 'this conversation') + '"? This cannot be undone.')) return;
+  if (gone.serverId) {
     authFetch('/v1/conversations/' + encodeURIComponent(gone.serverId), { method: 'DELETE' }).catch(() => {});
   }
   tabs = tabs.filter(t => t.id !== id);
+  if (!tabs.length) { createTab(); return; }
   if (activeTab === id) activeTab = tabs[0].id;
   saveTabs();
   renderConvRail();
@@ -3136,23 +3144,35 @@ function cleanMarkdown(md) {
     .replace(/\n{3,}/g, '\n\n');        // collapse excess blank lines
 }
 
-function renderMath(el) {
-  if (typeof katex === 'undefined') return;
-  el.innerHTML = el.innerHTML
-    .replace(/\$\$([\s\S]+?)\$\$/g, (_, tex) => {
-      try { return katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false }); }
-      catch(e) { return '$$' + tex + '$$'; }
-    })
-    .replace(/\$([^\$\n]+?)\$/g, (m, tex) => {
-      if (/^\d/.test(tex.trim())) return m;
-      try { return katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false }); }
-      catch(e) { return '$' + tex + '$'; }
-    });
+// Math has to be lifted out BEFORE marked runs: marked reads the underscores in
+// x_t as emphasis and strips the backslashes in \{ and \|, so KaTeX never saw the
+// source it was given. Each span becomes an opaque token (no punctuation, so marked
+// passes it through), and the rendered HTML is spliced back afterwards. Code spans
+// and fences are skipped so a literal $ in code stays a literal $.
+function liftMath(md) {
+  const slots = [];
+  const src = md.replace(/(```[\s\S]*?```|`[^`\n]*`)|\$\$([\s\S]+?)\$\$|\$([^\$\n]+?)\$/g, (m, code, display, inline) => {
+    if (code) return m;
+    const tex = (display !== undefined ? display : inline).trim();
+    if (inline !== undefined && /^\d/.test(tex)) return m;   // "$5 and $10" is money, not math
+    if (typeof katex === 'undefined') return m;
+    let html;
+    try { html = katex.renderToString(tex, { displayMode: display !== undefined, throwOnError: false }); }
+    catch (e) { return m; }
+    slots.push(html);
+    return 'MATHSLOT' + (slots.length - 1) + 'END';
+  });
+  return { src, slots };
 }
+function restoreMath(html, slots) {
+  return slots.length ? html.replace(/MATHSLOT(\d+)END/g, (_, i) => slots[+i]) : html;
+}
+// Kept as a no-op so older call sites stay harmless; renderClean does the work now.
+function renderMath(el) {}
 
 function renderClean(md) {
-  const html = marked.parse(cleanMarkdown(md));
-  return html;
+  const { src, slots } = liftMath(cleanMarkdown(md));
+  return restoreMath(marked.parse(src), slots);
 }
 
 async function askAll(question, btn) {
@@ -3542,11 +3562,11 @@ async function sendQueryStream(question, msgId) {
             if (!streamEl) {
               streamEl = document.createElement('div');
               streamEl.className = 'msg msg-bot msg-streaming';
-              streamEl.innerHTML = marked.parse(renderGroundingMarkers(accText));
+              streamEl.innerHTML = renderClean(accText);
               document.getElementById('chat-messages').appendChild(streamEl);
               if (!userScrolledUp) streamEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
             } else {
-              streamEl.innerHTML = marked.parse(renderGroundingMarkers(accText));
+              streamEl.innerHTML = renderClean(accText);
               if (!userScrolledUp) streamEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
 
@@ -3709,7 +3729,7 @@ async function sendIntegrated(question, msgId) {
             streamEl.className = 'msg msg-bot msg-streaming';
             document.getElementById('chat-messages').appendChild(streamEl);
           }
-          streamEl.innerHTML = marked.parse(renderGroundingMarkers(accText));
+          streamEl.innerHTML = renderClean(accText);
           if (!userScrolledUp) streamEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
         } else if (currentEvent === 'done') {
           clearProgress();
@@ -4034,6 +4054,7 @@ let dockLensFor = null;  // the answer index dockLens belongs to — focus moves
 // drawer, permanently open where the triple ensemble fits.
 const ICON_CHEVRON = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3l5 5-5 5"/></svg>';
 const ICON_CHEVRON_BACK = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3L5 8l5 5"/></svg>';
+const ICON_CLOSE = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
 const ICON_NEW = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>';
 
 let railOpen = (function () {
@@ -4113,8 +4134,11 @@ function renderConvRail() {
     body.appendChild(empty);
   }
   live.forEach(t => {
-    const item = document.createElement('button');
+    const item = document.createElement('div');
     item.className = 'conv-rail-item' + (t.id === activeTab ? ' active' : '');
+    item.setAttribute('role', 'button'); item.tabIndex = 0;
+    const text = document.createElement('div');
+    text.className = 'conv-rail-text';
     const nm = document.createElement('div');
     nm.className = 'conv-rail-name';
     nm.textContent = t.name || 'Untitled';
@@ -4125,8 +4149,18 @@ function renderConvRail() {
     const nb = t.messages.filter(mm => mm.role === 'bot').length;
     // A server conversation whose messages have not been fetched is not empty, we just do not know its size yet.
     sub.textContent = nb ? nb + ' sheet' + (nb === 1 ? '' : 's') : (t.serverId && !t.hydrated ? '' : 'empty');
-    item.appendChild(nm); item.appendChild(sub);
-    item.onclick = () => { switchTab(t.id); if (window.innerWidth < 1360) setRailOpen(false); };
+    text.appendChild(nm); text.appendChild(sub);
+    item.appendChild(text);
+    const del = document.createElement('button');
+    del.className = 'conv-rail-del';
+    del.innerHTML = ICON_CLOSE;
+    del.setAttribute('aria-label', 'Delete ' + (t.name || 'conversation'));
+    del.title = 'Delete conversation';
+    del.onclick = (e) => { e.stopPropagation(); deleteTab(t.id); };
+    item.appendChild(del);
+    const open = () => { switchTab(t.id); if (window.innerWidth < 1360) setRailOpen(false); };
+    item.onclick = open;
+    item.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } };
     body.appendChild(item);
   });
 
