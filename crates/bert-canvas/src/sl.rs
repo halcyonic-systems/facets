@@ -53,8 +53,8 @@ use bert_core::model_id::{decode_uuid, encode_uuid};
 use bert_core::{InteractionUsability, ModelRef, ProcessPrimitive};
 
 use crate::canvas::{
-    CanvasBoundaryProps, CanvasModel, ChildRef, EnvKind, Genus, Kind, Kingdom, KlirLevel,
-    KlirVarKind, Lens, Relation, Role, ScaleType, SystemType, Thing,
+    CanvasBoundaryProps, CanvasModel, ChildRef, Crossing, EnvKind, Genus, Kind, Kingdom,
+    KlirLevel, KlirVarKind, Lens, Relation, Role, ScaleType, SystemType, Thing,
 };
 
 /// A parse fault, anchored to its 1-indexed source line. All faults are
@@ -2242,6 +2242,10 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         model_id: None,
         things,
         relations,
+        // Never authored: a crossing is derived from the parent by
+        // `derive_child`, not written in SL (facets#384). A child edited as
+        // text keeps its crossings by the editor carrying them over.
+        crossings: vec![],
         milieu: milieu_vars,
         boundary: boundary.unwrap_or_default(),
         system_type,
@@ -2627,6 +2631,32 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
             }
         }
         out.push('\n');
+    }
+
+    // Crossings (facets#384) are not SL: they are the boundary flows derived
+    // from the parent that no interior component owns yet. They are written
+    // as comments so the text tells the author (and the drafter) what the
+    // model is waiting for, and so `parse_sl(emit_sl(m))` drops nothing that
+    // was ever authored — it drops only what was derived.
+    if !model.crossings.is_empty() {
+        let name_of = |id: u64| model.things.iter().find(|t| t.id == id).map(|t| t.name.clone()).unwrap_or_default();
+        let is_component = |id: u64| model.things.iter().any(|t| t.id == id && t.role == Role::Component);
+        let pending: Vec<&Crossing> = model.crossings.iter().filter(|c| !c.taken_by(&model.relations, is_component)).collect();
+        if !pending.is_empty() {
+            writeln!(out, "# {} boundary flow{} land{} on this system itself until an interface component takes {}:",
+                pending.len(), if pending.len() == 1 { "" } else { "s" }, if pending.len() == 1 { "s" } else { "" },
+                if pending.len() == 1 { "it" } else { "them" }).unwrap();
+            for c in pending {
+                let env = name_token(&name_of(c.env))?;
+                let kind = format!("{:?}", c.kind).to_ascii_lowercase();
+                let label = quote(&c.name)?;
+                if c.inbound {
+                    writeln!(out, "#   {env} -> (this system) : {kind} {label}").unwrap();
+                } else {
+                    writeln!(out, "#   (this system) -> {env} : {kind} {label}").unwrap();
+                }
+            }
+        }
     }
 
     // M — the milieu, after the point objects and before the flows: the bath

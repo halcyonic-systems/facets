@@ -970,6 +970,7 @@ mod tests {
             }
         }
         CanvasModel {
+            crossings: vec![],
             lens: Lens::Klir,
             model_id: None,
             milieu: Vec::new(),

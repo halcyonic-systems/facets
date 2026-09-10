@@ -69,6 +69,8 @@ import {
   type DraftStage,
 } from "./coauthor";
 import { drafterModel } from "./drafterModel";
+import { adoptInterior, draftInteriorWithRetry } from "./interior";
+import { pendingCrossings } from "./canvas/crossings";
 import {
   THEME_LABEL,
   nextThemeChoice,
@@ -1097,6 +1099,90 @@ function Workspace() {
   // reach the kernel except as a description on a request. `runCorrectionTurn`
   // (coauthor.ts) owns the sequence and the invariant; this function is the
   // React binding around it.
+  // #377 M3 — the co-author walks through the door. Inside a walked-in child
+  // (a newborn with stand-ins and crossings, nothing inside), ask the drafter
+  // for the interior only. The parent is the walk's last segment; the
+  // component is the one whose `decomposes` reference names this child. The
+  // draft rides the same loop and lands in the same accept/discard gate as a
+  // first draft, with the child's identity and crossings carried over
+  // (`adoptInterior`), and the seam is judged against the parent right away.
+  const [interiorStage, setInteriorStage] = useState<DraftStage | null>(null);
+  async function coauthorDraftInterior() {
+    if (!canvasModel || walk.length === 0 || interiorStage) return;
+    const parent = walk[walk.length - 1].canvas;
+    const component =
+      parent.things.find((t) => t.child_model && canvasModel.model_id && t.child_model.id === canvasModel.model_id) ??
+      parent.things.find((t) => t.child_model && t.child_model.name === canvasModel.name);
+    if (!component) {
+      setToast("cannot find the component this model is the interior of");
+      return;
+    }
+    const id = newTurnId();
+    const requestedModel = drafterModel();
+    const description = `the interior of "${component.name}"`;
+    setInteriorStage({ kind: "asking" });
+    let result;
+    try {
+      result = await draftInteriorWithRetry(
+        { parent, component, child: canvasModel },
+        canvasModel.lens,
+        setInteriorStage,
+        requestedModel,
+      );
+    } catch (e) {
+      setInteriorStage(null);
+      setCoauthorTurns((ts) => [
+        { id, kind: "interior", description, sl: "", at: new Date().toISOString(), status: "network-error", errorText: e instanceof Error ? e.message : String(e), requestedModel },
+        ...ts,
+      ]);
+      return;
+    }
+    setInteriorStage(null);
+    const { sl, answeredModel, modelMs, modelCalls } = result;
+    setSlText(sl);
+    const adopted = adoptInterior(sl, canvasModel);
+    if (adopted.kind === "compile-error") {
+      const errorText = adopted.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
+      setSlErrors(adopted.errors);
+      setCoauthorTurns((ts) => [
+        { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "compile-error", errorText, model: answeredModel, requestedModel, modelMs, modelCalls },
+        ...ts,
+      ]);
+      return;
+    }
+    setSlErrors([]);
+    // The gate, in place: the walk, the child's identity and its crossings all
+    // stay; only the model on the canvas changes, and Discard restores it.
+    setPreview((p) => p ?? { stash: canvasModel, priorDirty: dirty });
+    setCanvasModel(adopted.model);
+    setDirty(true);
+    setResult(null);
+    setSelectedThingId(null);
+    setSelectedRelationId(null);
+    setActiveTurnId(id);
+    setCoauthorTurns((ts) => [
+      { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls },
+      ...ts,
+    ]);
+    // The seam, judged now rather than on the way out: the parent's contract
+    // against this very draft. Kernel verdict, rendered as a count.
+    let seam = "";
+    try {
+      if (canvasModel.model_id) {
+        const report = checkDecompositionsCanvas(parent, { [canvasModel.model_id]: writeArchive(adopted.model) });
+        const errors = report.issues.filter((i) => i.severity === "Error").length;
+        seam = errors === 0 ? "; seam contract holds" : `; seam contract: ${errors} error${errors === 1 ? "" : "s"} (see the parent's review)`;
+      }
+    } catch {
+      seam = "";
+    }
+    const still = pendingCrossings(adopted.model).length;
+    const lost = adopted.lostCrossings.length > 0 ? `; ${adopted.lostCrossings.length} crossing${adopted.lostCrossings.length === 1 ? "" : "s"} lost a stand-in (${adopted.lostCrossings.join(", ")})` : "";
+    setNotice(
+      `Interior drafted — previewing (Accept to keep, Discard to revert)${seam}${still > 0 ? `; ${still} crossing${still === 1 ? "" : "s"} still landing on the system` : ""}${lost}`,
+    );
+  }
+
   async function coauthorCorrect(
     turnId: string,
     correction: string,
@@ -2952,10 +3038,32 @@ function Workspace() {
                         on the review. Counting components is empty-state UI,
                         not a systems verdict. */}
                     {walk.length > 0 && !canvasModel.things.some((t) => t.role === "Component") && (
-                      <Banner tone="soft" className="pointer-events-none absolute left-3 top-3">
-                        newly decomposed — the stand-ins around you are this system's
-                        neighbors; place your first primitive and wire them through it
-                      </Banner>
+                      <div className="absolute left-3 top-3 flex items-center gap-2">
+                        <Banner tone="soft" className="pointer-events-none">
+                          newly decomposed — the stand-ins around you are this system's
+                          neighbors; place your first primitive and wire them through it,
+                          or
+                        </Banner>
+                        {/* #377 M3: the door's invitation to phase B — the
+                            drafter fills the interior against this boundary. */}
+                        <button
+                          onClick={() => void coauthorDraftInterior()}
+                          disabled={interiorStage !== null}
+                          className="rounded-md px-2 py-1 text-xs font-semibold"
+                          style={{ color: "var(--lens-accent)", border: "1px dashed var(--border)", background: "var(--bg-elevated)" }}
+                          title="Ask the co-author for this system's interior: the owners of each crossing, then the work processes between them. The boundary stays as derived."
+                        >
+                          {interiorStage
+                            ? interiorStage.kind === "asking"
+                              ? "asking the drafter…"
+                              : interiorStage.kind === "compiling"
+                                ? "compiling…"
+                                : interiorStage.kind === "kernel-retry"
+                                  ? `kernel found ${interiorStage.errors}, repairing…`
+                                  : `retrying (${interiorStage.attempt} of ${interiorStage.maxAttempts})…`
+                            : "draft the interior"}
+                        </button>
+                      </div>
                     )}
                     {/* The residue register (#100): every lens view enumerates
                         what it is NOT showing. Kernel judgment (analyze's

@@ -106,6 +106,7 @@ mod tests {
     /// A model wearing every word the old archive destroyed.
     fn lossy_model() -> CanvasModel {
         let mut m = CanvasModel {
+            crossings: vec![],
             lens: Lens::Bunge,
             model_id: None,
             milieu: Vec::new(),
@@ -354,6 +355,7 @@ mod decomposition_seam {
     #[test]
     fn a_derived_child_keeps_the_identity_its_parent_is_stamped_with() {
         let mut m = CanvasModel {
+            crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
             milieu: Vec::new(),
