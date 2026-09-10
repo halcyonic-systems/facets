@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="560" viewBox="0 0 760 560" font-family="Inter, system-ui, sans-serif">
+<defs><marker id="arr-Energy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#c2743a"/></marker><marker id="arr-Matter" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#4a6b8a"/></marker><marker id="arr-Field" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#7a5c9e"/></marker><marker id="arr-Informational" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#3a6e62"/></marker><marker id="arr-Unspecified" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8a8f98"/></marker></defs>
+<rect width="760" height="560" fill="#fbfaf7"/>
+<ellipse cx="380" cy="274.2439898159746" rx="201.3043911378068" ry="197.28596013497773" fill="#f2f0ea" stroke="#9aa0a6" stroke-width="1" stroke-dasharray="4 3"/>
+<path d="M 313.1996889959137 14.036079225332758 C 353.2594018104999 64.75177616422944, 403.6465660932786 105.82386033100316, 461.39723100408634 134.83632677466724" transform="translate(51.7735482493768 61.18237712427137) scale(0.6838051078137983)" fill="none" stroke="#3a6e62" stroke-width="2.04736698220339" stroke-opacity="0.85" marker-end="url(#arr-Informational)"/>
+<text x="316.61021344579484" y="109.08223294193616" font-size="9" fill="#5a5f66" text-anchor="middle">raw text</text>
+<path d="M 501.6232558054088 160.41320355960903 C 525.1383002307336 187.27626939675557, 555.6243622830557 201.9575723762214, 591.2881441945912 203.59350644039097" transform="translate(51.7735482493768 61.18237712427137) scale(0.6838051078137983)" fill="none" stroke="#3a6e62" stroke-width="2.04736698220339" stroke-opacity="0.85" marker-end="url(#arr-Informational)"/>
+<text x="425.44274710334145" y="182.63720091251938" font-size="9" fill="#5a5f66" text-anchor="middle">text batch</text>
+<path d="M 618.2518921388063 237.40498223782447 C 611.9108640884632 272.53861684183073, 619.440281634075 305.5272173201101, 640.3972378611937 334.43027776217554" transform="translate(51.7735482493768 61.18237712427137) scale(0.6838051078137983)" fill="none" stroke="#3a6e62" stroke-width="2.04736698220339" stroke-opacity="0.85" marker-end="url(#arr-Informational)"/>
+<text x="478.7774181548339" y="239.09810654561429" font-size="9" fill="#5a5f66" text-anchor="middle">token ids</text>
+<path d="M 630.7739753994941 376.59250609288824 C 599.3518439816432 393.5403578212869, 578.2548539099873 419.99514847812287, 568.724004600506 454.40071390711176" transform="translate(51.7735482493768 61.18237712427137) scale(0.6838051078137983)" fill="none" stroke="#3a6e62" stroke-width="2.04736698220339" stroke-opacity="0.85" marker-end="url(#arr-Informational)"/>
+<text x="452.55035188369357" y="354.0063243068938" font-size="9" fill="#5a5f66" text-anchor="middle">predicted probs</text>
+<path d="M 529.760250000002 473.1646797613572 C 496.91848920587563 459.1646931188626, 463.0815294058743 459.1647068811397, 430.239779999998 473.1647202386428" transform="translate(51.7735482493768 61.18237712427137) scale(0.6838051078137983)" fill="none" stroke="#3a6e62" stroke-width="2.04736698220339" stroke-opacity="0.85" marker-end="url(#arr-Informational)"/>
+<text x="380.0000102570766" y="381.73481582145496" font-size="9" fill="#5a5f66" text-anchor="middle">gradients</text>
+<path d="M 427.8630312052966 462.75151688815794 C 498.7003832250421 444.17686134506334, 565.4258754054405 412.043545061116, 624.1144787947035 368.2417631118421" transform="translate(51.7735482493768 61.18237712427137) scale(0.6838051078137983)" fill="none" stroke="#3a6e62" stroke-width="2.04736698220339" stroke-opacity="0.85" marker-end="url(#arr-Informational)"/>
+<text x="381.92384226994994" y="356.5188773572455" font-size="9" fill="#5a5f66" text-anchor="middle">weight update</text>
+<path d="M 621.7377300000002 357.8285478278935 C 528.1908294670621 343.8285393614839, 431.8091730670621 343.82853063851627, 338.2622699999999 357.82852217210655" transform="translate(51.7735482493768 61.18237712427137) scale(0.6838051078137983)" fill="none" stroke="#3a6e62" stroke-width="2.04736698220339" stroke-opacity="0.85" marker-end="url(#arr-Informational)"/>
+<text x="337.3547671526694" y="302.8673532192171" font-size="9" fill="#5a5f66" text-anchor="middle">model weights</text>
+<path d="M 331.04503933814664 340.6722193106741 C 445.8527275437433 243.32980892621475, 553.8283265938037 132.95101463495635, 648.6203306618534 16.02870668932591" transform="translate(51.7735482493768 61.18237712427137) scale(0.6838051078137983)" fill="none" stroke="#3a6e62" stroke-width="2.04736698220339" stroke-opacity="0.85" marker-end="url(#arr-Informational)"/>
+<text x="386.7236402265241" y="180.13933470462723" font-size="9" fill="#5a5f66" text-anchor="middle">checkpoint</text>
+<path d="M 297.52439493482893 617.3067755165589 C 326.8099734931825 493.78633795428027, 342.6664617374988 364.76340280302026, 344.16112506517106 237.82755448344113" transform="translate(51.7735482493768 61.18237712427137) scale(0.6838051078137983)" fill="none" stroke="#c2743a" stroke-width="2.04736698220339" stroke-opacity="0.85" marker-end="url(#arr-Energy)"/>
+<text x="271.1674663424534" y="350.55498848473655" font-size="9" fill="#5a5f66" text-anchor="middle">electricity</text>
+<path d="M 368.7118742817914 224.41997672343493 C 446.9203621671387 277.62201268367954, 533.7572466555206 319.4404373117438, 624.1144757182087 347.41534327656507" transform="translate(51.7735482493768 61.18237712427137) scale(0.6838051078137983)" fill="none" stroke="#c2743a" stroke-width="2.04736698220339" stroke-opacity="0.85" marker-end="url(#arr-Energy)"/>
+<text x="352.8013801499879" y="235.1912642714189" font-size="9" fill="#5a5f66" text-anchor="middle">compute cycles</text>
+<path d="M 361.4301305804578 233.25049818012707 C 445.7830038922815 369.86537945317696, 544.2576998975702 502.0007128906906, 651.0615894195422 621.883831819873" transform="translate(51.7735482493768 61.18237712427137) scale(0.6838051078137983)" fill="none" stroke="#c2743a" stroke-width="2.04736698220339" stroke-opacity="0.85" marker-end="url(#arr-Energy)"/>
+<text x="397.94705312696584" y="350.55498848473655" font-size="9" fill="#5a5f66" text-anchor="middle">waste heat</text>
+<circle cx="380" cy="163.75314329634114" r="16.41132258753116" fill="#fff" stroke="#3a6e62" stroke-width="2"/>
+<text x="380" y="192.1644658838723" font-size="10" font-weight="600" fill="#1f2328" text-anchor="middle">DataLoader</text>
+<text x="380" y="166.75314329634114" font-size="8" fill="#8a8f98" text-anchor="middle">Buffering</text>
+<circle cx="470.88549420668284" cy="207.52125852869764" r="16.41132258753116" fill="#fff" stroke="#3a3f45" stroke-width="1.2"/>
+<text x="470.88549420668284" y="235.9325811162288" font-size="10" font-weight="600" fill="#1f2328" text-anchor="middle">Tokenizer</text>
+<text x="470.88549420668284" y="210.52125852869764" font-size="8" fill="#8a8f98" text-anchor="middle">Splitting</text>
+<circle cx="493.3323063314642" cy="305.8673673358765" r="16.41132258753116" fill="#fff" stroke="#3a6e62" stroke-width="2"/>
+<text x="493.3323063314642" y="334.2786899234077" font-size="10" font-weight="600" fill="#1f2328" text-anchor="middle">Model</text>
+<circle cx="430.43763570362273" cy="384.7347953073016" r="16.41132258753116" fill="#fff" stroke="#3a3f45" stroke-width="1.2"/>
+<text x="430.43763570362273" y="413.1461178948328" font-size="10" font-weight="600" fill="#1f2328" text-anchor="middle">LossComputation</text>
+<text x="430.43763570362273" y="387.7347953073016" font-size="8" fill="#8a8f98" text-anchor="middle">Combining</text>
+<circle cx="329.5623848105305" cy="384.7348363356082" r="16.41132258753116" fill="#fff" stroke="#3a3f45" stroke-width="1.2"/>
+<text x="329.5623848105305" y="413.14615892313935" font-size="10" font-weight="600" fill="#1f2328" text-anchor="middle">Optimizer</text>
+<circle cx="266.6676936685358" cy="305.8673468217233" r="16.41132258753116" fill="#fff" stroke="#3a6e62" stroke-width="2"/>
+<text x="266.6676936685358" y="334.27866940925446" font-size="10" font-weight="600" fill="#1f2328" text-anchor="middle">Checkpointer</text>
+<text x="266.6676936685358" y="308.8673468217233" font-size="8" fill="#8a8f98" text-anchor="middle">Buffering</text>
+<circle cx="289.1145194694193" cy="207.5212995570041" r="16.41132258753116" fill="#fff" stroke="#3a6e62" stroke-width="2"/>
+<text x="289.1145194694193" y="235.9326221445353" font-size="10" font-weight="600" fill="#1f2328" text-anchor="middle">Compute Cluster</text>
+<rect x="240.91193495094137" y="48.10283064688281" width="24.61698388129674" height="24.61698388129674" fill="#fff" stroke="#6b7078" stroke-width="1.2"/>
+<text x="253.22042689158974" y="84.71981452817954" font-size="10" fill="#3a3f45" text-anchor="middle">Text Corpus</text>
+<text x="253.22042689158974" y="63.411322587531174" font-size="8" fill="#8a8f98" text-anchor="middle">src</text>
+<rect x="240.91192127483922" y="487.2801854718205" width="24.61698388129674" height="24.61698388129674" fill="#fff" stroke="#6b7078" stroke-width="1.2"/>
+<text x="253.22041321548758" y="523.8971693531173" font-size="10" fill="#3a3f45" text-anchor="middle">Power Grid</text>
+<text x="253.22041321548758" y="502.5886774124689" font-size="8" fill="#8a8f98" text-anchor="middle">src</text>
+<rect x="494.4710948438641" y="48.10283064688281" width="24.61698388129674" height="24.61698388129674" fill="#fff" stroke="#6b7078" stroke-width="1.2"/>
+<text x="506.77958678451245" y="84.71981452817954" font-size="10" fill="#3a3f45" text-anchor="middle">Model Registry</text>
+<text x="506.77958678451245" y="63.411322587531174" font-size="8" fill="#8a8f98" text-anchor="middle">sink</text>
+<rect x="494.4710948438641" y="487.2801854718205" width="24.61698388129674" height="24.61698388129674" fill="#fff" stroke="#6b7078" stroke-width="1.2"/>
+<text x="506.77958678451245" y="523.8971693531173" font-size="10" fill="#3a3f45" text-anchor="middle">Data Center Cooling</text>
+<text x="506.77958678451245" y="502.5886774124689" font-size="8" fill="#8a8f98" text-anchor="middle">sink</text>
+<text x="12" y="550" font-size="9" fill="#8a8f98">LLM Pretraining Loop · Mobus · 7 components, 11 flows · compiled by the kernel</text>
+</svg>
