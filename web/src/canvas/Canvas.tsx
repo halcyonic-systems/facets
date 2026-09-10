@@ -697,6 +697,7 @@ export default function Canvas({
   const seamDocRef = useRef<readonly Thing[] | null>(null);
   const inArmRef = useRef(new Map<number, boolean>());
   const outArmRef = useRef(false);
+  const outFellBackRef = useRef(false);
   useEffect(() => {
     const minView = Math.min(viewW, viewH);
     if (minView <= 0) return;
@@ -704,6 +705,7 @@ export default function Canvas({
       seamDocRef.current = model.things;
       inArmRef.current.clear();
       outArmRef.current = false;
+      outFellBackRef.current = false;
     }
     // Every door's bit is read each pass, whatever tier it is in — a bit only
     // touched once its aperture is already open can never fall back below its
@@ -733,9 +735,21 @@ export default function Canvas({
       const extent = frameExtentPx(dModel, scale, register);
       const next = wantsRebaseOut(extent, minView, outArmRef.current);
       outArmRef.current = next.armed;
+      // The fallback (#377 M3 walk, 2026-09-09): the arm bit resets whenever
+      // the things array is replaced — a drafted interior, an accepted
+      // preview — and a frame that is re-armed only by growing past the arm
+      // line can be zoomed out of forever without a crossing. Past the out
+      // line with nothing armed, the gesture still meant "leave"; it leaves
+      // by the breadcrumb's own exit, once per frame.
+      const pastOutLine =
+        extent > 0 && scale <= rebaseOutScale(minView, frameExtentPx(dModel, 1, register));
       if (next.fire) {
         rideRef.current = null;
         onRebaseOut({ pan, scale });
+      } else if (!next.armed && pastOutLine && onExitUp && !outFellBackRef.current) {
+        rideRef.current = null;
+        outFellBackRef.current = true;
+        onExitUp();
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -819,8 +833,17 @@ export default function Canvas({
         // leaving the view zoomed at a thing it could not enter.
         const crossed = rideRef.current === null;
         stop();
-        const t = ride.dir === "in" ? thingById(st.dModel, ride.thingId) : undefined;
-        if (!crossed && t) onEnterThing?.(t);
+        if (ride.dir === "in") {
+          const t = thingById(st.dModel, ride.thingId);
+          if (!crossed && t) onEnterThing?.(t);
+        } else if (!crossed) {
+          // The way out has the same fallback as the way in: a ride out that
+          // arrives without a seam opening (no aperture to ride through —
+          // the child was entered by the decompose door, or its things were
+          // just replaced by a draft) still meant "leave", and leaves by the
+          // breadcrumb's exit.
+          onExitUp?.();
+        }
         return;
       }
       const next = ride.dir === "in" ? Math.min(to, st.scale * RIDE_STEP) : Math.max(to, st.scale / RIDE_STEP);

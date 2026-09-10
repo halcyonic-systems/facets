@@ -127,10 +127,65 @@ export function draftInteriorWithRetry(
  *    dropped or renamed cannot be re-attached and is reported, not silently
  *    lost — the seam contract will refuse the child until it is restored.
  *
- *  Everything else is the compiler's output by identity. */
+ *  One named repair rides on top, `stampInterfacesFromCrossings`; everything
+ *  else is the compiler's output by identity. */
 export type AdoptOutcome =
-  | { kind: "compiled"; model: CanvasModel; lensExplicit: boolean; lostCrossings: string[] }
+  | {
+      kind: "compiled";
+      model: CanvasModel;
+      lensExplicit: boolean;
+      lostCrossings: string[];
+      /** The named repairs applied on adoption, one line each, for the
+       *  transcript and the ledger. See `stampInterfacesFromCrossings`. */
+      repairs: string[];
+    }
   | { kind: "compile-error"; errors: { line: number; message: string }[] };
+
+/** The one repair the adopt step makes on the drafter's behalf, and why it is
+ *  a derivation rather than a minted claim.
+ *
+ *  Ruled 2026-09-09 after the first hand walk of M3: draw 2 wired all three
+ *  crossings to interior components and left `interface` off them, so
+ *  Operational mode refused the model three times over. The kernel's own
+ *  message for that refusal ends: "If this component IS the pass-way, the
+ *  merged form stays valid: add `interface` to its component line." Under
+ *  Mobus a component that carries a membrane crossing is a member of I by
+ *  definition (SSF `bipartite_implies_boundary_complete`: every external flow
+ *  passes through an interface), so the stamp adds no information the flow
+ *  did not already assert — it reads the drafter's own flow back in the
+ *  kernel's vocabulary. That is why it may be applied without a human, and
+ *  it is the ONLY level claim this step will ever touch: `primitive` and a
+ *  door are judgments about the inside of a component, which no flow
+ *  asserts, and they stay the drafter's to make and the human's to accept.
+ *
+ *  Named, not silent: every stamp is returned as a line, recorded on the
+ *  turn beside parse heals and kernel repairs, and said in the notice — so
+ *  the ledger keeps the drafter's real failure rate on this claim and the
+ *  human still sees the stamp at the gate. A pending crossing (one no flow
+ *  took) is untouched: it is the human's or the drafter's to realise. */
+export function stampInterfacesFromCrossings(model: CanvasModel): { model: CanvasModel; repairs: string[] } {
+  const env = new Map(model.things.filter((t) => t.role === "Environment").map((t) => [t.id, t.name]));
+  const carriers = new Map<number, string[]>();
+  for (const r of model.relations) {
+    if (!r.is_bond) continue;
+    const from = env.get(r.a);
+    const to = env.get(r.b);
+    if (from !== undefined && !env.has(r.b)) {
+      carriers.set(r.b, [...(carriers.get(r.b) ?? []), `${r.name || "a flow"} from ${from}`]);
+    } else if (to !== undefined && !env.has(r.a)) {
+      carriers.set(r.a, [...(carriers.get(r.a) ?? []), `${r.name || "a flow"} to ${to}`]);
+    }
+  }
+  const repairs: string[] = [];
+  const things = model.things.map((t) => {
+    if (t.role !== "Component" || t.interface) return t;
+    const carried = carriers.get(t.id);
+    if (!carried) return t;
+    repairs.push(`interface stamped on ${t.name || "an unnamed component"} (carries ${carried.join(", ")})`);
+    return { ...t, interface: true };
+  });
+  return repairs.length === 0 ? { model, repairs } : { model: { ...model, things }, repairs };
+}
 
 export function adoptInterior(sl: string, child: CanvasModel): AdoptOutcome {
   const outcome = compileSl(sl);
@@ -148,13 +203,20 @@ export function adoptInterior(sl: string, child: CanvasModel): AdoptOutcome {
     }
     crossings.push({ ...c, env: id });
   }
+  const stamped = stampInterfacesFromCrossings(compiled);
   const model: CanvasModel = {
-    ...compiled,
+    ...stamped.model,
     model_id: child.model_id,
     // The parent's reference and the breadcrumb both read the child's name;
     // a drafter that renamed the system does not rename the door.
     name: child.name ?? compiled.name,
     ...(crossings.length > 0 ? { crossings } : {}),
   };
-  return { kind: "compiled", model, lensExplicit: outcome.lens_explicit, lostCrossings: lost };
+  return {
+    kind: "compiled",
+    model,
+    lensExplicit: outcome.lens_explicit,
+    lostCrossings: lost,
+    repairs: stamped.repairs,
+  };
 }
