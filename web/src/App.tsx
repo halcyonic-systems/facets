@@ -1161,7 +1161,7 @@ function Workspace() {
     setSelectedRelationId(null);
     setActiveTurnId(id);
     setCoauthorTurns((ts) => [
-      { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls },
+      { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls, repairs: adopted.repairs },
       ...ts,
     ]);
     // The seam, judged now rather than on the way out: the parent's contract
@@ -1178,8 +1178,9 @@ function Workspace() {
     }
     const still = pendingCrossings(adopted.model).length;
     const lost = adopted.lostCrossings.length > 0 ? `; ${adopted.lostCrossings.length} crossing${adopted.lostCrossings.length === 1 ? "" : "s"} lost a stand-in (${adopted.lostCrossings.join(", ")})` : "";
+    const repaired = adopted.repairs.length > 0 ? `; ${adopted.repairs.length} interface stamp${adopted.repairs.length === 1 ? "" : "s"} derived from the crossings (the drafter left ${adopted.repairs.length === 1 ? "it" : "them"} off)` : "";
     setNotice(
-      `Interior drafted — previewing (Accept to keep, Discard to revert)${seam}${still > 0 ? `; ${still} crossing${still === 1 ? "" : "s"} still landing on the system` : ""}${lost}`,
+      `Interior drafted — previewing (Accept to keep, Discard to revert)${seam}${repaired}${still > 0 ? `; ${still} crossing${still === 1 ? "" : "s"} still landing on the system` : ""}${lost}`,
     );
   }
 

@@ -14,7 +14,7 @@ vi.mock("./kernel", () => ({
   validateMode: () => ({ issues: [] }),
 }));
 
-import { adoptInterior, buildInteriorBrief, draftInteriorWithRetry, pendingCrossings } from "./interior";
+import { adoptInterior, buildInteriorBrief, draftInteriorWithRetry, pendingCrossings, stampInterfacesFromCrossings } from "./interior";
 
 const thing = (id: number, name: string, role: Thing["role"], extra: Partial<Thing> = {}): Thing =>
   ({ id, name, x: 0, y: 0, role, description: "", ...extra }) as Thing;
@@ -150,6 +150,7 @@ describe("adoptInterior", () => {
       { env: 8, inbound: false, name: "bubbles", kind: "Matter" },
     ]);
     expect(out.lostCrossings).toEqual([]);
+    expect(out.repairs).toEqual([]);
     // the air crossing is now taken, bubbles still pending
     expect(pendingCrossings(out.model).map((c) => c.name)).toEqual(["bubbles"]);
     // everything else is the compiler's output by identity
@@ -174,5 +175,65 @@ describe("adoptInterior", () => {
     compileSlMock.mockReturnValueOnce({ errors: [{ line: 3, message: "`Intake` is not declared" }] });
     const out = adoptInterior("text", newborn());
     expect(out).toEqual({ kind: "compile-error", errors: [{ line: 3, message: "`Intake` is not declared" }] });
+  });
+});
+
+// The one named repair (ruled 2026-09-09 after the first hand walk): a
+// component that carries a crossing flow IS a member of I, so the stamp is
+// read off the drafter's own flow — and it is said, never silent.
+describe("stampInterfacesFromCrossings", () => {
+  const model = (): CanvasModel => ({
+    lens: "Mobus",
+    things: [
+      thing(1, "Atmosphere", "Environment", { env_kind: "Source" }),
+      thing(2, "Water", "Environment", { env_kind: "Sink" }),
+      thing(3, "Intake", "Component"),
+      thing(4, "Stone", "Component"),
+      thing(5, "Pump", "Component"),
+    ],
+    relations: [
+      { id: 1, a: 1, b: 3, name: "air", is_bond: true, kind: "Matter" },
+      { id: 2, a: 3, b: 5, name: "air", is_bond: true, kind: "Matter" },
+      { id: 3, a: 5, b: 4, name: "pressurised air", is_bond: true, kind: "Matter" },
+      { id: 4, a: 4, b: 2, name: "bubbles", is_bond: true, kind: "Matter" },
+    ],
+    boundary: { porosity: 0, perceptive_fuzziness: 0 },
+  });
+
+  it("stamps exactly the components that carry a crossing, and names each stamp", () => {
+    const out = stampInterfacesFromCrossings(model());
+    const stamped = out.model.things.filter((t) => t.interface).map((t) => t.name);
+    expect(stamped).toEqual(["Intake", "Stone"]);
+    expect(out.repairs).toEqual([
+      "interface stamped on Intake (carries air from Atmosphere)",
+      "interface stamped on Stone (carries bubbles to Water)",
+    ]);
+  });
+
+  it("leaves an interior component and an already-stamped one alone, and touches no other claim", () => {
+    const m = model();
+    m.things[2] = { ...m.things[2], interface: true, primitive: "Propelling" };
+    const out = stampInterfacesFromCrossings(m);
+    expect(out.repairs).toEqual(["interface stamped on Stone (carries bubbles to Water)"]);
+    expect(out.model.things.find((t) => t.name === "Pump")?.interface).toBeFalsy();
+    expect(out.model.things.find((t) => t.name === "Intake")?.primitive).toBe("Propelling");
+    expect(out.model.things.find((t) => t.name === "Stone")?.primitive).toBeUndefined();
+  });
+
+  it("returns the same model object when there is nothing to repair", () => {
+    const m = model();
+    m.things[2] = { ...m.things[2], interface: true };
+    m.things[3] = { ...m.things[3], interface: true };
+    const out = stampInterfacesFromCrossings(m);
+    expect(out.model).toBe(m);
+    expect(out.repairs).toEqual([]);
+  });
+
+  it("is applied by adoptInterior and reported on the outcome", () => {
+    compileSlMock.mockReturnValueOnce({ ok: model(), lens_explicit: true });
+    const out = adoptInterior("text", newborn());
+    if (out.kind !== "compiled") throw new Error("expected compiled");
+    expect(out.repairs).toHaveLength(2);
+    expect(out.model.things.filter((t) => t.interface).map((t) => t.name)).toEqual(["Intake", "Stone"]);
   });
 });

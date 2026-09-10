@@ -48,6 +48,11 @@ export type CoauthorTurn = {
   correction?: string;
   /** Correction turns: the id of the turn whose SL was being corrected. */
   correctsTurnId?: string;
+  /** Interior turns (#377 M3): the named repairs the adopt step applied to
+   *  the drafter's text, one line each — today only the `interface` stamp
+   *  derived from a crossing flow (`stampInterfacesFromCrossings`). Kept so
+   *  the transcript and the ledger show what the drafter did NOT do. */
+  repairs?: string[];
   /** Correction turns: the SL that went IN, so the record holds both sides of
    *  the change rather than only the result. */
   slBefore?: string;
