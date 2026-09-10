@@ -40,12 +40,22 @@ export interface UseSandboxSession {
   /** Swap the live session for a new one (open a saved document): frees the
    *  old handle, installs the built one, re-mirrors. */
   replace: (build: () => Sandbox) => void;
+  /** A kept baseline (#389): a fork of the live session taken at some tick,
+   *  stepping on the same clock, never edited — "without the change" beside
+   *  the live "with it". Null when none is kept. */
+  fork: Sandbox | null;
+  /** Keep a baseline from this moment (replaces any earlier one). */
+  keepFork: () => void;
+  /** Drop the kept baseline. */
+  dropFork: () => void;
 }
 
 /** Build the session once the kernel is ready; `make` runs against the fresh
  *  handle (stamp something, load a model) before the first mirror. */
 export function useSandboxSession(make?: (sb: Sandbox) => void): UseSandboxSession {
   const sessionRef = useRef<Sandbox | null>(null);
+  const forkRef = useRef<Sandbox | null>(null);
+  const [forkOn, setForkOn] = useState(false);
   const [snapshot, setSnapshot] = useState<SandboxSnapshot | null>(null);
   const [running, setRunning] = useState(false);
   const [ticksPerSec, setTicksPerSec] = useState(4);
@@ -70,6 +80,8 @@ export function useSandboxSession(make?: (sb: Sandbox) => void): UseSandboxSessi
       cancelled = true;
       sessionRef.current?.free();
       sessionRef.current = null;
+      forkRef.current?.free();
+      forkRef.current = null;
     };
     // `make` is an initializer, deliberately not a dependency: re-running it
     // would rebuild the session mid-life.
@@ -91,6 +103,7 @@ export function useSandboxSession(make?: (sb: Sandbox) => void): UseSandboxSessi
         const whole = advance(clock.current, now, ticksPerSec);
         if (whole > 0) {
           sb.step(whole, dt);
+          forkRef.current?.step(whole, dt);
           setSnapshot(sb.snapshot());
         }
       }
@@ -109,22 +122,41 @@ export function useSandboxSession(make?: (sb: Sandbox) => void): UseSandboxSessi
 
   const stepOnce = useCallback(() => {
     sessionRef.current?.step(1, dt);
+    forkRef.current?.step(1, dt);
     mirror();
   }, [dt, mirror]);
 
+  const dropFork = useCallback(() => {
+    forkRef.current?.free();
+    forkRef.current = null;
+    setForkOn(false);
+  }, []);
+
+  const keepFork = useCallback(() => {
+    const sb = sessionRef.current;
+    if (!sb) return;
+    forkRef.current?.free();
+    forkRef.current = sb.fork();
+    setForkOn(true);
+  }, []);
+
+  // A baseline is a counterfactual FROM a point in a run; rewinding the run
+  // or swapping the document makes it meaningless, so both drop it.
   const reset = useCallback(() => {
     sessionRef.current?.reset();
+    dropFork();
     mirror();
-  }, [mirror]);
+  }, [mirror, dropFork]);
 
   const replace = useCallback(
     (build: () => Sandbox) => {
       const next = build(); // build first — a refused open keeps the old session
       sessionRef.current?.free();
       sessionRef.current = next;
+      dropFork();
       setSnapshot(next.snapshot());
     },
-    [],
+    [dropFork],
   );
 
   const mutate = useCallback(
@@ -150,5 +182,8 @@ export function useSandboxSession(make?: (sb: Sandbox) => void): UseSandboxSessi
     mutate,
     session: sessionRef.current,
     replace,
+    fork: forkOn ? forkRef.current : null,
+    keepFork,
+    dropFork,
   };
 }
