@@ -531,6 +531,11 @@ export class Sandbox {
   historySince(fromTick: number): SandboxHistoryDelta {
     return call("sandbox.history_since", () => this.inner.history_since(fromTick));
   }
+  /** A second session sharing this one's whole past; diverges only through
+   *  what is done to it next. Owns its own wasm memory — `free()` it too. */
+  fork(): Sandbox {
+    return new Sandbox(call("sandbox.fork", () => this.inner.fork()));
+  }
   /** The sandbox document: a WorldModel JSON. Graduation is a save. */
   toModelJson(name: string): string {
     return call("sandbox.to_model_json", () => this.inner.to_model_json(name));

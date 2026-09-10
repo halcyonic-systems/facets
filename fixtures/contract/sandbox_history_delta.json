@@ -48,5 +48,33 @@
       2.0,
       1.5
     ]
+  ],
+  "epochs": [
+    {
+      "start_tick": 0,
+      "node_ids": [
+        1,
+        2,
+        3
+      ],
+      "wire_ids": [
+        4,
+        5
+      ],
+      "events": [
+        {
+          "event": "Start"
+        },
+        {
+          "event": "Stamp",
+          "name": "Flows",
+          "node_ids": [
+            1,
+            2,
+            3
+          ]
+        }
+      ]
+    }
   ]
 }

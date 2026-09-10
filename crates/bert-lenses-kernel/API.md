@@ -735,9 +735,9 @@ live `Circuit` is held across calls. Boundaries of the carve-out:
   irreplaceable lives in wasm memory.
 - The session's trace is an observer artifact of an ongoing performance —
   distinct from `RecordedRun` (a spec-keyed batch query) and from the 8-tuple's
-  `H`. Topology edits clear it (recorded rows are index-aligned); the front is
-  truncated past `HISTORY_CAP` (10k rows) so an idle running sandbox stays
-  bounded.
+  `H`. The front is truncated past `HISTORY_CAP` (10k rows) so an idle running
+  sandbox stays bounded. Topology edits do not clear it — see Epochs below
+  (#389; before #389 they did).
 
 ### `new SandboxSession()` / `SandboxSession.from_stamp(name)` / `SandboxSession.from_model(model_json)`
 An empty canvas; a canvas opened on a stamped Troncale process (names from
@@ -758,6 +758,25 @@ stock, so it's touchable mid-run) | `capacity` | `setpoint` | `time_constant` |
 conservation ledger (axis D — ADR-0003): identical trajectory, no balance, no
 ledger rows. Tweaks never reset the clock or the stocks; the running system
 responds next tick (`balance` documents the moved baseline; Reset re-baselines).
+
+### Epochs (#389): `SandboxHistoryDelta.epochs` · `fork() → SandboxSession`
+A topology edit mid-run opens an **epoch** instead of clearing the trace. Every
+node and wire carries a stable id (assigned by the engine; Vec-index stays the
+addressing scheme for calls), and each epoch records `start_tick`, the ordered
+`node_ids` / `wire_ids` that decode the rows recorded under it (`node_ids[i]`
+is the node behind history columns `1 + 3i .. 1 + 3i + 3`, `wire_ids[k]` the
+wire behind wire column `k`), and `events` — every structural event between
+the previous epoch's last row and this one's first (`Start`, `AddNode`,
+`RemoveNode`, `AddWire`, `RemoveWire`, `Stamp`, `Unrecorded`). A row with tick
+`t` belongs to the last epoch with `start_tick < t`. Edits between two ticks
+accumulate on one epoch, so no epoch is empty once the run moves on. Rows of
+earlier epochs keep their own width; a face decodes by epoch, never by the
+live node count. `history_since` returns the epochs its rows need plus the
+current one. The cap drops whole epochs from the front. Reset clears the table.
+`fork()` returns a second session sharing the whole past (rows, epochs, live
+state, clock) that diverges only through what is done to it next — the
+counterfactual. A fork owns its own wasm memory (`free()` it) and is never a
+document. TS mirrors: `SandboxEpoch`, `SandboxEpochEvent`.
 
 ### Transport: `step(n, dt)` · `reset()`
 The FACE owns the clock (a ticks/s wall-clock accumulator calling `step` per

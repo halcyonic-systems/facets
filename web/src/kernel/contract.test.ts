@@ -49,6 +49,8 @@ import type {
   SandboxSnapshot,
   SandboxNode,
   SandboxWire,
+  SandboxEpoch,
+  SandboxEpochEvent,
   SandboxHistoryDelta,
   SandboxPaletteEntry,
   LadderStamp,
@@ -874,12 +876,49 @@ function parseSandboxSnapshot(v: unknown): SandboxSnapshot {
   };
 }
 
+function parseSandboxEpochEvent(v: unknown, where: string): SandboxEpochEvent {
+  const o = record(v, where);
+  const event = str(o.event, `${where}.event`);
+  switch (event) {
+    case "Start":
+    case "Unrecorded":
+      shape(v, where, ["event"]);
+      return { event };
+    case "AddNode":
+      shape(v, where, ["event", "id", "kind", "name"]);
+      return { event, id: num(o.id, `${where}.id`), kind: str(o.kind, `${where}.kind`), name: str(o.name, `${where}.name`) };
+    case "RemoveNode":
+      shape(v, where, ["event", "id", "name"]);
+      return { event, id: num(o.id, `${where}.id`), name: str(o.name, `${where}.name`) };
+    case "AddWire":
+    case "RemoveWire":
+      shape(v, where, ["event", "id", "from", "to"]);
+      return { event, id: num(o.id, `${where}.id`), from: num(o.from, `${where}.from`), to: num(o.to, `${where}.to`) };
+    case "Stamp":
+      shape(v, where, ["event", "name", "node_ids"]);
+      return { event, name: str(o.name, `${where}.name`), node_ids: numArr(o.node_ids, `${where}.node_ids`) };
+    default:
+      throw new Error(`${where}: unknown epoch event "${event}"`);
+  }
+}
+
+function parseSandboxEpoch(v: unknown, where: string): SandboxEpoch {
+  const o = shape(v, where, ["start_tick", "node_ids", "wire_ids", "events"]);
+  return {
+    start_tick: num(o.start_tick, `${where}.start_tick`),
+    node_ids: numArr(o.node_ids, `${where}.node_ids`),
+    wire_ids: numArr(o.wire_ids, `${where}.wire_ids`),
+    events: arr(o.events, `${where}.events`).map((e, i) => parseSandboxEpochEvent(e, `${where}.events[${i}]`)),
+  };
+}
+
 function parseSandboxHistoryDelta(v: unknown): SandboxHistoryDelta {
-  const o = shape(v, "SandboxHistoryDelta", ["rows", "ledger", "wires"]);
+  const o = shape(v, "SandboxHistoryDelta", ["rows", "ledger", "wires", "epochs"]);
   return {
     rows: arr(o.rows, "rows").map((r, i) => numArr(r, `rows[${i}]`)),
     ledger: arr(o.ledger, "ledger").map((r, i) => ledgerRow(r, `ledger[${i}]`)),
     wires: arr(o.wires, "wires").map((r, i) => numArr(r, `wires[${i}]`)),
+    epochs: arr(o.epochs, "epochs").map((e, i) => parseSandboxEpoch(e, `epochs[${i}]`)),
   };
 }
 
