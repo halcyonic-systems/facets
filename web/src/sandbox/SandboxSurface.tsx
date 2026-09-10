@@ -100,6 +100,24 @@ export default function SandboxSurface() {
         <button className="rounded border px-2 py-1" onClick={sb.reset}>
           Reset
         </button>
+        {sb.fork ? (
+          <button
+            className="rounded border px-2 py-1"
+            onClick={sb.dropFork}
+            title="drop the kept baseline — the dashed lines in the metrics"
+          >
+            Drop baseline
+          </button>
+        ) : (
+          <button
+            className="rounded border px-2 py-1"
+            onClick={sb.keepFork}
+            disabled={!snap || snap.tick === 0}
+            title="keep a copy of the run from this moment: it keeps stepping, unedited, and draws dashed beside the live run — change the structure here and compare"
+          >
+            Keep baseline
+          </button>
+        )}
         <label className="flex items-center gap-2 text-xs">
           <span style={{ color: "var(--text-muted)" }}>ticks/s</span>
           <input
@@ -278,7 +296,7 @@ export default function SandboxSurface() {
       </div>
 
       {/* metrics strip */}
-      {snap && snap.nodes.length > 0 && <SandboxMetrics session={sb.session} snapshot={snap} />}
+      {snap && snap.nodes.length > 0 && <SandboxMetrics session={sb.session} snapshot={snap} fork={sb.fork} />}
 
       {/* status line */}
       <footer className="border-t px-4 py-1 text-right font-mono text-[10px]" style={{ color: "var(--text-muted)" }}>

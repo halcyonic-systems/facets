@@ -60,6 +60,28 @@ recorded trace flagging *signatures associated with* systems processes,
 never asserting identity) is the planned Phase 5, gated on the SP typology
 research; nothing in this surface asserts an SP happened.
 
+## Epochs and the kept baseline (#389, 2026-09-10)
+
+A topology edit mid-run used to clear the trace: the instrument could show a
+rate change and not a structural one. Now the engine opens an **epoch** —
+`start_tick`, the stable node/wire ids that decode the rows recorded under
+it, and the events that produced it — and clears nothing. The face decodes
+rows by their epoch, never by the live node count: a node keeps its line
+across a break by id, a departed node's line ends at the break, every break
+is drawn where it happened and named by what changed, and the *structure*
+tab lists the epochs as a readable structural history (Mobus's tuple as an
+element of a time series; the events are the transitions). Rules the face
+keeps: it never re-derives column maps, never accumulates rows client-side,
+and treats an `Unrecorded` epoch as a fact to display, not repair.
+
+**Keep baseline** forks the live session at this moment. The fork steps on
+the same clock, is never edited, and draws dashed in the metrics — "without
+the change" beside the live "with it". It is an instrument's state like its
+parent: **never saved** (a saved sandbox is still one `WorldModel`), dropped
+on Reset and on opening another document, freed with the page. Comparing
+two *edited* variants, or naming and saving a comparison, is the Scenario
+object (#202), not this.
+
 ## Closed since adoption (2026-08-18)
 
 Two gaps named at review closed before merge: **per-flow declared rates** on

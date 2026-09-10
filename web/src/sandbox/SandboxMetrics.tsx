@@ -1,65 +1,89 @@
 // The metrics strip: the desktop shell's bottom panel — activity | storage |
-// cumulative | conservation tabs over the recorded trace.
+// cumulative | conservation | structure tabs over the recorded trace.
 //
 // No client-side accumulation: every render pulls the tail of the ENGINE's
-// own history (`history_since`), so reset, topology clears, and the
-// HISTORY_CAP truncation are all correct for free — the engine is the single
-// truth and this strip is a window onto it. The pull is bounded (WINDOW rows)
-// and happens only when the tick or shape changes.
+// own history (`history_since`), so reset and the HISTORY_CAP truncation are
+// correct for free — the engine is the single truth and this strip is a
+// window onto it. Rows are decoded by THEIR epoch's column map (#389), never
+// by the live node count: a node keeps its line across a structural change
+// by id, a departed node's line ends at the break, and every break is drawn
+// where it happened and named by what changed. A forked baseline, when one
+// is kept, overlays dashed — "without the change" beside "with it".
 
 import { useMemo, useState } from "react";
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { Sandbox } from "../kernel";
 import type { SandboxSnapshot } from "../kernel/types";
+import { decode, describeEpoch, namesById, type Column, type Series } from "./epochs";
 
 const WINDOW = 400;
 
-type Tab = "activity" | "storage" | "cumulative" | "conservation";
+type Tab = Column | "conservation" | "structure";
 
 /** The house chart series tokens (index.css is the source of truth), cycled
- *  across however many nodes the circuit holds. */
+ *  by node id so a node keeps its colour across a break. */
 const SERIES = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"];
+const colour = (id: number) => SERIES[(id - 1) % SERIES.length];
 
 export default function SandboxMetrics({
   session,
   snapshot,
+  fork,
 }: {
   session: Sandbox | null;
   snapshot: SandboxSnapshot;
+  /** A kept baseline stepping on the same clock, or null. */
+  fork: Sandbox | null;
 }) {
   const [tab, setTab] = useState<Tab>("activity");
 
-  const nodeCount = snapshot.nodes.length;
   const conserved = snapshot.invariant === "conserved";
+  const nodeCount = snapshot.nodes.length;
 
-  const data = useMemo(() => {
-    if (!session || snapshot.tick === 0) return [];
+  const view = useMemo(() => {
+    if (!session || snapshot.tick === 0) return null;
     const from = Math.max(0, snapshot.tick - WINDOW);
     const delta = session.historySince(from);
-    const width = 1 + nodeCount * 3;
+    if (tab === "structure") {
+      const names = namesById(delta.epochs, snapshot);
+      return { kind: "structure" as const, epochs: delta.epochs, names };
+    }
     if (tab === "conservation") {
       // ledger rows align with history rows; skip when the invariant is off.
-      return delta.ledger.map((r, i) => ({
+      const points = delta.ledger.map((r, i) => ({
         tick: delta.rows[i]?.[0] ?? i,
         emitted: r[0],
         delivered: r[1],
         stored: r[2],
         dissipated: r[3],
       }));
+      return { kind: "ledger" as const, points };
     }
-    const offset = tab === "activity" ? 1 : tab === "storage" ? 2 : 3;
-    return delta.rows
-      .filter((r) => r.length === width)
-      .map((r) => {
-        const point: Record<string, number> = { tick: r[0] };
-        for (let n = 0; n < nodeCount; n++) point[`n${n}`] = r[1 + n * 3 + (offset - 1)];
-        return point;
+    const main = decode(delta, tab, snapshot);
+    let points = main.points;
+    let baseline: Series[] = [];
+    if (fork) {
+      const fd = decode(fork.historySince(from), tab, fork.snapshot());
+      baseline = fd.series;
+      const byTick = new Map(fd.points.map((p) => [p.tick, p]));
+      points = main.points.map((p) => {
+        const b = byTick.get(p.tick);
+        if (!b) return p;
+        const merged: Record<string, number> = { ...p };
+        for (const [k, v] of Object.entries(b)) if (k !== "tick") merged[`b_${k}`] = v;
+        return merged;
       });
-  }, [session, snapshot.tick, nodeCount, tab]);
+    }
+    return { kind: "series" as const, points, series: main.series, breaks: main.breaks, baseline };
+    // nodeCount is a proxy for "the structure changed" — the pull re-runs then.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, fork, snapshot.tick, nodeCount, tab]);
 
   const tabs: Tab[] = conserved
-    ? ["activity", "storage", "cumulative", "conservation"]
-    : ["activity", "storage", "cumulative"];
+    ? ["activity", "storage", "cumulative", "conservation", "structure"]
+    : ["activity", "storage", "cumulative", "structure"];
+
+  const epochCount = view?.kind === "structure" ? view.epochs.length : null;
 
   return (
     <div className="border-t px-4 py-2">
@@ -81,35 +105,81 @@ export default function SandboxMetrics({
             {t}
           </button>
         ))}
+        {fork && (
+          <span style={{ color: "var(--text-muted)" }} title="the kept baseline draws dashed">
+            baseline ┄ overlaid
+          </span>
+        )}
         <span className="ml-auto font-mono" style={{ color: "var(--text-muted)" }}>
           {snapshot.tick} ticks recorded
+          {epochCount !== null && epochCount > 1 ? ` · ${epochCount} structures` : ""}
         </span>
       </div>
-      {data.length > 1 ? (
+      {view?.kind === "structure" ? (
+        <ol className="max-h-28 overflow-y-auto font-mono text-[11px]" style={{ color: "var(--text-primary)" }}>
+          {view.epochs.map((e, i) => (
+            <li key={`${e.start_tick}-${i}`} className="flex gap-3 py-0.5">
+              <span className="w-14 shrink-0 text-right" style={{ color: "var(--text-muted)" }}>
+                t = {e.start_tick}
+              </span>
+              <span className="w-28 shrink-0" style={{ color: "var(--text-muted)" }}>
+                {e.node_ids.length} comp · {e.wire_ids.length} bond
+              </span>
+              <span>{describeEpoch(e, view.names)}</span>
+            </li>
+          ))}
+        </ol>
+      ) : view && view.points.length > 1 ? (
         <div style={{ height: 110 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
+            <LineChart data={view.points} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
               <XAxis dataKey="tick" tick={{ fontSize: 9 }} />
               <YAxis tick={{ fontSize: 9 }} width={40} />
               <Tooltip
                 contentStyle={{ fontSize: 10 }}
                 formatter={(v: number, name: string) => [Number(v).toFixed(2), name]}
               />
-              {tab === "conservation"
+              {view.kind === "ledger"
                 ? (["emitted", "delivered", "stored", "dissipated"] as const).map((k, i) => (
                     <Line key={k} dataKey={k} name={k} dot={false} isAnimationActive={false} stroke={SERIES[i]} strokeWidth={1.25} />
                   ))
-                : snapshot.nodes.map((n, i) => (
-                    <Line
-                      key={i}
-                      dataKey={`n${i}`}
-                      name={n.name}
-                      dot={false}
-                      isAnimationActive={false}
-                      stroke={SERIES[i % SERIES.length]}
-                      strokeWidth={1.25}
-                    />
-                  ))}
+                : [
+                    ...view.baseline.map((s) => (
+                      <Line
+                        key={`b_${s.id}`}
+                        dataKey={`b_id${s.id}`}
+                        name={`${s.name} (baseline)`}
+                        dot={false}
+                        isAnimationActive={false}
+                        stroke={colour(s.id)}
+                        strokeWidth={1}
+                        strokeDasharray="3 3"
+                        strokeOpacity={0.7}
+                        connectNulls={false}
+                      />
+                    )),
+                    ...view.series.map((s) => (
+                      <Line
+                        key={s.id}
+                        dataKey={`id${s.id}`}
+                        name={s.live ? s.name : `${s.name} (departed)`}
+                        dot={false}
+                        isAnimationActive={false}
+                        stroke={colour(s.id)}
+                        strokeWidth={1.25}
+                        connectNulls={false}
+                      />
+                    )),
+                    ...view.breaks.map((b) => (
+                      <ReferenceLine
+                        key={`brk-${b.tick}`}
+                        x={b.tick}
+                        stroke="var(--text-muted)"
+                        strokeDasharray="2 2"
+                        label={{ value: b.label, position: "insideTopLeft", fontSize: 9, fill: "var(--text-muted)" }}
+                      />
+                    )),
+                  ]}
             </LineChart>
           </ResponsiveContainer>
         </div>
