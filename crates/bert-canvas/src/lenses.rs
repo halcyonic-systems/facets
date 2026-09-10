@@ -1166,6 +1166,7 @@ mod tests {
     }
     fn model(things: Vec<Thing>, relations: Vec<Relation>) -> CanvasModel {
         CanvasModel {
+            crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
             milieu: Vec::new(),

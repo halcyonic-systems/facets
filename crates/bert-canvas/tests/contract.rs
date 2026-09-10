@@ -89,6 +89,7 @@ fn relation(id: u64, a: u64, b: u64, name: &str, is_bond: bool, kind: Kind) -> R
 /// and a mere relation (Bunge's B̄, never projected).
 fn sample() -> CanvasModel {
     CanvasModel {
+        crossings: vec![],
         lens: Lens::Mobus,
         milieu: Vec::new(),
         description: String::new(),

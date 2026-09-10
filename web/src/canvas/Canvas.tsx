@@ -45,7 +45,8 @@ import {
   type View,
 } from "./frameRebase";
 import { EmbeddedFrame } from "./EmbeddedFrame";
-import { STYLE } from "./style";
+import { STYLE, elideEdgeLabel } from "./style";
+import { pendingCrossings } from "./crossings";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
 import { MassOverlay } from "./MassOverlay";
 import { screenHold, StageScale } from "./stageScale";
@@ -237,6 +238,17 @@ interface Props {
 export type RideOrder =
   | { token: number; dir: "in"; thingId: number }
   | { token: number; dir: "out" };
+
+/** The centre a crossing stub points at when no membrane ring is drawn (a
+ *  non-Mobus register): the mean of the things, the same seed the ring uses. */
+function interiorCenterOf(model: CanvasModel): { x: number; y: number } {
+  const ts = model.things;
+  if (ts.length === 0) return { x: 0, y: 0 };
+  return {
+    x: ts.reduce((a, t) => a + t.x, 0) / ts.length,
+    y: ts.reduce((a, t) => a + t.y, 0) / ts.length,
+  };
+}
 
 export default function Canvas({
   model,
@@ -860,6 +872,17 @@ export default function Canvas({
       <StageScale.Provider value={scale}>
       <defs>
         <marker
+          id="crossing-arrow"
+          viewBox="0 0 10 10"
+          refX="8"
+          refY="5"
+          markerWidth={STYLE.arrowSize * headHold * 0.8}
+          markerHeight={STYLE.arrowSize * headHold * 0.8}
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--text-muted)" fillOpacity={0.7} />
+        </marker>
+        <marker
           id="arrow"
           viewBox="0 0 10 10"
           refX="8"
@@ -1160,6 +1183,50 @@ export default function Canvas({
             onSelect={onSelectRelation}
           />
         ))}
+
+        {/* facets#384: boundary flows landing on this system itself — the
+            crossings `derive_child` carried in that no interface has taken.
+            Drawn from the stand-in to the membrane, dashed and labelled, so
+            a walked-in child shows what it is waiting for. Kernel-owned
+            facts (`CanvasModel.crossings`); this only draws them. */}
+        {pendingCrossings(dModel).map((c, i) => {
+          const env = thingById(dModel, c.env);
+          if (!env) return null;
+          const center = ring ? { x: ring.cx, y: ring.cy } : interiorCenterOf(dModel);
+          const rim = ring ? ringPoint(ring, env) : center;
+          const from = c.inbound ? { x: env.x, y: env.y } : rim;
+          const to = c.inbound ? rim : { x: env.x, y: env.y };
+          const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+          const label = elideEdgeLabel(c.name);
+          return (
+            <g key={`crossing-${i}`} pointerEvents="none" data-crossing={c.inbound ? "in" : "out"}>
+              <title>{`${c.inbound ? `${env.name} → this system` : `this system → ${env.name}`}${c.name ? `: ${c.name}` : ""} — lands on the system itself until an interface takes it`}</title>
+              <line
+                x1={from.x}
+                y1={from.y}
+                x2={to.x}
+                y2={to.y}
+                stroke={KIND_COLOR[c.kind] ?? "var(--text-muted)"}
+                strokeOpacity={0.7}
+                strokeWidth={1.5}
+                strokeDasharray="3 5"
+                markerEnd="url(#crossing-arrow)"
+              />
+              {label && (
+                <text
+                  x={mid.x}
+                  y={mid.y - 6}
+                  fontSize={10}
+                  textAnchor="middle"
+                  fill="var(--text-muted)"
+                  className="font-mono"
+                >
+                  {label}
+                </text>
+              )}
+            </g>
+          );
+        })}
 
         {connectFrom !== null && connectPos && (
           <line

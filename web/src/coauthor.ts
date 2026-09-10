@@ -40,7 +40,7 @@ export type CoauthorTurn = {
    *  the drafter what is wrong with an existing draft and getting a revision.
    *  The two run the SAME path — ask, compile, preview, accept or discard —
    *  and the kernel judges both the same way. */
-  kind?: "draft" | "correction";
+  kind?: "draft" | "correction" | "interior";
   /** Correction turns: the correction as the author wrote it. Kept separate
    *  from `description` so the transcript can show the original ask and the
    *  correction as two different things, which is what makes a re-read

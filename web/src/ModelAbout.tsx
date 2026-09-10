@@ -5,6 +5,7 @@
 // the manifest. Everything is DERIVED from what is already loaded — no new
 // state, no kernel calls, works for every model including a blank one.
 import type { CanvasModel, Manifest } from "./kernel/types";
+import { pendingCrossingsPhrase } from "./canvas/crossings";
 import { InspectorTitle as Title } from "./ui";
 
 function Line({ label, children }: { label: string; children: React.ReactNode }) {
@@ -58,6 +59,8 @@ export function ModelAbout({
       : `${bonds} ${bondWord}${bonds === 1 ? "" : "s"}`,
     !klir && mere > 0 && `${mere} mere relation${mere === 1 ? "" : "s"} (no bond)`,
     params > 0 && `${params} declared parameter${params === 1 ? "" : "s"}`,
+    // facets#384: a walked-in child's crossings that no interface owns yet.
+    pendingCrossingsPhrase(model),
   ]
     .filter(Boolean)
     .join(" · ");

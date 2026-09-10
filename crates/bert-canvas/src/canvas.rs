@@ -452,6 +452,44 @@ pub struct MetricDecl {
     pub expr: MetricExpr,
 }
 
+/// A boundary flow that has no interior owner yet (facets#384): it enters or
+/// leaves through the ROOT of this model, from or to the environment thing
+/// `env`. Born from `derive_child`, retired by `project` once a relation on
+/// `env` in the same direction and of the same kind exists.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct Crossing {
+    /// The environment thing (a stand-in for the parent-side counterparty).
+    pub env: u64,
+    /// `true`: from `env` into the root; `false`: from the root out to `env`.
+    pub inbound: bool,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub kind: Kind,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub substance: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub amount: Option<bert_core::rust_decimal::Decimal>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub unit: String,
+}
+
+impl Crossing {
+    /// Has an interface taken this crossing? A relation between `env` and a
+    /// component, in the crossing's direction, of the crossing's kind.
+    pub fn taken_by(&self, relations: &[Relation], is_component: impl Fn(u64) -> bool) -> bool {
+        relations.iter().any(|r| {
+            r.is_bond
+                && r.kind == self.kind
+                && if self.inbound {
+                    r.a == self.env && is_component(r.b)
+                } else {
+                    r.b == self.env && is_component(r.a)
+                }
+        })
+    }
+}
+
 /// The canvas editing model — the JSON the React canvas holds and sends.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CanvasModel {
@@ -468,6 +506,19 @@ pub struct CanvasModel {
     pub things: Vec<Thing>,
     #[serde(default)]
     pub relations: Vec<Relation>,
+    /// Boundary flows that land on the ROOT until an interface takes them
+    /// (facets#384). `derive_child` carries every crossing of a decomposed
+    /// component into the newborn as a flow terminating on the child's root,
+    /// which is what makes the newborn pass the seam contract from birth. The
+    /// canvas has no thing for the root, so `to_canvas` used to drop them and
+    /// the stored child failed the contract as soon as it was judged. They now
+    /// ride here: `to_canvas` reads them off root-terminated interactions,
+    /// `project` writes them back — unless a relation on the same stand-in, in
+    /// the same direction, of the same kind exists, in which case an interface
+    /// has taken the crossing and it retires. Never authored in SL (it is
+    /// derived from the parent, not written); `emit_sl` lists them as comments.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub crossings: Vec<Crossing>,
     /// The milieu M (E = ⟨O, M⟩, lifecycle-paper revision): ambient condition
     /// variables that bathe the system — never things, never flow endpoints;
     /// the absence of edges IS the ontology. One struct, defined in the
@@ -625,7 +676,25 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
 
     let bonds: Vec<&Relation> = model.relations.iter().filter(|r| r.is_bond).collect();
     let originates: HashSet<u64> = bonds.iter().map(|r| r.a).collect();
-    let touched: HashSet<u64> = bonds.iter().flat_map(|r| [r.a, r.b]).collect();
+    // An environment thing a pending crossing still lands on is not an orphan
+    // (facets#384): the crossing is the bond, and it is written back below.
+    let component_ids: HashSet<u64> = model
+        .things
+        .iter()
+        .filter(|t| t.role == Role::Component)
+        .map(|t| t.id)
+        .collect();
+    let pending_crossing_envs: HashSet<u64> = model
+        .crossings
+        .iter()
+        .filter(|c| !c.taken_by(&model.relations, |id| component_ids.contains(&id)))
+        .map(|c| c.env)
+        .collect();
+    let touched: HashSet<u64> = bonds
+        .iter()
+        .flat_map(|r| [r.a, r.b])
+        .chain(pending_crossing_envs.iter().copied())
+        .collect();
 
     // ── Pass-way fusion (#226) ─────────────────────────────────────────────
     // A PURE pass-way — `interface` with no work-process freight — whose
@@ -993,6 +1062,45 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
         });
     }
 
+    // The crossings nobody inside owns yet land on the root, exactly as
+    // `derive_child` made them (facets#384); one an interface has taken is
+    // already among the interactions above and is not written twice.
+    let is_component = |id: u64| !env_things.contains(&id) && id_map.contains_key(&id);
+    for c in &model.crossings {
+        if c.taken_by(&model.relations, is_component) {
+            continue;
+        }
+        let Some(env) = id_map.get(&c.env) else { continue };
+        let flow_id = Id {
+            ty: IdType::Flow,
+            indices: vec![interactions.len() as i64],
+        };
+        let (source, sink) = if c.inbound {
+            (env.clone(), root_id.clone())
+        } else {
+            (root_id.clone(), env.clone())
+        };
+        interactions.push(Interaction {
+            info: described(flow_id, 0, &c.name, ""),
+            substance: Substance {
+                sub_type: c.substance.clone(),
+                ty: kind_to_substance(c.kind),
+            },
+            ty: InteractionType::Flow,
+            usability: InteractionUsability::Resource,
+            source,
+            source_interface: None,
+            sink,
+            sink_interface: None,
+            amount: c.amount.unwrap_or(bert_core::rust_decimal::Decimal::ONE),
+            unit: c.unit.clone(),
+            ample: false,
+            parameters: vec![],
+            smart_parameters: vec![],
+            endpoint_offset: None,
+        });
+    }
+
     let world = WorldModel {
         version: 1,
         model_id: model.model_id,
@@ -1188,8 +1296,36 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         });
     }
 
+    let root = model
+        .systems
+        .iter()
+        .find(|s| s.info.level == 0)
+        .map(|s| s.info.id.clone());
     let mut relations: Vec<Relation> = Vec::new();
+    let mut crossings: Vec<Crossing> = Vec::new();
     for ix in &model.interactions {
+        // A flow with the root at one end and an environment thing at the
+        // other is a crossing nobody inside owns yet (facets#384): keep it.
+        let is_root = |id: &Id| root.as_ref() == Some(id);
+        let crossing = if is_root(&ix.sink) {
+            id_of.get(&ix.source).map(|&env| (env, true))
+        } else if is_root(&ix.source) {
+            id_of.get(&ix.sink).map(|&env| (env, false))
+        } else {
+            None
+        };
+        if let Some((env, inbound)) = crossing {
+            crossings.push(Crossing {
+                env,
+                inbound,
+                name: ix.info.name.clone(),
+                kind: substance_to_kind(ix.substance.ty),
+                substance: ix.substance.sub_type.clone(),
+                amount: Some(ix.amount),
+                unit: ix.unit.clone(),
+            });
+            continue;
+        }
         let (Some(&a), Some(&b)) = (id_of.get(&ix.source), id_of.get(&ix.sink)) else {
             continue;
         };
@@ -1252,6 +1388,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
         milieu: model.environment.milieu.clone(),
         things,
         relations,
+        crossings,
         boundary,
         system_type: SystemType::default(),
         name,
@@ -1451,6 +1588,7 @@ mod tests {
     #[test]
     fn markov_edges_reads_klir_state_machine_with_self_loops() {
         let model = CanvasModel {
+            crossings: vec![],
             lens: Lens::Klir,
             model_id: None,
             milieu: Vec::new(),
@@ -1490,6 +1628,7 @@ mod tests {
     fn projects_a_bonded_pair_cleanly_at_every_lens() {
         for lens in [Lens::Klir, Lens::Bunge, Lens::Mobus] {
             let model = CanvasModel { milieu: vec![],
+                crossings: vec![],
                 lens,
                 model_id: None,
                 things: vec![
@@ -1525,6 +1664,7 @@ mod tests {
     #[test]
     fn self_loop_is_rejected_at_mobus_but_not_klir() {
         let model = CanvasModel {
+            crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
             milieu: Vec::new(),
@@ -1556,6 +1696,7 @@ mod tests {
     #[test]
     fn first_edge_carries_no_gesture_time_issue_at_mobus() {
         let model = CanvasModel {
+            crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
             milieu: Vec::new(),
@@ -1579,6 +1720,7 @@ mod tests {
     #[test]
     fn deferred_dead_end_still_reaches_the_audit() {
         let model = CanvasModel {
+            crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
             milieu: Vec::new(),
@@ -1610,6 +1752,7 @@ mod tests {
     #[test]
     fn duplicate_edge_stays_a_gesture_time_warning() {
         let model = CanvasModel {
+            crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
             milieu: Vec::new(),
@@ -1668,6 +1811,7 @@ mod tests {
     #[test]
     fn the_milieu_projects_and_reads_back() {
         let mut model = CanvasModel {
+            crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
             milieu: vec![bert_core::MilieuVariable {
@@ -1709,6 +1853,7 @@ mod tests {
         gate.passway = true;
         gate.protocol = "graded ore only".into();
         let model = CanvasModel {
+            crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
             milieu: Vec::new(),
@@ -1762,6 +1907,7 @@ mod tests {
         gate.interface = true;
         gate.passway = true;
         let model = CanvasModel {
+            crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
             milieu: Vec::new(),
@@ -1796,6 +1942,7 @@ mod tests {
         let mut r = bond(10, 3, 1);
         r.name = "graded ore".into();
         let base = CanvasModel {
+            crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
             milieu: Vec::new(),
@@ -1827,6 +1974,7 @@ mod tests {
         let mut a = thing(1, "Gate", Role::Component);
         a.interface = true;
         let model = CanvasModel {
+            crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
             milieu: Vec::new(),
@@ -1874,6 +2022,7 @@ mod tests {
         let mut a = thing(1, "Gate", Role::Component);
         a.interface = true;
         let model = CanvasModel {
+            crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
             milieu: Vec::new(),
@@ -1917,6 +2066,7 @@ mod tests {
         let mut gate = thing(1, "Gate", Role::Component);
         gate.interface = true;
         let model = CanvasModel {
+            crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
             milieu: Vec::new(),
@@ -2018,6 +2168,7 @@ mod tests {
     fn environment_projects_by_bond_direction() {
         // env originates a bond → Source; env receives → Sink.
         let model = CanvasModel {
+            crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
             milieu: Vec::new(),
@@ -2046,6 +2197,7 @@ mod tests {
     #[test]
     fn model_id_survives_the_canvas_round_trip() {
         let mut world = project(&CanvasModel {
+            crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
             milieu: Vec::new(),
@@ -2075,6 +2227,7 @@ mod tests {
         // Src(env) → A → B → Snk(env): A and B are boundary components (v1
         // refuses), so add interior C between them: A → C → B.
         let model = CanvasModel {
+            crossings: vec![],
             lens: Lens::Mobus,
             model_id: None,
             milieu: Vec::new(),

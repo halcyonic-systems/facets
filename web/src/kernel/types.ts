@@ -338,6 +338,25 @@ export interface MilieuVar {
   description?: string;
 }
 
+/** A boundary flow no interior component owns yet (facets#384). Born from
+ *  `derive_child`, which carries every crossing of the decomposed component
+ *  into the newborn as a flow landing on the child's ROOT; retired by
+ *  `project` once a relation on the same environment thing, in the same
+ *  direction, of the same kind exists. Never authored in SL: derived from the
+ *  parent, listed by `emit_sl` as comments, carried by the editor across a
+ *  text compile. Mirrors `bert_canvas::canvas::Crossing`. */
+export interface Crossing {
+  /** The environment thing standing in for the parent-side counterparty. */
+  env: number;
+  /** `true`: from `env` into this system; `false`: out of this system to `env`. */
+  inbound: boolean;
+  name: string;
+  kind: Kind;
+  substance?: string;
+  amount?: string;
+  unit?: string;
+}
+
 export interface CanvasModel {
   /** What the SYSTEM OF INTEREST is, in the author's words (#326). There is no
    *  "model" separate from the SOI here: `name` IS the root system's name, so
@@ -353,6 +372,9 @@ export interface CanvasModel {
   model_id?: string;
   things: Thing[];
   relations: Relation[];
+  /** facets#384: boundary flows landing on this system's root until an
+   *  interface takes them. Absent = none. See `Crossing`. */
+  crossings?: Crossing[];
   boundary: CanvasBoundaryProps;
   /** serde `default` on the Rust side — absent on pre-existing models. */
   system_type?: SystemType;
