@@ -6,15 +6,17 @@
 //! Contrast with [`crate::run::RecordedRun`]: the recorder is a batch QUERY
 //! at the Operational rung (reset, run to completion, hand back a trace keyed
 //! to a spec). A session is an INSTRUMENT — no reset on edit, no spec hash;
-//! its trace is an observer artifact of an ongoing performance, valid only
-//! for the topology it was recorded under (topology edits clear it, see
-//! `Circuit::add_node` and friends). Neither trace is the 8-tuple's `H`.
+//! its trace is an observer artifact of an ongoing performance. A topology
+//! edit does not clear it: it opens a new `Epoch` (see `Circuit::add_node`
+//! and friends), so the rows recorded before the edit stay decodable and
+//! the edit itself is on the record (#389). Neither trace is the 8-tuple's
+//! `H`.
 //!
 //! Errors are `String` for the seam to wrap; indices are bounds-checked HERE
 //! so an out-of-range index from the face is a named refusal, not a panic
 //! that traps the wasm module.
 
-use crate::circuit::{Circuit, DeclaredSubstance, FlowMode, Node, NodeKind, Wire, PALETTE};
+use crate::circuit::{Circuit, DeclaredSubstance, Epoch, FlowMode, Node, NodeKind, Wire, PALETTE};
 use crate::{export, ladder};
 use bert_core::{SubstanceType, WorldModel};
 use serde::Serialize;
@@ -48,6 +50,7 @@ fn parse_substance_base(name: &str) -> Result<SubstanceType, String> {
 
 /// One live sandbox: the circuit plus the shell-side authoring counter the
 /// desktop `App` kept (`next_n`), so node names stay unique after deletions.
+#[derive(Clone)]
 pub struct Session {
     pub circuit: Circuit,
     next_n: usize,
@@ -226,11 +229,30 @@ impl Session {
             self.circuit.ledger_history.drain(..lcut);
             let wcut = cut.min(self.circuit.wire_history.len());
             self.circuit.wire_history.drain(..wcut);
+            // Epochs whose every row was cut go with them; the first survivor
+            // is clamped so it starts where the surviving rows do.
+            let first_tick = self.circuit.history[0][0] as u64;
+            let epochs = &mut self.circuit.epochs;
+            while epochs.len() > 1 && epochs[1].start_tick < first_tick {
+                epochs.remove(0);
+            }
+            if let Some(e) = epochs.first_mut() {
+                e.start_tick = e.start_tick.max(first_tick - 1);
+            }
         }
     }
 
     pub fn reset(&mut self) {
         self.circuit.reset();
+    }
+
+    /// A second session that shares this one's whole past — rows, epochs,
+    /// live state, clock — and diverges only through what is done to it
+    /// next. The sandbox's counterfactual: fork before a structural edit,
+    /// edit one, run both. A fork is an instrument's state like its parent,
+    /// never a document; saving still saves one `WorldModel`.
+    pub fn fork(&self) -> Session {
+        self.clone()
     }
 
     // ── reading ────────────────────────────────────────────────────────────
@@ -306,10 +328,23 @@ impl Session {
         let start = c
             .history
             .partition_point(|row| (row.first().copied().unwrap_or(0.0) as u64) < from_tick);
+        // Every epoch some returned row belongs to, plus the current one.
+        let epochs = c
+            .epochs
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| {
+                c.epochs
+                    .get(i + 1)
+                    .is_none_or(|next| next.start_tick >= from_tick)
+            })
+            .map(|(_, e)| e.clone())
+            .collect();
         HistoryDelta {
             rows: c.history[start..].to_vec(),
             ledger: c.ledger_history[start.min(c.ledger_history.len())..].to_vec(),
             wires: c.wire_history[start.min(c.wire_history.len())..].to_vec(),
+            epochs,
         }
     }
 
@@ -482,6 +517,10 @@ pub struct HistoryDelta {
     pub ledger: Vec<[f32; 4]>,
     /// Executed wire deliveries per row.
     pub wires: Vec<Vec<f32>>,
+    /// The column maps for the returned rows (#389): every epoch a returned
+    /// row belongs to, oldest first, plus the current one. A row with tick
+    /// `t` is decoded by the last epoch with `start_tick < t`.
+    pub epochs: Vec<Epoch>,
 }
 
 /// The primitive palette, as data — the face renders what the engine
@@ -539,6 +578,7 @@ pub fn stamps() -> Vec<StampEntry> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::circuit::EpochEvent;
 
     fn flows_session() -> Session {
         // Source → Buffering → Sink, built through the session's own authoring
@@ -682,19 +722,188 @@ mod tests {
         assert!(without.circuit.ledger_history.is_empty());
     }
 
-    /// Law: topology edits clear the recorded traces (rows would misalign
-    /// against new indices) but keep the clock and live state running.
+    /// Law (#389): a topology edit keeps every recorded row and opens a new
+    /// epoch whose column map decodes what follows; the clock and live state
+    /// keep running. Before this law the edit cleared the trace — the
+    /// instrument could show a rate change mid-run and not a structural one.
     #[test]
-    fn topology_edit_clears_traces_keeps_state() {
+    fn topology_edit_opens_epoch_keeps_rows() {
         let mut s = flows_session();
         s.step(10, 1.0);
         assert_eq!(s.circuit.history.len(), 10);
         let stored = s.snapshot().nodes[1].storage;
+        let before = s.circuit.epochs.clone();
+        assert_eq!(before.len(), 1, "authoring before the first step is one epoch");
+        assert_eq!(before[0].events[0], EpochEvent::Start);
+        assert_eq!(before[0].events.len(), 6, "Start + 3 nodes + 2 wires");
+        assert_eq!(before[0].start_tick, 0);
+
         s.add_node("Sensing", 300.0, 0.0).unwrap();
-        assert!(s.circuit.history.is_empty(), "trace cleared");
+        assert_eq!(s.circuit.history.len(), 10, "rows kept across the edit");
         let snap = s.snapshot();
         assert_eq!(snap.tick, 10, "clock kept");
         assert!((snap.nodes[1].storage - stored).abs() < 1e-6, "state kept");
+
+        let epochs = &s.circuit.epochs;
+        assert_eq!(epochs.len(), 2);
+        assert_eq!(epochs[1].start_tick, 10);
+        assert_eq!(epochs[1].node_ids.len(), before[0].node_ids.len() + 1);
+        assert_eq!(&epochs[1].node_ids[..3], &before[0].node_ids[..], "old ids kept");
+        assert_eq!(epochs[1].events.len(), 1);
+        match &epochs[1].events[0] {
+            EpochEvent::AddNode { id, kind, .. } => {
+                assert_eq!(*id, *epochs[1].node_ids.last().unwrap());
+                assert_eq!(kind, "Sensing");
+            }
+            other => panic!("expected AddNode, got {other:?}"),
+        }
+
+        s.step(5, 1.0);
+        assert_eq!(s.circuit.history.len(), 15);
+        // Rows decode by epoch: the old width before the break, the new after.
+        let rows = &s.circuit.history;
+        assert_eq!(rows[9].len(), 1 + 3 * 3);
+        assert_eq!(rows[10].len(), 1 + 4 * 3);
+        assert_eq!(s.circuit.current_epoch_rows().len(), 5);
+    }
+
+    /// Separating instance for the law above: a session whose traces WERE
+    /// cleared at the edit must fail it. This is what the old behavior did;
+    /// if this assertion ever passes on the real session, the law's test
+    /// proves nothing.
+    #[test]
+    fn a_clearing_session_would_fail_the_epoch_law() {
+        let mut s = flows_session();
+        s.step(10, 1.0);
+        s.add_node("Sensing", 300.0, 0.0).unwrap();
+        // Simulate the pre-#389 engine.
+        s.circuit.history.clear();
+        assert_ne!(s.circuit.history.len(), 10, "a clearing engine loses the rows");
+    }
+
+    /// Bunge 1979 Def 1.12 as an epoch event: adding a wire between existing
+    /// nodes leaves the composition fixed and changes the bondage — the
+    /// epoch records `AddWire` with the node set unchanged.
+    #[test]
+    fn epoch_event_records_bunge_assembly() {
+        let mut s = Session::new();
+        let a = s.add_node("Source", 0.0, 0.0).unwrap();
+        let b = s.add_node("Sink", 100.0, 0.0).unwrap();
+        s.step(3, 1.0);
+        let nodes_before = s.circuit.current_epoch().unwrap().node_ids.clone();
+        s.add_wire(a, b, "pushed").unwrap();
+        let e = s.circuit.current_epoch().unwrap();
+        assert_eq!(e.node_ids, nodes_before, "composition fixed");
+        assert_eq!(e.wire_ids.len(), 1, "bondage ∅ → nonempty");
+        assert_eq!(e.events.len(), 1);
+        match &e.events[0] {
+            EpochEvent::AddWire { from, to, .. } => {
+                assert_eq!((*from, *to), (nodes_before[0], nodes_before[1]));
+            }
+            other => panic!("expected AddWire, got {other:?}"),
+        }
+    }
+
+    /// A removed node's columns end at the epoch boundary; the survivors keep
+    /// their ids, so a face can follow them across the break.
+    #[test]
+    fn removed_node_columns_end_at_epoch_boundary() {
+        let mut s = flows_session();
+        s.step(4, 1.0);
+        let ids = s.circuit.current_epoch().unwrap().node_ids.clone();
+        s.remove_node(1).unwrap();
+        s.step(2, 1.0);
+        let epochs = &s.circuit.epochs;
+        assert_eq!(epochs.len(), 2);
+        assert_eq!(epochs[1].node_ids, vec![ids[0], ids[2]], "ids survive the index remap");
+        assert!(matches!(epochs[1].events[0], EpochEvent::RemoveNode { id, .. } if id == ids[1]));
+        assert_eq!(epochs[1].wire_ids.len(), 0, "touching wires went with it");
+        assert_eq!(s.circuit.history[3].len(), 1 + 3 * 3);
+        assert_eq!(s.circuit.history[4].len(), 1 + 2 * 3);
+    }
+
+    /// A fork shares the whole past and diverges only after an edit: the
+    /// counterfactual the sandbox needs to compare "with the change" against
+    /// "without".
+    #[test]
+    fn fork_diverges_only_after_edit() {
+        let mut s = flows_session();
+        s.step(10, 1.0);
+        let mut f = s.fork();
+        assert_eq!(f.circuit.history, s.circuit.history);
+        assert_eq!(f.circuit.epochs, s.circuit.epochs);
+        f.set_node_param(0, "param", 5.0).unwrap();
+        s.step(5, 1.0);
+        f.step(5, 1.0);
+        assert_eq!(f.circuit.history[..10], s.circuit.history[..10], "shared prefix");
+        assert_ne!(f.circuit.history[10..], s.circuit.history[10..], "divergent suffix");
+        assert_eq!(f.snapshot().tick, s.snapshot().tick);
+    }
+
+    /// The history cap drops whole epochs from the front and clamps the first
+    /// survivor to the surviving rows — the epoch table never points at rows
+    /// that are gone.
+    #[test]
+    fn history_cap_drops_whole_epochs() {
+        let mut s = flows_session();
+        s.step(50, 1.0);
+        s.add_node("Sensing", 300.0, 0.0).unwrap();
+        s.step(HISTORY_CAP as u32 + 100, 1.0);
+        let first_tick = s.circuit.history[0][0] as u64;
+        assert_eq!(first_tick, 151);
+        assert_eq!(s.circuit.epochs.len(), 1, "epoch 0's rows are all gone");
+        assert_eq!(s.circuit.epochs[0].start_tick, 150);
+        assert!(matches!(s.circuit.epochs[0].events[0], EpochEvent::AddNode { .. }));
+    }
+
+    /// The delta carries the epochs its rows need — and only those.
+    #[test]
+    fn history_since_carries_its_epochs() {
+        let mut s = flows_session();
+        s.step(10, 1.0);
+        s.add_node("Sensing", 300.0, 0.0).unwrap();
+        s.step(5, 1.0);
+        let all = s.history_since(0);
+        assert_eq!(all.epochs.len(), 2);
+        let tail = s.history_since(12);
+        assert_eq!(tail.rows.len(), 4);
+        assert_eq!(tail.epochs.len(), 1, "only the epoch those rows belong to");
+        assert_eq!(tail.epochs[0].start_tick, 10);
+    }
+
+    /// Reset clears the epoch table with the rows; the next step reopens
+    /// epoch 0 at tick 0.
+    #[test]
+    fn reset_clears_epochs() {
+        let mut s = flows_session();
+        s.step(5, 1.0);
+        s.add_node("Sensing", 300.0, 0.0).unwrap();
+        s.reset();
+        assert!(s.circuit.epochs.is_empty());
+        s.step(1, 1.0);
+        assert_eq!(s.circuit.epochs.len(), 1);
+        assert_eq!(s.circuit.epochs[0].start_tick, 0);
+        assert_eq!(s.circuit.epochs[0].node_ids.len(), 4);
+    }
+
+    /// Several edits between two ticks accumulate on one epoch: the map is
+    /// the structure the next rows ran under, the events are every step that
+    /// produced it. No zero-row epochs.
+    #[test]
+    fn edits_between_ticks_share_one_epoch() {
+        let mut s = flows_session();
+        s.step(3, 1.0);
+        let n = s.add_node("Sensing", 300.0, 0.0).unwrap();
+        s.add_wire(1, n, "pushed").unwrap();
+        assert_eq!(s.circuit.epochs.len(), 2);
+        let e = &s.circuit.epochs[1];
+        assert_eq!(e.events.len(), 2);
+        assert!(matches!(e.events[0], EpochEvent::AddNode { .. }));
+        assert!(matches!(e.events[1], EpochEvent::AddWire { .. }));
+        assert_eq!(e.node_ids.len(), 4);
+        assert_eq!(e.wire_ids.len(), 3);
+        s.step(1, 1.0);
+        assert_eq!(s.circuit.epochs.len(), 2);
     }
 
     /// Law: `history_since` is a correct delta — rows resume exactly where

@@ -259,7 +259,14 @@ pub const PALETTE: &[NodeKind] = &[
     NodeKind::Process(ProcessPrimitive::Impeding),
 ];
 
+#[derive(Clone, Debug)]
 pub struct Node {
+    /// Stable identity across topology edits (#389). Vec-index remains the
+    /// addressing scheme for every API call; the id is what an epoch's
+    /// column map records, so a node's trajectory can be followed through a
+    /// structural change and a departed node's columns simply stop. `0` =
+    /// not yet assigned; the circuit assigns ids when an epoch opens.
+    pub id: u32,
     pub kind: NodeKind,
     pub name: String,
     pub pos: glam::Vec2,
@@ -332,6 +339,7 @@ pub struct Node {
 impl Node {
     pub fn new(kind: NodeKind, n: usize, pos: glam::Vec2) -> Self {
         Self {
+            id: 0,
             kind,
             name: format!("{} {}", kind.label(), n),
             pos,
@@ -371,6 +379,8 @@ pub enum FlowMode {
 // needed — `Clone` covers the one merge site (app.rs) that rebuilds wires.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Wire {
+    /// Stable identity across topology edits — see `Node::id`. `0` = unassigned.
+    pub id: u32,
     pub from: usize,
     pub to: usize,
     pub mode: FlowMode,
@@ -418,6 +428,7 @@ pub struct Wire {
 impl Wire {
     pub fn new(from: usize, to: usize) -> Self {
         Self {
+            id: 0,
             from,
             to,
             mode: FlowMode::Pushed,
@@ -431,6 +442,7 @@ impl Wire {
     }
     pub fn gradient(from: usize, to: usize, conductance: f32) -> Self {
         Self {
+            id: 0,
             from,
             to,
             mode: FlowMode::Gradient,
@@ -475,10 +487,57 @@ impl Invariant {
     }
 }
 
-#[derive(Default)]
+/// One structural epoch of a recorded run (#389): the stretch of ticks over
+/// which the circuit's composition and wiring were fixed, and the column map
+/// that decodes that stretch's rows. Rows with `start_tick < tick ≤ next
+/// epoch's start_tick` belong to it; `node_ids[i]` names the node behind
+/// `history` columns `1 + 3i .. 1 + 3i + 3`, `wire_ids[k]` the wire behind
+/// `wire_history` column `k`. The epoch table is the run's structural
+/// history — Mobus's tuple as an element of a time series, with the
+/// transition between elements recorded in `events`. An epoch always has at
+/// least one recorded row once the run moves on: edits made between two
+/// ticks accumulate on one epoch (its map is the structure that was in
+/// force for the next rows; its events are every step that produced it).
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+pub struct Epoch {
+    /// The circuit tick at which this structure came into force.
+    pub start_tick: u64,
+    pub node_ids: Vec<u32>,
+    pub wire_ids: Vec<u32>,
+    /// The structural events, in order, between the previous epoch's last
+    /// row and this epoch's first.
+    pub events: Vec<EpochEvent>,
+}
+
+/// The structural event that opened an epoch. `AddWire` with the node set
+/// unchanged is Bunge's assembly (1979 Def 1.12: composition fixed, bondage
+/// ∅ → nonempty); `RemoveNode` is a composition change. `Unrecorded` is the
+/// engine noticing that the structure changed without a topology call — a
+/// direct push on `nodes`/`wires` — and opening an epoch rather than losing
+/// the rows; it names the gap instead of hiding it.
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[serde(tag = "event")]
+pub enum EpochEvent {
+    Start,
+    AddNode { id: u32, kind: String, name: String },
+    RemoveNode { id: u32, name: String },
+    AddWire { id: u32, from: u32, to: u32 },
+    RemoveWire { id: u32, from: u32, to: u32 },
+    Stamp { name: String, node_ids: Vec<u32> },
+    Unrecorded,
+}
+
+#[derive(Default, Clone, Debug)]
 pub struct Circuit {
     pub nodes: Vec<Node>,
     pub wires: Vec<Wire>,
+    /// The structural history of the recorded run — one entry per stretch of
+    /// fixed topology, oldest first. Empty until the first step or the first
+    /// topology edit opens epoch 0. Cleared by `reset`. See `Epoch`.
+    pub epochs: Vec<Epoch>,
+    /// Next stable id to hand out (`Node::id` / `Wire::id`); `0` is reserved
+    /// for "unassigned".
+    next_id: u32,
     /// Root-boundary porosity (B's P, bert-lenses#54). When authored NONZERO it
     /// scales boundary-crossing influx (a source-fed crossing flow delivers
     /// `porosity ×` its rate — the coefficient acts within the active transition
@@ -494,7 +553,8 @@ pub struct Circuit {
     /// data stays anchored to time under Δt refinement (#258).
     pub time: f32,
     /// Per-tick data rows: [tick, n0.activity, n0.storage, n0.total, n1…].
-    /// Cleared on Reset or when the topology changes mid-recording.
+    /// Cleared on Reset. A topology change does NOT clear it: it opens a new
+    /// `Epoch`, whose column map decodes the rows recorded under it (#389).
     pub history: Vec<Vec<f32>>,
     /// The declared state invariant (axis D). Conservation by default, so
     /// existing models are unchanged; a non-conservation kind declares `None`
@@ -516,7 +576,7 @@ pub struct Circuit {
     /// Per-tick executed wire deliveries (#203): row `t` holds `wire_amount(k)`
     /// for every wire `k` as of tick `t`, captured inside the step before time
     /// advances. The recorder-side source for declared metrics — cleared with
-    /// `history` on reset and topology change.
+    /// `history` on reset; decoded per epoch after a topology change.
     pub wire_history: Vec<Vec<f32>>,
 }
 
@@ -533,35 +593,121 @@ impl Circuit {
         self.history.clear();
         self.ledger_history.clear();
         self.wire_history.clear();
+        self.epochs.clear();
         self.emitted = 0.0;
         self.sunk = 0.0;
         self.dissipated = 0.0;
     }
 
-    /// Clear the recorded traces after a topology change. History rows are
-    /// flat per-node triples and `wire_history` rows are per-wire, so a
-    /// changed node or wire count would misalign every earlier row against
-    /// the new indices. Live state and the ledger totals keep running —
-    /// editing topology mid-run moves the conservation baseline exactly like
-    /// editing a stock does (`balance` doc), and Reset re-baselines.
-    fn clear_traces(&mut self) {
-        self.history.clear();
-        self.ledger_history.clear();
-        self.wire_history.clear();
+    fn alloc_id(&mut self) -> u32 {
+        self.next_id += 1;
+        self.next_id
+    }
+
+    /// Give every node and wire that still carries `id == 0` a fresh stable
+    /// id. Circuits are built by direct pushes all over the crate (examples,
+    /// ladder rungs, `from_world_model`, tests), so ids are assigned lazily —
+    /// at the moment an epoch first needs them — rather than by constructors.
+    fn assign_missing_ids(&mut self) {
+        let taken = self
+            .nodes
+            .iter()
+            .map(|n| n.id)
+            .chain(self.wires.iter().map(|w| w.id))
+            .max()
+            .unwrap_or(0);
+        if taken > self.next_id {
+            self.next_id = taken;
+        }
+        for i in 0..self.nodes.len() {
+            if self.nodes[i].id == 0 {
+                self.nodes[i].id = self.alloc_id();
+            }
+        }
+        for k in 0..self.wires.len() {
+            if self.wires[k].id == 0 {
+                self.wires[k].id = self.alloc_id();
+            }
+        }
+    }
+
+    /// Open epoch 0 for the structure as it stands, if no epoch is open yet.
+    /// Called before any topology edit (so the pre-edit structure is on the
+    /// record) and before any row is written.
+    fn ensure_epoch(&mut self) {
+        if self.epochs.is_empty() {
+            self.open_epoch(EpochEvent::Start);
+        }
+    }
+
+    /// Whether any row has been recorded under the current epoch.
+    fn current_epoch_has_rows(&self) -> bool {
+        match (self.epochs.last(), self.history.last()) {
+            (Some(e), Some(row)) => (row[0] as u64) > e.start_tick,
+            _ => false,
+        }
+    }
+
+    /// Record a structural change. If rows were recorded under the current
+    /// epoch, push a new `Epoch` whose column map is the circuit's nodes and
+    /// wires as they now stand; if none were (several edits between two
+    /// ticks, or authoring before the first step), the current epoch's map
+    /// is brought up to date and the event appended to its list. Nothing
+    /// recorded is cleared — rows written before this call stay decodable
+    /// through their own epoch's map. Live state and the ledger totals keep
+    /// running; editing topology mid-run moves the conservation baseline
+    /// exactly like editing a stock does (`balance` doc), and Reset
+    /// re-baselines.
+    fn open_epoch(&mut self, event: EpochEvent) {
+        self.assign_missing_ids();
+        let node_ids: Vec<u32> = self.nodes.iter().map(|n| n.id).collect();
+        let wire_ids: Vec<u32> = self.wires.iter().map(|w| w.id).collect();
+        if !self.epochs.is_empty() && !self.current_epoch_has_rows() {
+            let e = self.epochs.last_mut().unwrap();
+            e.node_ids = node_ids;
+            e.wire_ids = wire_ids;
+            e.events.push(event);
+        } else {
+            self.epochs.push(Epoch {
+                start_tick: self.tick,
+                node_ids,
+                wire_ids,
+                events: vec![event],
+            });
+        }
+    }
+
+    /// The epoch the next row will be written under (`None` before any
+    /// epoch has opened).
+    pub fn current_epoch(&self) -> Option<&Epoch> {
+        self.epochs.last()
     }
 
     /// Append a node (free authoring). Naming and numbering are the caller's
     /// job — the shell owns its monotonic counter (as the desktop `App` did),
     /// the engine owns only the graph.
-    pub fn add_node(&mut self, node: Node) -> usize {
+    pub fn add_node(&mut self, mut node: Node) -> usize {
+        self.ensure_epoch();
+        node.id = self.alloc_id();
+        let event = EpochEvent::AddNode {
+            id: node.id,
+            kind: node.kind.label(),
+            name: node.name.clone(),
+        };
         self.nodes.push(node);
-        self.clear_traces();
+        self.open_epoch(event);
         self.nodes.len() - 1
     }
 
     /// Remove node `i`: drop every wire touching it and remap the indices
-    /// above it (node identity is Vec-index, the desktop semantics).
+    /// above it (node identity is Vec-index, the desktop semantics; the
+    /// stable `id` is untouched by the remap).
     pub fn remove_node(&mut self, i: usize) {
+        self.ensure_epoch();
+        let event = EpochEvent::RemoveNode {
+            id: self.nodes[i].id,
+            name: self.nodes[i].name.clone(),
+        };
         self.nodes.remove(i);
         self.wires.retain(|w| w.from != i && w.to != i);
         for w in &mut self.wires {
@@ -572,18 +718,32 @@ impl Circuit {
                 w.to -= 1;
             }
         }
-        self.clear_traces();
+        self.open_epoch(event);
     }
 
-    pub fn add_wire(&mut self, w: Wire) -> usize {
+    pub fn add_wire(&mut self, mut w: Wire) -> usize {
+        self.ensure_epoch();
+        w.id = self.alloc_id();
+        let event = EpochEvent::AddWire {
+            id: w.id,
+            from: self.nodes[w.from].id,
+            to: self.nodes[w.to].id,
+        };
         self.wires.push(w);
-        self.clear_traces();
+        self.open_epoch(event);
         self.wires.len() - 1
     }
 
     pub fn remove_wire(&mut self, k: usize) {
+        self.ensure_epoch();
+        let w = &self.wires[k];
+        let event = EpochEvent::RemoveWire {
+            id: w.id,
+            from: self.nodes[w.from].id,
+            to: self.nodes[w.to].id,
+        };
         self.wires.remove(k);
-        self.clear_traces();
+        self.open_epoch(event);
     }
 
     /// Merge another circuit (a ladder stamp) into this one: nodes land
@@ -592,20 +752,28 @@ impl Circuit {
     /// "part of a Feedback process". Returns the index of the first merged
     /// node. Ported from the desktop `App::stamp_macro`, minus viewport math.
     pub fn merge(&mut self, sub: Circuit, offset: glam::Vec2, provenance: Option<&'static str>) -> usize {
+        self.ensure_epoch();
         let base = self.nodes.len();
+        let mut stamped = Vec::with_capacity(sub.nodes.len());
         for mut node in sub.nodes {
             node.pos += offset;
             if provenance.is_some() {
                 node.process = provenance;
             }
+            node.id = self.alloc_id();
+            stamped.push(node.id);
             self.nodes.push(node);
         }
         for mut w in sub.wires {
             w.from += base;
             w.to += base;
+            w.id = self.alloc_id();
             self.wires.push(w);
         }
-        self.clear_traces();
+        self.open_epoch(EpochEvent::Stamp {
+            name: provenance.unwrap_or("").to_string(),
+            node_ids: stamped,
+        });
         base
     }
 
@@ -1493,16 +1661,25 @@ impl Circuit {
         // the engine's own fanout read (`wire_amount`), recorded here and
         // never re-derived downstream.
         let wire_row: Vec<f32> = (0..self.wires.len()).map(|k| self.wire_amount(k)).collect();
+
+        // The row about to be written belongs to the current epoch, which
+        // must be open BEFORE the tick advances (a row with tick `t` belongs
+        // to the last epoch with `start_tick < t`). If the structure changed
+        // behind the epoch table's back (a direct push, not a topology call),
+        // open an `Unrecorded` epoch so the rows stay decodable and the gap
+        // is named — never clear.
+        self.ensure_epoch();
+        let mapped = self
+            .current_epoch()
+            .map(|e| (e.node_ids.len(), e.wire_ids.len()))
+            .unwrap_or((0, 0));
+        if mapped != (self.nodes.len(), self.wires.len()) {
+            self.open_epoch(EpochEvent::Unrecorded);
+        }
         self.tick += 1;
         self.time += dt;
 
-        // Record the tick. A topology change invalidates prior columns.
         let width = 1 + self.nodes.len() * 3;
-        if self.history.last().map(|r| r.len()) != Some(width) {
-            self.history.clear();
-            self.ledger_history.clear();
-            self.wire_history.clear();
-        }
         self.wire_history.push(wire_row);
         let mut row = Vec::with_capacity(width);
         row.push(self.tick as f32);
@@ -1526,9 +1703,22 @@ impl Circuit {
         self.csv_with(|i| self.nodes[i].name.clone())
     }
 
+    /// The rows recorded under the current epoch — the stretch whose columns
+    /// the live node indices decode. Earlier epochs' rows have their own
+    /// column maps (`epochs`) and are the face's to decode.
+    pub fn current_epoch_rows(&self) -> &[Vec<f32>] {
+        let start = self.current_epoch().map(|e| e.start_tick).unwrap_or(0);
+        let from = self
+            .history
+            .partition_point(|row| (row.first().copied().unwrap_or(0.0) as u64) <= start);
+        &self.history[from..]
+    }
+
     /// The recorded run as CSV: tick, then activity/storage/total per node.
     /// `label(i)` names column-group `i` — the app passes the lens reading so
     /// a domain run exports as "Quorum gate", "Treasury", not "Modulating 2".
+    /// Exports the current epoch's rows: a single header can only name one
+    /// column map.
     pub fn csv_with(&self, label: impl Fn(usize) -> String) -> String {
         let mut out = String::from("tick");
         for i in 0..self.nodes.len() {
@@ -1536,7 +1726,7 @@ impl Circuit {
             out.push_str(&format!(",{name}.activity,{name}.storage,{name}.total"));
         }
         out.push('\n');
-        for row in &self.history {
+        for row in self.current_epoch_rows() {
             let cells: Vec<String> = row.iter().map(|v| format!("{v}")).collect();
             out.push_str(&cells.join(","));
             out.push('\n');
@@ -3410,7 +3600,8 @@ mod tests {
     /// H the semigroup axiom fails... any history-dependence must be folded into
     /// the carrier. If T needs the past, the state was misidentified." So we
     /// warm two identical circuits to the same live state, scribble on one's H —
-    /// the `history` and `ledger_history` rows and every node's `spark` ring —
+    /// the `history` and `ledger_history` rows, the `epochs` table, and every
+    /// node's `spark` ring —
     /// leave the other's clean, step both, and demand the identical transition.
     #[test]
     fn history_is_a_record_not_an_input_to_t() {
@@ -3429,6 +3620,12 @@ mod tests {
             let width = 1 + polluted.nodes.len() * 3;
             polluted.history.push(vec![9.9; width]);
             polluted.ledger_history.push([1e9, -1e9, 42.0, 7.0]);
+            polluted.epochs.push(Epoch {
+                start_tick: 999_999,
+                node_ids: vec![7, 7, 7],
+                wire_ids: vec![],
+                events: vec![EpochEvent::Unrecorded],
+            });
             for nd in &mut polluted.nodes {
                 nd.spark.push_back(123.456);
             }

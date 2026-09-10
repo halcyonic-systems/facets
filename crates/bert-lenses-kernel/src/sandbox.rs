@@ -134,6 +134,16 @@ impl SandboxSession {
         self.inner.reset()
     }
 
+    /// A second session sharing this one's whole past — rows, epochs, live
+    /// state, clock — that diverges only through what is done to it next.
+    /// The counterfactual: fork before a structural edit, edit one, run
+    /// both. Never a document; saving still saves one `WorldModel`.
+    pub fn fork(&self) -> SandboxSession {
+        SandboxSession {
+            inner: self.inner.fork(),
+        }
+    }
+
     // ── reading ──
 
     /// One frame's read: clock, ledger, per-node scalars + sparkline, wires

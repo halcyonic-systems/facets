@@ -770,15 +770,43 @@ export interface SandboxWire {
   last_amount: number;
 }
 
+/** The structural event that opened (or extended) an epoch. `AddWire` with
+ *  the node set unchanged is Bunge's assembly (1979 Def 1.12). `Unrecorded`
+ *  is the engine noticing a structure change it was not told about. */
+export type SandboxEpochEvent =
+  | { event: "Start" }
+  | { event: "AddNode"; id: number; kind: string; name: string }
+  | { event: "RemoveNode"; id: number; name: string }
+  | { event: "AddWire"; id: number; from: number; to: number }
+  | { event: "RemoveWire"; id: number; from: number; to: number }
+  | { event: "Stamp"; name: string; node_ids: number[] }
+  | { event: "Unrecorded" };
+
+/** One stretch of fixed topology in a recorded run, with the column map that
+ *  decodes its rows: `node_ids[i]` is the node behind history columns
+ *  `1 + 3i .. 1 + 3i + 3`, `wire_ids[k]` the wire behind wire column `k`. A
+ *  row with tick `t` belongs to the last epoch with `start_tick < t`. */
+export interface SandboxEpoch {
+  start_tick: number;
+  node_ids: number[];
+  wire_ids: number[];
+  /** Every structural event between the previous epoch's last row and this
+   *  one's first, in order. */
+  events: SandboxEpochEvent[];
+}
+
 /** A `history_since(fromTick)` delta pull. */
 export interface SandboxHistoryDelta {
-  /** `[tick, n0.activity, n0.storage, n0.total, n1…]` per row. */
+  /** `[tick, n0.activity, n0.storage, n0.total, n1…]` per row — decoded by
+   *  the row's epoch, not by the live node count. */
   rows: number[][];
   /** `[emitted, delivered, stored, dissipated]` per row — empty when the
    *  invariant is declined. */
   ledger: [number, number, number, number][];
   /** Executed wire deliveries per row. */
   wires: number[][];
+  /** The epochs the returned rows belong to, oldest first, plus the current. */
+  epochs: SandboxEpoch[];
 }
 
 /** One primitive palette entry — the face renders what the engine declares. */
