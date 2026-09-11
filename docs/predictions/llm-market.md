@@ -83,6 +83,41 @@ state, it graduates to the ledger.
   Caveat: GPT-4-in-2024 capability level; structure durable, magnitudes
   stale.
 
+### W-0002 — Open-weight price collapse on rubric-legible tasks (OpenDesign arena)
+
+- **Date:** 2026-09-10 (thread posted 2026-09-09)
+- **Source:** @OpenDesignHQ on X + open-design.ai/llm-arena-for-design
+  (operator: Powerformer, Inc.)
+- **The numbers:** human-judged design prototypes (30 pts brief
+  fulfillment, 70 pts design quality; 80+ = "deliverable"). GPT-6 Astra
+  82.7 at $1.61/task; DeepSeek V4.1 Flash 81.2 at $0.023/task, 5.3 min;
+  Claude Fable 5.1 80.3 at $3.66/task. Every model except Astra scored
+  lower than Flash AND cost more.
+- **The claim:** on tasks with a legible rubric, open-weight quality has
+  converged with frontier at ~1/70 the price, so the frontier premium is
+  now paid only for the last ~1.5 points.
+- **Caveats on the evidence:** (1) the operator sells a workspace that
+  routes to these models, so a "cheap is nearly as good" result is also
+  its margin story; (2) task class is prototype generation of web apps,
+  dashboards, landing pages — style-visible, reasoning-light; says
+  nothing about long-horizon agentic work; (3) dispersion is large —
+  Flash is #10 on dashboards/admin panels (76.1), ahead of Astra on
+  landing pages; (4) "open" means cheap to rent here, not weights you can
+  run at daily-driver size.
+- **Why the observatory cares:** direct evidence for the model's
+  developer-channel price dynamics — the open-weight share is driven by
+  price-per-quality on tasks where quality is checkable, which is the
+  same mechanism as W-0001 (RLVR eats what can be prestated as a check).
+  The enterprise-channel spend proxy will under-read this shift by
+  construction (spend at one-tenth prices).
+- **What would harden it:** a second independent human-judged benchmark
+  on a different rubric-legible task class showing the same gap; or
+  OpenRouter share data for V4.1 Flash moving in the weeks after release.
+- **Cross-refs:** vault `strategy/modeling-tools-landscape.md` (fidelity
+  over fluency — the rubric here IS the check; selection moves to the
+  buyer) and `strategy/post-astra` positioning (generation commoditizes
+  where the statement is mature).
+
 ## Ledger
 
 *(empty)*
