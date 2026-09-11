@@ -4,9 +4,9 @@
 // geometry.ts over a model `bert compile` produced. Usage:
 //   npx vite-node scripts/spike/sheet-figure.ts <model.json> <out.svg>
 import { readFileSync, writeFileSync } from "node:fs";
-import { contentBounds, fitToBox, membraneRing, edgeGeometry, NODE_R } from "../src/canvas/geometry";
-import { KIND_COLOR } from "../src/canvas/types";
-import type { CanvasModel } from "../src/kernel/types";
+import { contentBounds, fitToBox, membraneRing, edgeGeometry, NODE_R } from "../../src/canvas/geometry";
+import { KIND_COLOR } from "../../src/canvas/types";
+import type { CanvasModel } from "../../src/kernel/types";
 
 const [, , inPath, outPath] = process.argv;
 const model = JSON.parse(readFileSync(inPath, "utf8")) as CanvasModel;
