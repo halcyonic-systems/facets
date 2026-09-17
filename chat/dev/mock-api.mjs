@@ -92,6 +92,8 @@ async function answerStream(req, res, integrated) {
   if (!c.messages.some((m) => m.id === userId)) {
     c.messages.push({ id: userId, role: 'user', content: body.question || '', seq: c.messages.length, created_at: new Date().toISOString(), model_meta: null });
   }
+  // A question starting "when" gets the all-thin turn, where every lens says it adds little.
+  const thin = /^when\b/i.test(body.question || '');
   const botId = randomUUID();
   const shareId = 'mock' + Math.random().toString(36).slice(2, 8);
 
@@ -114,7 +116,13 @@ async function answerStream(req, res, integrated) {
     dimensions: integrated ? [] : ['C', 'N'],
     intensity: 'light',
     sources: [{ type: 'vector', source: 'Mobus 2015', excerpt: 'mock excerpt', score: '0.81' }],
-    lenses: integrated ? [{ mode: 'mobus', dimensions: ['C', 'N'], snippet: 'A reef is a structure of polyps' }] : [],
+    lenses: !integrated ? [] : thin ? ['mobus', 'klir', 'bunge', 'spt', 'ct'].map((mode) => (
+      { mode, dimensions: [], snippet: '', reading: 'Adds little here: a date has no parts to trace.' }
+    )) : [
+      { mode: 'mobus', dimensions: ['C', 'N'], snippet: 'A reef is a structure of polyps', reading: 'The reef crest is the boundary: wave energy arrives there and calm water leaves.' },
+      { mode: 'klir', dimensions: ['S'], snippet: 'A system is what is distinguished as a system' },
+    ],
+    shared: integrated && !thin ? 'Polyps and the water between them are one dependency.' : null,
     answer_id: shareId,
     conversation_id: convId,
     message_id: userId,
