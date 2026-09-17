@@ -43,7 +43,10 @@ const NUMBER = /^-?\d+(\.\d+)?([eE][+-]?\d+)?/;
 
 /** A `description` continuation line (spec §4.3, v1.5): indented, and the
  *  prose of the declaration directly above. It opens nothing of its own, so
- *  bands, glyphs, and flow alignment all read it as part of that line. */
+ *  bands, glyphs, and flow alignment all read it as part of that line.
+ *  Per-line by design, so it does not see the kernel's shared-indent rule: in
+ *  a wholly indented paste the system's own `description` colors as a clause
+ *  until the text is dedented. The kernel's reading is unaffected. */
 export function isContinuationLine(line: string): boolean {
   return /^[ \t]+description\b/i.test(line);
 }

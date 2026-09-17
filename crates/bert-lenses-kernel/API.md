@@ -404,7 +404,8 @@ accepts `description "<prose>"` on its own indented line directly under the
 thing, interface, milieu, or flow line it describes; `emit_sl` always writes it
 that way (four-space indent). No signature and no model field changed — the two
 spellings compile to the same `CanvasModel`, and every SL text that compiled
-before compiles to the same model now. A caller that reads emitted SL line by
+before compiles to the same model now (other indented lines read as ever, and
+an indent shared by every line is dropped first). A caller that reads emitted SL line by
 line should treat an indented line as part of the line above it. Rule and
 faults: `docs/language/spec.md` §4.3.
 

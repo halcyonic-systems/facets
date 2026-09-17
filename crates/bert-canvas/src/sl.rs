@@ -119,9 +119,15 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     // attachment: "directly beneath" means the very next line.
     let mut carrier: Option<Carrier> = None;
     let mut above: Option<(String, usize)> = None;
+    // A wholly indented paste (SL lifted out of a markdown list or a chat
+    // reply) is its dedented self: the indent every non-blank line shares is
+    // dropped before indentation means anything. Lines are never removed, so
+    // faults keep their physical line numbers.
+    let shared = common_indent(text);
 
     for (idx, raw) in text.lines().enumerate() {
         let line_no = idx + 1;
+        let raw = raw.strip_prefix(shared).unwrap_or(raw);
         let line = raw.trim();
         let held = carrier.take();
         let over = above.take();
@@ -134,10 +140,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 message: msg,
             })
         };
-        let continuation = raw.starts_with(char::is_whitespace);
-        if !continuation {
-            above = Some((String::new(), errors.len()));
-        }
+        above = Some((String::new(), errors.len()));
         let tokens = match tokenize(line) {
             Ok(t) => t,
             Err(msg) => {
@@ -150,32 +153,21 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         }
 
         // ---- description continuation (v1.5, #399) ----
-        // Indentation carries exactly one meaning: the line is the prose of
-        // the declaration directly above. Deliberately narrow — no other
-        // clause continues, and a string still cannot span lines.
+        // An indented line that opens with `description` is the prose of the
+        // declaration directly above. Deliberately narrow — no other clause
+        // continues, a string still cannot span lines, and any other indented
+        // line reads exactly as it did before indentation meant anything.
+        let continuation = raw.starts_with(char::is_whitespace)
+            && matches!(&tokens[0], Tok::Word(w) if w.eq_ignore_ascii_case("description"));
         if continuation {
-            let prose = match tokens.as_slice() {
-                [Tok::Word(w), Tok::Str(d)] if w.eq_ignore_ascii_case("description") => d,
-                [Tok::Word(w), ..] if w.eq_ignore_ascii_case("description") => {
-                    fail(
-                        "description syntax: `description \"<prose>\"` (quoted), and nothing \
-                         else on the indented line"
-                            .into(),
-                        &mut errors,
-                    );
-                    continue;
-                }
-                _ => {
-                    fail(
-                        "an indented line continues the declaration above it, and only \
-                         `description \"<prose>\"` may — fix: remove the leading whitespace \
-                         if this is a line of its own, or keep the clause on its declaration's \
-                         line"
-                            .into(),
-                        &mut errors,
-                    );
-                    continue;
-                }
+            let [_, Tok::Str(prose)] = tokens.as_slice() else {
+                fail(
+                    "description syntax: `description \"<prose>\"` (quoted), and nothing \
+                     else on the indented line"
+                        .into(),
+                    &mut errors,
+                );
+                continue;
             };
             let Some((word, faults_before)) = over else {
                 fail(
@@ -3268,6 +3260,24 @@ fn parse_state_set(attrs: &[Tok], start: usize) -> Result<(Vec<String>, usize), 
     }
 }
 
+/// The leading whitespace every non-blank line of `text` shares, compared as
+/// an exact string: a tab and four spaces share nothing, so mixed indentation
+/// is never guessed at.
+fn common_indent(text: &str) -> &str {
+    let mut shared: Option<&str> = None;
+    for line in text.lines().filter(|l| !l.trim().is_empty()) {
+        let indent = &line[..line.len() - line.trim_start().len()];
+        shared = Some(match shared {
+            None => indent,
+            Some(s) => {
+                let n = s.chars().zip(indent.chars()).take_while(|(a, b)| a == b).count();
+                &s[..s.char_indices().nth(n).map_or(s.len(), |(i, _)| i)]
+            }
+        });
+    }
+    shared.unwrap_or("")
+}
+
 /// The declaration a `description` continuation line attaches to, by index
 /// into the list its line pushed onto.
 enum Carrier {
@@ -3969,7 +3979,7 @@ flow S -> A : matter \"in\"
     #[test]
     fn a_continuation_with_nothing_directly_above_is_a_fault() {
         for src in [
-            "    description \"orphan\"\n",
+            "component A\n@lens mobus\n\n    description \"orphan\"\n",
             "component A\n\n    description \"after a blank\"\n",
             "component A\n# note\n    description \"after a comment\"\n",
         ] {
@@ -4017,18 +4027,68 @@ flow S -> A : matter \"in\"
     }
 
     #[test]
-    fn an_indented_line_carries_a_description_and_nothing_else() {
-        for (src, needle) in [
-            ("component A\n    primitive Combining\n", "only `description"),
-            ("component A\n    component B\n", "only `description"),
-            ("component A\n    description bare\n", "description syntax"),
-            ("component A\n    description \"x\" primitive Combining\n", "description syntax"),
+    fn an_indented_description_takes_prose_and_nothing_else() {
+        for src in [
+            "component A\n    description bare\n",
+            "component A\n    description \"x\" primitive Combining\n",
         ] {
             let got = faults(src);
             assert_eq!(got.len(), 1, "{src:?} -> {got:?}");
             assert_eq!(got[0].0, 2);
-            assert!(got[0].1.contains(needle), "{got:?}");
+            assert!(got[0].1.contains("description syntax"), "{got:?}");
         }
+    }
+
+    /// Indentation meant nothing before v1.5, so an indented line that does
+    /// not open with `description` still means what it always did.
+    #[test]
+    fn any_other_indented_line_reads_as_it_always_has() {
+        let json = |src| serde_json::to_string(&parse_sl(src).unwrap()).unwrap();
+        assert_eq!(
+            json("component A\n    component B\n\tsource S\n  flow S -> A\n"),
+            json("component A\ncomponent B\nsource S\nflow S -> A\n")
+        );
+        assert_eq!(
+            faults("component A\n    primitive Combining\n"),
+            faults("component A\nprimitive Combining\n")
+        );
+        let m = parse_sl("component A\n  component B\n      description \"b\"\n").unwrap();
+        assert_eq!(m.things[1].description, "b");
+    }
+
+    /// A wholly indented paste is its dedented self — model, continuations,
+    /// and fault lines alike.
+    #[test]
+    fn a_wholly_indented_file_is_its_dedented_self() {
+        let plain = "system \"S\"\ndescription \"the whole\"\n\ncomponent A\n    description \"a\"\n\
+                     # note\nsource S\nflow S -> A : matter \"in\"\n\tdescription \"moves\"\n";
+        let json = |src: &str| serde_json::to_string(&parse_sl(src).unwrap()).unwrap();
+        for indent in ["  ", "\t", " \t "] {
+            let pasted: String =
+                plain.lines().map(|l| if l.is_empty() { "\n".into() } else { format!("{indent}{l}\n") }).collect();
+            assert_eq!(json(&pasted), json(plain), "indent {indent:?}");
+        }
+        let m = parse_sl(plain).unwrap();
+        assert_eq!((m.description.as_str(), m.things[0].description.as_str()), ("the whole", "a"));
+
+        let broken = "component A\n\nflow A -> Nowhere\n    description \"x\"\nbogus line\n";
+        let pasted: String = broken.lines().map(|l| format!("    {l}\n")).collect();
+        assert_eq!(faults(&pasted), faults(broken));
+        assert_eq!(faults(broken).iter().map(|f| f.0).collect::<Vec<_>>(), [3, 4, 5]);
+    }
+
+    /// The shared indent is an exact string prefix: a tab and spaces share
+    /// nothing, so only what every line truly has in common is dropped.
+    #[test]
+    fn the_shared_indent_is_compared_as_an_exact_prefix() {
+        assert_eq!(common_indent("  a\n  \tb\n\n   c\n"), "  ");
+        assert_eq!(common_indent("\ta\n    b\n"), "");
+        assert_eq!(common_indent("a\n    b\n"), "");
+        assert_eq!(common_indent("\n\n"), "");
+        // Tab-indented declaration, space-indented prose: nothing shared, so
+        // the prose is a continuation and the declaration parses as ever.
+        let m = parse_sl("\tcomponent A\n    description \"a\"\n").unwrap();
+        assert_eq!(m.things[0].description, "a");
     }
 
     /// An indented comment is still only a comment — and, like any comment,
