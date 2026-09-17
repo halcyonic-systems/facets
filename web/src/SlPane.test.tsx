@@ -40,7 +40,7 @@ describe("SlPane — manual authoring is preserved", () => {
         onCompiled={noop}
         onClose={noop}
         canvasModel={null}
-        coauthor={{ turns: [], onDraft: async () => {}, onCorrect: async () => {} }}
+        coauthor={{ turns: [], onDraft: async () => ({ produced: true }), onCorrect: async () => ({ produced: true }) }}
       />,
     );
     // Both the mode switch AND the manual editor/Compile are present —
@@ -62,8 +62,8 @@ describe("SlPane — manual authoring is preserved", () => {
         canvasModel={null}
         coauthor={{
           turns: [],
-          onDraft: async () => {},
-          onCorrect: async () => {},
+          onDraft: async () => ({ produced: true }),
+          onCorrect: async () => ({ produced: true }),
           seed: { description: "a bathtub with a faucet and a drain", nonce: 1 },
         }}
       />,

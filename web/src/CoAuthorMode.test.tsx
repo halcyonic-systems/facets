@@ -14,8 +14,8 @@ import {
   setReasonerConfigBackend,
 } from "./reasoner";
 
-const noopDraft = async () => {};
-const noopCorrect = async () => {};
+const noopDraft = async () => ({ produced: true });
+const noopCorrect = async () => ({ produced: true });
 const noopLoad = () => {};
 
 /** #199: the drafting surface only exists once the reasoner is on. */

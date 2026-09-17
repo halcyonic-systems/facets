@@ -17,6 +17,10 @@ export class ReasonerOffError extends Error {
   }
 }
 
+function pageOrigin(): string {
+  return typeof location === "undefined" ? "unknown" : location.origin;
+}
+
 /** The one place a reasoner request is made. Off is off; an unreachable
  *  endpoint is named; the desktop CSP case is called by its name instead of
  *  arriving as a bare `TypeError: Load failed`.
@@ -49,7 +53,9 @@ async function post(route: string, body: unknown): Promise<Record<string, unknow
       );
     }
     throw new Error(
-      `Could not reach the reasoner at ${endpoint}. Check that it is running and that the address is right.`,
+      `Could not reach the reasoner at ${endpoint}. Check that it is running and that the address is right. ` +
+        `If it is running, it may be refusing requests from this page's address (${pageOrigin()}): ` +
+        `a browser does not say which, and a reasoner only answers the page addresses it has been told to allow.`,
     );
   }
   if (res.status === 401) {

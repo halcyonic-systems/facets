@@ -66,6 +66,7 @@ import {
   runCorrectionTurn,
   saveCoauthorTurns,
   type CoauthorSeed,
+  type DraftOutcome,
   type CoauthorTurn,
   type DraftStage,
 } from "./coauthor";
@@ -1072,7 +1073,7 @@ function Workspace() {
   // the SAME SL text, never a separate write path. A failed compile or an
   // unreachable drafter still lands as a turn and still populates the text
   // (nothing hidden — the author can hand-fix a near-miss draft).
-  async function coauthorDraft(description: string, onStage?: (stage: DraftStage) => void) {
+  async function coauthorDraft(description: string, onStage?: (stage: DraftStage) => void): Promise<DraftOutcome> {
     const id = newTurnId();
     const lens = canvasModel?.lens;
     // The author's standing choice, read at draft time (drafterModel.ts, the
@@ -1087,11 +1088,12 @@ function Workspace() {
     try {
       ({ sl, answeredModel, modelMs, modelCalls } = await draftSlWithRetry(description, lens, onStage, requestedModel));
     } catch (e) {
+      const errorText = e instanceof Error ? e.message : String(e);
       setCoauthorTurns((ts) => [
-        { id, description, sl: "", at: new Date().toISOString(), status: "network-error", errorText: e instanceof Error ? e.message : String(e), requestedModel },
+        { id, description, sl: "", at: new Date().toISOString(), status: "network-error", errorText, requestedModel },
         ...ts,
       ]);
-      return;
+      return { produced: false };
     }
     setSlText(sl);
     const outcome = compileSl(sl);
@@ -1102,11 +1104,12 @@ function Workspace() {
         { id, description, sl, at: new Date().toISOString(), status: "compile-error", errorText, model: answeredModel, requestedModel, modelMs, modelCalls },
         ...ts,
       ]);
-      return;
+      return { produced: true };
     }
     setSlErrors([]);
     await onSlCompiled(outcome.ok, outcome.lens_explicit, true, id);
     setCoauthorTurns((ts) => [{ id, description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls }, ...ts]);
+    return { produced: true };
   }
 
   // #314 the correction turn — "this is good as far as it goes, but you've
@@ -1208,9 +1211,9 @@ function Workspace() {
     turnId: string,
     correction: string,
     onStage?: (stage: DraftStage) => void,
-  ) {
+  ): Promise<DraftOutcome> {
     const target = coauthorTurns.find((t) => t.id === turnId);
-    if (!target || !target.sl.trim() || !correction.trim()) return;
+    if (!target || !target.sl.trim() || !correction.trim()) return { produced: false };
     // The findings are shown to the drafter only when the model on the canvas
     // IS this turn's SL. Correcting an older turn while a different model is
     // compiled would otherwise hand the drafter complaints about something
@@ -1232,17 +1235,18 @@ function Workspace() {
     });
     if (outcome.kind === "network-error") {
       setCoauthorTurns((ts) => [outcome.turn, ...ts]);
-      return;
+      return { produced: false };
     }
     setSlText(outcome.sl);
     if (outcome.kind === "compile-error") {
       setSlErrors(outcome.errors);
       setCoauthorTurns((ts) => [outcome.turn, ...ts]);
-      return;
+      return { produced: true };
     }
     setSlErrors([]);
     await onSlCompiled(outcome.model, outcome.lensExplicit, true, outcome.turn.id);
     setCoauthorTurns((ts) => [outcome.turn, ...ts]);
+    return { produced: true };
   }
 
   // File → New: a blank canvas to author a model from scratch (the #14 path — no

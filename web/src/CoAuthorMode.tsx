@@ -7,7 +7,7 @@
 // deliberately deferred); history persists across reloads (coauthor.ts,
 // localStorage, no cap).
 import { useEffect, useRef, useState } from "react";
-import { slChangeSummary, splitHistory, type CoauthorSeed, type CoauthorTurn, type DraftStage } from "./coauthor";
+import { slChangeSummary, splitHistory, type CoauthorSeed, type CoauthorTurn, type DraftOutcome, type DraftStage } from "./coauthor";
 import { ReasonerGate } from "./ReasonerGate";
 import { isLoopback, reasonerConfig, setReasonerConfig, subscribeReasoner } from "./reasoner";
 import { drafterModel, drafterModelOptions, setDrafterModel, subscribeDrafterModel } from "./drafterModel";
@@ -147,11 +147,11 @@ export function CoAuthorMode({
    *  Owned by the parent so accept/discard (fired from the canvas banner)
    *  can update the SAME turn's status. `onStage` (#218) reports the drafter
    *  loop's real progress — asking / compiling / retrying — as it happens. */
-  onDraft: (description: string, onStage?: (stage: DraftStage) => void) => Promise<void>;
+  onDraft: (description: string, onStage?: (stage: DraftStage) => void) => Promise<DraftOutcome>;
   /** #314: say what is wrong with a past turn's draft and get a revision. The
    *  parent runs the same ask/compile/preview sequence a first draft runs, so
    *  the correction changes what the drafter writes and nothing else. */
-  onCorrect: (turnId: string, correction: string, onStage?: (stage: DraftStage) => void) => Promise<void>;
+  onCorrect: (turnId: string, correction: string, onStage?: (stage: DraftStage) => void) => Promise<DraftOutcome>;
   /** Load a past turn's SL back into the pane's text (manual editing, or
    *  retrying an old draft) — switches the pane back to the SL view. */
   onLoad: (sl: string) => void;
@@ -200,8 +200,10 @@ export function CoAuthorMode({
     setBusy(true);
     setError(null);
     try {
-      await onDraft(text.trim(), setStage);
-      setDescription("");
+      // An ask that produced nothing keeps the words in the box, so Draft is
+      // the retry; the failed turn just below says what went wrong.
+      const outcome = await onDraft(text.trim(), setStage);
+      if (outcome.produced) setDescription("");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -230,9 +232,11 @@ export function CoAuthorMode({
     setBusy(true);
     setError(null);
     try {
-      await onCorrect(turnId, correction.trim(), setStage);
-      setCorrection("");
-      setCorrectingId(null);
+      const outcome = await onCorrect(turnId, correction.trim(), setStage);
+      if (outcome.produced) {
+        setCorrection("");
+        setCorrectingId(null);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
