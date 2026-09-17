@@ -771,12 +771,12 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
 
     let mut comp_idx: i64 = 0;
     let mut env_idx: i64 = 0;
-    // (systems index, thing id, name, authored protocol) per
+    // (systems index, thing id, name, authored protocol, description) per
     // interface-designated component.
-    let mut designated: Vec<(usize, u64, &str, &str)> = Vec::new();
-    // (thing id, name, protocol) per FUSED pass-way — an Interface record
-    // alone, never a subsystem (#226).
-    let mut fused_passways: Vec<(u64, &str, &str)> = Vec::new();
+    let mut designated: Vec<(usize, u64, &str, &str, &str)> = Vec::new();
+    // (thing id, name, protocol, description) per FUSED pass-way — an
+    // Interface record alone, never a subsystem (#226).
+    let mut fused_passways: Vec<(u64, &str, &str, &str)> = Vec::new();
     // component thing id → its systems[] index (the fusion's parent_interface
     // back-pointer needs to find the processor's subsystem).
     let mut sys_idx_of: HashMap<u64, usize> = HashMap::new();
@@ -784,7 +784,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
         match t.role {
             Role::Component => {
                 if fused_to.contains_key(&t.id) {
-                    fused_passways.push((t.id, &t.name, &t.protocol));
+                    fused_passways.push((t.id, &t.name, &t.protocol, &t.description));
                     continue;
                 }
                 let id = Id {
@@ -837,7 +837,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     }
                 }
                 if t.interface {
-                    designated.push((systems.len() - 1, t.id, &t.name, &t.protocol));
+                    designated.push((systems.len() - 1, t.id, &t.name, &t.protocol, &t.description));
                 }
                 id_map.insert(t.id, id);
             }
@@ -902,7 +902,9 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
         .map(|t| t.id)
         .collect();
     let mut iface_of: HashMap<u64, Id> = HashMap::new();
-    for (seq, (sys_idx, thing_id, name, authored_protocol)) in designated.into_iter().enumerate() {
+    for (seq, (sys_idx, thing_id, name, authored_protocol, description)) in
+        designated.into_iter().enumerate()
+    {
         let iface_id = Id {
             ty: IdType::Interface,
             indices: vec![0, seq as i64],
@@ -937,7 +939,10 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             _ => InterfaceType::Hybrid, // both, or flowless (direction unbound)
         };
         systems[0].boundary.interfaces.push(Interface {
-            info: info(iface_id.clone(), 0, name),
+            // The author's prose rides the Interface record too (#347): a
+            // reader of the projected model meets the pass-way here, not at
+            // the subsystem behind it.
+            info: described(iface_id.clone(), 0, name, description),
             // The author's protocol wins (#333, Listing 4.2); the flow-label
             // join is the fallback for interfaces that never declared one.
             protocol: if authored_protocol.is_empty() {
@@ -959,7 +964,9 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
     // the original BERT settled on — and the crossing flows re-anchor to the
     // processor in the interaction loop below.
     let fused_seq_base = systems[0].boundary.interfaces.len();
-    for (seq, (thing_id, name, authored_protocol)) in fused_passways.into_iter().enumerate() {
+    for (seq, (thing_id, name, authored_protocol, description)) in
+        fused_passways.into_iter().enumerate()
+    {
         let iface_id = Id {
             ty: IdType::Interface,
             indices: vec![0, (fused_seq_base + seq) as i64],
@@ -991,7 +998,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             _ => InterfaceType::Hybrid,
         };
         systems[0].boundary.interfaces.push(Interface {
-            info: info(iface_id.clone(), 0, name),
+            info: described(iface_id.clone(), 0, name, description),
             protocol: if authored_protocol.is_empty() {
                 labels.join(" · ")
             } else {
@@ -1964,6 +1971,37 @@ mod tests {
         authored.things[0].protocol = "badge required".into();
         let world = project(&authored);
         assert_eq!(world.systems[0].boundary.interfaces[0].protocol, "badge required");
+    }
+
+    /// #347: an interface's description reaches the projected Interface
+    /// record, on both shapes an interface projects through — the fused
+    /// pass-way (a record alone) and the designated component. The third
+    /// interface separates the check: undescribed stays empty.
+    #[test]
+    fn an_interface_description_survives_projection() {
+        let model = crate::sl::parse_sl(
+            "interface Gate\n    description \"the intake\"\n\
+             component Core\n\
+             component Vent interface description \"the exhaust\"\n\
+             component Drain interface\n\
+             source Mine\nsink Air\nsink Sewer\n\
+             flow Mine -> Gate : matter \"ore\"\n\
+             flow Gate -> Core : matter \"ore\"\n\
+             flow Core -> Vent : matter \"gas\"\n\
+             flow Vent -> Air : matter \"gas\"\n\
+             flow Core -> Drain : matter \"slag\"\n\
+             flow Drain -> Sewer : matter \"slag\"\n",
+        )
+        .unwrap();
+        let world = project(&model);
+        let described = |name: &str| {
+            let ifaces = &world.systems[0].boundary.interfaces;
+            let i = ifaces.iter().find(|i| i.info.name == name);
+            i.unwrap_or_else(|| panic!("no interface {name}")).info.description.clone()
+        };
+        assert_eq!(described("Gate"), "the intake");
+        assert_eq!(described("Vent"), "the exhaust");
+        assert_eq!(described("Drain"), "");
     }
 
     /// Law (#213 / SSF #31): a component stamped `interface` with no crossing
