@@ -905,10 +905,12 @@
     color: var(--ink-faint); margin-bottom: 6px;
   }
   .lens-strip-shared { color: var(--ink-dim); font-size: 0.88rem; font-style: italic; line-height: 1.5; margin-bottom: 4px; }
-  .conv-lens-head.has-reading { display: grid; grid-template-columns: 7.5rem 1fr auto; column-gap: 14px; }
+  .conv-lens-head.has-reading { display: grid; grid-template-columns: 8.5rem 1fr auto; column-gap: 14px; }
+  .conv-lens-who { display: flex; flex-direction: column; gap: 1px; }
   .conv-lens-reading { font-size: 0.92rem; line-height: 1.55; color: var(--ink-dim); }
   @media (max-width: 600px) {
     .conv-lens-head.has-reading { grid-template-columns: 1fr auto; row-gap: 2px; }
+    .conv-lens-who { flex-direction: row; align-items: baseline; gap: 8px; }
     .conv-lens-head.has-reading .conv-lens-reading { grid-column: 1 / -1; grid-row: 2; }
   }
   .lens-snippet { color: var(--ink-faint); font-size: 0.84rem; font-style: italic; line-height: 1.5; }
@@ -3872,11 +3874,12 @@ function appendLensStrip(container, m, tab) {
     const nm = (MODE_CONFIGS[l.mode] && MODE_CONFIGS[l.mode].names) || {};
     const dimWords = (l.dimensions || []).map(d => nm[d] || d);
     const dimText = dimWords.slice(0, 3).join(', ') + (dimWords.length > 3 ? '…' : '');
-    // A reading says what this lens sees in this question, so it replaces the fixed role line
-    // and the raw passage snippet. Answers stored before readings existed keep the old card.
+    // A reading says what this lens sees in this question, so it replaces the dimension words
+    // and the raw passage snippet; the role stays, since it is all a newcomer has to go on. Answers stored before readings existed keep the old card.
     if (l.reading) {
       head.classList.add('has-reading');
-      head.innerHTML = '<span class="conv-lens-name">' + (LENS_LABEL[l.mode] || l.mode) + '</span>'
+      head.innerHTML = '<span class="conv-lens-who"><span class="conv-lens-name">' + (LENS_LABEL[l.mode] || l.mode) + '</span>'
+        + '<span class="conv-lens-role">' + (LENS_ROLE[l.mode] || '') + '</span></span>'
         + '<span class="conv-lens-reading"></span>'
         + '<span class="conv-lens-caret">Consult&nbsp;▾</span>';
       head.querySelector('.conv-lens-reading').textContent = l.reading;
