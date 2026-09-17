@@ -302,6 +302,22 @@ describe("the answering model is what gets shown", () => {
     expect(m).toContain("Careful or Fast is offered with claude-opus-5 and claude-sonnet-5.");
   });
 
+  it("names each derived stamp on the turn, so the record keeps what the drafter left off", () => {
+    const turns: CoauthorTurn[] = [
+      {
+        id: "1",
+        description: "a kettle",
+        sl: "system Kettle",
+        at: "2026-09-17T00:00:00.000Z",
+        status: "previewing",
+        model: "claude-opus-5",
+        repairs: ["interface stamped on Pot (carries hot water to Cup)"],
+      },
+    ];
+    const m = renderToStaticMarkup(<CoAuthorMode turns={turns} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />);
+    expect(m).toContain("Added for the drafter: interface stamped on Pot (carries hot water to Cup).");
+  });
+
   it("names the mode on the drafter line only when the answering model takes it", () => {
     expect(drafterLine({ model: "claude-opus-5", modelMs: 8200, modelCalls: 1, effort: "fast" })).toBe(
       "Drafted by claude-opus-5 on Fast in 8.2s.",

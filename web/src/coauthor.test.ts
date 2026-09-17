@@ -3,8 +3,18 @@
 // stubs the same in-memory Storage contract; the real thing is confirmed live
 // in a browser (see the PR's manual verification note).
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loadCoauthorTurns, saveCoauthorTurns, draftSlWithRetry, splitHistory, type DraftStage } from "./coauthor";
+import {
+  FLOWLESS_INTERFACE_NOTE,
+  loadCoauthorTurns,
+  saveCoauthorTurns,
+  draftSlWithRetry,
+  repairsPhrase,
+  splitHistory,
+  stampInterfacesFromCrossings,
+  type DraftStage,
+} from "./coauthor";
 import type { CoauthorTurn } from "./coauthor";
+import type { CanvasModel, Relation, Thing } from "./kernel/types";
 
 // #218: draftSlWithRetry's stage callback — the loop already knows which
 // attempt it is on; these tests pin the exact sequence a caller sees, since
@@ -15,7 +25,8 @@ const compileSlMock = vi.hoisted(() => vi.fn());
 // findings, so every pre-M1 test reads exactly as it did.
 const validateModeMock = vi.hoisted(() => vi.fn((..._args: unknown[]) => ({ issues: [] as unknown[] })));
 vi.mock("./gsr", () => ({ authorSl: authorSlMock }));
-vi.mock("./kernel", () => ({ compileSl: compileSlMock, validateMode: validateModeMock }));
+const emitSlMock = vi.hoisted(() => vi.fn());
+vi.mock("./kernel", () => ({ compileSl: compileSlMock, emitSl: emitSlMock, validateMode: validateModeMock }));
 
 class MemoryStorage {
   private store = new Map<string, string>();
@@ -241,9 +252,9 @@ describe("draftSlWithRetry asks the kernel after a clean compile (#377 M1)", () 
     const out = await draftSlWithRetry("an aquarium", "Mobus");
     expect(out).toMatchObject({ sl: "still flat", modelCalls: 2 });
     expect(authorSlMock).toHaveBeenCalledTimes(2);
-    // The kernel is asked only about the FIRST compiling draft; the repaired
-    // draft is the caller's to compile and review.
-    expect(validateModeMock).toHaveBeenCalledTimes(1);
+    // Since #399 the healed draft is read too, so a missing stamp on it can
+    // still be derived. Reading is not asking: the heal budget stays at one.
+    expect(validateModeMock).toHaveBeenCalledTimes(2);
   });
 
   it("a repair that no longer compiles is parse-healed on the same budget", async () => {
@@ -419,5 +430,213 @@ describe("splitHistory (what the pane shows before the history is opened)", () =
     expect(ids(s.current)).toEqual(["n", "p", "c"]);
     expect(ids(s.past)).toEqual(["o"]);
     expect(ids(s.discarded)).toEqual([]);
+  });
+});
+
+// #399 — the named interface-stamp repair, on first drafts and corrections.
+//
+// Across 162 kernel-scored first drafts every refusal was a crossing flow
+// landing on an unstamped component, a stamp with no crossing, or both. The
+// first has one repair and the drafter's own flow states it; the second has
+// two and nothing says which. So the first is derived here and the second
+// goes back to the drafter.
+const t = (id: number, name: string, role: Thing["role"], extra: Partial<Thing> = {}): Thing =>
+  ({ id, name, x: 0, y: 0, role, ...extra }) as Thing;
+const rel = (id: number, a: number, b: number, name: string, is_bond = true): Relation =>
+  ({ id, a, b, name, is_bond, kind: "Matter" }) as Relation;
+
+/** A kettle as a drafter writes it: every crossing wired, no stamp anywhere. */
+function kettle(): CanvasModel {
+  return {
+    lens: "Mobus",
+    things: [
+      t(1, "Element", "Component"),
+      t(2, "Pot", "Component"),
+      t(3, "Vent", "Component"),
+      t(4, "Lid", "Component"),
+      t(5, "Thermostat", "Component"),
+      t(10, "Mains", "Environment", { env_kind: "Source" }),
+      t(11, "Cup", "Environment", { env_kind: "Sink" }),
+      t(12, "Room", "Environment", { env_kind: "Neutral" }),
+    ],
+    relations: [
+      rel(1, 10, 1, "power"),
+      rel(2, 1, 2, "heat"),
+      rel(3, 2, 11, "hot water"),
+      rel(4, 3, 12, "steam"),
+      rel(5, 12, 3, "draught"),
+      rel(6, 4, 12, "seal", false),
+      rel(7, 5, 1, "switch"),
+    ],
+    boundary: { porosity: 0, perceptive_fuzziness: 0 },
+  };
+}
+
+const MISSING = (k: number) => ({
+  severity: "Error",
+  code: "crossing_flow_without_interface",
+  location: `interactions[${k}].sink_interface`,
+  message: "flow crosses the boundary without an interface",
+});
+
+describe("stampInterfacesFromCrossings on a first draft (#399)", () => {
+  it("stamps the carrier of a source, a sink and an environment crossing, in either direction", () => {
+    const { model } = stampInterfacesFromCrossings(kettle());
+    const stamped = model.things.filter((x) => x.interface).map((x) => x.name);
+    expect(stamped).toEqual(["Element", "Pot", "Vent"]);
+  });
+
+  it("does not read a `mere` relation as a crossing, nor an internal flow", () => {
+    const { model } = stampInterfacesFromCrossings(kettle());
+    expect(model.things.find((x) => x.name === "Lid")?.interface).toBeFalsy();
+    expect(model.things.find((x) => x.name === "Thermostat")?.interface).toBeFalsy();
+  });
+
+  it("records one line per stamp, naming every crossing the component carries", () => {
+    const { repairs } = stampInterfacesFromCrossings(kettle());
+    expect(repairs).toEqual([
+      "interface stamped on Element (carries power from Mains)",
+      "interface stamped on Pot (carries hot water to Cup)",
+      "interface stamped on Vent (carries steam to Room, draught from Room)",
+    ]);
+  });
+
+  it("never removes a stamp, flowless or not", () => {
+    const over = kettle();
+    over.things = over.things.map((x) => (x.name === "Lid" || x.name === "Pot" ? { ...x, interface: true } : x));
+    const { model, repairs } = stampInterfacesFromCrossings(over);
+    expect(model.things.find((x) => x.name === "Lid")?.interface).toBe(true);
+    expect(model.things.find((x) => x.name === "Pot")?.interface).toBe(true);
+    expect(repairs.some((l) => l.includes("Lid") || l.includes("Pot"))).toBe(false);
+  });
+
+  it("is idempotent: a stamped model comes back by identity with nothing to report", () => {
+    const once = stampInterfacesFromCrossings(kettle());
+    const twice = stampInterfacesFromCrossings(once.model);
+    expect(twice.model).toBe(once.model);
+    expect(twice.repairs).toEqual([]);
+  });
+
+  it("says the repairs in the notice the way the interior path always has", () => {
+    expect(repairsPhrase([])).toBe("");
+    expect(repairsPhrase(["a"])).toBe("; 1 interface stamp derived from the crossings (the drafter left it off)");
+    expect(repairsPhrase(["a", "b"])).toBe("; 2 interface stamps derived from the crossings (the drafter left them off)");
+  });
+});
+
+describe("draftSlWithRetry derives a missing stamp instead of asking again (#399)", () => {
+  beforeEach(() => {
+    authorSlMock.mockReset();
+    compileSlMock.mockReset();
+    emitSlMock.mockReset();
+    validateModeMock.mockReset();
+    validateModeMock.mockReturnValue({ issues: [] });
+  });
+
+  it("a draft whose only fault is the missing stamp makes ONE model call", async () => {
+    const drafted = kettle();
+    const recompiled = stampInterfacesFromCrossings(kettle()).model;
+    authorSlMock.mockResolvedValueOnce({ sl: "kettle as drafted", model: "claude-opus-5", latencyMs: 9000 });
+    compileSlMock
+      .mockReturnValueOnce({ ok: drafted, lens_explicit: true })
+      .mockReturnValueOnce({ ok: recompiled, lens_explicit: true });
+    emitSlMock.mockReturnValueOnce("kettle, stamped");
+    validateModeMock.mockReturnValueOnce({ issues: [MISSING(0), MISSING(2), MISSING(3)] }).mockReturnValueOnce({ issues: [] });
+    const stages: DraftStage[] = [];
+    const out = await draftSlWithRetry("a kettle", "Mobus", (s) => stages.push(s));
+
+    expect(authorSlMock).toHaveBeenCalledTimes(1);
+    expect(out.modelCalls).toBe(1);
+    // The text handed on is the kernel's emission of the stamped model, and
+    // the verdict that cleared it was reached on what that text compiles to.
+    expect(out.sl).toBe("kettle, stamped");
+    expect(emitSlMock.mock.calls[0][0].things.filter((x: Thing) => x.interface).map((x: Thing) => x.name)).toEqual([
+      "Element",
+      "Pot",
+      "Vent",
+    ]);
+    expect(compileSlMock).toHaveBeenLastCalledWith("kettle, stamped");
+    expect(validateModeMock).toHaveBeenLastCalledWith(recompiled, "Operational");
+    expect(out.repairs).toHaveLength(3);
+    expect(stages.some((s) => s.kind === "kernel-retry")).toBe(false);
+  });
+
+  it("an over-stamped draft still goes to the heal loop, with both repairs named", async () => {
+    const over = stampInterfacesFromCrossings(kettle()).model;
+    over.things = over.things.map((x) => (x.name === "Lid" ? { ...x, interface: true } : x));
+    authorSlMock
+      .mockResolvedValueOnce({ sl: "kettle, Lid stamped", model: "claude-opus-5" })
+      .mockResolvedValueOnce({ sl: "kettle, healed", model: "claude-opus-5" });
+    compileSlMock.mockReturnValue({ ok: over, lens_explicit: true });
+    validateModeMock.mockReturnValueOnce({ issues: [FLOWLESS_FILTER] }).mockReturnValueOnce({ issues: [] });
+    const out = await draftSlWithRetry("a kettle", "Mobus");
+
+    expect(authorSlMock).toHaveBeenCalledTimes(2);
+    expect(emitSlMock).not.toHaveBeenCalled();
+    expect(out.repairs).toEqual([]);
+    expect(out.sl).toBe("kettle, healed");
+    const heal = authorSlMock.mock.calls[1][0];
+    expect(heal.priorSl).toBe("kettle, Lid stamped");
+    expect(heal.errors).toContain(FLOWLESS_INTERFACE_NOTE);
+    expect(heal.errors).toMatch(/remove `interface`/);
+    expect(heal.errors).toMatch(/add the flow/);
+    expect(heal.errors).toMatch(/`mere` relation never counts/);
+  });
+
+  it("names both repairs only for that fault, and as the harness's words", async () => {
+    authorSlMock
+      .mockResolvedValueOnce({ sl: "a", model: "m" })
+      .mockResolvedValueOnce({ sl: "b", model: "m" });
+    compileSlMock.mockReturnValue({ ok: MOBUS_MODEL, lens_explicit: true });
+    validateModeMock.mockReturnValueOnce({ issues: [{ ...FLOWLESS_FILTER, code: "dead_end", message: "dead end at Pump" }] });
+    await draftSlWithRetry("an aquarium", "Mobus");
+    expect(authorSlMock.mock.calls[1][0].errors).not.toContain("authoring harness");
+    expect(FLOWLESS_INTERFACE_NOTE).toMatch(/^Note from the authoring harness, not the kernel/);
+  });
+
+  it("a draft missing a stamp AND over-stamped is stamped first, then healed from the stamped text", async () => {
+    const drafted = kettle();
+    drafted.things = drafted.things.map((x) => (x.name === "Lid" ? { ...x, interface: true } : x));
+    const recompiled = stampInterfacesFromCrossings(drafted).model;
+    authorSlMock
+      .mockResolvedValueOnce({ sl: "drafted", model: "m" })
+      .mockResolvedValueOnce({ sl: "healed", model: "m" });
+    compileSlMock
+      .mockReturnValueOnce({ ok: drafted, lens_explicit: true })
+      .mockReturnValueOnce({ ok: recompiled, lens_explicit: true })
+      .mockReturnValueOnce({ ok: recompiled, lens_explicit: true });
+    emitSlMock.mockReturnValueOnce("stamped");
+    validateModeMock
+      .mockReturnValueOnce({ issues: [MISSING(0), FLOWLESS_FILTER] })
+      .mockReturnValueOnce({ issues: [FLOWLESS_FILTER] })
+      .mockReturnValueOnce({ issues: [] });
+    const out = await draftSlWithRetry("a kettle", "Mobus");
+    const heal = authorSlMock.mock.calls[1][0];
+    expect(heal.priorSl).toBe("stamped");
+    expect(heal.errors).toContain("1 error");
+    expect(out.repairs).toHaveLength(3);
+    expect(out.modelCalls).toBe(2);
+  });
+
+  it("leaves the draft as written when the emitter cannot write the stamped model", async () => {
+    authorSlMock
+      .mockResolvedValueOnce({ sl: "drafted", model: "m" })
+      .mockResolvedValueOnce({ sl: "healed", model: "m" });
+    compileSlMock.mockReturnValue({ ok: kettle(), lens_explicit: true });
+    emitSlMock.mockImplementationOnce(() => {
+      throw new Error("a name holds a quote");
+    });
+    validateModeMock.mockReturnValueOnce({ issues: [MISSING(0)] }).mockReturnValueOnce({ issues: [] });
+    const out = await draftSlWithRetry("a kettle", "Mobus");
+    expect(authorSlMock.mock.calls[1][0].priorSl).toBe("drafted");
+    expect(out.repairs).toEqual([]);
+  });
+
+  it("stamps nothing under a lens whose mode never raises the refusal", async () => {
+    authorSlMock.mockResolvedValueOnce({ sl: "drafted", model: "m" });
+    compileSlMock.mockReturnValueOnce({ ok: { ...kettle(), lens: "Bunge" }, lens_explicit: true });
+    const out = await draftSlWithRetry("a kettle", "Bunge");
+    expect(emitSlMock).not.toHaveBeenCalled();
+    expect(out).toMatchObject({ sl: "drafted", repairs: [] });
   });
 });

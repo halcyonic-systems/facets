@@ -63,6 +63,7 @@ import {
   kernelFindingsBrief,
   newTurnId,
   loadCoauthorTurns,
+  repairsPhrase,
   runCorrectionTurn,
   saveCoauthorTurns,
   type CoauthorSeed,
@@ -1088,8 +1089,9 @@ function Workspace() {
     let answeredModel = "";
     let modelMs: number | undefined;
     let modelCalls = 0;
+    let repairs: string[] = [];
     try {
-      ({ sl, answeredModel, modelMs, modelCalls } = await draftSlWithRetry(description, lens, onStage, requestedModel, undefined, effortOnWire(effort)));
+      ({ sl, answeredModel, modelMs, modelCalls, repairs } = await draftSlWithRetry(description, lens, onStage, requestedModel, undefined, effortOnWire(effort)));
     } catch (e) {
       const errorText = e instanceof Error ? e.message : String(e);
       setCoauthorTurns((ts) => [
@@ -1111,7 +1113,11 @@ function Workspace() {
     }
     setSlErrors([]);
     await onSlCompiled(outcome.ok, outcome.lens_explicit, true, id);
-    setCoauthorTurns((ts) => [{ id, description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls, ...mode }, ...ts]);
+    if (repairs.length > 0) setNotice(`SL compiled — previewing (Accept to keep, Discard to revert)${repairsPhrase(repairs)}`);
+    setCoauthorTurns((ts) => [
+      { id, description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls, ...mode, ...(repairs.length > 0 ? { repairs } : {}) },
+      ...ts,
+    ]);
     return { produced: true };
   }
 
@@ -1170,6 +1176,9 @@ function Workspace() {
     const { sl, answeredModel, modelMs, modelCalls } = result;
     setSlText(sl);
     const adopted = adoptInterior(sl, canvasModel);
+    // The draft loop stamps under the kernel's refusal and hands back text
+    // that already carries it; the adopt step's own pass catches what is left.
+    const repairs = adopted.kind === "compiled" ? [...result.repairs, ...adopted.repairs] : result.repairs;
     if (adopted.kind === "compile-error") {
       const errorText = adopted.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
       setSlErrors(adopted.errors);
@@ -1190,7 +1199,7 @@ function Workspace() {
     setSelectedRelationId(null);
     setActiveTurnId(id);
     setCoauthorTurns((ts) => [
-      { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls, ...mode, repairs: adopted.repairs },
+      { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls, ...mode, repairs },
       ...ts,
     ]);
     // The seam, judged now rather than on the way out: the parent's contract
@@ -1207,7 +1216,7 @@ function Workspace() {
     }
     const still = pendingCrossings(adopted.model).length;
     const lost = adopted.lostCrossings.length > 0 ? `; ${adopted.lostCrossings.length} crossing${adopted.lostCrossings.length === 1 ? "" : "s"} lost a stand-in (${adopted.lostCrossings.join(", ")})` : "";
-    const repaired = adopted.repairs.length > 0 ? `; ${adopted.repairs.length} interface stamp${adopted.repairs.length === 1 ? "" : "s"} derived from the crossings (the drafter left ${adopted.repairs.length === 1 ? "it" : "them"} off)` : "";
+    const repaired = repairsPhrase(repairs);
     setNotice(
       `Interior drafted — previewing (Accept to keep, Discard to revert)${seam}${repaired}${still > 0 ? `; ${still} crossing${still === 1 ? "" : "s"} still landing on the system` : ""}${lost}`,
     );
@@ -1252,6 +1261,9 @@ function Workspace() {
     }
     setSlErrors([]);
     await onSlCompiled(outcome.model, outcome.lensExplicit, true, outcome.turn.id);
+    if (outcome.turn.repairs?.length) {
+      setNotice(`SL compiled — previewing (Accept to keep, Discard to revert)${repairsPhrase(outcome.turn.repairs)}`);
+    }
     setCoauthorTurns((ts) => [outcome.turn, ...ts]);
     return { produced: true };
   }

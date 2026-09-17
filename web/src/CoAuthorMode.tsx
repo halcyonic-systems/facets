@@ -330,6 +330,13 @@ export function CoAuthorMode({
           {drafterLine(t)}
         </p>
       )}
+      {/* What this draft carries that the drafter did not write. Named on
+          the turn so the record keeps the drafter's own miss. */}
+      {t.repairs?.map((line) => (
+        <p key={line} className="mb-1 text-[10px]" style={{ color: "var(--text-muted)" }} data-testid="coauthor-repair">
+          Added for the drafter: {line}.
+        </p>
+      ))}
       {t.errorText && (
         <pre
           className="mb-1 whitespace-pre-wrap p-1 text-[10px]"
