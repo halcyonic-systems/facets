@@ -102,6 +102,13 @@ describe("CoAuthorMode", () => {
     );
     expect(off).toContain("a data center with cooling and power");
     expect(off).toContain("Turn on the co-author");
+    // The author already pressed Draft once; the gate's button says that
+    // turning on will carry that ask through, and only says so in this case.
+    expect(off).toContain("Turn on and draft");
+    const plain = renderToStaticMarkup(
+      <CoAuthorMode turns={[]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
+    );
+    expect(plain).not.toContain("Turn on and draft");
   });
 
   it("renders a previewing turn with its description and SL", () => {

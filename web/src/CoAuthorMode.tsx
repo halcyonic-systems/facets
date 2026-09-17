@@ -156,8 +156,9 @@ export function CoAuthorMode({
    *  retrying an old draft) — switches the pane back to the SL view. */
   onLoad: (sl: string) => void;
   /** A description arriving from the start surface. It fills the box, and it
-   *  is drafted at once only when the reasoner is already on: with it off, the
-   *  gate below is the next step and nothing is sent (#199). */
+   *  is drafted at once only when the reasoner is already on. With it off the
+   *  gate is the next step and nothing is sent (#199); turning it on there is
+   *  the go-ahead, and the button says it will draft. */
   seed?: CoauthorSeed | null;
   onSeedTaken?: () => void;
 }) {
@@ -204,6 +205,7 @@ export function CoAuthorMode({
       // the retry; the failed turn just below says what went wrong.
       const outcome = await onDraft(text.trim(), setStage);
       if (outcome.produced) setDescription("");
+      else if (outcome.error) setError(outcome.error);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -214,12 +216,16 @@ export function CoAuthorMode({
 
   // The ref outlives StrictMode's second effect pass, so one hand-off is one ask.
   const seedTaken = useRef<number | null>(null);
+  // A handed-over description that met a closed gate. The author already
+  // pressed Draft once, so opening the gate carries that ask through.
+  const [awaitingGate, setAwaitingGate] = useState(() => Boolean(seed) && !reasonerConfig().enabled);
   useEffect(() => {
     if (!seed || seedTaken.current === seed.nonce) return;
     seedTaken.current = seed.nonce;
     setDescription(seed.description);
     onSeedTaken?.();
     if (reasonerConfig().enabled) void draft(seed.description);
+    else setAwaitingGate(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seed]);
 
@@ -236,7 +242,7 @@ export function CoAuthorMode({
       if (outcome.produced) {
         setCorrection("");
         setCorrectingId(null);
-      }
+      } else if (outcome.error) setError(outcome.error);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -442,11 +448,6 @@ export function CoAuthorMode({
           style={{ background: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--hairline)" }}
           placeholder="e.g. a home thermostat with a sensor, a controller, and a furnace"
         />
-        {error && (
-          <div className="mt-1 text-xs" style={{ color: "var(--verdict-error)" }}>
-            {error}
-          </div>
-        )}
         {reasoner.enabled && (
           <label className="mt-2 flex flex-wrap items-center gap-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
             <span>Drafts with</span>
@@ -468,9 +469,14 @@ export function CoAuthorMode({
         <ReasonerGate
           config={reasoner}
           detail={drafterModelOptions(reasoner.endpoint).find((o) => o.value === model)?.where}
+          turnOnLabel={awaitingGate && description.trim() ? "Turn on and draft" : undefined}
           onChange={(next) => {
             setError(null);
-            void setReasonerConfig(next);
+            const carry = awaitingGate && next.enabled && !reasoner.enabled;
+            setAwaitingGate(false);
+            void setReasonerConfig(next).then(() => {
+              if (carry) void draft();
+            });
           }}
         />
         {reasoner.enabled && (
@@ -494,6 +500,13 @@ export function CoAuthorMode({
                 ? `${stageLabel(stage, reasoner.endpoint, model)} (${Math.floor(elapsedMs / 1000)}s)`
                 : "LLM proposes · kernel checks · you accept"}
             </span>
+          </div>
+        )}
+        {/* Under the Draft row, so an ask that failed says so where the author
+            is looking and the retry is the button just above. */}
+        {error && (
+          <div className="mt-2 text-xs" style={{ color: "var(--verdict-error)" }} data-testid="coauthor-error">
+            {error}
           </div>
         )}
       </div>

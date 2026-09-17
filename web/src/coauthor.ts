@@ -108,9 +108,9 @@ export function saveCoauthorTurns(turns: CoauthorTurn[]): void {
 
 /** What a draft or correction ask came to, as the pane needs to know it.
  *  `produced` is true when there is SL text to look at, compiled or faulty.
- *  When the drafter could not be reached there is none: the failed turn in
- *  the history says why, and the pane stays on the tab that shows it. */
-export type DraftOutcome = { produced: boolean };
+ *  When the drafter could not be reached there is none, and `error` carries
+ *  why, so the pane can stay where the author is and say so under Draft. */
+export type DraftOutcome = { produced: boolean; error?: string };
 
 /** A description handed to the co-author tab from outside it (the start
  *  surface). `nonce` tells one hand-off from the next, so the same words sent
