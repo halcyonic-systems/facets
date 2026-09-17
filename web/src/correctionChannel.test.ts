@@ -62,7 +62,14 @@ describe("a correction cannot reach a verdict", () => {
   // compiler's own output) and what comes back travels one way, rendered to
   // text, into the next request. Nothing here can mint a model any other way,
   // and the brand gate above still stops a verdict being minted from text.
-  it("the correction module's only kernel imports are the compiler and the mode gate", () => {
+  //
+  // #399 adds a third, `emitSl`, for the one named repair
+  // (`stampInterfacesFromCrossings`). It is a TEXT door: the stamped model is
+  // written out as SL and that text goes back through `compileSl`, so the
+  // model that travels onward is still the compiler's output and nothing
+  // else. The repair reads the drafter's own flows; no word of a correction
+  // reaches it. `runCorrectionTurn`'s identity test binds the rest.
+  it("the correction module's only kernel imports are the compiler, the emitter and the mode gate", () => {
     const src = readFileSync(join(SRC, "coauthor.ts"), "utf8");
     const imports = [...src.matchAll(/import\s+(?:type\s+)?\{([^}]*)\}\s+from\s+"\.\/kernel"/g)];
     expect(imports.length, "coauthor.ts should import from ./kernel exactly once").toBe(1);
@@ -70,7 +77,7 @@ describe("a correction cannot reach a verdict", () => {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    expect(named).toEqual(["compileSl", "validateMode"]);
+    expect(named).toEqual(["compileSl", "emitSl", "validateMode"]);
   });
 
   // And it holds no verdict type at all, so there is nothing for a future

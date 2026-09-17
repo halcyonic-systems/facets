@@ -63,6 +63,8 @@ import {
   kernelFindingsBrief,
   newTurnId,
   loadCoauthorTurns,
+  ranUnder,
+  repairsPhrase,
   runCorrectionTurn,
   saveCoauthorTurns,
   type CoauthorSeed,
@@ -71,6 +73,7 @@ import {
   type DraftStage,
 } from "./coauthor";
 import { drafterModel } from "./drafterModel";
+import { chosenEffort, effortOnWire } from "./draftEffort";
 import { adoptInterior, draftInteriorWithRetry } from "./interior";
 import { pendingCrossings } from "./canvas/crossings";
 import {
@@ -1081,16 +1084,21 @@ function Workspace() {
     // every turn beside the model that answered — the pane names the answering
     // one and, when they differ, says so.
     const requestedModel = drafterModel();
+    const effort = chosenEffort(requestedModel);
+    let mode: Pick<CoauthorTurn, "effort" | "effortRan" | "effortDropped"> = effort ? { effort } : {};
     let sl = "";
     let answeredModel = "";
     let modelMs: number | undefined;
     let modelCalls = 0;
+    let repairs: string[] = [];
     try {
-      ({ sl, answeredModel, modelMs, modelCalls } = await draftSlWithRetry(description, lens, onStage, requestedModel));
+      const drafted = await draftSlWithRetry(description, lens, onStage, requestedModel, undefined, effortOnWire(effort));
+      ({ sl, answeredModel, modelMs, modelCalls, repairs } = drafted);
+      mode = { ...mode, ...ranUnder(drafted) };
     } catch (e) {
       const errorText = e instanceof Error ? e.message : String(e);
       setCoauthorTurns((ts) => [
-        { id, description, sl: "", at: new Date().toISOString(), status: "network-error", errorText, requestedModel },
+        { id, description, sl: "", at: new Date().toISOString(), status: "network-error", errorText, requestedModel, ...mode },
         ...ts,
       ]);
       return { produced: false, error: errorText };
@@ -1101,14 +1109,18 @@ function Workspace() {
       const errorText = outcome.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
       setSlErrors(outcome.errors);
       setCoauthorTurns((ts) => [
-        { id, description, sl, at: new Date().toISOString(), status: "compile-error", errorText, model: answeredModel, requestedModel, modelMs, modelCalls },
+        { id, description, sl, at: new Date().toISOString(), status: "compile-error", errorText, model: answeredModel, requestedModel, modelMs, modelCalls, ...mode },
         ...ts,
       ]);
       return { produced: true };
     }
     setSlErrors([]);
     await onSlCompiled(outcome.ok, outcome.lens_explicit, true, id);
-    setCoauthorTurns((ts) => [{ id, description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls }, ...ts]);
+    if (repairs.length > 0) setNotice(`SL compiled — previewing (Accept to keep, Discard to revert)${repairsPhrase(repairs)}`);
+    setCoauthorTurns((ts) => [
+      { id, description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls, ...mode, ...(repairs.length > 0 ? { repairs } : {}) },
+      ...ts,
+    ]);
     return { produced: true };
   }
 
@@ -1142,6 +1154,8 @@ function Workspace() {
     }
     const id = newTurnId();
     const requestedModel = drafterModel();
+    const effort = chosenEffort(requestedModel);
+    const mode = effort ? { effort } : {};
     const description = `the interior of "${component.name}"`;
     setInteriorStage({ kind: "asking" });
     let result;
@@ -1151,24 +1165,29 @@ function Workspace() {
         canvasModel.lens,
         setInteriorStage,
         requestedModel,
+        effortOnWire(effort),
       );
     } catch (e) {
       setInteriorStage(null);
       setCoauthorTurns((ts) => [
-        { id, kind: "interior", description, sl: "", at: new Date().toISOString(), status: "network-error", errorText: e instanceof Error ? e.message : String(e), requestedModel },
+        { id, kind: "interior", description, sl: "", at: new Date().toISOString(), status: "network-error", errorText: e instanceof Error ? e.message : String(e), requestedModel, ...mode },
         ...ts,
       ]);
       return;
     }
     setInteriorStage(null);
     const { sl, answeredModel, modelMs, modelCalls } = result;
+    const ran = { ...mode, ...ranUnder(result) };
     setSlText(sl);
     const adopted = adoptInterior(sl, canvasModel);
+    // The draft loop stamps under the kernel's refusal and hands back text
+    // that already carries it; the adopt step's own pass catches what is left.
+    const repairs = adopted.kind === "compiled" ? [...result.repairs, ...adopted.repairs] : result.repairs;
     if (adopted.kind === "compile-error") {
       const errorText = adopted.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
       setSlErrors(adopted.errors);
       setCoauthorTurns((ts) => [
-        { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "compile-error", errorText, model: answeredModel, requestedModel, modelMs, modelCalls },
+        { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "compile-error", errorText, model: answeredModel, requestedModel, modelMs, modelCalls, ...ran },
         ...ts,
       ]);
       return;
@@ -1184,7 +1203,7 @@ function Workspace() {
     setSelectedRelationId(null);
     setActiveTurnId(id);
     setCoauthorTurns((ts) => [
-      { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls, repairs: adopted.repairs },
+      { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls, ...ran, repairs },
       ...ts,
     ]);
     // The seam, judged now rather than on the way out: the parent's contract
@@ -1201,7 +1220,7 @@ function Workspace() {
     }
     const still = pendingCrossings(adopted.model).length;
     const lost = adopted.lostCrossings.length > 0 ? `; ${adopted.lostCrossings.length} crossing${adopted.lostCrossings.length === 1 ? "" : "s"} lost a stand-in (${adopted.lostCrossings.join(", ")})` : "";
-    const repaired = adopted.repairs.length > 0 ? `; ${adopted.repairs.length} interface stamp${adopted.repairs.length === 1 ? "" : "s"} derived from the crossings (the drafter left ${adopted.repairs.length === 1 ? "it" : "them"} off)` : "";
+    const repaired = repairsPhrase(repairs);
     setNotice(
       `Interior drafted — previewing (Accept to keep, Discard to revert)${seam}${repaired}${still > 0 ? `; ${still} crossing${still === 1 ? "" : "s"} still landing on the system` : ""}${lost}`,
     );
@@ -1231,6 +1250,7 @@ function Workspace() {
       findings,
       lens: canvasModel?.lens,
       requestedModel: drafterModel(),
+      effort: chosenEffort(drafterModel()),
       onStage,
     });
     if (outcome.kind === "network-error") {
@@ -1245,6 +1265,9 @@ function Workspace() {
     }
     setSlErrors([]);
     await onSlCompiled(outcome.model, outcome.lensExplicit, true, outcome.turn.id);
+    if (outcome.turn.repairs?.length) {
+      setNotice(`SL compiled — previewing (Accept to keep, Discard to revert)${repairsPhrase(outcome.turn.repairs)}`);
+    }
     setCoauthorTurns((ts) => [outcome.turn, ...ts]);
     return { produced: true };
   }

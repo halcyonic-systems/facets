@@ -101,6 +101,42 @@ the correction path (#314).
 are refused by the kernel and repaired by the drafter before the canvas
 draws anything.
 
+#### 3.1.1 The one derived repair: the `interface` stamp (2026-09-09, widened 2026-09-17)
+
+One refusal is not sent back. When a drafted flow runs between a component
+and a source, sink or environment thing and the component lacks `interface`,
+the kernel refuses it (`crossing_flow_without_interface`) and its own message
+names the fix: add `interface` to the component line. Under Mobus a component
+that carries a membrane crossing is a member of I by definition (SSF
+`bipartite_implies_boundary_complete`), so the stamp adds nothing the
+drafter's flow did not already assert. `stampInterfacesFromCrossings`
+(`web/src/coauthor.ts`) reads it off the flow. A `mere` relation is not a
+crossing and is never read as one.
+
+It began on interior drafts ([#377](https://github.com/halcyonic-systems/facets/issues/377)
+M3, ruled after the first hand walk) and since
+[#399](https://github.com/halcyonic-systems/facets/issues/399) runs on every
+draft: first drafts, interiors and corrections. Across 162 kernel-scored first
+drafts every refusal was this fault, its converse, or both, and two prompt
+iterations moved neither. The repair sits between the compile and the verdict,
+and only when the kernel has raised that refusal, so a draft whose only fault
+was the missing stamp costs one model call instead of two. The stamped model is
+written back to SL by the kernel's emitter and that text is compiled again, so
+the text in the pane, the model on the canvas and the verdict are about the
+same thing. The emitter writes canonical SL: the drafter's comments and layout
+do not survive a repaired draft.
+
+Named, never silent. Each stamp is a line on the turn and a clause in the
+notice, so the record keeps the drafter's real failure rate on this claim and
+the author still sees the stamp at the accept gate.
+
+The converse is **not** repaired. A component stamped `interface` that carries
+no crossing (`interface_carries_no_flow`) goes back to the drafter. The stamp
+is a positive assertion and the missing flow is an absence; two repairs are
+possible (drop the stamp, or add the flow the drafter forgot) and nothing in
+the text says which. The heal ask names both, under the harness's own name
+rather than the kernel's.
+
 ### 3.2 The prompt teaches the three claims and the archetype
 
 Replace decoration with definition, in `SL_AUTHORING_PROMPT` (GSR

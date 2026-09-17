@@ -5,9 +5,10 @@
 // both call this. No new LLM plumbing — `authorSl` (GSR /author-sl) and
 // `compile_sl` (kernel, deterministic) already exist.
 import { authorSl } from "./gsr";
-import { compileSl, validateMode } from "./kernel";
+import { compileSl, emitSl, validateMode } from "./kernel";
 import type { CanvasModel, Lens, SlError, VerdictFields } from "./kernel/types";
 import { MODE_BY_LENS, findingsPhrase } from "./review";
+import { effortOnWire, type DraftEffort } from "./draftEffort";
 import { isContinuationLine } from "./sl/mode";
 
 /** One draft attempt, kept for the resident dock's history. `previewing` means
@@ -36,6 +37,16 @@ export type CoauthorTurn = {
   modelMs?: number;
   /** How many asks that total covers. */
   modelCalls?: number;
+  /** Careful or Fast, as asked (draftEffort.ts). Recorded only when the
+   *  requested drafter takes the setting; absent otherwise, and on turns
+   *  recorded before it existed. */
+  effort?: DraftEffort;
+  /** The effort the answering call RAN under, from the reasoner's response:
+   *  `"low"`, or null for the drafter's own default. Absent when the reasoner
+   *  did not say, which is unknown and is shown as nothing. */
+  effortRan?: string | null;
+  /** The reasoner was asked for an effort and the drafter did not take it. */
+  effortDropped?: boolean;
   /** #314. `"draft"` (or absent, on turns recorded before corrections existed)
    *  is a first draft from a description. `"correction"` is the author telling
    *  the drafter what is wrong with an existing draft and getting a revision.
@@ -49,10 +60,11 @@ export type CoauthorTurn = {
   correction?: string;
   /** Correction turns: the id of the turn whose SL was being corrected. */
   correctsTurnId?: string;
-  /** Interior turns (#377 M3): the named repairs the adopt step applied to
-   *  the drafter's text, one line each — today only the `interface` stamp
-   *  derived from a crossing flow (`stampInterfacesFromCrossings`). Kept so
-   *  the transcript and the ledger show what the drafter did NOT do. */
+  /** The named repairs applied to the drafter's text, one line each — today
+   *  only the `interface` stamp derived from a crossing flow
+   *  (`stampInterfacesFromCrossings`; interior turns since #377 M3, every
+   *  turn since #399). Kept so the transcript and the ledger show what the
+   *  drafter did NOT do. */
   repairs?: string[];
   /** Correction turns: the SL that went IN, so the record holds both sides of
    *  the change rather than only the result. */
@@ -171,7 +183,140 @@ export type DraftResult = {
   /** How many asks that total covers (1 on a clean first-try draft). Shown
    *  with the time so a retried turn's number is not read as one call. */
   modelCalls: number;
+  /** What the reasoner said about effort on the ask that produced `sl`
+   *  (see `CoauthorTurn.effortRan`). Absent when it said nothing. */
+  effortRan?: string | null;
+  effortDropped?: boolean;
+  /** The named repairs `sl` carries that the drafter did not write, one line
+   *  each (`stampInterfacesFromCrossings`). Empty on an untouched draft. */
+  repairs: string[];
 };
+
+/** The one repair made on the drafter's behalf, and why it is
+ *  a derivation rather than a minted claim.
+ *
+ *  Ruled 2026-09-09 after the first hand walk of M3: draw 2 wired all three
+ *  crossings to interior components and left `interface` off them, so
+ *  Operational mode refused the model three times over. The kernel's own
+ *  message for that refusal ends: "If this component IS the pass-way, the
+ *  merged form stays valid: add `interface` to its component line." Under
+ *  Mobus a component that carries a membrane crossing is a member of I by
+ *  definition (SSF `bipartite_implies_boundary_complete`: every external flow
+ *  passes through an interface), so the stamp adds no information the flow
+ *  did not already assert — it reads the drafter's own flow back in the
+ *  kernel's vocabulary. That is why it may be applied without a human, and
+ *  it is the ONLY level claim this step will ever touch: `primitive` and a
+ *  door are judgments about the inside of a component, which no flow
+ *  asserts, and they stay the drafter's to make and the human's to accept.
+ *
+ *  Named, not silent: every stamp is returned as a line, recorded on the
+ *  turn beside parse heals and kernel repairs, and said in the notice — so
+ *  the ledger keeps the drafter's real failure rate on this claim and the
+ *  human still sees the stamp at the gate. A pending crossing (one no flow
+ *  took) is untouched: it is the human's or the drafter's to realise.
+ *
+ *  Extended 2026-09-17 from interior drafts to first drafts and corrections
+ *  (#399). Across 162 kernel-scored first drafts every refusal was this
+ *  missing stamp, its converse, or both, and two prompt iterations moved
+ *  neither. A crossing reads the same at every level: a flow between a
+ *  component and a source, sink or environment thing, in either direction.
+ *  A `mere` relation is not one (the kernel never counts it).
+ *
+ *  ADD-ONLY, and the converse fault is deliberately out of reach. An
+ *  `interface` stamp that carries no flow (`interface_carries_no_flow`) is
+ *  never removed here: the drafter's stamp is a positive assertion and the
+ *  missing flow is an absence, so two repairs are possible (drop the stamp,
+ *  or add the flow the drafter forgot) and nothing in the text says which.
+ *  That one goes back to the drafter through the heal loop
+ *  (`FLOWLESS_INTERFACE_NOTE`). */
+export function stampInterfacesFromCrossings(model: CanvasModel): { model: CanvasModel; repairs: string[] } {
+  const env = new Map(model.things.filter((t) => t.role === "Environment").map((t) => [t.id, t.name]));
+  const carriers = new Map<number, string[]>();
+  for (const r of model.relations) {
+    if (!r.is_bond) continue;
+    const from = env.get(r.a);
+    const to = env.get(r.b);
+    if (from !== undefined && !env.has(r.b)) {
+      carriers.set(r.b, [...(carriers.get(r.b) ?? []), `${r.name || "a flow"} from ${from}`]);
+    } else if (to !== undefined && !env.has(r.a)) {
+      carriers.set(r.a, [...(carriers.get(r.a) ?? []), `${r.name || "a flow"} to ${to}`]);
+    }
+  }
+  const repairs: string[] = [];
+  const things = model.things.map((t) => {
+    if (t.role !== "Component" || t.interface) return t;
+    const carried = carriers.get(t.id);
+    if (!carried) return t;
+    repairs.push(`interface stamped on ${t.name || "an unnamed component"} (carries ${carried.join(", ")})`);
+    return { ...t, interface: true };
+  });
+  return repairs.length === 0 ? { model, repairs } : { model: { ...model, things }, repairs };
+}
+
+/** The reasoner's word on effort, as a turn keeps it. */
+export function ranUnder(r: Pick<DraftResult, "effortRan" | "effortDropped">): Pick<CoauthorTurn, "effortRan" | "effortDropped"> {
+  return {
+    ...(r.effortRan !== undefined ? { effortRan: r.effortRan } : {}),
+    ...(r.effortDropped !== undefined ? { effortDropped: r.effortDropped } : {}),
+  };
+}
+
+/** The repairs as the notice says them, so all three draft paths read alike. */
+export function repairsPhrase(repairs: readonly string[]): string {
+  const n = repairs.length;
+  if (n === 0) return "";
+  return `; ${n} interface stamp${n === 1 ? "" : "s"} derived from the crossings (the drafter left ${n === 1 ? "it" : "them"} off)`;
+}
+
+/** SL v1 cannot write every model (a name holding a quote, say), and the
+ *  emitter says so by throwing. */
+function emitOrNull(model: CanvasModel): string | null {
+  try {
+    return emitSl(model);
+  } catch {
+    return null;
+  }
+}
+
+/** The emitter writes an `@pos` for every thing and an `@lens`; a drafter
+ *  almost never does. Left in, they would pin the whole layout of a repaired
+ *  draft, so later pane edits stop re-running the auto-layout. Keep only the
+ *  annotations the drafter wrote: `@lens` by exact trimmed line, `@pos` by
+ *  thing name. A stopgap: #302 stage 2 (`reemit_sl`, authored-only `@pos` and
+ *  comment preservation, kernel-side) replaces this filter. */
+export function keepAuthoredAnnotations(emitted: string, drafted: string): string {
+  const posName = (line: string) => /^@pos\s+(?:"([^"]*)"|(\S+))/.exec(line.trim());
+  const lenses = new Set<string>();
+  const placed = new Set<string>();
+  for (const raw of drafted.split("\n")) {
+    const line = raw.trim();
+    if (line.startsWith("@lens")) lenses.add(line);
+    const m = posName(line);
+    if (m) placed.add(m[1] ?? m[2]);
+  }
+  return emitted
+    .split("\n")
+    .filter((raw) => {
+      const line = raw.trim();
+      if (line.startsWith("@lens")) return lenses.has(line);
+      const m = posName(line);
+      return m ? placed.has(m[1] ?? m[2]) : true;
+    })
+    .join("\n");
+}
+
+const MISSING_STAMP = "crossing_flow_without_interface";
+const FLOWLESS_INTERFACE = "interface_carries_no_flow";
+
+/** What the heal ask adds when the kernel refuses a flowless interface. The
+ *  harness's words, kept apart from the kernel's findings and said to be so:
+ *  the fault has two repairs and the brief names both, because a drafter told
+ *  only "carries no flow" tends to keep the stamp and invent nothing. */
+export const FLOWLESS_INTERFACE_NOTE =
+  "Note from the authoring harness, not the kernel: an interface that carries no boundary-crossing flow has two repairs, " +
+  "and the description decides which. If nothing crosses the boundary at that component, remove `interface` from its component line. " +
+  "If a crossing was meant, add the flow between that component and a source, sink or environment. " +
+  "A `mere` relation never counts as a crossing.";
 
 /** #314. What an ask starts FROM, when it does not start from nothing.
  *
@@ -242,6 +387,7 @@ export async function correctSlWithRetry(req: {
   findings?: string;
   lens?: Lens;
   model?: string;
+  effort?: "low";
   onStage?: (stage: DraftStage) => void;
 }): Promise<DraftResult> {
   return draftSlWithRetry(
@@ -250,6 +396,7 @@ export async function correctSlWithRetry(req: {
     req.onStage,
     req.model ?? "",
     { sl: req.priorSl, findings: req.findings },
+    req.effort,
   );
 }
 
@@ -269,32 +416,52 @@ export async function correctSlWithRetry(req: {
  *    parser, so a draft that stamped `interface` on five flowless components
  *    compiled clean, drew, and left its four refusals behind the Review button.
  *
+ *  Between the compile and that verdict sits the one named repair (#399):
+ *  when the kernel refuses a crossing flow for want of an interface, the
+ *  stamp is read off the drafter's own flow (`stampInterfacesFromCrossings`)
+ *  and the text is re-emitted by the kernel from the stamped model, so the SL
+ *  returned, the model it compiles to and the verdict are about one thing. A
+ *  draft whose only fault was the missing stamp needs no second ask. The
+ *  repair is keyed to the kernel's refusal, never to a guess made here, so a
+ *  lens with no interface concept is never stamped. The re-emitted text is
+ *  the kernel's canonical form: the drafter's comments and layout do not
+ *  survive it, which is the price of the text and the model agreeing.
+ *
+ *  Every compiling draft is judged, the healed one included, so a repair ask
+ *  that comes back without a stamp is still adopted. The heal budget is
+ *  unchanged: one ask.
+ *
  *  The lens read is the one asked for, or the compiled model's own when the
  *  caller named none — the same lens the canvas will judge the draft under.
  *
  *  `model` (the author's choice, "" = the reasoner's default) carries through
  *  every retry, so a heal never silently changes drafters; the answering model
  *  is re-read on every ask, so the reported one is the one that wrote the SL
- *  being returned. */
+ *  being returned. `effort` rides every ask the same way, so a heal is never
+ *  drafted at a different setting than the draft it repairs. */
 export async function draftSlWithRetry(
   description: string,
   lens?: Lens,
   onStage?: (stage: DraftStage) => void,
   model = "",
   prior?: PriorDraft,
+  effort?: "low",
 ): Promise<DraftResult> {
   const latencies: (number | undefined)[] = [];
   onStage?.({ kind: "asking" });
-  let { sl, model: answeredModel, latencyMs } = await authorSl({
+  let reply = await authorSl({
     description,
     lens,
     model,
     priorSl: prior?.sl,
     errors: prior?.findings,
+    effort,
   });
+  let { sl, model: answeredModel, latencyMs } = reply;
   latencies.push(latencyMs);
   let parseHeals = 0;
   let kernelHeals = 0;
+  const repairs: string[] = [];
   for (;;) {
     onStage?.({ kind: "compiling" });
     const outcome = compileSl(sl);
@@ -303,23 +470,42 @@ export async function draftSlWithRetry(
       parseHeals++;
       const errs = outcome.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
       onStage?.({ kind: "retrying", attempt: parseHeals + 1, maxAttempts: DRAFT_MAX_ATTEMPTS });
-      ({ sl, model: answeredModel, latencyMs } = await authorSl({ description, lens, model, priorSl: sl, errors: errs }));
+      reply = await authorSl({ description, lens, model, priorSl: sl, errors: errs, effort });
+      ({ sl, model: answeredModel, latencyMs } = reply);
       latencies.push(latencyMs);
       continue;
     }
-    if (kernelHeals >= 1) break;
     const readLens = lens ?? outcome.ok.lens;
-    const errors = validateMode(outcome.ok, MODE_BY_LENS[readLens]).issues.filter((i) => i.severity === "Error");
-    if (errors.length === 0) break;
+    const refusals = (m: CanvasModel) =>
+      validateMode(m, MODE_BY_LENS[readLens]).issues.filter((i) => i.severity === "Error");
+    let errors = refusals(outcome.ok);
+    if (errors.some((i) => i.code === MISSING_STAMP)) {
+      const stamped = stampInterfacesFromCrossings(outcome.ok);
+      const emitted = stamped.repairs.length > 0 ? emitOrNull(stamped.model) : null;
+      const text = emitted === null ? null : keepAuthoredAnnotations(emitted, sl);
+      const again = text === null ? null : compileSl(text);
+      // Judged on what the re-emitted text compiles to, not on the patched
+      // object. A model the emitter cannot write, or text that will not
+      // compile, goes to the heal loop as the drafter wrote it.
+      if (text !== null && again && "ok" in again) {
+        sl = text;
+        for (const line of stamped.repairs) if (!repairs.includes(line)) repairs.push(line);
+        errors = refusals(again.ok);
+      }
+    }
+    if (errors.length === 0 || kernelHeals >= 1) break;
     kernelHeals++;
     onStage?.({ kind: "kernel-retry", errors: errors.length });
-    ({ sl, model: answeredModel, latencyMs } = await authorSl({
+    const findings = kernelFindingsBrief(readLens, errors);
+    reply = await authorSl({
       description,
       lens,
       model,
       priorSl: sl,
-      errors: kernelFindingsBrief(readLens, errors),
-    }));
+      errors: errors.some((i) => i.code === FLOWLESS_INTERFACE) ? `${findings}\n\n${FLOWLESS_INTERFACE_NOTE}` : findings,
+      effort,
+    });
+    ({ sl, model: answeredModel, latencyMs } = reply);
     latencies.push(latencyMs);
   }
   const complete = latencies.every((ms) => typeof ms === "number");
@@ -329,6 +515,9 @@ export async function draftSlWithRetry(
     answeredModel,
     modelMs: complete ? latencies.reduce((a: number, ms) => a + (ms as number), 0) : undefined,
     modelCalls: latencies.length,
+    ...(reply.effortRan !== undefined ? { effortRan: reply.effortRan } : {}),
+    ...(reply.effortDropped !== undefined ? { effortDropped: reply.effortDropped } : {}),
+    repairs,
   };
 }
 
@@ -371,6 +560,9 @@ export async function runCorrectionTurn(req: {
   findings?: string;
   lens?: Lens;
   requestedModel?: string;
+  /** The author's Careful/Fast choice, recorded on the turn and sent as
+   *  `effort` only when the requested drafter takes it. */
+  effort?: DraftEffort;
   now?: () => string;
   onStage?: (stage: DraftStage) => void;
 }): Promise<CorrectionOutcome> {
@@ -386,6 +578,7 @@ export async function runCorrectionTurn(req: {
     priorFindings: req.findings,
     at,
     requestedModel,
+    ...(req.effort ? { effort: req.effort } : {}),
   };
 
   let result: DraftResult;
@@ -397,6 +590,7 @@ export async function runCorrectionTurn(req: {
       findings: req.findings,
       lens: req.lens,
       model: requestedModel,
+      effort: effortOnWire(req.effort),
       onStage: req.onStage,
     });
   } catch (e) {
@@ -406,8 +600,15 @@ export async function runCorrectionTurn(req: {
     };
   }
 
-  const { sl, answeredModel, modelMs, modelCalls } = result;
-  const provenance = { model: answeredModel, requestedModel, modelMs, modelCalls };
+  const { sl, answeredModel, modelMs, modelCalls, repairs } = result;
+  const provenance = {
+    model: answeredModel,
+    requestedModel,
+    modelMs,
+    modelCalls,
+    ...ranUnder(result),
+    ...(repairs.length > 0 ? { repairs } : {}),
+  };
 
   // THE GATE. The revised text is compiled before anything else happens to it.
   // A correction that does not compile is a turn in the history and a fault

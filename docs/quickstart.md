@@ -205,6 +205,12 @@ you draw on the canvas leaves the page. Change the address to a reasoner you run
 and nothing reaches Halcyonic. The kernel still judges everything the co-author
 produces: it drafts, it never decides systemhood.
 
+With `claude-opus-5` or `claude-sonnet-5` as the drafter, the tab offers
+**Careful** (the default: the drafter thinks first, often 30 to 60 seconds) or
+**Fast** (it answers sooner, often under 20). The choice changes how long the
+drafter deliberates and nothing else: the kernel checks every draft either way,
+and each turn in the history says which one wrote it.
+
 Running your own needs a service at that address, answering
 `POST /analyze` and `POST /author-sl`. The reference implementation, the General
 Systems Reasoner, is **not public**, so the co-author is currently out of reach

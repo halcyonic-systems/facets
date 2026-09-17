@@ -11,6 +11,7 @@ import { slChangeSummary, splitHistory, type CoauthorSeed, type CoauthorTurn, ty
 import { ReasonerGate } from "./ReasonerGate";
 import { isLoopback, reasonerConfig, setReasonerConfig, subscribeReasoner } from "./reasoner";
 import { drafterModel, drafterModelOptions, setDrafterModel, subscribeDrafterModel } from "./drafterModel";
+import { DRAFT_EFFORTS, draftEffort, effortApplies, setDraftEffort, subscribeDraftEffort } from "./draftEffort";
 import { Pill } from "./ui";
 
 type Tone = "neutral" | "ok" | "warning" | "error";
@@ -51,16 +52,31 @@ export function stageLabel(stage: DraftStage | null, endpoint: string, requested
  *  The time is the TURN's total model time, so a retried turn's number is not
  *  read as one call — the label names the call count whenever it is above one.
  *  The elapsed clock beside the Draft button is wall time and disappears when
- *  the turn lands; this is what remains in the record. */
+ *  the turn lands; this is what remains in the record.
+ *
+ *  Careful or Fast is named from the reasoner's own report of the call, never
+ *  from what was asked: "on Fast" only when it says the call ran at low
+ *  effort, "on Careful" only when it says the call ran at the drafter's
+ *  default, and a plain sentence when it dropped the setting. A reasoner that
+ *  says nothing about effort gets nothing said. */
 export function drafterLine(
-  turn: Pick<CoauthorTurn, "model" | "modelMs" | "modelCalls">,
+  turn: Pick<CoauthorTurn, "model" | "modelMs" | "modelCalls" | "effort" | "effortRan" | "effortDropped">,
 ): string | null {
   if (turn.model === undefined) return null;
-  const who = turn.model ? `Drafted by ${turn.model}` : "The reasoner did not name the model that answered";
-  if (turn.modelMs === undefined) return `${who}.`;
+  const mode =
+    turn.effortDropped || turn.effortRan === undefined
+      ? ""
+      : turn.effortRan === "low"
+        ? " on Fast"
+        : turn.effortRan === null && turn.effort === "careful"
+          ? " on Careful"
+          : "";
+  const dropped = turn.effortDropped ? " This drafter does not take the Careful or Fast setting." : "";
+  const who = turn.model ? `Drafted by ${turn.model}${mode}` : "The reasoner did not name the model that answered";
+  if (turn.modelMs === undefined) return `${who}.${dropped}`;
   const secs = (turn.modelMs / 1000).toFixed(1);
-  if ((turn.modelCalls ?? 1) > 1) return `${who} in ${secs}s of model time over ${turn.modelCalls} calls.`;
-  return `${who} in ${secs}s.`;
+  if ((turn.modelCalls ?? 1) > 1) return `${who} in ${secs}s of model time over ${turn.modelCalls} calls.${dropped}`;
+  return `${who} in ${secs}s.${dropped}`;
 }
 
 /** The honesty gate. GSR takes its cloud path only when it holds a key for the
@@ -184,6 +200,8 @@ export function CoAuthorMode({
   // the request cannot disagree about what was asked for.
   const [model, setModel] = useState(drafterModel);
   useEffect(() => subscribeDrafterModel(setModel), []);
+  const [effort, setEffort] = useState(draftEffort);
+  useEffect(() => subscribeDraftEffort(setEffort), []);
 
   // Ticks once a second only while a draft call is in flight — a bounded
   // "38s" reads as progress, an unmoving label reads as a hang (#218 item 3).
@@ -328,6 +346,13 @@ export function CoAuthorMode({
           {drafterLine(t)}
         </p>
       )}
+      {/* What this draft carries that the drafter did not write. Named on
+          the turn so the record keeps the drafter's own miss. */}
+      {t.repairs?.map((line) => (
+        <p key={line} className="mb-1 text-[10px]" style={{ color: "var(--text-muted)" }} data-testid="coauthor-repair">
+          Added for the drafter: {line}.
+        </p>
+      ))}
       {t.errorText && (
         <pre
           className="mb-1 whitespace-pre-wrap p-1 text-[10px]"
@@ -466,6 +491,39 @@ export function CoAuthorMode({
             </select>
           </label>
         )}
+        {reasoner.enabled &&
+          (effortApplies(model) ? (
+            <div
+              role="radiogroup"
+              aria-label="How the drafter works"
+              className="mt-2 flex flex-wrap items-center gap-2 text-[11px]"
+              style={{ color: "var(--text-muted)" }}
+              data-testid="draft-effort"
+            >
+              {DRAFT_EFFORTS.map((o) => (
+                <button
+                  key={o.value}
+                  role="radio"
+                  aria-checked={effort === o.value}
+                  onClick={() => setDraftEffort(o.value)}
+                  disabled={busy}
+                  className="rounded-full px-2 py-0.5 text-[11px]"
+                  style={{
+                    border: `1px solid ${effort === o.value ? "var(--accent)" : "var(--hairline)"}`,
+                    color: effort === o.value ? "var(--text-primary)" : "var(--text-secondary)",
+                    fontWeight: effort === o.value ? 600 : 400,
+                  }}
+                >
+                  {o.label}
+                </button>
+              ))}
+              <span>{DRAFT_EFFORTS.find((o) => o.value === effort)?.detail}. The kernel checks either way.</span>
+            </div>
+          ) : (
+            <p className="mt-2 text-[11px]" style={{ color: "var(--text-muted)" }} data-testid="draft-effort-na">
+              Careful or Fast is offered with claude-opus-5 and claude-sonnet-5.
+            </p>
+          ))}
         <ReasonerGate
           config={reasoner}
           detail={drafterModelOptions(reasoner.endpoint).find((o) => o.value === model)?.where}

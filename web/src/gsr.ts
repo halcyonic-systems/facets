@@ -101,13 +101,17 @@ export async function authorSl(req: {
    *  drafter heals near-misses instead of the human hand-fixing them. */
   priorSl?: string;
   errors?: string;
-}): Promise<{ sl: string; model: string; latencyMs?: number }> {
+  /** How hard the drafter thinks first (draftEffort.ts). Absent = the
+   *  drafter's own default; a reasoner that predates the field ignores it. */
+  effort?: "low";
+}): Promise<{ sl: string; model: string; latencyMs?: number; effortRan?: string | null; effortDropped?: boolean }> {
   const data = await post("/author-sl", {
     description: req.description,
     lens: req.lens ? req.lens.toLowerCase() : undefined,
     model: req.model ?? "", // "" = local default; "claude-…" = frontier opt-in
     prior_sl: req.priorSl,
     errors: req.errors,
+    effort: req.effort,
   });
   // The reasoner times its own call and reports it. Absent or unparseable
   // stays undefined: a turn that shows no time is honest, a turn that shows
@@ -117,6 +121,11 @@ export async function authorSl(req: {
     sl: String(data.sl ?? ""),
     model: String(data.model ?? ""),
     latencyMs: Number.isFinite(latency) && latency >= 0 ? latency : undefined,
+    // The effort the call actually ran under, as the reasoner reports it. A
+    // reasoner that predates the field sends no key, and a missing key stays
+    // undefined: unknown, never "default".
+    ...("effort" in data ? { effortRan: typeof data.effort === "string" ? data.effort : null } : {}),
+    ...("effort_dropped" in data ? { effortDropped: data.effort_dropped === true } : {}),
   };
 }
 
