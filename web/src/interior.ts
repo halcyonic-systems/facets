@@ -111,8 +111,9 @@ export function draftInteriorWithRetry(
   lens?: Lens,
   onStage?: (stage: DraftStage) => void,
   model = "",
+  effort?: "low",
 ): Promise<DraftResult> {
-  return draftSlWithRetry(buildInteriorBrief(ctx), lens ?? ctx.child.lens, onStage, model);
+  return draftSlWithRetry(buildInteriorBrief(ctx), lens ?? ctx.child.lens, onStage, model, undefined, effort);
 }
 
 /** What the drafted interior becomes: the compiled model, with the child's

@@ -132,6 +132,24 @@ describe("draftSlWithRetry stage reporting (#218)", () => {
     expect(validateModeMock).not.toHaveBeenCalled();
   });
 
+  it("carries effort on the first ask and on every heal, and omits it when none was given", async () => {
+    authorSlMock
+      .mockResolvedValueOnce({ sl: "bad", model: "claude-opus-5" })
+      .mockResolvedValueOnce({ sl: "system X", model: "claude-opus-5" });
+    compileSlMock
+      .mockReturnValueOnce({ errors: [{ line: 1, message: "bad" }] })
+      .mockReturnValueOnce({ ok: {}, lens_explicit: false });
+    await draftSlWithRetry("a thermostat", undefined, undefined, "claude-opus-5", undefined, "low");
+    expect(authorSlMock.mock.calls.map((c) => c[0].effort)).toEqual(["low", "low"]);
+
+    authorSlMock.mockReset();
+    compileSlMock.mockReset();
+    authorSlMock.mockResolvedValueOnce({ sl: "system X", model: "claude-opus-5" });
+    compileSlMock.mockReturnValueOnce({ ok: {}, lens_explicit: false });
+    await draftSlWithRetry("a thermostat", undefined, undefined, "claude-opus-5");
+    expect(authorSlMock.mock.calls[0][0].effort).toBeUndefined();
+  });
+
   it("works with no onStage callback at all (manual/legacy callers)", async () => {
     authorSlMock.mockResolvedValueOnce({ sl: "system X", model: "gemma4:12b" });
     compileSlMock.mockReturnValueOnce({ ok: {}, lens_explicit: false });

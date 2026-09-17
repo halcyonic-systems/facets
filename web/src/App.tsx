@@ -71,6 +71,7 @@ import {
   type DraftStage,
 } from "./coauthor";
 import { drafterModel } from "./drafterModel";
+import { chosenEffort, effortOnWire } from "./draftEffort";
 import { adoptInterior, draftInteriorWithRetry } from "./interior";
 import { pendingCrossings } from "./canvas/crossings";
 import {
@@ -1081,16 +1082,18 @@ function Workspace() {
     // every turn beside the model that answered — the pane names the answering
     // one and, when they differ, says so.
     const requestedModel = drafterModel();
+    const effort = chosenEffort(requestedModel);
+    const mode = effort ? { effort } : {};
     let sl = "";
     let answeredModel = "";
     let modelMs: number | undefined;
     let modelCalls = 0;
     try {
-      ({ sl, answeredModel, modelMs, modelCalls } = await draftSlWithRetry(description, lens, onStage, requestedModel));
+      ({ sl, answeredModel, modelMs, modelCalls } = await draftSlWithRetry(description, lens, onStage, requestedModel, undefined, effortOnWire(effort)));
     } catch (e) {
       const errorText = e instanceof Error ? e.message : String(e);
       setCoauthorTurns((ts) => [
-        { id, description, sl: "", at: new Date().toISOString(), status: "network-error", errorText, requestedModel },
+        { id, description, sl: "", at: new Date().toISOString(), status: "network-error", errorText, requestedModel, ...mode },
         ...ts,
       ]);
       return { produced: false };
@@ -1101,14 +1104,14 @@ function Workspace() {
       const errorText = outcome.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
       setSlErrors(outcome.errors);
       setCoauthorTurns((ts) => [
-        { id, description, sl, at: new Date().toISOString(), status: "compile-error", errorText, model: answeredModel, requestedModel, modelMs, modelCalls },
+        { id, description, sl, at: new Date().toISOString(), status: "compile-error", errorText, model: answeredModel, requestedModel, modelMs, modelCalls, ...mode },
         ...ts,
       ]);
       return { produced: true };
     }
     setSlErrors([]);
     await onSlCompiled(outcome.ok, outcome.lens_explicit, true, id);
-    setCoauthorTurns((ts) => [{ id, description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls }, ...ts]);
+    setCoauthorTurns((ts) => [{ id, description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls, ...mode }, ...ts]);
     return { produced: true };
   }
 
@@ -1142,6 +1145,8 @@ function Workspace() {
     }
     const id = newTurnId();
     const requestedModel = drafterModel();
+    const effort = chosenEffort(requestedModel);
+    const mode = effort ? { effort } : {};
     const description = `the interior of "${component.name}"`;
     setInteriorStage({ kind: "asking" });
     let result;
@@ -1151,11 +1156,12 @@ function Workspace() {
         canvasModel.lens,
         setInteriorStage,
         requestedModel,
+        effortOnWire(effort),
       );
     } catch (e) {
       setInteriorStage(null);
       setCoauthorTurns((ts) => [
-        { id, kind: "interior", description, sl: "", at: new Date().toISOString(), status: "network-error", errorText: e instanceof Error ? e.message : String(e), requestedModel },
+        { id, kind: "interior", description, sl: "", at: new Date().toISOString(), status: "network-error", errorText: e instanceof Error ? e.message : String(e), requestedModel, ...mode },
         ...ts,
       ]);
       return;
@@ -1168,7 +1174,7 @@ function Workspace() {
       const errorText = adopted.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
       setSlErrors(adopted.errors);
       setCoauthorTurns((ts) => [
-        { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "compile-error", errorText, model: answeredModel, requestedModel, modelMs, modelCalls },
+        { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "compile-error", errorText, model: answeredModel, requestedModel, modelMs, modelCalls, ...mode },
         ...ts,
       ]);
       return;
@@ -1184,7 +1190,7 @@ function Workspace() {
     setSelectedRelationId(null);
     setActiveTurnId(id);
     setCoauthorTurns((ts) => [
-      { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls, repairs: adopted.repairs },
+      { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls, ...mode, repairs: adopted.repairs },
       ...ts,
     ]);
     // The seam, judged now rather than on the way out: the parent's contract
@@ -1231,6 +1237,7 @@ function Workspace() {
       findings,
       lens: canvasModel?.lens,
       requestedModel: drafterModel(),
+      effort: chosenEffort(drafterModel()),
       onStage,
     });
     if (outcome.kind === "network-error") {

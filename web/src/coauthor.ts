@@ -8,6 +8,7 @@ import { authorSl } from "./gsr";
 import { compileSl, validateMode } from "./kernel";
 import type { CanvasModel, Lens, SlError, VerdictFields } from "./kernel/types";
 import { MODE_BY_LENS, findingsPhrase } from "./review";
+import { effortOnWire, type DraftEffort } from "./draftEffort";
 
 /** One draft attempt, kept for the resident dock's history. `previewing` means
  *  the compiled draft is (or was) the active canvas preview; `accepted` /
@@ -35,6 +36,10 @@ export type CoauthorTurn = {
   modelMs?: number;
   /** How many asks that total covers. */
   modelCalls?: number;
+  /** Careful or Fast, as asked (draftEffort.ts). Recorded only when the
+   *  requested drafter takes the setting; absent otherwise, and on turns
+   *  recorded before it existed. */
+  effort?: DraftEffort;
   /** #314. `"draft"` (or absent, on turns recorded before corrections existed)
    *  is a first draft from a description. `"correction"` is the author telling
    *  the drafter what is wrong with an existing draft and getting a revision.
@@ -241,6 +246,7 @@ export async function correctSlWithRetry(req: {
   findings?: string;
   lens?: Lens;
   model?: string;
+  effort?: "low";
   onStage?: (stage: DraftStage) => void;
 }): Promise<DraftResult> {
   return draftSlWithRetry(
@@ -249,6 +255,7 @@ export async function correctSlWithRetry(req: {
     req.onStage,
     req.model ?? "",
     { sl: req.priorSl, findings: req.findings },
+    req.effort,
   );
 }
 
@@ -274,13 +281,15 @@ export async function correctSlWithRetry(req: {
  *  `model` (the author's choice, "" = the reasoner's default) carries through
  *  every retry, so a heal never silently changes drafters; the answering model
  *  is re-read on every ask, so the reported one is the one that wrote the SL
- *  being returned. */
+ *  being returned. `effort` rides every ask the same way, so a heal is never
+ *  drafted at a different setting than the draft it repairs. */
 export async function draftSlWithRetry(
   description: string,
   lens?: Lens,
   onStage?: (stage: DraftStage) => void,
   model = "",
   prior?: PriorDraft,
+  effort?: "low",
 ): Promise<DraftResult> {
   const latencies: (number | undefined)[] = [];
   onStage?.({ kind: "asking" });
@@ -290,6 +299,7 @@ export async function draftSlWithRetry(
     model,
     priorSl: prior?.sl,
     errors: prior?.findings,
+    effort,
   });
   latencies.push(latencyMs);
   let parseHeals = 0;
@@ -302,7 +312,7 @@ export async function draftSlWithRetry(
       parseHeals++;
       const errs = outcome.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
       onStage?.({ kind: "retrying", attempt: parseHeals + 1, maxAttempts: DRAFT_MAX_ATTEMPTS });
-      ({ sl, model: answeredModel, latencyMs } = await authorSl({ description, lens, model, priorSl: sl, errors: errs }));
+      ({ sl, model: answeredModel, latencyMs } = await authorSl({ description, lens, model, priorSl: sl, errors: errs, effort }));
       latencies.push(latencyMs);
       continue;
     }
@@ -318,6 +328,7 @@ export async function draftSlWithRetry(
       model,
       priorSl: sl,
       errors: kernelFindingsBrief(readLens, errors),
+      effort,
     }));
     latencies.push(latencyMs);
   }
@@ -370,6 +381,9 @@ export async function runCorrectionTurn(req: {
   findings?: string;
   lens?: Lens;
   requestedModel?: string;
+  /** The author's Careful/Fast choice, recorded on the turn and sent as
+   *  `effort` only when the requested drafter takes it. */
+  effort?: DraftEffort;
   now?: () => string;
   onStage?: (stage: DraftStage) => void;
 }): Promise<CorrectionOutcome> {
@@ -385,6 +399,7 @@ export async function runCorrectionTurn(req: {
     priorFindings: req.findings,
     at,
     requestedModel,
+    ...(req.effort ? { effort: req.effort } : {}),
   };
 
   let result: DraftResult;
@@ -396,6 +411,7 @@ export async function runCorrectionTurn(req: {
       findings: req.findings,
       lens: req.lens,
       model: requestedModel,
+      effort: effortOnWire(req.effort),
       onStage: req.onStage,
     });
   } catch (e) {

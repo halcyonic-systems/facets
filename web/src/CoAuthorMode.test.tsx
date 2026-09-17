@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CoAuthorMode, correctionLines, drafterLine, drafterMismatch, stageLabel } from "./CoAuthorMode";
 import { resetDrafterModelForTest, setDrafterModel } from "./drafterModel";
+import { resetDraftEffortForTest, setDraftEffort } from "./draftEffort";
 import type { CoauthorTurn, DraftStage } from "./coauthor";
 import {
   initReasoner,
@@ -276,6 +277,41 @@ describe("the answering model is what gets shown", () => {
     expect(m).toContain("Drafts with");
     expect(m).toContain("claude-sonnet-4-6");
     expect(m).toContain("on the reasoner&#x27;s machine");
+  });
+
+  it("offers Careful or Fast, on Careful, for a drafter that takes the setting", async () => {
+    await reasonerOn();
+    resetDrafterModelForTest();
+    resetDraftEffortForTest();
+    setDrafterModel("claude-opus-5");
+    const m = renderToStaticMarkup(<CoAuthorMode turns={[]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />);
+    expect(m).toMatch(/aria-checked="true"[^>]*>Careful/);
+    expect(m).toMatch(/aria-checked="false"[^>]*>Fast/);
+    expect(m).toContain("often 30–60s");
+    setDraftEffort("fast");
+    const fast = renderToStaticMarkup(<CoAuthorMode turns={[]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />);
+    expect(fast).toMatch(/aria-checked="true"[^>]*>Fast/);
+    expect(fast).toContain("often under 20s");
+  });
+
+  it("says why the choice is absent for a drafter that does not take it", async () => {
+    await reasonerOn();
+    resetDrafterModelForTest();
+    const m = renderToStaticMarkup(<CoAuthorMode turns={[]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />);
+    expect(m).not.toContain('role="radiogroup"');
+    expect(m).toContain("Careful or Fast is offered with claude-opus-5 and claude-sonnet-5.");
+  });
+
+  it("names the mode on the drafter line only when the answering model takes it", () => {
+    expect(drafterLine({ model: "claude-opus-5", modelMs: 8200, modelCalls: 1, effort: "fast" })).toBe(
+      "Drafted by claude-opus-5 on Fast in 8.2s.",
+    );
+    expect(drafterLine({ model: "claude-sonnet-5", modelMs: 41000, modelCalls: 1, effort: "careful" })).toBe(
+      "Drafted by claude-sonnet-5 on Careful in 41.0s.",
+    );
+    expect(drafterLine({ model: "claude-haiku-4-5", modelMs: 3000, modelCalls: 1, effort: "fast" })).toBe(
+      "Drafted by claude-haiku-4-5 in 3.0s.",
+    );
   });
 
   it("shows the chosen model's home once a frontier model is picked", async () => {

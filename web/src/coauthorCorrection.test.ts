@@ -208,6 +208,18 @@ describe("runCorrectionTurn — the compiler is the only door", () => {
     });
   });
 
+  it("sends a Fast correction at low effort and records the mode on the turn", async () => {
+    authorSlMock.mockResolvedValue({ sl: REVISED, model: "claude-opus-5" });
+    compileSlMock.mockReturnValue({ ok: freshModel(), lens_explicit: true });
+    const fast = await runCorrectionTurn({ id: "c1", target: TARGET, correction: "GTP is an input", requestedModel: "claude-opus-5", effort: "fast" });
+    expect(authorSlMock.mock.calls[0][0].effort).toBe("low");
+    expect(fast.turn.effort).toBe("fast");
+
+    const careful = await runCorrectionTurn({ id: "c2", target: TARGET, correction: "GTP is an input", requestedModel: "claude-opus-5", effort: "careful" });
+    expect(authorSlMock.mock.calls[1][0].effort).toBeUndefined();
+    expect(careful.turn.effort).toBe("careful");
+  });
+
   it("records an unreachable drafter as a turn rather than losing the correction", async () => {
     authorSlMock.mockRejectedValueOnce(new Error("Could not reach the reasoner"));
     const outcome = await runCorrectionTurn({ id: "c1", target: TARGET, correction: "flows, not sinks" });
