@@ -21,14 +21,21 @@ export function SystemTypeEditor({
   onChange,
   description,
   onDescriptionChange,
+  name,
+  onNameChange,
 }: {
   value: SystemType | undefined;
   onChange: (next: SystemType) => void;
+  /** The system's name, which is the model's name. It sits here since the
+   *  new-model prompt that used to ask for it is gone; an SL header sets the
+   *  same field. Omitted where the surface cannot write it back. */
+  name?: string;
+  onNameChange?: (next: string) => void;
   /** The SOI's own prose (#326). There is no "model" separate from the system
    *  of interest here — the model's name IS the root system's name — so this is
    *  that system's description, and it belongs in the same panel as the rest of
    *  what the author declares about it. Omitted where the surface has no way to
-   *  write it back (the new-model prompt); the field then does not render. */
+   *  write it back; the field then does not render. */
   description?: string;
   onDescriptionChange?: (next: string) => void;
 }) {
@@ -43,6 +50,18 @@ export function SystemTypeEditor({
   return (
     <Card title="System type" source="asserted · model metadata">
       <div className="grid gap-3">
+        {onNameChange && (
+          <label className="grid gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
+            System name
+            <input
+              value={name ?? ""}
+              onChange={(e) => onNameChange(e.target.value)}
+              placeholder="e.g. U.S. legislative process"
+              className="rounded-md px-2 py-1 text-sm"
+              style={fieldStyle}
+            />
+          </label>
+        )}
         {onDescriptionChange && (
           <DescriptionField
             value={description ?? ""}
