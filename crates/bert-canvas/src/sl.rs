@@ -88,10 +88,60 @@ pub fn parse_sl(text: &str) -> Result<CanvasModel, Vec<SlError>> {
 /// A successful parse plus surface facts the caller may need: whether the text
 /// pinned a lens via `@lens` (lens is view state — absent an explicit pin, the
 /// caller should keep the author's current lens rather than let the parser's
-/// default clobber it).
+/// default clobber it), and the comment/blank-line layout the text carried
+/// (#302 prong 2) — never folded into `CanvasModel` (see `SlLayout`).
 pub struct SlParse {
     pub model: CanvasModel,
     pub lens_explicit: bool,
+    pub layout: SlLayout,
+}
+
+/// The comment, blank-line, and pin surface a piece of SL text carries beyond
+/// what `CanvasModel` can express. `emit_sl` never reads this — a plain
+/// round-trip through the model alone stays canonical and comment-free, as it
+/// always has. `emit_sl_with`/`format_sl` consume it to reproduce the
+/// author's trivia: `format_sl(text) = emit_sl_with(parse(text))`.
+#[derive(Default, Clone, Debug)]
+pub struct SlLayout {
+    blocks: HashMap<Anchor, TriviaBlock>,
+    /// Things whose `@pos` the author wrote — `emit_sl_with` writes a
+    /// position only for these; a plain `emit_sl` (`layout: None`) still
+    /// writes one per thing, unchanged.
+    pinned: std::collections::BTreeSet<String>,
+    /// Whether the source wrote `@lens` explicitly.
+    lens_pinned: bool,
+}
+
+/// One declaration's trivia: the comment/blank lines above it (`""` marks a
+/// blank line), and a same-line trailing `#` comment on its own line and, for
+/// a declaration that took a `description` continuation (v1.5), on that line.
+#[derive(Default, Clone, Debug)]
+struct TriviaBlock {
+    leading: Vec<String>,
+    trailing: Option<String>,
+    prose_trailing: Option<String>,
+}
+
+/// What a trivia block attaches to. Mirrors [`Carrier`] plus the header
+/// singletons, the annotation block, and the tail of the file — the full set
+/// of places a comment can stand relative to a declaration.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+enum Anchor {
+    System,
+    Domain,
+    Description,
+    TimeUnit,
+    Level,
+    Thing(u64),
+    Milieu(String),
+    Relation(u64),
+    Param(String),
+    Metric(String),
+    Boundary,
+    /// Trivia before the first `@`-annotation line.
+    Annotations,
+    /// Trivia after the last line the parser consumed.
+    End,
 }
 
 /// [`parse_sl`], with the surface facts. The parser stays judgment-free.
@@ -127,6 +177,16 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     // attachment: "directly beneath" means the very next line.
     let mut carrier: Option<Carrier> = None;
     let mut above: Option<(String, usize)> = None;
+    // Comment/blank-line layout (#302 prong 2). `pending` is every trivia
+    // line seen since the last declaration claimed some; a declaration claims
+    // it as its `leading` the moment it is recognized (see the anchor diff
+    // after the keyword match, and the two early-`continue` branches that
+    // handle it themselves: the description continuation and the annotation
+    // layer). Whatever is left in `pending` at EOF belongs to `Anchor::End`.
+    let mut trivia: HashMap<Anchor, TriviaBlock> = HashMap::new();
+    let mut pending: Vec<String> = Vec::new();
+    let mut pinned: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    let mut seen_annotations = false;
     // A wholly indented paste (SL lifted out of a markdown list or a chat
     // reply) is its dedented self: the indent every non-blank line shares is
     // dropped before indentation means anything. Lines are never removed, so
@@ -138,8 +198,12 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         let raw = raw.strip_prefix(shared).unwrap_or(raw);
         let line = raw.trim();
         let held = carrier.take();
+        let held_anchor = held
+            .as_ref()
+            .map(|c| carrier_anchor(c, &things, &relations, &milieu_vars));
         let over = above.take();
         if line.is_empty() || line.starts_with('#') {
+            push_trivia(&mut pending, line);
             continue;
         }
         let fail = |msg: String, errors: &mut Vec<SlError>| {
@@ -149,7 +213,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
             })
         };
         above = Some((String::new(), errors.len()));
-        let tokens = match tokenize(line) {
+        let (tokens, trailing_comment) = match tokenize_with_comment(line) {
             Ok(t) => t,
             Err(msg) => {
                 fail(msg, &mut errors);
@@ -216,6 +280,11 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
             };
             if slot.is_empty() {
                 slot.clone_from(prose);
+                if let Some(anchor) = held_anchor.clone() {
+                    if let Some(c) = &trailing_comment {
+                        trivia.entry(anchor).or_default().prose_trailing = Some(c.clone());
+                    }
+                }
             } else {
                 fail(
                     "`description` already given for this declaration — fix: keep one, \
@@ -237,12 +306,22 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         // ---- annotation layer (view state; never systemhood) ----
         if let Tok::Word(w) = &tokens[0] {
             if let Some(ann) = w.strip_prefix('@') {
+                // Everything above the first annotation line is that block's
+                // trivia (#302); nothing inside the block gets its own anchor
+                // (see `Anchor::Annotations`/`Anchor::End`), so an unknown
+                // line is kept verbatim in `pending` — it survives where it
+                // stood, floating toward whichever of those two catches it.
+                if !seen_annotations {
+                    seen_annotations = true;
+                    trivia.entry(Anchor::Annotations).or_default().leading = std::mem::take(&mut pending);
+                }
                 match ann {
                     "pos" => match tokens.as_slice() {
                         [_, name, Tok::Word(xs), Tok::Word(ys)] if name.is_name() => {
                             match (xs.parse::<f32>(), ys.parse::<f32>()) {
                                 (Ok(x), Ok(y)) => {
                                     positions.insert(name.name(), (x, y));
+                                    pinned.insert(name.name());
                                 }
                                 _ => fail(
                                     "@pos needs numeric x y (e.g. `@pos Furnace 480 320`)".into(),
@@ -277,7 +356,16 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     },
                     // Unknown annotations are skipped by contract: the view
                     // layer is ignorable, so future annotations degrade softly.
-                    _ => {}
+                    // Kept verbatim as trivia rather than dropped (#302).
+                    _ => pending.push(line.to_string()),
+                }
+                // A trailing comment on a recognized annotation line has no
+                // slot of its own (the block re-emits in fixed order, not
+                // source order) — folded into `pending` so it is never lost,
+                // even though stage 1 cannot promise it lands on the same
+                // line again.
+                if let Some(c) = trailing_comment {
+                    pending.push(c);
                 }
                 continue;
             }
@@ -298,6 +386,24 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
             }
         };
         let rest = &tokens[1..];
+        // Snapshot for the anchor diff below: whichever list or header
+        // singleton this line grows is what it declared (#302). Generalizes
+        // `above`/`carrier`'s device rather than editing every arm, most of
+        // which `continue` on fault — a faulted line grows nothing, so the
+        // diff naturally sees no anchor and leaves `pending` for the next one.
+        let snap = (
+            things.len(),
+            relations.len(),
+            milieu_vars.len(),
+            params.len(),
+            metrics.len(),
+            system_seen,
+            domain_seen,
+            !description.is_empty(),
+            time_unit.is_some(),
+            klir_level.is_some(),
+            boundary.is_some(),
+        );
         match keyword.as_str() {
             "system" => {
                 if system_seen {
@@ -754,6 +860,15 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             }
                         }
                         carrier = Some(Carrier::Thing(idx));
+                        // This line names no new anchor (the thing already
+                        // has one, from its first declaration) — fold rather
+                        // than overwrite, so its trivia is not lost (#302).
+                        let anchor = Anchor::Thing(things[idx].id);
+                        let block = trivia.entry(anchor).or_default();
+                        block.leading.extend(std::mem::take(&mut pending));
+                        if let Some(c) = trailing_comment {
+                            block.leading.push(c);
+                        }
                         continue;
                     }
                     fail(
@@ -2324,6 +2439,39 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 &mut errors,
             ),
         }
+        let anchor = if things.len() > snap.0 {
+            Some(Anchor::Thing(things.last().unwrap().id))
+        } else if relations.len() > snap.1 {
+            Some(Anchor::Relation(relations.last().unwrap().id))
+        } else if milieu_vars.len() > snap.2 {
+            Some(Anchor::Milieu(milieu_vars.last().unwrap().name.clone()))
+        } else if params.len() > snap.3 {
+            Some(Anchor::Param(params.last().unwrap().name.clone()))
+        } else if metrics.len() > snap.4 {
+            Some(Anchor::Metric(metrics.last().unwrap().name.clone()))
+        } else if !snap.5 && system_seen {
+            Some(Anchor::System)
+        } else if !snap.6 && domain_seen {
+            Some(Anchor::Domain)
+        } else if !snap.7 && !description.is_empty() {
+            Some(Anchor::Description)
+        } else if !snap.8 && time_unit.is_some() {
+            Some(Anchor::TimeUnit)
+        } else if !snap.9 && klir_level.is_some() {
+            Some(Anchor::Level)
+        } else if !snap.10 && boundary.is_some() {
+            Some(Anchor::Boundary)
+        } else {
+            None
+        };
+        if let Some(anchor) = anchor {
+            let block = trivia.entry(anchor).or_default();
+            block.leading = std::mem::take(&mut pending);
+            block.trailing = trailing_comment;
+        }
+    }
+    if !pending.is_empty() {
+        trivia.entry(Anchor::End).or_default().leading = pending;
     }
 
     for (n, line_no) in &directed_marks {
@@ -2363,6 +2511,11 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     Ok(SlParse {
         model,
         lens_explicit,
+        layout: SlLayout {
+            blocks: trivia,
+            pinned,
+            lens_pinned: lens_explicit,
+        },
     })
 }
 
@@ -2791,8 +2944,42 @@ fn tangle(wires: &[(usize, usize)], pts: &[(f32, f32)]) -> i64 {
 /// environment things (semantically inert — the kernel ignores them) are
 /// dropped rather than emitted.
 pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
+    emit_sl_with(model, None)
+}
+
+/// [`emit_sl`], threading a [`SlLayout`] (#302 prong 2) through so comments,
+/// blank lines, and the author's `@pos`/`@lens` choices survive. With
+/// `layout: None` this is byte-identical to `emit_sl` — the plain,
+/// comment-free, always-every-`@pos` canonical form is unchanged.
+///
+/// `format_sl(text) = emit_sl_with(parse(text), layout)` is the formatter:
+/// `format(t)` keeps every comment line; `format(format(t)) == format(t)`;
+/// `parse(format(t))` is `parse(t)` as JSON (§7.2's third guarantee, v1.6).
+pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<String, String> {
     use std::fmt::Write as _;
     let mut out = String::new();
+
+    // A block's leading trivia, written verbatim (blank lines included).
+    let lead = |out: &mut String, anchor: &Anchor| {
+        if let Some(block) = layout.and_then(|l| l.blocks.get(anchor)) {
+            for l in &block.leading {
+                out.push_str(l);
+                out.push('\n');
+            }
+        }
+    };
+    // A line's same-line trailing comment, two spaces after its content.
+    let trail = |out: &mut String, anchor: &Anchor| {
+        if let Some(c) = layout.and_then(|l| l.blocks.get(anchor)).and_then(|b| b.trailing.as_deref()) {
+            out.push_str("  ");
+            out.push_str(c);
+        }
+    };
+    let prose_trail = |anchor: &Anchor| -> Option<String> {
+        layout
+            .and_then(|l| l.blocks.get(anchor))
+            .and_then(|b| b.prose_trailing.clone())
+    };
 
     // system / domain — the SOI name (quoted) before the type clause
     let sys_name = match &model.name {
@@ -2807,25 +2994,44 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         }
         (None, None) => None,
     };
+    if sys_name.is_some() || sys_type.is_some() {
+        lead(&mut out, &Anchor::System);
+    }
     match (&sys_name, &sys_type) {
-        (Some(n), Some(t)) => writeln!(out, "system {n} : {t}").unwrap(),
-        (Some(n), None) => writeln!(out, "system {n}").unwrap(),
-        (None, Some(t)) => writeln!(out, "system : {t}").unwrap(),
+        (Some(n), Some(t)) => write!(out, "system {n} : {t}").unwrap(),
+        (Some(n), None) => write!(out, "system {n}").unwrap(),
+        (None, Some(t)) => write!(out, "system : {t}").unwrap(),
         (None, None) => {}
     }
+    if sys_name.is_some() || sys_type.is_some() {
+        trail(&mut out, &Anchor::System);
+        out.push('\n');
+    }
     if let Some(domain) = &model.system_type.domain {
-        writeln!(out, "domain {}", quote(domain)?).unwrap();
+        lead(&mut out, &Anchor::Domain);
+        write!(out, "domain {}", quote(domain)?).unwrap();
+        trail(&mut out, &Anchor::Domain);
+        out.push('\n');
     }
     if !model.description.is_empty() {
-        writeln!(out, "description {}", quote(&model.description)?).unwrap();
+        lead(&mut out, &Anchor::Description);
+        write!(out, "description {}", quote(&model.description)?).unwrap();
+        trail(&mut out, &Anchor::Description);
+        out.push('\n');
     }
     // The model's time-unit symbol (#94) — header block, with system/domain.
     if let Some(tu) = model.time_unit.as_deref().map(str::trim).filter(|t| !t.is_empty()) {
-        writeln!(out, "time unit {}", name_token(tu)?).unwrap();
+        lead(&mut out, &Anchor::TimeUnit);
+        write!(out, "time unit {}", name_token(tu)?).unwrap();
+        trail(&mut out, &Anchor::TimeUnit);
+        out.push('\n');
     }
     // The declared Klir epistemological level (#288) — header block, last.
     if let Some(lv) = model.klir_level {
-        writeln!(out, "level {lv:?}").unwrap();
+        lead(&mut out, &Anchor::Level);
+        write!(out, "level {lv:?}").unwrap();
+        trail(&mut out, &Anchor::Level);
+        out.push('\n');
     }
 
     // things — env identity edge-derived from bonds, mirroring project()
@@ -2898,6 +3104,7 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         // own — emits as its own declaration (#226): the split form is the
         // default surface. Anything carrying processor freight (a primitive,
         // a stock, engine params, a child) keeps the merged component form.
+        let anchor = Anchor::Thing(t.id);
         if t.passway
             && t.role == Role::Component
             && t.interface
@@ -2910,12 +3117,14 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
             && t.scale.is_none()
             && t.states.is_none()
         {
+            lead(&mut out, &anchor);
             write!(out, "interface {}", name_token(&t.name)?).unwrap();
             if !t.protocol.is_empty() {
                 write!(out, " protocol {}", quote(&t.protocol)?).unwrap();
             }
+            trail(&mut out, &anchor);
             out.push('\n');
-            emit_description(&mut out, &t.description)?;
+            emit_description(&mut out, &t.description, prose_trail(&anchor).as_deref())?;
             continue;
         }
         let keyword = match (t.role, t.env_kind) {
@@ -2924,6 +3133,7 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
             (Role::Environment, EnvKind::Sink) => "sink",
             (Role::Environment, EnvKind::Neutral) => "environment",
         };
+        lead(&mut out, &anchor);
         write!(out, "{keyword} {}", name_token(&t.name)?).unwrap();
         if t.role == Role::Component {
             if let Some(p) = t.primitive {
@@ -2992,8 +3202,9 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
                     .unwrap();
             }
         }
+        trail(&mut out, &anchor);
         out.push('\n');
-        emit_description(&mut out, &t.description)?;
+        emit_description(&mut out, &t.description, prose_trail(&anchor).as_deref())?;
     }
 
     // Crossings (facets#384) are not SL: they are the boundary flows derived
@@ -3025,6 +3236,8 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
     // M — the milieu, after the point objects and before the flows: the bath
     // is environment structure, not connection structure.
     for m in &model.milieu {
+        let anchor = Anchor::Milieu(m.name.clone());
+        lead(&mut out, &anchor);
         write!(out, "milieu {}", name_token(&m.name)?).unwrap();
         if let Some(v) = m.value {
             write!(out, " value {v}").unwrap();
@@ -3032,8 +3245,9 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         if !m.unit.is_empty() {
             write!(out, " unit {}", name_token(&m.unit)?).unwrap();
         }
+        trail(&mut out, &anchor);
         out.push('\n');
-        emit_description(&mut out, &m.description)?;
+        emit_description(&mut out, &m.description, prose_trail(&anchor).as_deref())?;
     }
 
     // flows
@@ -3046,6 +3260,8 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
             .ok_or_else(|| format!("relation endpoint {id} names no thing"))
     };
     for r in &model.relations {
+        let anchor = Anchor::Relation(r.id);
+        lead(&mut out, &anchor);
         write!(out, "flow {} -> {}", name_token(&name_of(r.a)?)?, name_token(&name_of(r.b)?)?)
             .unwrap();
         if r.kind != Kind::Unspecified {
@@ -3081,8 +3297,9 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         if let Some(u) = r.usability {
             write!(out, " usability {u:?}").unwrap();
         }
+        trail(&mut out, &anchor);
         out.push('\n');
-        emit_description(&mut out, &r.description)?;
+        emit_description(&mut out, &r.description, prose_trail(&anchor).as_deref())?;
     }
 
     // params (walkthrough #18) — after flows (they reference them), before
@@ -3090,6 +3307,8 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
     // canonical form never depends on whether the pair happens to be
     // ambiguous today.
     for p in &model.params {
+        let anchor = Anchor::Param(p.name.clone());
+        lead(&mut out, &anchor);
         match p.anchor {
             crate::canvas::ParamAnchor::Flow { relation } => {
                 let r = model
@@ -3122,6 +3341,7 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
                 .unwrap();
             }
         }
+        trail(&mut out, &anchor);
         out.push('\n');
     }
 
@@ -3129,6 +3349,8 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
     // Same canonical-form rule as params: the flow's label is always emitted
     // when present, never only when the pair happens to be ambiguous today.
     for m in &model.metrics {
+        let anchor = Anchor::Metric(m.name.clone());
+        lead(&mut out, &anchor);
         match m.expr {
             crate::canvas::MetricExpr::ShareOfFlow { relation } => {
                 let r = model
@@ -3160,31 +3382,70 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
                 .unwrap();
             }
         }
+        trail(&mut out, &anchor);
         out.push('\n');
     }
 
     // boundary (only when authored)
     if model.boundary != CanvasBoundaryProps::default() {
-        writeln!(
+        lead(&mut out, &Anchor::Boundary);
+        write!(
             out,
             "boundary porosity {} fuzziness {}",
             model.boundary.porosity, model.boundary.perceptive_fuzziness
         )
         .unwrap();
+        trail(&mut out, &Anchor::Boundary);
+        out.push('\n');
     }
 
-    // annotation block — view state, ignorable
-    out.push('\n');
-    writeln!(out, "@lens {}", format!("{:?}", model.lens).to_ascii_lowercase()).unwrap();
+    // annotation block — view state, ignorable. The blank separator is the
+    // default; a source that had leading trivia there (comments, or blank
+    // runs beyond one) writes that instead, which keeps `format_sl` a
+    // fixpoint (§7 v1.6).
+    let annotations_leading_written = layout
+        .and_then(|l| l.blocks.get(&Anchor::Annotations))
+        .is_some_and(|b| !b.leading.is_empty());
+    if annotations_leading_written {
+        lead(&mut out, &Anchor::Annotations);
+    } else {
+        out.push('\n');
+    }
+    // `@lens` only where authored (`layout: None` keeps writing it always,
+    // matching plain `emit_sl`'s unconditional behaviour).
+    if layout.map(|l| l.lens_pinned).unwrap_or(true) {
+        writeln!(out, "@lens {}", format!("{:?}", model.lens).to_ascii_lowercase()).unwrap();
+    }
+    // `@pos` only for things the author pinned (`layout: None`: every thing,
+    // as before — no invented pins on a formatted file, #302 ruling 5).
     for t in &model.things {
-        writeln!(out, "@pos {} {} {}", name_token(&t.name)?, t.x, t.y).unwrap();
+        if layout.map(|l| l.pinned.contains(&t.name)).unwrap_or(true) {
+            writeln!(out, "@pos {} {} {}", name_token(&t.name)?, t.x, t.y).unwrap();
+        }
     }
     for (i, r) in model.relations.iter().enumerate() {
         if r.klir_directed {
             writeln!(out, "@directed {}", i + 1).unwrap();
         }
     }
+    // Whatever trivia the parser could not attach to any declaration — text
+    // after the last line it consumed.
+    if let Some(block) = layout.and_then(|l| l.blocks.get(&Anchor::End)) {
+        for l in &block.leading {
+            out.push_str(l);
+            out.push('\n');
+        }
+    }
     Ok(out)
+}
+
+/// [`format_sl`]: parse `text`, then re-emit it with its own layout — the
+/// canonical form that keeps every comment (#302). A faulted parse returns
+/// its faults (gofmt semantics: no partial output).
+pub fn format_sl(text: &str) -> Result<String, Vec<SlError>> {
+    let parsed = parse_sl_full(text)?;
+    emit_sl_with(&parsed.model, Some(&parsed.layout))
+        .map_err(|message| vec![SlError { line: 0, message }])
 }
 
 /// Rewrite only the `@pos` lines of an SL source, leaving every other byte of
@@ -3257,11 +3518,15 @@ pub fn splice_positions(source: &str, model: &CanvasModel) -> Result<String, Str
 /// under them, and the choice is a pure function of the model with no width
 /// to tune. This is the single place that decides — a length threshold, if
 /// one is ever wanted, goes here and nowhere else.
-fn emit_description(out: &mut String, description: &str) -> Result<(), String> {
+fn emit_description(out: &mut String, description: &str, trailing: Option<&str>) -> Result<(), String> {
     if !description.is_empty() {
         out.push_str(CONTINUATION_INDENT);
         out.push_str("description ");
         out.push_str(&quote(description)?);
+        if let Some(c) = trailing {
+            out.push_str("  ");
+            out.push_str(c);
+        }
         out.push('\n');
     }
     Ok(())
@@ -3561,6 +3826,32 @@ enum Carrier {
     Milieu(usize),
 }
 
+/// [`Carrier`]'s target, named the way [`Anchor`] names it — by id or name
+/// rather than index, so it survives past the line that resolved the index.
+fn carrier_anchor(
+    c: &Carrier,
+    things: &[Thing],
+    relations: &[Relation],
+    milieu_vars: &[bert_core::MilieuVariable],
+) -> Anchor {
+    match c {
+        Carrier::Thing(i) => Anchor::Thing(things[*i].id),
+        Carrier::Relation(i) => Anchor::Relation(relations[*i].id),
+        Carrier::Milieu(i) => Anchor::Milieu(milieu_vars[*i].name.clone()),
+    }
+}
+
+/// Push one trivia line (a blank line, `""`, or a full comment line) onto
+/// `pending`. A run of blank lines collapses to one as it is captured, since
+/// nothing downstream of `pending` ever needs to know how many there were
+/// (#302, canonical-form ruling: a blank run emits as a single blank line).
+fn push_trivia(pending: &mut Vec<String>, line: &str) {
+    if line.is_empty() && pending.last().is_some_and(|l| l.is_empty()) {
+        return;
+    }
+    pending.push(line.to_string());
+}
+
 /// Line tokens: bare words, quoted strings, `->`, `:`, and the set-literal
 /// punctuation `{ } ,` (Klir state sets, #154).
 #[derive(Clone, Debug, PartialEq)]
@@ -3600,9 +3891,17 @@ impl Tok {
 }
 
 fn tokenize(line: &str) -> Result<Vec<Tok>, String> {
+    tokenize_with_comment(line).map(|(tokens, _)| tokens)
+}
+
+/// [`tokenize`], plus the same-line trailing `#...` comment when the line
+/// carries one outside a quoted string — the one scanner both the tokenizer
+/// and the trivia capture (#302) read the comment's start from, so they
+/// cannot drift apart on what counts as "trailing".
+fn tokenize_with_comment(line: &str) -> Result<(Vec<Tok>, Option<String>), String> {
     let mut tokens = Vec::new();
-    let mut chars = line.chars().peekable();
-    while let Some(&c) = chars.peek() {
+    let mut chars = line.char_indices().peekable();
+    while let Some(&(i, c)) = chars.peek() {
         if c.is_whitespace() {
             chars.next();
         } else if c == '"' {
@@ -3610,8 +3909,8 @@ fn tokenize(line: &str) -> Result<Vec<Tok>, String> {
             let mut s = String::new();
             loop {
                 match chars.next() {
-                    Some('"') => break,
-                    Some(ch) => s.push(ch),
+                    Some((_, '"')) => break,
+                    Some((_, ch)) => s.push(ch),
                     None => return Err("unterminated quote".into()),
                 }
             }
@@ -3629,10 +3928,10 @@ fn tokenize(line: &str) -> Result<Vec<Tok>, String> {
             chars.next();
             tokens.push(Tok::Comma);
         } else if c == '#' {
-            break; // trailing comment
+            return Ok((tokens, Some(line[i..].trim_end().to_string())));
         } else {
             let mut w = String::new();
-            while let Some(&ch) = chars.peek() {
+            while let Some(&(_, ch)) = chars.peek() {
                 if ch.is_whitespace()
                     || ch == '"'
                     || ch == ':'
@@ -3653,7 +3952,7 @@ fn tokenize(line: &str) -> Result<Vec<Tok>, String> {
             }
         }
     }
-    Ok(tokens)
+    Ok((tokens, None))
 }
 
 #[cfg(test)]
