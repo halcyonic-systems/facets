@@ -120,6 +120,9 @@ describe("the reasoner door", () => {
     const err: Error = await authorSl({ description: "a thermostat" }).catch((e) => e);
     expect(err.message).toContain("Could not reach the reasoner at http://127.0.0.1:5999");
     expect(err.message).not.toContain("Load failed");
+    // A refused cross-origin request fails the same way, with the reasoner up,
+    // so the message cannot claim it is down.
+    expect(err.message).toContain("it may be refusing requests from this page");
     vi.unstubAllGlobals();
   });
 });

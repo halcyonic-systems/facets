@@ -51,9 +51,10 @@ You land on a **start screen** with three doors: *Create a model*, *Open a model
 
 ## 2. Author a model as text
 
-Click **Create a model**. A dialog asks **"What are you modeling?"** — optional
-metadata (a name, Bunge's kingdom and genus, a subject domain) you can also set
-later from the Type tab. Click **Skip** for now.
+Click **Create a model**. A start surface offers to draft a model from a
+plain-language description, which needs a reasoner. Click **skip** for now. (The
+model's name, Bunge's kingdom and genus, and a subject domain are set from the
+model's name in the top bar, or by the `system` line of the text below.)
 
 You are on a blank canvas. Click **SL** in the top bar to open the text pane.
 [SL](glossary.md#sl) is the repo's textual

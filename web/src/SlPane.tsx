@@ -22,7 +22,7 @@ import type { CanvasModel, SlError } from "./kernel/types";
 import { CoAuthorMode } from "./CoAuthorMode";
 import { SlChain } from "./SlChain";
 import type { SlChainProps } from "./SlChain";
-import type { CoauthorTurn, DraftStage } from "./coauthor";
+import type { CoauthorSeed, CoauthorTurn, DraftOutcome, DraftStage } from "./coauthor";
 
 type Mode = "sl" | "coauthor";
 
@@ -59,11 +59,15 @@ interface SlPaneProps {
     turns: CoauthorTurn[];
     /** `onStage` is #218's progress feed — the parent's draft call reports
      *  which phase it is in (asking / compiling / retrying) as it happens. */
-    onDraft: (description: string, onStage?: (stage: DraftStage) => void) => Promise<void>;
+    onDraft: (description: string, onStage?: (stage: DraftStage) => void) => Promise<DraftOutcome>;
     /** #314: correct a past turn's draft in plain language. Same seam as
      *  `onDraft` — the parent asks the drafter, compiles the result, and
      *  previews it; this pane only returns to the SL view afterwards. */
-    onCorrect: (turnId: string, correction: string, onStage?: (stage: DraftStage) => void) => Promise<void>;
+    onCorrect: (turnId: string, correction: string, onStage?: (stage: DraftStage) => void) => Promise<DraftOutcome>;
+    /** A description from the start surface: the pane opens on the co-author
+     *  tab with it, and the tab reports back once it has taken it. */
+    seed?: CoauthorSeed | null;
+    onSeedTaken?: () => void;
   };
 }
 
@@ -94,7 +98,11 @@ function persistPaneWidth(w: number) {
 }
 
 export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel, chain, selection, coauthor }: SlPaneProps) {
-  const [mode, setMode] = useState<Mode>("sl");
+  const [mode, setMode] = useState<Mode>(coauthor?.seed ? "coauthor" : "sl");
+  const seedNonce = coauthor?.seed?.nonce;
+  useEffect(() => {
+    if (seedNonce !== undefined) setMode("coauthor");
+  }, [seedNonce]);
   // Room to breathe: the pane is drag-resizable at its right edge (SL reads
   // best when flow lines don't fold), remembered across sessions.
   const [paneWidth, setPaneWidth] = useState(initialPaneWidth);
@@ -160,21 +168,28 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
 
   // The co-author's Draft action: the parent (App.tsx's coauthorDraft) owns
   // drafting, compiling, and previewing — this pane just returns to the SL
-  // view once it resolves, so the result (compiled preview OR the faulty
-  // draft text + its errors) is where the author expects to look.
-  async function handleDraft(description: string, onStage?: (stage: DraftStage) => void) {
-    if (!coauthor) return;
-    await coauthor.onDraft(description, onStage);
-    setMode("sl");
+  // view once there is text to look at (compiled preview OR the faulty draft
+  // + its errors). A drafter that could not be reached wrote nothing, so the
+  // pane stays on the co-author tab, where the failure and the retry are.
+  async function handleDraft(description: string, onStage?: (stage: DraftStage) => void): Promise<DraftOutcome> {
+    if (!coauthor) return { produced: false };
+    const outcome = await coauthor.onDraft(description, onStage);
+    if (outcome.produced) setMode("sl");
+    return outcome;
   }
 
   // The correction action, the same shape: the parent owns the ask, the
   // compile, and the preview; the pane returns to the SL view so the revised
   // text (or its faults) is where the author expects to look.
-  async function handleCorrect(turnId: string, correction: string, onStage?: (stage: DraftStage) => void) {
-    if (!coauthor) return;
-    await coauthor.onCorrect(turnId, correction, onStage);
-    setMode("sl");
+  async function handleCorrect(
+    turnId: string,
+    correction: string,
+    onStage?: (stage: DraftStage) => void,
+  ): Promise<DraftOutcome> {
+    if (!coauthor) return { produced: false };
+    const outcome = await coauthor.onCorrect(turnId, correction, onStage);
+    if (outcome.produced) setMode("sl");
+    return outcome;
   }
 
   function handleLoad(sl: string) {
@@ -225,7 +240,14 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
       </div>
 
       {mode === "coauthor" && coauthor ? (
-        <CoAuthorMode turns={coauthor.turns} onDraft={handleDraft} onCorrect={handleCorrect} onLoad={handleLoad} />
+        <CoAuthorMode
+          turns={coauthor.turns}
+          onDraft={handleDraft}
+          onCorrect={handleCorrect}
+          onLoad={handleLoad}
+          seed={coauthor.seed}
+          onSeedTaken={coauthor.onSeedTaken}
+        />
       ) : (
         <>
           <SlEditor
