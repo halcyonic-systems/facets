@@ -82,6 +82,20 @@ for (const head of words(repo["declaration-head"].match)) {
   }
 }
 
+// The continuation line (spec §4.3, v1.5) continues one clause and no other.
+// It must sit ahead of `declaration-head`, whose `^\s*` would otherwise color
+// an indented `description` as a line of its own.
+const continued = words(repo["description-continuation"].begin);
+if (continued.join() !== "description") {
+  failures++;
+  console.error(`tm-grammar: only \`description\` continues; the grammar has: ${continued.join(", ")}`);
+}
+const order = grammar.patterns.map((p) => p.include);
+if (order.indexOf("#description-continuation") > order.indexOf("#declaration-head")) {
+  failures++;
+  console.error("tm-grammar: #description-continuation must precede #declaration-head");
+}
+
 if (failures) {
   process.exit(1);
 }

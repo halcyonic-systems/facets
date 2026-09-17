@@ -42,6 +42,13 @@ describe("flowPads", () => {
     expect(pads).toEqual([]);
   });
 
+  it("aligns a run straight through its description continuations (v1.5)", () => {
+    const flows = ['flow A -> B : matter "x"', 'flow "Long Name Here" -> B : energy "y"'];
+    const pads = flowPads([flows[0], '    description "what moves"', flows[1]]);
+    expect(pads.map((p) => ({ ...p, line: p.line === 3 ? 2 : p.line }))).toEqual(flowPads(flows));
+    expect(pads.map((p) => p.line)).toEqual([1]);
+  });
+
   it("never pads a negative width over the real corpus", () => {
     const text = readFileSync(
       join(repoRoot, "assets/examples/translation-apparatus.sl"),

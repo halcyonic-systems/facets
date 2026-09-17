@@ -22,7 +22,7 @@ Four files are enough to use the instrument: the quickstart, the tour, the gloss
 ## The language
 
 - [`language/`](language/) — **SL, the Facets system language.** Its [`README.md`](language/README.md) is the front door: what SL is, what it looks like, reading order, the corpus, and where the language lives in the code.
-  - [`language/spec.md`](language/spec.md) — **LIVE** — the SL v1.0 specification: five design commitments, lexicon, EBNF grammar, semantics, annotation layer, round-trip contract, structure/dynamics boundary, worked examples, lineage, known gaps. Normative. (Was `docs/sl2-spec.md`; moved 2026-07-18 when the language got its own home.)
+  - [`language/spec.md`](language/spec.md) — **LIVE** — the SL specification (v1.5): five design commitments, lexicon, EBNF grammar, semantics, annotation layer, round-trip contract, structure/dynamics boundary, worked examples, lineage, known gaps. Normative. (Was `docs/sl2-spec.md`; moved 2026-07-18 when the language got its own home.)
   - [`language/terminology-concordance.md`](language/terminology-concordance.md) — **LIVE** — the Klir·Bunge·Mobus terminology grid: 12 kernel distinctions × 3 traditions, every cell primary-cited and VERIFIED/UNGROUNDED-marked. SSOT for the spec's lexicon attribution, per-lens UI copy, and K≅2 convergence exhibits; federates the partial two-tradition mappings in SSF.
 
 ## Theory and kernel

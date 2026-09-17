@@ -45,7 +45,9 @@ const BAND_OF_HEAD: Record<string, Band> = {
 };
 
 /** The band a line opens, or null for blank lines, comments, and anything
- *  else that carries no band of its own (it continues the current one). */
+ *  else that carries no band of its own (it continues the current one) —
+ *  which includes an indented `description`: it lexes as a clause, not a
+ *  head, so it never reads as the header band's `description` line. */
 export function bandOfLine(line: string): Band | null {
   const first = lexLine(line)[0];
   if (!first) return null;

@@ -120,10 +120,25 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     // `@directed <n>` marks (1-based flow index, source line) to apply at the end.
     let mut directed_marks: Vec<(usize, usize)> = Vec::new();
     let mut next_id: u64 = 1;
+    // What a `description` continuation line (v1.5, #399) would attach to:
+    // the declaration a line just made, and the line directly above — its
+    // keyword and the fault count before it. Both are consumed at the top of
+    // every line, so a blank line or a comment in between breaks the
+    // attachment: "directly beneath" means the very next line.
+    let mut carrier: Option<Carrier> = None;
+    let mut above: Option<(String, usize)> = None;
+    // A wholly indented paste (SL lifted out of a markdown list or a chat
+    // reply) is its dedented self: the indent every non-blank line shares is
+    // dropped before indentation means anything. Lines are never removed, so
+    // faults keep their physical line numbers.
+    let shared = common_indent(text);
 
     for (idx, raw) in text.lines().enumerate() {
         let line_no = idx + 1;
+        let raw = raw.strip_prefix(shared).unwrap_or(raw);
         let line = raw.trim();
+        let held = carrier.take();
+        let over = above.take();
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
@@ -133,6 +148,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 message: msg,
             })
         };
+        above = Some((String::new(), errors.len()));
         let tokens = match tokenize(line) {
             Ok(t) => t,
             Err(msg) => {
@@ -142,6 +158,80 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         };
         if tokens.is_empty() {
             continue;
+        }
+
+        // ---- description continuation (v1.5, #399) ----
+        // An indented line that opens with `description` is the prose of the
+        // declaration directly above. Deliberately narrow — no other clause
+        // continues, a string still cannot span lines, and any other indented
+        // line reads exactly as it did before indentation meant anything.
+        let continuation = raw.starts_with(char::is_whitespace)
+            && matches!(&tokens[0], Tok::Word(w) if w.eq_ignore_ascii_case("description"));
+        if continuation {
+            let [_, Tok::Str(prose)] = tokens.as_slice() else {
+                fail(
+                    "description syntax: `description \"<prose>\"` (quoted), and nothing \
+                     else on the indented line"
+                        .into(),
+                    &mut errors,
+                );
+                continue;
+            };
+            let Some((word, faults_before)) = over else {
+                fail(
+                    "this `description` has no declaration directly above it — fix: put it \
+                     on the line right beneath the declaration it describes (no blank line \
+                     or comment between), or remove the indent to describe the system itself"
+                        .into(),
+                    &mut errors,
+                );
+                continue;
+            };
+            if errors.len() > faults_before {
+                fail(
+                    format!(
+                        "the line above did not parse, so this `description` has nothing to \
+                         attach to — fix: repair line {} first",
+                        line_no - 1
+                    ),
+                    &mut errors,
+                );
+                continue;
+            }
+            let slot = match held {
+                Some(Carrier::Thing(i)) => &mut things[i].description,
+                Some(Carrier::Relation(i)) => &mut relations[i].description,
+                Some(Carrier::Milieu(i)) => &mut milieu_vars[i].description,
+                None => {
+                    fail(
+                        format!(
+                            "`{word}` takes no description — fix: only component, source, \
+                             sink, environment, interface, milieu, and flow lines carry one; \
+                             move this beneath one of those or delete it"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
+            };
+            if slot.is_empty() {
+                slot.clone_from(prose);
+            } else {
+                fail(
+                    "`description` already given for this declaration — fix: keep one, \
+                     either on the declaration's line or beneath it"
+                        .into(),
+                    &mut errors,
+                );
+            }
+            // A second continuation beneath this one meets the same carrier
+            // and gets the already-given fault, not a misleading other one.
+            carrier = held;
+            above = Some((word, faults_before));
+            continue;
+        }
+        if let (Some((word, _)), Tok::Word(w)) = (above.as_mut(), &tokens[0]) {
+            *word = w.to_ascii_lowercase();
         }
 
         // ---- annotation layer (view state; never systemhood) ----
@@ -468,6 +558,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 if !ok {
                     continue;
                 }
+                carrier = Some(Carrier::Milieu(milieu_vars.len()));
                 milieu_vars.push(bert_core::MilieuVariable { name, value, unit, description });
             }
             // `interface "Name" [protocol "<str>"] [description "<str>"]` —
@@ -572,6 +663,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     continue;
                 }
                 by_name.insert(name.clone(), things.len());
+                carrier = Some(Carrier::Thing(things.len()));
                 things.push(Thing {
                     id: next_id,
                     name,
@@ -661,6 +753,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                 thing.description = d;
                             }
                         }
+                        carrier = Some(Carrier::Thing(idx));
                         continue;
                     }
                     fail(
@@ -1403,6 +1496,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     continue;
                 }
+                carrier = Some(Carrier::Thing(things.len()));
                 things.push(Thing {
                     id: next_id,
                     name,
@@ -1775,6 +1869,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     continue;
                 };
+                carrier = Some(Carrier::Relation(relations.len()));
                 relations.push(Relation {
                     id: next_id,
                     a: things[ai].id,
@@ -2819,10 +2914,8 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
             if !t.protocol.is_empty() {
                 write!(out, " protocol {}", quote(&t.protocol)?).unwrap();
             }
-            if !t.description.is_empty() {
-                write!(out, " description {}", quote(&t.description)?).unwrap();
-            }
             out.push('\n');
+            emit_description(&mut out, &t.description)?;
             continue;
         }
         let keyword = match (t.role, t.env_kind) {
@@ -2891,12 +2984,6 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
                 .join(", ");
             write!(out, " states {{{labels}}}").unwrap();
         }
-        // Prose last but one, before `decomposes` (#326). It is the only
-        // clause whose value is a sentence, so keeping it at the end leaves
-        // the machine-readable clauses adjacent and scannable.
-        if !t.description.is_empty() {
-            write!(out, " description {}", quote(&t.description)?).unwrap();
-        }
         if t.role == Role::Component {
             // `decomposes` emits last (§7.1 canonical order): name quoted, id in
             // the canonical base58 form, both mandatory.
@@ -2906,6 +2993,7 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
             }
         }
         out.push('\n');
+        emit_description(&mut out, &t.description)?;
     }
 
     // Crossings (facets#384) are not SL: they are the boundary flows derived
@@ -2944,10 +3032,8 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         if !m.unit.is_empty() {
             write!(out, " unit {}", name_token(&m.unit)?).unwrap();
         }
-        if !m.description.is_empty() {
-            write!(out, " description {}", quote(&m.description)?).unwrap();
-        }
         out.push('\n');
+        emit_description(&mut out, &m.description)?;
     }
 
     // flows
@@ -2995,10 +3081,8 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         if let Some(u) = r.usability {
             write!(out, " usability {u:?}").unwrap();
         }
-        if !r.description.is_empty() {
-            write!(out, " description {}", quote(&r.description)?).unwrap();
-        }
         out.push('\n');
+        emit_description(&mut out, &r.description)?;
     }
 
     // params (walkthrough #18) — after flows (they reference them), before
@@ -3166,6 +3250,24 @@ pub fn splice_positions(source: &str, model: &CanvasModel) -> Result<String, Str
     }
     Ok(text)
 }
+
+/// A declaration's prose, written beneath the line just finished (v1.5,
+/// #399). It is the one clause whose value is a sentence, so it always takes
+/// the continuation form: declarations stay a scannable column with the prose
+/// under them, and the choice is a pure function of the model with no width
+/// to tune. This is the single place that decides — a length threshold, if
+/// one is ever wanted, goes here and nowhere else.
+fn emit_description(out: &mut String, description: &str) -> Result<(), String> {
+    if !description.is_empty() {
+        out.push_str(CONTINUATION_INDENT);
+        out.push_str("description ");
+        out.push_str(&quote(description)?);
+        out.push('\n');
+    }
+    Ok(())
+}
+
+const CONTINUATION_INDENT: &str = "    ";
 
 /// Words the tokenizer or line parsers claim — a thing name matching one must
 /// be quoted to stay a name.
@@ -3431,6 +3533,32 @@ fn parse_state_set(attrs: &[Tok], start: usize) -> Result<(Vec<String>, usize), 
             _ => return Err(syntax.into()),
         }
     }
+}
+
+/// The leading whitespace every non-blank line of `text` shares, compared as
+/// an exact string: a tab and four spaces share nothing, so mixed indentation
+/// is never guessed at.
+fn common_indent(text: &str) -> &str {
+    let mut shared: Option<&str> = None;
+    for line in text.lines().filter(|l| !l.trim().is_empty()) {
+        let indent = &line[..line.len() - line.trim_start().len()];
+        shared = Some(match shared {
+            None => indent,
+            Some(s) => {
+                let n = s.chars().zip(indent.chars()).take_while(|(a, b)| a == b).count();
+                &s[..s.char_indices().nth(n).map_or(s.len(), |(i, _)| i)]
+            }
+        });
+    }
+    shared.unwrap_or("")
+}
+
+/// The declaration a `description` continuation line attaches to, by index
+/// into the list its line pushed onto.
+enum Carrier {
+    Thing(usize),
+    Relation(usize),
+    Milieu(usize),
 }
 
 /// Line tokens: bare words, quoted strings, `->`, `:`, and the set-literal
@@ -4048,6 +4176,204 @@ flow S -> A : matter \"in\"
         assert!(parse_sl("component A description bare\n").is_err());
     }
 
+    // ── description on a continuation line (v1.5, #399) ─────────────────
+
+    fn faults(src: &str) -> Vec<(usize, String)> {
+        parse_sl(src).unwrap_err().into_iter().map(|e| (e.line, e.message)).collect()
+    }
+
+    #[test]
+    fn every_carrier_takes_its_description_on_the_line_beneath() {
+        let m = parse_sl(
+            "component A primitive Combining\n    description \"the work process\"\n\
+             source S\n    description \"where it comes from\"\n\
+             sink K\n    description \"where it ends up\"\n\
+             environment E\n    description \"the neighbour\"\n\
+             interface Gate protocol \"graded ore only\"\n    description \"the intake\"\n\
+             milieu pH value 7.2\n    description \"the bath\"\n\
+             flow S -> A : matter \"in\" amount 2\n    description \"what moves\"\n",
+        )
+        .unwrap();
+        let things: Vec<&str> = m.things.iter().map(|t| t.description.as_str()).collect();
+        assert_eq!(
+            things,
+            ["the work process", "where it comes from", "where it ends up", "the neighbour", "the intake"]
+        );
+        assert_eq!(m.milieu[0].description, "the bath");
+        assert_eq!(m.relations[0].description, "what moves");
+    }
+
+    /// The two forms are one model: nothing downstream can tell which the
+    /// author wrote.
+    #[test]
+    fn the_continuation_form_parses_to_the_inline_model() {
+        let inline = "component A description \"the work process\"\nsource S\n\
+                      flow S -> A : matter \"in\" description \"what moves\"\n";
+        let beneath = "component A\n    description \"the work process\"\nsource S\n\
+                       flow S -> A : matter \"in\"\n\tdescription \"what moves\" # tab, trailing comment\n";
+        let json = |src| serde_json::to_string(&parse_sl(src).unwrap()).unwrap();
+        assert_eq!(json(inline), json(beneath));
+    }
+
+    #[test]
+    fn emit_always_writes_the_description_beneath_and_is_a_fixpoint() {
+        let src = "component A primitive Combining interface description \"the work process\"\n\
+                   source S description \"s\"\n\
+                   flow S -> A : matter \"in\" description \"what moves\"\n";
+        let once = emit_sl(&parse_sl(src).unwrap()).unwrap();
+        assert!(
+            once.contains("component A primitive Combining interface\n    description \"the work process\"\n"),
+            "got:\n{once}"
+        );
+        assert!(once.contains("source S\n    description \"s\"\n"), "got:\n{once}");
+        assert!(
+            once.contains("flow S -> A : matter \"in\"\n    description \"what moves\"\n"),
+            "got:\n{once}"
+        );
+        assert_eq!(emit_sl(&parse_sl(&once).unwrap()).unwrap(), once);
+    }
+
+    #[test]
+    fn a_top_level_description_is_still_the_systems_own() {
+        let m = parse_sl("system \"S\"\ndescription \"the whole\"\ncomponent A\n").unwrap();
+        assert_eq!(m.description, "the whole");
+        assert!(m.things[0].description.is_empty());
+        let out = emit_sl(&m).unwrap();
+        assert!(out.contains("\ndescription \"the whole\"\n"), "got:\n{out}");
+    }
+
+    /// `source X` then `sink X` folds into one neighbour (#377); the prose
+    /// beneath the second line describes that neighbour.
+    #[test]
+    fn a_continuation_beneath_a_folded_pair_describes_the_one_neighbour() {
+        let m = parse_sl("source Room\nsink Room\n    description \"both ways\"\n").unwrap();
+        assert_eq!(m.things.len(), 1);
+        assert_eq!(m.things[0].description, "both ways");
+    }
+
+    #[test]
+    fn a_continuation_with_nothing_directly_above_is_a_fault() {
+        for src in [
+            "component A\n@lens mobus\n\n    description \"orphan\"\n",
+            "component A\n\n    description \"after a blank\"\n",
+            "component A\n# note\n    description \"after a comment\"\n",
+        ] {
+            let got = faults(src);
+            let last = src.lines().count();
+            assert_eq!(got.len(), 1, "{src:?} -> {got:?}");
+            assert_eq!(got[0].0, last, "{src:?} -> {got:?}");
+            assert!(got[0].1.contains("no declaration directly above"), "{got:?}");
+        }
+    }
+
+    #[test]
+    fn a_continuation_beneath_a_line_that_failed_names_that_line() {
+        let got = faults("component A\nsource S primitive Combining\n    description \"x\"\n");
+        assert_eq!(got.iter().map(|f| f.0).collect::<Vec<_>>(), [2, 3]);
+        assert!(got[1].1.contains("repair line 2 first"), "{got:?}");
+    }
+
+    #[test]
+    fn a_continuation_beneath_a_kind_that_takes_none_is_a_fault() {
+        for (src, word) in [
+            ("system \"S\"\n    description \"x\"\n", "`system`"),
+            ("boundary porosity 0.5\n    description \"x\"\n", "`boundary`"),
+            ("component A\n@pos A 1 2\n    description \"x\"\n", "`@pos`"),
+        ] {
+            let got = faults(src);
+            assert_eq!(got.len(), 1, "{got:?}");
+            assert_eq!(got[0].0, src.lines().count());
+            assert!(got[0].1.contains(word) && got[0].1.contains("takes no description"), "{got:?}");
+        }
+    }
+
+    #[test]
+    fn a_description_given_twice_is_a_fault_in_either_order() {
+        for src in [
+            "component A description \"one\"\n    description \"two\"\n",
+            "component A\n    description \"one\"\n    description \"two\"\n",
+            "source S\nflow S -> S description \"one\"\n    description \"two\"\n",
+        ] {
+            let got = faults(src);
+            assert_eq!(got.len(), 1, "{src:?} -> {got:?}");
+            assert_eq!(got[0].0, src.lines().count());
+            assert!(got[0].1.contains("already given"), "{got:?}");
+        }
+    }
+
+    #[test]
+    fn an_indented_description_takes_prose_and_nothing_else() {
+        for src in [
+            "component A\n    description bare\n",
+            "component A\n    description \"x\" primitive Combining\n",
+        ] {
+            let got = faults(src);
+            assert_eq!(got.len(), 1, "{src:?} -> {got:?}");
+            assert_eq!(got[0].0, 2);
+            assert!(got[0].1.contains("description syntax"), "{got:?}");
+        }
+    }
+
+    /// Indentation meant nothing before v1.5, so an indented line that does
+    /// not open with `description` still means what it always did.
+    #[test]
+    fn any_other_indented_line_reads_as_it_always_has() {
+        let json = |src| serde_json::to_string(&parse_sl(src).unwrap()).unwrap();
+        assert_eq!(
+            json("component A\n    component B\n\tsource S\n  flow S -> A\n"),
+            json("component A\ncomponent B\nsource S\nflow S -> A\n")
+        );
+        assert_eq!(
+            faults("component A\n    primitive Combining\n"),
+            faults("component A\nprimitive Combining\n")
+        );
+        let m = parse_sl("component A\n  component B\n      description \"b\"\n").unwrap();
+        assert_eq!(m.things[1].description, "b");
+    }
+
+    /// A wholly indented paste is its dedented self — model, continuations,
+    /// and fault lines alike.
+    #[test]
+    fn a_wholly_indented_file_is_its_dedented_self() {
+        let plain = "system \"S\"\ndescription \"the whole\"\n\ncomponent A\n    description \"a\"\n\
+                     # note\nsource S\nflow S -> A : matter \"in\"\n\tdescription \"moves\"\n";
+        let json = |src: &str| serde_json::to_string(&parse_sl(src).unwrap()).unwrap();
+        for indent in ["  ", "\t", " \t "] {
+            let pasted: String =
+                plain.lines().map(|l| if l.is_empty() { "\n".into() } else { format!("{indent}{l}\n") }).collect();
+            assert_eq!(json(&pasted), json(plain), "indent {indent:?}");
+        }
+        let m = parse_sl(plain).unwrap();
+        assert_eq!((m.description.as_str(), m.things[0].description.as_str()), ("the whole", "a"));
+
+        let broken = "component A\n\nflow A -> Nowhere\n    description \"x\"\nbogus line\n";
+        let pasted: String = broken.lines().map(|l| format!("    {l}\n")).collect();
+        assert_eq!(faults(&pasted), faults(broken));
+        assert_eq!(faults(broken).iter().map(|f| f.0).collect::<Vec<_>>(), [3, 4, 5]);
+    }
+
+    /// The shared indent is an exact string prefix: a tab and spaces share
+    /// nothing, so only what every line truly has in common is dropped.
+    #[test]
+    fn the_shared_indent_is_compared_as_an_exact_prefix() {
+        assert_eq!(common_indent("  a\n  \tb\n\n   c\n"), "  ");
+        assert_eq!(common_indent("\ta\n    b\n"), "");
+        assert_eq!(common_indent("a\n    b\n"), "");
+        assert_eq!(common_indent("\n\n"), "");
+        // Tab-indented declaration, space-indented prose: nothing shared, so
+        // the prose is a continuation and the declaration parses as ever.
+        let m = parse_sl("\tcomponent A\n    description \"a\"\n").unwrap();
+        assert_eq!(m.things[0].description, "a");
+    }
+
+    /// An indented comment is still only a comment — and, like any comment,
+    /// it breaks the attachment.
+    #[test]
+    fn an_indented_comment_is_a_comment() {
+        assert!(parse_sl("component A\n    # aside\ncomponent B\n").is_ok());
+        assert!(parse_sl("component A\n    # aside\n    description \"x\"\n").is_err());
+    }
+
 
     // ── usability: what a crossing IS to the system (#331) ──────────────
 
@@ -4144,7 +4470,7 @@ flow S -> A : matter \"in\"
         let m = parse_sl(src).unwrap();
         let out = emit_sl(&m).unwrap();
         assert!(
-            out.contains("interface \"Ore Gate\" protocol \"graded ore only\" description \"the intake\""),
+            out.contains("interface \"Ore Gate\" protocol \"graded ore only\"\n    description \"the intake\"\n"),
             "pure pass-way emits split form; got:\n{out}"
         );
         assert!(
@@ -4208,7 +4534,7 @@ flow S -> A : matter \"in\"
         let out = emit_sl(&m).unwrap();
         assert!(out.contains("milieu pH value 7.2"), "got:\n{out}");
         assert!(
-            out.contains("milieu \"Mg2+ and ionic milieu\" unit mM description \"the coordination shell\""),
+            out.contains("milieu \"Mg2+ and ionic milieu\" unit mM\n    description \"the coordination shell\"\n"),
             "got:\n{out}"
         );
         let back = parse_sl(&out).unwrap();

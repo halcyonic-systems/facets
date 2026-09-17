@@ -108,7 +108,7 @@
               "id": "I0.0",
               "level": 0,
               "name": "mRNA Entry Channel",
-              "description": ""
+              "description": "The small subunit's mRNA channel — entry between the head and shoulder at the neck, whose grip keeps the reading frame."
             },
             "protocol": "single-stranded mRNA, threaded codon by codon",
             "type": "Import",
@@ -123,7 +123,7 @@
               "id": "I0.1",
               "level": 0,
               "name": "Aminoacylation Site",
-              "description": ""
+              "description": "The synthetase's aminoacylation active site: amino acid and ATP co-bind at the same pocket that charges the tRNA. Diffusive access — a pocket, not a channel."
             },
             "protocol": "cognate amino acid + ATP at one catalytic pocket",
             "type": "Import",
@@ -139,7 +139,7 @@
               "id": "I0.2",
               "level": 0,
               "name": "GTPase-Associated Center",
-              "description": ""
+              "description": "The factor-binding hub on the large subunit — sarcin-ricin loop and the L7/L12 stalk. GTP arrives and its hydrolysis products leave through the same real docking site."
             },
             "protocol": "GTP-loaded elongation factors dock; GDP + Pi release",
             "type": "Hybrid",
@@ -156,7 +156,7 @@
               "id": "I0.3",
               "level": 0,
               "name": "Exit Tunnel",
-              "description": ""
+              "description": "The polypeptide exit tunnel through the large subunit, opening at the exit port where trigger-factor-class chaperones dock to receive the emerging chain."
             },
             "protocol": "nascent polypeptide, N-terminus first",
             "type": "Export",

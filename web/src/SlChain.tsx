@@ -134,8 +134,8 @@ export function SlChain({ text, model, desc, verdict, onShowFormal }: SlChainPro
         >
           the compile chain
         </span>
-        <DocLink href={GRAMMAR_URL} title="the normative SL v1.0 grammar (EBNF), in the spec">
-          SL v1.0 grammar ↗
+        <DocLink href={GRAMMAR_URL} title="the normative SL grammar (EBNF), in the spec">
+          SL grammar ↗
         </DocLink>
       </div>
 
