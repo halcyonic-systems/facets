@@ -189,22 +189,20 @@ fn unknown_annotation_survives_format_but_not_plain_emit() {
     );
 }
 
-/// Law 8: the gate. `format(t) == t` for the files this sweep converted —
-/// they are the ones that must already be in canonical form. (The wider
-/// claim that every file under `assets/examples` satisfies this does not
-/// hold against this tree: it has eight `.sl` files, not four, and three of
-/// the other four were never in scope for this sweep — left unformatted,
-/// see the sweep's report.)
+/// Law 8: the gate. `format(t) == t` for every `.sl` under `assets/examples`:
+/// the shipped examples are the canonical form's reference, so a new one
+/// lands formatted or this fails.
 #[test]
-fn converted_files_are_already_formatted() {
-    let converted = [
-        "../../assets/examples/translation-apparatus.sl",
-        "../../assets/examples/federal-reserve.sl",
-        "../../assets/examples/bitcoin.sl",
-        "../../assets/examples/hal-harness.sl",
-    ];
-    for rel in converted {
-        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
+fn shipped_examples_are_already_formatted() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/examples");
+    let mut converted: Vec<_> = fs::read_dir(&dir)
+        .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.extension().is_some_and(|x| x == "sl"))
+        .collect();
+    converted.sort();
+    assert!(converted.len() >= 8, "expected the shipped examples, found {}", converted.len());
+    for path in converted {
         let text = fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
         let formatted = format_sl(&text).unwrap_or_else(|e| panic!("{}: does not parse: {e:?}", path.display()));
         assert_eq!(formatted, text, "{}: not in canonical form", path.display());

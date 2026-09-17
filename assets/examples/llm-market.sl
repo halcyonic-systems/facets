@@ -86,8 +86,8 @@ sink "Applications served"
 # Absolute levels, Gtok/day. Developer ≈ 6,000 (OpenRouter-observed,
 # June 2026, ~6T tokens/day). Enterprise ≈ 2,000 (spend-derived
 # estimate — the weakest number here, flagged for replacement).
-flow "Developer workload" -> "Developer clearing" : energy "dev inference compute" substance compute amount 6000 unit Gtok/day
-flow "Enterprise workload" -> "Enterprise clearing" : energy "enterprise inference compute" substance compute amount 2000 unit Gtok/day
+flow "Developer workload" -> "Developer clearing" : energy "dev inference compute" substance compute amount 6000 unit "Gtok/day"
+flow "Enterprise workload" -> "Enterprise clearing" : energy "enterprise inference compute" substance compute amount 2000 unit "Gtok/day"
 
 # ── Weights signals: ample, and now the grammar can say so ───────────
 # Amplifying emits min(signal × gain, power): with the signal ample the
@@ -113,15 +113,15 @@ flow "Open-weight field" -> "Other open" : informational "released weights & API
 # ≈60% of routed volume) and stockalarm/tech-insider digests (DeepSeek
 # ≈16%, Anthropic 12–24% — sources disagree; midpoint taken). Weights
 # are relative, so they need not sum to 100.
-flow "Developer clearing" -> Opus : energy "dev serving share" amount 9 unit Gtok/day
-flow "Developer clearing" -> Fable : energy "dev serving share" amount 6 unit Gtok/day
-flow "Developer clearing" -> GPT : energy "dev serving share" amount 9 unit Gtok/day
-flow "Developer clearing" -> Gemini : energy "dev serving share" amount 11 unit Gtok/day
-flow "Developer clearing" -> Gemma : energy "dev serving share" amount 2 unit Gtok/day
-flow "Developer clearing" -> Llama : energy "dev serving share" amount 3 unit Gtok/day
-flow "Developer clearing" -> Qwen : energy "dev serving share" amount 13 unit Gtok/day
-flow "Developer clearing" -> DeepSeek : energy "dev serving share" amount 16 unit Gtok/day
-flow "Developer clearing" -> "Other open" : energy "dev serving share" amount 20 unit Gtok/day
+flow "Developer clearing" -> Opus : energy "dev serving share" amount 9 unit "Gtok/day"
+flow "Developer clearing" -> Fable : energy "dev serving share" amount 6 unit "Gtok/day"
+flow "Developer clearing" -> GPT : energy "dev serving share" amount 9 unit "Gtok/day"
+flow "Developer clearing" -> Gemini : energy "dev serving share" amount 11 unit "Gtok/day"
+flow "Developer clearing" -> Gemma : energy "dev serving share" amount 2 unit "Gtok/day"
+flow "Developer clearing" -> Llama : energy "dev serving share" amount 3 unit "Gtok/day"
+flow "Developer clearing" -> Qwen : energy "dev serving share" amount 13 unit "Gtok/day"
+flow "Developer clearing" -> DeepSeek : energy "dev serving share" amount 16 unit "Gtok/day"
+flow "Developer clearing" -> "Other open" : energy "dev serving share" amount 20 unit "Gtok/day"
 
 # ── Enterprise clearing: relative weights = spend share as workload proxy ─
 # Menlo Ventures enterprise LLM API survey (2025→2026): Anthropic 40%
@@ -130,30 +130,30 @@ flow "Developer clearing" -> "Other open" : energy "dev serving share" amount 20
 # enterprise workload (Vercel AI Gateway: <4% of SPEND — spend
 # understates workload at one-tenth prices). Spend-as-workload is a
 # proxy with known bias; replace when a workload series exists.
-flow "Enterprise clearing" -> Opus : energy "enterprise serving share" amount 30 unit Gtok/day
-flow "Enterprise clearing" -> Fable : energy "enterprise serving share" amount 10 unit Gtok/day
-flow "Enterprise clearing" -> GPT : energy "enterprise serving share" amount 27 unit Gtok/day
-flow "Enterprise clearing" -> Gemini : energy "enterprise serving share" amount 20 unit Gtok/day
-flow "Enterprise clearing" -> Gemma : energy "enterprise serving share" amount 1 unit Gtok/day
-flow "Enterprise clearing" -> Llama : energy "enterprise serving share" amount 4 unit Gtok/day
-flow "Enterprise clearing" -> Qwen : energy "enterprise serving share" amount 3 unit Gtok/day
-flow "Enterprise clearing" -> DeepSeek : energy "enterprise serving share" amount 3 unit Gtok/day
-flow "Enterprise clearing" -> "Other open" : energy "enterprise serving share" amount 2 unit Gtok/day
+flow "Enterprise clearing" -> Opus : energy "enterprise serving share" amount 30 unit "Gtok/day"
+flow "Enterprise clearing" -> Fable : energy "enterprise serving share" amount 10 unit "Gtok/day"
+flow "Enterprise clearing" -> GPT : energy "enterprise serving share" amount 27 unit "Gtok/day"
+flow "Enterprise clearing" -> Gemini : energy "enterprise serving share" amount 20 unit "Gtok/day"
+flow "Enterprise clearing" -> Gemma : energy "enterprise serving share" amount 1 unit "Gtok/day"
+flow "Enterprise clearing" -> Llama : energy "enterprise serving share" amount 4 unit "Gtok/day"
+flow "Enterprise clearing" -> Qwen : energy "enterprise serving share" amount 3 unit "Gtok/day"
+flow "Enterprise clearing" -> DeepSeek : energy "enterprise serving share" amount 3 unit "Gtok/day"
+flow "Enterprise clearing" -> "Other open" : energy "enterprise serving share" amount 2 unit "Gtok/day"
 
 # ── Served output: information delivered, compute already spent ──────
 # Token output is Message — it lands, it is never ledgered; the ledger
 # instead shows every Gtok/day of compute dissipating as heat, which is
 # the thermodynamic truth of inference. Market share is read off each
 # model's activity in the trace.
-flow Opus -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
-flow Fable -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
-flow GPT -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
-flow Gemini -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
-flow Gemma -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
-flow Llama -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
-flow Qwen -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
-flow DeepSeek -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
-flow "Other open" -> "Applications served" : informational "tokens served" substance tokens unit Gtok/day
+flow Opus -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow Fable -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow GPT -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow Gemini -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow Gemma -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow Llama -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow Qwen -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow DeepSeek -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow "Other open" -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
 
 # ── Declared parameters: the model's own vocabulary for its knobs ────
 # What a user of this simulation actually wants to slide (walkthrough
@@ -162,8 +162,8 @@ flow "Other open" -> "Applications served" : informational "tokens served" subst
 # group is display-only — the engine keeps the raw weights. Cost/price
 # parameters are legitimately absent: they need the money counter-flow
 # plane this model deliberately defers.
-param "Developer demand" : flow "Developer workload" -> "Developer clearing" range 0..12000
-param "Enterprise demand" : flow "Enterprise workload" -> "Enterprise clearing" range 0..8000
+param "Developer demand" : flow "Developer workload" -> "Developer clearing" "dev inference compute" range 0..12000
+param "Enterprise demand" : flow "Enterprise workload" -> "Enterprise clearing" "enterprise inference compute" range 0..8000
 param shares "Developer market share" : from "Developer clearing"
 param shares "Enterprise market share" : from "Enterprise clearing"
 
@@ -178,14 +178,14 @@ param shares "Enterprise market share" : from "Enterprise clearing"
 # reading, drawn as one chart per clearing since #341): the four largest
 # servers per channel, with the long tail already folded into "Other open"
 # by the model's own structure.
-metric "DeepSeek dev share" : share of flow "Developer clearing" -> DeepSeek
-metric "Qwen dev share" : share of flow "Developer clearing" -> Qwen
-metric "Gemini dev share" : share of flow "Developer clearing" -> Gemini
-metric "Opus dev share" : share of flow "Developer clearing" -> Opus
-metric "Opus enterprise share" : share of flow "Enterprise clearing" -> Opus
-metric "GPT enterprise share" : share of flow "Enterprise clearing" -> GPT
-metric "Gemini enterprise share" : share of flow "Enterprise clearing" -> Gemini
-metric "Fable enterprise share" : share of flow "Enterprise clearing" -> Fable
+metric "DeepSeek dev share" : share of flow "Developer clearing" -> DeepSeek "dev serving share"
+metric "Qwen dev share" : share of flow "Developer clearing" -> Qwen "dev serving share"
+metric "Gemini dev share" : share of flow "Developer clearing" -> Gemini "dev serving share"
+metric "Opus dev share" : share of flow "Developer clearing" -> Opus "dev serving share"
+metric "Opus enterprise share" : share of flow "Enterprise clearing" -> Opus "enterprise serving share"
+metric "GPT enterprise share" : share of flow "Enterprise clearing" -> GPT "enterprise serving share"
+metric "Gemini enterprise share" : share of flow "Enterprise clearing" -> Gemini "enterprise serving share"
+metric "Fable enterprise share" : share of flow "Enterprise clearing" -> Fable "enterprise serving share"
 metric "Opus tokens served" : sum into Opus
 metric "Fable tokens served" : sum into Fable
 metric "DeepSeek tokens served" : sum into DeepSeek
