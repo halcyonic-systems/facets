@@ -1,7 +1,8 @@
 // The one enable point (#199, decision 2026-07-25). Turning the co-author on
 // IS saying where it runs — the address is asked for here, inline, in the
 // moment the author reaches for the drafter, not in a settings pane. Once on,
-// this same strip says which reasoner is in use and turns it back off.
+// it shrinks to one quiet line under the model picker that says which reasoner
+// is in use, where the text goes, and turns it back off.
 //
 // #229: there is no longer a second, hosted option. v0.1 ships no remote
 // address, so the reasoner is one the user runs, and this is a field rather
@@ -12,18 +13,26 @@ import { DEFAULT_ENDPOINT, blockedOnDesktop, isHosted, type ReasonerConfig } fro
 
 export function ReasonerGate({
   config,
+  detail,
+  turnOnLabel,
   onChange,
 }: {
   config: ReasonerConfig;
+  /** Where the chosen model runs, said beside the reasoner once it is on. */
+  detail?: string;
+  /** What turning on will do, when it does more than turn on: a description
+   *  already waiting is drafted, and the button says so before it is pressed. */
+  turnOnLabel?: string;
   onChange: (next: ReasonerConfig) => void;
 }) {
   const [choosing, setChoosing] = useState(false);
   if (config.enabled && !choosing) {
-    return <ReasonerStatus config={config} onChange={onChange} onChoose={() => setChoosing(true)} />;
+    return <ReasonerStatus config={config} detail={detail} onChange={onChange} onChoose={() => setChoosing(true)} />;
   }
   return (
     <ReasonerChoice
       config={config}
+      turnOnLabel={turnOnLabel}
       onCancel={choosing ? () => setChoosing(false) : undefined}
       onChange={(next) => {
         setChoosing(false);
@@ -35,42 +44,49 @@ export function ReasonerGate({
 
 function ReasonerStatus({
   config,
+  detail,
   onChange,
   onChoose,
 }: {
   config: ReasonerConfig;
+  detail?: string;
   onChange: (next: ReasonerConfig) => void;
   onChoose: () => void;
 }) {
+  const hosted = isHosted(config.endpoint);
   return (
-    <div className="mb-2 flex items-center justify-between gap-2 rounded p-2" style={panel}>
-      <p className="min-w-0 text-[11px]" style={{ color: "var(--text-secondary)" }}>
-        Co-author is on, using{" "}
-        <strong>{isHosted(config.endpoint) ? "the facets reasoner" : "your reasoner"}</strong> at{" "}
-        <span className="font-mono break-all">{config.endpoint}</span>
-      </p>
-      <div className="flex shrink-0 items-center gap-1">
-        <button onClick={onChoose} className="rounded-full px-2 py-0.5 text-[10px]" style={quietButton}>
-          Change
-        </button>
-        <button
-          onClick={() => onChange({ ...config, enabled: false })}
-          className="rounded-full px-2 py-0.5 text-[10px]"
-          style={quietButton}
-        >
-          Turn off
-        </button>
-      </div>
-    </div>
+    <p
+      className="mt-1 flex flex-wrap items-baseline gap-x-2 text-[10px]"
+      style={{ color: "var(--text-muted)" }}
+      title={`Your description is sent to ${config.endpoint}`}
+      data-testid="reasoner-status"
+    >
+      <span className="min-w-0 break-all">
+        {hosted ? "the facets reasoner" : `your reasoner at ${config.endpoint}`}
+        {detail ? ` · ${detail}` : ""}
+      </span>
+      <button onClick={onChoose} className="underline" style={{ color: "var(--text-secondary)" }}>
+        Change
+      </button>
+      <button
+        onClick={() => onChange({ ...config, enabled: false })}
+        className="underline"
+        style={{ color: "var(--text-secondary)" }}
+      >
+        Turn off
+      </button>
+    </p>
   );
 }
 
 function ReasonerChoice({
   config,
+  turnOnLabel,
   onChange,
   onCancel,
 }: {
   config: ReasonerConfig;
+  turnOnLabel?: string;
   onChange: (next: ReasonerConfig) => void;
   onCancel?: () => void;
 }) {
@@ -80,7 +96,7 @@ function ReasonerChoice({
   const hosted = isHosted(endpoint);
 
   return (
-    <div className="mb-2 rounded p-3" style={panel}>
+    <div className="mt-2 rounded p-3" style={panel}>
       <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
         Turn on the co-author
       </p>
@@ -129,7 +145,7 @@ function ReasonerChoice({
             cursor: endpoint ? "pointer" : "not-allowed",
           }}
         >
-          Turn on
+          {turnOnLabel ?? "Turn on"}
         </button>
         {onCancel && (
           <button onClick={onCancel} className="rounded-full px-2 py-0.5 text-[10px]" style={quietButton}>

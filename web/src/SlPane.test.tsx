@@ -40,7 +40,7 @@ describe("SlPane — manual authoring is preserved", () => {
         onCompiled={noop}
         onClose={noop}
         canvasModel={null}
-        coauthor={{ turns: [], onDraft: async () => {}, onCorrect: async () => {} }}
+        coauthor={{ turns: [], onDraft: async () => ({ produced: true }), onCorrect: async () => ({ produced: true }) }}
       />,
     );
     // Both the mode switch AND the manual editor/Compile are present —
@@ -48,6 +48,28 @@ describe("SlPane — manual authoring is preserved", () => {
     expect(m).toContain("Co-author");
     expect(m).toContain("sl-editor");
     expect(m).toContain("Compile");
+  });
+
+  it("opens on the co-author tab, with the words kept, when a description is handed in", () => {
+    const m = renderToStaticMarkup(
+      <SlPane
+        text=""
+        errors={[]}
+        onTextChange={noop}
+        onErrors={noop}
+        onCompiled={noop}
+        onClose={noop}
+        canvasModel={null}
+        coauthor={{
+          turns: [],
+          onDraft: async () => ({ produced: true }),
+          onCorrect: async () => ({ produced: true }),
+          seed: { description: "a bathtub with a faucet and a drain", nonce: 1 },
+        }}
+      />,
+    );
+    expect(m).toContain("a bathtub with a faucet and a drain");
+    expect(m).not.toContain("sl-editor");
   });
 
   // The compile chain is an addition beside the authoring surface, on the same

@@ -53,7 +53,7 @@ import { type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
 import { MODE_BY_LENS } from "./review";
-import { NewModelTypePrompt } from "./NewModelTypePrompt";
+import { StartSurface } from "./StartSurface";
 import { SystemTypeEditor } from "./SystemTypeEditor";
 import { StartFromData } from "./StartFromData";
 import { SlPane } from "./SlPane";
@@ -65,6 +65,8 @@ import {
   loadCoauthorTurns,
   runCorrectionTurn,
   saveCoauthorTurns,
+  type CoauthorSeed,
+  type DraftOutcome,
   type CoauthorTurn,
   type DraftStage,
 } from "./coauthor";
@@ -394,8 +396,10 @@ function Workspace() {
   // viewport survives a trip to the library.
   const [homeOpen, setHomeOpen] = useState(true);
   const [homeRoute, setHomeRoute] = useState<HomeRoute>({ view: "home" });
-  // #77: gentle, skippable first-step type/name prompt on new-model creation.
-  const [typePromptOpen, setTypePromptOpen] = useState(false);
+  // The start surface over a new blank canvas: describe a system and get a
+  // draft, or skip to the canvas. It replaced #77's name/type prompt, whose two
+  // fields an SL header carries and the name's type panel still edits.
+  const [startOpen, setStartOpen] = useState(false);
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
   // #57: inspector focus mode. Pops the docked inspector to full width and hides
   // the palette + canvas so the active reading (Run / Formal / Review) gets the
@@ -423,6 +427,23 @@ function Workspace() {
   // the pane survives toggling; seeded with a worked example (Mobus's steel
   // plant, Ch.4 §4.3.1) so the first Compile lands a real model.
   const [slOpen, setSlOpen] = useState(false);
+  // A description handed from the start surface to the co-author tab. The
+  // pane clears it once taken, so reopening the tab never drafts it twice.
+  const [coauthorSeed, setCoauthorSeed] = useState<CoauthorSeed | null>(null);
+  // The palette yields its width to the text pane and comes back when the
+  // pane closes. A toggle made while the pane is open is the author's own
+  // choice, so it clears the memory and stands.
+  const paletteBeforeSl = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (slOpen) {
+      paletteBeforeSl.current = paletteCollapsed;
+      setPaletteCollapsed(true);
+    } else if (paletteBeforeSl.current !== null) {
+      setPaletteCollapsed(paletteBeforeSl.current);
+      paletteBeforeSl.current = null;
+    }
+    // Keyed on the pane alone: the palette's own toggles must not re-run this.
+  }, [slOpen]); // eslint-disable-line react-hooks/exhaustive-deps
   const [slText, setSlText] = useState(SL_SEED);
   const [slErrors, setSlErrors] = useState<SlError[]>([]);
   // Tier 4 (#353): shared selection between pane and canvas, bridged on
@@ -606,7 +627,7 @@ function Workspace() {
   const escapeExitRef = useRef<() => void>(() => {});
   useEffect(() => {
     escapeExitRef.current = () => {
-      if (homeOpen || saveDialogOpen || typePromptOpen) return;
+      if (homeOpen || saveDialogOpen || startOpen) return;
       if (walk.length > 0) void exitTo(walk.length - 1);
     };
   });
@@ -1052,7 +1073,7 @@ function Workspace() {
   // the SAME SL text, never a separate write path. A failed compile or an
   // unreachable drafter still lands as a turn and still populates the text
   // (nothing hidden — the author can hand-fix a near-miss draft).
-  async function coauthorDraft(description: string, onStage?: (stage: DraftStage) => void) {
+  async function coauthorDraft(description: string, onStage?: (stage: DraftStage) => void): Promise<DraftOutcome> {
     const id = newTurnId();
     const lens = canvasModel?.lens;
     // The author's standing choice, read at draft time (drafterModel.ts, the
@@ -1067,11 +1088,12 @@ function Workspace() {
     try {
       ({ sl, answeredModel, modelMs, modelCalls } = await draftSlWithRetry(description, lens, onStage, requestedModel));
     } catch (e) {
+      const errorText = e instanceof Error ? e.message : String(e);
       setCoauthorTurns((ts) => [
-        { id, description, sl: "", at: new Date().toISOString(), status: "network-error", errorText: e instanceof Error ? e.message : String(e), requestedModel },
+        { id, description, sl: "", at: new Date().toISOString(), status: "network-error", errorText, requestedModel },
         ...ts,
       ]);
-      return;
+      return { produced: false, error: errorText };
     }
     setSlText(sl);
     const outcome = compileSl(sl);
@@ -1082,11 +1104,12 @@ function Workspace() {
         { id, description, sl, at: new Date().toISOString(), status: "compile-error", errorText, model: answeredModel, requestedModel, modelMs, modelCalls },
         ...ts,
       ]);
-      return;
+      return { produced: true };
     }
     setSlErrors([]);
     await onSlCompiled(outcome.ok, outcome.lens_explicit, true, id);
     setCoauthorTurns((ts) => [{ id, description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls }, ...ts]);
+    return { produced: true };
   }
 
   // #314 the correction turn — "this is good as far as it goes, but you've
@@ -1188,9 +1211,9 @@ function Workspace() {
     turnId: string,
     correction: string,
     onStage?: (stage: DraftStage) => void,
-  ) {
+  ): Promise<DraftOutcome> {
     const target = coauthorTurns.find((t) => t.id === turnId);
-    if (!target || !target.sl.trim() || !correction.trim()) return;
+    if (!target || !target.sl.trim() || !correction.trim()) return { produced: false };
     // The findings are shown to the drafter only when the model on the canvas
     // IS this turn's SL. Correcting an older turn while a different model is
     // compiled would otherwise hand the drafter complaints about something
@@ -1212,17 +1235,18 @@ function Workspace() {
     });
     if (outcome.kind === "network-error") {
       setCoauthorTurns((ts) => [outcome.turn, ...ts]);
-      return;
+      return { produced: false, error: outcome.turn.errorText };
     }
     setSlText(outcome.sl);
     if (outcome.kind === "compile-error") {
       setSlErrors(outcome.errors);
       setCoauthorTurns((ts) => [outcome.turn, ...ts]);
-      return;
+      return { produced: true };
     }
     setSlErrors([]);
     await onSlCompiled(outcome.model, outcome.lensExplicit, true, outcome.turn.id);
     setCoauthorTurns((ts) => [outcome.turn, ...ts]);
+    return { produced: true };
   }
 
   // File → New: a blank canvas to author a model from scratch (the #14 path — no
@@ -1249,8 +1273,10 @@ function Workspace() {
     setDirty(false);
     setWalk([]);
     setFitToken((n) => (n ?? 0) + 1); // frame the newborn membrane (#100 phase 0)
-    setTypePromptOpen(true); // #77: offer the kind/name first step (skippable)
+    // "Describe it in a few lines" already chose the text pane, so it is not
+    // asked again how it wants to start.
     if (opts?.sl) setSlOpen(true);
+    else setStartOpen(true);
   }
 
   // #309 M1: open the data-first door. Same discard/walk guards as File → New;
@@ -2446,6 +2472,8 @@ function Workspace() {
         systemType={canvasModel?.system_type}
         soiDescription={canvasModel?.description ?? ""}
         onSoiDescriptionChange={(d) => setCanvasModel((m) => (m ? { ...m, description: d } : m))}
+        soiName={canvasModel?.name ?? ""}
+        onSoiNameChange={(n) => setCanvasModel((m) => (m ? { ...m, name: n || undefined } : m))}
         onSystemTypeChange={(st) => setCanvasModel((m) => (m ? { ...m, system_type: st } : m))}
         dirty={dirty}
         onHome={goHome}
@@ -2607,7 +2635,13 @@ function Workspace() {
               axis, a negation would have left the palette standing over the
               run. */}
           {canvasModel && !inspectorFocused && workMode === "structure" && (
-            <PaletteDock collapsed={paletteCollapsed} onToggle={() => setPaletteCollapsed((c) => !c)}>
+            <PaletteDock
+              collapsed={paletteCollapsed}
+              onToggle={() => {
+                paletteBeforeSl.current = null;
+                setPaletteCollapsed((c) => !c);
+              }}
+            >
               <PaletteRail lens={canvasModel.lens} armed={armed} onArm={setArmed} />
             </PaletteDock>
           )}
@@ -2633,7 +2667,13 @@ function Workspace() {
               // 2026-07-24) — not a dock tab. coauthorDraft owns the whole
               // draft->compile->preview->record sequence; the pane just
               // switches back to the SL view once it resolves.
-              coauthor={{ turns: coauthorTurns, onDraft: coauthorDraft, onCorrect: coauthorCorrect }}
+              coauthor={{
+                turns: coauthorTurns,
+                onDraft: coauthorDraft,
+                onCorrect: coauthorCorrect,
+                seed: coauthorSeed,
+                onSeedTaken: () => setCoauthorSeed(null),
+              }}
             />
           )}
 
@@ -3282,13 +3322,22 @@ function Workspace() {
         </div>
       </div>
 
-      {typePromptOpen && canvasModel && (
-        <NewModelTypePrompt
-          onApply={(name, systemType) => {
-            setCanvasModel((m) => (m ? { ...m, name, system_type: systemType } : m));
-            setTypePromptOpen(false);
+      {startOpen && canvasModel && (
+        <StartSurface
+          onDescribe={(description) => {
+            setStartOpen(false);
+            setCoauthorSeed({ description, nonce: Date.now() });
+            setSlOpen(true);
           }}
-          onSkip={() => setTypePromptOpen(false)}
+          onSkip={() => setStartOpen(false)}
+          onStartFromData={() => {
+            setStartOpen(false);
+            void startFromData();
+          }}
+          onOpenLibrary={() => {
+            setStartOpen(false);
+            openHomeAt({ view: "library" });
+          }}
         />
       )}
 
@@ -3400,6 +3449,8 @@ export function MenuBar({
   onSystemTypeChange,
   soiDescription,
   onSoiDescriptionChange,
+  soiName,
+  onSoiNameChange,
   dirty,
   onHome,
   libraryModels,
@@ -3438,6 +3489,8 @@ export function MenuBar({
   onSystemTypeChange?: (next: SystemType) => void;
   soiDescription?: string;
   onSoiDescriptionChange?: (next: string) => void;
+  soiName?: string;
+  onSoiNameChange?: (next: string) => void;
   dirty: boolean;
   onHome: () => void;
   libraryModels: { name: string; savedAt: number; depth: number }[];
@@ -3753,6 +3806,8 @@ export function MenuBar({
                   onChange={onSystemTypeChange}
                   description={soiDescription}
                   onDescriptionChange={onSoiDescriptionChange}
+                  name={soiName}
+                  onNameChange={onSoiNameChange}
                 />
               </div>
             </>

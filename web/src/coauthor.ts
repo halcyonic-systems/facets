@@ -107,6 +107,38 @@ export function saveCoauthorTurns(turns: CoauthorTurn[]): void {
   }
 }
 
+/** What a draft or correction ask came to, as the pane needs to know it.
+ *  `produced` is true when there is SL text to look at, compiled or faulty.
+ *  When the drafter could not be reached there is none, and `error` carries
+ *  why, so the pane can stay where the author is and say so under Draft. */
+export type DraftOutcome = { produced: boolean; error?: string };
+
+/** A description handed to the co-author tab from outside it (the start
+ *  surface). `nonce` tells one hand-off from the next, so the same words sent
+ *  twice are still two asks. */
+export type CoauthorSeed = { description: string; nonce: number };
+
+/** Which turns the pane shows before anyone opens the history. Turns arrive
+ *  newest first. The newest stays in view unless it was discarded: a failed
+ *  turn's fault text is the only record of that failure, and the draft just
+ *  made is the one a correction is aimed at. A previewing turn and the turn
+ *  being corrected stay in view whatever their age. The rest wait behind the
+ *  history toggle, and discarded ones behind a second toggle inside it. */
+export function splitHistory(
+  turns: readonly CoauthorTurn[],
+  correctingId: string | null,
+): { current: CoauthorTurn[]; past: CoauthorTurn[]; discarded: CoauthorTurn[] } {
+  const current: CoauthorTurn[] = [];
+  const past: CoauthorTurn[] = [];
+  const discarded: CoauthorTurn[] = [];
+  turns.forEach((t, i) => {
+    if (t.status === "previewing" || t.id === correctingId || (i === 0 && t.status !== "discarded")) current.push(t);
+    else if (t.status === "discarded") discarded.push(t);
+    else past.push(t);
+  });
+  return { current, past, discarded };
+}
+
 // #218: the loop below already knows which attempt it is on and whether it
 // is waiting on the model or checking the model's output — that information
 // simply never left the function. `onStage` surfaces it verbatim (no new
