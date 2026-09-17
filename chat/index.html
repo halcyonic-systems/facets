@@ -905,6 +905,10 @@
     color: var(--ink-faint); margin-bottom: 6px;
   }
   .lens-strip-shared { color: var(--ink-dim); font-size: 0.88rem; font-style: italic; line-height: 1.5; margin-bottom: 4px; }
+  .lens-strip-thin { display: flex; align-items: baseline; gap: 10px; color: var(--ink-faint); font-size: 0.86rem; font-style: italic; }
+  .lens-strip-toggle { font: inherit; font-family: var(--ui); font-style: normal; font-size: 0.78rem; color: var(--flow); background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
+  .lens-strip-toggle:hover { text-decoration: underline; }
+  .conv-lenses.collapsed { display: none; }
   .conv-lens-head.has-reading { display: grid; grid-template-columns: 8.5rem 1fr auto; column-gap: 14px; }
   .conv-lens-who { display: flex; flex-direction: column; gap: 1px; }
   .conv-lens-reading { font-size: 0.92rem; line-height: 1.55; color: var(--ink-dim); }
@@ -3900,6 +3904,20 @@ function appendLensStrip(container, m, tab) {
     };
     card.appendChild(head); card.appendChild(body); wrap.appendChild(card);
   });
+  // A fact lookup leaves nearly every lens saying it adds little. Five cards of that is
+  // noise, so the strip folds to one line and the drill-ins wait behind a toggle.
+  const thin = lenses.filter(l => /^\s*adds little here/i.test(l.reading || '')).length;
+  if (thin && (thin === lenses.length || thin >= 4)) {
+    label.remove();
+    const line = document.createElement('div'); line.className = 'lens-strip-thin';
+    line.appendChild(document.createTextNode('The lenses add little to a question like this.'));
+    const toggle = document.createElement('button'); toggle.className = 'lens-strip-toggle';
+    toggle.textContent = 'show lenses';
+    toggle.onclick = () => { toggle.textContent = wrap.classList.toggle('collapsed') ? 'show lenses' : 'hide lenses'; };
+    line.appendChild(toggle);
+    strip.insertBefore(line, strip.firstChild);
+    wrap.classList.add('collapsed');
+  }
   strip.appendChild(wrap);
   container.appendChild(strip);
 }
