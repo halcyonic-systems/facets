@@ -265,6 +265,15 @@ describe("slChangeSummary — what moved, said honestly", () => {
     expect(slChangeSummary("a\n\n  b\n", "a\nb")).toBe("No lines changed.");
   });
 
+  it("reads a description beneath its declaration as the same line (SL v1.5)", () => {
+    const inline = 'component A description "the work process"\nsource S';
+    const beneath = 'component A\n    description "the work process"\nsource S';
+    expect(slChangeSummary(inline, beneath)).toBe("No lines changed.");
+    expect(slChangeSummary(beneath, 'component A\n    description "reworded"\nsource S')).toBe(
+      "1 line added, 1 line removed."
+    );
+  });
+
   it("reports the first draft of a correction on an empty prior as all added", () => {
     expect(slChangeSummary("", "a\nb")).toBe("2 lines added.");
   });

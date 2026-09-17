@@ -1101,7 +1101,7 @@ function Workspace() {
         { id, description, sl: "", at: new Date().toISOString(), status: "network-error", errorText, requestedModel, ...mode },
         ...ts,
       ]);
-      return { produced: false };
+      return { produced: false, error: errorText };
     }
     setSlText(sl);
     const outcome = compileSl(sl);
@@ -1255,7 +1255,7 @@ function Workspace() {
     });
     if (outcome.kind === "network-error") {
       setCoauthorTurns((ts) => [outcome.turn, ...ts]);
-      return { produced: false };
+      return { produced: false, error: outcome.turn.errorText };
     }
     setSlText(outcome.sl);
     if (outcome.kind === "compile-error") {

@@ -9,6 +9,7 @@ import { compileSl, emitSl, validateMode } from "./kernel";
 import type { CanvasModel, Lens, SlError, VerdictFields } from "./kernel/types";
 import { MODE_BY_LENS, findingsPhrase } from "./review";
 import { effortOnWire, type DraftEffort } from "./draftEffort";
+import { isContinuationLine } from "./sl/mode";
 
 /** One draft attempt, kept for the resident dock's history. `previewing` means
  *  the compiled draft is (or was) the active canvas preview; `accepted` /
@@ -120,9 +121,9 @@ export function saveCoauthorTurns(turns: CoauthorTurn[]): void {
 
 /** What a draft or correction ask came to, as the pane needs to know it.
  *  `produced` is true when there is SL text to look at, compiled or faulty.
- *  When the drafter could not be reached there is none: the failed turn in
- *  the history says why, and the pane stays on the tab that shows it. */
-export type DraftOutcome = { produced: boolean };
+ *  When the drafter could not be reached there is none, and `error` carries
+ *  why, so the pane can stay where the author is and say so under Draft. */
+export type DraftOutcome = { produced: boolean; error?: string };
 
 /** A description handed to the co-author tab from outside it (the start
  *  surface). `nonce` tells one hand-off from the next, so the same words sent
@@ -638,13 +639,21 @@ export async function runCorrectionTurn(req: {
  *  A line multiset comparison, and the wording says exactly that — lines added
  *  and removed, not "changes", because a reordering is not a change and
  *  claiming otherwise would be a small lie in a record built to be re-read.
- *  Blank lines and indentation are ignored; SL is line-oriented. */
+ *  Blank lines and indentation are ignored; SL is line-oriented. A
+ *  `description` continuation counts as part of the line above it, so the
+ *  same prose written inline in one draft and beneath in the other is not a
+ *  change (spec §4.3: two spellings, one model). */
 export function slChangeSummary(before: string, after: string): string {
-  const lines = (t: string) =>
-    t
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
+  const lines = (t: string) => {
+    const out: string[] = [];
+    for (const raw of t.split("\n")) {
+      const l = raw.trim();
+      if (l.length === 0) continue;
+      if (isContinuationLine(raw) && out.length > 0) out[out.length - 1] += ` ${l}`;
+      else out.push(l);
+    }
+    return out;
+  };
   const remaining = new Map<string, number>();
   for (const l of lines(before)) remaining.set(l, (remaining.get(l) ?? 0) + 1);
   let added = 0;

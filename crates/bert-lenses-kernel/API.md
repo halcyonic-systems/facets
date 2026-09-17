@@ -399,6 +399,16 @@ trailing newline is preserved if present and not invented if absent.
 
 Throws (JsError) on the same name shapes `emit_sl` rejects.
 
+**v1.5 (#399) — a description may sit beneath its declaration.** `compile_sl`
+accepts `description "<prose>"` on its own indented line directly under the
+thing, interface, milieu, or flow line it describes; `emit_sl` always writes it
+that way (four-space indent). No signature and no model field changed — the two
+spellings compile to the same `CanvasModel`, and every SL text that compiled
+before compiles to the same model now (other indented lines read as ever, and
+an indent shared by every line is dropped first). A caller that reads emitted SL line by
+line should treat an indented line as part of the line above it. Rule and
+faults: `docs/language/spec.md` §4.3.
+
 **v1.4 (#326) — descriptions restored.** `Thing` and `Relation` each gained
 `description?: string`, serde-skipped when empty so every stored model is
 byte-identical on disk. SL grew a matching `description "<prose>"` clause on

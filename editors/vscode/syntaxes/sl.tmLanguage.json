@@ -4,6 +4,7 @@
   "scopeName": "source.sl",
   "fileTypes": ["sl"],
   "patterns": [
+    { "include": "#description-continuation" },
     { "include": "#comment" },
     { "include": "#string" },
     { "include": "#annotation" },
@@ -31,6 +32,16 @@
     "arrow": {
       "match": "->",
       "name": "keyword.operator.arrow.sl"
+    },
+    "description-continuation": {
+      "begin": "(?i)^[ \\t]+(description)\\b",
+      "beginCaptures": { "1": { "name": "keyword.other.sl" } },
+      "end": "$",
+      "name": "meta.continuation.description.sl",
+      "patterns": [
+        { "match": "\"[^\"]*\"", "name": "string.quoted.double.sl markup.quote.prose.sl" },
+        { "include": "#comment" }
+      ]
     },
     "declaration-head": {
       "match": "(?i)^\\s*(system|domain|description|time|level|component|source|sink|environment|interface|milieu|flow|param|metric|boundary)\\b",

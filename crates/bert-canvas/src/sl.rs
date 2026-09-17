@@ -66,11 +66,19 @@ pub struct SlError {
 }
 
 /// Auto-layout geometry: components sit on an inner N-gon, environment things
-/// on an outer ring, both in declaration order. Deterministic — same text,
-/// same picture. Values sized to the SVG stage the canvas renders.
+/// on an outer ring by role. Deterministic — same text, same picture. Values
+/// sized to the SVG stage the canvas renders; both radii are FLOORS, grown by
+/// `auto_layout` when the count or the membrane needs more room.
 const CENTER: (f32, f32) = (480.0, 320.0);
 const COMPONENT_RADIUS: f32 = 170.0;
 const ENV_RADIUS: f32 = 320.0;
+/// Mirrors `web/src/canvas/style.ts` `nodeR` (= `canvas.rs` RADIUS).
+const NODE_R: f32 = 34.0;
+/// Two env neighbours following their partners never sit closer than this
+/// along the arc, however near their partners are (30°).
+const MIN_ENV_GAP: f32 = std::f32::consts::PI / 6.0;
+/// Ceiling on the ring-order search, in wire-pair tests.
+const LAYOUT_WORK_CAP: i64 = 8_000_000;
 
 /// Compile SL text into a [`CanvasModel`], or every fault found.
 pub fn parse_sl(text: &str) -> Result<CanvasModel, Vec<SlError>> {
@@ -112,10 +120,25 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
     // `@directed <n>` marks (1-based flow index, source line) to apply at the end.
     let mut directed_marks: Vec<(usize, usize)> = Vec::new();
     let mut next_id: u64 = 1;
+    // What a `description` continuation line (v1.5, #399) would attach to:
+    // the declaration a line just made, and the line directly above — its
+    // keyword and the fault count before it. Both are consumed at the top of
+    // every line, so a blank line or a comment in between breaks the
+    // attachment: "directly beneath" means the very next line.
+    let mut carrier: Option<Carrier> = None;
+    let mut above: Option<(String, usize)> = None;
+    // A wholly indented paste (SL lifted out of a markdown list or a chat
+    // reply) is its dedented self: the indent every non-blank line shares is
+    // dropped before indentation means anything. Lines are never removed, so
+    // faults keep their physical line numbers.
+    let shared = common_indent(text);
 
     for (idx, raw) in text.lines().enumerate() {
         let line_no = idx + 1;
+        let raw = raw.strip_prefix(shared).unwrap_or(raw);
         let line = raw.trim();
+        let held = carrier.take();
+        let over = above.take();
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
@@ -125,6 +148,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 message: msg,
             })
         };
+        above = Some((String::new(), errors.len()));
         let tokens = match tokenize(line) {
             Ok(t) => t,
             Err(msg) => {
@@ -134,6 +158,80 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         };
         if tokens.is_empty() {
             continue;
+        }
+
+        // ---- description continuation (v1.5, #399) ----
+        // An indented line that opens with `description` is the prose of the
+        // declaration directly above. Deliberately narrow — no other clause
+        // continues, a string still cannot span lines, and any other indented
+        // line reads exactly as it did before indentation meant anything.
+        let continuation = raw.starts_with(char::is_whitespace)
+            && matches!(&tokens[0], Tok::Word(w) if w.eq_ignore_ascii_case("description"));
+        if continuation {
+            let [_, Tok::Str(prose)] = tokens.as_slice() else {
+                fail(
+                    "description syntax: `description \"<prose>\"` (quoted), and nothing \
+                     else on the indented line"
+                        .into(),
+                    &mut errors,
+                );
+                continue;
+            };
+            let Some((word, faults_before)) = over else {
+                fail(
+                    "this `description` has no declaration directly above it — fix: put it \
+                     on the line right beneath the declaration it describes (no blank line \
+                     or comment between), or remove the indent to describe the system itself"
+                        .into(),
+                    &mut errors,
+                );
+                continue;
+            };
+            if errors.len() > faults_before {
+                fail(
+                    format!(
+                        "the line above did not parse, so this `description` has nothing to \
+                         attach to — fix: repair line {} first",
+                        line_no - 1
+                    ),
+                    &mut errors,
+                );
+                continue;
+            }
+            let slot = match held {
+                Some(Carrier::Thing(i)) => &mut things[i].description,
+                Some(Carrier::Relation(i)) => &mut relations[i].description,
+                Some(Carrier::Milieu(i)) => &mut milieu_vars[i].description,
+                None => {
+                    fail(
+                        format!(
+                            "`{word}` takes no description — fix: only component, source, \
+                             sink, environment, interface, milieu, and flow lines carry one; \
+                             move this beneath one of those or delete it"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
+            };
+            if slot.is_empty() {
+                slot.clone_from(prose);
+            } else {
+                fail(
+                    "`description` already given for this declaration — fix: keep one, \
+                     either on the declaration's line or beneath it"
+                        .into(),
+                    &mut errors,
+                );
+            }
+            // A second continuation beneath this one meets the same carrier
+            // and gets the already-given fault, not a misleading other one.
+            carrier = held;
+            above = Some((word, faults_before));
+            continue;
+        }
+        if let (Some((word, _)), Tok::Word(w)) = (above.as_mut(), &tokens[0]) {
+            *word = w.to_ascii_lowercase();
         }
 
         // ---- annotation layer (view state; never systemhood) ----
@@ -460,6 +558,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 if !ok {
                     continue;
                 }
+                carrier = Some(Carrier::Milieu(milieu_vars.len()));
                 milieu_vars.push(bert_core::MilieuVariable { name, value, unit, description });
             }
             // `interface "Name" [protocol "<str>"] [description "<str>"]` —
@@ -564,6 +663,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     continue;
                 }
                 by_name.insert(name.clone(), things.len());
+                carrier = Some(Carrier::Thing(things.len()));
                 things.push(Thing {
                     id: next_id,
                     name,
@@ -653,6 +753,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                 thing.description = d;
                             }
                         }
+                        carrier = Some(Carrier::Thing(idx));
                         continue;
                     }
                     fail(
@@ -1395,6 +1496,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     continue;
                 }
+                carrier = Some(Carrier::Thing(things.len()));
                 things.push(Thing {
                     id: next_id,
                     name,
@@ -1767,6 +1869,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     continue;
                 };
+                carrier = Some(Carrier::Relation(relations.len()));
                 relations.push(Relation {
                     id: next_id,
                     a: things[ai].id,
@@ -2264,54 +2367,64 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
 }
 
 /// Place things deterministically: explicit `@pos` wins; otherwise components
-/// take the inner N-gon in declaration order, and environment things the outer
-/// ring **by role, not by declaration index** — sources on the left arc, sinks
-/// on the right arc, so the picture reads left to right the way the flows run
-/// (bert-lenses#309). Declaration order is the tie-break *within* a role, top to
-/// bottom. A lone component sits at the center.
+/// take the inner N-gon and environment things the outer ring **by role** —
+/// sources on the left arc, sinks on the right arc, so the picture reads left
+/// to right the way the flows run (bert-lenses#309). A lone component sits at
+/// the center.
+///
+/// The layout reads the flows (#399). The component ring grows with its count
+/// so neighbours keep a label-wide chord, and its order is searched for fewer
+/// wire crossings starting FROM declaration order. A wired environment thing
+/// may leave its even, declaration-ordered spread to sit at the elevation of
+/// the components it exchanges flows with — when that draws strictly cleaner.
+/// Only a strict improvement moves anything, so declaration order is every
+/// tie-break and a model that already draws clean keeps the picture it had.
 fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>) {
     use std::f32::consts::{FRAC_PI_2, PI, SQRT_2, TAU};
-    let ring = |i: usize, n: usize, radius: f32, start: f32| -> (f32, f32) {
-        let angle = start + (i as f32) * TAU / (n.max(1) as f32);
-        (
-            CENTER.0 + radius * angle.cos(),
-            CENTER.1 + radius * angle.sin(),
-        )
-    };
     let components: Vec<usize> = (0..model.things.len())
         .filter(|&i| model.things[i].role == Role::Component && !positions.contains_key(&model.things[i].name))
         .collect();
     let env: Vec<usize> = (0..model.things.len())
         .filter(|&i| model.things[i].role == Role::Environment && !positions.contains_key(&model.things[i].name))
         .collect();
-    for (slot, &i) in components.iter().enumerate() {
-        let (x, y) = match components.len() {
+    let n = components.len();
+    let comp_radius = component_radius(model, &components);
+    let slot_point = |slot: usize| -> (f32, f32) {
+        // Two components spread HORIZONTALLY (#216, E2). The generic ring
+        // starts at −π/2, which for n = 2 stacks both on one vertical line —
+        // every edge through both labels, destroying exactly what the sibling
+        // sets exist to show.
+        let start = if n == 2 { PI } else { -FRAC_PI_2 };
+        let angle = start + (slot as f32) * TAU / (n.max(1) as f32);
+        match n {
             1 => CENTER,
-            // Two components spread HORIZONTALLY (#216, E2). The generic ring
-            // starts at −π/2, which for n = 2 stacks both on one vertical line
-            // — every edge through both labels, destroying exactly what the
-            // sibling sets exist to show. First declared sits left.
-            2 => ring(slot, 2, COMPONENT_RADIUS, PI),
-            n => ring(slot, n, COMPONENT_RADIUS, -FRAC_PI_2),
-        };
-        model.things[i].x = x;
-        model.things[i].y = y;
-    }
+            _ => (
+                CENTER.0 + comp_radius * angle.cos(),
+                CENTER.1 + comp_radius * angle.sin(),
+            ),
+        }
+    };
     // The env ring must CLEAR the Mobus membrane the face will draw (#216, E1).
     // The face derives the membrane from the component extent (geometry.ts::
     // componentRing: bbox halves × √2 + RING_PAD), while ENV_RADIUS was pinned —
     // for any real spread the two collided, and an env node on the membrane is a
     // picture of C ∩ E ≠ ∅. Mirror the face's math here (NODE_R = style.ts
     // nodeR = canvas.rs RADIUS = 34; RING_PAD = NODE_R + 36) and push the ring
-    // outside it. Pinned components count: the membrane wraps them too.
-    const NODE_R: f32 = 34.0;
+    // outside it. Pinned components count: the membrane wraps them too. The
+    // extent is the same whatever order fills the slots, so it is taken once.
     const RING_PAD: f32 = NODE_R + 36.0;
     const CLEARANCE: f32 = 24.0;
-    let comp_pts: Vec<(f32, f32)> = model
+    let mut pts: Vec<(f32, f32)> = model
         .things
         .iter()
-        .filter(|t| t.role == Role::Component)
         .map(|t| positions.get(&t.name).copied().unwrap_or((t.x, t.y)))
+        .collect();
+    for (slot, &i) in components.iter().enumerate() {
+        pts[i] = slot_point(slot);
+    }
+    let comp_pts: Vec<(f32, f32)> = (0..model.things.len())
+        .filter(|&i| model.things[i].role == Role::Component)
+        .map(|i| pts[i])
         .collect();
     let env_radius = if comp_pts.is_empty() {
         ENV_RADIUS
@@ -2353,9 +2466,6 @@ fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>)
     let originates: std::collections::HashSet<u64> = bonds.iter().map(|r| r.a).collect();
     let touched: std::collections::HashSet<u64> =
         bonds.iter().flat_map(|r| [r.a, r.b]).collect();
-    // (center angle, direction of increasing declaration index, span cap)
-    // `dir` is chosen so the first-declared member of a group sits topmost
-    // (y grows downward, so sin > 0 is below the centre).
     let mut sources: Vec<usize> = Vec::new();
     let mut sinks: Vec<usize> = Vec::new();
     let mut ambient: Vec<usize> = Vec::new();
@@ -2375,27 +2485,145 @@ fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>)
             }
         }
     }
-    let groups: [(&Vec<usize>, f32, f32, f32); 3] = [
-        (&sources, PI, -1.0, SIDE_SPAN),
-        (&sinks, 0.0, 1.0, SIDE_SPAN),
-        (&ambient, -FRAC_PI_2, 1.0, AMBIENT_SPAN),
+    // (members, center angle, direction of increasing elevation, span cap,
+    // follows its partners). `dir` is chosen so a growing elevation runs top to
+    // bottom on either side (y grows downward, so sin > 0 is below the centre)
+    // and the first-declared member of an unwired group sits topmost.
+    let groups: [(&Vec<usize>, f32, f32, f32, bool); 3] = [
+        (&sources, PI, -1.0, SIDE_SPAN, true),
+        (&sinks, 0.0, 1.0, SIDE_SPAN, true),
+        (&ambient, -FRAC_PI_2, 1.0, AMBIENT_SPAN, false),
     ];
     // One radius for the whole ring: the largest any group needs to hold MIN_SEP.
     let mut radius = env_radius;
-    for (members, _, _, span) in &groups {
+    for (members, _, _, span, _) in &groups {
         if members.len() >= 2 {
             let step = span / (members.len() - 1) as f32;
             radius = radius.max(MIN_SEP / (2.0 * (step / 2.0).sin()));
         }
     }
-    for (members, center, dir, span) in groups {
-        let k = members.len();
-        let step = if k >= 2 { span / (k - 1) as f32 } else { 0.0 };
-        for (slot, &i) in members.iter().enumerate() {
-            let angle = center + dir * (slot as f32 - (k - 1) as f32 / 2.0) * step;
-            model.things[i].x = CENTER.0 + radius * angle.cos();
-            model.things[i].y = CENTER.1 + radius * angle.sin();
+
+    let by_id: HashMap<u64, usize> = model.things.iter().enumerate().map(|(i, t)| (t.id, i)).collect();
+    // One wire per unordered pair of things, however many flows ride it: a
+    // second flow on a pair already drawn is not a new line to untangle, and
+    // must not reshuffle the ring. A BTreeSet so the wire order is the index
+    // order, never a hash's.
+    let mut wires: std::collections::BTreeSet<(usize, usize)> = Default::default();
+    for r in &model.relations {
+        if let (Some(&a), Some(&b)) = (by_id.get(&r.a), by_id.get(&r.b)) {
+            if a != b {
+                wires.insert((a.min(b), a.max(b)));
+            }
         }
+    }
+    let wires: Vec<(usize, usize)> = wires.into_iter().collect();
+    let mut partners: Vec<Vec<usize>> = vec![Vec::new(); model.things.len()];
+    for &(a, b) in &wires {
+        for (e, c) in [(a, b), (b, a)] {
+            if model.things[e].role == Role::Environment && model.things[c].role == Role::Component {
+                partners[e].push(c);
+            }
+        }
+    }
+
+    // Everything that depends on the component order, as one function of it:
+    // fill the slots, then either spread each env group evenly in declaration
+    // order or (`follow`) hang each wired env thing at its partners' elevation.
+    let place = |order: &[usize], follow: bool, pts: &mut Vec<(f32, f32)>| {
+        for (slot, &i) in order.iter().enumerate() {
+            pts[i] = slot_point(slot);
+        }
+        for (members, center, dir, span, follows) in &groups {
+            let k = members.len();
+            if k == 0 {
+                continue;
+            }
+            let step = if k >= 2 { span / (k - 1) as f32 } else { 0.0 };
+            // The even spread is the fallback: a thing with no component
+            // partner keeps the slot declaration order gives it.
+            let mut wanted: Vec<(f32, usize)> = members
+                .iter()
+                .enumerate()
+                .map(|(slot, &i)| {
+                    let even = (slot as f32 - (k - 1) as f32 / 2.0) * step;
+                    let (sx, sy) = partners[i].iter().fold((0.0f32, 0.0f32), |(sx, sy), &c| {
+                        let (dx, dy) = (pts[c].0 - CENTER.0, pts[c].1 - CENTER.1);
+                        let len = dx.hypot(dy);
+                        if len < 1.0 { (sx, sy) } else { (sx + dx / len, sy + dy / len) }
+                    });
+                    // Elevation, not bearing: a partner on the far side pulls
+                    // its env thing up or down the near arc, never across it,
+                    // and a partner dead opposite reads as level (no ±π flip).
+                    let elevation = if follow && *follows && sx.hypot(sy) > 1e-3 {
+                        sy.atan2(sx.abs()).clamp(-span / 2.0, span / 2.0)
+                    } else {
+                        even
+                    };
+                    (elevation, i)
+                })
+                .collect();
+            wanted.sort_by(|p, q| p.0.total_cmp(&q.0).then(p.1.cmp(&q.1)));
+            let gap = step.min(MIN_ENV_GAP);
+            let wanted_angles: Vec<f32> = wanted.iter().map(|w| w.0).collect();
+            let settled = spread_with_gap(&wanted_angles, gap, -span / 2.0, span / 2.0);
+            for (&(_, i), u) in wanted.iter().zip(settled) {
+                let angle = center + dir * u;
+                pts[i] = (CENTER.0 + radius * angle.cos(), CENTER.1 + radius * angle.sin());
+            }
+        }
+    };
+
+    // Steepest descent from declaration order over swaps, moves, rotations and
+    // the mirror image, in one fixed enumeration: each pass takes the single
+    // edit that draws the FEWEST crossings, first listed on a tie, and only
+    // when it is strictly fewer than the order it would replace — so ties stay
+    // where the author put them and the walk ends. Taking the best edit rather
+    // than the first improving one is for the author's sake: the walk depends
+    // less on the accidents of its path, so adding one flow to a drawn model
+    // usually leaves the ring where it was. The work cap is counted in
+    // wire-pair tests, not time — the same text stops at the same place on
+    // every machine.
+    let cost_per = ((wires.len() * wires.len()) / 2 + wires.len() * model.things.len()).max(1) as i64;
+    let untangle = |follow: bool| -> (i64, Vec<usize>) {
+        let mut order = components.clone();
+        let mut trial = pts.clone();
+        place(&order, follow, &mut trial);
+        let mut best = tangle(&wires, &trial);
+        let mut budget: i64 = LAYOUT_WORK_CAP / 2;
+        while n >= 3 && best > 0 && budget > 0 {
+            let mut pass: Option<(i64, Vec<usize>)> = None;
+            for candidate in ring_candidates(n) {
+                if budget <= 0 {
+                    break;
+                }
+                let next = candidate.apply(&order);
+                place(&next, follow, &mut trial);
+                budget -= cost_per;
+                let t = tangle(&wires, &trial);
+                if t < pass.as_ref().map_or(best, |p| p.0) {
+                    pass = Some((t, next));
+                }
+            }
+            let Some((t, next)) = pass else { break };
+            best = t;
+            order = next;
+        }
+        (best, order)
+    };
+    // Two readings of the env ring, the even spread first: following the
+    // partners has to draw strictly cleaner to displace it, so a model that
+    // already reads well keeps the picture it had.
+    let (even_tangle, even_order) = untangle(false);
+    let (follow_tangle, follow_order) = if even_tangle > 0 { untangle(true) } else { (even_tangle, Vec::new()) };
+    if follow_tangle < even_tangle {
+        place(&follow_order, true, &mut pts);
+    } else {
+        place(&even_order, false, &mut pts);
+    }
+
+    for &i in components.iter().chain(&env) {
+        model.things[i].x = pts[i].0;
+        model.things[i].y = pts[i].1;
     }
     for thing in &mut model.things {
         if let Some(&(x, y)) = positions.get(&thing.name) {
@@ -2403,6 +2631,148 @@ fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>)
             thing.y = y;
         }
     }
+}
+
+/// The component ring's radius: `COMPONENT_RADIUS` until the count would pack
+/// neighbours closer than a label-wide chord, then whatever keeps that chord.
+/// A name renders centred under its node at 12px, so the chord is sized from
+/// the two longest names (an estimate — the kernel has no font metrics),
+/// bounded both ways so one paragraph-long name cannot blow the ring up.
+fn component_radius(model: &CanvasModel, components: &[usize]) -> f32 {
+    const MIN_CHORD: f32 = 140.0;
+    const MAX_CHORD: f32 = 220.0;
+    const CHAR_W: f32 = 6.5;
+    const LABEL_GAP: f32 = 24.0;
+    let n = components.len();
+    if n < 3 {
+        return COMPONENT_RADIUS;
+    }
+    let mut widths: Vec<usize> = components
+        .iter()
+        .map(|&i| model.things[i].name.chars().count())
+        .collect();
+    widths.sort_unstable_by(|a, b| b.cmp(a));
+    let widest_pair = (widths[0] + widths[1]) as f32 / 2.0 * CHAR_W + LABEL_GAP;
+    let chord = widest_pair.clamp(MIN_CHORD, MAX_CHORD);
+    COMPONENT_RADIUS.max(chord / (2.0 * (std::f32::consts::PI / n as f32).sin()))
+}
+
+/// Settle sorted wanted positions onto `[lo, hi]` so neighbours keep `gap`,
+/// moving each as little as the others allow (pool-adjacent-violators on the
+/// gap-reduced positions: a crowded run shares its mean). The caller guarantees
+/// the run fits — `(len − 1) · gap ≤ hi − lo`.
+fn spread_with_gap(wanted: &[f32], gap: f32, lo: f32, hi: f32) -> Vec<f32> {
+    let n = wanted.len();
+    // (sum of reduced positions, count) per pooled block.
+    let mut blocks: Vec<(f32, usize)> = Vec::with_capacity(n);
+    for (i, &w) in wanted.iter().enumerate() {
+        blocks.push((w - gap * i as f32, 1));
+        while blocks.len() >= 2 {
+            let (s2, c2) = blocks[blocks.len() - 1];
+            let (s1, c1) = blocks[blocks.len() - 2];
+            if s1 / c1 as f32 <= s2 / c2 as f32 {
+                break;
+            }
+            blocks.pop();
+            *blocks.last_mut().unwrap() = (s1 + s2, c1 + c2);
+        }
+    }
+    let ceiling = (hi - gap * (n.saturating_sub(1)) as f32).max(lo);
+    let mut out = Vec::with_capacity(n);
+    for (sum, count) in blocks {
+        let reduced = (sum / count as f32).clamp(lo, ceiling);
+        for _ in 0..count {
+            let i = out.len();
+            out.push(reduced + gap * i as f32);
+        }
+    }
+    out
+}
+
+/// One edit of the ring order. The enumeration is fixed, so the search is.
+enum RingEdit {
+    Swap(usize, usize),
+    Move(usize, usize),
+    Rotate(usize),
+    Mirror(usize),
+}
+
+impl RingEdit {
+    fn apply(&self, order: &[usize]) -> Vec<usize> {
+        let mut next = order.to_vec();
+        match *self {
+            RingEdit::Swap(i, j) => next.swap(i, j),
+            RingEdit::Move(from, to) => {
+                let moved = next.remove(from);
+                next.insert(to, moved);
+            }
+            RingEdit::Rotate(k) => next.rotate_left(k),
+            RingEdit::Mirror(k) => {
+                next.reverse();
+                next.rotate_left(k);
+            }
+        }
+        next
+    }
+}
+
+fn ring_candidates(n: usize) -> Vec<RingEdit> {
+    let mut out = Vec::new();
+    for i in 0..n {
+        for j in i + 1..n {
+            out.push(RingEdit::Swap(i, j));
+        }
+    }
+    for from in 0..n {
+        for to in 0..n {
+            // A move to a neighbouring slot is the swap already listed.
+            if from.abs_diff(to) > 1 {
+                out.push(RingEdit::Move(from, to));
+            }
+        }
+    }
+    out.extend((1..n).map(RingEdit::Rotate));
+    out.extend((0..n).map(RingEdit::Mirror));
+    out
+}
+
+/// How tangled a placement draws: wire crossings, plus wires run through the
+/// body of a thing they do not touch. Counted on a 1/16-px integer lattice with exact integer
+/// orientation tests, so the verdict — and the ring order chosen from it —
+/// cannot turn on the last bit of one platform's `sin`.
+fn tangle(wires: &[(usize, usize)], pts: &[(f32, f32)]) -> i64 {
+    let snap = |p: (f32, f32)| -> (i64, i64) { ((p.0 * 16.0).round() as i64, (p.1 * 16.0).round() as i64) };
+    let q: Vec<(i64, i64)> = pts.iter().map(|&p| snap(p)).collect();
+    let orient = |a: (i64, i64), b: (i64, i64), c: (i64, i64)| -> i64 {
+        ((b.0 - a.0) * (c.1 - a.1) - (b.1 - a.1) * (c.0 - a.0)).signum()
+    };
+    let body = (NODE_R * 16.0) as i128;
+    let mut total = 0;
+    for (i, &(a, b)) in wires.iter().enumerate() {
+        for &(c, d) in &wires[i + 1..] {
+            if a == c || a == d || b == c || b == d {
+                continue;
+            }
+            if orient(q[c], q[d], q[a]) * orient(q[c], q[d], q[b]) < 0
+                && orient(q[a], q[b], q[c]) * orient(q[a], q[b], q[d]) < 0
+            {
+                total += 1;
+            }
+        }
+        let (dx, dy) = (q[b].0 - q[a].0, q[b].1 - q[a].1);
+        let len2 = (dx * dx + dy * dy) as i128;
+        for (t, &p) in q.iter().enumerate() {
+            if t == a || t == b || len2 == 0 {
+                continue;
+            }
+            let along = ((p.0 - q[a].0) * dx + (p.1 - q[a].1) * dy) as i128;
+            let across = ((p.0 - q[a].0) * dy - (p.1 - q[a].1) * dx) as i128;
+            if along > 0 && along < len2 && across * across < body * body * len2 {
+                total += 1;
+            }
+        }
+    }
+    total
 }
 
 /// Serialize a [`CanvasModel`] to canonical SL text — the model→text direction.
@@ -2544,10 +2914,8 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
             if !t.protocol.is_empty() {
                 write!(out, " protocol {}", quote(&t.protocol)?).unwrap();
             }
-            if !t.description.is_empty() {
-                write!(out, " description {}", quote(&t.description)?).unwrap();
-            }
             out.push('\n');
+            emit_description(&mut out, &t.description)?;
             continue;
         }
         let keyword = match (t.role, t.env_kind) {
@@ -2616,12 +2984,6 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
                 .join(", ");
             write!(out, " states {{{labels}}}").unwrap();
         }
-        // Prose last but one, before `decomposes` (#326). It is the only
-        // clause whose value is a sentence, so keeping it at the end leaves
-        // the machine-readable clauses adjacent and scannable.
-        if !t.description.is_empty() {
-            write!(out, " description {}", quote(&t.description)?).unwrap();
-        }
         if t.role == Role::Component {
             // `decomposes` emits last (§7.1 canonical order): name quoted, id in
             // the canonical base58 form, both mandatory.
@@ -2631,6 +2993,7 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
             }
         }
         out.push('\n');
+        emit_description(&mut out, &t.description)?;
     }
 
     // Crossings (facets#384) are not SL: they are the boundary flows derived
@@ -2669,10 +3032,8 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         if !m.unit.is_empty() {
             write!(out, " unit {}", name_token(&m.unit)?).unwrap();
         }
-        if !m.description.is_empty() {
-            write!(out, " description {}", quote(&m.description)?).unwrap();
-        }
         out.push('\n');
+        emit_description(&mut out, &m.description)?;
     }
 
     // flows
@@ -2720,10 +3081,8 @@ pub fn emit_sl(model: &CanvasModel) -> Result<String, String> {
         if let Some(u) = r.usability {
             write!(out, " usability {u:?}").unwrap();
         }
-        if !r.description.is_empty() {
-            write!(out, " description {}", quote(&r.description)?).unwrap();
-        }
         out.push('\n');
+        emit_description(&mut out, &r.description)?;
     }
 
     // params (walkthrough #18) — after flows (they reference them), before
@@ -2891,6 +3250,24 @@ pub fn splice_positions(source: &str, model: &CanvasModel) -> Result<String, Str
     }
     Ok(text)
 }
+
+/// A declaration's prose, written beneath the line just finished (v1.5,
+/// #399). It is the one clause whose value is a sentence, so it always takes
+/// the continuation form: declarations stay a scannable column with the prose
+/// under them, and the choice is a pure function of the model with no width
+/// to tune. This is the single place that decides — a length threshold, if
+/// one is ever wanted, goes here and nowhere else.
+fn emit_description(out: &mut String, description: &str) -> Result<(), String> {
+    if !description.is_empty() {
+        out.push_str(CONTINUATION_INDENT);
+        out.push_str("description ");
+        out.push_str(&quote(description)?);
+        out.push('\n');
+    }
+    Ok(())
+}
+
+const CONTINUATION_INDENT: &str = "    ";
 
 /// Words the tokenizer or line parsers claim — a thing name matching one must
 /// be quoted to stay a name.
@@ -3156,6 +3533,32 @@ fn parse_state_set(attrs: &[Tok], start: usize) -> Result<(Vec<String>, usize), 
             _ => return Err(syntax.into()),
         }
     }
+}
+
+/// The leading whitespace every non-blank line of `text` shares, compared as
+/// an exact string: a tab and four spaces share nothing, so mixed indentation
+/// is never guessed at.
+fn common_indent(text: &str) -> &str {
+    let mut shared: Option<&str> = None;
+    for line in text.lines().filter(|l| !l.trim().is_empty()) {
+        let indent = &line[..line.len() - line.trim_start().len()];
+        shared = Some(match shared {
+            None => indent,
+            Some(s) => {
+                let n = s.chars().zip(indent.chars()).take_while(|(a, b)| a == b).count();
+                &s[..s.char_indices().nth(n).map_or(s.len(), |(i, _)| i)]
+            }
+        });
+    }
+    shared.unwrap_or("")
+}
+
+/// The declaration a `description` continuation line attaches to, by index
+/// into the list its line pushed onto.
+enum Carrier {
+    Thing(usize),
+    Relation(usize),
+    Milieu(usize),
 }
 
 /// Line tokens: bare words, quoted strings, `->`, `:`, and the set-literal
@@ -3773,6 +4176,204 @@ flow S -> A : matter \"in\"
         assert!(parse_sl("component A description bare\n").is_err());
     }
 
+    // ── description on a continuation line (v1.5, #399) ─────────────────
+
+    fn faults(src: &str) -> Vec<(usize, String)> {
+        parse_sl(src).unwrap_err().into_iter().map(|e| (e.line, e.message)).collect()
+    }
+
+    #[test]
+    fn every_carrier_takes_its_description_on_the_line_beneath() {
+        let m = parse_sl(
+            "component A primitive Combining\n    description \"the work process\"\n\
+             source S\n    description \"where it comes from\"\n\
+             sink K\n    description \"where it ends up\"\n\
+             environment E\n    description \"the neighbour\"\n\
+             interface Gate protocol \"graded ore only\"\n    description \"the intake\"\n\
+             milieu pH value 7.2\n    description \"the bath\"\n\
+             flow S -> A : matter \"in\" amount 2\n    description \"what moves\"\n",
+        )
+        .unwrap();
+        let things: Vec<&str> = m.things.iter().map(|t| t.description.as_str()).collect();
+        assert_eq!(
+            things,
+            ["the work process", "where it comes from", "where it ends up", "the neighbour", "the intake"]
+        );
+        assert_eq!(m.milieu[0].description, "the bath");
+        assert_eq!(m.relations[0].description, "what moves");
+    }
+
+    /// The two forms are one model: nothing downstream can tell which the
+    /// author wrote.
+    #[test]
+    fn the_continuation_form_parses_to_the_inline_model() {
+        let inline = "component A description \"the work process\"\nsource S\n\
+                      flow S -> A : matter \"in\" description \"what moves\"\n";
+        let beneath = "component A\n    description \"the work process\"\nsource S\n\
+                       flow S -> A : matter \"in\"\n\tdescription \"what moves\" # tab, trailing comment\n";
+        let json = |src| serde_json::to_string(&parse_sl(src).unwrap()).unwrap();
+        assert_eq!(json(inline), json(beneath));
+    }
+
+    #[test]
+    fn emit_always_writes_the_description_beneath_and_is_a_fixpoint() {
+        let src = "component A primitive Combining interface description \"the work process\"\n\
+                   source S description \"s\"\n\
+                   flow S -> A : matter \"in\" description \"what moves\"\n";
+        let once = emit_sl(&parse_sl(src).unwrap()).unwrap();
+        assert!(
+            once.contains("component A primitive Combining interface\n    description \"the work process\"\n"),
+            "got:\n{once}"
+        );
+        assert!(once.contains("source S\n    description \"s\"\n"), "got:\n{once}");
+        assert!(
+            once.contains("flow S -> A : matter \"in\"\n    description \"what moves\"\n"),
+            "got:\n{once}"
+        );
+        assert_eq!(emit_sl(&parse_sl(&once).unwrap()).unwrap(), once);
+    }
+
+    #[test]
+    fn a_top_level_description_is_still_the_systems_own() {
+        let m = parse_sl("system \"S\"\ndescription \"the whole\"\ncomponent A\n").unwrap();
+        assert_eq!(m.description, "the whole");
+        assert!(m.things[0].description.is_empty());
+        let out = emit_sl(&m).unwrap();
+        assert!(out.contains("\ndescription \"the whole\"\n"), "got:\n{out}");
+    }
+
+    /// `source X` then `sink X` folds into one neighbour (#377); the prose
+    /// beneath the second line describes that neighbour.
+    #[test]
+    fn a_continuation_beneath_a_folded_pair_describes_the_one_neighbour() {
+        let m = parse_sl("source Room\nsink Room\n    description \"both ways\"\n").unwrap();
+        assert_eq!(m.things.len(), 1);
+        assert_eq!(m.things[0].description, "both ways");
+    }
+
+    #[test]
+    fn a_continuation_with_nothing_directly_above_is_a_fault() {
+        for src in [
+            "component A\n@lens mobus\n\n    description \"orphan\"\n",
+            "component A\n\n    description \"after a blank\"\n",
+            "component A\n# note\n    description \"after a comment\"\n",
+        ] {
+            let got = faults(src);
+            let last = src.lines().count();
+            assert_eq!(got.len(), 1, "{src:?} -> {got:?}");
+            assert_eq!(got[0].0, last, "{src:?} -> {got:?}");
+            assert!(got[0].1.contains("no declaration directly above"), "{got:?}");
+        }
+    }
+
+    #[test]
+    fn a_continuation_beneath_a_line_that_failed_names_that_line() {
+        let got = faults("component A\nsource S primitive Combining\n    description \"x\"\n");
+        assert_eq!(got.iter().map(|f| f.0).collect::<Vec<_>>(), [2, 3]);
+        assert!(got[1].1.contains("repair line 2 first"), "{got:?}");
+    }
+
+    #[test]
+    fn a_continuation_beneath_a_kind_that_takes_none_is_a_fault() {
+        for (src, word) in [
+            ("system \"S\"\n    description \"x\"\n", "`system`"),
+            ("boundary porosity 0.5\n    description \"x\"\n", "`boundary`"),
+            ("component A\n@pos A 1 2\n    description \"x\"\n", "`@pos`"),
+        ] {
+            let got = faults(src);
+            assert_eq!(got.len(), 1, "{got:?}");
+            assert_eq!(got[0].0, src.lines().count());
+            assert!(got[0].1.contains(word) && got[0].1.contains("takes no description"), "{got:?}");
+        }
+    }
+
+    #[test]
+    fn a_description_given_twice_is_a_fault_in_either_order() {
+        for src in [
+            "component A description \"one\"\n    description \"two\"\n",
+            "component A\n    description \"one\"\n    description \"two\"\n",
+            "source S\nflow S -> S description \"one\"\n    description \"two\"\n",
+        ] {
+            let got = faults(src);
+            assert_eq!(got.len(), 1, "{src:?} -> {got:?}");
+            assert_eq!(got[0].0, src.lines().count());
+            assert!(got[0].1.contains("already given"), "{got:?}");
+        }
+    }
+
+    #[test]
+    fn an_indented_description_takes_prose_and_nothing_else() {
+        for src in [
+            "component A\n    description bare\n",
+            "component A\n    description \"x\" primitive Combining\n",
+        ] {
+            let got = faults(src);
+            assert_eq!(got.len(), 1, "{src:?} -> {got:?}");
+            assert_eq!(got[0].0, 2);
+            assert!(got[0].1.contains("description syntax"), "{got:?}");
+        }
+    }
+
+    /// Indentation meant nothing before v1.5, so an indented line that does
+    /// not open with `description` still means what it always did.
+    #[test]
+    fn any_other_indented_line_reads_as_it_always_has() {
+        let json = |src| serde_json::to_string(&parse_sl(src).unwrap()).unwrap();
+        assert_eq!(
+            json("component A\n    component B\n\tsource S\n  flow S -> A\n"),
+            json("component A\ncomponent B\nsource S\nflow S -> A\n")
+        );
+        assert_eq!(
+            faults("component A\n    primitive Combining\n"),
+            faults("component A\nprimitive Combining\n")
+        );
+        let m = parse_sl("component A\n  component B\n      description \"b\"\n").unwrap();
+        assert_eq!(m.things[1].description, "b");
+    }
+
+    /// A wholly indented paste is its dedented self — model, continuations,
+    /// and fault lines alike.
+    #[test]
+    fn a_wholly_indented_file_is_its_dedented_self() {
+        let plain = "system \"S\"\ndescription \"the whole\"\n\ncomponent A\n    description \"a\"\n\
+                     # note\nsource S\nflow S -> A : matter \"in\"\n\tdescription \"moves\"\n";
+        let json = |src: &str| serde_json::to_string(&parse_sl(src).unwrap()).unwrap();
+        for indent in ["  ", "\t", " \t "] {
+            let pasted: String =
+                plain.lines().map(|l| if l.is_empty() { "\n".into() } else { format!("{indent}{l}\n") }).collect();
+            assert_eq!(json(&pasted), json(plain), "indent {indent:?}");
+        }
+        let m = parse_sl(plain).unwrap();
+        assert_eq!((m.description.as_str(), m.things[0].description.as_str()), ("the whole", "a"));
+
+        let broken = "component A\n\nflow A -> Nowhere\n    description \"x\"\nbogus line\n";
+        let pasted: String = broken.lines().map(|l| format!("    {l}\n")).collect();
+        assert_eq!(faults(&pasted), faults(broken));
+        assert_eq!(faults(broken).iter().map(|f| f.0).collect::<Vec<_>>(), [3, 4, 5]);
+    }
+
+    /// The shared indent is an exact string prefix: a tab and spaces share
+    /// nothing, so only what every line truly has in common is dropped.
+    #[test]
+    fn the_shared_indent_is_compared_as_an_exact_prefix() {
+        assert_eq!(common_indent("  a\n  \tb\n\n   c\n"), "  ");
+        assert_eq!(common_indent("\ta\n    b\n"), "");
+        assert_eq!(common_indent("a\n    b\n"), "");
+        assert_eq!(common_indent("\n\n"), "");
+        // Tab-indented declaration, space-indented prose: nothing shared, so
+        // the prose is a continuation and the declaration parses as ever.
+        let m = parse_sl("\tcomponent A\n    description \"a\"\n").unwrap();
+        assert_eq!(m.things[0].description, "a");
+    }
+
+    /// An indented comment is still only a comment — and, like any comment,
+    /// it breaks the attachment.
+    #[test]
+    fn an_indented_comment_is_a_comment() {
+        assert!(parse_sl("component A\n    # aside\ncomponent B\n").is_ok());
+        assert!(parse_sl("component A\n    # aside\n    description \"x\"\n").is_err());
+    }
+
 
     // ── usability: what a crossing IS to the system (#331) ──────────────
 
@@ -3869,7 +4470,7 @@ flow S -> A : matter \"in\"
         let m = parse_sl(src).unwrap();
         let out = emit_sl(&m).unwrap();
         assert!(
-            out.contains("interface \"Ore Gate\" protocol \"graded ore only\" description \"the intake\""),
+            out.contains("interface \"Ore Gate\" protocol \"graded ore only\"\n    description \"the intake\"\n"),
             "pure pass-way emits split form; got:\n{out}"
         );
         assert!(
@@ -3933,7 +4534,7 @@ flow S -> A : matter \"in\"
         let out = emit_sl(&m).unwrap();
         assert!(out.contains("milieu pH value 7.2"), "got:\n{out}");
         assert!(
-            out.contains("milieu \"Mg2+ and ionic milieu\" unit mM description \"the coordination shell\""),
+            out.contains("milieu \"Mg2+ and ionic milieu\" unit mM\n    description \"the coordination shell\"\n"),
             "got:\n{out}"
         );
         let back = parse_sl(&out).unwrap();

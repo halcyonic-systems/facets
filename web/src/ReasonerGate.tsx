@@ -14,11 +14,15 @@ import { DEFAULT_ENDPOINT, blockedOnDesktop, isHosted, type ReasonerConfig } fro
 export function ReasonerGate({
   config,
   detail,
+  turnOnLabel,
   onChange,
 }: {
   config: ReasonerConfig;
   /** Where the chosen model runs, said beside the reasoner once it is on. */
   detail?: string;
+  /** What turning on will do, when it does more than turn on: a description
+   *  already waiting is drafted, and the button says so before it is pressed. */
+  turnOnLabel?: string;
   onChange: (next: ReasonerConfig) => void;
 }) {
   const [choosing, setChoosing] = useState(false);
@@ -28,6 +32,7 @@ export function ReasonerGate({
   return (
     <ReasonerChoice
       config={config}
+      turnOnLabel={turnOnLabel}
       onCancel={choosing ? () => setChoosing(false) : undefined}
       onChange={(next) => {
         setChoosing(false);
@@ -76,10 +81,12 @@ function ReasonerStatus({
 
 function ReasonerChoice({
   config,
+  turnOnLabel,
   onChange,
   onCancel,
 }: {
   config: ReasonerConfig;
+  turnOnLabel?: string;
   onChange: (next: ReasonerConfig) => void;
   onCancel?: () => void;
 }) {
@@ -138,7 +145,7 @@ function ReasonerChoice({
             cursor: endpoint ? "pointer" : "not-allowed",
           }}
         >
-          Turn on
+          {turnOnLabel ?? "Turn on"}
         </button>
         {onCancel && (
           <button onClick={onCancel} className="rounded-full px-2 py-0.5 text-[10px]" style={quietButton}>

@@ -2,7 +2,7 @@
 // stable across canonicalization, so the pane and the canvas meet on the
 // one surface both hold: declared thing names (spec §7.2 — names are the
 // text's identifiers). Pure functions over lines; the tokenizer is mode.ts.
-import { lexLine } from "./mode";
+import { isContinuationLine, lexLine } from "./mode";
 import { bandOfLine } from "./bands";
 
 const THING_HEADS = new Set([
@@ -65,12 +65,19 @@ export function flowOnLine(line: string): FlowRef | null {
 // (quote() refuses them), so the key cannot collide across splits.
 const flowKey = (r: FlowRef) => [r.from, r.to, r.label].join("\n");
 
+/** The line a cursor on `lineNo` (1-based) is about: a `description`
+ *  continuation belongs to the declaration directly above it. */
+export function declarationLine(lines: readonly string[], lineNo: number): number {
+  return lineNo > 1 && isContinuationLine(lines[lineNo - 1] ?? "") ? lineNo - 1 : lineNo;
+}
+
 /** The flow declared on `lineNo` (1-based), plus its ordinal among earlier
  *  lines declaring the same (from, to, label) triple. */
 export function flowAtLine(
   lines: readonly string[],
   lineNo: number
 ): { ref: FlowRef; ordinal: number } | null {
+  lineNo = declarationLine(lines, lineNo);
   const ref = flowOnLine(lines[lineNo - 1] ?? "");
   if (!ref) return null;
   let ordinal = 0;
@@ -112,6 +119,9 @@ export function nameToLine(lines: readonly string[]): Map<string, number> {
 /** 1-based line → declared name (the inverse view, for cursor → canvas). */
 export function lineToName(lines: readonly string[]): Map<number, string> {
   const map = new Map<number, string>();
-  for (const [name, line] of nameToLine(lines)) map.set(line, name);
+  for (const [name, line] of nameToLine(lines)) {
+    map.set(line, name);
+    if (isContinuationLine(lines[line] ?? "")) map.set(line + 1, name);
+  }
   return map;
 }

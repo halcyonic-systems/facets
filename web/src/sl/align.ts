@@ -4,7 +4,7 @@
 // contract; changing what emit_sl writes is spec §7.1 owner territory. So
 // the padding lives in zero-width inline widgets whose width is measured in
 // ch (the pane is monospace), and the text underneath stays untouched.
-import { lexLine } from "./mode";
+import { isContinuationLine, lexLine } from "./mode";
 import { bandOfLine } from "./bands";
 
 export interface FlowPad {
@@ -22,7 +22,8 @@ export interface FlowPad {
 
 /** Alignment pads for every contiguous run of `flow` lines. A run breaks on
  *  any line that is not a flow line (comments and blanks break it too — a
- *  visually separated group reads as a group, so it aligns as one). */
+ *  visually separated group reads as a group, so it aligns as one). A flow's
+ *  `description` continuation is part of its flow line and breaks nothing. */
 export function flowPads(lines: readonly string[]): FlowPad[] {
   const pads: FlowPad[] = [];
   let run: { line: number; arrowAt: number; colonAt: number | null }[] = [];
@@ -51,6 +52,7 @@ export function flowPads(lines: readonly string[]): FlowPad[] {
   };
 
   for (let i = 0; i < lines.length; i++) {
+    if (isContinuationLine(lines[i])) continue;
     if (bandOfLine(lines[i]) !== "flows") {
       flush();
       continue;
