@@ -277,6 +277,33 @@ function emitOrNull(model: CanvasModel): string | null {
   }
 }
 
+/** The emitter writes an `@pos` for every thing and an `@lens`; a drafter
+ *  almost never does. Left in, they would pin the whole layout of a repaired
+ *  draft, so later pane edits stop re-running the auto-layout. Keep only the
+ *  annotations the drafter wrote: `@lens` by exact trimmed line, `@pos` by
+ *  thing name. A stopgap: #302 stage 2 (`reemit_sl`, authored-only `@pos` and
+ *  comment preservation, kernel-side) replaces this filter. */
+export function keepAuthoredAnnotations(emitted: string, drafted: string): string {
+  const posName = (line: string) => /^@pos\s+(?:"([^"]*)"|(\S+))/.exec(line.trim());
+  const lenses = new Set<string>();
+  const placed = new Set<string>();
+  for (const raw of drafted.split("\n")) {
+    const line = raw.trim();
+    if (line.startsWith("@lens")) lenses.add(line);
+    const m = posName(line);
+    if (m) placed.add(m[1] ?? m[2]);
+  }
+  return emitted
+    .split("\n")
+    .filter((raw) => {
+      const line = raw.trim();
+      if (line.startsWith("@lens")) return lenses.has(line);
+      const m = posName(line);
+      return m ? placed.has(m[1] ?? m[2]) : true;
+    })
+    .join("\n");
+}
+
 const MISSING_STAMP = "crossing_flow_without_interface";
 const FLOWLESS_INTERFACE = "interface_carries_no_flow";
 
@@ -453,7 +480,8 @@ export async function draftSlWithRetry(
     let errors = refusals(outcome.ok);
     if (errors.some((i) => i.code === MISSING_STAMP)) {
       const stamped = stampInterfacesFromCrossings(outcome.ok);
-      const text = stamped.repairs.length > 0 ? emitOrNull(stamped.model) : null;
+      const emitted = stamped.repairs.length > 0 ? emitOrNull(stamped.model) : null;
+      const text = emitted === null ? null : keepAuthoredAnnotations(emitted, sl);
       const again = text === null ? null : compileSl(text);
       // Judged on what the re-emitted text compiles to, not on the patched
       // object. A model the emitter cannot write, or text that will not

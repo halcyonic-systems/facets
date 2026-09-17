@@ -71,6 +71,18 @@ describe("the stamp repair, judged by the kernel (#399)", () => {
     expect(refusals(out.sl)).toEqual([]);
   });
 
+  it("the repaired text pins no layout the drafter did not write", async () => {
+    authorSlMock.mockResolvedValueOnce({ sl: KETTLE, model: "claude-opus-5" });
+    const bare = await draftSlWithRetry("a kettle", "Mobus");
+    expect(bare.sl).not.toContain("@pos");
+    expect(bare.sl).toMatch(/^@lens mobus$/m);
+
+    authorSlMock.mockResolvedValueOnce({ sl: `${KETTLE}@pos "Pot" 300 200\n`, model: "claude-opus-5" });
+    const placed = await draftSlWithRetry("a kettle", "Mobus");
+    expect(placed.sl.split("\n").filter((l) => l.startsWith("@pos"))).toEqual(["@pos Pot 300 200"]);
+    expect(refusals(placed.sl)).toEqual([]);
+  });
+
   it("an over-stamped draft keeps its stamp and goes back to the drafter", async () => {
     authorSlMock
       .mockResolvedValueOnce({ sl: OVER_STAMPED, model: "claude-opus-5" })
