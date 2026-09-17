@@ -3710,6 +3710,7 @@ async function sendIntegrated(question, msgId) {
     const reader = r.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '', accText = '', currentEvent = null;
+    let earlyStrip = null, earlyKey = null;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -3722,7 +3723,20 @@ async function sendIntegrated(question, msgId) {
         if (!line.startsWith('data: ') || !currentEvent) continue;
         const payload = JSON.parse(line.slice(6));
 
-        if (currentEvent === 'status') {
+        if (currentEvent === 'readings') {
+          // The readings land right after the TL;DR. From here the streaming card stops
+          // re-rendering: the analysis still arriving ends up behind "Read full analysis"
+          // anyway, and redrawing it above the strip would push the cards down the page.
+          if (streamEl && !earlyStrip && (payload.lenses || []).length) {
+            const note = document.createElement('div');
+            note.className = 'lens-loading';
+            note.textContent = 'Writing the full analysis…';
+            streamEl.appendChild(note);
+            earlyStrip = appendLensStrip(streamEl, { meta: { lenses: payload.lenses, shared: payload.shared || null } }, null, question);
+            earlyKey = lensStripKey(payload.lenses, payload.shared);
+            if (earlyStrip && !userScrolledUp) earlyStrip.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          }
+        } else if (currentEvent === 'status') {
           ensureProgress();
           if (payload.stage === 'lens_ready' && payload.lens) {
             const chip = progressEl.querySelector('.lp-lens[data-lens="' + payload.lens.mode + '"]');
@@ -3744,8 +3758,10 @@ async function sendIntegrated(question, msgId) {
             streamEl.className = 'msg msg-bot msg-streaming';
             document.getElementById('chat-messages').appendChild(streamEl);
           }
-          streamEl.innerHTML = renderClean(accText);
-          if (!userScrolledUp) streamEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          if (!earlyStrip) {
+            streamEl.innerHTML = renderClean(accText);
+            if (!userScrolledUp) streamEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          }
         } else if (currentEvent === 'done') {
           clearProgress();
           if (payload.timing) console.log('%c⏱ Facets Integrated', 'font-weight:bold;color:#3a6e62', payload.timing);
@@ -3763,6 +3779,12 @@ async function sendIntegrated(question, msgId) {
             asked: 'integrated'
           }, originTabId);
           reconcileAfterSend(tabs.find(t => t.id === originTabId), payload, clientMsgId, botMsg);
+          // Same readings as the strip already on screen: keep that node, so a drill-in
+          // opened while the analysis was still arriving survives the final render.
+          if (earlyStrip && originTabId === activeTab && earlyKey === lensStripKey(payload.lenses, payload.shared)) {
+            const drawn = document.querySelectorAll('#chat-messages .lens-strip');
+            if (drawn.length) drawn[drawn.length - 1].replaceWith(earlyStrip);
+          }
           dot.className = 'status-dot online';
           logFunnelEvent('answer_rendered');
         }
@@ -3850,12 +3872,13 @@ function appendDrillShare(bodyEl, answerId, question) {
 }
 
 // Append the "consult a lens" drill-in strip beneath an integrated answer.
-function appendLensStrip(container, m, tab) {
+// `question` is passed when the strip is drawn before its message exists (mid-stream).
+function appendLensStrip(container, m, tab, question) {
   const lenses = (m.meta && m.meta.lenses) || [];
-  if (!lenses.length) return;
+  if (!lenses.length) return null;
   const idx = tab ? tab.messages.indexOf(m) : -1;
-  let userQ = '';
-  for (let j = idx - 1; j >= 0; j--) { if (tab.messages[j].role === 'user') { userQ = tab.messages[j].text; break; } }
+  let userQ = question || '';
+  for (let j = idx - 1; j >= 0 && !question; j--) { if (tab.messages[j].role === 'user') { userQ = tab.messages[j].text; break; } }
 
   const strip = document.createElement('div');
   strip.className = 'lens-strip';
@@ -3920,6 +3943,11 @@ function appendLensStrip(container, m, tab) {
   }
   strip.appendChild(wrap);
   container.appendChild(strip);
+  return strip;
+}
+
+function lensStripKey(lenses, shared) {
+  return JSON.stringify([(lenses || []).map(l => [l.mode, l.reading || '']), shared || null]);
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }

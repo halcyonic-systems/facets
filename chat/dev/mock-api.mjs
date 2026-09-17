@@ -79,6 +79,8 @@ function summary(c) {
 const ANSWER = '## TL;DR\nThe mock engine answers so the client can be driven end to end.\n\n'
   + '## Full Analysis\nEvery field the renderer reads is present, with nothing behind it.';
 
+const FILLER = '\n\nMore of the analysis arrives while the lens strip is already on screen.';
+
 async function answerStream(req, res, integrated) {
   const body = await readBody(req);
   const convId = body.conversation_id && conversations.has(body.conversation_id)
@@ -102,9 +104,24 @@ async function answerStream(req, res, integrated) {
   await new Promise((r) => setTimeout(r, 120));
   sse(res, 'status', integrated ? { stage: 'synthesizing' } : { stage: 'retrieving', dimensions: ['C', 'N'], intensity: 'light' });
   await new Promise((r) => setTimeout(r, 120));
-  for (const chunk of ANSWER.match(/[\s\S]{1,40}/g)) {
+  const lenses = !integrated ? [] : thin ? ['mobus', 'klir', 'bunge', 'spt', 'ct'].map((mode) => (
+      { mode, dimensions: [], snippet: '', reading: 'Adds little here: a date has no parts to trace.' }
+    )) : [
+      { mode: 'mobus', dimensions: ['C', 'N'], snippet: 'A reef is a structure of polyps', reading: 'The reef crest is the boundary: wave energy arrives there and calm water leaves.' },
+      { mode: 'klir', dimensions: ['S'], snippet: 'A system is what is distinguished as a system' },
+    ];
+  const shared = integrated && !thin ? 'Polyps and the water between them are one dependency.' : null;
+  // The readings arrive between the TL;DR and the full analysis, which then trickles in
+  // slowly enough to watch the strip hold still above it.
+  const [tldr, rest] = ANSWER.split(/(?=## Full Analysis)/);
+  for (const chunk of tldr.match(/[\s\S]{1,40}/g)) {
     sse(res, 'token', { text: chunk });
     await new Promise((r) => setTimeout(r, 15));
+  }
+  if (integrated) sse(res, 'readings', { lenses, shared });
+  for (const chunk of (rest + FILLER.repeat(integrated ? 6 : 0)).match(/[\s\S]{1,40}/g)) {
+    sse(res, 'token', { text: chunk });
+    await new Promise((r) => setTimeout(r, integrated ? 60 : 15));
   }
   c.messages.push({ id: botId, role: 'bot', content: ANSWER, seq: c.messages.length, created_at: new Date().toISOString(), model_meta: null });
   c.updated_at = new Date().toISOString();
@@ -116,13 +133,8 @@ async function answerStream(req, res, integrated) {
     dimensions: integrated ? [] : ['C', 'N'],
     intensity: 'light',
     sources: [{ type: 'vector', source: 'Mobus 2015', excerpt: 'mock excerpt', score: '0.81' }],
-    lenses: !integrated ? [] : thin ? ['mobus', 'klir', 'bunge', 'spt', 'ct'].map((mode) => (
-      { mode, dimensions: [], snippet: '', reading: 'Adds little here: a date has no parts to trace.' }
-    )) : [
-      { mode: 'mobus', dimensions: ['C', 'N'], snippet: 'A reef is a structure of polyps', reading: 'The reef crest is the boundary: wave energy arrives there and calm water leaves.' },
-      { mode: 'klir', dimensions: ['S'], snippet: 'A system is what is distinguished as a system' },
-    ],
-    shared: integrated && !thin ? 'Polyps and the water between them are one dependency.' : null,
+    lenses,
+    shared,
     answer_id: shareId,
     conversation_id: convId,
     message_id: userId,
