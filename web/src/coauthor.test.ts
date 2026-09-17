@@ -161,6 +161,22 @@ describe("draftSlWithRetry stage reporting (#218)", () => {
     expect(authorSlMock.mock.calls[0][0].effort).toBeUndefined();
   });
 
+  it("hands on what the reasoner said about effort, and nothing when it said nothing", async () => {
+    const shapes = [
+      [{ effortRan: "low", effortDropped: false }, { effortRan: "low", effortDropped: false }],
+      [{ effortRan: null, effortDropped: true }, { effortRan: null, effortDropped: true }],
+      [{}, {}],
+    ] as const;
+    for (const [reply, kept] of shapes) {
+      authorSlMock.mockReset();
+      compileSlMock.mockReset();
+      authorSlMock.mockResolvedValueOnce({ sl: "system X", model: "m", ...reply });
+      compileSlMock.mockReturnValueOnce({ ok: {}, lens_explicit: false });
+      const out = await draftSlWithRetry("a thermostat", undefined, undefined, "m", undefined, "low");
+      expect({ effortRan: out.effortRan, effortDropped: out.effortDropped }).toEqual({ effortRan: undefined, effortDropped: undefined, ...kept });
+    }
+  });
+
   it("works with no onStage callback at all (manual/legacy callers)", async () => {
     authorSlMock.mockResolvedValueOnce({ sl: "system X", model: "gemma4:12b" });
     compileSlMock.mockReturnValueOnce({ ok: {}, lens_explicit: false });

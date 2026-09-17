@@ -104,7 +104,7 @@ export async function authorSl(req: {
   /** How hard the drafter thinks first (draftEffort.ts). Absent = the
    *  drafter's own default; a reasoner that predates the field ignores it. */
   effort?: "low";
-}): Promise<{ sl: string; model: string; latencyMs?: number }> {
+}): Promise<{ sl: string; model: string; latencyMs?: number; effortRan?: string | null; effortDropped?: boolean }> {
   const data = await post("/author-sl", {
     description: req.description,
     lens: req.lens ? req.lens.toLowerCase() : undefined,
@@ -121,6 +121,11 @@ export async function authorSl(req: {
     sl: String(data.sl ?? ""),
     model: String(data.model ?? ""),
     latencyMs: Number.isFinite(latency) && latency >= 0 ? latency : undefined,
+    // The effort the call actually ran under, as the reasoner reports it. A
+    // reasoner that predates the field sends no key, and a missing key stays
+    // undefined: unknown, never "default".
+    ...("effort" in data ? { effortRan: typeof data.effort === "string" ? data.effort : null } : {}),
+    ...("effort_dropped" in data ? { effortDropped: data.effort_dropped === true } : {}),
   };
 }
 

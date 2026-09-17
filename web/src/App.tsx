@@ -63,6 +63,7 @@ import {
   kernelFindingsBrief,
   newTurnId,
   loadCoauthorTurns,
+  ranUnder,
   repairsPhrase,
   runCorrectionTurn,
   saveCoauthorTurns,
@@ -1084,14 +1085,16 @@ function Workspace() {
     // one and, when they differ, says so.
     const requestedModel = drafterModel();
     const effort = chosenEffort(requestedModel);
-    const mode = effort ? { effort } : {};
+    let mode: Pick<CoauthorTurn, "effort" | "effortRan" | "effortDropped"> = effort ? { effort } : {};
     let sl = "";
     let answeredModel = "";
     let modelMs: number | undefined;
     let modelCalls = 0;
     let repairs: string[] = [];
     try {
-      ({ sl, answeredModel, modelMs, modelCalls, repairs } = await draftSlWithRetry(description, lens, onStage, requestedModel, undefined, effortOnWire(effort)));
+      const drafted = await draftSlWithRetry(description, lens, onStage, requestedModel, undefined, effortOnWire(effort));
+      ({ sl, answeredModel, modelMs, modelCalls, repairs } = drafted);
+      mode = { ...mode, ...ranUnder(drafted) };
     } catch (e) {
       const errorText = e instanceof Error ? e.message : String(e);
       setCoauthorTurns((ts) => [
@@ -1174,6 +1177,7 @@ function Workspace() {
     }
     setInteriorStage(null);
     const { sl, answeredModel, modelMs, modelCalls } = result;
+    const ran = { ...mode, ...ranUnder(result) };
     setSlText(sl);
     const adopted = adoptInterior(sl, canvasModel);
     // The draft loop stamps under the kernel's refusal and hands back text
@@ -1183,7 +1187,7 @@ function Workspace() {
       const errorText = adopted.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
       setSlErrors(adopted.errors);
       setCoauthorTurns((ts) => [
-        { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "compile-error", errorText, model: answeredModel, requestedModel, modelMs, modelCalls, ...mode },
+        { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "compile-error", errorText, model: answeredModel, requestedModel, modelMs, modelCalls, ...ran },
         ...ts,
       ]);
       return;
@@ -1199,7 +1203,7 @@ function Workspace() {
     setSelectedRelationId(null);
     setActiveTurnId(id);
     setCoauthorTurns((ts) => [
-      { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls, ...mode, repairs },
+      { id, kind: "interior", description, sl, at: new Date().toISOString(), status: "previewing", model: answeredModel, requestedModel, modelMs, modelCalls, ...ran, repairs },
       ...ts,
     ]);
     // The seam, judged now rather than on the way out: the parent's contract

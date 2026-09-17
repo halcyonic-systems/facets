@@ -54,19 +54,29 @@ export function stageLabel(stage: DraftStage | null, endpoint: string, requested
  *  The elapsed clock beside the Draft button is wall time and disappears when
  *  the turn lands; this is what remains in the record.
  *
- *  Careful or Fast is named only when the model that ANSWERED takes the
- *  setting: a fallback drafter never saw it, and saying "on Fast" about its
- *  draft would be a claim about a request, not about this text. */
+ *  Careful or Fast is named from the reasoner's own report of the call, never
+ *  from what was asked: "on Fast" only when it says the call ran at low
+ *  effort, "on Careful" only when it says the call ran at the drafter's
+ *  default, and a plain sentence when it dropped the setting. A reasoner that
+ *  says nothing about effort gets nothing said. */
 export function drafterLine(
-  turn: Pick<CoauthorTurn, "model" | "modelMs" | "modelCalls" | "effort">,
+  turn: Pick<CoauthorTurn, "model" | "modelMs" | "modelCalls" | "effort" | "effortRan" | "effortDropped">,
 ): string | null {
   if (turn.model === undefined) return null;
-  const mode = turn.effort && effortApplies(turn.model) ? ` on ${turn.effort === "fast" ? "Fast" : "Careful"}` : "";
+  const mode =
+    turn.effortDropped || turn.effortRan === undefined
+      ? ""
+      : turn.effortRan === "low"
+        ? " on Fast"
+        : turn.effortRan === null && turn.effort === "careful"
+          ? " on Careful"
+          : "";
+  const dropped = turn.effortDropped ? " This drafter does not take the Careful or Fast setting." : "";
   const who = turn.model ? `Drafted by ${turn.model}${mode}` : "The reasoner did not name the model that answered";
-  if (turn.modelMs === undefined) return `${who}.`;
+  if (turn.modelMs === undefined) return `${who}.${dropped}`;
   const secs = (turn.modelMs / 1000).toFixed(1);
-  if ((turn.modelCalls ?? 1) > 1) return `${who} in ${secs}s of model time over ${turn.modelCalls} calls.`;
-  return `${who} in ${secs}s.`;
+  if ((turn.modelCalls ?? 1) > 1) return `${who} in ${secs}s of model time over ${turn.modelCalls} calls.${dropped}`;
+  return `${who} in ${secs}s.${dropped}`;
 }
 
 /** The honesty gate. GSR takes its cloud path only when it holds a key for the

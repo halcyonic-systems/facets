@@ -40,6 +40,12 @@ export type CoauthorTurn = {
    *  requested drafter takes the setting; absent otherwise, and on turns
    *  recorded before it existed. */
   effort?: DraftEffort;
+  /** The effort the answering call RAN under, from the reasoner's response:
+   *  `"low"`, or null for the drafter's own default. Absent when the reasoner
+   *  did not say, which is unknown and is shown as nothing. */
+  effortRan?: string | null;
+  /** The reasoner was asked for an effort and the drafter did not take it. */
+  effortDropped?: boolean;
   /** #314. `"draft"` (or absent, on turns recorded before corrections existed)
    *  is a first draft from a description. `"correction"` is the author telling
    *  the drafter what is wrong with an existing draft and getting a revision.
@@ -176,6 +182,10 @@ export type DraftResult = {
   /** How many asks that total covers (1 on a clean first-try draft). Shown
    *  with the time so a retried turn's number is not read as one call. */
   modelCalls: number;
+  /** What the reasoner said about effort on the ask that produced `sl`
+   *  (see `CoauthorTurn.effortRan`). Absent when it said nothing. */
+  effortRan?: string | null;
+  effortDropped?: boolean;
   /** The named repairs `sl` carries that the drafter did not write, one line
    *  each (`stampInterfacesFromCrossings`). Empty on an untouched draft. */
   repairs: string[];
@@ -240,6 +250,14 @@ export function stampInterfacesFromCrossings(model: CanvasModel): { model: Canva
     return { ...t, interface: true };
   });
   return repairs.length === 0 ? { model, repairs } : { model: { ...model, things }, repairs };
+}
+
+/** The reasoner's word on effort, as a turn keeps it. */
+export function ranUnder(r: Pick<DraftResult, "effortRan" | "effortDropped">): Pick<CoauthorTurn, "effortRan" | "effortDropped"> {
+  return {
+    ...(r.effortRan !== undefined ? { effortRan: r.effortRan } : {}),
+    ...(r.effortDropped !== undefined ? { effortDropped: r.effortDropped } : {}),
+  };
 }
 
 /** The repairs as the notice says them, so all three draft paths read alike. */
@@ -403,7 +421,7 @@ export async function draftSlWithRetry(
 ): Promise<DraftResult> {
   const latencies: (number | undefined)[] = [];
   onStage?.({ kind: "asking" });
-  let { sl, model: answeredModel, latencyMs } = await authorSl({
+  let reply = await authorSl({
     description,
     lens,
     model,
@@ -411,6 +429,7 @@ export async function draftSlWithRetry(
     errors: prior?.findings,
     effort,
   });
+  let { sl, model: answeredModel, latencyMs } = reply;
   latencies.push(latencyMs);
   let parseHeals = 0;
   let kernelHeals = 0;
@@ -423,7 +442,8 @@ export async function draftSlWithRetry(
       parseHeals++;
       const errs = outcome.errors.map((e) => `line ${e.line}: ${e.message}`).join("\n");
       onStage?.({ kind: "retrying", attempt: parseHeals + 1, maxAttempts: DRAFT_MAX_ATTEMPTS });
-      ({ sl, model: answeredModel, latencyMs } = await authorSl({ description, lens, model, priorSl: sl, errors: errs, effort }));
+      reply = await authorSl({ description, lens, model, priorSl: sl, errors: errs, effort });
+      ({ sl, model: answeredModel, latencyMs } = reply);
       latencies.push(latencyMs);
       continue;
     }
@@ -448,14 +468,15 @@ export async function draftSlWithRetry(
     kernelHeals++;
     onStage?.({ kind: "kernel-retry", errors: errors.length });
     const findings = kernelFindingsBrief(readLens, errors);
-    ({ sl, model: answeredModel, latencyMs } = await authorSl({
+    reply = await authorSl({
       description,
       lens,
       model,
       priorSl: sl,
       errors: errors.some((i) => i.code === FLOWLESS_INTERFACE) ? `${findings}\n\n${FLOWLESS_INTERFACE_NOTE}` : findings,
       effort,
-    }));
+    });
+    ({ sl, model: answeredModel, latencyMs } = reply);
     latencies.push(latencyMs);
   }
   const complete = latencies.every((ms) => typeof ms === "number");
@@ -465,6 +486,8 @@ export async function draftSlWithRetry(
     answeredModel,
     modelMs: complete ? latencies.reduce((a: number, ms) => a + (ms as number), 0) : undefined,
     modelCalls: latencies.length,
+    ...(reply.effortRan !== undefined ? { effortRan: reply.effortRan } : {}),
+    ...(reply.effortDropped !== undefined ? { effortDropped: reply.effortDropped } : {}),
     repairs,
   };
 }
@@ -554,6 +577,7 @@ export async function runCorrectionTurn(req: {
     requestedModel,
     modelMs,
     modelCalls,
+    ...ranUnder(result),
     ...(repairs.length > 0 ? { repairs } : {}),
   };
 

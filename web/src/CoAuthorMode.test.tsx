@@ -318,16 +318,19 @@ describe("the answering model is what gets shown", () => {
     expect(m).toContain("Added for the drafter: interface stamped on Pot (carries hot water to Cup).");
   });
 
-  it("names the mode on the drafter line only when the answering model takes it", () => {
-    expect(drafterLine({ model: "claude-opus-5", modelMs: 8200, modelCalls: 1, effort: "fast" })).toBe(
+  it("names the mode from the reasoner's report, in each of its three shapes", () => {
+    const base = { model: "claude-opus-5", modelMs: 8200, modelCalls: 1 };
+    expect(drafterLine({ ...base, effort: "fast", effortRan: "low", effortDropped: false })).toBe(
       "Drafted by claude-opus-5 on Fast in 8.2s.",
     );
-    expect(drafterLine({ model: "claude-sonnet-5", modelMs: 41000, modelCalls: 1, effort: "careful" })).toBe(
-      "Drafted by claude-sonnet-5 on Careful in 41.0s.",
+    expect(drafterLine({ ...base, effort: "careful", effortRan: null, effortDropped: false })).toBe(
+      "Drafted by claude-opus-5 on Careful in 8.2s.",
     );
-    expect(drafterLine({ model: "claude-haiku-4-5", modelMs: 3000, modelCalls: 1, effort: "fast" })).toBe(
-      "Drafted by claude-haiku-4-5 in 3.0s.",
+    expect(drafterLine({ model: "claude-haiku-4-5", modelMs: 3000, modelCalls: 1, effort: "fast", effortRan: null, effortDropped: true })).toBe(
+      "Drafted by claude-haiku-4-5 in 3.0s. This drafter does not take the Careful or Fast setting.",
     );
+    // A reasoner that predates the field: asked for Fast, told nothing, so nothing is said.
+    expect(drafterLine({ ...base, effort: "fast" })).toBe("Drafted by claude-opus-5 in 8.2s.");
   });
 
   it("shows the chosen model's home once a frontier model is picked", async () => {
