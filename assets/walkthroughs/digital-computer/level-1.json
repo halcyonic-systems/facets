@@ -6,8 +6,8 @@
     {
       "id": 1,
       "name": "Power Source",
-      "x": 295.29388,
-      "y": 0.07952881,
+      "x": 239.58264,
+      "y": -96.41519,
       "role": "Environment",
       "env_kind": "Source",
       "interface": false
@@ -15,7 +15,7 @@
     {
       "id": 2,
       "name": "Ambient Air",
-      "x": 849.41235,
+      "x": 960.83484,
       "y": 320.0,
       "role": "Environment",
       "env_kind": "Sink",
@@ -24,8 +24,8 @@
     {
       "id": 3,
       "name": "External File Device",
-      "x": 132.86597,
-      "y": 193.65353,
+      "x": 28.163116,
+      "y": 155.5447,
       "role": "Environment",
       "env_kind": "Neutral",
       "interface": false
@@ -33,8 +33,8 @@
     {
       "id": 4,
       "name": "Users",
-      "x": 132.86594,
-      "y": 446.3464,
+      "x": 28.163086,
+      "y": 484.45523,
       "role": "Environment",
       "env_kind": "Neutral",
       "interface": false
@@ -42,8 +42,8 @@
     {
       "id": 5,
       "name": "Firmware",
-      "x": 295.29382,
-      "y": 639.9204,
+      "x": 239.58257,
+      "y": 736.41516,
       "role": "Environment",
       "env_kind": "Neutral",
       "interface": false
@@ -51,8 +51,8 @@
     {
       "id": 6,
       "name": "Power-Connector",
-      "x": 480.0,
-      "y": 150.0,
+      "x": 614.329,
+      "y": 110.979996,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
@@ -60,8 +60,8 @@
     {
       "id": 7,
       "name": "Heat-Dissipation",
-      "x": 571.90894,
-      "y": 176.98691,
+      "x": 725.9336,
+      "y": 355.3599,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
@@ -69,8 +69,8 @@
     {
       "id": 8,
       "name": "File-Port-In",
-      "x": 634.63745,
-      "y": 249.37946,
+      "x": 345.67102,
+      "y": 110.979965,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
@@ -78,8 +78,8 @@
     {
       "id": 9,
       "name": "File-Port-Out",
-      "x": 648.26965,
-      "y": 344.1935,
+      "x": 253.99051,
+      "y": 216.78494,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
@@ -87,8 +87,8 @@
     {
       "id": 10,
       "name": "User-Port-In",
-      "x": 608.4774,
-      "y": 431.32632,
+      "x": 234.06644,
+      "y": 355.35986,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
@@ -96,8 +96,8 @@
     {
       "id": 11,
       "name": "User-Port-Out",
-      "x": 527.89453,
-      "y": 483.11383,
+      "x": 292.2245,
+      "y": 482.7083,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
@@ -105,8 +105,8 @@
     {
       "id": 12,
       "name": "Firmware-Port-In",
-      "x": 432.10547,
-      "y": 483.1138,
+      "x": 410.00003,
+      "y": 558.3981,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
@@ -114,8 +114,8 @@
     {
       "id": 13,
       "name": "Firmware-Port-Out",
-      "x": 351.52252,
-      "y": 431.3263,
+      "x": 549.99994,
+      "y": 558.3981,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
@@ -123,8 +123,8 @@
     {
       "id": 14,
       "name": "CPU",
-      "x": 311.73035,
-      "y": 344.1935,
+      "x": 667.77545,
+      "y": 482.70837,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": false
@@ -132,8 +132,8 @@
     {
       "id": 15,
       "name": "RAM Memory",
-      "x": 325.36255,
-      "y": 249.37946,
+      "x": 706.0095,
+      "y": 216.78493,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": false
@@ -141,8 +141,8 @@
     {
       "id": 16,
       "name": "I/O Control",
-      "x": 388.0911,
-      "y": 176.98688,
+      "x": 480.0,
+      "y": 71.537445,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": false
