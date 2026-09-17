@@ -400,3 +400,53 @@ fn worldmodel_reference_survives_to_canvas_and_back() {
     let furnace2 = world2.systems.iter().find(|s| s.info.name == "Furnace").unwrap();
     assert_eq!(furnace2.child_model, Some(id), "the id must survive the whole round trip");
 }
+
+fn sl_files(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+    let mut entries: Vec<_> = std::fs::read_dir(dir)
+        .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .collect();
+    entries.sort();
+    for p in entries {
+        if p.is_dir() {
+            sl_files(&p, out);
+        } else if p.extension().is_some_and(|x| x == "sl") {
+            out.push(p);
+        }
+    }
+}
+
+/// Law (v1.5, #399): the description continuation is a second spelling, not a
+/// second meaning. Every `.sl` the repo ships — most written before the form
+/// existed, with their prose inline — re-emits with each description beneath
+/// its declaration and re-parses to the model it started as.
+#[test]
+fn every_shipped_sl_file_survives_the_continuation_form() {
+    let root = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));
+    let mut files = Vec::new();
+    sl_files(&root.join("assets"), &mut files);
+    sl_files(&root.join("fixtures"), &mut files);
+    let (mut parsed, mut described) = (0, 0);
+    for p in &files {
+        let text = std::fs::read_to_string(p).unwrap();
+        // The teaching fixtures include deliberate faults.
+        let Ok(m1) = parse_sl(&text) else { continue };
+        parsed += 1;
+        let emitted = emit_sl(&m1).unwrap_or_else(|e| panic!("{}: {e}", p.display()));
+        for line in emitted.lines().filter(|l| l.contains(" description \"")) {
+            assert!(
+                line.starts_with("    description \""),
+                "{}: description left on its declaration's line: {line}",
+                p.display()
+            );
+            described += 1;
+        }
+        let m2 = parse_sl(&emitted)
+            .unwrap_or_else(|e| panic!("{}: emitted text does not re-parse: {e:?}", p.display()));
+        assert_eq!(json(&m1), json(&m2), "{}: model drifted", p.display());
+        assert_eq!(emitted, emit_sl(&m2).unwrap(), "{}: emit is not a fixpoint", p.display());
+    }
+    assert!(parsed > 40, "sweep found only {parsed} parsing files");
+    assert!(described > 0, "sweep met no description — the corpus no longer exercises the form");
+}
