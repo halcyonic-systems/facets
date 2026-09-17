@@ -114,7 +114,11 @@ async function answerStream(req, res, integrated) {
     dimensions: integrated ? [] : ['C', 'N'],
     intensity: 'light',
     sources: [{ type: 'vector', source: 'Mobus 2015', excerpt: 'mock excerpt', score: '0.81' }],
-    lenses: integrated ? [{ mode: 'mobus', dimensions: ['C', 'N'], snippet: 'A reef is a structure of polyps' }] : [],
+    lenses: integrated ? [
+      { mode: 'mobus', dimensions: ['C', 'N'], snippet: 'A reef is a structure of polyps', reading: 'The reef crest is the boundary: wave energy arrives there and calm water leaves.' },
+      { mode: 'klir', dimensions: ['S'], snippet: 'A system is what is distinguished as a system' },
+    ] : [],
+    shared: integrated ? 'Polyps and the water between them are one dependency.' : null,
     answer_id: shareId,
     conversation_id: convId,
     message_id: userId,

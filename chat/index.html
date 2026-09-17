@@ -904,6 +904,13 @@
     font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
     color: var(--ink-faint); margin-bottom: 6px;
   }
+  .lens-strip-shared { color: var(--ink-dim); font-size: 0.88rem; font-style: italic; line-height: 1.5; margin-bottom: 4px; }
+  .conv-lens-head.has-reading { display: grid; grid-template-columns: 7.5rem 1fr auto; column-gap: 14px; }
+  .conv-lens-reading { font-size: 0.92rem; line-height: 1.55; color: var(--ink-dim); }
+  @media (max-width: 600px) {
+    .conv-lens-head.has-reading { grid-template-columns: 1fr auto; row-gap: 2px; }
+    .conv-lens-head.has-reading .conv-lens-reading { grid-column: 1 / -1; grid-row: 2; }
+  }
   .lens-snippet { color: var(--ink-faint); font-size: 0.84rem; font-style: italic; line-height: 1.5; }
   .lens-loading { color: var(--ink-faint); font-size: 0.86rem; font-style: italic; }
 
@@ -3148,12 +3155,14 @@ function cleanMarkdown(md) {
 // x_t as emphasis and strips the backslashes in \{ and \|, so KaTeX never saw the
 // source it was given. Each span becomes an opaque token (no punctuation, so marked
 // passes it through), and the rendered HTML is spliced back afterwards. Code spans
-// and fences are skipped so a literal $ in code stays a literal $.
+// and fences are skipped so a literal $ in code stays a literal $. \( \) and \[ \]
+// need the same lift for a second reason: marked reads \( as an escaped paren.
 function liftMath(md) {
   const slots = [];
-  const src = md.replace(/(```[\s\S]*?```|`[^`\n]*`)|\$\$([\s\S]+?)\$\$|\$([^\$\n]+?)\$/g, (m, code, display, inline) => {
+  const src = md.replace(/(```[\s\S]*?```|`[^`\n]*`)|\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([^\n]+?)\\\)|\$([^\$\n]+?)\$/g, (m, code, dollars, brackets, parens, inline) => {
     if (code) return m;
-    const tex = (display !== undefined ? display : inline).trim();
+    const display = dollars !== undefined ? dollars : brackets;
+    const tex = (display !== undefined ? display : parens !== undefined ? parens : inline).trim();
     if (inline !== undefined && /^\d/.test(tex)) return m;   // "$5 and $10" is money, not math
     if (typeof katex === 'undefined') return m;
     let html;
@@ -3742,6 +3751,7 @@ async function sendIntegrated(question, msgId) {
             dimensions: [],
             sources: payload.sources || [],
             lenses: payload.lenses || [],
+            shared: payload.shared || null,
             web_search: payload.web_search,
             answer_id: payload.answer_id,
             asked: 'integrated'
@@ -3847,6 +3857,12 @@ function appendLensStrip(container, m, tab) {
   label.className = 'lens-strip-label';
   label.textContent = 'Consult a lens';
   strip.appendChild(label);
+  if (m.meta.shared) {
+    const shared = document.createElement('div');
+    shared.className = 'lens-strip-shared';
+    shared.textContent = m.meta.shared;
+    strip.appendChild(shared);
+  }
   const wrap = document.createElement('div');
   wrap.className = 'conv-lenses';
   lenses.forEach(l => {
@@ -3856,12 +3872,22 @@ function appendLensStrip(container, m, tab) {
     const nm = (MODE_CONFIGS[l.mode] && MODE_CONFIGS[l.mode].names) || {};
     const dimWords = (l.dimensions || []).map(d => nm[d] || d);
     const dimText = dimWords.slice(0, 3).join(', ') + (dimWords.length > 3 ? '…' : '');
-    head.innerHTML = '<span class="conv-lens-name">' + (LENS_LABEL[l.mode] || l.mode) + '</span> '
-      + '<span class="conv-lens-role">' + (LENS_ROLE[l.mode] || '') + '</span> '
-      + (dimText ? '<span class="conv-lens-dims">' + dimText + '</span>' : '')
-      + '<span class="conv-lens-caret">Consult&nbsp;▾</span>';
+    // A reading says what this lens sees in this question, so it replaces the fixed role line
+    // and the raw passage snippet. Answers stored before readings existed keep the old card.
+    if (l.reading) {
+      head.classList.add('has-reading');
+      head.innerHTML = '<span class="conv-lens-name">' + (LENS_LABEL[l.mode] || l.mode) + '</span>'
+        + '<span class="conv-lens-reading"></span>'
+        + '<span class="conv-lens-caret">Consult&nbsp;▾</span>';
+      head.querySelector('.conv-lens-reading').textContent = l.reading;
+    } else {
+      head.innerHTML = '<span class="conv-lens-name">' + (LENS_LABEL[l.mode] || l.mode) + '</span> '
+        + '<span class="conv-lens-role">' + (LENS_ROLE[l.mode] || '') + '</span> '
+        + (dimText ? '<span class="conv-lens-dims">' + dimText + '</span>' : '')
+        + '<span class="conv-lens-caret">Consult&nbsp;▾</span>';
+    }
     const body = document.createElement('div'); body.className = 'conv-lens-body collapsed';
-    if (l.snippet) { const sn = document.createElement('div'); sn.className = 'lens-snippet'; sn.textContent = l.snippet + '…'; body.appendChild(sn); }
+    if (l.snippet && !l.reading) { const sn = document.createElement('div'); sn.className = 'lens-snippet'; sn.textContent = l.snippet + '…'; body.appendChild(sn); }
     head.onclick = () => {
       const opening = body.classList.contains('collapsed');
       body.classList.toggle('collapsed'); head.classList.toggle('open');
