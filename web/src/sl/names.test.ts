@@ -3,7 +3,14 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { flowAtLine, flowOnLine, flowToLine, nameToLine, thingNameOnLine } from "./names";
+import {
+  flowAtLine,
+  flowOnLine,
+  flowToLine,
+  lineToName,
+  nameToLine,
+  thingNameOnLine,
+} from "./names";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -65,5 +72,27 @@ describe("flow bridging", () => {
     expect(flowToLine(lines, ref, 0)).toBe(3);
     expect(flowToLine(lines, ref, 1)).toBe(5);
     expect(flowToLine(lines, ref, 2)).toBeNull();
+  });
+});
+
+describe("a description continuation belongs to the line above (v1.5)", () => {
+  const lines = [
+    "component Furnace",
+    '    description "where the iron melts"',
+    "source Mine",
+    'flow Mine -> Furnace : matter "ore"',
+    '    description "graded ore"',
+  ];
+
+  it("maps the prose line to the thing it describes", () => {
+    expect(lineToName(lines).get(1)).toBe("Furnace");
+    expect(lineToName(lines).get(2)).toBe("Furnace");
+    expect(lineToName(lines).get(3)).toBe("Mine");
+    expect(nameToLine(lines).get("Furnace")).toBe(1);
+  });
+
+  it("maps the prose line to the flow it describes", () => {
+    expect(flowAtLine(lines, 5)).toEqual(flowAtLine(lines, 4));
+    expect(flowAtLine(lines, 5)?.ref.label).toBe("ore");
   });
 });

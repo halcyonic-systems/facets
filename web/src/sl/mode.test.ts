@@ -82,6 +82,17 @@ describe("lexLine", () => {
     ]);
   });
 
+  it("reads an indented description as a clause and its string as prose (v1.5)", () => {
+    expect(typesOf('    description "the intake" # aside')).toEqual(["keyword", "prose", "comment"]);
+    expect(typesOf('description "the whole"')).toEqual(["head", "string"]);
+    expect(typesOf('component A description "inline"')).toEqual([
+      "head",
+      "name",
+      "keyword",
+      "string",
+    ]);
+  });
+
   it("keeps a # inside a quoted name part of the string", () => {
     const toks = lexLine('component "shaft #2" # the real comment');
     expect(toks.map((t) => t.type)).toEqual(["head", "string", "comment"]);

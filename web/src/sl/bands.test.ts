@@ -30,6 +30,12 @@ describe("bandOfLine", () => {
     expect(bandOfLine("   ")).toBeNull();
     expect(bandOfLine("# ── The processors, inside ──")).toBeNull();
   });
+
+  it("reads an indented description as part of the line above, never as a header", () => {
+    expect(bandOfLine('description "the whole"')).toBe("header");
+    expect(bandOfLine('    description "the intake"')).toBeNull();
+    expect(bandOfLine('\tdescription "the intake"')).toBeNull();
+  });
 });
 
 describe("bandStarts", () => {
@@ -60,6 +66,24 @@ describe("bandStarts", () => {
     )) {
       expect(() => bandStarts(read(`fixtures/sl/teaching/${f}`))).not.toThrow();
     }
+  });
+
+  it("keeps the things band whole across a description continuation (v1.5)", () => {
+    const starts = bandStarts([
+      'system "S"',
+      "component A",
+      '    description "the work process"',
+      "source S",
+      '    description "where it comes from"',
+      'flow S -> A : matter "in"',
+      '    description "what moves"',
+      'flow A -> S : matter "out"',
+    ]);
+    expect(starts).toEqual([
+      { line: 1, band: "header" },
+      { line: 2, band: "things" },
+      { line: 6, band: "flows" },
+    ]);
   });
 
   it("reports interleaved (non-canonical) bands truthfully", () => {

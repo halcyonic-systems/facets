@@ -19,6 +19,7 @@ import {
 export type SlTokenType =
   | "comment"
   | "string"
+  | "prose"
   | "number"
   | "annotation"
   | "arrow"
@@ -40,9 +41,17 @@ export interface SlToken {
 const WORD = /^[A-Za-z_@][A-Za-z0-9_@-]*/;
 const NUMBER = /^-?\d+(\.\d+)?([eE][+-]?\d+)?/;
 
+/** A `description` continuation line (spec §4.3, v1.5): indented, and the
+ *  prose of the declaration directly above. It opens nothing of its own, so
+ *  bands, glyphs, and flow alignment all read it as part of that line. */
+export function isContinuationLine(line: string): boolean {
+  return /^[ \t]+description\b/i.test(line);
+}
+
 /** Lex one line of SL into typed spans. Pure; whitespace is left uncovered. */
 export function lexLine(line: string): SlToken[] {
   const tokens: SlToken[] = [];
+  const continuation = isContinuationLine(line);
   let i = 0;
   let first = true;
   while (i < line.length) {
@@ -58,7 +67,7 @@ export function lexLine(line: string): SlToken[] {
     if (ch === '"') {
       const close = line.indexOf('"', i + 1);
       const to = close === -1 ? line.length : close + 1;
-      tokens.push({ from: i, to, type: "string" });
+      tokens.push({ from: i, to, type: continuation ? "prose" : "string" });
       i = to;
       first = false;
       continue;
@@ -85,6 +94,8 @@ export function lexLine(line: string): SlToken[] {
       if (w.startsWith("@")) {
         // `@lens` opens a line; `@<base58>` rides a `decomposes` clause.
         type = ANNOTATIONS.has(lower) && first ? "annotation" : "name";
+      } else if (first && continuation) {
+        type = "keyword";
       } else if (first && DECLARATION_HEADS.has(lower)) {
         type = "head";
       } else if (KIND_WORDS.has(lower)) {
@@ -116,6 +127,7 @@ export function lexLine(line: string): SlToken[] {
 export const slTags = {
   comment: Tag.define(),
   string: Tag.define(),
+  prose: Tag.define(),
   number: Tag.define(),
   annotation: Tag.define(),
   arrow: Tag.define(),
@@ -167,6 +179,7 @@ export const slLanguage = StreamLanguage.define<{ tokens: SlToken[]; idx: number
   tokenTable: {
     comment: slTags.comment,
     string: slTags.string,
+    prose: slTags.prose,
     number: slTags.number,
     annotation: slTags.annotation,
     arrow: slTags.arrow,

@@ -6,6 +6,7 @@ import { slTags } from "./mode";
 export const slHighlight = HighlightStyle.define([
   { tag: slTags.comment, class: "sl-tok-comment" },
   { tag: slTags.string, class: "sl-tok-string" },
+  { tag: slTags.prose, class: "sl-tok-prose" },
   { tag: slTags.number, class: "sl-tok-number" },
   { tag: slTags.annotation, class: "sl-tok-annotation" },
   { tag: slTags.arrow, class: "sl-tok-arrow" },

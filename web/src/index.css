@@ -496,6 +496,7 @@ input[type="range"]:focus-visible {
 }
 .sl-tok-comment { color: var(--text-muted); }
 .sl-tok-string { color: var(--text-primary); }
+.sl-tok-prose { color: var(--text-secondary); }
 .sl-tok-number { color: var(--accent-indigo); }
 .sl-tok-annotation { color: var(--text-muted); }
 .sl-tok-arrow { color: var(--accent-strong); }
