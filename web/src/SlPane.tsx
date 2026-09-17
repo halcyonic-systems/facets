@@ -22,7 +22,7 @@ import type { CanvasModel, SlError } from "./kernel/types";
 import { CoAuthorMode } from "./CoAuthorMode";
 import { SlChain } from "./SlChain";
 import type { SlChainProps } from "./SlChain";
-import type { CoauthorTurn, DraftStage } from "./coauthor";
+import type { CoauthorSeed, CoauthorTurn, DraftStage } from "./coauthor";
 
 type Mode = "sl" | "coauthor";
 
@@ -64,6 +64,10 @@ interface SlPaneProps {
      *  `onDraft` — the parent asks the drafter, compiles the result, and
      *  previews it; this pane only returns to the SL view afterwards. */
     onCorrect: (turnId: string, correction: string, onStage?: (stage: DraftStage) => void) => Promise<void>;
+    /** A description from the start surface: the pane opens on the co-author
+     *  tab with it, and the tab reports back once it has taken it. */
+    seed?: CoauthorSeed | null;
+    onSeedTaken?: () => void;
   };
 }
 
@@ -94,7 +98,11 @@ function persistPaneWidth(w: number) {
 }
 
 export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel, chain, selection, coauthor }: SlPaneProps) {
-  const [mode, setMode] = useState<Mode>("sl");
+  const [mode, setMode] = useState<Mode>(coauthor?.seed ? "coauthor" : "sl");
+  const seedNonce = coauthor?.seed?.nonce;
+  useEffect(() => {
+    if (seedNonce !== undefined) setMode("coauthor");
+  }, [seedNonce]);
   // Room to breathe: the pane is drag-resizable at its right edge (SL reads
   // best when flow lines don't fold), remembered across sessions.
   const [paneWidth, setPaneWidth] = useState(initialPaneWidth);
@@ -225,7 +233,14 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
       </div>
 
       {mode === "coauthor" && coauthor ? (
-        <CoAuthorMode turns={coauthor.turns} onDraft={handleDraft} onCorrect={handleCorrect} onLoad={handleLoad} />
+        <CoAuthorMode
+          turns={coauthor.turns}
+          onDraft={handleDraft}
+          onCorrect={handleCorrect}
+          onLoad={handleLoad}
+          seed={coauthor.seed}
+          onSeedTaken={coauthor.onSeedTaken}
+        />
       ) : (
         <>
           <SlEditor

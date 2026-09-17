@@ -38,7 +38,7 @@ describe("CoAuthorMode", () => {
     expect(m).toContain("Draft");
   });
 
-  it("asks for the reasoner's address — and offers no drafting surface — while it is off", async () => {
+  it("asks for the reasoner's address, and offers nothing that sends, while it is off", async () => {
     resetReasonerForTest();
     setReasonerConfigBackend(memoryReasonerBackend(null));
     await initReasoner();
@@ -48,7 +48,11 @@ describe("CoAuthorMode", () => {
     expect(m).toContain("Turn on the co-author");
     expect(m).toContain("The reasoner&#x27;s address");
     expect(m).toContain("http://localhost:5010");
-    expect(m).not.toContain("Describe a system in plain language");
+    // The description box is there so words brought from the start surface
+    // are kept, but with the reasoner off there is no Draft and no model pick.
+    expect(m).toContain("Describe a system in plain language");
+    expect(m).not.toContain("Draft SL from the description");
+    expect(m).not.toContain("Drafts with");
     // #229 — the enable moment offers no hosted alternative, and names no host
     // but this machine's. The gate is where a remote URL would be published.
     expect(m).not.toMatch(/reasoner\.halcyonic\.systems|hosted/i);
@@ -59,10 +63,45 @@ describe("CoAuthorMode", () => {
     const m = renderToStaticMarkup(
       <CoAuthorMode turns={[]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
     );
-    expect(m).toContain("Co-author is on");
-    expect(m).toContain("your reasoner");
-    expect(m).toContain("http://127.0.0.1:5010");
+    expect(m).toContain("your reasoner at http://127.0.0.1:5010");
+    expect(m).toContain("Change");
     expect(m).toContain("Turn off");
+    expect(m).not.toContain("Turn on the co-author");
+  });
+
+  it("puts the instruction and the box ahead of the reasoner line once it is on", () => {
+    const m = renderToStaticMarkup(
+      <CoAuthorMode turns={[]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
+    );
+    expect(m.indexOf("Describe a system in plain language")).toBeLessThan(m.indexOf("<textarea"));
+    expect(m.indexOf("<textarea")).toBeLessThan(m.indexOf("reasoner-status"));
+    expect(m).toContain("LLM proposes · kernel checks · you accept");
+    expect(m).not.toContain("hand-authoring");
+  });
+
+  it("names the hosted reasoner and where the text goes, in the quiet line", async () => {
+    await reasonerOn("https://api.facets.systems");
+    const m = renderToStaticMarkup(
+      <CoAuthorMode turns={[]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
+    );
+    expect(m).toContain("the facets reasoner · on Halcyonic&#x27;s server, through Anthropic");
+    expect(m).toContain("Your description is sent to https://api.facets.systems");
+  });
+
+  it("keeps a description handed over from the start surface, on or off", async () => {
+    const seed = { description: "a data center with cooling and power", nonce: 1 };
+    const on = renderToStaticMarkup(
+      <CoAuthorMode turns={[]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} seed={seed} />,
+    );
+    expect(on).toContain("a data center with cooling and power");
+    resetReasonerForTest();
+    setReasonerConfigBackend(memoryReasonerBackend(null));
+    await initReasoner();
+    const off = renderToStaticMarkup(
+      <CoAuthorMode turns={[]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} seed={seed} />,
+    );
+    expect(off).toContain("a data center with cooling and power");
+    expect(off).toContain("Turn on the co-author");
   });
 
   it("renders a previewing turn with its description and SL", () => {
@@ -102,16 +141,35 @@ describe("CoAuthorMode", () => {
     expect(m).toContain("unknown keyword");
   });
 
-  it("distinguishes accepted from discarded turns", () => {
+  it("keeps the newest turn in view and the rest behind a closed History toggle", () => {
+    const at = new Date().toISOString();
     const turns: CoauthorTurn[] = [
-      { id: "a", description: "accepted one", sl: "system A", at: new Date().toISOString(), status: "accepted" },
-      { id: "b", description: "discarded one", sl: "system B", at: new Date().toISOString(), status: "discarded" },
+      { id: "a", description: "newest one", sl: "system A", at, status: "accepted" },
+      { id: "b", description: "older one", sl: "system B", at, status: "accepted" },
+      { id: "c", description: "discarded one", sl: "system C", at, status: "discarded" },
     ];
     const m = renderToStaticMarkup(
       <CoAuthorMode turns={turns} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
     );
-    expect(m).toContain("accepted");
-    expect(m).toContain("discarded");
+    expect(m).toContain("newest one");
+    expect(m).toContain("History (1)");
+    expect(m).toContain('aria-expanded="false"');
+    expect(m).not.toContain("older one");
+    expect(m).not.toContain("discarded one");
+  });
+
+  it("never folds a previewing turn away, however old", () => {
+    const at = new Date().toISOString();
+    const turns: CoauthorTurn[] = [
+      { id: "a", description: "failed since", sl: "", at, status: "network-error", errorText: "Load failed" },
+      { id: "b", description: "still previewing", sl: "system B", at, status: "previewing" },
+    ];
+    const m = renderToStaticMarkup(
+      <CoAuthorMode turns={turns} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
+    );
+    expect(m).toContain("still previewing");
+    expect(m).toContain("Load failed");
+    expect(m).not.toContain("History (");
   });
 });
 

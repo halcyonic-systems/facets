@@ -50,6 +50,28 @@ describe("SlPane — manual authoring is preserved", () => {
     expect(m).toContain("Compile");
   });
 
+  it("opens on the co-author tab, with the words kept, when a description is handed in", () => {
+    const m = renderToStaticMarkup(
+      <SlPane
+        text=""
+        errors={[]}
+        onTextChange={noop}
+        onErrors={noop}
+        onCompiled={noop}
+        onClose={noop}
+        canvasModel={null}
+        coauthor={{
+          turns: [],
+          onDraft: async () => {},
+          onCorrect: async () => {},
+          seed: { description: "a bathtub with a faucet and a drain", nonce: 1 },
+        }}
+      />,
+    );
+    expect(m).toContain("a bathtub with a faucet and a drain");
+    expect(m).not.toContain("sl-editor");
+  });
+
   // The compile chain is an addition beside the authoring surface, on the same
   // terms as the co-author mode: absent without the prop, and never replacing
   // the textarea when present.

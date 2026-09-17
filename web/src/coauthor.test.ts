@@ -3,7 +3,7 @@
 // stubs the same in-memory Storage contract; the real thing is confirmed live
 // in a browser (see the PR's manual verification note).
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loadCoauthorTurns, saveCoauthorTurns, draftSlWithRetry, type DraftStage } from "./coauthor";
+import { loadCoauthorTurns, saveCoauthorTurns, draftSlWithRetry, splitHistory, type DraftStage } from "./coauthor";
 import type { CoauthorTurn } from "./coauthor";
 
 // #218: draftSlWithRetry's stage callback — the loop already knows which
@@ -368,5 +368,38 @@ describe("draftSlWithRetry model time", () => {
       .mockReturnValueOnce({ ok: {}, lens_explicit: false });
     const out = await draftSlWithRetry("a thermostat");
     expect(out.modelMs).toBeUndefined();
+  });
+});
+
+describe("splitHistory (what the pane shows before the history is opened)", () => {
+  const turn = (id: string, status: CoauthorTurn["status"]): CoauthorTurn => ({
+    id,
+    description: id,
+    sl: "system X",
+    at: "2026-09-17T12:00:00.000Z",
+    status,
+  });
+  const ids = (ts: CoauthorTurn[]) => ts.map((t) => t.id);
+
+  it("keeps the newest turn in view, including a failure, and folds the rest", () => {
+    const s = splitHistory([turn("n", "network-error"), turn("a", "accepted"), turn("d", "discarded")], null);
+    expect(ids(s.current)).toEqual(["n"]);
+    expect(ids(s.past)).toEqual(["a"]);
+    expect(ids(s.discarded)).toEqual(["d"]);
+  });
+
+  it("folds a newest turn that was discarded", () => {
+    const s = splitHistory([turn("d", "discarded"), turn("a", "accepted")], null);
+    expect(ids(s.current)).toEqual([]);
+    expect(ids(s.past)).toEqual(["a"]);
+    expect(ids(s.discarded)).toEqual(["d"]);
+  });
+
+  it("keeps a previewing turn and the turn being corrected in view at any age", () => {
+    const turns = [turn("n", "accepted"), turn("p", "previewing"), turn("c", "discarded"), turn("o", "accepted")];
+    const s = splitHistory(turns, "c");
+    expect(ids(s.current)).toEqual(["n", "p", "c"]);
+    expect(ids(s.past)).toEqual(["o"]);
+    expect(ids(s.discarded)).toEqual([]);
   });
 });
