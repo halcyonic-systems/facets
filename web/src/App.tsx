@@ -54,6 +54,7 @@ import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
 import { MODE_BY_LENS } from "./review";
 import { StartSurface } from "./StartSurface";
+import { arrangementForSeed, diagramHidden, loadSlArrangement, saveSlArrangement, type SlArrangement } from "./slArrangement";
 import { SystemTypeEditor } from "./SystemTypeEditor";
 import { StartFromData } from "./StartFromData";
 import { SlPane } from "./SlPane";
@@ -447,6 +448,19 @@ function Workspace() {
     }
     // Keyed on the pane alone: the palette's own toggles must not re-run this.
   }, [slOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  // How the pane and the diagram share the width (slArrangement.ts). Text-only
+  // hides the canvas <main> without unmounting it, the way inspector focus
+  // does, so the viewport and any draft preview survive the trip. The
+  // inspector rests on its rail meanwhile, and the canvas re-frames on every
+  // change: its width just moved, and a fit computed while hidden measured
+  // nothing.
+  const [slArrangement, setSlArrangementState] = useState<SlArrangement>(loadSlArrangement);
+  function setSlArrangement(next: SlArrangement) {
+    if (next === slArrangement) return;
+    setFitToken((n) => (n ?? 0) + 1);
+    setSlArrangementState(next);
+    saveSlArrangement(next);
+  }
   const [slText, setSlText] = useState(SL_SEED);
   const [slErrors, setSlErrors] = useState<SlError[]>([]);
   // Tier 4 (#353): shared selection between pane and canvas, bridged on
@@ -2679,6 +2693,9 @@ function Workspace() {
               onErrors={setSlErrors}
               onCompiled={(cm, lensExplicit) => onSlCompiled(cm, lensExplicit, true)}
               onClose={() => setSlOpen(false)}
+              arrangement={slArrangement}
+              onArrangement={setSlArrangement}
+              preview={preview ? { onAccept: acceptPreview, onDiscard: discardPreview } : undefined}
               canvasModel={canvasModel}
               // The compile chain (text → model → formal object → verdict):
               // the kernel outputs the pane needs to name what its own Compile
@@ -2706,7 +2723,9 @@ function Workspace() {
           {/* min-w-0: without it the canvas refuses to shrink (flex min-width:auto)
               and the whole shell row overflows the viewport at narrow widths (#17). */}
           <main
-            className={`min-h-0 min-w-0 flex-1 overflow-y-auto ${inspectorFocused && canvasModel ? "hidden" : ""}`}
+            className={`min-h-0 min-w-0 flex-1 overflow-y-auto ${
+              (inspectorFocused && canvasModel) || diagramHidden(slArrangement, slOpen && !inspectorFocused) ? "hidden" : ""
+            }`}
             style={{ background: "var(--lens-wash)" }}
           >
             {canvasModel && (
@@ -3302,6 +3321,7 @@ function Workspace() {
               tick={tick}
               reviewRequest={reviewRequest}
               formalRequest={formalRequest}
+              preferFolded={diagramHidden(slArrangement, slOpen && !inspectorFocused)}
               reviewedAt={reviewedAt}
               onReview={invokeReview}
               onNavigate={(t) => {
@@ -3349,6 +3369,7 @@ function Workspace() {
         <StartSurface
           onDescribe={(description) => {
             setStartOpen(false);
+            setSlArrangement(arrangementForSeed(slArrangement));
             setCoauthorSeed({ description, nonce: Date.now() });
             setSlOpen(true);
           }}

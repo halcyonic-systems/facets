@@ -81,6 +81,7 @@ export function InspectorDock({
   reviewedAt,
   onReview,
   formalRequest,
+  preferFolded = false,
 }: {
   /** The recorded run, read by the element face's mechanism readout (#13) —
    *  what THIS node did on the last run. The run itself is not here (#312 move
@@ -129,6 +130,10 @@ export function InspectorDock({
    *  chain's "open Formal" lands somewhere visible instead of firing into a
    *  tab the author never opened. */
   formalRequest: number;
+  /** True while the SL pane has the full width. The dock rests on its rail so
+   *  the text has the room; opening it by hand still works and still stands
+   *  until a different model loads. */
+  preferFolded?: boolean;
 }) {
   // Whether the dock stands open follows the MODEL until the author says
   // otherwise. A blank model has nothing to inspect, so a full instrument column
@@ -140,7 +145,7 @@ export function InspectorDock({
   const [collapseChoice, setCollapseChoice] = useState<boolean | null>(null);
   const modelIsEmpty =
     !canvasModel || (canvasModel.things.length === 0 && canvasModel.relations.length === 0);
-  const collapsed = collapseChoice ?? modelIsEmpty;
+  const collapsed = collapseChoice ?? (preferFolded || modelIsEmpty);
   const setCollapsed = setCollapseChoice;
   const issueCount = verdict?.issues.length ?? 0;
 
@@ -161,7 +166,9 @@ export function InspectorDock({
   useEffect(() => {
     if (selectedId === null) return;
     setTab("element");
-    setCollapsed(false);
+    // With the diagram hidden a selection comes from the text cursor, and a
+    // dock that sprang open on every line would take the width back.
+    if (!preferFolded) setCollapsed(false);
   }, [selectedId]);
 
   // Any selection at all opens the dock, not just a thing: an edge or an
@@ -169,7 +176,7 @@ export function InspectorDock({
   // produced no visible response reads as a dead click. Only the element
   // selection above claims the tab; this one just opens the column.
   useEffect(() => {
-    if (selectionKey === null) return;
+    if (selectionKey === null || preferFolded) return;
     setCollapsed(false);
   }, [selectionKey]);
 
@@ -189,6 +196,10 @@ export function InspectorDock({
     setTab("formal");
     setCollapsed(false);
   }, [formalRequest]);
+
+  useEffect(() => {
+    if (preferFolded) setCollapseChoice(null);
+  }, [preferFolded]);
 
   // Focus wins over the thin collapse rail — a full-width dock can't be a sliver.
   if (collapsed && !focused) {
