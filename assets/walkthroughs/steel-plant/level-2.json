@@ -53,8 +53,8 @@
     {
       "id": 6,
       "name": "Iron-Stock",
-      "x": 579.92346,
-      "y": 457.5329,
+      "x": 318.32037,
+      "y": 267.4671,
       "role": "Component",
       "env_kind": "Neutral",
       "primitive": "Buffering",
@@ -74,8 +74,8 @@
     {
       "id": 8,
       "name": "Inventory-Decider",
-      "x": 318.32037,
-      "y": 267.4671,
+      "x": 579.92346,
+      "y": 457.5329,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true

@@ -62,10 +62,10 @@ component Council
 
 A `component` is a thing inside the boundary — a member of the composition C ([spec §4.3](language/spec.md#43-thing-lines)). `component` is the strongest shared word in the lexicon: both Bunge's C and Mobus's C ([concordance §2](language/terminology-concordance.md#2-a-thing-inside-the-system--the-strongest-shared-word)). The trailing `interface` on `Proxy` and `DailyLoop` designates each a member of the root membrane's interface set I (I ⊆ C; [concordance §9](language/terminology-concordance.md#9-interface)); `Council` carries no attribute and stays interior. **CONTINGENT([#226](https://github.com/halcyonic-systems/facets/issues/226)):** the attribute stamps the interface *onto a component*, which is the Lean's flat `I ⊆ C` convention; whether an interface should instead be placed on the boundary is open, and a decision there would change this line's gesture, not its meaning.
 
-The canvas places components on a deterministic inner N-gon in declaration order (same text, same picture — [spec §6.1](language/spec.md#61-pos-name-x-y)). Each lens names the node in its own vocabulary: the Klir palette offers a **thing** (a member of T), the Bunge palette a **component** (𝒞, Def 1.2(i)), the Mobus palette a **component** (a subsystem one level down) — the palette rows are settled-term-faithful per the [concordance §15.1 audit](language/terminology-concordance.md#151-per-lens-ui-copy-audit-2026-07-20).
+The canvas places components on a deterministic inner N-gon (same text, same picture — [spec §6.1](language/spec.md#61-pos-name-x-y)). Declaration order fills the ring unless another order draws strictly fewer wire crossings; here `Proxy` and `DailyLoop` trade slots, which uncrosses `Operator`'s wire from `Council`'s. Each lens names the node in its own vocabulary: the Klir palette offers a **thing** (a member of T), the Bunge palette a **component** (𝒞, Def 1.2(i)), the Mobus palette a **component** (a subsystem one level down) — the palette rows are settled-term-faithful per the [concordance §15.1 audit](language/terminology-concordance.md#151-per-lens-ui-copy-audit-2026-07-20).
 
 ```json
-{ "id": 1, "name": "Proxy", "x": 480.0, "y": 150.0, "role": "Component", "interface": true }
+{ "id": 1, "name": "Proxy", "x": 627.2243, "y": 405.0, "role": "Component", "interface": true }
 ```
 
 `interface` on `Council` would be absent, emitting `"interface": false`.

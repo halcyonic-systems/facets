@@ -1342,8 +1342,8 @@
         "env_kind": "Neutral",
         "name": "Synaptic Compartments",
         "role": "Component",
-        "x": 480.0,
-        "y": 150.0
+        "x": 333.0,
+        "y": 405.0
       },
       {
         "env_kind": "Neutral",
@@ -1356,8 +1356,8 @@
         "env_kind": "Neutral",
         "name": "Axonal Hillock",
         "role": "Component",
-        "x": 333.0,
-        "y": 405.0
+        "x": 480.0,
+        "y": 150.0
       },
       {
         "env_kind": "Source",
@@ -1958,15 +1958,15 @@
         "env_kind": "Neutral",
         "name": "FOMC",
         "role": "Component",
-        "x": 480.0,
-        "y": 150.0
+        "x": 627.0,
+        "y": 405.0
       },
       {
         "env_kind": "Neutral",
         "name": "Open Market Desk",
         "role": "Component",
-        "x": 627.0,
-        "y": 405.0
+        "x": 480.0,
+        "y": 150.0
       },
       {
         "env_kind": "Neutral",
@@ -3079,147 +3079,147 @@
         "env_kind": "Source",
         "name": "Developer workload",
         "role": "Environment",
-        "x": 288.0,
-        "y": -12.0
+        "x": 234.0,
+        "y": -106.0
       },
       {
         "env_kind": "Source",
         "name": "Enterprise workload",
         "role": "Environment",
-        "x": 209.0,
-        "y": 49.0
+        "x": 132.0,
+        "y": -28.0
       },
       {
         "env_kind": "Source",
         "name": "Anthropic",
         "role": "Environment",
-        "x": 148.0,
-        "y": 128.0
+        "x": 54.0,
+        "y": 74.0
       },
       {
         "env_kind": "Source",
         "name": "OpenAI",
         "role": "Environment",
-        "x": 110.0,
-        "y": 221.0
+        "x": 5.0,
+        "y": 193.0
       },
       {
         "env_kind": "Source",
         "name": "Google",
         "role": "Environment",
-        "x": 97.0,
+        "x": -12.0,
         "y": 320.0
       },
       {
         "env_kind": "Source",
         "name": "Meta",
         "role": "Environment",
-        "x": 110.0,
-        "y": 419.0
+        "x": 5.0,
+        "y": 447.0
       },
       {
         "env_kind": "Source",
         "name": "Alibaba",
         "role": "Environment",
-        "x": 148.0,
-        "y": 512.0
+        "x": 54.0,
+        "y": 566.0
       },
       {
         "env_kind": "Source",
         "name": "DeepSeek (lab)",
         "role": "Environment",
-        "x": 209.0,
-        "y": 591.0
+        "x": 132.0,
+        "y": 668.0
       },
       {
         "env_kind": "Source",
         "name": "Open-weight field",
         "role": "Environment",
-        "x": 288.0,
-        "y": 652.0
+        "x": 234.0,
+        "y": 746.0
       },
       {
         "env_kind": "Neutral",
         "name": "Developer clearing",
         "role": "Component",
-        "x": 480.0,
-        "y": 150.0
+        "x": 713.0,
+        "y": 214.0
       },
       {
         "env_kind": "Neutral",
         "name": "Enterprise clearing",
         "role": "Component",
-        "x": 572.0,
-        "y": 177.0
+        "x": 227.0,
+        "y": 356.0
       },
       {
         "env_kind": "Neutral",
         "name": "Opus",
         "role": "Component",
-        "x": 635.0,
-        "y": 249.0
+        "x": 618.0,
+        "y": 105.0
       },
       {
         "env_kind": "Neutral",
         "name": "Fable",
         "role": "Component",
-        "x": 648.0,
-        "y": 344.0
+        "x": 480.0,
+        "y": 64.0
       },
       {
         "env_kind": "Neutral",
         "name": "GPT",
         "role": "Component",
-        "x": 608.0,
-        "y": 431.0
+        "x": 342.0,
+        "y": 105.0
       },
       {
         "env_kind": "Neutral",
         "name": "Gemini",
         "role": "Component",
-        "x": 528.0,
-        "y": 483.0
+        "x": 247.0,
+        "y": 214.0
       },
       {
         "env_kind": "Neutral",
         "name": "Gemma",
         "role": "Component",
-        "x": 432.0,
-        "y": 483.0
+        "x": 287.0,
+        "y": 488.0
       },
       {
         "env_kind": "Neutral",
         "name": "Llama",
         "role": "Component",
-        "x": 352.0,
-        "y": 431.0
+        "x": 408.0,
+        "y": 566.0
       },
       {
         "env_kind": "Neutral",
         "name": "Qwen",
         "role": "Component",
-        "x": 312.0,
-        "y": 344.0
+        "x": 733.0,
+        "y": 356.0
       },
       {
         "env_kind": "Neutral",
         "name": "DeepSeek",
         "role": "Component",
-        "x": 325.0,
-        "y": 249.0
+        "x": 673.0,
+        "y": 488.0
       },
       {
         "env_kind": "Neutral",
         "name": "Other open",
         "role": "Component",
-        "x": 388.0,
-        "y": 177.0
+        "x": 552.0,
+        "y": 566.0
       },
       {
         "env_kind": "Sink",
         "name": "Applications served",
         "role": "Environment",
-        "x": 863.0,
+        "x": 972.0,
         "y": 320.0
       }
     ],
@@ -5766,8 +5766,8 @@
         "env_kind": "Neutral",
         "name": "Grass",
         "role": "Environment",
-        "x": 296.0,
-        "y": 639.0
+        "x": 112.0,
+        "y": 320.0
       },
       {
         "env_kind": "Sink",

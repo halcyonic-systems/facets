@@ -316,7 +316,7 @@ Annotations are `@`-prefixed lines, conventionally last in the file. Three are d
 
 ### 6.1 `@pos name x y`
 
-Pins a thing's pixel position. Things without `@pos` are placed by the deterministic auto-layout: components on an inner N-gon (a single component at the center), environment things on an outer ring, both in declaration order — same text, same picture. Positions are view state; no verdict reads them.
+Pins a thing's pixel position. Things without `@pos` are placed by the deterministic auto-layout — same text, same picture. Components sit on an inner N-gon (a single component at the center, two side by side) whose radius grows with the count so that neighbours keep a label-wide chord. Environment things sit on an outer ring, clear of the inner one, by role: sources on the left arc, sinks on the right, never-wired `environment` things above. The layout reads the flows. Declaration order is the starting order and every tie-break, not a promise: the component ring is re-ordered when, and only when, another order draws strictly fewer wire crossings (a bounded search, so fewer, not provably fewest), and a side's environment things leave their even declaration-ordered spread to sit level with the components they exchange flows with only when that too draws strictly cleaner. A model that already draws clean is placed exactly in declaration order. Because layout is a function of the whole text, adding a flow can move things the flow does not touch; a second flow on an already-wired pair never does, and `@pos` lines (the pane's *Layout only* writes them) hold a picture still. Positions are view state; no verdict reads them.
 
 ### 6.2 `@lens klir|bunge|mobus`
 

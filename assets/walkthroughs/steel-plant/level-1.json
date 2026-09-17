@@ -6,8 +6,8 @@
     {
       "id": 1,
       "name": "Energy-Source",
-      "x": 295.79187,
-      "y": 0.94207764,
+      "x": 250.96034,
+      "y": -76.708435,
       "role": "Environment",
       "env_kind": "Source",
       "interface": false
@@ -15,7 +15,7 @@
     {
       "id": 2,
       "name": "Iron-Source",
-      "x": 111.58368,
+      "x": 21.920593,
       "y": 319.99997,
       "role": "Environment",
       "env_kind": "Source",
@@ -24,8 +24,8 @@
     {
       "id": 3,
       "name": "Coke-Source",
-      "x": 295.7918,
-      "y": 639.05786,
+      "x": 250.96027,
+      "y": 716.7084,
       "role": "Environment",
       "env_kind": "Source",
       "interface": false
@@ -33,8 +33,8 @@
     {
       "id": 4,
       "name": "Steel-Sink",
-      "x": 664.2081,
-      "y": 0.94207764,
+      "x": 709.0397,
+      "y": -76.708435,
       "role": "Environment",
       "env_kind": "Sink",
       "interface": false
@@ -42,7 +42,7 @@
     {
       "id": 5,
       "name": "Garbage-Sink",
-      "x": 848.4163,
+      "x": 938.0794,
       "y": 320.0,
       "role": "Environment",
       "env_kind": "Sink",
@@ -51,8 +51,8 @@
     {
       "id": 6,
       "name": "ATMOSPHERE",
-      "x": 664.2081,
-      "y": 639.0579,
+      "x": 709.0397,
+      "y": 716.70844,
       "role": "Environment",
       "env_kind": "Sink",
       "interface": false
@@ -61,7 +61,7 @@
       "id": 7,
       "name": "FuseBox",
       "x": 480.0,
-      "y": 150.0,
+      "y": 86.5986,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
@@ -69,8 +69,8 @@
     {
       "id": 8,
       "name": "Iron-LoadingDock",
-      "x": 579.92346,
-      "y": 182.4671,
+      "x": 258.0221,
+      "y": 247.875,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
@@ -78,8 +78,8 @@
     {
       "id": 9,
       "name": "Coke-LoadingDock",
-      "x": 641.6796,
-      "y": 267.4671,
+      "x": 342.81012,
+      "y": 508.82568,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
@@ -87,8 +87,8 @@
     {
       "id": 10,
       "name": "Steel-ShippingDock",
-      "x": 641.6796,
-      "y": 372.5329,
+      "x": 701.9779,
+      "y": 247.875,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
@@ -96,8 +96,8 @@
     {
       "id": 11,
       "name": "Waste-ShippingDock",
-      "x": 579.92346,
-      "y": 457.5329,
+      "x": 701.9779,
+      "y": 392.125,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
@@ -105,8 +105,8 @@
     {
       "id": 12,
       "name": "Ventilation",
-      "x": 480.0,
-      "y": 490.0,
+      "x": 617.1899,
+      "y": 508.82568,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
@@ -114,8 +114,8 @@
     {
       "id": 13,
       "name": "Iron-Inventory",
-      "x": 380.0765,
-      "y": 457.5329,
+      "x": 342.81006,
+      "y": 131.17435,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": false,
@@ -127,8 +127,8 @@
     {
       "id": 14,
       "name": "Coke-Inventory",
-      "x": 318.32037,
-      "y": 372.53287,
+      "x": 480.0,
+      "y": 553.40137,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": false
@@ -136,8 +136,8 @@
     {
       "id": 15,
       "name": "Material-Purchasing",
-      "x": 318.32037,
-      "y": 267.4671,
+      "x": 258.02206,
+      "y": 392.12494,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
@@ -145,8 +145,8 @@
     {
       "id": 16,
       "name": "Production",
-      "x": 380.07648,
-      "y": 182.46713,
+      "x": 617.1899,
+      "y": 131.1743,
       "role": "Component",
       "env_kind": "Neutral",
       "primitive": "Combining",
