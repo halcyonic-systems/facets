@@ -31,6 +31,8 @@ export type Preset = {
   inspector: InspectorTab[];
   inspectorWide: boolean;
   gateInPane: boolean;
+  /** Write's right margin: the diagram small, the kernel's word, the caret. */
+  margin: boolean;
   /** The top bar shrinks to a strip that returns on hover. */
   topBarStrip: boolean;
 };
@@ -47,6 +49,7 @@ export function preset(mode: WorkspaceMode, focus: boolean, previewing: boolean)
         inspector: [],
         inspectorWide: false,
         gateInPane: previewing,
+        margin: !focus,
         topBarStrip: focus,
       };
     case "build":
@@ -57,6 +60,7 @@ export function preset(mode: WorkspaceMode, focus: boolean, previewing: boolean)
         inspector: focus ? [] : ["element"],
         inspectorWide: false,
         gateInPane: false,
+        margin: false,
         topBarStrip: focus,
       };
     case "read":
@@ -67,6 +71,7 @@ export function preset(mode: WorkspaceMode, focus: boolean, previewing: boolean)
         inspector: focus ? [] : READ_TABS,
         inspectorWide: true,
         gateInPane: false,
+        margin: false,
         topBarStrip: focus,
       };
   }

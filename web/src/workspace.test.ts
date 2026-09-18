@@ -24,7 +24,9 @@ describe("workspace presets (#409 M1)", () => {
 
   it("Write: the text alone, no palette, no inspector", () => {
     const p = preset("write", false, false);
-    expect(p).toMatchObject({ editor: true, canvas: false, palette: false, inspector: [] });
+    expect(p).toMatchObject({ editor: true, canvas: false, palette: false, inspector: [], margin: true });
+    expect(preset("build", false, false).margin).toBe(false);
+    expect(preset("read", false, false).margin).toBe(false);
   });
 
   it("Build: canvas, palette and the element inspector; Read: canvas and the readings, widened", () => {
@@ -57,6 +59,7 @@ describe("workspace presets (#409 M1)", () => {
       const p = preset(mode, true, false);
       expect(p.palette).toBe(false);
       expect(p.inspector).toEqual([]);
+      expect(p.margin).toBe(false);
       expect(p.topBarStrip).toBe(true);
       expect(preset(mode, false, false).topBarStrip).toBe(false);
     }
