@@ -82,7 +82,12 @@ export function InspectorDock({
   onReview,
   formalRequest,
   preferFolded = false,
+  frame,
 }: {
+  /** #409: the mode's preset over this dock. The tabs it offers and whether
+   *  it takes the wider reading measure; the collapse rail and the focus
+   *  control are not shown, since the mode decides whether the dock is. */
+  frame?: { tabs: Tab[]; wide: boolean };
   /** The recorded run, read by the element face's mechanism readout (#13) —
    *  what THIS node did on the last run. The run itself is not here (#312 move
    *  2): the dock reads its trace, it does not stage it. */
@@ -145,7 +150,11 @@ export function InspectorDock({
   const [collapseChoice, setCollapseChoice] = useState<boolean | null>(null);
   const modelIsEmpty =
     !canvasModel || (canvasModel.things.length === 0 && canvasModel.relations.length === 0);
-  const collapsed = collapseChoice ?? (preferFolded || modelIsEmpty);
+  const collapsed = frame ? false : (collapseChoice ?? (preferFolded || modelIsEmpty));
+  const tabsOffered = frame ? frame.tabs : DOCK_TABS.map((t) => t.id);
+  useEffect(() => {
+    if (!tabsOffered.includes(tab)) setTab(tabsOffered[0] ?? "element");
+  }, [tabsOffered, tab]);
   const setCollapsed = setCollapseChoice;
   const issueCount = verdict?.issues.length ?? 0;
 
@@ -242,7 +251,7 @@ export function InspectorDock({
     <div
       // Shrinkable under pressure (#17): 24rem by preference, yielding down to
       // 18rem at narrow windows instead of pushing the row past the viewport.
-      className={`flex flex-col border-l ${focused ? "min-h-0 flex-1" : "min-w-72 shrink basis-96"}`}
+      className={`flex flex-col border-l ${focused ? "min-h-0 flex-1" : frame?.wide ? "min-w-80 shrink basis-[32rem]" : "min-w-72 shrink basis-96"}`}
       style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
     >
       {/* Tab strip — the instrument's face selector. The active tab carries the
@@ -259,7 +268,7 @@ export function InspectorDock({
           a reading of the model or of the selection. Tab widths are bound by
           InspectorDock.test.tsx. */}
       <Tabs
-        tabs={DOCK_TABS.filter(({ id }) => !(id === "element" && !element)).map(
+        tabs={DOCK_TABS.filter(({ id }) => tabsOffered.includes(id) && !(id === "element" && !element)).map(
           ({ id, label }) => ({
             key: id,
             label,
@@ -269,6 +278,7 @@ export function InspectorDock({
         active={tab}
         onSelect={(k) => setTab(k as Tab)}
         controls={
+          frame ? null : (
           <>
             {/* Focus toggle — pops the active tab full-width (hides the canvas)
                 and back. Same quiet glyph-button chrome as the collapse control. */}
@@ -294,6 +304,7 @@ export function InspectorDock({
               </button>
             )}
           </>
+          )
         }
       />
 

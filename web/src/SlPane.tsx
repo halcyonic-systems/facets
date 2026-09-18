@@ -35,7 +35,8 @@ interface SlPaneProps {
   /** Receives the compiled model; the parent owns lens preservation + resets.
    *  `lensExplicit` = the text pinned a lens via `@lens`. */
   onCompiled: (model: CanvasModel, lensExplicit: boolean) => void;
-  onClose: () => void;
+  /** Absent when the mode decides whether the pane shows (#409). */
+  onClose?: () => void;
   /** How the pane and the diagram share the width. The parent owns it, since
    *  the parent is what hides the diagram. Absent = side by side, no control. */
   arrangement?: SlArrangement;
@@ -362,14 +363,16 @@ export function SlPane({
               <ModeButton label="Co-author" active={mode === "coauthor"} onClick={() => setMode("coauthor")} />
             </div>
           )}
-          <button
-            onClick={onClose}
-            className="px-1 text-sm"
-            style={{ color: "var(--text-muted)" }}
-            title="Close the SL pane"
-          >
-            ✕
-          </button>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="px-1 text-sm"
+              style={{ color: "var(--text-muted)" }}
+              title="Close the SL pane"
+            >
+              ✕
+            </button>
+          )}
         </div>
       </div>
 

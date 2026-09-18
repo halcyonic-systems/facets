@@ -52,9 +52,16 @@ import { MarkovReadout } from "./canvas/MarkovReadout";
 import { type SimFrame } from "./canvas/types";
 import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
-import { MODE_BY_LENS } from "./review";
 import { StartSurface } from "./StartSurface";
-import { arrangementForSeed, diagramHidden, loadSlArrangement, saveSlArrangement, type SlArrangement } from "./slArrangement";
+import { StatusBar } from "./StatusBar";
+import {
+  WORKSPACE_MODES,
+  preset,
+  setWorkspaceMode,
+  subscribeWorkspaceMode,
+  workspaceMode,
+  type WorkspaceMode,
+} from "./workspace";
 import { SystemTypeEditor } from "./SystemTypeEditor";
 import { StartFromData } from "./StartFromData";
 import { SlPane } from "./SlPane";
@@ -86,7 +93,7 @@ import {
   type ThemeChoice,
 } from "./theme";
 import type { SlError } from "./kernel/types";
-import { Banner, ConfirmDialog, Pill, ToolButton } from "./ui";
+import { Banner, ConfirmDialog, ToolButton } from "./ui";
 import { KernelErrorBoundary } from "./KernelErrorBoundary";
 import { isFolderSupported, pickDirectory, writeModel, type DirHandleLike } from "./fsAccess";
 import { library } from "./library";
@@ -410,6 +417,13 @@ function Workspace() {
   // whole work region. Presentation-only — the canvas <main> stays mounted (just
   // display:none'd), so its pan/zoom viewport survives the round trip untouched.
   const [inspectorFocused, setInspectorFocused] = useState(false);
+  // #409 M1: the frame. One mode (a remembered preference) and one Focus
+  // toggle (session state) decide which panes show; the per-pane toggles
+  // below are kept but no longer visible. `frame` is the preset in force.
+  const [mode, setModeState] = useState<WorkspaceMode>(workspaceMode);
+  useEffect(() => subscribeWorkspaceMode(setModeState), []);
+  const [focus, setFocus] = useState(false);
+  const [barPeek, setBarPeek] = useState(false);
   // Presentation-only: has the author touched the lens picker yet this session?
   // A new model opens on Mobus by decision, not by accident, so the strip names
   // the reason once and retires the note the moment the picker gets used.
@@ -448,19 +462,6 @@ function Workspace() {
     }
     // Keyed on the pane alone: the palette's own toggles must not re-run this.
   }, [slOpen]); // eslint-disable-line react-hooks/exhaustive-deps
-  // How the pane and the diagram share the width (slArrangement.ts). Text-only
-  // hides the canvas <main> without unmounting it, the way inspector focus
-  // does, so the viewport and any draft preview survive the trip. The
-  // inspector rests on its rail meanwhile, and the canvas re-frames on every
-  // change: its width just moved, and a fit computed while hidden measured
-  // nothing.
-  const [slArrangement, setSlArrangementState] = useState<SlArrangement>(loadSlArrangement);
-  function setSlArrangement(next: SlArrangement) {
-    if (next === slArrangement) return;
-    setFitToken((n) => (n ?? 0) + 1);
-    setSlArrangementState(next);
-    saveSlArrangement(next);
-  }
   const [slText, setSlText] = useState(SL_SEED);
   const [slErrors, setSlErrors] = useState<SlError[]>([]);
   // Tier 4 (#353): shared selection between pane and canvas, bridged on
@@ -1312,6 +1313,7 @@ function Workspace() {
     setFitToken((n) => (n ?? 0) + 1); // frame the newborn membrane (#100 phase 0)
     // "Describe it in a few lines" already chose the text pane, so it is not
     // asked again how it wants to start.
+    setWorkspaceMode("write"); // #409: a new model opens in Write
     if (opts?.sl) setSlOpen(true);
     else setStartOpen(true);
   }
@@ -2033,8 +2035,6 @@ function Workspace() {
     setDirty(true);
   }
 
-  const clean = verdict !== null && verdict.issues.length === 0;
-
   // #204: the review is an action the author takes, not a tab they may never
   // open. The kernel already judges continuously — invoking a review raises the
   // report and stamps when it was read. No new computation, and no LLM.
@@ -2050,7 +2050,12 @@ function Workspace() {
   // already ran with the rest of the analysis; this only decides what is on
   // screen next to the text.
   const [formalRequest, setFormalRequest] = useState(0);
-  const showFormal = useCallback(() => setFormalRequest((n) => n + 1), []);
+  // #409: the formal object is a reading, so the request also opens Read,
+  // the mode whose dock offers it.
+  const showFormal = useCallback(() => {
+    setWorkspaceMode("read");
+    setFormalRequest((n) => n + 1);
+  }, []);
 
   // The math-panel-first Klir register (#100): under Klir the set listings are
   // the primary surface and the node-and-edge picture demotes to a locator, so
@@ -2402,6 +2407,39 @@ function Workspace() {
     }
   }
 
+  const frame = preset(mode, focus, preview !== null);
+  // Any tool armed in Build is dropped on the way out: Read places nothing,
+  // and Write has no canvas to place onto.
+  useEffect(() => {
+    if (!frame.palette) setArmed(null);
+  }, [frame.palette]);
+  // Leaving a mode whose canvas was hidden: the canvas re-frames, since a fit
+  // computed while hidden measured nothing.
+  useEffect(() => {
+    if (frame.canvas) setFitToken((n) => (n ?? 0) + 1);
+  }, [frame.canvas]);
+  // Focus's shortcut and its exit. Escape is claimed by the field editors and
+  // the dialogs first (they stop propagation), so it reaches here only when
+  // nothing nearer wanted it.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.ctrlKey && e.altKey && !e.metaKey && e.code === "KeyF") {
+        e.preventDefault();
+        setFocus((f) => !f);
+      } else if (e.key === "Escape" && focus) {
+        setFocus(false);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [focus]);
+  // The verdict chip opens Read on the review, which is where a verdict is
+  // read in full (#204's REVIEW action, now reached from the status bar).
+  function openRead() {
+    setWorkspaceMode("read");
+    invokeReview();
+  }
+
   // ws-D (#345): the workbench controls, dissolved upward from the strip.
   // Wrapped in the data-lens scope so the lens seam re-tints them inside the
   // menu bar (which sits outside the workbench's own data-lens container).
@@ -2453,47 +2491,55 @@ function Workspace() {
           </button>
         ))}
       </div>
-      {/* #204: the review as an action; the pill beside it is the standing
-          reading. Same verbs, menu-bar register. */}
-      <button
-        onClick={invokeReview}
-        className="px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em]"
-        style={{
-          background: "var(--accent-strong)",
-          color: "var(--text-on-accent)",
-          borderRadius: "var(--radius-sm)",
-        }}
-        title={`Review this model against the kernel at ${MODE_BY_LENS[canvasModel.lens]} mode`}
-      >
-        Review
-      </button>
-      <Pill tone={clean ? "ok" : "warning"}>
-        {verdict === null
-          ? "…"
-          : clean
-            ? "✓ clean"
-            : `${verdict.issues.length} issue${verdict.issues.length === 1 ? "" : "s"}`}
-      </Pill>
-      <button
-        onClick={() => setSlOpen((o) => !o)}
-        className="px-2 py-0.5 text-xs font-body transition-colors"
-        style={{
-          borderRadius: "var(--radius-pill)",
-          background: slOpen ? "var(--lens-accent)" : "var(--bg-surface)",
-          color: slOpen ? "var(--text-on-accent)" : "var(--text-secondary)",
-        }}
-        title="Toggle the SL text pane (textual authoring surface)"
-      >
-        SL
-      </button>
+    </div>
+  ) : undefined;
+
+  // #409: the one question, centred in the top bar. Lens and Model/Data stay
+  // beside it because they are about the model; the verdict, the review and
+  // the SL toggle left for the status bar and the modes.
+  const modeSwitch = canvasModel ? (
+    <div
+      className="flex items-center gap-0.5 p-0.5"
+      style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
+      role="group"
+      aria-label="Mode"
+      data-testid="mode-switch"
+    >
+      {WORKSPACE_MODES.map((m) => (
+        <button
+          key={m.value}
+          onClick={() => setWorkspaceMode(m.value)}
+          aria-pressed={mode === m.value}
+          className="px-3 py-0.5 text-xs font-semibold transition-colors"
+          style={{
+            borderRadius: "var(--radius-pill)",
+            background: mode === m.value ? "var(--accent-strong)" : "transparent",
+            color: mode === m.value ? "var(--text-on-accent)" : "var(--text-secondary)",
+            transition: "var(--transition-base)",
+          }}
+          title={m.title}
+        >
+          {m.label}
+        </button>
+      ))}
     </div>
   ) : undefined;
 
   return (
     <>
+      {/* In Focus the top bar shrinks to a strip that returns on hover. */}
+      <div
+        onMouseEnter={() => setBarPeek(true)}
+        onMouseLeave={() => setBarPeek(false)}
+        className={frame.topBarStrip && !barPeek ? "h-1.5 shrink-0" : undefined}
+        style={frame.topBarStrip && !barPeek ? { background: "var(--accent)", opacity: 0.5 } : undefined}
+        data-testid="top-bar"
+      >
+      <div className={frame.topBarStrip && !barPeek ? "hidden" : undefined}>
       <MenuBar
         loaded={true}
         controls={workbenchControls}
+        modeSwitch={modeSwitch}
         onNew={newModel}
         onOpen={() => openHomeAt({ view: "library" })}
         onSave={() => void quickSave()}
@@ -2524,6 +2570,8 @@ function Workspace() {
         onTogglePin={toggleOpenPin}
         onOpenPin={openPin}
       />
+      </div>
+      </div>
       <input
         ref={importInputRef}
         type="file"
@@ -2671,9 +2719,10 @@ function Workspace() {
               as "is structure", never "is not data": with three modes on the
               axis, a negation would have left the palette standing over the
               run. */}
-          {canvasModel && !inspectorFocused && workMode === "structure" && (
+          {canvasModel && frame.palette && workMode === "structure" && (
             <PaletteDock
-              collapsed={paletteCollapsed}
+              collapsed={false}
+              fixed
               onToggle={() => {
                 paletteBeforeSl.current = null;
                 setPaletteCollapsed((c) => !c);
@@ -2685,16 +2734,14 @@ function Workspace() {
 
           {/* The SL text pane — mounts independently of a loaded model, so an
               author can write a model from blank text. */}
-          {slOpen && !inspectorFocused && (
+          {frame.editor && (
             <SlPane
               text={slText}
               errors={slErrors}
               onTextChange={setSlText}
               onErrors={setSlErrors}
               onCompiled={(cm, lensExplicit) => onSlCompiled(cm, lensExplicit, true)}
-              onClose={() => setSlOpen(false)}
-              arrangement={slArrangement}
-              onArrangement={setSlArrangement}
+              arrangement="sl"
               preview={preview ? { onAccept: acceptPreview, onDiscard: discardPreview } : undefined}
               canvasModel={canvasModel}
               // The compile chain (text → model → formal object → verdict):
@@ -2723,9 +2770,7 @@ function Workspace() {
           {/* min-w-0: without it the canvas refuses to shrink (flex min-width:auto)
               and the whole shell row overflows the viewport at narrow widths (#17). */}
           <main
-            className={`min-h-0 min-w-0 flex-1 overflow-y-auto ${
-              (inspectorFocused && canvasModel) || diagramHidden(slArrangement, slOpen && !inspectorFocused) ? "hidden" : ""
-            }`}
+            className={`min-h-0 min-w-0 flex-1 overflow-y-auto ${!frame.canvas ? "hidden" : ""}`}
             style={{ background: "var(--lens-wash)" }}
           >
             {canvasModel && (
@@ -3307,8 +3352,9 @@ function Workspace() {
               While Readouts stands expanded the dock stands down entirely:
               the expansion is a reading posture, and the authoring inspector
               beside it reads as clutter (fresh-eyes pass, 2026-08-18). */}
-          {canvasModel && !readoutsOpen && (
+          {canvasModel && !readoutsOpen && frame.inspector.length > 0 && (
             <InspectorDock
+              frame={{ tabs: frame.inspector, wide: frame.inspectorWide }}
               result={result}
               runManifest={demo ? manifest : null}
               blurb={demo?.blurb}
@@ -3321,7 +3367,7 @@ function Workspace() {
               tick={tick}
               reviewRequest={reviewRequest}
               formalRequest={formalRequest}
-              preferFolded={diagramHidden(slArrangement, slOpen && !inspectorFocused)}
+
               reviewedAt={reviewedAt}
               onReview={invokeReview}
               onNavigate={(t) => {
@@ -3363,13 +3409,23 @@ function Workspace() {
             />
           )}
         </div>
+        <StatusBar
+          model={canvasModel}
+          verdict={verdict}
+          faults={slErrors.length}
+          previewing={preview !== null}
+          focus={focus}
+          onToggleFocus={() => setFocus((f) => !f)}
+          onVerdict={openRead}
+          kernelLoaded
+        />
       </div>
 
       {startOpen && canvasModel && (
         <StartSurface
           onDescribe={(description) => {
             setStartOpen(false);
-            setSlArrangement(arrangementForSeed(slArrangement));
+            setWorkspaceMode("write");
             setCoauthorSeed({ description, nonce: Date.now() });
             setSlOpen(true);
           }}
@@ -3507,12 +3563,16 @@ export function MenuBar({
   onTogglePin,
   onOpenPin,
   controls,
+  modeSwitch,
 }: {
   loaded: boolean;
   /** #345 ws-D: the workbench controls, dissolved upward from the old
    *  strip — mode switch, lens pills, Review, clean chip, SL. The caller
    *  wraps them in a data-lens scope so the lens seam re-tints them here. */
   controls?: React.ReactNode;
+  /** #409: the Write / Build / Read switch, centred between the file menus
+   *  and the model's controls. */
+  modeSwitch?: React.ReactNode;
   onNew: () => void;
   onOpen: () => void;
   onSave: () => void;
@@ -3861,12 +3921,14 @@ export function MenuBar({
 
       {/* Pin the open model to the workbench — only shown when the model has
           an address a pin could name. */}
+      {modeSwitch && <div className="mx-auto flex items-center">{modeSwitch}</div>}
       {controls && (
-        <div className="ml-auto flex min-w-0 flex-wrap items-center gap-2">{controls}</div>
+        <div className={`flex min-w-0 flex-wrap items-center gap-2${modeSwitch ? "" : " ml-auto"}`}>{controls}</div>
       )}
 
-      {/* Meta cluster: pin · theme · kernel chip — standing status, not
-          actions; a hairline sets it off from the working controls. */}
+      {/* Meta cluster: pin · theme — standing status, not actions; a hairline
+          sets it off from the working controls. The kernel chip moved to the
+          status bar (#409). */}
       {controls && (
         <span aria-hidden className="h-4 w-px" style={{ background: "var(--hairline)" }} />
       )}
@@ -3886,18 +3948,11 @@ export function MenuBar({
       )}
 
       <ThemeControl />
-
-      <span
-        className="inline-flex items-center gap-1.5 text-[11px]"
-        style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
-        title="crates/ = truth · web/ = face"
-      >
-        <span
-          className="h-1.5 w-1.5 rounded-full"
-          style={{ background: loaded ? "var(--accent)" : "var(--text-muted)" }}
-        />
-        {loaded ? "kernel · wasm" : "loading…"}
-      </span>
+      {!loaded && (
+        <span className="text-[11px]" style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
+          loading…
+        </span>
+      )}
       </div>
     </div>
   );
@@ -3908,10 +3963,14 @@ export function MenuBar({
 // inside the canvas container.
 function PaletteDock({
   collapsed,
+  fixed = false,
   onToggle,
   children,
 }: {
   collapsed: boolean;
+  /** #409: the mode decides whether the palette shows, so its own caret is
+   *  not offered. */
+  fixed?: boolean;
   onToggle: () => void;
   children: React.ReactNode;
 }) {
@@ -3950,9 +4009,11 @@ function PaletteDock({
         >
           palette
         </span>
-        <button onClick={onToggle} title="Collapse palette" className="text-xs" style={{ color: "var(--text-muted)" }}>
-          ◂
-        </button>
+        {!fixed && (
+          <button onClick={onToggle} title="Collapse palette" className="text-xs" style={{ color: "var(--text-muted)" }}>
+            ◂
+          </button>
+        )}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
     </div>
