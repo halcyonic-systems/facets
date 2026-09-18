@@ -224,9 +224,7 @@ export function ReadSheet({
         )}
       </Card>
 
-      <Card title="Analyst">
-        <AnalystPanel canvasModel={model} onNavigate={onNavigate} />
-      </Card>
+      <AnalystPanel canvasModel={model} onNavigate={onNavigate} />
     </aside>
   );
 }

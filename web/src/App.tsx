@@ -3290,7 +3290,9 @@ function Workspace() {
                         className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-mono"
                         style={{ color: "var(--text-muted)" }}
                       >
-                        arm a tool to stamp (Esc disarms) · click a node to edit it in the Element tab · double-click to enter it · drag the handle dot to connect · click a flow to drive it
+                        {mode === "read"
+                          ? "click an element to read about it · click empty space for the whole model · double-click to enter"
+                          : "arm a tool to stamp (Esc disarms) · click a node to edit it in the Element tab · double-click to enter it · drag the handle dot to connect · click a flow to drive it"}
                       </div>
                     )}
                     {/* In Run mode the dock owns the lower band, so the
