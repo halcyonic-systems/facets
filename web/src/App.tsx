@@ -54,6 +54,8 @@ import type { Pt } from "./canvas/geometry";
 import { InspectorDock } from "./InspectorDock";
 import { StartSurface } from "./StartSurface";
 import { StatusBar } from "./StatusBar";
+import { WriteMargin } from "./WriteMargin";
+import { ToolRail } from "./canvas/ToolRail";
 import {
   WORKSPACE_MODES,
   preset,
@@ -424,6 +426,9 @@ function Workspace() {
   useEffect(() => subscribeWorkspaceMode(setModeState), []);
   const [focus, setFocus] = useState(false);
   const [barPeek, setBarPeek] = useState(false);
+  // #409 M2: the SL text as a drawer over Build's canvas. Reading and hand
+  // edits only; the drafting box belongs to Write.
+  const [slDrawerOpen, setSlDrawerOpen] = useState(false);
   // Presentation-only: has the author touched the lens picker yet this session?
   // A new model opens on Mobus by decision, not by accident, so the strip names
   // the reason once and retires the note the moment the picker gets used.
@@ -470,7 +475,10 @@ function Workspace() {
   // that originated in the pane must not scroll the pane back.
   const slSelSource = useRef<"pane" | null>(null);
   const [slFocusLine, setSlFocusLine] = useState<{ line: number; nonce: number } | null>(null);
+  // The caret's line, for Write's margin (#409 M2). Presentation state.
+  const [slCursorLine, setSlCursorLine] = useState<number | null>(null);
   function onSlCursorLine(line: number) {
+    setSlCursorLine(line);
     if (!canvasModel) return;
     const lines = slText.split("\n");
     const name = lineToName(lines).get(line);
@@ -2426,13 +2434,18 @@ function Workspace() {
       if (e.ctrlKey && e.altKey && !e.metaKey && e.code === "KeyF") {
         e.preventDefault();
         setFocus((f) => !f);
+      } else if (e.key === "Escape" && slDrawerOpen) {
+        setSlDrawerOpen(false);
       } else if (e.key === "Escape" && focus) {
         setFocus(false);
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [focus]);
+  }, [focus, slDrawerOpen]);
+  useEffect(() => {
+    if (mode !== "build") setSlDrawerOpen(false);
+  }, [mode]);
   // The verdict chip opens Read on the review, which is where a verdict is
   // read in full (#204's REVIEW action, now reached from the status bar).
   function openRead() {
@@ -2712,7 +2725,7 @@ function Workspace() {
         {/* Body: docked-left palette + the canvas viewport it authors onto. In
             inspector-focus mode (#57) the palette and SL pane fold away and the
             canvas <main> is hidden (not unmounted) so the dock can fill the row. */}
-        <div className="flex min-h-0 flex-1">
+        <div className="relative flex min-h-0 flex-1">
           {/* The palette authors onto the CANVAS, and only Structure mode has
               one — Data and Run both take the stage, so the rail folds away with
               the mode (#309: it was overlapping the sheet's left edge). Written
@@ -2720,16 +2733,51 @@ function Workspace() {
               axis, a negation would have left the palette standing over the
               run. */}
           {canvasModel && frame.palette && workMode === "structure" && (
+            <ToolRail
+              lens={canvasModel.lens}
+              armed={armed}
+              onArm={setArmed}
+              slOpen={slDrawerOpen}
+              onOpenSl={() => setSlDrawerOpen((o) => !o)}
+            />
+          )}
+          {/* The palette panel PaletteRail sat in stays in code (#409 keeps
+              every pane); the rail above is its Build form. */}
+          {false && (
             <PaletteDock
-              collapsed={false}
-              fixed
+              collapsed={paletteCollapsed}
               onToggle={() => {
                 paletteBeforeSl.current = null;
                 setPaletteCollapsed((c) => !c);
               }}
             >
-              <PaletteRail lens={canvasModel.lens} armed={armed} onArm={setArmed} />
+              <PaletteRail lens={canvasModel?.lens ?? "Mobus"} armed={armed} onArm={setArmed} />
             </PaletteDock>
+          )}
+          {slDrawerOpen && frame.canvas && mode === "build" && (
+            <div className="absolute inset-y-0 left-14 z-30 flex" style={{ boxShadow: "var(--shadow-card-hover)" }} data-testid="sl-drawer">
+              <SlPane
+                text={slText}
+                errors={slErrors}
+                onTextChange={setSlText}
+                onErrors={setSlErrors}
+                onCompiled={(cm, lensExplicit) => onSlCompiled(cm, lensExplicit, true)}
+                onClose={() => setSlDrawerOpen(false)}
+                canvasModel={canvasModel}
+                chain={{ desc, verdict, onShowFormal: showFormal }}
+                selection={{ onCursorLine: onSlCursorLine, focusLine: slFocusLine }}
+                header={
+                  <button
+                    onClick={() => setWorkspaceMode("write")}
+                    className="text-[11px] underline"
+                    style={{ color: "var(--text-muted)" }}
+                    title="Open Write: the text at full width with the co-author"
+                  >
+                    Write ↗
+                  </button>
+                }
+              />
+            </div>
           )}
 
           {/* The SL text pane — mounts independently of a loaded model, so an
@@ -2742,6 +2790,7 @@ function Workspace() {
               onErrors={setSlErrors}
               onCompiled={(cm, lensExplicit) => onSlCompiled(cm, lensExplicit, true)}
               arrangement="sl"
+              drafterDocked
               preview={preview ? { onAccept: acceptPreview, onDiscard: discardPreview } : undefined}
               canvasModel={canvasModel}
               // The compile chain (text → model → formal object → verdict):
@@ -2761,6 +2810,17 @@ function Workspace() {
                 seed: coauthorSeed,
                 onSeedTaken: () => setCoauthorSeed(null),
               }}
+            />
+          )}
+
+          {frame.margin && (
+            <WriteMargin
+              model={canvasModel}
+              verdict={verdict}
+              text={slText}
+              cursorLine={slCursorLine}
+              onBuild={() => setWorkspaceMode("build")}
+              onRead={openRead}
             />
           )}
 

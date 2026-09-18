@@ -13,7 +13,7 @@ import { Popover, ToolButton } from "../ui";
 /** The primitive's own glyph on its rail row (#100 phase 4): picking a
  *  primitive stamps this drawing as the component's face, so the rail shows
  *  the thing you are placing, not just a two-letter code. */
-function GlyphChip({ primitive }: { primitive: ProcessPrimitive }) {
+export function GlyphChip({ primitive }: { primitive: ProcessPrimitive }) {
   return (
     <svg width={14} height={14} viewBox="-7.5 -7.5 15 15" aria-hidden className="mr-1 inline-block align-[-2px]">
       <g fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
@@ -27,7 +27,7 @@ function GlyphChip({ primitive }: { primitive: ProcessPrimitive }) {
  *  for a component (inside the boundary), a square for an environment thing
  *  (the ring's visual grammar). Keyed on the registry's `role`, so every lens
  *  inherits icons-first rows without per-lens code. */
-function RoleChip({ role }: { role: "Component" | "Environment" }) {
+export function RoleChip({ role }: { role: "Component" | "Environment" }) {
   return (
     <svg width={14} height={14} viewBox="-7.5 -7.5 15 15" aria-hidden className="mr-1 inline-block align-[-2px]">
       <g fill="none" stroke="currentColor" strokeWidth={1.4}>
@@ -40,7 +40,7 @@ function RoleChip({ role }: { role: "Component" | "Environment" }) {
 /** The pass-way's rail chip (#226): a small gate on an arc with the flow
  *  arrow passing through — the thing you are placing IS a crossing point in
  *  the membrane, and the icon says so. */
-function PasswayChip() {
+export function PasswayChip() {
   return (
     <svg width={16} height={14} viewBox="-8 -7 16 14" aria-hidden className="mr-1 inline-block align-[-2px]">
       <g fill="none" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round">
@@ -57,7 +57,7 @@ function PasswayChip() {
 /** The connect gesture, illustrated (walkthrough #2): a node with its handle
  *  dot and the drag arrow — the row teaches the gesture instead of naming a
  *  verb it cannot arm. */
-function GestureGlyph() {
+export function GestureGlyph() {
   return (
     <svg width={26} height={14} viewBox="0 0 26 14" aria-hidden className="mr-1 inline-block align-[-2px]">
       <g fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round">
