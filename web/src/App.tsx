@@ -56,6 +56,7 @@ import { StartSurface } from "./StartSurface";
 import { StatusBar } from "./StatusBar";
 import { WriteMargin } from "./WriteMargin";
 import { ToolRail } from "./canvas/ToolRail";
+import { ReadSheet } from "./ReadSheet";
 import {
   WORKSPACE_MODES,
   preset,
@@ -429,6 +430,9 @@ function Workspace() {
   // #409 M2: the SL text as a drawer over Build's canvas. Reading and hand
   // edits only; the drafting box belongs to Write.
   const [slDrawerOpen, setSlDrawerOpen] = useState(false);
+  // #409 M3: the element a Read note under the pointer is about. Lit on the
+  // canvas, never selected by it.
+  const [litTarget, setLitTarget] = useState<IssueTarget | null>(null);
   // Presentation-only: has the author touched the lens picker yet this session?
   // A new model opens on Mobus by decision, not by accident, so the strip names
   // the reason once and retires the note the moment the picker gets used.
@@ -3064,6 +3068,9 @@ function Workspace() {
                       onPanChange={setCanvasPan}
                       onScaleChange={setCanvasScale}
                       fitToken={fitToken}
+                      inert={mode === "read"}
+                      litThingId={litTarget?.thing ?? null}
+                      litRelationId={litTarget?.relation ?? null}
                       // Recomposition: in Run mode the dock owns the lower band,
                       // so fit frames the diagram into what stays visible.
                       fitBottomFraction={0}
@@ -3412,7 +3419,29 @@ function Workspace() {
               While Readouts stands expanded the dock stands down entirely:
               the expansion is a reading posture, and the authoring inspector
               beside it reads as clutter (fresh-eyes pass, 2026-08-18). */}
-          {canvasModel && !readoutsOpen && frame.inspector.length > 0 && (
+          {canvasModel && !readoutsOpen && mode === "read" && frame.inspector.length > 0 && (
+            <ReadSheet
+              model={canvasModel}
+              desc={desc}
+              verdict={verdict}
+              issueTargets={issueTargets}
+              analysisError={analysisError}
+              reviewedAt={reviewedAt}
+              onReview={invokeReview}
+              onNavigate={(t) => {
+                setBoundaryAnchor(null);
+                setSelectedThingId(t.thing);
+                setSelectedRelationId(t.relation);
+              }}
+              onHover={setLitTarget}
+              selection={{ thing: selectedThingId, relation: selectedRelationId }}
+              onClearSelection={() => {
+                setSelectedThingId(null);
+                setSelectedRelationId(null);
+              }}
+            />
+          )}
+          {canvasModel && !readoutsOpen && mode !== "read" && frame.inspector.length > 0 && (
             <InspectorDock
               frame={{ tabs: frame.inspector, wide: frame.inspectorWide }}
               result={result}
