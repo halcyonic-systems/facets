@@ -231,6 +231,14 @@ interface Props {
   /** Ride the zoom path until a rebase fires (#139 rule 7): `in` toward a
    *  component's aperture, `out` until the frame recedes. Each token rides once. */
   ride?: RideOrder | null;
+  /** #409 M3, Read: the diagram does not change under the pointer. No drag,
+   *  no connect, no rename, no placing; clicking still selects, and a door
+   *  still opens. Every write the gestures would make is dropped here. */
+  inert?: boolean;
+  /** #409 M3: an element the reading sheet is pointing at (a note under the
+   *  pointer), drawn lit the way a selected one is, without selecting it. */
+  litThingId?: number | null;
+  litRelationId?: number | null;
 }
 
 /** A ride along the zoom path to the next crossing (#139 rule 7): toward a
@@ -283,6 +291,9 @@ export default function Canvas({
   onRebaseOut,
   viewCommand = null,
   ride = null,
+  inert = false,
+  litThingId = null,
+  litRelationId = null,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -432,7 +443,9 @@ export default function Canvas({
     // #306 write-back guard: gestures see the projected model, but writes must
     // land in AUTHORED coordinates for everything they didn't touch — else the
     // projection persists and the ring inflates every drag frame.
-    onModelChange: (m) => onModelChange(unprojectWrite(model, dModel, m)),
+    onModelChange: (m) => {
+      if (!inert) onModelChange(unprojectWrite(model, dModel, m));
+    },
     svgRef,
     onReject,
     onNotice,
@@ -451,6 +464,7 @@ export default function Canvas({
   const [nameDraft, setNameDraft] = useState<string | null>(null);
   const beginNameEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (inert) return;
     setNameDraft(model.name ?? "");
   };
   const commitName = () => {
@@ -1199,7 +1213,7 @@ export default function Canvas({
             fact={edgeFactById.get(r.id)}
             ring={ring}
             sigIndex={dModel.relations.indexOf(r)}
-            selected={selectedRelationId === r.id}
+            selected={selectedRelationId === r.id || litRelationId === r.id}
             crowded={crowded.has(r.id)}
             driven={driven?.has(r.name) ?? false}
             sim={sim?.edges[r.name]}
@@ -1291,11 +1305,13 @@ export default function Canvas({
               thing={t}
               isBoundary={boundarySet.has(t.id)}
               isOrphan={orphanSet.has(t.id)}
-              hovered={hoverTarget === t.id}
+              hovered={hoverTarget === t.id || litThingId === t.id}
               sim={sim?.nodes[t.name]}
               scale={scale}
               onPointerDown={(e) => gestures.onNodePointerDown(e, t)}
-              onHandlePointerDown={(e) => gestures.onHandlePointerDown(e, t)}
+              onHandlePointerDown={(e) => {
+                if (!inert) gestures.onHandlePointerDown(e, t);
+              }}
             />
             {/* #306: position now carries the interface meaning (the component
                 sits ON the membrane), so the interim ring/tag is gone. What
@@ -1325,7 +1341,7 @@ export default function Canvas({
                 thing={t}
                 door={doorByThing.get(t.id)!}
                 hold={headHold}
-                lit={hoverNodeId === t.id || hoverTarget === t.id || selectedThingId === t.id}
+                lit={hoverNodeId === t.id || hoverTarget === t.id || selectedThingId === t.id || litThingId === t.id}
                 onOpen={() => {
                   const door = doorByThing.get(t.id)!;
                   if (door.kind === "entered") door.onEnter();

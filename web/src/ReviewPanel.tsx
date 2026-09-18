@@ -147,11 +147,15 @@ function IssueRow({
   row,
   group,
   onNavigate,
+  onHover,
 }: {
   row: IssueRowData;
   /** What the group already said once, so the row does not repeat it. */
   group: IssueGroup;
   onNavigate: (target: IssueTarget) => void;
+  /** #409 M3: the pointer resting on a note lights its element; leaving
+   *  unlights it (null). Nothing is selected by it. */
+  onHover?: (target: IssueTarget | null) => void;
 }) {
   const { issue, target, index } = row;
   const navigable = !!target && (target.thing !== null || target.relation !== null);
@@ -166,6 +170,8 @@ function IssueRow({
   return (
     <div
       onClick={navigable ? () => onNavigate(target!) : undefined}
+      onMouseEnter={navigable && onHover ? () => onHover(target!) : undefined}
+      onMouseLeave={navigable && onHover ? () => onHover(null) : undefined}
       title={navigable ? "click to select the element on the canvas" : undefined}
       className={`grid w-full grid-cols-[2.5rem_1fr] items-stretch border-b text-left${navigable ? " cursor-pointer" : ""}`}
       style={{ borderColor: "var(--border)" }}
@@ -206,7 +212,15 @@ function IssueRow({
 /** One defect kind: what it is, how many times, how to repair it, then its
  *  instances. The repair leads because it is what the reader acts on; the
  *  provenance follows, once. */
-function GroupBlock({ group, onNavigate }: { group: IssueGroup; onNavigate: (target: IssueTarget) => void }) {
+function GroupBlock({
+  group,
+  onNavigate,
+  onHover,
+}: {
+  group: IssueGroup;
+  onNavigate: (target: IssueTarget) => void;
+  onHover?: (target: IssueTarget | null) => void;
+}) {
   const n = group.rows.length;
   return (
     <div className="border-x border-t" style={{ borderColor: "var(--border)" }}>
@@ -228,7 +242,7 @@ function GroupBlock({ group, onNavigate }: { group: IssueGroup; onNavigate: (tar
       )}
       <div>
         {group.rows.map((row) => (
-          <IssueRow key={row.index} row={row} group={group} onNavigate={onNavigate} />
+          <IssueRow key={row.index} row={row} group={group} onNavigate={onNavigate} onHover={onHover} />
         ))}
       </div>
       <Rationale citation={group.citation} rationale={group.rationale} doc={group.doc} />
@@ -241,10 +255,12 @@ function SeverityRegion({
   severity,
   rows,
   onNavigate,
+  onHover,
 }: {
   severity: Severity;
   rows: IssueRowData[];
   onNavigate: (target: IssueTarget) => void;
+  onHover?: (target: IssueTarget | null) => void;
 }) {
   if (rows.length === 0) return null;
   const groups = groupIssues(rows);
@@ -257,7 +273,7 @@ function SeverityRegion({
         </span>
       </div>
       {groups.map((g) => (
-        <GroupBlock key={g.code || `singleton-${g.rows[0].index}`} group={g} onNavigate={onNavigate} />
+        <GroupBlock key={g.code || `singleton-${g.rows[0].index}`} group={g} onNavigate={onNavigate} onHover={onHover} />
       ))}
     </div>
   );
@@ -270,10 +286,12 @@ export function ReviewPanel({
   reviewedAt,
   onReview,
   onNavigate,
+  onHover,
 }: {
   model: CanvasModel;
   validation: ValidationResult;
   targets: IssueTarget[];
+  onHover?: (target: IssueTarget | null) => void;
   /** Wall-clock stamp of the last invoked review; null = never invoked (the
    *  panel still shows the standing reading — the kernel judges continuously). */
   reviewedAt: string | null;
@@ -330,8 +348,8 @@ export function ReviewPanel({
           </div>
         </div>
       </div>
-      <SeverityRegion severity="Error" rows={rowsOf("Error")} onNavigate={onNavigate} />
-      <SeverityRegion severity="Warning" rows={rowsOf("Warning")} onNavigate={onNavigate} />
+      <SeverityRegion severity="Error" rows={rowsOf("Error")} onNavigate={onNavigate} onHover={onHover} />
+      <SeverityRegion severity="Warning" rows={rowsOf("Warning")} onNavigate={onNavigate} onHover={onHover} />
       <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
         Every line above is a machine-checked verdict from the kernel. Nothing here is generated prose.
       </p>
