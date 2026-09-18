@@ -104,6 +104,63 @@ function Step({
   );
 }
 
+/** The pane's one-line status: where the text stands against its last compile,
+ *  what the compile produced, and the kernel's verdict on it. The same facts
+ *  the chain below spells out step by step, for a reader who is authoring and
+ *  only needs to know whether it took. Counting and relaying, never judging. */
+export function SlStatusLine({
+  model,
+  verdict,
+  faults,
+  edited,
+}: {
+  model: CanvasModel | null;
+  verdict: ValidationResult | null;
+  faults: number;
+  edited: boolean;
+}) {
+  const errors = verdict?.issues.filter((i) => i.severity === "Error") ?? [];
+  const state =
+    faults > 0
+      ? { text: `${faults} fault${faults === 1 ? "" : "s"}`, color: "var(--verdict-error)" }
+      : edited
+        ? { text: "edited since compile", color: "var(--text-muted)" }
+        : model
+          ? { text: "compiled", color: "var(--verdict-ok)" }
+          : { text: "not compiled yet", color: "var(--text-muted)" };
+  return (
+    <span className="min-w-0 text-[11px]" style={{ color: "var(--text-muted)" }} data-testid="sl-status">
+      <span style={{ color: state.color }}>{state.text}</span>
+      {model && (
+        <>
+          {" · "}
+          {model.things.length} thing{model.things.length === 1 ? "" : "s"}, {model.relations.length} relation
+          {model.relations.length === 1 ? "" : "s"}
+        </>
+      )}
+      {model && verdict && (
+        <>
+          {" · "}
+          {MODE_BY_LENS[model.lens]},{" "}
+          <span style={{ color: errors.length ? "var(--verdict-error)" : "var(--verdict-ok)" }}>
+            {verdict.issues.length === 0
+              ? "clean"
+              : `${verdict.issues.length} issue${verdict.issues.length === 1 ? "" : "s"}`}
+          </span>
+        </>
+      )}
+    </span>
+  );
+}
+
+export function GrammarLink() {
+  return (
+    <DocLink href={GRAMMAR_URL} title="the normative SL grammar (EBNF), in the spec">
+      SL grammar ↗
+    </DocLink>
+  );
+}
+
 export interface SlChainProps {
   /** The text in the pane — its line count is step 1's only fact. */
   text: string;
@@ -134,9 +191,7 @@ export function SlChain({ text, model, desc, verdict, onShowFormal }: SlChainPro
         >
           the compile chain
         </span>
-        <DocLink href={GRAMMAR_URL} title="the normative SL grammar (EBNF), in the spec">
-          SL grammar ↗
-        </DocLink>
+        <GrammarLink />
       </div>
 
       <Step n={1} call="SL text">

@@ -20,7 +20,8 @@ import { compileSl, emitSl, splicePositions } from "./kernel";
 import { SlEditor } from "./sl/SlEditor";
 import type { CanvasModel, SlError } from "./kernel/types";
 import { CoAuthorMode } from "./CoAuthorMode";
-import { SlChain } from "./SlChain";
+import { GrammarLink, SlChain, SlStatusLine } from "./SlChain";
+import { SL_ARRANGEMENTS, previewGateInPane, type SlArrangement } from "./slArrangement";
 import type { SlChainProps } from "./SlChain";
 import type { CoauthorSeed, CoauthorTurn, DraftOutcome, DraftStage } from "./coauthor";
 
@@ -35,6 +36,13 @@ interface SlPaneProps {
    *  `lensExplicit` = the text pinned a lens via `@lens`. */
   onCompiled: (model: CanvasModel, lensExplicit: boolean) => void;
   onClose: () => void;
+  /** How the pane and the diagram share the width. The parent owns it, since
+   *  the parent is what hides the diagram. Absent = side by side, no control. */
+  arrangement?: SlArrangement;
+  onArrangement?: (next: SlArrangement) => void;
+  /** Set while a compiled draft waits on Accept/Discard. The canvas banner is
+   *  that gate; with the diagram hidden the pane shows it instead. */
+  preview?: { onAccept: () => void; onDiscard: () => void };
   /** The current canvas model, for the text←canvas direction (null = none). */
   canvasModel: CanvasModel | null;
   /** #10: the co-author mode. Undefined = authoring off (the pane stays a
@@ -97,7 +105,42 @@ function persistPaneWidth(w: number) {
   }
 }
 
-export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClose, canvasModel, chain, selection, coauthor }: SlPaneProps) {
+const DETAILS_KEY = "sl-pane-details";
+
+function initialDetailsOpen(): boolean {
+  try {
+    return localStorage.getItem(DETAILS_KEY) === "open";
+  } catch {
+    return false;
+  }
+}
+
+export function SlPane({
+  text,
+  errors,
+  onTextChange,
+  onErrors,
+  onCompiled,
+  onClose,
+  arrangement = "split",
+  onArrangement,
+  preview,
+  canvasModel,
+  chain,
+  selection,
+  coauthor,
+}: SlPaneProps) {
+  const [detailsOpen, setDetailsOpen] = useState(initialDetailsOpen);
+  function toggleDetails() {
+    setDetailsOpen((open) => {
+      try {
+        localStorage.setItem(DETAILS_KEY, open ? "closed" : "open");
+      } catch {
+        // private mode etc. — the choice just won't survive a reload
+      }
+      return !open;
+    });
+  }
   const [mode, setMode] = useState<Mode>(coauthor?.seed ? "coauthor" : "sl");
   const seedNonce = coauthor?.seed?.nonce;
   useEffect(() => {
@@ -197,28 +240,119 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
     setMode("sl");
   }
 
+  // The two canvas-to-text actions. Which one sits beside Compile depends on
+  // the moment: an empty page wants the whole model, a written one wants only
+  // its positions refreshed. The other waits under details.
+  const fromCanvasButton = (
+    <button
+      onClick={fromCanvas}
+      disabled={!canvasModel}
+      className="rounded-full px-3 py-1 text-sm"
+      style={{
+        border: "1px solid var(--hairline)",
+        color: "var(--text-secondary)",
+        opacity: canvasModel ? 1 : 0.45,
+        cursor: canvasModel ? "pointer" : "not-allowed",
+      }}
+      title={canvasModel ? "Replace the text with the current canvas model, serialized" : "No model on the canvas yet"}
+    >
+      ← From canvas
+    </button>
+  );
+  const layoutOnlyButton = (
+    <button
+      onClick={layoutFromCanvas}
+      disabled={!canvasModel}
+      className="rounded-full px-3 py-1 text-sm"
+      style={{
+        border: "1px solid var(--hairline)",
+        color: "var(--text-secondary)",
+        opacity: canvasModel ? 1 : 0.45,
+        cursor: canvasModel ? "pointer" : "not-allowed",
+      }}
+      title={
+        canvasModel
+          ? "Update only the @pos lines from the canvas — comments and everything else in this text are left untouched"
+          : "No model on the canvas yet"
+      }
+    >
+      ← Layout only
+    </button>
+  );
+
+  // Folded to a rail: the text is one click away, which is not the same as
+  // closed. Same shape as the inspector's rail on the other edge.
+  if (arrangement === "diagram") {
+    return (
+      <button
+        onClick={() => onArrangement?.("split")}
+        title="Show the SL text beside the diagram"
+        aria-expanded={false}
+        className="flex w-8 shrink-0 flex-col items-center gap-3 border-r py-2 transition-colors"
+        style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
+        data-testid="sl-rail"
+      >
+        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+          ▸
+        </span>
+        <span
+          className="text-[10px] font-semibold uppercase tracking-wide"
+          style={{ color: "var(--text-muted)", writingMode: "vertical-rl" }}
+        >
+          SL text
+        </span>
+      </button>
+    );
+  }
+
+  const full = arrangement === "sl";
+
   return (
     <aside
-      className="relative flex min-w-0 flex-col border-r"
-      style={{ width: paneWidth, borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
+      className={`relative flex min-w-0 flex-col border-r${full ? " flex-1" : ""}`}
+      style={{ width: full ? undefined : paneWidth, borderColor: "var(--hairline)", background: "var(--bg-secondary)" }}
     >
+      {!full && (
+        <div
+          className="sl-pane-resize absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize"
+          title="Drag to resize · double-click to reset"
+          onPointerDown={startResize}
+          onDoubleClick={() => {
+            setPaneWidth(PANE_WIDTH_DEFAULT);
+            persistPaneWidth(PANE_WIDTH_DEFAULT);
+          }}
+        />
+      )}
       <div
-        className="sl-pane-resize absolute inset-y-0 right-0 z-10 w-1.5 cursor-col-resize"
-        title="Drag to resize · double-click to reset"
-        onPointerDown={startResize}
-        onDoubleClick={() => {
-          setPaneWidth(PANE_WIDTH_DEFAULT);
-          persistPaneWidth(PANE_WIDTH_DEFAULT);
-        }}
-      />
-      <div
-        className="flex items-center justify-between border-b px-3 py-2"
+        className="flex flex-wrap items-center justify-between gap-y-1 border-b px-3 py-2"
         style={{ borderColor: "var(--hairline)" }}
       >
-        <span className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
-          SL — system language
+        <span
+          className="text-sm font-semibold"
+          style={{ color: "var(--text-secondary)" }}
+          title="SL, the system language"
+        >
+          {full ? "SL — system language" : "SL"}
         </span>
         <div className="flex items-center gap-2">
+          {onArrangement && (
+            <div
+              className="flex overflow-hidden rounded-full"
+              style={{ border: "1px solid var(--hairline)" }}
+              role="group"
+              aria-label="Arrangement"
+            >
+              {SL_ARRANGEMENTS.map((a) => (
+                <ModeButton
+                  key={a.value}
+                  label={a.label}
+                  title={a.title}
+                  active={arrangement === a.value}
+                  onClick={() => onArrangement(a.value)}
+                />
+              ))}
+            </div>
+          )}
           {coauthor && (
             <div
               className="flex overflow-hidden rounded-full"
@@ -239,6 +373,41 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
         </div>
       </div>
 
+      {/* The human-checks-meaning gate, carried here when the canvas banner
+          that normally holds it is out of sight. */}
+      {preview && previewGateInPane(arrangement, true, true) && (
+        <div
+          className="flex flex-wrap items-center gap-3 border-b px-3 py-2 text-sm"
+          style={{ borderColor: "var(--accent)", color: "var(--text-primary)" }}
+          data-testid="sl-preview-gate"
+        >
+          <span>Previewing a draft. It is not kept until you accept it.</span>
+          <button
+            onClick={preview.onAccept}
+            className="rounded-full px-3 py-1 text-xs font-semibold"
+            style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
+          >
+            Accept
+          </button>
+          <button
+            onClick={preview.onDiscard}
+            className="rounded-full px-3 py-1 text-xs"
+            style={{ border: "1px solid var(--hairline)", color: "var(--text-secondary)" }}
+          >
+            Discard
+          </button>
+          {onArrangement && (
+            <button
+              onClick={() => onArrangement("split")}
+              className="text-xs underline"
+              style={{ color: "var(--text-muted)" }}
+            >
+              see the diagram
+            </button>
+          )}
+        </div>
+      )}
+
       {mode === "coauthor" && coauthor ? (
         <CoAuthorMode
           turns={coauthor.turns}
@@ -256,7 +425,9 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
             stale={editedSinceCompile}
             onChange={(t) => {
               onTextChange(t);
-              setEditedSinceCompile(true);
+              // The editor also reports the fill it was just handed (a draft,
+              // a loaded turn); only a change to the text is an edit.
+              if (t !== text) setEditedSinceCompile(true);
             }}
             onCompile={() => compile()}
             onCursorLine={selection?.onCursorLine}
@@ -283,69 +454,80 @@ export function SlPane({ text, errors, onTextChange, onErrors, onCompiled, onClo
               ))}
             </div>
           )}
+          {/* One row while authoring: the act, the one canvas action that
+              fits the moment, and where the text stands. The rest is folded
+              under details, closed unless the author opened it. */}
           <div
-            className="flex items-center gap-2 border-t px-3 py-2"
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t px-3 py-2"
             style={{ borderColor: "var(--hairline)" }}
           >
             <button
               onClick={() => compile()}
-              className="rounded-full px-4 py-1.5 text-sm font-semibold"
+              className="rounded-full px-4 py-1 text-sm font-semibold"
               style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
-              title="Compile SL → model (⌘⏎)"
+              title="Compile SL → model (⌘⏎) · deterministic compile, kernel verdicts"
             >
               Compile
             </button>
-            <button
-              onClick={fromCanvas}
-              disabled={!canvasModel}
-              className="rounded-full px-3 py-1.5 text-sm"
-              style={{
-                border: "1px solid var(--hairline)",
-                color: "var(--text-secondary)",
-                opacity: canvasModel ? 1 : 0.45,
-                cursor: canvasModel ? "pointer" : "not-allowed",
-              }}
-              title={canvasModel ? "Replace the text with the current canvas model, serialized" : "No model on the canvas yet"}
-            >
-              ← From canvas
-            </button>
-            <button
-              onClick={layoutFromCanvas}
-              disabled={!canvasModel}
-              className="rounded-full px-3 py-1.5 text-sm"
-              style={{
-                border: "1px solid var(--hairline)",
-                color: "var(--text-secondary)",
-                opacity: canvasModel ? 1 : 0.45,
-                cursor: canvasModel ? "pointer" : "not-allowed",
-              }}
-              title={
-                canvasModel
-                  ? "Update only the @pos lines from the canvas — comments and everything else in this text are left untouched"
-                  : "No model on the canvas yet"
-              }
-            >
-              ← Layout only
-            </button>
-            <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-              ⌘⏎ · deterministic compile, kernel verdicts
+            {text.trim() === "" ? fromCanvasButton : layoutOnlyButton}
+            <SlStatusLine
+              model={canvasModel}
+              verdict={chain?.verdict ?? null}
+              faults={errors.length}
+              edited={editedSinceCompile}
+            />
+            <span className="ml-auto flex items-baseline gap-3 text-[11px]">
+              <GrammarLink />
+              <button
+                onClick={toggleDetails}
+                aria-expanded={detailsOpen}
+                className="underline"
+                style={{ color: "var(--text-muted)" }}
+                data-testid="sl-details-toggle"
+              >
+                {detailsOpen ? "hide details" : "details"}
+              </button>
             </span>
           </div>
-          {/* What that compile produced, named step by step. It sits under the
-              buttons because it reads as the RESULT of pressing them — and it
-              stays visible with the dock's Formal tab, which is where step 3's
-              object is typeset in full. */}
-          {chain && <SlChain text={text} model={canvasModel} {...chain} />}
+          {detailsOpen && (
+            <div className="overflow-y-auto" style={{ maxHeight: "45%" }}>
+              <div
+                className="flex flex-wrap items-center gap-2 border-t px-3 py-2"
+                style={{ borderColor: "var(--hairline)" }}
+              >
+                {text.trim() === "" ? layoutOnlyButton : fromCanvasButton}
+                <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                  ⌘⏎ · deterministic compile, kernel verdicts
+                </span>
+              </div>
+              {/* What the compile produced, named step by step. It stays
+                  visible with the dock's Formal tab, which is where step 3's
+                  object is typeset in full. */}
+              {chain && <SlChain text={text} model={canvasModel} {...chain} />}
+            </div>
+          )}
         </>
       )}
     </aside>
   );
 }
 
-function ModeButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function ModeButton({
+  label,
+  title,
+  active,
+  onClick,
+}: {
+  label: string;
+  title?: string;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
+      title={title}
+      aria-pressed={active}
       className="px-2.5 py-1 text-[11px] font-semibold"
       style={{
         background: active ? "var(--accent)" : "transparent",
