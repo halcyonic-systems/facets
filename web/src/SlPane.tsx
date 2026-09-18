@@ -35,7 +35,8 @@ interface SlPaneProps {
   /** Receives the compiled model; the parent owns lens preservation + resets.
    *  `lensExplicit` = the text pinned a lens via `@lens`. */
   onCompiled: (model: CanvasModel, lensExplicit: boolean) => void;
-  onClose: () => void;
+  /** Absent when the mode decides whether the pane shows (#409). */
+  onClose?: () => void;
   /** How the pane and the diagram share the width. The parent owns it, since
    *  the parent is what hides the diagram. Absent = side by side, no control. */
   arrangement?: SlArrangement;
@@ -63,6 +64,13 @@ interface SlPaneProps {
     onCursorLine: (line: number) => void;
     focusLine: { line: number; nonce: number } | null;
   };
+  /** #409 M2: in Write the drafting box sits beneath the editor, so the
+   *  text stays in view while drafting and the SL / Co-author switch is not
+   *  shown. Without it the co-author is a mode of the pane, as before. */
+  drafterDocked?: boolean;
+  /** Something for the header's right end, beside the title (Build's drawer
+   *  puts its way to Write there). */
+  header?: React.ReactNode;
   coauthor?: {
     turns: CoauthorTurn[];
     /** `onStage` is #218's progress feed — the parent's draft call reports
@@ -125,6 +133,8 @@ export function SlPane({
   arrangement = "split",
   onArrangement,
   preview,
+  drafterDocked = false,
+  header,
   canvasModel,
   chain,
   selection,
@@ -335,6 +345,7 @@ export function SlPane({
           {full ? "SL — system language" : "SL"}
         </span>
         <div className="flex items-center gap-2">
+          {header}
           {onArrangement && (
             <div
               className="flex overflow-hidden rounded-full"
@@ -353,7 +364,7 @@ export function SlPane({
               ))}
             </div>
           )}
-          {coauthor && (
+          {coauthor && !drafterDocked && (
             <div
               className="flex overflow-hidden rounded-full"
               style={{ border: "1px solid var(--hairline)" }}
@@ -362,14 +373,16 @@ export function SlPane({
               <ModeButton label="Co-author" active={mode === "coauthor"} onClick={() => setMode("coauthor")} />
             </div>
           )}
-          <button
-            onClick={onClose}
-            className="px-1 text-sm"
-            style={{ color: "var(--text-muted)" }}
-            title="Close the SL pane"
-          >
-            ✕
-          </button>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="px-1 text-sm"
+              style={{ color: "var(--text-muted)" }}
+              title="Close the SL pane"
+            >
+              ✕
+            </button>
+          )}
         </div>
       </div>
 
@@ -408,7 +421,7 @@ export function SlPane({
         </div>
       )}
 
-      {mode === "coauthor" && coauthor ? (
+      {mode === "coauthor" && coauthor && !drafterDocked ? (
         <CoAuthorMode
           turns={coauthor.turns}
           onDraft={handleDraft}
@@ -504,6 +517,19 @@ export function SlPane({
                   visible with the dock's Formal tab, which is where step 3's
                   object is typeset in full. */}
               {chain && <SlChain text={text} model={canvasModel} {...chain} />}
+            </div>
+          )}
+          {drafterDocked && coauthor && (
+            <div className="shrink-0 border-t" style={{ borderColor: "var(--hairline)", background: "var(--bg-primary)" }}>
+              <CoAuthorMode
+                docked
+                turns={coauthor.turns}
+                onDraft={handleDraft}
+                onCorrect={handleCorrect}
+                onLoad={handleLoad}
+                seed={coauthor.seed}
+                onSeedTaken={coauthor.onSeedTaken}
+              />
             </div>
           )}
         </>

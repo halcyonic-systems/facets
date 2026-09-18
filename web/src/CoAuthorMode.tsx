@@ -122,6 +122,22 @@ export function correctionLines(
   };
 }
 
+/** One line on the newest turn, for the docked box (#409 M2): what became of
+ *  the last ask, in the order the author wants it. The full card is a click
+ *  away in the history. */
+export function turnSummary(t: CoauthorTurn): string {
+  const parts: string[] = [statusLabel(t.status)];
+  if (t.kind === "correction") parts[0] = `correction ${parts[0]}`;
+  if (t.kind === "interior") parts[0] = `interior ${parts[0]}`;
+  const who = drafterLine(t);
+  if (who) parts.push(who.replace(/\.$/, ""));
+  if (t.repairs && t.repairs.length > 0) parts.push(`${t.repairs.length} repair${t.repairs.length === 1 ? "" : "s"}`);
+  if (t.errorText && (t.status === "network-error" || t.status === "compile-error")) {
+    parts.push(t.errorText.split("\n")[0]);
+  }
+  return parts.join(" · ");
+}
+
 function statusTone(status: CoauthorTurn["status"]): Tone {
   switch (status) {
     case "accepted":
@@ -157,6 +173,7 @@ export function CoAuthorMode({
   onLoad,
   seed,
   onSeedTaken,
+  docked = false,
 }: {
   turns: CoauthorTurn[];
   /** Description -> draft -> compile -> preview, recorded as a new turn.
@@ -177,6 +194,10 @@ export function CoAuthorMode({
    *  the go-ahead, and the button says it will draft. */
   seed?: CoauthorSeed | null;
   onSeedTaken?: () => void;
+  /** #409 M2: beneath the editor in Write rather than in place of it. The
+   *  box is the same; the newest turn is one line under it and every turn,
+   *  the newest included, waits in the folded history. */
+  docked?: boolean;
 }) {
   const [description, setDescription] = useState(seed?.description ?? "");
   const [busy, setBusy] = useState(false);
@@ -451,9 +472,12 @@ export function CoAuthorMode({
     </li>
   );
 
+  const dockedList = showDiscarded ? turns : turns.filter((t) => t.status !== "discarded");
+  const dockedDiscarded = turns.length - turns.filter((t) => t.status !== "discarded").length;
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b p-3" style={{ borderColor: "var(--hairline)" }}>
+    <div className={docked ? "flex flex-col" : "flex min-h-0 flex-1 flex-col"} data-testid={docked ? "drafting-box" : undefined}>
+      <div className={docked ? "p-3" : "border-b p-3"} style={{ borderColor: "var(--hairline)" }}>
         <p className="mb-2 text-xs" style={{ color: "var(--text-secondary)" }}>
           Describe a system in plain language.
         </p>
@@ -569,6 +593,44 @@ export function CoAuthorMode({
         )}
       </div>
 
+      {docked ? (
+        <div className="px-3 pb-3">
+          {turns[0] && (
+            <p
+              className="mb-1 text-[11px]"
+              style={{ color: turns[0].status === "previewing" || turns[0].status === "accepted" ? "var(--text-muted)" : "var(--verdict-error)" }}
+              data-testid="coauthor-latest"
+            >
+              {turnSummary(turns[0])}
+            </p>
+          )}
+          {turns.length > 0 && (
+            <button
+              onClick={() => setHistoryOpen((o) => !o)}
+              aria-expanded={historyOpen}
+              className="text-[10px] font-semibold uppercase tracking-wide"
+              style={{ color: "var(--text-muted)" }}
+              data-testid="coauthor-history-toggle"
+            >
+              {historyOpen ? "▾" : "▸"} History ({turns.length - dockedDiscarded})
+            </button>
+          )}
+          {historyOpen && (
+            <div className="mt-2 max-h-[40vh] overflow-y-auto">
+              <ul className="flex flex-col gap-2">{dockedList.map(turnItem)}</ul>
+              {dockedDiscarded > 0 && (
+                <button
+                  onClick={() => setShowDiscarded((v) => !v)}
+                  className="mt-2 text-[10px] underline"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  {showDiscarded ? "hide discarded" : `show discarded (${dockedDiscarded})`}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {turns.length === 0 && (
           <p className="text-xs" style={{ color: "var(--text-muted)" }}>
@@ -604,6 +666,7 @@ export function CoAuthorMode({
           </>
         )}
       </div>
+      )}
     </div>
   );
 }

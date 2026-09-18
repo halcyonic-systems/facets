@@ -4,7 +4,7 @@
 // and content faithfully.
 import { beforeEach, describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { CoAuthorMode, correctionLines, drafterLine, drafterMismatch, stageLabel } from "./CoAuthorMode";
+import { CoAuthorMode, correctionLines, drafterLine, drafterMismatch, stageLabel, turnSummary } from "./CoAuthorMode";
 import { resetDrafterModelForTest, setDrafterModel } from "./drafterModel";
 import { resetDraftEffortForTest, setDraftEffort } from "./draftEffort";
 import type { CoauthorTurn, DraftStage } from "./coauthor";
@@ -471,5 +471,41 @@ describe("a correction turn reads as a transcript afterwards", () => {
       <CoAuthorMode turns={[correctionTurn]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
     );
     expect(m).toContain(">Correct<");
+  });
+});
+
+describe("the docked box (#409 M2)", () => {
+  beforeEach(async () => {
+    await reasonerOn();
+  });
+  const at = new Date().toISOString();
+
+  it("sums the newest turn up in one line", () => {
+    expect(turnSummary({ id: "a", description: "x", sl: "system X", at, status: "previewing", model: "gemma4:12b", modelMs: 2100 })).toBe(
+      "previewing · Drafted by gemma4:12b in 2.1s",
+    );
+    expect(turnSummary({ id: "b", description: "x", sl: "", at, status: "network-error", errorText: "Could not reach the reasoner at http://x\nmore" })).toBe(
+      "drafter unreachable · Could not reach the reasoner at http://x",
+    );
+    expect(turnSummary({ id: "c", description: "x", sl: "system X", at, status: "previewing", kind: "correction", repairs: ["one"] })).toBe(
+      "correction previewing · 1 repair",
+    );
+  });
+
+  it("keeps the box and folds every turn, the newest included, behind History", () => {
+    const turns: CoauthorTurn[] = [
+      { id: "n", description: "the newest", sl: "system N", at, status: "previewing" },
+      { id: "o", description: "an older one", sl: "system O", at, status: "accepted" },
+      { id: "d", description: "a discarded one", sl: "system D", at, status: "discarded" },
+    ];
+    const m = renderToStaticMarkup(
+      <CoAuthorMode docked turns={turns} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
+    );
+    expect(m).toContain("drafting-box");
+    expect(m).toContain("Describe a system in plain language");
+    expect(m).toContain("coauthor-latest");
+    expect(m).toContain("History (2)");
+    expect(m).not.toContain("the newest");
+    expect(m).not.toContain("an older one");
   });
 });
