@@ -136,7 +136,7 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
         exoAtInterface = true;
         title = `${relation.name ? `"${relation.name}"` : "flow"} · ${relation.kind.toLowerCase()} — ${
           from.role === "Environment" ? "enters" : "exits"
-        } the system at ${comp.name} (interface)`;
+        } the system at ${comp.name} (interface) · in G, the boundary flow set`;
         // The compact body's rim is closer in — recompute so heads touch it.
         const rr =
           relation.a === comp.id
@@ -153,7 +153,7 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
         // until the 2026-08-09 field report asked what the dotted line was.
         title = `${relation.name ? `"${relation.name}"` : "flow"} · ${relation.kind.toLowerCase()} — ${
           from.role === "Environment" ? "enters" : "exits"
-        } at ${comp.name}'s interface; the dashed segment shows the interface serves ${comp.name}`;
+        } at ${comp.name}'s interface; the dashed segment shows the interface serves ${comp.name} · in G, the boundary flow set`;
         const step = siblingStep(model, relation);
         const portPt = ringPoint(ring, env);
         // Env-side spread: rotate this flow's rim contact around the env node.
@@ -202,7 +202,18 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
         {/* The set tag has to be true (#320): a mere relation is in NEITHER N
             nor G, and tagging it `· N` printed a flow-set membership the lens
             does not grant. */}
+        {/* #418 item 5: the set letter is Mobus's own (N the interior flow
+            set, G the flows across the boundary — the same rows the Read
+            sheet's formal object counts), and nothing on the canvas said so.
+            Hovering the tag names the set. */}
         <tspan fill="var(--text-secondary)">
+          <title>
+            {!relation.is_bond
+              ? "∉ N ∪ G: a mere relation, in neither flow set"
+              : exoAtInterface
+                ? "G: a flow across the boundary — Mobus's external flow set (the G row of the formal object)"
+                : "N: a flow inside the boundary — Mobus's internal flow network (the N row of the formal object)"}
+          </title>
           {!relation.is_bond ? " ∉ N ∪ G" : exoAtInterface ? " · G" : " · N"}
         </tspan>
       </text>
