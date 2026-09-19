@@ -218,6 +218,15 @@ pub fn model_identity(model_json: &str) -> Result<Option<String>, JsError> {
     Ok(crate::archive::identity(model_json).map(|id| id.to_base58()))
 }
 
+/// A fresh model identity, canonical base58 (facets#412). Minting is the
+/// kernel's, as it is at the decompose door; the store layer only carries
+/// what it is handed. Used by the walk importer to stamp a child paragraph
+/// whose text, by design, names no id of its own.
+#[wasm_bindgen]
+pub fn mint_model_id() -> String {
+    bert_core::ModelId::mint().to_base58()
+}
+
 /// Open a stored model onto the canvas, whichever generation wrote it (#140,
 /// ADR 0004) — the archive's read side. Prefer this over `to_canvas` for
 /// anything coming out of STORAGE; `to_canvas` remains the explicit

@@ -12,6 +12,8 @@ import {
   checkDecompositionsCanvas,
   decomposeComponent,
   compileSl,
+  type ArchiveText,
+  mintModelId,
   emitSl,
 } from "./kernel";
 import type {
@@ -116,6 +118,7 @@ import {
   type WorkbenchEntry,
 } from "./workbench";
 import { mintLibraryName, parentSlotName } from "./libraryNames";
+import { joinWalk, splitWalk, stampWalk } from "./walk";
 import { ChildCache } from "./canvas/childCache";
 import { resolveModelRefs } from "./modelResolve";
 import { diagramFilename, exportDiagramSvg, exportDiagramPng } from "./canvas/exportDiagram";
@@ -235,7 +238,11 @@ function spaceOut(model: CanvasModel): CanvasModel {
 // mechanism for a pure-wasm page with no native file bridge (anchor + Blob URL,
 // no File System Access dependency, no server).
 function downloadJson(filename: string, json: string) {
-  const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+  downloadText(filename, json, "application/json");
+}
+
+function downloadText(filename: string, text: string, type: string) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
@@ -1365,13 +1372,103 @@ function Workspace() {
   }
 
   function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = ""; // allow re-importing the same file
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => importModel(String(reader.result));
-    reader.onerror = () => setToast("could not read file");
-    reader.readAsText(file);
+    if (files.length === 0) return;
+    void importFiles(files);
+  }
+
+  // Open… takes one file or several, JSON archives and SL alike (#412). A
+  // single JSON archive opens as before. Everything else is a WALK arriving
+  // from outside the app: every archive and every SL paragraph but the root
+  // is saved to the library (stamped — the kernel mints where the text
+  // carries no id), and the root opens on the canvas with its references
+  // resolving. Identity never lives in pasteable text; this is the "later
+  // tooling" the spec names, doing for a file what the door does for a
+  // component.
+  async function importFiles(files: File[]) {
+    let texts: { name: string; text: string }[];
+    try {
+      texts = await Promise.all(
+        files.map(async (f) => ({ name: f.name, text: await f.text() })),
+      );
+    } catch {
+      setToast("could not read file");
+      return;
+    }
+    const isSl = (f: { name: string; text: string }) => /\.sl$/i.test(f.name) || !f.text.trimStart().startsWith("{");
+    if (texts.length === 1 && !isSl(texts[0])) {
+      await importModel(texts[0].text);
+      return;
+    }
+    if (!(await guardDiscard()) || !(await flushWalk())) return;
+    // Gather every level: archives as they are, SL paragraphs stamped.
+    const archives: { name: string; json: ArchiveText }[] = [];
+    const notes: string[] = [];
+    let rootSl: string | null = null;
+    let rootLabel: string | null = null;
+    for (const f of texts) {
+      if (!isSl(f)) {
+        try {
+          const cm = openModel(f.text);
+          archives.push({ name: cm.name || f.name.replace(/\.json$/i, ""), json: writeArchive(cm) });
+        } catch (e) {
+          setToast(`${f.name}: ${e instanceof Error ? e.message : String(e)}`);
+          return;
+        }
+        continue;
+      }
+      const split = splitWalk(f.text);
+      const walk = stampWalk(split, mintModelId);
+      for (const u of walk.unresolved) notes.push(`"${u.from}" decomposes "${u.label}", which is in no file opened`);
+      for (const o of walk.orphans) notes.push(`"${o}" is reached by nothing; saved anyway`);
+      walk.paragraphs.forEach((p, i) => {
+        if (i === walk.root && rootSl === null) {
+          rootSl = p.text;
+          rootLabel = p.name;
+          return;
+        }
+        const outcome = compileSl(p.text);
+        if ("errors" in outcome) {
+          notes.push(`"${p.name}" did not compile: line ${outcome.errors[0].line}: ${outcome.errors[0].message}`);
+          return;
+        }
+        const id = walk.ids.get(i);
+        const cm: CanvasModel = id ? { ...outcome.ok, model_id: id } : outcome.ok;
+        archives.push({ name: p.name, json: writeArchive(cm) });
+      });
+    }
+    // Children first, so a failure between the two leaves an unreferenced
+    // child (recoverable), never a reference to a missing one — the door's
+    // own order. Names are library slots; a taken name gets a suffix rather
+    // than clobbering another model.
+    const taken = new Set((await library.list()).map((m) => m.name));
+    for (const a of archives) {
+      const name = mintLibraryName(a.name, taken);
+      taken.add(name);
+      await library.save(name, a.json);
+    }
+    await refreshLibrary();
+    if (rootSl !== null) {
+      setSlText(rootSl);
+      const outcome = compileSl(rootSl);
+      if ("errors" in outcome) {
+        setSlErrors(outcome.errors);
+        setNotice(`saved ${archives.length} level${archives.length === 1 ? "" : "s"} to the library; the root "${rootLabel}" has SL faults — see the pane`);
+        return;
+      }
+      setSlErrors([]);
+      await onSlCompiled(outcome.ok, outcome.lens_explicit);
+      setDirty(true);
+    } else if (archives.length > 0) {
+      // Only archives: open the first as the working model, the rest are in
+      // the library where a walk will find them.
+      await importModel(texts.find((f) => !isSl(f))!.text);
+    }
+    const saved = archives.length;
+    setNotice(
+      [`opened ${rootLabel ?? "the model"}; ${saved} level${saved === 1 ? "" : "s"} saved to the library`, ...notes].join(" · "),
+    );
   }
 
   // File → Save / Export: project the canvas editing model back to a bert-core
@@ -1384,6 +1481,33 @@ function Workspace() {
       const world = project(canvasModel);
       const name = (demo?.key ?? "model").replace(/[^a-z0-9_-]+/gi, "-");
       downloadJson(`${name}${suffix}.json`, JSON.stringify(world, null, 2));
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // File → Export walk (.sl) (#412): the open model and every child it
+  // reaches, as one file of flat paragraphs joined by reference, ids
+  // stripped so the text stays copy-safe. Open… reads the same file back.
+  async function exportWalk() {
+    if (!canvasModel) return;
+    try {
+      const texts: string[] = [];
+      const seen = new Set<string>();
+      const visit = async (cm: CanvasModel) => {
+        texts.push(emitSl(cm));
+        const refs = cm.things.map((t) => t.child_model?.id).filter((id): id is string => !!id && !seen.has(id));
+        refs.forEach((id) => seen.add(id));
+        const resolved = await resolveModelRefs(refs, dirHandle);
+        for (const id of refs) {
+          const json = resolved[id];
+          if (json) await visit(openModel(json));
+          else setToast(`child ${id} not found in the library; left as a reference`);
+        }
+      };
+      await visit(canvasModel);
+      const name = (currentLabel ?? canvasModel.name ?? "model").replace(/[^a-z0-9_-]+/gi, "-");
+      downloadText(`${name}.walk.sl`, joinWalk(texts), "text/plain");
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
@@ -2565,6 +2689,7 @@ function Workspace() {
         onDownload={() => exportModel(".model")}
         onExport={() => exportModel(".world")}
         onExportSvg={() => exportDiagram("svg")}
+        onExportWalk={exportWalk}
         onExportPng={() => exportDiagram("png")}
         onSaveToFolder={saveToFolder}
         onSaveToLibrary={saveToLibrary}
@@ -2594,7 +2719,8 @@ function Workspace() {
       <input
         ref={importInputRef}
         type="file"
-        accept="application/json,.json"
+        accept="application/json,.json,.sl,text/plain"
+        multiple
         onChange={onImportFile}
         className="hidden"
       />
@@ -3635,6 +3761,7 @@ export function MenuBar({
   onDownload,
   onExport,
   onExportSvg,
+  onExportWalk,
   onExportPng,
   onSaveToFolder,
   onSaveToLibrary,
@@ -3675,6 +3802,8 @@ export function MenuBar({
   onDownload?: () => void;
   onExport: () => void;
   onExportSvg?: () => void;
+  /** #412: the open model and its reachable children as one .sl file. */
+  onExportWalk?: () => void;
   onExportPng?: () => void;
   onSaveToFolder: () => void;
   onSaveToLibrary: () => void;
@@ -3813,6 +3942,7 @@ export function MenuBar({
               <div className="my-1 border-t" style={{ borderColor: "var(--hairline)" }} />
               {onDownload && item("Download (.model)", onDownload, !canExport)}
               {item("Export JSON", onExport, !canExport)}
+              {onExportWalk && item("Export walk (.sl)", onExportWalk, !canExport)}
               {onExportSvg && item("Export diagram (SVG)", onExportSvg, !canExport)}
               {onExportPng && item("Export diagram (PNG)", onExportPng, !canExport)}
             </div>

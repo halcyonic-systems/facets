@@ -28,6 +28,7 @@ import init, {
   emit_sl as wasmEmitSl,
   splice_positions as wasmSplicePositions,
   model_identity as wasmModelIdentity,
+  mint_model_id as wasmMintModelId,
   check_decompositions as wasmCheckDecompositions,
   decompose_component as wasmDecomposeComponent,
   check_decompositions_canvas as wasmCheckDecompositionsCanvas,
@@ -376,6 +377,11 @@ export function splicePositions(source: string, model: CanvasModel): string {
  *  this, never by reading model JSON itself. */
 export function modelIdentity(modelJson: string): string | null {
   return call<string | undefined>("model_identity", () => wasmModelIdentity(modelJson)) ?? null;
+}
+
+/** A fresh model identity (#412): the kernel mints, this layer stamps. */
+export function mintModelId(): string {
+  return call("mint_model_id", () => wasmMintModelId());
 }
 
 /** Judge every decomposition seam in a model against its store-resolved
