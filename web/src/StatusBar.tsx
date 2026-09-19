@@ -7,7 +7,7 @@ import { MODE_BY_LENS } from "./review";
 import type { CanvasModel, ValidationResult } from "./kernel/types";
 
 /** docs/language/spec.md's title line carries the language version. */
-export const SL_VERSION = "1.6";
+export const SL_VERSION = "1.7";
 
 export function StatusBar({
   model,
@@ -16,6 +16,8 @@ export function StatusBar({
   previewing,
   focus,
   onToggleFocus,
+  grounding = false,
+  onToggleGrounding,
   onVerdict,
   kernelLoaded,
 }: {
@@ -26,6 +28,11 @@ export function StatusBar({
   previewing: boolean;
   focus: boolean;
   onToggleFocus: () => void;
+  /** #411: the grounding overlay — the canvas recoloured by whose word each
+   *  element rests on. A reading, not a layout choice, so it sits beside
+   *  Focus rather than in the mode row. Absent handler hides the toggle. */
+  grounding?: boolean;
+  onToggleGrounding?: () => void;
   /** The verdict chip opens Read, where the review lives. */
   onVerdict: () => void;
   kernelLoaded: boolean;
@@ -62,6 +69,22 @@ export function StatusBar({
         </>
       )}
       <span className="ml-auto flex items-center gap-3">
+        {onToggleGrounding && model && (
+          <button
+            onClick={onToggleGrounding}
+            aria-pressed={grounding}
+            title={grounding ? "Hide the grounding overlay" : "Grounding: colour every thing and flow by whose word it rests on"}
+            className="rounded-full px-2 py-0.5"
+            style={{
+              border: "1px solid var(--hairline)",
+              background: grounding ? "var(--accent)" : "transparent",
+              color: grounding ? "var(--text-on-accent)" : "var(--text-secondary)",
+            }}
+            data-testid="grounding-toggle"
+          >
+            Grounding
+          </button>
+        )}
         <button
           onClick={onToggleFocus}
           aria-pressed={focus}

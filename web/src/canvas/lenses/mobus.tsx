@@ -210,6 +210,7 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
 
   return (
     <EdgeScaffold
+      grounding={relation.grounding}
       labelAt={labelAt}
       style={style}
       interior={interior}

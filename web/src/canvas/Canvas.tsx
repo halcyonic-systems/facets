@@ -49,6 +49,7 @@ import { STYLE, elideEdgeLabel } from "./style";
 import { pendingCrossings } from "./crossings";
 import { LensRegistry, type PaletteTool } from "./lenses/registry";
 import { MassOverlay } from "./MassOverlay";
+import { GroundingLegend, GroundingOverlayContext } from "./grounding";
 import { screenHold, StageScale } from "./stageScale";
 import type { DecomposeAffordance } from "./NodeEditor";
 
@@ -146,6 +147,9 @@ function DecomposeDoor({
 interface Props {
   model: CanvasModel;
   lens: Lens;
+  /** #411: colour every thing and flow by whose word it rests on, with a
+   *  legend. A reading the reader switches on; off, nothing here changes. */
+  groundingOverlay?: boolean;
   /** Kernel-computed lens facts (boundary identity set, edge ladder, ports,
    *  aggregate verdict). Every ontology-bearing visual below READS these —
    *  the canvas derives no systems fact itself. */
@@ -294,6 +298,7 @@ export default function Canvas({
   inert = false,
   litThingId = null,
   litRelationId = null,
+  groundingOverlay = false,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -879,6 +884,7 @@ export default function Canvas({
 
 
   return (
+    <GroundingOverlayContext.Provider value={groundingOverlay}>
     <svg
       ref={svgRef}
       className={`canvas-stage absolute inset-0 h-full w-full touch-none select-none${armed ? " cursor-crosshair" : ""}`}
@@ -929,6 +935,20 @@ export default function Canvas({
           orient="auto-start-reverse"
         >
           <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-slate)" />
+        </marker>
+        {/* #411: under the grounding overlay the head follows the shaft —
+            `context-stroke` takes the path's own stroke — so a graded flow is
+            one colour end to end. Kind markers stay inked for the lenses. */}
+        <marker
+          id="arrow-grounding"
+          viewBox="0 0 10 10"
+          refX="8"
+          refY="5"
+          markerWidth={STYLE.arrowSize * headHold}
+          markerHeight={STYLE.arrowSize * headHold}
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" />
         </marker>
         {/* Substance-colored heads for the kind-colored lenses (Mobus, Bunge) —
             the head is part of the stroke, not a neutral terminus. Klir keeps
@@ -1480,6 +1500,8 @@ export default function Canvas({
       )}
     </StageScale.Provider>
     </svg>
+    {groundingOverlay && <GroundingLegend things={dModel.things} relations={dModel.relations} />}
+    </GroundingOverlayContext.Provider>
   );
 }
 

@@ -134,6 +134,7 @@ function EdgeView({ model, relation, fact, selected, driven, sim, crowded, onSel
 
   return (
     <EdgeScaffold
+      grounding={relation.grounding}
       labelAt={labelAt}
       style={style}
       interior={null}

@@ -1,3 +1,5 @@
+import { GROUNDING_GRADES } from "./kernel/types";
+import type { Grounding, GroundingGrade } from "./kernel/types";
 // Shared Halcyonic Frost primitives (web/DESIGN.md). Presentation only — no
 // systems logic. Tokens come from index.css via var(--x).
 import type { ReactNode } from "react";
@@ -193,6 +195,55 @@ export function DescriptionField({
           color: "var(--text-primary)",
         }}
       />
+    </div>
+  );
+}
+
+/** The author's grounding for a thing or a flow (#411): a grade from the
+ *  closed vocabulary, then the reference in their words. "unsaid" clears the
+ *  clause, so an author can withdraw a claim as easily as make one. Shared by
+ *  the node editor and both flow editors for the same reason `DescriptionField`
+ *  is: one field, one affordance. */
+export function GroundingField({
+  value,
+  onChange,
+}: {
+  value: Grounding | undefined;
+  onChange: (next: Grounding | undefined) => void;
+}) {
+  return (
+    <div className="mb-2 text-xs">
+      <div className="mb-1" style={{ color: "var(--text-secondary)" }} title="whose word this rests on">
+        grounding
+      </div>
+      <div className="flex gap-1.5">
+        <select
+          value={value?.grade ?? ""}
+          onChange={(e) => {
+            const grade = e.target.value as GroundingGrade | "";
+            onChange(grade === "" ? undefined : { grade, reference: value?.reference });
+          }}
+          className="rounded-md px-1 py-0.5 text-xs"
+          style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+          aria-label="grounding grade"
+        >
+          <option value="">unsaid</option>
+          {[...GROUNDING_GRADES].reverse().map((g) => (
+            <option key={g} value={g}>
+              {g}
+            </option>
+          ))}
+        </select>
+        <input
+          value={value?.reference ?? ""}
+          disabled={!value}
+          onChange={(e) => value && onChange({ grade: value.grade, reference: e.target.value || undefined })}
+          placeholder={value ? "the reference: file:line, URL, endpoint and date, block" : ""}
+          className="min-w-0 flex-1 rounded-md px-1.5 py-0.5 text-xs"
+          style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+          aria-label="grounding reference"
+        />
+      </div>
     </div>
   );
 }

@@ -75,6 +75,7 @@ function EdgeView({ model, relation, sigIndex, selected, driven, sim, crowded, o
   );
   return (
     <EdgeScaffold
+      grounding={relation.grounding}
       labelAt={labelAt}
       style={KLIR_STYLE}
       interior={null}

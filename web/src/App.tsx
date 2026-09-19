@@ -426,6 +426,8 @@ function Workspace() {
   const [mode, setModeState] = useState<WorkspaceMode>(workspaceMode);
   useEffect(() => subscribeWorkspaceMode(setModeState), []);
   const [focus, setFocus] = useState(false);
+  // #411: the grounding overlay, a reading the status bar switches on.
+  const [groundingOverlay, setGroundingOverlay] = useState(false);
   const [barPeek, setBarPeek] = useState(false);
   // #409 M2: the SL text as a drawer over Build's canvas. Reading and hand
   // edits only; the drafting box belongs to Write.
@@ -2999,6 +3001,7 @@ function Workspace() {
                       }
                     >
                     <Canvas
+                      groundingOverlay={groundingOverlay}
                       model={canvasModel}
                       lens={canvasModel.lens}
                       facts={facts}
@@ -3507,6 +3510,8 @@ function Workspace() {
           previewing={preview !== null}
           focus={focus}
           onToggleFocus={() => setFocus((f) => !f)}
+          grounding={groundingOverlay}
+          onToggleGrounding={() => setGroundingOverlay((g) => !g)}
           onVerdict={openRead}
           kernelLoaded
         />
