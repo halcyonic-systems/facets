@@ -2665,6 +2665,26 @@ function Workspace() {
           {m.label}
         </button>
       ))}
+      {/* #418 item 1: Focus is the one arrangement choice the frame keeps, and
+          tucked in the status bar it read as chrome. It sits here too, at the
+          end of the question it modifies — the status-bar toggle stays, since
+          in Focus this bar is a strip and that one is how you come back. */}
+      <span aria-hidden className="mx-1 h-4 w-px" style={{ background: "var(--hairline)" }} />
+      <button
+        onClick={() => setFocus((f) => !f)}
+        aria-pressed={focus}
+        className="px-3 py-0.5 text-xs font-semibold transition-colors"
+        style={{
+          borderRadius: "var(--radius-pill)",
+          background: focus ? "var(--accent)" : "transparent",
+          color: focus ? "var(--text-on-accent)" : "var(--text-secondary)",
+          transition: "var(--transition-base)",
+        }}
+        title="Focus: the mode's primary surface fills the window — ⌃⌥F, Esc to leave"
+        data-testid="mode-focus"
+      >
+        Focus
+      </button>
     </div>
   ) : undefined;
 
