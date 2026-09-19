@@ -1,0 +1,15 @@
+{
+  "name": "Facets Chat — Systems Reasoning Engine",
+  "short_name": "Facets Chat",
+  "description": "Ask a question. See which facets of systems science it touches.",
+  "start_url": "/chat/",
+  "scope": "/chat/",
+  "display": "standalone",
+  "background_color": "#eaecee",
+  "theme_color": "#eaecee",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
