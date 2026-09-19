@@ -228,6 +228,7 @@ mod tests {
                 level: 1,
                 name: "in".to_string(),
                 description: String::new(),
+                grounding: None,
             },
             protocol: String::new(),
             ty: InterfaceType::Import,

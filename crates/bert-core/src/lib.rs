@@ -1218,6 +1218,63 @@ pub struct Info {
     /// Provides additional context and documentation that helps users
     /// understand the entity's role within the broader system model.
     pub description: String,
+
+    /// Where the author's claim about this entity comes from (facets#411): a
+    /// grade from a closed vocabulary plus the reference in the author's own
+    /// words. Authorial, like `description`: no verdict reads it, and two
+    /// models differing only here are the same system. Absent when the author
+    /// has not said, and skipped on disk so every model authored before it
+    /// stays byte-identical.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grounding: Option<Grounding>,
+}
+
+/// If this element is wrong, whose word was wrong. Ordered from the weakest
+/// to the strongest kind of evidence; the order is a reading aid for the
+/// canvas and the inspector, never a rule any verdict applies.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash, Sequence)]
+#[serde(rename_all = "kebab-case")]
+pub enum GroundingGrade {
+    /// A drawn hole: nothing found says this, and the author is saying so.
+    Unknown,
+    /// Someone other than the subject wrote it about the subject.
+    ThirdParty,
+    /// The subject's own prose: its docs, blog, terms.
+    Asserted,
+    /// The modeler measured it: a response, a reading, a census, dated.
+    Observed,
+    /// An artifact that executes: an API spec, a schema.
+    Spec,
+    /// Verified source at a stated address and block; or a formal proof.
+    Chain,
+}
+
+impl GroundingGrade {
+    /// The word as SL writes it (`third-party`, not `ThirdParty`).
+    pub fn as_word(self) -> &'static str {
+        match self {
+            GroundingGrade::Unknown => "unknown",
+            GroundingGrade::ThirdParty => "third-party",
+            GroundingGrade::Asserted => "asserted",
+            GroundingGrade::Observed => "observed",
+            GroundingGrade::Spec => "spec",
+            GroundingGrade::Chain => "chain",
+        }
+    }
+
+    /// The grade a word names, case-insensitively, or none.
+    pub fn from_word(w: &str) -> Option<Self> {
+        enum_iterator::all::<Self>().find(|g| g.as_word().eq_ignore_ascii_case(w))
+    }
+}
+
+/// A grade and the reference behind it: a file and line, a URL, an endpoint
+/// and date, a block number — prose, in the author's words.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct Grounding {
+    pub grade: GroundingGrade,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub reference: String,
 }
 
 /// An opaque, stable reference to another [`WorldModel`] — the child model a

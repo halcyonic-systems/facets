@@ -18,7 +18,12 @@
     "klir",
     "bunge",
     "mobus",
-    "constant"
+    "constant",
+    "chain",
+    "spec",
+    "observed",
+    "asserted",
+    "unknown"
   ],
   "reserved": [
     "system",
@@ -53,6 +58,7 @@
     "maintenance",
     "backpressure",
     "description",
+    "grounding",
     "usability",
     "porosity",
     "fuzziness",

@@ -16,8 +16,8 @@ use serde::{Deserialize, Serialize};
 
 use bert_core::validate::{validate_mode, Severity, ValidationIssue};
 use bert_core::{
-    AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType, HcgsArchetype,
-    Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Interface, InterfaceType,
+    AgentModel, Boundary, Complexity, Environment, ExternalEntity, ExternalEntityType, Grounding,
+    HcgsArchetype, Id, IdType, Info, Interaction, InteractionType, InteractionUsability, Interface, InterfaceType,
     Mode, ModelRef, ProcessPrimitive, Substance, SubstanceType, System, Transform2d, Vec2, WorldModel,
 };
 
@@ -217,6 +217,12 @@ pub struct Thing {
     /// it stay byte-identical on disk.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub description: String,
+    /// Where the author's claim about this element comes from (facets#411):
+    /// a grade from a closed vocabulary and the reference in the author's
+    /// words. Authorial, like `description`: no verdict reads it. Absent when
+    /// unsaid; `skip` so models authored before it stay byte-identical.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grounding: Option<Grounding>,
     /// Klir's measurement scale for this variable (§4, Table 4.1) — nominal,
     /// ordinal, interval, or ratio. Authored source-system metadata read only
     /// in the Klir register; the kernel carries no scale, so this never
@@ -277,6 +283,12 @@ pub struct Relation {
     /// `Thing::description`: prose the kernel never reads.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub description: String,
+    /// Where the author's claim about this element comes from (facets#411):
+    /// a grade from a closed vocabulary and the reference in the author's
+    /// words. Authorial, like `description`: no verdict reads it. Absent when
+    /// unsaid; `skip` so models authored before it stay byte-identical.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub grounding: Option<Grounding>,
     /// Mobus's reading of what a boundary crossing IS to the system (#331) — a
     /// 2x2 of direction against value: `Resource` (useful in), `Disruption`
     /// (harmful in), `Product` (useful out), `Waste` (harmful out). The kernel
@@ -588,6 +600,7 @@ fn described(id: Id, level: i32, name: &str, description: &str) -> Info {
         level,
         name: name.to_string(),
         description: description.to_string(),
+        grounding: None,
     }
 }
 
@@ -802,6 +815,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     Some((t.x, t.y)),
                     t.primitive,
                 ));
+                systems.last_mut().unwrap().info.grounding = t.grounding.clone();
                 // The `decomposes` reference carries its id into the kernel; the
                 // human label stays surface-side (the kernel keys on the id).
                 if let Some(child) = &t.child_model {
@@ -862,7 +876,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     indices: vec![-1, env_idx],
                 };
                 env_idx += 1;
-                let ext = ExternalEntity {
+                let mut ext = ExternalEntity {
                     info: described(id.clone(), -1, &t.name, &t.description),
                     ty: if is_source {
                         ExternalEntityType::Source
@@ -878,6 +892,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     // because a WorldModel has no neutral external (#216).
                     authored_direction: t.env_kind != EnvKind::Neutral,
                 };
+                ext.info.grounding = t.grounding.clone();
                 if is_source {
                     sources.push(ext);
                 } else {
@@ -1067,6 +1082,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             smart_parameters: vec![],
             endpoint_offset: None,
         });
+        interactions.last_mut().unwrap().info.grounding = r.grounding.clone();
     }
 
     // The crossings nobody inside owns yet land on the root, exactly as
@@ -1193,6 +1209,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             // Info.description, and this reads it back, so a description
             // survives a round trip through the kernel like a name does.
             description: s.info.description.clone(),
+            grounding: s.info.grounding.clone(),
             x,
             y,
             role: Role::Component,
@@ -1278,6 +1295,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             id,
             name: e.info.name.clone(),
             description: e.info.description.clone(),
+            grounding: e.info.grounding.clone(),
             x,
             y,
             role: Role::Environment,
@@ -1344,6 +1362,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             b,
             name: ix.info.name.clone(),
             description: ix.info.description.clone(),
+            grounding: ix.info.grounding.clone(),
             // A WorldModel cannot say "undeclared" — every interaction carries
             // one — so the historical default reads back as unauthored rather
             // than emitting a `usability Resource` nobody typed. Same trade
@@ -1550,6 +1569,7 @@ mod tests {
             id,
             name: name.to_string(),
             description: String::new(),
+            grounding: None,
             x: id as f32 * 100.0,
             y: 0.0,
             role,
@@ -1575,6 +1595,7 @@ mod tests {
             b,
             name: String::new(),
             description: String::new(),
+            grounding: None,
             usability: None,
             is_bond: true,
             kind: Kind::Unspecified,
