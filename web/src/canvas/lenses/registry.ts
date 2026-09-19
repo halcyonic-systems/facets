@@ -29,6 +29,10 @@ export interface LensNodeProps {
    *  project() drops it, so it is not yet in ℰ. Rendered pending. */
   isOrphan: boolean;
   hovered: boolean;
+  /** #418 item 6: the canvas is a picker, not an editor (Read). Authoring
+   *  hints ("change it in the node editor") are withheld — they were wrong
+   *  there, and a native SVG title over an inert layer could stick. */
+  inert?: boolean;
   sim?: { value: number; unit: string; frac: number };
   onPointerDown: (e: ReactPointerEvent) => void;
   onHandlePointerDown: (e: ReactPointerEvent) => void;

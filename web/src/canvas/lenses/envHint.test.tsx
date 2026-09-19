@@ -100,3 +100,22 @@ describe("env-node hover hint (#180 fix 3, Option 1)", () => {
     expect(html).not.toContain(HINT);
   });
 });
+
+describe("#418 item 6: no authoring hint on an inert canvas", () => {
+  it("Mobus: the env hint is withheld when the canvas is a picker (Read)", () => {
+    const html = renderToStaticMarkup(
+      <svg>
+        <Mobus.NodeView
+          thing={thing("Environment")}
+          isBoundary={false}
+          isOrphan={false}
+          hovered={false}
+          inert
+          onPointerDown={noop}
+          onHandlePointerDown={noop}
+        />
+      </svg>,
+    );
+    expect(html).not.toContain(HINT);
+  });
+});
