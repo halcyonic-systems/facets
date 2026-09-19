@@ -16,7 +16,7 @@ import type {
 } from "../../kernel/types";
 import type { Pt, Ring } from "../geometry";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { PRIMITIVE_BADGE } from "../types";
+import { PRIMITIVE_BADGE, PRIMITIVE_GLOSS } from "../types";
 import { Klir } from "./klir";
 import { Bunge } from "./bunge";
 import { Mobus } from "./mobus";
@@ -254,7 +254,7 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
       verb: "designate" as const,
       id: `primitive-${p}`,
       label: PRIMITIVE_BADGE[p],
-      tip: `work process: ${p.toLowerCase()} — click empty canvas to place one, or stamp onto an existing leaf component (Mobus's atomic process vocabulary)`,
+      tip: `${p}: ${PRIMITIVE_GLOSS[p]} · click empty canvas to place one, or stamp onto a leaf component`,
       designation: { type: "primitive" as const, primitive: p },
       })),
     ],

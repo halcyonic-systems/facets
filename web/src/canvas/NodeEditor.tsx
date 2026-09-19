@@ -13,6 +13,7 @@
 // the pointer, so the first click of a double-click can never flash a menu into
 // the gesture that enters a child.
 import type { Lens, ProcessPrimitive, Thing } from "../kernel/types";
+import { PRIMITIVE_GLOSS } from "./types";
 import { DescriptionField, GroundingField, InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 
 /** The decomposition door as the shell hands it to the inspector (#89 step 5b).
@@ -148,6 +149,13 @@ export function NodeEditorRows({
             ))}
           </select>
         </Row>
+      )}
+      {lens === "Mobus" && isComponent && thing.primitive && (
+        /* #418 item 4: what the stamped process IS, from the same table the
+           rail's hover card reads. */
+        <p className="mb-2 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }} data-testid="primitive-gloss">
+          {PRIMITIVE_GLOSS[thing.primitive]}
+        </p>
       )}
       {decompose && <DecomposeRows decompose={decompose} />}
       <div className="flex justify-between">
