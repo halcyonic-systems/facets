@@ -344,6 +344,7 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
         Mode::Core => {}
         Mode::Structural => check_bond(model, issues),
         Mode::Operational => {
+            check_declared_direction(model, issues);
             check_self_loops(model, issues);
             check_flows_are_consumed(model, issues);
             check_dead_ends(model, issues);
@@ -355,6 +356,7 @@ pub fn validate_mode(model: &WorldModel, target: Mode) -> ValidationResult {
             check_interface_declarations_match_flows(model, issues);
         }
         Mode::Full => {
+            check_declared_direction(model, issues);
             check_self_loops(model, issues);
             check_flows_are_consumed(model, issues);
             check_dead_ends(model, issues);
@@ -916,6 +918,70 @@ fn collect_interface_ids(model: &WorldModel) -> HashSet<String> {
         }
     }
     ids
+}
+
+/// A declared `sink` that sends, or a declared `source` that receives
+/// (facets#406). The author's declaration and the author's flow contradict
+/// each other, and until now only the run refused it (`operational.rs`'s
+/// direction gate) — the verdict passed the model clean and let the
+/// reachability check report the symptoms instead: everything fed only by
+/// the sending sink came back `unreachable`, five warnings pointing away
+/// from the one line that was wrong. Stated here, at the mode the run
+/// reads, as the refusal it already was. Two repairs restore consistency
+/// and the text does not say which, so nothing auto-repairs: declare it
+/// `environment` if it exchanges both ways, or remove the flow if the
+/// declaration is right. A FILED direction (`authored_direction == false`,
+/// SL's `environment` word landed on one side of a WorldModel that has no
+/// neutral array) is the projection's guess, not the author's claim, and is
+/// never refused.
+fn check_declared_direction(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
+    let authored = |id: &Id, ty: IdType| -> bool {
+        let pool = if ty == IdType::Source { &model.environment.sources } else { &model.environment.sinks };
+        pool.iter()
+            .chain(model.systems.iter().flat_map(|s| if ty == IdType::Source { s.sources.iter() } else { s.sinks.iter() }))
+            .any(|e| &e.info.id == id && e.authored_direction)
+    };
+    for (i, ix) in model.interactions.iter().enumerate() {
+        if ix.source.ty == IdType::Sink && authored(&ix.source, IdType::Sink) {
+            issues.push(
+                ValidationIssue::error(
+                    "sink_sends",
+                    format!("interactions[{i}]"),
+                    format!(
+                        "'{}' leaves '{}', which is declared a sink — a sink receives and \
+                         nothing more, so the declaration and this flow contradict each other; \
+                         everything fed only from here would read as unreachable",
+                        ix.info.name,
+                        serialize_id(&ix.source)
+                    ),
+                    Some(
+                        "Declare it `environment` if it both receives and sends, or remove this \
+                         flow if it really only receives",
+                    ),
+                )
+                .with_doc(doc::ENVIRONMENT),
+            );
+        }
+        if ix.sink.ty == IdType::Source && authored(&ix.sink, IdType::Source) {
+            issues.push(
+                ValidationIssue::error(
+                    "source_receives",
+                    format!("interactions[{i}]"),
+                    format!(
+                        "'{}' enters '{}', which is declared a source — a source sends and \
+                         nothing more, so the declaration and this flow contradict each other",
+                        ix.info.name,
+                        serialize_id(&ix.sink)
+                    ),
+                    Some(
+                        "Declare it `environment` if it both sends and receives, or remove this \
+                         flow if it really only sends",
+                    ),
+                )
+                .with_doc(doc::ENVIRONMENT),
+            );
+        }
+    }
 }
 
 fn check_orphan_sources(model: &WorldModel, issues: &mut Vec<ValidationIssue>) {
@@ -3633,6 +3699,35 @@ mod tests {
     /// from a source with no interface on its system side must refuse Operational;
     /// routing it through an interface silences the refusal; Core and Structural
     /// carry no interface concept and stay quiet.
+    /// facets#406 — the author's declaration and the author's flow contradict
+    /// each other. A sink that sends is refused at Operational (the run always
+    /// refused it; the verdict now says so first), and a FILED direction — the
+    /// projection's guess for an `environment` thing, `authored_direction ==
+    /// false` — is never refused, since nobody claimed it.
+    #[test]
+    fn a_declared_sink_that_sends_is_refused_but_a_filed_one_is_not() {
+        let build = |authored: bool| {
+            let mut model = minimal_model();
+            let snk_id = Id { ty: IdType::Sink, indices: vec![-1, 0] };
+            model.environment.sinks.push(ExternalEntity {
+                info: Info { id: snk_id.clone(), level: -1, name: "Command".to_string(), description: String::new(), grounding: None },
+                ty: ExternalEntityType::Sink,
+                transform: None,
+                equivalence: String::new(),
+                model: String::new(),
+                is_same_as_id: None,
+                authored_direction: authored,
+            });
+            model.interactions.push(flow(0, "orders", snk_id, model.systems[0].info.id.clone()));
+            model
+        };
+        let hit = |r: &ValidationResult| r.issues.iter().any(|i| i.code == "sink_sends" && i.severity == Severity::Error);
+        assert!(hit(&validate_mode(&build(true), Mode::Operational)), "an authored sink that sends is refused");
+        assert!(hit(&validate_mode(&build(true), Mode::Full)));
+        assert!(!hit(&validate_mode(&build(true), Mode::Structural)), "Structural has no direction concept");
+        assert!(!hit(&validate_mode(&build(false), Mode::Operational)), "a filed direction is nobody's claim");
+    }
+
     #[test]
     fn crossing_flow_without_interface_is_refused_at_operational() {
         let mut model = minimal_model();
@@ -3868,6 +3963,12 @@ mod tests {
     /// every `check_*` in this module has a row, and the gate below fails when a
     /// check has none or names a witness that does not exist.
     const FIRING_AUDIT: &[CheckAudit] = &[
+        CheckAudit {
+            check: "check_declared_direction",
+            witness: Some("a_declared_sink_that_sends_is_refused_but_a_filed_one_is_not"),
+            canvas: true,
+            note: "SL `sink X` plus `flow X -> …` projects an authored sink with an outgoing flow (facets#406); the separating instance is the same text with `environment X`",
+        },
         CheckAudit {
             check: "check_stock_units",
             witness: Some("rate_like_stock_unit_warns_never_errors"),
