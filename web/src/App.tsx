@@ -2943,6 +2943,7 @@ function Workspace() {
               onCompiled={(cm, lensExplicit) => onSlCompiled(cm, lensExplicit, true)}
               arrangement="sl"
               drafterDocked
+              drafterFolded={focus}
               preview={preview ? { onAccept: acceptPreview, onDiscard: discardPreview } : undefined}
               canvasModel={canvasModel}
               // The compile chain (text → model → formal object → verdict):

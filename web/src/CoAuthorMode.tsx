@@ -174,6 +174,7 @@ export function CoAuthorMode({
   seed,
   onSeedTaken,
   docked = false,
+  folded = false,
 }: {
   turns: CoauthorTurn[];
   /** Description -> draft -> compile -> preview, recorded as a new turn.
@@ -198,8 +199,15 @@ export function CoAuthorMode({
    *  box is the same; the newest turn is one line under it and every turn,
    *  the newest included, waits in the folded history. */
   docked?: boolean;
+  /** #418 item 3 (ruled 2026-09-19): Write in Focus is for writing, with the
+   *  drafter on call. Folded, the docked box is one line — Draft and the
+   *  newest turn — until the author reaches for it; it folds again when the
+   *  box is left empty. Never removed, never crowding. */
+  folded?: boolean;
 }) {
   const [description, setDescription] = useState(seed?.description ?? "");
+  const [reached, setReached] = useState(false);
+  const isFolded = folded && !reached && description.trim() === "";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stage, setStage] = useState<DraftStage | null>(null);
@@ -475,6 +483,23 @@ export function CoAuthorMode({
   const dockedList = showDiscarded ? turns : turns.filter((t) => t.status !== "discarded");
   const dockedDiscarded = turns.length - turns.filter((t) => t.status !== "discarded").length;
 
+  if (isFolded) {
+    return (
+      <div className="flex items-center gap-3 px-3 py-1.5 text-xs" data-testid="drafting-strip">
+        <button
+          onClick={() => setReached(true)}
+          className="rounded-full px-3 py-0.5 font-semibold"
+          style={{ background: "var(--accent)", color: "var(--text-on-accent)" }}
+          title="Draft with the co-author — opens the describe box"
+        >
+          Draft
+        </button>
+        <span style={{ color: "var(--text-muted)" }}>
+          {turns[0] ? turnSummary(turns[0]) : "the co-author is on call · describe a system and it drafts the SL"}
+        </span>
+      </div>
+    );
+  }
   return (
     <div className={docked ? "flex flex-col" : "flex min-h-0 flex-1 flex-col"} data-testid={docked ? "drafting-box" : undefined}>
       <div className={docked ? "p-3" : "border-b p-3"} style={{ borderColor: "var(--hairline)" }}>
@@ -490,6 +515,10 @@ export function CoAuthorMode({
               draft();
             }
           }}
+          onBlur={() => {
+            if (folded && description.trim() === "" && !busy) setReached(false);
+          }}
+          autoFocus={folded && reached}
           disabled={busy}
           spellCheck
           rows={4}
