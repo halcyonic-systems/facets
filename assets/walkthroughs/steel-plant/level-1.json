@@ -18,7 +18,7 @@
       "x": 21.920593,
       "y": 319.99997,
       "role": "Environment",
-      "env_kind": "Source",
+      "env_kind": "Neutral",
       "interface": false
     },
     {
@@ -27,7 +27,7 @@
       "x": 250.96027,
       "y": 716.7084,
       "role": "Environment",
-      "env_kind": "Source",
+      "env_kind": "Neutral",
       "interface": false
     },
     {

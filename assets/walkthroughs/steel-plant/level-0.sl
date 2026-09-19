@@ -51,11 +51,13 @@ component "Steel-Plant" primitive Combining interface decomposes "Steel-Plant" @
 # The six transaction partners of Fig. 4.14 — Src-1.0/1.1/1.2 and
 # Snk-1.0/1.1/1.2 by their own names, environmental as the figure draws them.
 # The material vendors are Mobus's hybrids (matter out, purchase orders back
-# in); the words are author intent — the kernel reads each thing's role from
-# the drawn flows, exactly as level 1 declares the same six.
+# in), so they are declared `environment` — the word for a neighbour that both
+# gives and receives (facets#377). They were `source` until facets#406: a
+# declared source that receives is a contradiction the verdict now refuses,
+# and the run always did. Level 1 declares the same six, name for name.
 source Energy-Source
-source Iron-Source
-source Coke-Source
+environment Iron-Source
+environment Coke-Source
 sink Steel-Sink
 sink Garbage-Sink
 sink ATMOSPHERE

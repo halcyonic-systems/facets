@@ -22,11 +22,11 @@ level Structure
 
 # E′ — the interior neighborhood of the level-0 component, one stand-in per
 # neighbor, names carried exactly. Iron-Source and Coke-Source are Mobus's
-# hybrids (matter out, purchase orders back in); the words here are author
-# intent only — the kernel derives each thing's reading from the drawn flows.
+# hybrids (matter out, purchase orders back in), declared `environment` as
+# level 0 declares them (facets#406: a source that receives is refused).
 source Energy-Source
-source Iron-Source
-source Coke-Source
+environment Iron-Source
+environment Coke-Source
 sink Steel-Sink
 sink Garbage-Sink
 sink ATMOSPHERE
