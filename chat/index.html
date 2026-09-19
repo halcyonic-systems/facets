@@ -471,7 +471,6 @@
   .dock-chip { font-family: var(--ui); font-size: 0.68rem; font-weight: 500; padding: 2px 8px; border-radius: 9999px; background: var(--ground-raised); border: 1px solid var(--ground-border); }
   .dock-sources { display: flex; flex-direction: column; gap: 4px; font-family: var(--mono); font-size: 0.7rem; color: var(--ink-dim); }
   .dock-note { margin-top: auto; font-family: var(--ui); font-size: 0.7rem; font-style: italic; color: var(--ink-faint); }
-  }
 
   /* ── Conversations rail (facets#370): "your stuff" exists at every width now.
    It was gated at 1360px, which left narrow screens with a drawer and no
@@ -490,7 +489,8 @@
   /* Below the docked gate the strip stands over the pane's left edge, so the
    pane gives it that gutter rather than letting it sit on the text. */
   @media (max-width: 1359px) {
-  body.rail-strip .chat-pane { padding-left: 52px; }
+    body.rail-strip .chat-pane { padding-left: 52px; }
+  }
   @media (max-width: 1099px) {
     body.dock-open .context-dock.has-content {
       display: flex; flex-direction: column; gap: 16px;
