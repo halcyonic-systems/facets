@@ -77,7 +77,9 @@ function summary(c) {
 }
 
 const ANSWER = '## TL;DR\nThe mock engine answers so the client can be driven end to end.\n\n'
-  + '## Full Analysis\nEvery field the renderer reads is present, with nothing behind it.';
+  + '## Full Analysis\nEvery field the renderer reads is present, with nothing behind it. '
+  + 'A reef is a bounded system of polyps [[g: Mobus 2015 §1]]. Reef fish sleep in the coral at night [[u]]. '
+  + 'The crest takes the wave energy first [[u]]. Calcification slows below pH 7.8 at night. [[u]]';
 
 const FILLER = '\n\nMore of the analysis arrives while the lens strip is already on screen.';
 
@@ -132,7 +134,7 @@ async function answerStream(req, res, integrated) {
     confidence: '0.8',
     dimensions: integrated ? [] : ['C', 'N'],
     intensity: 'light',
-    sources: [{ type: 'vector', source: 'Mobus 2015', excerpt: 'mock excerpt', score: '0.81' }],
+    sources: [{ type: 'vector', source: 'Mobus: 1 Introduction', excerpt: 'mock excerpt', score: '0.81' }, { type: 'vector', source: 'Klir: Source and Data Systems (2001)', excerpt: 'mock excerpt', score: '0.77' }],
     lenses,
     shared,
     answer_id: shareId,

@@ -397,6 +397,9 @@
   }
   .grounding-badge-grounded { background: color-mix(in srgb, var(--flow) 12%, transparent); color: var(--flow-bright); }
   .grounding-badge-ungrounded { background: color-mix(in srgb, var(--verdict-warning) 12%, transparent); color: var(--verdict-warning); }
+  /* An unsupported claim is the sentence itself, marked, not a badge after it. */
+  .claim-open { background: color-mix(in srgb, var(--verdict-warning) 14%, transparent); color: inherit; border-bottom: 1px dotted var(--verdict-warning); cursor: help; padding: 0 1px; }
+  .claim-open.claim-target { background: color-mix(in srgb, var(--verdict-warning) 30%, transparent); }
   .out-label {
     font-family: var(--ui);
     font-size: 0.69rem;
@@ -451,12 +454,56 @@
      Wide screens only; below the gate the chat is exactly what it was.
      Pure projection of message meta — no backend, one cursor of state. ── */
   .context-dock { display: none; }
+  /* Closed by default (facets#417): it opens from the answer card and is remembered. */
+  .dock-close { margin-left: auto; font-family: var(--ui); font-size: 0.72rem; color: var(--ink-faint); background: none; border: 0; cursor: pointer; }
+  .dock-close:hover { color: var(--ink); }
+  .dock-head { display: flex; align-items: center; gap: 8px; }
+  .dock-step { font-family: var(--ui); font-size: 0.8rem; color: var(--ink-dim); background: var(--ground-raised); border: 1px solid var(--ground-border); border-radius: 6px; padding: 1px 8px; cursor: pointer; }
+  .dock-step:disabled { opacity: 0.4; cursor: default; }
+  .dock-count { font-family: var(--ui); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+  .dock-q { font-family: var(--serif); font-size: 0.85rem; line-height: 1.4; color: var(--ink); }
+  .dock-section { display: flex; flex-direction: column; gap: 7px; }
+  .dock-asks { font-family: var(--serif); font-style: italic; font-size: 0.82rem; color: var(--flow); line-height: 1.35; }
+  .dock-label { font-family: var(--ui); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
+  .dock-rows { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-family: var(--ui); font-size: 0.78rem; color: var(--ink-faint); }
+  .dock-val { color: var(--ink); text-align: right; }
+  .dock-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .dock-chip { font-family: var(--ui); font-size: 0.68rem; font-weight: 500; padding: 2px 8px; border-radius: 9999px; background: var(--ground-raised); border: 1px solid var(--ground-border); }
+  .dock-sources { display: flex; flex-direction: column; gap: 4px; font-family: var(--mono); font-size: 0.7rem; color: var(--ink-dim); }
+  .dock-note { margin-top: auto; font-family: var(--ui); font-size: 0.7rem; font-style: italic; color: var(--ink-faint); }
+  }
+
+  /* ── Conversations rail (facets#370): "your stuff" exists at every width now.
+   It was gated at 1360px, which left narrow screens with a drawer and no
+   standing surface for identity. Collapsed it is an icon strip; open below
+   the wide gate it overlays the pane like a drawer; at 1360 and up it docks
+   beside the pane and the centred triple ensemble is unchanged. ── */
+  .conv-rail {
+  position: fixed; top: 41px; left: 0; bottom: 0;
+  width: 236px; box-sizing: border-box; z-index: 150;
+  display: flex; flex-direction: column;
+  background: var(--paper);
+  border-right: 1px solid var(--ground-border);
+  overflow: hidden;
+  }
+  .conv-rail.collapsed { width: 52px; }
+  /* Below the docked gate the strip stands over the pane's left edge, so the
+   pane gives it that gutter rather than letting it sit on the text. */
+  @media (max-width: 1359px) {
+  body.rail-strip .chat-pane { padding-left: 52px; }
+  @media (max-width: 1099px) {
+    body.dock-open .context-dock.has-content {
+      display: flex; flex-direction: column; gap: 16px;
+      position: fixed; inset: 41px 0 0 0; z-index: 150;
+      background: var(--ground); overflow-y: auto; padding: 18px 16px 24px;
+    }
+  }
   @media (min-width: 1100px) {
     /* The ensemble (760 pane + 22 gap + 270 dock = 1052) centers as one unit:
        the pane shifts half a dock-width left, the dock rides fixed beside it.
        The topnav lives inside <main>, so the container is never made flex. */
-    main .chat-pane { margin: 0 0 0 calc(50vw - 526px); }
-    .context-dock.has-content {
+    body.dock-open main .chat-pane { margin: 0 0 0 calc(50vw - 526px); }
+    body.dock-open .context-dock.has-content {
       display: flex; flex-direction: column; gap: 16px;
       position: fixed; top: 41px; left: calc(50vw + 256px);
       width: 270px; box-sizing: border-box;
@@ -464,50 +511,12 @@
       height: calc(100dvh - 41px);
       overflow-y: auto; padding: 18px 8px 18px 4px;
     }
-    .dock-head { display: flex; align-items: center; gap: 8px; }
-    .dock-step { font-family: var(--ui); font-size: 0.8rem; color: var(--ink-dim); background: var(--ground-raised); border: 1px solid var(--ground-border); border-radius: 6px; padding: 1px 8px; cursor: pointer; }
-    .dock-step:disabled { opacity: 0.4; cursor: default; }
-    .dock-count { font-family: var(--ui); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
-    .dock-q { font-family: var(--serif); font-size: 0.85rem; line-height: 1.4; color: var(--ink); }
-    .dock-section { display: flex; flex-direction: column; gap: 7px; }
-    .dock-label { font-family: var(--ui); font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
-    .dock-rows { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-family: var(--ui); font-size: 0.78rem; color: var(--ink-faint); }
-    .dock-val { color: var(--ink); text-align: right; }
-    .dock-asks { font-family: var(--serif); font-style: italic; font-size: 0.82rem; color: var(--flow); line-height: 1.35; }
-    .dock-chips { display: flex; flex-wrap: wrap; gap: 5px; }
-    .dock-chip { font-family: var(--ui); font-size: 0.68rem; font-weight: 500; padding: 2px 8px; border-radius: 9999px; background: var(--ground-raised); border: 1px solid var(--ground-border); }
-    .dock-sources { display: flex; flex-direction: column; gap: 4px; font-family: var(--mono); font-size: 0.7rem; color: var(--ink-dim); }
-    .dock-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
-    .dock-tab { font-family: var(--ui); font-size: 0.68rem; font-weight: 500; padding: 2px 9px; border-radius: 9999px; border: 1px solid var(--ground-border); background: var(--ground-raised); color: var(--ink-dim); cursor: pointer; }
-    .dock-tab.active { background: var(--flow); border-color: var(--flow); color: var(--text-on-accent); }
-    .dock-snippet { font-family: var(--serif); font-size: 0.78rem; line-height: 1.45; color: var(--ink-dim); border-left: 2px solid var(--ground-border); padding-left: 9px; }
-    .dock-note { margin-top: auto; font-family: var(--ui); font-size: 0.7rem; font-style: italic; color: var(--ink-faint); }
-  }
-
-  /* ── Conversations rail (facets#370): "your stuff" exists at every width now.
-     It was gated at 1360px, which left narrow screens with a drawer and no
-     standing surface for identity. Collapsed it is an icon strip; open below
-     the wide gate it overlays the pane like a drawer; at 1360 and up it docks
-     beside the pane and the centred triple ensemble is unchanged. ── */
-  .conv-rail {
-    position: fixed; top: 41px; left: 0; bottom: 0;
-    width: 236px; box-sizing: border-box; z-index: 150;
-    display: flex; flex-direction: column;
-    background: var(--paper);
-    border-right: 1px solid var(--ground-border);
-    overflow: hidden;
-  }
-  .conv-rail.collapsed { width: 52px; }
-  /* Below the docked gate the strip stands over the pane's left edge, so the
-     pane gives it that gutter rather than letting it sit on the text. */
-  @media (max-width: 1359px) {
-    body.rail-strip .chat-pane { padding-left: 52px; }
   }
   .rail-backdrop { display: none; position: fixed; inset: 41px 0 0 0; z-index: 140; background: rgba(10, 12, 14, 0.35); }
   body.rail-open .rail-backdrop { display: block; }
   @media (min-width: 1360px) {
-    main .chat-pane { margin: 0 0 0 calc(50vw - 400px); }
-    .context-dock.has-content { left: calc(50vw + 382px); }
+    body.dock-open main .chat-pane { margin: 0 0 0 calc(50vw - 400px); }
+    body.dock-open .context-dock.has-content { left: calc(50vw + 382px); }
     body.rail-open .rail-backdrop { display: none; }
     /* Docked: the rail rides beside the pane rather than against the window edge. */
     .conv-rail:not(.collapsed) {
@@ -1402,10 +1411,15 @@
   /* ── Source Evidence ── */
   .grounding-line {
     font-family: var(--ui);
-    font-size: 0.6rem;
+    font-size: 0.72rem;
     color: var(--ink-faint);
-    margin-top: 8px;
+    margin: 6px 0 2px;
   }
+  .grounding-line button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+  .grounding-line button:hover { color: var(--ink); }
+  .grounding-line .claims-open { color: var(--verdict-warning); }
+  .lens-sources { margin-top: 10px; padding-top: 6px; border-top: 1px dotted var(--ground-border); font-family: var(--ui); font-size: 0.72rem; color: var(--ink-faint); line-height: 1.5; }
+  .lens-sources span { display: block; }
   .msg-evidence {
     margin-top: 8px;
     border-top: 1px solid var(--ground-border);
@@ -2902,6 +2916,7 @@ function renderMessages() {
       div.appendChild(lensWrap);
     } else {
       div.className = 'msg msg-bot';
+      const myBot = sheetBot + 1;   // this answer's index in the dock's cursor space
       const parsed = parseTLDR(m.text || '');
       if (parsed.hasTLDR) {
         const tldrEl = document.createElement('div');
@@ -2993,20 +3008,39 @@ function renderMessages() {
           }
         }
 
-        // Grounding line — surface the engine's web-search decision on every answer.
-        // Old messages in localStorage lack meta.web_search; fall back to counting web sources.
+        // Provenance, one line under the TL;DR (facets#417): where the answer came from,
+        // how many sources, and how many claims the corpus does not back. The claim count
+        // scrolls to the first marked claim; the rest opens the details panel.
         const webSrcCount = (m.meta.sources || []).filter(s => s.type === 'web').length;
-        if (typeof m.meta.web_search === 'boolean' || webSrcCount > 0) {
+        const nSources = (m.meta.sources || []).length;
+        const gCount = ((m.text || '').match(/\[\[g:/g) || []).length;
+        const uCount = ((m.text || '').match(/\[\[u\]\]/g) || []).length;
+        if (typeof m.meta.web_search === 'boolean' || nSources || gCount || uCount) {
           const gl = document.createElement('div');
           gl.className = 'grounding-line';
-          if (webSrcCount > 0) {
-            gl.textContent = 'Grounded from web · ' + webSrcCount + ' source' + (webSrcCount === 1 ? '' : 's');
-          } else if (m.meta.web_search) {
-            gl.textContent = 'Web search ran · no web sources cited';
-          } else {
-            gl.textContent = 'Answered from corpus · no web search';
+          const parts = [];
+          parts.push((webSrcCount > 0 || m.meta.web_search) ? 'web searched' : 'answered from corpus');
+          if (nSources) parts.push(nSources + ' source' + (nSources === 1 ? '' : 's'));
+          gl.appendChild(document.createTextNode(parts.join(' \u00b7 ') + (gCount || uCount ? ' \u00b7 ' : ' ')));
+          if (uCount) {
+            const jump = document.createElement('button');
+            jump.className = 'claims-open';
+            jump.textContent = uCount + ' claim' + (uCount === 1 ? '' : 's') + ' not backed by the corpus';
+            jump.title = 'Show the first one';
+            jump.onclick = (e) => { e.stopPropagation(); revealFirstOpenClaim(div); };
+            gl.appendChild(jump);
+            gl.appendChild(document.createTextNode(' '));
+          } else if (gCount) {
+            gl.appendChild(document.createTextNode('every named claim backed by the corpus '));
           }
-          div.appendChild(gl);
+          if (!READONLY) {
+            const more = document.createElement('button');
+            more.textContent = 'details \u25b8';
+            more.onclick = (e) => { e.stopPropagation(); openDockFor(myBot); };
+            gl.appendChild(more);
+          }
+          const tl = div.querySelector('.msg-tldr');
+          if (tl) tl.after(gl); else div.appendChild(gl);
         }
 
         // Source evidence (B.7)
@@ -3070,6 +3104,14 @@ function renderMessages() {
           });
         };
         actionsDiv.appendChild(shareBtn);
+      }
+      if (!READONLY && m.meta) {
+        const detailsBtn = document.createElement('button');
+        detailsBtn.className = 'msg-copy-btn';
+        detailsBtn.textContent = 'Details';
+        detailsBtn.title = 'Readouts and every source, in the side panel';
+        detailsBtn.onclick = () => openDockFor(myBot);
+        actionsDiv.appendChild(detailsBtn);
       }
       if (!READONLY) {
         const compareBtn = document.createElement('button');
@@ -3144,10 +3186,35 @@ function renderGroundingMarkers(md) {
   // gsr#37 grounding signal: the integration prompt emits [[g: source]] / [[u]] markers
   // inline after corpus-grounded / parametric claims. Render them as visible badges —
   // "ungrounded" is a first-class state, not hidden.
-  return md
+  // A [[u]] marks the claim before it: the sentence back to the previous full stop,
+  // including its own, so the reader sees which words rest on general knowledge.
+  return markOpenClaims(md)
     .replace(/\[\[g:\s*([^\]]*)\]\]/g, (_, src) =>
-      `<span class="grounding-badge grounding-badge-grounded" title="${src.trim().replace(/"/g, '&quot;')}">✓ ${src.trim()}</span>`)
-    .replace(/\[\[u\]\]/g, '<span class="grounding-badge grounding-badge-ungrounded" title="not in the retrieved corpus">◌ ungrounded</span>');
+      `<span class="grounding-badge grounding-badge-grounded" title="${src.trim().replace(/"/g, '&quot;')}">✓ ${src.trim()}</span>`);
+}
+
+const OPEN_CLAIM_TITLE = 'Stated from general knowledge; the retrieved passages do not cover it.';
+// A full stop ends a sentence only when whitespace follows it and digits do not sit on
+// both sides, so "pH 5.5" and "e.g. this" stay inside one claim.
+function markOpenClaims(md) {
+  const out = [];
+  const re = /[ \t]*\[\[u\]\]/g;
+  let last = 0, m;
+  while ((m = re.exec(md))) {
+    const chunk = md.slice(last, m.index);
+    let b = chunk.lastIndexOf('\n') + 1;
+    for (let i = chunk.length - 2; i >= b; i--) {
+      if ('.!?'.includes(chunk[i]) && /\s/.test(chunk[i + 1])
+          && !(/\d/.test(chunk[i - 1] || '') && /\d/.test(chunk[i + 2] || ''))
+          && !/\b(e\.g|i\.e|cf|vs|etc|Fig|Def|No)\.$/.test(chunk.slice(b, i + 1))) { b = i + 1; break; }
+    }
+    b += (chunk.slice(b).match(/^\s*/) || [''])[0].length;
+    const claim = chunk.slice(b);
+    out.push(chunk.slice(0, b), '<mark class="claim-open" title="' + OPEN_CLAIM_TITLE + '">' + (claim || '\u25cc') + '</mark>');
+    last = re.lastIndex;
+  }
+  out.push(md.slice(last));
+  return out.join('');
 }
 
 function cleanMarkdown(md) {
@@ -3810,7 +3877,25 @@ async function sendIntegrated(question, msgId) {
 }
 
 // Drill-in: stream one lens's full grounded answer into an expanded card body (on demand).
-async function drillLens(bodyEl, question, mode) {
+// The integrated answer names each source by its lens ("Klir: Source and Data Systems"),
+// so a lens's own sources can be picked out of the whole-answer list.
+function lensSources(sources, mode) {
+  const label = (LENS_LABEL[mode] || mode) + ':';
+  const alt = mode === 'spt' ? 'Troncale / SPT:' : mode === 'ct' ? 'CT:' : null;
+  return (sources || []).filter(sr => sr.source && (sr.source.startsWith(label) || (alt && sr.source.startsWith(alt))));
+}
+
+function appendLensSources(bodyEl, sources) {
+  const names = [...new Set((sources || []).map(sr => sr.source).filter(Boolean))];
+  if (!names.length) return;
+  const foot = document.createElement('div');
+  foot.className = 'lens-sources';
+  foot.appendChild(document.createTextNode('Sources this lens drew on'));
+  names.forEach(n => { const sp = document.createElement('span'); sp.textContent = n; foot.appendChild(sp); });
+  bodyEl.appendChild(foot);
+}
+
+async function drillLens(bodyEl, question, mode, fallbackSources) {
   bodyEl.innerHTML = '<div class="lens-loading">Consulting ' + (LENS_LABEL[mode] || mode) + '…</div>';
   try {
     const r = await authFetch('/ask-stream', {
@@ -3839,6 +3924,7 @@ async function drillLens(bodyEl, question, mode) {
         } else if (currentEvent === 'done') {
           acc = (payload.answer || acc).replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
           bodyEl.innerHTML = renderClean(acc);
+          appendLensSources(bodyEl, (payload.sources && payload.sources.length) ? payload.sources : fallbackSources);
           renderMath(bodyEl);
           // The drilled answer is persisted under its OWN share id — the parent integrated
           // answer's Share button carries a different id, so without this button a consultation
@@ -3923,7 +4009,7 @@ function appendLensStrip(container, m, tab, question) {
       body.classList.toggle('collapsed'); head.classList.toggle('open');
       const caret = head.querySelector('.conv-lens-caret');
       if (caret) caret.innerHTML = opening ? 'Hide&nbsp;▴' : 'Consult&nbsp;▾';
-      if (opening && !head.dataset.loaded) { head.dataset.loaded = '1'; drillLens(body, userQ, l.mode); }
+      if (opening && !head.dataset.loaded) { head.dataset.loaded = '1'; drillLens(body, userQ, l.mode, lensSources(m.meta.sources, l.mode)); }
     };
     card.appendChild(head); card.appendChild(body); wrap.appendChild(card);
   });
@@ -4123,8 +4209,31 @@ document.getElementById('model-this-btn').addEventListener('click', async () => 
 // answer's meta — readouts, lens, sources — so context stops scrolling away.
 // Follows the latest answer by default; ‹ › steps back through the record.
 let dockCursor = null;   // index into the tab's bot answers; null = follow latest
-let dockLens = null;     // integrated answers only: which lens's reading the dock projects
-let dockLensFor = null;  // the answer index dockLens belongs to — focus moves reset it
+// Closed until asked for (facets#417); the choice is remembered per browser.
+let dockOpen = (function () { try { return localStorage.getItem('facets_dock_open') === '1'; } catch (e) { return false; } })();
+
+function setDockOpen(open) {
+  dockOpen = open;
+  try { localStorage.setItem('facets_dock_open', open ? '1' : '0'); } catch (e) {}
+  renderDock();
+}
+function openDockFor(bi) {
+  focusSheet(bi);
+  setDockOpen(true);
+}
+// The first unsupported claim may sit inside the collapsed full analysis.
+function revealFirstOpenClaim(msgEl) {
+  const mark = msgEl.querySelector('.claim-open');
+  if (!mark) return;
+  const full = mark.closest('.msg-full');
+  if (full && full.classList.contains('collapsed')) {
+    const ex = msgEl.querySelector('.tldr-expander');
+    if (ex) ex.click(); else full.classList.remove('collapsed');
+  }
+  mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  msgEl.querySelectorAll('.claim-target').forEach(el => el.classList.remove('claim-target'));
+  mark.classList.add('claim-target');
+}
 // The standing conversations rail — same data and actions as the History
 // drawer, permanently open where the triple ensemble fits.
 const ICON_CHEVRON = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3l5 5-5 5"/></svg>';
@@ -4424,13 +4533,13 @@ function renderDock() {
   if (!dock) return;
   const tab = getTab();
   const bots = tab ? tab.messages.filter(mm => mm.role === 'bot') : [];
-  if (!bots.length) { dock.classList.remove('has-content'); dock.innerHTML = ''; return; }
+  if (!bots.length) { dock.classList.remove('has-content'); document.body.classList.remove('dock-open'); dock.innerHTML = ''; return; }
   dock.classList.add('has-content');
+  document.body.classList.toggle('dock-open', dockOpen && !READONLY);
   if (dockCursor !== null && (dockCursor < 0 || dockCursor >= bots.length)) dockCursor = null;
   const n = dockCursor === null ? bots.length - 1 : dockCursor;
   const m = bots[n];
   const meta = m.meta || {};
-  if (dockLensFor !== n) { dockLens = null; dockLensFor = n; }
   const idx = tab.messages.indexOf(m);
   let q = '';
   for (let j = idx - 1; j >= 0; j--) { if (tab.messages[j].role === 'user') { q = tab.messages[j].text; break; } }
@@ -4453,6 +4562,7 @@ function renderDock() {
     + '<button class="dock-step" id="dock-prev"' + (n === 0 ? ' disabled' : '') + ' aria-label="Earlier answer">\u2039</button>'
     + '<span class="dock-count">answer ' + (n + 1) + ' of ' + bots.length + '</span>'
     + '<button class="dock-step" id="dock-next"' + (n === bots.length - 1 ? ' disabled' : '') + ' aria-label="Later answer">\u203a</button>'
+    + '<button class="dock-close" id="dock-close" aria-label="Close details">close \u2715</button>'
     + '</div>';
   if (q) html += '<div class="dock-q">' + dockEsc(q.length > 90 ? q.slice(0, 90) + '\u2026' : q) + '</div>';
   if (rows.length) html += '<div class="dock-section"><div class="dock-label">Readouts</div><div class="dock-rows">'
@@ -4463,41 +4573,17 @@ function renderDock() {
     if (dims.length) html += '<div class="dock-chips">' + dims.map(d =>
       '<span class="dock-chip" style="color: var(--dim-' + dockEsc(d) + ', var(--ink-dim))">' + dockEsc((cfg && cfg.names[d]) || d) + '</span>').join('') + '</div>';
     html += '</div>';
-  } else if (meta.lenses && meta.lenses.length) {
-    // Lens tabs (DockLenses sketch): the integrated payload already carries
-    // every lens's reading, so tabs re-project the SAME answer — no backend.
-    const cur = meta.lenses.find(l => l.mode === dockLens) || null;
-    html += '<div class="dock-section"><div class="dock-label">Lens</div><div class="dock-tabs">'
-      + '<button class="dock-tab' + (cur ? '' : ' active') + '" data-lens="">All</button>'
-      + meta.lenses.map(l => {
-          const t = THINKERS[l.mode];
-          const short = (t && (t.short || t.name.split(' ').pop())) || l.mode;
-          return '<button class="dock-tab' + (cur && cur.mode === l.mode ? ' active' : '') + '" data-lens="' + dockEsc(l.mode) + '">' + dockEsc(short) + '</button>';
-        }).join('') + '</div>';
-    if (cur) {
-      const t = THINKERS[cur.mode];
-      if (t) html += '<div class="dock-asks">' + dockEsc(t.asks.replace('This lens asks: ', '')) + '</div>';
-      const lcfg = MODE_CONFIGS[cur.mode];
-      if (cur.dimensions && cur.dimensions.length) html += '<div class="dock-chips">' + cur.dimensions.map(d =>
-        '<span class="dock-chip" style="color: var(--dim-' + dockEsc(d) + ', var(--ink-dim))">' + dockEsc((lcfg && lcfg.names[d]) || d) + '</span>').join('') + '</div>';
-      if (cur.snippet) html += '<div class="dock-snippet">' + dockEsc(cur.snippet) + '\u2026</div>';
-    } else {
-      html += '<div class="dock-chips">' + meta.lenses.map(l =>
-        '<span class="dock-chip">' + dockEsc((THINKERS[l.mode] && THINKERS[l.mode].name) || l.mode) + '</span>').join('') + '</div>';
-    }
-    html += '</div>';
   } else if (dims.length) {
     html += '<div class="dock-section"><div class="dock-label">Dimensions</div><div class="dock-chips">' + dims.map(d =>
       '<span class="dock-chip" style="color: var(--dim-' + dockEsc(d) + ', var(--ink-dim))">' + dockEsc(dimDisplayName(d)) + '</span>').join('') + '</div></div>';
   }
   const srcs = [...new Set((meta.sources || []).map(sr => sr.source).filter(Boolean))];
   if (srcs.length) html += '<div class="dock-section"><div class="dock-label">Sources</div><div class="dock-sources">'
-    + srcs.slice(0, 6).map(sr => '<span>' + dockEsc(sr) + '</span>').join('') + '</div></div>';
+    + srcs.map(sr => '<span>' + dockEsc(sr) + '</span>').join('') + '</div></div>';
   html += '<div class="dock-note">' + (dockCursor === null ? 'following the latest answer' : 'pinned \u2014 \u203a returns to latest') + '</div>';
   dock.innerHTML = html;
-  dock.querySelectorAll('.dock-tab').forEach(btn => {
-    btn.onclick = () => { dockLens = btn.dataset.lens || null; renderDock(); };
-  });
+  const closeBtn = document.getElementById('dock-close');
+  if (closeBtn) closeBtn.onclick = () => setDockOpen(false);
   const prev = document.getElementById('dock-prev'), next = document.getElementById('dock-next');
   if (prev) prev.onclick = () => { dockCursor = n - 1; renderDock(); revealFocusedSheet(); };
   if (next) next.onclick = () => { dockCursor = (n + 1 >= bots.length - 1) ? null : n + 1; renderDock(); revealFocusedSheet(); };
