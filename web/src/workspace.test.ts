@@ -12,12 +12,16 @@ import {
 const MODES: WorkspaceMode[] = ["write", "build", "read"];
 
 describe("workspace presets (#409 M1)", () => {
-  it("shows exactly one primary surface per mode, and Focus keeps it", () => {
+  it("shows its primary surface in every mode, and Focus keeps it", () => {
     for (const mode of MODES) {
       for (const focus of [false, true]) {
         const p = preset(mode, focus, false);
-        expect(p.editor !== p.canvas).toBe(true);
-        expect(p.editor).toBe(primarySurface(mode) === "editor");
+        const surface = primarySurface(mode);
+        expect(p.editor).toBe(surface === "editor");
+        if (surface === "canvas") expect(p.canvas).toBe(true);
+        if (surface === "sheet") expect(p.inspector.length > 0).toBe(true);
+        // Never two pages at once: the text and the canvas do not share a mode.
+        expect(p.editor && p.canvas).toBe(false);
       }
     }
   });
@@ -58,11 +62,21 @@ describe("workspace presets (#409 M1)", () => {
     for (const mode of MODES) {
       const p = preset(mode, true, false);
       expect(p.palette).toBe(false);
-      expect(p.inspector).toEqual([]);
       expect(p.margin).toBe(false);
       expect(p.topBarStrip).toBe(true);
       expect(preset(mode, false, false).topBarStrip).toBe(false);
     }
+    expect(preset("write", true, false)).toMatchObject({ editor: true, canvas: false, inspector: [] });
+    expect(preset("build", true, false)).toMatchObject({ canvas: true, inspector: [] });
+  });
+
+  it("Read's primary surface is the sheet: Focus puts the canvas away and keeps the readings (#418)", () => {
+    expect(preset("read", true, false)).toMatchObject({
+      canvas: false,
+      inspector: ["formal", "review", "analyst"],
+      inspectorWide: true,
+    });
+    expect(primarySurface("read")).toBe("sheet");
   });
 
   it("never hides a draft preview's gate: the pane carries it exactly when the canvas is out of sight", () => {
@@ -73,6 +87,9 @@ describe("workspace presets (#409 M1)", () => {
         expect(preset(mode, focus, false).gateInPane).toBe(false);
       }
     }
+    // Read in Focus has no pane and no gate of its own, so a preview keeps
+    // the canvas on screen until it is accepted or discarded.
+    expect(preset("read", true, true).canvas).toBe(true);
   });
 });
 

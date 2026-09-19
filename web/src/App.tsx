@@ -3570,6 +3570,7 @@ function Workspace() {
                 setSelectedThingId(null);
                 setSelectedRelationId(null);
               }}
+              focus={!frame.canvas}
             />
           )}
           {canvasModel && !readoutsOpen && mode !== "read" && frame.inspector.length > 0 && (
