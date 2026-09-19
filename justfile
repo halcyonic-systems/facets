@@ -114,6 +114,7 @@ check: web-deps
     python3 scripts/doc_lint.py
     cargo test --workspace
     node scripts/check_tm_grammar.mjs
+    node scripts/check_chat_css.mjs
     cargo clippy --workspace --all-targets -- -D warnings
     # `--exclude bert-cli` is the ONE package outside the browser build: the
     # `bert` binary is argv and the filesystem, which wasm32-unknown-unknown has

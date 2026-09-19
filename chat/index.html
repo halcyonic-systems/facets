@@ -517,10 +517,16 @@
   @media (min-width: 1360px) {
     body.dock-open main .chat-pane { margin: 0 0 0 calc(50vw - 400px); }
     body.dock-open .context-dock.has-content { left: calc(50vw + 382px); }
+    /* With the dock closed (#417) the pane is the only column, so it takes the
+       width the dock used to share: the lens cards get a real reading line. */
+    body:not(.dock-open) main .chat-pane { max-width: 880px; }
     body.rail-open .rail-backdrop { display: none; }
     /* Docked: the rail rides beside the pane rather than against the window edge. */
     .conv-rail:not(.collapsed) {
       left: max(0px, calc(50vw - 652px));
+    }
+    body:not(.dock-open) .conv-rail:not(.collapsed) { left: max(0px, calc(50vw - 712px)); }
+    .conv-rail:not(.collapsed) {
       background: transparent; border-right-color: transparent;
     }
   }

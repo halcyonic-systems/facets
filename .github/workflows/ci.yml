@@ -92,6 +92,11 @@ jobs:
       - name: tm-grammar (keyword-contract drift-gate)
         run: node scripts/check_tm_grammar.mjs
 
+      # The chat client's inline stylesheet must parse end to end: a brace out
+      # of place drops every rule after it and the live page renders unstyled.
+      - name: chat-css (inline stylesheet parses)
+        run: node scripts/check_chat_css.mjs
+
       - name: tsc --noEmit
         run: npx tsc --noEmit
         working-directory: web
