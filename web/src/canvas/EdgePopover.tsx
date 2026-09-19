@@ -13,7 +13,7 @@ import type { EdgeFact, Kind, Lens, Manifest, ParamDecl, Relation } from "../ker
 import { channelCopy } from "./lenses/bunge";
 import { ParamControl } from "../ParamControl";
 import type { Pt } from "./geometry";
-import { DescriptionField, InspectorRow as Row, InspectorTitle as Title, Popover, ToolButton as SmallButton } from "../ui";
+import { DescriptionField, GroundingField, InspectorRow as Row, InspectorTitle as Title, Popover, ToolButton as SmallButton } from "../ui";
 import {
   FormalismLine,
   SUBSTANCES,
@@ -132,6 +132,23 @@ export function FlowDescriptionField({
       onChange={(description) => onUpdateRelation({ ...relation, description })}
       placeholder="what this flow is, in your own words"
       rows={2}
+    />
+  );
+}
+
+/** The flow's grounding (#411) — the edge twin of the node editor's field,
+ *  exported for the Bunge register on the same terms as the description. */
+export function FlowGroundingField({
+  relation,
+  onUpdateRelation,
+}: {
+  relation: Relation;
+  onUpdateRelation: (r: Relation) => void;
+}) {
+  return (
+    <GroundingField
+      value={relation.grounding}
+      onChange={(grounding) => onUpdateRelation({ ...relation, grounding })}
     />
   );
 }
@@ -266,6 +283,7 @@ export function BungeBody({
         {channelCopy(fact, relation.is_bond)}
       </p>
       <FlowDescriptionField relation={relation} onUpdateRelation={onUpdate} />
+      <FlowGroundingField relation={relation} onUpdateRelation={onUpdate} />
       <Row>
         <span style={{ color: "var(--text-secondary)" }}>connection kind</span>
         <select
@@ -366,6 +384,7 @@ export function MobusBody({
         </p>
       )}
       <FlowDescriptionField relation={relation} onUpdateRelation={onUpdate} />
+      <FlowGroundingField relation={relation} onUpdateRelation={onUpdate} />
       <Row>
         {/* Mobus's substances are material · energy · message (concordance row 6);
             the model stores a Kind, so map both ways via kind_to_substance. An

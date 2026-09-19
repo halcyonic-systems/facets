@@ -13,7 +13,7 @@
 // the pointer, so the first click of a double-click can never flash a menu into
 // the gesture that enters a child.
 import type { Lens, ProcessPrimitive, Thing } from "../kernel/types";
-import { DescriptionField, InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
+import { DescriptionField, GroundingField, InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 
 /** The decomposition door as the shell hands it to the inspector (#89 step 5b).
  *  Two cases: a component that has a child to enter, and one that does not yet.
@@ -77,6 +77,12 @@ export function NodeEditorRows({
       <DescriptionField
         value={thing.description ?? ""}
         onChange={(description) => onUpdateThing({ ...thing, description })}
+      />
+      {/* #411: whose word this thing rests on. Beneath the description, as it
+          emits — what it is called, what it is, then on whose word. */}
+      <GroundingField
+        value={thing.grounding}
+        onChange={(grounding) => onUpdateThing({ ...thing, grounding })}
       />
       {/* The re-cut (#100 phase 2, ratified scope + F8): Bunge's C/E split is
           indexed to a chosen reference class A — 𝒞_A, 𝓔_A, 𝒮_A — so which

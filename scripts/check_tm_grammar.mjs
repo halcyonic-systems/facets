@@ -82,13 +82,14 @@ for (const head of words(repo["declaration-head"].match)) {
   }
 }
 
-// The continuation line (spec §4.3, v1.5) continues one clause and no other.
-// It must sit ahead of `declaration-head`, whose `^\s*` would otherwise color
-// an indented `description` as a line of its own.
+// The continuation line (spec §4.3, v1.5; grounding since v1.7, #411)
+// continues the two authorial clauses and no other. It must sit ahead of
+// `declaration-head`, whose `^\s*` would otherwise color an indented
+// `description` as a line of its own.
 const continued = words(repo["description-continuation"].begin);
-if (continued.join() !== "description") {
+if (continued.join() !== "description,grounding") {
   failures++;
-  console.error(`tm-grammar: only \`description\` continues; the grammar has: ${continued.join(", ")}`);
+  console.error(`tm-grammar: only \`description\` and \`grounding\` continue; the grammar has: ${continued.join(", ")}`);
 }
 const order = grammar.patterns.map((p) => p.include);
 if (order.indexOf("#description-continuation") > order.indexOf("#declaration-head")) {

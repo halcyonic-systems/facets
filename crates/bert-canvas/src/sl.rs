@@ -50,6 +50,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use bert_core::model_id::{decode_uuid, encode_uuid};
+use bert_core::{Grounding, GroundingGrade};
 use bert_core::{InteractionUsability, ModelRef, ProcessPrimitive};
 
 use crate::canvas::{
@@ -295,6 +296,79 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
             }
             // A second continuation beneath this one meets the same carrier
             // and gets the already-given fault, not a misleading other one.
+            carrier = held;
+            above = Some((word, faults_before));
+            continue;
+        }
+
+        // ---- grounding continuation (facets#411) ----
+        // The same shape as the description continuation, for the same
+        // reason: it is authorial, its value is prose, and it reads best as
+        // its own line beneath the declaration it grounds.
+        let grounding_continuation = raw.starts_with(char::is_whitespace)
+            && matches!(&tokens[0], Tok::Word(w) if w.eq_ignore_ascii_case("grounding"));
+        if grounding_continuation {
+            let Some((word, faults_before)) = over else {
+                fail(
+                    "this `grounding` has no declaration directly above it — fix: put it \
+                     on the line right beneath the declaration it grounds (no blank line \
+                     or comment between)"
+                        .into(),
+                    &mut errors,
+                );
+                continue;
+            };
+            if errors.len() > faults_before {
+                fail(
+                    format!(
+                        "the line above did not parse, so this `grounding` has nothing to \
+                         attach to — fix: repair line {} first",
+                        line_no - 1
+                    ),
+                    &mut errors,
+                );
+                continue;
+            }
+            let parsed = match parse_grounding(&tokens[1..]) {
+                Ok((g, used)) if used == tokens.len() - 1 => g,
+                Ok(_) => {
+                    fail(
+                        "grounding syntax: `grounding <grade> [\"<reference>\"]`, and nothing \
+                         else on the indented line"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                Err(msg) => {
+                    fail(msg, &mut errors);
+                    continue;
+                }
+            };
+            let slot = match held {
+                Some(Carrier::Thing(i)) => &mut things[i].grounding,
+                Some(Carrier::Relation(i)) => &mut relations[i].grounding,
+                _ => {
+                    fail(
+                        format!(
+                            "`{word}` takes no grounding — fix: only component, source, sink, \
+                             environment, interface, and flow lines carry one"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
+            };
+            if slot.is_none() {
+                *slot = Some(parsed);
+            } else {
+                fail(
+                    "`grounding` already given for this declaration — fix: keep one, \
+                     either on the declaration's line or beneath it"
+                        .into(),
+                    &mut errors,
+                );
+            }
             carrier = held;
             above = Some((word, faults_before));
             continue;
@@ -707,6 +781,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 }
                 let mut protocol = String::new();
                 let mut description = String::new();
+                let mut grounding: Option<Grounding> = None;
                 let mut i = 0;
                 let mut ok = true;
                 while i < attrs.len() {
@@ -749,13 +824,36 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             }
                             i += 2;
                         }
+                        // `grounding <grade> ["<reference>"]` — whose word this
+                        // element rests on (facets#411). Authorial, like
+                        // `description`, and it rides environment lines for the
+                        // same reason: it names what the author knows about the
+                        // thing, not the thing's internals.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("grounding") => {
+                            if grounding.is_some() {
+                                fail("`grounding` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match parse_grounding(&attrs[i + 1..]) {
+                                Ok((g, used)) => {
+                                    grounding = Some(g);
+                                    i += 1 + used;
+                                }
+                                Err(msg) => {
+                                    fail(msg, &mut errors);
+                                    ok = false;
+                                    i += 2;
+                                }
+                            }
+                        }
                         other => {
                             fail(
                                 format!(
                                     "unknown clause on interface line: `{}` — an interface \
-                                     takes only `protocol \"<rule>\"` and `description \
-                                     \"<prose>\"`; work-process character belongs to the \
-                                     processor component it serves",
+                                     takes only `protocol \"<rule>\"`, `description \
+                                     \"<prose>\"` and `grounding <grade> [\"<ref>\"]`; \
+                                     work-process character belongs to the processor \
+                                     component it serves",
                                     other.display()
                                 ),
                                 &mut errors,
@@ -774,6 +872,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     id: next_id,
                     name,
                     description,
+                    grounding,
                     x: 0.0,
                     y: 0.0,
                     role: Role::Component,
@@ -893,6 +992,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut maintenance: Option<f64> = None;
                 let mut back_pressure = false;
                 let mut description = String::new();
+                let mut grounding: Option<Grounding> = None;
                 let mut scale: Option<ScaleType> = None;
                 let mut states: Option<Vec<String>> = None;
                 let mut variable_kind: Option<KlirVarKind> = None;
@@ -991,6 +1091,28 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                 }
                             }
                             i += 2;
+                        }
+                        // `grounding <grade> ["<reference>"]` — whose word this
+                        // element rests on (facets#411). Authorial, like
+                        // `description`, and it rides environment lines for the
+                        // same reason: it names what the author knows about the
+                        // thing, not the thing's internals.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("grounding") => {
+                            if grounding.is_some() {
+                                fail("`grounding` already given on this line".into(), &mut errors);
+                                ok = false;
+                            }
+                            match parse_grounding(&attrs[i + 1..]) {
+                                Ok((g, used)) => {
+                                    grounding = Some(g);
+                                    i += 1 + used;
+                                }
+                                Err(msg) => {
+                                    fail(msg, &mut errors);
+                                    ok = false;
+                                    i += 2;
+                                }
+                            }
                         }
                         // `stock <unit>` — the stock's declared unit (#76/#94),
                         // bare or quoted (`stock ML`, `stock "kW·h"`).
@@ -1616,6 +1738,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     id: next_id,
                     name,
                     description,
+                    grounding,
                     x: 0.0,
                     y: 0.0,
                     role,
@@ -1854,6 +1977,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // (`markov_edges`); omit for the uniform default 1.
                 let mut weight = None;
                 let mut description = String::new();
+                let mut grounding: Option<Grounding> = None;
                 let mut usability: Option<InteractionUsability> = None;
                 if let [Tok::Word(w), rest_tail @ ..] = tail {
                     if w.eq_ignore_ascii_case("weight") {
@@ -1948,6 +2072,23 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         }
                     }
                 }
+                // `grounding <grade> ["<reference>"]` trails even the description
+                // (facets#411): both are prose-valued, so the machine-readable
+                // clauses stay adjacent and the two sentences bring up the rear.
+                if let [Tok::Word(w), rest_tail @ ..] = tail {
+                    if w.eq_ignore_ascii_case("grounding") {
+                        match parse_grounding(rest_tail) {
+                            Ok((g, used)) => {
+                                grounding = Some(g);
+                                tail = &rest_tail[used..];
+                            }
+                            Err(msg) => {
+                                fail(msg, &mut errors);
+                                continue;
+                            }
+                        }
+                    }
+                }
                 if !tail.is_empty() {
                     fail(
                         format!(
@@ -1956,7 +2097,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                              `flow <a> -> <b> [: <kind>] [\"label\"] [substance <s>] \
                              [amount <n>] [unit <u>] [mere] [weight <n>] \
                              [usability <Resource|Disruption|Product|Waste>] \
-                             [description \"<prose>\"]`",
+                             [description \"<prose>\"] [grounding <grade> [\"<ref>\"]]`",
                             tail[0].display()
                         ),
                         &mut errors,
@@ -1991,6 +2132,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     b: things[bi].id,
                     name,
                     description,
+                    grounding,
                     usability,
                     is_bond,
                     kind,
@@ -3125,6 +3267,7 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             trail(&mut out, &anchor);
             out.push('\n');
             emit_description(&mut out, &t.description, prose_trail(&anchor).as_deref())?;
+            emit_grounding(&mut out, t.grounding.as_ref())?;
             continue;
         }
         let keyword = match (t.role, t.env_kind) {
@@ -3205,6 +3348,7 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
         trail(&mut out, &anchor);
         out.push('\n');
         emit_description(&mut out, &t.description, prose_trail(&anchor).as_deref())?;
+        emit_grounding(&mut out, t.grounding.as_ref())?;
     }
 
     // Crossings (facets#384) are not SL: they are the boundary flows derived
@@ -3300,6 +3444,7 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
         trail(&mut out, &anchor);
         out.push('\n');
         emit_description(&mut out, &r.description, prose_trail(&anchor).as_deref())?;
+        emit_grounding(&mut out, r.grounding.as_ref())?;
     }
 
     // params (walkthrough #18) — after flows (they reference them), before
@@ -3534,6 +3679,46 @@ fn emit_description(out: &mut String, description: &str, trailing: Option<&str>)
 
 const CONTINUATION_INDENT: &str = "    ";
 
+/// A declaration's grounding, written beneath its description (facets#411):
+/// the grade word, then the reference when there is one. Always the
+/// continuation form, as `description` is, and for the same reason.
+fn emit_grounding(out: &mut String, grounding: Option<&Grounding>) -> Result<(), String> {
+    if let Some(g) = grounding {
+        out.push_str(CONTINUATION_INDENT);
+        out.push_str("grounding ");
+        out.push_str(g.grade.as_word());
+        if !g.reference.is_empty() {
+            out.push(' ');
+            out.push_str(&quote(&g.reference)?);
+        }
+        out.push('\n');
+    }
+    Ok(())
+}
+
+/// `grounding <grade> ["<reference>"]` from the tokens after the keyword: a
+/// grade from the closed vocabulary, then an optional quoted reference.
+/// Returns the grounding and how many tokens it consumed.
+fn parse_grounding(toks: &[Tok]) -> Result<(Grounding, usize), String> {
+    let grade = match toks.first() {
+        Some(Tok::Word(w)) => GroundingGrade::from_word(w).ok_or_else(|| {
+            format!(
+                "grounding grade `{w}` is not one of chain, spec, observed, asserted, \
+                 third-party, unknown"
+            )
+        })?,
+        _ => {
+            return Err("grounding syntax: `grounding <chain|spec|observed|asserted|third-party|unknown> \
+                        [\"<reference>\"]`"
+                .into())
+        }
+    };
+    Ok(match toks.get(1) {
+        Some(Tok::Str(r)) => (Grounding { grade, reference: r.clone() }, 2),
+        _ => (Grounding { grade, reference: String::new() }, 1),
+    })
+}
+
 /// Words the tokenizer or line parsers claim — a thing name matching one must
 /// be quoted to stay a name.
 pub const RESERVED_WORDS: &[&str] = &[
@@ -3569,6 +3754,7 @@ pub const RESERVED_WORDS: &[&str] = &[
     "maintenance",
     "backpressure",
     "description",
+    "grounding",
     "usability",
     "porosity",
     "fuzziness",
@@ -3586,7 +3772,7 @@ pub const RESERVED_WORDS: &[&str] = &[
 /// `ample` stays out: it is positional, and a bare thing or substance named
 /// `ample` must keep re-parsing as itself.
 fn clause_head(w: &str) -> bool {
-    ["substance", "amount", "unit", "mere", "weight", "description", "usability"]
+    ["substance", "amount", "unit", "mere", "weight", "description", "usability", "grounding"]
         .iter()
         .any(|k| w.eq_ignore_ascii_case(k))
 }
@@ -3607,6 +3793,8 @@ fn clause_head(w: &str) -> bool {
 pub const POSITIONAL_KEYWORDS: &[&str] = &[
     "param", "metric", "ample", "range", "shares", "from", "share", "of", "sum", "into", "klir",
     "bunge", "mobus", "constant",
+    // the grounding grades (#411): only ever the word after `grounding`
+    "chain", "spec", "observed", "asserted", "unknown", // `third-party` is hyphenated: never a bare name
 ];
 
 fn is_reserved(word: &str) -> bool {
@@ -4473,6 +4661,90 @@ flow S -> A : matter \"in\"
     #[test]
     fn an_unquoted_description_is_a_fault() {
         assert!(parse_sl("component A description bare\n").is_err());
+    }
+
+    // ── grounding: whose word an element rests on (facets#411) ──────────
+
+    #[test]
+    fn grounding_parses_on_things_flows_and_environment_lines() {
+        let m = parse_sl(
+            "component A primitive Combining interface grounding chain \"StakingV2.sol:314\"\n\
+             source S grounding unknown \"no document names a host\"\n\
+             flow S -> A : matter \"in\" description \"what moves\" grounding observed \"GET /models 2026-09-17\"\n",
+        )
+        .unwrap();
+        let g = m.things[0].grounding.as_ref().unwrap();
+        assert_eq!(g.grade, GroundingGrade::Chain);
+        assert_eq!(g.reference, "StakingV2.sol:314");
+        assert_eq!(m.things[1].grounding.as_ref().unwrap().grade, GroundingGrade::Unknown);
+        let r = m.relations[0].grounding.as_ref().unwrap();
+        assert_eq!(r.grade, GroundingGrade::Observed);
+        assert_eq!(m.relations[0].description, "what moves");
+    }
+
+    /// The reference is optional: a bare grade is a complete claim.
+    #[test]
+    fn grounding_grade_alone_is_legal_and_the_hyphenated_grade_is_one_word() {
+        let m = parse_sl("component A grounding third-party\nsink B grounding asserted\nflow A -> B : matter \"x\"\n").unwrap();
+        assert_eq!(m.things[0].grounding.as_ref().unwrap().grade, GroundingGrade::ThirdParty);
+        assert!(m.things[0].grounding.as_ref().unwrap().reference.is_empty());
+    }
+
+    #[test]
+    fn grounding_takes_the_continuation_form_beneath_the_description() {
+        let m = parse_sl(
+            "component A\n    description \"the work process\"\n    grounding spec \"swagger.yaml\"\n\
+             source S\n    grounding asserted\n\
+             flow S -> A : matter \"in\"\n    grounding chain \"Venice.sol\"\n",
+        )
+        .unwrap();
+        assert_eq!(m.things[0].description, "the work process");
+        assert_eq!(m.things[0].grounding.as_ref().unwrap().grade, GroundingGrade::Spec);
+        assert_eq!(m.things[1].grounding.as_ref().unwrap().grade, GroundingGrade::Asserted);
+        assert_eq!(m.relations[0].grounding.as_ref().unwrap().reference, "Venice.sol");
+    }
+
+    /// Worth having as DATA rather than a comment for the same reason as
+    /// description: it survives text -> model -> text, canonically.
+    #[test]
+    fn grounding_round_trips_through_emit() {
+        let src = "component A primitive Combining interface description \"the work process\" grounding chain \"StakingV2.sol:314\"\n\
+                   source S grounding unknown\n\
+                   flow S -> A : matter \"in\" grounding observed \"GET /models\"\n";
+        let once = emit_sl(&parse_sl(src).unwrap()).unwrap();
+        assert!(once.contains("    grounding chain \"StakingV2.sol:314\"\n"));
+        assert!(once.contains("    grounding unknown\n"));
+        assert!(once.contains("    grounding observed \"GET /models\"\n"));
+        assert_eq!(emit_sl(&parse_sl(&once).unwrap()).unwrap(), once);
+    }
+
+    #[test]
+    fn no_grounding_emits_no_clause() {
+        let out = emit_sl(&parse_sl("component A\nsource S\nflow S -> A : matter \"in\"\n").unwrap()).unwrap();
+        assert!(!out.contains("grounding"));
+    }
+
+    #[test]
+    fn grounding_faults() {
+        assert!(parse_sl("component A grounding rumour\n").is_err(), "unknown grade");
+        assert!(parse_sl("component A grounding chain \"a\" grounding spec\n").is_err(), "twice on a line");
+        assert!(parse_sl("component A grounding chain\n    grounding spec\n").is_err(), "line plus continuation");
+        assert!(parse_sl("component A\n    grounding chain \"a\" extra\n").is_err(), "junk on the continuation");
+        assert!(parse_sl("    grounding chain\ncomponent A\n").is_err(), "nothing above");
+        assert!(parse_sl("milieu T\n    grounding chain\n").is_err(), "milieu takes none");
+        assert!(parse_sl("component A grounding\n").is_err(), "no grade");
+    }
+
+    /// Never semantics: the verdict of a graded model is the verdict of the
+    /// same model ungraded.
+    #[test]
+    fn grounding_changes_no_verdict() {
+        let bare = "component A primitive Combining interface\nsource S\nsink K\nflow S -> A : matter \"in\"\nflow A -> K : matter \"out\"\n";
+        let graded = "component A primitive Combining interface grounding chain \"x\"\nsource S grounding unknown\nsink K\nflow S -> A : matter \"in\" grounding spec\nflow A -> K : matter \"out\"\n";
+        let a = crate::lenses::analyze(&parse_sl(bare).unwrap(), crate::canvas::Lens::Mobus);
+        let b = crate::lenses::analyze(&parse_sl(graded).unwrap(), crate::canvas::Lens::Mobus);
+        let codes = |v: &crate::lenses::CanvasAnalysis| v.validation.issues.iter().map(|i| i.code.clone()).collect::<Vec<_>>();
+        assert_eq!(codes(&a), codes(&b));
     }
 
     // ── description on a continuation line (v1.5, #399) ─────────────────

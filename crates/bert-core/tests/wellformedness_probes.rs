@@ -24,6 +24,7 @@ fn info(id: Id, level: i32, name: &str) -> Info {
         level,
         name: name.to_string(),
         description: String::new(),
+        grounding: None,
     }
 }
 

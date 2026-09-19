@@ -36,6 +36,7 @@ fn info(i: Id, level: i32, name: &str, description: &str) -> Info {
         level,
         name: name.to_string(),
         description: description.to_string(),
+        grounding: None,
     }
 }
 

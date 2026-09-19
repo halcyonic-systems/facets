@@ -490,6 +490,7 @@ mod tests {
             level,
             name: name.to_string(),
             description: String::new(),
+            grounding: None,
         }
     }
 

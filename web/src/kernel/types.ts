@@ -224,6 +224,19 @@ export type KlirVarKind = "Basic" | "Support";
  *  (§5.4), which is what the kernel's cross-level refusal enforces. */
 export type KlirLevel = "Source" | "Data" | "Generative" | "Structure" | "Metasystem";
 
+/** The six grounding grades (#411), weakest first. Serde writes them in
+ *  kebab-case, so `third-party` is the wire form. The order is a reading aid
+ *  for the canvas overlay and the inspector, never a rule any verdict applies. */
+export const GROUNDING_GRADES = ["unknown", "third-party", "asserted", "observed", "spec", "chain"] as const;
+export type GroundingGrade = (typeof GROUNDING_GRADES)[number];
+
+/** A grade and the reference behind it (#411). `reference` is absent when the
+ *  author gave only the grade. */
+export interface Grounding {
+  grade: GroundingGrade;
+  reference?: string;
+}
+
 export interface Thing {
   id: number;
   name: string;
@@ -231,6 +244,10 @@ export interface Thing {
    *  never reads — no verdict depends on it. Absent when undeclared, so models
    *  authored before it stay byte-identical. */
   description?: string;
+  /** Whose word this thing rests on (#411): a grade from a closed, ordered
+   *  vocabulary and the reference in the author's words. Authorial, like
+   *  `description`: no verdict reads it. Absent when unsaid. */
+  grounding?: Grounding;
   x: number;
   y: number;
   role: CanvasRole;
@@ -282,6 +299,8 @@ export interface Relation {
   /** What this flow IS, in the author's own words (#326). Same standing as
    *  `Thing.description`: prose, never semantics. */
   description?: string;
+  /** Whose word this flow rests on (#411). Same standing as `Thing.grounding`. */
+  grounding?: Grounding;
   /** What this crossing IS to the system (#331) — Mobus's 2×2 of direction
    *  against value. Absent means UNDECLARED, never `Resource`: only projection
    *  supplies the default, so a surface must not render absence as an

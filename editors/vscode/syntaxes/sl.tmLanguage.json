@@ -12,6 +12,7 @@
     { "include": "#declaration-head" },
     { "include": "#kind-value" },
     { "include": "#value-word" },
+    { "include": "#grounding-grade-hyphenated" },
     { "include": "#keyword" },
     { "include": "#number" },
     { "include": "#name" }
@@ -34,7 +35,7 @@
       "name": "keyword.operator.arrow.sl"
     },
     "description-continuation": {
-      "begin": "(?i)^[ \\t]+(description)\\b",
+      "begin": "(?i)^[ \\t]+(description|grounding)\\b",
       "beginCaptures": { "1": { "name": "keyword.other.sl" } },
       "end": "$",
       "name": "meta.continuation.description.sl",
@@ -59,8 +60,12 @@
       "match": "(?i)\\b(Conceptual|Concrete|Combining|Splitting|Buffering|Impeding|Propelling|Copying|Sensing|Modulating|Amplifying|Inverting|Nominal|Ordinal|Interval|Ratio)\\b",
       "name": "support.constant.sl"
     },
+    "grounding-grade-hyphenated": {
+      "match": "(?i)\\b(third-party)\\b",
+      "name": "keyword.other.sl.grade"
+    },
     "keyword": {
-      "match": "(?i)\\b(system|domain|component|source|sink|environment|flow|boundary|interface|milieu|value|protocol|primitive|decomposes|stock|scale|states|kind|time|unit|level|mere|weight|substance|amount|initial|release|capacity|setpoint|maintenance|backpressure|description|usability|porosity|fuzziness|energy|matter|field|informational|param|metric|ample|range|shares|from|share|of|sum|into|klir|bunge|mobus|constant)\\b",
+      "match": "(?i)\\b(system|domain|component|source|sink|environment|flow|boundary|interface|milieu|value|protocol|primitive|decomposes|stock|scale|states|kind|time|unit|level|mere|weight|substance|amount|initial|release|capacity|setpoint|maintenance|backpressure|description|usability|porosity|fuzziness|energy|matter|field|informational|param|metric|ample|range|shares|from|share|of|sum|into|klir|bunge|mobus|constant|grounding|chain|spec|observed|asserted|unknown)\\b",
       "name": "keyword.other.sl"
     },
     "number": {

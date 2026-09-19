@@ -3,10 +3,11 @@
 // verdict drives which visual and hand the resolved styling + accents here.
 // `NodeBody` draws the shared node chrome; `EdgeScaffold` draws the shared edge
 // plumbing (hit-path, selection, segments, drive dot, sim readout).
-import type { CanvasRole, EnvKind, ProcessPrimitive } from "../../kernel/types";
+import type { CanvasRole, EnvKind, Grounding, ProcessPrimitive } from "../../kernel/types";
 import { primitiveGlyph } from "./primitive-glyphs";
 import { humanize } from "../../ui";
 import { NODE_R, type Pt } from "../geometry";
+import { groundingLine, groundingStroke, useGroundingOverlay } from "../grounding";
 import { STYLE } from "../style";
 import type { ReactNode, PointerEvent as ReactPointerEvent } from "react";
 import { useState } from "react";
@@ -35,7 +36,7 @@ interface NodeBodyProps {
   scale?: number;
   /** role/env_kind feed the run-time role grammar (source = emitter, never a
    *  fill); optional so glyph-only callers stay valid. */
-  thing: { id: number; x: number; y: number; name: string; role?: CanvasRole; env_kind?: EnvKind };
+  thing: { id: number; x: number; y: number; name: string; role?: CanvasRole; env_kind?: EnvKind; grounding?: Grounding };
   hovered: boolean;
   sim?: { value: number; unit: string; frac: number };
   onPointerDown: (e: ReactPointerEvent) => void;
@@ -115,9 +116,9 @@ export function NodeBody({
   showHalo,
   envOpen,
   sphere = false,
-  stroke,
-  strokeOpacity,
-  strokeWidth,
+  stroke: lensStroke,
+  strokeOpacity: lensStrokeOpacity,
+  strokeWidth: lensStrokeWidth,
   badge,
   badgeCentered = false,
   regulatorTriangle = false,
@@ -139,6 +140,16 @@ export function NodeBody({
   // get an outward pulse instead; sinks and stocks keep the fill, which for
   // them is the truth (accumulation / level).
   const emitter = thing.role === "Environment" && thing.env_kind === "Source";
+  // #411: with the grounding overlay on, the body's stroke says whose word
+  // the thing rests on and nothing else — the lens's stroke is set aside for
+  // the reading, and comes back untouched when the overlay goes.
+  const overlay = useGroundingOverlay();
+  const gs = overlay ? groundingStroke(thing.grounding) : null;
+  const stroke = gs ? gs.color : lensStroke;
+  const strokeOpacity = gs ? gs.opacity : lensStrokeOpacity;
+  const strokeWidth = gs ? lensStrokeWidth * 2.2 : lensStrokeWidth;
+  const strokeDash = gs?.dash;
+  const groundingTitle = overlay ? (groundingLine(thing.grounding) ?? "ungraded") : null;
   // Vertical extents of the body shape — the sim fill's clip rises bottom-up
   // between them, so the triangle drains/fills over ITS height, not the circle's.
   const [shapeTop, shapeBot] = regulatorTriangle ? [-TRI_R, TRI_BOT] : [-NODE_R, NODE_R];
@@ -164,6 +175,7 @@ export function NodeBody({
       {/* #306: everything DRAWN scales down for an on-membrane interface; the
           group scales strokes with it, which reads right for a smaller body. */}
       <g transform={bodyScale !== 1 ? `scale(${bodyScale})` : undefined}>
+        {groundingTitle && <title>{`grounding: ${groundingTitle}`}</title>}
       {/* Plain-hover halo — clickable-affordance feedback, softer than the
           connect-drag target halo (`hovered`) so the two meanings stay apart. */}
       {selfHover && !hovered && (
@@ -288,6 +300,7 @@ export function NodeBody({
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
+          strokeDasharray={strokeDash}
           strokeLinejoin="round"
           fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
         >
@@ -304,6 +317,7 @@ export function NodeBody({
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
+          strokeDasharray={strokeDash}
           fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
         />
       ) : (
@@ -313,6 +327,7 @@ export function NodeBody({
           stroke={stroke}
           strokeOpacity={strokeOpacity}
           strokeWidth={strokeWidth}
+          strokeDasharray={strokeDash}
           fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
         />
       )}
@@ -424,6 +439,8 @@ interface EdgeScaffoldProps {
   overlay?: ReactNode;
   /** The per-lens edge label (Klir signature vs Bunge/Mobus flow name). */
   label?: ReactNode;
+  /** #411: the flow's grounding, read only while the overlay is on. */
+  grounding?: Grounding;
   /** #335: this label overlaps another (Canvas measures the rendered boxes —
    *  `crowdedLabelIds`). A crowded label goes quiet at rest and speaks again on
    *  hover or selection; an uncrowded one is never touched. */
@@ -438,7 +455,7 @@ interface EdgeScaffoldProps {
  *  supply the resolved style, routing, label, and any badge overlays. */
 export function EdgeScaffold({
   labelAt,
-  style,
+  style: lensStyle,
   interior,
   visible,
   selected,
@@ -451,8 +468,17 @@ export function EdgeScaffold({
   label,
   crowded = false,
   title,
+  grounding,
 }: EdgeScaffoldProps) {
   const hold = useStageHold();
+  // #411: under the overlay the stroke reads grade, not substance. The
+  // arrowhead keeps its marker (direction is not in question) but takes the
+  // grade's colour through the generic marker, since kind markers are inked.
+  const groundingOn = useGroundingOverlay();
+  const gs = groundingOn ? groundingStroke(grounding) : null;
+  const style: EdgeStyle = gs
+    ? { ...lensStyle, color: gs.color, opacity: gs.opacity, dash: gs.dash, width: lensStyle.width * 1.6, filter: undefined, marker: "arrow-grounding", markerStart: undefined }
+    : lensStyle;
   const [hover, setHover] = useState(false);
   // Hit, hover, and selection must trace the strokes the reader can SEE. An exo
   // flow's `d` is the rim-to-rim curve, but its drawn geometry is the crossing

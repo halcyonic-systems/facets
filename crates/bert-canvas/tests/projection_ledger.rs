@@ -95,6 +95,7 @@ const LEDGER: &[(&str, &str, Standing, &str)] = &[
     ("Info", "level", Structural, "depth in the decomposition walk"),
     ("Info", "name", Authored, "the thing's or flow's name"),
     ("Info", "description", Authored, "restored by #326 — the regression that started this"),
+    ("Info", "grounding", Authored, "`grounding <grade> [\"<ref>\"]` (#411) — authorial tier beside description; set after construction, not through `described()`"),
     // ---- System ----
     ("System", "info", Authored, "name + description via `described()`"),
     ("System", "sources", Structural, "graph edges into this system"),

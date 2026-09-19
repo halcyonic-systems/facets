@@ -70,3 +70,20 @@ describe("the Mobus flow popover has one job (#336)", () => {
     expect(html).toContain("Run · Inputs");
   });
 });
+
+describe("the flow's grounding is readable and writable (#411)", () => {
+  it("shows the grade and the reference the author gave, beneath the description", () => {
+    const html = render(relation({ grounding: { grade: "chain", reference: "StakingV2.sol:314" } }));
+    expect(html).toContain('aria-label="grounding grade"');
+    expect(html).toContain('value="chain"');
+    expect(html).toContain('value="StakingV2.sol:314"');
+    expect(html.indexOf("description")).toBeLessThan(html.indexOf("grounding"));
+  });
+
+  it("an ungraded flow reads `unsaid`, with the reference disabled until a grade is chosen", () => {
+    const html = render(relation());
+    expect(html).toContain("unsaid");
+    const input = html.match(/<input[^>]*aria-label="grounding reference"[^>]*>/)?.[0] ?? "";
+    expect(input).toContain("disabled");
+  });
+});
