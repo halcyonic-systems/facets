@@ -3187,14 +3187,34 @@ function renderGroundingMarkers(md) {
   // inline after corpus-grounded / parametric claims. Render them as visible badges —
   // "ungrounded" is a first-class state, not hidden.
   // A [[u]] marks the claim before it: the sentence back to the previous full stop,
-  // including its own, is what gets marked, so the reader sees which words rest on
-  // general knowledge.
-  return md
-    .replace(/([^.!?\n\s][^.!?\n]{0,239}?[.!?]?)\s*\[\[u\]\]/g, (_, claim) =>
-      `<mark class="claim-open" title="Stated from general knowledge; the retrieved passages do not cover it.">${claim}</mark>`)
-    .replace(/\[\[u\]\]/g, '<mark class="claim-open" title="Stated from general knowledge; the retrieved passages do not cover it.">◌</mark>')
+  // including its own, so the reader sees which words rest on general knowledge.
+  return markOpenClaims(md)
     .replace(/\[\[g:\s*([^\]]*)\]\]/g, (_, src) =>
       `<span class="grounding-badge grounding-badge-grounded" title="${src.trim().replace(/"/g, '&quot;')}">✓ ${src.trim()}</span>`);
+}
+
+const OPEN_CLAIM_TITLE = 'Stated from general knowledge; the retrieved passages do not cover it.';
+// A full stop ends a sentence only when whitespace follows it and digits do not sit on
+// both sides, so "pH 5.5" and "e.g. this" stay inside one claim.
+function markOpenClaims(md) {
+  const out = [];
+  const re = /[ \t]*\[\[u\]\]/g;
+  let last = 0, m;
+  while ((m = re.exec(md))) {
+    const chunk = md.slice(last, m.index);
+    let b = chunk.lastIndexOf('\n') + 1;
+    for (let i = chunk.length - 2; i >= b; i--) {
+      if ('.!?'.includes(chunk[i]) && /\s/.test(chunk[i + 1])
+          && !(/\d/.test(chunk[i - 1] || '') && /\d/.test(chunk[i + 2] || ''))
+          && !/\b(e\.g|i\.e|cf|vs|etc|Fig|Def|No)\.$/.test(chunk.slice(b, i + 1))) { b = i + 1; break; }
+    }
+    b += (chunk.slice(b).match(/^\s*/) || [''])[0].length;
+    const claim = chunk.slice(b);
+    out.push(chunk.slice(0, b), '<mark class="claim-open" title="' + OPEN_CLAIM_TITLE + '">' + (claim || '\u25cc') + '</mark>');
+    last = re.lastIndex;
+  }
+  out.push(md.slice(last));
+  return out.join('');
 }
 
 function cleanMarkdown(md) {

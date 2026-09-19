@@ -79,7 +79,7 @@ function summary(c) {
 const ANSWER = '## TL;DR\nThe mock engine answers so the client can be driven end to end.\n\n'
   + '## Full Analysis\nEvery field the renderer reads is present, with nothing behind it. '
   + 'A reef is a bounded system of polyps [[g: Mobus 2015 §1]]. Reef fish sleep in the coral at night [[u]]. '
-  + 'The crest takes the wave energy first [[u]].';
+  + 'The crest takes the wave energy first [[u]]. Calcification slows below pH 7.8 at night. [[u]]';
 
 const FILLER = '\n\nMore of the analysis arrives while the lens strip is already on screen.';
 
