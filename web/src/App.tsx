@@ -1073,7 +1073,10 @@ function Workspace() {
     setArmed(null);
     setHomeOpen(false);
     if (!inChild) setWalk([]);
-    setFitToken((n) => (n ?? 0) + 1); // frame the compiled layout in the current viewport (#83)
+    // Frame the compiled layout in the viewport (#83) — at the top of the walk
+    // only. Inside a child the author is somewhere on purpose, and a refit
+    // reads as "compile zoomed me back out" (hand repro, 2026-09-20).
+    if (!inChild) setFitToken((n) => (n ?? 0) + 1);
     if (asPreview) {
       // If already previewing, keep the original stash so re-compiling an edited
       // draft never buries the author's base model.
