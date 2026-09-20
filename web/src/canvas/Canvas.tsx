@@ -723,7 +723,15 @@ export default function Canvas({
     if (seamDocRef.current !== model.things) {
       seamDocRef.current = model.things;
       inArmRef.current.clear();
-      outArmRef.current = false;
+      // #416: inside a child the out gesture starts ARMED. The arm line sits
+      // above the out line by ARM_SLACK, and a fitted frame can land between
+      // them — so a door entered by the button or the menu (not the ride,
+      // which overshoots past the arm line) could be zoomed out of forever
+      // without a crossing: the "stuck" of the hand repro (2026-09-20). A
+      // freshly landed frame is far above the out line (RB_OUT of the
+      // viewport), so arming it cannot misfire; it only means the first
+      // zoom-out past the line leaves, whichever way you came in.
+      outArmRef.current = Boolean(onRebaseOut && register);
       outFellBackRef.current = false;
     }
     // Every door's bit is read each pass, whatever tier it is in — a bit only

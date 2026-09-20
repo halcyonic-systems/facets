@@ -144,10 +144,17 @@ export type AdoptOutcome =
     }
   | { kind: "compile-error"; errors: { line: number; message: string }[] };
 
-export function adoptInterior(sl: string, child: CanvasModel): AdoptOutcome {
-  const outcome = compileSl(sl);
-  if ("errors" in outcome) return { kind: "compile-error", errors: outcome.errors };
-  const compiled = outcome.ok;
+/** What a compile of SL text cannot know, restored from the child that was
+ *  on the canvas: its identity (the parent's `decomposes` points at it), its
+ *  name (the door and the breadcrumb read it), and its crossings (re-attached
+ *  by stand-in name; ids are minted afresh by every compile). Shared by the
+ *  drafter's adopt path and the hand compile inside a walked-in child
+ *  (#416 follow-up, 2026-09-20: a pane compile inside a child used to reset
+ *  the walk and land the result as a new top-level document). */
+export function carryChildIdentity(
+  compiled: CanvasModel,
+  child: CanvasModel,
+): { model: CanvasModel; lostCrossings: string[]; repairs: string[] } {
   const byName = new Map(compiled.things.filter((t) => t.role === "Environment").map((t) => [t.name, t.id]));
   const crossings: Crossing[] = [];
   const lost: string[] = [];
@@ -169,11 +176,18 @@ export function adoptInterior(sl: string, child: CanvasModel): AdoptOutcome {
     name: child.name ?? compiled.name,
     ...(crossings.length > 0 ? { crossings } : {}),
   };
+  return { model, lostCrossings: lost, repairs: stamped.repairs };
+}
+
+export function adoptInterior(sl: string, child: CanvasModel): AdoptOutcome {
+  const outcome = compileSl(sl);
+  if ("errors" in outcome) return { kind: "compile-error", errors: outcome.errors };
+  const carried = carryChildIdentity(outcome.ok, child);
   return {
     kind: "compiled",
-    model,
+    model: carried.model,
     lensExplicit: outcome.lens_explicit,
-    lostCrossings: lost,
-    repairs: stamped.repairs,
+    lostCrossings: carried.lostCrossings,
+    repairs: carried.repairs,
   };
 }
