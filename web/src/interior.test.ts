@@ -14,7 +14,7 @@ vi.mock("./kernel", () => ({
   validateMode: () => ({ issues: [] }),
 }));
 
-import { adoptInterior, buildInteriorBrief, draftInteriorWithRetry, pendingCrossings, stampInterfacesFromCrossings } from "./interior";
+import { adoptInterior, buildInteriorBrief, carryChildIdentity, draftInteriorWithRetry, pendingCrossings, stampInterfacesFromCrossings } from "./interior";
 
 const thing = (id: number, name: string, role: Thing["role"], extra: Partial<Thing> = {}): Thing =>
   ({ id, name, x: 0, y: 0, role, description: "", ...extra }) as Thing;
@@ -235,5 +235,30 @@ describe("stampInterfacesFromCrossings", () => {
     if (out.kind !== "compiled") throw new Error("expected compiled");
     expect(out.repairs).toHaveLength(2);
     expect(out.model.things.filter((t) => t.interface).map((t) => t.name)).toEqual(["Intake", "Stone"]);
+  });
+});
+
+describe("#416 follow-up: a hand compile inside a child keeps the child's identity", () => {
+  it("carryChildIdentity does for an already-compiled model what adoptInterior does for text", () => {
+    const compiled: CanvasModel = {
+      lens: "Mobus",
+      name: "renamed by the author",
+      things: [
+        thing(7, "Atmosphere", "Environment", { env_kind: "Source" }),
+        thing(8, "Water", "Environment", { env_kind: "Sink" }),
+        thing(9, "Intake", "Component", { interface: true }),
+      ],
+      relations: [{ id: 1, a: 7, b: 9, name: "air", is_bond: true, kind: "Matter" }],
+      boundary: { porosity: 0, perceptive_fuzziness: 0 },
+    };
+    const out = carryChildIdentity(compiled, newborn());
+    expect(out.model.model_id).toBe("child-1");
+    expect(out.model.name).toBe("Aerator");
+    expect(out.model.crossings).toEqual([
+      { env: 7, inbound: true, name: "air", kind: "Matter" },
+      { env: 8, inbound: false, name: "bubbles", kind: "Matter" },
+    ]);
+    expect(out.lostCrossings).toEqual([]);
+    expect(out.model.things).toBe(compiled.things);
   });
 });

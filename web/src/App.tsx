@@ -87,7 +87,7 @@ import {
 } from "./coauthor";
 import { drafterModel } from "./drafterModel";
 import { chosenEffort, effortOnWire } from "./draftEffort";
-import { adoptInterior, draftInteriorWithRetry } from "./interior";
+import { adoptInterior, carryChildIdentity, draftInteriorWithRetry } from "./interior";
 import { pendingCrossings } from "./canvas/crossings";
 import {
   THEME_LABEL,
@@ -1044,9 +1044,21 @@ function Workspace() {
   // (llm-sl-authoring-plan.md Rung 0, the human-checks-meaning gate). Other callers
   // (corpus open) commit directly, as before.
   async function onSlCompiled(cm: CanvasModel, lensExplicit: boolean, asPreview = false, turnId?: string) {
-    if (!(await flushWalk())) return;
     const prior = canvasModel;
-    const nextModel = prior && !lensExplicit ? { ...cm, lens: prior.lens } : cm;
+    // Inside a walked-in child (#416 follow-up, found by hand 2026-09-20): a
+    // pane compile replaces the child's INTERIOR, it does not start a new
+    // document. The compiled model takes the child's identity, name and
+    // crossings (the same carry-over the drafter's adopt path does), the
+    // walk stays, and the seam is the parent's to re-judge. Only a compile
+    // at the top of the walk resets it.
+    const inChild = walk.length > 0 && prior !== null;
+    if (!inChild && !(await flushWalk())) return;
+    const carried = inChild ? carryChildIdentity(cm, prior) : null;
+    const compiled = carried ? carried.model : cm;
+    const nextModel = prior && !lensExplicit ? { ...compiled, lens: prior.lens } : compiled;
+    if (carried && carried.lostCrossings.length > 0) {
+      setNotice(`${carried.lostCrossings.length} crossing${carried.lostCrossings.length === 1 ? "" : "s"} lost a stand-in (${carried.lostCrossings.join(", ")}) — the seam contract will refuse the child until it is restored`);
+    }
     setDemo(null); setAttachedCsv(null);
     setCanvasModel(nextModel);
     // A pane compile authors a new model with no gallery address; the corpus
@@ -1060,7 +1072,7 @@ function Workspace() {
     setBoundaryAnchor(null);
     setArmed(null);
     setHomeOpen(false);
-    setWalk([]);
+    if (!inChild) setWalk([]);
     setFitToken((n) => (n ?? 0) + 1); // frame the compiled layout in the current viewport (#83)
     if (asPreview) {
       // If already previewing, keep the original stash so re-compiling an edited
