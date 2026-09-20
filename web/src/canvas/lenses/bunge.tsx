@@ -13,7 +13,7 @@ import { EdgeScaffold, NodeBody, NullPortView, type EdgeStyle } from "./common";
 import type { LensEdgeProps, LensNodeProps } from "./registry";
 import { useStageHold } from "../stageScale";
 
-function NodeView({ thing, isBoundary, isOrphan, hovered, sim, onPointerDown, onHandlePointerDown, scale }: LensNodeProps) {
+function NodeView({ thing, isBoundary, isOrphan, hovered, sim, onPointerDown, onHandlePointerDown, scale, inert }: LensNodeProps) {
   return (
     <NodeBody
       scale={scale}
@@ -39,7 +39,7 @@ function NodeView({ thing, isBoundary, isOrphan, hovered, sim, onPointerDown, on
       // locates the thing in its state space. Trajectory/lawful region: the
       // compose seam's scope, see NodeBody's comment.
       simPosition
-      envHint={thing.role === "Environment"}
+      envHint={thing.role === "Environment" && !inert}
     />
   );
 }

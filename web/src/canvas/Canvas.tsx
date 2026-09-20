@@ -1325,6 +1325,7 @@ export default function Canvas({
               thing={t}
               isBoundary={boundarySet.has(t.id)}
               isOrphan={orphanSet.has(t.id)}
+              inert={inert}
               hovered={hoverTarget === t.id || litThingId === t.id}
               sim={sim?.nodes[t.name]}
               scale={scale}

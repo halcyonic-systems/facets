@@ -16,7 +16,7 @@ import type {
 } from "../../kernel/types";
 import type { Pt, Ring } from "../geometry";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { PRIMITIVE_BADGE } from "../types";
+import { PRIMITIVE_BADGE, PRIMITIVE_GLOSS } from "../types";
 import { Klir } from "./klir";
 import { Bunge } from "./bunge";
 import { Mobus } from "./mobus";
@@ -29,6 +29,10 @@ export interface LensNodeProps {
    *  project() drops it, so it is not yet in ℰ. Rendered pending. */
   isOrphan: boolean;
   hovered: boolean;
+  /** #418 item 6: the canvas is a picker, not an editor (Read). Authoring
+   *  hints ("change it in the node editor") are withheld — they were wrong
+   *  there, and a native SVG title over an inert layer could stick. */
+  inert?: boolean;
   sim?: { value: number; unit: string; frac: number };
   onPointerDown: (e: ReactPointerEvent) => void;
   onHandlePointerDown: (e: ReactPointerEvent) => void;
@@ -254,7 +258,7 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
       verb: "designate" as const,
       id: `primitive-${p}`,
       label: PRIMITIVE_BADGE[p],
-      tip: `work process: ${p.toLowerCase()} — click empty canvas to place one, or stamp onto an existing leaf component (Mobus's atomic process vocabulary)`,
+      tip: `${p}: ${PRIMITIVE_GLOSS[p]} · click empty canvas to place one, or stamp onto a leaf component`,
       designation: { type: "primitive" as const, primitive: p },
       })),
     ],

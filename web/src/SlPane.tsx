@@ -68,6 +68,8 @@ interface SlPaneProps {
    *  text stays in view while drafting and the SL / Co-author switch is not
    *  shown. Without it the co-author is a mode of the pane, as before. */
   drafterDocked?: boolean;
+  /** #418 item 3: in Focus the docked box folds to a strip until reached for. */
+  drafterFolded?: boolean;
   /** Something for the header's right end, beside the title (Build's drawer
    *  puts its way to Write there). */
   header?: React.ReactNode;
@@ -134,6 +136,7 @@ export function SlPane({
   onArrangement,
   preview,
   drafterDocked = false,
+  drafterFolded = false,
   header,
   canvasModel,
   chain,
@@ -523,6 +526,7 @@ export function SlPane({
             <div className="shrink-0 border-t" style={{ borderColor: "var(--hairline)", background: "var(--bg-primary)" }}>
               <CoAuthorMode
                 docked
+                folded={drafterFolded}
                 turns={coauthor.turns}
                 onDraft={handleDraft}
                 onCorrect={handleCorrect}

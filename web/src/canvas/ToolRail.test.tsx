@@ -26,3 +26,12 @@ describe("ToolRail", () => {
     expect(m).toMatch(/aria-pressed="true"[^>]*aria-label="Select/);
   });
 });
+
+describe("#418 item 4: a primitive's meaning is on the rail, not only its stamp", () => {
+  it("every process tool's title carries the gloss, not just the verb", () => {
+    const m = renderToStaticMarkup(<ToolRail lens="Mobus" armed={null} onArm={noop} onOpenSl={noop} slOpen={false} />);
+    expect(m).toContain("Buffering: holds a stock between inflow and outflow");
+    expect(m).toContain("Inverting: compares to a setpoint");
+    expect(m).not.toContain("work process: buffering — click empty canvas");
+  });
+});

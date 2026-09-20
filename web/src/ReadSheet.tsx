@@ -116,6 +116,7 @@ export function ReadSheet({
   onHover,
   selection,
   onClearSelection,
+  focus = false,
 }: {
   model: CanvasModel;
   desc: LensDescription | null;
@@ -128,6 +129,9 @@ export function ReadSheet({
   onHover: (target: IssueTarget | null) => void;
   selection: { thing: number | null; relation: number | null };
   onClearSelection: () => void;
+  /** #418 item 2: Focus in Read hands the sheet the window. Full width, a
+   *  centred reading column, no dock border — a page, not a sidebar. */
+  focus?: boolean;
 }) {
   const [provenance, setProvenance] = useState(false);
   const thing = selection.thing !== null ? model.things.find((t) => t.id === selection.thing) ?? null : null;
@@ -138,9 +142,14 @@ export function ReadSheet({
 
   return (
     <aside
-      className="flex min-w-80 shrink basis-[32rem] flex-col gap-4 overflow-y-auto border-l p-4"
+      className={
+        focus
+          ? "flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-4 [&>*]:mx-auto [&>*]:w-full [&>*]:max-w-3xl"
+          : "flex min-w-80 shrink basis-[32rem] flex-col gap-4 overflow-y-auto border-l p-4"
+      }
       style={{ borderColor: "var(--hairline)", background: "var(--lens-chrome)" }}
       data-testid="read-sheet"
+      data-focus={focus ? "true" : undefined}
     >
       {narrowed && (
         <Card

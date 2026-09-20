@@ -509,3 +509,37 @@ describe("the docked box (#409 M2)", () => {
     expect(m).not.toContain("an older one");
   });
 });
+
+describe("#418 item 3: in Focus the docked box folds to a strip, the drafter on call", () => {
+  it("folded and untouched, it is one line: Draft and the standing note", () => {
+    const html = renderToStaticMarkup(
+      <CoAuthorMode docked folded turns={[]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
+    );
+    expect(html).toContain('data-testid="drafting-strip"');
+    expect(html).not.toContain("Describe a system in plain language");
+    expect(html).toContain("on call");
+  });
+
+  it("out of Focus the docked box is unchanged", () => {
+    const html = renderToStaticMarkup(
+      <CoAuthorMode docked turns={[]} onDraft={noopDraft} onCorrect={noopCorrect} onLoad={noopLoad} />,
+    );
+    expect(html).toContain('data-testid="drafting-box"');
+    expect(html).not.toContain('data-testid="drafting-strip"');
+  });
+
+  it("a seeded description opens the box even in Focus — the author reached for it", () => {
+    const html = renderToStaticMarkup(
+      <CoAuthorMode
+        docked
+        folded
+        turns={[]}
+        seed={{ description: "a thermostat", nonce: 1 }}
+        onDraft={noopDraft}
+        onCorrect={noopCorrect}
+        onLoad={noopLoad}
+      />,
+    );
+    expect(html).toContain('data-testid="drafting-box"');
+  });
+});

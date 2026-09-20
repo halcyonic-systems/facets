@@ -7,6 +7,8 @@
 // At the foot, the SL text as a drawer over the canvas.
 import type { Lens } from "../kernel/types";
 import { LensPalette, type PaletteTool } from "./lenses/registry";
+import { PRIMITIVE_GLOSS } from "./types";
+import { useState } from "react";
 import { GestureGlyph, GlyphChip, PasswayChip, RoleChip } from "./PaletteRail";
 
 function SelectGlyph() {
@@ -64,6 +66,7 @@ export function ToolRail({
   onOpenSl: () => void;
   slOpen: boolean;
 }) {
+  const [hoverTool, setHoverTool] = useState<string | null>(null);
   const spec = LensPalette[lens];
   const derivedTip = spec.derived.length
     ? ` The kernel draws these: ${spec.derived.map((h) => h.label).join(", ")}.`
@@ -108,22 +111,46 @@ export function ToolRail({
         <>
           <span aria-hidden className="my-1 h-px w-8" style={{ background: "var(--hairline)" }} />
           {spec.designate.map((t) => (
-            <RailButton
+            <span
               key={t.id}
-              active={armed?.id === t.id}
-              title={`${t.label}: ${t.tip}`}
-              onClick={() => onArm(armed?.id === t.id ? null : t)}
-              testId={`tool-${t.id}`}
+              className="group relative"
+              onPointerEnter={() => setHoverTool(t.id)}
+              onPointerLeave={() => setHoverTool((h) => (h === t.id ? null : h))}
             >
-              {t.verb === "designate" && t.designation.type === "primitive" ? (
-                <span className="flex items-center text-[10px]">
-                  <GlyphChip primitive={t.designation.primitive} />
-                  {t.label}
+              <RailButton
+                active={armed?.id === t.id}
+                title={`${t.label}: ${t.tip}`}
+                onClick={() => onArm(armed?.id === t.id ? null : t)}
+                testId={`tool-${t.id}`}
+              >
+                {t.verb === "designate" && t.designation.type === "primitive" ? (
+                  <span className="flex items-center text-[10px]">
+                    <GlyphChip primitive={t.designation.primitive} />
+                    {t.label}
+                  </span>
+                ) : (
+                  <span className="text-[10px]">{t.label}</span>
+                )}
+              </RailButton>
+              {/* #418 item 4: the meaning, back inside the mode. The palette
+                  panel that carried the primitives' one-line glosses retired
+                  to this rail (#410), and a two-letter stamp with a native
+                  tooltip taught nobody what Buffering is. A card beside the
+                  rail, instant on hover, from the same registry. */}
+              {hoverTool === t.id && t.verb === "designate" && t.designation.type === "primitive" && (
+                <span
+                  role="tooltip"
+                  data-testid={`gloss-${t.designation.primitive}`}
+                  className="pointer-events-none absolute left-full top-0 z-20 ml-2 block w-64 rounded-md px-2.5 py-2 text-left text-[11px] leading-snug"
+                  style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", color: "var(--text-primary)", boxShadow: "var(--shadow-card)" }}
+                >
+                  <span className="font-semibold">{t.designation.primitive}</span>
+                  <span style={{ color: "var(--text-secondary)" }}> · work process</span>
+                  <br />
+                  <span style={{ color: "var(--text-secondary)" }}>{PRIMITIVE_GLOSS[t.designation.primitive]}</span>
                 </span>
-              ) : (
-                <span className="text-[10px]">{t.label}</span>
               )}
-            </RailButton>
+            </span>
           ))}
         </>
       )}

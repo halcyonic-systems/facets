@@ -64,11 +64,17 @@ export function preset(mode: WorkspaceMode, focus: boolean, previewing: boolean)
         topBarStrip: focus,
       };
     case "read":
+      // Ruled 2026-09-19 (#418 item 2): in Read the sheet is the object and
+      // the diagram is the picker, so Focus hands the SHEET the window and
+      // puts the canvas away — the reverse of the first ruling (Read→diagram),
+      // which read Focus as "the picture" in every mode.
+      // A previewed draft's Accept/Discard lives on the canvas banner and the
+      // sheet carries no gate, so while a preview is up the canvas stays.
       return {
         editor: false,
-        canvas: true,
+        canvas: !focus || previewing,
         palette: false,
-        inspector: focus ? [] : READ_TABS,
+        inspector: READ_TABS,
         inspectorWide: true,
         gateInPane: false,
         margin: false,
@@ -77,9 +83,10 @@ export function preset(mode: WorkspaceMode, focus: boolean, previewing: boolean)
   }
 }
 
-/** The primary surface of a mode, the one Focus gives the window to. */
-export function primarySurface(mode: WorkspaceMode): "editor" | "canvas" {
-  return mode === "write" ? "editor" : "canvas";
+/** The primary surface of a mode, the one Focus gives the window to. Read's
+ *  is the sheet (#418 item 2): its canvas is the picker, not the page. */
+export function primarySurface(mode: WorkspaceMode): "editor" | "canvas" | "sheet" {
+  return mode === "write" ? "editor" : mode === "build" ? "canvas" : "sheet";
 }
 
 const KEY = "facets.workspace-mode";
