@@ -4,10 +4,10 @@
 [workspace]
 
 [package]
-name = "bert-lenses-desktop"
+name = "facets-desktop"
 version = "0.1.0"
 edition = "2021"
-description = "bert-lenses as a macOS desktop app"
+description = "Facets — Model as a macOS desktop app"
 publish = false
 
 [build-dependencies]

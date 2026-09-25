@@ -104,10 +104,10 @@ jobs:
       # A build step that "succeeds" without producing the artifact is the
       # vacuity this gate exists to refuse.
       - name: The bundle exists
-        run: test -d src-tauri/target/release/bundle/macos/bert-lenses.app
+        run: test -d src-tauri/target/release/bundle/macos/Facets.app
 
       - uses: actions/upload-artifact@v4
         with:
-          name: bert-lenses-macos-app
-          path: src-tauri/target/release/bundle/macos/bert-lenses.app
+          name: facets-macos-app
+          path: src-tauri/target/release/bundle/macos/Facets.app
           if-no-files-found: error

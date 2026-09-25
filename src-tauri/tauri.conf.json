@@ -1,15 +1,15 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "bert-lenses",
+  "productName": "Facets",
   "version": "0.1.0",
-  "identifier": "systems.halcyonic.bert-lenses",
+  "identifier": "systems.halcyonic.facets",
   "build": {
     "frontendDist": "../web/dist"
   },
   "app": {
     "windows": [
       {
-        "title": "bert-lenses",
+        "title": "Facets — Model",
         "width": 1440,
         "height": 900,
         "minWidth": 960,
