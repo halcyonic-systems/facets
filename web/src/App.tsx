@@ -119,6 +119,7 @@ import {
 } from "./workbench";
 import { mintLibraryName, parentSlotName } from "./libraryNames";
 import { joinWalk, splitWalk, stampWalk } from "./walk";
+import { secondaryOf, useNarrow } from "./narrow";
 import { ChildCache } from "./canvas/childCache";
 import { resolveModelRefs } from "./modelResolve";
 import { diagramFilename, exportDiagramSvg, exportDiagramPng } from "./canvas/exportDiagram";
@@ -433,6 +434,10 @@ function Workspace() {
   const [mode, setModeState] = useState<WorkspaceMode>(workspaceMode);
   useEffect(() => subscribeWorkspaceMode(setModeState), []);
   const [focus, setFocus] = useState(false);
+  // #427: below 900px the frame is its Focus arrangement and the secondary
+  // pane is a sheet on demand — never remembered, closed on any mode change.
+  const narrow = useNarrow();
+  const [sheet, setSheet] = useState(false);
   // #411: the grounding overlay, a reading the status bar switches on.
   const [groundingOverlay, setGroundingOverlay] = useState(false);
   const [barPeek, setBarPeek] = useState(false);
@@ -2561,6 +2566,13 @@ function Workspace() {
   }
 
   const frame = preset(mode, focus, preview !== null);
+  useEffect(() => {
+    setSheet(false);
+  }, [mode, narrow]);
+  // The class a secondary pane wears at narrow widths: hidden until asked
+  // for, then a sheet over the primary surface. `contents` above the
+  // breakpoint, so the wrapper changes nothing there.
+  const narrowPane = (of: WorkspaceMode) => (narrow && mode === of ? (sheet ? "narrow-sheet" : "hidden") : "contents");
   // Any tool armed in Build is dropped on the way out: Read places nothing,
   // and Write has no canvas to place onto.
   useEffect(() => {
@@ -2684,8 +2696,8 @@ function Workspace() {
           tucked in the status bar it read as chrome. It sits here too, at the
           end of the question it modifies — the status-bar toggle stays, since
           in Focus this bar is a strip and that one is how you come back. */}
-      <span aria-hidden className="mx-1 h-4 w-px" style={{ background: "var(--hairline)" }} />
-      <button
+      {!narrow && <span aria-hidden className="mx-1 h-4 w-px" style={{ background: "var(--hairline)" }} />}
+      {!narrow && <button
         onClick={() => setFocus((f) => !f)}
         aria-pressed={focus}
         className="px-3 py-0.5 text-xs font-semibold transition-colors"
@@ -2699,7 +2711,7 @@ function Workspace() {
         data-testid="mode-focus"
       >
         Focus
-      </button>
+      </button>}
     </div>
   ) : undefined;
 
@@ -2982,6 +2994,7 @@ function Workspace() {
           )}
 
           {frame.margin && (
+            <div className={narrowPane("write")} data-testid="write-margin-pane">
             <WriteMargin
               model={canvasModel}
               verdict={verdict}
@@ -2990,6 +3003,7 @@ function Workspace() {
               onBuild={() => setWorkspaceMode("build")}
               onRead={openRead}
             />
+            </div>
           )}
 
           {/* No null-model empty state here: the workbench is display:none
@@ -2998,7 +3012,7 @@ function Workspace() {
           {/* min-w-0: without it the canvas refuses to shrink (flex min-width:auto)
               and the whole shell row overflows the viewport at narrow widths (#17). */}
           <main
-            className={`min-h-0 min-w-0 flex-1 overflow-y-auto ${!frame.canvas ? "hidden" : ""}`}
+            className={`min-h-0 min-w-0 flex-1 overflow-y-auto ${!frame.canvas ? "hidden" : narrowPane("read") === "contents" ? "" : narrowPane("read")}`}
             style={{ background: "var(--lens-wash)" }}
           >
             {canvasModel && (
@@ -3612,10 +3626,11 @@ function Workspace() {
                 setSelectedThingId(null);
                 setSelectedRelationId(null);
               }}
-              focus={!frame.canvas}
+              focus={!frame.canvas || narrow}
             />
           )}
           {canvasModel && !readoutsOpen && mode !== "read" && frame.inspector.length > 0 && (
+            <div className={narrowPane("build")} data-testid="inspector-pane">
             <InspectorDock
               frame={{ tabs: frame.inspector, wide: frame.inspectorWide }}
               result={result}
@@ -3670,6 +3685,7 @@ function Workspace() {
               focused={inspectorFocused}
               onToggleFocus={() => setInspectorFocused((f) => !f)}
             />
+            </div>
           )}
         </div>
         <StatusBar
@@ -3681,6 +3697,8 @@ function Workspace() {
           onToggleFocus={() => setFocus((f) => !f)}
           grounding={groundingOverlay}
           onToggleGrounding={() => setGroundingOverlay((g) => !g)}
+          secondary={narrow ? { label: secondaryOf(mode), open: sheet } : undefined}
+          onToggleSecondary={() => setSheet((s) => !s)}
           onVerdict={openRead}
           kernelLoaded
         />

@@ -572,3 +572,25 @@ input[type="range"]:focus-visible {
 .sl-pane-resize:active {
   background: var(--accent-soft);
 }
+
+/* #427: the narrow frame. Below 900px a mode's secondary pane is a sheet
+   over the primary surface, opened from the status bar and closed there;
+   the status bar (z-50) stays reachable above it. The wrapper is
+   `contents` above the breakpoint, so nothing changes there. */
+.narrow-sheet {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow: auto;
+  background: var(--bg-primary);
+  padding-bottom: 2rem;
+}
+.narrow-sheet > * {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  flex-basis: auto !important;
+  border-left: 0 !important;
+}

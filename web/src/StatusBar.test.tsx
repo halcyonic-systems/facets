@@ -47,3 +47,20 @@ describe("StatusBar", () => {
     expect(m).toContain("loading…");
   });
 });
+
+describe("#427 the secondary-pane toggle at narrow widths", () => {
+  it("names the pane and opens it; absent above the breakpoint", () => {
+    const narrow = renderToStaticMarkup(
+      <StatusBar model={model} verdict={{ issues: [] }} faults={0} previewing={false} focus={false} onToggleFocus={noop} onVerdict={noop} kernelLoaded secondary={{ label: "Element", open: false }} onToggleSecondary={noop} />,
+    );
+    expect(narrow).toContain("Element ▸");
+    const open = renderToStaticMarkup(
+      <StatusBar model={model} verdict={{ issues: [] }} faults={0} previewing={false} focus={false} onToggleFocus={noop} onVerdict={noop} kernelLoaded secondary={{ label: "Diagram", open: true }} onToggleSecondary={noop} />,
+    );
+    expect(open).toContain("✕ Diagram");
+    const wide = renderToStaticMarkup(
+      <StatusBar model={model} verdict={{ issues: [] }} faults={0} previewing={false} focus={false} onToggleFocus={noop} onVerdict={noop} kernelLoaded />,
+    );
+    expect(wide).not.toContain('data-testid="secondary-toggle"');
+  });
+});

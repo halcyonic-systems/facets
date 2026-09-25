@@ -18,6 +18,8 @@ export function StatusBar({
   onToggleFocus,
   grounding = false,
   onToggleGrounding,
+  secondary,
+  onToggleSecondary,
   onVerdict,
   kernelLoaded,
 }: {
@@ -33,6 +35,11 @@ export function StatusBar({
    *  Focus rather than in the mode row. Absent handler hides the toggle. */
   grounding?: boolean;
   onToggleGrounding?: () => void;
+  /** #427: at narrow widths the mode's secondary pane is a sheet on demand;
+   *  this is the one control that opens and closes it. Absent above the
+   *  breakpoint. */
+  secondary?: { label: string; open: boolean };
+  onToggleSecondary?: () => void;
   /** The verdict chip opens Read, where the review lives. */
   onVerdict: () => void;
   kernelLoaded: boolean;
@@ -42,7 +49,7 @@ export function StatusBar({
     faults > 0 ? `${faults} SL fault${faults === 1 ? "" : "s"}` : previewing ? "previewing a draft" : "compiled";
   return (
     <div
-      className="flex shrink-0 items-center gap-3 border-t px-3 py-1 text-[11px]"
+      className="relative z-50 flex shrink-0 items-center gap-3 border-t px-3 py-1 text-[11px]"
       style={{ borderColor: "var(--hairline)", background: "var(--bg-secondary)", color: "var(--text-muted)" }}
       data-testid="status-bar"
     >
@@ -69,6 +76,22 @@ export function StatusBar({
         </>
       )}
       <span className="ml-auto flex items-center gap-3">
+        {secondary && onToggleSecondary && model && (
+          <button
+            onClick={onToggleSecondary}
+            aria-pressed={secondary.open}
+            title={secondary.open ? `Close the ${secondary.label} sheet` : `Open ${secondary.label} as a sheet over this mode's surface`}
+            className="rounded-full px-2 py-0.5"
+            style={{
+              border: "1px solid var(--hairline)",
+              background: secondary.open ? "var(--accent)" : "transparent",
+              color: secondary.open ? "var(--text-on-accent)" : "var(--text-secondary)",
+            }}
+            data-testid="secondary-toggle"
+          >
+            {secondary.open ? `✕ ${secondary.label}` : `${secondary.label} ▸`}
+          </button>
+        )}
         {onToggleGrounding && model && (
           <button
             onClick={onToggleGrounding}
