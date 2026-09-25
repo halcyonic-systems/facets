@@ -166,4 +166,4 @@ wasm-exec:
 desktop: wasm
     cd web && npm run build
     cd src-tauri && cargo tauri build
-    @echo "bundle: src-tauri/target/release/bundle/macos/bert-lenses.app"
+    @echo "bundle: src-tauri/target/release/bundle/macos/Facets.app"
