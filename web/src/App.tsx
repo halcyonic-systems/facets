@@ -3432,7 +3432,13 @@ function Workspace() {
                         has not answered. Pedagogy, not alarm. */}
                     {residue && (residue.hidden.length > 0 || residue.unspecified.length > 0) && (
                       <div
-                        className="pointer-events-none absolute right-3 top-3 max-w-[46%] text-right text-[11px]"
+                        // Under Bunge's graph view the systemhood pill owns the
+                        // top row (left-48, top-3); the residue notice drops a
+                        // row so a two-line notice never lands on it (seen
+                        // 2026-09-19 on the hal example at 1485px).
+                        className={`pointer-events-none absolute right-3 max-w-[46%] text-right text-[11px] ${
+                          canvasModel.lens === "Bunge" && !isBungeMatrix ? "top-11" : "top-3"
+                        }`}
                         style={{ color: "var(--text-muted)" }}
                       >
                         {[
