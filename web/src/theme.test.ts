@@ -130,6 +130,35 @@ describe("the choice persists and is announced", () => {
   });
 });
 
+// A throwing store (private mode, quota) may lose PERSISTENCE and nothing
+// else. apply() and the subscriber fan-out sit outside the try around setItem,
+// and that ordering is the only thing guaranteeing the live choice survives —
+// so it is bound here, under a store that actually throws.
+describe("the choice holds when storage throws", () => {
+  class ThrowingStorage extends MemoryStorage {
+    setItem(): void {
+      throw new Error("QuotaExceededError");
+    }
+  }
+
+  beforeEach(() => {
+    (globalThis as unknown as { localStorage: MemoryStorage }).localStorage = new ThrowingStorage();
+  });
+
+  it("stamps the document, notifies subscribers and reads back — session-only", () => {
+    const seen: string[] = [];
+    subscribeTheme((c) => seen.push(c));
+    expect(() => setThemeChoice("dark")).not.toThrow();
+    expect(themeChoice()).toBe("dark");
+    expect(documentElement.getAttribute("data-theme")).toBe("dark");
+    expect(seen).toEqual(["dark"]);
+    // Persistence is the one thing lost: a fresh session sees no stored choice.
+    expect(localStorage.getItem("bert-lenses.theme")).toBeNull();
+    resetThemeForTest();
+    expect(initTheme()).toBe("system");
+  });
+});
+
 // The structural claim the CSS makes, held as a test rather than as a comment:
 // there is ONE dark palette. The failure this prevents is not a broken theme —
 // it is a token added to one of two copies and missed in the other, which is

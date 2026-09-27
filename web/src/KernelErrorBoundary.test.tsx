@@ -51,3 +51,39 @@ describe("the error boundary's copy matches the failure", () => {
     expect(html).not.toContain("bug in the kernel");
   });
 });
+
+// The caught error is EPHEMERAL: any reset key changing by identity clears it,
+// so an undo, a fresh edit or another demo returns the canvas without a
+// reload. Exercised the way the copy tests are — the lifecycle method is
+// called for real on an instance whose setState is applied synchronously
+// (there is no mounted tree in the node environment).
+describe("a reset key change clears the caught error", () => {
+  function caughtWith(resetKeys: unknown[]) {
+    const boundary = new KernelErrorBoundary({ resetKeys, children: "diagram" });
+    boundary.state = KernelErrorBoundary.getDerivedStateFromError(new KernelError("analyze_canvas", "refused"));
+    boundary.setState = (next) => {
+      boundary.state = { ...boundary.state, ...(next as object) };
+    };
+    return boundary;
+  }
+
+  it("re-renders the children once a key changes identity", () => {
+    const m1 = { name: "M1" };
+    const m2 = { name: "M2" };
+    const boundary = caughtWith([m2, "demo"]);
+    expect(renderToStaticMarkup(boundary.render() as ReactElement)).toContain("Kernel rejected this state");
+
+    // Undo: the model key goes back to M1 while the demo key is unchanged.
+    (boundary as { props: unknown }).props = { resetKeys: [m1, "demo"], children: "diagram" };
+    boundary.componentDidUpdate({ resetKeys: [m2, "demo"], children: "diagram" });
+    expect(boundary.state.error).toBeNull();
+    expect(boundary.render()).toBe("diagram");
+  });
+
+  it("keeps the error while every key is the same object", () => {
+    const m2 = { name: "M2" };
+    const boundary = caughtWith([m2, "demo"]);
+    boundary.componentDidUpdate({ resetKeys: [m2, "demo"], children: "diagram" });
+    expect(boundary.state.error).not.toBeNull();
+  });
+});
