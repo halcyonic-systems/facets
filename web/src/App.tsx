@@ -1427,6 +1427,7 @@ function Workspace() {
     const notes: string[] = [];
     let rootSl: string | null = null;
     let rootLabel: string | null = null;
+    let rootFile: string | null = null;
     for (const f of texts) {
       if (!isSl(f)) {
         try {
@@ -1446,6 +1447,7 @@ function Workspace() {
         if (i === walk.root && rootSl === null) {
           rootSl = p.text;
           rootLabel = p.name;
+          rootFile = f.name;
           return;
         }
         const outcome = compileSl(p.text);
@@ -1479,7 +1481,18 @@ function Workspace() {
       }
       setSlErrors([]);
       await onSlCompiled(outcome.ok, outcome.lens_explicit);
-      setDirty(true);
+      // The root is saved too (2026-09-28): a walk that arrived by file is
+      // one click from "Open a model" from now on, not one file on the
+      // desktop. Named after the file, since the root system usually shares
+      // its name with the child it decomposes into (the seam contract) and
+      // that name is already the child's library slot.
+      const stem = (rootFile ?? "walk").replace(/\.sl$/i, "").replace(/\.walk$/i, "");
+      const rootName = mintLibraryName(stem, taken);
+      await persist(rootName, outcome.ok);
+      await refreshLibrary();
+      setCurrentName(rootName);
+      setDirty(false);
+      archives.push({ name: rootName, json: writeArchive(outcome.ok) });
     } else if (archives.length > 0) {
       // Only archives: open the first as the working model, the rest are in
       // the library where a walk will find them.
