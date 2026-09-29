@@ -152,4 +152,4 @@ function EdgeView({ model, relation, fact, selected, driven, sim, crowded, onSel
   );
 }
 
-export const Bunge = { NodeView, EdgeView, PortView: NullPortView };
+export const Bunge = { NodeView, EdgeView, PortView: NullPortView, shell3d: "hull" as const };

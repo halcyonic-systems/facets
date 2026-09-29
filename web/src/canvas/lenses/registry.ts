@@ -80,6 +80,10 @@ export interface LensViews {
   NodeView: ComponentType<LensNodeProps>;
   EdgeView: ComponentType<LensEdgeProps>;
   PortView: ComponentType<LensPortProps>;
+  /** facets#435: how the 3D view draws the container under this lens. Mobus's
+   *  membrane is a reified object (a capsule along the throughput axis);
+   *  Bunge's hull is the observer's cut (a wire box); Klir draws none. */
+  shell3d: "capsule" | "hull" | "none";
 }
 
 export const LensRegistry: Record<Lens, LensViews> = {

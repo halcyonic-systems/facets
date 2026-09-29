@@ -91,4 +91,4 @@ function EdgeView({ model, relation, sigIndex, selected, driven, sim, crowded, o
   );
 }
 
-export const Klir = { NodeView, EdgeView, PortView: NullPortView };
+export const Klir = { NodeView, EdgeView, PortView: NullPortView, shell3d: "none" as const };
