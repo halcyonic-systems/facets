@@ -233,6 +233,22 @@ export class SceneAdapter {
     return this.renderer.info.programs?.length ?? 0;
   }
 
+  /** Draw `n` frames synchronously while orbiting and report the mean cost in
+   *  ms. A dev probe for the stage 0 frame budget; rAF-based timing is
+   *  throttled in a background tab, this is not. */
+  benchmark(n = 60): { msPerFrame: number; drawCalls: number } {
+    const yaw = this.yaw;
+    const t0 = performance.now();
+    for (let i = 0; i < n; i++) {
+      this.yaw = yaw + (i / n) * Math.PI * 2;
+      this.render();
+    }
+    const ms = (performance.now() - t0) / n;
+    this.yaw = yaw;
+    this.render();
+    return { msPerFrame: ms, drawCalls: this.renderer.info.render.calls };
+  }
+
   // ---- scene ----------------------------------------------------------------
 
   private clear(): void {

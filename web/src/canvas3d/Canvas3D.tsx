@@ -58,6 +58,7 @@ export default function Canvas3D({
           },
         });
         adapterRef.current = adapter;
+        if (import.meta.env.DEV) (window as unknown as { __canvas3d?: SceneAdapter }).__canvas3d = adapter;
         setReady(true);
       } catch (err) {
         if (alive) setFailed(err instanceof Error ? err.message : String(err));
