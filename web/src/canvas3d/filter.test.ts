@@ -13,7 +13,7 @@ const flow = (id: number, a: number, b: number, kind: Scene3D["flows"][number]["
 });
 const scene: Scene3D = {
   shell: "capsule",
-  shape: { halfLength: 1, radius: 1, e: 0.5 },
+  shape: { halfLength: 1, radius: 1, e: 0.5, e2: 1 },
   rootName: "Pumphouse",
   entities: [
     entity(1, "River", "source"),

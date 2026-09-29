@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { bundleLanes, exploded, exponentFor, placeBank, placeInterior, relaxDirections, shellField, shellPoint, shellSurface } from "./layout";
 import { dot, len, v3 } from "./vec3";
 
-const round = { halfLength: 1, radius: 0.5, e: 1 };
-const square = { halfLength: 1, radius: 0.5, e: 0.2 };
+const round = { halfLength: 1, radius: 0.5, e: 1, e2: 1 };
+const square = { halfLength: 1, radius: 0.5, e: 0.2, e2: 1 };
+const boxy = { halfLength: 1, radius: 0.5, e: 0.2, e2: 0.2 };
+const hard = { halfLength: 1, radius: 0.5, e: 1, e2: 1, box: true };
 
 describe("the shell surface", () => {
   it("meets a sideways ray at the radius with a radial normal", () => {
@@ -21,7 +23,7 @@ describe("the shell surface", () => {
     }
   });
   it("lands every direction on the implicit surface, with an outward normal", () => {
-    for (const c of [round, square, { halfLength: 2, radius: 0.7, e: 0.5 }]) {
+    for (const c of [round, square, boxy, hard, { halfLength: 2, radius: 0.7, e: 0.5, e2: 0.4 }]) {
       for (let i = 0; i < 40; i++) {
         const d = v3(Math.sin(i * 1.7), Math.cos(i * 2.3), Math.sin(i * 0.9));
         const s = shellSurface(c, d);
@@ -38,8 +40,20 @@ describe("the shell surface", () => {
     const sq = shellSurface(square, diag).at;
     expect(len(sq)).toBeGreaterThan(len(r));
   });
+  it("squares the cross-section with the second exponent and the box hits its faces", () => {
+    const diag = v3(0, 1, 1);
+    const r = shellSurface(round, diag).at;
+    const b = shellSurface(boxy, diag).at;
+    expect(Math.hypot(b.y, b.z)).toBeGreaterThan(Math.hypot(r.y, r.z));
+    const h = shellSurface(hard, v3(1, 0.2, 0.1));
+    expect(h.at.x).toBeCloseTo(1);
+    expect(h.normal).toEqual({ x: 1, y: 0, z: 0 });
+    const side = shellSurface(hard, v3(0.1, 1, 0.2));
+    expect(side.at.y).toBeCloseTo(0.5);
+    expect(side.normal).toEqual({ x: 0, y: 1, z: 0 });
+  });
   it("meshes onto the same surface", () => {
-    for (const c of [round, square]) {
+    for (const c of [round, square, boxy]) {
       for (let i = 0; i <= 8; i++) {
         const v = -Math.PI / 2 + (i / 8) * Math.PI;
         const p = shellPoint(c, 0.7, v);

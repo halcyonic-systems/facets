@@ -70,8 +70,12 @@ export interface Scene3D {
 }
 
 export interface SceneOptions {
-  /** The shell dial, 0 round to 1 square. Default 0.6, a capsule-like shell. */
+  /** The profile dial along the axis, 0 round to 1 square. Default 0.6, a capsule-like shell. */
   squareness?: number;
+  /** The cross-section dial, 0 round to 1 square. Default 0, a round section. */
+  crossSquareness?: number;
+  /** A hard-edged box of the same extents, overriding both dials. */
+  box?: boolean;
 }
 
 const GAP = 1.4;
@@ -94,8 +98,13 @@ export function sceneFromCanvasModel(
   const orphans = new Set(facts?.orphan_env_thing_ids ?? []);
   const ports = facts?.ports ?? [];
 
-  const interiorThings = model.things.filter((t) => t.role === "Component" && !authored.has(t.id));
-  const interfaceThings = model.things.filter((t) => t.role === "Component" && authored.has(t.id));
+  // Degenerate guard, as on the 2D canvas: a model whose only component is an
+  // authored interface is the walk's opaque box for the system itself. It is
+  // the centre, not an opening in its own shell.
+  const components = model.things.filter((t) => t.role === "Component");
+  const soleSelf = components.length === 1 && authored.has(components[0].id);
+  const interiorThings = soleSelf ? components : components.filter((t) => !authored.has(t.id));
+  const interfaceThings = soleSelf ? [] : components.filter((t) => authored.has(t.id));
   const envThings = model.things.filter((t) => t.role === "Environment");
 
   // Shell size follows the interior: enough radius for the cross-section, a
@@ -113,6 +122,8 @@ export function sceneFromCanvasModel(
     radius: Math.max(1.6, maxRadial + bodyR + 0.8),
     halfLength: Math.max(1.4, maxAxial + bodyR + 0.9),
     e: exponentFor(opts.squareness ?? 0.6),
+    e2: exponentFor(opts.crossSquareness ?? 0),
+    box: !!opts.box,
   };
 
   const entities: Entity3D[] = interiorThings.map((t, i) => ({
@@ -199,7 +210,8 @@ export function sceneFromCanvasModel(
     });
   });
 
-  const plainPorts = ports.filter((p) => !authored.has(p.component));
+  const onShell = (id: number) => authored.has(id) && !soleSelf;
+  const plainPorts = ports.filter((p) => !onShell(p.component));
   const plainDirs = relaxDirections(
     plainPorts.map((p) => dirFor(p.component, [p.env])),
     Math.min(0.35, 1.2 / Math.sqrt(Math.max(plainPorts.length, 1))),
@@ -207,7 +219,7 @@ export function sceneFromCanvasModel(
   const ports3d: Port3D[] = [];
   ports.forEach((p) => {
     const key = `${p.component}:${p.env}`;
-    if (authored.has(p.component)) {
+    if (onShell(p.component)) {
       const at = interfaceAt.get(p.component) ?? v3();
       ports3d.push({ key, component: p.component, env: p.env, at, normal: norm(at), direction: p.direction, protocol: p.protocol, relationIds: p.relation_ids });
       return;
@@ -228,7 +240,7 @@ export function sceneFromCanvasModel(
       isEnv(r.b) && !isEnv(r.a) ? portByPair.get(`${r.a}:${r.b}`) : undefined;
     // A port owned by an interface IS the interface body, so the path already
     // passes through it; only a plain port adds a stop.
-    if (crossing && !authored.has(crossing.component)) path.push({ ref: "port", key: crossing.key });
+    if (crossing && !onShell(crossing.component)) path.push({ ref: "port", key: crossing.key });
     path.push({ ref: "entity", key: String(r.b) });
     return {
       id: r.id,

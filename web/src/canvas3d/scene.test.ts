@@ -101,9 +101,13 @@ describe("the scene builder", () => {
     expect(sceneFromCanvasModel(model, facts, null, "capsule")).toEqual(scene);
   });
 
-  it("follows the shell dial without moving the interior", () => {
-    const square = sceneFromCanvasModel(model, facts, null, "capsule", { squareness: 1 });
+  it("follows the shell dials and the box toggle without moving the interior", () => {
+    const boxed = sceneFromCanvasModel(model, facts, null, "capsule", { box: true });
+    expect(boxed.shape.box).toBe(true);
+    expect(shellField(boxed.shape, boxed.entities.find((e) => e.id === 2)!.base)).toBeCloseTo(1, 5);
+    const square = sceneFromCanvasModel(model, facts, null, "capsule", { squareness: 1, crossSquareness: 1 });
     expect(square.shape.e).toBeCloseTo(0.15);
+    expect(square.shape.e2).toBeCloseTo(0.15);
     expect(square.entities.find((e) => e.id === 3)!.base).toEqual(byId(3).base);
     expect(shellField(square.shape, square.entities.find((e) => e.id === 2)!.base)).toBeCloseTo(1, 5);
   });
@@ -115,6 +119,41 @@ describe("flow labels", () => {
     expect(flowLabel({ name: "raw water", ample: false, amount: "3", unit: "ML/d" })).toBe("raw water · 3 ML/d");
     expect(flowLabel({ name: "feed", ample: false })).toBe("feed");
     expect(flowLabel({ name: "", ample: false, amount: "2" })).toBe("2");
+  });
+});
+
+describe("the walk's opaque box", () => {
+  it("keeps a sole authored interface at the centre as the system itself, with its ports on the shell", () => {
+    const l0: CanvasModel = {
+      ...model,
+      things: [
+        { id: 1, name: "River", x: 0, y: 100, role: "Environment", env_kind: "Source" },
+        { id: 2, name: "Plant", x: 100, y: 100, role: "Component", interface: true, child_model: { name: "plant", id: "p" } },
+        { id: 5, name: "Town", x: 320, y: 100, role: "Environment", env_kind: "Sink" },
+      ],
+      relations: [
+        { id: 10, a: 1, b: 2, name: "in", is_bond: true, kind: "Matter" },
+        { id: 13, a: 2, b: 5, name: "out", is_bond: true, kind: "Matter" },
+      ],
+    };
+    const f: LensFacts = {
+      ...facts,
+      boundary_thing_ids: [2],
+      environment_thing_ids: [1, 5],
+      orphan_env_thing_ids: [],
+      authored_interface_thing_ids: [2],
+      ports: [
+        { component: 2, env: 1, relation_ids: [10], direction: "Receives", protocol: "in" },
+        { component: 2, env: 5, relation_ids: [13], direction: "Exports", protocol: "out" },
+      ],
+    };
+    const scene = sceneFromCanvasModel(l0, f, null, "capsule");
+    const plant = scene.entities.find((e) => e.id === 2)!;
+    expect(plant.kind).toBe("component");
+    expect(Math.hypot(plant.base.x, plant.base.y)).toBeLessThan(0.5);
+    expect(scene.ports).toHaveLength(2);
+    for (const p of scene.ports) expect(shellField(scene.shape, p.at)).toBeCloseTo(1, 5);
+    expect(scene.flows.find((x) => x.id === 10)!.path.map((s) => s.ref)).toEqual(["entity", "port", "entity"]);
   });
 });
 

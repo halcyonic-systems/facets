@@ -160,7 +160,7 @@ export class SceneAdapter {
 
     if (data.shell !== "none") {
       const geom =
-        data.shell === "capsule"
+        data.shell === "capsule" && !data.shape.box
           ? shellGeometry(data.shape)
           : new THREE.BoxGeometry(data.shape.halfLength * 2, data.shape.radius * 2, data.shape.radius * 2);
       const mat = new THREE.MeshStandardMaterial({

@@ -12,12 +12,17 @@
 
 import { add, cross, len, norm, scale, sub, v3, type Vec3 } from "./vec3";
 
-/** (|x|/L)^(2/e) + (ρ/R)^(2/e) = 1, ρ = √(y²+z²). */
+/** A superellipsoid about the x axis:
+ *  (|x|/L)^(2/e) + ((|y|/R)^(2/e2) + (|z|/R)^(2/e2))^(e2/e) = 1.
+ *  `e` shapes the profile along the axis (1 ellipsoid, 0.15 nearly flat caps),
+ *  `e2` the cross-section (1 round, 0.15 nearly square). `box` overrides both
+ *  with a hard-edged box of the same extents. */
 export interface Shell {
   halfLength: number;
   radius: number;
-  /** Superellipse exponent in (0, 1]: 1 is an ellipsoid, 0.15 is nearly a box. */
   e: number;
+  e2: number;
+  box?: boolean;
 }
 
 export interface SurfacePoint {
@@ -33,34 +38,47 @@ export function exponentFor(squareness: number): number {
   return 1 - 0.85 * s;
 }
 
-/** The implicit function's value at a point: 1 on the surface, less inside. */
+/** The implicit function's value at a point: 1 on the surface, less inside.
+ *  For the box it is the Chebyshev form, max of the scaled coordinates. */
 export function shellField(c: Shell, p: Vec3): number {
+  if (c.box) return Math.max(Math.abs(p.x) / c.halfLength, Math.abs(p.y) / c.radius, Math.abs(p.z) / c.radius);
   const k = 2 / c.e;
-  const rho = Math.hypot(p.y, p.z);
-  return Math.pow(Math.abs(p.x) / c.halfLength, k) + Math.pow(rho / c.radius, k);
+  const k2 = 2 / c.e2;
+  const cross = Math.pow(Math.abs(p.y) / c.radius, k2) + Math.pow(Math.abs(p.z) / c.radius, k2);
+  return Math.pow(Math.abs(p.x) / c.halfLength, k) + Math.pow(cross, c.e2 / c.e);
 }
 
 /** The ray from the origin along `dir` meets the shell here. Closed form:
- *  the field is homogeneous of degree 2/e along a ray. */
+ *  the field is homogeneous of degree 2/e along a ray (degree 1 for the box). */
 export function shellSurface(c: Shell, dir: Vec3): SurfacePoint {
   const d = norm(dir);
   const field = shellField(c, d);
+  if (c.box) {
+    const at = scale(d, 1 / field);
+    const fx = Math.abs(at.x) / c.halfLength, fy = Math.abs(at.y) / c.radius, fz = Math.abs(at.z) / c.radius;
+    const normal =
+      fx >= fy && fx >= fz ? v3(Math.sign(at.x), 0, 0) : fy >= fz ? v3(0, Math.sign(at.y), 0) : v3(0, 0, Math.sign(at.z));
+    return { at, normal };
+  }
   const t = Math.pow(field, -c.e / 2);
   const at = scale(d, t);
   const k = 2 / c.e;
-  const rho = Math.hypot(at.y, at.z);
+  const k2 = 2 / c.e2;
+  const ay = Math.abs(at.y) / c.radius, az = Math.abs(at.z) / c.radius;
+  const cross = Math.pow(ay, k2) + Math.pow(az, k2);
+  const outer = cross === 0 ? 0 : (c.e2 / c.e) * Math.pow(cross, c.e2 / c.e - 1);
   const gx = at.x === 0 ? 0 : (k * Math.pow(Math.abs(at.x) / c.halfLength, k - 1) * Math.sign(at.x)) / c.halfLength;
-  const gr = rho === 0 ? 0 : (k * Math.pow(rho / c.radius, k - 1)) / c.radius;
-  const normal = norm(v3(gx, rho === 0 ? 0 : (gr * at.y) / rho, rho === 0 ? 0 : (gr * at.z) / rho), d);
-  return { at, normal };
+  const gy = ay === 0 ? 0 : (outer * k2 * Math.pow(ay, k2 - 1) * Math.sign(at.y)) / c.radius;
+  const gz = az === 0 ? 0 : (outer * k2 * Math.pow(az, k2 - 1) * Math.sign(at.z)) / c.radius;
+  return { at, normal: norm(v3(gx, gy, gz), d) };
 }
 
 /** A point on the shell by parameters, for meshing: v is latitude from the
  *  -x cap (-π/2) to the +x cap (π/2), u the angle around the axis. */
 export function shellPoint(c: Shell, u: number, v: number): Vec3 {
-  const f = (w: number) => Math.sign(w) * Math.pow(Math.abs(w), c.e);
-  const cv = f(Math.cos(v));
-  return v3(c.halfLength * f(Math.sin(v)), c.radius * cv * Math.cos(u), c.radius * cv * Math.sin(u));
+  const f = (w: number, e: number) => Math.sign(w) * Math.pow(Math.abs(w), e);
+  const cv = f(Math.cos(v), c.e);
+  return v3(c.halfLength * f(Math.sin(v), c.e), c.radius * cv * f(Math.cos(u), c.e2), c.radius * cv * f(Math.sin(u), c.e2));
 }
 
 /** Recenter authored 2D positions into the cross-section and along the axis.

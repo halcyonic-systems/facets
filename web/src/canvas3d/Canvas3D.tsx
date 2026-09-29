@@ -55,6 +55,8 @@ export default function Canvas3D({
   const [failed, setFailed] = useState<string | null>(null);
   const [explode, setExplode] = useState(0);
   const [squareness, setSquareness] = useState(0.6);
+  const [crossSquareness, setCrossSquareness] = useState(0);
+  const [box, setBox] = useState(false);
   const [kinds, setKinds] = useState<Set<Kind> | null>(null);
   const [envIds, setEnvIds] = useState<Set<number> | null>(null);
   const [portKeys, setPortKeys] = useState<Set<string> | null>(null);
@@ -65,8 +67,8 @@ export default function Canvas3D({
 
   const shell = LensRegistry[lens].shell3d;
   const scene: Scene3D = useMemo(
-    () => sceneFromCanvasModel(model, facts, sim, shell, { squareness }),
-    [model, facts, sim, shell, squareness],
+    () => sceneFromCanvasModel(model, facts, sim, shell, { squareness, crossSquareness, box }),
+    [model, facts, sim, shell, squareness, crossSquareness, box],
   );
   const filter: ViewFilter = useMemo(
     () => ({ selected: selectedThingId, kinds, envIds, portKeys }),
@@ -265,18 +267,38 @@ export default function Canvas3D({
           <span className="tabular w-7 text-right">{Math.round(explode * 100)}%</span>
         </label>
         {shell === "capsule" && (
-          <label className="flex items-center gap-1.5" title="The shell, from round to square">
-            <span>Shell</span>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={Math.round(squareness * 100)}
-              onChange={(e) => setSquareness(Number(e.target.value) / 100)}
-              aria-label="Shell shape, round to square"
-              data-testid="shape-3d"
-            />
-          </label>
+          <>
+            <label className="flex items-center gap-1.5" title="The shell's profile along the axis, round to square">
+              <span>Profile</span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(squareness * 100)}
+                onChange={(e) => setSquareness(Number(e.target.value) / 100)}
+                aria-label="Shell profile, round to square"
+                data-testid="shape-3d"
+                disabled={box}
+              />
+            </label>
+            <label className="flex items-center gap-1.5" title="The shell's cross-section, round to square">
+              <span>Section</span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(crossSquareness * 100)}
+                onChange={(e) => setCrossSquareness(Number(e.target.value) / 100)}
+                aria-label="Shell cross-section, round to square"
+                data-testid="section-3d"
+                disabled={box}
+              />
+            </label>
+            <label className="flex items-center gap-1" title="A hard-edged box instead of the dials">
+              <input type="checkbox" checked={box} onChange={(e) => setBox(e.target.checked)} data-testid="box-3d" />
+              <span>box</span>
+            </label>
+          </>
         )}
         <button type="button" className="px-1" style={{ color: "var(--text-secondary)" }} onClick={() => adapterRef.current?.fit()} title="Fit the model (Home)">
           fit
