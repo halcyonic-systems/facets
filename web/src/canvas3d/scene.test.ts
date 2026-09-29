@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CanvasModel, LensFacts } from "../kernel/types";
-import { sceneFromCanvasModel } from "./scene";
+import { flowLabel, sceneFromCanvasModel } from "./scene";
+import { shellField } from "./layout";
 
 // A pump between a river and a tank: two interior components, one authored
 // interface, a source, a sink, and an orphan the kernel flags.
@@ -54,14 +55,9 @@ describe("the scene builder", () => {
   });
 
   it("keeps interior bodies inside the shell and interfaces on it", () => {
-    const cap = scene.capsule;
-    for (const e of scene.entities.filter((x) => x.kind === "component")) {
-      const ax = Math.max(-cap.halfLength, Math.min(cap.halfLength, e.base.x));
-      expect(Math.hypot(e.base.x - ax, e.base.y, e.base.z)).toBeLessThan(cap.radius);
-    }
+    for (const e of scene.entities.filter((x) => x.kind === "component")) expect(shellField(scene.shape, e.base)).toBeLessThan(1);
     const i = byId(2);
-    const ax = Math.max(-cap.halfLength, Math.min(cap.halfLength, i.base.x));
-    expect(Math.hypot(i.base.x - ax, i.base.y, i.base.z)).toBeCloseTo(cap.radius, 5);
+    expect(shellField(scene.shape, i.base)).toBeCloseTo(1, 5);
     expect(i.normal).toBeDefined();
   });
 
@@ -80,9 +76,7 @@ describe("the scene builder", () => {
     const viaInterface = scene.ports.find((p) => p.component === 2)!;
     expect(viaInterface.at).toEqual(byId(2).base);
     const plain = scene.ports.find((p) => p.component === 4)!;
-    const cap = scene.capsule;
-    const ax = Math.max(-cap.halfLength, Math.min(cap.halfLength, plain.at.x));
-    expect(Math.hypot(plain.at.x - ax, plain.at.y, plain.at.z)).toBeCloseTo(cap.radius, 5);
+    expect(shellField(scene.shape, plain.at)).toBeCloseTo(1, 5);
   });
 
   it("routes a crossing through its plain port and not through an interface twice", () => {
@@ -105,6 +99,22 @@ describe("the scene builder", () => {
 
   it("is deterministic", () => {
     expect(sceneFromCanvasModel(model, facts, null, "capsule")).toEqual(scene);
+  });
+
+  it("follows the shell dial without moving the interior", () => {
+    const square = sceneFromCanvasModel(model, facts, null, "capsule", { squareness: 1 });
+    expect(square.shape.e).toBeCloseTo(0.15);
+    expect(square.entities.find((e) => e.id === 3)!.base).toEqual(byId(3).base);
+    expect(shellField(square.shape, square.entities.find((e) => e.id === 2)!.base)).toBeCloseTo(1, 5);
+  });
+});
+
+describe("flow labels", () => {
+  it("say the name and the declared rate, and the word ample in place of any number", () => {
+    expect(flowLabel({ name: "supply", ample: true, amount: "3", unit: "ML/d" })).toBe("supply · ample");
+    expect(flowLabel({ name: "raw water", ample: false, amount: "3", unit: "ML/d" })).toBe("raw water · 3 ML/d");
+    expect(flowLabel({ name: "feed", ample: false })).toBe("feed");
+    expect(flowLabel({ name: "", ample: false, amount: "2" })).toBe("2");
   });
 });
 

@@ -3241,6 +3241,7 @@ function Workspace() {
                           setSelectedRelationId(null);
                         }}
                         onEnterThing={(t) => void enterThingChild(t)}
+                        onOpenFiles={(files) => void importFiles(files)}
                         inert
                       />
                     </Suspense>

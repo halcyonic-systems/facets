@@ -5,15 +5,8 @@
 
 import type { CanvasModel, Kind, LensFacts, PortDirection, ProcessPrimitive } from "../kernel/types";
 import type { SimFrame } from "../canvas/types";
-import {
-  bundleLanes,
-  capsuleSurface,
-  placeBank,
-  placeInterior,
-  relaxDirections,
-  type Capsule,
-} from "./layout";
-import { add, norm, scale, sub, v3, type Vec3 } from "./vec3";
+import { bundleLanes, exponentFor, placeBank, placeInterior, relaxDirections, shellSurface, type Shell } from "./layout";
+import { add, norm, v3, type Vec3 } from "./vec3";
 
 export type ShellStyle = "capsule" | "hull" | "none";
 
@@ -69,20 +62,33 @@ export interface Flow3D {
 
 export interface Scene3D {
   shell: ShellStyle;
-  capsule: Capsule;
+  shape: Shell;
   rootName: string;
   entities: Entity3D[];
   ports: Port3D[];
   flows: Flow3D[];
 }
 
+export interface SceneOptions {
+  /** The shell dial, 0 round to 1 square. Default 0.6, a capsule-like shell. */
+  squareness?: number;
+}
+
 const GAP = 1.4;
+
+/** What a flow says on its label: the name, then the declared rate, or the
+ *  word "ample" in place of any number — availability is not a magnitude. */
+export function flowLabel(f: Pick<Flow3D, "name" | "amount" | "unit" | "ample">): string {
+  const rate = f.ample ? "ample" : f.amount ? `${f.amount}${f.unit ? " " + f.unit : ""}` : "";
+  return [f.name, rate].filter(Boolean).join(" · ");
+}
 
 export function sceneFromCanvasModel(
   model: CanvasModel,
   facts: LensFacts | null,
   sim: SimFrame | null,
   shell: ShellStyle,
+  opts: SceneOptions = {},
 ): Scene3D {
   const authored = new Set(facts?.authored_interface_thing_ids ?? []);
   const orphans = new Set(facts?.orphan_env_thing_ids ?? []);
@@ -93,9 +99,9 @@ export function sceneFromCanvasModel(
   const envThings = model.things.filter((t) => t.role === "Environment");
 
   // Shell size follows the interior: enough radius for the cross-section, a
-  // half-length that keeps the flat caps clear of the outermost body.
+  // half-length that keeps the caps clear of the outermost body.
   const n = interiorThings.length;
-  const bodyR = Math.min(0.55, Math.max(0.18, 1.1 / Math.sqrt(Math.max(n, 1))));
+  const bodyR = Math.min(0.6, Math.max(0.22, 1.3 / Math.sqrt(Math.max(n, 1))));
   const reach = 1.6 + 0.35 * Math.sqrt(n);
   const interior = placeInterior(interiorThings, reach);
   let maxAxial = 0, maxRadial = 0;
@@ -103,9 +109,10 @@ export function sceneFromCanvasModel(
     maxAxial = Math.max(maxAxial, Math.abs(p.x));
     maxRadial = Math.max(maxRadial, Math.hypot(p.y, p.z));
   }
-  const capsule: Capsule = {
+  const shape: Shell = {
     radius: Math.max(1.6, maxRadial + bodyR + 0.8),
-    halfLength: Math.max(0.6, maxAxial + bodyR + 0.4),
+    halfLength: Math.max(1.4, maxAxial + bodyR + 0.9),
+    e: exponentFor(opts.squareness ?? 0.6),
   };
 
   const entities: Entity3D[] = interiorThings.map((t, i) => ({
@@ -135,7 +142,7 @@ export function sceneFromCanvasModel(
   for (const t of envThings) banks[sideOf(t.id, t.env_kind)].push(t);
   const envAt = new Map<number, Vec3>();
   for (const side of [-1, 0, 1] as const) {
-    const placed = placeBank(banks[side].length, side, capsule, GAP);
+    const placed = placeBank(banks[side].length, side, shape, GAP);
     banks[side].forEach((t, i) => {
       envAt.set(t.id, placed[i]);
       entities.push({
@@ -143,7 +150,7 @@ export function sceneFromCanvasModel(
         name: t.name,
         kind: side === -1 ? "source" : side === 1 ? "sink" : "neutral",
         base: placed[i],
-        radius: Math.min(0.5, Math.max(0.16, 1.0 / Math.sqrt(Math.max(banks[side].length, 1)))),
+        radius: Math.min(0.5, Math.max(0.18, 1.0 / Math.sqrt(Math.max(banks[side].length, 1)))),
         orphan: orphans.has(t.id),
         hasChild: false,
         fill: sim?.nodes[t.name]?.frac,
@@ -176,7 +183,7 @@ export function sceneFromCanvasModel(
   );
   const interfaceAt = new Map<number, Vec3>();
   interfaceThings.forEach((t, i) => {
-    const s = capsuleSurface(capsule, relaxedInterfaces[i]);
+    const s = shellSurface(shape, relaxedInterfaces[i]);
     interfaceAt.set(t.id, s.at);
     entities.push({
       id: t.id,
@@ -184,7 +191,7 @@ export function sceneFromCanvasModel(
       kind: "interface",
       base: s.at,
       normal: s.normal,
-      radius: bodyR * 0.75,
+      radius: bodyR * 0.8,
       primitive: t.primitive,
       orphan: false,
       hasChild: !!t.child_model,
@@ -206,7 +213,7 @@ export function sceneFromCanvasModel(
       return;
     }
     const i = plainPorts.indexOf(p);
-    const s = capsuleSurface(capsule, plainDirs[i]);
+    const s = shellSurface(shape, plainDirs[i]);
     ports3d.push({ key, component: p.component, env: p.env, at: s.at, normal: s.normal, direction: p.direction, protocol: p.protocol, relationIds: p.relation_ids });
   });
   const portByPair = new Map(ports3d.map((p) => [p.key, p]));
@@ -242,18 +249,10 @@ export function sceneFromCanvasModel(
 
   return {
     shell,
-    capsule,
+    shape,
     rootName: model.name?.trim() || "System",
     entities,
     ports: ports3d,
     flows,
   };
 }
-
-/** The shell's outward point for a raw direction — what the adapter uses to
- *  anchor a crossing that has no port (facets#384 crossings, stage 3). */
-export function shellPoint(scene: Scene3D, toward: Vec3): Vec3 {
-  return capsuleSurface(scene.capsule, sub(toward, v3())).at;
-}
-
-export { scale as scaleVec };

@@ -1,12 +1,13 @@
 // The one file that imports three. It owns the renderer, camera, orbit,
 // picking, labels and disposal, and turns a Scene3D into meshes. Rendering is
 // on demand: a frame is drawn after input or a state change, never on a free
-// running loop (facets#435 stage 1: no particle motion by default).
+// running loop (facets#435 stage 1: no particle motion).
 
 import * as THREE from "three";
 import type { SceneColors, Rgb } from "./colors";
-import type { Entity3D, Flow3D, Scene3D } from "./scene";
-import { exploded } from "./layout";
+import { flowLabel, type Entity3D, type Flow3D, type Scene3D } from "./scene";
+import { exploded, shellPoint, type Shell } from "./layout";
+import { NO_FILTER, filterActive, litUnder, type ViewFilter } from "./filter";
 import { add, lerp, norm, scale, sub, v3, type Vec3 } from "./vec3";
 
 export interface AdapterEvents {
@@ -18,9 +19,12 @@ const FIT_PAD = 1.25;
 const EXPLODE_REACH = 2.6;
 const LANE_GAP = 0.22;
 const TUBE_R = 0.028;
+const DIM_BODY = 0.12;
+const DIM_FLOW = 0.06;
 
 const toColor = (c: Rgb) => new THREE.Color().setRGB(c.r / 255, c.g / 255, c.b / 255, THREE.SRGBColorSpace);
 const tv = (v: Vec3) => new THREE.Vector3(v.x, v.y, v.z);
+const UP = new THREE.Vector3(0, 1, 0);
 
 interface Body {
   entity: Entity3D;
@@ -32,6 +36,51 @@ interface Wire {
   flow: Flow3D;
   group: THREE.Group;
   material: THREE.MeshStandardMaterial;
+  label: HTMLDivElement;
+  mid: THREE.Vector3;
+}
+
+/** The shell as a lat-long mesh over the superellipsoid of revolution. */
+function shellGeometry(shape: Shell, lat = 28, lon = 48): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const indices: number[] = [];
+  for (let i = 0; i <= lat; i++) {
+    const v = -Math.PI / 2 + (i / lat) * Math.PI;
+    for (let j = 0; j <= lon; j++) {
+      const u = (j / lon) * Math.PI * 2;
+      const p = shellPoint(shape, u, v);
+      positions.push(p.x, p.y, p.z);
+    }
+  }
+  for (let i = 0; i < lat; i++) {
+    for (let j = 0; j < lon; j++) {
+      const a = i * (lon + 1) + j;
+      const b = a + lon + 1;
+      indices.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  g.setIndex(indices);
+  g.computeVertexNormals();
+  return g;
+}
+
+/** Concatenate non-indexed copies of several geometries into one. */
+function mergeGeometries(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const normals: number[] = [];
+  for (const g of parts) {
+    const ng = g.index ? g.toNonIndexed() : g;
+    positions.push(...(ng.getAttribute("position").array as Float32Array));
+    normals.push(...(ng.getAttribute("normal").array as Float32Array));
+    if (ng !== g) ng.dispose();
+    g.dispose();
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  out.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+  return out;
 }
 
 export class SceneAdapter {
@@ -42,13 +91,12 @@ export class SceneAdapter {
   private bodies: Body[] = [];
   private wires: Wire[] = [];
   private portMeshes: THREE.Mesh[] = [];
-  private shellMesh: THREE.Mesh | null = null;
   private labels: HTMLDivElement;
   private ro: ResizeObserver;
   private raf = 0;
   private data: Scene3D | null = null;
   private explode = 0;
-  private selected: number | null = null;
+  private filter: ViewFilter = NO_FILTER;
   private yaw = 0.55;
   private pitch = 0.32;
   private dist = 12;
@@ -105,18 +153,16 @@ export class SceneAdapter {
 
   // ---- public ---------------------------------------------------------------
 
-  setScene(data: Scene3D): void {
+  setScene(data: Scene3D, keepCamera = false): void {
     this.clear();
     this.data = data;
     const c = this.colors;
 
     if (data.shell !== "none") {
-      const cap = data.capsule;
       const geom =
         data.shell === "capsule"
-          ? new THREE.CapsuleGeometry(cap.radius, cap.halfLength * 2, 12, 48)
-          : new THREE.BoxGeometry((cap.halfLength + cap.radius) * 2, cap.radius * 2, cap.radius * 2);
-      if (data.shell === "capsule") geom.rotateZ(Math.PI / 2);
+          ? shellGeometry(data.shape)
+          : new THREE.BoxGeometry(data.shape.halfLength * 2, data.shape.radius * 2, data.shape.radius * 2);
       const mat = new THREE.MeshStandardMaterial({
         color: toColor(c.lensSoft),
         transparent: true,
@@ -127,9 +173,9 @@ export class SceneAdapter {
         depthWrite: false,
         wireframe: data.shell === "hull",
       });
-      this.shellMesh = new THREE.Mesh(geom, mat);
-      this.shellMesh.renderOrder = 2;
-      this.model.add(this.shellMesh);
+      const shellMesh = new THREE.Mesh(geom, mat);
+      shellMesh.renderOrder = 2;
+      this.model.add(shellMesh);
     }
 
     for (const e of data.entities) {
@@ -144,18 +190,17 @@ export class SceneAdapter {
       const mesh = new THREE.Mesh(geom, mat);
       mesh.userData.thingId = e.id;
       this.model.add(mesh);
-      const label = this.makeLabel(e.name, e.kind);
+      const label = this.makeLabel(e.name, e.kind === "interface" ? "interface" : e.kind === "component" ? "component" : "environment");
       this.bodies.push({ entity: e, mesh, label });
     }
 
-    const portGeom = new THREE.SphereGeometry(1, 12, 10);
+    const portGeom = new THREE.TorusGeometry(1, 0.28, 8, 20);
     const authoredIds = new Set(data.entities.filter((e) => e.kind === "interface").map((e) => e.id));
     for (const p of data.ports) {
       if (authoredIds.has(p.component)) continue;
       const mat = new THREE.MeshStandardMaterial({ color: toColor(c.lensAccent), roughness: 0.6 });
       const mesh = new THREE.Mesh(portGeom, mat);
-      const r = Math.max(0.06, data.capsule.radius * 0.045);
-      mesh.scale.setScalar(r);
+      mesh.scale.setScalar(Math.max(0.07, data.shape.radius * 0.05));
       mesh.userData.portKey = p.key;
       this.model.add(mesh);
       this.portMeshes.push(mesh);
@@ -170,11 +215,14 @@ export class SceneAdapter {
       });
       const group = new THREE.Group();
       this.model.add(group);
-      this.wires.push({ flow: f, group, material });
+      const label = this.makeLabel(flowLabel(f), "flow");
+      label.style.visibility = "hidden";
+      this.wires.push({ flow: f, group, material, label, mid: new THREE.Vector3() });
     }
 
     this.layout();
-    this.fit();
+    if (!keepCamera) this.fit();
+    else this.requestRender();
   }
 
   setExplode(t: number): void {
@@ -183,22 +231,24 @@ export class SceneAdapter {
     this.requestRender();
   }
 
-  setSelection(thingId: number | null): void {
-    this.selected = thingId;
+  setFilter(f: ViewFilter): void {
+    this.filter = f;
     this.applyVisibility();
-    this.requestRender();
+    // Labels follow the frame; draw it now so a filter change reads at once
+    // even where animation frames are throttled (a background tab).
+    if (!this.disposed) this.render();
   }
 
   setColors(colors: SceneColors): void {
     this.colors = colors;
-    if (this.data) this.setScene(this.data);
+    if (this.data) this.setScene(this.data, true);
   }
 
   fit(): void {
     if (!this.data) return;
     let far = 0;
     for (const b of this.bodies) far = Math.max(far, b.mesh.position.length() + b.entity.radius);
-    far = Math.max(far, this.data.capsule.halfLength + this.data.capsule.radius);
+    far = Math.max(far, this.data.shape.halfLength, this.data.shape.radius);
     const fov = (this.camera.fov * Math.PI) / 180;
     const aspect = Math.max(0.5, this.camera.aspect);
     this.fitDist = (far * FIT_PAD) / Math.tan(fov / 2) / Math.min(1, aspect);
@@ -234,8 +284,8 @@ export class SceneAdapter {
   }
 
   /** Draw `n` frames synchronously while orbiting and report the mean cost in
-   *  ms. A dev probe for the stage 0 frame budget; rAF-based timing is
-   *  throttled in a background tab, this is not. */
+   *  ms. A dev probe for the frame budget; rAF-based timing is throttled in a
+   *  background tab, this is not. */
   benchmark(n = 60): { msPerFrame: number; drawCalls: number } {
     const yaw = this.yaw;
     const t0 = performance.now();
@@ -262,10 +312,13 @@ export class SceneAdapter {
     this.bodies = [];
     this.wires = [];
     this.portMeshes = [];
-    this.shellMesh = null;
     this.labels.replaceChildren();
   }
 
+  /** Three populations, three form languages: interior bodies are solids
+   *  keyed by primitive; interfaces are hatches, a flat disc with a rim lying
+   *  in the shell; environment things are directional cones (source, sink) or
+   *  an octahedron (neutral). */
   private geometryFor(e: Entity3D): THREE.BufferGeometry {
     const r = e.radius;
     switch (e.kind) {
@@ -275,8 +328,11 @@ export class SceneAdapter {
         return new THREE.ConeGeometry(r * 0.9, r * 1.6, 5).rotateZ(Math.PI / 2);
       case "neutral":
         return new THREE.OctahedronGeometry(r);
-      case "interface":
-        return new THREE.CylinderGeometry(r * 0.9, r * 0.9, r * 0.5, 18);
+      case "interface": {
+        const disc = new THREE.CylinderGeometry(r * 0.95, r * 0.95, r * 0.22, 24);
+        const rim = new THREE.TorusGeometry(r * 0.95, r * 0.14, 8, 28).rotateX(Math.PI / 2);
+        return mergeGeometries([disc, rim]);
+      }
       default:
         break;
     }
@@ -303,13 +359,12 @@ export class SceneAdapter {
     return c.muted;
   }
 
-  private makeLabel(text: string, kind: Entity3D["kind"]): HTMLDivElement {
+  private makeLabel(text: string, kind: "component" | "interface" | "environment" | "flow"): HTMLDivElement {
     const el = this.labels.ownerDocument.createElement("div");
     el.textContent = text;
-    el.className = "text-[11px] leading-tight";
+    el.className = kind === "flow" ? "text-[10px] leading-tight" : "text-[11px] leading-tight";
     Object.assign(el.style, {
       position: "absolute",
-      transform: "translate(-50%, 0)",
       whiteSpace: "nowrap",
       padding: "1px 5px",
       borderRadius: "var(--radius-sm)",
@@ -334,20 +389,21 @@ export class SceneAdapter {
     for (const b of this.bodies) {
       const p = this.positionOf(b.entity);
       b.mesh.position.copy(tv(p));
-      if (b.entity.normal) {
-        b.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tv(b.entity.normal));
-      }
+      if (b.entity.normal) b.mesh.quaternion.setFromUnitVectors(UP, tv(b.entity.normal));
       at.set(String(b.entity.id), p);
     }
     const authored = new Set(this.bodies.filter((b) => b.entity.kind === "interface").map((b) => b.entity.id));
     for (const p of this.data.ports) {
-      const key = p.key;
       const pos = authored.has(p.component)
         ? at.get(String(p.component)) ?? p.at
         : add(p.at, scale(p.normal, this.explode * EXPLODE_REACH * 0.35));
-      at.set("port:" + key, pos);
+      at.set("port:" + p.key, pos);
     }
-    for (const m of this.portMeshes) m.position.copy(tv(at.get("port:" + m.userData.portKey) ?? v3()));
+    for (const m of this.portMeshes) {
+      const p = this.data.ports.find((x) => x.key === m.userData.portKey);
+      m.position.copy(tv(at.get("port:" + m.userData.portKey) ?? v3()));
+      if (p) m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tv(p.normal));
+    }
     for (const w of this.wires) this.rebuildWire(w, at);
     this.applyVisibility();
   }
@@ -381,40 +437,36 @@ export class SceneAdapter {
     const curve = new THREE.CatmullRomCurve3(points, w.flow.selfLoop, "centripetal", 0.6);
     const tube = new THREE.TubeGeometry(curve, 40, TUBE_R * (w.flow.ample ? 0.6 : 1), 6, w.flow.selfLoop);
     w.group.add(new THREE.Mesh(tube, w.material));
+    w.mid.copy(curve.getPointAt(0.5));
     if (!w.flow.selfLoop) {
       const tip = curve.getPointAt(0.62);
       const tan = curve.getTangentAt(0.62);
-      const cone = new THREE.ConeGeometry(TUBE_R * 3.2, TUBE_R * 7, 8);
-      const head = new THREE.Mesh(cone, w.material);
+      const head = new THREE.Mesh(new THREE.ConeGeometry(TUBE_R * 3.2, TUBE_R * 7, 8), w.material);
       head.position.copy(tip);
-      head.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tan.normalize());
+      head.quaternion.setFromUnitVectors(UP, tan.normalize());
       w.group.add(head);
     }
   }
 
   private applyVisibility(): void {
     if (!this.data) return;
-    const sel = this.selected;
-    const keep = new Set<number>();
-    if (sel !== null) {
-      keep.add(sel);
-      for (const f of this.data.flows) {
-        if (f.a === sel) keep.add(f.b);
-        if (f.b === sel) keep.add(f.a);
-      }
-    }
+    const lit = litUnder(this.data, this.filter);
+    const sel = this.filter.selected;
+    const showFlowLabels = filterActive(this.filter);
     for (const b of this.bodies) {
-      const on = sel === null || keep.has(b.entity.id);
+      const on = lit.entities.has(b.entity.id);
       const mat = b.mesh.material as THREE.MeshStandardMaterial;
-      mat.opacity = (b.entity.orphan ? 0.35 : 1) * (on ? 1 : 0.12);
+      mat.opacity = (b.entity.orphan ? 0.35 : 1) * (on ? 1 : DIM_BODY);
       mat.emissive = toColor(b.entity.id === sel ? this.colors.accent : { r: 0, g: 0, b: 0 });
       mat.emissiveIntensity = b.entity.id === sel ? 0.35 : 0;
       b.label.style.opacity = on ? "1" : "0.25";
     }
     for (const w of this.wires) {
-      const on = sel === null || w.flow.a === sel || w.flow.b === sel;
-      w.material.opacity = (w.flow.bond ? 0.95 : 0.35) * (on ? 1 : 0.08);
+      const on = lit.flows.has(w.flow.id);
+      w.material.opacity = (w.flow.bond ? 0.95 : 0.35) * (on ? 1 : DIM_FLOW);
+      w.label.dataset.show = showFlowLabels && on ? "1" : "";
     }
+    this.requestRender();
   }
 
   // ---- camera and frame -----------------------------------------------------
@@ -453,35 +505,42 @@ export class SceneAdapter {
     const h = this.host.clientHeight;
     const v = new THREE.Vector3();
     const placed: { x: number; y: number; w: number; h: number }[] = [];
-    const order = [...this.bodies].sort((a, b) => {
-      const da = a.mesh.position.distanceTo(this.camera.position);
-      const db = b.mesh.position.distanceTo(this.camera.position);
-      return da - db;
-    });
-    for (const b of order) {
-      v.copy(b.mesh.position);
-      v.y += b.entity.radius * 1.1;
+    const place = (label: HTMLDivElement, world: THREE.Vector3, lift: number): void => {
+      v.copy(world);
+      v.y += lift;
       v.project(this.camera);
       const x = (v.x * 0.5 + 0.5) * w;
       const y = (-v.y * 0.5 + 0.5) * h;
-      const bw = b.label.offsetWidth;
-      const bh = b.label.offsetHeight;
+      const bw = label.offsetWidth;
+      const bh = label.offsetHeight;
       const box = { x: x - bw / 2, y: y - bh, w: bw, h: bh };
       const clash = placed.some((p) => box.x < p.x + p.w && box.x + box.w > p.x && box.y < p.y + p.h && box.y + box.h > p.y);
       if (clash || v.z > 1) {
-        b.label.style.visibility = "hidden";
-        continue;
+        label.style.visibility = "hidden";
+        return;
       }
       placed.push(box);
-      b.label.style.visibility = "visible";
-      b.label.style.transform = `translate(${Math.round(x - bw / 2)}px, ${Math.round(y - bh)}px)`;
+      label.style.visibility = "visible";
+      label.style.transform = `translate(${Math.round(x - bw / 2)}px, ${Math.round(y - bh)}px)`;
+    };
+    const order = [...this.bodies].sort(
+      (a, b) => a.mesh.position.distanceTo(this.camera.position) - b.mesh.position.distanceTo(this.camera.position),
+    );
+    for (const b of order) place(b.label, b.mesh.position, b.entity.radius * 1.1);
+    for (const wire of this.wires) {
+      if (wire.label.dataset.show) place(wire.label, wire.mid, 0.08);
+      else wire.label.style.visibility = "hidden";
     }
   }
 
   // ---- input ----------------------------------------------------------------
 
   private onPointerDown = (e: PointerEvent) => {
-    this.renderer.domElement.setPointerCapture(e.pointerId);
+    try {
+      this.renderer.domElement.setPointerCapture(e.pointerId);
+    } catch {
+      // a synthetic pointer has no capture; orbit still works
+    }
     this.renderer.domElement.focus();
     this.drag = { x: e.clientX, y: e.clientY, moved: false };
   };
@@ -503,8 +562,7 @@ export class SceneAdapter {
     const d = this.drag;
     this.drag = null;
     if (!d || d.moved) return;
-    const hit = this.pick(e.clientX, e.clientY);
-    this.events.onSelect(hit);
+    this.events.onSelect(this.pick(e.clientX, e.clientY));
   };
 
   private onDouble = (e: MouseEvent) => {
