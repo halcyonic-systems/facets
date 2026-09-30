@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ready,
   runForced,
@@ -31,6 +31,11 @@ import type {
 import { DEMOS, isRunnable, type Demo } from "./demos";
 import type { CorpusEntry } from "./corpus";
 import Canvas, { type RideOrder } from "./canvas/Canvas";
+import { view3dEnabled } from "./canvas3d/flag";
+
+// facets#435: the 3D view is a lazy sibling of <Canvas>; three stays out of the
+// main chunk until the beta pill is pressed.
+const Canvas3D = lazy(() => import("./canvas3d/Canvas3D"));
 import type { Embed } from "./canvas/embed";
 import { rebaseOut, type View } from "./canvas/frameRebase";
 import { frameChain } from "./canvas/frameChain";
@@ -351,6 +356,12 @@ function Workspace() {
   const [readoutsOpen, setReadoutsOpen] = useState(false);
   useEffect(() => {
     if (workMode !== "structure") setReadoutsOpen(false);
+  }, [workMode]);
+  // facets#435: the 3D view is a way of looking at Model, not a place on the
+  // Model/Data axis, so it is its own toggle and folds when Model is left.
+  const [view3d, setView3d] = useState(false);
+  useEffect(() => {
+    if (workMode !== "structure") setView3d(false);
   }, [workMode]);
   // #304 M2 slice 1: a CSV attached to the OPEN model from the Data tab —
   // the document acquires data without a demo bundle. Cleared wherever the
@@ -2674,6 +2685,28 @@ function Workspace() {
           </button>
         ))}
       </div>
+      {view3dEnabled() && workMode === "structure" && (
+        <div
+          className="flex items-center gap-0.5 p-0.5"
+          style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
+        >
+          <button
+            onClick={() => setView3d((v) => !v)}
+            aria-pressed={view3d}
+            className="px-2 py-0.5 text-xs font-body transition-colors"
+            style={{
+              borderRadius: "var(--radius-pill)",
+              background: view3d ? "var(--lens-accent)" : "transparent",
+              color: view3d ? "var(--text-on-accent)" : "var(--text-secondary)",
+              transition: "var(--transition-base)",
+            }}
+            title="3D exploded view (beta) — a way of looking at the model, read-only"
+            data-testid="view-3d-toggle"
+          >
+            3D · beta
+          </button>
+        </div>
+      )}
     </div>
   ) : undefined;
 
@@ -2924,7 +2957,7 @@ function Workspace() {
               as "is structure", never "is not data": with three modes on the
               axis, a negation would have left the palette standing over the
               run. */}
-          {canvasModel && frame.palette && workMode === "structure" && (
+          {canvasModel && frame.palette && workMode === "structure" && !view3d && (
             <ToolRail
               lens={canvasModel.lens}
               armed={armed}
@@ -3189,6 +3222,30 @@ function Workspace() {
                           : undefined
                       }
                     >
+                    {view3d ? (
+                    <Suspense
+                      fallback={
+                        <div className="flex h-full w-full items-center justify-center text-xs" style={{ color: "var(--text-muted)" }}>
+                          Loading the 3D view…
+                        </div>
+                      }
+                    >
+                      <Canvas3D
+                        model={canvasModel}
+                        lens={canvasModel.lens}
+                        facts={facts}
+                        sim={simFrame}
+                        selectedThingId={selectedThingId}
+                        onSelectThing={(id) => {
+                          setSelectedThingId(id);
+                          setSelectedRelationId(null);
+                        }}
+                        onEnterThing={(t) => void enterThingChild(t)}
+                        onOpenFiles={(files) => void importFiles(files)}
+                        inert
+                      />
+                    </Suspense>
+                    ) : (
                     <Canvas
                       groundingOverlay={groundingOverlay}
                       model={canvasModel}
@@ -3271,6 +3328,7 @@ function Workspace() {
                       // model can never impersonate its only component.
                       placeName={canvasModel.name?.trim() || currentLabel}
                     />
+                    )}
                       {registerActive && (
                         <span
                           className="pointer-events-none absolute bottom-1 right-1.5 text-[9px] uppercase tracking-wide"
@@ -3483,7 +3541,7 @@ function Workspace() {
                     {/* The stage is the canvas here by construction (this is
                         the Structure branch), but the guard says which mode it
                         means rather than which one it is not. */}
-                    {workMode === "structure" && (
+                    {workMode === "structure" && !view3d && (
                       <div
                         className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-mono"
                         style={{ color: "var(--text-muted)" }}

@@ -340,4 +340,4 @@ function PortView({
   );
 }
 
-export const Mobus = { NodeView, EdgeView, PortView };
+export const Mobus = { NodeView, EdgeView, PortView, shell3d: "capsule" as const };
