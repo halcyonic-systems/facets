@@ -20,20 +20,20 @@ beforeEach(() => {
 });
 
 describe("the 3D beta door", () => {
-  it("is closed by default", () => {
-    expect(view3dEnabled()).toBe(false);
-  });
-  it("opens on ?beta=3d and stays open across a reload", () => {
-    expect(promoteFromSearch("?beta=3d")).toBe(true);
-    resetView3dForTest();
+  it("is open by default", () => {
     expect(view3dEnabled()).toBe(true);
   });
-  it("closes on ?beta=0 and ignores other values", () => {
-    setView3dEnabled(true);
-    expect(promoteFromSearch("?beta=2d")).toBe(true);
+  it("closes on ?beta=0 and stays closed across a reload", () => {
     expect(promoteFromSearch("?beta=0")).toBe(false);
     resetView3dForTest();
     expect(view3dEnabled()).toBe(false);
+  });
+  it("reopens on ?beta=3d and ignores other values", () => {
+    setView3dEnabled(false);
+    expect(promoteFromSearch("?beta=2d")).toBe(false);
+    expect(promoteFromSearch("?beta=3d")).toBe(true);
+    resetView3dForTest();
+    expect(view3dEnabled()).toBe(true);
   });
   it("tells subscribers", () => {
     const seen: boolean[] = [];

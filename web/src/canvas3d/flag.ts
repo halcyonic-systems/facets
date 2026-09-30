@@ -1,20 +1,20 @@
-// The 3D view's beta door (facets#435). One localStorage key, an in-memory
-// cache, a subscription — the same shape as draftEffort.ts. The URL promotes
-// the key once (`?beta=3d` opens it, `?beta=0` closes it) and the key persists,
-// so the door is a one-time act rather than a per-visit query string.
+// The 3D view's beta door (facets#435). Open by default since 2026-09-30: the
+// pill shows for everyone, and `?beta=0` closes it for a browser that would
+// rather not see it (`?beta=3d` reopens). One localStorage key, an in-memory
+// cache, a subscription — the same shape as draftEffort.ts.
 
 const KEY = "facets.beta.view3d";
 
-let current = false;
+let current = true;
 let loaded = false;
 const listeners = new Set<(on: boolean) => void>();
 
 function load(): void {
   loaded = true;
   try {
-    current = localStorage.getItem(KEY) === "1";
+    current = localStorage.getItem(KEY) !== "0";
   } catch {
-    // storage unavailable — the door stays closed for this session
+    // storage unavailable — the door stays open for this session
   }
 }
 
@@ -27,8 +27,8 @@ export function setView3dEnabled(on: boolean): void {
   loaded = true;
   current = on;
   try {
-    if (on) localStorage.setItem(KEY, "1");
-    else localStorage.removeItem(KEY);
+    if (on) localStorage.removeItem(KEY);
+    else localStorage.setItem(KEY, "0");
   } catch {
     // as above
   }
@@ -51,7 +51,7 @@ export function promoteFromSearch(search: string): boolean {
 
 /** Reset the module's cache — tests only. */
 export function resetView3dForTest(): void {
-  current = false;
+  current = true;
   loaded = false;
   listeners.clear();
 }
