@@ -1,0 +1,1950 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Facets · Exploded WorldModel</title>
+<style>
+:root {
+  --paper: #f7f7f2;
+  --white: #fffefa;
+  --ink: #334155;
+  --muted: #74818d;
+  --line: #dde3df;
+  --teal: #15857d;
+  --indigo: #6258b4;
+  --message: #718096;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+body { font: 14px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); background: var(--paper); }
+button, input, select { font: inherit; }
+button, select { color: inherit; }
+button { cursor: pointer; }
+button:focus-visible, select:focus-visible, input:focus-visible, canvas:focus-visible {
+  outline: 2px solid var(--teal); outline-offset: 3px;
+}
+button { -webkit-tap-highlight-color: transparent; }
+button:disabled { opacity: .5; cursor: default; }
+[hidden] { display: none !important; }
+.app { width: 100%; height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+.topbar {
+  min-height: 76px; flex: 0 0 auto; padding: 13px 24px; border-bottom: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center; gap: 16px; background: var(--white);
+}
+.brand { min-width: 0; display: flex; align-items: center; gap: 12px; }
+.mark {
+  flex-shrink: 0; width: 35px; height: 35px; display: grid; place-items: center;
+  border: 1px solid #b8d0c9; border-radius: 10px; color: var(--teal); font-size: 21px; font-weight: 650;
+  background: #edf4ef;
+}
+.brand-text { min-width: 0; }
+.brand-title { font-size: 15px; font-weight: 650; letter-spacing: -.3px; }
+.brand-title span { color: var(--muted); font-weight: 400; }
+.subtitle { color: var(--muted); font-size: 11px; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.btn {
+  border: 1px solid var(--line); border-radius: 8px; background: var(--white);
+  padding: 8px 12px; font-size: 12px; white-space: nowrap;
+}
+.btn:hover { background: #edf1ec; }
+.btn.primary { background: var(--teal); border-color: var(--teal); color: white; }
+.btn.primary:hover { background: #106e68; }
+.workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 322px; position: relative; overflow: hidden; }
+.stage { min-height: 0; min-width: 0; position: relative; overflow: hidden; }
+.tools { position: absolute; top: 15px; left: 18px; right: 18px; height: 32px; display: flex; align-items: stretch; gap: 7px; z-index: 4; }
+.tools .btn { font-size: 11px; padding: 5px 9px; }
+.context { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.entity-search { min-width: 0; flex: 1; max-width: 260px; width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 4px 7px; background: var(--white); font-size: 11px; }
+#viewport { position: absolute; inset: 57px 0 107px; overflow: hidden; }
+#viewport canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+#viewport canvas.dragging { cursor: grabbing; }
+#labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.entity-label {
+  position: absolute; left: 0; top: 0; max-width: 177px; border: 1px solid #e1e6df;
+  border-radius: 5px; padding: 3px 7px; font-size: 10px; line-height: 16px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; background: rgba(255,254,250,.91); color: var(--ink);
+  pointer-events: auto; box-shadow: 0 1px 3px #33415508; will-change: transform;
+}
+.entity-label.port { font-size: 9px; color: #697981; background: rgba(255,254,250,.79); }
+.entity-label.selected { color: #106e68; background: #eff8f3; border-color: var(--teal); z-index: 2; }
+.entity-label:hover { border-color: var(--teal); }
+.explode-card {
+  position: absolute; bottom: 13px; left: 50%; transform: translateX(-50%); width: calc(100% - 36px); max-width: 470px;
+  padding: 10px 14px 8px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,254,250,.96);
+  box-shadow: 0 5px 20px #33415506; z-index: 4;
+}
+.explode-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 11px; }
+.explode-head label { font-weight: 650; }
+.explode-head output { font-variant-numeric: tabular-nums; color: var(--teal); }
+#explode { display: block; width: 100%; margin: 5px 0 6px; height: 17px; accent-color: var(--teal); cursor: ew-resize; }
+.legend { display: flex; align-items: center; gap: 15px; font-size: 10px; color: #657381; min-width: 0; }
+.legend-item { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.material { background: var(--teal); }
+.energy { background: var(--indigo); }
+.message { background: var(--message); }
+.motion { margin-left: auto; border: 0; padding: 0 3px; min-width: 26px; min-height: 20px; background: transparent; font-size: 11px; color: var(--muted); }
+.panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: var(--white); overflow: hidden; z-index: 5; }
+.panel-top { flex-shrink: 0; min-height: 51px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 19px; border-bottom: 1px solid var(--line); }
+.panel-top-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--muted); }
+.panel-actions { display: flex; gap: 8px; align-items: center; }
+.text-btn { border: 0; background: transparent; padding: 4px 0; color: var(--teal); font-size: 11px; }
+.sheet-toggle { display: none; border: 1px solid var(--line); background: transparent; border-radius: 7px; width: 31px; height: 29px; }
+.panel-body { overflow-y: auto; overscroll-behavior: contain; min-height: 0; padding: 23px 21px 28px; overflow-wrap: anywhere; }
+.eyebrow { font-size: 10px; color: var(--teal); letter-spacing: 1.1px; text-transform: uppercase; margin-bottom: 7px; }
+h1, h2, h3, p { margin: 0; }
+.panel-body h1 { font-size: 23px; line-height: 1.2; letter-spacing: -.65px; font-weight: 600; margin-bottom: 12px; }
+.panel-body h2 { font-size: 12px; font-weight: 650; margin: 23px 0 10px; }
+.description { font-size: 12px; line-height: 1.75; color: #697885; }
+.identity { margin-top: 13px; display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { padding: 3px 7px; background: #f0f3ee; border-radius: 5px; font-size: 10px; color: #677580; }
+.chip.id { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; max-width: 100%; overflow-wrap: anywhere; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 20px 0; }
+.stat { padding: 10px 6px; border: 1px solid var(--line); border-radius: 8px; text-align: center; }
+.stat b { display: block; color: #465766; font-size: 20px; font-weight: 500; }
+.stat span { color: var(--muted); font-size: 9px; }
+.guide { margin: 0; padding: 0; list-style: none; font-size: 12px; color: #697885; }
+.guide li { margin: 0 0 11px; padding-left: 15px; position: relative; }
+.guide li:before { content: "·"; position: absolute; left: 1px; color: var(--teal); font-weight: 700; }
+.note { color: var(--muted); font-size: 10px; line-height: 1.65; margin-top: 15px; }
+.notice-note { padding: 10px; border: 1px solid var(--line); border-radius: 7px; font-size: 11px; color: #677580; margin-top: 15px; }
+.metadata { display: grid; grid-template-columns: 60px minmax(0,1fr); gap: 6px 10px; margin-top: 18px; font-size: 11px; }
+.metadata dt { color: var(--muted); }
+.metadata dd { margin: 0; }
+.flow-card { padding: 12px 0; border-bottom: 1px solid #e9ede6; }
+.flow-title { display: flex; align-items: flex-start; gap: 7px; font-size: 12px; font-weight: 550; }
+.flow-title .dot { margin-top: 5px; }
+.flow-route { font-size: 10px; color: var(--muted); margin: 5px 0; line-height: 1.6; }
+.flow-amount { font-size: 12px; font-variant-numeric: tabular-nums; font-weight: 550; }
+.flow-meta { font-size: 10px; color: var(--muted); margin-top: 3px; }
+.flow-card details { font-size: 11px; color: #6b7985; margin-top: 7px; }
+.flow-card summary { cursor: pointer; font-size: 10px; }
+.flow-card details p { margin-top: 5px; }
+.milieu { padding: 9px 0; font-size: 11px; border-bottom: 1px solid #e9ede6; }
+.milieu strong { display: block; font-weight: 550; }
+.milieu p { color: var(--muted); font-size: 10px; margin-top: 4px; }
+#notice { position: absolute; top: 58px; left: 18px; right: 18px; z-index: 8; max-width: 540px; padding: 11px 36px 11px 13px; border: 1px solid #b8cfc8; border-radius: 8px; background: #f3f8f0; font-size: 12px; box-shadow: 0 6px 22px #3341550b; overflow-wrap: anywhere; }
+#notice button { position: absolute; top: 5px; right: 7px; border: 0; padding: 4px; background: transparent; color: var(--muted); }
+#dropzone { position: fixed; inset: 10px; z-index: 30; display: grid; place-items: center; pointer-events: none; border: 2px dashed var(--teal); border-radius: 16px; background: #f3f8f2ed; }
+.drop-content { padding: 25px; text-align: center; }
+.drop-content strong { font-size: 23px; font-weight: 500; color: var(--teal); }
+.drop-content p { color: var(--muted); margin-top: 8px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+@media (max-width: 760px) {
+  .topbar { padding: 11px 13px; min-height: 64px; gap: 8px; }
+  .brand { gap: 8px; }
+  .mark { width: 29px; height: 29px; font-size: 18px; border-radius: 8px; }
+  .brand-title { font-size: 13px; }
+  .brand-title span { display: none; }
+  .subtitle { font-size: 9px; max-width: 38vw; }
+  .actions { gap: 5px; }
+  .actions .btn { padding: 7px 9px; font-size: 11px; }
+  .workspace { display: flex; flex-direction: column; }
+  .stage { flex: 1; }
+  .panel { flex: 0 0 51px; height: 51px; border-left: 0; border-top: 1px solid var(--line); border-radius: 15px 15px 0 0; box-shadow: 0 -4px 20px #33415504; }
+  .workspace.sheet-open .panel { flex-basis: min(35dvh, 320px); height: min(35dvh, 320px); }
+  .panel-top { padding: 9px 16px; min-height: 50px; }
+  .sheet-toggle { display: inline-block; }
+  .panel-body { padding: 17px 18px 25px; }
+  .workspace:not(.sheet-open) .panel-body { display: none; }
+  .panel-body h1 { font-size: 21px; }
+  .tools { left: 12px; right: 12px; top: 12px; gap: 5px; }
+  .tools .btn { padding: 5px 7px; }
+  .context { max-width: 100px; }
+  #viewport { inset: 51px 0 103px; }
+  .entity-label { max-width: 131px; font-size: 9px; padding: 3px 5px; }
+  .entity-label.port { max-width: 124px; font-size: 8px; }
+  .explode-card { width: calc(100% - 24px); bottom: 11px; padding: 9px 12px 7px; }
+  .legend { gap: 11px; font-size: 9px; }
+  #notice { left: 12px; right: 12px; top: 51px; font-size: 11px; }
+  .stats { margin: 15px 0; }
+}
+@media (max-height: 520px) and (min-width: 761px) {
+  .topbar { min-height: 57px; padding-top: 7px; padding-bottom: 7px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">F</div>
+      <div class="brand-text">
+        <div class="brand-title">Facets <span>/ WorldModel</span></div>
+        <div class="subtitle" id="file-caption">An exploded systems perspective</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="demo-button" title="Load the embedded example">Demo</button>
+      <button class="btn primary" id="open-button">Open JSON</button>
+      <input type="file" id="file-input" accept=".json,application/json" hidden>
+    </div>
+  </header>
+  <main class="workspace" id="workspace">
+    <section class="stage" aria-label="Interactive three-dimensional WorldModel">
+      <div class="tools">
+        <button class="btn context" id="environment-button" title="Inspect the environment">Environment</button>
+        <select class="entity-search" id="entity-search" aria-label="Find and isolate an entity">
+          <option value="">Find an entity…</option>
+        </select>
+        <button class="btn" id="hidden-button" hidden title="Toggle entities marked hidden in the model">Hidden</button>
+        <button class="btn" id="fit-button" title="Fit the model to the viewport (Home)">Fit</button>
+      </div>
+      <div id="viewport">
+        <div id="labels" aria-label="Entity labels"></div>
+      </div>
+      <div id="notice" role="status" aria-live="polite">
+        <span id="notice-text">Loading the 3D engine…</span>
+        <button id="dismiss-notice" aria-label="Dismiss notification">×</button>
+      </div>
+      <div class="explode-card">
+        <div class="explode-head">
+          <label for="explode">Exploded view</label>
+          <output id="explode-value" for="explode">0%</output>
+        </div>
+        <input id="explode" type="range" min="0" max="1" step="0.01" value="0" aria-label="Explode entities away from the system centre">
+        <div class="legend" aria-label="Substance colours">
+          <span class="legend-item"><i class="dot material"></i>Material</span>
+          <span class="legend-item"><i class="dot energy"></i>Energy</span>
+          <span class="legend-item"><i class="dot message"></i>Message</span>
+          <span class="legend-item" id="other-legend" hidden><i class="dot" style="background:#9a9e99"></i>Other</span>
+          <button class="motion" id="motion-button" aria-label="Pause flow particles" title="Pause flow particles">Ⅱ</button>
+        </div>
+      </div>
+    </section>
+    <aside class="panel" aria-label="Model and entity details">
+      <div class="panel-top">
+        <span class="panel-top-title" id="panel-caption">Model overview</span>
+        <div class="panel-actions">
+          <button class="text-btn" id="clear-button" hidden>Show all</button>
+          <button class="sheet-toggle" id="sheet-toggle" aria-expanded="false" aria-controls="panel-body" aria-label="Expand details">⌃</button>
+        </div>
+      </div>
+      <div class="panel-body" id="panel-body">
+        <h1>A system, pulled apart.</h1>
+        <p class="description">Open a WorldModel JSON file, drop one anywhere, or explore the embedded example.</p>
+      </div>
+    </aside>
+  </main>
+</div>
+<div id="dropzone" hidden>
+  <div class="drop-content"><strong>Drop a WorldModel</strong><p>Your JSON stays on this device.</p></div>
+</div>
+<div class="sr-only" id="load-status" aria-live="polite"></div>
+<noscript>This viewer requires JavaScript and access to cdnjs for Three.js.</noscript>
+
+<script id="default-model" type="application/json">
+{
+  "version": 1,
+  "mode": "Operational",
+  "environment": {
+    "info": {
+      "id": "E-1",
+      "level": -1,
+      "name": "Environment",
+      "description": ""
+    },
+    "sources": [
+      {
+        "info": {
+          "id": "Src-1.0",
+          "level": -1,
+          "name": "Nucleus",
+          "description": "The transcript's origin: the compartment that supplies mRNA, opaque here except as the source of the coding stream."
+        },
+        "type": "Source",
+        "transform": {
+          "translation": [
+            295.05505,
+            -0.33407593
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": true
+      },
+      {
+        "info": {
+          "id": "Src-1.2",
+          "level": -1,
+          "name": "Cytosol",
+          "description": "The surrounding cytosol: reservoir of free amino acids, ATP and GTP, and the sink for hydrolysis products. Internally opaque — it supplies and receives."
+        },
+        "type": "Source",
+        "transform": {
+          "translation": [
+            295.05502,
+            640.3341
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": false
+      }
+    ],
+    "sinks": [
+      {
+        "info": {
+          "id": "Snk-1.1",
+          "level": -1,
+          "name": "Chaperone",
+          "description": "The trigger-factor-class chaperone docked at the exit port, receiving each nascent polypeptide as it emerges — where the model's output lands."
+        },
+        "type": "Sink",
+        "transform": {
+          "translation": [
+            849.8899,
+            320.0
+          ],
+          "rotation": 0.0
+        },
+        "equivalence": "",
+        "model": "",
+        "is_same_as_id": null,
+        "authored_direction": true
+      }
+    ],
+    "milieu": [
+      {
+        "name": "Mg2+ and ionic milieu",
+        "value": 1.0,
+        "unit": "mM",
+        "description": "The coordination shell: Mg2+-phosphate contacts the folded rRNA, including the PTC's catalytic core, cannot hold its structure without. Diffuse by nature — no channel exists, and none is invented."
+      }
+    ]
+  },
+  "systems": [
+    {
+      "info": {
+        "id": "S0",
+        "level": 0,
+        "name": "Translation Apparatus",
+        "description": ""
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "E-1",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0",
+          "level": 0,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [
+          {
+            "info": {
+              "id": "I0.0",
+              "level": 0,
+              "name": "mRNA Entry Channel",
+              "description": ""
+            },
+            "protocol": "single-stranded mRNA, threaded codon by codon",
+            "type": "Import",
+            "exports_to": [],
+            "receives_from": [
+              "Src-1.0"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.1",
+              "level": 0,
+              "name": "Aminoacylation Site",
+              "description": ""
+            },
+            "protocol": "cognate amino acid + ATP at one catalytic pocket",
+            "type": "Import",
+            "exports_to": [],
+            "receives_from": [
+              "Src-1.2",
+              "Src-1.2"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.2",
+              "level": 0,
+              "name": "GTPase-Associated Center",
+              "description": ""
+            },
+            "protocol": "GTP-loaded elongation factors dock; GDP + Pi release",
+            "type": "Hybrid",
+            "exports_to": [
+              "Src-1.2"
+            ],
+            "receives_from": [
+              "Src-1.2"
+            ],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.3",
+              "level": 0,
+              "name": "Exit Tunnel",
+              "description": ""
+            },
+            "protocol": "nascent polypeptide, N-terminus first",
+            "type": "Export",
+            "exports_to": [
+              "Snk-1.1"
+            ],
+            "receives_from": [],
+            "angle": null
+          }
+        ],
+        "parent_interface": null
+      },
+      "radius": 34.0,
+      "transform": null,
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": ""
+    },
+    {
+      "info": {
+        "id": "C0.0",
+        "level": 1,
+        "name": "Decoding Site",
+        "description": "The decoding center on the small subunit, where each codon is read against the anticodon of an incoming charged tRNA — selection of the right carrier, not catalysis."
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.0",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.0"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          538.14343,
+          479.74774
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Sensing"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.1",
+        "level": 1,
+        "name": "Peptidyl Transferase Center",
+        "description": "The catalytic heart of the large subunit, all rRNA: forges each peptide bond between the growing chain and the newly accommodated amino acid."
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.1",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": null
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          421.85654,
+          479.74774
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Combining"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.2",
+        "level": 1,
+        "name": "Translocase",
+        "description": "The ratcheting step: GTP-powered translocation advances mRNA and tRNAs by exactly one codon, moving the whole machine forward."
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.2",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.3"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          332.7757,
+          405.0
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Propelling"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.3",
+        "level": 1,
+        "name": "Aminoacyl-tRNA Synthetase",
+        "description": "The recharging enzyme: matches each spent tRNA with its cognate amino acid and charges it at ATP's expense — the move that closes the carrier cycle."
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.3",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": "I0.1"
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          312.5827,
+          290.47977
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Combining"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.4",
+        "level": 1,
+        "name": "tRNA Pool",
+        "description": "The circulating stock of charged tRNAs — the cycle's memory between one elongation step and the next. Starts full at 100 and drains at the elongation rate."
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.4",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": null
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          370.72614,
+          189.77243
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Buffering",
+        "cognitive_params": {
+          "release_rate": 20.0
+        },
+        "initial_state": {
+          "storage": 100.0
+        },
+        "stock_unit": "tRNA"
+      }
+    }
+  ],
+  "interactions": [
+    {
+      "info": {
+        "id": "F0",
+        "level": 0,
+        "name": "mRNA transcript",
+        "description": "Steady-state transcript supply: codons arriving at the entry channel at the elongation rate."
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.0",
+      "source_interface": null,
+      "sink": "C0.0",
+      "sink_interface": "I0.0",
+      "amount": "20",
+      "unit": "codon/s",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F2",
+        "level": 0,
+        "name": "charged tRNA",
+        "description": "Charged tRNAs leaving the pool to be read at the decoding site — the cycle's working leg."
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.4",
+      "source_interface": null,
+      "sink": "C0.0",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "tRNA/s",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F3",
+        "level": 0,
+        "name": "deacylated tRNA",
+        "description": "The spent carrier, stripped of its amino acid, passed on for recharging."
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.3",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "tRNA/s",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F4",
+        "level": 0,
+        "name": "recharged tRNA",
+        "description": "Recharged tRNA returned to the pool — the leg that closes the loop."
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.3",
+      "source_interface": null,
+      "sink": "C0.4",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "tRNA/s",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F5",
+        "level": 0,
+        "name": "free amino acid",
+        "description": "Free amino acids from the cytosol, co-binding at the aminoacylation pocket."
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.2",
+      "source_interface": null,
+      "sink": "C0.3",
+      "sink_interface": "I0.1",
+      "amount": "20",
+      "unit": "aa/s",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F6",
+        "level": 0,
+        "name": "ATP",
+        "description": "ATP co-bound at the same pocket — the energy that pays for charging."
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.2",
+      "source_interface": null,
+      "sink": "C0.3",
+      "sink_interface": "I0.1",
+      "amount": "20",
+      "unit": "ATP/s",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F9",
+        "level": 0,
+        "name": "GTP",
+        "description": "GTP-loaded elongation factors docking at the factor-binding hub."
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "Src-1.2",
+      "source_interface": null,
+      "sink": "C0.2",
+      "sink_interface": "I0.2",
+      "amount": "40",
+      "unit": "GTP/s",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F11",
+        "level": 0,
+        "name": "accommodated amino acid",
+        "description": "The selected, accommodated amino acid passed to the catalytic center."
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.1",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "aa/s",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F12",
+        "level": 0,
+        "name": "elongated chain",
+        "description": "The chain, one residue longer, handed forward for ratcheting."
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.2",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "aa/s",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F14",
+        "level": 0,
+        "name": "nascent polypeptide",
+        "description": "The emerging nascent chain, N-terminus first, delivered to the waiting chaperone."
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.2",
+      "source_interface": "I0.3",
+      "sink": "Snk-1.1",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "aa",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F16",
+        "level": 0,
+        "name": "GDP and inorganic phosphate",
+        "description": "GDP and phosphate returned to the cytosol through the same docking site."
+      },
+      "substance": {
+        "sub_type": "",
+        "type": "Material"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.2",
+      "source_interface": "I0.2",
+      "sink": "Src-1.2",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "GDP/s",
+      "parameters": []
+    }
+  ],
+  "hidden_entities": [],
+  "time_unit": "second"
+}
+</script>
+
+<!-- Pinned UMD/global build. No modules, fetch(), imports, or local server needed. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const $ = id => document.getElementById(id);
+  const arr = v => Array.isArray(v) ? v : [];
+  const obj = v => v && typeof v === "object" && !Array.isArray(v) ? v : {};
+  const objects = v => arr(v).filter(x => x && typeof x === "object" && !Array.isArray(x));
+  const str = (v, fallback = "") => v === null || v === undefined ? fallback :
+    typeof v === "object" ? fallback : String(v);
+  const id = v => v === null || v === undefined ? null :
+    (typeof v === "string" || typeof v === "number") ? String(v) : null;
+  const info = v => obj(obj(v).info);
+  const number = v => v !== null && v !== undefined && v !== "" && Number.isFinite(Number(v)) ? Number(v) : null;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const name = (v, fallback) => str(info(v).name).trim() || fallback;
+  const make = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+
+  let noticeTimer;
+  function notify(message, persistent) {
+    clearTimeout(noticeTimer);
+    $("notice-text").textContent = message;
+    $("notice").hidden = false;
+    $("load-status").textContent = message;
+    if (!persistent) noticeTimer = setTimeout(() => { $("notice").hidden = true; }, 6500);
+  }
+  $("dismiss-notice").onclick = () => { $("notice").hidden = true; };
+
+  if (!window.THREE) {
+    notify("Three.js could not load. This file opens locally, but its pinned 3D library requires a connection to cdnjs.cloudflare.com. Reconnect and reload.", true);
+    return;
+  }
+
+  const T = window.THREE;
+  const viewport = $("viewport");
+  let renderer;
+  try {
+    renderer = new T.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+  } catch (error) {
+    notify("WebGL is unavailable. Enable hardware acceleration or try a WebGL-capable browser.", true);
+    return;
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0xf7f7f2);
+  renderer.outputEncoding = T.sRGBEncoding;
+  viewport.insertBefore(renderer.domElement, $("labels"));
+  const canvas = renderer.domElement;
+  canvas.tabIndex = 0;
+  canvas.setAttribute("aria-label", "3D system. Drag to orbit, scroll or pinch to zoom, click an entity to isolate it. Arrow keys orbit; plus and minus zoom; Home fits; Escape restores.");
+  canvas.addEventListener("webglcontextlost", event => {
+    event.preventDefault();
+    notify("The graphics context was lost. Reload this file to restart the viewer.", true);
+  });
+
+  const scene = new T.Scene();
+  const camera = new T.PerspectiveCamera(39, 1, .05, 600);
+  scene.add(new T.HemisphereLight(0xffffff, 0xb1b9ac, 1.05));
+  const key = new T.DirectionalLight(0xffffff, .75);
+  key.position.set(-5, 9, 12); scene.add(key);
+  const fill = new T.DirectionalLight(0xe8edf8, .32);
+  fill.position.set(7, 3, -5); scene.add(fill);
+
+  const ground = new T.Mesh(new T.PlaneGeometry(350, 350), new T.MeshLambertMaterial({ color: 0xf0f0e8 }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -9;
+  scene.add(ground);
+  const grid = new T.GridHelper(100, 50, 0xcbd3c7, 0xdce1d5);
+  grid.position.y = -8.99;
+  grid.material.transparent = true;
+  grid.material.opacity = .17;
+  grid.material.depthWrite = false;
+  scene.add(grid);
+
+  const dotCanvas = document.createElement("canvas");
+  dotCanvas.width = dotCanvas.height = 32;
+  const ctx = dotCanvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath(); ctx.arc(16, 16, 13, 0, Math.PI * 2); ctx.fill();
+  const dotTexture = new T.CanvasTexture(dotCanvas);
+
+  const R = 4.5;
+  const GOLD = Math.PI * (3 - Math.sqrt(5));
+  const COLORS = { Material: 0x15857d, Energy: 0x6258b4, Message: 0x718096, Other: 0x9a9e99 };
+  const kindNames = { environment: "Environment", root: "System of interest", component: "Component system", source: "Source", sink: "Sink", port: "Boundary interface" };
+  let model = null, root = null, environment = null, modelGroup = null;
+  let records = [], byId = new Map(), systems = [], ports = [], flows = [], pickMeshes = [];
+  let selection = null, neighbors = new Set(), hiddenIds = new Set(), showHidden = false;
+  let omitted = 0, missingPorts = 0, duplicates = 0, syntheticRoot = false;
+  let exploded = 0, layoutDirty = false, labelDirty = true;
+  let yaw = .16, pitch = .19, distance = 30, fitDistance = 30;
+  let paused = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let flowTime = 0, lastFrame = performance.now(), lastLabels = 0, width = 1, height = 1;
+  const smallScreen = window.matchMedia("(max-width: 760px)");
+
+  function substance(raw) {
+    const sub = raw.substance;
+    const value = typeof sub === "string" ? sub : str(obj(sub).type);
+    const lower = value.toLowerCase();
+    return lower === "material" ? "Material" : lower === "energy" ? "Energy" : lower === "message" ? "Message" : "Other";
+  }
+  function translation(raw) {
+    const t = obj(raw.transform).translation;
+    const x = number(Array.isArray(t) ? t[0] : obj(t).x);
+    const y = number(Array.isArray(t) ? t[1] : obj(t).y);
+    return x === null || y === null ? null : [x, y];
+  }
+  function hidden(r) {
+    return !showHidden && (hiddenIds.has(r.id) ||
+      (r.boundaryId && hiddenIds.has(r.boundaryId)) ||
+      (r.kind === "port" && r.owner && (hiddenIds.has(r.owner.id) || hiddenIds.has(r.owner.boundaryId))));
+  }
+  function addRecord(raw, kind, owner, fallbackLevel) {
+    let key = id(info(raw).id);
+    if (key === null || key === "") {
+      key = "__viewer_missing_" + records.length;
+      while (byId.has(key) || reservedIds.has(key)) key += "_";
+    }
+    if (byId.has(key)) {
+      duplicates++;
+      return byId.get(key);
+    }
+    const r = {
+      id: key, raw: raw, kind: kind, owner: owner,
+      name: name(raw, kindNames[kind] + (kind === "environment" || kind === "root" ? "" : " " + (records.length + 1))),
+      description: str(info(raw).description),
+      level: number(info(raw).level) === null ? fallbackLevel : number(info(raw).level),
+      base: new T.Vector3(), position: new T.Vector3(), radius: .45,
+      mesh: null, label: null, rings: [], interactions: [], outside: false,
+      boundaryId: id(info(obj(raw.boundary)).id)
+    };
+    records.push(r); byId.set(key, r);
+    return r;
+  }
+
+  let reservedIds = new Set();
+  function reserve(raw) {
+    const key = id(info(raw).id);
+    if (key !== null) reservedIds.add(key);
+  }
+
+  function clearScene() {
+    if (modelGroup) {
+      scene.remove(modelGroup);
+      const geometries = new Set(), materials = new Set();
+      modelGroup.traverse(o => {
+        if (o.geometry) geometries.add(o.geometry);
+        if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => materials.add(m));
+      });
+      geometries.forEach(g => g.dispose());
+      materials.forEach(m => m.dispose());
+    }
+    $("labels").replaceChildren();
+    modelGroup = new T.Group(); scene.add(modelGroup);
+    records = []; byId = new Map(); systems = []; ports = []; flows = []; pickMeshes = [];
+    selection = null; neighbors.clear();
+  }
+
+  function loadModel(data, filename) {
+    if (!data || typeof data !== "object" || Array.isArray(data) ||
+      !("environment" in data || "systems" in data || "interactions" in data)) {
+      throw new Error("Expected a WorldModel object with environment, systems, and/or interactions.");
+    }
+
+    const rawEnvironment = obj(data.environment);
+    const rawSystems = objects(data.systems);
+    const rawFlows = objects(data.interactions);
+    const environmentId = id(info(rawEnvironment).id);
+    const matchesEnvironment = s => environmentId !== null && id(s.parent) === environmentId;
+    let rawRoot = rawSystems.find(s => matchesEnvironment(s) && number(info(s).level) === 0) ||
+      rawSystems.find(s => number(info(s).level) === 0) ||
+      rawSystems.find(matchesEnvironment) || rawSystems[0];
+    syntheticRoot = !rawRoot;
+    if (!rawRoot) rawRoot = { info: { name: "System of interest", level: 0 }, boundary: {} };
+
+    reservedIds = new Set();
+    reserve(rawEnvironment);
+    [...objects(rawEnvironment.sources), ...objects(rawEnvironment.sinks)].forEach(reserve);
+    rawSystems.forEach(s => {
+      reserve(s); reserve(obj(s.boundary));
+      [...objects(s.sources), ...objects(s.sinks), ...objects(obj(s.boundary).interfaces)].forEach(reserve);
+    });
+    clearScene();
+    model = data;
+    hiddenIds = new Set(arr(data.hidden_entities).map(id).filter(v => v !== null));
+    showHidden = false; omitted = 0; missingPorts = 0; duplicates = 0;
+    environment = addRecord(rawEnvironment, "environment", null, -1);
+    environment.radius = 0;
+    root = addRecord(rawRoot, "root", environment, 0);
+    root.radius = R;
+    systems.push(root);
+
+    const rawById = new Map(rawSystems.map(s => [id(info(s).id), s]));
+    function levelOf(raw, visited = new Set()) {
+      const explicit = number(info(raw).level);
+      if (explicit !== null) return explicit;
+      if (raw === rawRoot) return 0;
+      if (visited.has(raw) || visited.size > 100) return 1;
+      visited.add(raw);
+      const parent = rawById.get(id(raw.parent));
+      return parent ? levelOf(parent, visited) + 1 : 1;
+    }
+    rawSystems.forEach(raw => {
+      if (raw !== rawRoot) {
+        const r = addRecord(raw, "component", root, levelOf(raw));
+        if (!systems.includes(r)) systems.push(r);
+      }
+    });
+    systems.forEach(s => {
+      if (s !== root) s.owner = byId.get(id(s.raw.parent)) || root;
+      if (s.boundaryId && !byId.has(s.boundaryId)) byId.set(s.boundaryId, s);
+    });
+
+    function addExternals(rawOwner, owner, outside) {
+      [["sources", "source"], ["sinks", "sink"]].forEach(([field, kind]) => {
+        objects(rawOwner[field]).forEach(raw => {
+          const r = addRecord(raw, kind, owner, outside ? -1 : owner.level + 1);
+          r.outside = outside;
+        });
+      });
+    }
+    addExternals(rawEnvironment, environment, true);
+    systems.forEach(s => addExternals(s.raw, s, false));
+    systems.forEach(s => {
+      objects(obj(s.raw.boundary).interfaces).forEach(raw => {
+        const r = addRecord(raw, "port", s, s.level);
+        if (r.kind === "port" && !ports.includes(r)) ports.push(r);
+      });
+    });
+
+    layoutEntities();
+    rawFlows.forEach((raw, i) => {
+      const source = byId.get(id(raw.source));
+      const sink = byId.get(id(raw.sink));
+      const sourcePortId = id(raw.source_interface), sinkPortId = id(raw.sink_interface);
+      const sourcePort = byId.get(sourcePortId), sinkPort = byId.get(sinkPortId);
+      const sp = sourcePort && sourcePort.kind === "port" ? sourcePort : null;
+      const tp = sinkPort && sinkPort.kind === "port" ? sinkPort : null;
+      const missingPort = (sourcePortId !== null && !sp) || (sinkPortId !== null && !tp);
+      if (missingPort) missingPorts++;
+      const drawable = !!(source && sink && source.kind !== "environment" && sink.kind !== "environment");
+      if (!drawable) omitted++;
+      let path = [source, sp, tp, sink].filter(Boolean);
+      // A system boundary endpoint is its explicit port, not the empty centre of its shell.
+      if (source === root && sp && sp.owner === root) path.shift();
+      if (sink === root && tp && tp.owner === root) path.pop();
+      path = path.filter((r, index) => index === 0 || r !== path[index - 1]);
+      if (path.length === 1) path.push(path[0]);
+
+      const members = new Set([source, sink, sp, tp].filter(Boolean));
+      [sp, tp, source, sink].forEach(r => { if (r && r.kind === "port" && r.owner) members.add(r.owner); });
+      if ((source && source.outside) || (sink && sink.outside)) members.add(environment);
+      const f = {
+        raw, index: i, name: name(raw, "Interaction " + (i + 1)), type: substance(raw),
+        source, sink, sp, tp, path, members, drawable, missingPort, samples: null,
+        visual: null, dots: null, arrow: null, lane: 0, group: null
+      };
+      flows.push(f);
+      members.forEach(r => r.interactions.push(f));
+    });
+
+    layoutPorts();
+    records.forEach((r, i) => { if (r.kind !== "environment") createEntity(r, i); });
+    const bundles = new Map();
+    flows.filter(f => f.drawable).forEach(f => {
+      const pair = [f.source.id, f.sink.id].sort();
+      const key = JSON.stringify(pair);
+      if (!bundles.has(key)) bundles.set(key, []);
+      bundles.get(key).push(f);
+    });
+    bundles.forEach(bundle => bundle.forEach((f, i) => { f.lane = i - (bundle.length - 1) / 2; }));
+    flows.filter(f => f.drawable).forEach(createFlow);
+
+    exploded = 0; $("explode").value = "0"; $("explode-value").textContent = "0%";
+    updatePositions();
+    yaw = .16; pitch = .19;
+    updateVisibility();
+    rebuildSearch();
+    $("file-caption").textContent = filename;
+    $("file-caption").title = filename;
+    $("environment-button").textContent = environment.name;
+    $("environment-button").title = "Inspect " + environment.name + " · level " + environment.level;
+    $("other-legend").hidden = !flows.some(f => f.type === "Other");
+    updateHiddenButton();
+    $("workspace").classList.remove("sheet-open");
+    syncSheetButton();
+    renderPanel();
+    resize(true);
+    layoutDirty = false;
+    notify("Loaded " + root.name + " · " + (systems.length - 1) + " components · " + flows.length + " interactions." +
+      (omitted ? " " + omitted + " interaction(s) cannot be drawn; see overview." : ""), false);
+  }
+
+  function layoutEntities() {
+    const interior = records.filter(r => r !== root && r.kind !== "environment" && r.kind !== "port" && !r.outside);
+    const located = interior.map(r => translation(r.raw)).filter(Boolean);
+    let cx = 0, cy = 0, scale = 1;
+    if (located.length) {
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      located.forEach(t => { minX = Math.min(minX, t[0]); maxX = Math.max(maxX, t[0]); minY = Math.min(minY, t[1]); maxY = Math.max(maxY, t[1]); });
+      cx = minX / 2 + maxX / 2; cy = minY / 2 + maxY / 2;
+      let extent = 0;
+      located.forEach(t => { extent = Math.max(extent, Math.hypot(t[0] - cx, t[1] - cy)); });
+      scale = extent > .000001 && Number.isFinite(extent) ? R * .64 / extent : 0;
+    }
+    const n = interior.length;
+    const radius = clamp(2 / Math.sqrt(Math.max(n, 1)), .065, .52);
+    const occupied = new Map();
+    interior.forEach((r, i) => {
+      r.radius = radius * (r.kind === "component" ? 1 : .8);
+      const t = translation(r.raw);
+      if (t && scale > 0) {
+        r.base.set((t[0] - cx) * scale, -(t[1] - cy) * scale, Math.sin(i * GOLD) * .32);
+      } else {
+        const angle = n <= 12 ? i / Math.max(n, 1) * Math.PI * 2 + .4 : i * GOLD;
+        const rr = n === 1 ? .9 : n <= 12 ? R * .57 : R * .66 * Math.sqrt((i + .5) / n);
+        r.base.set(Math.cos(angle) * rr, Math.sin(angle) * rr, Math.sin(i * 1.7) * .36);
+      }
+      // Coincident authored positions are separated without relying on ID syntax.
+      const key = r.base.x.toFixed(4) + "," + r.base.y.toFixed(4);
+      const overlap = occupied.get(key) || 0;
+      occupied.set(key, overlap + 1);
+      if (overlap) {
+        r.base.x += Math.cos(overlap * GOLD) * radius * Math.sqrt(overlap);
+        r.base.y += Math.sin(overlap * GOLD) * radius * Math.sqrt(overlap);
+        r.base.z += radius * overlap * .25;
+      }
+      if (r.base.length() > R * .75) r.base.setLength(R * .75);
+      if (r.base.length() < .1) r.base.z = .3;
+    });
+
+    ["source", "sink"].forEach(kind => {
+      const bank = records.filter(r => r.outside && r.kind === kind);
+      const n = bank.length, side = kind === "source" ? -1 : 1, outer = R * 1.64;
+      bank.forEach((r, i) => {
+        r.radius = clamp(2.1 / Math.sqrt(Math.max(n, 1)), .065, .48);
+        let y = 0, z = 0;
+        if (n <= 5) {
+          y = n === 1 ? .25 : (1 - 2 * i / (n - 1)) * R * .66;
+          z = Math.sin(i * 2.1) * .45;
+        } else {
+          const rr = R * .91 * Math.sqrt((i + .5) / n);
+          y = Math.cos(i * GOLD) * rr;
+          z = Math.sin(i * GOLD) * rr;
+        }
+        const x = side * Math.sqrt(Math.max(1, outer * outer - y * y - z * z));
+        r.base.set(x, y, z);
+      });
+    });
+  }
+
+  function layoutPorts() {
+    systems.forEach(owner => {
+      const bank = ports.filter(p => p.owner === owner);
+      const directions = [];
+      bank.forEach((p, i) => {
+        const targets = new Set();
+        [...arr(p.raw.receives_from), ...arr(p.raw.exports_to)].forEach(key => {
+          const r = byId.get(id(key)); if (r && r !== owner && r.kind !== "port") targets.add(r);
+        });
+        p.interactions.forEach(f => {
+          if (f.sp === p && f.sink && f.sink !== owner) targets.add(f.sink);
+          if (f.tp === p && f.source && f.source !== owner) targets.add(f.source);
+          if (f.source === p && f.sink) targets.add(f.sink);
+          if (f.sink === p && f.source) targets.add(f.source);
+        });
+        let candidates = [...targets].filter(r => r.kind !== "environment" && r.kind !== "port");
+        if (owner === root && candidates.some(r => r.outside)) candidates = candidates.filter(r => r.outside);
+        const direction = new T.Vector3();
+        candidates.forEach(r => {
+          const v = r.base.clone().sub(owner.base);
+          if (v.lengthSq() > .00001) direction.add(v.normalize());
+        });
+        if (direction.lengthSq() < .00001) {
+          const angle = number(p.raw.angle);
+          if (angle !== null) direction.set(Math.cos(angle), -Math.sin(angle), 0);
+          else {
+            const y = bank.length === 1 ? 0 : 1 - 2 * (i + .5) / bank.length;
+            const rr = Math.sqrt(1 - y * y);
+            direction.set(Math.cos(i * GOLD) * rr, y, Math.sin(i * GOLD) * rr);
+          }
+        }
+        directions.push(direction.normalize());
+      });
+      // Spread ports that share the same external counterpart; keep them on the surface.
+      const threshold = Math.min(.24, 1.2 / Math.sqrt(Math.max(bank.length, 1)));
+      for (let pass = 0; pass < 18; pass++) {
+        for (let i = 0; i < directions.length; i++) {
+          for (let j = 0; j < i; j++) {
+            const a = directions[i], b = directions[j], delta = a.clone().sub(b);
+            const d = delta.length();
+            if (d < threshold) {
+              if (d < .0001) {
+                delta.crossVectors(a, new T.Vector3(0, 0, 1));
+                if (delta.lengthSq() < .001) delta.set(1, 0, 0);
+              }
+              delta.normalize().multiplyScalar((threshold - d) * .3);
+              a.add(delta).normalize(); b.sub(delta).normalize();
+            }
+          }
+        }
+      }
+      bank.forEach((p, i) => {
+        p.normal = directions[i];
+        const surface = owner === root ? R : owner.radius * 1.07;
+        p.base.copy(owner.base).addScaledVector(p.normal, surface);
+        p.radius = owner === root ? clamp(.8 / Math.sqrt(Math.max(bank.length, 1)), .035, .15) :
+          clamp(owner.radius * .26 / Math.sqrt(Math.max(bank.length / 5, 1)), .018, .12);
+      });
+    });
+  }
+
+  function createEntity(r, index) {
+    let geometry, color;
+    if (r === root) {
+      geometry = new T.SphereGeometry(R, 64, 40);
+      const material = new T.MeshPhongMaterial({
+        color: 0x91b4ad, transparent: true, opacity: .12, shininess: 16, side: T.FrontSide, depthWrite: false
+      });
+      r.mesh = new T.Mesh(geometry, material); r.mesh.renderOrder = 3;
+      for (let axis = 0; axis < 3; axis++) {
+        const points = [];
+        for (let i = 0; i <= 128; i++) {
+          const a = i / 128 * Math.PI * 2, x = Math.cos(a) * R, y = Math.sin(a) * R;
+          points.push(axis === 0 ? new T.Vector3(x, y, 0) : axis === 1 ? new T.Vector3(x, 0, y) : new T.Vector3(0, x, y));
+        }
+        const ring = new T.Line(new T.BufferGeometry().setFromPoints(points), new T.LineBasicMaterial({
+          color: 0x7e9f98, transparent: true, opacity: .2, depthWrite: false
+        }));
+        ring.renderOrder = 4;
+        modelGroup.add(ring); r.rings.push(ring);
+      }
+    } else {
+      if (r.kind === "port") {
+        geometry = new T.CylinderGeometry(r.radius, r.radius, r.radius * .85, 16);
+        const type = str(r.raw.type).toLowerCase();
+        color = type === "import" ? 0x218d80 : type === "export" ? 0x7164b7 : 0x718895;
+      } else if (r.kind === "source") {
+        geometry = new T.IcosahedronGeometry(r.radius, 1); color = 0x85b6a3;
+      } else if (r.kind === "sink") {
+        geometry = new T.BoxGeometry(r.radius * 1.4, r.radius * 1.4, r.radius * 1.4); color = 0xa6a2c7;
+      } else {
+        const size = r.radius;
+        switch (index % 5) {
+          case 0: geometry = new T.DodecahedronGeometry(size, 0); break;
+          case 1: geometry = new T.BoxGeometry(size * 1.4, size * 1.4, size * 1.4); break;
+          case 2: geometry = new T.OctahedronGeometry(size * 1.13, 0); break;
+          case 3: geometry = new T.CylinderGeometry(size * .77, size * .77, size * 1.5, 6); break;
+          default: geometry = new T.IcosahedronGeometry(size, 1);
+        }
+        color = [0x86b8aa, 0xa49bc5, 0x8cabae, 0x719d91, 0xaab8c5][index % 5];
+      }
+      const material = new T.MeshStandardMaterial({
+        color, roughness: .78, metalness: 0, transparent: true, opacity: 1, depthWrite: true
+      });
+      r.mesh = new T.Mesh(geometry, material);
+      if (r.kind === "port") r.mesh.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), r.normal);
+      else r.mesh.rotation.set(.1 * (index % 3), .27 * index, .07 * (index % 2));
+      pickMeshes.push(r.mesh);
+    }
+    r.mesh.userData.entity = r;
+    modelGroup.add(r.mesh);
+    const label = make("button", "entity-label" + (r.kind === "port" ? " port" : ""), r.name);
+    label.type = "button";
+    label.title = r.name + " · " + kindNames[r.kind] + " · level " + r.level;
+    label.setAttribute("aria-label", "Isolate " + r.name);
+    label.style.visibility = "hidden";
+    label.onclick = () => selectEntity(r);
+    $("labels").appendChild(label);
+    r.label = label;
+  }
+
+  function createFlow(f) {
+    const color = COLORS[f.type];
+    const group = new T.Group(); f.group = group; modelGroup.add(group);
+    f.useTube = flows.length <= 220;
+    const mat = f.useTube ? new T.MeshBasicMaterial({ color, transparent: true, opacity: .63, depthWrite: false }) :
+      new T.LineBasicMaterial({ color, transparent: true, opacity: .65, depthWrite: false });
+    f.visual = f.useTube ? new T.Mesh(new T.BufferGeometry(), mat) : new T.Line(new T.BufferGeometry(), mat);
+    group.add(f.visual);
+    const particleGeometry = new T.BufferGeometry();
+    particleGeometry.setAttribute("position", new T.BufferAttribute(new Float32Array(9), 3));
+    f.dots = new T.Points(particleGeometry, new T.PointsMaterial({
+      color, size: .105, map: dotTexture, alphaTest: .2, transparent: true, opacity: 1, depthWrite: false, sizeAttenuation: true
+    }));
+    f.dots.frustumCulled = false;
+    f.dots.renderOrder = 2;
+    group.add(f.dots);
+    f.arrow = new T.Mesh(new T.ConeGeometry(.056, .17, 6), new T.MeshBasicMaterial({
+      color, transparent: true, opacity: .85, depthWrite: false
+    }));
+    group.add(f.arrow);
+  }
+
+  function updateFlow(f) {
+    if (!f.drawable) return;
+    let anchors = f.path.map(r => r.position.clone());
+    if (anchors.length < 2) return;
+    const first = f.path[0], last = f.path[f.path.length - 1];
+    if (anchors.length === 2 && anchors[0].distanceToSquared(anchors[1]) < .000001) {
+      const p = anchors[0], rr = Math.max(.6, first.radius * 2.3);
+      anchors = [
+        p.clone().add(new T.Vector3(first.radius * .65, 0, 0)),
+        p.clone().add(new T.Vector3(rr, rr * .3, .3)),
+        p.clone().add(new T.Vector3(rr * .7, rr * 1.45, .55)),
+        p.clone().add(new T.Vector3(-rr * .7, rr * 1.2, .25)),
+        p.clone().add(new T.Vector3(-first.radius * .65, 0, 0))
+      ];
+    } else {
+      const trim = (r, point, toward) => {
+        if (r.kind === "port") return;
+        const delta = toward.clone().sub(point), length = delta.length();
+        if (length > .0001) {
+          const amount = r === root ? R : Math.min(r.radius * .7, length * .3);
+          point.addScaledVector(delta.normalize(), amount);
+        }
+      };
+      trim(first, anchors[0], anchors[1]);
+      trim(last, anchors[anchors.length - 1], anchors[anchors.length - 2]);
+      const expanded = [];
+      for (let i = 0; i < anchors.length - 1; i++) {
+        const a = anchors[i], b = anchors[i + 1], delta = b.clone().sub(a);
+        expanded.push(a);
+        if (delta.lengthSq() > .00001) {
+          const side = new T.Vector3().crossVectors(delta, new T.Vector3(0, 0, 1));
+          if (side.lengthSq() < .00001) side.set(1, 0, 0);
+          side.normalize();
+          const canonical = f.source.id <= f.sink.id ? 1 : -1;
+          const midpoint = a.clone().lerp(b, .5);
+          midpoint.addScaledVector(side, (.17 + f.lane * .23) * canonical);
+          midpoint.z += Math.min(.65, delta.length() * .09) + Math.abs(f.lane) * .055;
+          expanded.push(midpoint);
+        }
+      }
+      expanded.push(anchors[anchors.length - 1]);
+      anchors = expanded;
+    }
+    anchors = anchors.filter((p, i) => i === 0 || p.distanceToSquared(anchors[i - 1]) > .0000001);
+    if (anchors.length < 2) anchors.push(anchors[0].clone().add(new T.Vector3(.01, .01, 0)));
+    const curve = new T.CatmullRomCurve3(anchors, false, "centripetal");
+    curve.arcLengthDivisions = 160;
+    const segments = f.useTube ? 72 : 48;
+    const geometry = f.useTube ? new T.TubeGeometry(curve, segments, .019, 5, false) :
+      new T.BufferGeometry().setFromPoints(curve.getSpacedPoints(segments));
+    f.visual.geometry.dispose(); f.visual.geometry = geometry;
+    f.samples = curve.getSpacedPoints(100);
+    const arrowT = .61;
+    f.arrow.position.copy(curve.getPointAt(arrowT));
+    const tangent = curve.getTangentAt(arrowT);
+    if (tangent.lengthSq() > 0) f.arrow.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), tangent.normalize());
+  }
+
+  function updatePositions() {
+    records.forEach(r => {
+      r.position.copy(r.base);
+      if (r !== root && r.kind !== "environment" && r.base.lengthSq() > .000001) {
+        r.position.addScaledVector(r.base.clone().normalize(), exploded * 3.4);
+      }
+      if (r.mesh) r.mesh.position.copy(r.position);
+    });
+    flows.forEach(updateFlow);
+    labelDirty = true;
+  }
+
+  function updateVisibility() {
+    neighbors = new Set();
+    if (selection) selection.interactions.forEach(f => f.members.forEach(r => neighbors.add(r)));
+    records.forEach(r => {
+      const visible = !hidden(r);
+      if (r.mesh) {
+        r.mesh.visible = visible;
+        if (r === root) {
+          r.mesh.material.opacity = (selection === r ? .21 : selection ? .035 : .12) * (1 - exploded * .88);
+          r.rings.forEach(line => {
+            line.visible = visible;
+            line.material.opacity = (selection && selection !== r ? .06 : .23) * (1 - exploded * .84);
+          });
+        } else {
+          r.mesh.material.opacity = !selection || selection === r ? 1 : .13;
+          r.mesh.material.depthWrite = !selection || selection === r;
+          r.mesh.renderOrder = selection === r ? 2 : 0;
+        }
+      }
+      if (r.label) r.label.classList.toggle("selected", selection === r);
+    });
+    flows.forEach(f => {
+      if (!f.group) return;
+      f.group.visible = !hiddenIds.has(id(info(f.raw).id)) || showHidden;
+      if (f.path.some(hidden)) f.group.visible = false;
+      const related = !selection || f.members.has(selection);
+      f.visual.material.opacity = related ? .66 : .045;
+      f.dots.material.opacity = related ? 1 : .07;
+      f.arrow.material.opacity = related ? .9 : .065;
+    });
+    labelDirty = true;
+  }
+
+  function cameraVectors() {
+    const out = new T.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
+    const right = new T.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+    const up = new T.Vector3().crossVectors(out, right).normalize();
+    return { out, right, up };
+  }
+  function measureFit() {
+    const { out, right, up } = cameraVectors();
+    const tan = Math.tan(camera.fov * Math.PI / 360);
+    let required = 8;
+    records.forEach(r => {
+      if (r.kind === "environment" || hidden(r)) return;
+      const p = r.position, radius = r === root ? R + .15 : r.radius + .46;
+      const z = p.dot(out);
+      required = Math.max(required,
+        z + (Math.abs(p.dot(right)) + radius) / (tan * camera.aspect),
+        z + (Math.abs(p.dot(up)) + radius) / tan);
+    });
+    return required * 1.13;
+  }
+  function updateCamera() {
+    const v = cameraVectors();
+    camera.position.copy(v.out).multiplyScalar(distance);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+    labelDirty = true;
+  }
+  function fit(resetOrbit) {
+    if (resetOrbit) { yaw = .16; pitch = .19; }
+    fitDistance = measureFit(); distance = fitDistance;
+    updateCamera();
+  }
+  function resize(forceFit) {
+    const rect = viewport.getBoundingClientRect();
+    const w = Math.max(1, Math.round(rect.width)), h = Math.max(1, Math.round(rect.height));
+    if (w !== width || h !== height || forceFit) {
+      width = w; height = h;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h; camera.updateProjectionMatrix();
+      if (root) fit(false); else updateCamera();
+      labelDirty = true;
+    }
+  }
+  new ResizeObserver(() => resize(false)).observe(viewport);
+
+  function projectLabels() {
+    if (!root) return;
+    const projected = new T.Vector3();
+    const boxes = [];
+    const ranked = records.filter(r => r.label).sort((a, b) => {
+      const rank = r => r === selection ? 0 : selection && neighbors.has(r) ? 1 : r === root ? 2 : r.outside ? 3 : r.kind === "port" ? 5 : 4;
+      return rank(a) - rank(b);
+    });
+    let count = 0;
+    ranked.forEach(r => {
+      const label = r.label;
+      let visible = !hidden(r) && distance < fitDistance * 2.3 && (!selection || r === selection || neighbors.has(r));
+      if (selection === r) visible = !hidden(r);
+      if (!visible || count > 180) { label.style.visibility = "hidden"; return; }
+      projected.copy(r.position);
+      projected.y += r === root ? R + .23 : r.radius + .24;
+      const cameraDistance = camera.position.distanceTo(projected);
+      const pixels = r.radius * height / (2 * Math.tan(camera.fov * Math.PI / 360) * cameraDistance);
+      projected.project(camera);
+      if (projected.z < -1 || projected.z > 1 || Math.abs(projected.x) > 1.14 || Math.abs(projected.y) > 1.05 ||
+        (pixels < 1.5 && r !== selection)) {
+        label.style.visibility = "hidden"; return;
+      }
+      const lw = label.offsetWidth, lh = label.offsetHeight;
+      let x = (projected.x * .5 + .5) * width - lw / 2;
+      const y = (-projected.y * .5 + .5) * height - lh;
+      x = clamp(x, 5, Math.max(5, width - lw - 5));
+      const box = { x: x - 3, y: y - 2, w: lw + 6, h: lh + 4 };
+      const overlaps = boxes.some(b => box.x < b.x + b.w && box.x + box.w > b.x && box.y < b.y + b.h && box.y + box.h > b.y);
+      if ((overlaps && r !== selection) || y < 0 || y + lh > height) {
+        label.style.visibility = "hidden"; return;
+      }
+      boxes.push(box); count++;
+      label.style.visibility = "visible";
+      label.style.opacity = selection && r !== selection ? ".55" : "1";
+      label.style.transform = "translate(" + Math.round(x) + "px," + Math.round(y) + "px)";
+    });
+  }
+
+  function rebuildSearch() {
+    const select = $("entity-search");
+    select.replaceChildren(make("option", "", "Find an entity…"));
+    select.firstChild.value = "";
+    records.forEach((r, i) => {
+      const option = make("option", "", r.name + " · " + kindNames[r.kind]);
+      option.value = String(i); select.appendChild(option);
+    });
+  }
+
+  function setSheet(open) {
+    $("workspace").classList.toggle("sheet-open", open);
+    syncSheetButton();
+  }
+  function syncSheetButton() {
+    const open = $("workspace").classList.contains("sheet-open");
+    $("sheet-toggle").textContent = open ? "⌄" : "⌃";
+    $("sheet-toggle").setAttribute("aria-expanded", String(open));
+    $("sheet-toggle").setAttribute("aria-label", open ? "Collapse details" : "Expand details");
+  }
+  function selectEntity(r) {
+    selection = r || null;
+    if (selection && hidden(selection)) { showHidden = true; updateHiddenButton(); }
+    $("entity-search").value = selection ? String(records.indexOf(selection)) : "";
+    $("clear-button").hidden = !selection;
+    if (selection && smallScreen.matches) setSheet(true);
+    updateVisibility();
+    renderPanel();
+  }
+  function updateHiddenButton() {
+    const button = $("hidden-button");
+    button.hidden = hiddenIds.size === 0;
+    button.textContent = showHidden ? "Hide saved" : "Show hidden";
+    button.setAttribute("aria-pressed", String(showHidden));
+    button.title = hiddenIds.size + " ID(s) marked hidden in this model. " + (showHidden ? "Restore saved visibility." : "Reveal them.");
+  }
+
+  function appendMetadata(parent, pairs) {
+    const dl = make("dl", "metadata");
+    pairs.forEach(([key, value]) => {
+      if (value === "" || value === null || value === undefined) return;
+      dl.append(make("dt", "", key), make("dd", "", String(value)));
+    });
+    if (dl.childElementCount) parent.appendChild(dl);
+  }
+  function appendMilieu(parent) {
+    const variables = objects(environment.raw.milieu);
+    if (!variables.length) return;
+    parent.appendChild(make("h2", "", "Ambient context"));
+    parent.appendChild(make("p", "note", "Milieu surrounds the system; it is not rendered as an invented flow or port."));
+    variables.forEach(v => {
+      const node = make("div", "milieu");
+      node.appendChild(make("strong", "", str(v.name, "Ambient variable")));
+      const value = str(v.value);
+      if (value || str(v.unit)) node.appendChild(make("span", "", [value, str(v.unit)].filter(Boolean).join(" ")));
+      if (str(v.description)) node.appendChild(make("p", "", str(v.description)));
+      parent.appendChild(node);
+    });
+  }
+  function endpointName(rawId) {
+    const record = byId.get(id(rawId));
+    return record ? record.name : str(rawId, "Unspecified endpoint");
+  }
+  function appendFlow(parent, f) {
+    const card = make("article", "flow-card");
+    const title = make("div", "flow-title"), dot = make("i", "dot");
+    dot.style.background = "#" + COLORS[f.type].toString(16).padStart(6, "0");
+    title.append(dot, make("span", "", f.name));
+    card.appendChild(title);
+    card.appendChild(make("p", "flow-route", endpointName(f.raw.source) + " → " + endpointName(f.raw.sink)));
+    const ample = f.type === "Message" && f.raw.ample === true;
+    const amount = ample ? "Available · ample, unmetered" :
+      (f.raw.amount === null || f.raw.amount === undefined || f.raw.amount === "" ? "Unspecified amount" : str(f.raw.amount, "Unspecified amount")) +
+      (str(f.raw.unit) ? " " + str(f.raw.unit) : "");
+    const amountNode = make("div", "flow-amount", amount);
+    amountNode.style.color = "#" + COLORS[f.type].toString(16).padStart(6, "0");
+    card.appendChild(amountNode);
+    const subtype = str(obj(f.raw.substance).sub_type);
+    card.appendChild(make("div", "flow-meta", f.type + (subtype ? " · " + subtype : "") +
+      (str(f.raw.type) ? " · " + str(f.raw.type) : "")));
+    const via = [id(f.raw.source_interface), id(f.raw.sink_interface)].filter(v => v !== null);
+    if (via.length) card.appendChild(make("div", "flow-meta", "Via " + [...new Set(via)].map(endpointName).join(" → ")));
+    if (!f.drawable) card.appendChild(make("div", "flow-meta", "Not drawn: missing or non-spatial endpoint."));
+    else if (f.missingPort) card.appendChild(make("div", "flow-meta", "An interface reference is unresolved; direct route shown."));
+    if (str(info(f.raw).description)) {
+      const details = make("details");
+      details.append(make("summary", "", "Description"), make("p", "", str(info(f.raw).description)));
+      card.appendChild(details);
+    }
+    parent.appendChild(card);
+  }
+
+  function renderPanel() {
+    const body = $("panel-body");
+    body.replaceChildren(); body.scrollTop = 0;
+    $("panel-caption").textContent = selection ? "Entity details" : "Model overview";
+    $("clear-button").hidden = !selection;
+    if (!model) return;
+    const r = selection || root;
+    body.appendChild(make("div", "eyebrow", selection ? kindNames[r.kind] : "Mobus systems ontology"));
+    body.appendChild(make("h1", "", r.name));
+    body.appendChild(make("p", "description", r.description || (selection ? "No description provided." :
+      "A system in its environment. Trace what crosses the boundary, and how its components work together.")));
+    const identity = make("div", "identity");
+    identity.append(make("span", "chip", "Level " + r.level), make("span", "chip id", r.id));
+    if (!selection) {
+      if (model.version !== null && model.version !== undefined) identity.appendChild(make("span", "chip", "Schema " + str(model.version)));
+      if (str(model.mode)) identity.appendChild(make("span", "chip", str(model.mode)));
+    }
+    body.appendChild(identity);
+
+    if (!selection) {
+      const stats = make("div", "stats");
+      [[systems.length - 1, "components"], [ports.length, "interfaces"], [flows.length, "interactions"]].forEach(([value, label]) => {
+        const stat = make("div", "stat"); stat.append(make("b", "", String(value)), make("span", "", label)); stats.appendChild(stat);
+      });
+      body.appendChild(stats);
+      body.appendChild(make("h2", "", "Read the scene"));
+      const guide = make("ul", "guide");
+      [
+        "The translucent shell is the system boundary. Solid components sit inside; small surface ports are Import, Export, or Hybrid interfaces.",
+        "External sources sit to the left, sinks to the right. Actual arrows follow each authored source → sink, even when an entity plays both roles.",
+        "Drag to orbit. Scroll or pinch to zoom. Pull the slider to separate entities; routes remain attached.",
+        "Click a shape or name to isolate it. Click empty space, press Escape, or choose Show all to restore."
+      ].forEach(text => guide.appendChild(make("li", "", text)));
+      body.appendChild(guide);
+      body.appendChild(make("p", "note", "Particles indicate direction, not a simulation or a quantitative flow rate. Names hide at a distance or when crowded; the entity picker always lists every entity."));
+      if (systems.some(s => s !== root && s.owner !== root)) {
+        body.appendChild(make("p", "note", "Nested systems are flattened inside the root shell for this overview; parent relationships and levels are retained in entity details."));
+      }
+      if (syntheticRoot) body.appendChild(make("div", "notice-note", "No system was supplied. A neutral placeholder shell is shown; no system or flow is added to your data."));
+      if (hiddenIds.size) body.appendChild(make("div", "notice-note", hiddenIds.size + " saved hidden ID(s). Use “Show hidden” to reveal them."));
+      if (omitted || missingPorts || duplicates) {
+        body.appendChild(make("div", "notice-note",
+          (omitted ? omitted + " interaction(s) have missing or non-spatial endpoints and are not drawn. " : "") +
+          (missingPorts ? missingPorts + " interaction(s) reference unavailable interfaces; known endpoints are connected directly. " : "") +
+          (duplicates ? duplicates + " duplicate entity ID(s) were merged; the first definition is used." : "")));
+      }
+      appendMilieu(body);
+      body.appendChild(make("p", "note", "Open a JSON file or drop one anywhere. Parsing stays local; only the pinned Three.js library is requested from cdnjs. Layout and visibility controls do not modify the file."));
+    } else {
+      const pairs = [
+        ["Parent", r.owner ? r.owner.name : ""],
+        ["Role", r.kind === "port" ? str(r.raw.type, "Unspecified interface") : kindNames[r.kind]],
+        ["Protocol", str(r.raw.protocol)],
+        ["Archetype", str(r.raw.archetype)]
+      ];
+      if (r.kind === "root" || r.kind === "component") {
+        const b = obj(r.raw.boundary);
+        pairs.push(["Boundary", name(b, id(info(b).id) || "Unnamed")]);
+        if (id(b.parent_interface) !== null) pairs.push(["Port link", endpointName(b.parent_interface)]);
+      }
+      appendMetadata(body, pairs);
+      if (r === environment) appendMilieu(body);
+      body.appendChild(make("h2", "", "Interactions · " + r.interactions.length));
+      if (r === root) body.appendChild(make("p", "note", "Direct system interactions and flows through this system’s boundary interfaces."));
+      if (!r.interactions.length) body.appendChild(make("p", "description", "No interactions reference this entity or its own boundary interfaces."));
+      r.interactions.forEach(f => appendFlow(body, f));
+      body.appendChild(make("p", "note", "Amounts and units are shown as authored. “Ample” Message signals assert availability, not a numerical amount."));
+    }
+  }
+
+  // Minimal orbit controls: single-pointer rotation, wheel/pinch zoom, and keyboard controls.
+  const pointers = new Map();
+  let down = null, gestureMoved = false, previousPinch = 0;
+  function pinchDistance() {
+    const p = [...pointers.values()];
+    return p.length >= 2 ? Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) : 0;
+  }
+  function zoom(factor) {
+    distance = clamp(distance * factor, Math.max(2.5, fitDistance * .18), Math.min(450, fitDistance * 5));
+    updateCamera();
+  }
+  canvas.addEventListener("pointerdown", event => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    canvas.focus({ preventScroll: true });
+    if (pointers.size === 0) { gestureMoved = false; down = { x: event.clientX, y: event.clientY }; }
+    else gestureMoved = true;
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    previousPinch = pinchDistance();
+    canvas.setPointerCapture(event.pointerId);
+    canvas.classList.add("dragging");
+  });
+  canvas.addEventListener("pointermove", event => {
+    if (!pointers.has(event.pointerId)) return;
+    const previous = pointers.get(event.pointerId);
+    const dx = event.clientX - previous.x, dy = event.clientY - previous.y;
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (down && Math.hypot(event.clientX - down.x, event.clientY - down.y) > 5) gestureMoved = true;
+    if (pointers.size >= 2) {
+      const next = pinchDistance();
+      if (previousPinch > 0 && next > 0) zoom(previousPinch / next);
+      previousPinch = next;
+      gestureMoved = true;
+    } else if (gestureMoved) {
+      yaw -= dx * .006;
+      pitch = clamp(pitch + dy * .005, -1.25, 1.25);
+      updateCamera();
+    }
+  });
+  function endPointer(event, cancelled) {
+    if (!pointers.has(event.pointerId)) return;
+    const shouldPick = !cancelled && pointers.size === 1 && !gestureMoved;
+    pointers.delete(event.pointerId);
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    if (!pointers.size) { canvas.classList.remove("dragging"); down = null; }
+    else { previousPinch = pinchDistance(); gestureMoved = true; }
+    if (shouldPick) pick(event.clientX, event.clientY);
+  }
+  canvas.addEventListener("pointerup", event => endPointer(event, false));
+  canvas.addEventListener("pointercancel", event => endPointer(event, true));
+  canvas.addEventListener("lostpointercapture", event => {
+    if (pointers.has(event.pointerId)) {
+      pointers.delete(event.pointerId); gestureMoved = true;
+      if (!pointers.size) canvas.classList.remove("dragging");
+    }
+  });
+  canvas.addEventListener("wheel", event => {
+    event.preventDefault();
+    const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? height : 1);
+    zoom(Math.exp(clamp(delta, -200, 200) * .0014));
+  }, { passive: false });
+  canvas.addEventListener("keydown", event => {
+    let handled = true;
+    switch (event.key) {
+      case "ArrowLeft": yaw += .09; break;
+      case "ArrowRight": yaw -= .09; break;
+      case "ArrowUp": pitch = clamp(pitch - .07, -1.25, 1.25); break;
+      case "ArrowDown": pitch = clamp(pitch + .07, -1.25, 1.25); break;
+      case "+": case "=": zoom(.9); break;
+      case "-": case "_": zoom(1.1); break;
+      case "Home": fit(true); break;
+      default: handled = false;
+    }
+    if (handled) { event.preventDefault(); updateCamera(); }
+  });
+  window.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      selectEntity(null);
+      $("notice").hidden = true;
+    }
+  });
+
+  const raycaster = new T.Raycaster(), pointer = new T.Vector2();
+  function pick(x, y) {
+    if (!root) return;
+    const rect = canvas.getBoundingClientRect();
+    pointer.set((x - rect.left) / rect.width * 2 - 1, -(y - rect.top) / rect.height * 2 + 1);
+    scene.updateMatrixWorld(true);
+    raycaster.setFromCamera(pointer, camera);
+    const hits = raycaster.intersectObjects(pickMeshes.filter(m => m.visible), false);
+    if (hits.length) { selectEntity(hits[0].object.userData.entity); return; }
+    // Pick the shell only near its silhouette, leaving its empty interior available to clear isolation.
+    if (root.mesh.visible) {
+      const shellHit = raycaster.intersectObject(root.mesh, false)[0];
+      if (shellHit) {
+        const normal = shellHit.point.clone().sub(root.position).normalize();
+        if (Math.abs(normal.dot(raycaster.ray.direction)) < .29) { selectEntity(root); return; }
+      }
+    }
+    selectEntity(null);
+  }
+
+  $("explode").addEventListener("input", event => {
+    exploded = Number(event.target.value);
+    $("explode-value").textContent = Math.round(exploded * 100) + "%";
+    layoutDirty = true;
+  });
+  $("fit-button").onclick = () => fit(true);
+  $("clear-button").onclick = () => selectEntity(null);
+  $("environment-button").onclick = () => { if (environment) selectEntity(environment); };
+  $("entity-search").onchange = event => {
+    selectEntity(event.target.value === "" ? null : records[Number(event.target.value)]);
+  };
+  $("hidden-button").onclick = () => {
+    showHidden = !showHidden;
+    if (selection && hidden(selection)) selection = null;
+    $("entity-search").value = selection ? String(records.indexOf(selection)) : "";
+    updateHiddenButton(); updateVisibility(); renderPanel(); fit(false);
+  };
+  $("sheet-toggle").onclick = () => setSheet(!$("workspace").classList.contains("sheet-open"));
+  function updateMotionButton() {
+    $("motion-button").textContent = paused ? "▶" : "Ⅱ";
+    const text = paused ? "Play flow particles" : "Pause flow particles";
+    $("motion-button").title = text;
+    $("motion-button").setAttribute("aria-label", text);
+    $("motion-button").setAttribute("aria-pressed", String(paused));
+  }
+  $("motion-button").onclick = () => { paused = !paused; updateMotionButton(); };
+  updateMotionButton();
+
+  let loadSequence = 0;
+  async function readFile(file) {
+    if (!file) return;
+    const sequence = ++loadSequence;
+    notify("Reading " + file.name + "…", true);
+    try {
+      const text = await file.text();
+      if (sequence !== loadSequence) return;
+      const data = JSON.parse(text.replace(/^\uFEFF/, ""));
+      loadModel(data, file.name);
+    } catch (error) {
+      if (sequence !== loadSequence) return;
+      notify("Could not load " + file.name + ": " + (error.message || String(error)), true);
+    }
+  }
+  $("open-button").onclick = () => $("file-input").click();
+  $("file-input").onchange = event => {
+    readFile(event.target.files[0]);
+    event.target.value = "";
+  };
+  $("demo-button").onclick = () => {
+    loadSequence++;
+    try { loadModel(JSON.parse($("default-model").textContent), "Embedded example · Translation Apparatus"); }
+    catch (error) { notify("Could not load the example: " + error.message, true); }
+  };
+
+  let dragDepth = 0;
+  const fileDrag = event => event.dataTransfer && Array.from(event.dataTransfer.types || []).includes("Files");
+  window.addEventListener("dragenter", event => {
+    if (fileDrag(event)) { event.preventDefault(); dragDepth++; $("dropzone").hidden = false; }
+  });
+  window.addEventListener("dragover", event => {
+    if (fileDrag(event)) { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; }
+  });
+  window.addEventListener("dragleave", event => {
+    if (fileDrag(event) || dragDepth) {
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (!dragDepth) $("dropzone").hidden = true;
+    }
+  });
+  window.addEventListener("drop", event => {
+    event.preventDefault();
+    dragDepth = 0; $("dropzone").hidden = true;
+    const files = Array.from(event.dataTransfer ? event.dataTransfer.files : []);
+    const file = files.find(f => /\.json$/i.test(f.name)) || files[0];
+    if (file) readFile(file);
+  });
+  window.addEventListener("blur", () => { dragDepth = 0; $("dropzone").hidden = true; });
+
+  function animate(now) {
+    requestAnimationFrame(animate);
+    const dt = Math.min((now - lastFrame) / 1000, .06);
+    lastFrame = now;
+    if (!paused) flowTime += dt;
+    if (layoutDirty && root) {
+      const zoomRatio = distance / Math.max(fitDistance, 1);
+      updatePositions();
+      updateVisibility();
+      // Preserve user zoom while making room for the outermost exploded entity.
+      fitDistance = measureFit();
+      distance = clamp(fitDistance * zoomRatio, 2.5, 450);
+      updateCamera();
+      layoutDirty = false;
+    }
+    flows.forEach(f => {
+      if (!f.samples || !f.group.visible) return;
+      const positions = f.dots.geometry.attributes.position;
+      for (let i = 0; i < 3; i++) {
+        const t = (flowTime * .052 + i / 3 + f.index * .137) % 1;
+        const u = t * (f.samples.length - 1), index = Math.floor(u);
+        const a = f.samples[index], b = f.samples[Math.min(index + 1, f.samples.length - 1)], k = u - index;
+        positions.setXYZ(i, a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k, a.z + (b.z - a.z) * k);
+      }
+      positions.needsUpdate = true;
+    });
+    if (labelDirty || now - lastLabels > 180) {
+      projectLabels(); lastLabels = now; labelDirty = false;
+    }
+    renderer.render(scene, camera);
+  }
+
+  try {
+    loadModel(JSON.parse($("default-model").textContent), "Embedded example · Translation Apparatus");
+  } catch (error) {
+    notify("The example could not be initialized: " + error.message, true);
+  }
+  requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>

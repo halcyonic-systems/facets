@@ -1,0 +1,4856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Facets — Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper:#f1f2f3; --ink:#17181a; --muted:#5d6670;
+    --accent:#3d6373; --strong:#2a4b59; --hairline:#e5ecf0;
+    --matter:#57814c; --energy:#bb6c1c; --info:#8054a0; --field:#2f6c9c;
+    --label-width:112px;
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    color-scheme:light;
+  }
+  :root[data-theme="dark"] {
+    --paper:#16181a; --ink:#e8eaec; --muted:#e8eaec;
+    --accent:#6fa5b8; --strong:#95c3d3; --hairline:#3d6373;
+    --matter:#649457; --energy:#c6721e; --info:#9e79b8; --field:#428cc6;
+    color-scheme:dark;
+  }
+  * { box-sizing:border-box; }
+  html,body { width:100%; height:100%; margin:0; overflow:hidden; }
+  body {
+    background:var(--paper); color:var(--ink);
+    font-size:12px; -webkit-font-smoothing:antialiased;
+  }
+  button,input,select { font:inherit; }
+  button,select {
+    color:var(--ink); background:transparent;
+    border:1px solid var(--hairline); border-radius:3px;
+  }
+  button { cursor:pointer; }
+  button:hover:not(:disabled),select:hover:not(:disabled) { border-color:var(--accent); }
+  button:focus-visible,select:focus-visible,input:focus-visible,canvas:focus-visible {
+    outline:2px solid var(--accent); outline-offset:3px;
+  }
+  button:disabled,input:disabled,select:disabled { opacity:.4; cursor:default; }
+  [hidden] { display:none !important; }
+  #app { height:100%; height:100dvh; display:flex; flex-direction:column; min-width:0; }
+  .topbar {
+    min-height:64px; padding:9px 13px; display:flex; align-items:center;
+    gap:10px; border-bottom:1px solid var(--hairline); flex:none;
+  }
+  .identity { flex:1; min-width:0; }
+  .eyebrow { font-size:9px; letter-spacing:.16em; color:var(--accent); font-weight:650; }
+  h1 {
+    font-family:"Cormorant Garamond",Georgia,serif; font-weight:500;
+    font-size:27px; line-height:1; margin:3px 0 0;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .model-control { width:100px; min-width:0; }
+  .model-control label { display:block; font-size:9px; color:var(--muted); margin-bottom:3px; }
+  #model-select { width:100%; height:28px; padding:0 4px; font-size:11px; text-overflow:ellipsis; }
+  #theme { padding:7px 8px; font-size:11px; min-width:43px; }
+  #main { display:flex; flex:1; min-height:0; min-width:0; position:relative; }
+  #viewport { position:relative; flex:1; min-width:0; min-height:0; overflow:hidden; }
+  #view { display:block; width:100%; height:100%; touch-action:none; }
+  .hud {
+    position:absolute; top:12px; left:13px; right:13px;
+    pointer-events:none; display:flex; justify-content:space-between; align-items:flex-start;
+    gap:12px; z-index:2; font-size:9px; letter-spacing:.05em;
+  }
+  .hud-main { min-width:0; }
+  #boundary-name { font-weight:650; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:42vw; }
+  #counts { margin-top:5px; color:var(--muted); opacity:.75; letter-spacing:0; }
+  #context-label { text-align:right; color:var(--muted); opacity:.75; max-width:40%; line-height:1.5; overflow-wrap:anywhere; }
+  #leaders { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:2; }
+  #annotations { position:absolute; inset:55px 8px 54px; pointer-events:none; z-index:3; }
+  .rail { position:absolute; width:var(--label-width); top:0; bottom:0; overflow-x:hidden; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--accent) transparent; pointer-events:none; }
+  #left-rail { left:0; }
+  #right-rail { right:0; }
+  .rail-track { position:relative; width:100%; min-height:100%; }
+  .annotation {
+    position:absolute; left:0; top:0; width:100%; margin:0;
+    padding:4px 6px; border:0; border-left:1px solid var(--hairline);
+    border-radius:0; text-align:left; line-height:1.28;
+    background:var(--paper); color:var(--ink); pointer-events:auto;
+    overflow-wrap:anywhere; cursor:default;
+  }
+  button.annotation { cursor:pointer; }
+  .annotation .label-name { display:block; font-size:11px; font-weight:550; }
+  .annotation .label-meta { display:block; margin-top:2px; font-size:8px; letter-spacing:.045em; color:var(--muted); opacity:.76; }
+  .annotation.flow .label-name,.annotation.port .label-name { font-size:10px; font-weight:450; }
+  .annotation.flow .label-meta { text-transform:none; font-size:9px; letter-spacing:0; }
+  .annotation.port .label-meta { text-transform:none; letter-spacing:0; }
+  .annotation.selected { border-left:3px solid var(--accent); padding-left:4px; }
+  .annotation.neighbour { border-left-color:var(--accent); }
+  .annotation.dim { opacity:.25; }
+  .annotation.orphan { opacity:.35; }
+  .annotation.orphan.dim { opacity:.16; }
+  .legend {
+    position:absolute; bottom:13px; left:12px; right:12px; z-index:2;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    pointer-events:none; font-size:9px; color:var(--muted);
+  }
+  .kinds,.notation { display:flex; align-items:center; flex-wrap:wrap; justify-content:center; gap:7px 12px; }
+  .kinds span { display:inline-flex; align-items:center; gap:4px; }
+  .swatch { display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--kind); flex:none; }
+  .notation { opacity:.7; font-size:8px; letter-spacing:.035em; }
+  .sample { display:inline-block; width:15px; vertical-align:middle; border-top:2px solid var(--accent); margin-right:4px; }
+  .sample.dashed { border-top:1px dashed var(--accent); }
+  .sample.quiet { border-top:1px solid var(--muted); opacity:.5; }
+  #message {
+    position:absolute; z-index:8; inset:0; display:flex;
+    align-items:center; justify-content:center; padding:30px;
+    background:var(--paper); text-align:center;
+  }
+  .message-inner { max-width:290px; }
+  #message-title { font-size:15px; font-weight:500; margin-bottom:9px; }
+  #message-detail { font-size:12px; color:var(--muted); opacity:.75; line-height:1.6; }
+  #selection {
+    width:280px; flex:none; border-left:1px solid var(--hairline);
+    padding:16px; min-height:0; overflow-y:auto; background:var(--paper);
+    scrollbar-width:thin;
+  }
+  .panel-top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+  #selection-name { font-size:16px; line-height:1.25; margin:0; font-weight:550; overflow-wrap:anywhere; }
+  #clear-selection { border:0; padding:0 3px; font-size:20px; line-height:1; color:var(--muted); }
+  #selection-role { margin:6px 0 20px; font-size:10px; color:var(--accent); line-height:1.5; }
+  .section-label { font-size:9px; text-transform:uppercase; letter-spacing:.13em; font-weight:650; margin:15px 0 8px; color:var(--muted); }
+  .flow-list,.port-list { list-style:none; padding:0; margin:0; }
+  .flow-list li,.port-list li { padding:9px 0; border-top:1px solid var(--hairline); }
+  .flow-name { font-size:12px; font-weight:550; overflow-wrap:anywhere; }
+  .flow-data { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; margin-top:5px; font-size:10px; }
+  .flow-kind { display:flex; align-items:center; gap:5px; }
+  .flow-rate { text-align:right; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+  .flow-other { margin-top:5px; font-size:10px; color:var(--muted); opacity:.75; overflow-wrap:anywhere; }
+  .controls { flex:none; padding:11px 13px 9px; border-top:1px solid var(--hairline); }
+  .control-row { display:flex; align-items:center; gap:13px; }
+  #fit { padding:7px 11px; font-size:11px; }
+  .explode-control { display:flex; flex:1; min-width:0; align-items:center; gap:9px; }
+  .explode-control label { font-size:11px; }
+  #explode { min-width:35px; width:100%; flex:1; accent-color:var(--accent); cursor:pointer; height:18px; }
+  #explode-value { min-width:32px; font-variant-numeric:tabular-nums; font-size:10px; text-align:right; color:var(--accent); }
+  .texture-control { min-width:61px; }
+  .texture-control label { display:flex; align-items:center; gap:5px; font-size:11px; cursor:pointer; }
+  #texture { margin:0; accent-color:var(--accent); }
+  .control-foot { display:flex; justify-content:space-between; gap:12px; margin-top:8px; font-size:8px; color:var(--muted); opacity:.72; }
+  .control-foot p { margin:0; text-align:right; }
+  .control-foot .gestures { letter-spacing:.025em; }
+  @media (min-width:700px) {
+    :root { --label-width:150px; }
+    .topbar { padding:11px 22px; min-height:72px; gap:20px; }
+    h1 { font-size:32px; }
+    .model-control { width:180px; }
+    #model-select { font-size:12px; }
+    #theme { padding:8px 12px; }
+    .hud { top:18px; left:22px; right:22px; font-size:10px; }
+    #annotations { inset:67px 17px 59px; }
+    .annotation { padding:5px 8px; }
+    .annotation .label-name { font-size:12px; }
+    .annotation .label-meta { font-size:9px; }
+    .annotation.selected { padding-left:6px; }
+    .legend { bottom:17px; gap:8px; font-size:10px; }
+    .controls { padding:12px 22px 9px; }
+    .control-row { gap:23px; }
+    .explode-control { max-width:510px; }
+    .texture-control { margin-left:auto; }
+    .control-foot { font-size:9px; }
+  }
+  @media (max-width:699px) {
+    #main { flex-direction:column; }
+    #selection { width:auto; max-height:180px; border-left:0; border-top:1px solid var(--hairline); padding:12px 15px; }
+    #selection-name { font-size:14px; }
+    #selection-role { margin:4px 0 9px; }
+    .section-label { margin:10px 0 6px; }
+    .flow-list li { padding:7px 0; }
+    .controls { padding-bottom:max(9px,env(safe-area-inset-bottom)); }
+  }
+  @media (max-width:350px) {
+    :root { --label-width:96px; }
+    .topbar { gap:7px; padding-inline:9px; }
+    .model-control { width:84px; }
+    h1 { font-size:23px; }
+    .control-row { gap:8px; }
+    .explode-control { gap:5px; }
+    .kinds { gap:6px; font-size:8px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="identity">
+      <div class="eyebrow">FACETS / MODEL</div>
+      <h1 id="model-name">Model</h1>
+    </div>
+    <div class="model-control">
+      <label for="model-select">Fixture</label>
+      <select id="model-select" aria-label="Choose model" disabled><option>No models</option></select>
+    </div>
+    <button id="theme" type="button" aria-label="Switch colour theme">Dark</button>
+  </header>
+
+  <main id="main">
+    <div id="viewport">
+      <canvas id="view" tabindex="0" aria-label="3D model. Drag or use arrow keys to orbit. Wheel or pinch to zoom. Home fits the model. Escape clears selection."></canvas>
+      <div class="hud" id="hud" hidden>
+        <div class="hud-main">
+          <div id="boundary-name"></div>
+          <div id="counts"></div>
+        </div>
+        <div id="context-label"></div>
+      </div>
+      <svg id="leaders" aria-hidden="true"></svg>
+      <div id="annotations">
+        <div class="rail" id="left-rail"><div class="rail-track" id="left-track"></div></div>
+        <div class="rail" id="right-rail"><div class="rail-track" id="right-track"></div></div>
+      </div>
+      <div class="legend" id="legend" hidden>
+        <div class="kinds" aria-label="Flow kinds">
+          <span><i class="swatch" style="--kind:var(--matter)"></i>Matter</span>
+          <span><i class="swatch" style="--kind:var(--energy)"></i>Energy</span>
+          <span><i class="swatch" style="--kind:var(--info)"></i>Informational</span>
+          <span><i class="swatch" style="--kind:var(--field)"></i>Field</span>
+          <span><i class="swatch" style="--kind:var(--muted)"></i>Unspecified</span>
+        </div>
+        <div class="notation">
+          <span><i class="sample"></i>Declared rate</span>
+          <span><i class="sample dashed"></i>Undeclared</span>
+          <span><i class="sample quiet"></i>Mere relation</span>
+          <span>◯ Port</span>
+        </div>
+      </div>
+      <div id="message" role="status" aria-live="polite">
+        <div class="message-inner">
+          <div id="message-title">No models loaded</div>
+          <div id="message-detail">The embedded fixture is empty.</div>
+        </div>
+      </div>
+    </div>
+
+    <aside id="selection" aria-label="Selected thing" hidden>
+      <div class="panel-top">
+        <h2 id="selection-name"></h2>
+        <button id="clear-selection" aria-label="Clear selection" title="Clear selection · Escape">×</button>
+      </div>
+      <div id="selection-role"></div>
+      <div class="section-label" id="flows-heading">Flows</div>
+      <ul class="flow-list" id="selection-flows"></ul>
+      <div class="section-label" id="ports-heading" hidden>Ports</div>
+      <ul class="port-list" id="selection-ports"></ul>
+    </aside>
+  </main>
+
+  <footer class="controls">
+    <div class="control-row">
+      <button id="fit" title="Fit model · Home" disabled>Home / fit</button>
+      <div class="explode-control">
+        <label for="explode">Explode</label>
+        <input id="explode" type="range" min="0" max="100" value="35" aria-label="Explode percentage" disabled>
+        <output id="explode-value" for="explode">35%</output>
+      </div>
+      <div class="texture-control">
+        <label for="texture"><input type="checkbox" id="texture" disabled>texture</label>
+      </div>
+    </div>
+    <div class="control-foot">
+      <span class="gestures">Drag / arrows · orbit &nbsp; Wheel / pinch · zoom</span>
+      <p>Texture motion is not data.</p>
+    </div>
+  </footer>
+</div>
+
+<script id="fixture" type="application/json">{
+ "models": [
+  {
+   "key": "ta",
+   "label": "Translation Apparatus",
+   "canvas": {
+    "lens": "Mobus",
+    "things": [
+     {
+      "id": 1,
+      "name": "mRNA Entry Channel",
+      "x": 480.0,
+      "y": 37.852875,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true,
+      "passway": true,
+      "protocol": "single-stranded mRNA, threaded codon by codon",
+      "description": "The small subunit's mRNA channel \u2014 entry between the head and shoulder at the neck, whose grip keeps the reading frame."
+     },
+     {
+      "id": 2,
+      "name": "Aminoacylation Site",
+      "x": 235.65343,
+      "y": 461.07358,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true,
+      "passway": true,
+      "protocol": "cognate amino acid + ATP at one catalytic pocket",
+      "description": "The synthetase's aminoacylation active site: amino acid and ATP co-bind at the same pocket that charges the tRNA. Diffusive access \u2014 a pocket, not a channel."
+     },
+     {
+      "id": 3,
+      "name": "GTPase-Associated Center",
+      "x": 576.5,
+      "y": 585.1316,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true,
+      "passway": true,
+      "protocol": "GTP-loaded elongation factors dock; GDP + Pi release",
+      "description": "The factor-binding hub on the large subunit \u2014 sarcin-ricin loop and the L7/L12 stalk. GTP arrives and its hydrolysis products leave through the same real docking site."
+     },
+     {
+      "id": 4,
+      "name": "Exit Tunnel",
+      "x": 724.34656,
+      "y": 461.07355,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true,
+      "passway": true,
+      "protocol": "nascent polypeptide, N-terminus first",
+      "description": "The polypeptide exit tunnel through the large subunit, opening at the exit port where trigger-factor-class chaperones dock to receive the emerging chain."
+     },
+     {
+      "id": 5,
+      "name": "Decoding Site",
+      "x": 661.3607,
+      "y": 103.86276,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Sensing",
+      "interface": false,
+      "description": "The decoding center on the small subunit, where each codon is read against the anticodon of an incoming charged tRNA \u2014 selection of the right carrier, not catalysis."
+     },
+     {
+      "id": 6,
+      "name": "Peptidyl Transferase Center",
+      "x": 383.49994,
+      "y": 585.1316,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Combining",
+      "interface": false,
+      "description": "The catalytic heart of the large subunit, all rRNA: forges each peptide bond between the growing chain and the newly accommodated amino acid."
+     },
+     {
+      "id": 7,
+      "name": "Translocase",
+      "x": 757.86066,
+      "y": 271.00568,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Propelling",
+      "interface": false,
+      "description": "The ratcheting step: GTP-powered translocation advances mRNA and tRNAs by exactly one codon, moving the whole machine forward."
+     },
+     {
+      "id": 8,
+      "name": "Aminoacyl-tRNA Synthetase",
+      "x": 202.13934,
+      "y": 271.00558,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Combining",
+      "interface": false,
+      "description": "The recharging enzyme: matches each spent tRNA with its cognate amino acid and charges it at ATP's expense \u2014 the move that closes the carrier cycle."
+     },
+     {
+      "id": 9,
+      "name": "tRNA Pool",
+      "x": 298.63934,
+      "y": 103.86273,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Buffering",
+      "interface": false,
+      "stock_unit": "tRNA",
+      "description": "The circulating stock of charged tRNAs \u2014 the cycle's memory between one elongation step and the next. Starts full at 100 and drains at the elongation rate.",
+      "cognitive_params": {
+       "release_rate": 20.0
+      },
+      "initial_state": {
+       "storage": 100.0
+      }
+     },
+     {
+      "id": 10,
+      "name": "Nucleus",
+      "x": 215.26904,
+      "y": -138.52759,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false,
+      "description": "The transcript's origin: the compartment that supplies mRNA, opaque here except as the source of the coding stream."
+     },
+     {
+      "id": 11,
+      "name": "Chaperone",
+      "x": 1009.46204,
+      "y": 320.0,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false,
+      "description": "The trigger-factor-class chaperone docked at the exit port, receiving each nascent polypeptide as it emerges \u2014 where the model's output lands."
+     },
+     {
+      "id": 12,
+      "name": "Cytosol",
+      "x": 215.26895,
+      "y": 778.5276,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false,
+      "description": "The surrounding cytosol: reservoir of free amino acids, ATP and GTP, and the sink for hydrolysis products. Internally opaque \u2014 it supplies and receives."
+     }
+    ],
+    "relations": [
+     {
+      "id": 13,
+      "a": 10,
+      "b": 1,
+      "name": "mRNA transcript",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "Steady-state transcript supply: codons arriving at the entry channel at the elongation rate.",
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "codon/s"
+     },
+     {
+      "id": 14,
+      "a": 1,
+      "b": 5,
+      "name": "mRNA transcript",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The threaded transcript handed inward from the channel to the decoding site, reading frame intact.",
+      "klir_directed": false,
+      "unit": "codon/s"
+     },
+     {
+      "id": 15,
+      "a": 9,
+      "b": 5,
+      "name": "charged tRNA",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "Charged tRNAs leaving the pool to be read at the decoding site \u2014 the cycle's working leg.",
+      "klir_directed": false,
+      "unit": "tRNA/s"
+     },
+     {
+      "id": 16,
+      "a": 5,
+      "b": 8,
+      "name": "deacylated tRNA",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The spent carrier, stripped of its amino acid, passed on for recharging.",
+      "klir_directed": false,
+      "unit": "tRNA/s"
+     },
+     {
+      "id": 17,
+      "a": 8,
+      "b": 9,
+      "name": "recharged tRNA",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "Recharged tRNA returned to the pool \u2014 the leg that closes the loop.",
+      "klir_directed": false,
+      "unit": "tRNA/s"
+     },
+     {
+      "id": 18,
+      "a": 12,
+      "b": 2,
+      "name": "free amino acid",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "Free amino acids from the cytosol, co-binding at the aminoacylation pocket.",
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "aa/s"
+     },
+     {
+      "id": 19,
+      "a": 12,
+      "b": 2,
+      "name": "ATP",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "ATP co-bound at the same pocket \u2014 the energy that pays for charging.",
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "ATP/s"
+     },
+     {
+      "id": 20,
+      "a": 2,
+      "b": 8,
+      "name": "free amino acid",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The pocket's matter handoff: amino acid delivered into the synthetase.",
+      "klir_directed": false,
+      "unit": "aa/s"
+     },
+     {
+      "id": 21,
+      "a": 2,
+      "b": 8,
+      "name": "ATP",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "The pocket's energy handoff: ATP delivered into the synthetase.",
+      "klir_directed": false,
+      "unit": "ATP/s"
+     },
+     {
+      "id": 22,
+      "a": 12,
+      "b": 3,
+      "name": "GTP",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "GTP-loaded elongation factors docking at the factor-binding hub.",
+      "klir_directed": false,
+      "amount": "40",
+      "unit": "GTP/s"
+     },
+     {
+      "id": 23,
+      "a": 3,
+      "b": 7,
+      "name": "GTP",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "GTP delivered inward to power each translocation step.",
+      "klir_directed": false,
+      "unit": "GTP/s"
+     },
+     {
+      "id": 24,
+      "a": 5,
+      "b": 6,
+      "name": "accommodated amino acid",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The selected, accommodated amino acid passed to the catalytic center.",
+      "klir_directed": false,
+      "unit": "aa/s"
+     },
+     {
+      "id": 25,
+      "a": 6,
+      "b": 7,
+      "name": "elongated chain",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The chain, one residue longer, handed forward for ratcheting.",
+      "klir_directed": false,
+      "unit": "aa/s"
+     },
+     {
+      "id": 26,
+      "a": 7,
+      "b": 4,
+      "name": "polypeptide chain",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The growing polypeptide advanced into the exit tunnel.",
+      "klir_directed": false,
+      "unit": "aa/s"
+     },
+     {
+      "id": 27,
+      "a": 4,
+      "b": 11,
+      "name": "nascent polypeptide",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The emerging nascent chain, N-terminus first, delivered to the waiting chaperone.",
+      "klir_directed": false,
+      "unit": "aa"
+     },
+     {
+      "id": 28,
+      "a": 7,
+      "b": 3,
+      "name": "GDP and inorganic phosphate",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "Hydrolysis products leaving the translocase after each step.",
+      "klir_directed": false,
+      "unit": "GDP/s"
+     },
+     {
+      "id": 29,
+      "a": 3,
+      "b": 12,
+      "name": "GDP and inorganic phosphate",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "GDP and phosphate returned to the cytosol through the same docking site.",
+      "klir_directed": false,
+      "unit": "GDP/s"
+     }
+    ],
+    "milieu": [
+     {
+      "name": "Mg2+ and ionic milieu",
+      "value": 1.0,
+      "unit": "mM",
+      "description": "The coordination shell: Mg2+-phosphate contacts the folded rRNA, including the PTC's catalytic core, cannot hold its structure without. Diffuse by nature \u2014 no channel exists, and none is invented."
+     }
+    ],
+    "boundary": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "system_type": {
+     "kingdom": "Concrete",
+     "genus": "Biological",
+     "domain": "molecular biology: mRNA translation with the tRNA charging cycle closed \u2014 the same machine the Ribosome model draws, with the boundary widened until the synthetase that recharges spent tRNA falls inside it"
+    },
+    "name": "Translation Apparatus",
+    "time_unit": "second",
+    "params": [
+     {
+      "name": "mRNA supply",
+      "anchor": {
+       "Flow": {
+        "relation": 13
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "40"
+      }
+     },
+     {
+      "name": "amino acid supply",
+      "anchor": {
+       "Flow": {
+        "relation": 18
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "40"
+      }
+     },
+     {
+      "name": "ATP supply",
+      "anchor": {
+       "Flow": {
+        "relation": 19
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "40"
+      }
+     },
+     {
+      "name": "GTP supply",
+      "anchor": {
+       "Flow": {
+        "relation": 22
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "80"
+      }
+     }
+    ],
+    "metrics": [
+     {
+      "name": "polypeptide output",
+      "expr": {
+       "SumInto": {
+        "thing": 11
+       }
+      }
+     }
+    ]
+   },
+   "facts": {
+    "boundary_thing_ids": [
+     5,
+     7,
+     8
+    ],
+    "environment_thing_ids": [
+     10,
+     11,
+     12
+    ],
+    "orphan_env_thing_ids": [],
+    "authored_interface_thing_ids": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "boundary_props": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "aggregate": false,
+    "edges": [
+     {
+      "id": 13,
+      "a": 10,
+      "b": 1,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 14,
+      "a": 1,
+      "b": 5,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 15,
+      "a": 9,
+      "b": 5,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 16,
+      "a": 5,
+      "b": 8,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 17,
+      "a": 8,
+      "b": 9,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 18,
+      "a": 12,
+      "b": 2,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 19,
+      "a": 12,
+      "b": 2,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 20,
+      "a": 2,
+      "b": 8,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 21,
+      "a": 2,
+      "b": 8,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 22,
+      "a": 12,
+      "b": 3,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 23,
+      "a": 3,
+      "b": 7,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 24,
+      "a": 5,
+      "b": 6,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 25,
+      "a": 6,
+      "b": 7,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 26,
+      "a": 7,
+      "b": 4,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 27,
+      "a": 4,
+      "b": 11,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 28,
+      "a": 7,
+      "b": 3,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 29,
+      "a": 3,
+      "b": 12,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     }
+    ],
+    "ports": [
+     {
+      "component": 1,
+      "env": 10,
+      "relation_ids": [
+       13
+      ],
+      "direction": "Receives",
+      "protocol": "mRNA transcript"
+     },
+     {
+      "component": 2,
+      "env": 12,
+      "relation_ids": [
+       18,
+       19
+      ],
+      "direction": "Receives",
+      "protocol": "free amino acid \u00b7 ATP"
+     },
+     {
+      "component": 3,
+      "env": 12,
+      "relation_ids": [
+       22,
+       29
+      ],
+      "direction": "Hybrid",
+      "protocol": "GTP \u00b7 GDP and inorganic phosphate"
+     },
+     {
+      "component": 4,
+      "env": 11,
+      "relation_ids": [
+       27
+      ],
+      "direction": "Exports",
+      "protocol": "nascent polypeptide"
+     }
+    ]
+   }
+  },
+  {
+   "key": "steel-l1",
+   "label": "Steel-Plant",
+   "canvas": {
+    "lens": "Mobus",
+    "things": [
+     {
+      "id": 1,
+      "name": "Energy-Source",
+      "x": 250.96034,
+      "y": -76.708435,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 2,
+      "name": "Iron-Source",
+      "x": 21.920593,
+      "y": 319.99997,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 3,
+      "name": "Coke-Source",
+      "x": 250.96027,
+      "y": 716.7084,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 4,
+      "name": "Steel-Sink",
+      "x": 709.0397,
+      "y": -76.708435,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+     },
+     {
+      "id": 5,
+      "name": "Garbage-Sink",
+      "x": 938.0794,
+      "y": 320.0,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+     },
+     {
+      "id": 6,
+      "name": "ATMOSPHERE",
+      "x": 709.0397,
+      "y": 716.70844,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+     },
+     {
+      "id": 7,
+      "name": "FuseBox",
+      "x": 480.0,
+      "y": 86.5986,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 8,
+      "name": "Iron-LoadingDock",
+      "x": 258.0221,
+      "y": 247.875,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 9,
+      "name": "Coke-LoadingDock",
+      "x": 342.81012,
+      "y": 508.82568,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 10,
+      "name": "Steel-ShippingDock",
+      "x": 701.9779,
+      "y": 247.875,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 11,
+      "name": "Waste-ShippingDock",
+      "x": 701.9779,
+      "y": 392.125,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 12,
+      "name": "Ventilation",
+      "x": 617.1899,
+      "y": 508.82568,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 13,
+      "name": "Iron-Inventory",
+      "x": 342.81006,
+      "y": 131.17435,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false,
+      "child_model": {
+       "name": "Iron-Inventory",
+       "id": "VjCKBe5psWuHcmW2yE8nXM"
+      }
+     },
+     {
+      "id": 14,
+      "name": "Coke-Inventory",
+      "x": 480.0,
+      "y": 553.40137,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 15,
+      "name": "Material-Purchasing",
+      "x": 258.02206,
+      "y": 392.12494,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 16,
+      "name": "Production",
+      "x": 617.1899,
+      "y": 131.1743,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Combining",
+      "interface": false
+     }
+    ],
+    "relations": [
+     {
+      "id": 17,
+      "a": 1,
+      "b": 7,
+      "name": "F-1.0 \u2014 electric energy",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "substance": "electricity"
+     },
+     {
+      "id": 18,
+      "a": 7,
+      "b": 16,
+      "name": "distributed power",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "substance": "electricity"
+     },
+     {
+      "id": 19,
+      "a": 2,
+      "b": 8,
+      "name": "F-1.1 \u2014 iron-input",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "iron"
+     },
+     {
+      "id": 20,
+      "a": 8,
+      "b": 13,
+      "name": "shipment into inventory",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "iron"
+     },
+     {
+      "id": 21,
+      "a": 3,
+      "b": 9,
+      "name": "F-1.2 \u2014 coke-input",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "coke"
+     },
+     {
+      "id": 22,
+      "a": 9,
+      "b": 14,
+      "name": "shipment into inventory",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "coke"
+     },
+     {
+      "id": 23,
+      "a": 13,
+      "b": 16,
+      "name": "F0.1 \u2014 iron in batches",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "unit": "tons",
+      "substance": "iron"
+     },
+     {
+      "id": 24,
+      "a": 14,
+      "b": 16,
+      "name": "coke in batches",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "coke"
+     },
+     {
+      "id": 25,
+      "a": 16,
+      "b": 10,
+      "name": "finished steel",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "steel"
+     },
+     {
+      "id": 26,
+      "a": 10,
+      "b": 4,
+      "name": "F-1.3 \u2014 steel for sale",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "steel"
+     },
+     {
+      "id": 27,
+      "a": 16,
+      "b": 11,
+      "name": "scrap and wastage",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "garbage"
+     },
+     {
+      "id": 28,
+      "a": 11,
+      "b": 5,
+      "name": "F-1.4 \u2014 scrap and wastage",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "garbage"
+     },
+     {
+      "id": 29,
+      "a": 16,
+      "b": 12,
+      "name": "process heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "substance": "heat"
+     },
+     {
+      "id": 30,
+      "a": 12,
+      "b": 6,
+      "name": "F-1.5 \u2014 radiated waste heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "substance": "heat"
+     },
+     {
+      "id": 31,
+      "a": 15,
+      "b": 2,
+      "name": "purchase orders \u2014 iron",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 32,
+      "a": 15,
+      "b": 3,
+      "name": "purchase orders \u2014 coke",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 33,
+      "a": 2,
+      "b": 15,
+      "name": "shipping documents \u2014 iron",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 34,
+      "a": 3,
+      "b": 15,
+      "name": "shipping documents \u2014 coke",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 35,
+      "a": 15,
+      "b": 8,
+      "name": "shipping documents to receiving",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 36,
+      "a": 15,
+      "b": 9,
+      "name": "shipping documents to receiving",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 37,
+      "a": 13,
+      "b": 15,
+      "name": "purchase request \u2014 iron",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 38,
+      "a": 14,
+      "b": 15,
+      "name": "purchase request \u2014 coke",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     }
+    ],
+    "boundary": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "system_type": {
+     "kingdom": "Concrete",
+     "genus": "Technical",
+     "domain": "Steel manufacturing"
+    },
+    "name": "Steel-Plant",
+    "time_unit": "month",
+    "klir_level": "Structure"
+   },
+   "facts": {
+    "boundary_thing_ids": [
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     15
+    ],
+    "environment_thing_ids": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "orphan_env_thing_ids": [],
+    "authored_interface_thing_ids": [
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     15
+    ],
+    "boundary_props": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "aggregate": false,
+    "edges": [
+     {
+      "id": 17,
+      "a": 1,
+      "b": 7,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 18,
+      "a": 7,
+      "b": 16,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 19,
+      "a": 2,
+      "b": 8,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 20,
+      "a": 8,
+      "b": 13,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 21,
+      "a": 3,
+      "b": 9,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 22,
+      "a": 9,
+      "b": 14,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 23,
+      "a": 13,
+      "b": 16,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 24,
+      "a": 14,
+      "b": 16,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 25,
+      "a": 16,
+      "b": 10,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 26,
+      "a": 10,
+      "b": 4,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 27,
+      "a": 16,
+      "b": 11,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 28,
+      "a": 11,
+      "b": 5,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 29,
+      "a": 16,
+      "b": 12,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 30,
+      "a": 12,
+      "b": 6,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 31,
+      "a": 15,
+      "b": 2,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 32,
+      "a": 15,
+      "b": 3,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 33,
+      "a": 2,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 34,
+      "a": 3,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 35,
+      "a": 15,
+      "b": 8,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 36,
+      "a": 15,
+      "b": 9,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 37,
+      "a": 13,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 38,
+      "a": 14,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     }
+    ],
+    "ports": [
+     {
+      "component": 7,
+      "env": 1,
+      "relation_ids": [
+       17
+      ],
+      "direction": "Receives",
+      "protocol": "F-1.0 \u2014 electric energy"
+     },
+     {
+      "component": 8,
+      "env": 2,
+      "relation_ids": [
+       19
+      ],
+      "direction": "Receives",
+      "protocol": "F-1.1 \u2014 iron-input"
+     },
+     {
+      "component": 9,
+      "env": 3,
+      "relation_ids": [
+       21
+      ],
+      "direction": "Receives",
+      "protocol": "F-1.2 \u2014 coke-input"
+     },
+     {
+      "component": 10,
+      "env": 4,
+      "relation_ids": [
+       26
+      ],
+      "direction": "Exports",
+      "protocol": "F-1.3 \u2014 steel for sale"
+     },
+     {
+      "component": 11,
+      "env": 5,
+      "relation_ids": [
+       28
+      ],
+      "direction": "Exports",
+      "protocol": "F-1.4 \u2014 scrap and wastage"
+     },
+     {
+      "component": 12,
+      "env": 6,
+      "relation_ids": [
+       30
+      ],
+      "direction": "Exports",
+      "protocol": "F-1.5 \u2014 radiated waste heat"
+     },
+     {
+      "component": 15,
+      "env": 2,
+      "relation_ids": [
+       31,
+       33
+      ],
+      "direction": "Hybrid",
+      "protocol": "purchase orders \u2014 iron \u00b7 shipping documents \u2014 iron"
+     },
+     {
+      "component": 15,
+      "env": 3,
+      "relation_ids": [
+       32,
+       34
+      ],
+      "direction": "Hybrid",
+      "protocol": "purchase orders \u2014 coke \u00b7 shipping documents \u2014 coke"
+     }
+    ]
+   }
+  },
+  {
+   "key": "computer-l1",
+   "label": "Hardware",
+   "canvas": {
+    "lens": "Mobus",
+    "things": [
+     {
+      "id": 1,
+      "name": "Power Source",
+      "x": 239.58264,
+      "y": -96.41519,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 2,
+      "name": "Ambient Air",
+      "x": 960.83484,
+      "y": 320.0,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+     },
+     {
+      "id": 3,
+      "name": "External File Device",
+      "x": 28.163116,
+      "y": 155.5447,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 4,
+      "name": "Users",
+      "x": 28.163086,
+      "y": 484.45523,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 5,
+      "name": "Firmware",
+      "x": 239.58257,
+      "y": 736.41516,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 6,
+      "name": "Power-Connector",
+      "x": 614.329,
+      "y": 110.979996,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 7,
+      "name": "Heat-Dissipation",
+      "x": 725.9336,
+      "y": 355.3599,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 8,
+      "name": "File-Port-In",
+      "x": 345.67102,
+      "y": 110.979965,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 9,
+      "name": "File-Port-Out",
+      "x": 253.99051,
+      "y": 216.78494,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 10,
+      "name": "User-Port-In",
+      "x": 234.06644,
+      "y": 355.35986,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 11,
+      "name": "User-Port-Out",
+      "x": 292.2245,
+      "y": 482.7083,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 12,
+      "name": "Firmware-Port-In",
+      "x": 410.00003,
+      "y": 558.3981,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 13,
+      "name": "Firmware-Port-Out",
+      "x": 549.99994,
+      "y": 558.3981,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 14,
+      "name": "CPU",
+      "x": 667.77545,
+      "y": 482.70837,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 15,
+      "name": "RAM Memory",
+      "x": 706.0095,
+      "y": 216.78493,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 16,
+      "name": "I/O Control",
+      "x": 480.0,
+      "y": 71.537445,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false
+     }
+    ],
+    "relations": [
+     {
+      "id": 17,
+      "a": 1,
+      "b": 6,
+      "name": "line current from the A/C wall socket",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 18,
+      "a": 6,
+      "b": 14,
+      "name": "regulated supply",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 19,
+      "a": 6,
+      "b": 15,
+      "name": "regulated supply",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 20,
+      "a": 6,
+      "b": 16,
+      "name": "regulated supply",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 21,
+      "a": 14,
+      "b": 7,
+      "name": "switching heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 22,
+      "a": 15,
+      "b": 7,
+      "name": "switching heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 23,
+      "a": 16,
+      "b": 7,
+      "name": "switching heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 24,
+      "a": 7,
+      "b": 2,
+      "name": "heat of computation, radiated or convected away",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 25,
+      "a": 3,
+      "b": 8,
+      "name": "programs and data read from files",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 26,
+      "a": 8,
+      "b": 16,
+      "name": "file data on the way in",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 27,
+      "a": 16,
+      "b": 9,
+      "name": "file data on the way out",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 28,
+      "a": 9,
+      "b": 3,
+      "name": "programs and data written back to files",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 29,
+      "a": 4,
+      "b": 10,
+      "name": "work of programmers and of end users",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 30,
+      "a": 10,
+      "b": 16,
+      "name": "user input on the way in",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 31,
+      "a": 16,
+      "b": 11,
+      "name": "results on the way out",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 32,
+      "a": 11,
+      "b": 4,
+      "name": "results returned to the user",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 33,
+      "a": 16,
+      "b": 14,
+      "name": "data delivered to the processor",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 34,
+      "a": 16,
+      "b": 15,
+      "name": "data written straight to memory",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 35,
+      "a": 14,
+      "b": 15,
+      "name": "stores over the internal bus",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 36,
+      "a": 15,
+      "b": 14,
+      "name": "loads over the internal bus",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 37,
+      "a": 15,
+      "b": 16,
+      "name": "data staged for output",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 38,
+      "a": 5,
+      "b": 12,
+      "name": "hardware control",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 39,
+      "a": 12,
+      "b": 14,
+      "name": "control programs fetched from ROM",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 40,
+      "a": 14,
+      "b": 13,
+      "name": "operation results on the way back",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 41,
+      "a": 13,
+      "b": 5,
+      "name": "results of hardware operations, returned through the firmware coupling",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     }
+    ],
+    "boundary": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "system_type": {
+     "kingdom": "Concrete",
+     "genus": "Technical",
+     "domain": "Digital computing"
+    },
+    "name": "Hardware",
+    "klir_level": "Structure"
+   },
+   "facts": {
+    "boundary_thing_ids": [
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13
+    ],
+    "environment_thing_ids": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "orphan_env_thing_ids": [],
+    "authored_interface_thing_ids": [
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13
+    ],
+    "boundary_props": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "aggregate": false,
+    "edges": [
+     {
+      "id": 17,
+      "a": 1,
+      "b": 6,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 18,
+      "a": 6,
+      "b": 14,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 19,
+      "a": 6,
+      "b": 15,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 20,
+      "a": 6,
+      "b": 16,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 21,
+      "a": 14,
+      "b": 7,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 22,
+      "a": 15,
+      "b": 7,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 23,
+      "a": 16,
+      "b": 7,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 24,
+      "a": 7,
+      "b": 2,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 25,
+      "a": 3,
+      "b": 8,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 26,
+      "a": 8,
+      "b": 16,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 27,
+      "a": 16,
+      "b": 9,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 28,
+      "a": 9,
+      "b": 3,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 29,
+      "a": 4,
+      "b": 10,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 30,
+      "a": 10,
+      "b": 16,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 31,
+      "a": 16,
+      "b": 11,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 32,
+      "a": 11,
+      "b": 4,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 33,
+      "a": 16,
+      "b": 14,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 34,
+      "a": 16,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 35,
+      "a": 14,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 36,
+      "a": 15,
+      "b": 14,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 37,
+      "a": 15,
+      "b": 16,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 38,
+      "a": 5,
+      "b": 12,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 39,
+      "a": 12,
+      "b": 14,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 40,
+      "a": 14,
+      "b": 13,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 41,
+      "a": 13,
+      "b": 5,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     }
+    ],
+    "ports": [
+     {
+      "component": 6,
+      "env": 1,
+      "relation_ids": [
+       17
+      ],
+      "direction": "Receives",
+      "protocol": "line current from the A/C wall socket"
+     },
+     {
+      "component": 7,
+      "env": 2,
+      "relation_ids": [
+       24
+      ],
+      "direction": "Exports",
+      "protocol": "heat of computation, radiated or convected away"
+     },
+     {
+      "component": 8,
+      "env": 3,
+      "relation_ids": [
+       25
+      ],
+      "direction": "Receives",
+      "protocol": "programs and data read from files"
+     },
+     {
+      "component": 9,
+      "env": 3,
+      "relation_ids": [
+       28
+      ],
+      "direction": "Exports",
+      "protocol": "programs and data written back to files"
+     },
+     {
+      "component": 10,
+      "env": 4,
+      "relation_ids": [
+       29
+      ],
+      "direction": "Receives",
+      "protocol": "work of programmers and of end users"
+     },
+     {
+      "component": 11,
+      "env": 4,
+      "relation_ids": [
+       32
+      ],
+      "direction": "Exports",
+      "protocol": "results returned to the user"
+     },
+     {
+      "component": 12,
+      "env": 5,
+      "relation_ids": [
+       38
+      ],
+      "direction": "Receives",
+      "protocol": "hardware control"
+     },
+     {
+      "component": 13,
+      "env": 5,
+      "relation_ids": [
+       41
+      ],
+      "direction": "Exports",
+      "protocol": "results of hardware operations, returned through the firmware coupling"
+     }
+    ]
+   }
+  },
+  {
+   "key": "llm-market",
+   "label": "LLM Market",
+   "canvas": {
+    "lens": "Mobus",
+    "things": [
+     {
+      "id": 1,
+      "name": "Developer workload",
+      "x": 288.4676,
+      "y": -11.7438965,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 2,
+      "name": "Enterprise workload",
+      "x": 209.1323,
+      "y": 49.132202,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 3,
+      "name": "Anthropic",
+      "x": 148.25616,
+      "y": 128.46751,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 4,
+      "name": "OpenAI",
+      "x": 109.98776,
+      "y": 220.8555,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 5,
+      "name": "Google",
+      "x": 96.93515,
+      "y": 319.99997,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 6,
+      "name": "Meta",
+      "x": 109.98776,
+      "y": 419.14444,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 7,
+      "name": "Alibaba",
+      "x": 148.2561,
+      "y": 511.53244,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 8,
+      "name": "DeepSeek (lab)",
+      "x": 209.13226,
+      "y": 590.86774,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 9,
+      "name": "Open-weight field",
+      "x": 288.46756,
+      "y": 651.7439,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 10,
+      "name": "Developer clearing",
+      "x": 480.0,
+      "y": 150.0,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Splitting",
+      "interface": true
+     },
+     {
+      "id": 11,
+      "name": "Enterprise clearing",
+      "x": 571.90894,
+      "y": 176.98691,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Splitting",
+      "interface": true
+     },
+     {
+      "id": 12,
+      "name": "Opus",
+      "x": 634.63745,
+      "y": 249.37946,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 13,
+      "name": "Fable",
+      "x": 648.26965,
+      "y": 344.1935,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 14,
+      "name": "GPT",
+      "x": 608.4774,
+      "y": 431.32632,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 15,
+      "name": "Gemini",
+      "x": 527.89453,
+      "y": 483.11383,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 16,
+      "name": "Gemma",
+      "x": 432.10547,
+      "y": 483.1138,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 17,
+      "name": "Llama",
+      "x": 351.52252,
+      "y": 431.3263,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 18,
+      "name": "Qwen",
+      "x": 311.73035,
+      "y": 344.1935,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 19,
+      "name": "DeepSeek",
+      "x": 325.36255,
+      "y": 249.37946,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 20,
+      "name": "Other open",
+      "x": 388.0911,
+      "y": 176.98688,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 21,
+      "name": "Applications served",
+      "x": 863.0648,
+      "y": 320.0,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+     }
+    ],
+    "relations": [
+     {
+      "id": 22,
+      "a": 1,
+      "b": 10,
+      "name": "dev inference compute",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "6000",
+      "unit": "Gtok/day",
+      "substance": "compute"
+     },
+     {
+      "id": 23,
+      "a": 2,
+      "b": 11,
+      "name": "enterprise inference compute",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "2000",
+      "unit": "Gtok/day",
+      "substance": "compute"
+     },
+     {
+      "id": 24,
+      "a": 3,
+      "b": 12,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 25,
+      "a": 3,
+      "b": 13,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 26,
+      "a": 4,
+      "b": 14,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 27,
+      "a": 5,
+      "b": 15,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 28,
+      "a": 5,
+      "b": 16,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 29,
+      "a": 6,
+      "b": 17,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 30,
+      "a": 7,
+      "b": 18,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 31,
+      "a": 8,
+      "b": 19,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 32,
+      "a": 9,
+      "b": 20,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 33,
+      "a": 10,
+      "b": 12,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "9",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 34,
+      "a": 10,
+      "b": 13,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "6",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 35,
+      "a": 10,
+      "b": 14,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "9",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 36,
+      "a": 10,
+      "b": 15,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "11",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 37,
+      "a": 10,
+      "b": 16,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "2",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 38,
+      "a": 10,
+      "b": 17,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "3",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 39,
+      "a": 10,
+      "b": 18,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "13",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 40,
+      "a": 10,
+      "b": 19,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "16",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 41,
+      "a": 10,
+      "b": 20,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 42,
+      "a": 11,
+      "b": 12,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "30",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 43,
+      "a": 11,
+      "b": 13,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "10",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 44,
+      "a": 11,
+      "b": 14,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "27",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 45,
+      "a": 11,
+      "b": 15,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 46,
+      "a": 11,
+      "b": 16,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "1",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 47,
+      "a": 11,
+      "b": 17,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "4",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 48,
+      "a": 11,
+      "b": 18,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "3",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 49,
+      "a": 11,
+      "b": 19,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "3",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 50,
+      "a": 11,
+      "b": 20,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "2",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 51,
+      "a": 12,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 52,
+      "a": 13,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 53,
+      "a": 14,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 54,
+      "a": 15,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 55,
+      "a": 16,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 56,
+      "a": 17,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 57,
+      "a": 18,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 58,
+      "a": 19,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 59,
+      "a": 20,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     }
+    ],
+    "boundary": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "system_type": {
+     "kingdom": "Concrete",
+     "genus": "Social",
+     "domain": "Inference compute cleared across frontier and open-weight models by two demand channels, tokens served out, heat shed"
+    },
+    "name": "LLM Market",
+    "time_unit": "day",
+    "params": [
+     {
+      "name": "Developer demand",
+      "anchor": {
+       "Flow": {
+        "relation": 22
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "12000"
+      }
+     },
+     {
+      "name": "Enterprise demand",
+      "anchor": {
+       "Flow": {
+        "relation": 23
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "8000"
+      }
+     },
+     {
+      "name": "Developer market share",
+      "anchor": {
+       "Shares": {
+        "thing": 10
+       }
+      }
+     },
+     {
+      "name": "Enterprise market share",
+      "anchor": {
+       "Shares": {
+        "thing": 11
+       }
+      }
+     }
+    ],
+    "metrics": [
+     {
+      "name": "DeepSeek dev share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 40
+       }
+      }
+     },
+     {
+      "name": "Qwen dev share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 39
+       }
+      }
+     },
+     {
+      "name": "Gemini dev share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 36
+       }
+      }
+     },
+     {
+      "name": "Opus dev share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 33
+       }
+      }
+     },
+     {
+      "name": "Opus enterprise share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 42
+       }
+      }
+     },
+     {
+      "name": "GPT enterprise share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 44
+       }
+      }
+     },
+     {
+      "name": "Gemini enterprise share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 45
+       }
+      }
+     },
+     {
+      "name": "Fable enterprise share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 43
+       }
+      }
+     },
+     {
+      "name": "Opus tokens served",
+      "expr": {
+       "SumInto": {
+        "thing": 12
+       }
+      }
+     },
+     {
+      "name": "Fable tokens served",
+      "expr": {
+       "SumInto": {
+        "thing": 13
+       }
+      }
+     },
+     {
+      "name": "DeepSeek tokens served",
+      "expr": {
+       "SumInto": {
+        "thing": 19
+       }
+      }
+     },
+     {
+      "name": "Qwen tokens served",
+      "expr": {
+       "SumInto": {
+        "thing": 18
+       }
+      }
+     }
+    ],
+    "klir_level": "Structure"
+   },
+   "facts": {
+    "boundary_thing_ids": [
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20
+    ],
+    "environment_thing_ids": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     21
+    ],
+    "orphan_env_thing_ids": [],
+    "authored_interface_thing_ids": [
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20
+    ],
+    "boundary_props": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "aggregate": false,
+    "edges": [
+     {
+      "id": 22,
+      "a": 1,
+      "b": 10,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 23,
+      "a": 2,
+      "b": 11,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 24,
+      "a": 3,
+      "b": 12,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 25,
+      "a": 3,
+      "b": 13,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 26,
+      "a": 4,
+      "b": 14,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 27,
+      "a": 5,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 28,
+      "a": 5,
+      "b": 16,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 29,
+      "a": 6,
+      "b": 17,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 30,
+      "a": 7,
+      "b": 18,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 31,
+      "a": 8,
+      "b": 19,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 32,
+      "a": 9,
+      "b": 20,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 33,
+      "a": 10,
+      "b": 12,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 34,
+      "a": 10,
+      "b": 13,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 35,
+      "a": 10,
+      "b": 14,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 36,
+      "a": 10,
+      "b": 15,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 37,
+      "a": 10,
+      "b": 16,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 38,
+      "a": 10,
+      "b": 17,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 39,
+      "a": 10,
+      "b": 18,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 40,
+      "a": 10,
+      "b": 19,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 41,
+      "a": 10,
+      "b": 20,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 42,
+      "a": 11,
+      "b": 12,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 43,
+      "a": 11,
+      "b": 13,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 44,
+      "a": 11,
+      "b": 14,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 45,
+      "a": 11,
+      "b": 15,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 46,
+      "a": 11,
+      "b": 16,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 47,
+      "a": 11,
+      "b": 17,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 48,
+      "a": 11,
+      "b": 18,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 49,
+      "a": 11,
+      "b": 19,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 50,
+      "a": 11,
+      "b": 20,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 51,
+      "a": 12,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 52,
+      "a": 13,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 53,
+      "a": 14,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 54,
+      "a": 15,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 55,
+      "a": 16,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 56,
+      "a": 17,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 57,
+      "a": 18,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 58,
+      "a": 19,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 59,
+      "a": 20,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     }
+    ],
+    "ports": [
+     {
+      "component": 10,
+      "env": 1,
+      "relation_ids": [
+       22
+      ],
+      "direction": "Receives",
+      "protocol": "dev inference compute"
+     },
+     {
+      "component": 11,
+      "env": 2,
+      "relation_ids": [
+       23
+      ],
+      "direction": "Receives",
+      "protocol": "enterprise inference compute"
+     },
+     {
+      "component": 12,
+      "env": 3,
+      "relation_ids": [
+       24
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 12,
+      "env": 21,
+      "relation_ids": [
+       51
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 13,
+      "env": 3,
+      "relation_ids": [
+       25
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 13,
+      "env": 21,
+      "relation_ids": [
+       52
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 14,
+      "env": 4,
+      "relation_ids": [
+       26
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 14,
+      "env": 21,
+      "relation_ids": [
+       53
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 15,
+      "env": 5,
+      "relation_ids": [
+       27
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 15,
+      "env": 21,
+      "relation_ids": [
+       54
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 16,
+      "env": 5,
+      "relation_ids": [
+       28
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 16,
+      "env": 21,
+      "relation_ids": [
+       55
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 17,
+      "env": 6,
+      "relation_ids": [
+       29
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 17,
+      "env": 21,
+      "relation_ids": [
+       56
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 18,
+      "env": 7,
+      "relation_ids": [
+       30
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 18,
+      "env": 21,
+      "relation_ids": [
+       57
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 19,
+      "env": 8,
+      "relation_ids": [
+       31
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 19,
+      "env": 21,
+      "relation_ids": [
+       58
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 20,
+      "env": 9,
+      "relation_ids": [
+       32
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 20,
+      "env": 21,
+      "relation_ids": [
+       59
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     }
+    ]
+   }
+  }
+ ]
+}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  "use strict";
+
+  const $ = id => document.getElementById(id);
+  const canvas = $("view"), viewport = $("viewport");
+  const themeMedia = matchMedia("(prefers-color-scheme: dark)");
+  const motionMedia = matchMedia("(prefers-reduced-motion: reduce)");
+  let manualTheme = false;
+  let dark = themeMedia.matches;
+  let renderer, scene, camera, root, shell, shellEdges;
+  let current = null, models = [], fixtureError = "";
+  let bodies = [], flows = [], ports = [], labels = [], hitObjects = [];
+  let bodyMap = new Map(), interfaceIds = new Set(), orphanIds = new Set();
+  let selected = null, neighbours = new Set(), hovered = null;
+  let half = null, scale = 1, pendingExplosion = false;
+  let contextLost = false, frame = 0, layoutDirty = true, width = 1, height = 1;
+  const orbit = { theta:0.53, phi:0.96, zoom:1, halfHeight:12 };
+  const TAU = Math.PI * 2;
+  const idOf = x => String(x);
+  const clamp = (x,a,b) => Math.max(a,Math.min(b,x));
+  const array = x => Array.isArray(x) ? x : [];
+  const text = (x,fallback="") => x == null || x === "" ? fallback : String(x);
+
+  function palette() {
+    return dark ? {
+      paper:"#16181a", ink:"#e8eaec", muted:"#e8eaec",
+      accent:"#6fa5b8", strong:"#95c3d3", hairline:"#3d6373",
+      Matter:"#649457", Energy:"#c6721e", Informational:"#9e79b8",
+      Field:"#428cc6", Unspecified:"#e8eaec"
+    } : {
+      paper:"#f1f2f3", ink:"#17181a", muted:"#5d6670",
+      accent:"#3d6373", strong:"#2a4b59", hairline:"#e5ecf0",
+      Matter:"#57814c", Energy:"#bb6c1c", Informational:"#8054a0",
+      Field:"#2f6c9c", Unspecified:"#5d6670"
+    };
+  }
+  function kind(r) {
+    return ["Matter","Energy","Informational","Field"].includes(r.kind) ? r.kind : "Unspecified";
+  }
+  function kindColor(r) { return palette()[kind(r)]; }
+  function isDeclared(r) { return r.amount !== null && r.amount !== undefined && String(r.amount).trim() !== ""; }
+  function magnitude(r) {
+    if (r.ample || !isDeclared(r)) return null;
+    const n = Number(String(r.amount).replace(/,/g,"").trim());
+    return Number.isFinite(n) ? Math.abs(n) : null;
+  }
+  function rate(r) {
+    if (r.ample === true) return "ample";
+    const unit = text(r.unit), time = text(current && current.canvas.time_unit);
+    const suffix = (unit ? " " + unit : "") + (time ? " / " + time : "");
+    return isDeclared(r) ? text(r.amount) + suffix : "undeclared" + suffix;
+  }
+  function showMessage(title, detail="") {
+    $("message-title").textContent = title;
+    $("message-detail").textContent = detail;
+    $("message").hidden = false;
+  }
+  function hideMessage() { $("message").hidden = true; }
+  function el(tag, className, content) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (content !== undefined) node.textContent = content;
+    return node;
+  }
+  function hash(s) {
+    let n = 0;
+    for (let i=0;i<s.length;i++) n = ((n*31) + s.charCodeAt(i)) | 0;
+    return Math.abs(n);
+  }
+  function themeApply(rebuild=true) {
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    $("theme").textContent = dark ? "Light" : "Dark";
+    $("theme").setAttribute("aria-label", "Switch to " + (dark ? "light" : "dark") + " theme");
+    if (renderer) {
+      renderer.setClearColor(palette().paper,1);
+      if (rebuild && current) {
+        const saved = selected;
+        loadModel(current, true);
+        if (saved && bodyMap.has(saved)) selectBody(saved);
+      } else invalidate();
+    }
+  }
+  themeApply(false);
+  $("theme").addEventListener("click", () => {
+    manualTheme = true; dark = !dark; themeApply();
+  });
+  const listenMedia = (media, fn) => media.addEventListener ? media.addEventListener("change",fn) : media.addListener(fn);
+  listenMedia(themeMedia, () => {
+    if (!manualTheme) { dark = themeMedia.matches; themeApply(); }
+  });
+  listenMedia(motionMedia, () => {
+    if (motionMedia.matches) $("texture").checked = false;
+    textureAvailability();
+    invalidate();
+  });
+  function textureAvailability() {
+    $("texture").disabled = motionMedia.matches || !current || !renderer;
+    $("texture").title = motionMedia.matches ? "Disabled: reduced motion" : "Flow texture";
+  }
+
+  try {
+    const data = JSON.parse(document.getElementById("fixture").textContent);
+    models = array(data && data.models).filter(m => m && m.canvas && Array.isArray(m.canvas.things));
+  } catch (e) {
+    fixtureError = "The embedded fixture is not valid JSON.";
+  }
+
+  if (typeof THREE === "undefined") {
+    showMessage("3D renderer unavailable", "Three.js could not be loaded.");
+    return;
+  }
+
+  try {
+    const gl = canvas.getContext("webgl2", {antialias:true,alpha:false})
+      || canvas.getContext("webgl", {antialias:true,alpha:false});
+    if (!gl) throw new Error("No WebGL context");
+    renderer = new THREE.WebGLRenderer({canvas,context:gl,antialias:true,alpha:false});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1,2));
+    renderer.setClearColor(palette().paper,1);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    scene = new THREE.Scene();
+    camera = new THREE.OrthographicCamera(-10,10,10,-10,.1,400);
+    scene.add(new THREE.AmbientLight("#f1f2f3",.78));
+    const key = new THREE.DirectionalLight("#f1f2f3",.78);
+    key.position.set(-8,15,10);
+    scene.add(key);
+    const fill = new THREE.DirectionalLight("#f1f2f3",.3);
+    fill.position.set(10,5,-9);
+    scene.add(fill);
+    half = new THREE.Vector3(5,2.3,4);
+  } catch (e) {
+    showMessage("WebGL unavailable", "This view requires a working WebGL context.");
+    return;
+  }
+
+  canvas.addEventListener("webglcontextlost", e => {
+    e.preventDefault();
+    contextLost = true;
+    if (frame) cancelAnimationFrame(frame);
+    frame = 0;
+    showMessage("WebGL context lost", "Waiting for the graphics context to return.");
+  });
+  canvas.addEventListener("webglcontextrestored", () => {
+    contextLost = false;
+    if (current) hideMessage();
+    else showMessage("No models loaded", fixtureError || "The embedded fixture is empty.");
+    invalidate();
+  });
+
+  function disposeTree(object) {
+    if (!object) return;
+    const geometries = new Set(), materials = new Set();
+    object.traverse(o => {
+      if (o.geometry) geometries.add(o.geometry);
+      if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => materials.add(m));
+    });
+    geometries.forEach(g => g.dispose());
+    materials.forEach(m => m.dispose());
+    if (object.parent) object.parent.remove(object);
+  }
+  function standard(color, opacity=1) {
+    const m = new THREE.MeshStandardMaterial({
+      color, roughness:.72, metalness:.12, transparent:true,
+      opacity, depthWrite:opacity>.8
+    });
+    m.userData.baseOpacity = opacity;
+    return m;
+  }
+  function lineMaterial(color, opacity=.55, dashed=false) {
+    const settings = {color,transparent:true,opacity,depthWrite:false};
+    const m = dashed
+      ? new THREE.LineDashedMaterial({...settings,dashSize:.09,gapSize:.12})
+      : new THREE.LineBasicMaterial(settings);
+    m.userData.baseOpacity = opacity;
+    return m;
+  }
+  function basic(color, opacity=1) {
+    const m = new THREE.MeshBasicMaterial({color,transparent:true,opacity,depthWrite:opacity>.8});
+    m.userData.baseOpacity = opacity;
+    return m;
+  }
+  function lineFrom(points, color, opacity=.5, closed=false, dashed=false) {
+    const g = new THREE.BufferGeometry().setFromPoints(points);
+    const m = lineMaterial(color,opacity,dashed);
+    const line = closed ? new THREE.LineLoop(g,m) : new THREE.Line(g,m);
+    if (dashed) line.computeLineDistances();
+    return line;
+  }
+  function mesh(group, geometry, material, position) {
+    const result = new THREE.Mesh(geometry,material);
+    if (position) result.position.copy(position);
+    group.add(result);
+    return result;
+  }
+  function ringPoints(radius,y,count=48) {
+    return Array.from({length:count},(_,i) => new THREE.Vector3(Math.cos(i/count*TAU)*radius,y,Math.sin(i/count*TAU)*radius));
+  }
+  function bevelBox() {
+    const shape = new THREE.Shape();
+    const x=.53,z=.40,r=.07;
+    shape.moveTo(-x+r,-z);
+    shape.lineTo(x-r,-z); shape.quadraticCurveTo(x,-z,x,-z+r);
+    shape.lineTo(x,z-r); shape.quadraticCurveTo(x,z,x-r,z);
+    shape.lineTo(-x+r,z); shape.quadraticCurveTo(-x,z,-x,z-r);
+    shape.lineTo(-x,-z+r); shape.quadraticCurveTo(-x,-z,-x+r,-z);
+    const g = new THREE.ExtrudeGeometry(shape,{
+      depth:.53,bevelEnabled:true,bevelSize:.035,bevelThickness:.035,bevelSegments:2,steps:1,curveSegments:4
+    });
+    g.rotateX(-Math.PI/2);
+    g.center();
+    return g;
+  }
+
+  function surfaceInDirection(v, y=.2) {
+    const d = v.clone();
+    d.y = 0;
+    if (d.lengthSq() < .00001) d.x = 1;
+    const tx = Math.abs(d.x)>1e-6 ? half.x/Math.abs(d.x) : Infinity;
+    const tz = Math.abs(d.z)>1e-6 ? half.z/Math.abs(d.z) : Infinity;
+    const t = Math.min(tx,tz);
+    const p = new THREE.Vector3(d.x*t,y,d.z*t);
+    const normal = tx <= tz
+      ? new THREE.Vector3(Math.sign(d.x),0,0)
+      : new THREE.Vector3(0,0,Math.sign(d.z));
+    return {position:p,normal};
+  }
+
+  function createBody(thing, base, normal) {
+    const p = palette(), id = idOf(thing.id);
+    const isInterface = interfaceIds.has(id);
+    const isEnvironment = thing.role === "Environment";
+    const group = new THREE.Group();
+    group.userData = {type:"body",id};
+    let selectionMark;
+
+    if (isInterface) {
+      group.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),normal);
+      mesh(group,new THREE.BoxGeometry(1.05,.79,.11),standard(p.accent,.91));
+      mesh(group,new THREE.BoxGeometry(.84,.59,.025),standard(p.paper,.96),new THREE.Vector3(0,0,.075));
+      const border = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.BoxGeometry(1.05,.79,.13)),
+        lineMaterial(p.strong,.85)
+      );
+      group.add(border);
+      mesh(group,new THREE.BoxGeometry(.39,.045,.025),basic(p.accent,.9),new THREE.Vector3(0,0,.10));
+      const pts = [
+        new THREE.Vector3(-.65,-.51,.04),new THREE.Vector3(.65,-.51,.04),
+        new THREE.Vector3(.65,.51,.04),new THREE.Vector3(-.65,.51,.04)
+      ];
+      selectionMark = lineFrom(pts,p.strong,1,true);
+    } else if (isEnvironment) {
+      if (thing.env_kind === "Source") {
+        mesh(group,new THREE.CylinderGeometry(.48,.48,.28,40),standard(p.accent,.86));
+        mesh(group,new THREE.CylinderGeometry(.38,.38,.035,40),standard(p.paper,.96),new THREE.Vector3(0,.158,0));
+        mesh(group,new THREE.BoxGeometry(.29,.035,.045),basic(p.accent,.9),new THREE.Vector3(0,.19,0));
+        mesh(group,new THREE.BoxGeometry(.045,.035,.29),basic(p.accent,.9),new THREE.Vector3(0,.19,0));
+      } else if (thing.env_kind === "Sink") {
+        const torus = mesh(group,new THREE.TorusGeometry(.38,.095,12,40),standard(p.accent,.88));
+        torus.rotation.x = Math.PI/2;
+        mesh(group,new THREE.CylinderGeometry(.30,.30,.04,32),standard(p.paper,.84),new THREE.Vector3(0,-.10,0));
+        mesh(group,new THREE.BoxGeometry(.28,.035,.045),basic(p.accent,.88),new THREE.Vector3(0,-.05,0));
+      } else {
+        mesh(group,new THREE.CylinderGeometry(.46,.46,.11,40),standard(p.paper,.85));
+        group.add(lineFrom(ringPoints(.47,.08),p.accent,.75,true));
+        mesh(group,new THREE.BoxGeometry(.26,.03,.04),basic(p.accent,.8),new THREE.Vector3(0,.085,0));
+        mesh(group,new THREE.BoxGeometry(.26,.03,.04),basic(p.accent,.8),new THREE.Vector3(0,.085,.12));
+      }
+      selectionMark = lineFrom(ringPoints(.66,-.2),p.strong,1,true);
+    } else {
+      mesh(group,bevelBox(),standard(p.accent,.97));
+      mesh(group,new THREE.BoxGeometry(.82,.035,.60),standard(p.paper,.96),new THREE.Vector3(0,.305,0));
+      mesh(group,new THREE.BoxGeometry(.45,.018,.028),basic(p.strong,.73),new THREE.Vector3(-.03,.335,-.10));
+      mesh(group,new THREE.BoxGeometry(.25,.018,.028),basic(p.accent,.6),new THREE.Vector3(-.13,.335,.05));
+      selectionMark = lineFrom([
+        new THREE.Vector3(-.7,-.35,-.57),new THREE.Vector3(.7,-.35,-.57),
+        new THREE.Vector3(.7,-.35,.57),new THREE.Vector3(-.7,-.35,.57)
+      ],p.strong,1,true);
+    }
+
+    selectionMark.visible = false;
+    group.add(selectionMark);
+    root.add(group);
+    hitObjects.push(group);
+    const body = {id,thing,base,group,normal,isInterface,isEnvironment,selectionMark};
+    bodies.push(body); bodyMap.set(id,body);
+    const role = isInterface ? "INTERFACE · " + text(thing.role,"Component").toUpperCase()
+      : isEnvironment ? "ENVIRONMENT · " + text(thing.env_kind,"Neutral").toUpperCase()
+      : "COMPONENT";
+    body.label = createLabel("body",text(thing.name,id),role,body);
+    return body;
+  }
+
+  function createShell() {
+    const p = palette();
+    shell = new THREE.Group();
+    const material = new THREE.MeshBasicMaterial({
+      color:p.accent,transparent:true,opacity:dark?.045:.055,
+      side:THREE.DoubleSide,depthWrite:false
+    });
+    const surface = new THREE.Mesh(new THREE.BoxGeometry(2,2,2),material);
+    surface.renderOrder = -2;
+    shell.add(surface);
+    shellEdges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(2,2,2)),
+      lineMaterial(p.accent,.27)
+    );
+    shell.add(shellEdges);
+    const grid = [];
+    for (let i=-4;i<=4;i++) {
+      const v=i/5;
+      grid.push(new THREE.Vector3(v,-1,-1),new THREE.Vector3(v,-1,1));
+      grid.push(new THREE.Vector3(-1,-1,v),new THREE.Vector3(1,-1,v));
+    }
+    shell.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(grid),lineMaterial(p.accent,.085)));
+    root.add(shell);
+    shell.userData.surface = surface;
+  }
+
+  function createPorts(facts) {
+    const used = [];
+    array(facts.ports).forEach((fact,index) => {
+      const c = bodyMap.get(idOf(fact.component)), e = bodyMap.get(idOf(fact.env));
+      if (!c || !e) return;
+      const surface = surfaceInDirection(e.base);
+      const normal = surface.normal;
+      const xFace = Math.abs(normal.x)>.5;
+      const extent = xFace ? half.z : half.x;
+      const desiredU = clamp((xFace ? c.base.z*.68 + e.base.z*.32 : c.base.x*.68 + e.base.x*.32),-extent+.45,extent-.45);
+      const desiredY = clamp(c.base.y*.6,-half.y+.45,half.y-.45);
+      const radius = .20 + Math.min(.15,Math.max(0,array(fact.relation_ids).length-1)*.035);
+      const faceKey = xFace ? "x"+normal.x : "z"+normal.z;
+      const candidates = [{u:desiredU,y:desiredY}];
+      const columns = Math.max(1,Math.floor((extent*2-.8)/.64));
+      const rows = Math.max(1,Math.floor((half.y*2-.8)/.64));
+      for (let r=0;r<=rows;r++) for (let k=0;k<=columns;k++) {
+        candidates.push({
+          u:-extent+.4+(extent*2-.8)*k/columns,
+          y:-half.y+.4+(half.y*2-.8)*r/rows
+        });
+      }
+      candidates.sort((a,b) => ((a.u-desiredU)**2+(a.y-desiredY)**2)-((b.u-desiredU)**2+(b.y-desiredY)**2));
+      const slot = candidates.find(s => used.every(t => t.face!==faceKey ||
+        Math.hypot(s.u-t.u,s.y-t.y)>radius+t.radius+.10)) || candidates[0];
+      used.push({...slot,face:faceKey,radius});
+      const base = xFace
+        ? new THREE.Vector3(normal.x*half.x,slot.y,slot.u)
+        : new THREE.Vector3(slot.u,slot.y,normal.z*half.z);
+      const group = new THREE.Group();
+      group.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),normal);
+      group.userData = {type:"port",index:ports.length};
+      const p = palette();
+      mesh(group,new THREE.TorusGeometry(radius,.027,8,32),standard(p.strong,.95));
+      mesh(group,new THREE.CircleGeometry(radius*.67,32),new THREE.MeshBasicMaterial({
+        color:p.paper,transparent:true,opacity:.88,side:THREE.DoubleSide,depthWrite:false
+      }));
+      const directions = fact.direction==="Both" ? [-1,1] : [fact.direction==="Receives" ? -1 : 1];
+      directions.forEach(sign => {
+        const cone = mesh(group,new THREE.ConeGeometry(.065,.17,12),basic(p.strong,.92));
+        cone.position.z = sign*.15;
+        cone.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(0,0,sign));
+      });
+      root.add(group); hitObjects.push(group);
+      const port = {fact,base,normal,group,radius,index,component:c,environment:e};
+      ports.push(port);
+      port.label = createLabel("port",text(fact.protocol,"Port"),text(fact.direction,"Port"),port);
+    });
+  }
+
+  function createLabel(type,name,meta,owner) {
+    const node = el(type==="body" ? "button" : "div","annotation "+type);
+    if (type==="body") {
+      node.type = "button";
+      node.addEventListener("click", () => selectBody(owner.id));
+      node.setAttribute("aria-label",name+", "+meta);
+    }
+    node.append(el("span","label-name",name),el("span","label-meta",meta));
+    if (type==="flow") node.style.borderLeftColor = kindColor(owner.relation);
+    $("left-track").append(node);
+    const label = {type,node,owner,world:new THREE.Vector3(),screen:{x:0,y:0},active:true,height:30,side:0,top:0};
+    labels.push(label);
+    return label;
+  }
+
+  function portForRelation(r) {
+    const exact = ports.find(p => array(p.fact.relation_ids).some(id => idOf(id)===idOf(r.id)));
+    if (exact) return exact;
+    // Pair lookup uses only authored kernel ports; no port is inferred or created.
+    const a=idOf(r.a),b=idOf(r.b);
+    return ports.find(p => (idOf(p.fact.component)===a && idOf(p.fact.env)===b)
+      || (idOf(p.fact.component)===b && idOf(p.fact.env)===a)) || null;
+  }
+
+  function flowCurve(flow) {
+    const a=flow.a.group.position.clone(), b=flow.b.group.position.clone();
+    const vector=b.clone().sub(a);
+    if (vector.lengthSq()<.001) vector.set(.8,.3,0);
+    const direction=vector.clone().normalize();
+    let laneAxis = new THREE.Vector3(0,1,0);
+    laneAxis.addScaledVector(direction,-laneAxis.dot(direction));
+    if (laneAxis.lengthSq()<.03) laneAxis.set(0,0,1);
+    laneAxis.normalize();
+    const lane = flow.lane;
+    const start=a.clone().addScaledVector(direction,flow.a.isInterface?.08:.43).addScaledVector(laneAxis,lane*.6);
+    const end=b.clone().addScaledVector(direction,flow.b.isInterface?-.08:-.43).addScaledVector(laneAxis,lane*.6);
+    const lift=.36+Math.min(.38,vector.length()*.018);
+    let points;
+    if (flow.port) {
+      const port=flow.port;
+      const portAxis = laneAxis.clone().addScaledVector(port.normal,-laneAxis.dot(port.normal)).normalize();
+      if (portAxis.lengthSq()<.01) portAxis.set(0,1,0);
+      const q=port.group.position.clone().addScaledVector(portAxis,lane*.65);
+      const before=start.clone().lerp(q,.53).addScaledVector(laneAxis,lift*.38+lane*.7);
+      const after=q.clone().lerp(end,.47).addScaledVector(laneAxis,lift*.38+lane*.7);
+      points=[start,before,q,after,end];
+    } else {
+      points=[
+        start,start.clone().lerp(end,.33).addScaledVector(laneAxis,lift+lane),
+        start.clone().lerp(end,.67).addScaledVector(laneAxis,lift+lane),end
+      ];
+    }
+    points=points.filter((v,i) => i===0 || v.distanceToSquared(points[i-1])>.00001);
+    if (points.length<2) points.push(start.clone().add(new THREE.Vector3(.1,.1,0)));
+    return new THREE.CatmullRomCurve3(points,false,"centripetal",.5);
+  }
+
+  function createFlows(relations) {
+    const valid=relations.filter(r => bodyMap.has(idOf(r.a)) && bodyMap.has(idOf(r.b)));
+    const pairs=new Map();
+    valid.forEach(r => {
+      const key=JSON.stringify([idOf(r.a),idOf(r.b)].sort());
+      if (!pairs.has(key)) pairs.set(key,[]);
+      pairs.get(key).push(r);
+    });
+    const values=valid.map(magnitude).filter(v=>v!==null);
+    const min=values.length?Math.min(...values):0, max=values.length?Math.max(...values):1;
+    valid.forEach((r,index) => {
+      const pair=pairs.get(JSON.stringify([idOf(r.a),idOf(r.b)].sort()));
+      const laneIndex=pair.indexOf(r)-(pair.length-1)/2;
+      const spacing=Math.min(.19,.68/Math.max(1,pair.length-1));
+      const value=magnitude(r);
+      const norm=value===null?.25:max===min?.5:(value-min)/(max-min);
+      const radius=.019+.058*Math.sqrt(clamp(norm,0,1));
+      const mere=r.is_bond===false, undeclared=!isDeclared(r)&&!r.ample;
+      const flow={
+        relation:r,a:bodyMap.get(idOf(r.a)),b:bodyMap.get(idOf(r.b)),
+        port:portForRelation(r),lane:laneIndex*spacing,
+        radius,group:new THREE.Group(),index,mere,undeclared,curve:null
+      };
+      flow.group.userData={type:"flow",index};
+      flow.curve=flowCurve(flow);
+      const opacity=mere?.30:kind(r)==="Unspecified"?.65:.86;
+      const dashed=undeclared||r.ample===true;
+      if (mere || dashed) {
+        const mat=lineMaterial(kindColor(r),opacity,dashed);
+        if (r.ample && mat.isLineDashedMaterial) { mat.dashSize=.24; mat.gapSize=.065; }
+        flow.stroke=new THREE.Line(new THREE.BufferGeometry().setFromPoints(flow.curve.getPoints(120)),mat);
+        if (dashed) flow.stroke.computeLineDistances();
+      } else {
+        flow.stroke=new THREE.Mesh(new THREE.TubeGeometry(flow.curve,100,radius,7,false),standard(kindColor(r),opacity));
+      }
+      flow.group.add(flow.stroke);
+      const arrowRadius=mere?.065:Math.max(.085,Math.min(.145,radius*2));
+      flow.arrow=mesh(flow.group,new THREE.ConeGeometry(arrowRadius,mere?.20:.29,12),basic(kindColor(r),opacity));
+      flow.arrow.position.copy(flow.curve.getPoint(.81));
+      flow.arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),flow.curve.getTangent(.81).normalize());
+      flow.marker=mesh(flow.group,new THREE.SphereGeometry(.067,10,7),basic(kindColor(r),.95));
+      flow.marker.visible=false;
+      root.add(flow.group); hitObjects.push(flow.group); flows.push(flow);
+      flow.label=createLabel("flow",text(r.name,"Flow"),kind(r)+" · "+rate(r),flow);
+    });
+  }
+
+  function updateExplosion() {
+    if (!current) return;
+    scale=1+Number($("explode").value)/100*1.12;
+    bodies.forEach(b=>b.group.position.copy(b.base).multiplyScalar(scale));
+    ports.forEach(p=>p.group.position.copy(p.base).multiplyScalar(scale));
+    shell.scale.copy(half).multiplyScalar(scale);
+    shell.userData.surface.material.opacity=(dark?.045:.055)*(1-(scale-1)*.28);
+    flows.forEach(f=>{
+      f.curve=flowCurve(f);
+      f.stroke.geometry.dispose();
+      f.stroke.geometry=f.stroke.isMesh
+        ? new THREE.TubeGeometry(f.curve,100,f.radius,7,false)
+        : new THREE.BufferGeometry().setFromPoints(f.curve.getPoints(120));
+      if (f.stroke.material.isLineDashedMaterial) f.stroke.computeLineDistances();
+      f.arrow.position.copy(f.curve.getPoint(.81));
+      f.arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),f.curve.getTangent(.81).normalize());
+    });
+    fitProjection(false);
+    layoutDirty=true;
+  }
+
+  function loadModel(model,preserveView=false) {
+    const savedOrbit={...orbit};
+    disposeTree(root);
+    root=new THREE.Group(); scene.add(root);
+    bodies=[];flows=[];ports=[];labels=[];hitObjects=[];bodyMap=new Map();
+    $("left-track").replaceChildren();$("right-track").replaceChildren();$("leaders").replaceChildren();
+    $("left-rail").scrollTop=0;$("right-rail").scrollTop=0;
+    current=model; selected=null;hovered=null;neighbours.clear();
+    $("selection").hidden=true;
+    const facts=model.facts||{}, things=array(model.canvas.things), relations=array(model.canvas.relations);
+    interfaceIds=new Set(array(facts.authored_interface_thing_ids).map(idOf));
+    orphanIds=new Set(array(facts.orphan_env_thing_ids).map(idOf));
+    $("model-name").textContent=text(model.label,text(model.canvas.name,"Model"));
+    $("boundary-name").textContent="Boundary · "+text(model.canvas.name,text(model.label,"System"));
+    $("context-label").textContent=[text(model.canvas.lens),text(model.canvas.time_unit)].filter(Boolean).join(" / ");
+    $("counts").textContent=[
+      things.filter(t=>t.role==="Component"&&!interfaceIds.has(idOf(t.id))).length+" inside",
+      things.filter(t=>interfaceIds.has(idOf(t.id))).length+" interfaces",
+      array(facts.ports).length+" ports"
+    ].join(" · ");
+
+    const components=things.filter(t=>t.role==="Component");
+    const coordinates=new Map();
+    components.forEach((t,i)=>{
+      const x=Number.isFinite(Number(t.x)) && t.x!=null ? Number(t.x) : (i%4)*100;
+      const y=Number.isFinite(Number(t.y)) && t.y!=null ? Number(t.y) : Math.floor(i/4)*100;
+      coordinates.set(idOf(t.id),{x,y});
+    });
+    const xs=Array.from(coordinates.values(),v=>v.x), ys=Array.from(coordinates.values(),v=>v.y);
+    const minX=xs.length?Math.min(...xs):0,maxX=xs.length?Math.max(...xs):0;
+    const minY=ys.length?Math.min(...ys):0,maxY=ys.length?Math.max(...ys):0;
+    const unit=8/Math.max(maxX-minX,maxY-minY,100);
+    const cx=(minX+maxX)/2,cy=(minY+maxY)/2;
+    half.set(
+      Math.max(3.5,(maxX-minX)*unit/2+1.4),
+      2.25+Math.max(0,Math.ceil(array(facts.ports).length/16)-1)*.35,
+      Math.max(2.8,(maxY-minY)*unit/2+1.4)
+    );
+    createShell();
+
+    const banks={Source:[],Sink:[],Neutral:[]};
+    things.filter(t=>t.role==="Environment"&&!interfaceIds.has(idOf(t.id))).forEach(t=>{
+      (banks[t.env_kind]||banks.Neutral).push(t);
+    });
+    Object.values(banks).forEach(bank=>bank.sort((a,b)=>(Number(a.y)||0)-(Number(b.y)||0)));
+
+    things.forEach((t,i)=>{
+      const id=idOf(t.id);
+      if (bodyMap.has(id)) return;
+      let base,normal=new THREE.Vector3(0,0,1);
+      const authored=coordinates.get(id)||{
+        x:Number.isFinite(Number(t.x))?Number(t.x):cx,
+        y:Number.isFinite(Number(t.y))?Number(t.y):cy
+      };
+      if (interfaceIds.has(id)) {
+        const direction=new THREE.Vector3((authored.x-cx)*unit,.2,(authored.y-cy)*unit);
+        if (direction.lengthSq()<.05) direction.x=(hash(id)%2)?1:-1;
+        const s=surfaceInDirection(direction,.15);
+        base=s.position;normal=s.normal;
+      } else if (t.role==="Environment") {
+        const type=banks[t.env_kind]?t.env_kind:"Neutral",bank=banks[type],n=bank.indexOf(t);
+        const fraction=bank.length<=1?0:(n/(bank.length-1)*2-1);
+        if (type==="Neutral") base=new THREE.Vector3(fraction*half.x*.9,.2,-half.z-3.1);
+        else base=new THREE.Vector3((type==="Source"?-1:1)*(half.x+3.15),.18,fraction*half.z*.91);
+      } else {
+        base=new THREE.Vector3((authored.x-cx)*unit,.04+(hash(id)%3)*.29,(authored.y-cy)*unit);
+      }
+      createBody(t,base,normal);
+    });
+
+    createPorts(facts);
+    scale=1+Number($("explode").value)/100*1.12;
+    bodies.forEach(b=>b.group.position.copy(b.base).multiplyScalar(scale));
+    ports.forEach(p=>p.group.position.copy(p.base).multiplyScalar(scale));
+    shell.scale.copy(half).multiplyScalar(scale);
+    createFlows(relations);
+    if (preserveView) Object.assign(orbit,savedOrbit);
+    else { orbit.theta=.53;orbit.phi=.96;orbit.zoom=1; }
+    updateCamera();
+    fitProjection(false);
+    $("hud").hidden=false;$("legend").hidden=false;
+    $("fit").disabled=false;$("explode").disabled=false;
+    textureAvailability();
+    applyIsolation();
+    if (!contextLost) hideMessage();
+    invalidate();
+  }
+
+  function setOpacity(group,factor) {
+    group.traverse(o=>{
+      if (!o.material) return;
+      (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{
+        if (m.userData.baseOpacity===undefined) m.userData.baseOpacity=m.opacity;
+        m.opacity=m.userData.baseOpacity*factor;
+        m.transparent=true;
+        if (o.isMesh) m.depthWrite=m.opacity>.8;
+      });
+    });
+  }
+  function applyIsolation() {
+    bodies.forEach(b=>{
+      const active=!selected||neighbours.has(b.id);
+      const factor=(active?1:.13)*(orphanIds.has(b.id)?.28:1);
+      setOpacity(b.group,factor);
+      b.selectionMark.visible=selected===b.id;
+      b.label.node.classList.toggle("selected",selected===b.id);
+      b.label.node.classList.toggle("neighbour",!!selected&&active&&selected!==b.id);
+      b.label.node.classList.toggle("dim",!active);
+      b.label.node.classList.toggle("orphan",orphanIds.has(b.id));
+      b.label.node.setAttribute("aria-pressed",selected===b.id?"true":"false");
+    });
+    flows.forEach(f=>{
+      f.active=!selected||f.a.id===selected||f.b.id===selected;
+      setOpacity(f.group,f.active?1:.095);
+      f.label.node.classList.toggle("dim",!f.active);
+    });
+    ports.forEach(p=>{
+      p.active=!selected||p.component.id===selected||p.environment.id===selected;
+      setOpacity(p.group,p.active?1:.15);
+      p.label.node.classList.toggle("dim",!p.active);
+    });
+    layoutDirty=true;
+  }
+
+  function selectBody(id) {
+    id=id==null?null:idOf(id);
+    if (id!==null&&!bodyMap.has(id)) return;
+    selected=id;neighbours=new Set(id?[id]:[]);
+    if (id) flows.forEach(f=>{
+      if (f.a.id===id) neighbours.add(f.b.id);
+      if (f.b.id===id) neighbours.add(f.a.id);
+    });
+    $("selection").hidden=!id;
+    if (id) buildPanel(bodyMap.get(id));
+    applyIsolation();
+    invalidate();
+  }
+  function buildPanel(body) {
+    $("selection-name").textContent=text(body.thing.name,body.id);
+    $("selection-role").textContent=[
+      text(body.thing.role,"Component"),
+      body.isInterface?"Interface on boundary":body.isEnvironment?text(body.thing.env_kind,"Neutral"):"Inside boundary",
+      orphanIds.has(body.id)?"Orphan environment":null
+    ].filter(Boolean).join(" · ");
+    const list=$("selection-flows");
+    list.replaceChildren();
+    const incident=flows.filter(f=>f.a.id===body.id||f.b.id===body.id);
+    $("flows-heading").textContent="Flows · "+incident.length;
+    incident.forEach(f=>{
+      const r=f.relation,li=el("li");
+      li.append(el("div","flow-name",text(r.name,"Flow")));
+      const data=el("div","flow-data"),k=el("span","flow-kind");
+      const dot=el("i","swatch");dot.style.setProperty("--kind",kindColor(r));
+      k.append(dot,document.createTextNode(kind(r)));
+      data.append(k,el("span","flow-rate",rate(r)));li.append(data);
+      const other=f.a.id===body.id?f.b:f.a;
+      li.append(el("div","flow-other",(f.a.id===body.id?"→ ":"← ")+text(other.thing.name,other.id)+(r.is_bond===false?" · Mere relation":"")));
+      list.append(li);
+    });
+    const connected=ports.filter(p=>p.component.id===body.id||p.environment.id===body.id);
+    $("selection-ports").replaceChildren();
+    $("ports-heading").hidden=!connected.length;
+    connected.forEach(p=>{
+      const li=el("li");
+      li.append(el("div","flow-name",text(p.fact.protocol,"Port")));
+      li.append(el("div","flow-other",text(p.fact.direction)+" · "+text(p.component.thing.name,p.component.id)+" / "+text(p.environment.thing.name,p.environment.id)));
+      $("selection-ports").append(li);
+    });
+  }
+
+  function updateCamera() {
+    const r=100;
+    camera.position.set(
+      r*Math.sin(orbit.phi)*Math.sin(orbit.theta),
+      r*Math.cos(orbit.phi),
+      r*Math.sin(orbit.phi)*Math.cos(orbit.theta)
+    );
+    camera.lookAt(0,0,0);camera.updateMatrixWorld();
+    const h=orbit.halfHeight/orbit.zoom,aspect=width/height;
+    camera.left=-h*aspect;camera.right=h*aspect;camera.top=h;camera.bottom=-h;
+    camera.updateProjectionMatrix();
+  }
+  function fitProjection(reset=true) {
+    if (!current||!camera) return;
+    if (reset) orbit.zoom=1;
+    updateCamera();
+    const inverse=camera.matrixWorldInverse;
+    const points=[];
+    [-1,1].forEach(x=>[-1,1].forEach(y=>[-1,1].forEach(z=>{
+      points.push(new THREE.Vector3(x*half.x*scale,y*half.y*scale,z*half.z*scale));
+    })));
+    bodies.forEach(b=>points.push(b.group.position.clone()));
+    let extentX=0,extentY=0;
+    points.forEach(p=>{
+      p.applyMatrix4(inverse);
+      extentX=Math.max(extentX,Math.abs(p.x));
+      extentY=Math.max(extentY,Math.abs(p.y));
+    });
+    const sideSpace=Math.min(52,width*.10);
+    const usableAspect=Math.max(.15,(width-2*sideSpace)/height);
+    const verticalSpace=Math.max(.35,(height-125)/height);
+    orbit.halfHeight=Math.max((extentY+.85)/verticalSpace,(extentX+.85)/usableAspect)*1.06;
+    updateCamera();
+  }
+  function home() {
+    if (!current) return;
+    orbit.theta=.53;orbit.phi=.96;orbit.zoom=1;
+    fitProjection(true);invalidate();
+  }
+  function resize() {
+    width=Math.max(1,viewport.clientWidth);height=Math.max(1,viewport.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+    renderer.setSize(width,height,false);
+    $("leaders").setAttribute("viewBox","0 0 "+width+" "+height);
+    if (current) fitProjection(false); else updateCamera();
+    invalidate();
+  }
+  new ResizeObserver(resize).observe(viewport);
+  window.addEventListener("resize",resize);
+
+  function activeLabel(label) {
+    if (label.type==="body") return true;
+    if (label.type==="flow") {
+      const f=label.owner;
+      return f.relation.ample===true ||
+        (!!selected&&(f.a.id===selected||f.b.id===selected)) ||
+        (hovered&&hovered.type==="flow"&&hovered.index===f.index);
+    }
+    const p=label.owner;
+    return (!!selected&&(p.component.id===selected||p.environment.id===selected)) ||
+      (hovered&&hovered.type==="port"&&ports[hovered.index]===p);
+  }
+
+  function layoutLabels() {
+    if (!current) return;
+    const overlay=$("annotations").getBoundingClientRect();
+    const box=viewport.getBoundingClientRect();
+    const topInset=overlay.top-box.top;
+    const available=Math.max(1,overlay.height);
+    const active=[];
+    labels.forEach(l=>{
+      l.active=activeLabel(l);
+      l.node.hidden=!l.active;
+      if (!l.active) return;
+      if (l.type==="body") l.world.copy(l.owner.group.position);
+      else if (l.type==="port") l.world.copy(l.owner.group.position);
+      else l.world.copy(l.owner.curve.getPoint(l.owner.port?.59:.5));
+      const projected=l.world.clone().project(camera);
+      l.screen.x=(projected.x+1)*width/2;
+      l.screen.y=(1-projected.y)*height/2;
+      l.height=l.node.offsetHeight;
+      active.push(l);
+    });
+    // Both rails are disjoint. Within each rail, measured HTML boxes are
+    // packed monotonically; an overfull rail scrolls instead of colliding.
+    active.sort((a,b)=>a.screen.x-b.screen.x);
+    const total=active.reduce((n,l)=>n+l.height+7,0);
+    let accumulated=0,split=0;
+    while (split<active.length && accumulated<total/2) {
+      accumulated+=active[split].height+7;split++;
+    }
+    [active.slice(0,split),active.slice(split)].forEach((items,side)=>{
+      const track=side?$("right-track"):$("left-track");
+      const rail=side?$("right-rail"):$("left-rail");
+      items.sort((a,b)=>a.screen.y-b.screen.y || a.screen.x-b.screen.x);
+      items.forEach(l=>{
+        l.side=side;
+        if (l.node.parentElement!==track) track.append(l.node);
+        l.height=l.node.offsetHeight;
+      });
+      const sum=items.reduce((n,l)=>n+l.height+7,0);
+      const contentHeight=Math.max(available,sum+2);
+      track.style.height=contentHeight+"px";
+      rail.style.pointerEvents=sum>available?"auto":"none";
+      let cursor=0;
+      items.forEach(l=>{
+        const desired=clamp((l.screen.y-topInset)/available,0,1)*contentHeight-l.height/2;
+        l.top=Math.max(cursor,clamp(desired,0,contentHeight-l.height));
+        cursor=l.top+l.height+7;
+      });
+      let ceiling=contentHeight;
+      for (let i=items.length-1;i>=0;i--) {
+        const l=items[i];
+        l.top=Math.min(l.top,ceiling-l.height);
+        ceiling=l.top-7;
+      }
+      items.forEach(l=>l.node.style.transform="translateY("+Math.max(0,l.top)+"px)");
+    });
+    drawLeaders();
+  }
+
+  function drawLeaders() {
+    const svg=$("leaders"),bounds=viewport.getBoundingClientRect();
+    svg.replaceChildren();
+    const p=palette();
+    labels.forEach(l=>{
+      if (!l.active) return;
+      const rail=l.side?$("right-rail"):$("left-rail");
+      const rr=rail.getBoundingClientRect(),lr=l.node.getBoundingClientRect();
+      const cy=(lr.top+lr.bottom)/2;
+      if (lr.bottom>rr.bottom+.5||lr.top<rr.top-.5) return;
+      const x=l.side?lr.left-bounds.left:lr.right-bounds.left;
+      const y=cy-bounds.top;
+      const sx=clamp(l.screen.x,1,width-1),sy=clamp(l.screen.y,1,height-1);
+      const path=document.createElementNS("http://www.w3.org/2000/svg","path");
+      const elbow=x+(l.side?-9:9);
+      path.setAttribute("d","M "+sx+" "+sy+" L "+elbow+" "+y+" L "+x+" "+y);
+      path.setAttribute("fill","none");
+      path.setAttribute("stroke",l.type==="flow"?kindColor(l.owner.relation):p.accent);
+      const dim=l.node.classList.contains("dim")||l.node.classList.contains("orphan");
+      path.setAttribute("stroke-opacity",dim?".10":l.node.classList.contains("selected")?".75":".28");
+      path.setAttribute("stroke-width",l.node.classList.contains("selected")?"1.2":".7");
+      svg.append(path);
+    });
+  }
+  [$("left-rail"),$("right-rail")].forEach(rail=>rail.addEventListener("scroll",()=>{
+    drawLeaders();
+  },{passive:true}));
+
+  function invalidate(dirty=true) {
+    if (dirty) layoutDirty=true;
+    if (!frame&&!contextLost) frame=requestAnimationFrame(render);
+  }
+  function render(time) {
+    frame=0;
+    if (contextLost) return;
+    if (pendingExplosion) { pendingExplosion=false;updateExplosion(); }
+    const animated=$("texture").checked&&!motionMedia.matches&&!document.hidden;
+    flows.forEach(f=>{
+      f.marker.visible=animated;
+      if (animated) {
+        // Exactly one marker per relation, independent of all amounts.
+        const t=((time/7200)+(f.index*.173))%1;
+        f.marker.position.copy(f.curve.getPointAt(t));
+      }
+    });
+    updateCamera();
+    if (layoutDirty) { layoutLabels();layoutDirty=false; }
+    try { renderer.render(scene,camera); }
+    catch (e) { showMessage("Rendering unavailable", "The graphics context could not render this view.");return; }
+    if (animated) invalidate(false);
+  }
+  document.addEventListener("visibilitychange",()=>invalidate(false));
+
+  const raycaster=new THREE.Raycaster();
+  raycaster.params.Line.threshold=.11;
+  const pointer=new THREE.Vector2();
+  function hitAt(x,y) {
+    if (!current) return null;
+    const rect=canvas.getBoundingClientRect();
+    pointer.set((x-rect.left)/rect.width*2-1,-((y-rect.top)/rect.height)*2+1);
+    raycaster.setFromCamera(pointer,camera);
+    const hits=raycaster.intersectObjects(hitObjects,true);
+    for (const hit of hits) {
+      let o=hit.object;
+      if (!o.visible) continue;
+      while (o && !o.userData.type) o=o.parent;
+      if (o && (o.userData.type!=="flow" || hit.object!==flows[o.userData.index].marker)) return o.userData;
+    }
+    return null;
+  }
+  function setHover(hit) {
+    const same=hovered&&hit&&hovered.type===hit.type&&hovered.id===hit.id&&hovered.index===hit.index;
+    if (same||(!hovered&&!hit)) return;
+    hovered=hit;
+    canvas.style.cursor=hit&&hit.type==="body"?"pointer":"grab";
+    invalidate();
+  }
+  const pointers=new Map();
+  let gesture=null;
+  canvas.addEventListener("pointerdown",e=>{
+    if (!current||e.button>0) return;
+    canvas.focus({preventScroll:true});
+    canvas.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if (pointers.size===1) gesture={startX:e.clientX,startY:e.clientY,moved:false,pinched:false};
+    else if (gesture) { gesture.moved=true;gesture.pinched=true; }
+    setHover(null);canvas.style.cursor="grabbing";
+  });
+  canvas.addEventListener("pointermove",e=>{
+    if (!pointers.has(e.pointerId)) {
+      if (e.pointerType!=="touch") setHover(hitAt(e.clientX,e.clientY));
+      return;
+    }
+    const old=pointers.get(e.pointerId);
+    const before=Array.from(pointers.values());
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if (pointers.size>=2) {
+      const after=Array.from(pointers.values());
+      const d0=Math.hypot(before[0].x-before[1].x,before[0].y-before[1].y);
+      const d1=Math.hypot(after[0].x-after[1].x,after[0].y-after[1].y);
+      if (d0>1&&d1>1) orbit.zoom=clamp(orbit.zoom*d1/d0,.35,6);
+    } else {
+      orbit.theta-=(e.clientX-old.x)*.007;
+      orbit.phi=clamp(orbit.phi+(e.clientY-old.y)*.007,.14,Math.PI-.14);
+      if (gesture&&Math.hypot(e.clientX-gesture.startX,e.clientY-gesture.startY)>5) gesture.moved=true;
+    }
+    invalidate();
+  });
+  function releasePointer(e,cancelled=false) {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.delete(e.pointerId);
+    if (!pointers.size) {
+      if (gesture&&!gesture.moved&&!gesture.pinched&&!cancelled) {
+        const hit=hitAt(e.clientX,e.clientY);
+        selectBody(hit&&hit.type==="body"?hit.id:null);
+      }
+      gesture=null;canvas.style.cursor="grab";
+    }
+  }
+  canvas.addEventListener("pointerup",e=>releasePointer(e));
+  canvas.addEventListener("pointercancel",e=>releasePointer(e,true));
+  canvas.addEventListener("lostpointercapture",e=>releasePointer(e,true));
+  canvas.addEventListener("pointerleave",()=>{ if (!pointers.size) setHover(null); });
+  canvas.addEventListener("wheel",e=>{
+    if (!current) return;
+    e.preventDefault();
+    const delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?height:1);
+    orbit.zoom=clamp(orbit.zoom*Math.exp(-delta*.0013),.35,6);
+    invalidate();
+  },{passive:false});
+  canvas.addEventListener("dblclick",home);
+  document.addEventListener("keydown",e=>{
+    if (e.key==="Escape") { selectBody(null);setHover(null);return; }
+    if (!current||["INPUT","SELECT","TEXTAREA"].includes(e.target.tagName)) return;
+    let handled=true;
+    switch (e.key) {
+      case "ArrowLeft":orbit.theta+=.085;break;
+      case "ArrowRight":orbit.theta-=.085;break;
+      case "ArrowUp":orbit.phi=clamp(orbit.phi-.07,.14,Math.PI-.14);break;
+      case "ArrowDown":orbit.phi=clamp(orbit.phi+.07,.14,Math.PI-.14);break;
+      case "Home":home();break;
+      case "+":case "=":orbit.zoom=clamp(orbit.zoom*1.12,.35,6);break;
+      case "-":orbit.zoom=clamp(orbit.zoom/1.12,.35,6);break;
+      default:handled=false;
+    }
+    if (handled) { e.preventDefault();invalidate(); }
+  });
+  $("clear-selection").addEventListener("click",()=>selectBody(null));
+  $("fit").addEventListener("click",home);
+  $("explode").addEventListener("input",()=>{
+    $("explode-value").value=$("explode").value+"%";
+    pendingExplosion=true;invalidate();
+  });
+  $("texture").addEventListener("change",()=>{
+    if (motionMedia.matches) $("texture").checked=false;
+    invalidate(false);
+  });
+  $("model-select").addEventListener("change",()=>{
+    pendingExplosion=false;
+    loadModel(models[Number($("model-select").value)]);
+  });
+
+  if (models.length) {
+    $("model-select").replaceChildren();
+    models.forEach((m,i)=>{
+      const option=el("option","",text(m.label,text(m.canvas.name,text(m.key,"Model "+(i+1)))));
+      option.value=String(i);$("model-select").append(option);
+    });
+    $("model-select").disabled=false;
+    resize();loadModel(models[0]);
+  } else {
+    resize();
+    showMessage("No models loaded",fixtureError||"The embedded fixture is empty.");
+    textureAvailability();
+  }
+
+  window.addEventListener("pagehide",()=>{
+    if (frame) cancelAnimationFrame(frame);
+    frame=0;
+  });
+  window.addEventListener("pageshow",()=>invalidate());
+})();
+</script>
+</body>
+</html>
