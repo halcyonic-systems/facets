@@ -1,0 +1,4439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Facets · exploded view</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f1f2f3;--ink:#17181a;--muted:#5d6670;--accent:#3d6373;--accent-strong:#2a4b59;--hairline:#e5ecf0;
+  --line:var(--hairline);--line2:var(--hairline);--lbg:var(--paper);--lbg2:var(--paper);
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --paper:#16181a;--ink:#e8eaec;--muted:#8e979f;--accent:#6fa5b8;--accent-strong:#95c3d3;--hairline:#2a2f33;
+  color-scheme:dark;
+}
+@supports (color: color-mix(in srgb, red 50%, blue)){
+  :root{
+    --line:color-mix(in srgb,var(--ink) 13%,var(--paper));
+    --line2:color-mix(in srgb,var(--ink) 24%,var(--paper));
+    --lbg:color-mix(in srgb,var(--paper) 88%,transparent);
+    --lbg2:color-mix(in srgb,var(--paper) 72%,transparent);
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--paper);color:var(--ink);
+  font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-text-size-adjust:100%}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;width:100%;max-width:100vw;overflow:hidden}
+#top{flex:none;height:46px;display:flex;align-items:center;gap:8px;padding:0 10px;border-bottom:1px solid var(--line);min-width:0}
+#title{flex:1 1 auto;min-width:0;display:flex;align-items:baseline;gap:10px;overflow:hidden}
+#mname{font-family:"Cormorant Garamond",Georgia,"Times New Roman",serif;font-weight:600;font-size:22px;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#lens{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+@media (max-width:520px){#lens{display:none}}
+select,button{font:inherit;font-size:12px;color:var(--ink);background:var(--paper);border:1px solid var(--line2);border-radius:4px;height:28px;padding:0 8px}
+select{max-width:42vw;min-width:0}
+button{cursor:pointer;white-space:nowrap}
+button:hover:not(:disabled),select:hover:not(:disabled){border-color:var(--accent)}
+button:disabled,select:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+#stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;outline:none}
+#stage canvas{position:absolute;inset:0;display:block;width:100%;height:100%}
+#leaders{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+#leaders line{stroke:var(--muted);stroke-width:.75;opacity:.6}
+#leaders line.dim{opacity:.15}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1}
+.lab,.flab,.plab{position:absolute;left:0;top:0;white-space:nowrap;visibility:hidden;will-change:transform}
+.lab{pointer-events:auto;cursor:pointer;font-size:11.5px;line-height:15px;padding:1px 5px;border-radius:3px;color:var(--ink);background:var(--lbg);border:1px solid var(--line)}
+.lab.env{color:var(--muted)}
+.lab.iface{color:var(--accent-strong)}
+.lab.orphan{opacity:.5}
+.lab.dim{opacity:.25}
+.lab.sel{border-color:var(--accent-strong);color:var(--accent-strong)}
+.flab{font-size:10.5px;line-height:13px;padding:0 3px;color:var(--muted);background:var(--lbg2);border-radius:2px;pointer-events:none}
+.flab i{display:inline-block;width:8px;height:2px;margin-right:4px;vertical-align:middle}
+.flab.quiet{font-style:italic;opacity:.8}
+.plab{font-size:10px;line-height:13px;padding:0 5px;color:var(--accent-strong);border:1px solid var(--accent);border-radius:7px;background:var(--lbg);pointer-events:none}
+#legend{position:absolute;left:10px;top:8px;display:flex;flex-direction:column;gap:3px;font-size:10.5px;color:var(--muted);pointer-events:none;max-width:calc(100% - 20px);z-index:2}
+.lg-row{display:flex;flex-wrap:wrap;gap:2px 10px}
+.lg{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.ln{display:inline-block;width:14px;height:3px;border-radius:1px;background:var(--c)}
+.ln.dash{background:repeating-linear-gradient(90deg,var(--muted) 0 4px,transparent 4px 7px)}
+.ln.thin{height:1px;background:var(--muted);opacity:.8}
+.sh{display:inline-block;width:9px;height:9px}
+.sh.comp{border-radius:50%;background:var(--ink)}
+.sh.iface{width:11px;height:5px;border-radius:2px;background:var(--accent)}
+.sh.src{width:7px;height:7px;background:var(--muted);transform:rotate(45deg)}
+.sh.sink{width:8px;height:8px;background:var(--muted)}
+.sh.neu{border-radius:50%;border:1.5px solid var(--muted)}
+.sh.port{border-radius:50%;border:1.5px solid var(--accent-strong)}
+#panel{position:absolute;top:10px;right:10px;width:290px;max-height:calc(100% - 20px);overflow:auto;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:12px;touch-action:pan-y;z-index:3;user-select:text;-webkit-user-select:text;cursor:auto}
+@media (max-width:600px){#panel{top:auto;bottom:8px;left:8px;right:8px;width:auto;max-height:44%}}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.pn{font-size:14px;font-weight:600;color:var(--ink);word-break:break-word}
+.pr{font-size:11px;color:var(--muted);margin-top:1px}
+.px{height:24px;width:24px;padding:0;line-height:1;font-size:16px;border-color:transparent;color:var(--muted);flex:none}
+.pl{list-style:none;margin:8px 0 0;padding:6px 0 0;border-top:1px solid var(--line)}
+.pl li{display:flex;gap:8px;align-items:flex-start;padding:3px 0}
+.sw{flex:none;width:14px;height:3px;margin-top:7px;border-radius:1px;background:var(--c)}
+.sw.dash{background:repeating-linear-gradient(90deg,var(--c) 0 4px,transparent 4px 7px)}
+.sw.port{height:9px;width:9px;margin-top:3px;border:1.5px solid var(--accent-strong);border-radius:50%;background:transparent}
+.fn{font-size:12px;color:var(--ink);word-break:break-word}
+.fm{font-size:11px;color:var(--muted);word-break:break-word}
+.pe{font-size:11px;color:var(--muted);margin-top:8px}
+#msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:var(--muted);font-size:14px;background:var(--paper);z-index:5}
+#strip{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:6px 10px calc(6px + env(safe-area-inset-bottom));border-top:1px solid var(--line);min-width:0}
+.exp{display:flex;align-items:center;gap:8px;flex:1 1 170px;min-width:0;font-size:12px;color:var(--muted)}
+.exp input{flex:1 1 auto;min-width:60px;accent-color:var(--accent);margin:0}
+.exp output{width:36px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink)}
+.tex{display:flex;flex-direction:column;gap:1px;font-size:12px;min-width:0}
+.tex label{display:flex;align-items:center;gap:6px;color:var(--ink);cursor:pointer}
+.tex input{accent-color:var(--accent);margin:0}
+.tex input:disabled{cursor:default}
+.tex .note{font-size:10.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <div id="title"><span id="mname">Facets</span><span id="lens"></span></div>
+    <select id="modelSel" aria-label="model"></select>
+    <button id="themeBtn" type="button" title="toggle theme">light</button>
+  </header>
+  <main id="stage" tabindex="0" aria-label="exploded view">
+    <svg id="leaders" aria-hidden="true"></svg>
+    <div id="labels"></div>
+    <div id="legend"></div>
+    <aside id="panel" hidden></aside>
+    <div id="msg" hidden></div>
+  </main>
+  <footer id="strip">
+    <button id="fitBtn" type="button" title="fit (Home)">fit</button>
+    <label class="exp"><span>explode</span><input id="explode" type="range" min="0" max="100" step="1" value="0" aria-label="explode"><output id="expv">0%</output></label>
+    <div class="tex">
+      <label><input type="checkbox" id="texture"><span>texture</span></label>
+      <div class="note">Motion along flows is texture, not data.</div>
+    </div>
+  </footer>
+</div>
+
+<script id="fixture" type="application/json">{
+ "models": [
+  {
+   "key": "ta",
+   "label": "Translation Apparatus",
+   "canvas": {
+    "lens": "Mobus",
+    "things": [
+     {
+      "id": 1,
+      "name": "mRNA Entry Channel",
+      "x": 480.0,
+      "y": 37.852875,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true,
+      "passway": true,
+      "protocol": "single-stranded mRNA, threaded codon by codon",
+      "description": "The small subunit's mRNA channel \u2014 entry between the head and shoulder at the neck, whose grip keeps the reading frame."
+     },
+     {
+      "id": 2,
+      "name": "Aminoacylation Site",
+      "x": 235.65343,
+      "y": 461.07358,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true,
+      "passway": true,
+      "protocol": "cognate amino acid + ATP at one catalytic pocket",
+      "description": "The synthetase's aminoacylation active site: amino acid and ATP co-bind at the same pocket that charges the tRNA. Diffusive access \u2014 a pocket, not a channel."
+     },
+     {
+      "id": 3,
+      "name": "GTPase-Associated Center",
+      "x": 576.5,
+      "y": 585.1316,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true,
+      "passway": true,
+      "protocol": "GTP-loaded elongation factors dock; GDP + Pi release",
+      "description": "The factor-binding hub on the large subunit \u2014 sarcin-ricin loop and the L7/L12 stalk. GTP arrives and its hydrolysis products leave through the same real docking site."
+     },
+     {
+      "id": 4,
+      "name": "Exit Tunnel",
+      "x": 724.34656,
+      "y": 461.07355,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true,
+      "passway": true,
+      "protocol": "nascent polypeptide, N-terminus first",
+      "description": "The polypeptide exit tunnel through the large subunit, opening at the exit port where trigger-factor-class chaperones dock to receive the emerging chain."
+     },
+     {
+      "id": 5,
+      "name": "Decoding Site",
+      "x": 661.3607,
+      "y": 103.86276,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Sensing",
+      "interface": false,
+      "description": "The decoding center on the small subunit, where each codon is read against the anticodon of an incoming charged tRNA \u2014 selection of the right carrier, not catalysis."
+     },
+     {
+      "id": 6,
+      "name": "Peptidyl Transferase Center",
+      "x": 383.49994,
+      "y": 585.1316,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Combining",
+      "interface": false,
+      "description": "The catalytic heart of the large subunit, all rRNA: forges each peptide bond between the growing chain and the newly accommodated amino acid."
+     },
+     {
+      "id": 7,
+      "name": "Translocase",
+      "x": 757.86066,
+      "y": 271.00568,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Propelling",
+      "interface": false,
+      "description": "The ratcheting step: GTP-powered translocation advances mRNA and tRNAs by exactly one codon, moving the whole machine forward."
+     },
+     {
+      "id": 8,
+      "name": "Aminoacyl-tRNA Synthetase",
+      "x": 202.13934,
+      "y": 271.00558,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Combining",
+      "interface": false,
+      "description": "The recharging enzyme: matches each spent tRNA with its cognate amino acid and charges it at ATP's expense \u2014 the move that closes the carrier cycle."
+     },
+     {
+      "id": 9,
+      "name": "tRNA Pool",
+      "x": 298.63934,
+      "y": 103.86273,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Buffering",
+      "interface": false,
+      "stock_unit": "tRNA",
+      "description": "The circulating stock of charged tRNAs \u2014 the cycle's memory between one elongation step and the next. Starts full at 100 and drains at the elongation rate.",
+      "cognitive_params": {
+       "release_rate": 20.0
+      },
+      "initial_state": {
+       "storage": 100.0
+      }
+     },
+     {
+      "id": 10,
+      "name": "Nucleus",
+      "x": 215.26904,
+      "y": -138.52759,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false,
+      "description": "The transcript's origin: the compartment that supplies mRNA, opaque here except as the source of the coding stream."
+     },
+     {
+      "id": 11,
+      "name": "Chaperone",
+      "x": 1009.46204,
+      "y": 320.0,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false,
+      "description": "The trigger-factor-class chaperone docked at the exit port, receiving each nascent polypeptide as it emerges \u2014 where the model's output lands."
+     },
+     {
+      "id": 12,
+      "name": "Cytosol",
+      "x": 215.26895,
+      "y": 778.5276,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false,
+      "description": "The surrounding cytosol: reservoir of free amino acids, ATP and GTP, and the sink for hydrolysis products. Internally opaque \u2014 it supplies and receives."
+     }
+    ],
+    "relations": [
+     {
+      "id": 13,
+      "a": 10,
+      "b": 1,
+      "name": "mRNA transcript",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "Steady-state transcript supply: codons arriving at the entry channel at the elongation rate.",
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "codon/s"
+     },
+     {
+      "id": 14,
+      "a": 1,
+      "b": 5,
+      "name": "mRNA transcript",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The threaded transcript handed inward from the channel to the decoding site, reading frame intact.",
+      "klir_directed": false,
+      "unit": "codon/s"
+     },
+     {
+      "id": 15,
+      "a": 9,
+      "b": 5,
+      "name": "charged tRNA",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "Charged tRNAs leaving the pool to be read at the decoding site \u2014 the cycle's working leg.",
+      "klir_directed": false,
+      "unit": "tRNA/s"
+     },
+     {
+      "id": 16,
+      "a": 5,
+      "b": 8,
+      "name": "deacylated tRNA",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The spent carrier, stripped of its amino acid, passed on for recharging.",
+      "klir_directed": false,
+      "unit": "tRNA/s"
+     },
+     {
+      "id": 17,
+      "a": 8,
+      "b": 9,
+      "name": "recharged tRNA",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "Recharged tRNA returned to the pool \u2014 the leg that closes the loop.",
+      "klir_directed": false,
+      "unit": "tRNA/s"
+     },
+     {
+      "id": 18,
+      "a": 12,
+      "b": 2,
+      "name": "free amino acid",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "Free amino acids from the cytosol, co-binding at the aminoacylation pocket.",
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "aa/s"
+     },
+     {
+      "id": 19,
+      "a": 12,
+      "b": 2,
+      "name": "ATP",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "ATP co-bound at the same pocket \u2014 the energy that pays for charging.",
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "ATP/s"
+     },
+     {
+      "id": 20,
+      "a": 2,
+      "b": 8,
+      "name": "free amino acid",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The pocket's matter handoff: amino acid delivered into the synthetase.",
+      "klir_directed": false,
+      "unit": "aa/s"
+     },
+     {
+      "id": 21,
+      "a": 2,
+      "b": 8,
+      "name": "ATP",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "The pocket's energy handoff: ATP delivered into the synthetase.",
+      "klir_directed": false,
+      "unit": "ATP/s"
+     },
+     {
+      "id": 22,
+      "a": 12,
+      "b": 3,
+      "name": "GTP",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "GTP-loaded elongation factors docking at the factor-binding hub.",
+      "klir_directed": false,
+      "amount": "40",
+      "unit": "GTP/s"
+     },
+     {
+      "id": 23,
+      "a": 3,
+      "b": 7,
+      "name": "GTP",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "GTP delivered inward to power each translocation step.",
+      "klir_directed": false,
+      "unit": "GTP/s"
+     },
+     {
+      "id": 24,
+      "a": 5,
+      "b": 6,
+      "name": "accommodated amino acid",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The selected, accommodated amino acid passed to the catalytic center.",
+      "klir_directed": false,
+      "unit": "aa/s"
+     },
+     {
+      "id": 25,
+      "a": 6,
+      "b": 7,
+      "name": "elongated chain",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The chain, one residue longer, handed forward for ratcheting.",
+      "klir_directed": false,
+      "unit": "aa/s"
+     },
+     {
+      "id": 26,
+      "a": 7,
+      "b": 4,
+      "name": "polypeptide chain",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The growing polypeptide advanced into the exit tunnel.",
+      "klir_directed": false,
+      "unit": "aa/s"
+     },
+     {
+      "id": 27,
+      "a": 4,
+      "b": 11,
+      "name": "nascent polypeptide",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The emerging nascent chain, N-terminus first, delivered to the waiting chaperone.",
+      "klir_directed": false,
+      "unit": "aa"
+     },
+     {
+      "id": 28,
+      "a": 7,
+      "b": 3,
+      "name": "GDP and inorganic phosphate",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "Hydrolysis products leaving the translocase after each step.",
+      "klir_directed": false,
+      "unit": "GDP/s"
+     },
+     {
+      "id": 29,
+      "a": 3,
+      "b": 12,
+      "name": "GDP and inorganic phosphate",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "GDP and phosphate returned to the cytosol through the same docking site.",
+      "klir_directed": false,
+      "unit": "GDP/s"
+     }
+    ],
+    "milieu": [
+     {
+      "name": "Mg2+ and ionic milieu",
+      "value": 1.0,
+      "unit": "mM",
+      "description": "The coordination shell: Mg2+-phosphate contacts the folded rRNA, including the PTC's catalytic core, cannot hold its structure without. Diffuse by nature \u2014 no channel exists, and none is invented."
+     }
+    ],
+    "boundary": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "system_type": {
+     "kingdom": "Concrete",
+     "genus": "Biological",
+     "domain": "molecular biology: mRNA translation with the tRNA charging cycle closed \u2014 the same machine the Ribosome model draws, with the boundary widened until the synthetase that recharges spent tRNA falls inside it"
+    },
+    "name": "Translation Apparatus",
+    "time_unit": "second",
+    "params": [
+     {
+      "name": "mRNA supply",
+      "anchor": {
+       "Flow": {
+        "relation": 13
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "40"
+      }
+     },
+     {
+      "name": "amino acid supply",
+      "anchor": {
+       "Flow": {
+        "relation": 18
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "40"
+      }
+     },
+     {
+      "name": "ATP supply",
+      "anchor": {
+       "Flow": {
+        "relation": 19
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "40"
+      }
+     },
+     {
+      "name": "GTP supply",
+      "anchor": {
+       "Flow": {
+        "relation": 22
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "80"
+      }
+     }
+    ],
+    "metrics": [
+     {
+      "name": "polypeptide output",
+      "expr": {
+       "SumInto": {
+        "thing": 11
+       }
+      }
+     }
+    ]
+   },
+   "facts": {
+    "boundary_thing_ids": [
+     5,
+     7,
+     8
+    ],
+    "environment_thing_ids": [
+     10,
+     11,
+     12
+    ],
+    "orphan_env_thing_ids": [],
+    "authored_interface_thing_ids": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "boundary_props": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "aggregate": false,
+    "edges": [
+     {
+      "id": 13,
+      "a": 10,
+      "b": 1,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 14,
+      "a": 1,
+      "b": 5,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 15,
+      "a": 9,
+      "b": 5,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 16,
+      "a": 5,
+      "b": 8,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 17,
+      "a": 8,
+      "b": 9,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 18,
+      "a": 12,
+      "b": 2,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 19,
+      "a": 12,
+      "b": 2,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 20,
+      "a": 2,
+      "b": 8,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 21,
+      "a": 2,
+      "b": 8,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 22,
+      "a": 12,
+      "b": 3,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 23,
+      "a": 3,
+      "b": 7,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 24,
+      "a": 5,
+      "b": 6,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 25,
+      "a": 6,
+      "b": 7,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 26,
+      "a": 7,
+      "b": 4,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 27,
+      "a": 4,
+      "b": 11,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 28,
+      "a": 7,
+      "b": 3,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 29,
+      "a": 3,
+      "b": 12,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     }
+    ],
+    "ports": [
+     {
+      "component": 1,
+      "env": 10,
+      "relation_ids": [
+       13
+      ],
+      "direction": "Receives",
+      "protocol": "mRNA transcript"
+     },
+     {
+      "component": 2,
+      "env": 12,
+      "relation_ids": [
+       18,
+       19
+      ],
+      "direction": "Receives",
+      "protocol": "free amino acid \u00b7 ATP"
+     },
+     {
+      "component": 3,
+      "env": 12,
+      "relation_ids": [
+       22,
+       29
+      ],
+      "direction": "Hybrid",
+      "protocol": "GTP \u00b7 GDP and inorganic phosphate"
+     },
+     {
+      "component": 4,
+      "env": 11,
+      "relation_ids": [
+       27
+      ],
+      "direction": "Exports",
+      "protocol": "nascent polypeptide"
+     }
+    ]
+   }
+  },
+  {
+   "key": "steel-l1",
+   "label": "Steel-Plant",
+   "canvas": {
+    "lens": "Mobus",
+    "things": [
+     {
+      "id": 1,
+      "name": "Energy-Source",
+      "x": 250.96034,
+      "y": -76.708435,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 2,
+      "name": "Iron-Source",
+      "x": 21.920593,
+      "y": 319.99997,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 3,
+      "name": "Coke-Source",
+      "x": 250.96027,
+      "y": 716.7084,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 4,
+      "name": "Steel-Sink",
+      "x": 709.0397,
+      "y": -76.708435,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+     },
+     {
+      "id": 5,
+      "name": "Garbage-Sink",
+      "x": 938.0794,
+      "y": 320.0,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+     },
+     {
+      "id": 6,
+      "name": "ATMOSPHERE",
+      "x": 709.0397,
+      "y": 716.70844,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+     },
+     {
+      "id": 7,
+      "name": "FuseBox",
+      "x": 480.0,
+      "y": 86.5986,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 8,
+      "name": "Iron-LoadingDock",
+      "x": 258.0221,
+      "y": 247.875,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 9,
+      "name": "Coke-LoadingDock",
+      "x": 342.81012,
+      "y": 508.82568,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 10,
+      "name": "Steel-ShippingDock",
+      "x": 701.9779,
+      "y": 247.875,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 11,
+      "name": "Waste-ShippingDock",
+      "x": 701.9779,
+      "y": 392.125,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 12,
+      "name": "Ventilation",
+      "x": 617.1899,
+      "y": 508.82568,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 13,
+      "name": "Iron-Inventory",
+      "x": 342.81006,
+      "y": 131.17435,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false,
+      "child_model": {
+       "name": "Iron-Inventory",
+       "id": "VjCKBe5psWuHcmW2yE8nXM"
+      }
+     },
+     {
+      "id": 14,
+      "name": "Coke-Inventory",
+      "x": 480.0,
+      "y": 553.40137,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 15,
+      "name": "Material-Purchasing",
+      "x": 258.02206,
+      "y": 392.12494,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 16,
+      "name": "Production",
+      "x": 617.1899,
+      "y": 131.1743,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Combining",
+      "interface": false
+     }
+    ],
+    "relations": [
+     {
+      "id": 17,
+      "a": 1,
+      "b": 7,
+      "name": "F-1.0 \u2014 electric energy",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "substance": "electricity"
+     },
+     {
+      "id": 18,
+      "a": 7,
+      "b": 16,
+      "name": "distributed power",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "substance": "electricity"
+     },
+     {
+      "id": 19,
+      "a": 2,
+      "b": 8,
+      "name": "F-1.1 \u2014 iron-input",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "iron"
+     },
+     {
+      "id": 20,
+      "a": 8,
+      "b": 13,
+      "name": "shipment into inventory",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "iron"
+     },
+     {
+      "id": 21,
+      "a": 3,
+      "b": 9,
+      "name": "F-1.2 \u2014 coke-input",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "coke"
+     },
+     {
+      "id": 22,
+      "a": 9,
+      "b": 14,
+      "name": "shipment into inventory",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "coke"
+     },
+     {
+      "id": 23,
+      "a": 13,
+      "b": 16,
+      "name": "F0.1 \u2014 iron in batches",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "unit": "tons",
+      "substance": "iron"
+     },
+     {
+      "id": 24,
+      "a": 14,
+      "b": 16,
+      "name": "coke in batches",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "coke"
+     },
+     {
+      "id": 25,
+      "a": 16,
+      "b": 10,
+      "name": "finished steel",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "steel"
+     },
+     {
+      "id": 26,
+      "a": 10,
+      "b": 4,
+      "name": "F-1.3 \u2014 steel for sale",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "steel"
+     },
+     {
+      "id": 27,
+      "a": 16,
+      "b": 11,
+      "name": "scrap and wastage",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "garbage"
+     },
+     {
+      "id": 28,
+      "a": 11,
+      "b": 5,
+      "name": "F-1.4 \u2014 scrap and wastage",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "garbage"
+     },
+     {
+      "id": 29,
+      "a": 16,
+      "b": 12,
+      "name": "process heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "substance": "heat"
+     },
+     {
+      "id": 30,
+      "a": 12,
+      "b": 6,
+      "name": "F-1.5 \u2014 radiated waste heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "substance": "heat"
+     },
+     {
+      "id": 31,
+      "a": 15,
+      "b": 2,
+      "name": "purchase orders \u2014 iron",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 32,
+      "a": 15,
+      "b": 3,
+      "name": "purchase orders \u2014 coke",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 33,
+      "a": 2,
+      "b": 15,
+      "name": "shipping documents \u2014 iron",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 34,
+      "a": 3,
+      "b": 15,
+      "name": "shipping documents \u2014 coke",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 35,
+      "a": 15,
+      "b": 8,
+      "name": "shipping documents to receiving",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 36,
+      "a": 15,
+      "b": 9,
+      "name": "shipping documents to receiving",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 37,
+      "a": 13,
+      "b": 15,
+      "name": "purchase request \u2014 iron",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 38,
+      "a": 14,
+      "b": 15,
+      "name": "purchase request \u2014 coke",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     }
+    ],
+    "boundary": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "system_type": {
+     "kingdom": "Concrete",
+     "genus": "Technical",
+     "domain": "Steel manufacturing"
+    },
+    "name": "Steel-Plant",
+    "time_unit": "month",
+    "klir_level": "Structure"
+   },
+   "facts": {
+    "boundary_thing_ids": [
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     15
+    ],
+    "environment_thing_ids": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "orphan_env_thing_ids": [],
+    "authored_interface_thing_ids": [
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     15
+    ],
+    "boundary_props": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "aggregate": false,
+    "edges": [
+     {
+      "id": 17,
+      "a": 1,
+      "b": 7,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 18,
+      "a": 7,
+      "b": 16,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 19,
+      "a": 2,
+      "b": 8,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 20,
+      "a": 8,
+      "b": 13,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 21,
+      "a": 3,
+      "b": 9,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 22,
+      "a": 9,
+      "b": 14,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 23,
+      "a": 13,
+      "b": 16,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 24,
+      "a": 14,
+      "b": 16,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 25,
+      "a": 16,
+      "b": 10,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 26,
+      "a": 10,
+      "b": 4,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 27,
+      "a": 16,
+      "b": 11,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 28,
+      "a": 11,
+      "b": 5,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 29,
+      "a": 16,
+      "b": 12,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 30,
+      "a": 12,
+      "b": 6,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 31,
+      "a": 15,
+      "b": 2,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 32,
+      "a": 15,
+      "b": 3,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 33,
+      "a": 2,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 34,
+      "a": 3,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 35,
+      "a": 15,
+      "b": 8,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 36,
+      "a": 15,
+      "b": 9,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 37,
+      "a": 13,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 38,
+      "a": 14,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     }
+    ],
+    "ports": [
+     {
+      "component": 7,
+      "env": 1,
+      "relation_ids": [
+       17
+      ],
+      "direction": "Receives",
+      "protocol": "F-1.0 \u2014 electric energy"
+     },
+     {
+      "component": 8,
+      "env": 2,
+      "relation_ids": [
+       19
+      ],
+      "direction": "Receives",
+      "protocol": "F-1.1 \u2014 iron-input"
+     },
+     {
+      "component": 9,
+      "env": 3,
+      "relation_ids": [
+       21
+      ],
+      "direction": "Receives",
+      "protocol": "F-1.2 \u2014 coke-input"
+     },
+     {
+      "component": 10,
+      "env": 4,
+      "relation_ids": [
+       26
+      ],
+      "direction": "Exports",
+      "protocol": "F-1.3 \u2014 steel for sale"
+     },
+     {
+      "component": 11,
+      "env": 5,
+      "relation_ids": [
+       28
+      ],
+      "direction": "Exports",
+      "protocol": "F-1.4 \u2014 scrap and wastage"
+     },
+     {
+      "component": 12,
+      "env": 6,
+      "relation_ids": [
+       30
+      ],
+      "direction": "Exports",
+      "protocol": "F-1.5 \u2014 radiated waste heat"
+     },
+     {
+      "component": 15,
+      "env": 2,
+      "relation_ids": [
+       31,
+       33
+      ],
+      "direction": "Hybrid",
+      "protocol": "purchase orders \u2014 iron \u00b7 shipping documents \u2014 iron"
+     },
+     {
+      "component": 15,
+      "env": 3,
+      "relation_ids": [
+       32,
+       34
+      ],
+      "direction": "Hybrid",
+      "protocol": "purchase orders \u2014 coke \u00b7 shipping documents \u2014 coke"
+     }
+    ]
+   }
+  },
+  {
+   "key": "computer-l1",
+   "label": "Hardware",
+   "canvas": {
+    "lens": "Mobus",
+    "things": [
+     {
+      "id": 1,
+      "name": "Power Source",
+      "x": 239.58264,
+      "y": -96.41519,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 2,
+      "name": "Ambient Air",
+      "x": 960.83484,
+      "y": 320.0,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+     },
+     {
+      "id": 3,
+      "name": "External File Device",
+      "x": 28.163116,
+      "y": 155.5447,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 4,
+      "name": "Users",
+      "x": 28.163086,
+      "y": 484.45523,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 5,
+      "name": "Firmware",
+      "x": 239.58257,
+      "y": 736.41516,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 6,
+      "name": "Power-Connector",
+      "x": 614.329,
+      "y": 110.979996,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 7,
+      "name": "Heat-Dissipation",
+      "x": 725.9336,
+      "y": 355.3599,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 8,
+      "name": "File-Port-In",
+      "x": 345.67102,
+      "y": 110.979965,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 9,
+      "name": "File-Port-Out",
+      "x": 253.99051,
+      "y": 216.78494,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 10,
+      "name": "User-Port-In",
+      "x": 234.06644,
+      "y": 355.35986,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 11,
+      "name": "User-Port-Out",
+      "x": 292.2245,
+      "y": 482.7083,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 12,
+      "name": "Firmware-Port-In",
+      "x": 410.00003,
+      "y": 558.3981,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 13,
+      "name": "Firmware-Port-Out",
+      "x": 549.99994,
+      "y": 558.3981,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 14,
+      "name": "CPU",
+      "x": 667.77545,
+      "y": 482.70837,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 15,
+      "name": "RAM Memory",
+      "x": 706.0095,
+      "y": 216.78493,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 16,
+      "name": "I/O Control",
+      "x": 480.0,
+      "y": 71.537445,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false
+     }
+    ],
+    "relations": [
+     {
+      "id": 17,
+      "a": 1,
+      "b": 6,
+      "name": "line current from the A/C wall socket",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 18,
+      "a": 6,
+      "b": 14,
+      "name": "regulated supply",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 19,
+      "a": 6,
+      "b": 15,
+      "name": "regulated supply",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 20,
+      "a": 6,
+      "b": 16,
+      "name": "regulated supply",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 21,
+      "a": 14,
+      "b": 7,
+      "name": "switching heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 22,
+      "a": 15,
+      "b": 7,
+      "name": "switching heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 23,
+      "a": 16,
+      "b": 7,
+      "name": "switching heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 24,
+      "a": 7,
+      "b": 2,
+      "name": "heat of computation, radiated or convected away",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 25,
+      "a": 3,
+      "b": 8,
+      "name": "programs and data read from files",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 26,
+      "a": 8,
+      "b": 16,
+      "name": "file data on the way in",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 27,
+      "a": 16,
+      "b": 9,
+      "name": "file data on the way out",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 28,
+      "a": 9,
+      "b": 3,
+      "name": "programs and data written back to files",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 29,
+      "a": 4,
+      "b": 10,
+      "name": "work of programmers and of end users",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 30,
+      "a": 10,
+      "b": 16,
+      "name": "user input on the way in",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 31,
+      "a": 16,
+      "b": 11,
+      "name": "results on the way out",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 32,
+      "a": 11,
+      "b": 4,
+      "name": "results returned to the user",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 33,
+      "a": 16,
+      "b": 14,
+      "name": "data delivered to the processor",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 34,
+      "a": 16,
+      "b": 15,
+      "name": "data written straight to memory",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 35,
+      "a": 14,
+      "b": 15,
+      "name": "stores over the internal bus",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 36,
+      "a": 15,
+      "b": 14,
+      "name": "loads over the internal bus",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 37,
+      "a": 15,
+      "b": 16,
+      "name": "data staged for output",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 38,
+      "a": 5,
+      "b": 12,
+      "name": "hardware control",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 39,
+      "a": 12,
+      "b": 14,
+      "name": "control programs fetched from ROM",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 40,
+      "a": 14,
+      "b": 13,
+      "name": "operation results on the way back",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 41,
+      "a": 13,
+      "b": 5,
+      "name": "results of hardware operations, returned through the firmware coupling",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     }
+    ],
+    "boundary": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "system_type": {
+     "kingdom": "Concrete",
+     "genus": "Technical",
+     "domain": "Digital computing"
+    },
+    "name": "Hardware",
+    "klir_level": "Structure"
+   },
+   "facts": {
+    "boundary_thing_ids": [
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13
+    ],
+    "environment_thing_ids": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "orphan_env_thing_ids": [],
+    "authored_interface_thing_ids": [
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13
+    ],
+    "boundary_props": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "aggregate": false,
+    "edges": [
+     {
+      "id": 17,
+      "a": 1,
+      "b": 6,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 18,
+      "a": 6,
+      "b": 14,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 19,
+      "a": 6,
+      "b": 15,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 20,
+      "a": 6,
+      "b": 16,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 21,
+      "a": 14,
+      "b": 7,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 22,
+      "a": 15,
+      "b": 7,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 23,
+      "a": 16,
+      "b": 7,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 24,
+      "a": 7,
+      "b": 2,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 25,
+      "a": 3,
+      "b": 8,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 26,
+      "a": 8,
+      "b": 16,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 27,
+      "a": 16,
+      "b": 9,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 28,
+      "a": 9,
+      "b": 3,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 29,
+      "a": 4,
+      "b": 10,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 30,
+      "a": 10,
+      "b": 16,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 31,
+      "a": 16,
+      "b": 11,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 32,
+      "a": 11,
+      "b": 4,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 33,
+      "a": 16,
+      "b": 14,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 34,
+      "a": 16,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 35,
+      "a": 14,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 36,
+      "a": 15,
+      "b": 14,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 37,
+      "a": 15,
+      "b": 16,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 38,
+      "a": 5,
+      "b": 12,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 39,
+      "a": 12,
+      "b": 14,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 40,
+      "a": 14,
+      "b": 13,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 41,
+      "a": 13,
+      "b": 5,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     }
+    ],
+    "ports": [
+     {
+      "component": 6,
+      "env": 1,
+      "relation_ids": [
+       17
+      ],
+      "direction": "Receives",
+      "protocol": "line current from the A/C wall socket"
+     },
+     {
+      "component": 7,
+      "env": 2,
+      "relation_ids": [
+       24
+      ],
+      "direction": "Exports",
+      "protocol": "heat of computation, radiated or convected away"
+     },
+     {
+      "component": 8,
+      "env": 3,
+      "relation_ids": [
+       25
+      ],
+      "direction": "Receives",
+      "protocol": "programs and data read from files"
+     },
+     {
+      "component": 9,
+      "env": 3,
+      "relation_ids": [
+       28
+      ],
+      "direction": "Exports",
+      "protocol": "programs and data written back to files"
+     },
+     {
+      "component": 10,
+      "env": 4,
+      "relation_ids": [
+       29
+      ],
+      "direction": "Receives",
+      "protocol": "work of programmers and of end users"
+     },
+     {
+      "component": 11,
+      "env": 4,
+      "relation_ids": [
+       32
+      ],
+      "direction": "Exports",
+      "protocol": "results returned to the user"
+     },
+     {
+      "component": 12,
+      "env": 5,
+      "relation_ids": [
+       38
+      ],
+      "direction": "Receives",
+      "protocol": "hardware control"
+     },
+     {
+      "component": 13,
+      "env": 5,
+      "relation_ids": [
+       41
+      ],
+      "direction": "Exports",
+      "protocol": "results of hardware operations, returned through the firmware coupling"
+     }
+    ]
+   }
+  },
+  {
+   "key": "llm-market",
+   "label": "LLM Market",
+   "canvas": {
+    "lens": "Mobus",
+    "things": [
+     {
+      "id": 1,
+      "name": "Developer workload",
+      "x": 288.4676,
+      "y": -11.7438965,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 2,
+      "name": "Enterprise workload",
+      "x": 209.1323,
+      "y": 49.132202,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 3,
+      "name": "Anthropic",
+      "x": 148.25616,
+      "y": 128.46751,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 4,
+      "name": "OpenAI",
+      "x": 109.98776,
+      "y": 220.8555,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 5,
+      "name": "Google",
+      "x": 96.93515,
+      "y": 319.99997,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 6,
+      "name": "Meta",
+      "x": 109.98776,
+      "y": 419.14444,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 7,
+      "name": "Alibaba",
+      "x": 148.2561,
+      "y": 511.53244,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 8,
+      "name": "DeepSeek (lab)",
+      "x": 209.13226,
+      "y": 590.86774,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 9,
+      "name": "Open-weight field",
+      "x": 288.46756,
+      "y": 651.7439,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 10,
+      "name": "Developer clearing",
+      "x": 480.0,
+      "y": 150.0,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Splitting",
+      "interface": true
+     },
+     {
+      "id": 11,
+      "name": "Enterprise clearing",
+      "x": 571.90894,
+      "y": 176.98691,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Splitting",
+      "interface": true
+     },
+     {
+      "id": 12,
+      "name": "Opus",
+      "x": 634.63745,
+      "y": 249.37946,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 13,
+      "name": "Fable",
+      "x": 648.26965,
+      "y": 344.1935,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 14,
+      "name": "GPT",
+      "x": 608.4774,
+      "y": 431.32632,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 15,
+      "name": "Gemini",
+      "x": 527.89453,
+      "y": 483.11383,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 16,
+      "name": "Gemma",
+      "x": 432.10547,
+      "y": 483.1138,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 17,
+      "name": "Llama",
+      "x": 351.52252,
+      "y": 431.3263,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 18,
+      "name": "Qwen",
+      "x": 311.73035,
+      "y": 344.1935,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 19,
+      "name": "DeepSeek",
+      "x": 325.36255,
+      "y": 249.37946,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 20,
+      "name": "Other open",
+      "x": 388.0911,
+      "y": 176.98688,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 21,
+      "name": "Applications served",
+      "x": 863.0648,
+      "y": 320.0,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+     }
+    ],
+    "relations": [
+     {
+      "id": 22,
+      "a": 1,
+      "b": 10,
+      "name": "dev inference compute",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "6000",
+      "unit": "Gtok/day",
+      "substance": "compute"
+     },
+     {
+      "id": 23,
+      "a": 2,
+      "b": 11,
+      "name": "enterprise inference compute",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "2000",
+      "unit": "Gtok/day",
+      "substance": "compute"
+     },
+     {
+      "id": 24,
+      "a": 3,
+      "b": 12,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 25,
+      "a": 3,
+      "b": 13,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 26,
+      "a": 4,
+      "b": 14,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 27,
+      "a": 5,
+      "b": 15,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 28,
+      "a": 5,
+      "b": 16,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 29,
+      "a": 6,
+      "b": 17,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 30,
+      "a": 7,
+      "b": 18,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 31,
+      "a": 8,
+      "b": 19,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 32,
+      "a": 9,
+      "b": 20,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 33,
+      "a": 10,
+      "b": 12,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "9",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 34,
+      "a": 10,
+      "b": 13,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "6",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 35,
+      "a": 10,
+      "b": 14,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "9",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 36,
+      "a": 10,
+      "b": 15,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "11",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 37,
+      "a": 10,
+      "b": 16,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "2",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 38,
+      "a": 10,
+      "b": 17,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "3",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 39,
+      "a": 10,
+      "b": 18,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "13",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 40,
+      "a": 10,
+      "b": 19,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "16",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 41,
+      "a": 10,
+      "b": 20,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 42,
+      "a": 11,
+      "b": 12,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "30",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 43,
+      "a": 11,
+      "b": 13,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "10",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 44,
+      "a": 11,
+      "b": 14,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "27",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 45,
+      "a": 11,
+      "b": 15,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 46,
+      "a": 11,
+      "b": 16,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "1",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 47,
+      "a": 11,
+      "b": 17,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "4",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 48,
+      "a": 11,
+      "b": 18,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "3",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 49,
+      "a": 11,
+      "b": 19,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "3",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 50,
+      "a": 11,
+      "b": 20,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "2",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 51,
+      "a": 12,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 52,
+      "a": 13,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 53,
+      "a": 14,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 54,
+      "a": 15,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 55,
+      "a": 16,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 56,
+      "a": 17,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 57,
+      "a": 18,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 58,
+      "a": 19,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 59,
+      "a": 20,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     }
+    ],
+    "boundary": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "system_type": {
+     "kingdom": "Concrete",
+     "genus": "Social",
+     "domain": "Inference compute cleared across frontier and open-weight models by two demand channels, tokens served out, heat shed"
+    },
+    "name": "LLM Market",
+    "time_unit": "day",
+    "params": [
+     {
+      "name": "Developer demand",
+      "anchor": {
+       "Flow": {
+        "relation": 22
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "12000"
+      }
+     },
+     {
+      "name": "Enterprise demand",
+      "anchor": {
+       "Flow": {
+        "relation": 23
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "8000"
+      }
+     },
+     {
+      "name": "Developer market share",
+      "anchor": {
+       "Shares": {
+        "thing": 10
+       }
+      }
+     },
+     {
+      "name": "Enterprise market share",
+      "anchor": {
+       "Shares": {
+        "thing": 11
+       }
+      }
+     }
+    ],
+    "metrics": [
+     {
+      "name": "DeepSeek dev share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 40
+       }
+      }
+     },
+     {
+      "name": "Qwen dev share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 39
+       }
+      }
+     },
+     {
+      "name": "Gemini dev share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 36
+       }
+      }
+     },
+     {
+      "name": "Opus dev share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 33
+       }
+      }
+     },
+     {
+      "name": "Opus enterprise share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 42
+       }
+      }
+     },
+     {
+      "name": "GPT enterprise share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 44
+       }
+      }
+     },
+     {
+      "name": "Gemini enterprise share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 45
+       }
+      }
+     },
+     {
+      "name": "Fable enterprise share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 43
+       }
+      }
+     },
+     {
+      "name": "Opus tokens served",
+      "expr": {
+       "SumInto": {
+        "thing": 12
+       }
+      }
+     },
+     {
+      "name": "Fable tokens served",
+      "expr": {
+       "SumInto": {
+        "thing": 13
+       }
+      }
+     },
+     {
+      "name": "DeepSeek tokens served",
+      "expr": {
+       "SumInto": {
+        "thing": 19
+       }
+      }
+     },
+     {
+      "name": "Qwen tokens served",
+      "expr": {
+       "SumInto": {
+        "thing": 18
+       }
+      }
+     }
+    ],
+    "klir_level": "Structure"
+   },
+   "facts": {
+    "boundary_thing_ids": [
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20
+    ],
+    "environment_thing_ids": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     21
+    ],
+    "orphan_env_thing_ids": [],
+    "authored_interface_thing_ids": [
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20
+    ],
+    "boundary_props": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "aggregate": false,
+    "edges": [
+     {
+      "id": 22,
+      "a": 1,
+      "b": 10,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 23,
+      "a": 2,
+      "b": 11,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 24,
+      "a": 3,
+      "b": 12,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 25,
+      "a": 3,
+      "b": 13,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 26,
+      "a": 4,
+      "b": 14,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 27,
+      "a": 5,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 28,
+      "a": 5,
+      "b": 16,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 29,
+      "a": 6,
+      "b": 17,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 30,
+      "a": 7,
+      "b": 18,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 31,
+      "a": 8,
+      "b": 19,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 32,
+      "a": 9,
+      "b": 20,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 33,
+      "a": 10,
+      "b": 12,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 34,
+      "a": 10,
+      "b": 13,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 35,
+      "a": 10,
+      "b": 14,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 36,
+      "a": 10,
+      "b": 15,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 37,
+      "a": 10,
+      "b": 16,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 38,
+      "a": 10,
+      "b": 17,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 39,
+      "a": 10,
+      "b": 18,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 40,
+      "a": 10,
+      "b": 19,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 41,
+      "a": 10,
+      "b": 20,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 42,
+      "a": 11,
+      "b": 12,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 43,
+      "a": 11,
+      "b": 13,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 44,
+      "a": 11,
+      "b": 14,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 45,
+      "a": 11,
+      "b": 15,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 46,
+      "a": 11,
+      "b": 16,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 47,
+      "a": 11,
+      "b": 17,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 48,
+      "a": 11,
+      "b": 18,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 49,
+      "a": 11,
+      "b": 19,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 50,
+      "a": 11,
+      "b": 20,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 51,
+      "a": 12,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 52,
+      "a": 13,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 53,
+      "a": 14,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 54,
+      "a": 15,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 55,
+      "a": 16,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 56,
+      "a": 17,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 57,
+      "a": 18,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 58,
+      "a": 19,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 59,
+      "a": 20,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     }
+    ],
+    "ports": [
+     {
+      "component": 10,
+      "env": 1,
+      "relation_ids": [
+       22
+      ],
+      "direction": "Receives",
+      "protocol": "dev inference compute"
+     },
+     {
+      "component": 11,
+      "env": 2,
+      "relation_ids": [
+       23
+      ],
+      "direction": "Receives",
+      "protocol": "enterprise inference compute"
+     },
+     {
+      "component": 12,
+      "env": 3,
+      "relation_ids": [
+       24
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 12,
+      "env": 21,
+      "relation_ids": [
+       51
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 13,
+      "env": 3,
+      "relation_ids": [
+       25
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 13,
+      "env": 21,
+      "relation_ids": [
+       52
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 14,
+      "env": 4,
+      "relation_ids": [
+       26
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 14,
+      "env": 21,
+      "relation_ids": [
+       53
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 15,
+      "env": 5,
+      "relation_ids": [
+       27
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 15,
+      "env": 21,
+      "relation_ids": [
+       54
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 16,
+      "env": 5,
+      "relation_ids": [
+       28
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 16,
+      "env": 21,
+      "relation_ids": [
+       55
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 17,
+      "env": 6,
+      "relation_ids": [
+       29
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 17,
+      "env": 21,
+      "relation_ids": [
+       56
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 18,
+      "env": 7,
+      "relation_ids": [
+       30
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 18,
+      "env": 21,
+      "relation_ids": [
+       57
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 19,
+      "env": 8,
+      "relation_ids": [
+       31
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 19,
+      "env": 21,
+      "relation_ids": [
+       58
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 20,
+      "env": 9,
+      "relation_ids": [
+       32
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 20,
+      "env": 21,
+      "relation_ids": [
+       59
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     }
+    ]
+   }
+  }
+ ]
+}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s);
+const stage=$('#stage'), labelsEl=$('#labels'), leaders=$('#leaders'), legendEl=$('#legend'), panel=$('#panel'), msgEl=$('#msg');
+const modelSel=$('#modelSel'), themeBtn=$('#themeBtn'), fitBtn=$('#fitBtn'), explodeIn=$('#explode'), expOut=$('#expv'), texIn=$('#texture'), mname=$('#mname'), lensEl=$('#lens');
+
+const PAL={
+  light:{paper:'#f1f2f3',ink:'#17181a',muted:'#5d6670',accent:'#3d6373',strong:'#2a4b59',Matter:'#57814c',Energy:'#bb6c1c',Informational:'#8054a0',Field:'#2f6c9c'},
+  dark:{paper:'#16181a',ink:'#e8eaec',muted:'#8e979f',accent:'#6fa5b8',strong:'#95c3d3',Matter:'#649457',Energy:'#c6721e',Informational:'#9e79b8',Field:'#428cc6'}
+};
+const KINDS=['Matter','Energy','Informational','Field','Unspecified'];
+const KC=0.45, DE=3.2, SEP=0.34, GAPE=4.4, DOT_SP=1.2, DEF_T=-0.42, DEF_P=1.2;
+
+let theme='light', themeManual=false, P=PAL.light;
+let renderer=null, scene=null, camera=null, ray=null, ndc=null, V3=null, UP=null, ZA=null, target=null;
+let ready=false, lost=false, raf=0;
+let S=null, current=0, selected=null, explode=0, texOn=false, reduced=false, autoFit=true;
+let theta=DEF_T, phi=DEF_P, radius=40, VW=1, VH=1;
+const pointers=new Map(); let down=null, pinch=0;
+
+function showMsg(t){ msgEl.textContent=t; msgEl.hidden=false; }
+function hideMsg(){ msgEl.hidden=true; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function hash(s){ s=String(s); let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619)>>>0; } return (h%100000)/100000; }
+const num=v=>(v!=null&&Number.isFinite(+v))?+v:0;
+function kindColor(k){ return P[k]||P.muted; }
+function amountText(f){
+  const r=f.rel;
+  if(r.ample===true) return 'ample';
+  if(r.amount==null||String(r.amount).trim()==='') return 'undeclared';
+  return String(r.amount)+(r.unit?' '+r.unit:'')+(S&&S.tu?'/'+S.tu:'');
+}
+
+/* theme */
+const mqDark=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
+const mqRM=window.matchMedia?matchMedia('(prefers-reduced-motion: reduce)'):null;
+theme=(mqDark&&mqDark.matches)?'dark':'light'; P=PAL[theme];
+function applyThemeDom(){ document.documentElement.setAttribute('data-theme',theme); themeBtn.textContent=theme; themeBtn.setAttribute('aria-pressed',String(theme==='dark')); }
+function setTheme(t){ theme=t; P=PAL[t]; applyThemeDom(); if(ready){ renderer.setClearColor(P.paper,1); if(S) buildModel(current,true); else requestRender(); } }
+applyThemeDom();
+themeBtn.addEventListener('click',()=>{ themeManual=true; setTheme(theme==='dark'?'light':'dark'); });
+function onMQ(mq,fn){ if(!mq) return; if(mq.addEventListener) mq.addEventListener('change',fn); else if(mq.addListener) mq.addListener(fn); }
+onMQ(mqDark,e=>{ if(!themeManual) setTheme(e.matches?'dark':'light'); });
+
+/* motion */
+reduced=!!(mqRM&&mqRM.matches);
+function setTex(on){ texOn=!!on&&!reduced; texIn.checked=texOn; if(S&&S.dots) S.dots.visible=texOn; requestRender(); }
+function applyRM(){ texIn.disabled=reduced; texIn.parentElement.title=reduced?'off: reduced motion is preferred':''; if(reduced) setTex(false); }
+applyRM();
+onMQ(mqRM,e=>{ reduced=e.matches; applyRM(); });
+texIn.addEventListener('change',()=>setTex(texIn.checked));
+
+/* fixture */
+let fixture={};
+try{ const el=document.getElementById('fixture'); fixture=JSON.parse((el&&el.textContent)||'{}')||{}; }catch(err){ fixture={}; }
+const models=Array.isArray(fixture.models)?fixture.models.filter(m=>m&&typeof m==='object'&&m.canvas&&Array.isArray(m.canvas.things)):[];
+models.forEach((m,i)=>{ const o=document.createElement('option'); o.value=String(i); o.textContent=m.label||m.canvas.name||m.key||('Model '+(i+1)); modelSel.appendChild(o); });
+
+function disableControls(){ [fitBtn,explodeIn,texIn,modelSel].forEach(el=>el.disabled=true); }
+
+if(!models.length){ mname.textContent='Facets'; showMsg('No model to show. The fixture is empty.'); disableControls(); return; }
+if(typeof THREE==='undefined'){ showMsg('Three.js could not be loaded, so the 3D view cannot be drawn.'); disableControls(); return; }
+
+V3=THREE.Vector3; UP=new V3(0,1,0); ZA=new V3(0,0,1); target=new V3();
+try{ renderer=new THREE.WebGLRenderer({antialias:true,alpha:false}); }catch(err){ renderer=null; }
+if(!renderer||!renderer.getContext()){ showMsg('WebGL is not available in this browser, so the 3D view cannot be drawn.'); disableControls(); return; }
+
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.setClearColor(P.paper,1);
+stage.insertBefore(renderer.domElement,stage.firstChild);
+renderer.domElement.setAttribute('aria-hidden','true');
+scene=new THREE.Scene();
+camera=new THREE.PerspectiveCamera(32,1,0.1,4000);
+ray=new THREE.Raycaster(); ndc=new THREE.Vector2();
+ready=true;
+
+renderer.domElement.addEventListener('webglcontextlost',e=>{ e.preventDefault(); lost=true; showMsg('The WebGL context was lost. Waiting for the browser to restore it.'); },false);
+renderer.domElement.addEventListener('webglcontextrestored',()=>{ lost=false; hideMsg(); buildModel(current,true); },false);
+
+/* ---------- geometry helpers ---------- */
+function ellN(p,A,B,C){ return new V3(p.x/(A*A),p.y/(B*B),p.z/(C*C)).normalize(); }
+function rho0(d){ return 1/Math.sqrt((d.x/S.a)**2+(d.y/S.b)**2+(d.z/S.c)**2); }
+
+function tubeGeometry(pts,r,dash,gap){
+  const pieces=[];
+  if(!dash){ pieces.push(pts); }
+  else{
+    let on=true, ph=0, cur=[pts[0].clone()];
+    for(let i=1;i<pts.length;i++){
+      const p0=pts[i-1], p1=pts[i], L=p0.distanceTo(p1); let t=0;
+      while(L-t>1e-9){
+        const lim=(on?dash:gap)-ph;
+        if(L-t<=lim){ ph+=L-t; t=L; if(on) cur.push(p1.clone()); }
+        else{ t+=lim; const q=p0.clone().lerp(p1,t/L); if(on){ cur.push(q); if(cur.length>1) pieces.push(cur); cur=[]; } else { cur=[q]; } on=!on; ph=0; }
+      }
+    }
+    if(on&&cur.length>1) pieces.push(cur);
+  }
+  const RS=6, pos=[], idx=[]; let vb=0;
+  const T=new V3(), N=new V3(), Bn=new V3(), tmp=new V3(), AX=new V3(1,0,0), AY=new V3(0,1,0);
+  for(const pc of pieces){
+    const n=pc.length; if(n<2) continue;
+    T.set(0,0,1);
+    for(let i=0;i<n;i++){
+      tmp.subVectors(pc[Math.min(n-1,i+1)],pc[Math.max(0,i-1)]);
+      if(tmp.lengthSq()>1e-12) T.copy(tmp).normalize();
+      if(i===0){ N.crossVectors(T,Math.abs(T.x)<0.9?AX:AY).normalize(); }
+      else{ N.addScaledVector(T,-N.dot(T)); if(N.lengthSq()<1e-12) N.crossVectors(T,Math.abs(T.x)<0.9?AX:AY); N.normalize(); }
+      Bn.crossVectors(T,N);
+      const p=pc[i];
+      for(let j=0;j<RS;j++){ const an=j/RS*Math.PI*2, cs=Math.cos(an)*r, sn=Math.sin(an)*r;
+        pos.push(p.x+N.x*cs+Bn.x*sn,p.y+N.y*cs+Bn.y*sn,p.z+N.z*cs+Bn.z*sn); }
+      if(i>0){ const o0=vb+(i-1)*RS, o1=vb+i*RS; for(let j=0;j<RS;j++){ const j2=(j+1)%RS; idx.push(o0+j,o1+j,o0+j2,o0+j2,o1+j,o1+j2); } }
+    }
+    vb+=n*RS;
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  if(idx.length) g.setIndex(idx);
+  return g;
+}
+
+function circleGeo(axis){
+  const a=[]; for(let i=0;i<160;i++){ const t=i/160*Math.PI*2, c=Math.cos(t), s=Math.sin(t);
+    if(axis==='y') a.push(c,0,s); else if(axis==='z') a.push(c,s,0); else a.push(0,c,s); }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(a,3)); return g;
+}
+function dotTex(){
+  const c=document.createElement('canvas'); c.width=c.height=32; const x=c.getContext('2d');
+  const g=x.createRadialGradient(16,16,0,16,16,15); g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.55,'rgba(255,255,255,1)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle=g; x.beginPath(); x.arc(16,16,15,0,Math.PI*2); x.fill(); return new THREE.CanvasTexture(c);
+}
+const VS='varying vec3 vN;varying vec3 vV;void main(){vec4 mv=modelViewMatrix*vec4(position,1.0);vN=normalize(normalMatrix*normal);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}';
+const FS='uniform vec3 uColor;uniform float uBase;uniform float uRim;varying vec3 vN;varying vec3 vV;void main(){float f=1.0-abs(dot(normalize(vN),normalize(vV)));gl_FragColor=vec4(uColor,uBase+uRim*pow(f,2.6));}';
+function shellMat(side,base,rim){ return new THREE.ShaderMaterial({uniforms:{uColor:{value:new THREE.Color(P.accent)},uBase:{value:base},uRim:{value:rim}},vertexShader:VS,fragmentShader:FS,transparent:true,depthWrite:false,side}); }
+
+/* ---------- scene lifecycle ---------- */
+function disposeScene(){
+  if(!S) return;
+  const geos=new Set(), mats=new Set(), texs=new Set();
+  S.root.traverse(o=>{ if(o.geometry) geos.add(o.geometry); if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ mats.add(m); if(m.map) texs.add(m.map); }); } });
+  if(S.hitMat) mats.add(S.hitMat);
+  geos.forEach(g=>g.dispose()); mats.forEach(m=>m.dispose()); texs.forEach(t=>t.dispose());
+  scene.remove(S.root);
+  labelsEl.innerHTML=''; leaders.innerHTML=''; legendEl.innerHTML='';
+  S=null;
+}
+
+function buildModel(idx,keep){
+  const prevSel=keep?selected:null;
+  disposeScene();
+  current=idx; modelSel.value=String(idx);
+  const M=models[idx]||{}; const cv=M.canvas||{}; const F=M.facts||{};
+  mname.textContent=cv.name||M.label||M.key||'Model';
+  const lb=[]; if(cv.lens) lb.push(cv.lens); if(cv.time_unit) lb.push('per '+cv.time_unit); lensEl.textContent=lb.join(' · ');
+  const things=(cv.things||[]).filter(t=>t&&t.id!=null);
+  const rels=Array.isArray(cv.relations)?cv.relations.filter(r=>r&&r.a!=null&&r.b!=null):[];
+  const idset=v=>new Set((Array.isArray(v)?v:[]).map(String));
+  const ifaceIds=Array.isArray(F.authored_interface_thing_ids)?idset(F.authored_interface_thing_ids):new Set(things.filter(t=>t.interface===true).map(t=>String(t.id)));
+  const orphanIds=idset(F.orphan_env_thing_ids), boundaryIds=idset(F.boundary_thing_ids);
+
+  const root=new THREE.Group(); scene.add(root);
+  S={root,bodies:new Map(),flows:[],ports:[],pick:[],tu:cv.time_unit||'',a:4,b:4,c:4,dotCap:0,order:[]};
+  S.hitMat=new THREE.MeshBasicMaterial();
+
+  const dark=theme==='dark';
+  root.add(new THREE.HemisphereLight(0xffffff,dark?0x303030:0x9a9a9a,dark?0.72:0.85));
+  const dl=new THREE.DirectionalLight(0xffffff,dark?0.62:0.55); dl.position.set(-6,10,8); root.add(dl);
+  const dl2=new THREE.DirectionalLight(0xffffff,0.18); dl2.position.set(8,-4,-6); root.add(dl2);
+
+  function mkBody(t,kind){
+    const id=String(t.id);
+    const b={id,t,kind,name:(t.name!=null&&String(t.name).trim()!=='')?String(t.name):id,
+      envKind:kind==='env'?(['Source','Sink','Neutral'].includes(t.env_kind)?t.env_kind:'Neutral'):null,
+      base:new V3(),dir:new V3(0,0,1),pos:new V3(),radius:kind==='iface'?0.62:(kind==='env'?0.6:0.55),
+      orphan:kind==='env'&&orphanIds.has(id),boundary:boundaryIds.has(id)};
+    S.bodies.set(id,b); return b;
+  }
+
+  /* components at authored positions */
+  const comps=things.filter(t=>t.role!=='Environment'), envs=things.filter(t=>t.role==='Environment');
+  const fin=t=>t.x!=null&&t.y!=null&&Number.isFinite(+t.x)&&Number.isFinite(+t.y);
+  let minx=Infinity,maxx=-Infinity,miny=Infinity,maxy=-Infinity;
+  comps.filter(fin).forEach(t=>{ minx=Math.min(minx,+t.x); maxx=Math.max(maxx,+t.x); miny=Math.min(miny,+t.y); maxy=Math.max(maxy,+t.y); });
+  const havePos=isFinite(minx);
+  const span=havePos?Math.max(maxx-minx,maxy-miny):0;
+  const k=span>1e-6?12/span:1, cx=havePos?(minx+maxx)/2:0, cy=havePos?(miny+maxy)/2:0;
+  let missing=0; const missCount=comps.filter(t=>!fin(t)).length;
+  const cb=comps.map((t,i)=>{
+    const b=mkBody(t,ifaceIds.has(String(t.id))?'iface':'comp');
+    if(fin(t)&&havePos){ b.ax=(+t.x-cx)*k; b.ay=-(+t.y-cy)*k; }
+    else{ const n=Math.max(1,missCount), an=(missing++)/n*Math.PI*2, rr=havePos?1.6:(comps.length>1?5:0); b.ax=Math.cos(an)*rr; b.ay=Math.sin(an)*rr; }
+    return b;
+  });
+  let ext=3; cb.forEach(b=>{ ext=Math.max(ext,Math.abs(b.ax),Math.abs(b.ay)); });
+  const zs=clamp(ext*0.32,1.2,2.6);
+  cb.forEach(b=>{ if(b.kind==='comp'){ b.base.set(b.ax,b.ay,(hash(b.id)-0.5)*2*zs); if(b.base.lengthSq()>1e-8) b.dir.copy(b.base).normalize(); } });
+
+  /* shell fit around interior components */
+  const interior=cb.filter(b=>b.kind==='comp');
+  let W=2,H=2,Z=1.5; interior.forEach(b=>{ W=Math.max(W,Math.abs(b.base.x)); H=Math.max(H,Math.abs(b.base.y)); Z=Math.max(Z,Math.abs(b.base.z)); });
+  let a=W+1.8,bb=H+1.8,c=Z+2.0,q=0;
+  interior.forEach(b=>{ const L=b.base.length(), s=L>1e-6?(L+0.9)/L:1; const x=b.base.x*s/a,y=b.base.y*s/bb,z=b.base.z*s/c; q=Math.max(q,Math.sqrt(x*x+y*y+z*z)); });
+  if(q>0.8){ const f=q/0.8; a*=f; bb*=f; c*=f; }
+  c=Math.max(c,0.55*Math.min(a,bb));
+  S.a=a; S.b=bb; S.c=c;
+
+  /* environment banks: sources left, sinks right, neutral above */
+  const eb=envs.map(t=>mkBody(t,'env'));
+  const bank=(list,side)=>{
+    const n=list.length; if(!n) return;
+    list.sort((p,q)=>(num(p.t.y)-num(q.t.y))||p.name.localeCompare(q.name));
+    const ra=a+GAPE, rb=bb+GAPE, rm=(ra+rb)/2; let total=(2.7/rm)*(n-1), stagger=false;
+    if(total>2.2){ total=2.2; stagger=true; }
+    list.forEach((b,i)=>{ const f=n===1?0:(0.5-i/(n-1)), ph=f*total; b.base.set(side*ra*Math.cos(ph),rb*Math.sin(ph),stagger?((i%2)?-1.8:1.8):0); });
+  };
+  bank(eb.filter(b=>b.envKind==='Source'),-1);
+  bank(eb.filter(b=>b.envKind==='Sink'),1);
+  const neu=eb.filter(b=>b.envKind==='Neutral');
+  if(neu.length){
+    neu.sort((p,q)=>(num(p.t.x)-num(q.t.x))||p.name.localeCompare(q.name));
+    const ra=a+GAPE, rb=bb+GAPE, n=neu.length; const tot=Math.min(1.5,(2.7/((ra+rb)/2))*(n-1));
+    neu.forEach((b,i)=>{ const f=n===1?0:(i/(n-1)-0.5), ps=f*tot; b.base.set(ra*0.8*Math.sin(ps),rb*Math.cos(ps),-1.5); });
+  }
+  eb.forEach(b=>{ if(b.base.lengthSq()<1e-8) b.base.set(0,bb+GAPE,0); b.dir.copy(b.base).normalize(); });
+
+  /* interfaces live on the shell */
+  cb.filter(b=>b.kind==='iface').forEach(b=>{
+    const v=new V3(b.ax,b.ay,(hash(b.id)-0.5)*zs*0.8);
+    if(Math.hypot(b.ax,b.ay)<0.5){
+      const acc=new V3();
+      rels.forEach(r=>{ const o=String(r.a)===b.id?String(r.b):(String(r.b)===b.id?String(r.a):null); const ob=o&&S.bodies.get(o); if(ob&&ob.kind==='env') acc.add(ob.dir); });
+      if(acc.lengthSq()>1e-6) v.copy(acc); else if(v.lengthSq()<1e-6) v.copy(ZA);
+    }
+    b.dir.copy(v).normalize();
+  });
+
+  /* ports (kernel verdicts) */
+  const rmean=(a+bb+c)/3, minAng=1.5/rmean;
+  (Array.isArray(F.ports)?F.ports:[]).forEach(fp=>{
+    if(!fp) return;
+    const comp=S.bodies.get(String(fp.component)), env=S.bodies.get(String(fp.env));
+    if(!comp||!env||comp.kind==='env'||env.kind!=='env') return;
+    const w=comp.kind==='iface'?0.5:0.62;
+    const dir=env.dir.clone().multiplyScalar(w).addScaledVector(comp.dir,1-w);
+    if(dir.lengthSq()<1e-8) dir.copy(env.dir); dir.normalize();
+    S.ports.push({fp,comp,env,dir,pos:new V3(),normal:new V3(0,0,1),relIds:new Set((Array.isArray(fp.relation_ids)?fp.relation_ids:[]).map(String)),n:0,direction:fp.direction||'',protocol:fp.protocol||''});
+  });
+  const ifDirs=cb.filter(b=>b.kind==='iface').map(b=>b.dir);
+  for(let it=0;it<80;it++){
+    let moved=false;
+    for(let i=0;i<S.ports.length;i++){
+      const di=S.ports[i].dir;
+      for(let j=i+1;j<S.ports.length;j++){
+        const dj=S.ports[j].dir, ang=Math.acos(clamp(di.dot(dj),-1,1));
+        if(ang<minAng){ const pu=new V3().subVectors(di,dj); if(pu.lengthSq()<1e-9) pu.set(hash(i+'x')-0.5,hash(j+'y')-0.5,0.1); pu.normalize().multiplyScalar((minAng-ang)*0.5); di.add(pu).normalize(); dj.sub(pu).normalize(); moved=true; }
+      }
+      for(const fd of ifDirs){
+        const ang=Math.acos(clamp(di.dot(fd),-1,1)), lim=minAng*0.9;
+        if(ang<lim&&ang>1e-4){ const pu=new V3().subVectors(di,fd).normalize().multiplyScalar(lim-ang); di.add(pu).normalize(); moved=true; }
+      }
+    }
+    if(!moved) break;
+  }
+
+  /* flows */
+  rels.forEach((r,i)=>{
+    const ia=String(r.a), ib=String(r.b), A=S.bodies.get(ia), B=S.bodies.get(ib);
+    if(!A||!B||ia===ib) return;
+    const kind=KINDS.includes(r.kind)?r.kind:'Unspecified';
+    const ample=r.ample===true, bond=r.is_bond!==false;
+    const declared=!ample&&r.amount!=null&&String(r.amount).trim()!=='';
+    const v=declared?parseFloat(String(r.amount).replace(/,/g,'')):NaN;
+    S.flows.push({rel:r,id:r.id!=null?String(r.id):('r'+i),a:ia,b:ib,A,B,kind,ample,bond,declared,v,
+      name:(r.name!=null&&String(r.name).trim()!=='')?String(r.name):(r.substance||''),color:kindColor(kind),port:null});
+  });
+  const pv=S.flows.filter(f=>f.declared&&isFinite(f.v)&&f.v>0).map(f=>f.v);
+  const vmax=pv.length?Math.max.apply(null,pv):0;
+  S.flows.forEach(f=>{
+    f.dashed=!f.declared&&!f.ample;
+    if(!f.bond){ f.r=0.024; f.baseOp=0.5; }
+    else if(f.ample){ f.r=0.07; f.baseOp=0.92; }
+    else if(!f.declared){ f.r=0.05; f.baseOp=0.85; }
+    else if(isFinite(f.v)&&vmax>0){ f.r=0.045+0.14*Math.sqrt(Math.max(0,f.v)/vmax); f.baseOp=0.95; }
+    else { f.r=0.08; f.baseOp=0.95; }
+    f.ar=f.bond?Math.max(f.r*2.2,0.13):0.08;
+    const ae=f.A.kind==='env', be=f.B.kind==='env';
+    if(ae!==be){ const comp=ae?f.B:f.A, env=ae?f.A:f.B; const cand=S.ports.filter(p=>p.comp===comp&&p.env===env); f.port=cand.find(p=>p.relIds.has(f.id))||cand[0]||null; if(f.port) f.port.n++; }
+  });
+  const groups=new Map();
+  S.flows.forEach(f=>{ const key=[f.a,f.b].sort().join('\u0001'); if(!groups.has(key)) groups.set(key,[]); groups.get(key).push(f); });
+  groups.forEach(l=>{ l.sort((x,y)=>x.id<y.id?-1:x.id>y.id?1:0); l.forEach((f,i)=>{ f.gi=i; f.gn=l.length; }); });
+
+  /* meshes: shell */
+  const shell=new THREE.Group();
+  const sg=new THREE.SphereGeometry(1,72,48);
+  const back=new THREE.Mesh(sg,shellMat(THREE.BackSide,dark?0.025:0.02,dark?0.14:0.12)); back.renderOrder=-1;
+  const front=new THREE.Mesh(sg,shellMat(THREE.FrontSide,dark?0.03:0.035,dark?0.32:0.3)); front.renderOrder=10;
+  const lm=new THREE.LineBasicMaterial({color:P.accent,transparent:true,opacity:dark?0.34:0.3,depthWrite:false});
+  ['y','z','x'].forEach(ax=>{ const l=new THREE.LineLoop(circleGeo(ax),lm); l.renderOrder=9; shell.add(l); });
+  shell.add(back,front); root.add(shell); S.shell=shell;
+
+  /* bodies */
+  const G={comp:new THREE.SphereGeometry(0.55,40,24),iface:new THREE.CylinderGeometry(0.62,0.62,0.16,48),
+    Source:new THREE.OctahedronGeometry(0.68),Sink:new THREE.BoxGeometry(0.88,0.88,0.88),Neutral:new THREE.IcosahedronGeometry(0.56,0),
+    hit:new THREE.SphereGeometry(1,14,10)};
+  S.bodies.forEach(b=>{
+    let geo,mat;
+    if(b.kind==='comp'){ geo=G.comp; mat=new THREE.MeshStandardMaterial({color:P.ink,roughness:0.5,metalness:0.05,transparent:true}); }
+    else if(b.kind==='iface'){ geo=G.iface; mat=new THREE.MeshStandardMaterial({color:P.accent,roughness:0.45,metalness:0.05,transparent:true}); }
+    else { geo=G[b.envKind]; mat=new THREE.MeshStandardMaterial({color:P.muted,roughness:0.7,metalness:0,flatShading:true,transparent:true}); }
+    const m=new THREE.Mesh(geo,mat); m.renderOrder=2; m.userData.id=b.id;
+    if(b.envKind==='Sink') m.rotation.set(0.35,0.6,0);
+    root.add(m); b.mesh=m;
+    const h=new THREE.Mesh(G.hit,S.hitMat); h.visible=false; h.scale.setScalar(b.radius*1.5); h.userData.id=b.id; root.add(h); b.hit=h; S.pick.push(h);
+  });
+
+  /* ports */
+  S.ports.forEach(p=>{
+    const r=Math.max(0.3,(p.n-1)*SEP/2+0.24); p.r=r;
+    const grp=new THREE.Group();
+    p.ringMat=new THREE.MeshBasicMaterial({color:P.strong,transparent:true,opacity:0.9,side:THREE.DoubleSide,depthWrite:false});
+    p.discMat=new THREE.MeshBasicMaterial({color:P.accent,transparent:true,opacity:0.16,side:THREE.DoubleSide,depthWrite:false});
+    const ring=new THREE.Mesh(new THREE.RingGeometry(r,r+0.075,56),p.ringMat), disc=new THREE.Mesh(new THREE.CircleGeometry(r,56),p.discMat);
+    ring.renderOrder=6; disc.renderOrder=5; grp.add(disc,ring); root.add(grp); p.grp=grp;
+  });
+
+  /* flow meshes */
+  const cone=new THREE.ConeGeometry(1,1,16,1); cone.translate(0,0.5,0);
+  S.flows.forEach(f=>{
+    f.mat=new THREE.MeshBasicMaterial({color:f.color,transparent:true,opacity:f.baseOp,side:THREE.DoubleSide});
+    f.mesh=new THREE.Mesh(new THREE.BufferGeometry(),f.mat); f.mesh.renderOrder=3;
+    f.arrow=new THREE.Mesh(cone,f.mat); f.arrow.renderOrder=3;
+    f.col3=new THREE.Color(f.color);
+    root.add(f.mesh,f.arrow);
+  });
+
+  /* selection ring */
+  S.selRing=new THREE.Mesh(new THREE.RingGeometry(1,1.07,72),new THREE.MeshBasicMaterial({color:P.strong,transparent:true,opacity:0.95,depthTest:false,side:THREE.DoubleSide}));
+  S.selRing.renderOrder=20; S.selRing.visible=false; root.add(S.selRing);
+
+  /* texture dots */
+  S.dots=new THREE.Points(new THREE.BufferGeometry(),new THREE.PointsMaterial({size:0.2,map:dotTex(),vertexColors:true,transparent:true,depthWrite:false,alphaTest:0.1,sizeAttenuation:true}));
+  S.dots.renderOrder=4; S.dots.visible=texOn; root.add(S.dots);
+
+  /* labels */
+  S.bodies.forEach(b=>{
+    const el=document.createElement('div');
+    el.className='lab '+(b.kind==='env'?'env':b.kind)+(b.orphan?' orphan':'');
+    el.textContent=b.name; el.dataset.id=b.id; el.title=b.name;
+    labelsEl.appendChild(el); b.lab=el;
+  });
+  S.flows.forEach(f=>{
+    const at=f.ample?'ample':(f.declared?amountText(f):'');
+    const txt=f.name&&at?f.name+' · '+at:(f.name||at);
+    if(!txt) return;
+    const el=document.createElement('div'); el.className='flab'+(f.bond?'':' quiet');
+    el.innerHTML='<i style="background:'+f.color+'"></i>'+esc(txt);
+    labelsEl.appendChild(el); f.lab=el;
+  });
+  S.ports.forEach(p=>{
+    const el=document.createElement('div'); el.className='plab';
+    el.textContent=(p.protocol||'port')+(p.direction?' · '+p.direction.toLowerCase():'');
+    labelsEl.appendChild(el); p.lab=el;
+  });
+  S.bodies.forEach(b=>{ b.lw=b.lab.offsetWidth; b.lh=b.lab.offsetHeight; });
+  S.flows.forEach(f=>{ if(f.lab){ f.lw=f.lab.offsetWidth; f.lh=f.lab.offsetHeight; } });
+  S.ports.forEach(p=>{ p.lw=p.lab.offsetWidth; p.lh=p.lab.offsetHeight; });
+
+  buildLegend();
+  layout();
+  selected=(prevSel&&S.bodies.has(prevSel))?prevSel:null;
+  applyIsolation(); renderPanel();
+  if(!keep){ autoFit=true; fit(true); } else applyCam();
+  requestRender();
+}
+
+function buildLegend(){
+  const present=KINDS.filter(k=>S.flows.some(f=>f.kind===k));
+  let h='<div class="lg-row">'+present.map(k=>'<span class="lg"><i class="ln" style="--c:'+kindColor(k)+'"></i>'+k+'</span>').join('');
+  if(S.flows.some(f=>f.dashed)) h+='<span class="lg"><i class="ln dash"></i>undeclared</span>';
+  if(S.flows.some(f=>!f.bond)) h+='<span class="lg"><i class="ln thin"></i>relation</span>';
+  h+='</div><div class="lg-row"><span class="lg"><i class="sh comp"></i>component</span>';
+  const has=fn=>{ for(const b of S.bodies.values()) if(fn(b)) return true; return false; };
+  if(has(b=>b.kind==='iface')) h+='<span class="lg"><i class="sh iface"></i>interface</span>';
+  if(has(b=>b.envKind==='Source')) h+='<span class="lg"><i class="sh src"></i>source</span>';
+  if(has(b=>b.envKind==='Sink')) h+='<span class="lg"><i class="sh sink"></i>sink</span>';
+  if(has(b=>b.envKind==='Neutral')) h+='<span class="lg"><i class="sh neu"></i>neutral</span>';
+  if(S.ports.length) h+='<span class="lg"><i class="sh port"></i>port</span>';
+  legendEl.innerHTML=h+'</div>';
+}
+
+/* ---------- layout (explode) ---------- */
+function layout(){
+  const e=explode, sx=1+KC*e, A=S.a*sx, B=S.b*sx, C=S.c*sx;
+  S.shell.scale.set(A,B,C);
+  S.bodies.forEach(b=>{
+    if(b.kind==='comp') b.pos.copy(b.base).addScaledVector(b.dir,KC*e*rho0(b.dir));
+    else if(b.kind==='iface'){ b.pos.copy(b.dir).multiplyScalar(rho0(b.dir)*sx); b.mesh.quaternion.setFromUnitVectors(UP,ellN(b.pos,A,B,C)); }
+    else b.pos.copy(b.base).multiplyScalar(sx).addScaledVector(b.dir,DE*e);
+    b.mesh.position.copy(b.pos); b.hit.position.copy(b.pos);
+  });
+  S.ports.forEach(p=>{ p.pos.copy(p.dir).multiplyScalar(rho0(p.dir)*sx); p.normal.copy(ellN(p.pos,A,B,C)); p.grp.position.copy(p.pos); p.grp.quaternion.setFromUnitVectors(ZA,p.normal); });
+  S.flows.forEach(buildFlowGeo);
+  ensureDots();
+  if(selected&&S.bodies.has(selected)) S.selRing.position.copy(S.bodies.get(selected).pos);
+}
+
+function flowPoints(f){
+  const pa=f.A.pos, pb=f.B.pos, off=(f.gi-(f.gn-1)/2)*SEP;
+  let curve,labelPt;
+  if(f.port){
+    const Pp=f.port.pos, N=f.port.normal, cb=f.port.comp, eb=f.port.env;
+    const perp=new V3().crossVectors(N,ZA); if(perp.length()<0.3) perp.crossVectors(N,UP); perp.normalize();
+    const Po=Pp.clone().addScaledVector(perp,off);
+    const inner=Po.clone().addScaledVector(N,-1.2), outer=Po.clone().addScaledVector(N,1.4);
+    const cp=cb.pos, ep=eb.pos, list=[cp.clone()];
+    if(cb.kind!=='iface'){ if(cp.distanceTo(inner)>1.6) list.push(cp.clone().lerp(inner,0.5).addScaledVector(perp,off*0.6)); list.push(inner); }
+    list.push(Po,outer);
+    const m2=outer.clone().lerp(ep,0.5).addScaledVector(perp,off*0.8);
+    if(outer.distanceTo(ep)>1.6) list.push(m2);
+    list.push(ep.clone());
+    if(f.A!==cb) list.reverse();
+    curve=new THREE.CatmullRomCurve3(list,false,'centripetal');
+    labelPt=m2;
+  } else {
+    const flip=f.a>f.b, c0=flip?pb:pa, c1=flip?pa:pb;
+    const d=new V3().subVectors(c1,c0), len=d.length();
+    const perp=new V3().crossVectors(d,ZA); if(perp.length()<0.3*len) perp.crossVectors(d,UP); if(perp.lengthSq()<1e-10) perp.set(1,0,0); perp.normalize();
+    const mid=pa.clone().lerp(pb,0.5), out=mid.clone(); if(out.lengthSq()>1e-6) out.normalize(); else out.copy(ZA);
+    const ctrl=mid.clone().addScaledVector(perp,off*2).addScaledVector(out,len*0.08);
+    curve=new THREE.QuadraticBezierCurve3(pa.clone(),ctrl,pb.clone());
+    labelPt=curve.getPoint(0.5);
+  }
+  return {pts:curve.getSpacedPoints(96),labelPt};
+}
+
+function buildFlowGeo(f){
+  const fp=flowPoints(f), pts=fp.pts, pa=f.A.pos, pb=f.B.pos;
+  const rs=f.A.radius+0.1, re=f.B.radius+0.12;
+  let s=0; while(s<pts.length-2&&pts[s].distanceTo(pa)<rs) s++;
+  let e=pts.length-1; while(e>s+1&&pts[e].distanceTo(pb)<re) e--;
+  const alen=f.ar*2.7; let bi=e, acc=0; while(bi>s+1&&acc<alen){ acc+=pts[bi].distanceTo(pts[bi-1]); bi--; }
+  const tube=pts.slice(s,bi+1);
+  const g=tube.length>=2?tubeGeometry(tube,f.r,f.dashed?0.32:0,0.2):new THREE.BufferGeometry();
+  f.mesh.geometry.dispose(); f.mesh.geometry=g;
+  const base=pts[bi], tip=pts[e], dir=new V3().subVectors(tip,base), h=dir.length();
+  if(h>1e-4){ dir.divideScalar(h); f.arrow.visible=true; f.arrow.position.copy(base); f.arrow.quaternion.setFromUnitVectors(UP,dir); f.arrow.scale.set(f.ar,h,f.ar); }
+  else f.arrow.visible=false;
+  f.poly=pts.slice(s,e+1); f.cum=[0];
+  for(let i=1;i<f.poly.length;i++) f.cum.push(f.cum[i-1]+f.poly[i].distanceTo(f.poly[i-1]));
+  f.len=f.cum[f.cum.length-1]||0; f.labelPt=fp.labelPt;
+}
+
+function ensureDots(){
+  let n=0; S.flows.forEach(f=>{ n+=Math.ceil((f.len||0)/DOT_SP)+2; });
+  if(n>S.dotCap){
+    S.dotCap=Math.ceil(n*1.3)+16;
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(S.dotCap*3),3));
+    g.setAttribute('color',new THREE.BufferAttribute(new Float32Array(S.dotCap*3),3));
+    g.setDrawRange(0,0);
+    S.dots.geometry.dispose(); S.dots.geometry=g;
+  }
+}
+function updateDots(ms){
+  const g=S.dots.geometry; if(!g.attributes.position) return;
+  const pa=g.attributes.position.array, ca=g.attributes.color.array, ph=(ms/1000*1.3)%DOT_SP; let n=0;
+  for(const f of S.flows){
+    if(f.dim||!f.poly||f.poly.length<2) continue;
+    const Pl=f.poly, Ls=f.cum, c=f.col3; let k=1;
+    for(let s=ph;s<f.len&&n<S.dotCap;s+=DOT_SP){
+      while(k<Ls.length-1&&Ls[k]<s) k++;
+      const t=clamp((s-Ls[k-1])/Math.max(1e-6,Ls[k]-Ls[k-1]),0,1), p0=Pl[k-1], p1=Pl[k];
+      pa[n*3]=p0.x+(p1.x-p0.x)*t; pa[n*3+1]=p0.y+(p1.y-p0.y)*t; pa[n*3+2]=p0.z+(p1.z-p0.z)*t;
+      ca[n*3]=c.r; ca[n*3+1]=c.g; ca[n*3+2]=c.b; n++;
+    }
+  }
+  g.setDrawRange(0,n); g.attributes.position.needsUpdate=true; g.attributes.color.needsUpdate=true;
+}
+
+/* ---------- camera ---------- */
+function applyCam(){
+  phi=clamp(phi,0.08,Math.PI-0.08); radius=clamp(radius,2,1500);
+  const sp=Math.sin(phi);
+  camera.position.set(target.x+radius*sp*Math.sin(theta),target.y+radius*Math.cos(phi),target.z+radius*sp*Math.cos(theta));
+  camera.lookAt(target); camera.updateMatrixWorld();
+}
+function fit(reset){
+  if(!S) return;
+  if(reset){ theta=DEF_T; phi=DEF_P; }
+  const sx=1+KC*explode, A=S.a*sx, B=S.b*sx, C=S.c*sx, pts=[];
+  S.bodies.forEach(b=>pts.push(b.pos));
+  pts.push(new V3(A,0,0),new V3(-A,0,0),new V3(0,B,0),new V3(0,-B,0),new V3(0,0,C),new V3(0,0,-C));
+  new THREE.Box3().setFromPoints(pts).getCenter(target);
+  const back=new V3(Math.sin(phi)*Math.sin(theta),Math.cos(phi),Math.sin(phi)*Math.cos(theta));
+  const right=new V3().crossVectors(UP,back).normalize(), up=new V3().crossVectors(back,right);
+  const tv=Math.tan(camera.fov*Math.PI/360), th=tv*camera.aspect, mx=stage.clientWidth<600?0.8:0.84, my=0.84;
+  let d=5; const r=new V3();
+  for(const p of pts){ r.copy(p).sub(target); const z=r.dot(back), pad=0.8;
+    d=Math.max(d,z+pad+(Math.abs(r.dot(right))+pad)/(th*mx),z+pad+(Math.abs(r.dot(up))+pad)/(tv*my)); }
+  radius=d; applyCam();
+}
+
+/* ---------- render on demand ---------- */
+function requestRender(){ if(!ready||raf) return; raf=requestAnimationFrame(frame); }
+function frame(ms){
+  raf=0;
+  if(!ready||lost||!S) return;
+  if(texOn) updateDots(ms);
+  if(S.selRing.visible) S.selRing.quaternion.copy(camera.quaternion);
+  renderer.render(scene,camera);
+  placeLabels();
+  if(texOn) raf=requestAnimationFrame(frame);
+}
+
+/* ---------- labels ---------- */
+const _v=new V3(), _r=new V3();
+const RING_ANG=[]; for(let i=0;i<16;i++) RING_ANG.push(i/16*Math.PI*2);
+function project(p){ _v.copy(p).project(camera); return {x:(_v.x+1)/2*VW,y:(1-_v.y)/2*VH,ok:_v.z<1&&_v.z>-1}; }
+function overl(a,b){ return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y; }
+function screenR(p,r){ const c=project(p); _r.setFromMatrixColumn(camera.matrixWorld,0); const q=project(p.clone().addScaledVector(_r,r)); return Math.max(3,Math.hypot(q.x-c.x,q.y-c.y)); }
+function bodyCands(sx,sy,rr,w,h){
+  const g=4, q=rr*0.72+2, o=[
+    {x:sx+rr+g,y:sy-h/2},{x:sx-rr-g-w,y:sy-h/2},{x:sx-w/2,y:sy-rr-g-h},{x:sx-w/2,y:sy+rr+g},
+    {x:sx+q,y:sy-q-h},{x:sx+q,y:sy+q},{x:sx-q-w,y:sy-q-h},{x:sx-q-w,y:sy+q}];
+  for(let k=1;k<=14;k++){ const d=rr+8+k*13; for(const an of RING_ANG){ const cx=Math.cos(an), cy=Math.sin(an); o.push({x:sx+cx*(d+w/2)-w/2,y:sy+cy*(d+h/2)-h/2,far:true}); } }
+  return o;
+}
+function smallCands(sx,sy,w,h){ return [{x:sx-w/2,y:sy-h/2},{x:sx-w/2,y:sy-h-5},{x:sx-w/2,y:sy+5},{x:sx+6,y:sy-h/2},{x:sx-w-6,y:sy-h/2},{x:sx+6,y:sy-h-4},{x:sx-w-6,y:sy+4}]; }
+function tryPlace(cs,w,h,placed,discs,skipId,strict){
+  let fb=null;
+  for(const c of cs){
+    const r={x:c.x-2,y:c.y-2,w:w+4,h:h+4}; let bad=false;
+    for(const p of placed){ if(overl(r,p)){ bad=true; break; } }
+    if(bad) continue;
+    const inV=c.x>=2&&c.y>=2&&c.x+w<=VW-2&&c.y+h<=VH-2; let hit=false;
+    if(inV){ for(const d of discs){ if(d.id!==skipId&&overl(r,d)){ hit=true; break; } } }
+    if(inV&&!hit) return {c,r};
+    if(!fb&&!strict) fb={c,r};
+  }
+  return fb;
+}
+function placeLabels(){
+  VW=stage.clientWidth; VH=stage.clientHeight;
+  const placed=[], discs=[], sr=stage.getBoundingClientRect();
+  [legendEl,panel].forEach(el=>{ if(el.hidden) return; const r=el.getBoundingClientRect(); if(r.width>0&&r.height>0) placed.push({x:r.left-sr.left,y:r.top-sr.top,w:r.width,h:r.height}); });
+  S.bodies.forEach(b=>{ const c=project(b.pos); b.sx=c.x; b.sy=c.y; b.vis=c.ok; b.rr=screenR(b.pos,b.radius); if(c.ok) discs.push({x:c.x-b.rr,y:c.y-b.rr,w:2*b.rr,h:2*b.rr,id:b.id}); });
+  S.ports.forEach((p,i)=>{ const c=project(p.pos); p.sx=c.x; p.sy=c.y; p.vis=c.ok; if(c.ok){ const rr=screenR(p.pos,p.r); discs.push({x:c.x-rr,y:c.y-rr,w:2*rr,h:2*rr,id:'port'+i}); } });
+  let lines='';
+  for(const b of S.order){
+    const el=b.lab;
+    if(!b.vis){ el.style.visibility='hidden'; continue; }
+    const res=tryPlace(bodyCands(b.sx,b.sy,b.rr,b.lw,b.lh),b.lw,b.lh,placed,discs,b.id,false);
+    if(!res){ el.style.visibility='hidden'; continue; }
+    placed.push(res.r);
+    const c=res.c; el.style.visibility='visible'; el.style.transform='translate('+Math.round(c.x)+'px,'+Math.round(c.y)+'px)';
+    if(c.far){
+      const x2=clamp(b.sx,c.x,c.x+b.lw), y2=clamp(b.sy,c.y,c.y+b.lh), dx=x2-b.sx, dy=y2-b.sy, L=Math.hypot(dx,dy)||1;
+      lines+='<line'+(b.dim?' class="dim"':'')+' x1="'+(b.sx+dx/L*b.rr).toFixed(1)+'" y1="'+(b.sy+dy/L*b.rr).toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'"/>';
+    }
+  }
+  S.ports.forEach(p=>{ p.lab.style.visibility='hidden'; });
+  S.ports.filter(p=>p.hot&&p.vis).forEach(p=>{
+    const res=tryPlace(smallCands(p.sx,p.sy,p.lw,p.lh),p.lw,p.lh,placed,discs,null,true);
+    if(!res) return; placed.push(res.r); p.lab.style.visibility='visible'; p.lab.style.transform='translate('+Math.round(res.c.x)+'px,'+Math.round(res.c.y)+'px)';
+  });
+  const fl=S.flows.filter(f=>f.lab);
+  fl.forEach(f=>{ f.lab.style.visibility='hidden'; });
+  fl.filter(f=>!f.dim).sort((x,y)=>((y.hot?1:0)-(x.hot?1:0))||(y.r-x.r)).forEach(f=>{
+    const c=project(f.labelPt); if(!c.ok) return;
+    const res=tryPlace(smallCands(c.x,c.y,f.lw,f.lh),f.lw,f.lh,placed,discs,null,true);
+    if(!res) return; placed.push(res.r); f.lab.style.visibility='visible'; f.lab.style.transform='translate('+Math.round(res.c.x)+'px,'+Math.round(res.c.y)+'px)';
+  });
+  leaders.innerHTML=lines;
+}
+
+/* ---------- selection / isolate ---------- */
+function applyIsolation(){
+  if(!S) return;
+  const sel=selected, nb=new Set();
+  if(sel){ nb.add(sel); S.flows.forEach(f=>{ if(f.a===sel) nb.add(f.b); if(f.b===sel) nb.add(f.a); }); }
+  S.bodies.forEach(b=>{
+    const full=!sel||nb.has(b.id); let op=full?1:0.13;
+    if(b.orphan&&b.id!==sel) op=full?0.38:0.1;
+    b.mesh.material.opacity=op; b.dim=!full;
+    b.lab.classList.toggle('dim',!full); b.lab.classList.toggle('sel',b.id===sel);
+  });
+  S.flows.forEach(f=>{ f.dim=!!sel&&f.a!==sel&&f.b!==sel; f.hot=!!sel&&!f.dim; f.mat.opacity=f.dim?0.06:f.baseOp; });
+  S.ports.forEach(p=>{ p.dim=!!sel&&p.comp.id!==sel&&p.env.id!==sel; p.hot=!!sel&&!p.dim; p.ringMat.opacity=p.dim?0.12:0.9; p.discMat.opacity=p.dim?0.03:0.16; });
+  const rank=b=>b.id===sel?0:(sel&&nb.has(b.id))?1:b.kind==='comp'?2:b.kind==='iface'?3:!b.orphan?4:5;
+  S.order=[...S.bodies.values()].sort((x,y)=>(rank(x)-rank(y))||x.name.localeCompare(y.name));
+  if(sel&&S.bodies.has(sel)){ const b=S.bodies.get(sel); S.selRing.visible=true; S.selRing.position.copy(b.pos); S.selRing.scale.setScalar(b.radius*1.45); }
+  else S.selRing.visible=false;
+}
+function selectThing(id){
+  if(!S) return;
+  selected=(id!=null&&S.bodies.has(id))?id:null;
+  applyIsolation(); renderPanel(); requestRender();
+}
+function renderPanel(){
+  if(!S||!selected||!S.bodies.has(selected)){ panel.hidden=true; panel.innerHTML=''; return; }
+  const b=S.bodies.get(selected);
+  let role=b.kind==='env'?('Environment · '+b.envKind):(b.kind==='iface'?'Component · interface':'Component');
+  if(b.kind==='comp'&&b.boundary) role+=' · boundary';
+  if(b.orphan) role+=' · orphan';
+  const fs=S.flows.filter(f=>f.a===selected||f.b===selected);
+  let h='<div class="ph"><div><div class="pn">'+esc(b.name)+'</div><div class="pr">'+esc(role)+'</div></div><button type="button" class="px" aria-label="clear selection" title="clear (Esc)">×</button></div>';
+  if(fs.length){
+    h+='<ul class="pl">'+fs.map(f=>{ const out=f.a===selected, o=out?f.B:f.A;
+      return '<li><i class="sw'+(f.dashed?' dash':'')+'" style="--c:'+f.color+'"></i><div><div class="fn">'+esc(f.name||'unnamed')+'</div><div class="fm">'+(out?'→ ':'← ')+esc(o.name)+' · '+esc(f.kind)+' · '+esc(amountText(f))+(f.bond?'':' · relation')+'</div></div></li>'; }).join('')+'</ul>';
+  } else h+='<div class="pe">no flows</div>';
+  const ps=S.ports.filter(p=>p.comp.id===selected||p.env.id===selected);
+  if(ps.length) h+='<ul class="pl">'+ps.map(p=>'<li><i class="sw port"></i><div><div class="fn">port · '+esc(p.protocol||'—')+'</div><div class="fm">'+esc(p.comp.name)+' ↔ '+esc(p.env.name)+(p.direction?' · '+esc(p.direction):'')+'</div></div></li>').join('')+'</ul>';
+  panel.innerHTML=h; panel.hidden=false;
+  panel.querySelector('.px').addEventListener('click',()=>selectThing(null));
+}
+
+/* ---------- input ---------- */
+function pickAt(x,y){
+  if(!S) return null;
+  const r=renderer.domElement.getBoundingClientRect();
+  ndc.set((x-r.left)/r.width*2-1,-(y-r.top)/r.height*2+1);
+  ray.setFromCamera(ndc,camera);
+  const hits=ray.intersectObjects(S.pick,false);
+  return hits.length?hits[0].object.userData.id:null;
+}
+function pdist(){ const a=[...pointers.values()]; return a.length<2?0:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y); }
+stage.addEventListener('pointerdown',e=>{
+  if(!S||e.target.closest('#panel')) return;
+  if(e.button!==undefined&&e.button!==0&&e.pointerType==='mouse') return;
+  try{ stage.setPointerCapture(e.pointerId); }catch(err){}
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pointers.size===1){ down={x:e.clientX,y:e.clientY,moved:false,target:e.target}; stage.style.cursor='grabbing'; }
+  else { if(down) down.moved=true; pinch=pdist(); }
+});
+stage.addEventListener('pointermove',e=>{
+  const p=pointers.get(e.pointerId);
+  if(!p){ if(S&&e.pointerType==='mouse'&&!e.target.closest('#panel')) stage.style.cursor=(e.target.closest('.lab')||pickAt(e.clientX,e.clientY))?'pointer':'grab'; return; }
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY;
+  if(down&&!down.moved&&Math.hypot(e.clientX-down.x,e.clientY-down.y)>5) down.moved=true;
+  if(pointers.size===1){ if(down&&!down.moved) return; theta-=dx*0.0075; phi-=dy*0.0075; applyCam(); requestRender(); }
+  else if(pointers.size===2){ const d=pdist(); if(pinch>0&&d>0){ radius*=pinch/d; autoFit=false; applyCam(); requestRender(); } pinch=d; }
+});
+function endPtr(e){
+  if(!pointers.has(e.pointerId)) return;
+  pointers.delete(e.pointerId);
+  if(pointers.size<2) pinch=0;
+  if(e.type==='pointerup'&&down&&!down.moved&&pointers.size===0){
+    const lab=down.target&&down.target.closest?down.target.closest('.lab'):null;
+    selectThing(lab?lab.dataset.id:pickAt(e.clientX,e.clientY));
+  }
+  if(pointers.size===0){ down=null; stage.style.cursor='grab'; }
+}
+stage.addEventListener('pointerup',endPtr);
+stage.addEventListener('pointercancel',endPtr);
+stage.addEventListener('wheel',e=>{
+  if(!S||e.target.closest('#panel')) return;
+  e.preventDefault();
+  const k=e.deltaMode===1?0.05:(e.deltaMode===2?0.5:0.0015);
+  radius*=Math.exp(clamp(e.deltaY,-300,300)*k); autoFit=false; applyCam(); requestRender();
+},{passive:false});
+window.addEventListener('keydown',e=>{
+  if(!S) return;
+  if(e.key==='Escape'){ selectThing(null); return; }
+  const ae=document.activeElement;
+  if(ae&&((ae.tagName==='INPUT'&&ae.type==='range')||ae.tagName==='SELECT'||ae.tagName==='TEXTAREA')) return;
+  const st=0.087; let hit=true;
+  if(e.key==='ArrowLeft') theta-=st; else if(e.key==='ArrowRight') theta+=st;
+  else if(e.key==='ArrowUp') phi-=st; else if(e.key==='ArrowDown') phi+=st;
+  else if(e.key==='Home'){ autoFit=true; fit(true); }
+  else hit=false;
+  if(hit){ e.preventDefault(); applyCam(); requestRender(); }
+});
+fitBtn.addEventListener('click',()=>{ if(!S) return; autoFit=true; fit(true); requestRender(); });
+explodeIn.addEventListener('input',()=>{
+  explode=explodeIn.value/100; expOut.textContent=explodeIn.value+'%';
+  if(!S) return; layout(); if(autoFit) fit(false); requestRender();
+});
+modelSel.addEventListener('change',()=>{ selected=null; buildModel(+modelSel.value||0,false); });
+
+function resize(){
+  if(!ready) return;
+  const w=Math.max(1,stage.clientWidth), h=Math.max(1,stage.clientHeight);
+  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+  if(S&&autoFit) fit(false); else applyCam();
+  requestRender();
+}
+if(window.ResizeObserver) new ResizeObserver(resize).observe(stage); else window.addEventListener('resize',resize);
+
+resize();
+try{ buildModel(0,false); }catch(err){ showMsg('This model could not be drawn.'); if(window.console) console.error(err); }
+resize();
+})();
+</script>
+</body>
+</html>

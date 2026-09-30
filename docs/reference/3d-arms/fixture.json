@@ -1,0 +1,3616 @@
+{
+ "models": [
+  {
+   "key": "ta",
+   "label": "Translation Apparatus",
+   "canvas": {
+    "lens": "Mobus",
+    "things": [
+     {
+      "id": 1,
+      "name": "mRNA Entry Channel",
+      "x": 480.0,
+      "y": 37.852875,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true,
+      "passway": true,
+      "protocol": "single-stranded mRNA, threaded codon by codon",
+      "description": "The small subunit's mRNA channel \u2014 entry between the head and shoulder at the neck, whose grip keeps the reading frame."
+     },
+     {
+      "id": 2,
+      "name": "Aminoacylation Site",
+      "x": 235.65343,
+      "y": 461.07358,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true,
+      "passway": true,
+      "protocol": "cognate amino acid + ATP at one catalytic pocket",
+      "description": "The synthetase's aminoacylation active site: amino acid and ATP co-bind at the same pocket that charges the tRNA. Diffusive access \u2014 a pocket, not a channel."
+     },
+     {
+      "id": 3,
+      "name": "GTPase-Associated Center",
+      "x": 576.5,
+      "y": 585.1316,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true,
+      "passway": true,
+      "protocol": "GTP-loaded elongation factors dock; GDP + Pi release",
+      "description": "The factor-binding hub on the large subunit \u2014 sarcin-ricin loop and the L7/L12 stalk. GTP arrives and its hydrolysis products leave through the same real docking site."
+     },
+     {
+      "id": 4,
+      "name": "Exit Tunnel",
+      "x": 724.34656,
+      "y": 461.07355,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true,
+      "passway": true,
+      "protocol": "nascent polypeptide, N-terminus first",
+      "description": "The polypeptide exit tunnel through the large subunit, opening at the exit port where trigger-factor-class chaperones dock to receive the emerging chain."
+     },
+     {
+      "id": 5,
+      "name": "Decoding Site",
+      "x": 661.3607,
+      "y": 103.86276,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Sensing",
+      "interface": false,
+      "description": "The decoding center on the small subunit, where each codon is read against the anticodon of an incoming charged tRNA \u2014 selection of the right carrier, not catalysis."
+     },
+     {
+      "id": 6,
+      "name": "Peptidyl Transferase Center",
+      "x": 383.49994,
+      "y": 585.1316,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Combining",
+      "interface": false,
+      "description": "The catalytic heart of the large subunit, all rRNA: forges each peptide bond between the growing chain and the newly accommodated amino acid."
+     },
+     {
+      "id": 7,
+      "name": "Translocase",
+      "x": 757.86066,
+      "y": 271.00568,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Propelling",
+      "interface": false,
+      "description": "The ratcheting step: GTP-powered translocation advances mRNA and tRNAs by exactly one codon, moving the whole machine forward."
+     },
+     {
+      "id": 8,
+      "name": "Aminoacyl-tRNA Synthetase",
+      "x": 202.13934,
+      "y": 271.00558,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Combining",
+      "interface": false,
+      "description": "The recharging enzyme: matches each spent tRNA with its cognate amino acid and charges it at ATP's expense \u2014 the move that closes the carrier cycle."
+     },
+     {
+      "id": 9,
+      "name": "tRNA Pool",
+      "x": 298.63934,
+      "y": 103.86273,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Buffering",
+      "interface": false,
+      "stock_unit": "tRNA",
+      "description": "The circulating stock of charged tRNAs \u2014 the cycle's memory between one elongation step and the next. Starts full at 100 and drains at the elongation rate.",
+      "cognitive_params": {
+       "release_rate": 20.0
+      },
+      "initial_state": {
+       "storage": 100.0
+      }
+     },
+     {
+      "id": 10,
+      "name": "Nucleus",
+      "x": 215.26904,
+      "y": -138.52759,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false,
+      "description": "The transcript's origin: the compartment that supplies mRNA, opaque here except as the source of the coding stream."
+     },
+     {
+      "id": 11,
+      "name": "Chaperone",
+      "x": 1009.46204,
+      "y": 320.0,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false,
+      "description": "The trigger-factor-class chaperone docked at the exit port, receiving each nascent polypeptide as it emerges \u2014 where the model's output lands."
+     },
+     {
+      "id": 12,
+      "name": "Cytosol",
+      "x": 215.26895,
+      "y": 778.5276,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false,
+      "description": "The surrounding cytosol: reservoir of free amino acids, ATP and GTP, and the sink for hydrolysis products. Internally opaque \u2014 it supplies and receives."
+     }
+    ],
+    "relations": [
+     {
+      "id": 13,
+      "a": 10,
+      "b": 1,
+      "name": "mRNA transcript",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "Steady-state transcript supply: codons arriving at the entry channel at the elongation rate.",
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "codon/s"
+     },
+     {
+      "id": 14,
+      "a": 1,
+      "b": 5,
+      "name": "mRNA transcript",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The threaded transcript handed inward from the channel to the decoding site, reading frame intact.",
+      "klir_directed": false,
+      "unit": "codon/s"
+     },
+     {
+      "id": 15,
+      "a": 9,
+      "b": 5,
+      "name": "charged tRNA",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "Charged tRNAs leaving the pool to be read at the decoding site \u2014 the cycle's working leg.",
+      "klir_directed": false,
+      "unit": "tRNA/s"
+     },
+     {
+      "id": 16,
+      "a": 5,
+      "b": 8,
+      "name": "deacylated tRNA",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The spent carrier, stripped of its amino acid, passed on for recharging.",
+      "klir_directed": false,
+      "unit": "tRNA/s"
+     },
+     {
+      "id": 17,
+      "a": 8,
+      "b": 9,
+      "name": "recharged tRNA",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "Recharged tRNA returned to the pool \u2014 the leg that closes the loop.",
+      "klir_directed": false,
+      "unit": "tRNA/s"
+     },
+     {
+      "id": 18,
+      "a": 12,
+      "b": 2,
+      "name": "free amino acid",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "Free amino acids from the cytosol, co-binding at the aminoacylation pocket.",
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "aa/s"
+     },
+     {
+      "id": 19,
+      "a": 12,
+      "b": 2,
+      "name": "ATP",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "ATP co-bound at the same pocket \u2014 the energy that pays for charging.",
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "ATP/s"
+     },
+     {
+      "id": 20,
+      "a": 2,
+      "b": 8,
+      "name": "free amino acid",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The pocket's matter handoff: amino acid delivered into the synthetase.",
+      "klir_directed": false,
+      "unit": "aa/s"
+     },
+     {
+      "id": 21,
+      "a": 2,
+      "b": 8,
+      "name": "ATP",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "The pocket's energy handoff: ATP delivered into the synthetase.",
+      "klir_directed": false,
+      "unit": "ATP/s"
+     },
+     {
+      "id": 22,
+      "a": 12,
+      "b": 3,
+      "name": "GTP",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "GTP-loaded elongation factors docking at the factor-binding hub.",
+      "klir_directed": false,
+      "amount": "40",
+      "unit": "GTP/s"
+     },
+     {
+      "id": 23,
+      "a": 3,
+      "b": 7,
+      "name": "GTP",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "GTP delivered inward to power each translocation step.",
+      "klir_directed": false,
+      "unit": "GTP/s"
+     },
+     {
+      "id": 24,
+      "a": 5,
+      "b": 6,
+      "name": "accommodated amino acid",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The selected, accommodated amino acid passed to the catalytic center.",
+      "klir_directed": false,
+      "unit": "aa/s"
+     },
+     {
+      "id": 25,
+      "a": 6,
+      "b": 7,
+      "name": "elongated chain",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The chain, one residue longer, handed forward for ratcheting.",
+      "klir_directed": false,
+      "unit": "aa/s"
+     },
+     {
+      "id": 26,
+      "a": 7,
+      "b": 4,
+      "name": "polypeptide chain",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The growing polypeptide advanced into the exit tunnel.",
+      "klir_directed": false,
+      "unit": "aa/s"
+     },
+     {
+      "id": 27,
+      "a": 4,
+      "b": 11,
+      "name": "nascent polypeptide",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "The emerging nascent chain, N-terminus first, delivered to the waiting chaperone.",
+      "klir_directed": false,
+      "unit": "aa"
+     },
+     {
+      "id": 28,
+      "a": 7,
+      "b": 3,
+      "name": "GDP and inorganic phosphate",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "Hydrolysis products leaving the translocase after each step.",
+      "klir_directed": false,
+      "unit": "GDP/s"
+     },
+     {
+      "id": 29,
+      "a": 3,
+      "b": 12,
+      "name": "GDP and inorganic phosphate",
+      "is_bond": true,
+      "kind": "Matter",
+      "description": "GDP and phosphate returned to the cytosol through the same docking site.",
+      "klir_directed": false,
+      "unit": "GDP/s"
+     }
+    ],
+    "milieu": [
+     {
+      "name": "Mg2+ and ionic milieu",
+      "value": 1.0,
+      "unit": "mM",
+      "description": "The coordination shell: Mg2+-phosphate contacts the folded rRNA, including the PTC's catalytic core, cannot hold its structure without. Diffuse by nature \u2014 no channel exists, and none is invented."
+     }
+    ],
+    "boundary": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "system_type": {
+     "kingdom": "Concrete",
+     "genus": "Biological",
+     "domain": "molecular biology: mRNA translation with the tRNA charging cycle closed \u2014 the same machine the Ribosome model draws, with the boundary widened until the synthetase that recharges spent tRNA falls inside it"
+    },
+    "name": "Translation Apparatus",
+    "time_unit": "second",
+    "params": [
+     {
+      "name": "mRNA supply",
+      "anchor": {
+       "Flow": {
+        "relation": 13
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "40"
+      }
+     },
+     {
+      "name": "amino acid supply",
+      "anchor": {
+       "Flow": {
+        "relation": 18
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "40"
+      }
+     },
+     {
+      "name": "ATP supply",
+      "anchor": {
+       "Flow": {
+        "relation": 19
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "40"
+      }
+     },
+     {
+      "name": "GTP supply",
+      "anchor": {
+       "Flow": {
+        "relation": 22
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "80"
+      }
+     }
+    ],
+    "metrics": [
+     {
+      "name": "polypeptide output",
+      "expr": {
+       "SumInto": {
+        "thing": 11
+       }
+      }
+     }
+    ]
+   },
+   "facts": {
+    "boundary_thing_ids": [
+     5,
+     7,
+     8
+    ],
+    "environment_thing_ids": [
+     10,
+     11,
+     12
+    ],
+    "orphan_env_thing_ids": [],
+    "authored_interface_thing_ids": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "boundary_props": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "aggregate": false,
+    "edges": [
+     {
+      "id": 13,
+      "a": 10,
+      "b": 1,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 14,
+      "a": 1,
+      "b": 5,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 15,
+      "a": 9,
+      "b": 5,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 16,
+      "a": 5,
+      "b": 8,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 17,
+      "a": 8,
+      "b": 9,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 18,
+      "a": 12,
+      "b": 2,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 19,
+      "a": 12,
+      "b": 2,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 20,
+      "a": 2,
+      "b": 8,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 21,
+      "a": 2,
+      "b": 8,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 22,
+      "a": 12,
+      "b": 3,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 23,
+      "a": 3,
+      "b": 7,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 24,
+      "a": 5,
+      "b": 6,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 25,
+      "a": 6,
+      "b": 7,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 26,
+      "a": 7,
+      "b": 4,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 27,
+      "a": 4,
+      "b": 11,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 28,
+      "a": 7,
+      "b": 3,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 29,
+      "a": 3,
+      "b": 12,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     }
+    ],
+    "ports": [
+     {
+      "component": 1,
+      "env": 10,
+      "relation_ids": [
+       13
+      ],
+      "direction": "Receives",
+      "protocol": "mRNA transcript"
+     },
+     {
+      "component": 2,
+      "env": 12,
+      "relation_ids": [
+       18,
+       19
+      ],
+      "direction": "Receives",
+      "protocol": "free amino acid \u00b7 ATP"
+     },
+     {
+      "component": 3,
+      "env": 12,
+      "relation_ids": [
+       22,
+       29
+      ],
+      "direction": "Hybrid",
+      "protocol": "GTP \u00b7 GDP and inorganic phosphate"
+     },
+     {
+      "component": 4,
+      "env": 11,
+      "relation_ids": [
+       27
+      ],
+      "direction": "Exports",
+      "protocol": "nascent polypeptide"
+     }
+    ]
+   }
+  },
+  {
+   "key": "steel-l1",
+   "label": "Steel-Plant",
+   "canvas": {
+    "lens": "Mobus",
+    "things": [
+     {
+      "id": 1,
+      "name": "Energy-Source",
+      "x": 250.96034,
+      "y": -76.708435,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 2,
+      "name": "Iron-Source",
+      "x": 21.920593,
+      "y": 319.99997,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 3,
+      "name": "Coke-Source",
+      "x": 250.96027,
+      "y": 716.7084,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 4,
+      "name": "Steel-Sink",
+      "x": 709.0397,
+      "y": -76.708435,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+     },
+     {
+      "id": 5,
+      "name": "Garbage-Sink",
+      "x": 938.0794,
+      "y": 320.0,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+     },
+     {
+      "id": 6,
+      "name": "ATMOSPHERE",
+      "x": 709.0397,
+      "y": 716.70844,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+     },
+     {
+      "id": 7,
+      "name": "FuseBox",
+      "x": 480.0,
+      "y": 86.5986,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 8,
+      "name": "Iron-LoadingDock",
+      "x": 258.0221,
+      "y": 247.875,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 9,
+      "name": "Coke-LoadingDock",
+      "x": 342.81012,
+      "y": 508.82568,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 10,
+      "name": "Steel-ShippingDock",
+      "x": 701.9779,
+      "y": 247.875,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 11,
+      "name": "Waste-ShippingDock",
+      "x": 701.9779,
+      "y": 392.125,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 12,
+      "name": "Ventilation",
+      "x": 617.1899,
+      "y": 508.82568,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 13,
+      "name": "Iron-Inventory",
+      "x": 342.81006,
+      "y": 131.17435,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false,
+      "child_model": {
+       "name": "Iron-Inventory",
+       "id": "VjCKBe5psWuHcmW2yE8nXM"
+      }
+     },
+     {
+      "id": 14,
+      "name": "Coke-Inventory",
+      "x": 480.0,
+      "y": 553.40137,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 15,
+      "name": "Material-Purchasing",
+      "x": 258.02206,
+      "y": 392.12494,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 16,
+      "name": "Production",
+      "x": 617.1899,
+      "y": 131.1743,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Combining",
+      "interface": false
+     }
+    ],
+    "relations": [
+     {
+      "id": 17,
+      "a": 1,
+      "b": 7,
+      "name": "F-1.0 \u2014 electric energy",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "substance": "electricity"
+     },
+     {
+      "id": 18,
+      "a": 7,
+      "b": 16,
+      "name": "distributed power",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "substance": "electricity"
+     },
+     {
+      "id": 19,
+      "a": 2,
+      "b": 8,
+      "name": "F-1.1 \u2014 iron-input",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "iron"
+     },
+     {
+      "id": 20,
+      "a": 8,
+      "b": 13,
+      "name": "shipment into inventory",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "iron"
+     },
+     {
+      "id": 21,
+      "a": 3,
+      "b": 9,
+      "name": "F-1.2 \u2014 coke-input",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "coke"
+     },
+     {
+      "id": 22,
+      "a": 9,
+      "b": 14,
+      "name": "shipment into inventory",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "coke"
+     },
+     {
+      "id": 23,
+      "a": 13,
+      "b": 16,
+      "name": "F0.1 \u2014 iron in batches",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "unit": "tons",
+      "substance": "iron"
+     },
+     {
+      "id": 24,
+      "a": 14,
+      "b": 16,
+      "name": "coke in batches",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "coke"
+     },
+     {
+      "id": 25,
+      "a": 16,
+      "b": 10,
+      "name": "finished steel",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "steel"
+     },
+     {
+      "id": 26,
+      "a": 10,
+      "b": 4,
+      "name": "F-1.3 \u2014 steel for sale",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "steel"
+     },
+     {
+      "id": 27,
+      "a": 16,
+      "b": 11,
+      "name": "scrap and wastage",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "garbage"
+     },
+     {
+      "id": 28,
+      "a": 11,
+      "b": 5,
+      "name": "F-1.4 \u2014 scrap and wastage",
+      "is_bond": true,
+      "kind": "Matter",
+      "klir_directed": false,
+      "substance": "garbage"
+     },
+     {
+      "id": 29,
+      "a": 16,
+      "b": 12,
+      "name": "process heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "substance": "heat"
+     },
+     {
+      "id": 30,
+      "a": 12,
+      "b": 6,
+      "name": "F-1.5 \u2014 radiated waste heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "substance": "heat"
+     },
+     {
+      "id": 31,
+      "a": 15,
+      "b": 2,
+      "name": "purchase orders \u2014 iron",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 32,
+      "a": 15,
+      "b": 3,
+      "name": "purchase orders \u2014 coke",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 33,
+      "a": 2,
+      "b": 15,
+      "name": "shipping documents \u2014 iron",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 34,
+      "a": 3,
+      "b": 15,
+      "name": "shipping documents \u2014 coke",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 35,
+      "a": 15,
+      "b": 8,
+      "name": "shipping documents to receiving",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 36,
+      "a": 15,
+      "b": 9,
+      "name": "shipping documents to receiving",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 37,
+      "a": 13,
+      "b": 15,
+      "name": "purchase request \u2014 iron",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 38,
+      "a": 14,
+      "b": 15,
+      "name": "purchase request \u2014 coke",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     }
+    ],
+    "boundary": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "system_type": {
+     "kingdom": "Concrete",
+     "genus": "Technical",
+     "domain": "Steel manufacturing"
+    },
+    "name": "Steel-Plant",
+    "time_unit": "month",
+    "klir_level": "Structure"
+   },
+   "facts": {
+    "boundary_thing_ids": [
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     15
+    ],
+    "environment_thing_ids": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "orphan_env_thing_ids": [],
+    "authored_interface_thing_ids": [
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     15
+    ],
+    "boundary_props": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "aggregate": false,
+    "edges": [
+     {
+      "id": 17,
+      "a": 1,
+      "b": 7,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 18,
+      "a": 7,
+      "b": 16,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 19,
+      "a": 2,
+      "b": 8,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 20,
+      "a": 8,
+      "b": 13,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 21,
+      "a": 3,
+      "b": 9,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 22,
+      "a": 9,
+      "b": 14,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 23,
+      "a": 13,
+      "b": 16,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 24,
+      "a": 14,
+      "b": 16,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 25,
+      "a": 16,
+      "b": 10,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 26,
+      "a": 10,
+      "b": 4,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 27,
+      "a": 16,
+      "b": 11,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 28,
+      "a": 11,
+      "b": 5,
+      "bond": true,
+      "kind": "Matter",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 29,
+      "a": 16,
+      "b": 12,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 30,
+      "a": 12,
+      "b": 6,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 31,
+      "a": 15,
+      "b": 2,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 32,
+      "a": 15,
+      "b": 3,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 33,
+      "a": 2,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 34,
+      "a": 3,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 35,
+      "a": 15,
+      "b": 8,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 36,
+      "a": 15,
+      "b": 9,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 37,
+      "a": 13,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 38,
+      "a": 14,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     }
+    ],
+    "ports": [
+     {
+      "component": 7,
+      "env": 1,
+      "relation_ids": [
+       17
+      ],
+      "direction": "Receives",
+      "protocol": "F-1.0 \u2014 electric energy"
+     },
+     {
+      "component": 8,
+      "env": 2,
+      "relation_ids": [
+       19
+      ],
+      "direction": "Receives",
+      "protocol": "F-1.1 \u2014 iron-input"
+     },
+     {
+      "component": 9,
+      "env": 3,
+      "relation_ids": [
+       21
+      ],
+      "direction": "Receives",
+      "protocol": "F-1.2 \u2014 coke-input"
+     },
+     {
+      "component": 10,
+      "env": 4,
+      "relation_ids": [
+       26
+      ],
+      "direction": "Exports",
+      "protocol": "F-1.3 \u2014 steel for sale"
+     },
+     {
+      "component": 11,
+      "env": 5,
+      "relation_ids": [
+       28
+      ],
+      "direction": "Exports",
+      "protocol": "F-1.4 \u2014 scrap and wastage"
+     },
+     {
+      "component": 12,
+      "env": 6,
+      "relation_ids": [
+       30
+      ],
+      "direction": "Exports",
+      "protocol": "F-1.5 \u2014 radiated waste heat"
+     },
+     {
+      "component": 15,
+      "env": 2,
+      "relation_ids": [
+       31,
+       33
+      ],
+      "direction": "Hybrid",
+      "protocol": "purchase orders \u2014 iron \u00b7 shipping documents \u2014 iron"
+     },
+     {
+      "component": 15,
+      "env": 3,
+      "relation_ids": [
+       32,
+       34
+      ],
+      "direction": "Hybrid",
+      "protocol": "purchase orders \u2014 coke \u00b7 shipping documents \u2014 coke"
+     }
+    ]
+   }
+  },
+  {
+   "key": "computer-l1",
+   "label": "Hardware",
+   "canvas": {
+    "lens": "Mobus",
+    "things": [
+     {
+      "id": 1,
+      "name": "Power Source",
+      "x": 239.58264,
+      "y": -96.41519,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 2,
+      "name": "Ambient Air",
+      "x": 960.83484,
+      "y": 320.0,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+     },
+     {
+      "id": 3,
+      "name": "External File Device",
+      "x": 28.163116,
+      "y": 155.5447,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 4,
+      "name": "Users",
+      "x": 28.163086,
+      "y": 484.45523,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 5,
+      "name": "Firmware",
+      "x": 239.58257,
+      "y": 736.41516,
+      "role": "Environment",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 6,
+      "name": "Power-Connector",
+      "x": 614.329,
+      "y": 110.979996,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 7,
+      "name": "Heat-Dissipation",
+      "x": 725.9336,
+      "y": 355.3599,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 8,
+      "name": "File-Port-In",
+      "x": 345.67102,
+      "y": 110.979965,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 9,
+      "name": "File-Port-Out",
+      "x": 253.99051,
+      "y": 216.78494,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 10,
+      "name": "User-Port-In",
+      "x": 234.06644,
+      "y": 355.35986,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 11,
+      "name": "User-Port-Out",
+      "x": 292.2245,
+      "y": 482.7083,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 12,
+      "name": "Firmware-Port-In",
+      "x": 410.00003,
+      "y": 558.3981,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 13,
+      "name": "Firmware-Port-Out",
+      "x": 549.99994,
+      "y": 558.3981,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true
+     },
+     {
+      "id": 14,
+      "name": "CPU",
+      "x": 667.77545,
+      "y": 482.70837,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 15,
+      "name": "RAM Memory",
+      "x": 706.0095,
+      "y": 216.78493,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false
+     },
+     {
+      "id": 16,
+      "name": "I/O Control",
+      "x": 480.0,
+      "y": 71.537445,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": false
+     }
+    ],
+    "relations": [
+     {
+      "id": 17,
+      "a": 1,
+      "b": 6,
+      "name": "line current from the A/C wall socket",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 18,
+      "a": 6,
+      "b": 14,
+      "name": "regulated supply",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 19,
+      "a": 6,
+      "b": 15,
+      "name": "regulated supply",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 20,
+      "a": 6,
+      "b": 16,
+      "name": "regulated supply",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 21,
+      "a": 14,
+      "b": 7,
+      "name": "switching heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 22,
+      "a": 15,
+      "b": 7,
+      "name": "switching heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 23,
+      "a": 16,
+      "b": 7,
+      "name": "switching heat",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 24,
+      "a": 7,
+      "b": 2,
+      "name": "heat of computation, radiated or convected away",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false
+     },
+     {
+      "id": 25,
+      "a": 3,
+      "b": 8,
+      "name": "programs and data read from files",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 26,
+      "a": 8,
+      "b": 16,
+      "name": "file data on the way in",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 27,
+      "a": 16,
+      "b": 9,
+      "name": "file data on the way out",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 28,
+      "a": 9,
+      "b": 3,
+      "name": "programs and data written back to files",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 29,
+      "a": 4,
+      "b": 10,
+      "name": "work of programmers and of end users",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 30,
+      "a": 10,
+      "b": 16,
+      "name": "user input on the way in",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 31,
+      "a": 16,
+      "b": 11,
+      "name": "results on the way out",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 32,
+      "a": 11,
+      "b": 4,
+      "name": "results returned to the user",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 33,
+      "a": 16,
+      "b": 14,
+      "name": "data delivered to the processor",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 34,
+      "a": 16,
+      "b": 15,
+      "name": "data written straight to memory",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 35,
+      "a": 14,
+      "b": 15,
+      "name": "stores over the internal bus",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 36,
+      "a": 15,
+      "b": 14,
+      "name": "loads over the internal bus",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 37,
+      "a": 15,
+      "b": 16,
+      "name": "data staged for output",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 38,
+      "a": 5,
+      "b": 12,
+      "name": "hardware control",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 39,
+      "a": 12,
+      "b": 14,
+      "name": "control programs fetched from ROM",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 40,
+      "a": 14,
+      "b": 13,
+      "name": "operation results on the way back",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     },
+     {
+      "id": 41,
+      "a": 13,
+      "b": 5,
+      "name": "results of hardware operations, returned through the firmware coupling",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false
+     }
+    ],
+    "boundary": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "system_type": {
+     "kingdom": "Concrete",
+     "genus": "Technical",
+     "domain": "Digital computing"
+    },
+    "name": "Hardware",
+    "klir_level": "Structure"
+   },
+   "facts": {
+    "boundary_thing_ids": [
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13
+    ],
+    "environment_thing_ids": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "orphan_env_thing_ids": [],
+    "authored_interface_thing_ids": [
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13
+    ],
+    "boundary_props": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "aggregate": false,
+    "edges": [
+     {
+      "id": 17,
+      "a": 1,
+      "b": 6,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 18,
+      "a": 6,
+      "b": 14,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 19,
+      "a": 6,
+      "b": 15,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 20,
+      "a": 6,
+      "b": 16,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 21,
+      "a": 14,
+      "b": 7,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 22,
+      "a": 15,
+      "b": 7,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 23,
+      "a": 16,
+      "b": 7,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 24,
+      "a": 7,
+      "b": 2,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 25,
+      "a": 3,
+      "b": 8,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 26,
+      "a": 8,
+      "b": 16,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 27,
+      "a": 16,
+      "b": 9,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 28,
+      "a": 9,
+      "b": 3,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 29,
+      "a": 4,
+      "b": 10,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 30,
+      "a": 10,
+      "b": 16,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 31,
+      "a": 16,
+      "b": 11,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 32,
+      "a": 11,
+      "b": 4,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 33,
+      "a": 16,
+      "b": 14,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 34,
+      "a": 16,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 35,
+      "a": 14,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 36,
+      "a": 15,
+      "b": 14,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 37,
+      "a": 15,
+      "b": 16,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 38,
+      "a": 5,
+      "b": 12,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 39,
+      "a": 12,
+      "b": 14,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 40,
+      "a": 14,
+      "b": 13,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 41,
+      "a": 13,
+      "b": 5,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     }
+    ],
+    "ports": [
+     {
+      "component": 6,
+      "env": 1,
+      "relation_ids": [
+       17
+      ],
+      "direction": "Receives",
+      "protocol": "line current from the A/C wall socket"
+     },
+     {
+      "component": 7,
+      "env": 2,
+      "relation_ids": [
+       24
+      ],
+      "direction": "Exports",
+      "protocol": "heat of computation, radiated or convected away"
+     },
+     {
+      "component": 8,
+      "env": 3,
+      "relation_ids": [
+       25
+      ],
+      "direction": "Receives",
+      "protocol": "programs and data read from files"
+     },
+     {
+      "component": 9,
+      "env": 3,
+      "relation_ids": [
+       28
+      ],
+      "direction": "Exports",
+      "protocol": "programs and data written back to files"
+     },
+     {
+      "component": 10,
+      "env": 4,
+      "relation_ids": [
+       29
+      ],
+      "direction": "Receives",
+      "protocol": "work of programmers and of end users"
+     },
+     {
+      "component": 11,
+      "env": 4,
+      "relation_ids": [
+       32
+      ],
+      "direction": "Exports",
+      "protocol": "results returned to the user"
+     },
+     {
+      "component": 12,
+      "env": 5,
+      "relation_ids": [
+       38
+      ],
+      "direction": "Receives",
+      "protocol": "hardware control"
+     },
+     {
+      "component": 13,
+      "env": 5,
+      "relation_ids": [
+       41
+      ],
+      "direction": "Exports",
+      "protocol": "results of hardware operations, returned through the firmware coupling"
+     }
+    ]
+   }
+  },
+  {
+   "key": "llm-market",
+   "label": "LLM Market",
+   "canvas": {
+    "lens": "Mobus",
+    "things": [
+     {
+      "id": 1,
+      "name": "Developer workload",
+      "x": 288.4676,
+      "y": -11.7438965,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 2,
+      "name": "Enterprise workload",
+      "x": 209.1323,
+      "y": 49.132202,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 3,
+      "name": "Anthropic",
+      "x": 148.25616,
+      "y": 128.46751,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 4,
+      "name": "OpenAI",
+      "x": 109.98776,
+      "y": 220.8555,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 5,
+      "name": "Google",
+      "x": 96.93515,
+      "y": 319.99997,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 6,
+      "name": "Meta",
+      "x": 109.98776,
+      "y": 419.14444,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 7,
+      "name": "Alibaba",
+      "x": 148.2561,
+      "y": 511.53244,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 8,
+      "name": "DeepSeek (lab)",
+      "x": 209.13226,
+      "y": 590.86774,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 9,
+      "name": "Open-weight field",
+      "x": 288.46756,
+      "y": 651.7439,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false
+     },
+     {
+      "id": 10,
+      "name": "Developer clearing",
+      "x": 480.0,
+      "y": 150.0,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Splitting",
+      "interface": true
+     },
+     {
+      "id": 11,
+      "name": "Enterprise clearing",
+      "x": 571.90894,
+      "y": 176.98691,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Splitting",
+      "interface": true
+     },
+     {
+      "id": 12,
+      "name": "Opus",
+      "x": 634.63745,
+      "y": 249.37946,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 13,
+      "name": "Fable",
+      "x": 648.26965,
+      "y": 344.1935,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 14,
+      "name": "GPT",
+      "x": 608.4774,
+      "y": 431.32632,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 15,
+      "name": "Gemini",
+      "x": 527.89453,
+      "y": 483.11383,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 16,
+      "name": "Gemma",
+      "x": 432.10547,
+      "y": 483.1138,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 17,
+      "name": "Llama",
+      "x": 351.52252,
+      "y": 431.3263,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 18,
+      "name": "Qwen",
+      "x": 311.73035,
+      "y": 344.1935,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 19,
+      "name": "DeepSeek",
+      "x": 325.36255,
+      "y": 249.37946,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 20,
+      "name": "Other open",
+      "x": 388.0911,
+      "y": 176.98688,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": true
+     },
+     {
+      "id": 21,
+      "name": "Applications served",
+      "x": 863.0648,
+      "y": 320.0,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false
+     }
+    ],
+    "relations": [
+     {
+      "id": 22,
+      "a": 1,
+      "b": 10,
+      "name": "dev inference compute",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "6000",
+      "unit": "Gtok/day",
+      "substance": "compute"
+     },
+     {
+      "id": 23,
+      "a": 2,
+      "b": 11,
+      "name": "enterprise inference compute",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "2000",
+      "unit": "Gtok/day",
+      "substance": "compute"
+     },
+     {
+      "id": 24,
+      "a": 3,
+      "b": 12,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 25,
+      "a": 3,
+      "b": 13,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 26,
+      "a": 4,
+      "b": 14,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 27,
+      "a": 5,
+      "b": 15,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 28,
+      "a": 5,
+      "b": 16,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 29,
+      "a": 6,
+      "b": 17,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 30,
+      "a": 7,
+      "b": 18,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 31,
+      "a": 8,
+      "b": 19,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 32,
+      "a": 9,
+      "b": 20,
+      "name": "released weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "ample": true
+     },
+     {
+      "id": 33,
+      "a": 10,
+      "b": 12,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "9",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 34,
+      "a": 10,
+      "b": 13,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "6",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 35,
+      "a": 10,
+      "b": 14,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "9",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 36,
+      "a": 10,
+      "b": 15,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "11",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 37,
+      "a": 10,
+      "b": 16,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "2",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 38,
+      "a": 10,
+      "b": 17,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "3",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 39,
+      "a": 10,
+      "b": 18,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "13",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 40,
+      "a": 10,
+      "b": 19,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "16",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 41,
+      "a": 10,
+      "b": 20,
+      "name": "dev serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 42,
+      "a": 11,
+      "b": 12,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "30",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 43,
+      "a": 11,
+      "b": 13,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "10",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 44,
+      "a": 11,
+      "b": 14,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "27",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 45,
+      "a": 11,
+      "b": 15,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 46,
+      "a": 11,
+      "b": 16,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "1",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 47,
+      "a": 11,
+      "b": 17,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "4",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 48,
+      "a": 11,
+      "b": 18,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "3",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 49,
+      "a": 11,
+      "b": 19,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "3",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 50,
+      "a": 11,
+      "b": 20,
+      "name": "enterprise serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "klir_directed": false,
+      "amount": "2",
+      "unit": "Gtok/day"
+     },
+     {
+      "id": 51,
+      "a": 12,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 52,
+      "a": 13,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 53,
+      "a": 14,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 54,
+      "a": 15,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 55,
+      "a": 16,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 56,
+      "a": 17,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 57,
+      "a": 18,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 58,
+      "a": 19,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     },
+     {
+      "id": 59,
+      "a": 20,
+      "b": 21,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+     }
+    ],
+    "boundary": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "system_type": {
+     "kingdom": "Concrete",
+     "genus": "Social",
+     "domain": "Inference compute cleared across frontier and open-weight models by two demand channels, tokens served out, heat shed"
+    },
+    "name": "LLM Market",
+    "time_unit": "day",
+    "params": [
+     {
+      "name": "Developer demand",
+      "anchor": {
+       "Flow": {
+        "relation": 22
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "12000"
+      }
+     },
+     {
+      "name": "Enterprise demand",
+      "anchor": {
+       "Flow": {
+        "relation": 23
+       }
+      },
+      "range": {
+       "min": "0",
+       "max": "8000"
+      }
+     },
+     {
+      "name": "Developer market share",
+      "anchor": {
+       "Shares": {
+        "thing": 10
+       }
+      }
+     },
+     {
+      "name": "Enterprise market share",
+      "anchor": {
+       "Shares": {
+        "thing": 11
+       }
+      }
+     }
+    ],
+    "metrics": [
+     {
+      "name": "DeepSeek dev share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 40
+       }
+      }
+     },
+     {
+      "name": "Qwen dev share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 39
+       }
+      }
+     },
+     {
+      "name": "Gemini dev share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 36
+       }
+      }
+     },
+     {
+      "name": "Opus dev share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 33
+       }
+      }
+     },
+     {
+      "name": "Opus enterprise share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 42
+       }
+      }
+     },
+     {
+      "name": "GPT enterprise share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 44
+       }
+      }
+     },
+     {
+      "name": "Gemini enterprise share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 45
+       }
+      }
+     },
+     {
+      "name": "Fable enterprise share",
+      "expr": {
+       "ShareOfFlow": {
+        "relation": 43
+       }
+      }
+     },
+     {
+      "name": "Opus tokens served",
+      "expr": {
+       "SumInto": {
+        "thing": 12
+       }
+      }
+     },
+     {
+      "name": "Fable tokens served",
+      "expr": {
+       "SumInto": {
+        "thing": 13
+       }
+      }
+     },
+     {
+      "name": "DeepSeek tokens served",
+      "expr": {
+       "SumInto": {
+        "thing": 19
+       }
+      }
+     },
+     {
+      "name": "Qwen tokens served",
+      "expr": {
+       "SumInto": {
+        "thing": 18
+       }
+      }
+     }
+    ],
+    "klir_level": "Structure"
+   },
+   "facts": {
+    "boundary_thing_ids": [
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20
+    ],
+    "environment_thing_ids": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     21
+    ],
+    "orphan_env_thing_ids": [],
+    "authored_interface_thing_ids": [
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20
+    ],
+    "boundary_props": {
+     "porosity": 0.0,
+     "perceptive_fuzziness": 0.0
+    },
+    "aggregate": false,
+    "edges": [
+     {
+      "id": 22,
+      "a": 1,
+      "b": 10,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 23,
+      "a": 2,
+      "b": 11,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 24,
+      "a": 3,
+      "b": 12,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 25,
+      "a": 3,
+      "b": 13,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 26,
+      "a": 4,
+      "b": 14,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 27,
+      "a": 5,
+      "b": 15,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 28,
+      "a": 5,
+      "b": 16,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 29,
+      "a": 6,
+      "b": 17,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 30,
+      "a": 7,
+      "b": 18,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 31,
+      "a": 8,
+      "b": 19,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 32,
+      "a": 9,
+      "b": 20,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Input",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 33,
+      "a": 10,
+      "b": 12,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 34,
+      "a": 10,
+      "b": 13,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 35,
+      "a": 10,
+      "b": 14,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 36,
+      "a": 10,
+      "b": 15,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 37,
+      "a": 10,
+      "b": 16,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 38,
+      "a": 10,
+      "b": 17,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 39,
+      "a": 10,
+      "b": 18,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 40,
+      "a": 10,
+      "b": 19,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 41,
+      "a": 10,
+      "b": 20,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 42,
+      "a": 11,
+      "b": 12,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 43,
+      "a": 11,
+      "b": 13,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 44,
+      "a": 11,
+      "b": 14,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 45,
+      "a": 11,
+      "b": 15,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 46,
+      "a": 11,
+      "b": 16,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 47,
+      "a": 11,
+      "b": 17,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 48,
+      "a": 11,
+      "b": 18,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 49,
+      "a": 11,
+      "b": 19,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 50,
+      "a": 11,
+      "b": 20,
+      "bond": true,
+      "kind": "Energy",
+      "locus": "Endo",
+      "channel": "Internuncial",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 51,
+      "a": 12,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 52,
+      "a": 13,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 53,
+      "a": 14,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 54,
+      "a": 15,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 55,
+      "a": 16,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 56,
+      "a": 17,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 57,
+      "a": 18,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 58,
+      "a": 19,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     },
+     {
+      "id": 59,
+      "a": 20,
+      "b": 21,
+      "bond": true,
+      "kind": "Informational",
+      "locus": "Exo",
+      "channel": "Output",
+      "self_loop": false,
+      "mobus_ok": true
+     }
+    ],
+    "ports": [
+     {
+      "component": 10,
+      "env": 1,
+      "relation_ids": [
+       22
+      ],
+      "direction": "Receives",
+      "protocol": "dev inference compute"
+     },
+     {
+      "component": 11,
+      "env": 2,
+      "relation_ids": [
+       23
+      ],
+      "direction": "Receives",
+      "protocol": "enterprise inference compute"
+     },
+     {
+      "component": 12,
+      "env": 3,
+      "relation_ids": [
+       24
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 12,
+      "env": 21,
+      "relation_ids": [
+       51
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 13,
+      "env": 3,
+      "relation_ids": [
+       25
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 13,
+      "env": 21,
+      "relation_ids": [
+       52
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 14,
+      "env": 4,
+      "relation_ids": [
+       26
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 14,
+      "env": 21,
+      "relation_ids": [
+       53
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 15,
+      "env": 5,
+      "relation_ids": [
+       27
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 15,
+      "env": 21,
+      "relation_ids": [
+       54
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 16,
+      "env": 5,
+      "relation_ids": [
+       28
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 16,
+      "env": 21,
+      "relation_ids": [
+       55
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 17,
+      "env": 6,
+      "relation_ids": [
+       29
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 17,
+      "env": 21,
+      "relation_ids": [
+       56
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 18,
+      "env": 7,
+      "relation_ids": [
+       30
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 18,
+      "env": 21,
+      "relation_ids": [
+       57
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 19,
+      "env": 8,
+      "relation_ids": [
+       31
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 19,
+      "env": 21,
+      "relation_ids": [
+       58
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     },
+     {
+      "component": 20,
+      "env": 9,
+      "relation_ids": [
+       32
+      ],
+      "direction": "Receives",
+      "protocol": "released weights & API"
+     },
+     {
+      "component": 20,
+      "env": 21,
+      "relation_ids": [
+       59
+      ],
+      "direction": "Exports",
+      "protocol": "tokens served"
+     }
+    ]
+   }
+  }
+ ]
+}
