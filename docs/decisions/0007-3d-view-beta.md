@@ -47,7 +47,7 @@ apply.
 | Main chunk unchanged within 5 KB; three loads only on pill press | +1.6 KB against a clean build at the same commit; three in its own chunk (553 KB, 141 KB gzip), fetched on the first press |
 | 20 pill toggles under StrictMode leave one WebGL context | one canvas, two programs, 53 MB heap after 20 toggles in dev StrictMode; no context warnings |
 | The LLM market (21 things, 38 flows) orbits at 60 fps | 0.42 ms CPU per frame over 120 frames, 99 draw calls (`adapter.benchmark`, dev hook `window.__canvas3d`) |
-| Scene builder under 20 ms | pinned by `scene.perf.test.ts` on a 60-component, 200-flow model |
+| Scene builder under 20 ms | ~9 ms locally on a 60-component, 200-flow model; `scene.perf.test.ts` pins the best of seven runs under 30 ms so a loaded CI runner cannot flake it |
 | `tsc`, `check:tokens`, vitest | clean; 766 tests pass |
 | Builder interprets no model field | `scene.test.ts` "without facts" |
 
