@@ -94,6 +94,15 @@ describe("environment banks", () => {
     expect(src.x).toBeLessThan(-round.halfLength);
     expect(snk.x).toBeGreaterThan(round.halfLength);
   });
+  it("crowns neutral things around the waist without touching", () => {
+    const shell = { halfLength: 1.4, radius: 1.6, e: 0.5, e2: 1 };
+    const crown = placeBank(5, 0, shell, 1.4);
+    for (const p of crown) expect(Math.hypot(p.y, p.z)).toBeCloseTo(3, 6);
+    for (let i = 0; i < crown.length; i++)
+      for (let j = 0; j < i; j++)
+        expect(len({ x: crown[i].x - crown[j].x, y: crown[i].y - crown[j].y, z: crown[i].z - crown[j].z })).toBeGreaterThan(1.2);
+    expect(placeBank(1, 0, shell, 1.4)[0].y).toBeCloseTo(3);
+  });
   it("spreads a bank on a ring at one x", () => {
     const bank = placeBank(5, 1, round, 1);
     expect(new Set(bank.map((p) => p.x.toFixed(6))).size).toBe(1);

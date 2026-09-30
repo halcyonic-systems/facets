@@ -112,16 +112,25 @@ export function placeInterior(points: { x: number; y: number }[], reach: number)
 }
 
 /** Environment things on a ring outside the shell, at the source or sink end.
- *  `side` is -1 for the source face, +1 for the sink face, 0 for neutral (the
- *  ring's crown). */
+ *  `side` is -1 for the source face, +1 for the sink face, 0 for neutral: a
+ *  crown around the shell's waist, spread over the upper arc so bodies never
+ *  touch, and stepped along the axis when the arc is full. A model that
+ *  speaks only in `environment` (no source, no sink) lives entirely here. */
 export function placeBank(count: number, side: -1 | 0 | 1, c: Shell, gap: number): Vec3[] {
   const out: Vec3[] = [];
   const x = side * (c.halfLength + gap);
   const ringR = c.radius * 1.15;
   for (let i = 0; i < count; i++) {
     if (side === 0) {
-      const t = count === 1 ? 0 : -1 + (2 * i) / (count - 1);
-      out.push(v3(t * c.halfLength * 0.8, c.radius + gap, 0));
+      const crownR = c.radius + gap;
+      const perTurn = Math.max(1, Math.min(count, Math.floor((Math.PI * crownR) / (gap * 0.9))));
+      const turn = Math.floor(i / perTurn);
+      const inTurn = i - turn * perTurn;
+      const nThisTurn = Math.min(perTurn, count - turn * perTurn);
+      const a = nThisTurn === 1 ? Math.PI / 2 : Math.PI * 0.12 + (Math.PI * 0.76 * inTurn) / (nThisTurn - 1);
+      const turns = Math.ceil(count / perTurn);
+      const ax = turns === 1 ? 0 : (-1 + (2 * turn) / (turns - 1)) * c.halfLength * 0.7;
+      out.push(v3(ax, Math.sin(a) * crownR, Math.cos(a) * crownR));
       continue;
     }
     if (count === 1) {
