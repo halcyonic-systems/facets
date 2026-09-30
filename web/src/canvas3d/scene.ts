@@ -80,6 +80,14 @@ export interface SceneOptions {
 
 const GAP = 1.4;
 
+/** A bank body's size: never wider than half the room between neighbours. */
+function envRadius(count: number, side: -1 | 0 | 1, shape: Shell): number {
+  const byCount = Math.min(0.5, Math.max(0.18, 1.0 / Math.sqrt(Math.max(count, 1))));
+  if (side !== 0 || count <= 1) return byCount;
+  const arc = Math.PI * 0.76 * (shape.radius + GAP);
+  return Math.min(byCount, Math.max(0.14, (arc / Math.max(count - 1, 1)) * 0.36));
+}
+
 /** What a flow says on its label: the name, then the declared rate, or the
  *  word "ample" in place of any number — availability is not a magnitude. */
 export function flowLabel(f: Pick<Flow3D, "name" | "amount" | "unit" | "ample">): string {
@@ -161,7 +169,7 @@ export function sceneFromCanvasModel(
         name: t.name,
         kind: side === -1 ? "source" : side === 1 ? "sink" : "neutral",
         base: placed[i],
-        radius: Math.min(0.5, Math.max(0.18, 1.0 / Math.sqrt(Math.max(banks[side].length, 1)))),
+        radius: envRadius(banks[side].length, side, shape),
         orphan: orphans.has(t.id),
         hasChild: false,
         fill: sim?.nodes[t.name]?.frac,
