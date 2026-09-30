@@ -7,9 +7,10 @@
 The Model face gains a read-only 3D view as a sibling of the SVG canvas: a
 lazy-loaded `<Canvas3D>` that takes the same inputs (`CanvasModel`, the
 kernel's `LensFacts`, the scrubbed `SimFrame`) and never calls
-`onModelChange`. It is opened by a `3D · beta` pill beside the lens pills, and
-the pill exists only when the beta door is open (`?beta=3d` once; the choice
-persists in `localStorage` under `facets.beta.view3d`; `?beta=0` closes it).
+`onModelChange`. It is opened by a `3D · beta` pill beside the lens pills. The
+pill shows by default (2026-09-30); `?beta=0` hides it for a browser, the
+choice persists in `localStorage` under `facets.beta.view3d`, and `?beta=3d`
+brings it back.
 
 The container is a capsule along the throughput axis, sources banking at one
 end and sinks at the other. The model asserts exactly one direction; the
