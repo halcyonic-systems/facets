@@ -22,8 +22,9 @@ export interface Canvas3DProps {
   selectedThingId: number | null;
   onSelectThing?: (id: number | null) => void;
   onEnterThing?: (thing: Thing) => void;
-  /** Files dropped on the stage or chosen with Open — routed to the app's
-   *  import path, which reads archives and SL alike. */
+  /** Files dropped on the stage — routed to the app's import path, which
+   *  reads archives and SL alike. Opening by button lives in the app's own
+   *  File menu; the stage only takes a drop. */
   onOpenFiles?: (files: File[]) => void;
   inert?: boolean;
 }
@@ -49,7 +50,6 @@ export default function Canvas3D({
   onOpenFiles,
 }: Canvas3DProps) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
   const adapterRef = useRef<SceneAdapter | null>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
@@ -303,14 +303,7 @@ export default function Canvas3D({
         <button type="button" className="px-1" style={{ color: "var(--text-secondary)" }} onClick={() => adapterRef.current?.fit()} title="Fit the model (Home)">
           fit
         </button>
-        {onOpenFiles && (
-          <>
-            <button type="button" className="px-1" style={{ color: "var(--text-secondary)" }} onClick={() => fileRef.current?.click()} title="Open an archive or SL file">
-              open
-            </button>
-            <input ref={fileRef} type="file" accept=".json,.sl,application/json,text/plain" multiple hidden onChange={(e) => openFiles(e.target.files)} data-testid="open-3d" />
-          </>
-        )}
+
       </div>
     </div>
   );

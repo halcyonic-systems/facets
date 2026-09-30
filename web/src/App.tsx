@@ -3541,7 +3541,7 @@ function Workspace() {
                     {/* The stage is the canvas here by construction (this is
                         the Structure branch), but the guard says which mode it
                         means rather than which one it is not. */}
-                    {workMode === "structure" && (
+                    {workMode === "structure" && !view3d && (
                       <div
                         className="pointer-events-none absolute bottom-3 right-3 text-[11px] font-mono"
                         style={{ color: "var(--text-muted)" }}

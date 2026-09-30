@@ -22,7 +22,6 @@ describe("<Canvas3D>", () => {
     expect(html).toContain("Explode");
     expect(html).toContain("Shell");
     expect(html).toContain("Filter");
-    expect(html).toContain('data-testid="open-3d"');
     expect(html).toContain("Loading the 3D view");
   });
 
@@ -31,7 +30,6 @@ describe("<Canvas3D>", () => {
       createElement(Canvas3D, { model: { ...model, lens: "Klir" }, lens: "Klir", facts: null, sim: null, selectedThingId: null }),
     );
     expect(html).not.toContain('data-testid="shape-3d"');
-    expect(html).not.toContain('data-testid="open-3d"');
   });
 
   it("names three in exactly one file, the adapter, and only as a static import there", () => {
