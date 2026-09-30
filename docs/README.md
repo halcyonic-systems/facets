@@ -73,6 +73,7 @@ Research foundations — what others build on; not themselves decisions:
 - [`decisions/0006-closed-metric-verbs.md`](decisions/0006-closed-metric-verbs.md) — **ADOPTED** — declared metrics (#203) grow a closed verb vocabulary, one checkable verb at a time, each owing a separating instance — never an open expression language. Ranking is a panel view, not a verb.
 - [`decisions/0005-vocabulary-tiers.md`](decisions/0005-vocabulary-tiers.md) — **ADOPTED** — four vocabulary tiers (primitives / compositions / faithful lenses / vocabulary packs) and the rule that decides them: a tradition that never defines *system* is not a lens. Places Troncale's SPT as a composition, and records the stranded-sweep gap.
 - [`decisions/0004-neutral-archive-canvasmodel-json.md`](decisions/0004-neutral-archive-canvasmodel-json.md) — **ADOPTED** — the neutral archive format is `CanvasModel` JSON. Adopted, then indexed nowhere for four days; its only inbound link was from an orphan until [#235](https://github.com/halcyonic-systems/facets/issues/235).
+- [`decisions/0007-3d-view-beta.md`](decisions/0007-3d-view-beta.md) — **ADOPTED** — the 3D exploded view is a read-only, lazy-loaded sibling of the SVG canvas over the same model and kernel facts; vanilla `three` in one adapter file, a pure builder that decides no systems fact, the shell a superellipsoid about the throughput axis. Records the #435 stage 0 kill criteria as measured.
 
 ## The parked ledger
 

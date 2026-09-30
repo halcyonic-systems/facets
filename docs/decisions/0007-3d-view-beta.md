@@ -1,6 +1,6 @@
-# 0007 — A 3D exploded view of the Model face, behind a beta door
+# ADR 0007 — A 3D exploded view of the Model face, as a lazy sibling of the canvas
 
-Status: accepted for stage 0 (spike), 2026-09-29. Tracking: facets#435.
+*2026-09-29 · status: **ADOPTED*** (stage 0 spike and stage 1 built and measured on the same day; ratified by Shingai's look on 2026-09-30; #435)
 
 ## Decision
 
