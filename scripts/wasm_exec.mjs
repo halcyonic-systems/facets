@@ -252,7 +252,7 @@ function fixturesThroughWasm(k) {
  *  a corpus entry that teaches a refusal and no longer refuses is as broken as
  *  one that fails to parse. */
 function corpusThroughWasm(k) {
-  const files = [...slFiles("assets/corpus"), ...slFiles("assets/examples"), ...slFiles("fixtures/sl")];
+  const files = [...slFiles("assets/corpus"), ...slFiles("assets/examples"), ...slFiles("assets/field"), ...slFiles("fixtures/sl")];
   ok(files.length >= 30, `expected the shipped SL corpus, found ${files.length} files`);
 
   let refusals = 0;
