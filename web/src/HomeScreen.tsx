@@ -48,6 +48,7 @@ import type { Demo } from "./demos";
 import type { CorpusEntry } from "./corpus";
 import type { LibraryNode } from "./libraryTree";
 import { draftedModels, type DraftedModel } from "./drafted";
+import { FIELD } from "./field";
 import {
   facets,
   matchesFacet,
@@ -1169,6 +1170,9 @@ export function LibraryBrowser({
   const shownShipped = all.filter((m) => matchesQuery(m, q));
   const shownSaved = saved.filter((n) => n.name.toLowerCase().includes(q));
   const shownDrafted = drafted.filter((d) => d.description.toLowerCase().includes(q));
+  const shownField = FIELD.filter((m) =>
+    [m.demo.title, m.demo.blurb, m.with].join(" ").toLowerCase().includes(q),
+  );
 
   // A visit becomes a card only if its address still resolves — a deleted slot
   // or a renamed one simply drops out, which is why nothing here migrates the
@@ -1344,6 +1348,30 @@ export function LibraryBrowser({
                 })
               )}
             </section>
+
+            {/* From the field: models drawn with someone, shipped so they can
+                keep going (assets/field/README.md). Its own shelf because its
+                admission test is its own — provenance, not a kernel distinction
+                — and a reader looking for the one drawn with them should not
+                have to know which genus it fell into. Absent when empty. */}
+            {shownField.length > 0 && (
+              <section className="mt-8">
+                <SectionHead label="From the field" />
+                <CardGrid across={3}>
+                  {shownField.map((m) => (
+                    <ModelCard
+                      key={m.demo.key}
+                      cacheKey={m.demo.key}
+                      source={m.demo.sl}
+                      name={m.demo.title}
+                      runs={false}
+                      sub={`with ${m.with} · ${m.date} · ${m.demo.blurb}`}
+                      onClick={() => onOpenExample(m.demo)}
+                    />
+                  ))}
+                </CardGrid>
+              </section>
+            )}
 
             {/* Yours. The half that grows. Manage is a MODE rather than a
                 control on every card: renaming and deleting are not what a
