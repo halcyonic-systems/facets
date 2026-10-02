@@ -1,6 +1,6 @@
 # Hierarchical Decomposition in bert-lenses — Investigation & Design Options
 
-**Status: PROPOSED (#89).**
+**Status: HISTORICAL.** The investigation that chose decomposition by reference (Option B); #89 closed with the `decomposes "label" @id` clause and the Lean-transcribed seam contract shipped (2026-07-20), the interface case lifted 2026-08-09 (#307), and the walk importer landed 2026-09-19 (#412). Kept as the record of the options weighed; the design in force is `decomposition-foundations.md` and `coauthor-deep-analysis.md`.
 
 *2026-07-18. Tracking issue: [#89](https://github.com/halcyonic-systems/facets/issues/89) (filed 2026-07-18 from the §5 draft, with the Option B endorsement and the Lean-first gate). Investigation only, no implementation. Math layer: `decomposition-foundations.md` (RESEARCH).*
 
