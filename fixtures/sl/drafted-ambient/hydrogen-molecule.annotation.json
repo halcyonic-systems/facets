@@ -1,0 +1,22 @@
+{
+  "id": "hydrogen-molecule",
+  "source": "facets.systems /model/ co-author draft via GSR /author-sl, model claude-opus-5, lens mobus, drafted 2026-10-01 22:33 UTC (27 lines); hand-edited and exported as a walk (.sl) on 2026-10-02 12:32",
+  "description_id": "hydrogen-molecule",
+  "labelled_by": "claude, by the rule in README.md (the O/M test, then what the prose presupposes)",
+  "form": "absent-milieu",
+  "environment": [
+    {"name": "Surrounding Gas", "verdict": "neighbour",
+     "note": "supplies two hydrogen atoms and exchanges collisional energy with the vibrational mode: discrete matter and energy crossing. An object. Its temperature is a condition the recoil description names ('thermal equilibrium with its surroundings') and never declares."},
+    {"name": "Radiation Field", "verdict": "neighbour",
+     "note": "photons absorbed and emitted at the electron pair: discrete quanta, two real flows. Nothing in this model's prose presupposes a bath condition beyond the quanta themselves, so no missing line is charged to it."},
+    {"name": "Oxygen Molecule", "verdict": "neighbour",
+     "note": "a reaction partner that takes both atoms and the bond energy; a sink"}
+  ],
+  "missing": [
+    {"milieu": "milieu \"gas temperature\"", "presupposed_by": "'stays in thermal equilibrium with its surroundings' and the collisional kick and recoil flows, whose rates it sets"},
+    {"milieu": "milieu pressure", "presupposed_by": "'over many collisions': the collision frequency is set by the gas pressure (or density)"}
+  ],
+  "disguised_count": 0,
+  "absent_count": 2,
+  "notes": "Compiles clean under `bert verdict --lens mobus` (0 issues). No environment thing is a condition in disguise; the drafter drew every neighbour correctly and wrote no milieu at all."
+}
