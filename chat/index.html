@@ -215,6 +215,12 @@
     padding: 8px 12px;
     margin-bottom: 8px;
   }
+  .session-note-btn {
+    font-family: var(--ui); font-size: 0.72rem; margin-left: 6px; padding: 2px 8px;
+    border: 1px solid var(--ground-border); border-radius: 4px; background: var(--ground); color: var(--ink); cursor: pointer;
+  }
+  .session-note-btn:hover { border-color: var(--flow); }
+  .conv-rail-item.orphaned .conv-rail-name { color: var(--ink-dim); }
   .chat-pane.session-expired .chat-input-area { opacity: 0.5; }
 
   /* ══════════════════════════════════════════
@@ -1779,6 +1785,40 @@ let READONLY = false;
 // Set when the seam rejects our token. The cache stays readable; the composer closes.
 let SESSION_EXPIRED = false;
 
+// Identity continuity (facets#440). The subject the last token carried is kept in
+// local storage. When the provider has no live session but this browser had a
+// subject before, the page does not mint a new anonymous user silently: it stops
+// at the seam, says so in the composer, and mints only when the reader chooses
+// to continue as new. Conversations synced under the earlier subject stay in the
+// rail, marked, instead of being swept. Storage wiped wholesale defeats this
+// (both keys go together); only a linked sign-in survives that.
+const LAST_SUBJECT_KEY = 'facets_auth_last_subject';
+const ROLLOVER_ACK_KEY = 'facets_auth_rollover_ack';
+let CURRENT_SUBJECT = null;
+let ROLLED_FROM = null; // the earlier subject, while the rollover is unacknowledged
+
+function lastSubject() { try { return localStorage.getItem(LAST_SUBJECT_KEY); } catch (e) { return null; } }
+function noteSubject(sub) {
+  if (!sub) return;
+  CURRENT_SUBJECT = sub;
+  try { localStorage.setItem(LAST_SUBJECT_KEY, sub); } catch (e) {}
+}
+// True when minting now would silently replace an identity this browser had.
+function rolloverPending() {
+  const prev = lastSubject();
+  if (!prev) return false;
+  let ack = null;
+  try { ack = localStorage.getItem(ROLLOVER_ACK_KEY); } catch (e) {}
+  return ack !== prev;
+}
+function continueAsNew() {
+  try { localStorage.setItem(ROLLOVER_ACK_KEY, lastSubject() || ''); } catch (e) {}
+  ROLLED_FROM = null;
+  SESSION_EXPIRED = false;
+  renderSessionState();
+  hydrateConversations().then(flushOutbox);
+}
+
 function b64url(bytes) {
   let s = '';
   for (const b of bytes) s += String.fromCharCode(b);
@@ -1813,10 +1853,12 @@ function tokenExpiry(tok) {
 let localTokenPromise = null;
 function localToken() {
   const cached = localStorage.getItem('facets_auth_token');
-  if (cached && tokenExpiry(cached) - 300 > Date.now() / 1000) return Promise.resolve(cached);
+  if (cached && tokenExpiry(cached) - 300 > Date.now() / 1000) { noteSubject(authSubject()); return Promise.resolve(cached); }
+  if (!localStorage.getItem('facets_auth_sub') && rolloverPending()) { ROLLED_FROM = lastSubject(); return Promise.resolve(null); }
   if (!localTokenPromise) {
     localTokenPromise = mintLocalToken().then(tok => {
       try { localStorage.setItem('facets_auth_token', tok); } catch (e) {}
+      noteSubject(authSubject());
       localTokenPromise = null;
       return tok;
     }, e => { localTokenPromise = null; throw e; });
@@ -1844,10 +1886,12 @@ async function supabaseToken() {
   if (!sbClient) sbClient = sdk.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   let { data } = await sbClient.auth.getSession();
   if (!data.session) {
+    if (rolloverPending()) { ROLLED_FROM = lastSubject(); return null; }
     const r = await sbClient.auth.signInAnonymously();
     if (r.error) throw r.error;
     data = r.data;
   }
+  if (data.session && data.session.user) noteSubject(data.session.user.id);
   return data.session ? data.session.access_token : null;
 }
 
@@ -1864,6 +1908,7 @@ async function authFetch(path, opts) {
   const o = Object.assign({}, opts || {});
   o.headers = Object.assign({}, o.headers || {});
   const tok = await getAccessToken();
+  if (!tok && ROLLED_FROM) { onSessionExpired(); return new Response(null, { status: 401 }); }
   if (tok) o.headers['Authorization'] = 'Bearer ' + tok;
   const r = await fetch(API + path, o);
   if (r.status === 401) onSessionExpired();
@@ -1888,13 +1933,24 @@ function renderSessionState() {
   if (send) send.disabled = SESSION_EXPIRED || inFlight;
   let note = document.getElementById('session-note');
   if (!SESSION_EXPIRED) { if (note) note.remove(); return; }
-  if (note) return;
+  if (note) note.remove();
   const composer = document.querySelector('.composer');
   if (!composer) return;
   note = document.createElement('div');
   note.id = 'session-note';
   note.className = 'session-note';
-  note.textContent = "This browser's session expired. Keep chatting as new, or restore from another device.";
+  if (ROLLED_FROM) {
+    const text = document.createElement('span');
+    text.textContent = 'This browser was signed in as ' + ROLLED_FROM.slice(0, 8) + '\u2026 before and that session is gone. '
+      + 'Its conversations are kept on the server and stay listed here. New ones start under a fresh identity. ';
+    const btn = document.createElement('button');
+    btn.className = 'session-note-btn';
+    btn.textContent = 'Continue as new';
+    btn.onclick = continueAsNew;
+    note.appendChild(text); note.appendChild(btn);
+  } else {
+    note.textContent = "This browser's session expired. Keep chatting as new, or restore from another device.";
+  }
   composer.insertBefore(note, composer.firstChild);
 }
 
@@ -2576,21 +2632,31 @@ async function hydrateConversations() {
   if (READONLY) return;
   let r;
   try { r = await authFetch('/v1/conversations?limit=' + CONV_PAGE); } catch (e) { return; }
-  if (!r.ok) return;
+  if (!r.ok) {
+    // Stopped at the seam on a rollover: every synced tab belongs to the earlier
+    // identity, so mark them now rather than after a list that will not come.
+    if (ROLLED_FROM) { tabs.forEach(t => { if (t.serverId) t.orphaned = true; }); saveTabs(); renderConvRail(); }
+    return;
+  }
   let list;
   try { list = (await r.json()).conversations || []; } catch (e) { return; }
   const byId = new Map(list.map(c => [c.id, c]));
 
-  tabs = tabs.filter(t => !t.serverId || byId.has(t.serverId));
+  // Absence from the list is a deletion only under the identity that synced the
+  // tab. Under any other identity (a rollover, or a cache older than subjects)
+  // the tab is an orphan: kept, marked, never swept (facets#440).
+  const sameIdentity = t => !!(t.subject && CURRENT_SUBJECT && t.subject === CURRENT_SUBJECT);
+  tabs = tabs.filter(t => !t.serverId || byId.has(t.serverId) || !sameIdentity(t));
   tabs.forEach(t => {
     const c = t.serverId && byId.get(t.serverId);
-    if (c) { t.name = c.title || t.name; t.updatedAt = c.updated_at; }
+    if (c) { t.name = c.title || t.name; t.updatedAt = c.updated_at; t.subject = CURRENT_SUBJECT || t.subject; t.orphaned = false; }
+    else if (t.serverId) t.orphaned = true;
   });
   const known = new Set(tabs.map(t => t.serverId).filter(Boolean));
   list.forEach(c => {
     if (known.has(c.id)) return;
     tabs.push({
-      id: c.id, serverId: c.id, name: c.title || 'Untitled',
+      id: c.id, serverId: c.id, name: c.title || 'Untitled', subject: CURRENT_SUBJECT, orphaned: false,
       sessionId: crypto.randomUUID(), messages: [], hydrated: false, updatedAt: c.updated_at,
     });
   });
@@ -2605,7 +2671,7 @@ async function hydrateConversations() {
 }
 
 async function hydrateConversation(tab) {
-  if (!tab || !tab.serverId) return;
+  if (!tab || !tab.serverId || tab.orphaned) return;
   let r;
   try { r = await authFetch('/v1/conversations/' + encodeURIComponent(tab.serverId)); } catch (e) { return; }
   if (r.status === 404) { dropTabLocally(tab.id); return; }
@@ -2639,6 +2705,8 @@ function reconcileAfterSend(tab, payload, clientMsgId, botMsg) {
   if (!tab || !payload) return;
   if (payload.conversation_id) {
     tab.serverId = payload.conversation_id;
+    tab.subject = CURRENT_SUBJECT;
+    tab.orphaned = false;
     // The URL was pushed before the server named the conversation; correct it in place.
     if (tab.id === activeTab && window.location.pathname === '/chat/c/' + tab.id) {
       try { history.replaceState({ tabId: tab.id }, '', '/chat/c/' + tab.serverId); } catch (e) {}
@@ -2650,6 +2718,17 @@ function reconcileAfterSend(tab, payload, clientMsgId, botMsg) {
   tab.hydrated = true;
   saveTabs();
   if (payload.message_id && clientMsgId && payload.message_id !== clientMsgId) hydrateConversation(tab);
+}
+
+// An orphaned thread cannot be appended to under this identity; a send continues
+// it as a new conversation, with the cached messages still read as context.
+function forkIfOrphaned(tab) {
+  if (!tab || !tab.orphaned) return;
+  tab.forkedFrom = tab.serverId;
+  tab.serverId = null;
+  tab.orphaned = false;
+  tab.hydrated = true;
+  saveTabs();
 }
 
 // ── Multi-tab send lock (gsr#48) ──
@@ -3404,6 +3483,7 @@ async function sendQuery(question, msgId) {
 
   // Auto-name tab from first query
   const tab = tabs.find(t => t.id === originTabId);
+  forkIfOrphaned(tab);
   const userMsgCount = tab ? tab.messages.filter(m => m.role === 'user').length : 1;
   logFunnelEvent(userMsgCount <= 1 ? 'query_submitted' : 'query_submitted_second');
   if (tab && userMsgCount === 1) {
@@ -3488,6 +3568,7 @@ async function sendQueryStream(question, msgId) {
 
   // Auto-name tab from first query
   const tab = tabs.find(t => t.id === originTabId);
+  forkIfOrphaned(tab);
   const userMsgCount = tab ? tab.messages.filter(m => m.role === 'user').length : 1;
   logFunnelEvent(userMsgCount <= 1 ? 'query_submitted' : 'query_submitted_second');
   if (tab && userMsgCount === 1) {
@@ -3735,6 +3816,7 @@ async function sendIntegrated(question, msgId) {
   addMessage('user', question, null, originTabId, clientMsgId);
 
   const tab = tabs.find(t => t.id === originTabId);
+  forkIfOrphaned(tab);
   const userMsgCount = tab ? tab.messages.filter(m => m.role === 'user').length : 1;
   logFunnelEvent(userMsgCount <= 1 ? 'query_submitted' : 'query_submitted_second');
   if (tab && userMsgCount === 1) {
@@ -4325,7 +4407,7 @@ function renderConvRail() {
   }
   live.forEach(t => {
     const item = document.createElement('div');
-    item.className = 'conv-rail-item' + (t.id === activeTab ? ' active' : '');
+    item.className = 'conv-rail-item' + (t.id === activeTab ? ' active' : '') + (t.orphaned ? ' orphaned' : '');
     item.setAttribute('role', 'button'); item.tabIndex = 0;
     const text = document.createElement('div');
     text.className = 'conv-rail-text';
@@ -4338,7 +4420,8 @@ function renderConvRail() {
     sub.className = 'conv-rail-sub';
     const nb = t.messages.filter(mm => mm.role === 'bot').length;
     // A server conversation whose messages have not been fetched is not empty, we just do not know its size yet.
-    sub.textContent = nb ? nb + ' sheet' + (nb === 1 ? '' : 's') : (t.serverId && !t.hydrated ? '' : 'empty');
+    sub.textContent = t.orphaned ? 'earlier session on this browser'
+      : nb ? nb + ' sheet' + (nb === 1 ? '' : 's') : (t.serverId && !t.hydrated ? '' : 'empty');
     text.appendChild(nm); text.appendChild(sub);
     item.appendChild(text);
     const del = document.createElement('button');
@@ -4413,6 +4496,12 @@ function setAccountName(name) {
   renderConvRail();
 }
 
+function identityLine() {
+  const cur = CURRENT_SUBJECT ? 'Identity ' + dockEsc(CURRENT_SUBJECT.slice(0, 8)) + '\u2026 on this browser.' : 'No identity minted yet on this browser.';
+  const prev = ROLLED_FROM || (lastSubject() && lastSubject() !== CURRENT_SUBJECT ? lastSubject() : null);
+  return cur + (prev ? ' Earlier identity ' + dockEsc(prev.slice(0, 8)) + '\u2026; its conversations can be merged onto this one on request.' : '');
+}
+
 function openYouPanel() {
   if (document.querySelector('.you-overlay')) return;
   const overlay = document.createElement('div');
@@ -4423,6 +4512,7 @@ function openYouPanel() {
     + '<div class="you-status" id="you-status">' + (accountName
         ? dockEsc(accountName) + ' · saved in this browser'
         : 'Anonymous · saved in this browser') + '</div>'
+    + '<div class="you-note" id="you-identity">' + identityLine() + '</div>'
     + '<div class="you-section"><div class="you-label">Display name</div>'
     + '<div class="you-row"><input class="you-input" id="you-name" type="text" placeholder="Optional" value="' + dockEsc(accountName) + '">'
     + '<button class="you-btn" id="you-name-save">Save</button></div>'
