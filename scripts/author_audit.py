@@ -31,6 +31,17 @@ first SL, the final SL, and every intermediate); delete a folder to redraft.
 `--report` reads cached result.json files only. The local reasoner limits
 `/author-sl` to 10 calls a minute, so `--pace` (seconds between calls)
 defaults to 7. Requires the `bert` binary (`cargo build -p bert-cli`).
+
+The milieu rows (facets#443): `milieu lines` counts `milieu` declarations in
+the compiled model, and `env things reading as conditions` counts the kernel's
+`environment_thing_reads_as_condition` warning, so the rig carries no lexicon
+of its own. `--fixtures <descriptions.json>` adds drafted fixtures (the
+`fixtures/sl/drafted-ambient/` set by default when `--annotations` is given),
+and `--annotations <dir>` reads `<id>.annotation.json` beside them to score
+two more rows on those fixtures only: `absent recall` (how many of the
+record's `missing[]` milieu lines the redraft carries, matched on the last
+word of the name) and `neighbours kept` (how many of the record's environment
+things survive by name). Rows drafted before these fields existed show `-`.
 """
 
 from __future__ import annotations
@@ -173,7 +184,13 @@ def score(model: dict | None, issues: list[dict]) -> dict:
     doors = [c for c in complex_ if (c.get("description") or "").strip()]
     errors = [i for i in issues if i.get("severity") == "Error"]
     codes = [i.get("code", "") for i in errors]
+    milieu = model.get("milieu", [])
+    ambient = [i for i in issues if i.get("code") == "environment_thing_reads_as_condition"]
     return {
+        "milieu": len(milieu),
+        "milieu_names": [m.get("name", "") for m in milieu],
+        "ambient_warnings": len(ambient),
+        "env_names": [t["name"] for t in env],
         "compiled": True,
         "refused": bool(errors),
         "errors": len(errors),
@@ -255,7 +272,7 @@ def draw(bert: Path, base: str, model: str, fixture_id: str, text: str, n: int,
 
 
 def run(label: str, model: str, draws: int, bert: Path, base: str, timeout: int, pace: float,
-        fixtures: list[tuple[str, str]]) -> None:
+        fixtures: list[tuple[str, str]], annotations: dict[str, dict] | None = None) -> None:
     out = RUNS / label / model.replace("/", "_").replace(":", "_")
     out.mkdir(parents=True, exist_ok=True)
     rows = []
@@ -273,13 +290,51 @@ def run(label: str, model: str, draws: int, bert: Path, base: str, timeout: int,
             rows.append(row)
             time.sleep(pace)
     (out / "result.json").write_text(json.dumps({"label": label, "model": model, "rows": rows}, indent=2))
-    summarize(label, model, rows)
+    summarize(label, model, rows, annotations)
 
 
 # --- the table --------------------------------------------------------------
 
 
-def summarize(label: str, model: str, rows: list[dict]) -> None:
+# --- the drafted-ambient records (facets#443) -------------------------------
+
+
+def load_annotations(folder: Path | None) -> dict[str, dict]:
+    if folder is None:
+        return {}
+    out = {}
+    for path in sorted(folder.glob("*.annotation.json")):
+        rec = json.loads(path.read_text())
+        out[rec["id"]] = rec
+    return out
+
+
+def milieu_name(line: str) -> str:
+    """The name on a `milieu` line of the record: quoted, or the bare word."""
+    rest = line.strip().split(None, 1)[1] if " " in line.strip() else ""
+    rest = rest.strip()
+    if rest.startswith('"'):
+        return rest[1:rest.index('"', 1)]
+    return rest.split()[0] if rest else ""
+
+
+def record_score(rec: dict, final: dict) -> dict | None:
+    """Recall of the record's missing milieu lines, and survival of its
+    neighbours, read off the final draft's names. Last-word match on the milieu
+    name ("gas temperature" ~ "temperature"); exact case-folded match on a
+    neighbour, so a renamed neighbour reads as lost and the row says so."""
+    if not final.get("compiled") or "milieu_names" not in final:
+        return None
+    drafted = [n.lower() for n in final["milieu_names"]]
+    wanted = [milieu_name(m["milieu"]).lower() for m in rec.get("missing", [])]
+    hit = sum(1 for w in wanted if w and any(w.split()[-1] in d for d in drafted))
+    env = [e["name"].lower() for e in rec.get("environment", []) if e.get("verdict") == "neighbour"]
+    present = [n.lower() for n in final.get("env_names", [])]
+    kept = sum(1 for e in env if e in present)
+    return {"recall": (hit, len(wanted)), "kept": (kept, len(env))}
+
+
+def summarize(label: str, model: str, rows: list[dict], annotations: dict[str, dict] | None = None) -> None:
     def col(key: str):
         return [r[key] for r in rows]
 
@@ -312,6 +367,22 @@ def summarize(label: str, model: str, rows: list[dict]) -> None:
     line("description doors / complex", share(first, "doors", "complex"), share(final, "doors", "complex"))
     line("energy input present", rate(first, lambda s: s.get("energy_in")), rate(final, lambda s: s.get("energy_in")))
     line("output to a sink present", rate(first, lambda s: s.get("output_out")), rate(final, lambda s: s.get("output_out")))
+    has_milieu = any("milieu" in s for s in first + final)
+    line("milieu lines", str(total(first, "milieu")) if has_milieu else "-", str(total(final, "milieu")) if has_milieu else "-")
+    line("env things reading as conditions", str(total(first, "ambient_warnings")) if has_milieu else "-",
+         str(total(final, "ambient_warnings")) if has_milieu else "-")
+    if annotations:
+        def pair(key: str, which: str) -> str:
+            hits = tot = 0
+            for r in rows:
+                rec = annotations.get(r["id"])
+                sc = record_score(rec, r[which]) if rec else None
+                if sc:
+                    hits += sc[key][0]
+                    tot += sc[key][1]
+            return f"{hits}/{tot}" if tot else "-"
+        line("absent recall (annotated fixtures)", pair("recall", "first"), pair("recall", "final"))
+        line("neighbours kept (annotated fixtures)", pair("kept", "first"), pair("kept", "final"))
     line("parse heals / kernel heals", f"{sum(col('parse_heals'))} / {sum(col('kernel_heals'))}", "")
     for r in rows:
         f, g = r["first"], r["final"]
@@ -321,16 +392,18 @@ def summarize(label: str, model: str, rows: list[dict]) -> None:
             tail = (f"{g['components']} comps, {g['primitive']} primitive, {g['doors']}/{g['complex']} doors, "
                     f"{'energy in' if g['energy_in'] else 'NO energy in'}, "
                     f"{'output out' if g['output_out'] else 'NO output'}"
-                    + (f"; complex: {', '.join(g['complex_names'])}" if g["complex_names"] else ""))
+                    + (f"; complex: {', '.join(g['complex_names'])}" if g["complex_names"] else "")
+                    + (f"; milieu: {', '.join(g['milieu_names'])}" if g.get("milieu_names") else "")
+                    + (f"; {g['ambient_warnings']} env reading as condition" if g.get("ambient_warnings") else ""))
         mark = "!" if (not g.get("compiled") or g.get("refused")) else " "
         print(f"   {mark} {r['id']:<18}#{r['draw']}  {tail}")
 
 
-def report(labels: list[str]) -> None:
+def report(labels: list[str], annotations: dict[str, dict] | None = None) -> None:
     for label in labels:
         for res in sorted((RUNS / label).glob("*/result.json")):
             data = json.loads(res.read_text())
-            summarize(data["label"], data["model"], data["rows"])
+            summarize(data["label"], data["model"], data["rows"], annotations)
 
 
 def main(argv=None) -> int:
@@ -344,17 +417,24 @@ def main(argv=None) -> int:
     ap.add_argument("--timeout", type=int, default=600)
     ap.add_argument("--pace", type=float, default=7.0, help="seconds between reasoner calls")
     ap.add_argument("--report", nargs="*", help="summarize cached runs and exit")
+    ap.add_argument("--fixtures", type=Path, help="a descriptions.json ([{id, text}]) to draft as well")
+    ap.add_argument("--annotations", type=Path, nargs="?", const=REPO / "fixtures" / "sl" / "drafted-ambient",
+                    help="folder of <id>.annotation.json records (facets#443); default fixtures/sl/drafted-ambient")
     a = ap.parse_args(argv)
+    annotations = load_annotations(a.annotations)
     if a.report is not None:
-        report(a.report or sorted(p.name for p in RUNS.iterdir() if p.is_dir()))
+        report(a.report or sorted(p.name for p in RUNS.iterdir() if p.is_dir()), annotations)
         return 0
     if not a.label:
         ap.error("--label is required")
-    fixtures = FIXTURES
+    fixtures = list(FIXTURES)
+    extra = a.fixtures or (a.annotations / "descriptions.json" if a.annotations else None)
+    if extra and extra.exists():
+        fixtures += [(d["id"], d["text"]) for d in json.loads(extra.read_text()) if d.get("text")]
     if a.only:
         keep = set(a.only.split(","))
-        fixtures = [f for f in FIXTURES if f[0] in keep]
-    run(a.label, a.model, a.draws, find_bert(a.bert), a.gsr, a.timeout, a.pace, fixtures)
+        fixtures = [f for f in fixtures if f[0] in keep]
+    run(a.label, a.model, a.draws, find_bert(a.bert), a.gsr, a.timeout, a.pace, fixtures, annotations)
     return 0
 
 
