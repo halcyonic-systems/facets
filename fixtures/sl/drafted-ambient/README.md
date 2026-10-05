@@ -13,11 +13,14 @@ construction. So the test for an environment thing is not what it is called but
 what the model does with it:
 
 1. **The O/M test.** If the thing sends or receives something real and countable
-   (photons, electrons, atoms, a collision's energy, a message) across the
+   (photons, electrons, atoms, a collision's energy, waste heat) across the
    boundary, it is a `neighbour`, however ambient its name. If its only "flow" is
-   the drafter's way of attaching a pervasive condition to the system (a
-   "temperature reading" from `Ambient Air`, a "field" from `Ambient Field` that
-   nothing emits), it is a `condition` drawn in disguise.
+   the drafter's way of attaching a pervasive condition to the system (an
+   informational "temperature reading" from `Ambient Air`, a `field` line from
+   `Ambient Field` that nothing emits), or it has no flow at all, it is a
+   `condition` drawn in disguise. The kernel Warning
+   (`environment_thing_reads_as_condition`, Mobus only) applies the same test
+   structurally: an ambient name with no matter or energy bond.
 2. **What the prose presupposes.** A missing milieu line is charged only where the
    model's own text invokes a condition it never declares: "thermal equilibrium
    with its surroundings" presupposes a gas temperature; "over many collisions"
