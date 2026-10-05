@@ -169,3 +169,40 @@ fn the_fixture_separates_bonds_from_mere_relations() {
         "and neither bonds it — which is why the correct refusal read as wrong"
     );
 }
+
+/// facets#443: an environment thing whose name reads as an ambient condition
+/// carries its own code under Mobus, as a Warning, so a surface can group it
+/// apart from the structural refusals; the other two lenses say nothing.
+#[test]
+fn ambient_environment_thing_has_its_own_code_under_mobus() {
+    const THERMOSTAT: &str = r#"
+system "Thermostat"
+component Controller interface
+component Heater
+environment "Ambient Air"
+flow Controller -> Heater : informational "setpoint"
+flow "Ambient Air" -> Controller : informational "temperature reading"
+@lens mobus
+"#;
+    let parsed = parse_sl_full(THERMOSTAT).expect("the fixture compiles");
+    let mobus = analyze(&parsed.model, Lens::Mobus);
+    let hits: Vec<_> = mobus
+        .validation
+        .issues
+        .iter()
+        .filter(|i| i.code == "environment_thing_reads_as_condition")
+        .collect();
+    assert_eq!(hits.len(), 1, "one ambient name, one warning");
+    assert_eq!(hits[0].severity, Severity::Warning);
+    assert_eq!(hits[0].doc.as_deref(), Some(doc::MILIEU));
+    for lens in [Lens::Klir, Lens::Bunge] {
+        assert!(
+            analyze(&parsed.model, lens)
+                .validation
+                .issues
+                .iter()
+                .all(|i| i.code != "environment_thing_reads_as_condition"),
+            "{lens:?} must not carry the Mobus-only warning"
+        );
+    }
+}

@@ -43,6 +43,9 @@ pub mod doc {
         "docs/design/decomposition-foundations.md#3-the-boundary-contract-stated-precisely";
     /// What each lens takes and drops — Mobus's openness commitment lives here.
     pub const OPENNESS: &str = "docs/theory-fidelity.md#per-tradition-take--drop--where--why";
+    /// E = ⟨O, M⟩: objects exchange at a point of contact; the milieu bathes.
+    pub const MILIEU: &str =
+        "docs/language/terminology-concordance.md#12-milieu-vs-discrete-objects--mobuss-alone";
 
     /// Every anchor above, for the existence gate in tests.
     pub const ALL: &[&str] = &[
@@ -56,6 +59,7 @@ pub mod doc {
         OBSERVED_DECLARED,
         DECOMPOSITION,
         OPENNESS,
+        MILIEU,
     ];
 }
 

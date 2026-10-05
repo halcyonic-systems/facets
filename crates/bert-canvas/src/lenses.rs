@@ -793,6 +793,7 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
     // not; assert it here, over the port directions only this face computes.
     if lens == Lens::Mobus {
         check_mobus_openness(&facts, &mut validation.issues);
+        check_ambient_environment_things(model, &facts, &mut validation.issues);
     }
 
     // Kernel subject → canvas element, via the projection's id maps reversed.
@@ -822,6 +823,13 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
                     disregarded_relations: mere_touching(thing),
                 }
             }
+            // The ambient-name warning is raised on the canvas model, where the
+            // thing may be an orphan the projection dropped, so it carries no
+            // kernel subject; its location names the canvas id instead.
+            None if issue.code == AMBIENT_CODE => IssueTarget {
+                thing: ambient_location_id(&issue.location),
+                ..IssueTarget::default()
+            },
             None => IssueTarget::default(),
         })
         .collect();
@@ -913,6 +921,106 @@ pub fn check_decompositions_canvas(
 /// A boundary with no ports at all is silent: nothing is being emitted, so there
 /// is no one-way exchange to flag — that is an earlier stage, before any crossing
 /// is drawn. The warning fires only once the boundary emits.
+/// The code the ambient-name warning carries (facets#443).
+pub const AMBIENT_CODE: &str = "environment_thing_reads_as_condition";
+
+/// Names that read as a condition rather than a neighbour: the modifier
+/// `ambient`, or a head noun (the last word, or the last two for `ionic
+/// strength`) from this list. A head is enough on its own, so `Room Temperature`
+/// fires and `Temperature Sensor` does not. `field` and `radiation` are kept
+/// OUT deliberately: the drafted-ambient fixtures' `Radiation Field` exchanges
+/// discrete photons, which the O/M test reads as a neighbour, and a warning that
+/// fired on it would be asking the modeler to undo a correct call.
+const AMBIENT_HEADS: &[&str] = &[
+    "temperature",
+    "pressure",
+    "humidity",
+    "ph",
+    "salinity",
+    "ionic strength",
+    "climate",
+    "weather",
+    "gravity",
+    "illumination",
+    "solvent",
+    "medium",
+    "vacuum",
+];
+
+fn reads_as_ambient(name: &str) -> bool {
+    let lower = name.to_lowercase();
+    let words: Vec<&str> = lower.split_whitespace().collect();
+    if words.is_empty() {
+        return false;
+    }
+    if words[0] == "ambient" {
+        return true;
+    }
+    let last = words[words.len() - 1];
+    let last_two = if words.len() >= 2 {
+        format!("{} {}", words[words.len() - 2], last)
+    } else {
+        String::new()
+    };
+    AMBIENT_HEADS.iter().any(|h| *h == last || *h == last_two)
+}
+
+fn ambient_location_id(location: &str) -> Option<u64> {
+    location
+        .strip_prefix("things[")
+        .and_then(|rest| rest.strip_suffix(']'))
+        .and_then(|id| id.parse().ok())
+}
+
+/// Mobus's E = ⟨O, M⟩: an object exchanges at a point of contact, a milieu
+/// variable bathes the system and takes no flow. A drafter that has never been
+/// shown a `milieu` line draws temperature as a neighbour with an invented flow
+/// (facets#443). This warns on an environment thing whose NAME reads as a
+/// condition AND which exchanges nothing material: a bond carrying matter or
+/// energy is a real point of contact, so `sink "Ambient Air"` taking waste heat
+/// (Mobus's own corpus model) stays a neighbour, while `"Ambient Air"` whose
+/// only line is an informational "temperature reading", or no line at all, is
+/// the disguise. Whether it is one is the modeler's call, so it is a Warning and
+/// never enters a heal loop. Runs on the canvas model, not the projected world,
+/// because an orphan thing is gone by projection.
+fn check_ambient_environment_things(
+    model: &CanvasModel,
+    facts: &LensFacts,
+    issues: &mut Vec<ValidationIssue>,
+) {
+    for t in model.things.iter().filter(|t| t.role == Role::Environment) {
+        if !reads_as_ambient(&t.name) {
+            continue;
+        }
+        let exchanges_substance = facts.edges.iter().any(|e| {
+            e.bond && (e.a == t.id || e.b == t.id) && matches!(e.kind, Kind::Matter | Kind::Energy)
+        });
+        if exchanges_substance {
+            continue;
+        }
+        issues.push(ValidationIssue {
+            severity: Severity::Warning,
+            code: AMBIENT_CODE.to_string(),
+            location: format!("things[{}]", t.id),
+            message: format!(
+                "Environment thing '{}' reads as an ambient condition (temperature, \
+                 pressure, a medium). In Mobus's E = <O, M>, objects exchange flows at a \
+                 point of contact and conditions that bathe the system are the milieu M. \
+                 If nothing here sends or receives, declare it as `milieu {}` and drop its \
+                 flow. If it is a real neighbour, no change is needed.",
+                t.name, t.name
+            ),
+            suggestion: Some(format!(
+                "Declare `milieu {} [value N] [unit U]`, or keep it as a neighbour if it \
+                 sends or receives.",
+                t.name
+            )),
+            doc: Some(bert_core::validate::doc::MILIEU.to_string()),
+            subject: None,
+        });
+    }
+}
+
 fn check_mobus_openness(facts: &LensFacts, issues: &mut Vec<ValidationIssue>) {
     if facts.ports.is_empty() {
         return;
@@ -1619,6 +1727,144 @@ mod tests {
             .issues
             .iter()
             .any(|i| i.message.contains("exports-only"))
+    }
+
+    fn ambient_issues(a: &CanvasAnalysis) -> Vec<(usize, &ValidationIssue)> {
+        a.validation
+            .issues
+            .iter()
+            .enumerate()
+            .filter(|(_, i)| i.code == AMBIENT_CODE)
+            .collect()
+    }
+
+    /// facets#443: `Ambient Air` whose one line is an informational reading
+    /// warns under Mobus, as a Warning with the milieu doc anchor, and the
+    /// warning points at the canvas thing.
+    #[test]
+    fn mobus_warns_on_bonded_ambient_environment_thing() {
+        let m = model(
+            vec![
+                Thing { interface: true, ..thing(1, "Thermostat", Role::Component) },
+                thing(2, "Heater", Role::Component),
+                thing(3, "Ambient Air", Role::Environment),
+            ],
+            vec![
+                relation(10, 1, 2, true),
+                Relation { kind: Kind::Informational, ..relation(11, 3, 1, true) },
+            ],
+        );
+        let a = analyze(&m, Lens::Mobus);
+        let found = ambient_issues(&a);
+        assert_eq!(found.len(), 1, "one warning for the one ambient name");
+        let (idx, issue) = found[0];
+        assert_eq!(issue.severity, Severity::Warning);
+        assert_eq!(issue.doc.as_deref(), Some(bert_core::validate::doc::MILIEU));
+        assert!(issue.message.contains("milieu Ambient Air"));
+        assert_eq!(a.issue_targets[idx].thing, Some(3), "the target names the canvas thing");
+    }
+
+    /// An orphan (no bond) is dropped by projection, so the warning must still
+    /// reach it from the canvas model and still point at it.
+    #[test]
+    fn mobus_warns_on_orphan_ambient_thing_and_targets_it() {
+        let m = model(
+            vec![
+                thing(1, "A", Role::Component),
+                thing(2, "B", Role::Component),
+                thing(3, "Room Temperature", Role::Environment),
+            ],
+            vec![relation(10, 1, 2, true)],
+        );
+        let a = analyze(&m, Lens::Mobus);
+        let found = ambient_issues(&a);
+        assert_eq!(found.len(), 1);
+        assert_eq!(a.issue_targets[found[0].0].thing, Some(3));
+    }
+
+    /// Row 12 of the concordance is Mobus's alone: Klir and Bunge stay silent.
+    #[test]
+    fn ambient_warning_is_mobus_only() {
+        let m = model(
+            vec![
+                Thing { interface: true, ..thing(1, "A", Role::Component) },
+                thing(2, "B", Role::Component),
+                thing(3, "Ambient Air", Role::Environment),
+            ],
+            vec![relation(10, 1, 2, true), relation(11, 3, 1, true)],
+        );
+        for lens in [Lens::Klir, Lens::Bunge] {
+            assert!(ambient_issues(&analyze(&m, lens)).is_empty(), "{lens:?} must not warn");
+        }
+    }
+
+    /// Separating instances: real neighbours with condition-like words in them,
+    /// a component with a condition word, a photon-exchanging field, and a model
+    /// whose condition is already a milieu line. None may fire.
+    #[test]
+    fn ambient_warning_is_silent_on_real_neighbours_components_and_milieu_lines() {
+        let names = ["Atmosphere", "Power Grid", "Pressure Vessel", "Radiation Field", "River"];
+        for name in names {
+            let m = model(
+                vec![
+                    Thing { interface: true, ..thing(1, "A", Role::Component) },
+                    thing(2, "B", Role::Component),
+                    thing(3, name, Role::Environment),
+                ],
+                vec![relation(10, 1, 2, true), relation(11, 3, 1, true)],
+            );
+            assert!(ambient_issues(&analyze(&m, Lens::Mobus)).is_empty(), "{name} must not fire");
+        }
+        // Mobus's own corpus shape: a sink that takes waste heat exchanges energy
+        // at a point of contact, so an ambient name does not make it a condition.
+        let m = model(
+            vec![
+                Thing { interface: true, ..thing(1, "CPU", Role::Component) },
+                thing(2, "B", Role::Component),
+                thing(3, "Ambient Air", Role::Environment),
+            ],
+            vec![
+                relation(10, 1, 2, true),
+                Relation { kind: Kind::Energy, ..relation(11, 1, 3, true) },
+            ],
+        );
+        assert!(
+            ambient_issues(&analyze(&m, Lens::Mobus)).is_empty(),
+            "a sink taking waste heat is a neighbour, whatever its name"
+        );
+        // A component named for a condition is a part, not a neighbour.
+        let m = model(
+            vec![
+                thing(1, "Temperature Sensor", Role::Component),
+                thing(2, "B", Role::Component),
+            ],
+            vec![relation(10, 1, 2, true)],
+        );
+        assert!(ambient_issues(&analyze(&m, Lens::Mobus)).is_empty());
+        // The condition declared the right way: a milieu line is not a thing.
+        let mut m = model(
+            vec![thing(1, "A", Role::Component), thing(2, "B", Role::Component)],
+            vec![relation(10, 1, 2, true)],
+        );
+        m.milieu.push(bert_core::MilieuVariable {
+            name: "temperature".to_string(),
+            value: None,
+            unit: String::new(),
+            description: String::new(),
+        });
+        assert!(ambient_issues(&analyze(&m, Lens::Mobus)).is_empty());
+    }
+
+    #[test]
+    fn ambient_lexicon_reads_heads_and_modifier() {
+        assert!(reads_as_ambient("Ambient Air"));
+        assert!(reads_as_ambient("Room Temperature"));
+        assert!(reads_as_ambient("ionic strength"));
+        assert!(reads_as_ambient("Network Medium"));
+        assert!(!reads_as_ambient("Temperature Sensor"));
+        assert!(!reads_as_ambient("Pressure Vessel"));
+        assert!(!reads_as_ambient("Radiation Field"));
+        assert!(!reads_as_ambient(""));
     }
 
     /// Law: Mobus alone carries the open-system commitment — a boundary that
