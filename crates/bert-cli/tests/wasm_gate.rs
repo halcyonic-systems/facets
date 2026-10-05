@@ -1,7 +1,7 @@
 //! The wasm gate's exclusion, executed.
 //!
 //! `cargo build --workspace --target wasm32-unknown-unknown` is a hard invariant
-//! (CLAUDE.md, and a CI step). This crate is a native binary — an argument
+//! (AGENTS.md, and a CI step). This crate is a native binary — an argument
 //! parser and a filesystem — so it is excluded from that build. The exclusion is
 //! correct and it is also the exact thing that rots: the next crate that will
 //! not compile to wasm is one word away from joining the list, and "the wasm

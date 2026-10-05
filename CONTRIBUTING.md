@@ -29,7 +29,7 @@ commits with a lowercase descriptive clause (`fix(run): step advances the
 cursor`, `docs(language): the missing param lexicon row`); the scope is the
 crate, face, or doc area. This is a one-maintainer research project: expect a
 first response within a week, and a review that reads the diff against the
-invariants in [`CLAUDE.md`](CLAUDE.md) rather than against taste. `main` is
+invariants in [`AGENTS.md`](AGENTS.md) rather than against taste. `main` is
 protected; nothing merges without the checks.
 
 By contributing you agree your contribution is licensed under the repository's

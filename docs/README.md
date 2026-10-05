@@ -2,7 +2,7 @@
 
 **Status: LIVE.** The canonical index for `docs/`.
 
-Start at the main [`README.md`](../README.md) and [`CLAUDE.md`](../CLAUDE.md) for the repo overview and working rules. This folder is the deeper reference layer.
+Start at the main [`README.md`](../README.md) and [`AGENTS.md`](../AGENTS.md) for the repo overview and working rules. This folder is the deeper reference layer.
 
 **This file is the canonical index.** Every document under `docs/` is reachable from here, either listed directly or through a folder's own `README.md` ([`language/`](language/), [`design/`](design/), [`design/dynamics-research/`](design/dynamics-research/), [`archive/`](archive/)). `scripts/doc_lint.py` enforces exactly that, plus "nothing is orphaned" and "every relative link resolves" ([#235](https://github.com/halcyonic-systems/facets/issues/235)). There is deliberately no second hand-maintained index: two of them drift, and the drift is invisible.
 

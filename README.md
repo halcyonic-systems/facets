@@ -167,7 +167,7 @@ disagreement is information about your model.
 | **author a model that RUNS** — dynamics, forcing, the gallery | [`docs/authoring-models.md`](docs/authoring-models.md) — the `.sl` → mint → bundle loop, and the five facts that bite | [`assets/examples/predator-prey.sl`](assets/examples/predator-prey.sl), a runnable source |
 | **assess the theory** — alone, with an expert, or with an LLM | [`docs/theory-fidelity.md`](docs/theory-fidelity.md) — take/drop/why per tradition | [`docs/lean-provenance.md`](docs/lean-provenance.md) for the pinned commit and the per-claim map |
 | **read the language** | [`docs/language/`](docs/language/) — spec, corpus, lineage | the [concordance](docs/language/terminology-concordance.md): every word's lineage cited |
-| **work on the code** | [`CLAUDE.md`](CLAUDE.md) — invariants and the crate layout | [`crates/bert-lenses-kernel/API.md`](crates/bert-lenses-kernel/API.md), the frozen JS↔wasm surface |
+| **work on the code** | [`AGENTS.md`](AGENTS.md) — invariants and the crate layout | [`crates/bert-lenses-kernel/API.md`](crates/bert-lenses-kernel/API.md), the frozen JS↔wasm surface |
 
 No systems-science background is needed for the first row: each lens's palette
 carries its tradition's vocabulary as you author, so you pick it up in place.
@@ -506,7 +506,7 @@ This list used to restate a dozen of those entries, and by 2026-07-26 the two ha
 drifted four days apart. There is one index; three pointers live here because they
 are not under `docs/`:
 
-- [`CLAUDE.md`](CLAUDE.md) — the agent runbook: invariants, the 5-crate layout,
+- [`AGENTS.md`](AGENTS.md) — the agent runbook: invariants, the 5-crate layout,
   working rules, and the 8-step palette-extension procedure.
 - [`crates/bert-lenses-kernel/API.md`](crates/bert-lenses-kernel/API.md) — the
   frozen JS↔wasm surface (append-only).

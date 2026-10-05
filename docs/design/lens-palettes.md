@@ -561,7 +561,7 @@ prose:**
   — I is a primitive element of the boundary tuple. (Quoted via the SSF
   transcription `systems-science-foundations/docs/reference/mobus-bunge-system-definitions-reference.md:165–177`;
   the primary 2022 PDF is not on disk — the Lean is this project's declared
-  authority regardless, CLAUDE.md invariant #7.)
+  authority regardless, AGENTS.md invariant #7.)
 - BERT's applied doc is already interface-first: "Subsystems MUST attach to
   existing interfaces" (`bert/docs/mobus-reference.md:82`).
 
