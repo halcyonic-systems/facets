@@ -86,7 +86,7 @@ Stated in: [`spec/LENS_ENTRY_SPEC.md`](spec/LENS_ENTRY_SPEC.md) §C–§D, `fixt
 
 ### Bond semantics and the Mobus tuple
 
-Stated in: [`theory-fidelity.md`](theory-fidelity.md) (Bunge and Mobus sections), `crates/bert-canvas/src/lenses.rs` (bond criterion), this repo's `CLAUDE.md` §"Semantic authority". Tuple slot attribution is the terminology concordance's job ([`language/terminology-concordance.md`](language/terminology-concordance.md), row 1); this table maps only claim → proof.
+Stated in: [`theory-fidelity.md`](theory-fidelity.md) (Bunge and Mobus sections), `crates/bert-canvas/src/lenses.rs` (bond criterion), this repo's `AGENTS.md` invariant #7. Tuple slot attribution is the terminology concordance's job ([`language/terminology-concordance.md`](language/terminology-concordance.md), row 1); this table maps only claim → proof.
 
 | # | Claim | SSF file | Declaration(s) — *kind* | What the Lean gives |
 |---|---|---|---|---|

@@ -3,7 +3,7 @@
 //!
 //! These are the properties a shell one-liner is allowed to rely on. Each test
 //! carries its separating instance — an input that makes it come out the OTHER
-//! way — because a check every input passes is not checking anything (CLAUDE.md,
+//! way — because a check every input passes is not checking anything (AGENTS.md,
 //! "the standard a new check has to meet").
 
 mod support;

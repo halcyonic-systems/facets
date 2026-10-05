@@ -156,7 +156,7 @@ fn survey_report(total: usize, refused: &[String], without_a_run: usize) {
 }
 
 /// The separating instances. A check every input passes is not checking
-/// anything (CLAUDE.md, "the standard a new check has to meet"), and the weak
+/// anything (AGENTS.md, "the standard a new check has to meet"), and the weak
 /// check is the one most at risk of being vacuous, so it gets four ways to come
 /// out the other way — two synthetic, two through the real binary.
 #[test]
