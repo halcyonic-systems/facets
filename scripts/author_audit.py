@@ -367,6 +367,10 @@ def summarize(label: str, model: str, rows: list[dict], annotations: dict[str, d
     line("description doors / complex", share(first, "doors", "complex"), share(final, "doors", "complex"))
     line("energy input present", rate(first, lambda s: s.get("energy_in")), rate(final, lambda s: s.get("energy_in")))
     line("output to a sink present", rate(first, lambda s: s.get("output_out")), rate(final, lambda s: s.get("output_out")))
+    # The structural over-steer signal (facets#443, after-run 1): a milieu that
+    # REPLACES a neighbour shows as fewer environment things and a lost
+    # archetype row, which no name-based judge catches.
+    line("environment things", str(total(first, "env")), str(total(final, "env")))
     has_milieu = any("milieu" in s for s in first + final)
     line("milieu lines", str(total(first, "milieu")) if has_milieu else "-", str(total(final, "milieu")) if has_milieu else "-")
     line("env things reading as conditions", str(total(first, "ambient_warnings")) if has_milieu else "-",
