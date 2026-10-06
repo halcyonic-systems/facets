@@ -14,6 +14,7 @@
 // grouping is libraryTree.ts's reading and verdicts are the kernel's.
 
 import type { ArchiveText } from "./kernel";
+import { requestPersistence } from "./storagePersist";
 import {
   saveModel,
   listModelRecords,
@@ -64,7 +65,13 @@ export function setLibraryBackend(next: LibraryBackend): void {
 export const library: LibraryBackend = {
   list: () => backend.list(),
   load: (name) => backend.load(name),
-  save: (name, json, from) => backend.save(name, json, from),
+  // The first save is the moment to ask the browser to keep the store (#457):
+  // a site the person has just written to is one Chromium grants. Asked once,
+  // never awaited — the save does not wait on the answer.
+  save: (name, json, from) => {
+    void requestPersistence();
+    return backend.save(name, json, from);
+  },
   remove: (name) => backend.remove(name),
   rename: (from, to) => backend.rename(from, to),
   loadByRef: (id) => backend.loadByRef(id),
