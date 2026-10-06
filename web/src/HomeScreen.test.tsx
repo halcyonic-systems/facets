@@ -39,6 +39,9 @@ const page = (opts: {
   initialArrange?: Arrange;
   initialManage?: boolean;
   recent?: RecentEntry[];
+  storageLine?: string;
+  exportedAt?: number | null;
+  onExportLibrary?: () => void;
 }) =>
   renderToStaticMarkup(
     <LibraryBrowser
@@ -57,6 +60,9 @@ const page = (opts: {
       initialArrange={opts.initialArrange}
       initialManage={opts.initialManage ?? false}
       recent={opts.recent ?? []}
+      storageLine={opts.storageLine}
+      exportedAt={opts.exportedAt}
+      onExportLibrary={opts.onExportLibrary}
     />,
   );
 
@@ -437,6 +443,25 @@ describe("the doors", () => {
     const managed = doors({ tree, initialManage: true });
     expect(managed).toContain("Delete steel plant");
     expect(managed).toContain("Rename steel plant");
+  });
+
+  // #457. Where the models are is said once something is saved, with the
+  // export date beside it; the way out is a manage-mode control, like the
+  // other two things a reader did not come here to do.
+  it("says where saved models live and offers the export only in manage mode", () => {
+    const tree: LibraryNode[] = [
+      { name: "steel plant", savedAt: at(1), missingReferents: 0, children: [] },
+    ];
+    const line = "stored in this browser · persistent";
+    expect(doors({ tree })).not.toContain("stored in this browser");
+    const plain = doors({ tree, storageLine: line, exportedAt: null, onExportLibrary: noop });
+    expect(plain).toContain(line);
+    expect(plain).toContain("last exported: never");
+    expect(plain).not.toContain("export library");
+    const managed = doors({ tree, storageLine: line, exportedAt: at(1), onExportLibrary: noop, initialManage: true });
+    expect(managed).toContain("export library (.sl)");
+    expect(managed).not.toContain("last exported: never");
+    expect(doors({ storageLine: line, onExportLibrary: noop })).not.toContain("stored in this browser");
   });
 
   it("lists a saved child as openable as its root", () => {

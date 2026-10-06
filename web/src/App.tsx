@@ -124,6 +124,8 @@ import {
 } from "./workbench";
 import { mintLibraryName, parentSlotName } from "./libraryNames";
 import { joinWalk, splitWalk, stampWalk } from "./walk";
+import { isLibraryFile, libraryFilename, libraryWalk, noteExported, readExportedAt, slotName } from "./libraryExport";
+import { describeStanding, readStanding, type StorageStanding } from "./storagePersist";
 import { secondaryOf, useNarrow } from "./narrow";
 import { ChildCache } from "./canvas/childCache";
 import { resolveModelRefs } from "./modelResolve";
@@ -602,6 +604,11 @@ function Workspace() {
   // as roots. The flattened form feeds the Switch menu's indented rows.
   const [saveTarget, setSaveTarget] = useState<"folder" | "library">("folder");
   const [libraryTree, setLibraryTree] = useState<LibraryNode[]>([]);
+  // #457: the browser's word on whether it will keep the store, and when the
+  // library last left this browser as a file. Both read on every refresh, so
+  // the Yours section states the current fact, not the one at mount.
+  const [storageStanding, setStorageStanding] = useState<StorageStanding>("unknown");
+  const [libraryExportedAt, setLibraryExportedAt] = useState<number | null>(() => readExportedAt());
   const libraryList = useMemo(() => flattenLibraryTree(libraryTree), [libraryTree]);
   // The workbench (workbench.ts): hand-pinned quick access to the models being
   // worked on. `openRef` is the open model's pinnable identity, set at the same
@@ -662,6 +669,8 @@ function Workspace() {
     childCache.current.clear();
     setChildrenResolved((n) => n + 1);
     setLibraryTree(buildLibraryTree(await library.list()));
+    setStorageStanding(await readStanding());
+    setLibraryExportedAt(readExportedAt());
   }
   // A soft, informational message channel, distinct from `toast` (which the
   // canvas reserves for kernel rejections, rendered "rejected — …").
@@ -1439,6 +1448,7 @@ function Workspace() {
     let rootSl: string | null = null;
     let rootLabel: string | null = null;
     let rootFile: string | null = null;
+    let restored = 0;
     for (const f of texts) {
       if (!isSl(f)) {
         try {
@@ -1452,10 +1462,15 @@ function Workspace() {
       }
       const split = splitWalk(f.text);
       const walk = stampWalk(split, mintModelId);
+      // A library export (#457) is every root at once: each paragraph goes
+      // back to the slot it names, nothing opens, and "reached by nothing" is
+      // the expected state of a root rather than a note.
+      const asLibrary = isLibraryFile(f.text);
+      if (asLibrary) restored += walk.paragraphs.length;
       for (const u of walk.unresolved) notes.push(`"${u.from}" decomposes "${u.label}", which is in no file opened`);
-      for (const o of walk.orphans) notes.push(`"${o}" is reached by nothing; saved anyway`);
+      if (!asLibrary) for (const o of walk.orphans) notes.push(`"${o}" is reached by nothing; saved anyway`);
       walk.paragraphs.forEach((p, i) => {
-        if (i === walk.root && rootSl === null) {
+        if (!asLibrary && i === walk.root && rootSl === null) {
           rootSl = p.text;
           rootLabel = p.name;
           rootFile = f.name;
@@ -1468,7 +1483,7 @@ function Workspace() {
         }
         const id = walk.ids.get(i);
         const cm: CanvasModel = id ? { ...outcome.ok, model_id: id } : outcome.ok;
-        archives.push({ name: p.name, json: writeArchive(cm) });
+        archives.push({ name: (asLibrary ? slotName(p.text) : null) ?? p.name, json: writeArchive(cm) });
       });
     }
     // Children first, so a failure between the two leaves an unreferenced
@@ -1504,6 +1519,13 @@ function Workspace() {
       setCurrentName(rootName);
       setDirty(false);
       archives.push({ name: rootName, json: writeArchive(outcome.ok) });
+    } else if (restored > 0) {
+      // A library export restores in place and opens nothing: the person is
+      // on the library page, and the models are back where they were.
+      setNotice(
+        [`restored ${archives.length} model${archives.length === 1 ? "" : "s"} to the library`, ...notes].join(" · "),
+      );
+      return;
     } else if (archives.length > 0) {
       // Only archives: open the first as the working model, the rest are in
       // the library where a walk will find them.
@@ -1552,6 +1574,28 @@ function Workspace() {
       await visit(canvasModel);
       const name = (currentLabel ?? canvasModel.name ?? "model").replace(/[^a-z0-9_-]+/gi, "-");
       downloadText(`${name}.walk.sl`, joinWalk(texts), "text/plain");
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // Yours → Export library (#457): every saved model as one walk file, the
+  // slot names carried as comments, ids stripped. Open… restores it in any
+  // browser. The date is stamped only when a file actually went out.
+  async function exportLibrary() {
+    try {
+      const now = new Date();
+      const { text, count, skipped } = libraryWalk(await library.list(), (json) => emitSl(openModel(json)), now);
+      if (count === 0) {
+        setToast(skipped.length ? `nothing exported — ${skipped.length} model${skipped.length === 1 ? "" : "s"} would not read` : "nothing saved yet");
+        return;
+      }
+      downloadText(libraryFilename(now), text, "text/plain");
+      noteExported(now.getTime());
+      setLibraryExportedAt(now.getTime());
+      setNotice(
+        [`exported ${count} model${count === 1 ? "" : "s"}`, ...(skipped.length ? [`skipped: ${skipped.join(", ")}`] : [])].join(" · "),
+      );
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
     }
@@ -3811,6 +3855,9 @@ function Workspace() {
           onLoadFromLibrary={loadFromLibrary}
           onDeleteFromLibrary={removeFromLibrary}
           onRenameInLibrary={renameInLibrary}
+          onExportLibrary={exportLibrary}
+          storageLine={describeStanding(storageStanding)}
+          exportedAt={libraryExportedAt}
           onClose={canvasModel !== null ? () => setHomeOpen(false) : null}
         />
       )}

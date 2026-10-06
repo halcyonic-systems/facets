@@ -90,6 +90,12 @@ interface HomeProps {
   onLoadFromLibrary: (name: string) => void;
   onDeleteFromLibrary: (name: string) => void;
   onRenameInLibrary: (from: string, to: string) => Promise<boolean>;
+  /** Export the whole library as one walk file (#457). */
+  onExportLibrary: () => void;
+  /** Where the saved models live, in the words storagePersist.ts chooses. */
+  storageLine: string;
+  /** When the library was last exported from this browser, or null for never. */
+  exportedAt: number | null;
   /** Back to the model on the canvas — null when nothing is loaded. */
   onClose: (() => void) | null;
 }
@@ -134,6 +140,9 @@ export function HomeScreen(props: HomeProps) {
             onLoad={props.onLoadFromLibrary}
             onDelete={props.onDeleteFromLibrary}
             onRename={props.onRenameInLibrary}
+            onExportLibrary={props.onExportLibrary}
+            storageLine={props.storageLine}
+            exportedAt={props.exportedAt}
           />
         )}
         {props.onClose && (
@@ -1122,6 +1131,9 @@ export function LibraryBrowser({
   initialArrange,
   initialManage = false,
   recent,
+  onExportLibrary,
+  storageLine,
+  exportedAt = null,
 }: {
   tree: LibraryNode[];
   onBack: () => void;
@@ -1138,6 +1150,11 @@ export function LibraryBrowser({
   initialArrange?: Arrange;
   initialManage?: boolean;
   recent?: RecentEntry[];
+  /** #457. Optional so a test, or a caller with no library, renders without
+   *  the export control; the storage line is absent then too. */
+  onExportLibrary?: () => void;
+  storageLine?: string;
+  exportedAt?: number | null;
 }) {
   const all = shippedModels();
   const allFacets = facets(all);
@@ -1393,6 +1410,24 @@ export function LibraryBrowser({
                   </span>
                 }
               />
+              {/* Where the models are, and the way out of this browser (#457).
+                  The standing line is the browser's own answer; the export
+                  date is the honest counterpart — "never" is a fact worth
+                  reading, not a nag. Both only once something is saved. */}
+              {savedCount > 0 && storageLine && (
+                <div
+                  className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[10px] tracking-[0.12em]"
+                  style={{ fontFamily: mono, color: "var(--ink-muted)" }}
+                >
+                  <span>{storageLine}</span>
+                  <span>last exported: {exportedAt === null ? "never" : whenLabel(exportedAt)}</span>
+                  {manage && onExportLibrary && (
+                    <button onClick={onExportLibrary} className="record-folio" style={folioStyle}>
+                      export library (.sl) →
+                    </button>
+                  )}
+                </div>
+              )}
               {savedCount === 0 ? (
                 <EmptyLine>nothing saved yet — a model you save lands here, under its own name</EmptyLine>
               ) : shownSaved.length === 0 ? (
