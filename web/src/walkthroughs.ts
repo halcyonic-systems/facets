@@ -1,9 +1,9 @@
 // The bundled walkthrough shelf: child models that SHIP with the app so a
 // gallery example can carry a walkable `decomposes` hierarchy with no setup.
-// The steel-plant walkthrough (Mobus ch. 4, Figs. 4.14–4.17) is the first
-// resident: its level-0 parent lives in the examples gallery, and the two
-// deeper levels sit here as pinned archives (assets/walkthroughs/, each the
-// projection of its own `.sl` — held by the kernel's steel_walkthrough gate).
+// The steel-plant walkthrough (Mobus ch. 4, Figs. 4.15–4.17) is the first
+// resident: its root lives in the examples gallery, and the deeper level sits
+// here as a pinned archive (assets/walkthroughs/, the projection of its own
+// `.sl` — held by the kernel's steel_walkthrough gate).
 //
 // This is the store layer's THIRD backend, and deliberately the last: the
 // library and the working folder both outrank it in `resolveModelRefs`, so a

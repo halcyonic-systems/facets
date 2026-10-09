@@ -216,8 +216,13 @@ With §3.3 in place, the one-shot "Draft" is re-read as **phase A: identify
 and bound** (ch. 6 §6.5 and §6.6, Figs. 4.14 and 4.15). Its honest output
 is the opaque box: `system`, `domain`, purpose, the neighbouring systems,
 the crossings, and the SOI as a single root interface component, the exact
-shape of `assets/walkthroughs/steel-plant/level-0.sl`. Phase B is then one
-click on the door: the interior draft of §3.3 against that boundary.
+shape `assets/walkthroughs/steel-plant/level-0.sl` had until #308 removed it
+(2026-10-09). **That shape is now the wrapper the kernel warns on**
+(`sole_component_decomposes`): a system drawn as a component of itself.
+Phase A's honest output is the box with the interfaces it can name, or the
+crossings on the reserved `interface unresolved` proposed in #308 part A;
+it is never the SOI as one component. Phase B is then one click on the
+door: the interior draft of §3.3 against that boundary.
 
 Two ways to offer it, both cheap once §3.3 exists. **Ruled 2026-09-07: A
 only; the root's door is the lit invitation to B.** One call, one gate,

@@ -24,12 +24,12 @@ describe("shelfByRef", () => {
 });
 
 describe("the shipped shelf", () => {
-  // The steel-plant walkthrough's two pinned identities — the ids its parent
-  // and middle levels stamp in their `decomposes` clauses. The kernel's
-  // steel_walkthrough gate holds the archives to these; this side holds that
-  // the app actually bundles and resolves them.
-  it("resolves both steel-plant levels by their pinned ids", () => {
-    for (const id of ["WVv2pzPHybekS7U3ewwVxx", "VjCKBe5psWuHcmW2yE8nXM"]) {
+  // The steel-plant walkthrough's pinned identity — the id its root stamps
+  // in its `decomposes` clause (one child since #308 removed the level-0
+  // wrapper). The kernel's steel_walkthrough gate holds the archive to this;
+  // this side holds that the app actually bundles and resolves it.
+  it("resolves the steel-plant child by its pinned id", () => {
+    for (const id of ["VjCKBe5psWuHcmW2yE8nXM"]) {
       const text = bundledModelByRef(id);
       expect(text, `bundled archive for ${id}`).not.toBeNull();
       expect((JSON.parse(text!) as { model_id?: string }).model_id).toBe(id);

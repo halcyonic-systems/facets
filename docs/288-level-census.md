@@ -81,7 +81,7 @@ The draft censused 34 entries; five landed between draft and ratification (`fede
 | `archive/supply-chain.sl` | structure | **Decision 1.** The reorder loop is wiring; its logic lives in comments, the stepping in the engine. |
 | `examples/bitcoin.sl` | structure | Ratified test applied post-draft: two loops drawn as flows, no rule; its own note says "structure only" until the tether. |
 | `examples/federal-reserve.sl` | structure | Ratified test applied post-draft: coupled subsystems, no authored rule; opens its box where steel-plant keeps it shut. |
-| `walkthroughs/steel-plant/level-0.sl` | structure | Ratified test applied post-draft: the walk opens the corpus entry's box — coupled residents and a checked seam are the step up from source. |
+| `walkthroughs/steel-plant/level-0.sl` | structure | Ratified test applied post-draft: the walk opens the corpus entry's box — coupled residents and a checked seam are the step up from source. **Removed 2026-10-09 (#308):** the file was one component named for the plant, decomposing into level 1 — a wrapper, not a level; its seam could not fail. The walk's root is now `level-1.sl`; the kernel warns on the shape (`sole_component_decomposes`). The row stays as the record. |
 | `walkthroughs/steel-plant/level-1.sl` | structure | Fig. 4.16's four subsystems + six interfaces, coupled; no rule. |
 | `walkthroughs/steel-plant/level-2.sl` | structure | Fig. 4.17's pumps, stock, sensor and decider, coupled; no rule. |
 

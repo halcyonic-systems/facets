@@ -23,7 +23,7 @@
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
-use bert_core::validate::{validate_mode, Severity, ValidationIssue, ValidationResult};
+use bert_core::validate::{doc, validate_mode, Severity, ValidationIssue, ValidationResult};
 use bert_core::{EdgeLocus, Id, Interaction, Mode};
 
 use crate::canvas::{project_with_map, CanvasModel, Kind, KlirLevel, Lens, Role};
@@ -796,6 +796,10 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
         check_ambient_environment_things(model, &facts, &mut validation.issues);
     }
 
+    // Lens-neutral: a model whose only component decomposes is a wrapper around
+    // its child, whatever the tradition reading it (#308).
+    check_sole_component_decomposes(model, &facts, &mut validation.issues);
+
     // Kernel subject → canvas element, via the projection's id maps reversed.
     let thing_of: HashMap<&Id, u64> = p.thing_ids.iter().map(|(k, v)| (v, *k)).collect();
     let relation_of: HashMap<&Id, u64> = p.interaction_of.iter().map(|(k, v)| (v, *k)).collect();
@@ -826,7 +830,7 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
             // The ambient-name warning is raised on the canvas model, where the
             // thing may be an orphan the projection dropped, so it carries no
             // kernel subject; its location names the canvas id instead.
-            None if issue.code == AMBIENT_CODE => IssueTarget {
+            None if issue.code == AMBIENT_CODE || issue.code == WRAPPER_CODE => IssueTarget {
                 thing: ambient_location_id(&issue.location),
                 ..IssueTarget::default()
             },
@@ -983,6 +987,52 @@ fn ambient_location_id(location: &str) -> Option<u64> {
 /// the disguise. Whether it is one is the modeler's call, so it is a Warning and
 /// never enters a heal loop. Runs on the canvas model, not the projected world,
 /// because an orphan thing is gone by projection.
+/// The wrapper (#308): a model whose ONLY component decomposes, with no
+/// interior relation. Every crossing lands on that one component and the seam
+/// beneath it holds by construction, so the level distinguishes nothing: it
+/// is the child's opaque view drawn as a document, a system standing inside
+/// itself. The steel-plant walkthrough shipped this shape as its level 0 and
+/// two later walks copied it. Warning, not refusal: the model is well formed,
+/// and the modeler may be mid-authoring. Lens-neutral, because nothing here
+/// is any tradition's reading; it is the walk idiom's.
+pub const WRAPPER_CODE: &str = "sole_component_decomposes";
+
+fn check_sole_component_decomposes(
+    model: &CanvasModel,
+    facts: &LensFacts,
+    issues: &mut Vec<ValidationIssue>,
+) {
+    let mut components = model.things.iter().filter(|t| t.role == Role::Component);
+    let (Some(only), None) = (components.next(), components.next()) else {
+        return;
+    };
+    if only.child_model.is_none() {
+        return;
+    }
+    let interior = facts
+        .edges
+        .iter()
+        .any(|e| e.bond && !matches!(e.locus, EdgeLocus::Exo));
+    if interior {
+        return;
+    }
+    issues.push(ValidationIssue {
+        severity: Severity::Warning,
+        code: WRAPPER_CODE.to_string(),
+        location: format!("things[{}]", only.id),
+        message: format!(
+            "'{}' is this model's only component and it decomposes: every crossing              lands on it and the seam beneath it cannot fail, so this level is a              wrapper around its child, the system drawn as a component of itself.              Make the child the root; its opaque view is the canvas with the              interior hidden (facets#308).",
+            only.name
+        ),
+        suggestion: Some(
+            "Open the child and save it as the root; delete this wrapper. If the interior              is genuinely unknown, do not decompose: draw the interfaces you can name."
+                .to_string(),
+        ),
+        doc: Some(doc::DECOMPOSES.to_string()),
+        subject: None,
+    });
+}
+
 fn check_ambient_environment_things(
     model: &CanvasModel,
     facts: &LensFacts,
@@ -1228,8 +1278,38 @@ fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> Le
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
+    /// #308: the wrapper shape warns; the corpus Source box (one component, no
+    /// `decomposes`) and a one-component model with an interior bond do not.
+    #[test]
+    fn sole_decomposing_component_is_a_wrapper() {
+        let wrapper = parse_sl(
+            "system \"Venice\" : Concrete/Technical\n\
+             component \"Venice\" interface decomposes \"Venice\" @PPMACqLsmrQvzVPNr7CR96\n\
+             source Users\nsink Users2\n\
+             flow Users -> \"Venice\" : informational \"prompts\"\n\
+             flow \"Venice\" -> Users2 : informational \"completions\"\n",
+        )
+        .unwrap();
+        let codes: Vec<String> = analyze(&wrapper, Lens::Mobus).validation.issues.iter().map(|i| i.code.clone()).collect();
+        assert!(codes.iter().any(|c| c == WRAPPER_CODE), "wrapper must warn: {codes:?}");
+        let codes: Vec<String> = analyze(&wrapper, Lens::Klir).validation.issues.iter().map(|i| i.code.clone()).collect();
+        assert!(codes.iter().any(|c| c == WRAPPER_CODE), "lens-neutral: {codes:?}");
+
+        let source_box = parse_sl(
+            "system \"Steel-Plant\" : Concrete/Technical\n\
+             component \"Steel-Plant\" primitive Combining interface\n\
+             source Energy\nsink Steel\n\
+             flow Energy -> \"Steel-Plant\" : energy \"power\"\n\
+             flow \"Steel-Plant\" -> Steel : matter \"steel\"\n",
+        )
+        .unwrap();
+        let codes: Vec<String> = analyze(&source_box, Lens::Mobus).validation.issues.iter().map(|i| i.code.clone()).collect();
+        assert!(!codes.iter().any(|c| c == WRAPPER_CODE), "a Source box that does not decompose is not a wrapper: {codes:?}");
+    }
+
     use super::*;
     use crate::canvas::{Lens, Relation, Thing};
+    use crate::sl::parse_sl;
 
     fn thing(id: u64, name: &str, role: Role) -> Thing {
         Thing {

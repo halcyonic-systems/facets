@@ -184,7 +184,7 @@ export interface Shelf {
  *  is the only hand-made list on the page and it holds exactly one key per
  *  shelf.
  *
- *  Mobus's lead is the exception worth reading twice: the three-level
+ *  Mobus's lead is the exception worth reading twice: the two-level
  *  steel-plant walk is one of OURS (an example, so it carries a genus and no
  *  tradition), and it is still the best door into the Mobus reading, because
  *  the thing that reading is FOR is depth. So it is hoisted onto the shelf that
