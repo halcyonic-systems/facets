@@ -11,6 +11,7 @@
 //! - [`forcing`]: resolve the mapping, inject the forced series, project, run,
 //!   and read the result back in the model's own domain terms.
 
+pub mod bench;
 pub mod forcing;
 pub mod manifest;
 pub mod tether;

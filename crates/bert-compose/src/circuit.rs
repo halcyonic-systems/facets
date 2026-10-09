@@ -578,7 +578,35 @@ pub struct Circuit {
     /// advances. The recorder-side source for declared metrics — cleared with
     /// `history` on reset; decoded per epoch after a topology change.
     pub wire_history: Vec<Vec<f32>>,
+    /// Per-tick, per-node flux record (facets#463, the tick log): row `t` is
+    /// `[tick, n0.delivered, n0.released, n0.gradient_out, n0.maintenance,
+    /// n0.overflow, n0.dissipated, n1…]` — what each node was handed, what it
+    /// sent on, what drained down a gradient, what upkeep and overflow took,
+    /// and what it shed, this tick. Every value is one `step_dt` already
+    /// computes and used to drop; nothing here is re-derived, and nothing in
+    /// the step reads it (the trace-separation test covers this buffer too).
+    /// `dissipated` is NaN when the model declines the ledger (axis D).
+    /// Cleared with `history`; decoded per epoch after a topology change.
+    pub node_flux_history: Vec<Vec<f32>>,
 }
+
+/// One node's flux over one tick, decoded from `node_flux_history`.
+#[derive(serde::Serialize, Clone, Debug, PartialEq)]
+pub struct NodeFlux {
+    pub name: String,
+    pub delivered: f32,
+    pub released: f32,
+    pub gradient_out: f32,
+    pub maintenance: f32,
+    pub overflow: f32,
+    /// NaN when the model declines the conservation ledger.
+    pub dissipated: f32,
+    /// The stock after the tick (Buffering), else the activity.
+    pub level: f32,
+}
+
+/// The width of one node's slice in a `node_flux_history` row.
+pub const FLUX_COLS: usize = 6;
 
 impl Circuit {
     pub fn reset(&mut self) {
@@ -593,6 +621,7 @@ impl Circuit {
         self.history.clear();
         self.ledger_history.clear();
         self.wire_history.clear();
+        self.node_flux_history.clear();
         self.epochs.clear();
         self.emitted = 0.0;
         self.sunk = 0.0;
@@ -1559,7 +1588,10 @@ impl Circuit {
 
         // Stocks integrate: opening stock + this step's inflow − release −
         // gradient drain − maintenance, clamped to capacity. The only place
-        // physical mass crosses a step boundary.
+        // physical mass crosses a step boundary. Maintenance taken and
+        // overflow shed are kept per node for the tick log (#463).
+        let mut maint_taken = vec![0.0f32; n];
+        let mut overflow = vec![0.0f32; n];
         for i in 0..n {
             let node = &self.nodes[i];
             if !matches!(
@@ -1574,13 +1606,16 @@ impl Circuit {
             // automatically — the stock falls but no outflow carries it.
             // Odum depreciation / Mobus Fig 3.17.
             if node.maintenance > 0.0 {
-                storage -= node.maintenance.min(storage.max(0.0));
+                let taken = node.maintenance.min(storage.max(0.0));
+                storage -= taken;
+                maint_taken[i] = taken;
             }
             // Capacity: a bounded tank overflows. Clamping the stock makes
             // the conservation ledger's per-node rule charge the overflow as
             // dissipated by itself (dissipated = in − out − Δstorage, and
             // Δstorage is now the clamped change). 0.0 = unbounded.
             if node.capacity > 0.0 && storage > node.capacity {
+                overflow[i] = storage - node.capacity;
                 storage = node.capacity;
             }
             next_storage[i] = storage;
@@ -1592,33 +1627,60 @@ impl Circuit {
         // docs for why each channel is intended. Skipped wholesale when the
         // model declines conservation (axis D) — the transition above stands
         // on its own; only the accounting is optional.
+        // What each node sent on as physical mass this tick: a process's
+        // activity when a pushed, non-observation outwire carries it (an
+        // activity nothing reads is a dead end and dissipates this same step);
+        // a source's deliveries over its physical outwires; a sink sends
+        // nothing on. Read by the ledger and recorded in the tick log.
+        let released: Vec<f32> = (0..n)
+            .map(|i| {
+                let node = &self.nodes[i];
+                match node.kind {
+                    NodeKind::Sink => 0.0,
+                    NodeKind::Source => (0..nw)
+                        .filter(|&k| {
+                            self.wires[k].from == i
+                                && self.wire_substance(&self.wires[k]) != SubstanceType::Message
+                        })
+                        .map(|k| amount_on(k, &act))
+                        .sum(),
+                    NodeKind::Process(_) => {
+                        let has_outlet = (0..nw).any(|k| {
+                            self.wires[k].from == i
+                                && self.wires[k].mode == FlowMode::Pushed
+                                && !self.is_observation(&self.wires[k])
+                        });
+                        if node.out_substance.base == SubstanceType::Message || !has_outlet {
+                            0.0
+                        } else {
+                            act[i]
+                        }
+                    }
+                }
+            })
+            .collect();
+        let mut node_diss = vec![f32::NAN; n];
         if ledger {
             for i in 0..n {
                 let node = &self.nodes[i];
                 match node.kind {
                     // Inflow to a source has nowhere to go (the UI refuses these
                     // wires; ledgered defensively).
-                    NodeKind::Source => dissipated_now += delivered[i],
-                    NodeKind::Sink => sunk_now += delivered[i],
+                    NodeKind::Source => {
+                        node_diss[i] = delivered[i];
+                        dissipated_now += delivered[i];
+                    }
+                    NodeKind::Sink => {
+                        node_diss[i] = 0.0;
+                        sunk_now += delivered[i];
+                    }
                     NodeKind::Process(_) => {
-                        // Physical out only counts if a pushed, non-observation
-                        // outwire actually carries it — an activity nothing
-                        // reads is a dead end and dissipates this same step.
-                        let has_outlet = (0..nw).any(|k| {
-                            self.wires[k].from == i
-                                && self.wires[k].mode == FlowMode::Pushed
-                                && !self.is_observation(&self.wires[k])
-                        });
-                        let out_phys =
-                            if node.out_substance.base == SubstanceType::Message || !has_outlet {
-                                0.0
-                            } else {
-                                act[i]
-                            };
-                        dissipated_now += delivered[i]
-                            - out_phys
+                        let d = delivered[i]
+                            - released[i]
                             - gradient_out[i]
                             - (next_storage[i] - node.storage);
+                        node_diss[i] = d;
+                        dissipated_now += d;
                     }
                 }
             }
@@ -1689,10 +1751,65 @@ impl Circuit {
             row.push(node.total);
         }
         self.history.push(row);
+        let mut flux = Vec::with_capacity(1 + n * FLUX_COLS);
+        flux.push(self.tick as f32);
+        for i in 0..n {
+            flux.extend_from_slice(&[
+                delivered[i],
+                released[i],
+                gradient_out[i],
+                maint_taken[i],
+                overflow[i],
+                node_diss[i],
+            ]);
+        }
+        self.node_flux_history.push(flux);
         if ledger {
             self.ledger_history
                 .push([self.emitted, self.sunk, self.stored(), self.dissipated]);
         }
+    }
+
+    /// The tick log (#463): every node's flux for the recorded ticks at or
+    /// after `from_tick`, decoded against the current node order. Rows whose
+    /// width does not match the current topology (recorded under an earlier
+    /// epoch) are skipped rather than mis-labelled; the sandbox's per-epoch
+    /// decoder is the place for those.
+    pub fn flux_since(&self, from_tick: u64) -> Vec<(u64, Vec<NodeFlux>)> {
+        let n = self.nodes.len();
+        let width = 1 + n * FLUX_COLS;
+        self.node_flux_history
+            .iter()
+            .zip(self.history.iter())
+            .filter(|(f, _)| f.len() == width && f[0] as u64 >= from_tick)
+            .map(|(f, h)| {
+                let tick = f[0] as u64;
+                let nodes = (0..n)
+                    .map(|i| {
+                        let b = 1 + i * FLUX_COLS;
+                        let level = if matches!(
+                            self.nodes[i].kind,
+                            NodeKind::Process(ProcessPrimitive::Buffering)
+                        ) {
+                            h.get(2 + i * 3).copied().unwrap_or(f32::NAN)
+                        } else {
+                            h.get(1 + i * 3).copied().unwrap_or(f32::NAN)
+                        };
+                        NodeFlux {
+                            name: self.nodes[i].name.clone(),
+                            delivered: f[b],
+                            released: f[b + 1],
+                            gradient_out: f[b + 2],
+                            maintenance: f[b + 3],
+                            overflow: f[b + 4],
+                            dissipated: f[b + 5],
+                            level,
+                        }
+                    })
+                    .collect();
+                (tick, nodes)
+            })
+            .collect()
     }
 
     /// The recorded run as CSV with raw node names. (The app exports via
@@ -3619,6 +3736,9 @@ mod tests {
             // Same carrier, divergent record: garbage into H only.
             let width = 1 + polluted.nodes.len() * 3;
             polluted.history.push(vec![9.9; width]);
+            polluted
+                .node_flux_history
+                .push(vec![-4.2; 1 + polluted.nodes.len() * FLUX_COLS]);
             polluted.ledger_history.push([1e9, -1e9, 42.0, 7.0]);
             polluted.epochs.push(Epoch {
                 start_tick: 999_999,

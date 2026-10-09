@@ -221,7 +221,7 @@ pub fn apply_params(model: &mut WorldModel, params: &ModelParams) {
 /// simulates, and reads back in domain terms. Returns a legible error string on
 /// any gate/projection failure.
 pub fn force_and_run(
-    mut model: WorldModel,
+    model: WorldModel,
     csv_text: &str,
     manifest: &crate::manifest::RunManifest,
     dt: f64,
@@ -236,7 +236,25 @@ pub fn force_and_run(
     // instead of an import that only fails at the last step. Deleting this call
     // does not open a door: `record_over` below refuses the same inputs.
     bert_compose::ticks_over(dt, t)?;
+    let (model, imported) = prepare_forced(model, csv_text, manifest, today)?;
 
+    let spec = bert_core::operational::validate_operational(&model)
+        .map_err(|errors| format!("model is not executable ({} reason(s))", errors.len()))?;
+    let mut circuit = bert_compose::from_spec(&spec);
+    let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)?;
+    Ok(summarize(&model, &imported, &spec, &circuit, &run, dt))
+}
+
+/// The import ritual on its own (facets#463): resolve the mapping, run the
+/// wizard's finish gates, commit, and inject the projection params into the
+/// model. What `force_and_run` does before it wires and steps, so the bench
+/// session can open a forced model and hold it instead of running it to T.
+pub fn prepare_forced(
+    mut model: WorldModel,
+    csv_text: &str,
+    manifest: &crate::manifest::RunManifest,
+    today: &str,
+) -> Result<(WorldModel, crate::tether::ImportedData), String> {
     let (headers, rows) = crate::tether::parse_csv(csv_text).map_err(|e| format!("{e:?}"))?;
 
     let flows: Vec<(u64, String)> = flow_targets(&model)
@@ -268,12 +286,7 @@ pub fn force_and_run(
     let imported = draft.commit(today.to_string(), &name_of);
     let params = imported.projection_params();
     apply_params(&mut model, &params);
-
-    let spec = bert_core::operational::validate_operational(&model)
-        .map_err(|errors| format!("model is not executable ({} reason(s))", errors.len()))?;
-    let mut circuit = bert_compose::from_spec(&spec);
-    let run = bert_compose::RecordedRun::record_over(&mut circuit, &spec, dt, t)?;
-    Ok(summarize(&model, &imported, &spec, &circuit, &run, dt))
+    Ok((model, imported))
 }
 
 /// Run the model from its DECLARED amounts alone — no CSV, no forcing — and
