@@ -273,7 +273,8 @@
         "mobus_ok": true
       }
     ],
-    "ports": []
+    "ports": [],
+    "unresolved_thing_id": null
   },
   "description": {
     "lens": "Mobus",
