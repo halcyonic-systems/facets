@@ -47,3 +47,27 @@ fn a_finite_source_runs_dry_from_the_terminal() {
     assert_eq!(inflow["series"], serde_json::json!([1.0, 1.0, 0.0, 0.0]));
     assert_eq!(v["conserved"], true);
 }
+
+#[test]
+fn a_knob_names_the_pass_way_the_author_wrote() {
+    // Split form (#226): "flow Rain -> Gutter" lands on a pass-way the
+    // projection fuses into "Rain Barrel". The author addresses the flow by
+    // the name on the page, Gutter, and the edit still lands.
+    let out = bert(&[
+        "bench",
+        "assets/examples/rain-barrel-garden.sl",
+        "--t",
+        "8",
+        "--no-log",
+        "--set",
+        "rainfall|Rain|Gutter=0@5",
+    ]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let v = stdout_json(&out);
+    assert_eq!(v["conserved"], true);
+    assert_eq!(v["edits"][0]["target"], "Rain -> Gutter : rainfall");
+    let rain = v["flows"].as_array().unwrap().iter().find(|f| f["name"] == "rainfall").unwrap();
+    assert_eq!(rain["series"], serde_json::json!([15.0, 15.0, 15.0, 15.0, 15.0, 0.0, 0.0, 0.0]));
+    let barrel = v["trajectories"].as_array().unwrap().iter().find(|s| s["name"] == "Rain Barrel").unwrap();
+    assert_eq!(barrel["series"][7], 39.0);
+}
