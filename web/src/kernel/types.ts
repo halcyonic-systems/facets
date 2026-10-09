@@ -167,6 +167,45 @@ export interface FlowSeries {
   unit: string;
   series: number[];
 }
+// ---- The bench session's tick log (facets#463) -----------------------------
+// Mirrors crates/bert-compose/src/circuit.rs `NodeFlux` and
+// crates/bert-tether/src/bench.rs `WireFlux` / `TickLog` / `KnobEdit`.
+
+/** What one component did on one tick, in the model's own names. */
+export interface NodeFlux {
+  name: string;
+  delivered: number;
+  released: number;
+  gradient_out: number;
+  maintenance: number;
+  overflow: number;
+  /** NaN (serialized null) when the model declines the conservation ledger. */
+  dissipated: number | null;
+  /** The stock after the tick (Buffering), else the activity. */
+  level: number | null;
+}
+
+export interface WireFlux {
+  name: string;
+  from: string;
+  to: string;
+  delivered: number;
+}
+
+export interface TickLog {
+  tick: number;
+  nodes: NodeFlux[];
+  wires: WireFlux[];
+}
+
+/** A knob turned on a live session, and the tick it applied at. */
+export interface KnobEdit {
+  tick: number;
+  target: string;
+  field: string;
+  value: number;
+}
+
 export interface RunResultRich {
   ticks: number;
   dt: number;

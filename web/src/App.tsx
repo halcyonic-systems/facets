@@ -1,9 +1,8 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ready,
-  runForced,
-  runRich,
   runMarkov,
+  Bench,
   openModel,
   writeArchive,
   project,
@@ -17,6 +16,7 @@ import {
   emitSl,
 } from "./kernel";
 import type {
+  TickLog,
   CanvasModel,
   IssueTarget,
   Manifest,
@@ -317,6 +317,22 @@ function Workspace() {
   const [discardAsk, setDiscardAsk] = useState<{ resolve: (ok: boolean) => void } | null>(null);
   const [t, setT] = useState(12);
   const [result, setResult] = useState<RunResultRich | null>(null);
+  // #463 move 2: the run lives on a held engine session. `result` is its
+  // readout; `tickLog` is what every component did each tick, in the model's
+  // names. The handle is wasm-owned memory, freed whenever the run is
+  // cleared, and reopened from the document on the next Run.
+  const benchRef = useRef<Bench | null>(null);
+  const [tickLog, setTickLog] = useState<TickLog[] | null>(null);
+  const closeBench = () => {
+    benchRef.current?.free();
+    benchRef.current = null;
+  };
+  useEffect(() => {
+    if (result === null) {
+      closeBench();
+      setTickLog(null);
+    }
+  }, [result]);
   // ADR run-seam-canvas-document: which model the last run executed — the
   // shipped calibration artifact, or the projection of an edited canvas. The
   // kernel already hash-stamps the difference; this is the UI's plain word.
@@ -800,8 +816,15 @@ function Workspace() {
       // No data attached → the declared amounts alone govern (run_rich, same
       // domain-named readout, comparisons empty by construction). With a CSV
       // the forcing path runs exactly as before.
-      const r = csv.trim() ? runForced(modelJson, csv, m, dtv, tv, today()) : runRich(modelJson, dtv, tv);
+      closeBench();
+      const b = csv.trim()
+        ? Bench.openForced(modelJson, csv, JSON.stringify(m), dtv, today())
+        : Bench.openUnforced(modelJson, dtv);
+      b.stepOver(tv);
+      benchRef.current = b;
+      const r = b.readout();
       setResult(r);
+      setTickLog(b.tickLogSince(1));
       setRanEdited(edited);
       setMarkovRun(null);
       setRunError(null);
@@ -2079,16 +2102,51 @@ function Workspace() {
   // The shared tail of every inputs-panel commit: the edited document becomes
   // the canvas model and the world re-runs from it synchronously.
   function commitInputModel(nextModel: CanvasModel) {
+    const prev = canvasModel;
     setCanvasModel(nextModel);
     setDirty(true);
-    // Move 1 of the dynamics MVP (#463): no data needed. With no CSV bound the
-    // declared amounts alone govern (`runWith` picks run_rich on an empty csv).
-    if (nextModel.lens !== "Klir") {
+    if (nextModel.lens === "Klir") return;
+    // #463 move 2: an amount edit is a knob on the held session, addressed by
+    // the names the author sees, then the run is re-stepped from zero so the
+    // readout answers at once (the live, mid-run form arrives with the
+    // transport). Anything the session cannot take — a column-bound flow, a
+    // structural edit, no session yet — rebuilds the run from the document.
+    const b = benchRef.current;
+    if (b && prev) {
       try {
-        runWith(JSON.stringify(project(nextModel)), runCsv ?? "", manifest, dt, t, true, true);
+        const nameOf = (id: number) => thingById(nextModel, id)?.name ?? "";
+        const changed = nextModel.relations.filter((r) => {
+          const was = prev.relations.find((p) => p.id === r.id);
+          return was !== undefined && was.amount !== r.amount;
+        });
+        const structural = nextModel.relations.length !== prev.relations.length;
+        if (!structural && changed.length > 0) {
+          for (const r of changed) {
+            b.setFlowAmount(r.name, nameOf(r.a), nameOf(r.b), Number(r.amount ?? 0));
+          }
+          b.reset();
+          b.stepOver(t);
+          const r = b.readout();
+          setResult(r);
+          setTickLog(b.tickLogSince(1));
+          setRanEdited(true);
+          setMarkovRun(null);
+          setRunError(null);
+          setTick(0);
+          if (r.ticks > 1) {
+            setPlaying(true);
+            setPlayLoop(false);
+          }
+          return;
+        }
       } catch (e) {
-        setToast(e instanceof Error ? e.message : String(e));
+        setNotice(`knob not taken live (${e instanceof Error ? e.message : String(e)}); re-running from the document`);
       }
+    }
+    try {
+      runWith(JSON.stringify(project(nextModel)), runCsv ?? "", manifest, dt, t, true, true);
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -2191,9 +2249,8 @@ function Workspace() {
         if (m) runWith(m.json, runCsv ?? "", manifest, dt, t, m.edited, true);
       }
     };
-    // #297: advance by one tick — a deterministic re-run one step longer,
-    // scrubber landed on the new final tick. The recorded-run architecture
-    // makes T+1 exact; no incremental engine state.
+    // #297: advance by one tick. On the held session (#463 move 2) Step is
+    // one engine tick, not a re-run; the scrubber lands on the new final tick.
     const onStep = () => {
       if (runKind === "dtmc") {
         if (!dtmcRunnable) return;
@@ -2204,6 +2261,17 @@ function Workspace() {
         runKlir(canvasModel, next);
         setTick(next);
       } else if (runKind === "conservation") {
+        const b = benchRef.current;
+        if (b && result) {
+          b.step(1);
+          const r = b.readout();
+          setT(r.ticks * dt);
+          setResult(r);
+          setTickLog(b.tickLogSince(1));
+          setPlaying(false);
+          setTick(r.ticks - 1);
+          return;
+        }
         const m = modelForRun();
         if (!m) return;
         const nextT = result ? (result.ticks + 1) * dt : dt;
@@ -3733,6 +3801,7 @@ function Workspace() {
                   {readoutsOpen && workMode === "structure" && (
                     <Readouts
                       result={result}
+                      tickLog={tickLog}
                       markovRun={markovRun}
                       ranEdited={ranEdited}
                       runError={runError}

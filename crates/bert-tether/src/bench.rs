@@ -148,6 +148,18 @@ impl BenchSession {
         self.session.step(n, self.dt as f32);
     }
 
+    /// Step from the current tick to the horizon `t` by the same count the
+    /// batch run takes (`ticks_over`), so a bench opened and stepped over T
+    /// reads as the batch run over T. A horizon already reached steps nothing.
+    pub fn step_over(&mut self, total_time: f64) -> Result<(), String> {
+        let ticks = bert_compose::ticks_over(self.dt, total_time)?;
+        let done = self.session.circuit.tick as usize;
+        if ticks > done {
+            self.session.step((ticks - done) as u32, self.dt as f32);
+        }
+        Ok(())
+    }
+
     /// Back to tick 0 with the knobs as they stand (not the model's declared
     /// amounts: an edit is a decision, and reset re-runs it from the top).
     pub fn reset(&mut self) {

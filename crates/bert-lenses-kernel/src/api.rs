@@ -547,7 +547,7 @@ struct ComponentTarget {
 }
 
 #[derive(Serialize)]
-struct RunResultRich {
+pub(crate) struct RunResultRich {
     ticks: usize,
     dt: f64,
     residual: f32,
@@ -925,6 +925,18 @@ mod tests {
         let mut circuit = bert_compose::from_spec(&spec);
         let recorded = bert_compose::RecordedRun::record(&mut circuit, &spec, 1.0, 4);
         check_fixture("run_result", &recorded.report());
+    }
+
+    /// Law: `TickLog` (the bench's per-tick record, #463) freezes its
+    /// wasm-boundary shape against a real session: the reservoir opened from
+    /// its declared amounts and stepped three ticks.
+    #[test]
+    fn tick_log_fixture() {
+        let json = include_str!("../../../assets/archive/demos/reservoir-model.json");
+        let model: WorldModel = serde_json::from_str(json).expect("reservoir parses");
+        let mut bench = bert_tether::bench::BenchSession::open_unforced(model, 1.0).expect("opens");
+        bench.step(3);
+        check_fixture("tick_log", &bench.tick_log_since(1));
     }
 
     #[test]
