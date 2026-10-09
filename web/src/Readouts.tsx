@@ -28,6 +28,9 @@ export function Readouts({
   result,
   tickLog = null,
   onExportRun,
+  baseline = null,
+  onKeepBaseline,
+  onDropBaseline,
   markovRun,
   ranEdited,
   runError,
@@ -49,6 +52,11 @@ export function Readouts({
   tickLog?: TickLog[] | null;
   /** #463: download the run record (model as run, knobs, readout, log). */
   onExportRun?: () => void;
+  /** #463 move 4: the kept baseline — a frozen readout drawn dashed beside
+   *  every live series, with "vs baseline" on the glance and the metrics. */
+  baseline?: RunResultRich | null;
+  onKeepBaseline?: () => void;
+  onDropBaseline?: () => void;
   /** #282: the DTMC run (#67) — the result when the active lens declares
    *  `run: "dtmc"`. App keeps result/markovRun mutually exclusive. */
   markovRun: MarkovRunResult | null;
@@ -128,7 +136,7 @@ export function Readouts({
     </div>
   ) : result ? (
     <>
-      <RunGlance result={result} model={model} tick={tick} />
+      <RunGlance result={result} model={model} tick={tick} baseline={baseline} />
       <div className="px-4">
         <Tabs
           tabs={[
@@ -144,7 +152,7 @@ export function Readouts({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {tab === "story" && (
-          <RunStory result={result} lens={lens} tick={tick} model={model} />
+          <RunStory result={result} lens={lens} tick={tick} model={model} baseline={baseline} />
         )}
         {tab === "fit" && hasFit && (
           <RunFit result={result} tick={tick} timeUnit={model?.time_unit} />
@@ -199,6 +207,20 @@ export function Readouts({
           </span>
         )}
         <div className="min-w-0 flex-1">{transport}</div>
+        {/* #463 move 4: keep this run as the baseline; every later knob
+            then reads against it. One button, two states; dropping it is
+            the same button. */}
+        {result && onKeepBaseline && (
+          <button
+            onClick={baseline ? onDropBaseline : onKeepBaseline}
+            className="record-folio shrink-0 text-[10px] tracking-[0.12em]"
+            title={baseline ? "Drop the kept baseline" : "Keep this run as the baseline: later knobs read against it"}
+            data-testid="keep-baseline"
+            aria-pressed={Boolean(baseline)}
+          >
+            {baseline ? "baseline kept · drop" : "keep baseline →"}
+          </button>
+        )}
         <button
           onClick={onClose}
           title="Back to the model (Esc)"

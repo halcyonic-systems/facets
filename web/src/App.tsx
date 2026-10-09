@@ -325,6 +325,10 @@ function Workspace() {
   const benchRef = useRef<Bench | null>(null);
   const [tickLog, setTickLog] = useState<TickLog[] | null>(null);
   const [runRecord, setRunRecord] = useState<RunRecord | null>(null);
+  // #463 move 4: a kept baseline is a frozen readout. A knob re-steps the
+  // run from zero, so the comparison that matters is run against run, not a
+  // live fork. Kept until dropped or until another model opens.
+  const [baseline, setBaseline] = useState<RunResultRich | null>(null);
   // Every bench readout is recorded: the dev server writes it to
   // runs/bench/latest.json so a terminal can read what the tool just did,
   // and Export run downloads the same record anywhere.
@@ -346,6 +350,7 @@ function Workspace() {
       event,
       edits: b.edits(),
       readout: r,
+      baseline,
       log,
     });
     setRunRecord(rec);
@@ -665,6 +670,7 @@ function Workspace() {
   // opens — it is a view of one model, never carried across.
   useEffect(() => {
     setOpaque(false);
+    setBaseline(null);
   }, [walk.length, currentName, demo?.key]);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   // The browser-local model library (IndexedDB, fsAccess.ts's flag-free sibling):
@@ -3833,6 +3839,9 @@ function Workspace() {
                     <Readouts
                       result={result}
                       tickLog={tickLog}
+                      baseline={baseline}
+                      onKeepBaseline={result ? () => setBaseline(result) : undefined}
+                      onDropBaseline={() => setBaseline(null)}
                       onExportRun={
                         runRecord
                           ? () => downloadText(runRecordFilename(runRecord), JSON.stringify(runRecord, null, 1), "application/json")
