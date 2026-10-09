@@ -121,6 +121,22 @@ impl RecordedRun {
     /// This run as its serializable report — the shape every reader (the wasm
     /// boundary, the CLI) hands on. Clones the trace; a report is a snapshot,
     /// and the recorder stays the owner.
+    /// The record of a circuit as it stands — a live session's history read
+    /// as a run (facets#463, the bench on the session engine). No reset, no
+    /// stepping: the keyed, recorded shape over whatever the session has
+    /// stepped so far, so the same summarizer reads a live bench and a batch
+    /// run alike.
+    pub fn from_live(circuit: &Circuit, spec: &OperationalSpec, dt: f64) -> Self {
+        Self {
+            key: spec.content_hash(),
+            dt,
+            history: circuit.history.clone(),
+            ledger_history: circuit.ledger_history.clone(),
+            wire_history: circuit.wire_history.clone(),
+            final_balance: circuit.balance(),
+        }
+    }
+
     pub fn report(&self) -> RunReport {
         RunReport {
             dt: self.dt,
