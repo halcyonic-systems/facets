@@ -43,6 +43,7 @@ import {
   wantsRebaseIn,
   wantsRebaseOut,
   wantsOpaqueExit,
+  OPAQUE_EXIT,
   type View,
 } from "./frameRebase";
 import { EmbeddedFrame } from "./EmbeddedFrame";
@@ -368,6 +369,9 @@ export default function Canvas({
   // The opaque view is read-only by construction: a drag on a hidden node's
   // hit area would otherwise move it (#308 part B).
   const inert = inertProp || opaque;
+  useEffect(() => {
+    opaqueArmRef.current = false;
+  }, [opaque]);
   const interiorThings = model.things.filter(
     (t) => !(t.role === "Component" && authoredInterfaceIds.has(t.id)),
   );
@@ -748,6 +752,8 @@ export default function Canvas({
   const seamDocRef = useRef<readonly Thing[] | null>(null);
   const inArmRef = useRef(new Map<number, boolean>());
   const outArmRef = useRef(false);
+  // #308 part B: see the opaque branch of the rebase effect.
+  const opaqueArmRef = useRef(false);
   const outFellBackRef = useRef(false);
   useEffect(() => {
     const minView = Math.min(viewW, viewH);
@@ -792,8 +798,19 @@ export default function Canvas({
     }
     if (opaque && register) {
       // #308 part B: the opaque root re-opens once the frame has grown back
-      // past the exit line; the out line below stays quiet meanwhile.
-      if (onOpaqueExit && wantsOpaqueExit(frameExtentPx(dModel, scale, register), minView)) onOpaqueExit();
+      // past the exit line — but only after it has first been read SMALL.
+      // Entered by the pill at fit scale, the frame already sits past the
+      // line, and without the arm bit the view would leave on the next frame
+      // (the 2026-10-09 feel-test: "clicking opaque does nothing"). Entered
+      // by zooming out, the frame is small on arrival, so it arms at once
+      // and the first zoom-in past the line opens the interior. The pill and
+      // the key leave the view whatever the scale.
+      const extent = frameExtentPx(dModel, scale, register);
+      if (!opaqueArmRef.current && extent < minView * OPAQUE_EXIT) opaqueArmRef.current = true;
+      if (opaqueArmRef.current && onOpaqueExit && wantsOpaqueExit(extent, minView)) {
+        opaqueArmRef.current = false;
+        onOpaqueExit();
+      }
       return;
     }
     if (onRebaseOut && register) {
