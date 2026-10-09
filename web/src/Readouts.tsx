@@ -104,10 +104,14 @@ export function Readouts({
   // magnitude, with the height the dock never had. Under Klir there are no
   // forced inputs to edit; the rail carries time alone.
   const inputs =
-    runKind !== "dtmc" && model && manifest && onInputEdit ? (
+    // #463 move 1 left this gate behind: the rail needed a demo manifest, so
+    // a model opened from the library or the SL pane ran but showed no
+    // knobs (feel-test 2026-10-09). The rail reads the manifest only to
+    // mark column-forced flows; null means none are forced.
+    runKind !== "dtmc" && model && onInputEdit ? (
       <RunInputs
         model={model}
-        manifest={manifest}
+        manifest={manifest ?? null}
         onEdit={onInputEdit}
         onEditThing={onThingEdit}
         engineLabels={engineLabels}
