@@ -365,6 +365,15 @@ function Workspace() {
   useEffect(() => {
     if (workMode !== "structure") setView3d(false);
   }, [workMode]);
+  // #308 part B: the opaque view — the open model seen from outside, interior
+  // hidden. A way of looking, like 3D, and exclusive with it; folds when Model
+  // is left, when the walk moves, and when another model opens. Entered by the
+  // pill, Ctrl+Alt+O, or zooming out past the root's membrane; left by zooming
+  // back in, or the same pill and key.
+  const [opaque, setOpaque] = useState(false);
+  useEffect(() => {
+    if (workMode !== "structure" || view3d) setOpaque(false);
+  }, [workMode, view3d]);
   // #304 M2 slice 1: a CSV attached to the OPEN model from the Data tab —
   // the document acquires data without a demo bundle. Cleared wherever the
   // open document changes (same sites that clear `demo`).
@@ -453,6 +462,17 @@ function Workspace() {
   const [sheet, setSheet] = useState(false);
   // #411: the grounding overlay, a reading the status bar switches on.
   const [groundingOverlay, setGroundingOverlay] = useState(false);
+  useEffect(() => {
+    if (!opaque) return;
+    // Nothing hidden may stay selected: the inspector would point at a thing
+    // the stage no longer draws.
+    setSelectedThingId(null);
+    setSelectedRelationId(null);
+    setBoundaryAnchor(null);
+    setMilieuAnchor(null);
+    setInterfaceSel(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opaque]);
   const [barPeek, setBarPeek] = useState(false);
   // #409 M2: the SL text as a drawer over Build's canvas. Reading and hand
   // edits only; the drafting box belongs to Write.
@@ -594,6 +614,11 @@ function Workspace() {
     setChildrenResolved((n) => n + 1);
   }, [dirHandle]);
   const [currentName, setCurrentName] = useState<string | null>(null);
+  // #308 part B: the opaque view folds when the walk moves or another model
+  // opens — it is a view of one model, never carried across.
+  useEffect(() => {
+    setOpaque(false);
+  }, [walk.length, currentName, demo?.key]);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   // The browser-local model library (IndexedDB, fsAccess.ts's flag-free sibling):
   // whether the pending SaveDialog writes to the folder or the library, and the
@@ -2567,7 +2592,15 @@ function Workspace() {
   }
 
   async function rebaseUp(view: View) {
-    if (walk.length === 0) return;
+    if (walk.length === 0) {
+      // #308 part B: zooming out past the root's membrane has no parent to
+      // rebase to; it shows the root from outside instead.
+      if (canvasModel?.lens === "Mobus" && !opaque) {
+        setOpaque(true);
+        setNotice("opaque view — zoom in, or Ctrl+Alt+O, to open the interior");
+      }
+      return;
+    }
     const seg = walk[walk.length - 1];
     await exitTo(walk.length - 1, seg.embed ? rebaseOut(view, seg.embed) : undefined);
     // A breadcrumb click may be aiming further up than one seam; the ride is
@@ -2659,6 +2692,9 @@ function Workspace() {
       if (e.ctrlKey && e.altKey && !e.metaKey && e.code === "KeyF") {
         e.preventDefault();
         setFocus((f) => !f);
+      } else if (e.ctrlKey && e.altKey && !e.metaKey && e.code === "KeyO") {
+        e.preventDefault();
+        if (workMode === "structure" && canvasModel?.lens === "Mobus" && !view3d) setOpaque((o) => !o);
       } else if (e.key === "Escape" && slDrawerOpen) {
         setSlDrawerOpen(false);
       } else if (e.key === "Escape" && focus) {
@@ -2667,7 +2703,7 @@ function Workspace() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [focus, slDrawerOpen]);
+  }, [focus, slDrawerOpen, workMode, canvasModel?.lens, view3d]);
   useEffect(() => {
     if (mode !== "build") setSlDrawerOpen(false);
   }, [mode]);
@@ -2729,6 +2765,28 @@ function Workspace() {
           </button>
         ))}
       </div>
+      {workMode === "structure" && canvasModel?.lens === "Mobus" && !view3d && (
+        <div
+          className="flex items-center gap-0.5 p-0.5"
+          style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
+        >
+          <button
+            onClick={() => setOpaque((o) => !o)}
+            aria-pressed={opaque}
+            className="px-2 py-0.5 text-xs font-body transition-colors"
+            style={{
+              borderRadius: "var(--radius-pill)",
+              background: opaque ? "var(--lens-accent)" : "transparent",
+              color: opaque ? "var(--text-on-accent)" : "var(--text-secondary)",
+              transition: "var(--transition-base)",
+            }}
+            title="Opaque view — the model seen from outside: membrane, interfaces, crossings; interior hidden. Ctrl+Alt+O, or zoom out past the membrane."
+            data-testid="view-opaque-toggle"
+          >
+            Opaque
+          </button>
+        </div>
+      )}
       {view3dEnabled() && workMode === "structure" && (
         <div
           className="flex items-center gap-0.5 p-0.5"
@@ -3292,6 +3350,8 @@ function Workspace() {
                     ) : (
                     <Canvas
                       groundingOverlay={groundingOverlay}
+                      opaque={opaque && !view3d}
+                      onOpaqueExit={() => setOpaque(false)}
                       model={canvasModel}
                       lens={canvasModel.lens}
                       facts={facts}

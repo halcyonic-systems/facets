@@ -101,7 +101,7 @@ function edgeStyle(relation: Relation, fact?: EdgeFact): EdgeStyle {
   }
 }
 
-function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded, onSelect }: LensEdgeProps) {
+function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded, hideInterior = false, onSelect }: LensEdgeProps) {
   const hold = useStageHold();
   const geo = edgeGeometry(model, relation, true);
   if (!geo) return null;
@@ -176,7 +176,7 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
             ? straightPath(envRim, inboundEnd) // env → interface (flow enters)
             : straightPath(portEnd, envRim); // interface → env (flow exits)
         visible = [{ d: crossing, markered: true }];
-        interior = straightPath(compRim, portPt);
+        if (!hideInterior) interior = straightPath(compRim, portPt);
       }
     }
   }
