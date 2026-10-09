@@ -122,6 +122,33 @@ enum Command {
         #[arg(long, default_value_t = 1.0)]
         dt: f64,
     },
+    /// Run the model on a held bench session with knobs turned at named
+    /// ticks, and print the readout, the knob log and the tick log (#463).
+    ///
+    /// This is the terminal's seat at the bench: the same engine, the same
+    /// knobs by the same names the app shows, with no browser in the loop.
+    /// `--set` takes `label|from|to=value[@tick]` for a flow amount or
+    /// `thing.field=value[@tick]` for a component's engine parameter
+    /// (release_rate, capacity, setpoint, time_constant, maintenance,
+    /// back_pressure, initial_storage, param); a knob with no `@tick`
+    /// applies before the first step. Knobs apply in tick order.
+    Bench {
+        /// The model file, or `-` for stdin.
+        file: PathBuf,
+        /// The horizon T, in model time.
+        #[arg(long, default_value_t = 30.0)]
+        t: f64,
+        /// The step size Δt.
+        #[arg(long, default_value_t = 1.0)]
+        dt: f64,
+        /// A knob: `label|from|to=value[@tick]` or `thing.field=value[@tick]`.
+        #[arg(long = "set")]
+        sets: Vec<String>,
+        /// Leave the per-tick log out of the answer (the readout and the
+        /// knob log stay).
+        #[arg(long)]
+        no_log: bool,
+    },
     /// Where the nodes sit, so a layout regression is one shell line.
     ///
     /// Positions only. Whether they are *right* is a question for the caller
@@ -260,6 +287,7 @@ fn run(command: Command) -> u8 {
         Command::Verdict { file, lens } => verdict(file, lens),
         Command::Describe { file, lens } => describe_cmd(file, lens),
         Command::Run { file, t, dt } => run_cmd(file, t, dt),
+        Command::Bench { file, t, dt, sets, no_log } => bench_cmd(file, t, dt, sets, no_log),
         Command::Layout { file } => layout(file),
     }
 }
@@ -369,6 +397,146 @@ fn run_cmd(file: PathBuf, t: f64, dt: f64) -> u8 {
             }
         }
     }
+}
+
+/// One parsed `--set`.
+struct Knob {
+    tick: u64,
+    target: KnobTarget,
+    value: f32,
+}
+
+enum KnobTarget {
+    Flow { label: String, from: String, to: String },
+    Component { thing: String, field: String },
+}
+
+fn parse_knob(s: &str) -> Result<Knob, String> {
+    let (lhs, tick) = match s.rsplit_once('@') {
+        Some((l, t)) => (l, t.trim().parse::<u64>().map_err(|_| format!("`{s}`: the tick after `@` is not a count"))?),
+        None => (s, 0),
+    };
+    let (target, value) = lhs
+        .rsplit_once('=')
+        .ok_or_else(|| format!("`{s}`: a knob is `target=value[@tick]`"))?;
+    let value: f32 = value.trim().parse().map_err(|_| format!("`{s}`: `{}` is not a number", value.trim()))?;
+    let target = if target.contains('|') {
+        let parts: Vec<&str> = target.split('|').map(str::trim).collect();
+        let [label, from, to] = parts.as_slice() else {
+            return Err(format!("`{s}`: a flow knob is `label|from|to=value`"));
+        };
+        KnobTarget::Flow { label: label.to_string(), from: from.to_string(), to: to.to_string() }
+    } else {
+        let (thing, field) = target
+            .rsplit_once('.')
+            .ok_or_else(|| format!("`{s}`: a component knob is `thing.field=value`"))?;
+        KnobTarget::Component { thing: thing.trim().to_string(), field: field.trim().to_string() }
+    };
+    Ok(Knob { tick, target, value })
+}
+
+#[derive(Serialize)]
+struct BenchAnswer<'a> {
+    ticks: usize,
+    dt: f64,
+    residual: f32,
+    conserved: bool,
+    levels: Vec<BenchLevel>,
+    trajectories: Vec<BenchSeries>,
+    flows: Vec<BenchFlow>,
+    edits: &'a [bert_tether::bench::KnobEdit],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    log: Option<Vec<bert_tether::bench::TickLog>>,
+}
+
+#[derive(Serialize)]
+struct BenchLevel {
+    name: String,
+    unit: String,
+    value: f32,
+}
+
+#[derive(Serialize)]
+struct BenchSeries {
+    name: String,
+    unit: String,
+    series: Vec<f32>,
+}
+
+#[derive(Serialize)]
+struct BenchFlow {
+    name: String,
+    from: String,
+    to: String,
+    series: Vec<f32>,
+}
+
+fn bench_cmd(file: PathBuf, t: f64, dt: f64, sets: Vec<String>, no_log: bool) -> u8 {
+    let model = match load_or_report(&file) {
+        Ok(m) => m,
+        Err(code) => return code,
+    };
+    let mut knobs = Vec::new();
+    for s in &sets {
+        match parse_knob(s) {
+            Ok(k) => knobs.push(k),
+            Err(reason) => {
+                eprintln!("bert: {reason}");
+                return exit::_USAGE;
+            }
+        }
+    }
+    knobs.sort_by_key(|k| k.tick);
+    let world = project(&model);
+    let mut bench = match bert_tether::bench::BenchSession::open_unforced(world, dt) {
+        Ok(b) => b,
+        Err(reason) => {
+            eprintln!("bert: {}: {reason}", file.display());
+            let code = emit(&RunRefused { refused: &reason });
+            return if code == exit::OK { exit::REFUSED } else { code };
+        }
+    };
+    let total = match bert_compose::ticks_over(dt, t) {
+        Ok(n) => n as u64,
+        Err(reason) => {
+            eprintln!("bert: {reason}");
+            let code = emit(&RunRefused { refused: &reason });
+            return if code == exit::OK { exit::REFUSED } else { code };
+        }
+    };
+    for k in &knobs {
+        let at = k.tick.min(total);
+        if at > bench.tick() {
+            bench.step((at - bench.tick()) as u32);
+        }
+        let turned = match &k.target {
+            KnobTarget::Flow { label, from, to } => bench.set_flow_amount(label, from, to, k.value),
+            KnobTarget::Component { thing, field } => bench.set_component_param(thing, field, k.value),
+        };
+        if let Err(reason) = turned {
+            eprintln!("bert: knob refused: {reason}");
+            let code = emit(&RunRefused { refused: &reason });
+            return if code == exit::OK { exit::REFUSED } else { code };
+        }
+    }
+    if let Err(reason) = bench.step_over(t) {
+        eprintln!("bert: {reason}");
+        let code = emit(&RunRefused { refused: &reason });
+        return if code == exit::OK { exit::REFUSED } else { code };
+    }
+    let r = bench.readout();
+    let answer = BenchAnswer {
+        ticks: r.ticks,
+        dt: r.dt,
+        residual: r.residual,
+        conserved: r.conserved,
+        levels: r.levels.iter().map(|l| BenchLevel { name: l.name.clone(), unit: l.unit.clone(), value: l.value }).collect(),
+        trajectories: r.trajectories.iter().map(|s| BenchSeries { name: s.name.clone(), unit: s.unit.clone(), series: s.series.clone() }).collect(),
+        flows: r.flows.iter().map(|f| BenchFlow { name: f.name.clone(), from: f.from.clone(), to: f.to.clone(), series: f.series.clone() }).collect(),
+        edits: bench.edits(),
+        log: (!no_log).then(|| bench.tick_log_since(1)),
+    };
+    emit(&answer)
 }
 
 fn layout(file: PathBuf) -> u8 {

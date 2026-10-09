@@ -40,6 +40,7 @@ import type {
   RunResult,
   MarkovRunResult,
   RunResultRich,
+  TickLog,
   SlError,
   SystemType,
   Targets,
@@ -590,6 +591,35 @@ function parseMarkovRunResult(v: unknown): MarkovRunResult {
   };
 }
 
+function parseTickLog(v: unknown, where: string): TickLog {
+  const o = shape(v, where, ["tick", "nodes", "wires"]);
+  return {
+    tick: num(o.tick, `${where}.tick`),
+    nodes: arr(o.nodes, `${where}.nodes`).map((n, i) => {
+      const nn = shape(n, `${where}.nodes[${i}]`, ["name", "delivered", "released", "gradient_out", "maintenance", "overflow", "dissipated", "level"]);
+      return {
+        name: str(nn.name, "node.name"),
+        delivered: num(nn.delivered, "node.delivered"),
+        released: num(nn.released, "node.released"),
+        gradient_out: num(nn.gradient_out, "node.gradient_out"),
+        maintenance: num(nn.maintenance, "node.maintenance"),
+        overflow: num(nn.overflow, "node.overflow"),
+        dissipated: nullableNum(nn.dissipated, "node.dissipated"),
+        level: nullableNum(nn.level, "node.level"),
+      };
+    }),
+    wires: arr(o.wires, `${where}.wires`).map((w, i) => {
+      const ww = shape(w, `${where}.wires[${i}]`, ["name", "from", "to", "delivered"]);
+      return {
+        name: str(ww.name, "wire.name"),
+        from: str(ww.from, "wire.from"),
+        to: str(ww.to, "wire.to"),
+        delivered: num(ww.delivered, "wire.delivered"),
+      };
+    }),
+  };
+}
+
 function parseRunResultRich(v: unknown): RunResultRich {
   const o = shape(v, "RunResultRich", ["ticks", "dt", "residual", "conserved", "levels", "comparisons", "trajectories", "flows"]);
   const nums = (x: unknown, w: string) => arr(x, w).map((n, i) => num(n, `${w}[${i}]`));
@@ -702,6 +732,11 @@ describe("serde↔TS boundary fixtures", () => {
 
   it("all three LensDescription variants validate", () => {
     expect(parseLensDescription(fixture("lens_description_klir")).lens).toBe("Klir");
+    // #463: the bench's tick log — three ticks of the reservoir, named.
+    const log = arr(fixture("tick_log"), "tick_log").map((t, i) => parseTickLog(t, `tick_log[${i}]`));
+    expect(log.map((t) => t.tick)).toEqual([1, 2, 3]);
+    expect(log[0].nodes.map((n) => n.name)).toContain("Reservoir");
+    expect(log[0].wires.length).toBeGreaterThan(0);
     expect(parseLensDescription(fixture("lens_description_bunge")).lens).toBe("Bunge");
     expect(parseLensDescription(fixture("lens_description_mobus")).lens).toBe("Mobus");
   });

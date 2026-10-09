@@ -7,6 +7,7 @@
 // from the same App owner — what changed is the container and the height.
 import { useEffect, useState } from "react";
 import type {
+  TickLog,
   CanvasModel,
   Manifest,
   MarkovRunResult,
@@ -17,13 +18,16 @@ import type { RunKind } from "./canvas/lenses/registry";
 import { RunInputs } from "./RunInputs";
 import { DtmcPanel, RunFit, RunGlance, RunStory, RunTable, weightProvenance } from "./RunPanel";
 import { Card, Tabs } from "./ui";
+import { TickLogTable } from "./TickLogTable";
 
 /** The readout tabs. Fit only exists when a CSV is bound — absence is
  *  ontology, not a disabled tab. */
-type ReadoutTab = "story" | "fit" | "table";
+type ReadoutTab = "story" | "fit" | "table" | "log";
 
 export function Readouts({
   result,
+  tickLog = null,
+  onExportRun,
   markovRun,
   ranEdited,
   runError,
@@ -40,6 +44,11 @@ export function Readouts({
   onClose,
 }: {
   result: RunResultRich | null;
+  /** #463: what every component did each tick, from the held session; null
+   *  when the run did not come from one (a DTMC, or no run yet). */
+  tickLog?: TickLog[] | null;
+  /** #463: download the run record (model as run, knobs, readout, log). */
+  onExportRun?: () => void;
   /** #282: the DTMC run (#67) — the result when the active lens declares
    *  `run: "dtmc"`. App keeps result/markovRun mutually exclusive. */
   markovRun: MarkovRunResult | null;
@@ -127,6 +136,7 @@ export function Readouts({
             // Fit exists only when a CSV is bound — absence is ontology.
             ...(hasFit ? [{ key: "fit", label: "Fit to data" }] : []),
             { key: "table", label: "Table" },
+            ...(tickLog ? [{ key: "log", label: "Log" }] : []),
           ]}
           active={tab}
           onSelect={(k) => setTabChoice(k as ReadoutTab)}
@@ -138,6 +148,18 @@ export function Readouts({
         )}
         {tab === "fit" && hasFit && (
           <RunFit result={result} tick={tick} timeUnit={model?.time_unit} />
+        )}
+        {tab === "log" && tickLog && (
+          <div className="grid gap-3">
+            {onExportRun && (
+              <div>
+                <button onClick={onExportRun} className="record-folio text-[10px] tracking-[0.12em]" data-testid="export-run">
+                  export run (.json) →
+                </button>
+              </div>
+            )}
+            <TickLogTable log={tickLog} tick={tick} timeUnit={model?.time_unit} />
+          </div>
         )}
         {tab === "table" && (
           <RunTable
@@ -188,7 +210,7 @@ export function Readouts({
       </div>
       <div className="flex min-h-0 flex-1">
         <aside
-          className="w-80 shrink-0 overflow-y-auto border-r p-3"
+          className="w-96 shrink-0 overflow-y-auto border-r p-3"
           style={{ borderColor: "var(--hairline)" }}
         >
           <div className="grid gap-3">

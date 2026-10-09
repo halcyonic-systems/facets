@@ -148,6 +148,18 @@ impl BenchSession {
         self.session.step(n, self.dt as f32);
     }
 
+    /// Step from the current tick to the horizon `t` by the same count the
+    /// batch run takes (`ticks_over`), so a bench opened and stepped over T
+    /// reads as the batch run over T. A horizon already reached steps nothing.
+    pub fn step_over(&mut self, total_time: f64) -> Result<(), String> {
+        let ticks = bert_compose::ticks_over(self.dt, total_time)?;
+        let done = self.session.circuit.tick as usize;
+        if ticks > done {
+            self.session.step((ticks - done) as u32, self.dt as f32);
+        }
+        Ok(())
+    }
+
     /// Back to tick 0 with the knobs as they stand (not the model's declared
     /// amounts: an edit is a decision, and reset re-runs it from the top).
     pub fn reset(&mut self) {
@@ -217,13 +229,21 @@ impl BenchSession {
                 ))
             }
         }
-        self.edits.push(KnobEdit {
+        self.note_edit(KnobEdit {
             tick: self.session.circuit.tick,
             target: format!("{from} -> {to} : {label}"),
             field: "amount".into(),
             value: v,
         });
         Ok(())
+    }
+
+    /// A slider commits on pointer-up and again on blur; the same knob at the
+    /// same tick and value is one edit, not two.
+    fn note_edit(&mut self, edit: KnobEdit) {
+        if self.edits.last() != Some(&edit) {
+            self.edits.push(edit);
+        }
     }
 
     /// Set a component's engine parameter by name, live: `release_rate`,
@@ -238,7 +258,7 @@ impl BenchSession {
             .position(|n| n.name == thing && matches!(n.kind, NodeKind::Process(_)))
             .ok_or_else(|| format!("no component named \"{thing}\""))?;
         self.session.set_node_param(i, field, v)?;
-        self.edits.push(KnobEdit {
+        self.note_edit(KnobEdit {
             tick: self.session.circuit.tick,
             target: thing.to_string(),
             field: field.to_string(),

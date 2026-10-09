@@ -37,6 +37,7 @@ import init, {
   bunge_coupling_cells as wasmBungeCouplingCells,
   to_canvas as wasmToCanvas,
   SandboxSession as WasmSandboxSession,
+  BenchHandle as WasmBenchHandle,
   sandbox_palette as wasmSandboxPalette,
   ladder_stamps as wasmLadderStamps,
 } from "bert-lenses-kernel";
@@ -52,6 +53,8 @@ import type {
   Manifest,
   MappingStatus,
   RunResultRich,
+  TickLog,
+  KnobEdit,
   CanvasModel,
   Relation,
   LensFacts,
@@ -567,6 +570,78 @@ export class Sandbox {
 /** Reconstruct a canvas from a kernel `WorldModel` JSON — the explicit
  *  projection-side read (storage reads go through `openModel` instead). Used
  *  by the sandbox's graduation path: session → WorldModel → canvas → archive. */
+// ---- The bench seam (facets#463): the Model bench on a held engine ----------
+
+/** Component engine fields a bench knob may set (`session.rs::set_node_param`). */
+export type BenchComponentField = SandboxNodeField;
+
+/**
+ * The Model bench's handle on a held engine session — the face's typed wrapper
+ * on the wasm `BenchHandle`. Open a model (from its declared amounts, or with a
+ * CSV bound), step it, turn a knob by the names the author sees, and read the
+ * run back as the same `RunResultRich` the batch run returned. Wasm-owned
+ * memory: `free()` on teardown; reopen from the document after a trap.
+ */
+export class Bench {
+  private inner: WasmBenchHandle;
+
+  private constructor(inner: WasmBenchHandle) {
+    this.inner = inner;
+  }
+
+  static openUnforced(modelJson: string, dt: number): Bench {
+    return call("BenchHandle.open_unforced", () => new Bench(WasmBenchHandle.open_unforced(modelJson, dt)));
+  }
+
+  static openForced(modelJson: string, csv: string, manifestJson: string, dt: number, today: string): Bench {
+    return call("BenchHandle.open_forced", () =>
+      new Bench(WasmBenchHandle.open_forced(modelJson, csv, manifestJson, dt, today)),
+    );
+  }
+
+  step(n: number): void {
+    call("bench.step", () => this.inner.step(n));
+  }
+
+  /** Step to the horizon `t` by the batch run's own tick count. */
+  stepOver(t: number): void {
+    call("bench.step_over", () => this.inner.step_over(t));
+  }
+
+  reset(): void {
+    call("bench.reset", () => this.inner.reset());
+  }
+
+  tick(): number {
+    return call("bench.tick", () => this.inner.tick());
+  }
+
+  /** Set a flow's amount by label and endpoints; a column-bound flow refuses. */
+  setFlowAmount(label: string, from: string, to: string, v: number): void {
+    call("bench.set_flow_amount", () => this.inner.set_flow_amount(label, from, to, v));
+  }
+
+  setComponentParam(thing: string, field: BenchComponentField, v: number): void {
+    call("bench.set_component_param", () => this.inner.set_component_param(thing, field, v));
+  }
+
+  readout(): RunResultRich {
+    return call("bench.readout", () => this.inner.readout());
+  }
+
+  tickLogSince(fromTick: number): TickLog[] {
+    return call("bench.tick_log_since", () => this.inner.tick_log_since(fromTick));
+  }
+
+  edits(): KnobEdit[] {
+    return call("bench.edits", () => this.inner.edits());
+  }
+
+  free(): void {
+    this.inner.free();
+  }
+}
+
 export function toCanvas(modelJson: string): CanvasModel {
   return call("to_canvas", () => wasmToCanvas(modelJson));
 }
