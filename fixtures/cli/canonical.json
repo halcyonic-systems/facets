@@ -3074,13 +3074,41 @@
           ],
           "unresolved_thing_id": null
         },
-        "issue_targets": [],
+        "issue_targets": [
+          {
+            "disregarded_relations": 0,
+            "relation": null,
+            "thing": 2
+          },
+          {
+            "disregarded_relations": 0,
+            "relation": null,
+            "thing": 3
+          }
+        ],
         "residue": {
           "hidden": [],
           "unspecified": []
         },
         "validation": {
-          "issues": []
+          "issues": [
+            {
+              "code": "interface_does_work",
+              "doc": "docs/language/spec.md#43-thing-lines",
+              "location": "things[2]",
+              "message": "'Open Market Desk' is marked interface and turns securities and settlement into reserves and portfolio. Mobus ch. 4: an interface passes, gates or filters what crosses the boundary and does not alter it; the thing that stores or transforms is the receiver or exporter process behind the interface, a resident of its own (facets#471).",
+              "severity": "Warning",
+              "suggestion": "Split it: `interface \"Open Market Desk inlet\"` (or `interface unresolved`) takes the crossing, and `component \"Open Market Desk\"` keeps the work; route the crossing flow through the pass-way to the component."
+            },
+            {
+              "code": "interface_does_work",
+              "doc": "docs/language/spec.md#43-thing-lines",
+              "location": "things[3]",
+              "message": "'Balance Sheet' is marked interface and buffers (primitive Buffering). Mobus ch. 4: an interface passes, gates or filters what crosses the boundary and does not alter it; the thing that stores or transforms is the receiver or exporter process behind the interface, a resident of its own (facets#471).",
+              "severity": "Warning",
+              "suggestion": "Split it: `interface \"Balance Sheet inlet\"` (or `interface unresolved`) takes the crossing, and `component \"Balance Sheet\"` keeps the work; route the crossing flow through the pass-way to the component."
+            }
+          ]
         }
       }
     }
@@ -5743,13 +5771,132 @@
           ],
           "unresolved_thing_id": null
         },
-        "issue_targets": [],
+        "issue_targets": [
+          {
+            "disregarded_relations": 0,
+            "relation": null,
+            "thing": 12
+          },
+          {
+            "disregarded_relations": 0,
+            "relation": null,
+            "thing": 13
+          },
+          {
+            "disregarded_relations": 0,
+            "relation": null,
+            "thing": 14
+          },
+          {
+            "disregarded_relations": 0,
+            "relation": null,
+            "thing": 15
+          },
+          {
+            "disregarded_relations": 0,
+            "relation": null,
+            "thing": 16
+          },
+          {
+            "disregarded_relations": 0,
+            "relation": null,
+            "thing": 17
+          },
+          {
+            "disregarded_relations": 0,
+            "relation": null,
+            "thing": 18
+          },
+          {
+            "disregarded_relations": 0,
+            "relation": null,
+            "thing": 19
+          },
+          {
+            "disregarded_relations": 0,
+            "relation": null,
+            "thing": 20
+          }
+        ],
         "residue": {
           "hidden": [],
           "unspecified": []
         },
         "validation": {
-          "issues": []
+          "issues": [
+            {
+              "code": "interface_does_work",
+              "doc": "docs/language/spec.md#43-thing-lines",
+              "location": "things[12]",
+              "message": "'Opus' is marked interface and amplifies (primitive Amplifying). Mobus ch. 4: an interface passes, gates or filters what crosses the boundary and does not alter it; the thing that stores or transforms is the receiver or exporter process behind the interface, a resident of its own (facets#471).",
+              "severity": "Warning",
+              "suggestion": "Split it: `interface \"Opus inlet\"` (or `interface unresolved`) takes the crossing, and `component \"Opus\"` keeps the work; route the crossing flow through the pass-way to the component."
+            },
+            {
+              "code": "interface_does_work",
+              "doc": "docs/language/spec.md#43-thing-lines",
+              "location": "things[13]",
+              "message": "'Fable' is marked interface and amplifies (primitive Amplifying). Mobus ch. 4: an interface passes, gates or filters what crosses the boundary and does not alter it; the thing that stores or transforms is the receiver or exporter process behind the interface, a resident of its own (facets#471).",
+              "severity": "Warning",
+              "suggestion": "Split it: `interface \"Fable inlet\"` (or `interface unresolved`) takes the crossing, and `component \"Fable\"` keeps the work; route the crossing flow through the pass-way to the component."
+            },
+            {
+              "code": "interface_does_work",
+              "doc": "docs/language/spec.md#43-thing-lines",
+              "location": "things[14]",
+              "message": "'GPT' is marked interface and amplifies (primitive Amplifying). Mobus ch. 4: an interface passes, gates or filters what crosses the boundary and does not alter it; the thing that stores or transforms is the receiver or exporter process behind the interface, a resident of its own (facets#471).",
+              "severity": "Warning",
+              "suggestion": "Split it: `interface \"GPT inlet\"` (or `interface unresolved`) takes the crossing, and `component \"GPT\"` keeps the work; route the crossing flow through the pass-way to the component."
+            },
+            {
+              "code": "interface_does_work",
+              "doc": "docs/language/spec.md#43-thing-lines",
+              "location": "things[15]",
+              "message": "'Gemini' is marked interface and amplifies (primitive Amplifying). Mobus ch. 4: an interface passes, gates or filters what crosses the boundary and does not alter it; the thing that stores or transforms is the receiver or exporter process behind the interface, a resident of its own (facets#471).",
+              "severity": "Warning",
+              "suggestion": "Split it: `interface \"Gemini inlet\"` (or `interface unresolved`) takes the crossing, and `component \"Gemini\"` keeps the work; route the crossing flow through the pass-way to the component."
+            },
+            {
+              "code": "interface_does_work",
+              "doc": "docs/language/spec.md#43-thing-lines",
+              "location": "things[16]",
+              "message": "'Gemma' is marked interface and amplifies (primitive Amplifying). Mobus ch. 4: an interface passes, gates or filters what crosses the boundary and does not alter it; the thing that stores or transforms is the receiver or exporter process behind the interface, a resident of its own (facets#471).",
+              "severity": "Warning",
+              "suggestion": "Split it: `interface \"Gemma inlet\"` (or `interface unresolved`) takes the crossing, and `component \"Gemma\"` keeps the work; route the crossing flow through the pass-way to the component."
+            },
+            {
+              "code": "interface_does_work",
+              "doc": "docs/language/spec.md#43-thing-lines",
+              "location": "things[17]",
+              "message": "'Llama' is marked interface and amplifies (primitive Amplifying). Mobus ch. 4: an interface passes, gates or filters what crosses the boundary and does not alter it; the thing that stores or transforms is the receiver or exporter process behind the interface, a resident of its own (facets#471).",
+              "severity": "Warning",
+              "suggestion": "Split it: `interface \"Llama inlet\"` (or `interface unresolved`) takes the crossing, and `component \"Llama\"` keeps the work; route the crossing flow through the pass-way to the component."
+            },
+            {
+              "code": "interface_does_work",
+              "doc": "docs/language/spec.md#43-thing-lines",
+              "location": "things[18]",
+              "message": "'Qwen' is marked interface and amplifies (primitive Amplifying). Mobus ch. 4: an interface passes, gates or filters what crosses the boundary and does not alter it; the thing that stores or transforms is the receiver or exporter process behind the interface, a resident of its own (facets#471).",
+              "severity": "Warning",
+              "suggestion": "Split it: `interface \"Qwen inlet\"` (or `interface unresolved`) takes the crossing, and `component \"Qwen\"` keeps the work; route the crossing flow through the pass-way to the component."
+            },
+            {
+              "code": "interface_does_work",
+              "doc": "docs/language/spec.md#43-thing-lines",
+              "location": "things[19]",
+              "message": "'DeepSeek' is marked interface and amplifies (primitive Amplifying). Mobus ch. 4: an interface passes, gates or filters what crosses the boundary and does not alter it; the thing that stores or transforms is the receiver or exporter process behind the interface, a resident of its own (facets#471).",
+              "severity": "Warning",
+              "suggestion": "Split it: `interface \"DeepSeek inlet\"` (or `interface unresolved`) takes the crossing, and `component \"DeepSeek\"` keeps the work; route the crossing flow through the pass-way to the component."
+            },
+            {
+              "code": "interface_does_work",
+              "doc": "docs/language/spec.md#43-thing-lines",
+              "location": "things[20]",
+              "message": "'Other open' is marked interface and amplifies (primitive Amplifying). Mobus ch. 4: an interface passes, gates or filters what crosses the boundary and does not alter it; the thing that stores or transforms is the receiver or exporter process behind the interface, a resident of its own (facets#471).",
+              "severity": "Warning",
+              "suggestion": "Split it: `interface \"Other open inlet\"` (or `interface unresolved`) takes the crossing, and `component \"Other open\"` keeps the work; route the crossing flow through the pass-way to the component."
+            }
+          ]
         }
       }
     }
@@ -6298,13 +6445,41 @@
           ],
           "unresolved_thing_id": null
         },
-        "issue_targets": [],
+        "issue_targets": [
+          {
+            "disregarded_relations": 0,
+            "relation": null,
+            "thing": 1
+          },
+          {
+            "disregarded_relations": 0,
+            "relation": null,
+            "thing": 2
+          }
+        ],
         "residue": {
           "hidden": [],
           "unspecified": []
         },
         "validation": {
-          "issues": []
+          "issues": [
+            {
+              "code": "interface_does_work",
+              "doc": "docs/language/spec.md#43-thing-lines",
+              "location": "things[1]",
+              "message": "'Rabbits' is marked interface and buffers (primitive Buffering). Mobus ch. 4: an interface passes, gates or filters what crosses the boundary and does not alter it; the thing that stores or transforms is the receiver or exporter process behind the interface, a resident of its own (facets#471).",
+              "severity": "Warning",
+              "suggestion": "Split it: `interface \"Rabbits inlet\"` (or `interface unresolved`) takes the crossing, and `component \"Rabbits\"` keeps the work; route the crossing flow through the pass-way to the component."
+            },
+            {
+              "code": "interface_does_work",
+              "doc": "docs/language/spec.md#43-thing-lines",
+              "location": "things[2]",
+              "message": "'Foxes' is marked interface and buffers (primitive Buffering). Mobus ch. 4: an interface passes, gates or filters what crosses the boundary and does not alter it; the thing that stores or transforms is the receiver or exporter process behind the interface, a resident of its own (facets#471).",
+              "severity": "Warning",
+              "suggestion": "Split it: `interface \"Foxes inlet\"` (or `interface unresolved`) takes the crossing, and `component \"Foxes\"` keeps the work; route the crossing flow through the pass-way to the component."
+            }
+          ]
         }
       }
     }
