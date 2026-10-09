@@ -71,3 +71,20 @@ fn a_knob_names_the_pass_way_the_author_wrote() {
     let barrel = v["trajectories"].as_array().unwrap().iter().find(|s| s["name"] == "Rain Barrel").unwrap();
     assert_eq!(barrel["series"][7], 39.0);
 }
+
+#[test]
+fn the_sl_words_reach_the_engine() {
+    // `limiting`: the oven is bounded by its scarcest input (heat 3) rather
+    // than the sum (8); `reservoir 12`: flour gives 5, 5, 2 and runs dry, and
+    // the oven then starves on flour. Both read straight off the SL line.
+    let out = bert(&["bench", "fixtures/sl/bakery.sl", "--t", "5", "--no-log"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let v = stdout_json(&out);
+    assert_eq!(v["conserved"], true);
+    let flour = v["flows"].as_array().unwrap().iter().find(|f| f["name"] == "flour" && f["from"] == "Flour").unwrap();
+    assert_eq!(flour["series"], serde_json::json!([5.0, 5.0, 2.0, 0.0, 0.0]));
+    let bread = v["flows"].as_array().unwrap().iter().find(|f| f["name"] == "bread").unwrap();
+    let series: Vec<f64> = bread["series"].as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect();
+    assert!(series[0] <= 3.0 + 1e-6, "limiting bounds the oven by heat 3, got {series:?}");
+    assert!(series[4] < series[0], "the oven starves once the flour runs dry: {series:?}");
+}

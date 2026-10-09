@@ -89,6 +89,9 @@ pub struct OperationalProcess {
 pub struct OperationalTerminal {
     pub id: Id,
     pub name: String,
+    /// A source's finite supply (#260); `None` = unbounded. Always `None` on a sink.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reservoir: Option<f64>,
 }
 
 /// The work process a boundary interface recapitulates when an interface-routed
@@ -264,6 +267,7 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
         spec.sources.push(OperationalTerminal {
             id: ext.info.id.clone(),
             name: ext.info.name.clone(),
+            reservoir: ext.reservoir,
         });
     }
     for ext in &model.environment.sinks {
@@ -274,6 +278,7 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
         spec.sinks.push(OperationalTerminal {
             id: ext.info.id.clone(),
             name: ext.info.name.clone(),
+            reservoir: None,
         });
     }
 
@@ -600,6 +605,7 @@ mod tests {
                     model: String::new(),
                     is_same_as_id: None,
                     authored_direction: true,
+                    reservoir: None,
                 }],
                 sinks: vec![ExternalEntity {
                     info: info(snk.clone(), -1, "Drain"),
@@ -609,6 +615,7 @@ mod tests {
                     model: String::new(),
                     is_same_as_id: None,
                     authored_direction: true,
+                    reservoir: None,
                 }],
                 milieu: Vec::new(),
             },
