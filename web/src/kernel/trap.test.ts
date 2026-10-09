@@ -39,6 +39,7 @@ vi.mock("bert-lenses-kernel", () => ({
       "check_decompositions",
       "decompose_component",
       "check_decompositions_canvas",
+      "check_resolution_canvas",
     ].map((name) => [name, () => undefined]),
   ),
 }));

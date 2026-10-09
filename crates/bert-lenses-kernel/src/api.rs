@@ -323,6 +323,18 @@ pub fn check_decompositions_canvas(
     ))
 }
 
+/// Does stage 2 resolve the `unresolved` pass-way of stage 1 (#308 part A)?
+/// Two canvas models of the same system; the report is shaped like
+/// `check_decompositions_canvas`'s so the audit panel can show it.
+#[wasm_bindgen]
+pub fn check_resolution_canvas(stage1_json: &str, stage2_json: &str) -> Result<JsValue, JsError> {
+    let stage1: bert_canvas::canvas::CanvasModel = serde_json::from_str(stage1_json)
+        .map_err(|e| JsError::new(&format!("invalid stage-1 canvas model: {e}")))?;
+    let stage2: bert_canvas::canvas::CanvasModel = serde_json::from_str(stage2_json)
+        .map_err(|e| JsError::new(&format!("invalid stage-2 canvas model: {e}")))?;
+    to_js(&bert_canvas::lenses::check_resolution_canvas(&stage1, &stage2))
+}
+
 // ---- Phase 2: the canvas seam ----------------------------------------------
 
 /// Validate a model at a given lens rung: "Core" | "Structural" | "Operational"

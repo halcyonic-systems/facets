@@ -37,6 +37,8 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
       isSquare={thing.role === "Environment"}
       showHalo={thing.role === "Component" && !iface}
       bodyScale={iface ? INTERFACE_SCALE : undefined}
+      // #308 part A: the reserved pass-way is an interface not yet identified.
+      dash={iface && thing.passway && thing.name === "unresolved" ? "4 3" : undefined}
       envOpen={thing.role === "Environment"}
       sphere={thing.role === "Component" && !regulator}
       regulatorTriangle={regulator}
