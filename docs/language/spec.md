@@ -155,7 +155,10 @@ gradeword   = "chain" | "spec" | "observed" | "asserted" | "third-party" | "unkn
 decimal     = nonnegative decimal number ;             (* "1.5"; 0 = arrested supply; negative refused *)
 param       = "param" string ":" "flow" name "->" name [ string ]
               [ "range" number ".." number ]           (* walkthrough #18 *)
-            | "param" "shares" string ":" "from" name ;
+            | "param" "shares" string ":" "from" name
+            | "param" string ":" field "of" name
+              [ "range" number ".." number ] ;         (* #343: a component line's engine parameter *)
+field       = "release" | "capacity" | "time" "constant" | "setpoint" | "maintenance" ;
 metric      = "metric" string ":" "share" "of" "flow" name "->" name [ string ]
             | "metric" string ":" "sum" "into" name ;  (* #203; verb set closed, ADR 0006 *)
 boundary    = "boundary" { propword number } ;
@@ -245,6 +248,8 @@ A declared parameter (walkthrough #18): a domain name over an already-declared a
 `param "Developer demand" : flow "Developer workload" -> "Developer clearing" range 0..12000` names one flow's declared amount. The optional quoted label after the endpoint pair disambiguates when several flows run between the same pair (naming an ambiguous pair without it is a fault, with the candidate labels listed). The optional `range <min>..<max>` declares inclusive slider bounds in the flow's own unit — the author's statement of the sensible span, never engine-enforced; `min` must satisfy `0 <= min < max`, and a declared amount lying outside the range is a parse-time contradiction and refused.
 
 `param shares "Developer market share" : from "Developer clearing"` names a component's whole out-fanout of declared amounts, to be presented as % shares. `from` must name a component (environment internals are opaque) with at least two outgoing declared amounts — a "split" of one thing is not a split. Normalization is presentation only: the model keeps raw weights (§4.4's fanout semantics are scale-free), and a share edit edits exactly one raw weight.
+
+`param "drain" : release of "Rain Barrel" range 0..40` (v1.9, facets#343, #463 move 3) names one of a component line's own engine parameters: `release`, `capacity`, `time constant`, `setpoint` or `maintenance`, the #112 set §4.3 already carries. `of` must name a component that declares that field (a component with no `release` has nothing to adjust, and the fault names the repair). The value is the component line's; the param adds the domain name and the inclusive `range`, and a declared value outside the range is the same contradiction as for a flow. A run surface that turns this knob addresses the session by the field's key (`release_rate`, `capacity`, `time_constant`, `setpoint`, `maintenance`), the same word `bert bench --set "Barrel.release_rate=…"` takes.
 
 **A param stores no value** — the value IS the anchored declared amount, which is why every anchor that resolves to nothing adjustable is a fault rather than a bag: an undeclared endpoint, a flow with no `amount` (the repair is named: add one), a `mere` relation (already excluded by §4.4 — a non-bond cannot carry an amount). Param names are unique per file — they are the stable references scenario overrides (#202) will hold. **Params never project**: `project()` ignores them entirely, so a model with and without its `param` lines projects byte-identically. They are presentation semantics carried by the canvas model, serialized skip-if-empty so pre-existing files are byte-identical. Params must appear after the flows they anchor (the single-pass discipline of §4.3 — declare before reference — applied to flows).
 

@@ -22,7 +22,7 @@
 // changed. The taxonomy groups below remain the floor for every undeclared
 // magnitude, so declaring params is enrichment, never a requirement.
 import { useState } from "react";
-import type { CanvasModel, Manifest, Relation } from "./kernel/types";
+import type { CanvasModel, EngineField, Manifest, ParamDecl, Relation, Thing } from "./kernel/types";
 import { declaredRelations, forcedByColumn, resolveParamRows } from "./kernel/params";
 import { AmountField, ParamControl, useCommitOnRelease } from "./ParamControl";
 import { Card } from "./ui";
@@ -135,6 +135,84 @@ function ShareRow({
   );
 }
 
+/** A field-anchored param (#343): a slider + number over one engine
+ *  parameter the component line declared (release, capacity, time constant,
+ *  setpoint, maintenance). Commits by editing the thing's own bag through the
+ *  same document path as a flow amount; the app turns that into a session
+ *  knob by the field's key. */
+export function FieldControl({
+  param,
+  thing,
+  field,
+  onEdit,
+}: {
+  param: ParamDecl;
+  thing: Thing;
+  field: EngineField;
+  onEdit: (next: Thing) => void;
+}) {
+  const [drag, setDrag] = useState<number | null>(null);
+  const [draft, setDraft] = useState<string | null>(null);
+  const current = Number(thing.cognitive_params?.[field] ?? 0);
+  const min = Number(param.range?.min ?? 0);
+  const max = Number(param.range?.max ?? 0);
+  const value = drag ?? current;
+  const put = (v: number) => {
+    if (Number.isFinite(v) && v >= 0 && v !== current) {
+      onEdit({ ...thing, cognitive_params: { ...(thing.cognitive_params ?? {}), [field]: v } });
+    }
+  };
+  const commit = () => {
+    if (drag !== null) put(drag);
+    setDrag(null);
+  };
+  useCommitOnRelease(drag !== null, commit);
+  const unit = field === "capacity" || field === "maintenance" || field === "release_rate" ? thing.stock_unit ?? "" : "";
+  return (
+    <div className="py-0.5" data-testid={`field-param-${param.name}`}>
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <span className="min-w-0 flex-1 truncate" style={{ color: "var(--text-primary)" }} title={`${thing.name} · ${field}`}>
+          {param.name}
+        </span>
+        <input
+          className="w-20 rounded border px-1.5 py-0.5 text-right font-mono text-xs"
+          style={{ borderColor: "var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+          value={draft ?? String(value)}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => {
+            if (draft !== null && draft.trim() !== "") put(Number(draft));
+            setDraft(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            if (e.key === "Escape") setDraft(null);
+          }}
+          aria-label={param.name}
+        />
+        <span className="w-16 shrink-0 text-[11px]" style={{ color: "var(--text-muted)" }}>
+          {unit}
+        </span>
+      </div>
+      {param.range && (
+        <input
+          type="range"
+          className="mt-0.5 block w-full"
+          min={min}
+          max={max}
+          step={(max - min) / 200 || 1}
+          value={value}
+          onChange={(e) => setDrag(Number(e.target.value))}
+          onPointerUp={commit}
+          onLostPointerCapture={commit}
+          onBlur={commit}
+          onKeyUp={commit}
+          aria-label={`${param.name} slider`}
+        />
+      )}
+    </div>
+  );
+}
+
 function GroupHeader({ children }: { children: string }) {
   return (
     <div className="mb-0.5 mt-2 text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
@@ -149,11 +227,14 @@ export function RunInputs({
   model,
   manifest,
   onEdit,
+  onEditThing,
   onReset,
 }: {
   model: CanvasModel;
   manifest: Manifest | null;
   onEdit: (next: Relation) => void;
+  /** #343: a field-anchored param edits its component's own bag. */
+  onEditThing?: (next: Thing) => void;
   /** Restore every declared amount to the model's own declaration (derived
    *  from the demo's `.sl`, never stored state). Absent = no reset baseline. */
   onReset?: () => void;
@@ -168,7 +249,7 @@ export function RunInputs({
   // so a param can never mean different flows on different surfaces.
   const paramRows = resolveParamRows(model);
   const covered = new Set<number>(
-    paramRows.flatMap((row) => (row.relation ? [row.relation.id] : row.group!.map((r) => r.id))),
+    paramRows.flatMap((row) => (row.relation ? [row.relation.id] : row.group ? row.group.map((r) => r.id) : [])),
   );
 
   const rest = declared.filter((r) => !covered.has(r.id));
@@ -200,9 +281,13 @@ export function RunInputs({
           ↺ reset to declared
         </button>
       )}
-      {paramRows.map(({ param, relation, group }) =>
+      {paramRows.map(({ param, relation, group, thing: fieldThing, field }) =>
         relation ? (
           <ParamControl key={param.name} param={param} relation={relation} forcedBy={forcedBy(relation)} onEdit={onEdit} />
+        ) : fieldThing && field ? (
+          onEditThing ? (
+            <FieldControl key={param.name} param={param} thing={fieldThing} field={field} onEdit={onEditThing} />
+          ) : null
         ) : (
           <div key={param.name}>
             <GroupHeader>{`${param.name} · % of split`}</GroupHeader>

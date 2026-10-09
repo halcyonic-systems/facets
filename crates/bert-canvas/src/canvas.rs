@@ -407,6 +407,66 @@ pub enum ParamAnchor {
     /// Normalization is presentation: the engine keeps raw weights (Mobus
     /// Eq. 4.5 is scale-free), and editing one share edits one raw weight.
     Shares { thing: u64 },
+    /// One of a component's declared engine parameters (#343, #463 move 3):
+    /// the #112 typed set a component line can carry. The value lives in the
+    /// thing's `cognitive_params` under the field's key, exactly as the
+    /// component line put it there; the param names it and bounds it.
+    Field { thing: u64, field: EngineField },
+}
+
+/// The engine parameters a `param … of <component>` line may name — the #112
+/// slice-1/2 set, keyed as the engine and the session knob read them
+/// (`Session::set_node_param`). Serialized by key so a surface addresses the
+/// session with the same word it read off the model.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum EngineField {
+    #[serde(rename = "release_rate")]
+    Release,
+    #[serde(rename = "capacity")]
+    Capacity,
+    #[serde(rename = "time_constant")]
+    TimeConstant,
+    #[serde(rename = "setpoint")]
+    Setpoint,
+    #[serde(rename = "maintenance")]
+    Maintenance,
+}
+
+impl EngineField {
+    /// The `cognitive_params` key and the session knob name.
+    pub fn key(self) -> &'static str {
+        match self {
+            EngineField::Release => "release_rate",
+            EngineField::Capacity => "capacity",
+            EngineField::TimeConstant => "time_constant",
+            EngineField::Setpoint => "setpoint",
+            EngineField::Maintenance => "maintenance",
+        }
+    }
+    /// The SL word(s) on the component line and on the param line.
+    pub fn word(self) -> &'static str {
+        match self {
+            EngineField::Release => "release",
+            EngineField::Capacity => "capacity",
+            EngineField::TimeConstant => "time constant",
+            EngineField::Setpoint => "setpoint",
+            EngineField::Maintenance => "maintenance",
+        }
+    }
+    /// The primitive that reads this field (the component line's own gate).
+    pub fn reader(self) -> bert_core::ProcessPrimitive {
+        match self {
+            EngineField::Setpoint => bert_core::ProcessPrimitive::Inverting,
+            _ => bert_core::ProcessPrimitive::Buffering,
+        }
+    }
+    pub const ALL: [EngineField; 5] = [
+        EngineField::Release,
+        EngineField::Capacity,
+        EngineField::TimeConstant,
+        EngineField::Setpoint,
+        EngineField::Maintenance,
+    ];
 }
 
 /// An author-declared adjustable quantity, named in the model's domain

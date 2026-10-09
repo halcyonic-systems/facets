@@ -430,7 +430,10 @@ fn parse_knob(s: &str) -> Result<Knob, String> {
         let (thing, field) = target
             .rsplit_once('.')
             .ok_or_else(|| format!("`{s}`: a component knob is `thing.field=value`"))?;
-        KnobTarget::Component { thing: thing.trim().to_string(), field: field.trim().to_string() }
+        // A spaced name may arrive quoted, as SL writes it: `"Rain Barrel".release_rate=30`.
+        let thing = thing.trim();
+        let thing = thing.strip_prefix('"').and_then(|t| t.strip_suffix('"')).unwrap_or(thing);
+        KnobTarget::Component { thing: thing.to_string(), field: field.trim().to_string() }
     };
     Ok(Knob { tick, target, value })
 }

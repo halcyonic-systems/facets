@@ -10,9 +10,10 @@
 // No systems fact is decided in this file; every number is the kernel's and
 // every edit routes through the same commit path as every other surface.
 import { useState } from "react";
-import type { CanvasModel, Manifest, Relation, RunResultRich } from "./kernel/types";
+import type { CanvasModel, Manifest, Relation, RunResultRich, Thing } from "./kernel/types";
 import { forcedByColumn, resolveParamRows } from "./kernel/params";
 import { ParamControl } from "./ParamControl";
+import { FieldControl } from "./RunInputs";
 import { glanceFacts } from "./RunPanel";
 import { FUTURE_OPACITY, RunChart, midRun, timeAxisLabel } from "./RunChart";
 import { Line } from "recharts";
@@ -53,6 +54,7 @@ export function RunCard({
   tick,
   time,
   onInputEdit,
+  onThingEdit,
   onResetInputs,
   onOpenReadouts,
 }: {
@@ -62,6 +64,8 @@ export function RunCard({
   tick?: number;
   time: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
   onInputEdit: (next: Relation) => void;
+  /** #343: a field-anchored param edits its component's engine parameter. */
+  onThingEdit?: (next: Thing) => void;
   onResetInputs?: () => void;
   onOpenReadouts: () => void;
 }) {
@@ -86,7 +90,7 @@ export function RunCard({
     );
   }
 
-  const paramRows = resolveParamRows(model).filter((row) => row.relation);
+  const paramRows = resolveParamRows(model).filter((row) => row.relation || row.field);
   const facts = result ? glanceFacts(result, model, tick) : null;
   const headReading = result ? (evaluateMetrics(model, result)?.readings[0] ?? null) : null;
 
@@ -207,15 +211,19 @@ export function RunCard({
           path as everywhere, sitting a rule away from the curve they move. */}
       {paramRows.length > 0 && (
         <Band className="py-1">
-          {paramRows.map(({ param, relation }) => (
-            <ParamControl
-              key={param.name}
-              param={param}
-              relation={relation!}
-              forcedBy={forcedByColumn(manifest, relation!)}
-              onEdit={onInputEdit}
-            />
-          ))}
+          {paramRows.map(({ param, relation, thing, field }) =>
+            relation ? (
+              <ParamControl
+                key={param.name}
+                param={param}
+                relation={relation}
+                forcedBy={forcedByColumn(manifest, relation)}
+                onEdit={onInputEdit}
+              />
+            ) : thing && field && onThingEdit ? (
+              <FieldControl key={param.name} param={param} thing={thing} field={field} onEdit={onThingEdit} />
+            ) : null,
+          )}
           {onResetInputs && (
             <button
               onClick={onResetInputs}

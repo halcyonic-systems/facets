@@ -59,6 +59,7 @@ flow Gate -> Harvest : matter "picked" substance biomass
 # The two sliders a reader reaches for first.
 param "rainfall" : flow Rain -> Gutter "rainfall" range 0..40
 param "sunlight" : flow Sun -> Canopy "sunlight" range 0..20
+param "drain" : release of "Rain Barrel" range 0..40
 
 # The number the whole thing is for.
 metric "harvest" : sum into Harvest

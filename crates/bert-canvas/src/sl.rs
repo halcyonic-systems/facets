@@ -2186,8 +2186,10 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // anchored amount — so an anchor that resolves to nothing
                 // adjustable is a fault, never a bag (#112 register, rule 1).
                 let syntax = "param syntax: `param \"Name\" : flow <a> -> <b> \
-                              [\"label\"] [range <min>..<max>]` or `param shares \
-                              \"Name\" : from <process>`";
+                              [\"label\"] [range <min>..<max>]`, `param shares \
+                              \"Name\" : from <process>`, or `param \"Name\" : \
+                              <release|capacity|time constant|setpoint|maintenance> \
+                              of <component> [range <min>..<max>]`";
                 let is_shares = matches!(rest, [Tok::Word(w), ..] if w.eq_ignore_ascii_case("shares"));
                 let body = if is_shares { &rest[1..] } else { rest };
                 let (name_tok, after_colon) = match body {
@@ -2259,6 +2261,101 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         name: pname,
                         anchor: crate::canvas::ParamAnchor::Shares { thing: thing.id },
                         range: None,
+                    });
+                    continue;
+                }
+                // field form (#343): `: <field> of <component> [range <min>..<max>]`
+                // — a domain name over one of the component line's own engine
+                // parameters. The value IS the cognitive_params entry the
+                // component line wrote; a component that declares no such
+                // field has nothing to adjust, so naming it is a fault.
+                let field_form: Option<(crate::canvas::EngineField, &[Tok])> = match after_colon {
+                    [Tok::Word(w), Tok::Word(c), tail @ ..]
+                        if w.eq_ignore_ascii_case("time") && c.eq_ignore_ascii_case("constant") =>
+                    {
+                        Some((crate::canvas::EngineField::TimeConstant, tail))
+                    }
+                    [Tok::Word(w), tail @ ..] => crate::canvas::EngineField::ALL
+                        .iter()
+                        .copied()
+                        .find(|f| w.eq_ignore_ascii_case(f.word()))
+                        .map(|f| (f, tail)),
+                    _ => None,
+                };
+                if let Some((field, tail)) = field_form {
+                    let (thing_name, tail) = match tail {
+                        [Tok::Word(o), t, tail @ ..] if o.eq_ignore_ascii_case("of") && t.is_name() => {
+                            (t.name(), tail)
+                        }
+                        _ => {
+                            fail(syntax.into(), &mut errors);
+                            continue;
+                        }
+                    };
+                    let (range, tail) = match parse_param_range(tail) {
+                        Ok(x) => x,
+                        Err(m) => {
+                            fail(m, &mut errors);
+                            continue;
+                        }
+                    };
+                    if !tail.is_empty() {
+                        fail(format!("unexpected `{}` at end of param — {syntax}", tail[0].display()), &mut errors);
+                        continue;
+                    }
+                    let Some(&ti) = by_name.get(&thing_name) else {
+                        fail(
+                            format!("`{thing_name}` is not declared (declare things before params)"),
+                            &mut errors,
+                        );
+                        continue;
+                    };
+                    let thing = &things[ti];
+                    if thing.role != Role::Component {
+                        fail(
+                            format!(
+                                "`{thing_name}` is an environment thing — engine parameters belong \
+                                 to components (environment internals are opaque)"
+                            ),
+                            &mut errors,
+                        );
+                        continue;
+                    }
+                    let Some(&value) = thing.cognitive_params.get(field.key()) else {
+                        fail(
+                            format!(
+                                "`{thing_name}` declares no `{}` — a param names an adjustable \
+                                 declared magnitude; add `{} <n>` to the component line",
+                                field.word(),
+                                field.word()
+                            ),
+                            &mut errors,
+                        );
+                        continue;
+                    };
+                    if let Some(r) = &range {
+                        let (lo, hi) = (
+                            r.min.try_into().unwrap_or(f64::NAN),
+                            r.max.try_into().unwrap_or(f64::NAN),
+                        );
+                        if value < lo || value > hi {
+                            fail(
+                                format!(
+                                    "`{thing_name}`'s declared {} {value} lies outside the param's \
+                                     range {}..{} — the range contradicts the model",
+                                    field.word(),
+                                    r.min,
+                                    r.max
+                                ),
+                                &mut errors,
+                            );
+                            continue;
+                        }
+                    }
+                    params.push(crate::canvas::ParamDecl {
+                        name: pname,
+                        anchor: crate::canvas::ParamAnchor::Field { thing: thing.id, field },
+                        range,
                     });
                     continue;
                 }
@@ -3517,6 +3614,19 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                 )
                 .unwrap();
             }
+            crate::canvas::ParamAnchor::Field { thing, field } => {
+                write!(
+                    out,
+                    "param {} : {} of {}",
+                    quote(&p.name)?,
+                    field.word(),
+                    name_token(&name_of(thing)?)?
+                )
+                .unwrap();
+                if let Some(range) = &p.range {
+                    write!(out, " range {}..{}", range.min, range.max).unwrap();
+                }
+            }
         }
         trail(&mut out, &anchor);
         out.push('\n');
@@ -3844,6 +3954,34 @@ fn is_reserved(word: &str) -> bool {
 
 /// A name as a token: bare when it reads as an identifier and shadows nothing,
 /// quoted otherwise.
+/// `[range <min>..<max>]` at the head of `tail`, for the param forms that
+/// take one; returns the range (if present) and what follows it.
+fn parse_param_range(tail: &[Tok]) -> Result<(Option<crate::canvas::ParamRange>, &[Tok]), String> {
+    let [Tok::Word(w), rest @ ..] = tail else {
+        return Ok((None, tail));
+    };
+    if !w.eq_ignore_ascii_case("range") {
+        return Ok((None, tail));
+    }
+    let syntax = "range syntax: `range <min>..<max>` (e.g. `range 0..12000`)";
+    let [Tok::Word(spec), after @ ..] = rest else {
+        return Err(syntax.into());
+    };
+    let (lo, hi) = spec
+        .split_once("..")
+        .and_then(|(lo, hi)| {
+            Some((
+                lo.parse::<bert_core::rust_decimal::Decimal>().ok()?,
+                hi.parse::<bert_core::rust_decimal::Decimal>().ok()?,
+            ))
+        })
+        .ok_or_else(|| syntax.to_string())?;
+    if lo < bert_core::rust_decimal::Decimal::ZERO || lo >= hi {
+        return Err("a range needs `0 <= min < max` — it bounds a positive magnitude".into());
+    }
+    Ok((Some(crate::canvas::ParamRange { min: lo, max: hi }), after))
+}
+
 fn name_token(name: &str) -> Result<String, String> {
     let bare = !name.is_empty()
         && !is_reserved(name)
