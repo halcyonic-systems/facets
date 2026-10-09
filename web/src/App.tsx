@@ -4017,6 +4017,7 @@ function Workspace() {
                 setSelectedRelationId(t.relation);
               }}
               onHover={setLitTarget}
+              stage2={stage2}
               selection={{ thing: selectedThingId, relation: selectedRelationId }}
               onClearSelection={() => {
                 setSelectedThingId(null);

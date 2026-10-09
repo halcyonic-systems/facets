@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { AnalystPanel } from "./AnalystPanel";
 import type { CanvasModel, IssueTarget, LensDescription, ValidationResult } from "./kernel/types";
+import type { Stage2Report } from "./resolution";
 import { ReviewPanel } from "./ReviewPanel";
 import { thingKind, thingStamps } from "./WriteMargin";
 import { Card } from "./ui";
@@ -114,11 +115,14 @@ export function ReadSheet({
   onReview,
   onNavigate,
   onHover,
+  stage2 = null,
   selection,
   onClearSelection,
   focus = false,
 }: {
   model: CanvasModel;
+  /** #462 item 1: the stage-2 reading for a model with `interface unresolved`. */
+  stage2?: Stage2Report | null;
   desc: LensDescription | null;
   verdict: ValidationResult | null;
   issueTargets: IssueTarget[];
@@ -196,6 +200,7 @@ export function ReadSheet({
           onReview={onReview}
           onNavigate={onNavigate}
           onHover={onHover}
+          stage2={stage2}
         />
       ) : (
         <Card title="Review">
