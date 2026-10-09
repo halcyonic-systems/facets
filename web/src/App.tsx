@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { buildRunRecord, postRunRecord, runRecordFilename, type RunRecord } from "./runRecord";
 import {
   ready,
   runMarkov,
@@ -323,6 +324,33 @@ function Workspace() {
   // cleared, and reopened from the document on the next Run.
   const benchRef = useRef<Bench | null>(null);
   const [tickLog, setTickLog] = useState<TickLog[] | null>(null);
+  const [runRecord, setRunRecord] = useState<RunRecord | null>(null);
+  // Every bench readout is recorded: the dev server writes it to
+  // runs/bench/latest.json so a terminal can read what the tool just did,
+  // and Export run downloads the same record anywhere.
+  const recordBench = (b: Bench, r: RunResultRich, event: RunRecord["event"], csv: string, m: Manifest, dtv: number, tv: number) => {
+    const log = b.tickLogSince(1);
+    setTickLog(log);
+    let sl: string | null = null;
+    try {
+      sl = canvasModel ? emitSl(canvasModel) : null;
+    } catch {
+      sl = null;
+    }
+    const rec = buildRunRecord({
+      model: { name: currentLabel ?? canvasModel?.name ?? demo?.title ?? "model", sl },
+      csv: csv.trim() ? csv : null,
+      manifest: csv.trim() ? m : null,
+      dt: dtv,
+      t: tv,
+      event,
+      edits: b.edits(),
+      readout: r,
+      log,
+    });
+    setRunRecord(rec);
+    postRunRecord(rec);
+  };
   const closeBench = () => {
     benchRef.current?.free();
     benchRef.current = null;
@@ -824,7 +852,7 @@ function Workspace() {
       benchRef.current = b;
       const r = b.readout();
       setResult(r);
-      setTickLog(b.tickLogSince(1));
+      recordBench(b, r, "run", csv, m, dtv, tv);
       setRanEdited(edited);
       setMarkovRun(null);
       setRunError(null);
@@ -2128,7 +2156,7 @@ function Workspace() {
           b.stepOver(t);
           const r = b.readout();
           setResult(r);
-          setTickLog(b.tickLogSince(1));
+          recordBench(b, r, "knob", runCsv ?? "", manifest, dt, t);
           setRanEdited(true);
           setMarkovRun(null);
           setRunError(null);
@@ -2267,7 +2295,7 @@ function Workspace() {
           const r = b.readout();
           setT(r.ticks * dt);
           setResult(r);
-          setTickLog(b.tickLogSince(1));
+          recordBench(b, r, "step", runCsv ?? "", manifest, dt, r.ticks * dt);
           setPlaying(false);
           setTick(r.ticks - 1);
           return;
@@ -3802,6 +3830,11 @@ function Workspace() {
                     <Readouts
                       result={result}
                       tickLog={tickLog}
+                      onExportRun={
+                        runRecord
+                          ? () => downloadText(runRecordFilename(runRecord), JSON.stringify(runRecord, null, 1), "application/json")
+                          : undefined
+                      }
                       markovRun={markovRun}
                       ranEdited={ranEdited}
                       runError={runError}

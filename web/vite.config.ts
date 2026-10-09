@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { copyFileSync, readFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
@@ -58,6 +58,50 @@ const wasmSha256 = (() => {
 // The notices are an obligation to third parties (MIT, SIL OFL) that binds
 // redistribution, so they have to sit in the served tree, not only in the repo.
 // The desktop bundle carries its own copies via tauri.conf.json's resources.
+// --- the bench recorder (#463) ----------------------------------------------
+// Dev server only. Every Run, Step and knob the app takes on the bench posts
+// its record here, and it lands in `runs/bench/` (gitignored): `latest.json`
+// plus a dated copy. The point is the loop between a person in the tool and
+// an agent in the terminal: the agent reads the file, nobody re-types what
+// was run. `bert bench` takes the same model and knobs when a variation is
+// wanted. Nothing here ships; the live site has the Export run button.
+function benchRecorder(): Plugin {
+  return {
+    name: "facets-bench-recorder",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use("/__bench/record", (req, res) => {
+        if (req.method !== "POST") {
+          res.statusCode = 405;
+          res.end();
+          return;
+        }
+        let body = "";
+        req.on("data", (chunk: Buffer) => {
+          body += chunk.toString("utf8");
+        });
+        req.on("end", () => {
+          try {
+            const record = JSON.parse(body) as { model?: { name?: string } };
+            const dir = resolve(ROOT, "runs/bench");
+            mkdirSync(dir, { recursive: true });
+            const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+            const slug = (record.model?.name ?? "model").replace(/[^a-z0-9_-]+/gi, "-").toLowerCase();
+            const pretty = JSON.stringify(record, null, 1);
+            writeFileSync(resolve(dir, "latest.json"), pretty);
+            writeFileSync(resolve(dir, `${slug}-${stamp}.json`), pretty);
+            res.statusCode = 204;
+            res.end();
+          } catch (e) {
+            res.statusCode = 400;
+            res.end(String(e));
+          }
+        });
+      });
+    },
+  };
+}
+
 function shipNotices(): Plugin {
   return {
     name: "ship-notices",
@@ -77,7 +121,7 @@ export default defineConfig({
   // Root by default (dev, the launchd :5190 serve, the Tauri shell). The hosted
   // facets.systems build lives at /model/ — publish-site.sh sets VITE_BASE.
   base: process.env.VITE_BASE ?? "/",
-  plugins: [react(), tailwindcss(), shipNotices()],
+  plugins: [react(), tailwindcss(), shipNotices(), benchRecorder()],
   define: {
     __APP_VERSION__: JSON.stringify(version),
     __KERNEL_VERSION__: JSON.stringify(crateVersion("bert-lenses-kernel")),

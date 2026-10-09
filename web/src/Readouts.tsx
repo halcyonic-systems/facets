@@ -27,6 +27,7 @@ type ReadoutTab = "story" | "fit" | "table" | "log";
 export function Readouts({
   result,
   tickLog = null,
+  onExportRun,
   markovRun,
   ranEdited,
   runError,
@@ -46,6 +47,8 @@ export function Readouts({
   /** #463: what every component did each tick, from the held session; null
    *  when the run did not come from one (a DTMC, or no run yet). */
   tickLog?: TickLog[] | null;
+  /** #463: download the run record (model as run, knobs, readout, log). */
+  onExportRun?: () => void;
   /** #282: the DTMC run (#67) — the result when the active lens declares
    *  `run: "dtmc"`. App keeps result/markovRun mutually exclusive. */
   markovRun: MarkovRunResult | null;
@@ -147,7 +150,16 @@ export function Readouts({
           <RunFit result={result} tick={tick} timeUnit={model?.time_unit} />
         )}
         {tab === "log" && tickLog && (
-          <TickLogTable log={tickLog} tick={tick} timeUnit={model?.time_unit} />
+          <div className="grid gap-3">
+            {onExportRun && (
+              <div>
+                <button onClick={onExportRun} className="record-folio text-[10px] tracking-[0.12em]" data-testid="export-run">
+                  export run (.json) →
+                </button>
+              </div>
+            )}
+            <TickLogTable log={tickLog} tick={tick} timeUnit={model?.time_unit} />
+          </div>
         )}
         {tab === "table" && (
           <RunTable
