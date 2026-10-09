@@ -2196,13 +2196,16 @@ function Workspace() {
         const structural =
           nextModel.relations.length !== prev.relations.length || nextModel.things.length !== prev.things.length;
         if (!structural && changed.length + fieldEdits.length > 0) {
+          // Reset first, so the knob is logged at tick 0: the run re-steps
+          // from zero, and an edit stamped with the old run's last tick read
+          // as if it had taken effect at the end (feel-test 2026-10-09).
+          b.reset();
           for (const r of changed) {
             b.setFlowAmount(r.name, nameOf(r.a), nameOf(r.b), Number(r.amount ?? 0));
           }
           for (const e of fieldEdits) {
             b.setComponentParam(e.name, e.field, e.v);
           }
-          b.reset();
           b.stepOver(t);
           const r = b.readout();
           setResult(r);

@@ -51,6 +51,22 @@ export function AmountField({
   );
 }
 
+/** The slider's step for a declared range: whole units when the range is
+ *  declared in whole numbers and wide enough to drag by them (a release in
+ *  litres a day reads as 30, not 30.2000007), otherwise 1/200 of the span.
+ *  Commits are rounded to the step so a drag never leaves a float tail. */
+export function sliderStep(min: number, max: number): number {
+  const span = max - min;
+  if (!(span > 0)) return 1;
+  if (Number.isInteger(min) && Number.isInteger(max) && span >= 20) return 1;
+  return span / 200;
+}
+
+export function snapToStep(v: number, step: number): number {
+  const digits = Math.max(0, Math.ceil(-Math.log10(step)));
+  return Number((Math.round(v / step) * step).toFixed(digits));
+}
+
 /** A range slider + number field over one flow-anchored param. The slider
  *  commits on release (not per-tick), routing through the same relation-update
  *  path as every other edit. */
@@ -68,10 +84,12 @@ export function ParamControl({
   const [drag, setDrag] = useState<number | null>(null);
   const min = Number(param.range?.min ?? 0);
   const max = Number(param.range?.max ?? 0);
+  const step = sliderStep(min, max);
   const value = drag ?? Number(relation.amount ?? 0);
   const commit = () => {
-    if (drag !== null && String(drag) !== relation.amount) {
-      onEdit({ ...relation, amount: String(drag) });
+    if (drag !== null) {
+      const v = snapToStep(drag, step);
+      if (String(v) !== relation.amount) onEdit({ ...relation, amount: String(v) });
     }
     setDrag(null);
   };
@@ -103,7 +121,7 @@ export function ParamControl({
           className="mt-0.5 block w-full"
           min={min}
           max={max}
-          step={(max - min) / 200 || 1}
+          step={step}
           value={value}
           onChange={(e) => setDrag(Number(e.target.value))}
           onPointerUp={commit}
