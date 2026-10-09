@@ -170,6 +170,29 @@ impl BenchSession {
         self.names.get(id).cloned().unwrap_or_default()
     }
 
+    /// Does `given` name the thing `id` as the author sees it? Either the
+    /// thing's own name, or the name of a pass-way the projection fused into
+    /// it (#226: a pure pass-way serving one processor becomes that
+    /// SOI's boundary interface record, which the processor's subsystem
+    /// claims through `parent_interface`, so the canvas says "Gutter" where the
+    /// spec says "Rain Barrel"). Both name the same crossing.
+    fn names_endpoint(&self, id: &Id, given: &str) -> bool {
+        if self.name_of(id) == given {
+            return true;
+        }
+        let Some(sys) = self.model.systems.iter().find(|s| s.info.id == *id) else {
+            return false;
+        };
+        let Some(parent_iface) = sys.boundary.parent_interface.as_ref() else {
+            return false;
+        };
+        self.model
+            .systems
+            .iter()
+            .flat_map(|s| s.boundary.interfaces.iter())
+            .any(|i| i.info.id == *parent_iface && i.info.name == given)
+    }
+
     /// The wire index of the flow named `label` from `from` to `to`.
     fn flow_index(&self, label: &str, from: &str, to: &str) -> Result<usize, String> {
         let hits: Vec<usize> = self
@@ -178,7 +201,7 @@ impl BenchSession {
             .iter()
             .enumerate()
             .filter(|(_, f)| {
-                f.name == label && self.name_of(&f.source) == from && self.name_of(&f.sink) == to
+                f.name == label && self.names_endpoint(&f.source, from) && self.names_endpoint(&f.sink, to)
             })
             .map(|(k, _)| k)
             .collect();

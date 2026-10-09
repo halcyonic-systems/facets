@@ -19,7 +19,11 @@ One admission under the rule since the dynamics bench (facets#463, 2026-10-09):
 capacity, a matched throughput and an energy drive all show in one readout
 with declared amounts — two inflows, one stock, one work process, one harvest.
 It is the model the bench is tested by feel on: every knob moves the harvest,
-and the ledger reads by eye. It is not a claim about horticulture.
+and the ledger reads by eye. It is not a claim about horticulture. It is
+written in the split form: the gutter, the canopy and the garden gate are
+pass-ways (`interface` lines), and the barrel and the bed are plain
+residents, so the shelf carries one model where the boundary is not the
+same thing as the processors behind it.
 
 Two consequences worth naming:
 
