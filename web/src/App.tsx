@@ -2081,9 +2081,11 @@ function Workspace() {
   function commitInputModel(nextModel: CanvasModel) {
     setCanvasModel(nextModel);
     setDirty(true);
-    if (runCsv && nextModel.lens !== "Klir") {
+    // Move 1 of the dynamics MVP (#463): no data needed. With no CSV bound the
+    // declared amounts alone govern (`runWith` picks run_rich on an empty csv).
+    if (nextModel.lens !== "Klir") {
       try {
-        runWith(JSON.stringify(project(nextModel)), runCsv, manifest, dt, t, true, true);
+        runWith(JSON.stringify(project(nextModel)), runCsv ?? "", manifest, dt, t, true, true);
       } catch (e) {
         setToast(e instanceof Error ? e.message : String(e));
       }
@@ -2103,9 +2105,9 @@ function Workspace() {
     if ((result === null && markovRun === null) || !canvasModel) return;
     if (canvasModel.lens === "Klir") {
       if (canvasModel.things.length > 0) runKlir(canvasModel, nextT);
-    } else if (runCsv) {
+    } else {
       const m = modelForRun();
-      if (m) runWith(m.json, runCsv, manifest, nextDt, nextT, m.edited);
+      if (m) runWith(m.json, runCsv ?? "", manifest, nextDt, nextT, m.edited);
     }
   }
 
@@ -2158,8 +2160,11 @@ function Workspace() {
     const subGenerative =
       canvasModel.klir_level === "Source" || canvasModel.klir_level === "Data";
     const dtmcRunnable = runKind === "dtmc" && canvasModel.things.length > 0 && !subGenerative;
+    // Move 1 of the dynamics MVP (#463): a conservation model runs from its
+    // declared amounts alone. Data, when bound, forces flows; it is no longer
+    // the condition for running at all.
     const runnable =
-      runKind === "dtmc" ? dtmcRunnable : runKind === "conservation" && !!runCsv;
+      runKind === "dtmc" ? dtmcRunnable : runKind === "conservation" && canvasModel.things.length > 0;
     const title =
       runKind === "dtmc"
         ? dtmcRunnable
@@ -2170,18 +2175,20 @@ function Workspace() {
         : runKind === "conservation"
           ? runCsv
             ? "Run the forced simulation"
-            : attachedCsv
-              ? "Bind at least one column in Data mode to drive the run."
-              : "Run needs data: a demo bundle, or a CSV attached and bound in Data mode."
+            : canvasModel.things.length > 0
+              ? attachedCsv
+                ? "Run from the declared amounts (bind a column in Data mode to force a flow)"
+                : "Run from the declared amounts"
+              : "Add at least one thing to run."
           : "No mechanism stated (⊘M), so structure alone gives Run nothing to execute.";
     const onRun = () => {
       // #345: no mode transition — the transport lives on the Model surface,
       // so the run happens where the author already is.
       if (runKind === "dtmc") {
         if (dtmcRunnable) runKlir(canvasModel, t, true);
-      } else if (runKind === "conservation" && runCsv) {
+      } else if (runKind === "conservation") {
         const m = modelForRun();
-        if (m) runWith(m.json, runCsv, manifest, dt, t, m.edited, true);
+        if (m) runWith(m.json, runCsv ?? "", manifest, dt, t, m.edited, true);
       }
     };
     // #297: advance by one tick — a deterministic re-run one step longer,
@@ -2196,12 +2203,12 @@ function Workspace() {
         setT(next);
         runKlir(canvasModel, next);
         setTick(next);
-      } else if (runKind === "conservation" && runCsv) {
+      } else if (runKind === "conservation") {
         const m = modelForRun();
         if (!m) return;
         const nextT = result ? (result.ticks + 1) * dt : dt;
         setT(nextT);
-        runWith(m.json, runCsv, manifest, dt, nextT, m.edited);
+        runWith(m.json, runCsv ?? "", manifest, dt, nextT, m.edited);
         setTick(result ? result.ticks : 0);
       }
     };
