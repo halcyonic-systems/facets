@@ -152,9 +152,7 @@ export function Readouts({
     </>
   ) : (
     <Placeholder>
-      {manifest
-        ? "Nothing has run yet. Press ▶ Run in the header, or set the run length in the rail first."
-        : "Run needs data: open a demo bundle, or attach a CSV in Data mode and bind at least one flow."}
+      {"Nothing has run yet. Press ▶ Run in the header, or set the run length in the rail first. No data is needed: the declared amounts govern until a column is bound."}
     </Placeholder>
   );
 
