@@ -34,6 +34,7 @@ export function Readouts({
   manifest,
   onInputEdit,
   onThingEdit,
+  engineLabels,
   onResetInputs,
   time,
   runKind,
@@ -69,6 +70,8 @@ export function Readouts({
   onInputEdit?: (next: Relation) => void;
   /** #343: a field-anchored param edits its component's engine parameter. */
   onThingEdit?: (next: Thing) => void;
+  /** The kernel palette's label for each primitive's own knob. */
+  engineLabels?: Record<string, string>;
   onResetInputs?: () => void;
   time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
   /** #282: the lens's declared run semantics — this view renders from it. */
@@ -102,7 +105,14 @@ export function Readouts({
   // forced inputs to edit; the rail carries time alone.
   const inputs =
     runKind !== "dtmc" && model && manifest && onInputEdit ? (
-      <RunInputs model={model} manifest={manifest} onEdit={onInputEdit} onEditThing={onThingEdit} onReset={onResetInputs} />
+      <RunInputs
+        model={model}
+        manifest={manifest}
+        onEdit={onInputEdit}
+        onEditThing={onThingEdit}
+        engineLabels={engineLabels}
+        onReset={onResetInputs}
+      />
     ) : null;
   const timeRow = time ? <TimeRow time={time} /> : null;
 

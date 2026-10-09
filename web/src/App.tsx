@@ -1,21 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildRunRecord, postRunRecord, runRecordFilename, type RunRecord } from "./runRecord";
-import {
-  ready,
-  runMarkov,
-  Bench,
-  openModel,
-  writeArchive,
-  project,
-
-  analyzeCanvas,
-  checkDecompositionsCanvas,
-  decomposeComponent,
-  compileSl,
-  type ArchiveText,
-  mintModelId,
-  emitSl,
-} from "./kernel";
+import { ready, runMarkov, Bench, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette } from "./kernel";
 import type {
   TickLog,
   CanvasModel,
@@ -2136,6 +2121,21 @@ function Workspace() {
     });
   }
 
+  // The kernel palette's label for each primitive's own knob ("gain", "sensor
+  // gain k", …), read once; the inputs rail's engine floor shows it. Absent
+  // before the kernel is up, in which case the row says "parameter".
+  const engineLabels = useMemo(() => {
+    try {
+      return Object.fromEntries(
+        sandboxPalette()
+          .filter((e) => e.param_spec)
+          .map((e) => [e.kind, e.param_spec![0]]),
+      ) as Record<string, string>;
+    } catch {
+      return undefined;
+    }
+  }, []);
+
   // #343 (#463 move 3): a field-anchored param edits its component's own
   // engine parameter in the document; commitInputModel turns the changed
   // field into a session knob by its key.
@@ -2176,13 +2176,21 @@ function Workspace() {
           "setpoint",
           "maintenance",
         ];
-        const fieldEdits: Array<{ name: string; field: import("./kernel/types").EngineField; v: number }> = [];
+        const fieldEdits: Array<{ name: string; field: import("./kernel").BenchComponentField; v: number }> = [];
         for (const t of nextModel.things) {
           const was = prev.things.find((p) => p.id === t.id);
           if (!was) continue;
           for (const f of FIELDS) {
             const now = t.cognitive_params?.[f];
             if (now !== undefined && now !== was.cognitive_params?.[f]) fieldEdits.push({ name: t.name, field: f, v: now });
+          }
+          // The floor: the primitive's own knob and the initial stock.
+          if (t.agency_capacity !== undefined && t.agency_capacity !== was.agency_capacity) {
+            fieldEdits.push({ name: t.name, field: "param", v: t.agency_capacity });
+          }
+          const st = t.initial_state?.["storage"];
+          if (typeof st === "number" && st !== was.initial_state?.["storage"]) {
+            fieldEdits.push({ name: t.name, field: "initial_storage", v: st });
           }
         }
         const structural =
@@ -2270,13 +2278,18 @@ function Workspace() {
     if ("errors" in compiled) return;
     const declared = new Map(compiled.ok.relations.map((r) => [r.id, r.amount]));
     // #343: a component's declared engine parameters come back too.
-    const bags = new Map(compiled.ok.things.map((t) => [t.id, t.cognitive_params]));
+    const bags = new Map(compiled.ok.things.map((t) => [t.id, t]));
     commitInputModel({
       ...canvasModel,
       relations: canvasModel.relations.map((r) =>
         declared.has(r.id) ? { ...r, amount: declared.get(r.id) } : r,
       ),
-      things: canvasModel.things.map((t) => (bags.has(t.id) ? { ...t, cognitive_params: bags.get(t.id) } : t)),
+      things: canvasModel.things.map((t) => {
+        const d = bags.get(t.id);
+        return d
+          ? { ...t, cognitive_params: d.cognitive_params, agency_capacity: d.agency_capacity, initial_state: d.initial_state }
+          : t;
+      }),
     });
   }
 
@@ -3900,6 +3913,7 @@ function Workspace() {
                       }
                       onInputEdit={applyInputEdit}
                         onThingEdit={applyThingEdit}
+                        engineLabels={engineLabels}
                       onResetInputs={demo?.sl ? resetInputs : undefined}
                       time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}
                       runKind={LensPalette[canvasModel.lens].run}
