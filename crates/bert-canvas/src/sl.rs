@@ -1023,6 +1023,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut setpoint: Option<f64> = None;
                 let mut maintenance: Option<f64> = None;
                 let mut back_pressure = false;
+                let mut limiting = false;
+                let mut reservoir: Option<f64> = None;
                 let mut description = String::new();
                 let mut grounding: Option<Grounding> = None;
                 let mut scale: Option<ScaleType> = None;
@@ -1454,6 +1456,66 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             back_pressure = true;
                             i += 1;
                         }
+                        // `limiting` — a Combining process's Liebig flag (#342,
+                        // #463 move 5): the kernel's cognitive_params["limiting"],
+                        // read as the min-of-inputs bool. Throughput is bounded by
+                        // the scarcest input kind rather than their sum. Bare;
+                        // Combining-only.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("limiting") => {
+                            if role == Role::Environment {
+                                fail(
+                                    "`limiting` applies to components only \
+                                     (environment internals are opaque)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                            if limiting {
+                                fail("`limiting` already given on this component".into(), &mut errors);
+                                ok = false;
+                            }
+                            limiting = true;
+                            i += 1;
+                        }
+                        // `reservoir <n>` — a source's finite supply (#260,
+                        // #463 move 5): the total it can emit over a run; the
+                        // engine's Node.reservoir, after which its flows stop.
+                        // Source lines only: a sink receives, a component holds
+                        // a `stock`, and an unbounded source is the default.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("reservoir") => {
+                            if !(role == Role::Environment && env_kind == EnvKind::Source) {
+                                fail(
+                                    "`reservoir` applies to a `source` line only — it is the \
+                                     finite supply a source can emit over a run (a component's \
+                                     holding is its `stock`)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                            if reservoir.is_some() {
+                                fail("`reservoir` already given on this source".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Word(n))
+                                    if n.parse::<f64>().is_ok_and(|v| v.is_finite() && v > 0.0) =>
+                                {
+                                    reservoir = Some(n.parse::<f64>().unwrap());
+                                }
+                                _ => {
+                                    fail(
+                                        "reservoir syntax: `reservoir <positive number>` — the \
+                                         total a source can supply over a run (e.g. `reservoir 100`)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
                         // `scale <Nominal|Ordinal|Interval|Ratio>` — Klir's
                         // measurement scale for the source variable (#154). Rides
                         // env lines too (#154 revision): Table 4.1 most wants the
@@ -1621,7 +1683,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                      is part of the name, or remove it; after the name only \
                                      `primitive <Name>`, `interface`, `stock \"<unit>\"`, \
                                      `release <n>`, `capacity <n>`, `time constant <n>`, \
-                                     `setpoint <n>`, `maintenance <n>`, `backpressure`, \
+                                     `setpoint <n>`, `maintenance <n>`, `backpressure`, `limiting`, \
+                                     `reservoir <n>` (source lines), \
                                      `scale <Scale>`, `states {{…}}`, `kind <Basic|Support>` \
                                      and `decomposes …` may follow",
                                     other.display()
@@ -1694,6 +1757,15 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     ok = false;
                 }
+                if limiting && primitive != Some(ProcessPrimitive::Combining) {
+                    fail(
+                        "`limiting` applies to a Combining component only — it bounds the \
+                         combination by its scarcest input, and no other primitive reads it"
+                            .into(),
+                        &mut errors,
+                    );
+                    ok = false;
+                }
                 if back_pressure && primitive != Some(ProcessPrimitive::Modulating) {
                     fail(
                         "`backpressure` applies to a Modulating component only — it is \
@@ -1750,6 +1822,12 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 }
                 if back_pressure {
                     cognitive_params.insert("back_pressure".to_string(), 1.0);
+                }
+                if limiting {
+                    cognitive_params.insert("limiting".to_string(), 1.0);
+                }
+                if let Some(r) = reservoir {
+                    cognitive_params.insert("reservoir".to_string(), r);
                 }
                 let mut initial_state = std::collections::HashMap::new();
                 if let Some(v) = initial_stock {
@@ -3343,7 +3421,12 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
         // write text that cannot re-parse to what it started as.
         let release_tc_conflict = t.cognitive_params.contains_key("release_rate")
             && t.cognitive_params.contains_key("time_constant");
+        let source_reservoir_only = t.role == Role::Environment
+            && t.env_kind == EnvKind::Source
+            && t.cognitive_params.len() == 1
+            && t.cognitive_params.get("reservoir").is_some_and(|v| v.is_finite() && *v > 0.0);
         let cognitive_expressible = t.cognitive_params.is_empty()
+            || source_reservoir_only
             || (t.role == Role::Component
                 && !release_tc_conflict
                 && t.cognitive_params.iter().all(|(k, v)| match k.as_str() {
@@ -3358,6 +3441,7 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                             && *v > 0.0
                     }
                     "back_pressure" => t.primitive == Some(ProcessPrimitive::Modulating),
+                    "limiting" => t.primitive == Some(ProcessPrimitive::Combining),
                     _ => false,
                 }));
         if !(initial_expressible && cognitive_expressible) {
@@ -3366,7 +3450,7 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                  `stock <unit> initial <n>` and, gated to their reading \
                  primitive, `release <n>` / `capacity <n>` / `time constant <n>` \
                  / `maintenance <n>` on Buffering, `setpoint <n>` on Inverting, \
-                 and `backpressure` on Modulating) — export the model as kernel \
+                 `backpressure` on Modulating, and `limiting` on Combining) — export the model as kernel \
                  JSON instead of SL",
                 t.name
             ));
@@ -3407,6 +3491,11 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
         };
         lead(&mut out, &anchor);
         write!(out, "{keyword} {}", name_token(&t.name)?).unwrap();
+        if t.role == Role::Environment && t.env_kind == EnvKind::Source {
+            if let Some(r) = t.cognitive_params.get("reservoir") {
+                write!(out, " reservoir {r}").unwrap();
+            }
+        }
         if t.role == Role::Component {
             if let Some(p) = t.primitive {
                 write!(out, " primitive {p:?}").unwrap();
@@ -3447,6 +3536,9 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             }
             if t.cognitive_params.contains_key("back_pressure") {
                 write!(out, " backpressure").unwrap();
+            }
+            if t.cognitive_params.contains_key("limiting") {
+                write!(out, " limiting").unwrap();
             }
         }
         // Klir source-system metadata (#154): kind, then scale, then state set.
@@ -3895,6 +3987,8 @@ pub const RESERVED_WORDS: &[&str] = &[
     "setpoint",
     "maintenance",
     "backpressure",
+    "limiting",
+    "reservoir",
     "description",
     "grounding",
     "usability",

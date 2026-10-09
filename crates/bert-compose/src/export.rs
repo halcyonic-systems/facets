@@ -112,6 +112,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                     is_same_as_id: None,
                     // A compose circuit node's kind IS its direction (#216).
                     authored_direction: true,
+                    reservoir: None,
                 });
                 node_id.insert(i, eid);
             }
@@ -127,6 +128,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                     is_same_as_id: None,
                     // A compose circuit node's kind IS its direction (#216).
                     authored_direction: true,
+                    reservoir: None,
                 });
                 node_id.insert(i, eid);
             }
@@ -383,6 +385,8 @@ pub fn from_spec(spec: &bert_core::operational::OperationalSpec) -> Circuit {
     for t in &spec.sources {
         let mut node = Node::new(NodeKind::Source, ids.len() + 1, grid(ids.len()));
         node.name = t.name.clone();
+        node.reservoir = t.reservoir.map(|r| r as f32);
+        node.remaining = node.reservoir.unwrap_or(0.0);
         ids.push((t.id.clone(), c.nodes.len()));
         c.nodes.push(node);
     }
@@ -422,6 +426,9 @@ pub fn from_spec(spec: &bert_core::operational::OperationalSpec) -> Circuit {
         }
         if p.cognitive_params.contains_key("back_pressure") {
             node.back_pressure = true;
+        }
+        if p.cognitive_params.contains_key("limiting") {
+            node.limiting = true;
         }
         ids.push((p.id.clone(), c.nodes.len()));
         c.nodes.push(node);
@@ -615,15 +622,18 @@ mod tests {
             sources: vec![OperationalTerminal {
                 id: id(IdType::Source, 0),
                 name: "Provider".into(),
+                reservoir: None
             }],
             sinks: vec![
                 OperationalTerminal {
                     id: id(IdType::Sink, 0),
                     name: "Dev channel".into(),
+                    reservoir: None
                 },
                 OperationalTerminal {
                     id: id(IdType::Sink, 1),
                     name: "Enterprise channel".into(),
+                    reservoir: None
                 },
             ],
             flows: vec![flow("dev tokens", 0, 12.0), flow("ent tokens", 1, 1.0)],
@@ -711,10 +721,10 @@ mod tests {
                     stock_unit: String::new(),
                 }],
                 sources: vec![
-                    OperationalTerminal { id: id(IdType::Source, 0), name: "Lab".into() },
-                    OperationalTerminal { id: id(IdType::Source, 1), name: "Grid".into() },
+                    OperationalTerminal { id: id(IdType::Source, 0), name: "Lab".into(), reservoir: None },
+                    OperationalTerminal { id: id(IdType::Source, 1), name: "Grid".into(), reservoir: None },
                 ],
-                sinks: vec![OperationalTerminal { id: id(IdType::Sink, 0), name: "Served".into() }],
+                sinks: vec![OperationalTerminal { id: id(IdType::Sink, 0), name: "Served".into(), reservoir: None }],
                 flows: vec![
                     flow("weights", id(IdType::Source, 0), id(IdType::Subsystem, 0), SubstanceType::Message, signal_amount, ample),
                     flow("compute", id(IdType::Source, 1), id(IdType::Subsystem, 0), SubstanceType::Energy, 100.0, false),
@@ -779,10 +789,12 @@ mod tests {
             sources: vec![OperationalTerminal {
                 id: id(IdType::Source, 0),
                 name: "Provider".into(),
+                reservoir: None
             }],
             sinks: vec![OperationalTerminal {
                 id: id(IdType::Sink, 0),
                 name: "Dev channel".into(),
+                reservoir: None
             }],
             flows: vec![OperationalFlow {
                 name: "forced tokens".into(),
@@ -860,10 +872,11 @@ mod tests {
             sources: vec![OperationalTerminal {
                 id: id(IdType::Source, 0),
                 name: "Demand".into(),
+                reservoir: None
             }],
             sinks: vec![
-                OperationalTerminal { id: id(IdType::Sink, 0), name: "Big".into() },
-                OperationalTerminal { id: id(IdType::Sink, 1), name: "Small".into() },
+                OperationalTerminal { id: id(IdType::Sink, 0), name: "Big".into(), reservoir: None },
+                OperationalTerminal { id: id(IdType::Sink, 1), name: "Small".into(), reservoir: None },
             ],
             flows: vec![
                 flow("demand", id(IdType::Source, 0), id(IdType::Subsystem, 1), None),
@@ -903,8 +916,8 @@ mod tests {
         let id = |ty: IdType, n: i64| Id { ty, indices: vec![n] };
         let spec = OperationalSpec {
             processes: vec![],
-            sources: vec![OperationalTerminal { id: id(IdType::Source, 0), name: "Demand".into() }],
-            sinks: vec![OperationalTerminal { id: id(IdType::Sink, 0), name: "Channel".into() }],
+            sources: vec![OperationalTerminal { id: id(IdType::Source, 0), name: "Demand".into(), reservoir: None }],
+            sinks: vec![OperationalTerminal { id: id(IdType::Sink, 0), name: "Channel".into(), reservoir: None }],
             flows: vec![OperationalFlow {
                 name: "annual demand".into(),
                 source: id(IdType::Source, 0),

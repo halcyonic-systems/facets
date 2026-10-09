@@ -1628,6 +1628,13 @@ pub struct ExternalEntity {
     /// this field existed keeps exactly its current gating.
     #[serde(default = "default_true")]
     pub authored_direction: bool,
+    /// A finite supply for a source (#260, #463 move 5): the total it can
+    /// emit over a run, after which its flows stop. `None` is the unbounded
+    /// source the kernel always had — a fixed potential that never runs dry.
+    /// SL: `source Faucet reservoir 100`. Skipped on disk when unset so every
+    /// model written before this field stays byte-identical.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reservoir: Option<f64>,
 }
 
 fn default_true() -> bool {

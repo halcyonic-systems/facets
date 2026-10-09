@@ -951,6 +951,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     // neutral `environment` thing is merely filed on one side
                     // because a WorldModel has no neutral external (#216).
                     authored_direction: t.env_kind != EnvKind::Neutral,
+                    reservoir: if is_source { t.cognitive_params.get("reservoir").copied() } else { None },
                 };
                 ext.info.grounding = t.grounding.clone();
                 if is_source {
@@ -1375,7 +1376,10 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             scale: None,
             states: None,
             variable_kind: None,
-            cognitive_params: Default::default(),
+            cognitive_params: e
+                .reservoir
+                .map(|r| std::collections::HashMap::from([("reservoir".to_string(), r)]))
+                .unwrap_or_default(),
             initial_state: Default::default(),
             agency_capacity: None,
         });
