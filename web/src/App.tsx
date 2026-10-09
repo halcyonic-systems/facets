@@ -15,6 +15,8 @@ import type {
   ValidationIssue,
 } from "./kernel/types";
 import { DEMOS, isRunnable, type Demo } from "./demos";
+import { listModelRecords } from "./modelStore";
+import { stage2Report, type PoolEntry, type Stage2Report } from "./resolution";
 import type { CorpusEntry } from "./corpus";
 import Canvas, { type RideOrder } from "./canvas/Canvas";
 import { view3dEnabled } from "./canvas3d/flag";
@@ -1996,6 +1998,49 @@ function Workspace() {
   );
   const facts = analysis.ok?.facts ?? null;
   const desc = analysis.ok?.description ?? null;
+
+  // #462 item 1: when the open model lands crossings on `interface
+  // unresolved` (Mobus stage 1), look for a stage-2 model of the same system
+  // — on the shelf or in the library — and ask the kernel whether it resolves
+  // it. Null when the model has no `unresolved`; the review panel shows the
+  // candidates, or that there are none yet.
+  const [stage2, setStage2] = useState<Stage2Report | null>(null);
+  const unresolvedId = facts?.unresolved_thing_id ?? null;
+  useEffect(() => {
+    if (!canvasModel || unresolvedId === null || unresolvedId === undefined) {
+      setStage2(null);
+      return;
+    }
+    const stage1 = canvasModel;
+    let stale = false;
+    (async () => {
+      const pool: PoolEntry[] = [];
+      for (const d of DEMOS) {
+        if (!d.sl) continue;
+        try {
+          const out = compileSl(d.sl);
+          if (!("errors" in out)) pool.push({ source: "shelf", label: d.title, model: out.ok });
+        } catch {
+          /* a shelf entry that does not compile is not a candidate */
+        }
+      }
+      try {
+        for (const r of await listModelRecords()) {
+          try {
+            pool.push({ source: "library", label: r.name, model: openModel(r.json) });
+          } catch {
+            /* an unreadable record is not a candidate */
+          }
+        }
+      } catch {
+        /* no library (private window, blocked storage): the shelf still answers */
+      }
+      if (!stale) setStage2(stage2Report(stage1, pool));
+    })();
+    return () => {
+      stale = true;
+    };
+  }, [canvasModel, unresolvedId]);
   const residue = analysis.ok?.residue ?? null;
   const analysisError = analysis.error;
 
@@ -3992,6 +4037,7 @@ function Workspace() {
               issueTargets={issueTargets}
               analysisError={analysisError}
               hostError={decomposition.error}
+              stage2={stage2}
               canvasModel={canvasModel}
               tick={tick}
               reviewRequest={reviewRequest}
