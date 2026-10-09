@@ -56,6 +56,9 @@ export interface LensEdgeProps {
    *  selection. A LAYOUT fact measured off the rendered boxes by Canvas, not a
    *  systems fact — every lens passes it straight to EdgeScaffold. */
   crowded?: boolean;
+  /** #308 part B: the opaque view draws a crossing up to the membrane and no
+   *  further — the dashed interior segment to a hidden resident is omitted. */
+  hideInterior?: boolean;
   onSelect?: (id: number) => void;
 }
 

@@ -83,6 +83,16 @@ export function wantsRebaseOut(extentPx: number, minView: number, armed: boolean
   return decide(extentPx <= minView * RB_OUT, extentPx >= minView * RB_OUT * ARM_SLACK, armed);
 }
 
+/** Should the OPAQUE view of the root open its interior again? (#308 part B.)
+ *  Opaque is entered by zooming out past the root's out line, where there is
+ *  no parent to rebase to; it leaves once the frame has grown back well past
+ *  the arming band, so a wheel resting near the out line cannot flicker the
+ *  interior in and out. One line, a clear factor above the arm line. */
+export const OPAQUE_EXIT = RB_OUT * ARM_SLACK * 2;
+export function wantsOpaqueExit(extentPx: number, minView: number): boolean {
+  return minView > 0 && extentPx >= minView * OPAQUE_EXIT;
+}
+
 /** The view that draws `e`'s child as the root, pixel-identical to `view`
  *  drawing it through the aperture. */
 export function rebaseIn(view: View, e: Embed): View {

@@ -42,6 +42,7 @@ import {
   rebaseOutScale,
   wantsRebaseIn,
   wantsRebaseOut,
+  wantsOpaqueExit,
   type View,
 } from "./frameRebase";
 import { EmbeddedFrame } from "./EmbeddedFrame";
@@ -239,6 +240,16 @@ interface Props {
    *  no connect, no rename, no placing; clicking still selects, and a door
    *  still opens. Every write the gestures would make is dropped here. */
   inert?: boolean;
+  /** #308 part B: the opaque view. The same model seen from outside — the
+   *  membrane with its interfaces and crossings, the neighbours and the
+   *  milieu — with the interior components and their relations hidden. The
+   *  ring, the display model and the ports are computed from the FULL model,
+   *  so the membrane is the transparent view's membrane exactly; only what is
+   *  drawn changes. Implies `inert`: nothing hidden can be dragged. */
+  opaque?: boolean;
+  /** Fired from the opaque view when the frame has grown back past the exit
+   *  line (`wantsOpaqueExit`): the reader zoomed in, so open the interior. */
+  onOpaqueExit?: (() => void) | null;
   /** #409 M3: an element the reading sheet is pointing at (a note under the
    *  pointer), drawn lit the way a selected one is, without selecting it. */
   litThingId?: number | null;
@@ -295,7 +306,9 @@ export default function Canvas({
   onRebaseOut,
   viewCommand = null,
   ride = null,
-  inert = false,
+  inert: inertProp = false,
+  opaque = false,
+  onOpaqueExit = null,
   litThingId = null,
   litRelationId = null,
   groundingOverlay = false,
@@ -352,6 +365,9 @@ export default function Canvas({
   // interior components — the Fed's single plain component): there the fit
   // falls back to ALL components at authored positions, exactly the pre-#226
   // behavior, so a membrane never collapses to a bubble.
+  // The opaque view is read-only by construction: a drag on a hidden node's
+  // hit area would otherwise move it (#308 part B).
+  const inert = inertProp || opaque;
   const interiorThings = model.things.filter(
     (t) => !(t.role === "Component" && authoredInterfaceIds.has(t.id)),
   );
@@ -443,8 +459,24 @@ export default function Canvas({
     component: port.component,
   }));
 
+  // What the opaque view draws: the neighbours, the interfaces on the rim,
+  // and the flows that cross the membrane. Everything else is the interior.
+  const shownThingIds: Set<number> | null = opaque
+    ? new Set(
+        dModel.things
+          .filter((t) => t.role === "Environment" || authoredInterfaceIds.has(t.id))
+          .map((t) => t.id),
+      )
+    : null;
+  const gestureModel: CanvasModel = shownThingIds
+    ? {
+        ...dModel,
+        things: dModel.things.filter((t) => shownThingIds.has(t.id)),
+        relations: dModel.relations.filter((r) => shownThingIds.has(r.a) && shownThingIds.has(r.b)),
+      }
+    : dModel;
   const gestures = useCanvasGestures({
-    model: dModel,
+    model: gestureModel,
     // #306 write-back guard: gestures see the projected model, but writes must
     // land in AUTHORED coordinates for everything they didn't touch — else the
     // projection persists and the ring inflates every drag frame.
@@ -616,7 +648,7 @@ export default function Canvas({
   // model, and a register's projection moves pixels, not identity. Klir draws
   // flat, so it gets none.
   const doorByThing =
-    doorFor && lens !== "Klir"
+    doorFor && lens !== "Klir" && !opaque
       ? new Map(dModel.things.map((t) => [t.id, doorFor(thingById(model, t.id) ?? t)] as const))
       : null;
 
@@ -666,7 +698,7 @@ export default function Canvas({
   const register: ApertureRegister | null = lens === "Klir" ? null : lens;
   const approaching: string[] = [];
   const frames: FrameNode[] =
-    register && childModel
+    register && childModel && !opaque
       ? buildFrames(dModel, scale, {
           childModel,
           register,
@@ -748,7 +780,7 @@ export default function Canvas({
         target = f;
       }
     }
-    for (const t of dModel.things) {
+    for (const t of opaque ? [] : dModel.things) {
       if (!t.child_model) continue;
       const next = wantsRebaseIn(aperturePx, minView, inArmRef.current.get(t.id) ?? false);
       inArmRef.current.set(t.id, next.armed);
@@ -757,6 +789,12 @@ export default function Canvas({
         onRebaseIn(t, rebaseIn({ pan, scale }, target.embed), target.embed);
         return;
       }
+    }
+    if (opaque && register) {
+      // #308 part B: the opaque root re-opens once the frame has grown back
+      // past the exit line; the out line below stays quiet meanwhile.
+      if (onOpaqueExit && wantsOpaqueExit(frameExtentPx(dModel, scale, register), minView)) onOpaqueExit();
+      return;
     }
     if (onRebaseOut && register) {
       const extent = frameExtentPx(dModel, scale, register);
@@ -897,6 +935,7 @@ export default function Canvas({
       ref={svgRef}
       className={`canvas-stage absolute inset-0 h-full w-full touch-none select-none${armed ? " cursor-crosshair" : ""}`}
       data-grid={STYLE.grid.mode}
+      data-opaque={opaque ? "true" : undefined}
       style={
         {
           "--grid-gap": `${STYLE.grid.gap}px`,
@@ -1233,12 +1272,15 @@ export default function Canvas({
           </>
         )}
 
-        {dModel.relations.map((r) => (
+        {dModel.relations
+          .filter((r) => !opaque || edgeFactById.get(r.id)?.locus === "Exo")
+          .map((r) => (
           <views.EdgeView
             key={r.id}
             model={dModel}
             relation={r}
             fact={edgeFactById.get(r.id)}
+            hideInterior={opaque}
             ring={ring}
             sigIndex={dModel.relations.indexOf(r)}
             selected={selectedRelationId === r.id || litRelationId === r.id}
@@ -1311,7 +1353,9 @@ export default function Canvas({
             structure stays the primary read, the distribution is the overlay. */}
         {mass && <MassOverlay things={dModel.things} mass={mass} />}
 
-        {dModel.things.map((t) => (
+        {dModel.things
+          .filter((t) => !shownThingIds || shownThingIds.has(t.id))
+          .map((t) => (
           <g
             key={t.id}
             className={openApertureIds.has(t.id) ? "aperture-open" : undefined}
