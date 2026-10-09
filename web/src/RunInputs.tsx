@@ -24,7 +24,7 @@
 import { useState } from "react";
 import type { CanvasModel, EngineField, Manifest, ParamDecl, Relation, Thing } from "./kernel/types";
 import { declaredRelations, forcedByColumn, resolveParamRows } from "./kernel/params";
-import { AmountField, ParamControl, useCommitOnRelease } from "./ParamControl";
+import { AmountField, ParamControl, sliderStep, snapToStep, useCommitOnRelease } from "./ParamControl";
 import { Card } from "./ui";
 
 
@@ -156,6 +156,7 @@ export function FieldControl({
   const current = Number(thing.cognitive_params?.[field] ?? 0);
   const min = Number(param.range?.min ?? 0);
   const max = Number(param.range?.max ?? 0);
+  const step = sliderStep(min, max);
   const value = drag ?? current;
   const put = (v: number) => {
     if (Number.isFinite(v) && v >= 0 && v !== current) {
@@ -163,7 +164,7 @@ export function FieldControl({
     }
   };
   const commit = () => {
-    if (drag !== null) put(drag);
+    if (drag !== null) put(snapToStep(drag, step));
     setDrag(null);
   };
   useCommitOnRelease(drag !== null, commit);
@@ -199,7 +200,7 @@ export function FieldControl({
           className="mt-0.5 block w-full"
           min={min}
           max={max}
-          step={(max - min) / 200 || 1}
+          step={step}
           value={value}
           onChange={(e) => setDrag(Number(e.target.value))}
           onPointerUp={commit}
