@@ -83,6 +83,10 @@ interface NodeBodyProps {
    *  as the tank-level disc fill (a Mobus stock metaphor). Default false, so
    *  Klir/Mobus output is unchanged. */
   simPosition?: boolean;
+  /** #308 part A: the reserved `unresolved` pass-way draws dashed — an
+   *  interface whose identity is not yet known, on the membrane where it
+   *  will be. Overrides the grounding dash only when no grounding dash applies. */
+  dash?: string;
   /** #306: an on-membrane interface renders at a fraction of the body size —
    *  a pass-way in the boundary, not a peer of the interior processes. Scales
    *  the drawn body (shapes, halos, glyph); the hit disc, label text size, and
@@ -128,6 +132,7 @@ export function NodeBody({
   simPosition = false,
   envHint = false,
   bodyScale = 1,
+  dash,
 }: NodeBodyProps) {
   const ctxHold = useStageHold();
   const hold = scale === undefined ? ctxHold : screenHold(scale);
@@ -148,7 +153,7 @@ export function NodeBody({
   const stroke = gs ? gs.color : lensStroke;
   const strokeOpacity = gs ? gs.opacity : lensStrokeOpacity;
   const strokeWidth = gs ? lensStrokeWidth * 2.2 : lensStrokeWidth;
-  const strokeDash = gs?.dash;
+  const strokeDash = gs?.dash ?? dash;
   const groundingTitle = overlay ? (groundingLine(thing.grounding) ?? "ungraded") : null;
   // Vertical extents of the body shape — the sim fill's clip rises bottom-up
   // between them, so the triangle drains/fills over ITS height, not the circle's.

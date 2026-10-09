@@ -26,7 +26,7 @@ use std::collections::{HashMap, HashSet};
 use bert_core::validate::{doc, validate_mode, Severity, ValidationIssue, ValidationResult};
 use bert_core::{EdgeLocus, Id, Interaction, Mode};
 
-use crate::canvas::{project_with_map, CanvasModel, Kind, KlirLevel, Lens, Role};
+use crate::canvas::{project_with_map, CanvasModel, Kind, KlirLevel, Lens, Role, Thing};
 
 /// Bunge's three coupling channels — his own matrix notation's row/column
 /// grammar (M₀ᵣ / Mₛ₀ / Mᵣₛ): the environment acting on a component is an
@@ -121,6 +121,11 @@ pub struct LensFacts {
     pub edges: Vec<EdgeFact>,
     /// Mobus interfaces, one per (boundary component, environment object) pair.
     pub ports: Vec<PortFact>,
+    /// The reserved pass-way `interface unresolved` (#308 part A), if the
+    /// model declares one: crossings landing on it have no identified
+    /// interface yet. The face draws it dashed on the membrane; it never
+    /// re-derives the identity from the name.
+    pub unresolved_thing_id: Option<u64>,
 }
 
 /// Mobus's substance words for the port-protocol fallback (concordance row 6:
@@ -308,6 +313,12 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
         .collect();
     ports.sort_by_key(|p| (p.component, p.env));
 
+    let unresolved_thing_id = model
+        .things
+        .iter()
+        .find(|t| t.role == Role::Component && t.passway && t.name == crate::sl::UNRESOLVED)
+        .map(|t| t.id);
+
     LensFacts {
         boundary_thing_ids,
         environment_thing_ids,
@@ -317,6 +328,7 @@ pub fn lens_facts(model: &CanvasModel) -> LensFacts {
         aggregate,
         edges,
         ports,
+        unresolved_thing_id,
     }
 }
 
@@ -799,6 +811,10 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
     // Lens-neutral: a model whose only component decomposes is a wrapper around
     // its child, whatever the tradition reading it (#308).
     check_sole_component_decomposes(model, &facts, &mut validation.issues);
+    // Lens-neutral: the reserved pass-way keeps its meaning only while it is
+    // one thing and a pass-way (#308 part A); the canvas can rename past the
+    // parser, so the kernel holds the rule.
+    check_unresolved_passway(model, &mut validation.issues);
 
     // Kernel subject → canvas element, via the projection's id maps reversed.
     let thing_of: HashMap<&Id, u64> = p.thing_ids.iter().map(|(k, v)| (v, *k)).collect();
@@ -830,7 +846,7 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
             // The ambient-name warning is raised on the canvas model, where the
             // thing may be an orphan the projection dropped, so it carries no
             // kernel subject; its location names the canvas id instead.
-            None if issue.code == AMBIENT_CODE || issue.code == WRAPPER_CODE => IssueTarget {
+            None if issue.code == AMBIENT_CODE || issue.code == WRAPPER_CODE || issue.code == UNRESOLVED_DUPLICATE_CODE || issue.code == UNRESOLVED_NOT_PASSWAY_CODE => IssueTarget {
                 thing: ambient_location_id(&issue.location),
                 ..IssueTarget::default()
             },
@@ -1031,6 +1047,211 @@ fn check_sole_component_decomposes(
         doc: Some(doc::DECOMPOSES.to_string()),
         subject: None,
     });
+}
+
+/// #308 part A: `unresolved` is a reserved pass-way. SL refuses the name on
+/// any other line and a second declaration, but a canvas rename reaches the
+/// model without the parser, so the kernel states the rule too: one thing
+/// may carry the name, and it must be a pass-way.
+pub const UNRESOLVED_DUPLICATE_CODE: &str = "unresolved_duplicate";
+pub const UNRESOLVED_NOT_PASSWAY_CODE: &str = "unresolved_not_passway";
+
+fn check_unresolved_passway(model: &CanvasModel, issues: &mut Vec<ValidationIssue>) {
+    let named: Vec<&Thing> = model
+        .things
+        .iter()
+        .filter(|t| t.name.eq_ignore_ascii_case(crate::sl::UNRESOLVED))
+        .collect();
+    for (n, t) in named.iter().enumerate() {
+        if n > 0 {
+            issues.push(ValidationIssue {
+                severity: Severity::Error,
+                code: UNRESOLVED_DUPLICATE_CODE.to_string(),
+                location: format!("things[{}]", t.id),
+                message: "`unresolved` is declared more than once: it is the one reserved pass-way for \
+                          crossings whose interface is not yet identified, and a model has at most one"
+                    .to_string(),
+                suggestion: Some("Keep one `interface unresolved`; name the others as the interfaces they are".to_string()),
+                doc: Some(doc::DECOMPOSES.to_string()),
+                subject: None,
+            });
+            continue;
+        }
+        if !(t.role == Role::Component && t.passway) {
+            issues.push(ValidationIssue {
+                severity: Severity::Error,
+                code: UNRESOLVED_NOT_PASSWAY_CODE.to_string(),
+                location: format!("things[{}]", t.id),
+                message: "`unresolved` is reserved for the pass-way `interface unresolved` — a component \
+                          or a neighbour cannot carry the name"
+                    .to_string(),
+                suggestion: Some("Rename this thing, or declare it as `interface unresolved` if it stands for crossings whose interface is not yet identified".to_string()),
+                doc: Some(doc::DECOMPOSES.to_string()),
+                subject: None,
+            });
+        }
+    }
+}
+
+/// One membrane crossing as the resolution check reads it (#308 part A):
+/// the environmental counterparty by name, the substance kind as authored on
+/// the canvas (not the projection's, which folds Field into Energy), the
+/// direction, and the interface it lands on, if any.
+struct Crossing<'a> {
+    counterparty: String,
+    kind: Kind,
+    inbound: bool,
+    landing: Option<&'a Thing>,
+}
+
+fn crossings(model: &CanvasModel) -> Vec<Crossing<'_>> {
+    let by_id: HashMap<u64, &Thing> = model.things.iter().map(|t| (t.id, t)).collect();
+    model
+        .relations
+        .iter()
+        .filter_map(|r| {
+            let (a, b) = (by_id.get(&r.a)?, by_id.get(&r.b)?);
+            let (env, comp, inbound) = match (a.role, b.role) {
+                (Role::Environment, Role::Component) => (a, b, true),
+                (Role::Component, Role::Environment) => (b, a, false),
+                _ => return None,
+            };
+            Some(Crossing {
+                counterparty: env.name.clone(),
+                kind: r.kind,
+                inbound,
+                landing: (comp.interface || comp.passway).then_some(*comp),
+            })
+        })
+        .collect()
+}
+
+fn kind_counts(xs: &[&Crossing<'_>]) -> HashMap<String, usize> {
+    let mut m = HashMap::new();
+    for x in xs {
+        *m.entry(format!("{:?}", x.kind)).or_insert(0) += 1;
+    }
+    m
+}
+
+fn kinds_by_counterparty(xs: &[&Crossing<'_>]) -> HashMap<String, HashMap<String, usize>> {
+    let mut m: HashMap<String, HashMap<String, usize>> = HashMap::new();
+    for x in xs {
+        *m.entry(x.counterparty.clone()).or_default().entry(format!("{:?}", x.kind)).or_insert(0) += 1;
+    }
+    m
+}
+
+/// Does `stage2` resolve the `unresolved` pass-way of `stage1`? (#308 part A.)
+///
+/// Two models of the SAME system: stage 1 lands some crossings on
+/// `interface unresolved` (Mobus Fig. 4.14, the box with its flows found and
+/// its membrane not yet read); stage 2 names the interfaces (Fig. 4.15).
+/// Resolution holds when the crossings stage 1 left unresolved and the
+/// crossings stage 2 lands on NEW named interfaces are the same multiset —
+/// by direction, by substance kind, and by environmental counterparty name —
+/// and nothing in stage 2 still lands on `unresolved`. Interfaces stage 1
+/// already named carry over unchanged and are not compared. This is the seam
+/// contract's crossing half (`InterfaceDecomposition`, SSF #43) read between
+/// two stages of one model rather than between a parent and a child; it has
+/// no Lean transcription of its own, and says so here.
+pub fn check_resolution_canvas(stage1: &CanvasModel, stage2: &CanvasModel) -> DecompositionReport {
+    let x1 = crossings(stage1);
+    let x2 = crossings(stage2);
+    let named1: HashSet<String> = stage1
+        .things
+        .iter()
+        .filter(|t| t.role == Role::Component && (t.interface || t.passway) && t.name != crate::sl::UNRESOLVED)
+        .map(|t| t.name.clone())
+        .collect();
+    let u1: Vec<&Crossing<'_>> = x1.iter().filter(|x| x.landing.is_some_and(|t| t.name == crate::sl::UNRESOLVED)).collect();
+    let r2: Vec<&Crossing<'_>> = x2
+        .iter()
+        .filter(|x| x.landing.is_some_and(|t| t.name != crate::sl::UNRESOLVED && !named1.contains(&t.name)))
+        .collect();
+
+    let mut issues = Vec::new();
+    let mut issue_targets = Vec::new();
+    let mut push = |issue: ValidationIssue, thing: Option<u64>| {
+        issues.push(issue);
+        issue_targets.push(IssueTarget { thing, relation: None, disregarded_relations: 0 });
+    };
+    let issue = |severity: Severity, code: &str, message: String, suggestion: &str| ValidationIssue {
+        severity,
+        code: code.to_string(),
+        location: "stage2".to_string(),
+        message,
+        suggestion: Some(suggestion.to_string()),
+        doc: Some(doc::DECOMPOSES.to_string()),
+        subject: None,
+    };
+
+    if let Some(t) = stage2.things.iter().find(|t| t.name == crate::sl::UNRESOLVED) {
+        let remaining = x2.iter().filter(|x| x.landing.is_some_and(|l| l.id == t.id)).count();
+        if remaining > 0 {
+            push(
+                issue(
+                    Severity::Error,
+                    "resolution.unresolved_remains",
+                    format!("{remaining} crossing(s) in stage 2 still land on `unresolved`; a resolution names every interface"),
+                    "Route each remaining crossing through a named interface, then delete `interface unresolved`",
+                ),
+                Some(t.id),
+            );
+        }
+    }
+    if u1.is_empty() {
+        push(
+            issue(
+                Severity::Warning,
+                "resolution.nothing_unresolved",
+                "stage 1 lands no crossing on `unresolved`, so there is nothing for stage 2 to resolve".to_string(),
+                "Compare the two models as decomposition seams instead, or declare `interface unresolved` in stage 1",
+            ),
+            None,
+        );
+    }
+    for (inbound, word) in [(true, "inbound"), (false, "outbound")] {
+        let a: Vec<&Crossing<'_>> = u1.iter().copied().filter(|x| x.inbound == inbound).collect();
+        let b: Vec<&Crossing<'_>> = r2.iter().copied().filter(|x| x.inbound == inbound).collect();
+        if a.len() != b.len() {
+            push(
+                issue(
+                    Severity::Error,
+                    &format!("resolution.count_{word}"),
+                    format!(
+                        "stage 1 leaves {} {word} crossing(s) unresolved but stage 2 lands {} on new named interfaces; \
+                         resolution is a bijection — each unresolved crossing gets exactly one named interface",
+                        a.len(),
+                        b.len()
+                    ),
+                    "Add or remove crossings in stage 2 until each unresolved crossing of stage 1 is answered once",
+                ),
+                None,
+            );
+        } else if kind_counts(&a) != kind_counts(&b) {
+            push(
+                issue(
+                    Severity::Error,
+                    &format!("resolution.kind_{word}"),
+                    format!("the {word} crossings stage 2 names do not carry the same substance kinds stage 1 left unresolved; a crossing is not re-kinded by naming its interface"),
+                    "Match each named crossing's kind to the unresolved crossing it resolves",
+                ),
+                None,
+            );
+        } else if kinds_by_counterparty(&a) != kinds_by_counterparty(&b) {
+            push(
+                issue(
+                    Severity::Error,
+                    &format!("resolution.counterparty_{word}"),
+                    format!("the {word} crossings stage 2 names do not keep their environmental counterparties; each named crossing must come from, or go to, the very same neighbour (by name) as the unresolved crossing it resolves"),
+                    "Keep each crossing on its own neighbour, matched by name, with its original kind",
+                ),
+                None,
+            );
+        }
+    }
+    DecompositionReport { issues, issue_targets }
 }
 
 fn check_ambient_environment_things(
@@ -1308,7 +1529,7 @@ mod tests {
     }
 
     use super::*;
-    use crate::canvas::{Lens, Relation, Thing};
+    use crate::canvas::{Lens, Relation};
     use crate::sl::parse_sl;
 
     fn thing(id: u64, name: &str, role: Role) -> Thing {

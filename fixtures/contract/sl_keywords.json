@@ -19,6 +19,7 @@
     "bunge",
     "mobus",
     "constant",
+    "unresolved",
     "chain",
     "spec",
     "observed",

@@ -70,5 +70,6 @@
       "direction": "Receives",
       "protocol": "supply"
     }
-  ]
+  ],
+  "unresolved_thing_id": null
 }

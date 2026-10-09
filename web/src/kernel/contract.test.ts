@@ -254,6 +254,7 @@ function parseLensFacts(v: unknown): LensFacts {
     "aggregate",
     "edges",
     "ports",
+    "unresolved_thing_id",
   ]);
   const props = shape(o.boundary_props, "LensFacts.boundary_props", ["porosity", "perceptive_fuzziness"]);
   return {
@@ -276,6 +277,8 @@ function parseLensFacts(v: unknown): LensFacts {
     aggregate: bool(o.aggregate, "LensFacts.aggregate"),
     edges: arr(o.edges, "LensFacts.edges").map((e, i) => parseEdgeFact(e, `edges[${i}]`)),
     ports: arr(o.ports, "LensFacts.ports").map((p, i) => parsePortFact(p, `ports[${i}]`)),
+    // #308 part A: the reserved pass-way's canvas id, null when none is declared.
+    unresolved_thing_id: o.unresolved_thing_id === null ? null : num(o.unresolved_thing_id, "LensFacts.unresolved_thing_id"),
   };
 }
 

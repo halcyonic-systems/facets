@@ -769,6 +769,17 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     continue;
                 }
                 let name = name.name();
+                if name.eq_ignore_ascii_case(UNRESOLVED) && name != UNRESOLVED {
+                    fail(
+                        format!(
+                            "`{name}` is the reserved pass-way spelled wrong — fix: write \
+                             `interface unresolved`, lowercase, for crossings whose \
+                             interface is not yet identified (#308)"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
                 if by_name.contains_key(&name) {
                     fail(
                         format!(
@@ -866,6 +877,16 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 if !ok {
                     continue;
                 }
+                if name == UNRESOLVED && !protocol.is_empty() {
+                    fail(
+                        "`interface unresolved` takes no protocol — it stands for crossings \
+                         whose interface is not yet identified, so it has no admission rule; \
+                         name the interface to give it one (#308)"
+                            .into(),
+                        &mut errors,
+                    );
+                    continue;
+                }
                 by_name.insert(name.clone(), things.len());
                 carrier = Some(Carrier::Thing(things.len()));
                 things.push(Thing {
@@ -928,6 +949,17 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     continue;
                 }
                 let name = name.name();
+                if name.eq_ignore_ascii_case(UNRESOLVED) {
+                    fail(
+                        format!(
+                            "`{name}` is reserved for the pass-way `interface unresolved` — \
+                             fix: write `interface unresolved` for crossings whose interface \
+                             is not yet identified, or give this {keyword} another name (#308)"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
                 if let Some(&idx) = by_name.get(&name) {
                     // One neighbour, both directions (facets#377). `source Room`
                     // followed by `sink Room` is the author saying the room both
@@ -3790,9 +3822,18 @@ fn clause_head(w: &str) -> bool {
 /// would be noise, not safety. Spec §7.1 records the same split;
 /// `keyword_parity.rs` holds the union of the two lists equal to §4's
 /// terminals.
+/// The reserved pass-way (#308 part A): `interface unresolved` stands for the
+/// crossings whose interface is not yet identified — Mobus's stage 1, the box
+/// with its flows found and its membrane not yet read (Fig. 4.14). One per
+/// model, no protocol, never a thing's name. In the tuple it is one interface
+/// component, so nothing in the Lean changes; the word carries the meaning.
+pub const UNRESOLVED: &str = "unresolved";
+
 pub const POSITIONAL_KEYWORDS: &[&str] = &[
     "param", "metric", "ample", "range", "shares", "from", "share", "of", "sum", "into", "klir",
     "bunge", "mobus", "constant",
+    // the reserved pass-way (#308): only ever the word after `interface`
+    "unresolved",
     // the grounding grades (#411): only ever the word after `grounding`
     "chain", "spec", "observed", "asserted", "unknown", // `third-party` is hyphenated: never a bare name
 ];
@@ -5030,6 +5071,28 @@ flow S -> A : matter \"in\"
 
     /// The separating pair for the split emit rule: a pure pass-way emits as
     /// an `interface` declaration; a component with processor freight keeps
+    /// #308 part A: the reserved pass-way. Round-trips bare, refuses a
+    /// protocol, refuses the name on a thing line and a wrong spelling.
+    #[test]
+    fn the_unresolved_passway_is_reserved() {
+        let src = "system \"Plant\" : Concrete/Technical\ninterface unresolved\n\
+                   component Plant primitive Combining\nsource Grid\nsink Town\n\
+                   flow Grid -> unresolved : energy \"power\"\nflow unresolved -> Plant : energy \"power\"\n\
+                   flow Plant -> unresolved : matter \"steel\"\nflow unresolved -> Town : matter \"steel\"\n";
+        let m = parse_sl(src).unwrap();
+        let u = m.things.iter().find(|t| t.name == UNRESOLVED).unwrap();
+        assert!(u.interface && u.passway && u.protocol.is_empty());
+        let out = emit_sl(&m).unwrap();
+        assert!(out.contains("\ninterface unresolved\n"), "emits bare; got:\n{out}");
+        assert!(parse_sl(&out).is_ok());
+
+        let err = |src: &str| parse_sl(src).unwrap_err()[0].message.clone();
+        assert!(err("interface unresolved protocol \"any\"\n").contains("takes no protocol"));
+        assert!(err("interface Unresolved\n").contains("spelled wrong"));
+        assert!(err("component unresolved\n").contains("reserved for the pass-way"));
+        assert!(err("source unresolved\n").contains("reserved for the pass-way"));
+    }
+
     /// the merged suffix form.
     #[test]
     fn a_pure_passway_round_trips_through_the_interface_form() {

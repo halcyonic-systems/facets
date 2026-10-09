@@ -32,6 +32,7 @@ import init, {
   check_decompositions as wasmCheckDecompositions,
   decompose_component as wasmDecomposeComponent,
   check_decompositions_canvas as wasmCheckDecompositionsCanvas,
+  check_resolution_canvas as wasmCheckResolutionCanvas,
   klir_incidence_cells as wasmKlirIncidenceCells,
   bunge_coupling_cells as wasmBungeCouplingCells,
   to_canvas as wasmToCanvas,
@@ -416,6 +417,16 @@ export function checkDecompositionsCanvas(
 ): DecompositionReport {
   return call("check_decompositions_canvas", () =>
     wasmCheckDecompositionsCanvas(JSON.stringify(model), JSON.stringify(resolved)),
+  );
+}
+
+/** Does `stage2` resolve the `unresolved` pass-way of `stage1` (#308 part A)?
+ *  Two models of the same system; the crossings stage 1 left unresolved and
+ *  the crossings stage 2 lands on new named interfaces must be the same
+ *  multiset by direction, kind and counterparty. Read-only; no store. */
+export function checkResolutionCanvas(stage1: CanvasModel, stage2: CanvasModel): DecompositionReport {
+  return call("check_resolution_canvas", () =>
+    wasmCheckResolutionCanvas(JSON.stringify(stage1), JSON.stringify(stage2)),
   );
 }
 

@@ -526,6 +526,9 @@ export interface LensFacts {
   /** Every canvas relation, including mere relations. */
   edges: EdgeFact[];
   ports: PortFact[];
+  /** The reserved pass-way `interface unresolved` (#308 part A), if declared:
+   *  crossings landing on it have no identified interface yet. Drawn dashed. */
+  unresolved_thing_id?: number | null;
 }
 
 /** Klir's GSPS epistemological ladder (#100): the model's HONEST position on
