@@ -207,7 +207,8 @@
           ],
           "environment_thing_ids": [],
           "orphan_env_thing_ids": [],
-          "ports": []
+          "ports": [],
+          "unresolved_thing_id": null
         },
         "issue_targets": [],
         "residue": {
@@ -318,7 +319,8 @@
           ],
           "environment_thing_ids": [],
           "orphan_env_thing_ids": [],
-          "ports": []
+          "ports": [],
+          "unresolved_thing_id": null
         },
         "issue_targets": [],
         "residue": {
@@ -420,7 +422,8 @@
           ],
           "environment_thing_ids": [],
           "orphan_env_thing_ids": [],
-          "ports": []
+          "ports": [],
+          "unresolved_thing_id": null
         },
         "issue_targets": [
           {
@@ -791,7 +794,8 @@
                 13
               ]
             }
-          ]
+          ],
+          "unresolved_thing_id": null
         },
         "issue_targets": [
           {
@@ -1006,7 +1010,8 @@
                 13
               ]
             }
-          ]
+          ],
+          "unresolved_thing_id": null
         },
         "issue_targets": [],
         "residue": {
@@ -1203,7 +1208,8 @@
                 13
               ]
             }
-          ]
+          ],
+          "unresolved_thing_id": null
         },
         "issue_targets": [
           {
@@ -1603,7 +1609,8 @@
                 12
               ]
             }
-          ]
+          ],
+          "unresolved_thing_id": null
         },
         "issue_targets": [],
         "residue": {
@@ -1765,7 +1772,8 @@
                 12
               ]
             }
-          ]
+          ],
+          "unresolved_thing_id": null
         },
         "issue_targets": [],
         "residue": {
@@ -1934,7 +1942,8 @@
                 12
               ]
             }
-          ]
+          ],
+          "unresolved_thing_id": null
         },
         "issue_targets": [],
         "residue": {
@@ -2450,7 +2459,8 @@
                 23
               ]
             }
-          ]
+          ],
+          "unresolved_thing_id": null
         },
         "issue_targets": [],
         "residue": {
@@ -2754,7 +2764,8 @@
                 23
               ]
             }
-          ]
+          ],
+          "unresolved_thing_id": null
         },
         "issue_targets": [],
         "residue": {
@@ -3060,7 +3071,8 @@
                 23
               ]
             }
-          ]
+          ],
+          "unresolved_thing_id": null
         },
         "issue_targets": [],
         "residue": {
@@ -4263,7 +4275,8 @@
                 59
               ]
             }
-          ]
+          ],
+          "unresolved_thing_id": null
         },
         "issue_targets": [],
         "residue": {
@@ -4991,7 +5004,8 @@
                 59
               ]
             }
-          ]
+          ],
+          "unresolved_thing_id": null
         },
         "issue_targets": [],
         "residue": {
@@ -5726,7 +5740,8 @@
                 59
               ]
             }
-          ]
+          ],
+          "unresolved_thing_id": null
         },
         "issue_targets": [],
         "residue": {
@@ -6005,7 +6020,8 @@
                 9
               ]
             }
-          ]
+          ],
+          "unresolved_thing_id": null
         },
         "issue_targets": [],
         "residue": {
@@ -6138,7 +6154,8 @@
                 9
               ]
             }
-          ]
+          ],
+          "unresolved_thing_id": null
         },
         "issue_targets": [],
         "residue": {
@@ -6278,7 +6295,8 @@
                 9
               ]
             }
-          ]
+          ],
+          "unresolved_thing_id": null
         },
         "issue_targets": [],
         "residue": {
