@@ -2132,11 +2132,11 @@ function Workspace() {
           setRanEdited(true);
           setMarkovRun(null);
           setRunError(null);
-          setTick(0);
-          if (r.ticks > 1) {
-            setPlaying(true);
-            setPlayLoop(false);
-          }
+          // A knob answers in place: the scrubber stays at the end of the run
+          // and nothing starts playing (feel-test 2026-10-09: auto-play after
+          // every slider move was the annoyance, not the re-run).
+          setPlaying(false);
+          setTick(Math.max(0, r.ticks - 1));
           return;
         }
       } catch (e) {
