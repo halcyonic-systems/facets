@@ -5,7 +5,7 @@
 // dropped in assets/examples/ — it self-sorts into its genus with no code
 // change, because the genus is parsed from the file's own `system` line.
 import { DEMOS, type Demo } from "./demos";
-import steelPlantWalk from "../../assets/walkthroughs/steel-plant/level-0.sl?raw";
+import steelPlantWalk from "../../assets/walkthroughs/steel-plant/level-1.sl?raw";
 import digitalComputerWalk from "../../assets/walkthroughs/digital-computer/level-0.sl?raw";
 
 const files = import.meta.glob("../../assets/examples/*.sl", {
@@ -59,25 +59,27 @@ function firstComment(lines: string[]): string {
 
 const structural: Demo[] = Object.entries(files).map(([path, text]) => parseExample(path, text));
 
-// The three-level steel-plant walk's entry level. It ships beside the two
-// levels it opens onto (assets/walkthroughs/, where the kernel's
-// steel_walkthrough gate holds the seams and the pinned child ids), not in
-// assets/examples/ — so it is registered here by hand rather than by the glob,
-// and that is the whole reason its title and blurb are written rather than
-// parsed. The file's own `system` line names the editorial walkthrough; the
-// gallery row has to say what opening it gets you, which is depth. It is the
-// shelf's one steel plant: the corpus transcription of Fig. 4.14 stays in the
-// corpus (cited, linted, Bunge-refused for the README's lesson) but off the
-// shelf, and this card carries the citation for both.
+// The steel-plant walk's root: the transparent box of Figs. 4.15 and 4.16. It
+// ships beside the level it opens onto (assets/walkthroughs/, where the
+// kernel's steel_walkthrough gate holds the seam and the pinned child id), not
+// in assets/examples/ — so it is registered here by hand rather than by the
+// glob, and that is the whole reason its title and blurb are written rather
+// than parsed. Until #308 a level 0 stood above it: one component named for
+// the plant, every crossing on it, decomposing into this model — the wrapper
+// every later walk copied. The opaque view is this model with its interior
+// hidden. It is the shelf's one steel plant: the corpus transcription of
+// Fig. 4.14 stays in the corpus (cited, linted, Bunge-refused for the
+// README's lesson) but off the shelf, and this card carries the citation.
 const STEEL_PLANT_WALK: Demo = {
   key: "example:steel-plant-walk",
-  title: "The Steel-Plant, three levels deep",
+  title: "The Steel-Plant, two levels deep",
   genus: "Technical",
   blurb:
-    "Mobus's ch. 4 procedure as a walkable hierarchy: the opaque SOI of Fig. 4.14, " +
-    "its interior at Fig. 4.16, and Iron-Inventory's room at Fig. 4.17 — three models " +
-    "joined by decomposition references whose seams the kernel checks. Zoom into a " +
-    "decomposed component to see its interior in place, or double-click to enter it. " +
+    "Mobus's ch. 4 procedure as a walkable hierarchy: the plant's six boundary " +
+    "interfaces and four subsystems at Figs. 4.15 and 4.16, and Iron-Inventory's room at " +
+    "Fig. 4.17 — two models joined by a decomposition reference whose seam the kernel " +
+    "checks. Zoom into the decomposed component to see its interior in place, or " +
+    "double-click to enter it. " +
     "George Mobus, Systems Science: Theory, Analysis, Modeling, and Design (2022), Ch. 4 §4.5.",
   sl: steelPlantWalk,
 };

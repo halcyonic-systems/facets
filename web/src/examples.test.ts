@@ -52,10 +52,13 @@ describe("groupedExamples", () => {
   });
 });
 
-describe("the three-level walk on the shelf (#139)", () => {
-  it("carries the walk's level 0, titled for its depth and sorted Technical", () => {
+describe("the steel-plant walk on the shelf (#139, root since #308)", () => {
+  it("carries the walk's root, titled for its depth and sorted Technical", () => {
     const walk = EXAMPLES.find((e) => e.key === "example:steel-plant-walk")!;
-    expect(walk.title).toBe("The Steel-Plant, three levels deep");
+    expect(walk.title).toBe("The Steel-Plant, two levels deep");
+    // The root is the transparent box, never a wrapper: more than one
+    // component, and the one that decomposes is a resident, not the plant.
+    expect((walk.sl?.match(/^component /gm) ?? []).length).toBeGreaterThan(1);
     expect(walk.genus).toBe("Technical");
     // It opens as a diagram; the depth is in the `decomposes` references.
     expect(isRunnable(walk)).toBe(false);
@@ -110,9 +113,10 @@ describe("the shipped library", () => {
       "LLM Market",
       "Predator-Prey Ecosystem",
       "Ribosome",
-      // #139: the walk's level 0, back on a shelf now that a decomposed
-      // component shows its interior without leaving the model.
-      "The Steel-Plant, three levels deep",
+      // #139: the walk's root, back on a shelf now that a decomposed
+      // component shows its interior without leaving the model (#308: the
+      // root is the transparent box; the level-0 wrapper is gone).
+      "The Steel-Plant, two levels deep",
       "Translation Apparatus",
       "hal",
     ]);

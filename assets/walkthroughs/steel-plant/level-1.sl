@@ -1,16 +1,19 @@
-# ── Steel-Plant, level 1 — the transparent box (Figs. 4.15 + 4.16) ──────────
+# ── Steel-Plant — the transparent box (Figs. 4.15 + 4.16) ───────────────────
 #
-# The child of the walkthrough's level-0 "Steel-Plant" component
-# (examples/steel-plant-walk.sl). Two figures drawn as one model, because
-# that is how the chapter reveals them: Fig. 4.15 finds the boundary
+# The root of the walkthrough since 2026-10-09 (#308). Until then a level 0
+# stood above this file: one component named for the plant, carrying every
+# crossing and decomposing into this model, a steel plant inside a steel
+# plant. That wrapper was the only way to make a root enterable (only a
+# component carries `decomposes`), and it taught every later walk to start
+# the same way. It is gone: the opaque view of Fig. 4.14 is this model with
+# its interior hidden, and the corpus entry (corpus/mobus/steel-plant.sl)
+# keeps the figure as a cited transcription. Two figures drawn as one model,
+# because that is how the chapter reveals them: Fig. 4.15 finds the boundary
 # interfaces while the interior is still opaque, and Fig. 4.16 exposes the
-# four internal subsystems those interfaces serve. The environment lines are
-# the seam's other half — stand-ins carrying, name for name, the level-0
-# neighbors of the decomposed component, exactly what the boundary contract's
-# derived-environment row checks.
+# four internal subsystems those interfaces serve.
 #
-# Editorial, not corpus: this model is shipped as the walk's middle rung, its
-# JSON archive pinned to this text by tests/steel_walkthrough.rs.
+# Editorial, not corpus: the Iron-Inventory seam below is held clean by
+# tests/steel_walkthrough.rs against the shipped level-2 archive.
 
 system "Steel-Plant" : Concrete/Technical
 
@@ -20,10 +23,9 @@ time unit month
 
 level Structure
 
-# E′ — the interior neighborhood of the level-0 component, one stand-in per
-# neighbor, names carried exactly. Iron-Source and Coke-Source are Mobus's
-# hybrids (matter out, purchase orders back in), declared `environment` as
-# level 0 declares them (facets#406: a source that receives is refused).
+# E — the six transaction partners of Fig. 4.14. Iron-Source and Coke-Source
+# are Mobus's hybrids (matter out, purchase orders back in), declared
+# `environment` (facets#406: a source that receives is refused).
 source Energy-Source
 environment Iron-Source
 environment Coke-Source

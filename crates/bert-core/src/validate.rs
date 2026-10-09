@@ -46,6 +46,9 @@ pub mod doc {
     /// E = ⟨O, M⟩: objects exchange at a point of contact; the milieu bathes.
     pub const MILIEU: &str =
         "docs/language/terminology-concordance.md#12-milieu-vs-discrete-objects--mobuss-alone";
+    /// `decomposes` on a thing line (§4.3): a component carries a child model.
+    /// Cited by the wrapper warning (#308): the system is never its own component.
+    pub const DECOMPOSES: &str = "docs/language/spec.md#43-thing-lines";
 
     /// Every anchor above, for the existence gate in tests.
     pub const ALL: &[&str] = &[
@@ -60,6 +63,7 @@ pub mod doc {
         DECOMPOSITION,
         OPENNESS,
         MILIEU,
+        DECOMPOSES,
     ];
 }
 
