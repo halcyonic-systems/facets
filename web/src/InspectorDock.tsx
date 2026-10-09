@@ -20,6 +20,7 @@ import type {
   Thing,
   ValidationResult,
 } from "./kernel/types";
+import type { Stage2Report } from "./resolution";
 import { ModelAbout } from "./ModelAbout";
 import { NodeEditorRows, type DecomposeAffordance } from "./canvas/NodeEditor";
 import { ElementMechanism } from "./ElementMechanism";
@@ -69,6 +70,7 @@ export function InspectorDock({
   issueTargets,
   analysisError,
   hostError,
+  stage2,
   canvasModel,
   onNavigate,
   element,
@@ -105,6 +107,8 @@ export function InspectorDock({
    *  before the kernel judged anything. Rendered in its own region above the
    *  review, never as a row inside it. */
   hostError: string | null;
+  /** #462: stage-2 candidates for a model with `interface unresolved`; null = none apply. */
+  stage2?: Stage2Report | null;
   canvasModel: CanvasModel | null;
   onNavigate: (target: IssueTarget) => void;
   /** #154 P1: SimScrubber tick, forwarded to the element mechanism readout. */
@@ -347,6 +351,7 @@ export function InspectorDock({
                 issueTargets={issueTargets}
                 analysisError={analysisError}
                 hostError={hostError}
+                stage2={stage2 ?? null}
                 reviewedAt={reviewedAt}
                 onReview={onReview}
                 onNavigate={onNavigate}
@@ -386,6 +391,7 @@ function ReviewTab({
   issueTargets,
   analysisError,
   hostError,
+  stage2,
   reviewedAt,
   onReview,
   onNavigate,
@@ -395,6 +401,7 @@ function ReviewTab({
   issueTargets: IssueTarget[];
   analysisError: string | null;
   hostError: string | null;
+  stage2: Stage2Report | null;
   reviewedAt: string | null;
   onReview: () => void;
   onNavigate: (target: IssueTarget) => void;
@@ -410,6 +417,7 @@ function ReviewTab({
         model={model}
         validation={verdict}
         targets={issueTargets}
+        stage2={stage2}
         reviewedAt={reviewedAt}
         onReview={onReview}
         onNavigate={onNavigate}
