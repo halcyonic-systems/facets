@@ -16,9 +16,9 @@ system "Rain Barrel Garden" : Concrete/Physical
 
 domain "a rain barrel feeding a garden bed: two inflows, one stock, one work process, one harvest"
 
-level Structure
-
 time unit day
+
+level Structure
 
 # Rain is the barrel's only supply; the Sun is the bed's energy. Both are
 # unbounded sources until a reservoir says otherwise.
