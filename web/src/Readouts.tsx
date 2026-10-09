@@ -6,14 +6,7 @@
 // Every card is the same component the dock hosted, fed the same kernel state
 // from the same App owner — what changed is the container and the height.
 import { useEffect, useState } from "react";
-import type {
-  TickLog,
-  CanvasModel,
-  Manifest,
-  MarkovRunResult,
-  Relation,
-  RunResultRich,
-} from "./kernel/types";
+import type { CanvasModel, Manifest, MarkovRunResult, Relation, RunResultRich, Thing, TickLog } from "./kernel/types";
 import type { RunKind } from "./canvas/lenses/registry";
 import { RunInputs } from "./RunInputs";
 import { DtmcPanel, RunFit, RunGlance, RunStory, RunTable, weightProvenance } from "./RunPanel";
@@ -40,6 +33,7 @@ export function Readouts({
   model,
   manifest,
   onInputEdit,
+  onThingEdit,
   onResetInputs,
   time,
   runKind,
@@ -73,6 +67,8 @@ export function Readouts({
   /** The active demo's manifest (null = no runnable bundle). */
   manifest?: Manifest | null;
   onInputEdit?: (next: Relation) => void;
+  /** #343: a field-anchored param edits its component's engine parameter. */
+  onThingEdit?: (next: Thing) => void;
   onResetInputs?: () => void;
   time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
   /** #282: the lens's declared run semantics — this view renders from it. */
@@ -106,7 +102,7 @@ export function Readouts({
   // forced inputs to edit; the rail carries time alone.
   const inputs =
     runKind !== "dtmc" && model && manifest && onInputEdit ? (
-      <RunInputs model={model} manifest={manifest} onEdit={onInputEdit} onReset={onResetInputs} />
+      <RunInputs model={model} manifest={manifest} onEdit={onInputEdit} onEditThing={onThingEdit} onReset={onResetInputs} />
     ) : null;
   const timeRow = time ? <TimeRow time={time} /> : null;
 

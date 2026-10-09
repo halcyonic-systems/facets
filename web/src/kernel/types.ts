@@ -460,7 +460,15 @@ export interface CanvasModel {
 /** What a declared parameter anchors: one flow's declared amount, or a
  *  process's whole out-fanout presented as % shares. Externally-tagged serde
  *  enum. Anchors are by id so renames cannot orphan a param. */
-export type ParamAnchor = { Flow: { relation: number } } | { Shares: { thing: number } };
+/** A component line's engine parameter a `param … of <component>` may name
+ *  (#343): keyed as the engine, the session knob and `bert bench --set` read
+ *  it, and as the thing's `cognitive_params` stores it. */
+export type EngineField = "release_rate" | "capacity" | "time_constant" | "setpoint" | "maintenance";
+
+export type ParamAnchor =
+  | { Flow: { relation: number } }
+  | { Shares: { thing: number } }
+  | { Field: { thing: number; field: EngineField } };
 
 /** Inclusive slider bounds, decimal STRINGS in the flow's own unit. */
 export interface ParamRange {

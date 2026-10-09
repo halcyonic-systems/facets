@@ -3,7 +3,7 @@
 // card and the canvas EdgePopover both resolve through here, so a param can
 // never mean different flows on different surfaces. Reads declarations only;
 // decides nothing.
-import type { CanvasModel, Manifest, ParamDecl, Relation } from "./types";
+import type { CanvasModel, EngineField, Manifest, ParamDecl, Relation, Thing } from "./types";
 
 /** The declared magnitudes: bond relations carrying an amount (or ample). */
 export function declaredRelations(model: CanvasModel): Relation[] {
@@ -22,6 +22,9 @@ export interface ParamRow {
   relation?: Relation;
   /** Shares-anchored: the fanout group (≥ 2 declared outflows of the thing). */
   group?: Relation[];
+  /** Field-anchored (#343): the component and the engine field it declares. */
+  thing?: Thing;
+  field?: EngineField;
 }
 
 /** Declared params in declaration order, each resolved to its relation(s).
@@ -35,6 +38,11 @@ export function resolveParamRows(model: CanvasModel): ParamRow[] {
     if ("Flow" in anchor) {
       const r = declared.find((r) => r.id === anchor.Flow.relation);
       if (r) rows.push({ param: p, relation: r });
+    } else if ("Field" in anchor) {
+      const t = model.things.find((t) => t.id === anchor.Field.thing);
+      if (t && t.cognitive_params?.[anchor.Field.field] !== undefined) {
+        rows.push({ param: p, thing: t, field: anchor.Field.field });
+      }
     } else {
       const group = declared.filter((r) => r.a === anchor.Shares.thing);
       if (group.length >= 2) rows.push({ param: p, group });

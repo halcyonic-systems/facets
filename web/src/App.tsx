@@ -2136,6 +2136,17 @@ function Workspace() {
     });
   }
 
+  // #343 (#463 move 3): a field-anchored param edits its component's own
+  // engine parameter in the document; commitInputModel turns the changed
+  // field into a session knob by its key.
+  function applyThingEdit(next: import("./kernel/types").Thing) {
+    if (!canvasModel) return;
+    commitInputModel({
+      ...canvasModel,
+      things: canvasModel.things.map((t) => (t.id === next.id ? next : t)),
+    });
+  }
+
   // The shared tail of every inputs-panel commit: the edited document becomes
   // the canvas model and the world re-runs from it synchronously.
   function commitInputModel(nextModel: CanvasModel) {
@@ -2156,10 +2167,32 @@ function Workspace() {
           const was = prev.relations.find((p) => p.id === r.id);
           return was !== undefined && was.amount !== r.amount;
         });
-        const structural = nextModel.relations.length !== prev.relations.length;
-        if (!structural && changed.length > 0) {
+        // #343: engine parameters a component line declares, changed in
+        // place (release, capacity, time constant, setpoint, maintenance).
+        const FIELDS: import("./kernel/types").EngineField[] = [
+          "release_rate",
+          "capacity",
+          "time_constant",
+          "setpoint",
+          "maintenance",
+        ];
+        const fieldEdits: Array<{ name: string; field: import("./kernel/types").EngineField; v: number }> = [];
+        for (const t of nextModel.things) {
+          const was = prev.things.find((p) => p.id === t.id);
+          if (!was) continue;
+          for (const f of FIELDS) {
+            const now = t.cognitive_params?.[f];
+            if (now !== undefined && now !== was.cognitive_params?.[f]) fieldEdits.push({ name: t.name, field: f, v: now });
+          }
+        }
+        const structural =
+          nextModel.relations.length !== prev.relations.length || nextModel.things.length !== prev.things.length;
+        if (!structural && changed.length + fieldEdits.length > 0) {
           for (const r of changed) {
             b.setFlowAmount(r.name, nameOf(r.a), nameOf(r.b), Number(r.amount ?? 0));
+          }
+          for (const e of fieldEdits) {
+            b.setComponentParam(e.name, e.field, e.v);
           }
           b.reset();
           b.stepOver(t);
@@ -2236,11 +2269,14 @@ function Workspace() {
     const compiled = compileSl(demo.sl);
     if ("errors" in compiled) return;
     const declared = new Map(compiled.ok.relations.map((r) => [r.id, r.amount]));
+    // #343: a component's declared engine parameters come back too.
+    const bags = new Map(compiled.ok.things.map((t) => [t.id, t.cognitive_params]));
     commitInputModel({
       ...canvasModel,
       relations: canvasModel.relations.map((r) =>
         declared.has(r.id) ? { ...r, amount: declared.get(r.id) } : r,
       ),
+      things: canvasModel.things.map((t) => (bags.has(t.id) ? { ...t, cognitive_params: bags.get(t.id) } : t)),
     });
   }
 
@@ -3831,6 +3867,7 @@ function Workspace() {
                         tick={tick}
                         time={{ dt, t, klir: false, onCommit: applyTime }}
                         onInputEdit={applyInputEdit}
+                        onThingEdit={applyThingEdit}
                         onResetInputs={demo?.sl ? resetInputs : undefined}
                         onOpenReadouts={() => setReadoutsOpen(true)}
                       />
@@ -3862,6 +3899,7 @@ function Workspace() {
                         demo || (attachedCsv && manifest.mapping.length > 0) ? manifest : null
                       }
                       onInputEdit={applyInputEdit}
+                        onThingEdit={applyThingEdit}
                       onResetInputs={demo?.sl ? resetInputs : undefined}
                       time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}
                       runKind={LensPalette[canvasModel.lens].run}
