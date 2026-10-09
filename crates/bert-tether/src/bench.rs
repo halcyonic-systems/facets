@@ -255,8 +255,8 @@ impl BenchSession {
             .circuit
             .nodes
             .iter()
-            .position(|n| n.name == thing && matches!(n.kind, NodeKind::Process(_)))
-            .ok_or_else(|| format!("no component named \"{thing}\""))?;
+            .position(|n| n.name == thing && !matches!(n.kind, NodeKind::Sink))
+            .ok_or_else(|| format!("no component or source named \"{thing}\""))?;
         self.session.set_node_param(i, field, v)?;
         self.note_edit(KnobEdit {
             tick: self.session.circuit.tick,

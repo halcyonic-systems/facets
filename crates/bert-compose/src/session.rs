@@ -163,6 +163,12 @@ impl Session {
             "time_constant" => n.time_constant = v,
             "maintenance" => n.maintenance = v,
             "back_pressure" => n.back_pressure = v != 0.0,
+            // #463 move 5: a negative reservoir means unbounded (None).
+            "reservoir" => {
+                n.reservoir = (v >= 0.0).then_some(v);
+                n.remaining = n.reservoir.unwrap_or(0.0);
+            }
+            "limiting" => n.limiting = v != 0.0,
             other => return Err(format!("unknown node field: {other}")),
         }
         Ok(())

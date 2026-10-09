@@ -35,3 +35,15 @@ fn no_log_leaves_the_log_out_and_a_bad_knob_is_a_usage_error() {
     assert_eq!(code(&out), 4, "{}", stderr(&out));
     assert!(stderr(&out).contains("no flow"), "{}", stderr(&out));
 }
+
+#[test]
+fn a_finite_source_runs_dry_from_the_terminal() {
+    // #260 via the bench knob: the faucet holds 2 units in all; the inflow
+    // is 1, 1, 0, 0 and the tub stops filling (the old engine filled on).
+    let out = bert(&["bench", "fixtures/sl/bathtub.sl", "--t", "4", "--set", "Faucet.reservoir=2"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let v = stdout_json(&out);
+    let inflow = v["flows"].as_array().unwrap().iter().find(|f| f["name"] == "inflow").unwrap();
+    assert_eq!(inflow["series"], serde_json::json!([1.0, 1.0, 0.0, 0.0]));
+    assert_eq!(v["conserved"], true);
+}
