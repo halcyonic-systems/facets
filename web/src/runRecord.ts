@@ -17,6 +17,9 @@ export interface RunRecord {
   event: "run" | "step" | "knob";
   edits: KnobEdit[];
   readout: RunResultRich;
+  /** The kept baseline at the time, if any (#463 move 4), so a diff is in
+   *  the file rather than in whoever reads it. */
+  baseline?: RunResultRich | null;
   log: TickLog[];
 }
 

@@ -60,6 +60,25 @@ export function residualText(residual: number): string {
  *  RunCard): the headline metric at the cursor, the key responding stock, and
  *  the residual. Reads the same kernel outputs as the tabs; computes nothing
  *  the kernel didn't. */
+/** #463 move 4: the kept baseline rides every chart as a dashed twin of each
+ *  series, keyed `b_<name>` — "without the change" beside "with it". Pure, so
+ *  the merge is testable without a chart. */
+export const BASE = (name: string) => `b_${name}`;
+export function withBaselineRows(
+  data: Record<string, number | null>[],
+  baseline: { name: string; series: number[] }[] | null | undefined,
+): Record<string, number | null>[] {
+  if (!baseline || baseline.length === 0) return data;
+  return data.map((row, t) => {
+    const merged = { ...row };
+    for (const b of baseline) merged[BASE(b.name)] = b.series[t] ?? null;
+    return merged;
+  });
+}
+
+/** The dashed twin's stroke: the same hue, a dash, a touch lighter. */
+export const BASELINE_DASH = "5 4";
+
 export function glanceFacts(
   result: RunResultRich,
   model: CanvasModel | null | undefined,
@@ -91,12 +110,16 @@ export function RunGlance({
   result,
   model,
   tick,
+  baseline = null,
 }: {
   result: RunResultRich;
   model?: CanvasModel | null;
   tick?: number;
+  /** #463 move 4: the kept baseline, read beside the live numbers. */
+  baseline?: RunResultRich | null;
 }) {
   const { head, headValue, internal, stockValue } = glanceFacts(result, model, tick);
+  const base = baseline ? glanceFacts(baseline, model, tick) : null;
   return (
     <div
       className="flex flex-wrap items-baseline gap-x-6 gap-y-1 px-4 py-2"
@@ -113,6 +136,11 @@ export function RunGlance({
               {head.kind === "sum" ? " · running total" : " · share"}
             </span>
           </span>
+          {base?.headValue && base.headValue !== headValue && (
+            <span className="text-xs tabular" style={{ color: "var(--text-muted)" }} data-testid="glance-baseline">
+              vs baseline {base.headValue}
+            </span>
+          )}
         </span>
       )}
       {internal && stockValue != null && (
@@ -124,6 +152,11 @@ export function RunGlance({
             {internal.name} · level
             {internal.unit ? ` · ${unitLabel(internal.unit).text}` : ""}
           </span>
+          {base?.stockValue != null && base.stockValue !== stockValue && (
+            <span className="text-xs tabular" style={{ color: "var(--text-muted)" }}>
+              vs {humanize(base.stockValue)}
+            </span>
+          )}
         </span>
       )}
       <span className="ml-auto text-xs tabular" style={{ color: "var(--text-muted)" }}>
@@ -138,13 +171,18 @@ export function RunStory({
   lens,
   tick,
   model,
+  baseline = null,
 }: {
   result: RunResultRich;
   lens: CanvasModel["lens"];
   tick?: number;
   model?: CanvasModel | null;
+  /** #463 move 4: the kept baseline, drawn dashed beside every series. */
+  baseline?: RunResultRich | null;
 }) {
   const metrics = model ? evaluateMetrics(model, result) : null;
+  const baseMetrics = model && baseline ? evaluateMetrics(model, baseline) : null;
+  const baseFor = (name: string) => baseMetrics?.readings.find((b) => b.name === name) ?? null;
   const CHART_H = 210;
   return (
     <div className="grid gap-5">
@@ -152,9 +190,16 @@ export function RunStory({
         <div className="grid gap-x-8 gap-y-5 xl:grid-cols-2">
           {groupReadings(metrics.readings).map((g) =>
             g.length === 1 ? (
-              <MetricRow key={g[0].name} r={g[0]} tick={tick} height={CHART_H} timeUnit={model?.time_unit} />
+              <MetricRow key={g[0].name} r={g[0]} tick={tick} height={CHART_H} timeUnit={model?.time_unit} baseline={baseFor(g[0].name)} />
             ) : (
-              <MetricFamilyChart key={g[0].familyKey} readings={g} tick={tick} height={CHART_H} timeUnit={model?.time_unit} />
+              <MetricFamilyChart
+                key={g[0].familyKey}
+                readings={g}
+                tick={tick}
+                height={CHART_H}
+                timeUnit={model?.time_unit}
+                baseline={g.map((r) => baseFor(r.name)).filter((b): b is MetricReading => b !== null)}
+              />
             ),
           )}
           {metrics.failures.map((f) => (
@@ -187,6 +232,7 @@ export function RunStory({
               tick={tick}
               height={CHART_H}
               timeUnit={model?.time_unit}
+              baseline={baseline?.trajectories ?? null}
             />
           </div>
         )}
@@ -347,20 +393,23 @@ function groupComparisons(comparisons: Comparison[]): Comparison[][] {
  *  by alphabetical entity order; the leaderboard order is the endpoint's. */
 
 
-function MetricFamilyChart({ readings, tick, height = 150, timeUnit }: { readings: MetricReading[]; tick?: number; height?: number; timeUnit?: string | null }) {
+function MetricFamilyChart({ readings, tick, height = 150, timeUnit, baseline = [] }: { readings: MetricReading[]; tick?: number; height?: number; timeUnit?: string | null; baseline?: MetricReading[] }) {
   const first = readings[0];
   const byEntity = [...readings].sort((a, b) => a.entity.localeCompare(b.entity));
   const colorOf = new Map(byEntity.map((r, i) => [r.entity, CHART_SERIES[i]]));
-  const n = Math.max(...readings.map((r) => r.series.length));
+  const n = Math.max(...readings.map((r) => r.series.length), ...baseline.map((r) => r.series.length));
   const mid = midRun(tick, n);
-  const data = Array.from({ length: n }, (_, t) => {
-    const row: Record<string, number | null> = { t };
-    for (const r of readings) {
-      row[r.entity] = r.series[t] ?? null;
-      if (mid) row[PAST(r.entity)] = t <= tick! ? (r.series[t] ?? null) : null;
-    }
-    return row;
-  });
+  const data = withBaselineRows(
+    Array.from({ length: n }, (_, t) => {
+      const row: Record<string, number | null> = { t };
+      for (const r of readings) {
+        row[r.entity] = r.series[t] ?? null;
+        if (mid) row[PAST(r.entity)] = t <= tick! ? (r.series[t] ?? null) : null;
+      }
+      return row;
+    }),
+    baseline.map((b) => ({ name: b.entity, series: b.series })),
+  );
   const endpointOf = (r: MetricReading) =>
     r.kind === "share"
       ? `${(r.endpoint * 100).toFixed(1)}%`
@@ -423,6 +472,20 @@ function MetricFamilyChart({ readings, tick, height = 150, timeUnit }: { reading
                 tooltipType="none"
               />
             ))}
+          {baseline.map((b) => (
+            <Line
+              key={`${b.entity}-baseline`}
+              type="monotone"
+              dataKey={BASE(b.entity)}
+              name={`${b.entity} (baseline)`}
+              stroke={colorOf.get(b.entity) ?? "var(--text-muted)"}
+              strokeDasharray={BASELINE_DASH}
+              strokeOpacity={0.7}
+              dot={false}
+              strokeWidth={1.5}
+              isAnimationActive={false}
+            />
+          ))}
       </RunChart>
     </div>
   );
@@ -527,10 +590,21 @@ function ComparisonFamilyChart({ comparisons, tick, height = 150, timeUnit }: { 
 /** One declared metric's reading (#203): the author's name and endpoint
  *  number lead; the executed series rides below as a small chart. Same-verb
  *  families arrive pre-sorted by endpoint — the leaderboard reading. */
-export function MetricRow({ r, tick, height = 90, timeUnit }: { r: MetricReading; tick?: number; height?: number; timeUnit?: string | null }) {
-  const n = r.series.length;
+export function MetricRow({ r, tick, height = 90, timeUnit, baseline = null }: { r: MetricReading; tick?: number; height?: number; timeUnit?: string | null; baseline?: MetricReading | null }) {
+  const n = Math.max(r.series.length, baseline?.series.length ?? 0);
   const mid = midRun(tick, n);
-  const data = r.series.map((v, t) => ({ t, v, past: mid && t <= tick! ? v : null }));
+  const data = Array.from({ length: n }, (_, t) => ({
+    t,
+    v: r.series[t] ?? null,
+    past: mid && t <= tick! ? (r.series[t] ?? null) : null,
+    b: baseline ? (baseline.series[t] ?? null) : null,
+  }));
+  const baseEndpoint =
+    baseline && baseline.endpoint !== r.endpoint
+      ? baseline.kind === "share"
+        ? `${(baseline.endpoint * 100).toFixed(1)}%`
+        : `${humanize(baseline.endpoint)}${baseline.unit ? ` ${baseline.unit}` : ""}`
+      : null;
   const endpoint =
     r.kind === "share"
       ? `${(r.endpoint * 100).toFixed(1)}%`
@@ -554,6 +628,7 @@ export function MetricRow({ r, tick, height = 90, timeUnit }: { r: MetricReading
             {r.kind === "share"
               ? "at run end"
               : `over ${n} ticks · ≈${humanize(r.endpoint / Math.max(1, n))}/tick`}
+            {baseEndpoint && <span className="tabular"> · vs baseline {baseEndpoint}</span>}
           </div>
         </div>
       </div>
@@ -587,7 +662,20 @@ export function MetricRow({ r, tick, height = 90, timeUnit }: { r: MetricReading
               tooltipType="none"
             />
           )}
-      </RunChart>
+                {baseline && (
+            <Line
+              type="monotone"
+              dataKey="b"
+              name={`${r.name} (baseline)`}
+              stroke="var(--accent)"
+              strokeDasharray={BASELINE_DASH}
+              strokeOpacity={0.7}
+              dot={false}
+              strokeWidth={1.5}
+              isAnimationActive={false}
+            />
+          )}
+</RunChart>
     </div>
   );
 }
@@ -867,12 +955,15 @@ function LevelsChart({
   tick,
   height = 110,
   timeUnit,
+  baseline = null,
 }: {
   trajectories: NonNullable<RunResultRich["trajectories"]>;
   levels: Level[];
   tick?: number;
   height?: number;
   timeUnit?: string | null;
+  /** #463 move 4: the kept baseline's trajectories, dashed. */
+  baseline?: RunResultRich["trajectories"] | null;
 }) {
   // Internal stocks only: a source's "trajectory" is its declared rate drawn
   // flat — the rates-as-levels confusion all over again (#344 item 2). The
@@ -890,16 +981,20 @@ function LevelsChart({
       {[...groups.entries()].map(([unit, fam]) => {
         const byName = [...fam].sort((a, b) => a.name.localeCompare(b.name));
         const colorOf = new Map(byName.map((t, i) => [t.name, CHART_SERIES[i % CHART_SERIES.length]]));
-        const n = Math.max(...fam.map((t) => t.series.length));
+        const famBase = (baseline ?? []).filter((b) => fam.some((t) => t.name === b.name));
+        const n = Math.max(...fam.map((t) => t.series.length), ...famBase.map((b) => b.series.length));
         const mid = midRun(tick, n);
-        const data = Array.from({ length: n }, (_, i) => {
-          const row: Record<string, number | null> = { t: i };
-          for (const tr of fam) {
-            row[tr.name] = tr.series[i] ?? null;
-            if (mid) row[PAST(tr.name)] = i <= tick! ? (tr.series[i] ?? null) : null;
-          }
-          return row;
-        });
+        const data = withBaselineRows(
+          Array.from({ length: n }, (_, i) => {
+            const row: Record<string, number | null> = { t: i };
+            for (const tr of fam) {
+              row[tr.name] = tr.series[i] ?? null;
+              if (mid) row[PAST(tr.name)] = i <= tick! ? (tr.series[i] ?? null) : null;
+            }
+            return row;
+          }),
+          famBase,
+        );
         return (
           <div key={unit}>
             <div className="mb-1 flex items-baseline justify-between gap-3">
@@ -953,6 +1048,20 @@ function LevelsChart({
                       tooltipType="none"
                     />
                   ))}
+                {famBase.map((b) => (
+                  <Line
+                    key={`${b.name}-baseline`}
+                    type="monotone"
+                    dataKey={BASE(b.name)}
+                    name={`${b.name} (baseline)`}
+                    stroke={colorOf.get(b.name) ?? "var(--text-muted)"}
+                    strokeDasharray={BASELINE_DASH}
+                    strokeOpacity={0.7}
+                    dot={false}
+                    strokeWidth={1.5}
+                    isAnimationActive={false}
+                  />
+                ))}
       </RunChart>
           </div>
         );
