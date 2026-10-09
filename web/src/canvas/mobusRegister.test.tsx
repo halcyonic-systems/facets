@@ -137,3 +137,17 @@ describe("stamp the primitive glyph as the placeable thing (#81 harvest)", () =>
     }
   });
 });
+
+
+describe("#477: the three interface forms read as three", () => {
+  const circles = (html: string) => (html.match(/<circle/g) ?? []).length;
+  it("a pass-way carries the membrane rim; a merged stamp does not; unresolved adds the dash", () => {
+    const passway = markup("Mobus", thing({ name: "Gutter", interface: true, passway: true }));
+    const merged = markup("Mobus", thing({ name: "Lamp", interface: true, passway: false }));
+    const unresolved = markup("Mobus", thing({ name: "unresolved", interface: true, passway: true }));
+    expect(circles(passway)).toBe(circles(merged) + 1);
+    expect(unresolved).toContain('stroke-dasharray="4 3"');
+    expect(passway).not.toContain('stroke-dasharray="4 3"');
+    expect(merged).not.toContain('stroke-dasharray="4 3"');
+  });
+});

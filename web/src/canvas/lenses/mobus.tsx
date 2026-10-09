@@ -25,6 +25,13 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
   // a pass-way, not a peer of the interior processes — and drops the
   // composition halo (the C/E wash is wrong for a thing straddling the cut).
   const iface = thing.role === "Component" && thing.interface === true;
+  // #477: the three ways a crossing lands on an interface read as three. A
+  // pass-way line (`interface Gutter`) is the boundary object itself — it
+  // carries the membrane rim Mobus draws for an interface penetrating B
+  // (Fig. 4.9); the merged stamp (`component Lamp interface`) is a process
+  // sited on the membrane and keeps the plain compact body; `unresolved`
+  // is a pass-way not yet identified and adds the dash.
+  const passway = iface && thing.passway === true;
   return (
     <NodeBody
       scale={scale}
@@ -53,7 +60,7 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
       badge={thing.role === "Component" && !regulator ? thing.primitive : undefined}
       badgeCentered
       labelSmall={false}
-      boundaryRim={false}
+      boundaryRim={passway}
       envHint={thing.role === "Environment" && !inert}
     />
   );
