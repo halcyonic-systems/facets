@@ -229,13 +229,21 @@ impl BenchSession {
                 ))
             }
         }
-        self.edits.push(KnobEdit {
+        self.note_edit(KnobEdit {
             tick: self.session.circuit.tick,
             target: format!("{from} -> {to} : {label}"),
             field: "amount".into(),
             value: v,
         });
         Ok(())
+    }
+
+    /// A slider commits on pointer-up and again on blur; the same knob at the
+    /// same tick and value is one edit, not two.
+    fn note_edit(&mut self, edit: KnobEdit) {
+        if self.edits.last() != Some(&edit) {
+            self.edits.push(edit);
+        }
     }
 
     /// Set a component's engine parameter by name, live: `release_rate`,
@@ -250,7 +258,7 @@ impl BenchSession {
             .position(|n| n.name == thing && matches!(n.kind, NodeKind::Process(_)))
             .ok_or_else(|| format!("no component named \"{thing}\""))?;
         self.session.set_node_param(i, field, v)?;
-        self.edits.push(KnobEdit {
+        self.note_edit(KnobEdit {
             tick: self.session.circuit.tick,
             target: thing.to_string(),
             field: field.to_string(),

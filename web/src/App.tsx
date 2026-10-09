@@ -376,12 +376,15 @@ function Workspace() {
   // SimScrubber so ▶ Run can auto-play its result once (playing a recorded
   // trace is reading, not executing — trace-separation intact) and so playback
   // survives the scrubber remounting across modes. `playLoop=false` is the
-  // auto-play-once posture: rest at the last frame; a manual ▶ press loops.
+  // play-once posture: rest at the last frame. The default since the
+  // 2026-10-09 feel-test; nothing flips it to true on its own.
   const [playing, setPlaying] = useState(false);
-  const [playLoop, setPlayLoop] = useState(true);
+  const [playLoop, setPlayLoop] = useState(false);
+  // Play once and rest at the last frame, whichever way play started
+  // (feel-test 2026-10-09: a run that replays itself after it ends reads as
+  // a glitch, not a loop). Looping stays a setting, never a side effect.
   const handlePlayingChange = useCallback((p: boolean) => {
     setPlaying(p);
-    if (p) setPlayLoop(true);
   }, []);
   const [selectedRelationId, setSelectedRelationId] = useState<number | null>(null);
   const [selectedThingId, setSelectedThingId] = useState<number | null>(null);
