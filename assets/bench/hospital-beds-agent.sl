@@ -1,5 +1,5 @@
 # ── A ward with a gatekeeper ────────────────────────────────────────────────
-# bench · after the bed-management ward (hospital-beds.sl) with an admissions gate — Mobus 2022 §12.2.3.1 (the operational agent)
+# bench · after the bed-management ward with an admissions gate — Mobus 2022 §12.2.3.1
 #
 # The same ward as hospital-beds.sl with one decision in it: a gatekeeper
 # watches the beds and shuts admissions at or above a level, opening them

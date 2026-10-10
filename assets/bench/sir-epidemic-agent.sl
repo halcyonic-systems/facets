@@ -1,5 +1,5 @@
 # ── An epidemic the public reacts to ────────────────────────────────────────
-# bench · after the behavioural SIR model (sir-epidemic.sl with a public that stays home) — Mobus 2022 §11.2.1.1 (purely reactive agent)
+# bench · after the behavioural SIR model (a public that stays home) — Mobus 2022 §11.2.1.1
 #
 # The same epidemic as sir-epidemic.sl with one decision in it: the public
 # watches the infected share and, at or above a level, cuts its contacts to

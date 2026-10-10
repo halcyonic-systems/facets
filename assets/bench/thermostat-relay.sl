@@ -1,5 +1,5 @@
 # ── A thermostat and a room, on or off ──────────────────────────────────────
-# bench · after the on–off (relay) thermostat — Mobus 2022 §11.2.1.1 "a simple thermostat"; Ashby 1956 (requisite variety)
+# bench · after the on–off (relay) thermostat — Mobus 2022 §11.2.1.1
 #
 # The same room as thermostat-room.sl with the regulator as a switch that
 # has two settings: the agent watches the room's heat and, at or above the

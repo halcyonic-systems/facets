@@ -1,5 +1,5 @@
 # ── A thermostat and a room, the agent way ──────────────────────────────────
-# bench · after the cybernetic regulator — Wiener 1948, Ashby 1956; Mobus 2022 ch. 11 Fig 11.1 (the agent), §12.3.2 (feedback)
+# bench · after the cybernetic regulator (thermostat-room.sl) as one agent — Mobus 2022 ch. 11
 #
 # The same room as thermostat-room.sl with the regulator written as one
 # agent instead of a probe and a comparator. The agent watches the room's
