@@ -333,6 +333,12 @@ fn the_table_faults_are_named() {
     assert!(e.contains("`under` bound must be positive"), "{e}");
     let e = errs(&swap(bins, "under 20 emit 1 under 36 emit -0.5 else 0"));
     assert!(e.contains("cannot be negative"), "{e}");
+    // the same command in every bin decides nothing (threshold's equal
+    // emit/else, at any arity), and the repair is named
+    let e = errs(&swap(bins, "under 20 emit 0.5 under 36 emit 0.5 else 0.5"));
+    assert!(e.contains("every `emit` and `else` is 0.5") && e.contains("decides nothing"), "{e}");
+    assert!(e.contains("give at least one bin a different output"), "{e}");
+    assert!(parse_sl(&swap(bins, "under 20 emit 0.5 under 36 emit 0.5 else 0")).is_ok(), "one differing bin decides");
     // requisite variety: a gate reads 0..1
     let e = errs(&swap(bins, "under 20 emit 2 under 36 emit 0.5 else 0"));
     assert!(e.contains("requisite variety") && e.contains("a table emitting 2 / 0.5 / 0"), "{e}");

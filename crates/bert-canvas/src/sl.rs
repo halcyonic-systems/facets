@@ -2174,6 +2174,17 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             ))
                         } else if outputs.iter().any(|o| *o < 0.0) || num("else") < 0.0 {
                             Some("`emit` and `else` are commands and cannot be negative".into())
+                        } else if outputs.iter().all(|o| *o == num("else")) {
+                            // Threshold's equal emit/else refusal, at any
+                            // arity: the same command in every bin is no
+                            // program of response.
+                            Some(format!(
+                                "every `emit` and `else` is {} — a table that commands the same thing \
+                                 in every bin decides nothing (ADR 0008 D4); give at least one bin a \
+                                 different output, or drop the agent and declare the command on the \
+                                 process",
+                                num("else")
+                            ))
                         } else {
                             None
                         }
