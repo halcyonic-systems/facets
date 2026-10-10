@@ -332,6 +332,7 @@ critique except an evidence-grade caveat.)
   (Vagner–Spivak–Lerman ODE-only; `Open(Dynam)` continuous-only, VERIFIED absence;
   Myers a self-described "0th draft"; categorical ABM is blog-tier). Restructuring the
   kernel on this would be original research mistaken for adoption.
+- **Addendum 2026-10-10 (agent layer, facets#269).** The classification held through the first agents: a deterministic agent is a coordinate added to the carrier, not a new functor (SSF `agent_step_is_product`), and a sampling agent is the Markov functor and cannot share a run with it (`markov_codomain_ne_deterministic`). What the coalgebra view carries and does not carry is now stated in SL spec §8.3 (structure inside the boundary, behaviour on it, conservation across it), with three limits worth keeping in view: bisimilar is not the same system, conservation is outside `F`, and a rule that rewrites its own parameters needs them inside the carrier. The learning-from-data methods of the coalgebra literature (Angluin's L*, Crutchfield's ε-machines, bisimulation metrics) recover behaviour up to bisimulation and never structure; they belong to the observatory's side of the Klir split (source system against data system), not to the model's.
 - **Incremental path:** (1) type axis C as an enum in the dynamics record now;
   (2) property-test the semigroup law per functor (Kleisli for `Dist`); (3) revisit
   implementation-CT only if heterogeneous wiring becomes the binding constraint — and
