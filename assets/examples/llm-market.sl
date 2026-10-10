@@ -1,290 +1,261 @@
-# ── The LLM market as a serving fabric, Mobus lens ───────────────────
-# First-principles restructure (2026-07-28). The previous version drew
-# only the information layer — labs releasing capacity, models splitting
-# "token supply" across channels — and the engine refused to run it,
-# correctly: tokens are information, information copies, and you cannot
-# clear (divide, conserve) what copies freely. The rivalry that makes
-# this a MARKET lives in the layer that model omitted: compute. A token
-# served is compute spent. So the conserved backbone here is inference
-# compute (an energy kind, measured in Gtok/day of serving work — token
-# throughput is a work unit, like kWh), and the model output is what it
-# really is: information, powered by metered energy, shed as heat.
+# ── The LLM serving market, Mobus lens ──────────────────────────────
+# Level-0 identification (2026-10-10, Mobus ch. 6 §6.5), replacing the
+# two-channel model now in ../archive/llm-market-channels.sl.
 #
-# Each model is an Amplifying work process — Mobus's signal + power
-# primitive: released weights (information — they DO copy freely, the
-# old typing was right about that) plus allocated compute in; served
-# tokens out; the entire compute feed dissipated as waste heat. That is
-# not a metaphor. It is what a GPU does.
+# What the system does: it serves tokens. Compute is spent, weights are
+# read, tokens leave for the customers who asked for them, and the
+# entire compute feed is shed as heat. That is the system's purpose,
+# whatever anyone hopes to learn from it.
 #
-# The two demand channels stay separate because measured reality
-# disagrees between them: open-weight models carry roughly a third of
-# developer-channel token volume but only about a tenth of enterprise
-# workload. Averaging them erases the market's main structural fact.
-
-system "LLM Market" : Concrete/Social
-
-domain "Inference compute cleared across frontier and open-weight models by two demand channels, tokens served out, heat shed"
-
+# What the analyst asks: are LLMs becoming commodities — buyers
+# indifferent to which model serves them, price pulled toward the cost
+# of serving, share following price — and is open-weight serving the
+# mechanism. The model does not answer that. It carries the boundary
+# the question is measured on, so the observatory (the data seam, the
+# prediction ledger) can.
+#
+# Start with the output (§6.5.1.2). The product is served tokens, and it
+# leaves through two interfaces that differ in what a sensor can see:
+#   Router        — customers reaching models through a router such as
+#                   OpenRouter; every flow has a count and a price.
+#   Self-hosting  — customers running open weights on their own
+#                   hardware; no public count exists. The flow is in
+#                   the model with a placeholder amount and a grounding
+#                   of `unknown`, because cutting the boundary to what
+#                   the router sees would bias the open-weight share low
+#                   on exactly the flow the question is about. Only
+#                   open weights can be self-hosted; the structure says
+#                   so (the Self-hosting interface reaches no frontier
+#                   model).
+# Every finding quotes the grounding: third-party on the routed
+# interface, unknown on the self-hosted one, until a sensor exists.
+#
+# Around the boundary (§6.5.2), the inputs:
+#   compute — the conserved backbone. A token served is compute spent,
+#             so throughput is a work unit (Gtok/day, like kWh) and the
+#             rivalry that makes this a market lives here.
+#   weights — information from the labs. They copy freely, so the flow
+#             is `ample`: never the binding constraint, compute is.
+# A frontier lab appears twice, on purpose: its research arm is outside
+# (a source releasing weights or API access), its serving arm is inside
+# (a serving process like any open-weight host). Price is set by the
+# serving arm at the interface. The money counter-flow is not drawn;
+# price enters through the observatory's data, not the engine, until the
+# money plane is a word (see ../examples/federal-reserve.sl).
+#
+# Minimal subsystems, one level down: the two interfaces, two pools
+# (frontier serving, open-weight serving) and the served models. The
+# pools are where the next decomposition goes (`decomposes`, spec §4.6):
+# a model's serving arm is itself a system of hosts, and the per-model
+# grain here is the first cut, not the last.
+system "LLM Serving Market" : Concrete/Social
+domain "Inference compute cleared across frontier and open-weight models through a routed interface and a self-hosted one, tokens served out, heat shed"
 time unit day
 
-# Declared amounts feed a run, but the stepping that generates the series is
-# the engine's, not this file's — meaning once, mechanics machine. The
-# complete generating rule is not authored here (ratified 2026-08-08, #288).
 level Structure
 
-# ── Sources: demand-side workload, the compute each channel mobilizes ─
-# The observatory's measured inputs. Developer workload is the
-# API-routed slice a router like OpenRouter actually sees (~6 Ttok/day
-# mid-2026); self-hosted serving is invisible to that sensor — a real
-# observability gap this model inherits from its data source, not a
-# modeling choice. Enterprise workload is DERIVED from spend surveys at
-# premium prices; treat its absolute level as a rough estimate.
-source "Developer workload"
-    description "The developer demand channel: the inference compute that API and developer users mobilize."
-source "Enterprise workload"
-    description "The enterprise demand channel: the inference compute that enterprise users mobilize."
+# ── Sources: the customers, by interface ─────────────────────────────
+source "Routed demand"
+    description "Customers who reach models through a router: the inference compute their requests mobilize."
+    grounding third-party "OpenRouter rankings via the Dirac labs-market-share digest, June–July 2026: ≈6 Ttok/day routed"
+source "Self-hosted demand"
+    description "Customers who run open weights on their own hardware: the inference compute they spend themselves."
+    grounding unknown "no public sensor counts self-hosted serving; the amount below is a placeholder to be replaced by a measured series"
 
-# ── Sources: the labs, releasing weights and API access ──────────────
-# Correctly informational in the old model and still informational
-# here: a released model copies freely to every server that runs it.
-# The lab's role in THIS system ends at release; training compute is a
-# different system's flow.
-source Anthropic
-    description "The lab that releases Opus and Fable."
-source OpenAI
-    description "The lab that releases GPT."
-source Google
-    description "The lab that releases Gemini and Gemma."
-source Meta
-    description "The lab that releases Llama."
-source Alibaba
-    description "The lab that releases Qwen."
-source "DeepSeek (lab)"
-    description "The lab that releases DeepSeek."
-source "Open-weight field"
-    description "The rest of the open-weight field, which releases models other than the named ones."
+# ── Sources: the labs' research arms, releasing weights ──────────────
+source "Frontier labs"
+    description "Anthropic, OpenAI and Google as research arms: they release closed weights behind an API."
+source "Open-weight labs"
+    description "Meta, Alibaba, DeepSeek, Google (Gemma) and the open-weight field as research arms: they release weights that copy freely."
 
-# ── Composition: the two clearing processes ──────────────────────────
-# The market mechanism itself: each channel's workload is one compute
-# inflow, divided across the models by their observed market share —
-# Splitting with relative weights on the outwires (Mobus Eq. 4.5).
-# This is what the old Combining "channels" wanted to be: a market
-# clears rival capacity, it does not merge copies of information.
-component "Developer clearing" primitive Splitting interface
-    description "Splits the developer workload across the models by declared shares."
-component "Enterprise clearing" primitive Splitting interface
-    description "Splits the enterprise workload across the models by declared shares."
+# ── Sink: where the product lands ────────────────────────────────────
+sink Customers
+    description "Where served tokens land, routed and self-hosted alike."
 
-# ── Composition: the models, each an Amplifying serving process ──────
-# Signal (weights) + power (compute) in, tokens out, heat shed. Nine
-# processes: eight named models plus an aggregate for the open-weight
-# field (GLM, Kimi, Mistral and the rest) that mid-2026 data shows
-# carrying too much developer volume to omit.
-component Opus primitive Amplifying
-    description "A served model: it takes released weights and allocated compute in and serves tokens out."
-component Fable primitive Amplifying
-    description "A served model: it takes released weights and allocated compute in and serves tokens out."
-component GPT primitive Amplifying
-    description "A served model: it takes released weights and allocated compute in and serves tokens out."
-component Gemini primitive Amplifying
-    description "A served model: it takes released weights and allocated compute in and serves tokens out."
-component Gemma primitive Amplifying
-    description "A served model: it takes released weights and allocated compute in and serves tokens out."
-component Llama primitive Amplifying
-    description "A served model: it takes released weights and allocated compute in and serves tokens out."
-component Qwen primitive Amplifying
-    description "A served model: it takes released weights and allocated compute in and serves tokens out."
-component DeepSeek primitive Amplifying
-    description "A served model: it takes released weights and allocated compute in and serves tokens out."
-component "Other open" primitive Amplifying
-    description "An aggregate served model standing for the open-weight field beyond the named models."
-
-# ── Environment: where served tokens land ────────────────────────────
-sink "Applications served"
-    description "Where served tokens land: the applications that receive what the models serve."
-
-# The boundary objects (#472, #493): each lab's release channel — where its
-# weights and API access enter — and the one serving endpoint where every
-# model's tokens leave for the applications. Pass-ways alter nothing; the
-# models behind them amplify.
-interface "Anthropic release channel"
-    description "Where Anthropic's weights and API access enter the market."
-interface "OpenAI release channel"
-    description "Where OpenAI's weights and API access enter the market."
-interface "Google release channel"
-    description "Where Google's weights and API access enter the market."
-interface "Meta release channel"
-    description "Where Meta's weights and API access enter the market."
-interface "Alibaba release channel"
-    description "Where Alibaba's weights and API access enter the market."
-interface "DeepSeek (lab) release channel"
-    description "Where DeepSeek (lab)'s weights and API access enter the market."
-interface "Open-weight field release channel"
-    description "Where Open-weight field's weights and API access enter the market."
+# ── Interfaces on the boundary ───────────────────────────────────────
+component Router primitive Splitting interface
+    description "The routed interface: splits the routed workload between frontier and open-weight serving by the shares a router reports."
+    grounding third-party "open-weight ≈60% of routed volume (Dirac digest of OpenRouter rankings, June–July 2026)"
+component "Self-hosting" primitive Splitting interface
+    description "The self-hosted interface: splits self-hosted workload across open-weight models only. Closed weights cannot be self-hosted."
+    grounding asserted "split assumed to follow the routed open-weight split until a sensor says otherwise"
+interface "Frontier release"
+    description "Where closed weights and API access enter serving."
+interface "Open-weight release"
+    description "Where open weights enter serving."
 interface "Serving endpoint"
-    description "The one endpoint where every model's tokens leave for the applications."
+    description "Where every model's tokens leave for the customers. One pass-way: the routed and self-hosted split is read on the demand side, where the sensors are."
 
-# ── Driving flows: the two workloads, forced from data ───────────────
-# Absolute levels, Gtok/day. Developer ≈ 6,000 (OpenRouter-observed,
-# June 2026, ~6T tokens/day). Enterprise ≈ 2,000 (spend-derived
-# estimate — the weakest number here, flagged for replacement).
-flow "Developer workload" -> "Developer clearing" : energy "dev inference compute" substance compute amount 6000 unit "Gtok/day"
-    description "The developer workload entering its clearing as inference compute."
-flow "Enterprise workload" -> "Enterprise clearing" : energy "enterprise inference compute" substance compute amount 2000 unit "Gtok/day"
-    description "The enterprise workload entering its clearing as inference compute."
+# ── Pools: the two serving subsystems ────────────────────────────────
+component "Frontier pool" primitive Splitting
+    description "Frontier serving: divides routed frontier workload across the frontier models by their routed shares."
+component "Open-weight pool" primitive Splitting
+    description "Open-weight serving: divides routed open-weight workload across the open models by their routed shares."
 
-# ── Weights signals: ample, and now the grammar can say so ───────────
-# Amplifying emits min(signal × gain, power): with the signal ample the
-# min always selects power, so each model's token output tracks its
-# metered compute exactly — availability of weights is never the
-# binding constraint in this market; compute allocation is. This used
-# to be said with `amount 100000 unit avail/day`, a magic number the
-# diagram then displayed; `ample` (#9) is that engineering fact as a
-# word, and the engine holds the equivalence.
-flow Anthropic -> "Anthropic release channel" : informational "released weights & API" substance weights ample
-    description "Anthropic's released weights and API access passing into its release channel."
-flow "Anthropic release channel" -> Opus : informational "released weights & API" substance weights ample
-    description "Weights and API access passing from the channel into Opus."
-flow "Anthropic release channel" -> Fable : informational "released weights & API" substance weights ample
-    description "Weights and API access passing from the channel into Fable."
-flow OpenAI -> "OpenAI release channel" : informational "released weights & API" substance weights ample
-    description "OpenAI's released weights and API access passing into its release channel."
-flow "OpenAI release channel" -> GPT : informational "released weights & API" substance weights ample
-    description "Weights and API access passing from the channel into GPT."
-flow Google -> "Google release channel" : informational "released weights & API" substance weights ample
-    description "Google's released weights and API access passing into its release channel."
-flow "Google release channel" -> Gemini : informational "released weights & API" substance weights ample
-    description "Weights and API access passing from the channel into Gemini."
-flow "Google release channel" -> Gemma : informational "released weights & API" substance weights ample
-    description "Weights and API access passing from the channel into Gemma."
-flow Meta -> "Meta release channel" : informational "released weights & API" substance weights ample
-    description "Meta's released weights and API access passing into its release channel."
-flow "Meta release channel" -> Llama : informational "released weights & API" substance weights ample
-    description "Weights and API access passing from the channel into Llama."
-flow Alibaba -> "Alibaba release channel" : informational "released weights & API" substance weights ample
-    description "Alibaba's released weights and API access passing into its release channel."
-flow "Alibaba release channel" -> Qwen : informational "released weights & API" substance weights ample
-    description "Weights and API access passing from the channel into Qwen."
-flow "DeepSeek (lab)" -> "DeepSeek (lab) release channel" : informational "released weights & API" substance weights ample
-    description "DeepSeek (lab)'s released weights and API access passing into its release channel."
-flow "DeepSeek (lab) release channel" -> DeepSeek : informational "released weights & API" substance weights ample
-    description "Weights and API access passing from the channel into DeepSeek."
-flow "Open-weight field" -> "Open-weight field release channel" : informational "released weights & API" substance weights ample
-    description "Open-weight field's released weights and API access passing into its release channel."
-flow "Open-weight field release channel" -> "Other open" : informational "released weights & API" substance weights ample
-    description "Weights and API access passing from the channel into Other open."
+# ── The served models, each an Amplifying serving process ────────────
+component Opus primitive Amplifying
+    description "A served model: released weights and allocated compute in, tokens out."
+component Fable primitive Amplifying
+    description "A served model: released weights and allocated compute in, tokens out."
+component GPT primitive Amplifying
+    description "A served model: released weights and allocated compute in, tokens out."
+component Gemini primitive Amplifying
+    description "A served model: released weights and allocated compute in, tokens out."
+component Gemma primitive Amplifying
+    description "A served model: open weights and allocated compute in, tokens out."
+component Llama primitive Amplifying
+    description "A served model: open weights and allocated compute in, tokens out."
+component Qwen primitive Amplifying
+    description "A served model: open weights and allocated compute in, tokens out."
+component DeepSeek primitive Amplifying
+    description "A served model: open weights and allocated compute in, tokens out."
+component "Other open" primitive Amplifying
+    description "The open-weight field beyond the named models, served as one aggregate."
 
-# ── Developer clearing: relative weights = observed dev-channel share ─
-# Calibration, June–July 2026, renormalized to this roster. Sources:
-# OpenRouter rankings via Dirac labs-market-share (≈6 Ttok/day, OSS
-# ≈60% of routed volume) and stockalarm/tech-insider digests (DeepSeek
-# ≈16%, Anthropic 12–24% — sources disagree; midpoint taken). Weights
-# are relative, so they need not sum to 100.
-flow "Developer clearing" -> Opus : energy "dev serving share" substance compute amount 9 unit "Gtok/day"
-    description "The share of the developer workload the clearing allocates to Opus."
-flow "Developer clearing" -> Fable : energy "dev serving share" substance compute amount 6 unit "Gtok/day"
-    description "The share of the developer workload the clearing allocates to Fable."
-flow "Developer clearing" -> GPT : energy "dev serving share" substance compute amount 9 unit "Gtok/day"
-    description "The share of the developer workload the clearing allocates to GPT."
-flow "Developer clearing" -> Gemini : energy "dev serving share" substance compute amount 11 unit "Gtok/day"
-    description "The share of the developer workload the clearing allocates to Gemini."
-flow "Developer clearing" -> Gemma : energy "dev serving share" substance compute amount 2 unit "Gtok/day"
-    description "The share of the developer workload the clearing allocates to Gemma."
-flow "Developer clearing" -> Llama : energy "dev serving share" substance compute amount 3 unit "Gtok/day"
-    description "The share of the developer workload the clearing allocates to Llama."
-flow "Developer clearing" -> Qwen : energy "dev serving share" substance compute amount 13 unit "Gtok/day"
-    description "The share of the developer workload the clearing allocates to Qwen."
-flow "Developer clearing" -> DeepSeek : energy "dev serving share" substance compute amount 16 unit "Gtok/day"
-    description "The share of the developer workload the clearing allocates to DeepSeek."
-flow "Developer clearing" -> "Other open" : energy "dev serving share" substance compute amount 20 unit "Gtok/day"
-    description "The share of the developer workload the clearing allocates to Other open."
+# ── Workload in, by interface ────────────────────────────────────────
+flow "Routed demand" -> Router : energy "routed workload" substance compute amount 6000 unit "Gtok/day"
+    description "The routed workload entering the router as inference compute."
+    grounding third-party "≈6 Ttok/day (OpenRouter via Dirac, June–July 2026)"
+flow "Self-hosted demand" -> "Self-hosting" : energy "self-hosted workload" substance compute amount 3000 unit "Gtok/day"
+    description "The self-hosted workload entering the self-hosted interface as inference compute."
+    grounding unknown "placeholder, a round half of the routed figure; no sensor; replace before any finding quotes it"
 
-# ── Enterprise clearing: relative weights = spend share as workload proxy ─
-# Menlo Ventures enterprise LLM API survey (2025→2026): Anthropic 40%
-# (split Opus 30 / Fable 10, in-lab split estimated), OpenAI 27%,
-# Google 21% (Gemini 20 / Gemma 1), open-weight roughly a tenth of
-# enterprise workload (Vercel AI Gateway: <4% of SPEND — spend
-# understates workload at one-tenth prices). Spend-as-workload is a
-# proxy with known bias; replace when a workload series exists.
-flow "Enterprise clearing" -> Opus : energy "enterprise serving share" substance compute amount 30 unit "Gtok/day"
-    description "The share of the enterprise workload the clearing allocates to Opus."
-flow "Enterprise clearing" -> Fable : energy "enterprise serving share" substance compute amount 10 unit "Gtok/day"
-    description "The share of the enterprise workload the clearing allocates to Fable."
-flow "Enterprise clearing" -> GPT : energy "enterprise serving share" substance compute amount 27 unit "Gtok/day"
-    description "The share of the enterprise workload the clearing allocates to GPT."
-flow "Enterprise clearing" -> Gemini : energy "enterprise serving share" substance compute amount 20 unit "Gtok/day"
-    description "The share of the enterprise workload the clearing allocates to Gemini."
-flow "Enterprise clearing" -> Gemma : energy "enterprise serving share" substance compute amount 1 unit "Gtok/day"
-    description "The share of the enterprise workload the clearing allocates to Gemma."
-flow "Enterprise clearing" -> Llama : energy "enterprise serving share" substance compute amount 4 unit "Gtok/day"
-    description "The share of the enterprise workload the clearing allocates to Llama."
-flow "Enterprise clearing" -> Qwen : energy "enterprise serving share" substance compute amount 3 unit "Gtok/day"
-    description "The share of the enterprise workload the clearing allocates to Qwen."
-flow "Enterprise clearing" -> DeepSeek : energy "enterprise serving share" substance compute amount 3 unit "Gtok/day"
-    description "The share of the enterprise workload the clearing allocates to DeepSeek."
-flow "Enterprise clearing" -> "Other open" : energy "enterprise serving share" substance compute amount 2 unit "Gtok/day"
-    description "The share of the enterprise workload the clearing allocates to Other open."
+# ── Weights in: ample, from the research arms ────────────────────────
+flow "Frontier labs" -> "Frontier release" : informational "closed weights & API" substance weights ample
+    description "Closed weights and API access passing into serving."
+flow "Open-weight labs" -> "Open-weight release" : informational "open weights" substance weights ample
+    description "Open weights passing into serving."
+flow "Frontier release" -> Opus : informational "closed weights & API" substance weights ample
+    description "API access into Opus."
+flow "Frontier release" -> Fable : informational "closed weights & API" substance weights ample
+    description "API access into Fable."
+flow "Frontier release" -> GPT : informational "closed weights & API" substance weights ample
+    description "API access into GPT."
+flow "Frontier release" -> Gemini : informational "closed weights & API" substance weights ample
+    description "API access into Gemini."
+flow "Open-weight release" -> Gemma : informational "open weights" substance weights ample
+    description "Open weights into Gemma."
+flow "Open-weight release" -> Llama : informational "open weights" substance weights ample
+    description "Open weights into Llama."
+flow "Open-weight release" -> Qwen : informational "open weights" substance weights ample
+    description "Open weights into Qwen."
+flow "Open-weight release" -> DeepSeek : informational "open weights" substance weights ample
+    description "Open weights into DeepSeek."
+flow "Open-weight release" -> "Other open" : informational "open weights" substance weights ample
+    description "Open weights into the rest of the field."
+
+# ── The router's split: frontier against open weight ─────────────────
+# Relative weights, the routed shares of June–July 2026 summed by pool
+# (frontier 9+6+9+11, open 2+3+13+16+20); they need not sum to 100.
+flow Router -> "Frontier pool" : energy "routed frontier workload" substance compute amount 35 unit "Gtok/day"
+    description "The routed workload the router sends to frontier serving."
+    grounding third-party "Dirac digest of OpenRouter rankings, June–July 2026, summed over the frontier roster"
+flow Router -> "Open-weight pool" : energy "routed open-weight workload" substance compute amount 54 unit "Gtok/day"
+    description "The routed workload the router sends to open-weight serving."
+    grounding third-party "Dirac digest of OpenRouter rankings, June–July 2026, summed over the open roster"
+
+# ── Frontier pool: routed shares among the frontier models ───────────
+# Sources disagree on Anthropic's share (12–24%); the midpoint is taken.
+flow "Frontier pool" -> Opus : energy "routed serving share" substance compute amount 9 unit "Gtok/day"
+    description "Opus's share of routed frontier workload."
+    grounding third-party "stockalarm and tech-insider digests of OpenRouter, June–July 2026; Anthropic 12–24%, midpoint"
+flow "Frontier pool" -> Fable : energy "routed serving share" substance compute amount 6 unit "Gtok/day"
+    description "Fable's share of routed frontier workload."
+    grounding third-party "same digests; in-lab split estimated"
+flow "Frontier pool" -> GPT : energy "routed serving share" substance compute amount 9 unit "Gtok/day"
+    description "GPT's share of routed frontier workload."
+    grounding third-party "same digests"
+flow "Frontier pool" -> Gemini : energy "routed serving share" substance compute amount 11 unit "Gtok/day"
+    description "Gemini's share of routed frontier workload."
+    grounding third-party "same digests"
+
+# ── Open-weight pool: routed shares among the open models ────────────
+flow "Open-weight pool" -> Gemma : energy "routed serving share" substance compute amount 2 unit "Gtok/day"
+    description "Gemma's share of routed open-weight workload."
+    grounding third-party "Dirac digest of OpenRouter rankings, June–July 2026"
+flow "Open-weight pool" -> Llama : energy "routed serving share" substance compute amount 3 unit "Gtok/day"
+    description "Llama's share of routed open-weight workload."
+    grounding third-party "same digest"
+flow "Open-weight pool" -> Qwen : energy "routed serving share" substance compute amount 13 unit "Gtok/day"
+    description "Qwen's share of routed open-weight workload."
+    grounding third-party "same digest"
+flow "Open-weight pool" -> DeepSeek : energy "routed serving share" substance compute amount 16 unit "Gtok/day"
+    description "DeepSeek's share of routed open-weight workload."
+    grounding third-party "same digest; DeepSeek ≈16%"
+flow "Open-weight pool" -> "Other open" : energy "routed serving share" substance compute amount 20 unit "Gtok/day"
+    description "The rest of the field's share of routed open-weight workload."
+    grounding third-party "same digest; the long tail folded by the model's own structure"
+
+# ── Self-hosting: open weights only, split assumed to follow routed ──
+flow "Self-hosting" -> Gemma : energy "self-hosted serving share" substance compute amount 2 unit "Gtok/day"
+    description "Gemma's share of self-hosted workload."
+    grounding asserted "mirrors the routed open split; no sensor"
+flow "Self-hosting" -> Llama : energy "self-hosted serving share" substance compute amount 3 unit "Gtok/day"
+    description "Llama's share of self-hosted workload."
+    grounding asserted "mirrors the routed open split; no sensor"
+flow "Self-hosting" -> Qwen : energy "self-hosted serving share" substance compute amount 13 unit "Gtok/day"
+    description "Qwen's share of self-hosted workload."
+    grounding asserted "mirrors the routed open split; no sensor"
+flow "Self-hosting" -> DeepSeek : energy "self-hosted serving share" substance compute amount 16 unit "Gtok/day"
+    description "DeepSeek's share of self-hosted workload."
+    grounding asserted "mirrors the routed open split; no sensor"
+flow "Self-hosting" -> "Other open" : energy "self-hosted serving share" substance compute amount 20 unit "Gtok/day"
+    description "The rest of the field's share of self-hosted workload."
+    grounding asserted "mirrors the routed open split; no sensor"
 
 # ── Served output: information delivered, compute already spent ──────
-# Token output is Message — it lands, it is never ledgered; the ledger
-# instead shows every Gtok/day of compute dissipating as heat, which is
-# the thermodynamic truth of inference. Market share is read off each
-# model's activity in the trace.
+# Token output is a message: it lands and is never ledgered. The ledger
+# shows every Gtok/day of compute dissipating as heat, which is what a
+# GPU does. Share is read off each model's activity in the trace.
 flow Opus -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by Opus arriving at the serving endpoint."
+    description "Tokens served by Opus arriving at the endpoint."
 flow Fable -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by Fable arriving at the serving endpoint."
+    description "Tokens served by Fable arriving at the endpoint."
 flow GPT -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by GPT arriving at the serving endpoint."
+    description "Tokens served by GPT arriving at the endpoint."
 flow Gemini -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by Gemini arriving at the serving endpoint."
+    description "Tokens served by Gemini arriving at the endpoint."
 flow Gemma -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by Gemma arriving at the serving endpoint."
+    description "Tokens served by Gemma arriving at the endpoint."
 flow Llama -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by Llama arriving at the serving endpoint."
+    description "Tokens served by Llama arriving at the endpoint."
 flow Qwen -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by Qwen arriving at the serving endpoint."
+    description "Tokens served by Qwen arriving at the endpoint."
 flow DeepSeek -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by DeepSeek arriving at the serving endpoint."
+    description "Tokens served by DeepSeek arriving at the endpoint."
 flow "Other open" -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by Other open arriving at the serving endpoint."
-flow "Serving endpoint" -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens leaving the endpoint to the applications that receive them."
+    description "Tokens served by the rest of the field arriving at the endpoint."
+flow "Serving endpoint" -> Customers : informational "tokens served" substance tokens unit "Gtok/day"
+    description "Tokens leaving the endpoint for the customers."
 
-# ── Declared parameters: the model's own vocabulary for its knobs ────
-# What a user of this simulation actually wants to slide (walkthrough
-# #18): channel demand and market shares, not "relative weights". Each
-# param names an amount declared above; the % presentation of a shares
-# group is display-only — the engine keeps the raw weights. Cost/price
-# parameters are legitimately absent: they need the money counter-flow
-# plane this model deliberately defers.
-param "Developer demand" : flow "Developer workload" -> "Developer clearing" "dev inference compute" range 0..12000
-param "Enterprise demand" : flow "Enterprise workload" -> "Enterprise clearing" "enterprise inference compute" range 0..8000
-param shares "Developer market share" : from "Developer clearing"
-param shares "Enterprise market share" : from "Enterprise clearing"
+# ── Declared parameters: the knobs, in market words ──────────────────
+# Price is absent on purpose: it needs the money counter-flow this
+# model does not draw. It enters through the observatory's data.
+param "Routed workload" : flow "Routed demand" -> Router "routed workload" range 0..12000
+param "Self-hosted workload" : flow "Self-hosted demand" -> "Self-hosting" "self-hosted workload" range 0..12000
+param shares "Routed split, frontier against open weight" : from Router
+param shares "Frontier models, routed" : from "Frontier pool"
+param shares "Open-weight models, routed" : from "Open-weight pool"
+param shares "Open-weight models, self-hosted" : from "Self-hosting"
 
-# ── Declared metrics: the model's own vocabulary for its readouts ────
-#
-# The output twin of the params above (#203): a metric names a computed
-# reading of the run, in market words. Shares are named as PRODUCED
-# observables of the run — today they echo the declared split, and when
-# the clearing becomes agent-chosen (#269) the same declarations read the
-# endogenous result with no rewrite.
-# Each share family asks ONE question of several models (the leaderboard
-# reading, drawn as one chart per clearing since #341): the four largest
-# servers per channel, with the long tail already folded into "Other open"
-# by the model's own structure.
-metric "DeepSeek dev share" : share of flow "Developer clearing" -> DeepSeek "dev serving share"
-metric "Qwen dev share" : share of flow "Developer clearing" -> Qwen "dev serving share"
-metric "Gemini dev share" : share of flow "Developer clearing" -> Gemini "dev serving share"
-metric "Opus dev share" : share of flow "Developer clearing" -> Opus "dev serving share"
-metric "Opus enterprise share" : share of flow "Enterprise clearing" -> Opus "enterprise serving share"
-metric "GPT enterprise share" : share of flow "Enterprise clearing" -> GPT "enterprise serving share"
-metric "Gemini enterprise share" : share of flow "Enterprise clearing" -> Gemini "enterprise serving share"
-metric "Fable enterprise share" : share of flow "Enterprise clearing" -> Fable "enterprise serving share"
+# ── Declared metrics: the readouts the question is measured on ───────
+# The first two are the hypothesis's own variable. The per-model shares
+# are the leaderboard reading. Tokens served are the totals across both
+# interfaces, which is the only place the self-hosted flow adds to a
+# frontier-against-open comparison.
+metric "Open-weight share, routed" : share of flow Router -> "Open-weight pool" "routed open-weight workload"
+metric "Frontier share, routed" : share of flow Router -> "Frontier pool" "routed frontier workload"
+metric "Opus share of routed frontier" : share of flow "Frontier pool" -> Opus "routed serving share"
+metric "Fable share of routed frontier" : share of flow "Frontier pool" -> Fable "routed serving share"
+metric "GPT share of routed frontier" : share of flow "Frontier pool" -> GPT "routed serving share"
+metric "Gemini share of routed frontier" : share of flow "Frontier pool" -> Gemini "routed serving share"
+metric "DeepSeek share of routed open" : share of flow "Open-weight pool" -> DeepSeek "routed serving share"
+metric "Qwen share of routed open" : share of flow "Open-weight pool" -> Qwen "routed serving share"
+metric "Other open share of routed open" : share of flow "Open-weight pool" -> "Other open" "routed serving share"
 metric "Opus tokens served" : sum into Opus
-metric "Fable tokens served" : sum into Fable
+metric "Gemini tokens served" : sum into Gemini
 metric "DeepSeek tokens served" : sum into DeepSeek
 metric "Qwen tokens served" : sum into Qwen
+metric "Other open tokens served" : sum into "Other open"
 
 @lens mobus
