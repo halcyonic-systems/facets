@@ -33,6 +33,19 @@ sensor can see, a routed one with third-party counts and a self-hosted one
 with none, and every number in the file carries a `grounding` line saying
 which. No smaller shipped model has an output interface the sensors cannot
 see; the two-channel version it replaced is in the archive with its finding.
+It is drawn at pool grain, a handful of inputs and outputs and two serving
+subsystems, and it is the shelf's one example whose subsystems `decomposes`
+into children with real dynamics: the per-model roster lives in
+`../walkthroughs/llm-market/` (`frontier-serving.sl`,
+`open-weight-serving.sl`), each child a model that runs on its own and
+reproduces the per-model numbers of the single-level version now in
+`../archive/llm-market-flat.sl`. The children ship beside the other
+walkthrough levels rather than here because the gallery globs this
+directory and a child is not a library card; the app resolves them by the
+pinned id the parent's `decomposes` line carries
+(`web/src/walkthroughs.ts`), and
+`crates/bert-lenses-kernel/tests/llm_market_walkthrough.rs` holds both seams
+clean.
 
 A third shelf with its own test since 2026-10-10: `../bench/` — models that exist to test the instrument, each after a named model in the literature, admitted for what they exercise rather than what they are.
 
