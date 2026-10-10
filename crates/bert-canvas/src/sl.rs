@@ -72,6 +72,9 @@ pub struct SlError {
 /// `auto_layout` when the count or the membrane needs more room.
 const CENTER: (f32, f32) = (480.0, 320.0);
 const COMPONENT_RADIUS: f32 = 170.0;
+/// One or two residents sit this close to the centre (facets#507): the
+/// membrane around them is then a circle of `INNER_RADIUS + RING_PAD`.
+const INNER_RADIUS: f32 = 110.0;
 const ENV_RADIUS: f32 = 320.0;
 /// Mirrors `web/src/canvas/style.ts` `nodeR` (= `canvas.rs` RADIUS).
 const NODE_R: f32 = 34.0;
@@ -3282,22 +3285,43 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
 /// Only a strict improvement moves anything, so declaration order is every
 /// tie-break and a model that already draws clean keeps the picture it had.
 fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>) {
-    use std::f32::consts::{FRAC_PI_2, PI, SQRT_2, TAU};
+    use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI, SQRT_2, TAU};
+    // Residents and pass-ways are placed apart (facets#507). The face draws
+    // the membrane around the residents and snaps every pass-way onto it
+    // (Canvas.tsx: `membraneRing(interiorThings)`, `ringPoint`), so a ring
+    // that mixed the two spread the residents to the pass-ways' width and
+    // the membrane came out as a flat ellipse with the residents far apart.
+    // Residents take a compact, near-square placement; pass-ways go on the
+    // rim the face will draw, toward what they serve.
     let components: Vec<usize> = (0..model.things.len())
-        .filter(|&i| model.things[i].role == Role::Component && !positions.contains_key(&model.things[i].name))
+        .filter(|&i| {
+            model.things[i].role == Role::Component
+                && !model.things[i].interface
+                && !positions.contains_key(&model.things[i].name)
+        })
         .collect();
+    let passways: Vec<usize> = (0..model.things.len())
+        .filter(|&i| {
+            model.things[i].role == Role::Component
+                && model.things[i].interface
+                && !positions.contains_key(&model.things[i].name)
+        })
+        .collect();
+    // A model whose components are all pass-ways (the membrane with nothing
+    // behind it yet) has no rim to put them on: they take the residents'
+    // placement, as every component did before #507.
+    let (components, passways) = if components.is_empty() { (passways, Vec::new()) } else { (components, passways) };
     let env: Vec<usize> = (0..model.things.len())
         .filter(|&i| model.things[i].role == Role::Environment && !positions.contains_key(&model.things[i].name))
         .collect();
     let n = components.len();
-    let comp_radius = component_radius(model, &components);
+    // Two residents sit on a diagonal at the inner radius: a near-square
+    // extent, so the membrane is a near-circle, and neither a vertical stack
+    // (#216, E2) nor the horizontal line that flattened it (#507).
+    let comp_radius = if n <= 2 { INNER_RADIUS } else { component_radius(model, &components) };
     let slot_point = |slot: usize| -> (f32, f32) {
-        // Two components spread HORIZONTALLY (#216, E2). The generic ring
-        // starts at −π/2, which for n = 2 stacks both on one vertical line —
-        // every edge through both labels, destroying exactly what the sibling
-        // sets exist to show.
-        let start = if n == 2 { PI } else { -FRAC_PI_2 };
-        let angle = start + (slot as f32) * TAU / (n.max(1) as f32);
+        let (start, step) = if n == 2 { (-FRAC_PI_4, PI) } else { (-FRAC_PI_2, TAU / (n.max(1) as f32)) };
+        let angle = start + (slot as f32) * step;
         match n {
             1 => CENTER,
             _ => (
@@ -3324,25 +3348,42 @@ fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>)
     for (slot, &i) in components.iter().enumerate() {
         pts[i] = slot_point(slot);
     }
-    let comp_pts: Vec<(f32, f32)> = (0..model.things.len())
-        .filter(|&i| model.things[i].role == Role::Component)
+    // The membrane the face will draw: the residents' extent (pinned
+    // residents included), `geometry.ts::componentRing`. Pass-ways will sit
+    // on it; `(cx, cy, rx, ry)`.
+    let resident_pts: Vec<(f32, f32)> = (0..model.things.len())
+        .filter(|&i| {
+            model.things[i].role == Role::Component
+                && (passways.is_empty() || !model.things[i].interface)
+        })
         .map(|i| pts[i])
         .collect();
-    let env_radius = if comp_pts.is_empty() {
-        ENV_RADIUS
+    let ring: Option<(f32, f32, f32, f32)> = if resident_pts.is_empty() {
+        None
     } else {
-        let (min_x, max_x) = comp_pts
+        let (min_x, max_x) = resident_pts
             .iter()
             .fold((f32::MAX, f32::MIN), |(lo, hi), p| (lo.min(p.0), hi.max(p.0)));
-        let (min_y, max_y) = comp_pts
+        let (min_y, max_y) = resident_pts
             .iter()
             .fold((f32::MAX, f32::MIN), |(lo, hi), p| (lo.min(p.1), hi.max(p.1)));
-        let membrane_max = (((max_x - min_x) / 2.0) * SQRT_2 + RING_PAD)
-            .max(((max_y - min_y) / 2.0) * SQRT_2 + RING_PAD);
-        let center_offset = (((min_x + max_x) / 2.0 - CENTER.0).powi(2)
-            + ((min_y + max_y) / 2.0 - CENTER.1).powi(2))
-        .sqrt();
-        ENV_RADIUS.max(center_offset + membrane_max + NODE_R + CLEARANCE)
+        Some((
+            (min_x + max_x) / 2.0,
+            (min_y + max_y) / 2.0,
+            ((max_x - min_x) / 2.0) * SQRT_2 + RING_PAD,
+            ((max_y - min_y) / 2.0) * SQRT_2 + RING_PAD,
+        ))
+    };
+    // The env ring clears the membrane with the pass-ways on it: a pass-way
+    // at the rim can reach `max(rx, ry)` from the ring's centre, and an outer
+    // reading that circumscribes every component (the layout laws' own
+    // `component_ring`) is √2 of that plus the pad.
+    let env_radius = match ring {
+        None => ENV_RADIUS,
+        Some((cx, cy, rx, ry)) => {
+            let center_offset = ((cx - CENTER.0).powi(2) + (cy - CENTER.1).powi(2)).sqrt();
+            ENV_RADIUS.max(center_offset + rx.max(ry) * SQRT_2 + RING_PAD + NODE_R + CLEARANCE)
+        }
     };
     // Placement by ROLE, not by declaration index (#309). The ring used to be
     // indexed by declaration order alone, so whether an input landed left or
@@ -3473,6 +3514,41 @@ fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>)
                 pts[i] = (CENTER.0 + radius * angle.cos(), CENTER.1 + radius * angle.sin());
             }
         }
+        // Pass-ways on the rim (facets#507), each toward the mean bearing of
+        // the environment things it serves — its interior partners when it
+        // serves none, straight up when it has no partner at all — at the
+        // point the face's `ringPoint` would put it.
+        if let Some((cx, cy, rx, ry)) = ring {
+            for &p in &passways {
+                let bearing = |want_env: bool| -> (f32, f32) {
+                    wires
+                        .iter()
+                        .filter_map(|&(a, b)| {
+                            let other = if a == p { b } else if b == p { a } else { return None };
+                            ((model.things[other].role == Role::Environment) == want_env).then_some(other)
+                        })
+                        .fold((0.0f32, 0.0f32), |(sx, sy), o| {
+                            let (dx, dy) = (pts[o].0 - cx, pts[o].1 - cy);
+                            let len = (dx * dx + dy * dy).sqrt();
+                            if len < 1.0 { (sx, sy) } else { (sx + dx / len, sy + dy / len) }
+                        })
+                };
+                let norm = |(x, y): (f32, f32)| (x * x + y * y).sqrt();
+                let (sx, sy) = match bearing(true) {
+                    v if norm(v) > 1e-3 => v,
+                    _ => match bearing(false) {
+                        v if norm(v) > 1e-3 => v,
+                        _ => (0.0, -1.0),
+                    },
+                };
+                // The face's `ringPoint` in sqrt-only arithmetic (no atan2,
+                // sin or cos), so the same model lays out bit-identically on
+                // every platform the goldens are minted and checked on.
+                let (ux, uy) = (sx / rx, sy / ry);
+                let len = norm((ux, uy));
+                pts[p] = (cx + rx * (ux / len), cy + ry * (uy / len));
+            }
+        }
     };
 
     // Steepest descent from declaration order over swaps, moves, rotations and
@@ -3523,7 +3599,7 @@ fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>)
         place(&even_order, false, &mut pts);
     }
 
-    for &i in components.iter().chain(&env) {
+    for &i in components.iter().chain(&passways).chain(&env) {
         model.things[i].x = pts[i].0;
         model.things[i].y = pts[i].1;
     }
@@ -5128,8 +5204,12 @@ boundary porosity 0.7 fuzziness 0.1
         }
         let dist = |t: &Thing| ((t.x - CENTER.0).powi(2) + (t.y - CENTER.1).powi(2)).sqrt();
         let a = m1.things.iter().find(|t| t.name == "A").unwrap();
+        let b = m1.things.iter().find(|t| t.name == "B").unwrap();
         let s = m1.things.iter().find(|t| t.name == "S").unwrap();
-        assert!((dist(a) - COMPONENT_RADIUS).abs() < 0.5);
+        // Two residents sit at the inner radius on a diagonal (facets#507):
+        // a near-square extent, so the membrane the face draws is a circle.
+        assert!((dist(a) - INNER_RADIUS).abs() < 0.5);
+        assert!((a.x - b.x).abs() > NODE_R && (a.y - b.y).abs() > NODE_R, "not a diagonal: {:?} {:?}", (a.x, a.y), (b.x, b.y));
         // The invariant, not the coordinate (#216, E1): the env ring is no
         // longer pinned at ENV_RADIUS — it is pushed outside the membrane the
         // face derives from the component extent. What must hold: the env
@@ -5142,10 +5222,8 @@ boundary porosity 0.7 fuzziness 0.1
             "env ring does not clear the membrane bound: {}",
             dist(s)
         );
-        // E2: two components spread horizontally, never a shared vertical.
-        let b = m1.things.iter().find(|t| t.name == "B").unwrap();
-        assert!((a.y - b.y).abs() < 0.001);
-        assert!((a.x - b.x).abs() > COMPONENT_RADIUS);
+        // E2 (#216) still holds on the diagonal: never a shared vertical.
+        assert!((a.x - b.x).abs() > NODE_R);
     }
 
     /// Law (#309): the picture reads left to right — every source sits left of
