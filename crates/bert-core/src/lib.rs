@@ -1522,10 +1522,12 @@ pub enum ProcessPrimitive {
 /// the ideal value … the procedures are embodied in the response mechanisms"
 /// — so the numbers here are the policy the author declares and the arm in
 /// `decide` is the procedure the kernel supplies. The set is closed and grows
-/// one rule at a time, each with one reading and one refusal; the first rung
-/// carries the purely reactive rules (no memory), and every agent in a run is
-/// deterministic, so a run with agents is still one `Id`-kind transition on a
-/// larger product state.
+/// one rule at a time, each with one reading and one refusal, on Mobus's
+/// §11.2.1.1 order: the purely reactive rules read nothing but the level
+/// (and, for a banded threshold, their own last command); the adaptive
+/// reactive one, `Trace`, reads a window of its own past readings, which the
+/// engine keeps as run state. Every agent in a run is deterministic, so a run
+/// with agents is still one `Id`-kind transition on a larger product state.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(tag = "rule", rename_all = "lowercase")]
 pub enum Policy {
@@ -1557,6 +1559,29 @@ pub enum Policy {
         #[serde(rename = "else")]
         otherwise: f64,
     },
+    /// A declared map from reading bins to outputs: `outputs[i]` when the
+    /// reading is under `bounds[i]` and not under any earlier bound,
+    /// `otherwise` at or above the last bound. Bounds are strictly
+    /// increasing and the bins contiguous, so every reading lands in
+    /// exactly one; the language refuses a table whose bounds do not rise,
+    /// which is ADR 0008 D4's "overlapping or gapped bins". Mobus
+    /// §11.2.1.1's purely reactive agent with "an algorithmic or heuristic
+    /// program of response": no memory, a function of the reading alone.
+    Table {
+        bounds: Vec<f64>,
+        outputs: Vec<f64>,
+        #[serde(rename = "else")]
+        otherwise: f64,
+    },
+    /// Proportional over a moving mean: emit `gain · (target − mean of the
+    /// last `window` readings, this tick's included)`, floored at zero as
+    /// Proportional is. Mobus §11.2.1.1's adaptive reactive agent, which
+    /// "tracks the input variables and responds in kind. This is the
+    /// homeostatic mechanism", and the first rule that reads H: the window
+    /// of readings is the agent's experiential memory (Fig. 11.1), kept by
+    /// the engine as run state, never by this policy. With `window` 1 the
+    /// mean is the reading and the rule is Proportional tick for tick.
+    Trace { window: usize, target: f64, gain: f64 },
 }
 
 impl Policy {
@@ -1566,12 +1591,22 @@ impl Policy {
         self.decide_with(reading, None)
     }
 
-    /// The procedure with the agent's last command in hand (facets#517).
-    /// Only a banded threshold reads `last`, and only inside its band: there
-    /// it keeps emitting if it was emitting, else keeps the `else` command,
-    /// which is also what it takes before any command exists (the resting
-    /// state). Every other rule is a function of the reading alone.
+    /// The procedure with the agent's last command in hand (facets#517) and
+    /// no past readings; the same as `decide_in(reading, last, &[])`.
     pub fn decide_with(&self, reading: f64, last: Option<f64>) -> f64 {
+        self.decide_in(reading, last, &[])
+    }
+
+    /// The procedure with everything an agent may remember in hand: its last
+    /// command (facets#517; only a banded threshold reads it, and only
+    /// inside its band, where it keeps emitting if it was emitting, else
+    /// keeps the `else` command, which is also what it takes before any
+    /// command exists) and its past readings, oldest first, this tick's
+    /// excluded (only `Trace` reads them, the last `window − 1` of them
+    /// together with `reading`; fewer when fewer exist). Every other rule is
+    /// a function of the reading alone. The engine owns both memories and
+    /// writes them after the decision, so a rule never sees its own tick.
+    pub fn decide_in(&self, reading: f64, last: Option<f64>, past: &[f64]) -> f64 {
         match self {
             Policy::Proportional { target, gain } => (gain * (target - reading)).max(0.0),
             Policy::Threshold { above, below, emit, otherwise } => {
@@ -1583,6 +1618,17 @@ impl Policy {
                     *emit
                 }
             }
+            Policy::Table { bounds, outputs, otherwise } => bounds
+                .iter()
+                .position(|b| reading < *b)
+                .and_then(|i| outputs.get(i).copied())
+                .unwrap_or(*otherwise),
+            Policy::Trace { window, target, gain } => {
+                let keep = window.saturating_sub(1).min(past.len());
+                let recent = &past[past.len() - keep..];
+                let mean = (recent.iter().sum::<f64>() + reading) / (recent.len() + 1) as f64;
+                (gain * (target - mean)).max(0.0)
+            }
         }
     }
 
@@ -1591,30 +1637,62 @@ impl Policy {
         match self {
             Policy::Proportional { .. } => "proportional",
             Policy::Threshold { .. } => "threshold",
+            Policy::Table { .. } => "table",
+            Policy::Trace { .. } => "trace",
+        }
+    }
+
+    /// How many of its own past readings a rule reads: `Trace`'s window,
+    /// and none for the rules that are a function of the reading (and, for
+    /// a banded threshold, the last command) alone. The engine keeps a
+    /// buffer this long per agent, as run state.
+    pub fn window(&self) -> usize {
+        match self {
+            Policy::Trace { window, .. } => *window,
+            _ => 0,
         }
     }
 
     /// The rule's numbers in the order the agent line spells them, each
-    /// under its SL word — the one list the parser, the emitter, the bag and
-    /// the session knob all read, so a rule is added in one place.
-    pub fn fields(&self) -> Vec<(&'static str, f64)> {
+    /// under its SL word — the one list the emitter, the bag and the session
+    /// knob all read, so a rule is added in one place. A table's bins are
+    /// numbered from one (`under1`, `emit1`, `under2`, …, then `else`), so a
+    /// knob and the inspector reach every number by a word; adding or
+    /// removing a bin is written in SL.
+    pub fn fields(&self) -> Vec<(String, f64)> {
+        let s = |w: &str| w.to_string();
         match self {
-            Policy::Proportional { target, gain } => vec![("target", *target), ("gain", *gain)],
+            Policy::Proportional { target, gain } => vec![(s("target"), *target), (s("gain"), *gain)],
             Policy::Threshold { above, below, emit, otherwise } => {
-                let mut fields = vec![("above", *above)];
+                let mut fields = vec![(s("above"), *above)];
                 if let Some(b) = below {
-                    fields.push(("below", *b));
+                    fields.push((s("below"), *b));
                 }
-                fields.push(("emit", *emit));
-                fields.push(("else", *otherwise));
+                fields.push((s("emit"), *emit));
+                fields.push((s("else"), *otherwise));
                 fields
+            }
+            Policy::Table { bounds, outputs, otherwise } => {
+                let mut fields = Vec::with_capacity(2 * bounds.len() + 1);
+                for (i, (b, o)) in bounds.iter().zip(outputs).enumerate() {
+                    fields.push((format!("under{}", i + 1), *b));
+                    fields.push((format!("emit{}", i + 1), *o));
+                }
+                fields.push((s("else"), *otherwise));
+                fields
+            }
+            Policy::Trace { window, target, gain } => {
+                vec![(s("window"), *window as f64), (s("target"), *target), (s("gain"), *gain)]
             }
         }
     }
 
-    /// Set one of this rule's numbers by its SL word; `false` when the word
-    /// is not one of this rule's.
-    pub fn set_field(&mut self, field: &str, v: f64) -> bool {
+    /// Set one of this rule's numbers by its SL word. `Err` names the
+    /// refusal: a word that is not one of this rule's, a table bin the table
+    /// does not have, or a window that is not a positive whole number.
+    pub fn set_field(&mut self, field: &str, v: f64) -> Result<(), String> {
+        let words = self.fields().into_iter().map(|(w, _)| w).collect::<Vec<_>>().join(", ");
+        let not_mine = format!("`{field}` is not a {} rule's word (its words: {words})", self.rule());
         match (self, field) {
             (Policy::Proportional { target, .. }, "target") => *target = v,
             (Policy::Proportional { gain, .. }, "gain") => *gain = v,
@@ -1622,9 +1700,31 @@ impl Policy {
             (Policy::Threshold { below, .. }, "below") => *below = Some(v),
             (Policy::Threshold { emit, .. }, "emit") => *emit = v,
             (Policy::Threshold { otherwise, .. }, "else") => *otherwise = v,
-            _ => return false,
+            (Policy::Table { otherwise, .. }, "else") => *otherwise = v,
+            (Policy::Table { bounds, outputs, .. }, _) => {
+                let (list, n) = if let Some(n) = field.strip_prefix("under") {
+                    (bounds, n)
+                } else if let Some(n) = field.strip_prefix("emit") {
+                    (outputs, n)
+                } else {
+                    return Err(not_mine);
+                };
+                match n.parse::<usize>().ok().filter(|&i| i >= 1 && i <= list.len()) {
+                    Some(i) => list[i - 1] = v,
+                    None => return Err(not_mine),
+                }
+            }
+            (Policy::Trace { window, .. }, "window") => {
+                if v < 1.0 || v.fract() != 0.0 {
+                    return Err(format!("`window` must be a positive whole number of ticks, not {v}"));
+                }
+                *window = v as usize;
+            }
+            (Policy::Trace { target, .. }, "target") => *target = v,
+            (Policy::Trace { gain, .. }, "gain") => *gain = v,
+            _ => return Err(not_mine),
         }
-        true
+        Ok(())
     }
 
     /// The rule as the inspector states it, with its numbers substituted.
@@ -1636,6 +1736,14 @@ impl Policy {
             }
             Policy::Threshold { above, below: Some(below), emit, otherwise } => {
                 format!("out = {emit} if level ≥ {above}, {otherwise} if level < {below}, else last tick's")
+            }
+            Policy::Table { bounds, outputs, otherwise } => {
+                let bins: Vec<String> =
+                    bounds.iter().zip(outputs).map(|(b, o)| format!("{o} if level < {b}")).collect();
+                format!("out = {}, else {otherwise}", bins.join(", "))
+            }
+            Policy::Trace { window, target, gain } => {
+                format!("out = max(0, {gain} · ({target} − mean of the last {window} levels))")
             }
         }
     }
