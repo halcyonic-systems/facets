@@ -16,6 +16,7 @@ import type {
 } from "./kernel/types";
 import { DEMOS, isRunnable, type Demo } from "./demos";
 import { listModelRecords } from "./modelStore";
+import { EXAMPLES } from "./examples";
 import { stage2Report, type PoolEntry, type Stage2Report } from "./resolution";
 import type { CorpusEntry } from "./corpus";
 import Canvas, { type RideOrder } from "./canvas/Canvas";
@@ -2015,7 +2016,11 @@ function Workspace() {
     let stale = false;
     (async () => {
       const pool: PoolEntry[] = [];
-      for (const d of DEMOS) {
+      // The merged shelf — runnable demos and structural examples alike —
+      // not DEMOS alone (first feel-test: the rain barrel is an example, and
+      // the region said "no model named Rain Barrel Garden" with it on the
+      // shelf).
+      for (const d of EXAMPLES) {
         if (!d.sl) continue;
         try {
           const out = compileSl(d.sl);
@@ -4017,6 +4022,7 @@ function Workspace() {
                 setSelectedRelationId(t.relation);
               }}
               onHover={setLitTarget}
+              stage2={stage2}
               selection={{ thing: selectedThingId, relation: selectedRelationId }}
               onClearSelection={() => {
                 setSelectedThingId(null);
