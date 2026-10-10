@@ -14,7 +14,7 @@
           "id": "Src-1.0",
           "level": -1,
           "name": "Developer workload",
-          "description": ""
+          "description": "The developer demand channel: the inference compute that API and developer users mobilize."
         },
         "type": "Source",
         "transform": {
@@ -34,7 +34,7 @@
           "id": "Src-1.1",
           "level": -1,
           "name": "Enterprise workload",
-          "description": ""
+          "description": "The enterprise demand channel: the inference compute that enterprise users mobilize."
         },
         "type": "Source",
         "transform": {
@@ -54,7 +54,7 @@
           "id": "Src-1.2",
           "level": -1,
           "name": "Anthropic",
-          "description": ""
+          "description": "The lab that releases Opus and Fable."
         },
         "type": "Source",
         "transform": {
@@ -74,7 +74,7 @@
           "id": "Src-1.3",
           "level": -1,
           "name": "OpenAI",
-          "description": ""
+          "description": "The lab that releases GPT."
         },
         "type": "Source",
         "transform": {
@@ -94,7 +94,7 @@
           "id": "Src-1.4",
           "level": -1,
           "name": "Google",
-          "description": ""
+          "description": "The lab that releases Gemini and Gemma."
         },
         "type": "Source",
         "transform": {
@@ -114,7 +114,7 @@
           "id": "Src-1.5",
           "level": -1,
           "name": "Meta",
-          "description": ""
+          "description": "The lab that releases Llama."
         },
         "type": "Source",
         "transform": {
@@ -134,7 +134,7 @@
           "id": "Src-1.6",
           "level": -1,
           "name": "Alibaba",
-          "description": ""
+          "description": "The lab that releases Qwen."
         },
         "type": "Source",
         "transform": {
@@ -154,7 +154,7 @@
           "id": "Src-1.7",
           "level": -1,
           "name": "DeepSeek (lab)",
-          "description": ""
+          "description": "The lab that releases DeepSeek."
         },
         "type": "Source",
         "transform": {
@@ -174,7 +174,7 @@
           "id": "Src-1.8",
           "level": -1,
           "name": "Open-weight field",
-          "description": ""
+          "description": "The rest of the open-weight field, which releases models other than the named ones."
         },
         "type": "Source",
         "transform": {
@@ -196,7 +196,7 @@
           "id": "Snk-1.9",
           "level": -1,
           "name": "Applications served",
-          "description": ""
+          "description": "Where served tokens land: the applications that receive what the models serve."
         },
         "type": "Sink",
         "transform": {
@@ -240,7 +240,7 @@
               "id": "I0.0",
               "level": 0,
               "name": "Developer clearing",
-              "description": ""
+              "description": "Splits the developer workload across the models by declared shares."
             },
             "protocol": "dev inference compute",
             "type": "Import",
@@ -255,7 +255,7 @@
               "id": "I0.1",
               "level": 0,
               "name": "Enterprise clearing",
-              "description": ""
+              "description": "Splits the enterprise workload across the models by declared shares."
             },
             "protocol": "enterprise inference compute",
             "type": "Import",
@@ -270,7 +270,7 @@
               "id": "I0.2",
               "level": 0,
               "name": "Anthropic release channel",
-              "description": ""
+              "description": "Where Anthropic's weights and API access enter the market."
             },
             "protocol": "released weights & API",
             "type": "Import",
@@ -285,7 +285,7 @@
               "id": "I0.3",
               "level": 0,
               "name": "Google release channel",
-              "description": ""
+              "description": "Where Google's weights and API access enter the market."
             },
             "protocol": "released weights & API",
             "type": "Import",
@@ -300,7 +300,7 @@
               "id": "I0.4",
               "level": 0,
               "name": "Serving endpoint",
-              "description": ""
+              "description": "The one endpoint where every model's tokens leave for the applications."
             },
             "protocol": "tokens served",
             "type": "Export",
@@ -315,7 +315,7 @@
               "id": "I0.5",
               "level": 0,
               "name": "OpenAI release channel",
-              "description": ""
+              "description": "Where OpenAI's weights and API access enter the market."
             },
             "protocol": "released weights & API",
             "type": "Import",
@@ -330,7 +330,7 @@
               "id": "I0.6",
               "level": 0,
               "name": "Meta release channel",
-              "description": ""
+              "description": "Where Meta's weights and API access enter the market."
             },
             "protocol": "released weights & API",
             "type": "Import",
@@ -345,7 +345,7 @@
               "id": "I0.7",
               "level": 0,
               "name": "Alibaba release channel",
-              "description": ""
+              "description": "Where Alibaba's weights and API access enter the market."
             },
             "protocol": "released weights & API",
             "type": "Import",
@@ -360,7 +360,7 @@
               "id": "I0.8",
               "level": 0,
               "name": "DeepSeek (lab) release channel",
-              "description": ""
+              "description": "Where DeepSeek (lab)'s weights and API access enter the market."
             },
             "protocol": "released weights & API",
             "type": "Import",
@@ -375,7 +375,7 @@
               "id": "I0.9",
               "level": 0,
               "name": "Open-weight field release channel",
-              "description": ""
+              "description": "Where Open-weight field's weights and API access enter the market."
             },
             "protocol": "released weights & API",
             "type": "Import",
@@ -401,7 +401,7 @@
         "id": "C0.0",
         "level": 1,
         "name": "Developer clearing",
-        "description": ""
+        "description": "Splits the developer workload across the models by declared shares."
       },
       "sources": [],
       "sinks": [],
@@ -444,7 +444,7 @@
         "id": "C0.1",
         "level": 1,
         "name": "Enterprise clearing",
-        "description": ""
+        "description": "Splits the enterprise workload across the models by declared shares."
       },
       "sources": [],
       "sinks": [],
@@ -487,7 +487,7 @@
         "id": "C0.2",
         "level": 1,
         "name": "Opus",
-        "description": ""
+        "description": "A served model: it takes released weights and allocated compute in and serves tokens out."
       },
       "sources": [],
       "sinks": [],
@@ -530,7 +530,7 @@
         "id": "C0.3",
         "level": 1,
         "name": "Fable",
-        "description": ""
+        "description": "A served model: it takes released weights and allocated compute in and serves tokens out."
       },
       "sources": [],
       "sinks": [],
@@ -573,7 +573,7 @@
         "id": "C0.4",
         "level": 1,
         "name": "GPT",
-        "description": ""
+        "description": "A served model: it takes released weights and allocated compute in and serves tokens out."
       },
       "sources": [],
       "sinks": [],
@@ -616,7 +616,7 @@
         "id": "C0.5",
         "level": 1,
         "name": "Gemini",
-        "description": ""
+        "description": "A served model: it takes released weights and allocated compute in and serves tokens out."
       },
       "sources": [],
       "sinks": [],
@@ -659,7 +659,7 @@
         "id": "C0.6",
         "level": 1,
         "name": "Gemma",
-        "description": ""
+        "description": "A served model: it takes released weights and allocated compute in and serves tokens out."
       },
       "sources": [],
       "sinks": [],
@@ -702,7 +702,7 @@
         "id": "C0.7",
         "level": 1,
         "name": "Llama",
-        "description": ""
+        "description": "A served model: it takes released weights and allocated compute in and serves tokens out."
       },
       "sources": [],
       "sinks": [],
@@ -745,7 +745,7 @@
         "id": "C0.8",
         "level": 1,
         "name": "Qwen",
-        "description": ""
+        "description": "A served model: it takes released weights and allocated compute in and serves tokens out."
       },
       "sources": [],
       "sinks": [],
@@ -788,7 +788,7 @@
         "id": "C0.9",
         "level": 1,
         "name": "DeepSeek",
-        "description": ""
+        "description": "A served model: it takes released weights and allocated compute in and serves tokens out."
       },
       "sources": [],
       "sinks": [],
@@ -831,7 +831,7 @@
         "id": "C0.10",
         "level": 1,
         "name": "Other open",
-        "description": ""
+        "description": "An aggregate served model standing for the open-weight field beyond the named models."
       },
       "sources": [],
       "sinks": [],
@@ -874,7 +874,7 @@
         "id": "C0.11",
         "level": 1,
         "name": "Anthropic release channel",
-        "description": ""
+        "description": "Where Anthropic's weights and API access enter the market."
       },
       "sources": [],
       "sinks": [],
@@ -917,7 +917,7 @@
         "id": "C0.12",
         "level": 1,
         "name": "Google release channel",
-        "description": ""
+        "description": "Where Google's weights and API access enter the market."
       },
       "sources": [],
       "sinks": [],
@@ -960,7 +960,7 @@
         "id": "C0.13",
         "level": 1,
         "name": "Serving endpoint",
-        "description": ""
+        "description": "The one endpoint where every model's tokens leave for the applications."
       },
       "sources": [],
       "sinks": [],
@@ -1005,7 +1005,7 @@
         "id": "F0",
         "level": 0,
         "name": "dev inference compute",
-        "description": ""
+        "description": "The developer workload entering its clearing as inference compute."
       },
       "substance": {
         "sub_type": "compute",
@@ -1026,7 +1026,7 @@
         "id": "F1",
         "level": 0,
         "name": "enterprise inference compute",
-        "description": ""
+        "description": "The enterprise workload entering its clearing as inference compute."
       },
       "substance": {
         "sub_type": "compute",
@@ -1047,10 +1047,10 @@
         "id": "F2",
         "level": 0,
         "name": "released weights & API",
-        "description": ""
+        "description": "Anthropic's released weights and API access passing into its release channel."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "weights",
         "type": "Message"
       },
       "type": "Flow",
@@ -1069,10 +1069,10 @@
         "id": "F3",
         "level": 0,
         "name": "released weights & API",
-        "description": ""
+        "description": "Weights and API access passing from the channel into Opus."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "weights",
         "type": "Message"
       },
       "type": "Flow",
@@ -1091,10 +1091,10 @@
         "id": "F4",
         "level": 0,
         "name": "released weights & API",
-        "description": ""
+        "description": "Weights and API access passing from the channel into Fable."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "weights",
         "type": "Message"
       },
       "type": "Flow",
@@ -1113,10 +1113,10 @@
         "id": "F5",
         "level": 0,
         "name": "released weights & API",
-        "description": ""
+        "description": "OpenAI's released weights and API access passing into its release channel."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "weights",
         "type": "Message"
       },
       "type": "Flow",
@@ -1135,10 +1135,10 @@
         "id": "F7",
         "level": 0,
         "name": "released weights & API",
-        "description": ""
+        "description": "Google's released weights and API access passing into its release channel."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "weights",
         "type": "Message"
       },
       "type": "Flow",
@@ -1157,10 +1157,10 @@
         "id": "F8",
         "level": 0,
         "name": "released weights & API",
-        "description": ""
+        "description": "Weights and API access passing from the channel into Gemini."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "weights",
         "type": "Message"
       },
       "type": "Flow",
@@ -1179,10 +1179,10 @@
         "id": "F9",
         "level": 0,
         "name": "released weights & API",
-        "description": ""
+        "description": "Weights and API access passing from the channel into Gemma."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "weights",
         "type": "Message"
       },
       "type": "Flow",
@@ -1201,10 +1201,10 @@
         "id": "F10",
         "level": 0,
         "name": "released weights & API",
-        "description": ""
+        "description": "Meta's released weights and API access passing into its release channel."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "weights",
         "type": "Message"
       },
       "type": "Flow",
@@ -1223,10 +1223,10 @@
         "id": "F12",
         "level": 0,
         "name": "released weights & API",
-        "description": ""
+        "description": "Alibaba's released weights and API access passing into its release channel."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "weights",
         "type": "Message"
       },
       "type": "Flow",
@@ -1245,10 +1245,10 @@
         "id": "F14",
         "level": 0,
         "name": "released weights & API",
-        "description": ""
+        "description": "DeepSeek (lab)'s released weights and API access passing into its release channel."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "weights",
         "type": "Message"
       },
       "type": "Flow",
@@ -1267,10 +1267,10 @@
         "id": "F16",
         "level": 0,
         "name": "released weights & API",
-        "description": ""
+        "description": "Open-weight field's released weights and API access passing into its release channel."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "weights",
         "type": "Message"
       },
       "type": "Flow",
@@ -1289,10 +1289,10 @@
         "id": "F18",
         "level": 0,
         "name": "dev serving share",
-        "description": ""
+        "description": "The share of the developer workload the clearing allocates to Opus."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1310,10 +1310,10 @@
         "id": "F19",
         "level": 0,
         "name": "dev serving share",
-        "description": ""
+        "description": "The share of the developer workload the clearing allocates to Fable."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1331,10 +1331,10 @@
         "id": "F20",
         "level": 0,
         "name": "dev serving share",
-        "description": ""
+        "description": "The share of the developer workload the clearing allocates to GPT."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1352,10 +1352,10 @@
         "id": "F21",
         "level": 0,
         "name": "dev serving share",
-        "description": ""
+        "description": "The share of the developer workload the clearing allocates to Gemini."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1373,10 +1373,10 @@
         "id": "F22",
         "level": 0,
         "name": "dev serving share",
-        "description": ""
+        "description": "The share of the developer workload the clearing allocates to Gemma."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1394,10 +1394,10 @@
         "id": "F23",
         "level": 0,
         "name": "dev serving share",
-        "description": ""
+        "description": "The share of the developer workload the clearing allocates to Llama."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1415,10 +1415,10 @@
         "id": "F24",
         "level": 0,
         "name": "dev serving share",
-        "description": ""
+        "description": "The share of the developer workload the clearing allocates to Qwen."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1436,10 +1436,10 @@
         "id": "F25",
         "level": 0,
         "name": "dev serving share",
-        "description": ""
+        "description": "The share of the developer workload the clearing allocates to DeepSeek."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1457,10 +1457,10 @@
         "id": "F26",
         "level": 0,
         "name": "dev serving share",
-        "description": ""
+        "description": "The share of the developer workload the clearing allocates to Other open."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1478,10 +1478,10 @@
         "id": "F27",
         "level": 0,
         "name": "enterprise serving share",
-        "description": ""
+        "description": "The share of the enterprise workload the clearing allocates to Opus."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1499,10 +1499,10 @@
         "id": "F28",
         "level": 0,
         "name": "enterprise serving share",
-        "description": ""
+        "description": "The share of the enterprise workload the clearing allocates to Fable."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1520,10 +1520,10 @@
         "id": "F29",
         "level": 0,
         "name": "enterprise serving share",
-        "description": ""
+        "description": "The share of the enterprise workload the clearing allocates to GPT."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1541,10 +1541,10 @@
         "id": "F30",
         "level": 0,
         "name": "enterprise serving share",
-        "description": ""
+        "description": "The share of the enterprise workload the clearing allocates to Gemini."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1562,10 +1562,10 @@
         "id": "F31",
         "level": 0,
         "name": "enterprise serving share",
-        "description": ""
+        "description": "The share of the enterprise workload the clearing allocates to Gemma."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1583,10 +1583,10 @@
         "id": "F32",
         "level": 0,
         "name": "enterprise serving share",
-        "description": ""
+        "description": "The share of the enterprise workload the clearing allocates to Llama."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1604,10 +1604,10 @@
         "id": "F33",
         "level": 0,
         "name": "enterprise serving share",
-        "description": ""
+        "description": "The share of the enterprise workload the clearing allocates to Qwen."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1625,10 +1625,10 @@
         "id": "F34",
         "level": 0,
         "name": "enterprise serving share",
-        "description": ""
+        "description": "The share of the enterprise workload the clearing allocates to DeepSeek."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1646,10 +1646,10 @@
         "id": "F35",
         "level": 0,
         "name": "enterprise serving share",
-        "description": ""
+        "description": "The share of the enterprise workload the clearing allocates to Other open."
       },
       "substance": {
-        "sub_type": "",
+        "sub_type": "compute",
         "type": "Energy"
       },
       "type": "Flow",
@@ -1667,7 +1667,7 @@
         "id": "F36",
         "level": 0,
         "name": "tokens served",
-        "description": ""
+        "description": "Tokens served by Opus arriving at the serving endpoint."
       },
       "substance": {
         "sub_type": "tokens",
@@ -1688,7 +1688,7 @@
         "id": "F37",
         "level": 0,
         "name": "tokens served",
-        "description": ""
+        "description": "Tokens served by Fable arriving at the serving endpoint."
       },
       "substance": {
         "sub_type": "tokens",
@@ -1709,7 +1709,7 @@
         "id": "F38",
         "level": 0,
         "name": "tokens served",
-        "description": ""
+        "description": "Tokens served by GPT arriving at the serving endpoint."
       },
       "substance": {
         "sub_type": "tokens",
@@ -1730,7 +1730,7 @@
         "id": "F39",
         "level": 0,
         "name": "tokens served",
-        "description": ""
+        "description": "Tokens served by Gemini arriving at the serving endpoint."
       },
       "substance": {
         "sub_type": "tokens",
@@ -1751,7 +1751,7 @@
         "id": "F40",
         "level": 0,
         "name": "tokens served",
-        "description": ""
+        "description": "Tokens served by Gemma arriving at the serving endpoint."
       },
       "substance": {
         "sub_type": "tokens",
@@ -1772,7 +1772,7 @@
         "id": "F41",
         "level": 0,
         "name": "tokens served",
-        "description": ""
+        "description": "Tokens served by Llama arriving at the serving endpoint."
       },
       "substance": {
         "sub_type": "tokens",
@@ -1793,7 +1793,7 @@
         "id": "F42",
         "level": 0,
         "name": "tokens served",
-        "description": ""
+        "description": "Tokens served by Qwen arriving at the serving endpoint."
       },
       "substance": {
         "sub_type": "tokens",
@@ -1814,7 +1814,7 @@
         "id": "F43",
         "level": 0,
         "name": "tokens served",
-        "description": ""
+        "description": "Tokens served by DeepSeek arriving at the serving endpoint."
       },
       "substance": {
         "sub_type": "tokens",
@@ -1835,7 +1835,7 @@
         "id": "F44",
         "level": 0,
         "name": "tokens served",
-        "description": ""
+        "description": "Tokens served by Other open arriving at the serving endpoint."
       },
       "substance": {
         "sub_type": "tokens",
@@ -1856,7 +1856,7 @@
         "id": "F45",
         "level": 0,
         "name": "tokens served",
-        "description": ""
+        "description": "Tokens leaving the endpoint to the applications that receive them."
       },
       "substance": {
         "sub_type": "tokens",

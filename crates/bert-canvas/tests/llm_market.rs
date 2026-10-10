@@ -157,7 +157,7 @@ fn all_compute_dissipates_as_heat() {
 #[test]
 fn weights_are_load_bearing() {
     let text = source_text();
-    let needle = "\"Developer clearing\" -> DeepSeek : energy \"dev serving share\" amount 16";
+    let needle = "\"Developer clearing\" -> DeepSeek : energy \"dev serving share\" substance compute amount 16";
     assert!(text.contains(needle), "calibration moved — update this mutation");
     let mutated = text.replace(needle, &needle.replace("amount 16", "amount 32"));
 
