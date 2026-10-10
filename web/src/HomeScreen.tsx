@@ -1067,11 +1067,15 @@ function CardGrid({ across, children }: { across: 3 | 4; children: ReactNode }) 
  *  `BlockHeader` above is the same object with a count; this one takes a node,
  *  because these are controls rather than facts. */
 function SectionHead({ label, right, lead }: { label: string; right?: ReactNode; lead?: boolean }) {
+  // #472 (2026-10-10): the doors are the page's major categories and should
+  // pull the eye before any card does — the display face at a size above the
+  // card names, not a folio whisper. The rule and the right-hand control stay.
   return (
     <div className="flex items-baseline gap-4 pb-3">
       <span
-        className="shrink-0 text-[11px] uppercase tracking-[0.28em]"
-        style={{ ...folioStyle, color: lead ? "var(--accent)" : "var(--ink-muted)" }}
+        className="shrink-0 text-2xl leading-none"
+        style={{ ...nameStyle, color: lead ? "var(--accent)" : "var(--ink)" }}
+        data-testid="section-head"
       >
         {label}
       </span>
@@ -1103,11 +1107,18 @@ function ShelfHead({
 }) {
   return (
     <div className="flex items-baseline gap-2.5 pb-2">
-      {hue && <span aria-hidden className="h-3 w-[3px] shrink-0 self-center" style={{ background: hue }} />}
-      <span className="text-[10px] uppercase tracking-[0.2em]" style={folioStyle}>
+      {hue && <span aria-hidden className="h-4 w-[3px] shrink-0 self-center" style={{ background: hue }} />}
+      {/* A shelf is the second level: the display face a step below the
+          section head, a step above the card names, so the three sizes read
+          as three levels down the page. */}
+      <span className="text-lg leading-none" style={{ ...nameStyle, color: "var(--ink-secondary)" }}>
         {label}
-        {note ? ` · ${note}` : ""}
       </span>
+      {note && (
+        <span className="text-[10px] tracking-[0.12em]" style={folioStyle}>
+          {note}
+        </span>
+      )}
       <span className="flex-1" />
       {shown < total && (
         <button onClick={onExpand} className="record-folio shrink-0 text-[10px] tracking-[0.1em]" style={folioStyle}>
