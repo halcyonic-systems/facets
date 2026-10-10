@@ -45,6 +45,8 @@ import {
   wantsOpaqueExit,
   OPAQUE_EXIT,
   type View,
+  pastOutLine,
+  hasOutLine,
 } from "./frameRebase";
 import { EmbeddedFrame } from "./EmbeddedFrame";
 import { STYLE, elideEdgeLabel } from "./style";
@@ -815,7 +817,12 @@ export default function Canvas({
     }
     if (onRebaseOut && register) {
       const extent = frameExtentPx(dModel, scale, register);
-      const next = wantsRebaseOut(extent, minView, outArmRef.current);
+      // A frame with no out line (empty, or smaller than the line's share of
+      // the viewport at its natural scale) is never left by zooming: neither
+      // arm nor fire, so a fresh canvas cannot open opaque (facets#269
+      // feel-test, 2026-10-10).
+      const leavable = hasOutLine(minView, frameExtentPx(dModel, 1, register));
+      const next = leavable ? wantsRebaseOut(extent, minView, outArmRef.current) : { fire: false, armed: false };
       outArmRef.current = next.armed;
       // The fallback (#377 M3 walk, 2026-09-09): the arm bit resets whenever
       // the things array is replaced — a drafted interior, an accepted
@@ -823,12 +830,11 @@ export default function Canvas({
       // line can be zoomed out of forever without a crossing. Past the out
       // line with nothing armed, the gesture still meant "leave"; it leaves
       // by the breadcrumb's own exit, once per frame.
-      const pastOutLine =
-        extent > 0 && scale <= rebaseOutScale(minView, frameExtentPx(dModel, 1, register));
+      const pastOut = extent > 0 && pastOutLine(scale, minView, frameExtentPx(dModel, 1, register));
       if (next.fire) {
         rideRef.current = null;
         onRebaseOut({ pan, scale });
-      } else if (!next.armed && pastOutLine && onExitUp && !outFellBackRef.current) {
+      } else if (!next.armed && pastOut && onExitUp && !outFellBackRef.current) {
         rideRef.current = null;
         outFellBackRef.current = true;
         onExitUp();
