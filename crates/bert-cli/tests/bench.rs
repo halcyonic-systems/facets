@@ -88,3 +88,21 @@ fn the_sl_words_reach_the_engine() {
     assert!(series[0] <= 3.0 + 1e-6, "limiting bounds the oven by heat 3, got {series:?}");
     assert!(series[4] < series[0], "the oven starves once the flour runs dry: {series:?}");
 }
+
+#[test]
+fn a_pass_way_serving_two_residents_runs_as_an_identity_door() {
+    // #493: an unfused pure pass-way (one inlet, two tanks; one outlet, two
+    // drains) is lowered to an identity Impeding node, so the model runs and
+    // conserves. Routing through the door follows the interior legs' declared
+    // amounts (4 to A, 6 to B); the door itself alters nothing.
+    let out = bert(&["bench", "fixtures/sl/shared-door.sl", "--t", "5", "--no-log"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let v = stdout_json(&out);
+    assert_eq!(v["conserved"], true);
+    let flows = v["flows"].as_array().unwrap();
+    let fill = |n: &str| flows.iter().find(|f| f["name"] == n).unwrap()["series"][0].as_f64().unwrap();
+    assert_eq!((fill("fill a"), fill("fill b")), (4.0, 6.0));
+    let traj = v["trajectories"].as_array().unwrap();
+    let last = |n: &str| traj.iter().find(|s| s["name"] == n).unwrap()["series"][4].as_f64().unwrap();
+    assert_eq!((last("Tank A"), last("Tank B")), (20.0, 25.0));
+}

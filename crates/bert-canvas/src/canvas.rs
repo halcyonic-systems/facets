@@ -866,6 +866,16 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                 };
                 comp_idx += 1;
                 sys_idx_of.insert(t.id, systems.len());
+                // #493: a pure pass-way that did NOT fuse (it serves several
+                // processors, or none) still has to be executable. The kernel's
+                // own doctrine (bert#108, `operational.rs`): an interface sited
+                // in B is an Impeding process by default, and unparameterised
+                // its characteristic is the identity. So it is lowered to
+                // exactly that — an Impeding node at agency 1.0 — which passes
+                // everything it is handed, conserves by construction, and
+                // shows in the tick log as carrying. The fused 1:1 case above
+                // is untouched (the rain barrel pins it tick for tick).
+                let lowered = pure_passway(t);
                 systems.push(new_system(
                     id.clone(),
                     1,
@@ -873,8 +883,16 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     &t.description,
                     root_id.clone(),
                     Some((t.x, t.y)),
-                    t.primitive,
+                    if lowered { Some(ProcessPrimitive::Impeding) } else { t.primitive },
                 ));
+                if lowered {
+                    systems
+                        .last_mut()
+                        .unwrap()
+                        .agent
+                        .get_or_insert_with(AgentModel::default)
+                        .agency_capacity = 1.0;
+                }
                 systems.last_mut().unwrap().info.grounding = t.grounding.clone();
                 // The `decomposes` reference carries its id into the kernel; the
                 // human label stays surface-side (the kernel keys on the id).
