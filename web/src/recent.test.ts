@@ -62,7 +62,7 @@ describe("storage", () => {
     expect(readRecent()).toEqual([]);
   });
 
-  it("defaults the arrangement to the lens cut", () => {
-    expect(readArrange()).toBe("lens");
+  it("defaults the arrangement to the domain cut (#472)", () => {
+    expect(readArrange()).toBe("domain");
   });
 });

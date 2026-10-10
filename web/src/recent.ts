@@ -85,14 +85,15 @@ export function noteOpened(kind: RecentKind, key: string, now = Date.now()): voi
 
 const ARRANGE_KEY = "facets.library-arrange";
 
-/** BY LENS or BY DOMAIN, as last chosen here. Lens is the default: the
- *  instrument's claim is about readings, so a reader who has expressed no
- *  preference is shown the readings. */
+/** BY LENS or BY DOMAIN, as last chosen here. Domain is the default
+ *  (#472, 2026-10-09): a reader arrives with a subject, not a tradition, and
+ *  the lens shelves are the teaching shelves — they should be one toggle
+ *  away, not the first thing a newcomer is sorted by. */
 export function readArrange(): "lens" | "domain" {
   try {
-    return localStorage.getItem(ARRANGE_KEY) === "domain" ? "domain" : "lens";
+    return localStorage.getItem(ARRANGE_KEY) === "lens" ? "lens" : "domain";
   } catch {
-    return "lens";
+    return "domain";
   }
 }
 
