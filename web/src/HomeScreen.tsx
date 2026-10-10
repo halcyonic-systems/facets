@@ -48,7 +48,6 @@ import type { Demo } from "./demos";
 import type { CorpusEntry } from "./corpus";
 import type { LibraryNode } from "./libraryTree";
 import { draftedModels, type DraftedModel } from "./drafted";
-import { FIELD } from "./field";
 import {
   facets,
   matchesFacet,
@@ -975,6 +974,7 @@ function ModelCard({
   name,
   sub,
   runs,
+  marker,
   cacheKey,
   source,
   sourceKind,
@@ -986,6 +986,8 @@ function ModelCard({
   name: string;
   sub: ReactNode;
   runs?: boolean;
+  /** Provenance worn on the card (#472 fold): "with Nora", "drafted". */
+  marker?: string;
   cacheKey: string;
   source?: string;
   sourceKind?: "sl" | "archive";
@@ -1013,6 +1015,15 @@ function ModelCard({
               style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--seal)" }}
             >
               runs
+            </span>
+          )}
+          {marker && (
+            <span
+              className="shrink-0 text-[10px]"
+              style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--ink-muted)" }}
+              data-testid="card-marker"
+            >
+              {marker}
             </span>
           )}
         </span>
@@ -1056,15 +1067,22 @@ function CardGrid({ across, children }: { across: 3 | 4; children: ReactNode }) 
  *  `BlockHeader` above is the same object with a count; this one takes a node,
  *  because these are controls rather than facts. */
 function SectionHead({ label, right, lead }: { label: string; right?: ReactNode; lead?: boolean }) {
+  // #472 (2026-10-10): the doors are the page's major categories and should
+  // pull the eye before any card does — the display face at a size above the
+  // card names, not a folio whisper. The rule and the right-hand control stay.
   return (
-    <div className="flex items-baseline gap-4 pb-3">
+    <div
+      className="mb-4 flex items-baseline gap-4 border-b pb-2"
+      style={{ borderColor: "var(--ink)", borderBottomWidth: "2px" }}
+    >
       <span
-        className="shrink-0 text-[11px] uppercase tracking-[0.28em]"
-        style={{ ...folioStyle, color: lead ? "var(--accent)" : "var(--ink-muted)" }}
+        className="shrink-0 text-2xl leading-none"
+        style={{ ...nameStyle, color: lead ? "var(--accent)" : "var(--ink)" }}
+        data-testid="section-head"
       >
         {label}
       </span>
-      <span className="h-px min-w-6 flex-1" style={{ background: "var(--rule-soft)" }} />
+      <span className="min-w-6 flex-1" />
       {right}
     </div>
   );
@@ -1092,11 +1110,18 @@ function ShelfHead({
 }) {
   return (
     <div className="flex items-baseline gap-2.5 pb-2">
-      {hue && <span aria-hidden className="h-3 w-[3px] shrink-0 self-center" style={{ background: hue }} />}
-      <span className="text-[10px] uppercase tracking-[0.2em]" style={folioStyle}>
+      {hue && <span aria-hidden className="h-4 w-[3px] shrink-0 self-center" style={{ background: hue }} />}
+      {/* A shelf is the second level: the display face a step below the
+          section head, a step above the card names, so the three sizes read
+          as three levels down the page. */}
+      <span className="text-lg leading-none" style={{ ...nameStyle, color: "var(--ink-secondary)" }}>
         {label}
-        {note ? ` · ${note}` : ""}
       </span>
+      {note && (
+        <span className="text-[10px] tracking-[0.12em]" style={folioStyle}>
+          {note}
+        </span>
+      )}
       <span className="flex-1" />
       {shown < total && (
         <button onClick={onExpand} className="record-folio shrink-0 text-[10px] tracking-[0.1em]" style={folioStyle}>
@@ -1187,9 +1212,6 @@ export function LibraryBrowser({
   const shownShipped = all.filter((m) => matchesQuery(m, q));
   const shownSaved = saved.filter((n) => n.name.toLowerCase().includes(q));
   const shownDrafted = drafted.filter((d) => d.description.toLowerCase().includes(q));
-  const shownField = FIELD.filter((m) =>
-    [m.demo.title, m.demo.blurb, m.with].join(" ").toLowerCase().includes(q),
-  );
 
   // A visit becomes a card only if its address still resolves — a deleted slot
   // or a renamed one simply drops out, which is why nothing here migrates the
@@ -1300,7 +1322,7 @@ export function LibraryBrowser({
             {/* No Recent means this is the first section, and a top margin
                 under the masthead rule would print as a gap rather than as
                 air. */}
-            <section className={recentCards.length > 0 ? "mt-8" : ""}>
+            <section className={recentCards.length > 0 ? "mt-14" : ""}>
               <SectionHead
                 label="Start from one of ours"
                 // A search has put the shelves away, and the toggle only cuts
@@ -1327,6 +1349,7 @@ export function LibraryBrowser({
                       source={slOf(m)}
                       name={m.name}
                       runs={m.runs}
+                      marker={m.with ? `with ${m.with}` : undefined}
                       sub={m.description}
                       onClick={() => openShipped(m)}
                     />
@@ -1355,6 +1378,7 @@ export function LibraryBrowser({
                             source={slOf(m)}
                             name={m.name}
                             runs={m.runs}
+                            marker={m.with ? `with ${m.with}` : undefined}
                             sub={m.description}
                             onClick={() => openShipped(m)}
                           />
@@ -1366,35 +1390,11 @@ export function LibraryBrowser({
               )}
             </section>
 
-            {/* From the field: models drawn with someone, shipped so they can
-                keep going (assets/field/README.md). Its own shelf because its
-                admission test is its own — provenance, not a kernel distinction
-                — and a reader looking for the one drawn with them should not
-                have to know which genus it fell into. Absent when empty. */}
-            {shownField.length > 0 && (
-              <section className="mt-8">
-                <SectionHead label="From the field" />
-                <CardGrid across={3}>
-                  {shownField.map((m) => (
-                    <ModelCard
-                      key={m.demo.key}
-                      cacheKey={m.demo.key}
-                      source={m.demo.sl}
-                      name={m.demo.title}
-                      runs={false}
-                      sub={`with ${m.with} · ${m.date} · ${m.demo.blurb}`}
-                      onClick={() => onOpenExample(m.demo)}
-                    />
-                  ))}
-                </CardGrid>
-              </section>
-            )}
-
             {/* Yours. The half that grows. Manage is a MODE rather than a
                 control on every card: renaming and deleting are not what a
                 reader came here to do, and a × on every card invites the one
                 click this page cannot undo. */}
-            <section className="mt-8">
+            <section className="mt-14">
               <SectionHead
                 label="Yours"
                 right={
@@ -1457,19 +1457,10 @@ export function LibraryBrowser({
                   )}
                 </>
               )}
-              {/* Drafted models are the reader's own asks, answered — they
-                  belong under Yours and keep their marker, which is the model
-                  that answered. Absent, not empty, when the co-author has never
-                  been used (#324). */}
+              {/* #472 fold: a draft is one of yours; no shelf head, the
+                  marker says it was drafted and the gloss says by which model. */}
               {shownDrafted.length > 0 && (
-                <div className="mt-5">
-                  <ShelfHead
-                    label="drafted with the co-author"
-                    note=""
-                    total={shownDrafted.length}
-                    shown={shownDrafted.length}
-                    onExpand={() => {}}
-                  />
+                <div className="mt-3" data-testid="drafted-cards">
                   <CardGrid across={3}>
                     {shownDrafted.slice(0, q ? shownDrafted.length : SHELF_CARDS).map((d) => (
                       <ModelCard
@@ -1477,6 +1468,7 @@ export function LibraryBrowser({
                         cacheKey={d.key}
                         source={d.sl}
                         name={d.description}
+                        marker="drafted"
                         sub={`${draftedGloss(d)} · ${d.model}`}
                         onClick={() => onOpenDrafted(d.sl)}
                       />
@@ -1486,7 +1478,7 @@ export function LibraryBrowser({
               )}
             </section>
 
-            <section className="mt-8">
+            <section className="mt-14">
               <SectionHead label="From a file" />
               <button
                 onClick={onOpenFile}
@@ -1571,8 +1563,8 @@ function ArrangeToggle({ value, onChange }: { value: Arrange; onChange: (v: Arra
   );
   return (
     <span className="inline-flex shrink-0 border" style={{ borderColor: "var(--rule-soft)" }}>
-      {cell("lens", "By lens")}
       {cell("domain", "By domain")}
+      {cell("lens", "By lens")}
     </span>
   );
 }
@@ -1828,7 +1820,7 @@ function LedgerView({
         <BlockHeader label="Yours" count={`${savedCount} model${savedCount === 1 ? "" : "s"}`} />
         {facet ? (
           <EmptyLine>your models carry no genus or tradition tag — clear the filter to see them</EmptyLine>
-        ) : tree.length === 0 ? (
+        ) : tree.length === 0 && drafted.length === 0 ? (
           <EmptyLine>no saved models yet</EmptyLine>
         ) : (
           <div style={{ borderTop: "1px solid var(--rule)" }}>
@@ -1858,39 +1850,21 @@ function LedgerView({
                 show all {tree.length} saved models
               </button>
             )}
+            {/* #472 fold: drafts are yours too — rows in the same list, the
+                chip saying so and naming the model that answered. */}
+            {drafted.map((d, i) => (
+              <LedgerRow
+                key={d.key}
+                index={shownRoots.length + i + 1}
+                name={d.description}
+                description={draftedGloss(d)}
+                tag={`drafted · ${d.model}`}
+                onClick={() => onOpenDrafted(d.sl)}
+              />
+            ))}
           </div>
         )}
       </section>
-
-      {/* Drafted. The third provenance (#324), and the only one that can be
-          absent: it is read from the reasoner, which is off until the user
-          turns it on. No turns means no section — not an empty state and not
-          an explanation, because a user who has never used the co-author is
-          not missing anything and should not be told that they are. */}
-      {drafted.length > 0 && (
-        <section className="mt-16">
-          <BlockHeader
-            label="Drafted with the co-author"
-            count={`${drafted.length} draft${drafted.length === 1 ? "" : "s"}`}
-          />
-          {facet ? (
-            <EmptyLine>your drafts carry no genus or tradition tag — clear the filter to see them</EmptyLine>
-          ) : (
-            <Ledger>
-              {drafted.map((d, i) => (
-                <LedgerRow
-                  key={d.key}
-                  index={i + 1}
-                  name={d.description}
-                  description={draftedGloss(d)}
-                  tag={d.model}
-                  onClick={() => onOpenDrafted(d.sl)}
-                />
-              ))}
-            </Ledger>
-          )}
-        </section>
-      )}
 
       <section className="mt-16">
         <BlockHeader label="From a file" />
@@ -1970,6 +1944,15 @@ function ModelRow({
               style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--seal)" }}
             >
               runs
+            </span>
+          )}
+          {model.with && (
+            <span
+              className="shrink-0 text-xs"
+              style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--ink-muted)" }}
+              data-testid="row-marker"
+            >
+              with {model.with}
             </span>
           )}
         </span>

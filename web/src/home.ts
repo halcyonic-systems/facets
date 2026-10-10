@@ -18,6 +18,7 @@
 import { groupedExamples } from "./examples";
 import { groupedCorpus, firstSentence, TRADITIONS, type CorpusEntry } from "./corpus";
 import { isRunnable, type Demo } from "./demos";
+import { FIELD } from "./field";
 
 export const EXAMPLES_NOTE =
   "Models we wrote to show what the language can express.";
@@ -53,6 +54,11 @@ export interface ShippedModel {
   tradition?: CorpusEntry["tradition"];
   /** Carries dynamics as well as structure. The EXCEPTION, never the rule. */
   runs: boolean;
+  /** From the field (#472 fold): drawn with someone, shipped so they can keep
+   *  going. Provenance is a fact about the card, not a shelf of its own — the
+   *  model sits on its domain shelf and wears the name. */
+  with?: string;
+  date?: string;
   /** What opening this row means. The caller picks the seam; nothing here
    *  knows how a model is loaded. */
   open: { kind: "example"; demo: Demo } | { kind: "corpus"; entry: CorpusEntry };
@@ -102,6 +108,20 @@ export function shippedModels(): ShippedModel[] {
         open: { kind: "example", demo: d },
       });
     }
+  }
+  for (const f of FIELD) {
+    const tradition = exampleTradition(f.demo);
+    rows.push({
+      key: f.demo.key,
+      name: f.demo.title,
+      description: f.demo.blurb,
+      tags: tradition ? [genusTag(f.demo.genus), traditionTag(tradition)] : [genusTag(f.demo.genus)],
+      tradition,
+      runs: isRunnable(f.demo),
+      with: f.with,
+      date: f.date,
+      open: { kind: "example", demo: f.demo },
+    });
   }
   for (const g of groupedCorpus()) {
     const tag = traditionTag(g.tradition);
