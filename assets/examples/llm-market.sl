@@ -76,7 +76,7 @@ sink Customers
 component Router primitive Splitting interface
     description "The routed interface: splits the routed workload between frontier and open-weight serving by the shares a router reports."
     grounding third-party "open-weight ≈60% of routed volume (Dirac digest of OpenRouter rankings, June–July 2026)"
-component "Self-hosting" primitive Splitting interface
+component Self-hosting primitive Splitting interface
     description "The self-hosted interface: splits self-hosted workload across open-weight models only. Closed weights cannot be self-hosted."
     grounding asserted "split assumed to follow the routed open-weight split until a sensor says otherwise"
 interface "Frontier release"
@@ -116,7 +116,7 @@ component "Other open" primitive Amplifying
 flow "Routed demand" -> Router : energy "routed workload" substance compute amount 6000 unit "Gtok/day"
     description "The routed workload entering the router as inference compute."
     grounding third-party "≈6 Ttok/day (OpenRouter via Dirac, June–July 2026)"
-flow "Self-hosted demand" -> "Self-hosting" : energy "self-hosted workload" substance compute amount 3000 unit "Gtok/day"
+flow "Self-hosted demand" -> Self-hosting : energy "self-hosted workload" substance compute amount 3000 unit "Gtok/day"
     description "The self-hosted workload entering the self-hosted interface as inference compute."
     grounding unknown "placeholder, a round half of the routed figure; no sensor; replace before any finding quotes it"
 
@@ -187,19 +187,19 @@ flow "Open-weight pool" -> "Other open" : energy "routed serving share" substanc
     grounding third-party "same digest; the long tail folded by the model's own structure"
 
 # ── Self-hosting: open weights only, split assumed to follow routed ──
-flow "Self-hosting" -> Gemma : energy "self-hosted serving share" substance compute amount 2 unit "Gtok/day"
+flow Self-hosting -> Gemma : energy "self-hosted serving share" substance compute amount 2 unit "Gtok/day"
     description "Gemma's share of self-hosted workload."
     grounding asserted "mirrors the routed open split; no sensor"
-flow "Self-hosting" -> Llama : energy "self-hosted serving share" substance compute amount 3 unit "Gtok/day"
+flow Self-hosting -> Llama : energy "self-hosted serving share" substance compute amount 3 unit "Gtok/day"
     description "Llama's share of self-hosted workload."
     grounding asserted "mirrors the routed open split; no sensor"
-flow "Self-hosting" -> Qwen : energy "self-hosted serving share" substance compute amount 13 unit "Gtok/day"
+flow Self-hosting -> Qwen : energy "self-hosted serving share" substance compute amount 13 unit "Gtok/day"
     description "Qwen's share of self-hosted workload."
     grounding asserted "mirrors the routed open split; no sensor"
-flow "Self-hosting" -> DeepSeek : energy "self-hosted serving share" substance compute amount 16 unit "Gtok/day"
+flow Self-hosting -> DeepSeek : energy "self-hosted serving share" substance compute amount 16 unit "Gtok/day"
     description "DeepSeek's share of self-hosted workload."
     grounding asserted "mirrors the routed open split; no sensor"
-flow "Self-hosting" -> "Other open" : energy "self-hosted serving share" substance compute amount 20 unit "Gtok/day"
+flow Self-hosting -> "Other open" : energy "self-hosted serving share" substance compute amount 20 unit "Gtok/day"
     description "The rest of the field's share of self-hosted workload."
     grounding asserted "mirrors the routed open split; no sensor"
 
@@ -232,11 +232,11 @@ flow "Serving endpoint" -> Customers : informational "tokens served" substance t
 # Price is absent on purpose: it needs the money counter-flow this
 # model does not draw. It enters through the observatory's data.
 param "Routed workload" : flow "Routed demand" -> Router "routed workload" range 0..12000
-param "Self-hosted workload" : flow "Self-hosted demand" -> "Self-hosting" "self-hosted workload" range 0..12000
+param "Self-hosted workload" : flow "Self-hosted demand" -> Self-hosting "self-hosted workload" range 0..12000
 param shares "Routed split, frontier against open weight" : from Router
 param shares "Frontier models, routed" : from "Frontier pool"
 param shares "Open-weight models, routed" : from "Open-weight pool"
-param shares "Open-weight models, self-hosted" : from "Self-hosting"
+param shares "Open-weight models, self-hosted" : from Self-hosting
 
 # ── Declared metrics: the readouts the question is measured on ───────
 # The first two are the hypothesis's own variable. The per-model shares
