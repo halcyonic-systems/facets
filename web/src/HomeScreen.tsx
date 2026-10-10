@@ -1349,7 +1349,7 @@ export function LibraryBrowser({
                       source={slOf(m)}
                       name={m.name}
                       runs={m.runs}
-                      marker={m.with ? `with ${m.with}` : undefined}
+                      marker={m.with ? `with ${m.with}` : m.after ? `after ${m.after}` : undefined}
                       sub={m.description}
                       onClick={() => openShipped(m)}
                     />
@@ -1378,7 +1378,7 @@ export function LibraryBrowser({
                             source={slOf(m)}
                             name={m.name}
                             runs={m.runs}
-                            marker={m.with ? `with ${m.with}` : undefined}
+                            marker={m.with ? `with ${m.with}` : m.after ? `after ${m.after}` : undefined}
                             sub={m.description}
                             onClick={() => openShipped(m)}
                           />

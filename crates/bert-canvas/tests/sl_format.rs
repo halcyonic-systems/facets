@@ -194,11 +194,17 @@ fn unknown_annotation_survives_format_but_not_plain_emit() {
 /// lands formatted or this fails.
 #[test]
 fn shipped_examples_are_already_formatted() {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/examples");
-    let mut converted: Vec<_> = fs::read_dir(&dir)
-        .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
-        .filter_map(|e| e.ok().map(|e| e.path()))
-        .filter(|p| p.extension().is_some_and(|x| x == "sl"))
+    // The bench shelf (assets/bench, #472) ships under the same gate.
+    let mut converted: Vec<_> = ["../../assets/examples", "../../assets/bench"]
+        .iter()
+        .map(|d| Path::new(env!("CARGO_MANIFEST_DIR")).join(d))
+        .flat_map(|dir| {
+            fs::read_dir(&dir)
+                .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
+                .filter_map(|e| e.ok().map(|e| e.path()))
+                .filter(|p| p.extension().is_some_and(|x| x == "sl"))
+                .collect::<Vec<_>>()
+        })
         .collect();
     converted.sort();
     assert!(converted.len() >= 8, "expected the shipped examples, found {}", converted.len());
