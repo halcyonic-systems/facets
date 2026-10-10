@@ -108,8 +108,6 @@ Stated in: `crates/bert-core/src/decomposition.rs` (header transcription table â
 
 <!-- END GENERATED: table-decomposition -->
 
-### The agent layer (facets#269, ADR 0008 D6)
-
 <!-- BEGIN GENERATED: table-agent-layer â€” from docs/lean-manifest.json, `just provenance` -->
 
 ### The agent layer (facets#269, ADR 0008 D6)
