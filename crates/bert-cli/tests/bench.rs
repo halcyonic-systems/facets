@@ -166,3 +166,53 @@ fn the_relay_thermostat_switches_and_overshoots_from_the_terminal() {
         .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect();
     assert!(room[12..].iter().any(|&r| r > 3.0), "after raising the level the room never passed it: {room:?}");
 }
+
+/// ADR 0008 D3, the stress test: four bench models from the literature, each
+/// with its aggregate form as the control, and the difference is the finding.
+/// Each pair runs from the terminal; the numbers are the README's.
+#[test]
+fn the_agent_forms_differ_from_their_aggregate_controls_as_the_readme_says() {
+    let run = |file: &str, t: &str, sets: &[&str]| {
+        let mut args = vec!["bench", file, "--t", t, "--no-log"];
+        for s in sets {
+            args.push("--set");
+            args.push(s);
+        }
+        let out = bert(&args);
+        assert_eq!(code(&out), 0, "{}", stderr(&out));
+        let v = stdout_json(&out);
+        assert_eq!(v["conserved"], true, "{file}");
+        v
+    };
+    let series = |v: &serde_json::Value, name: &str| -> Vec<f64> {
+        v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap()["series"]
+            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+    };
+    let level = |v: &serde_json::Value, name: &str| -> f64 {
+        v["levels"].as_array().unwrap().iter().find(|l| l["name"] == name).unwrap()["value"].as_f64().unwrap()
+    };
+    // The ward: the control pins at its ceiling; the gatekeeper's never reaches it.
+    let control = run("assets/bench/hospital-beds.sl", "24", &["Ward.time_constant=6"]);
+    let agent = run("assets/bench/hospital-beds-agent.sl", "24", &["Ward.time_constant=6"]);
+    assert!(series(&control, "Ward")[6..].iter().all(|&b| (b - 40.0).abs() < 1e-3));
+    let ward = series(&agent, "Ward");
+    assert!(ward.iter().all(|&b| b < 40.0) && ward[4..].iter().any(|&b| b < 32.0) && ward[4..].iter().any(|&b| b > 37.0), "{ward:?}");
+    // The epidemic: a lower, earlier peak and a longer tail.
+    let control = run("assets/bench/sir-epidemic.sl", "40", &[]);
+    let agent = run("assets/bench/sir-epidemic-agent.sl", "40", &[]);
+    let peak = |v: &serde_json::Value| series(v, "Infected").iter().cloned().fold(0.0, f64::max);
+    assert!(peak(&control) > 0.25 && peak(&agent) < 0.18, "{} vs {}", peak(&control), peak(&agent));
+    let above = |v: &serde_json::Value| series(v, "Infected").iter().filter(|&&x| x > 0.1).count();
+    assert!(above(&agent) > above(&control) + 3, "{} vs {} days above a tenth", above(&agent), above(&control));
+    // The fishery: closures keep the stock up and land several times more.
+    let control = run("assets/bench/logistic-harvest.sl", "80", &["Fish.time_constant=2"]);
+    let agent = run("assets/bench/logistic-harvest-agent.sl", "80", &[]);
+    assert!(series(&control, "Fish").iter().cloned().fold(1.0, f64::min) < 0.05);
+    assert!(series(&agent, "Fish").iter().cloned().fold(1.0, f64::min) > 0.25);
+    assert!(level(&agent, "Market") > 3.0 * level(&control, "Market"), "{} vs {}", level(&agent, "Market"), level(&control, "Market"));
+    // The bank: the switch crowd runs the bank in half the time.
+    let empties = |v: &serde_json::Value| series(v, "Vault").iter().position(|&x| x < 0.01).map(|i| i + 1).unwrap_or(99);
+    let control = run("assets/bench/bank-run.sl", "40", &[]);
+    let agent = run("assets/bench/bank-run-agent.sl", "40", &[]);
+    assert!(empties(&control) >= 28 && empties(&agent) <= 18, "{} vs {}", empties(&control), empties(&agent));
+}

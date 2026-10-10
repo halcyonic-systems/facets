@@ -807,6 +807,7 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
         check_mobus_openness(&facts, &mut validation.issues);
         check_ambient_environment_things(model, &facts, &mut validation.issues);
         check_interface_does_work(model, &mut validation.issues);
+        check_agent_is_given_agency(model, &mut validation.issues);
     }
 
     // Lens-neutral: a model whose only component decomposes is a wrapper around
@@ -847,7 +848,7 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
             // The ambient-name warning is raised on the canvas model, where the
             // thing may be an orphan the projection dropped, so it carries no
             // kernel subject; its location names the canvas id instead.
-            None if issue.code == AMBIENT_CODE || issue.code == WRAPPER_CODE || issue.code == UNRESOLVED_DUPLICATE_CODE || issue.code == UNRESOLVED_NOT_PASSWAY_CODE || issue.code == INTERFACE_WORK_CODE => IssueTarget {
+            None if issue.code == AMBIENT_CODE || issue.code == WRAPPER_CODE || issue.code == UNRESOLVED_DUPLICATE_CODE || issue.code == UNRESOLVED_NOT_PASSWAY_CODE || issue.code == INTERFACE_WORK_CODE || issue.code == AGENT_UNWIRED_CODE => IssueTarget {
                 thing: ambient_location_id(&issue.location),
                 ..IssueTarget::default()
             },
@@ -1118,6 +1119,56 @@ fn check_unresolved_passway(model: &CanvasModel, issues: &mut Vec<ValidationIssu
 /// barrel (Buffering, stock) and the bed (water and light in, biomass out)
 /// warn.
 pub const INTERFACE_WORK_CODE: &str = "interface_does_work";
+
+pub const AGENT_UNWIRED_CODE: &str = "agent_unwired";
+
+/// Mobus §11.2.1: "The agent is given agency, the power to affect the
+/// necessary response to the environmental conditions, when its output
+/// signals command an actuator having the necessary power to affect changes
+/// on those conditions." An agent with nothing to read, or nothing to
+/// command, is a rule and not an agent (facets#269, ADR 0008 D2). The SL
+/// line draws both wires, so this bites a model built by gesture or from
+/// JSON: the Review panel names what is missing and what would repair it.
+fn check_agent_is_given_agency(model: &CanvasModel, issues: &mut Vec<ValidationIssue>) {
+    use bert_core::ProcessPrimitive as P;
+    let by_id: HashMap<u64, &Thing> = model.things.iter().map(|t| (t.id, t)).collect();
+    for t in model.things.iter().filter(|t| t.role == Role::Component && t.rule.is_some()) {
+        let reads_a_stock = model.relations.iter().any(|r| {
+            r.is_bond
+                && r.b == t.id
+                && by_id.get(&r.a).is_some_and(|s| s.primitive == Some(P::Buffering))
+        });
+        let commands_a_process = model.relations.iter().any(|r| {
+            r.is_bond
+                && r.a == t.id
+                && by_id.get(&r.b).is_some_and(|p| {
+                    p.rule.is_none()
+                        && matches!(p.primitive, Some(P::Modulating | P::Amplifying | P::Buffering))
+                })
+        });
+        let (missing, repair) = match (reads_a_stock, commands_a_process) {
+            (true, true) => continue,
+            (false, true) => ("reads no stock's level", "draw an informational flow from a Buffering stock into it (the agent line's `watches`)"),
+            (true, false) => ("commands no work process", "draw an informational flow from it into a Modulating valve, an Amplifying drive or a Buffering stock (the agent line's `manages`)"),
+            (false, false) => ("reads no stock and commands no work process", "draw its observation tap from a Buffering stock and its command wire into a process that reads a control signal"),
+        };
+        issues.push(ValidationIssue {
+            severity: Severity::Warning,
+            code: AGENT_UNWIRED_CODE.to_string(),
+            location: format!("things[{}]", t.id),
+            message: format!(
+                "'{}' runs a {} rule but {missing}. Mobus §11.2.1: an agent is given agency only \
+                 when its output signals command an actuator with requisite variety; until then it \
+                 is a rule, not an agent (facets#269).",
+                t.name,
+                t.rule.map(|r| r.word()).unwrap_or("")
+            ),
+            suggestion: Some(repair.to_string()),
+            doc: None,
+            subject: None,
+        });
+    }
+}
 
 fn check_interface_does_work(model: &CanvasModel, issues: &mut Vec<ValidationIssue>) {
     use bert_core::ProcessPrimitive as P;
@@ -2185,6 +2236,39 @@ mod tests {
             .enumerate()
             .filter(|(_, i)| i.code == AMBIENT_CODE)
             .collect()
+    }
+
+    /// facets#269: an agent built by gesture with only one of its two wires
+    /// warns under Mobus, names what is missing, and points at the agent; a
+    /// fully wired one is silent.
+    #[test]
+    fn mobus_warns_on_an_agent_not_given_agency() {
+        use crate::canvas::AgentRule;
+        let agent = |id: u64| Thing {
+            rule: Some(AgentRule::Proportional),
+            cognitive_params: [("target".to_string(), 1.0), ("gain".to_string(), 1.0)].into_iter().collect(),
+            ..thing(id, "Thermostat", Role::Component)
+        };
+        let stock = |id: u64| Thing { primitive: Some(bert_core::ProcessPrimitive::Buffering), ..thing(id, "Room", Role::Component) };
+        let valve = |id: u64| Thing { primitive: Some(bert_core::ProcessPrimitive::Modulating), ..thing(id, "Switch", Role::Component) };
+        let tap = |id: u64, a: u64, b: u64| Relation { kind: Kind::Informational, ..relation(id, a, b, true) };
+        // tap only: no actuator
+        let m = model(
+            vec![stock(1), valve(2), agent(3), thing(4, "Grid", Role::Environment)],
+            vec![relation(10, 4, 2, true), relation(11, 2, 1, true), tap(12, 1, 3)],
+        );
+        let a = analyze(&m, Lens::Mobus);
+        let found: Vec<_> = a.validation.issues.iter().enumerate().filter(|(_, i)| i.code == AGENT_UNWIRED_CODE).collect();
+        assert_eq!(found.len(), 1, "{:?}", a.validation.issues);
+        assert!(found[0].1.message.contains("commands no work process"));
+        assert_eq!(a.issue_targets[found[0].0].thing, Some(3));
+        // both wires: silent
+        let m = model(
+            vec![stock(1), valve(2), agent(3), thing(4, "Grid", Role::Environment)],
+            vec![relation(10, 4, 2, true), relation(11, 2, 1, true), tap(12, 1, 3), tap(13, 3, 2)],
+        );
+        let a = analyze(&m, Lens::Mobus);
+        assert!(a.validation.issues.iter().all(|i| i.code != AGENT_UNWIRED_CODE), "{:?}", a.validation.issues);
     }
 
     /// facets#443: `Ambient Air` whose one line is an informational reading

@@ -9,12 +9,16 @@ describe("the bench shelf", () => {
   it("ships the keep set, each after a named model", () => {
     expect(BENCH.map((b) => b.demo.title).sort()).toEqual([
       "Bank Run",
+      "Bank Run (crowd)",
       "Enzyme Kinetics",
       "Glucose and Insulin",
       "Hospital Beds",
+      "Hospital Beds (gatekeeper)",
       "Logistic Harvest",
+      "Logistic Harvest (quota)",
       "Membrane Pump",
       "SIR Epidemic",
+      "SIR Epidemic (public)",
       "Thermostat Room",
       "Thermostat Room (agent)",
       "Thermostat Room (relay)",
