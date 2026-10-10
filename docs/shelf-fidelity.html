@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shelf fidelity audit — 2026-10-09 · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="./" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">LIVE</span></div>
+    <h1 class="title">Shelf fidelity audit — 2026-10-09</h1>
+    <article><p><strong>Status: LIVE</strong> — the measured input to <a href="https://github.com/halcyonic-systems/facets/issues/472">#472</a>; re-measure after each conversion lands.</p>
+<p>Input to #472. Every shipped example and the field model, measured against the standard the newest models set (<code>rain-barrel-garden</code>, <code>translation-apparatus</code>): verdict under Mobus; merged stamps vs pass-ways (the #471 census); declared amounts on drivers (flows out of a source); <code>param</code> lines with ranges; a <code>metric</code>; descriptions; canonical form; whether it runs conserved from <code>bert bench</code>. Numbers are from the CLI on main at ae69dfa. The corpus is not audited here: its admission test is citation, not this standard.</p>
+<table>
+<thead>
+<tr>
+<th>model</th>
+<th>errors</th>
+<th>warnings</th>
+<th>merged → pass-ways</th>
+<th>drivers w/ amount</th>
+<th>params w/ range</th>
+<th>metrics</th>
+<th>descriptions</th>
+<th>canonical</th>
+<th>runs</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>bitcoin.sl</td>
+<td>0</td>
+<td>flow_not_consumed×2, interface_does_work×3</td>
+<td>3 → 0</td>
+<td>0/3</td>
+<td>0/0</td>
+<td>0</td>
+<td>8</td>
+<td>yes</td>
+<td>no:bert: assets/examples/bitcoin.sl: run refused: the wiring co</td>
+</tr>
+<tr>
+<td>federal-reserve.sl</td>
+<td>0</td>
+<td>interface_does_work×2</td>
+<td>3 → 0</td>
+<td>0/6</td>
+<td>0/0</td>
+<td>0</td>
+<td>13</td>
+<td>yes</td>
+<td>conserved True</td>
+</tr>
+<tr>
+<td>hal-harness.sl</td>
+<td>0</td>
+<td>flow_not_consumed×8, interface_does_work</td>
+<td>3 → 0</td>
+<td>0/3</td>
+<td>0/0</td>
+<td>0</td>
+<td>2</td>
+<td>yes</td>
+<td>no:bert: assets/examples/hal-harness.sl: model is not executabl</td>
+</tr>
+<tr>
+<td>jung-functions.sl</td>
+<td>0</td>
+<td>interface_does_work</td>
+<td>3 → 0</td>
+<td>0/2</td>
+<td>0/0</td>
+<td>0</td>
+<td>0</td>
+<td>yes</td>
+<td>conserved False</td>
+</tr>
+<tr>
+<td>llm-market.sl</td>
+<td>0</td>
+<td>interface_does_work×9</td>
+<td>11 → 0</td>
+<td>2/11</td>
+<td>2/4</td>
+<td>12</td>
+<td>0</td>
+<td>yes</td>
+<td>conserved True</td>
+</tr>
+<tr>
+<td>predator-prey.sl</td>
+<td>0</td>
+<td>interface_does_work×2</td>
+<td>2 → 0</td>
+<td>0/2</td>
+<td>0/0</td>
+<td>0</td>
+<td>0</td>
+<td>yes</td>
+<td>conserved True</td>
+</tr>
+<tr>
+<td>rain-barrel-garden.sl</td>
+<td>0</td>
+<td>—</td>
+<td>0 → 3</td>
+<td>2/2</td>
+<td>3/3</td>
+<td>1</td>
+<td>5</td>
+<td>yes</td>
+<td>conserved True</td>
+</tr>
+<tr>
+<td>ribosome-centers.sl</td>
+<td>0</td>
+<td>interface_does_work×2</td>
+<td>4 → 0</td>
+<td>0/4</td>
+<td>0/0</td>
+<td>0</td>
+<td>0</td>
+<td>yes</td>
+<td>conserved True</td>
+</tr>
+<tr>
+<td>translation-apparatus.sl</td>
+<td>0</td>
+<td>—</td>
+<td>0 → 4</td>
+<td>4/4</td>
+<td>4/4</td>
+<td>1</td>
+<td>30</td>
+<td>yes</td>
+<td>conserved True</td>
+</tr>
+<tr>
+<td>organic-universal-health-cover.sl</td>
+<td>0</td>
+<td>flow_not_consumed×2, interface_does_work×3</td>
+<td>7 → 0</td>
+<td>0/10</td>
+<td>0/0</td>
+<td>0</td>
+<td>18</td>
+<td>yes</td>
+<td>no:bert: assets/field/organic-universal-health-cover.sl: model</td>
+</tr>
+</tbody></table>
+<h2>Reading it</h2>
+<ul>
+<li><strong>Two models meet the standard</strong>: <code>rain-barrel-garden</code> and <code>translation-apparatus</code> — split form, every driver declared, params ranged, a metric, descriptions, run conserved.</li>
+<li><strong>Seven carry the merged-stamp habit</strong> (<code>interface_does_work</code> fires on all seven; 20 components in all). Conversion proposals are drafted as separate PRs, one per model, each with a before/after bench where the model runs.</li>
+<li><strong>Structural examples have no numbers by design</strong> (<code>bitcoin</code>, <code>hal-harness</code>, <code>jung-functions</code>, <code>ribosome-centers</code>, <code>federal-reserve</code> drivers 0/n). The standard does not ask to invent them: a number is a claim. They stay structural unless a source supplies magnitudes; the conversion PRs add no amounts. Shingai&#39;s read (2026-10-10): for most of these a brief conversation would supply common-sense round inputs and outputs — illustrative, labelled as such in the header the way the rain barrel is — and that is a cheap pass worth doing, just not in the conversion PRs. The rule stays: a number on the shelf is either sourced or declared a toy, never silently invented.</li>
+<li><strong><code>jung-functions</code> runs but does not conserve</strong> — a structural model with no declared amounts stepping on defaults; <code>hal-harness</code> and <code>bitcoin</code> refuse to run (wiring / executability reasons quoted by the CLI). None of the three is on the shelf for dynamics; the fidelity question for them is structure and descriptions only. Shingai&#39;s read: only energy is conserved there, not information, so &quot;does not conserve&quot; may be the ledger reading the informational flows; to check whether the residual sits on the energy chain or the message flows before calling it a defect.</li>
+<li><strong>Descriptions</strong> are thin on <code>jung-functions</code>, <code>predator-prey</code>, <code>ribosome-centers</code>, <code>llm-market</code> (0 on things). Writing them is prose in Shingai&#39;s voice, not a mechanical pass; listed as his.</li>
+<li><strong><code>hal-harness</code></strong>: his read — mostly for him. Moved to the field shelf 2026-10-10 (<code>assets/field/</code>, <code>with Shingai</code>), the existing door for a model drawn with and for one person.</li>
+<li><strong>The field model</strong> (<code>organic-universal-health-cover</code>): 7 merged stamps, no numbers, refuses to run; governed by the field README&#39;s admission test (provenance), so conversion is offered, not assumed.</li>
+</ul>
+<h2>What the fidelity pass is, then</h2>
+<ol>
+<li>Accept or amend the seven conversion PRs (structure only; nothing invented).</li>
+<li>Descriptions where they are missing — his words.</li>
+<li>Decide <code>hal-harness</code>: private shelf or stays.</li>
+<li>Admit candidates from <code>assets/candidates/</code> (staged on <code>shelf/candidates</code>) to lift the shelf&#39;s dynamics count.</li>
+<li>Then publish (decision B&#39;s held half).</li>
+</ol>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/shelf-fidelity.md">Source · docs/shelf-fidelity.md</a>
+      <span>Rendered from 96de58c</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

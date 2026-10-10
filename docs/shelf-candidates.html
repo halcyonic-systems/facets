@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shelf candidates: simple models complexity-science readers will recognise · facets docs</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolygon points='40,4 68.3,16.6 76,44.9 59.4,70.1 20.6,70.1 4,44.9 11.7,16.6 40,4' stroke='%233d6373' stroke-width='2' fill='%23fafafb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/shared/frost.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-ground); color: var(--ink); font-family: var(--font-body); line-height: 1.6; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--accent); padding-bottom: 1px; transition: color var(--transition-base); }
+  a:hover { color: var(--accent); }
+  .sheet { max-width: 56rem; margin: 0 auto; min-height: 100vh; background: var(--paper); border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft); }
+  header.site { display: flex; align-items: baseline; justify-content: space-between; gap: 1.5rem; padding: 1.25rem 2rem; border-bottom: 1px solid var(--rule-soft); }
+  header.site .wordmark, header.site nav a { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; border: 0; }
+  header.site .wordmark { color: var(--ink); }
+  header.site .wordmark span { color: var(--accent); }
+  header.site nav { display: flex; gap: 1.5rem; }
+  header.site nav a { color: var(--ink-muted); }
+  header.site nav a:hover { color: var(--accent); }
+  main { padding: 3rem 2rem 4rem; }
+  .folio { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--ink-muted); }
+  .status { display: inline-block; margin-left: 0.75rem; padding: 0.1rem 0.5rem; border: 1px solid var(--accent); color: var(--accent); }
+  h1.title { font-family: var(--font-display); font-weight: 500; font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.01em; margin: 0.75rem 0 2rem; }
+  article { max-width: 42rem; }
+  article h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.9rem; line-height: 1.15; margin: 2.75rem 0 0.9rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
+  article h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 2rem 0 0.6rem; }
+  article h4 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin: 1.6rem 0 0.5rem; color: var(--ink-secondary); }
+  article p, article li { font-size: 1rem; color: var(--ink-secondary); }
+  article p { margin: 0 0 1.1rem; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article ul, article ol { padding-left: 1.4rem; margin: 0 0 1.1rem; }
+  article li { margin: 0.35rem 0; }
+  article li > p { margin: 0; }
+  article code { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-edge); padding: 0.08em 0.35em; }
+  article pre { background: var(--paper-edge); border: 1px solid var(--rule-soft); padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.3rem; }
+  article pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--ink); }
+  article blockquote { margin: 0 0 1.2rem; padding: 0.2rem 0 0.2rem 1.1rem; border-left: 2px solid var(--accent-soft); color: var(--ink-secondary); }
+  article blockquote p { margin: 0.4rem 0; }
+  article table { border-collapse: collapse; width: 100%; margin: 0 0 1.4rem; font-size: 0.9rem; display: block; overflow-x: auto; }
+  article th, article td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-secondary); }
+  article th { color: var(--ink); font-weight: 600; border-bottom: 1px solid var(--rule); font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; }
+  article hr { border: 0; border-top: 1px solid var(--rule-soft); margin: 2rem 0; }
+  article hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+  article img { max-width: 100%; }
+  footer.page { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--rule-soft); display: flex; flex-wrap: wrap; gap: 1.5rem; }
+  footer.page a, footer.page span { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--ink-muted); border: 0; }
+  footer.page a:hover { color: var(--accent); }
+  @media (max-width: 640px) { main { padding: 2rem 1.25rem 3rem; } h1.title { font-size: 2rem; } header.site { padding: 1rem 1.25rem; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <header class="site">
+    <a class="wordmark" href="./">facets&#8202;·&#8202;<span>docs</span></a>
+    <nav><a href="/">facets.systems</a><a href="/chat/">Chat</a><a href="/model/">Model</a><a href="https://github.com/halcyonic-systems/facets">GitHub</a></nav>
+  </header>
+  <main>
+    <div class="folio"><a href="./" style="border:0;color:inherit">‹ Index</a></div>
+    <div class="folio" style="margin-top:1.5rem">Document<span class="status">RESEARCH</span></div>
+    <h1 class="title">Shelf candidates: simple models complexity-science readers will recognise</h1>
+    <article><p><strong>Status: RESEARCH</strong> — a running list for <a href="https://github.com/halcyonic-systems/facets/issues/472">#472</a>; rows flip to <em>shipped</em> as files land on the bench shelf (<code>assets/bench/</code>, its own admission test) or the examples shelf.</p>
+<p>A running list for #472 (the shelf overhaul). Started 2026-10-09 from a walk with Shingai; grows as entries are tried. Each entry is SL-sized: one to three stocks, a few flows, a couple of knobs, one readout worth watching. The test for an entry is the bench&#39;s: tweak an input, tweak an output, reason about the interior, get a result that is interesting and plausible.</p>
+<h2>What the engine runs today, and what waits</h2>
+<p>The compose engine is process-based: every component is one of the Mobus work-process kinds (Buffering, Combining, Splitting, Modulating, Inverting, Amplifying, Impeding, Propelling, Copying, Sensing) doing its own work each tick, with <code>limiting</code> (Liebig) and finite <code>reservoir</code> sources since #463. That is more than a stock-and-flow integrator — a regulator, a valve with back-pressure and a comparator with a setpoint are processes, not equations — but it is not yet an agent layer: no component holds a memory or chooses a transition (that is #269, the agent rung; the sandbox witness engine #346 detects signatures over runs, it does not add agents). So the agent-based classics below appear in their aggregate form, the compartment or mean-field version NetLogo&#39;s own system-dynamics tab draws, with a note on where agents would plug in. The aggregate form is the right first rung and runs now; nothing here waits on #269.</p>
+<p>Legend: <strong>runs now</strong> — expressible in SL v1.9 and bench-tested from the terminal; <strong>agents later</strong> — the aggregate form runs now, the individual form waits on #269.</p>
+<h2>Ecology and epidemiology</h2>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Shape</th>
+<th>Knobs</th>
+<th>Watch</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Wolf–sheep (NetLogo)</td>
+<td>two stocks, Lotka–Volterra coupling</td>
+<td>grass regrowth, predation</td>
+<td>the lag between populations; collapse past a predation threshold</td>
+<td>on the shelf as predator-prey; convert to split form</td>
+</tr>
+<tr>
+<td>SIR epidemic</td>
+<td>three stocks in a chain; infection = Combining of S and I</td>
+<td>contact rate, recovery time</td>
+<td>the peak; the herd threshold</td>
+<td>staged: <code>assets/candidates/sir-epidemic.sl</code></td>
+</tr>
+<tr>
+<td>Logistic growth with harvest</td>
+<td>one stock, a finite environment (<code>reservoir</code>), a harvest flow</td>
+<td>harvest rate</td>
+<td>the cliff past maximum sustainable yield</td>
+<td>staged: <code>assets/candidates/logistic-harvest.sl</code></td>
+</tr>
+<tr>
+<td>Daisyworld</td>
+<td>two daisy stocks, one temperature stock, albedo feedback</td>
+<td>solar luminosity</td>
+<td>regulation inside a band, failure outside</td>
+<td>runs now (feedback via Inverting)</td>
+</tr>
+</tbody></table>
+<h2>Economics and markets</h2>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Shape</th>
+<th>Knobs</th>
+<th>Watch</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Cobweb market</td>
+<td>inventory stock; supply lags price</td>
+<td>elasticities</td>
+<td>convergence or oscillation</td>
+<td>runs now</td>
+</tr>
+<tr>
+<td>Bank run</td>
+<td>a <code>reservoir</code> of reserves; withdrawals grow with fear</td>
+<td>confidence</td>
+<td>the reservoir running dry</td>
+<td>staged: <code>assets/candidates/bank-run.sl</code></td>
+</tr>
+<tr>
+<td>Beer game</td>
+<td>four stocks in a chain with order delays</td>
+<td>delay</td>
+<td>the bullwhip: amplification upstream</td>
+<td>runs now (delay via time constant)</td>
+</tr>
+<tr>
+<td>Sugarscape, aggregate</td>
+<td>a regrowing resource reservoir, a population drawing on it</td>
+<td>regrowth, metabolism</td>
+<td>carrying capacity emerging</td>
+<td>agents later</td>
+</tr>
+</tbody></table>
+<h2>Social dynamics</h2>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Shape</th>
+<th>Knobs</th>
+<th>Watch</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Schelling, as a flow</td>
+<td>satisfied / moving stocks, a tolerance knob</td>
+<td>tolerance</td>
+<td>a small change flipping the mix</td>
+<td>agents later (mean-field only, and said so)</td>
+</tr>
+<tr>
+<td>Opinion dynamics</td>
+<td>two camps, a conversion Combining</td>
+<td>persuasion rates</td>
+<td>tipping, lock-in</td>
+<td>agents later</td>
+</tr>
+<tr>
+<td>Rumor spread</td>
+<td>SIR with a forgetting flow</td>
+<td>spread, forget</td>
+<td>same chain as SIR, different substance: the lens does not care</td>
+<td>runs now</td>
+</tr>
+<tr>
+<td>Tragedy of the commons</td>
+<td>shared <code>reservoir</code>, several harvesters through one Splitting</td>
+<td>each harvester&#39;s rate</td>
+<td>the commons draining</td>
+<td>runs now</td>
+</tr>
+</tbody></table>
+<h2>Physical and engineered</h2>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Shape</th>
+<th>Knobs</th>
+<th>Watch</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Bathtub</td>
+<td>one stock, in and out</td>
+<td>inflow, drain</td>
+<td>the first lesson</td>
+<td>fixture (<code>fixtures/sl/bathtub.sl</code>)</td>
+</tr>
+<tr>
+<td>Thermostat room</td>
+<td>heat stock, Inverting comparator with <code>setpoint</code>, loss</td>
+<td>setpoint, insulation</td>
+<td>regulation, overshoot</td>
+<td>staged: <code>assets/candidates/thermostat-room.sl</code></td>
+</tr>
+<tr>
+<td>Two tanks</td>
+<td>tank feeding tank through a valve</td>
+<td>valve</td>
+<td>the second tank lagging the first</td>
+<td>staged: <code>assets/candidates/two-tanks.sl</code></td>
+</tr>
+<tr>
+<td>Rain barrel garden</td>
+<td>two inflows, one stock, one Combining, one harvest</td>
+<td>rainfall, sunlight, drain</td>
+<td>the bench&#39;s own</td>
+<td>on the shelf; keep</td>
+</tr>
+</tbody></table>
+<h2>Organisations and infrastructure</h2>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Shape</th>
+<th>Knobs</th>
+<th>Watch</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Hospital bed flow</td>
+<td>admissions, a bed stock with <code>capacity</code>, discharge</td>
+<td>length of stay</td>
+<td>beds saturating</td>
+<td>staged: <code>assets/candidates/hospital-beds.sl</code></td>
+</tr>
+<tr>
+<td>Traffic bottleneck</td>
+<td>a queue stock before a Modulating valve</td>
+<td>arrival, service</td>
+<td>the queue exploding past ratio one</td>
+<td>staged: <code>assets/candidates/traffic-bottleneck.sl</code></td>
+</tr>
+<tr>
+<td>Software backlog</td>
+<td>features in, team throughput, bugs as a side stock</td>
+<td>team size, bug rate</td>
+<td>the backlog running away</td>
+<td>runs now</td>
+</tr>
+<tr>
+<td>Power grid with storage</td>
+<td>generation, a battery stock, demand</td>
+<td>demand peak</td>
+<td>the battery as buffer and its limit</td>
+<td>runs now</td>
+</tr>
+</tbody></table>
+<h2>Biology and chemistry</h2>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Shape</th>
+<th>Knobs</th>
+<th>Watch</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Ribosome</td>
+<td>the tRNA pool as a reservoir in spirit</td>
+<td>elongation rate</td>
+<td>the pool draining</td>
+<td>on the shelf; convert</td>
+</tr>
+<tr>
+<td>Glucose–insulin</td>
+<td>two stocks, each regulating the other</td>
+<td>meal size</td>
+<td>return to baseline</td>
+<td>staged: <code>assets/candidates/glucose-insulin.sl</code></td>
+</tr>
+<tr>
+<td>Enzyme kinetics</td>
+<td>substrate <code>reservoir</code>, product stock, a Combining enzyme with <code>limiting</code></td>
+<td>substrate, enzyme</td>
+<td>saturation</td>
+<td>staged: <code>assets/candidates/enzyme-kinetics.sl</code></td>
+</tr>
+<tr>
+<td>Cell with a membrane pump</td>
+<td>ion stock inside, a pass-way with a Modulating pump</td>
+<td>pump rate</td>
+<td>the cleanest pass-way example</td>
+<td>staged: <code>assets/candidates/membrane-pump.sl</code></td>
+</tr>
+</tbody></table>
+<h2>Integrated, where agents would plug in</h2>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Shape</th>
+<th>Knobs</th>
+<th>Watch</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Fishery with a fleet</td>
+<td>fish stock + boat stock growing with profit</td>
+<td>price, cost</td>
+<td>the feedback that bites</td>
+<td>runs now; agents later for boats</td>
+</tr>
+<tr>
+<td>City and commuters</td>
+<td>population stock, road <code>capacity</code>, congestion as a valve feeding migration</td>
+<td>capacity</td>
+<td>congestion equilibrium</td>
+<td>runs now; agents later</td>
+</tr>
+<tr>
+<td>Epidemic with behaviour</td>
+<td>SIR with contact rate falling with I</td>
+<td>fear</td>
+<td>the flattened curve</td>
+<td>runs now; agents later</td>
+</tr>
+</tbody></table>
+<h2>How an entry graduates to the shelf</h2>
+<p>Verdict clean under Mobus (no <code>interface_does_work</code>), split form where the boundary is not the processor, declared amounts on every driver, at least one <code>param</code> with a range, one <code>metric</code>, and a <code>bert bench</code> run in the PR showing the thing to watch. The examples rule in <code>assets/examples/README.md</code> still governs admission.</p>
+</article>
+    <footer class="page">
+      <a href="https://github.com/halcyonic-systems/facets/blob/main/docs/shelf-candidates.md">Source · docs/shelf-candidates.md</a>
+      <span>Rendered from 96de58c</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>
