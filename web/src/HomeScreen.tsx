@@ -1571,8 +1571,8 @@ function ArrangeToggle({ value, onChange }: { value: Arrange; onChange: (v: Arra
   );
   return (
     <span className="inline-flex shrink-0 border" style={{ borderColor: "var(--rule-soft)" }}>
-      {cell("lens", "By lens")}
       {cell("domain", "By domain")}
+      {cell("lens", "By lens")}
     </span>
   );
 }
