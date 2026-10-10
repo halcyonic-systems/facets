@@ -14,6 +14,7 @@ describe("the bench shelf", () => {
       "Glucose and Insulin",
       "Hospital Beds",
       "Hospital Beds (gatekeeper)",
+      "Hospital Beds (table)",
       "Logistic Harvest",
       "Logistic Harvest (quota)",
       "Membrane Pump",
@@ -23,6 +24,7 @@ describe("the bench shelf", () => {
       "Thermostat Room (agent)",
       "Thermostat Room (band)",
       "Thermostat Room (relay)",
+      "Thermostat Room (trace)",
       "Traffic Bottleneck",
       "Two Tanks",
     ]);

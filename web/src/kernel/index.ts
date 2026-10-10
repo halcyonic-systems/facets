@@ -465,13 +465,18 @@ export type SandboxNodeField =
   | "time_constant"
   | "maintenance"
   | "back_pressure"
-  // an agent's policy numbers (facets#269); refused on any other node kind
+  // an agent's policy numbers (facets#269); refused on any other node kind.
+  // A table's bins are numbered from one (`under1`, `emit1`, …, then `else`);
+  // a trace rule's `window` is a whole tick count.
   | "target"
   | "gain"
   | "above"
   | "below"
   | "emit"
-  | "else";
+  | "else"
+  | "window"
+  | `under${number}`
+  | `emit${number}`;
 
 /**
  * A live circuit under authoring and continuous stepping — the face's typed

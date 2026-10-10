@@ -27,6 +27,10 @@ describe("the agent designation", () => {
     expect(a.primitive).toBeUndefined();
     expect(a.cognitive_params).toEqual({ target: 1, gain: 1 });
     expect(agentFields("threshold").cognitive_params).toEqual({ above: 1, emit: 0, else: 1 });
+    // A table starts with two bins (one bin is a threshold, and the compiler
+    // says so); a trace with a three-tick window.
+    expect(agentFields("table").cognitive_params).toEqual({ under1: 1, emit1: 1, under2: 2, emit2: 0.5, else: 0 });
+    expect(agentFields("trace").cognitive_params).toEqual({ window: 3, target: 1, gain: 1 });
   });
 
   it("draws the management oval on an agent body", () => {

@@ -15,6 +15,7 @@
 import type { AgentRule, Lens, ProcessPrimitive, Thing } from "../kernel/types";
 import { PRIMITIVE_GLOSS, PRIMITIVE_WORD } from "./types";
 import { DescriptionField, GroundingField, InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
+import { AGENT_RULE_DEFAULTS } from "./useCanvasGestures";
 
 /** The decomposition door as the shell hands it to the inspector (#89 step 5b).
  *  Two cases: a component that has a child to enter, and one that does not yet.
@@ -27,8 +28,11 @@ export type DecomposeAffordance =
   | { kind: "entered"; label: string; onEnter: () => void };
 
 /** The closed rule set (facets#269, ADR 0008 D4) and each rule's numbers, in
- *  the order the agent line spells them; the bag keys are the words. */
-const RULES: { rule: AgentRule; words: string[]; optional?: string[]; gloss: string }[] = [
+ *  the order the agent line spells them; the bag keys are the words. A
+ *  table's words are read off the bag (`under1`, `emit1`, … `else`), since
+ *  its arity is the line's; the inspector edits the numbers and SL adds or
+ *  removes a bin. */
+const RULES: { rule: AgentRule; words: string[] | ((bag: Record<string, number>) => string[]); optional?: string[]; gloss: string }[] = [
   { rule: "proportional", words: ["target", "gain"], gloss: "emits gain · (target − level), floored at zero — Wiener's error correction; at gain 1 it is the comparator exactly" },
   {
     rule: "threshold",
@@ -38,10 +42,24 @@ const RULES: { rule: AgentRule; words: string[]; optional?: string[]; gloss: str
     optional: ["below"],
     gloss: "emits `emit` at or above the level, `else` below it — the on–off thermostat; a square wave no primitive can make. With `below` set it holds its last command between the two levels: the relay's dead band, what stops it chattering",
   },
+  {
+    rule: "table",
+    words: (bag) => {
+      const words: string[] = [];
+      for (let i = 1; bag[`under${i}`] !== undefined; i++) words.push(`under${i}`, `emit${i}`);
+      return [...words, "else"];
+    },
+    gloss: "emits each bin's output: `emit1` under `under1`, `emit2` from there to under `under2`, … and `else` at or above the last bound — a program of response, contiguous bins under rising bounds, no memory. Adding or removing a bin is done in SL, not here",
+  },
+  {
+    rule: "trace",
+    words: ["window", "target", "gain"],
+    gloss: "emits gain · (target − mean of its last `window` readings), floored at zero — the homeostatic mechanism over a memory; the window of readings is the engine's run state, and at window 1 it is the proportional rule exactly",
+  },
 ];
-const RULE_DEFAULTS: Record<AgentRule, Record<string, number>> = {
-  proportional: { target: 1, gain: 1 },
-  threshold: { above: 1, emit: 0, else: 1 },
+const ruleWords = (rule: AgentRule, bag: Record<string, number>): string[] => {
+  const r = RULES.find((x) => x.rule === rule);
+  return typeof r?.words === "function" ? r.words(bag) : (r?.words ?? []);
 };
 
 const PRIMITIVES: ProcessPrimitive[] = [
@@ -192,7 +210,7 @@ export function NodeEditorRows({
                 delete next.cognitive_params;
               } else {
                 next.rule = v;
-                next.cognitive_params = { ...RULE_DEFAULTS[v] };
+                next.cognitive_params = { ...AGENT_RULE_DEFAULTS[v] };
                 delete next.primitive;
               }
               onUpdateThing(next);
@@ -212,7 +230,7 @@ export function NodeEditorRows({
       )}
       {lens === "Mobus" && isComponent && thing.rule && (
         <>
-          {RULES.find((r) => r.rule === thing.rule)?.words.map((w) => (
+          {ruleWords(thing.rule, thing.cognitive_params ?? {}).map((w) => (
             <Row key={w}>
               <span style={{ color: "var(--text-secondary)" }}>{w}</span>
               <input
