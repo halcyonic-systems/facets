@@ -171,15 +171,7 @@ impl Session {
             "limiting" => n.limiting = v != 0.0,
             // An agent's policy numbers are knobs like a setpoint (#269):
             // the goal is declared, the procedure is the kernel's.
-            "target" | "gain" if n.kind == NodeKind::Agent => match &mut n.policy {
-                bert_core::Policy::Proportional { target, gain } => {
-                    if field == "target" {
-                        *target = v as f64;
-                    } else {
-                        *gain = v as f64;
-                    }
-                }
-            },
+            word if n.kind == NodeKind::Agent && n.policy.set_field(word, v as f64) => {}
             other => return Err(format!("unknown node field: {other}")),
         }
         Ok(())
@@ -422,13 +414,7 @@ fn equation(n: &crate::circuit::Node) -> String {
     match n.kind {
         NodeKind::Source => format!("out = {} / tick (per-wire rates override)", q(n.param)),
         NodeKind::Sink => "total += inflow".to_string(),
-        NodeKind::Agent => match &n.policy {
-            bert_core::Policy::Proportional { target, gain } => format!(
-                "out = max(0, {} · ({} − level))",
-                q(*gain as f32),
-                q(*target as f32)
-            ),
-        },
+        NodeKind::Agent => n.policy.equation(),
         NodeKind::Process(Buffering) => {
             let base = if n.time_constant > 0.0 {
                 format!("stock/τ = {}/{}", q(n.storage), q(n.time_constant))

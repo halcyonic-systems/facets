@@ -467,7 +467,10 @@ export type SandboxNodeField =
   | "back_pressure"
   // an agent's policy numbers (facets#269); refused on any other node kind
   | "target"
-  | "gain";
+  | "gain"
+  | "above"
+  | "emit"
+  | "else";
 
 /**
  * A live circuit under authoring and continuous stepping — the face's typed

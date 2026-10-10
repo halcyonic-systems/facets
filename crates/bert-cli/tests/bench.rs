@@ -139,3 +139,30 @@ fn the_thermostat_traced_two_ways_is_one_system() {
     let after = series[23].as_f64().unwrap();
     assert!((before - 1.6667).abs() < 1e-3 && (after - 2.5).abs() < 1e-3, "{before} -> {after}");
 }
+
+#[test]
+fn the_relay_thermostat_switches_and_overshoots_from_the_terminal() {
+    // ADR 0008 D3: the threshold rule's witness on the bench shelf — the
+    // command is a square wave and the room swings across the level; the
+    // level turns from the terminal like any setpoint.
+    let out = bert(&["bench", "assets/bench/thermostat-relay.sl", "--t", "24", "--no-log"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let v = stdout_json(&out);
+    assert_eq!(v["conserved"], true);
+    let series = |name: &str| -> Vec<f64> {
+        v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap()["series"]
+            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+    };
+    let cmd = series("Thermostat");
+    assert!(cmd.iter().all(|&x| x == 0.0 || x == 1.0), "{cmd:?}");
+    assert!(cmd.windows(2).filter(|w| w[0] != w[1]).count() >= 4, "{cmd:?}");
+    let room = series("Room");
+    assert!(room.iter().any(|&r| r > 2.0) && room[1..].iter().any(|&r| r < 2.0), "{room:?}");
+    let out = bert(&["bench", "assets/bench/thermostat-relay.sl", "--t", "24", "--no-log", "--set", "Thermostat.above=3@12"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let v = stdout_json(&out);
+    assert_eq!(v["edits"][0]["field"], "above");
+    let room: Vec<f64> = v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == "Room").unwrap()["series"]
+        .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect();
+    assert!(room[12..].iter().any(|&r| r > 3.0), "after raising the level the room never passed it: {room:?}");
+}

@@ -3770,6 +3770,53 @@ mod tests {
         assert!(c.balance().abs() < 1e-3, "agent form leaks: {}", c.balance());
     }
 
+    /// Law (facets#269, ADR 0008 D3/D4): a threshold agent produces what no
+    /// primitive can — a square wave. Managing the thermostat's switch on or
+    /// off, its command takes only the two declared values, switches several
+    /// times, and the room swings across the level rather than settling on
+    /// it; the ledger still balances.
+    #[test]
+    fn agent_threshold_makes_a_square_wave() {
+        use ProcessPrimitive::*;
+        let mut c = Circuit::default();
+        c.nodes.push(node(NodeKind::Source)); // 0 grid
+        c.nodes.push(node(NodeKind::Process(Modulating))); // 1 switch
+        c.nodes.push(node(NodeKind::Process(Buffering))); // 2 room
+        c.nodes.push(node(NodeKind::Sink)); // 3 outdoors
+        c.nodes.push(node(NodeKind::Agent)); // 4 thermostat
+        c.nodes[0].param = 2.0;
+        c.nodes[1].back_pressure = true;
+        c.nodes[2].time_constant = 5.0;
+        c.nodes[2].initial_storage = 0.5;
+        c.nodes[2].storage = 0.5;
+        c.nodes[4].policy = bert_core::Policy::Threshold {
+            above: 2.0,
+            emit: 0.0,
+            otherwise: 1.0,
+        };
+        for (f, t) in [(0, 1), (1, 2), (2, 3)] {
+            c.wires.push(Wire::new(f, t));
+        }
+        let mut tap = Wire::new(2, 4);
+        tap.substance_override = Some(SubstanceType::Message);
+        c.wires.push(tap);
+        c.wires.push(Wire::new(4, 1));
+        let mut commands = Vec::new();
+        let mut room = Vec::new();
+        for _ in 0..48 {
+            c.step();
+            commands.push(c.nodes[4].activity);
+            room.push(c.nodes[2].storage);
+        }
+        assert!(commands.iter().all(|&x| x == 0.0 || x == 1.0), "{commands:?}");
+        let switches = commands.windows(2).filter(|w| w[0] != w[1]).count();
+        assert!(switches >= 6, "the switch flipped only {switches} times: {commands:?}");
+        let tail = &room[24..];
+        let (lo, hi) = tail.iter().fold((f32::MAX, f32::MIN), |(a, b), &x| (a.min(x), b.max(x)));
+        assert!(lo < 2.0 && hi > 2.0, "the room never crossed the level: {lo} .. {hi}");
+        assert!(c.balance().abs() < 1e-3, "leak: {}", c.balance());
+    }
+
     /// Law: a buffer with a time constant drains exponentially (first-order
     /// decay, shrinking steps) rather than at a fixed rate, and conserves
     /// mass either way.
