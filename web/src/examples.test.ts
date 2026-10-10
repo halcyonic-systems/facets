@@ -89,7 +89,7 @@ describe("the shipped library", () => {
   it("sorts the shipped examples into the expected genera", () => {
     const genusOf = (title: string) => EXAMPLES.find((e) => e.title === title)?.genus;
     expect(genusOf("Predator-Prey Ecosystem")).toBe("Biological");
-    expect(genusOf("LLM Market")).toBe("Social");
+    expect(genusOf("LLM Serving Market")).toBe("Social");
     expect(genusOf("Federal Reserve")).toBe("Social");
     expect(genusOf("Bitcoin")).toBe("Social");
     expect(genusOf("Jungian Cognitive Function Stack")).toBe("Social"); // Conceptual/
@@ -109,7 +109,7 @@ describe("the shipped library", () => {
       "Bitcoin",
       "Federal Reserve",
       "Jungian Cognitive Function Stack",
-      "LLM Market",
+      "LLM Serving Market",
       "Predator-Prey Ecosystem",
       // #463: the bench's own model — the smallest system in which a stock,
       // a release, a capacity, a matched throughput and an energy drive all
