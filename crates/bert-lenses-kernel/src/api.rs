@@ -971,6 +971,7 @@ mod tests {
                 y: 0.0,
                 role: Role::Component,
                 primitive: None,
+                rule: None,
                 interface: false,
                 passway: false,
                 protocol: String::new(),

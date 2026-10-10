@@ -50,6 +50,7 @@ fn thing(id: u64, name: &str, role: Role) -> Thing {
         y: 40.0,
         role,
         primitive: None,
+        rule: None,
         interface: false,
         passway: false,
         protocol: String::new(),

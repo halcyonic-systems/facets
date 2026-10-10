@@ -29,6 +29,7 @@ export const DECLARATION_HEADS = new Set([
   "environment",
   "interface",
   "milieu",
+  "agent",
   "flow",
   "param",
   "metric",

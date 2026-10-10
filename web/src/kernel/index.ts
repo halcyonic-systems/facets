@@ -464,7 +464,10 @@ export type SandboxNodeField =
   | "setpoint"
   | "time_constant"
   | "maintenance"
-  | "back_pressure";
+  | "back_pressure"
+  // an agent's policy numbers (facets#269); refused on any other node kind
+  | "target"
+  | "gain";
 
 /**
  * A live circuit under authoring and continuous stepping — the face's typed
