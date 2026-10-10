@@ -31,22 +31,34 @@ level Structure
 # The congestion queue. Unconfirmed transactions wait here, and the
 # depth of the queue IS the fee market's state — Buffering, exactly as
 # a reservoir or a bank reserve.
-component Mempool primitive Buffering interface
+component Mempool primitive Buffering
 
 # The work process. Miners combine waiting transactions with energy and
 # produce blocks; feerate decides what gets combined first.
 #
-# Also an INTERFACE, by the same rule Mempool and Chain State already
-# follow here: it is the component two external flows cross the boundary
-# through. Miners buy electricity from the Energy Market and sell coins
-# to the Asset Market, so the membrane passes through the work process
-# rather than beside it. Without the designation the kernel refuses the
-# model — a crossing flow with no interface is a hole in the membrane
-# the author never declared (#316).
-component Mining primitive Combining interface
+# Miners buy electricity from the Energy Market and sell coins to the
+# Asset Market. Both crossings pass through pass-ways (Power Connection,
+# Exchange Link) declared below; the work process sits behind them
+# (split form, #472).
+component Mining primitive Combining
 
 # The stock the whole system exists to grow: settled, ordered history.
-component "Chain State" primitive Buffering interface
+component "Chain State" primitive Buffering
+
+# ── Pass-ways: where the boundary is crossed ─────────────────────────
+# Interfaces pass what crosses and do not alter it (Mobus ch. 4); the
+# stock-holding and work-doing components above are the residents behind
+# them.
+
+# Where transactors meet the node: submissions in, feerate signal and
+# confirmations out.
+interface "Node RPC"
+
+# Where electricity enters the mining operation.
+interface "Power Connection"
+
+# Where coins leave for the asset market.
+interface "Exchange Link"
 
 # The people submitting transactions — and changing their behavior when
 # the feerate signal reaches them. The displacement response lives in
@@ -61,22 +73,25 @@ source "Energy Market"
 environment "Asset Market"
 
 # Submission: transactions enter the queue.
-flow Transactors -> Mempool : informational "submitted transactions"
+flow Transactors -> "Node RPC" : informational "submitted transactions" substance transactions
     description "Bidding for queue position."
+flow "Node RPC" -> Mempool : informational "submitted transactions" substance transactions
 
 # Selection: highest feerate first — the fee market clearing.
 flow Mempool -> Mining : informational "selected by feerate"
     description "Highest feerate first — the fee market clearing."
 
 # The burn: hashes are bought with electricity.
-flow "Energy Market" -> Mining : energy "electricity burned"
+flow "Energy Market" -> "Power Connection" : energy "electricity burned" substance electricity
     description "Bought with electricity, burned into proof of work."
+flow "Power Connection" -> Mining : energy "electricity burned" substance electricity
 
 # Settlement: blocks append to the chain.
 flow Mining -> "Chain State" : informational "blocks appended"
 
 # Confirmation: settled history reported back.
-flow "Chain State" -> Transactors : informational "confirmations"
+flow "Chain State" -> "Node RPC" : informational "confirmations" substance confirmations
+flow "Node RPC" -> Transactors : informational "confirmations" substance confirmations
 
 # ── Two feedback loops, of different epistemic rank ──────────────────
 # The DIFFICULTY loop is feedback BY CONSTRUCTION: written into the
@@ -92,8 +107,9 @@ flow "Chain State" -> Mining : informational "difficulty"
 
 # By conjecture, the sensing leg: queue depth becomes a price. This is
 # the flow the fee_percentiles extraction measures.
-flow Mempool -> Transactors : informational "feerate signal"
+flow Mempool -> "Node RPC" : informational "feerate signal" substance feerate
     description "The price of queue position — queue depth becomes a price. This is the flow the fee_percentiles extraction measures."
+flow "Node RPC" -> Transactors : informational "feerate signal" substance feerate
 
 # Issuance: the subsidy plus collected fees, minted to the miner by
 # protocol rule. Structurally the Fed parallel: created in payment,
@@ -102,8 +118,9 @@ flow "Chain State" -> Mining : matter "block reward"
     description "Subsidy and fees, minted in payment to the miner by protocol rule. Structurally the Fed parallel: created in payment, not transferred (see federal-reserve.sl, same shelf)."
 
 # The asset face: miners sell to cover the energy bill...
-flow Mining -> "Asset Market" : matter "coins sold"
+flow Mining -> "Exchange Link" : matter "coins sold" substance coins
     description "Sold to cover costs — the energy bill."
+flow "Exchange Link" -> "Asset Market" : matter "coins sold" substance coins
 
 # ...and the price comes back to everyone as information.
 flow "Asset Market" -> Transactors : informational "the price"
