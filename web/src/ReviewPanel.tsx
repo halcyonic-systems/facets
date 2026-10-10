@@ -18,6 +18,7 @@
 // still there.
 import type { IssueTarget, Severity, ValidationResult } from "./kernel/types";
 import type { CanvasModel } from "./kernel/types";
+import type { Stage2Report } from "./resolution";
 import type { IssueGroup, IssueRow as IssueRowData } from "./review";
 import {
   MODE_SCOPE,
@@ -43,6 +44,59 @@ function docLabel(doc: string): string {
   const [path, anchor] = doc.split("#");
   const file = path.split("/").pop()?.replace(/\.md$/, "") ?? path;
   return anchor ? `${file} § ${anchor}` : file;
+}
+
+/** #462 item 1 — Mobus stage 1 → stage 2. The open model lands crossings on
+ *  `interface unresolved`; this region names the same-system models that name
+ *  their interfaces and reports the kernel's resolution verdict on each
+ *  (`check_resolution_canvas`: same crossings by direction, kind and
+ *  counterparty, nothing still unresolved). Kernel output only. */
+function Stage2Region({ report }: { report: Stage2Report }) {
+  return (
+    <div data-testid="stage2-region">
+      <BlockHeader label="Stage 2" count={`${report.candidates.length} candidate${report.candidates.length === 1 ? "" : "s"}`} />
+      <div
+        className="border-x border-t border-b px-3 py-3 text-sm"
+        style={{ borderColor: "var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+      >
+        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+          This model lands crossings on <code>interface unresolved</code> — Mobus's stage 1, the flows found and
+          the membrane not yet read. A stage-2 model of “{report.system}” names the interfaces; the kernel says
+          whether it resolves this one.
+        </p>
+        {report.candidates.length === 0 ? (
+          <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
+            No model named “{report.system}” with named interfaces is on the shelf or in your library yet. Name
+            the interfaces in a copy and save it under the same system name.
+          </p>
+        ) : (
+          <ul className="mt-2 grid gap-2">
+            {report.candidates.map((c) => (
+              <li key={`${c.source}:${c.label}`} data-testid="stage2-candidate">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="font-semibold">{c.label}</span>
+                  <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                    {c.source}
+                  </span>
+                </div>
+                {c.issues.length === 0 ? (
+                  <p className="text-xs" style={{ color: "var(--verdict-ok)" }}>
+                    resolves every unresolved crossing
+                  </p>
+                ) : (
+                  <ul className="text-xs" style={{ color: "var(--verdict-warning)" }}>
+                    {c.issues.map((i, k) => (
+                      <li key={k}>{i.message}</li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function BlockHeader({ label, count }: { label: string; count?: string }) {
@@ -287,10 +341,15 @@ export function ReviewPanel({
   onReview,
   onNavigate,
   onHover,
+  stage2,
 }: {
   model: CanvasModel;
   validation: ValidationResult;
   targets: IssueTarget[];
+  /** #462 item 1: the stage-2 reading for a model with `interface unresolved`
+   *  — which same-system models name the interfaces, and whether the kernel
+   *  says they resolve it. Null when the model has no `unresolved`. */
+  stage2?: Stage2Report | null;
   onHover?: (target: IssueTarget | null) => void;
   /** Wall-clock stamp of the last invoked review; null = never invoked (the
    *  panel still shows the standing reading — the kernel judges continuously). */
@@ -350,6 +409,7 @@ export function ReviewPanel({
       </div>
       <SeverityRegion severity="Error" rows={rowsOf("Error")} onNavigate={onNavigate} onHover={onHover} />
       <SeverityRegion severity="Warning" rows={rowsOf("Warning")} onNavigate={onNavigate} onHover={onHover} />
+      {stage2 && <Stage2Region report={stage2} />}
       <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
         Every line above is a machine-checked verdict from the kernel. Nothing here is generated prose.
       </p>

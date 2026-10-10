@@ -87,3 +87,36 @@ describe("kernel/params", () => {
     expect(forcedByColumn(null, rel(1, 0, 1))).toBeUndefined();
   });
 });
+
+// #343 (#463 move 3): a Field anchor resolves to its component and the engine
+// field the component line declares; one naming a field the line never
+// declared, or a thing that is not there, drops out — exactly as a Flow
+// anchor with no declared relation always has.
+describe("kernel/params · Field anchors", () => {
+  it("resolve to the component and the declared field, and drop the rest", () => {
+    const barrel = {
+      id: 2,
+      name: "Barrel",
+      role: "Component",
+      primitive: "Buffering",
+      cognitive_params: { release_rate: 12, capacity: 200 },
+    } as unknown as CanvasModel["things"][number];
+    const m = {
+      name: "m",
+      lens: "Mobus",
+      things: [barrel],
+      relations: [],
+      params: [
+        { name: "drain", anchor: { Field: { thing: 2, field: "release_rate" } }, range: { min: "0", max: "40" } },
+        { name: "tank", anchor: { Field: { thing: 2, field: "capacity" } } },
+        { name: "upkeep", anchor: { Field: { thing: 2, field: "maintenance" } } },
+        { name: "ghost", anchor: { Field: { thing: 9, field: "release_rate" } } },
+      ],
+    } as unknown as CanvasModel;
+    expect(resolveParamRows(m).map((r) => [r.param.name, r.thing?.name, r.field])).toEqual([
+      ["drain", "Barrel", "release_rate"],
+      ["tank", "Barrel", "capacity"],
+    ]);
+    expect(flowParamFor(m, 1)).toBeNull();
+  });
+});

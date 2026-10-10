@@ -18,6 +18,8 @@ export function StatusBar({
   onToggleFocus,
   grounding = false,
   onToggleGrounding,
+  opaque = false,
+  onToggleOpaque,
   secondary,
   onToggleSecondary,
   onVerdict,
@@ -35,6 +37,11 @@ export function StatusBar({
    *  Focus rather than in the mode row. Absent handler hides the toggle. */
   grounding?: boolean;
   onToggleGrounding?: () => void;
+  /** #308/#462: the opaque reading — the model seen from outside, interior
+   *  hidden. Offered only when the host says the gesture applies (Mobus,
+   *  structure mode, 2D); the zoom-out past the membrane is the feature. */
+  opaque?: boolean;
+  onToggleOpaque?: () => void;
   /** #427: at narrow widths the mode's secondary pane is a sheet on demand;
    *  this is the one control that opens and closes it. Absent above the
    *  breakpoint. */
@@ -106,6 +113,22 @@ export function StatusBar({
             data-testid="grounding-toggle"
           >
             Grounding
+          </button>
+        )}
+        {onToggleOpaque && model && (
+          <button
+            onClick={onToggleOpaque}
+            aria-pressed={opaque}
+            title="Opaque: the model seen from outside — membrane, interfaces, crossings; interior hidden. Zoom out past the membrane to enter, zoom in to leave (⌃⌥O)"
+            className="rounded-full px-2 py-0.5"
+            style={{
+              border: "1px solid var(--hairline)",
+              background: opaque ? "var(--accent)" : "transparent",
+              color: opaque ? "var(--text-on-accent)" : "var(--text-secondary)",
+            }}
+            data-testid="view-opaque-toggle"
+          >
+            Opaque
           </button>
         )}
         <button

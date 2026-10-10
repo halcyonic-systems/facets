@@ -50,6 +50,7 @@ dependencies = [
  "bert-compose",
  "bert-core",
  "bert-lenses-kernel",
+ "bert-tether",
  "clap",
  "serde",
  "serde_json",

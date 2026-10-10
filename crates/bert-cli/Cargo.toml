@@ -20,6 +20,7 @@ path = "src/main.rs"
 bert-core = { path = "../bert-core" }
 bert-compose = { path = "../bert-compose" }
 bert-canvas = { path = "../bert-canvas" }
+bert-tether = { path = "../bert-tether" }
 # For `archive::read` — the total model-open (neutral archive OR legacy
 # WorldModel, shape decides). The CLI must open every file the app ever wrote,
 # and that totality is already implemented once, there. Re-deciding format by

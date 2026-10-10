@@ -167,6 +167,45 @@ export interface FlowSeries {
   unit: string;
   series: number[];
 }
+// ---- The bench session's tick log (facets#463) -----------------------------
+// Mirrors crates/bert-compose/src/circuit.rs `NodeFlux` and
+// crates/bert-tether/src/bench.rs `WireFlux` / `TickLog` / `KnobEdit`.
+
+/** What one component did on one tick, in the model's own names. */
+export interface NodeFlux {
+  name: string;
+  delivered: number;
+  released: number;
+  gradient_out: number;
+  maintenance: number;
+  overflow: number;
+  /** NaN (serialized null) when the model declines the conservation ledger. */
+  dissipated: number | null;
+  /** The stock after the tick (Buffering), else the activity. */
+  level: number | null;
+}
+
+export interface WireFlux {
+  name: string;
+  from: string;
+  to: string;
+  delivered: number;
+}
+
+export interface TickLog {
+  tick: number;
+  nodes: NodeFlux[];
+  wires: WireFlux[];
+}
+
+/** A knob turned on a live session, and the tick it applied at. */
+export interface KnobEdit {
+  tick: number;
+  target: string;
+  field: string;
+  value: number;
+}
+
 export interface RunResultRich {
   ticks: number;
   dt: number;
@@ -421,7 +460,15 @@ export interface CanvasModel {
 /** What a declared parameter anchors: one flow's declared amount, or a
  *  process's whole out-fanout presented as % shares. Externally-tagged serde
  *  enum. Anchors are by id so renames cannot orphan a param. */
-export type ParamAnchor = { Flow: { relation: number } } | { Shares: { thing: number } };
+/** A component line's engine parameter a `param … of <component>` may name
+ *  (#343): keyed as the engine, the session knob and `bert bench --set` read
+ *  it, and as the thing's `cognitive_params` stores it. */
+export type EngineField = "release_rate" | "capacity" | "time_constant" | "setpoint" | "maintenance";
+
+export type ParamAnchor =
+  | { Flow: { relation: number } }
+  | { Shares: { thing: number } }
+  | { Field: { thing: number; field: EngineField } };
 
 /** Inclusive slider bounds, decimal STRINGS in the flow's own unit. */
 export interface ParamRange {

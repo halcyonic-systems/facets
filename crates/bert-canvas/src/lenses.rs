@@ -806,6 +806,7 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
     if lens == Lens::Mobus {
         check_mobus_openness(&facts, &mut validation.issues);
         check_ambient_environment_things(model, &facts, &mut validation.issues);
+        check_interface_does_work(model, &mut validation.issues);
     }
 
     // Lens-neutral: a model whose only component decomposes is a wrapper around
@@ -846,7 +847,7 @@ pub fn analyze(model: &CanvasModel, lens: Lens) -> CanvasAnalysis {
             // The ambient-name warning is raised on the canvas model, where the
             // thing may be an orphan the projection dropped, so it carries no
             // kernel subject; its location names the canvas id instead.
-            None if issue.code == AMBIENT_CODE || issue.code == WRAPPER_CODE || issue.code == UNRESOLVED_DUPLICATE_CODE || issue.code == UNRESOLVED_NOT_PASSWAY_CODE => IssueTarget {
+            None if issue.code == AMBIENT_CODE || issue.code == WRAPPER_CODE || issue.code == UNRESOLVED_DUPLICATE_CODE || issue.code == UNRESOLVED_NOT_PASSWAY_CODE || issue.code == INTERFACE_WORK_CODE => IssueTarget {
                 thing: ambient_location_id(&issue.location),
                 ..IssueTarget::default()
             },
@@ -1090,6 +1091,99 @@ fn check_unresolved_passway(model: &CanvasModel, issues: &mut Vec<ValidationIssu
                 subject: None,
             });
         }
+    }
+}
+
+/// facets#471: an interface passes, gates or filters; it does not store or
+/// transform. Mobus ch. 4: "Interfaces do not typically alter the substance of
+/// the flow, that is, do not transform the substances as a process does to
+/// create products" (the exception is a filter protocol), and internally an
+/// interface hands off to "a receiver or an exporter process" — the thing that
+/// stores or transforms, drawn as its own box (Fig. 4.10). Decision
+/// 2026-10-09: read this rigidly for now — numerically and by definition an
+/// interface admits or exports to a degree and never alters what passes.
+///
+/// A merged-form component (`component X ... interface`) is warned when it
+/// either (1) emits a substance it never receives, across the boundary or
+/// from the interior — that is transformation; or (2) declares a stock, or a
+/// primitive that works on the substance rather than gating its passage
+/// (Combining, Buffering, Copying, Amplifying, Inverting; Modulating,
+/// Impeding, Propelling, Splitting and Sensing gate, route or read and pass).
+/// Pass-ways (`interface X` lines) carry no primitive and no stock, so they
+/// cannot trip it. A Warning, never an error: a receptor that transduces
+/// energy into a message is an interface in Mobus and trips (1).
+///
+/// Separating instance (the check can fail): Rain Barrel Garden in the
+/// merged form — the gutter (water in, water out, no stock) passes; the
+/// barrel (Buffering, stock) and the bed (water and light in, biomass out)
+/// warn.
+pub const INTERFACE_WORK_CODE: &str = "interface_does_work";
+
+fn check_interface_does_work(model: &CanvasModel, issues: &mut Vec<ValidationIssue>) {
+    use bert_core::ProcessPrimitive as P;
+    let by_id: HashMap<u64, &Thing> = model.things.iter().map(|t| (t.id, t)).collect();
+    let norm = |s: &str| s.trim().to_lowercase();
+    for t in model.things.iter().filter(|t| t.role == Role::Component && t.interface && !t.passway) {
+        let works = match t.primitive {
+            Some(P::Combining) => Some("combines"),
+            Some(P::Buffering) => Some("buffers"),
+            Some(P::Copying) => Some("copies"),
+            Some(P::Amplifying) => Some("amplifies"),
+            Some(P::Inverting) => Some("inverts"),
+            _ => None,
+        };
+        let stores = !t.stock_unit.trim().is_empty() || t.initial_state.contains_key("storage");
+
+        let mut received: HashSet<String> = HashSet::new();
+        let mut emitted: Vec<String> = Vec::new();
+        for r in model.relations.iter().filter(|r| r.is_bond) {
+            let sub = norm(&r.substance);
+            if sub.is_empty() || !by_id.contains_key(&r.a) || !by_id.contains_key(&r.b) {
+                continue;
+            }
+            if r.b == t.id {
+                received.insert(sub);
+            } else if r.a == t.id && !emitted.contains(&sub) {
+                emitted.push(sub);
+            }
+        }
+        let made: Vec<&String> = emitted.iter().filter(|e| !received.contains(*e)).collect();
+        let transforms = !received.is_empty() && !made.is_empty();
+
+        let what = if stores {
+            "holds a stock".to_string()
+        } else if let Some(w) = works {
+            format!("{w} (primitive {:?})", t.primitive.unwrap())
+        } else if transforms {
+            let ins: Vec<String> = { let mut v: Vec<String> = received.iter().cloned().collect(); v.sort(); v };
+            format!(
+                "turns {} into {}",
+                ins.join(" and "),
+                made.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(" and ")
+            )
+        } else {
+            continue;
+        };
+        issues.push(ValidationIssue {
+            severity: Severity::Warning,
+            code: INTERFACE_WORK_CODE.to_string(),
+            location: format!("things[{}]", t.id),
+            message: format!(
+                "'{}' is marked interface and {what}. Mobus ch. 4: an interface passes, gates or \
+                 filters what crosses the boundary and does not alter it; the thing that stores or \
+                 transforms is the receiver or exporter process behind the interface, a resident \
+                 of its own (facets#471).",
+                t.name
+            ),
+            suggestion: Some(format!(
+                "Split it: `interface \"{0} inlet\"` (or `interface unresolved`) takes the crossing, \
+                 and `component \"{0}\"` keeps the work; route the crossing flow through the \
+                 pass-way to the component.",
+                t.name
+            )),
+            doc: Some(doc::DECOMPOSES.to_string()),
+            subject: None,
+        });
     }
 }
 
@@ -1499,6 +1593,59 @@ fn describe_from_facts(model: &CanvasModel, lens: Lens, facts: &LensFacts) -> Le
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
+    /// facets#471: the merged form warns when the interface stores or
+    /// transforms, and the gutter (pass, same substance, no stock) is the
+    /// separating instance. The split form of the same garden is clean.
+    #[test]
+    fn an_interface_that_stores_or_transforms_is_a_process() {
+        let merged = parse_sl(
+            "system \"Garden\" : Concrete/Technical\n\
+             component Gutter interface\n\
+             component \"Rain Barrel\" primitive Buffering stock L initial 60 release 12 capacity 200 interface\n\
+             component \"Garden Bed\" primitive Combining interface\n\
+             source Rain\nsource Sun\nsink Harvest\n\
+             flow Rain -> Gutter : matter \"rainfall\" substance water\n\
+             flow Gutter -> \"Rain Barrel\" : matter \"run-off\" substance water\n\
+             flow Rain -> \"Rain Barrel\" : matter \"overflow\" substance water\n\
+             flow \"Rain Barrel\" -> \"Garden Bed\" : matter \"watering\" substance water\n\
+             flow Sun -> \"Garden Bed\" : energy \"sunlight\" substance light\n\
+             flow \"Garden Bed\" -> Harvest : matter \"produce\" substance biomass\n",
+        )
+        .unwrap();
+        let v = analyze(&merged, Lens::Mobus).validation;
+        let hits: Vec<&ValidationIssue> = v.issues.iter().filter(|i| i.code == INTERFACE_WORK_CODE).collect();
+        let names: Vec<String> = hits
+            .iter()
+            .map(|i| merged.things.iter().find(|t| format!("things[{}]", t.id) == i.location).unwrap().name.clone())
+            .collect();
+        assert_eq!(names, vec!["Rain Barrel", "Garden Bed"], "barrel stores, bed transforms, gutter passes: {names:?}");
+        assert!(hits.iter().all(|i| i.severity == Severity::Warning));
+        assert!(hits[0].message.contains("holds a stock"), "{}", hits[0].message);
+        assert!(hits[1].message.contains("combines"), "{}", hits[1].message);
+
+        // Substance alone, with no primitive and no stock: still transformation.
+        let transducer = parse_sl(
+            "system \"Eye\" : Concrete/Biological\n\
+             component Retina interface\n\
+             component Cortex\n\
+             source World\n\
+             flow World -> Retina : energy \"light\" substance photons\n\
+             flow Retina -> Cortex : informational \"signal\" substance spikes\n",
+        )
+        .unwrap();
+        let v = analyze(&transducer, Lens::Mobus).validation;
+        let hit = v.issues.iter().find(|i| i.code == INTERFACE_WORK_CODE).expect("retina transduces");
+        assert!(hit.message.contains("turns photons into spikes"), "{}", hit.message);
+
+        // Lens-specific: the Klir register makes no claim about interfaces.
+        assert!(!analyze(&transducer, Lens::Klir).validation.issues.iter().any(|i| i.code == INTERFACE_WORK_CODE));
+
+        // The split form is clean.
+        let split = parse_sl(include_str!("../../../assets/examples/rain-barrel-garden.sl")).unwrap();
+        let v = analyze(&split, Lens::Mobus).validation;
+        assert!(!v.issues.iter().any(|i| i.code == INTERFACE_WORK_CODE), "{:?}", v.issues);
+    }
+
     /// #308: the wrapper shape warns; the corpus Source box (one component, no
     /// `decomposes`) and a one-component model with an interior bond do not.
     #[test]

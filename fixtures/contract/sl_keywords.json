@@ -58,6 +58,8 @@
     "setpoint",
     "maintenance",
     "backpressure",
+    "limiting",
+    "reservoir",
     "description",
     "grounding",
     "usability",

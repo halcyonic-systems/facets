@@ -6,24 +6,24 @@
 // Every card is the same component the dock hosted, fed the same kernel state
 // from the same App owner — what changed is the container and the height.
 import { useEffect, useState } from "react";
-import type {
-  CanvasModel,
-  Manifest,
-  MarkovRunResult,
-  Relation,
-  RunResultRich,
-} from "./kernel/types";
+import type { CanvasModel, Manifest, MarkovRunResult, Relation, RunResultRich, Thing, TickLog } from "./kernel/types";
 import type { RunKind } from "./canvas/lenses/registry";
 import { RunInputs } from "./RunInputs";
 import { DtmcPanel, RunFit, RunGlance, RunStory, RunTable, weightProvenance } from "./RunPanel";
 import { Card, Tabs } from "./ui";
+import { TickLogTable } from "./TickLogTable";
 
 /** The readout tabs. Fit only exists when a CSV is bound — absence is
  *  ontology, not a disabled tab. */
-type ReadoutTab = "story" | "fit" | "table";
+type ReadoutTab = "story" | "fit" | "table" | "log";
 
 export function Readouts({
   result,
+  tickLog = null,
+  onExportRun,
+  baseline = null,
+  onKeepBaseline,
+  onDropBaseline,
   markovRun,
   ranEdited,
   runError,
@@ -33,6 +33,8 @@ export function Readouts({
   model,
   manifest,
   onInputEdit,
+  onThingEdit,
+  engineLabels,
   onResetInputs,
   time,
   runKind,
@@ -40,6 +42,16 @@ export function Readouts({
   onClose,
 }: {
   result: RunResultRich | null;
+  /** #463: what every component did each tick, from the held session; null
+   *  when the run did not come from one (a DTMC, or no run yet). */
+  tickLog?: TickLog[] | null;
+  /** #463: download the run record (model as run, knobs, readout, log). */
+  onExportRun?: () => void;
+  /** #463 move 4: the kept baseline — a frozen readout drawn dashed beside
+   *  every live series, with "vs baseline" on the glance and the metrics. */
+  baseline?: RunResultRich | null;
+  onKeepBaseline?: () => void;
+  onDropBaseline?: () => void;
   /** #282: the DTMC run (#67) — the result when the active lens declares
    *  `run: "dtmc"`. App keeps result/markovRun mutually exclusive. */
   markovRun: MarkovRunResult | null;
@@ -56,6 +68,10 @@ export function Readouts({
   /** The active demo's manifest (null = no runnable bundle). */
   manifest?: Manifest | null;
   onInputEdit?: (next: Relation) => void;
+  /** #343: a field-anchored param edits its component's engine parameter. */
+  onThingEdit?: (next: Thing) => void;
+  /** The kernel palette's label for each primitive's own knob. */
+  engineLabels?: Record<string, string>;
   onResetInputs?: () => void;
   time?: { dt: number; t: number; klir: boolean; onCommit: (dt: number, t: number) => void };
   /** #282: the lens's declared run semantics — this view renders from it. */
@@ -88,8 +104,19 @@ export function Readouts({
   // magnitude, with the height the dock never had. Under Klir there are no
   // forced inputs to edit; the rail carries time alone.
   const inputs =
-    runKind !== "dtmc" && model && manifest && onInputEdit ? (
-      <RunInputs model={model} manifest={manifest} onEdit={onInputEdit} onReset={onResetInputs} />
+    // #463 move 1 left this gate behind: the rail needed a demo manifest, so
+    // a model opened from the library or the SL pane ran but showed no
+    // knobs (feel-test 2026-10-09). The rail reads the manifest only to
+    // mark column-forced flows; null means none are forced.
+    runKind !== "dtmc" && model && onInputEdit ? (
+      <RunInputs
+        model={model}
+        manifest={manifest ?? null}
+        onEdit={onInputEdit}
+        onEditThing={onThingEdit}
+        engineLabels={engineLabels}
+        onReset={onResetInputs}
+      />
     ) : null;
   const timeRow = time ? <TimeRow time={time} /> : null;
 
@@ -119,7 +146,7 @@ export function Readouts({
     </div>
   ) : result ? (
     <>
-      <RunGlance result={result} model={model} tick={tick} />
+      <RunGlance result={result} model={model} tick={tick} baseline={baseline} />
       <div className="px-4">
         <Tabs
           tabs={[
@@ -127,6 +154,7 @@ export function Readouts({
             // Fit exists only when a CSV is bound — absence is ontology.
             ...(hasFit ? [{ key: "fit", label: "Fit to data" }] : []),
             { key: "table", label: "Table" },
+            ...(tickLog ? [{ key: "log", label: "Log" }] : []),
           ]}
           active={tab}
           onSelect={(k) => setTabChoice(k as ReadoutTab)}
@@ -134,10 +162,22 @@ export function Readouts({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {tab === "story" && (
-          <RunStory result={result} lens={lens} tick={tick} model={model} />
+          <RunStory result={result} lens={lens} tick={tick} model={model} baseline={baseline} />
         )}
         {tab === "fit" && hasFit && (
           <RunFit result={result} tick={tick} timeUnit={model?.time_unit} />
+        )}
+        {tab === "log" && tickLog && (
+          <div className="grid gap-3">
+            {onExportRun && (
+              <div>
+                <button onClick={onExportRun} className="record-folio text-[10px] tracking-[0.12em]" data-testid="export-run">
+                  export run (.json) →
+                </button>
+              </div>
+            )}
+            <TickLogTable log={tickLog} tick={tick} timeUnit={model?.time_unit} />
+          </div>
         )}
         {tab === "table" && (
           <RunTable
@@ -152,9 +192,7 @@ export function Readouts({
     </>
   ) : (
     <Placeholder>
-      {manifest
-        ? "Nothing has run yet. Press ▶ Run in the header, or set the run length in the rail first."
-        : "Run needs data: open a demo bundle, or attach a CSV in Data mode and bind at least one flow."}
+      {"Nothing has run yet. Press ▶ Run in the header, or set the run length in the rail first. No data is needed: the declared amounts govern until a column is bound."}
     </Placeholder>
   );
 
@@ -179,6 +217,20 @@ export function Readouts({
           </span>
         )}
         <div className="min-w-0 flex-1">{transport}</div>
+        {/* #463 move 4: keep this run as the baseline; every later knob
+            then reads against it. One button, two states; dropping it is
+            the same button. */}
+        {result && onKeepBaseline && (
+          <button
+            onClick={baseline ? onDropBaseline : onKeepBaseline}
+            className="record-folio shrink-0 text-[10px] tracking-[0.12em]"
+            title={baseline ? "Drop the kept baseline" : "Keep this run as the baseline: later knobs read against it"}
+            data-testid="keep-baseline"
+            aria-pressed={Boolean(baseline)}
+          >
+            {baseline ? "baseline kept · drop" : "keep baseline →"}
+          </button>
+        )}
         <button
           onClick={onClose}
           title="Back to the model (Esc)"
@@ -190,7 +242,7 @@ export function Readouts({
       </div>
       <div className="flex min-h-0 flex-1">
         <aside
-          className="w-80 shrink-0 overflow-y-auto border-r p-3"
+          className="w-96 shrink-0 overflow-y-auto border-r p-3"
           style={{ borderColor: "var(--hairline)" }}
         >
           <div className="grid gap-3">

@@ -211,3 +211,33 @@ describe("ReviewPanel", () => {
     expect(m).not.toContain("are mere");
   });
 });
+
+
+describe("ReviewPanel · stage 2 (#462)", () => {
+  const m = { name: "Venice", lens: "Mobus", things: [], relations: [] } as unknown as CanvasModel;
+  const panel = (stage2: import("./resolution").Stage2Report | null) =>
+    renderToStaticMarkup(
+      <ReviewPanel model={m} validation={{ issues: [] }} targets={[]} reviewedAt={null} onReview={() => {}} onNavigate={() => {}} stage2={stage2} />,
+    );
+  it("is absent when the model has no unresolved pass-way", () => {
+    expect(panel(null)).not.toContain("stage2-region");
+  });
+  it("says there is no stage-2 model yet, naming the system", () => {
+    const html = panel({ system: "Venice", candidates: [] });
+    expect(html).toContain("stage2-region");
+    expect(html).toContain("0 candidates");
+    expect(html).toContain("No model named “Venice” with named interfaces");
+  });
+  it("lists each candidate with the kernel's verdict", () => {
+    const html = panel({
+      system: "Venice",
+      candidates: [
+        { source: "shelf", label: "Venice (named)", issues: [] },
+        { source: "library", label: "Venice v2", issues: [kernelVerdict({ severity: "Error", code: "resolution_missing", location: "things[1]", message: "inbound matter from Lagoon is still unresolved", suggestion: null, doc: null })] },
+      ],
+    });
+    expect(html).toContain("2 candidates");
+    expect(html).toContain("resolves every unresolved crossing");
+    expect(html).toContain("inbound matter from Lagoon is still unresolved");
+  });
+});

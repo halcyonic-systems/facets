@@ -112,6 +112,10 @@ describe("the shipped library", () => {
       "Jungian Cognitive Function Stack",
       "LLM Market",
       "Predator-Prey Ecosystem",
+      // #463: the bench's own model — the smallest system in which a stock,
+      // a release, a capacity, a matched throughput and an energy drive all
+      // show in one readout, and every knob moves the harvest.
+      "Rain Barrel Garden",
       "Ribosome",
       // #139: the walk's root, back on a shelf now that a decomposed
       // component shows its interior without leaving the model (#308: the

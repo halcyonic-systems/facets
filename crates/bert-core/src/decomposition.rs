@@ -546,6 +546,7 @@ pub fn derive_child(parent: &WorldModel, comp: &Id) -> Result<WorldModel, Vec<Va
             // real authored flow rather than guessed, so the gate should hold it
             // to its direction (#216).
             authored_direction: true,
+            reservoir: None,
         });
         of.insert(neighbor.clone(), id);
     };

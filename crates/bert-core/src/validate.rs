@@ -2083,6 +2083,7 @@ mod tests {
             model: String::new(),
             is_same_as_id: None,
             authored_direction: true,
+            reservoir: None,
         });
         let result = validate(&model);
         assert!(result.has_errors());
@@ -2113,6 +2114,7 @@ mod tests {
             model: String::new(),
             is_same_as_id: None,
             authored_direction: true,
+            reservoir: None,
         });
         let result = validate(&model);
         assert!(result.has_errors());
@@ -2473,6 +2475,7 @@ mod tests {
             model: String::new(),
             is_same_as_id: None,
             authored_direction: true,
+            reservoir: None,
         });
         model.interactions.push(Interaction {
             info: Info {
@@ -2599,6 +2602,7 @@ mod tests {
             model: String::new(),
             is_same_as_id: None,
             authored_direction: true,
+            reservoir: None,
         });
         model.interactions.push(Interaction {
             info: Info {
@@ -2999,6 +3003,7 @@ mod tests {
             model: String::new(),
             is_same_as_id: None,
             authored_direction: true,
+            reservoir: None,
         };
         let snk = ExternalEntity {
             info: Info {
@@ -3017,6 +3022,7 @@ mod tests {
             model: String::new(),
             is_same_as_id: None,
             authored_direction: true,
+            reservoir: None,
         };
         let src_id = src.info.id.clone();
         let snk_id = snk.info.id.clone();
@@ -3725,6 +3731,7 @@ mod tests {
                 model: String::new(),
                 is_same_as_id: None,
                 authored_direction: authored,
+                reservoir: None,
             });
             model.interactions.push(flow(0, "orders", snk_id, model.systems[0].info.id.clone()));
             model
@@ -3748,6 +3755,7 @@ mod tests {
             model: String::new(),
             is_same_as_id: None,
             authored_direction: true,
+            reservoir: None,
         });
         model.interactions.push(Interaction {
             info: Info {
@@ -3826,6 +3834,7 @@ mod tests {
                 model: String::new(),
                 is_same_as_id: None,
                 authored_direction: true,
+                reservoir: None,
             });
         }
         model.systems[0].boundary.interfaces.push(Interface {
@@ -3905,6 +3914,7 @@ mod tests {
             model: String::new(),
             is_same_as_id: None,
             authored_direction: true,
+            reservoir: None,
         });
         model.systems[0].boundary.interfaces.push(Interface {
             info: Info {

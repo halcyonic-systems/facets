@@ -80,6 +80,12 @@ impl Session {
     /// A session over a saved model — the sandbox document IS a `WorldModel`
     /// (`export::from_world_model` / `to_world_model` are lossless), so
     /// opening and graduating are the same seam.
+    /// Hold an already-built circuit (facets#463): the bench projects through
+    /// the seam itself and hands the result here.
+    pub fn from_circuit(circuit: Circuit, next_n: usize) -> Self {
+        Self { circuit, next_n }
+    }
+
     pub fn from_model(model: &WorldModel) -> Result<Self, String> {
         let circuit = export::from_world_model(model)?;
         let next_n = circuit.nodes.len() + 1;
@@ -157,6 +163,12 @@ impl Session {
             "time_constant" => n.time_constant = v,
             "maintenance" => n.maintenance = v,
             "back_pressure" => n.back_pressure = v != 0.0,
+            // #463 move 5: a negative reservoir means unbounded (None).
+            "reservoir" => {
+                n.reservoir = (v >= 0.0).then_some(v);
+                n.remaining = n.reservoir.unwrap_or(0.0);
+            }
+            "limiting" => n.limiting = v != 0.0,
             other => return Err(format!("unknown node field: {other}")),
         }
         Ok(())
@@ -229,6 +241,8 @@ impl Session {
             self.circuit.ledger_history.drain(..lcut);
             let wcut = cut.min(self.circuit.wire_history.len());
             self.circuit.wire_history.drain(..wcut);
+            let fcut = cut.min(self.circuit.node_flux_history.len());
+            self.circuit.node_flux_history.drain(..fcut);
             // Epochs whose every row was cut go with them; the first survivor
             // is clamped so it starts where the surviving rows do.
             let first_tick = self.circuit.history[0][0] as u64;

@@ -276,6 +276,20 @@ pub struct Node {
     pub out_substance: DeclaredSubstance,
     /// Source rate / agency capacity (gain, efficiency, k…) depending on kind.
     pub param: f32,
+    /// A finite source (facets#260, #463 move 5): the mass the source can
+    /// emit over the whole run, in its substance's units. `None` is the
+    /// unbounded source every model had before — exactly today's behaviour.
+    /// Config, not state; `remaining` is the live counterpart.
+    pub reservoir: Option<f32>,
+    /// What a finite source has left. `reservoir` on reset; falls by what
+    /// the source actually delivered each tick; the emission is capped at it,
+    /// so a dry source emits nothing and every downstream flow flattens.
+    pub remaining: f32,
+    /// Liebig's law on a Combining (facets#342, #463 move 5): throughput is
+    /// bounded by the scarcest co-input, each physical inflow counting 1:1,
+    /// so a starved input stalls the process instead of being summed over.
+    /// Off, a Combining sums its matched inflows as before.
+    pub limiting: bool,
     /// Buffer release rate per tick.
     pub release_rate: f32,
     /// Buffer starting stock — the "this system HAS a quantity" assertion.
@@ -345,6 +359,9 @@ impl Node {
             pos,
             out_substance: kind.default_out().into(),
             param: if kind == NodeKind::Source { 1.0 } else { 0.5 },
+            reservoir: None,
+            remaining: 0.0,
+            limiting: false,
             release_rate: 1.0,
             initial_storage: 0.0,
             capacity: 0.0,        // unbounded
@@ -578,12 +595,41 @@ pub struct Circuit {
     /// advances. The recorder-side source for declared metrics — cleared with
     /// `history` on reset; decoded per epoch after a topology change.
     pub wire_history: Vec<Vec<f32>>,
+    /// Per-tick, per-node flux record (facets#463, the tick log): row `t` is
+    /// `[tick, n0.delivered, n0.released, n0.gradient_out, n0.maintenance,
+    /// n0.overflow, n0.dissipated, n1…]` — what each node was handed, what it
+    /// sent on, what drained down a gradient, what upkeep and overflow took,
+    /// and what it shed, this tick. Every value is one `step_dt` already
+    /// computes and used to drop; nothing here is re-derived, and nothing in
+    /// the step reads it (the trace-separation test covers this buffer too).
+    /// `dissipated` is NaN when the model declines the ledger (axis D).
+    /// Cleared with `history`; decoded per epoch after a topology change.
+    pub node_flux_history: Vec<Vec<f32>>,
 }
+
+/// One node's flux over one tick, decoded from `node_flux_history`.
+#[derive(serde::Serialize, Clone, Debug, PartialEq)]
+pub struct NodeFlux {
+    pub name: String,
+    pub delivered: f32,
+    pub released: f32,
+    pub gradient_out: f32,
+    pub maintenance: f32,
+    pub overflow: f32,
+    /// NaN when the model declines the conservation ledger.
+    pub dissipated: f32,
+    /// The stock after the tick (Buffering), else the activity.
+    pub level: f32,
+}
+
+/// The width of one node's slice in a `node_flux_history` row.
+pub const FLUX_COLS: usize = 6;
 
 impl Circuit {
     pub fn reset(&mut self) {
         for n in &mut self.nodes {
             n.storage = n.initial_storage;
+            n.remaining = n.reservoir.unwrap_or(0.0);
             n.activity = 0.0;
             n.total = 0.0;
             n.spark.clear();
@@ -593,6 +639,7 @@ impl Circuit {
         self.history.clear();
         self.ledger_history.clear();
         self.wire_history.clear();
+        self.node_flux_history.clear();
         self.epochs.clear();
         self.emitted = 0.0;
         self.sunk = 0.0;
@@ -1255,18 +1302,19 @@ impl Circuit {
             })
             .collect();
         for i in 0..n {
-            if !matches!(
-                self.nodes[i].kind,
-                NodeKind::Process(ProcessPrimitive::Buffering)
-            ) {
-                continue; // only buffers can over-drain; sources are fixed potentials
-            }
+            // Buffers can over-drain; a finite source can run dry; an
+            // unbounded source is a fixed potential and never caps.
+            let available = match (self.nodes[i].kind, self.nodes[i].reservoir) {
+                (NodeKind::Process(ProcessPrimitive::Buffering), _) => self.nodes[i].storage,
+                (NodeKind::Source, Some(_)) => self.nodes[i].remaining,
+                _ => continue,
+            };
             let idxs: Vec<usize> = (0..nw)
                 .filter(|&k| self.wires[k].from == i && self.wires[k].mode == FlowMode::Gradient)
                 .collect();
             let total: f32 = idxs.iter().map(|&k| grad[k]).sum();
-            if total > self.nodes[i].storage && total > 0.0 {
-                let scale = self.nodes[i].storage / total;
+            if total > available && total > 0.0 {
+                let scale = available.max(0.0) / total;
                 for k in idxs {
                     grad[k] *= scale;
                 }
@@ -1409,7 +1457,15 @@ impl Circuit {
                 // a downstream back-pressured valve will accept (the rest is
                 // simply not produced).
                 // × dt: a Source's param is a RATE per time unit (#258)
-                NodeKind::Source => dt * self.source_emission(i) * bp_factor_of(i, &act),
+                NodeKind::Source => {
+                    let rate = dt * self.source_emission(i) * bp_factor_of(i, &act);
+                    match node.reservoir {
+                        // A finite source emits what it has left after this
+                        // tick's gradient drain, then nothing (#260).
+                        Some(_) => rate.min((node.remaining - gradient_out[i]).max(0.0)),
+                        None => rate,
+                    }
+                }
                 NodeKind::Sink => {
                     sink_add[i] = physical + message;
                     physical + message
@@ -1479,6 +1535,28 @@ impl Circuit {
                     // matter and 7 energy produces 5, never 12; the 7 drove
                     // the work and dissipates. A Message mover (out_substance
                     // Message) passes its messages the same way.
+                    // Liebig (#342), opt-in: the scarcest physical co-input
+                    // bounds throughput, each inflow counting 1:1, and the
+                    // output is that bound times the number of inflows of
+                    // the output kind — balanced inputs reproduce `matched`
+                    // exactly; a starved input stalls the process.
+                    ProcessPrimitive::Combining if node.limiting => {
+                        let co: Vec<f32> = incoming
+                            .iter()
+                            .filter(|(s, _, obs)| !*obs && *s != SubstanceType::Message)
+                            .map(|(_, a, _)| *a)
+                            .collect();
+                        let bound = co.iter().copied().fold(f32::INFINITY, f32::min);
+                        let of_kind = incoming
+                            .iter()
+                            .filter(|(s, _, obs)| !*obs && *s == node.out_substance.base)
+                            .count();
+                        if co.is_empty() || !bound.is_finite() {
+                            0.0
+                        } else {
+                            bound * of_kind as f32
+                        }
+                    }
                     ProcessPrimitive::Combining => matched,
                     ProcessPrimitive::Splitting => matched, // fanout divides on wires
                     ProcessPrimitive::Propelling => matched * a,
@@ -1559,7 +1637,10 @@ impl Circuit {
 
         // Stocks integrate: opening stock + this step's inflow − release −
         // gradient drain − maintenance, clamped to capacity. The only place
-        // physical mass crosses a step boundary.
+        // physical mass crosses a step boundary. Maintenance taken and
+        // overflow shed are kept per node for the tick log (#463).
+        let mut maint_taken = vec![0.0f32; n];
+        let mut overflow = vec![0.0f32; n];
         for i in 0..n {
             let node = &self.nodes[i];
             if !matches!(
@@ -1574,13 +1655,16 @@ impl Circuit {
             // automatically — the stock falls but no outflow carries it.
             // Odum depreciation / Mobus Fig 3.17.
             if node.maintenance > 0.0 {
-                storage -= node.maintenance.min(storage.max(0.0));
+                let taken = node.maintenance.min(storage.max(0.0));
+                storage -= taken;
+                maint_taken[i] = taken;
             }
             // Capacity: a bounded tank overflows. Clamping the stock makes
             // the conservation ledger's per-node rule charge the overflow as
             // dissipated by itself (dissipated = in − out − Δstorage, and
             // Δstorage is now the clamped change). 0.0 = unbounded.
             if node.capacity > 0.0 && storage > node.capacity {
+                overflow[i] = storage - node.capacity;
                 storage = node.capacity;
             }
             next_storage[i] = storage;
@@ -1592,33 +1676,60 @@ impl Circuit {
         // docs for why each channel is intended. Skipped wholesale when the
         // model declines conservation (axis D) — the transition above stands
         // on its own; only the accounting is optional.
+        // What each node sent on as physical mass this tick: a process's
+        // activity when a pushed, non-observation outwire carries it (an
+        // activity nothing reads is a dead end and dissipates this same step);
+        // a source's deliveries over its physical outwires; a sink sends
+        // nothing on. Read by the ledger and recorded in the tick log.
+        let released: Vec<f32> = (0..n)
+            .map(|i| {
+                let node = &self.nodes[i];
+                match node.kind {
+                    NodeKind::Sink => 0.0,
+                    NodeKind::Source => (0..nw)
+                        .filter(|&k| {
+                            self.wires[k].from == i
+                                && self.wire_substance(&self.wires[k]) != SubstanceType::Message
+                        })
+                        .map(|k| amount_on(k, &act))
+                        .sum(),
+                    NodeKind::Process(_) => {
+                        let has_outlet = (0..nw).any(|k| {
+                            self.wires[k].from == i
+                                && self.wires[k].mode == FlowMode::Pushed
+                                && !self.is_observation(&self.wires[k])
+                        });
+                        if node.out_substance.base == SubstanceType::Message || !has_outlet {
+                            0.0
+                        } else {
+                            act[i]
+                        }
+                    }
+                }
+            })
+            .collect();
+        let mut node_diss = vec![f32::NAN; n];
         if ledger {
             for i in 0..n {
                 let node = &self.nodes[i];
                 match node.kind {
                     // Inflow to a source has nowhere to go (the UI refuses these
                     // wires; ledgered defensively).
-                    NodeKind::Source => dissipated_now += delivered[i],
-                    NodeKind::Sink => sunk_now += delivered[i],
+                    NodeKind::Source => {
+                        node_diss[i] = delivered[i];
+                        dissipated_now += delivered[i];
+                    }
+                    NodeKind::Sink => {
+                        node_diss[i] = 0.0;
+                        sunk_now += delivered[i];
+                    }
                     NodeKind::Process(_) => {
-                        // Physical out only counts if a pushed, non-observation
-                        // outwire actually carries it — an activity nothing
-                        // reads is a dead end and dissipates this same step.
-                        let has_outlet = (0..nw).any(|k| {
-                            self.wires[k].from == i
-                                && self.wires[k].mode == FlowMode::Pushed
-                                && !self.is_observation(&self.wires[k])
-                        });
-                        let out_phys =
-                            if node.out_substance.base == SubstanceType::Message || !has_outlet {
-                                0.0
-                            } else {
-                                act[i]
-                            };
-                        dissipated_now += delivered[i]
-                            - out_phys
+                        let d = delivered[i]
+                            - released[i]
                             - gradient_out[i]
                             - (next_storage[i] - node.storage);
+                        node_diss[i] = d;
+                        dissipated_now += d;
                     }
                 }
             }
@@ -1641,6 +1752,9 @@ impl Circuit {
             node.activity = act[i];
             node.storage = next_storage[i];
             node.total += sink_add[i];
+            if node.reservoir.is_some() {
+                node.remaining = (node.remaining - released[i]).max(0.0);
+            }
             let signal = if matches!(node.kind, NodeKind::Process(ProcessPrimitive::Buffering)) {
                 node.storage
             } else {
@@ -1689,10 +1803,65 @@ impl Circuit {
             row.push(node.total);
         }
         self.history.push(row);
+        let mut flux = Vec::with_capacity(1 + n * FLUX_COLS);
+        flux.push(self.tick as f32);
+        for i in 0..n {
+            flux.extend_from_slice(&[
+                delivered[i],
+                released[i],
+                gradient_out[i],
+                maint_taken[i],
+                overflow[i],
+                node_diss[i],
+            ]);
+        }
+        self.node_flux_history.push(flux);
         if ledger {
             self.ledger_history
                 .push([self.emitted, self.sunk, self.stored(), self.dissipated]);
         }
+    }
+
+    /// The tick log (#463): every node's flux for the recorded ticks at or
+    /// after `from_tick`, decoded against the current node order. Rows whose
+    /// width does not match the current topology (recorded under an earlier
+    /// epoch) are skipped rather than mis-labelled; the sandbox's per-epoch
+    /// decoder is the place for those.
+    pub fn flux_since(&self, from_tick: u64) -> Vec<(u64, Vec<NodeFlux>)> {
+        let n = self.nodes.len();
+        let width = 1 + n * FLUX_COLS;
+        self.node_flux_history
+            .iter()
+            .zip(self.history.iter())
+            .filter(|(f, _)| f.len() == width && f[0] as u64 >= from_tick)
+            .map(|(f, h)| {
+                let tick = f[0] as u64;
+                let nodes = (0..n)
+                    .map(|i| {
+                        let b = 1 + i * FLUX_COLS;
+                        let level = if matches!(
+                            self.nodes[i].kind,
+                            NodeKind::Process(ProcessPrimitive::Buffering)
+                        ) {
+                            h.get(2 + i * 3).copied().unwrap_or(f32::NAN)
+                        } else {
+                            h.get(1 + i * 3).copied().unwrap_or(f32::NAN)
+                        };
+                        NodeFlux {
+                            name: self.nodes[i].name.clone(),
+                            delivered: f[b],
+                            released: f[b + 1],
+                            gradient_out: f[b + 2],
+                            maintenance: f[b + 3],
+                            overflow: f[b + 4],
+                            dissipated: f[b + 5],
+                            level,
+                        }
+                    })
+                    .collect();
+                (tick, nodes)
+            })
+            .collect()
     }
 
     /// The recorded run as CSV with raw node names. (The app exports via
@@ -2531,6 +2700,88 @@ mod tests {
     /// material Combining must yield activity 5 with the 7 dissipated — under
     /// the old energy-plus-material sum the output was 12 and this test could
     /// not pass. The converse: an all-material feed is untouched.
+    /// #260 (#463 move 5): a finite source runs dry. Rate 5 against a
+    /// reservoir of 12 emits 5, 5, 2, 0; the sink holds 12; the ledger
+    /// closes. The old engine (reservoir None) sinks 20 over the same four
+    /// ticks — the separating instance.
+    #[test]
+    fn a_finite_source_runs_dry_and_the_ledger_closes() {
+        let mut c = Circuit::default();
+        c.nodes.push(node(NodeKind::Source));
+        c.nodes.push(node(NodeKind::Sink));
+        c.nodes[0].param = 5.0;
+        c.nodes[0].reservoir = Some(12.0);
+        c.wires.push(Wire::new(0, 1));
+        c.reset();
+        let mut acts = Vec::new();
+        for _ in 0..4 {
+            c.step();
+            acts.push(c.nodes[0].activity);
+        }
+        assert_eq!(acts, vec![5.0, 5.0, 2.0, 0.0]);
+        assert!((c.sunk - 12.0).abs() < 1e-6, "sunk {}", c.sunk);
+        assert!((c.nodes[0].remaining).abs() < 1e-6);
+        assert!(c.balance().abs() < 1e-4, "balance {}", c.balance());
+        let mut old = Circuit::default();
+        old.nodes.push(node(NodeKind::Source));
+        old.nodes.push(node(NodeKind::Sink));
+        old.nodes[0].param = 5.0;
+        old.wires.push(Wire::new(0, 1));
+        old.reset();
+        for _ in 0..4 {
+            old.step();
+        }
+        assert!((old.sunk - 20.0).abs() < 1e-6, "an unbounded source sinks 20, got {}", old.sunk);
+    }
+
+    /// #342 (#463 move 5): a limiting Combining is bounded by its scarcest
+    /// co-input. 5 matter + 7 matter + 3 energy → 6 (the old sum says 12);
+    /// starve the energy to 0 → 0. Balanced inputs reproduce the sum, so no
+    /// shipped model moves until it opts in.
+    #[test]
+    fn a_limiting_combining_stalls_on_its_scarcest_input() {
+        use ProcessPrimitive::*;
+        fn rig(energy: f32, limiting: bool) -> Circuit {
+            let mut c = Circuit::default();
+            c.nodes.push(node(NodeKind::Source));
+            c.nodes.push(node(NodeKind::Source));
+            c.nodes.push(node(NodeKind::Source));
+            c.nodes.push(node(NodeKind::Process(Combining)));
+            c.nodes.push(node(NodeKind::Sink));
+            c.nodes[0].param = 5.0;
+            c.nodes[1].param = 7.0;
+            c.nodes[2].param = energy;
+            c.nodes[3].out_substance = SubstanceType::Material.into();
+            c.nodes[3].limiting = limiting;
+            for (k, from) in [0usize, 1, 2].into_iter().enumerate() {
+                c.wires.push(Wire::new(from, 3));
+                c.wires[k].substance_override =
+                    Some(if from == 2 { SubstanceType::Energy } else { SubstanceType::Material });
+            }
+            c.wires.push(Wire::new(3, 4));
+            c.reset();
+            c
+        }
+        let mut gated = rig(3.0, true);
+        gated.step();
+        gated.step();
+        assert!((gated.nodes[3].activity - 6.0).abs() < 1e-6, "scarcest input 3 bounds two matter inflows to 6, got {}", gated.nodes[3].activity);
+        let mut summed = rig(3.0, false);
+        summed.step();
+        summed.step();
+        assert!((summed.nodes[3].activity - 12.0).abs() < 1e-6, "the old sum says 12, got {}", summed.nodes[3].activity);
+        let mut starved = rig(0.0, true);
+        starved.step();
+        starved.step();
+        assert_eq!(starved.nodes[3].activity, 0.0, "no energy, no output");
+        assert!(starved.balance().abs() < 1e-4, "balance {}", starved.balance());
+        let mut balanced = rig(5.0, true);
+        balanced.nodes[1].param = 5.0;
+        balanced.step();
+        balanced.step();
+        assert!((balanced.nodes[3].activity - 10.0).abs() < 1e-6, "balanced inputs reproduce the sum: {}", balanced.nodes[3].activity);
+    }
+
     #[test]
     fn energy_drives_a_material_process_and_never_becomes_its_output() {
         use ProcessPrimitive::*;
@@ -3619,6 +3870,9 @@ mod tests {
             // Same carrier, divergent record: garbage into H only.
             let width = 1 + polluted.nodes.len() * 3;
             polluted.history.push(vec![9.9; width]);
+            polluted
+                .node_flux_history
+                .push(vec![-4.2; 1 + polluted.nodes.len() * FLUX_COLS]);
             polluted.ledger_history.push([1e9, -1e9, 42.0, 7.0]);
             polluted.epochs.push(Epoch {
                 start_tick: 999_999,

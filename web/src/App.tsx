@@ -1,22 +1,8 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ready,
-  runForced,
-  runRich,
-  runMarkov,
-  openModel,
-  writeArchive,
-  project,
-
-  analyzeCanvas,
-  checkDecompositionsCanvas,
-  decomposeComponent,
-  compileSl,
-  type ArchiveText,
-  mintModelId,
-  emitSl,
-} from "./kernel";
+import { buildRunRecord, postRunRecord, runRecordFilename, type RunRecord } from "./runRecord";
+import { ready, runMarkov, Bench, openModel, writeArchive, project, analyzeCanvas, checkDecompositionsCanvas, decomposeComponent, compileSl, type ArchiveText, mintModelId, emitSl, sandboxPalette } from "./kernel";
 import type {
+  TickLog,
   CanvasModel,
   IssueTarget,
   Manifest,
@@ -29,6 +15,9 @@ import type {
   ValidationIssue,
 } from "./kernel/types";
 import { DEMOS, isRunnable, type Demo } from "./demos";
+import { listModelRecords } from "./modelStore";
+import { EXAMPLES } from "./examples";
+import { stage2Report, type PoolEntry, type Stage2Report } from "./resolution";
 import type { CorpusEntry } from "./corpus";
 import Canvas, { type RideOrder } from "./canvas/Canvas";
 import { view3dEnabled } from "./canvas3d/flag";
@@ -317,6 +306,54 @@ function Workspace() {
   const [discardAsk, setDiscardAsk] = useState<{ resolve: (ok: boolean) => void } | null>(null);
   const [t, setT] = useState(12);
   const [result, setResult] = useState<RunResultRich | null>(null);
+  // #463 move 2: the run lives on a held engine session. `result` is its
+  // readout; `tickLog` is what every component did each tick, in the model's
+  // names. The handle is wasm-owned memory, freed whenever the run is
+  // cleared, and reopened from the document on the next Run.
+  const benchRef = useRef<Bench | null>(null);
+  const [tickLog, setTickLog] = useState<TickLog[] | null>(null);
+  const [runRecord, setRunRecord] = useState<RunRecord | null>(null);
+  // #463 move 4: a kept baseline is a frozen readout. A knob re-steps the
+  // run from zero, so the comparison that matters is run against run, not a
+  // live fork. Kept until dropped or until another model opens.
+  const [baseline, setBaseline] = useState<RunResultRich | null>(null);
+  // Every bench readout is recorded: the dev server writes it to
+  // runs/bench/latest.json so a terminal can read what the tool just did,
+  // and Export run downloads the same record anywhere.
+  const recordBench = (b: Bench, r: RunResultRich, event: RunRecord["event"], csv: string, m: Manifest, dtv: number, tv: number) => {
+    const log = b.tickLogSince(1);
+    setTickLog(log);
+    let sl: string | null = null;
+    try {
+      sl = canvasModel ? emitSl(canvasModel) : null;
+    } catch {
+      sl = null;
+    }
+    const rec = buildRunRecord({
+      model: { name: currentLabel ?? canvasModel?.name ?? demo?.title ?? "model", sl },
+      csv: csv.trim() ? csv : null,
+      manifest: csv.trim() ? m : null,
+      dt: dtv,
+      t: tv,
+      event,
+      edits: b.edits(),
+      readout: r,
+      baseline,
+      log,
+    });
+    setRunRecord(rec);
+    postRunRecord(rec);
+  };
+  const closeBench = () => {
+    benchRef.current?.free();
+    benchRef.current = null;
+  };
+  useEffect(() => {
+    if (result === null) {
+      closeBench();
+      setTickLog(null);
+    }
+  }, [result]);
   // ADR run-seam-canvas-document: which model the last run executed — the
   // shipped calibration artifact, or the projection of an edited canvas. The
   // kernel already hash-stamps the difference; this is the UI's plain word.
@@ -332,12 +369,15 @@ function Workspace() {
   // SimScrubber so ▶ Run can auto-play its result once (playing a recorded
   // trace is reading, not executing — trace-separation intact) and so playback
   // survives the scrubber remounting across modes. `playLoop=false` is the
-  // auto-play-once posture: rest at the last frame; a manual ▶ press loops.
+  // play-once posture: rest at the last frame. The default since the
+  // 2026-10-09 feel-test; nothing flips it to true on its own.
   const [playing, setPlaying] = useState(false);
-  const [playLoop, setPlayLoop] = useState(true);
+  const [playLoop, setPlayLoop] = useState(false);
+  // Play once and rest at the last frame, whichever way play started
+  // (feel-test 2026-10-09: a run that replays itself after it ends reads as
+  // a glitch, not a loop). Looping stays a setting, never a side effect.
   const handlePlayingChange = useCallback((p: boolean) => {
     setPlaying(p);
-    if (p) setPlayLoop(true);
   }, []);
   const [selectedRelationId, setSelectedRelationId] = useState<number | null>(null);
   const [selectedThingId, setSelectedThingId] = useState<number | null>(null);
@@ -618,6 +658,7 @@ function Workspace() {
   // opens — it is a view of one model, never carried across.
   useEffect(() => {
     setOpaque(false);
+    setBaseline(null);
   }, [walk.length, currentName, demo?.key]);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   // The browser-local model library (IndexedDB, fsAccess.ts's flag-free sibling):
@@ -800,8 +841,15 @@ function Workspace() {
       // No data attached → the declared amounts alone govern (run_rich, same
       // domain-named readout, comparisons empty by construction). With a CSV
       // the forcing path runs exactly as before.
-      const r = csv.trim() ? runForced(modelJson, csv, m, dtv, tv, today()) : runRich(modelJson, dtv, tv);
+      closeBench();
+      const b = csv.trim()
+        ? Bench.openForced(modelJson, csv, JSON.stringify(m), dtv, today())
+        : Bench.openUnforced(modelJson, dtv);
+      b.stepOver(tv);
+      benchRef.current = b;
+      const r = b.readout();
       setResult(r);
+      recordBench(b, r, "run", csv, m, dtv, tv);
       setRanEdited(edited);
       setMarkovRun(null);
       setRunError(null);
@@ -1951,6 +1999,53 @@ function Workspace() {
   );
   const facts = analysis.ok?.facts ?? null;
   const desc = analysis.ok?.description ?? null;
+
+  // #462 item 1: when the open model lands crossings on `interface
+  // unresolved` (Mobus stage 1), look for a stage-2 model of the same system
+  // — on the shelf or in the library — and ask the kernel whether it resolves
+  // it. Null when the model has no `unresolved`; the review panel shows the
+  // candidates, or that there are none yet.
+  const [stage2, setStage2] = useState<Stage2Report | null>(null);
+  const unresolvedId = facts?.unresolved_thing_id ?? null;
+  useEffect(() => {
+    if (!canvasModel || unresolvedId === null || unresolvedId === undefined) {
+      setStage2(null);
+      return;
+    }
+    const stage1 = canvasModel;
+    let stale = false;
+    (async () => {
+      const pool: PoolEntry[] = [];
+      // The merged shelf — runnable demos and structural examples alike —
+      // not DEMOS alone (first feel-test: the rain barrel is an example, and
+      // the region said "no model named Rain Barrel Garden" with it on the
+      // shelf).
+      for (const d of EXAMPLES) {
+        if (!d.sl) continue;
+        try {
+          const out = compileSl(d.sl);
+          if (!("errors" in out)) pool.push({ source: "shelf", label: d.title, model: out.ok });
+        } catch {
+          /* a shelf entry that does not compile is not a candidate */
+        }
+      }
+      try {
+        for (const r of await listModelRecords()) {
+          try {
+            pool.push({ source: "library", label: r.name, model: openModel(r.json) });
+          } catch {
+            /* an unreadable record is not a candidate */
+          }
+        }
+      } catch {
+        /* no library (private window, blocked storage): the shelf still answers */
+      }
+      if (!stale) setStage2(stage2Report(stage1, pool));
+    })();
+    return () => {
+      stale = true;
+    };
+  }, [canvasModel, unresolvedId]);
   const residue = analysis.ok?.residue ?? null;
   const analysisError = analysis.error;
 
@@ -2076,17 +2171,113 @@ function Workspace() {
     });
   }
 
+  // The kernel palette's label for each primitive's own knob ("gain", "sensor
+  // gain k", …), read once; the inputs rail's engine floor shows it. Absent
+  // before the kernel is up, in which case the row says "parameter".
+  const engineLabels = useMemo(() => {
+    try {
+      return Object.fromEntries(
+        sandboxPalette()
+          .filter((e) => e.param_spec)
+          .map((e) => [e.kind, e.param_spec![0]]),
+      ) as Record<string, string>;
+    } catch {
+      return undefined;
+    }
+  }, []);
+
+  // #343 (#463 move 3): a field-anchored param edits its component's own
+  // engine parameter in the document; commitInputModel turns the changed
+  // field into a session knob by its key.
+  function applyThingEdit(next: import("./kernel/types").Thing) {
+    if (!canvasModel) return;
+    commitInputModel({
+      ...canvasModel,
+      things: canvasModel.things.map((t) => (t.id === next.id ? next : t)),
+    });
+  }
+
   // The shared tail of every inputs-panel commit: the edited document becomes
   // the canvas model and the world re-runs from it synchronously.
   function commitInputModel(nextModel: CanvasModel) {
+    const prev = canvasModel;
     setCanvasModel(nextModel);
     setDirty(true);
-    if (runCsv && nextModel.lens !== "Klir") {
+    if (nextModel.lens === "Klir") return;
+    // #463 move 2: an amount edit is a knob on the held session, addressed by
+    // the names the author sees, then the run is re-stepped from zero so the
+    // readout answers at once (the live, mid-run form arrives with the
+    // transport). Anything the session cannot take — a column-bound flow, a
+    // structural edit, no session yet — rebuilds the run from the document.
+    const b = benchRef.current;
+    if (b && prev) {
       try {
-        runWith(JSON.stringify(project(nextModel)), runCsv, manifest, dt, t, true, true);
+        const nameOf = (id: number) => thingById(nextModel, id)?.name ?? "";
+        const changed = nextModel.relations.filter((r) => {
+          const was = prev.relations.find((p) => p.id === r.id);
+          return was !== undefined && was.amount !== r.amount;
+        });
+        // #343: engine parameters a component line declares, changed in
+        // place (release, capacity, time constant, setpoint, maintenance).
+        const FIELDS: import("./kernel/types").EngineField[] = [
+          "release_rate",
+          "capacity",
+          "time_constant",
+          "setpoint",
+          "maintenance",
+        ];
+        const fieldEdits: Array<{ name: string; field: import("./kernel").BenchComponentField; v: number }> = [];
+        for (const t of nextModel.things) {
+          const was = prev.things.find((p) => p.id === t.id);
+          if (!was) continue;
+          for (const f of FIELDS) {
+            const now = t.cognitive_params?.[f];
+            if (now !== undefined && now !== was.cognitive_params?.[f]) fieldEdits.push({ name: t.name, field: f, v: now });
+          }
+          // The floor: the primitive's own knob and the initial stock.
+          if (t.agency_capacity !== undefined && t.agency_capacity !== was.agency_capacity) {
+            fieldEdits.push({ name: t.name, field: "param", v: t.agency_capacity });
+          }
+          const st = t.initial_state?.["storage"];
+          if (typeof st === "number" && st !== was.initial_state?.["storage"]) {
+            fieldEdits.push({ name: t.name, field: "initial_storage", v: st });
+          }
+        }
+        const structural =
+          nextModel.relations.length !== prev.relations.length || nextModel.things.length !== prev.things.length;
+        if (!structural && changed.length + fieldEdits.length > 0) {
+          // Reset first, so the knob is logged at tick 0: the run re-steps
+          // from zero, and an edit stamped with the old run's last tick read
+          // as if it had taken effect at the end (feel-test 2026-10-09).
+          b.reset();
+          for (const r of changed) {
+            b.setFlowAmount(r.name, nameOf(r.a), nameOf(r.b), Number(r.amount ?? 0));
+          }
+          for (const e of fieldEdits) {
+            b.setComponentParam(e.name, e.field, e.v);
+          }
+          b.stepOver(t);
+          const r = b.readout();
+          setResult(r);
+          recordBench(b, r, "knob", runCsv ?? "", manifest, dt, t);
+          setRanEdited(true);
+          setMarkovRun(null);
+          setRunError(null);
+          // A knob answers in place: the scrubber stays at the end of the run
+          // and nothing starts playing (feel-test 2026-10-09: auto-play after
+          // every slider move was the annoyance, not the re-run).
+          setPlaying(false);
+          setTick(Math.max(0, r.ticks - 1));
+          return;
+        }
       } catch (e) {
-        setToast(e instanceof Error ? e.message : String(e));
+        setNotice(`knob not taken live (${e instanceof Error ? e.message : String(e)}); re-running from the document`);
       }
+    }
+    try {
+      runWith(JSON.stringify(project(nextModel)), runCsv ?? "", manifest, dt, t, true, true);
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -2103,9 +2294,9 @@ function Workspace() {
     if ((result === null && markovRun === null) || !canvasModel) return;
     if (canvasModel.lens === "Klir") {
       if (canvasModel.things.length > 0) runKlir(canvasModel, nextT);
-    } else if (runCsv) {
+    } else {
       const m = modelForRun();
-      if (m) runWith(m.json, runCsv, manifest, nextDt, nextT, m.edited);
+      if (m) runWith(m.json, runCsv ?? "", manifest, nextDt, nextT, m.edited);
     }
   }
 
@@ -2139,11 +2330,19 @@ function Workspace() {
     const compiled = compileSl(demo.sl);
     if ("errors" in compiled) return;
     const declared = new Map(compiled.ok.relations.map((r) => [r.id, r.amount]));
+    // #343: a component's declared engine parameters come back too.
+    const bags = new Map(compiled.ok.things.map((t) => [t.id, t]));
     commitInputModel({
       ...canvasModel,
       relations: canvasModel.relations.map((r) =>
         declared.has(r.id) ? { ...r, amount: declared.get(r.id) } : r,
       ),
+      things: canvasModel.things.map((t) => {
+        const d = bags.get(t.id);
+        return d
+          ? { ...t, cognitive_params: d.cognitive_params, agency_capacity: d.agency_capacity, initial_state: d.initial_state }
+          : t;
+      }),
     });
   }
 
@@ -2158,8 +2357,11 @@ function Workspace() {
     const subGenerative =
       canvasModel.klir_level === "Source" || canvasModel.klir_level === "Data";
     const dtmcRunnable = runKind === "dtmc" && canvasModel.things.length > 0 && !subGenerative;
+    // Move 1 of the dynamics MVP (#463): a conservation model runs from its
+    // declared amounts alone. Data, when bound, forces flows; it is no longer
+    // the condition for running at all.
     const runnable =
-      runKind === "dtmc" ? dtmcRunnable : runKind === "conservation" && !!runCsv;
+      runKind === "dtmc" ? dtmcRunnable : runKind === "conservation" && canvasModel.things.length > 0;
     const title =
       runKind === "dtmc"
         ? dtmcRunnable
@@ -2170,23 +2372,24 @@ function Workspace() {
         : runKind === "conservation"
           ? runCsv
             ? "Run the forced simulation"
-            : attachedCsv
-              ? "Bind at least one column in Data mode to drive the run."
-              : "Run needs data: a demo bundle, or a CSV attached and bound in Data mode."
+            : canvasModel.things.length > 0
+              ? attachedCsv
+                ? "Run from the declared amounts (bind a column in Data mode to force a flow)"
+                : "Run from the declared amounts"
+              : "Add at least one thing to run."
           : "No mechanism stated (⊘M), so structure alone gives Run nothing to execute.";
     const onRun = () => {
       // #345: no mode transition — the transport lives on the Model surface,
       // so the run happens where the author already is.
       if (runKind === "dtmc") {
         if (dtmcRunnable) runKlir(canvasModel, t, true);
-      } else if (runKind === "conservation" && runCsv) {
+      } else if (runKind === "conservation") {
         const m = modelForRun();
-        if (m) runWith(m.json, runCsv, manifest, dt, t, m.edited, true);
+        if (m) runWith(m.json, runCsv ?? "", manifest, dt, t, m.edited, true);
       }
     };
-    // #297: advance by one tick — a deterministic re-run one step longer,
-    // scrubber landed on the new final tick. The recorded-run architecture
-    // makes T+1 exact; no incremental engine state.
+    // #297: advance by one tick. On the held session (#463 move 2) Step is
+    // one engine tick, not a re-run; the scrubber lands on the new final tick.
     const onStep = () => {
       if (runKind === "dtmc") {
         if (!dtmcRunnable) return;
@@ -2196,12 +2399,23 @@ function Workspace() {
         setT(next);
         runKlir(canvasModel, next);
         setTick(next);
-      } else if (runKind === "conservation" && runCsv) {
+      } else if (runKind === "conservation") {
+        const b = benchRef.current;
+        if (b && result) {
+          b.step(1);
+          const r = b.readout();
+          setT(r.ticks * dt);
+          setResult(r);
+          recordBench(b, r, "step", runCsv ?? "", manifest, dt, r.ticks * dt);
+          setPlaying(false);
+          setTick(r.ticks - 1);
+          return;
+        }
         const m = modelForRun();
         if (!m) return;
         const nextT = result ? (result.ticks + 1) * dt : dt;
         setT(nextT);
-        runWith(m.json, runCsv, manifest, dt, nextT, m.edited);
+        runWith(m.json, runCsv ?? "", manifest, dt, nextT, m.edited);
         setTick(result ? result.ticks : 0);
       }
     };
@@ -2765,28 +2979,6 @@ function Workspace() {
           </button>
         ))}
       </div>
-      {workMode === "structure" && canvasModel?.lens === "Mobus" && !view3d && (
-        <div
-          className="flex items-center gap-0.5 p-0.5"
-          style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
-        >
-          <button
-            onClick={() => setOpaque((o) => !o)}
-            aria-pressed={opaque}
-            className="px-2 py-0.5 text-xs font-body transition-colors"
-            style={{
-              borderRadius: "var(--radius-pill)",
-              background: opaque ? "var(--lens-accent)" : "transparent",
-              color: opaque ? "var(--text-on-accent)" : "var(--text-secondary)",
-              transition: "var(--transition-base)",
-            }}
-            title="Opaque view — the model seen from outside: membrane, interfaces, crossings; interior hidden. Ctrl+Alt+O, or zoom out past the membrane."
-            data-testid="view-opaque-toggle"
-          >
-            Opaque
-          </button>
-        </div>
-      )}
       {view3dEnabled() && workMode === "structure" && (
         <div
           className="flex items-center gap-0.5 p-0.5"
@@ -3719,6 +3911,7 @@ function Workspace() {
                         tick={tick}
                         time={{ dt, t, klir: false, onCommit: applyTime }}
                         onInputEdit={applyInputEdit}
+                        onThingEdit={applyThingEdit}
                         onResetInputs={demo?.sl ? resetInputs : undefined}
                         onOpenReadouts={() => setReadoutsOpen(true)}
                       />
@@ -3726,6 +3919,15 @@ function Workspace() {
                   {readoutsOpen && workMode === "structure" && (
                     <Readouts
                       result={result}
+                      tickLog={tickLog}
+                      baseline={baseline}
+                      onKeepBaseline={result ? () => setBaseline(result) : undefined}
+                      onDropBaseline={() => setBaseline(null)}
+                      onExportRun={
+                        runRecord
+                          ? () => downloadText(runRecordFilename(runRecord), JSON.stringify(runRecord, null, 1), "application/json")
+                          : undefined
+                      }
                       markovRun={markovRun}
                       ranEdited={ranEdited}
                       runError={runError}
@@ -3741,6 +3943,8 @@ function Workspace() {
                         demo || (attachedCsv && manifest.mapping.length > 0) ? manifest : null
                       }
                       onInputEdit={applyInputEdit}
+                        onThingEdit={applyThingEdit}
+                        engineLabels={engineLabels}
                       onResetInputs={demo?.sl ? resetInputs : undefined}
                       time={{ dt, t, klir: canvasModel.lens === "Klir", onCommit: applyTime }}
                       runKind={LensPalette[canvasModel.lens].run}
@@ -3796,6 +4000,7 @@ function Workspace() {
                 setSelectedRelationId(t.relation);
               }}
               onHover={setLitTarget}
+              stage2={stage2}
               selection={{ thing: selectedThingId, relation: selectedRelationId }}
               onClearSelection={() => {
                 setSelectedThingId(null);
@@ -3816,6 +4021,7 @@ function Workspace() {
               issueTargets={issueTargets}
               analysisError={analysisError}
               hostError={decomposition.error}
+              stage2={stage2}
               canvasModel={canvasModel}
               tick={tick}
               reviewRequest={reviewRequest}
@@ -3872,6 +4078,15 @@ function Workspace() {
           onToggleFocus={() => setFocus((f) => !f)}
           grounding={groundingOverlay}
           onToggleGrounding={() => setGroundingOverlay((g) => !g)}
+          // #462 item 2: the opaque view is a reading of the open model (the
+          // zoom-out gesture is the feature; the pill is the state), so it
+          // sits beside Grounding, not beside 3D as a view.
+          opaque={opaque}
+          onToggleOpaque={
+            workMode === "structure" && canvasModel?.lens === "Mobus" && !view3d
+              ? () => setOpaque((o) => !o)
+              : undefined
+          }
           secondary={narrow ? { label: secondaryOf(mode), open: sheet } : undefined}
           onToggleSecondary={() => setSheet((s) => !s)}
           onVerdict={openRead}

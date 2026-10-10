@@ -1,0 +1,149 @@
+[
+  {
+    "tick": 1,
+    "nodes": [
+      {
+        "name": "Watershed",
+        "delivered": -0.0,
+        "released": 2.0,
+        "gradient_out": 0.0,
+        "maintenance": 0.0,
+        "overflow": 0.0,
+        "dissipated": -0.0,
+        "level": 2.0
+      },
+      {
+        "name": "Release",
+        "delivered": 1.5,
+        "released": 0.0,
+        "gradient_out": -0.0,
+        "maintenance": 0.0,
+        "overflow": 0.0,
+        "dissipated": 0.0,
+        "level": 1.5
+      },
+      {
+        "name": "Reservoir",
+        "delivered": 2.0,
+        "released": 1.5,
+        "gradient_out": 0.0,
+        "maintenance": 0.0,
+        "overflow": 0.0,
+        "dissipated": 0.0,
+        "level": 100.5
+      }
+    ],
+    "wires": [
+      {
+        "name": "Watershed → Reservoir",
+        "from": "Watershed",
+        "to": "Reservoir",
+        "delivered": 2.0
+      },
+      {
+        "name": "Reservoir → Release",
+        "from": "Reservoir",
+        "to": "Release",
+        "delivered": 1.5
+      }
+    ]
+  },
+  {
+    "tick": 2,
+    "nodes": [
+      {
+        "name": "Watershed",
+        "delivered": -0.0,
+        "released": 2.0,
+        "gradient_out": 0.0,
+        "maintenance": 0.0,
+        "overflow": 0.0,
+        "dissipated": -0.0,
+        "level": 2.0
+      },
+      {
+        "name": "Release",
+        "delivered": 1.5,
+        "released": 0.0,
+        "gradient_out": -0.0,
+        "maintenance": 0.0,
+        "overflow": 0.0,
+        "dissipated": 0.0,
+        "level": 1.5
+      },
+      {
+        "name": "Reservoir",
+        "delivered": 2.0,
+        "released": 1.5,
+        "gradient_out": 0.0,
+        "maintenance": 0.0,
+        "overflow": 0.0,
+        "dissipated": 0.0,
+        "level": 101.0
+      }
+    ],
+    "wires": [
+      {
+        "name": "Watershed → Reservoir",
+        "from": "Watershed",
+        "to": "Reservoir",
+        "delivered": 2.0
+      },
+      {
+        "name": "Reservoir → Release",
+        "from": "Reservoir",
+        "to": "Release",
+        "delivered": 1.5
+      }
+    ]
+  },
+  {
+    "tick": 3,
+    "nodes": [
+      {
+        "name": "Watershed",
+        "delivered": -0.0,
+        "released": 2.0,
+        "gradient_out": 0.0,
+        "maintenance": 0.0,
+        "overflow": 0.0,
+        "dissipated": -0.0,
+        "level": 2.0
+      },
+      {
+        "name": "Release",
+        "delivered": 1.5,
+        "released": 0.0,
+        "gradient_out": -0.0,
+        "maintenance": 0.0,
+        "overflow": 0.0,
+        "dissipated": 0.0,
+        "level": 1.5
+      },
+      {
+        "name": "Reservoir",
+        "delivered": 2.0,
+        "released": 1.5,
+        "gradient_out": 0.0,
+        "maintenance": 0.0,
+        "overflow": 0.0,
+        "dissipated": 0.0,
+        "level": 101.5
+      }
+    ],
+    "wires": [
+      {
+        "name": "Watershed → Reservoir",
+        "from": "Watershed",
+        "to": "Reservoir",
+        "delivered": 2.0
+      },
+      {
+        "name": "Reservoir → Release",
+        "from": "Reservoir",
+        "to": "Release",
+        "delivered": 1.5
+      }
+    ]
+  }
+]

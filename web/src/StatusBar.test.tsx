@@ -64,3 +64,20 @@ describe("#427 the secondary-pane toggle at narrow widths", () => {
     expect(wide).not.toContain('data-testid="secondary-toggle"');
   });
 });
+
+
+describe("StatusBar · opaque reading (#462 item 2)", () => {
+  it("offers the Opaque pill beside Grounding only when the host says the gesture applies", () => {
+    const noop = () => {};
+    const model = { name: "m", lens: "Mobus", things: [], relations: [] } as unknown as import("./kernel/types").CanvasModel;
+    const withPill = renderToStaticMarkup(
+      <StatusBar model={model} verdict={null} faults={0} previewing={false} focus={false} onToggleFocus={noop} onVerdict={noop} kernelLoaded opaque onToggleOpaque={noop} />,
+    );
+    expect(withPill).toContain('data-testid="view-opaque-toggle"');
+    expect(withPill).toContain('aria-pressed="true"');
+    const without = renderToStaticMarkup(
+      <StatusBar model={model} verdict={null} faults={0} previewing={false} focus={false} onToggleFocus={noop} onVerdict={noop} kernelLoaded />,
+    );
+    expect(without).not.toContain("view-opaque-toggle");
+  });
+});

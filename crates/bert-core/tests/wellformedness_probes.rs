@@ -120,6 +120,7 @@ fn sink(indices: Vec<i64>, name: &str) -> ExternalEntity {
         model: String::new(),
         is_same_as_id: None,
         authored_direction: true,
+        reservoir: None,
     }
 }
 

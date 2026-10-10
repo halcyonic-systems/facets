@@ -203,3 +203,62 @@ fn paramless_model_serializes_without_the_field() {
     .unwrap();
     assert!(!serde_json::to_string(&m).unwrap().contains("params"));
 }
+
+// ---- field form (#343, #463 move 3) -------------------------------------
+
+const BARREL: &str = "\
+system \"Garden\" : Concrete/Technical
+interface Gutter
+component Barrel primitive Buffering stock L initial 60 release 12 capacity 200
+component Valve primitive Inverting setpoint 3
+source Rain
+sink Bed
+flow Rain -> Gutter : matter \"rainfall\" substance water amount 15
+flow Gutter -> Barrel : matter \"run-off\" substance water
+flow Barrel -> Valve : matter \"watering\" substance water
+flow Valve -> Bed : matter \"drip\" substance water
+param \"drain\" : release of Barrel range 0..40
+param \"tank size\" : capacity of Barrel
+param \"target\" : setpoint of Valve range 1..5
+";
+
+/// Law: a field param anchors to the component by id and the field by key,
+/// keeps its range, and emits back as the line it was read from.
+#[test]
+fn a_field_param_names_a_component_lines_engine_parameter() {
+    use bert_canvas::canvas::EngineField;
+    let m = parse_sl(BARREL).unwrap();
+    let barrel = m.things.iter().find(|t| t.name == "Barrel").unwrap().id;
+    let valve = m.things.iter().find(|t| t.name == "Valve").unwrap().id;
+    let by = |n: &str| m.params.iter().find(|p| p.name == n).unwrap();
+    assert_eq!(by("drain").anchor, ParamAnchor::Field { thing: barrel, field: EngineField::Release });
+    assert_eq!(by("drain").range.map(|r| (r.min, r.max)), Some((Decimal::ZERO, Decimal::from(40))));
+    assert_eq!(by("tank size").anchor, ParamAnchor::Field { thing: barrel, field: EngineField::Capacity });
+    assert_eq!(by("tank size").range, None);
+    assert_eq!(by("target").anchor, ParamAnchor::Field { thing: valve, field: EngineField::Setpoint });
+    // The value is the component line's: nothing is stored on the param.
+    let b = m.things.iter().find(|t| t.id == barrel).unwrap();
+    assert_eq!(b.cognitive_params.get("release_rate"), Some(&12.0));
+
+    let text = emit_sl(&m).unwrap();
+    assert!(text.contains("param \"drain\" : release of Barrel range 0..40"), "{text}");
+    assert!(text.contains("param \"tank size\" : capacity of Barrel\n"), "{text}");
+    assert!(text.contains("param \"target\" : setpoint of Valve range 1..5"), "{text}");
+    let again = parse_sl(&text).unwrap();
+    assert_eq!(again.params, m.params);
+    // Projection is untouched by params (they add vocabulary, never dynamics).
+    assert!(project(&m).systems.len() == project(&again).systems.len());
+}
+
+/// Each refusal owes a fixture that earns it (SSF #35).
+#[test]
+fn field_param_faults_are_named() {
+    let base = BARREL.split("param ").next().unwrap().to_string();
+    let f = |line: &str| errs(&format!("{base}{line}\n"));
+    assert!(f("param \"x\" : release Barrel").contains("param syntax"), "no `of`");
+    assert!(f("param \"x\" : release of Rain").contains("environment thing"), "env");
+    assert!(f("param \"x\" : maintenance of Barrel").contains("declares no `maintenance`"), "missing field");
+    assert!(f("param \"x\" : release of Barrel range 20..40").contains("outside the param's range"), "range");
+    assert!(f("param \"x\" : time constant of Barrel").contains("declares no `time constant`"), "two-word field");
+    assert!(f("param \"x\" : release of Nobody").contains("not declared"), "unknown thing");
+}
