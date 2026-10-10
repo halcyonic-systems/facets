@@ -149,7 +149,8 @@ Without params, the run tab's Inputs card speaks the kernel's taxonomy
 ("drivers · absolute rates", "relative weights"). A `param` line names an
 adjustable quantity in **your model's own vocabulary**, and the panel renders
 it first — a bounded slider for a single amount, % shares for a fanout
-(both lines from `assets/examples/llm-market.sl`):
+(the first line from `assets/examples/llm-market.sl`, the second from its
+open-weight child, `assets/walkthroughs/llm-market/open-weight-serving.sl`):
 
 ```
 param "Routed workload" : flow "Routed demand" -> Router "routed workload" range 0..12000
@@ -169,7 +170,8 @@ sources in comments.
 A `metric` line is the same move on the way OUT (#203): where a param names
 an input knob, a metric names a readout you want every run to answer, in your
 words — and the run deck renders declared metrics **first**, above the
-kernel-fidelity furniture:
+kernel-fidelity furniture (both lines from the llm-market children in
+`assets/walkthroughs/llm-market/`, where the per-model roster lives):
 
 ```
 metric "DeepSeek share of routed open" : share of flow "Open-weight pool" -> DeepSeek "routed serving share"

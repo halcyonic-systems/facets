@@ -40,6 +40,37 @@ that differ in what a sensor can see. Every number in the source
 (`assets/examples/llm-market.sl`) carries a `grounding` line, and a finding
 quotes it.
 
+The model is two levels, and a run is per level:
+
+- **The shipped parent** (`assets/examples/llm-market.sl`) is drawn at pool
+  grain: the Router splits routed workload between frontier serving and
+  open-weight serving (35 : 54, the routed shares of the digest summed by
+  pool), Self-hosting carries the placeholder to open-weight serving only,
+  and each serving subsystem is one process. Its trace reads frontier
+  serving at 2359.55 Gtok/day (6000 × 35/89) and open-weight serving at
+  6640.45 (6000 × 54/89 + 3000), with every Gtok of compute dissipated and
+  the ledger balanced.
+- **The two children** (`assets/walkthroughs/llm-market/frontier-serving.sl`
+  and `open-weight-serving.sl`), referenced from the parent's `decomposes`
+  lines, carry the per-model roster behind a pool each, with the per-model
+  shares and groundings of the digest. Each child's workload source declares
+  the parent's realized flow (2359.55 and 3640.45, two decimals, with a
+  grounding that says so), so each child run on its own reproduces the
+  per-model numbers of the single-level model (Qwen 1598.6, Opus 606.7,
+  DeepSeek 1967.5 Gtok/day). `crates/bert-canvas/tests/llm_market.rs` holds
+  the agreement within 0.1% against `assets/archive/llm-market-flat.sl`, the
+  single-run witness; the residue is the two-decimal rounding of the
+  realized flows.
+- **How the levels agree, and how they can drift.** The engine runs one
+  model's own flows and never descends into a child, so a knob turned at the
+  parent (the Router's split, a workload) moves the parent's trace and
+  nothing below it until the realized flows are carried down by hand. The
+  same gate fails when they are not. Single-run substitution, where the
+  parent's realized flows would drive the children in one run, does not
+  exist yet. A prediction keyed to a per-model quantity therefore names the
+  child model's hash; one keyed to the frontier-against-open share names the
+  parent's.
+
 - **Routed interface — third-party.** The routed workload (≈6 Ttok/day) and
   every routed share come from the Dirac labs-market-share digest of
   OpenRouter rankings, June–July 2026; sources disagree on Anthropic's share

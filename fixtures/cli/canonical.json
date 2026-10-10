@@ -3471,152 +3471,89 @@
         "env_kind": "Source",
         "name": "Routed demand",
         "role": "Environment",
-        "x": 118.0,
-        "y": -307.0
+        "x": 289.0,
+        "y": -11.0
       },
       {
         "env_kind": "Source",
         "name": "Self-hosted demand",
         "role": "Environment",
-        "x": -200.0,
-        "y": 72.0
+        "x": 121.0,
+        "y": 189.0
       },
       {
         "env_kind": "Source",
         "name": "Frontier labs",
         "role": "Environment",
-        "x": -200.0,
-        "y": 568.0
+        "x": 121.0,
+        "y": 451.0
       },
       {
         "env_kind": "Source",
         "name": "Open-weight labs",
         "role": "Environment",
-        "x": 118.0,
-        "y": 947.0
+        "x": 289.0,
+        "y": 651.0
       },
       {
         "env_kind": "Sink",
         "name": "Customers",
         "role": "Environment",
-        "x": 1204.0,
+        "x": 863.0,
         "y": 320.0
       },
       {
         "env_kind": "Neutral",
         "name": "Router",
         "role": "Component",
-        "x": 271.0,
-        "y": -44.0
+        "x": 390.0,
+        "y": 164.0
       },
       {
         "env_kind": "Neutral",
         "name": "Self-hosting",
         "role": "Component",
-        "x": 87.0,
-        "y": 175.0
+        "x": 311.0,
+        "y": 258.0
       },
       {
         "env_kind": "Neutral",
         "name": "Frontier release",
         "role": "Component",
-        "x": 89.0,
-        "y": 460.0
+        "x": 311.0,
+        "y": 382.0
       },
       {
         "env_kind": "Neutral",
         "name": "Open-weight release",
         "role": "Component",
-        "x": 274.0,
-        "y": 675.0
+        "x": 390.0,
+        "y": 476.0
       },
       {
         "env_kind": "Neutral",
         "name": "Serving endpoint",
         "role": "Component",
-        "x": 898.0,
-        "y": 318.0
+        "x": 660.0,
+        "y": 320.0
       },
       {
         "env_kind": "Neutral",
-        "name": "Frontier pool",
+        "name": "Frontier serving",
         "role": "Component",
-        "x": 480.0,
-        "y": 72.0
+        "x": 558.0,
+        "y": 242.0
       },
       {
         "env_kind": "Neutral",
-        "name": "Open-weight pool",
+        "name": "Open-weight serving",
         "role": "Component",
-        "x": 254.0,
-        "y": 217.0
-      },
-      {
-        "env_kind": "Neutral",
-        "name": "Opus",
-        "role": "Component",
-        "x": 614.0,
-        "y": 111.0
-      },
-      {
-        "env_kind": "Neutral",
-        "name": "Fable",
-        "role": "Component",
-        "x": 706.0,
-        "y": 217.0
-      },
-      {
-        "env_kind": "Neutral",
-        "name": "GPT",
-        "role": "Component",
-        "x": 726.0,
-        "y": 355.0
-      },
-      {
-        "env_kind": "Neutral",
-        "name": "Gemini",
-        "role": "Component",
-        "x": 668.0,
-        "y": 483.0
-      },
-      {
-        "env_kind": "Neutral",
-        "name": "Gemma",
-        "role": "Component",
-        "x": 550.0,
-        "y": 558.0
-      },
-      {
-        "env_kind": "Neutral",
-        "name": "Llama",
-        "role": "Component",
-        "x": 410.0,
-        "y": 558.0
-      },
-      {
-        "env_kind": "Neutral",
-        "name": "Qwen",
-        "role": "Component",
-        "x": 292.0,
-        "y": 483.0
-      },
-      {
-        "env_kind": "Neutral",
-        "name": "DeepSeek",
-        "role": "Component",
-        "x": 234.0,
-        "y": 355.0
-      },
-      {
-        "env_kind": "Neutral",
-        "name": "Other open",
-        "role": "Component",
-        "x": 346.0,
-        "y": 111.0
+        "x": 402.0,
+        "y": 398.0
       }
     ],
     "pins": "Mobus",
-    "relations": 39,
+    "relations": 12,
     "run": {
       "answer": {
         "dt": 1.0,
@@ -3642,49 +3579,13 @@
             6000.0,
             0.0,
             0.0,
-            3000.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
             9000.0,
             0.0,
             0.0,
             2359.5505,
             0.0,
             0.0,
-            3640.4495,
-            0.0,
-            0.0,
-            606.7416,
-            0.0,
-            0.0,
-            404.49435,
-            0.0,
-            0.0,
-            606.7416,
-            0.0,
-            0.0,
-            741.57306,
-            0.0,
-            0.0,
-            245.94258,
-            0.0,
-            0.0,
-            368.91388,
-            0.0,
-            0.0,
-            1598.6267,
-            0.0,
-            0.0,
-            1967.5406,
-            0.0,
-            0.0,
-            2459.4258,
+            6640.449,
             0.0,
             0.0
           ],
@@ -3708,49 +3609,13 @@
             6000.0,
             0.0,
             0.0,
-            3000.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
             9000.0,
             0.0,
             0.0,
             2359.5505,
             0.0,
             0.0,
-            3640.4495,
-            0.0,
-            0.0,
-            606.7416,
-            0.0,
-            0.0,
-            404.49435,
-            0.0,
-            0.0,
-            606.7416,
-            0.0,
-            0.0,
-            741.57306,
-            0.0,
-            0.0,
-            245.94258,
-            0.0,
-            0.0,
-            368.91388,
-            0.0,
-            0.0,
-            1598.6267,
-            0.0,
-            0.0,
-            1967.5406,
-            0.0,
-            0.0,
-            2459.4258,
+            6640.449,
             0.0,
             0.0
           ],
@@ -3774,49 +3639,13 @@
             6000.0,
             0.0,
             0.0,
-            3000.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
             9000.0,
             0.0,
             0.0,
             2359.5505,
             0.0,
             0.0,
-            3640.4495,
-            0.0,
-            0.0,
-            606.7416,
-            0.0,
-            0.0,
-            404.49435,
-            0.0,
-            0.0,
-            606.7416,
-            0.0,
-            0.0,
-            741.57306,
-            0.0,
-            0.0,
-            245.94258,
-            0.0,
-            0.0,
-            368.91388,
-            0.0,
-            0.0,
-            1598.6267,
-            0.0,
-            0.0,
-            1967.5406,
-            0.0,
-            0.0,
-            2459.4258,
+            6640.449,
             0.0,
             0.0
           ],
@@ -3840,49 +3669,13 @@
             6000.0,
             0.0,
             0.0,
-            3000.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
             9000.0,
             0.0,
             0.0,
             2359.5505,
             0.0,
             0.0,
-            3640.4495,
-            0.0,
-            0.0,
-            606.7416,
-            0.0,
-            0.0,
-            404.49435,
-            0.0,
-            0.0,
-            606.7416,
-            0.0,
-            0.0,
-            741.57306,
-            0.0,
-            0.0,
-            245.94258,
-            0.0,
-            0.0,
-            368.91388,
-            0.0,
-            0.0,
-            1598.6267,
-            0.0,
-            0.0,
-            1967.5406,
-            0.0,
-            0.0,
-            2459.4258,
+            6640.449,
             0.0,
             0.0
           ]
@@ -3916,17 +3709,16 @@
       },
       "outcome": "runs"
     },
-    "things": 21,
+    "things": 12,
     "verdict_under": {
       "bunge": {
         "description": {
-          "bondage": 39,
+          "bondage": 12,
           "boundary_components": [
             "Router",
-            "Self-hosting",
-            "Frontier release",
-            "Open-weight release",
-            "Serving endpoint"
+            "Serving endpoint",
+            "Frontier serving",
+            "Open-weight serving"
           ],
           "composition": [
             "Router",
@@ -3934,55 +3726,19 @@
             "Frontier release",
             "Open-weight release",
             "Serving endpoint",
-            "Frontier pool",
-            "Open-weight pool",
-            "Opus",
-            "Fable",
-            "GPT",
-            "Gemini",
-            "Gemma",
-            "Llama",
-            "Qwen",
-            "DeepSeek",
-            "Other open"
+            "Frontier serving",
+            "Open-weight serving"
           ],
           "endo_bonds": [
-            "Frontier release — Opus",
-            "Fable — Frontier release",
-            "Frontier release — GPT",
-            "Frontier release — Gemini",
-            "Gemma — Open-weight release",
-            "Llama — Open-weight release",
-            "Open-weight release — Qwen",
-            "DeepSeek — Open-weight release",
-            "Open-weight release — Other open",
-            "Frontier pool — Router",
-            "Open-weight pool — Router",
-            "Frontier pool — Opus",
-            "Fable — Frontier pool",
-            "Frontier pool — GPT",
-            "Frontier pool — Gemini",
-            "Gemma — Open-weight pool",
-            "Llama — Open-weight pool",
-            "Open-weight pool — Qwen",
-            "DeepSeek — Open-weight pool",
-            "Open-weight pool — Other open",
-            "Gemma — Self-hosting",
-            "Llama — Self-hosting",
-            "Qwen — Self-hosting",
-            "DeepSeek — Self-hosting",
-            "Other open — Self-hosting",
-            "Opus — Serving endpoint",
-            "Fable — Serving endpoint",
-            "GPT — Serving endpoint",
-            "Gemini — Serving endpoint",
-            "Gemma — Serving endpoint",
-            "Llama — Serving endpoint",
-            "Qwen — Serving endpoint",
-            "DeepSeek — Serving endpoint",
-            "Other open — Serving endpoint"
+            "Frontier release — Frontier serving",
+            "Open-weight release — Open-weight serving",
+            "Frontier serving — Router",
+            "Open-weight serving — Router",
+            "Open-weight serving — Self-hosting",
+            "Frontier serving — Serving endpoint",
+            "Open-weight serving — Serving endpoint"
           ],
-          "endostructure": 34,
+          "endostructure": 7,
           "environment": [
             "Routed demand",
             "Self-hosted demand",
@@ -4019,10 +3775,9 @@
           },
           "boundary_thing_ids": [
             6,
-            7,
-            8,
-            9,
-            10
+            10,
+            11,
+            12
           ],
           "edges": [
             {
@@ -4030,7 +3785,7 @@
               "b": 6,
               "bond": true,
               "channel": "Input",
-              "id": 22,
+              "id": 13,
               "kind": "Energy",
               "locus": "Exo",
               "mobus_ok": true,
@@ -4041,7 +3796,7 @@
               "b": 7,
               "bond": true,
               "channel": "Input",
-              "id": 23,
+              "id": 14,
               "kind": "Energy",
               "locus": "Exo",
               "mobus_ok": true,
@@ -4052,7 +3807,7 @@
               "b": 8,
               "bond": true,
               "channel": "Input",
-              "id": 24,
+              "id": 15,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
@@ -4063,7 +3818,7 @@
               "b": 9,
               "bond": true,
               "channel": "Input",
-              "id": 25,
+              "id": 16,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
@@ -4071,43 +3826,10 @@
             },
             {
               "a": 8,
-              "b": 13,
+              "b": 11,
               "bond": true,
               "channel": "Internuncial",
-              "id": 26,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 8,
-              "b": 14,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 27,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 8,
-              "b": 15,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 28,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 8,
-              "b": 16,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 29,
+              "id": 17,
               "kind": "Informational",
               "locus": "Endo",
               "mobus_ok": true,
@@ -4115,54 +3837,10 @@
             },
             {
               "a": 9,
-              "b": 17,
+              "b": 12,
               "bond": true,
               "channel": "Internuncial",
-              "id": 30,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 9,
-              "b": 18,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 31,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 9,
-              "b": 19,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 32,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 9,
-              "b": 20,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 33,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 9,
-              "b": 21,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 34,
+              "id": 18,
               "kind": "Informational",
               "locus": "Endo",
               "mobus_ok": true,
@@ -4173,7 +3851,7 @@
               "b": 11,
               "bond": true,
               "channel": "Internuncial",
-              "id": 35,
+              "id": 19,
               "kind": "Energy",
               "locus": "Endo",
               "mobus_ok": true,
@@ -4184,7 +3862,18 @@
               "b": 12,
               "bond": true,
               "channel": "Internuncial",
-              "id": 36,
+              "id": 20,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 7,
+              "b": 12,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 21,
               "kind": "Energy",
               "locus": "Endo",
               "mobus_ok": true,
@@ -4192,252 +3881,21 @@
             },
             {
               "a": 11,
-              "b": 13,
+              "b": 10,
               "bond": true,
               "channel": "Internuncial",
-              "id": 37,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 11,
-              "b": 14,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 38,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 11,
-              "b": 15,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 39,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 11,
-              "b": 16,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 40,
-              "kind": "Energy",
+              "id": 22,
+              "kind": "Informational",
               "locus": "Endo",
               "mobus_ok": true,
               "self_loop": false
             },
             {
               "a": 12,
-              "b": 17,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 41,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 12,
-              "b": 18,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 42,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 12,
-              "b": 19,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 43,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 12,
-              "b": 20,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 44,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 12,
-              "b": 21,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 45,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 7,
-              "b": 17,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 46,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 7,
-              "b": 18,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 47,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 7,
-              "b": 19,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 48,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 7,
-              "b": 20,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 49,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 7,
-              "b": 21,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 50,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 13,
               "b": 10,
               "bond": true,
               "channel": "Internuncial",
-              "id": 51,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 14,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 52,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 15,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 53,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 16,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 54,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 17,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 55,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 18,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 56,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 19,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 57,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 20,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 58,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 21,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 59,
+              "id": 23,
               "kind": "Informational",
               "locus": "Endo",
               "mobus_ok": true,
@@ -4448,7 +3906,7 @@
               "b": 5,
               "bond": true,
               "channel": "Output",
-              "id": 60,
+              "id": 24,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
@@ -4470,7 +3928,7 @@
               "env": 1,
               "protocol": "routed workload",
               "relation_ids": [
-                22
+                13
               ]
             },
             {
@@ -4479,7 +3937,7 @@
               "env": 2,
               "protocol": "self-hosted workload",
               "relation_ids": [
-                23
+                14
               ]
             },
             {
@@ -4488,7 +3946,7 @@
               "env": 3,
               "protocol": "closed weights & API",
               "relation_ids": [
-                24
+                15
               ]
             },
             {
@@ -4497,7 +3955,7 @@
               "env": 4,
               "protocol": "open weights",
               "relation_ids": [
-                25
+                16
               ]
             },
             {
@@ -4506,7 +3964,7 @@
               "env": 5,
               "protocol": "tokens served",
               "relation_ids": [
-                60
+                24
               ]
             }
           ],
@@ -4516,7 +3974,7 @@
         "residue": {
           "hidden": [
             {
-              "count": 13,
+              "count": 3,
               "label": "process primitives"
             },
             {
@@ -4542,56 +4000,32 @@
             "Self-hosted demand — Self-hosting",
             "Frontier labs — Frontier release",
             "Open-weight labs — Open-weight release",
-            "Frontier release — Opus",
-            "Fable — Frontier release",
-            "Frontier release — GPT",
-            "Frontier release — Gemini",
-            "Gemma — Open-weight release",
-            "Llama — Open-weight release",
-            "Open-weight release — Qwen",
-            "DeepSeek — Open-weight release",
-            "Open-weight release — Other open",
-            "Frontier pool — Router",
-            "Open-weight pool — Router",
-            "Frontier pool — Opus",
-            "Fable — Frontier pool",
-            "Frontier pool — GPT",
-            "Frontier pool — Gemini",
-            "Gemma — Open-weight pool",
-            "Llama — Open-weight pool",
-            "Open-weight pool — Qwen",
-            "DeepSeek — Open-weight pool",
-            "Open-weight pool — Other open",
-            "Gemma — Self-hosting",
-            "Llama — Self-hosting",
-            "Qwen — Self-hosting",
-            "DeepSeek — Self-hosting",
-            "Other open — Self-hosting",
-            "Opus — Serving endpoint",
-            "Fable — Serving endpoint",
-            "GPT — Serving endpoint",
-            "Gemini — Serving endpoint",
-            "Gemma — Serving endpoint",
-            "Llama — Serving endpoint",
-            "Qwen — Serving endpoint",
-            "DeepSeek — Serving endpoint",
-            "Other open — Serving endpoint",
+            "Frontier release — Frontier serving",
+            "Open-weight release — Open-weight serving",
+            "Frontier serving — Router",
+            "Open-weight serving — Router",
+            "Open-weight serving — Self-hosting",
+            "Frontier serving — Serving endpoint",
+            "Open-weight serving — Serving endpoint",
             "Customers — Serving endpoint"
           ],
           "directed": 0,
           "ladder": {
-            "claim": "a structure system over source systems — couplings named among the distinguished things, each r ⊆ T×T",
-            "decomposed": [],
-            "position": "SE",
-            "to_climb": "sideways: decompose an element into its own (T, R) for S²E · upward: D needs observed states over a named support — not authorable here; arrives with the compose seam"
+            "claim": "structure applied twice — coupled elements that are themselves structured systems",
+            "decomposed": [
+              "Frontier serving",
+              "Open-weight serving"
+            ],
+            "position": "S²E",
+            "to_climb": "upward: D needs observed states over a named support, G a behavior function over them — neither is authorable here; both arrive with the compose seam"
           },
           "lens": "Klir",
           "level": "Structure",
-          "neutral": 39,
+          "neutral": 12,
           "note": "a system is what is distinguished as a system by the investigator; the distinction frame is the observer's act, not a boundary",
           "question": "what does the data commit me to? — the behavior function answers, and deliberately refuses to say what is behind it",
-          "relations": 39,
-          "things": 21
+          "relations": 12,
+          "things": 12
         },
         "facts": {
           "aggregate": false,
@@ -4608,10 +4042,9 @@
           },
           "boundary_thing_ids": [
             6,
-            7,
-            8,
-            9,
-            10
+            10,
+            11,
+            12
           ],
           "edges": [
             {
@@ -4619,7 +4052,7 @@
               "b": 6,
               "bond": true,
               "channel": "Input",
-              "id": 22,
+              "id": 13,
               "kind": "Energy",
               "locus": "Exo",
               "mobus_ok": true,
@@ -4630,7 +4063,7 @@
               "b": 7,
               "bond": true,
               "channel": "Input",
-              "id": 23,
+              "id": 14,
               "kind": "Energy",
               "locus": "Exo",
               "mobus_ok": true,
@@ -4641,7 +4074,7 @@
               "b": 8,
               "bond": true,
               "channel": "Input",
-              "id": 24,
+              "id": 15,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
@@ -4652,7 +4085,7 @@
               "b": 9,
               "bond": true,
               "channel": "Input",
-              "id": 25,
+              "id": 16,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
@@ -4660,43 +4093,10 @@
             },
             {
               "a": 8,
-              "b": 13,
+              "b": 11,
               "bond": true,
               "channel": "Internuncial",
-              "id": 26,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 8,
-              "b": 14,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 27,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 8,
-              "b": 15,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 28,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 8,
-              "b": 16,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 29,
+              "id": 17,
               "kind": "Informational",
               "locus": "Endo",
               "mobus_ok": true,
@@ -4704,54 +4104,10 @@
             },
             {
               "a": 9,
-              "b": 17,
+              "b": 12,
               "bond": true,
               "channel": "Internuncial",
-              "id": 30,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 9,
-              "b": 18,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 31,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 9,
-              "b": 19,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 32,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 9,
-              "b": 20,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 33,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 9,
-              "b": 21,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 34,
+              "id": 18,
               "kind": "Informational",
               "locus": "Endo",
               "mobus_ok": true,
@@ -4762,7 +4118,7 @@
               "b": 11,
               "bond": true,
               "channel": "Internuncial",
-              "id": 35,
+              "id": 19,
               "kind": "Energy",
               "locus": "Endo",
               "mobus_ok": true,
@@ -4773,7 +4129,18 @@
               "b": 12,
               "bond": true,
               "channel": "Internuncial",
-              "id": 36,
+              "id": 20,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 7,
+              "b": 12,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 21,
               "kind": "Energy",
               "locus": "Endo",
               "mobus_ok": true,
@@ -4781,252 +4148,21 @@
             },
             {
               "a": 11,
-              "b": 13,
+              "b": 10,
               "bond": true,
               "channel": "Internuncial",
-              "id": 37,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 11,
-              "b": 14,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 38,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 11,
-              "b": 15,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 39,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 11,
-              "b": 16,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 40,
-              "kind": "Energy",
+              "id": 22,
+              "kind": "Informational",
               "locus": "Endo",
               "mobus_ok": true,
               "self_loop": false
             },
             {
               "a": 12,
-              "b": 17,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 41,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 12,
-              "b": 18,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 42,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 12,
-              "b": 19,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 43,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 12,
-              "b": 20,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 44,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 12,
-              "b": 21,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 45,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 7,
-              "b": 17,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 46,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 7,
-              "b": 18,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 47,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 7,
-              "b": 19,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 48,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 7,
-              "b": 20,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 49,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 7,
-              "b": 21,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 50,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 13,
               "b": 10,
               "bond": true,
               "channel": "Internuncial",
-              "id": 51,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 14,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 52,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 15,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 53,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 16,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 54,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 17,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 55,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 18,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 56,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 19,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 57,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 20,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 58,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 21,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 59,
+              "id": 23,
               "kind": "Informational",
               "locus": "Endo",
               "mobus_ok": true,
@@ -5037,7 +4173,7 @@
               "b": 5,
               "bond": true,
               "channel": "Output",
-              "id": 60,
+              "id": 24,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
@@ -5059,7 +4195,7 @@
               "env": 1,
               "protocol": "routed workload",
               "relation_ids": [
-                22
+                13
               ]
             },
             {
@@ -5068,7 +4204,7 @@
               "env": 2,
               "protocol": "self-hosted workload",
               "relation_ids": [
-                23
+                14
               ]
             },
             {
@@ -5077,7 +4213,7 @@
               "env": 3,
               "protocol": "closed weights & API",
               "relation_ids": [
-                24
+                15
               ]
             },
             {
@@ -5086,7 +4222,7 @@
               "env": 4,
               "protocol": "open weights",
               "relation_ids": [
-                25
+                16
               ]
             },
             {
@@ -5095,7 +4231,7 @@
               "env": 5,
               "protocol": "tokens served",
               "relation_ids": [
-                60
+                24
               ]
             }
           ],
@@ -5109,15 +4245,15 @@
               "label": "environment roles"
             },
             {
-              "count": 39,
+              "count": 12,
               "label": "connection kinds"
             },
             {
-              "count": 13,
+              "count": 3,
               "label": "process primitives"
             },
             {
-              "count": 5,
+              "count": 7,
               "label": "interfaces"
             }
           ],
@@ -5142,17 +4278,8 @@
             "Frontier release",
             "Open-weight release",
             "Serving endpoint",
-            "Frontier pool",
-            "Open-weight pool",
-            "Opus",
-            "Fable",
-            "GPT",
-            "Gemini",
-            "Gemma",
-            "Llama",
-            "Qwen",
-            "DeepSeek",
-            "Other open"
+            "Frontier serving",
+            "Open-weight serving"
           ],
           "dt_note": "Δt: time scale — a parametric field on the system",
           "e_objects": [
@@ -5166,7 +4293,7 @@
           "h_note": "H: history (accumulated state conditioning T) — NOT hierarchy",
           "lens": "Mobus",
           "milieu_note": "μ (milieu) is parametric/opaque — the one element with no cross-lens preimage (milieuOnly_bunge_empty)",
-          "n": 34,
+          "n": 7,
           "perceptive_fuzziness": 0.0,
           "porosity": 0.0,
           "question": "how is the mechanism built, and what happens when it runs?",
@@ -5188,10 +4315,9 @@
           },
           "boundary_thing_ids": [
             6,
-            7,
-            8,
-            9,
-            10
+            10,
+            11,
+            12
           ],
           "edges": [
             {
@@ -5199,7 +4325,7 @@
               "b": 6,
               "bond": true,
               "channel": "Input",
-              "id": 22,
+              "id": 13,
               "kind": "Energy",
               "locus": "Exo",
               "mobus_ok": true,
@@ -5210,7 +4336,7 @@
               "b": 7,
               "bond": true,
               "channel": "Input",
-              "id": 23,
+              "id": 14,
               "kind": "Energy",
               "locus": "Exo",
               "mobus_ok": true,
@@ -5221,7 +4347,7 @@
               "b": 8,
               "bond": true,
               "channel": "Input",
-              "id": 24,
+              "id": 15,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
@@ -5232,7 +4358,7 @@
               "b": 9,
               "bond": true,
               "channel": "Input",
-              "id": 25,
+              "id": 16,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
@@ -5240,43 +4366,10 @@
             },
             {
               "a": 8,
-              "b": 13,
+              "b": 11,
               "bond": true,
               "channel": "Internuncial",
-              "id": 26,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 8,
-              "b": 14,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 27,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 8,
-              "b": 15,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 28,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 8,
-              "b": 16,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 29,
+              "id": 17,
               "kind": "Informational",
               "locus": "Endo",
               "mobus_ok": true,
@@ -5284,54 +4377,10 @@
             },
             {
               "a": 9,
-              "b": 17,
+              "b": 12,
               "bond": true,
               "channel": "Internuncial",
-              "id": 30,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 9,
-              "b": 18,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 31,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 9,
-              "b": 19,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 32,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 9,
-              "b": 20,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 33,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 9,
-              "b": 21,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 34,
+              "id": 18,
               "kind": "Informational",
               "locus": "Endo",
               "mobus_ok": true,
@@ -5342,7 +4391,7 @@
               "b": 11,
               "bond": true,
               "channel": "Internuncial",
-              "id": 35,
+              "id": 19,
               "kind": "Energy",
               "locus": "Endo",
               "mobus_ok": true,
@@ -5353,7 +4402,18 @@
               "b": 12,
               "bond": true,
               "channel": "Internuncial",
-              "id": 36,
+              "id": 20,
+              "kind": "Energy",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 7,
+              "b": 12,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 21,
               "kind": "Energy",
               "locus": "Endo",
               "mobus_ok": true,
@@ -5361,252 +4421,21 @@
             },
             {
               "a": 11,
-              "b": 13,
+              "b": 10,
               "bond": true,
               "channel": "Internuncial",
-              "id": 37,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 11,
-              "b": 14,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 38,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 11,
-              "b": 15,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 39,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 11,
-              "b": 16,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 40,
-              "kind": "Energy",
+              "id": 22,
+              "kind": "Informational",
               "locus": "Endo",
               "mobus_ok": true,
               "self_loop": false
             },
             {
               "a": 12,
-              "b": 17,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 41,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 12,
-              "b": 18,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 42,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 12,
-              "b": 19,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 43,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 12,
-              "b": 20,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 44,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 12,
-              "b": 21,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 45,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 7,
-              "b": 17,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 46,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 7,
-              "b": 18,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 47,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 7,
-              "b": 19,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 48,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 7,
-              "b": 20,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 49,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 7,
-              "b": 21,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 50,
-              "kind": "Energy",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 13,
               "b": 10,
               "bond": true,
               "channel": "Internuncial",
-              "id": 51,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 14,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 52,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 15,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 53,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 16,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 54,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 17,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 55,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 18,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 56,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 19,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 57,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 20,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 58,
-              "kind": "Informational",
-              "locus": "Endo",
-              "mobus_ok": true,
-              "self_loop": false
-            },
-            {
-              "a": 21,
-              "b": 10,
-              "bond": true,
-              "channel": "Internuncial",
-              "id": 59,
+              "id": 23,
               "kind": "Informational",
               "locus": "Endo",
               "mobus_ok": true,
@@ -5617,7 +4446,7 @@
               "b": 5,
               "bond": true,
               "channel": "Output",
-              "id": 60,
+              "id": 24,
               "kind": "Informational",
               "locus": "Exo",
               "mobus_ok": true,
@@ -5639,7 +4468,7 @@
               "env": 1,
               "protocol": "routed workload",
               "relation_ids": [
-                22
+                13
               ]
             },
             {
@@ -5648,7 +4477,7 @@
               "env": 2,
               "protocol": "self-hosted workload",
               "relation_ids": [
-                23
+                14
               ]
             },
             {
@@ -5657,7 +4486,7 @@
               "env": 3,
               "protocol": "closed weights & API",
               "relation_ids": [
-                24
+                15
               ]
             },
             {
@@ -5666,7 +4495,7 @@
               "env": 4,
               "protocol": "open weights",
               "relation_ids": [
-                25
+                16
               ]
             },
             {
@@ -5675,7 +4504,7 @@
               "env": 5,
               "protocol": "tokens served",
               "relation_ids": [
-                60
+                24
               ]
             }
           ],
