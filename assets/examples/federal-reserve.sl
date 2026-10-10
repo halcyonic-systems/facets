@@ -11,9 +11,18 @@
 # window, currency, and the Treasury's own account are aggregated away
 # or deferred — each is a named fork below, not a silent omission.
 
+# Numbers (2026-10-10, #472): USD millions per day (the file's unit), rounded from the Fed's
+# own 2026 statements (H.4.1 and the quarterly financials), each with its
+# source. They size the flows a reader can check; the stock is the balance
+# sheet, releasing the two sized outflows a day (490 = 360 + 130) and
+# nothing on the unsized ones. Securities bought and sold, collateral, reserves lent and currency
+# issued carry no number: in 2026 those are episodic or net near zero, and a
+# daily figure would be a claim the sources do not make.
 system "Federal Reserve" : Concrete/Social
 
 domain "Central banking — the balance sheet as the instrument of monetary policy"
+
+time unit day
 
 # Coupled subsystems, no authored rule — and note the contrast with the
 # corpus steel-plant: THIS entry opens its box, so it stands a level up
@@ -34,7 +43,7 @@ component "Open Market Desk" primitive Modulating
 
 # The stock. Assets accumulate on one side, and the reserves and
 # remittances they generate leave from the other.
-component "Balance Sheet" primitive Buffering
+component "Balance Sheet" primitive Buffering stock "USD millions" initial 6700000 release 490
 
 # The pass-ways. The desk and the balance sheet are residents; what
 # crosses the membrane lands on these first (Mobus ch. 4: an interface
@@ -123,12 +132,14 @@ flow "Dealer Window" -> "Open Market Desk" : matter "reserves extinguished" subs
 # What holding the reserves earns the banks — the rate the Fed
 # administers directly.
 flow "Balance Sheet" -> "Reserve Accounts" : matter "interest on reserves" substance interest
-flow "Reserve Accounts" -> "Banking System" : matter "interest on reserves" substance interest
+flow "Reserve Accounts" -> "Banking System" : matter "interest on reserves" substance interest amount 360 unit "USD millions"
+    grounding asserted "$33.2bn paid in Q2 2026 ≈ $360m/day; IORB 3.65% (Fed Q2 2026 financials via FT Portfolios, 2026-09-03)"
 
 # What the portfolio earns, net of expenses, goes back to the fisc.
-flow "Balance Sheet" -> "Treasury Account" : matter "remittances" unit "USD millions"
+flow "Balance Sheet" -> "Treasury Account" : matter "remittances"
     description "Net income returned — what the portfolio earns, net of expenses, goes back to the fisc."
-flow "Treasury Account" -> "U.S. Treasury" : matter "remittances" unit "USD millions"
+flow "Treasury Account" -> "U.S. Treasury" : matter "remittances" amount 130 unit "USD millions"
+    grounding asserted "$12.2bn remitted in Q2 2026 ≈ $130m/day, with a $235.5bn deferred asset still outstanding (Fed Q2 2026 financials via FT Portfolios, 2026-09-03)"
 
 # The window: a standing channel, structurally present even when
 # dormant — the channel is structure, its activation rate is dynamics.
@@ -213,5 +224,7 @@ flow "Treasury Account" -> "Balance Sheet" : matter "TGA deposits" unit "USD mil
 # (`policy-channels.sl`, U.S. Federal Economic Policy, which held this system
 # as one modulating component beside Congress) was retired from the shelf on
 # 2026-09-04 so the shelf carries one Fed, this one.
+
+param "interest on reserves" : flow "Reserve Accounts" -> "Banking System" "interest on reserves" range 0..1000
 
 @lens mobus

@@ -6,9 +6,15 @@
 # (take in information) and two judge (decide/evaluate); together they
 # regulate the flow of energy and information between psyche and world.
 
+# Numbers (2026-10-10, #472): a toy. Jung gives no magnitudes; the stack
+# is drawn with one unit of libido a day entering and the functions
+# claiming it in a 4:3:2:1 descent, which is the hierarchy as a shape and
+# nothing more. The grounding says so on every number.
 system "Jungian Cognitive Function Stack" : Conceptual/Social
 
 domain "Jung's model of dominant/auxiliary/tertiary/inferior functions regulating psychic energy exchange with the outer world"
+
+time unit day
 
 level Structure
 
@@ -63,8 +69,9 @@ component Inferior primitive Impeding
 
 # Psychic energy is conserved as it cascades down the hierarchy: the
 # dominant takes its share first, passing the residue onward.
-flow "Libido Reservoir" -> "Libido Uptake" : energy "psychic energy investment" substance libido
+flow "Libido Reservoir" -> "Libido Uptake" : energy "psychic energy investment" substance libido amount 1 unit "libido/day"
     description "Undifferentiated psychic energy passing from the reservoir into the uptake pass-way."
+    grounding asserted "toy: one unit a day; Jung states no magnitude"
 flow "Libido Uptake" -> Dominant : energy "psychic energy investment" substance libido
     description "The full energy investment handed from the uptake to the dominant, which claims its share first."
 flow Dominant -> Auxiliary : energy "residual energy" substance libido
@@ -95,5 +102,7 @@ flow Inferior -> "Eruption Outlet" : informational "inferior eruption" substance
     description "The primitive, undifferentiated output the inferior hands to the eruption outlet under stress."
 flow "Eruption Outlet" -> "Outer World" : informational "inferior eruption" substance information
     description "The eruption passing out into the world, unaltered by the outlet."
+
+param "libido" : flow "Libido Reservoir" -> "Libido Uptake" "psychic energy investment" range 0..4
 
 @lens mobus
