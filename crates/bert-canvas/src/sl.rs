@@ -3177,19 +3177,24 @@ fn auto_layout(model: &mut CanvasModel, positions: &HashMap<String, (f32, f32)>)
                         })
                         .fold((0.0f32, 0.0f32), |(sx, sy), o| {
                             let (dx, dy) = (pts[o].0 - cx, pts[o].1 - cy);
-                            let len = dx.hypot(dy);
+                            let len = (dx * dx + dy * dy).sqrt();
                             if len < 1.0 { (sx, sy) } else { (sx + dx / len, sy + dy / len) }
                         })
                 };
+                let norm = |(x, y): (f32, f32)| (x * x + y * y).sqrt();
                 let (sx, sy) = match bearing(true) {
-                    (sx, sy) if sx.hypot(sy) > 1e-3 => (sx, sy),
+                    v if norm(v) > 1e-3 => v,
                     _ => match bearing(false) {
-                        (sx, sy) if sx.hypot(sy) > 1e-3 => (sx, sy),
+                        v if norm(v) > 1e-3 => v,
                         _ => (0.0, -1.0),
                     },
                 };
-                let theta = (sy / ry).atan2(sx / rx);
-                pts[p] = (cx + rx * theta.cos(), cy + ry * theta.sin());
+                // The face's `ringPoint` in sqrt-only arithmetic (no atan2,
+                // sin or cos), so the same model lays out bit-identically on
+                // every platform the goldens are minted and checked on.
+                let (ux, uy) = (sx / rx, sy / ry);
+                let len = norm((ux, uy));
+                pts[p] = (cx + rx * (ux / len), cy + ry * (uy / len));
             }
         }
     };

@@ -87,8 +87,8 @@
     {
       "id": 10,
       "name": "User-Port-In",
-      "x": 230.53566,
-      "y": 388.30432,
+      "x": 230.53568,
+      "y": 388.30435,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
@@ -96,8 +96,8 @@
     {
       "id": 11,
       "name": "User-Port-Out",
-      "x": 230.53566,
-      "y": 388.30432,
+      "x": 230.53568,
+      "y": 388.30435,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
