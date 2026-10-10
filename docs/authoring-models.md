@@ -148,11 +148,12 @@ The web gallery picks all of this up by glob; no registration code.
 Without params, the run tab's Inputs card speaks the kernel's taxonomy
 ("drivers · absolute rates", "relative weights"). A `param` line names an
 adjustable quantity in **your model's own vocabulary**, and the panel renders
-it first — a bounded slider for a single amount, % shares for a fanout:
+it first — a bounded slider for a single amount, % shares for a fanout
+(both lines from `assets/examples/llm-market.sl`):
 
 ```
-param "Developer demand" : flow "Developer workload" -> "Developer clearing" range 0..12000
-param shares "Developer market share" : from "Developer clearing"
+param "Routed workload" : flow "Routed demand" -> Router "routed workload" range 0..12000
+param shares "Open-weight models, routed" : from "Open-weight pool"
 ```
 
 The boundary to keep straight: **a param is presentation over a declared
@@ -171,7 +172,7 @@ words — and the run deck renders declared metrics **first**, above the
 kernel-fidelity furniture:
 
 ```
-metric "DeepSeek dev share" : share of flow "Developer clearing" -> DeepSeek
+metric "DeepSeek share of routed open" : share of flow "Open-weight pool" -> DeepSeek "routed serving share"
 metric "Opus tokens served" : sum into Opus
 ```
 

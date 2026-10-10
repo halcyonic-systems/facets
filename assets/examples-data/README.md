@@ -21,3 +21,5 @@ Columns, and how to map them onto a small hand-authored LLM-market model
 Import it via **Import data (CSV)**, assign each column, declare units on the two
 flow magnitudes (e.g. `Mtok/mo`), finish, then Run in the Mobus lens and read the
 Simulated-vs-Actual overlay.
+
+The shipped `llm-market` model now takes its workload through two flows, "routed workload" and "self-hosted workload"; the columns above map onto the small hand-authored model this file describes, not onto it (its own bundle is `../demos/llm-market.json`).

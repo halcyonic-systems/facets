@@ -13,14 +13,18 @@
         "info": {
           "id": "Src-1.0",
           "level": -1,
-          "name": "Developer workload",
-          "description": "The developer demand channel: the inference compute that API and developer users mobilize."
+          "name": "Routed demand",
+          "description": "Customers who reach models through a router: the inference compute their requests mobilize.",
+          "grounding": {
+            "grade": "third-party",
+            "reference": "OpenRouter rankings via the Dirac labs-market-share digest, June–July 2026: ≈6 Ttok/day routed"
+          }
         },
         "type": "Source",
         "transform": {
           "translation": [
-            161.85992,
-            -231.03491
+            118.05292,
+            -306.9109
           ],
           "rotation": 0.0
         },
@@ -33,14 +37,18 @@
         "info": {
           "id": "Src-1.1",
           "level": -1,
-          "name": "Enterprise workload",
-          "description": "The enterprise demand channel: the inference compute that enterprise users mobilize."
+          "name": "Self-hosted demand",
+          "description": "Customers who run open weights on their own hardware: the inference compute they spend themselves.",
+          "grounding": {
+            "grade": "unknown",
+            "reference": "no public sensor counts self-hosted serving; the amount below is a placeholder to be replaced by a measured series"
+          }
         },
         "type": "Source",
         "transform": {
           "translation": [
-            30.082,
-            -129.91815
+            -200.2381,
+            72.41339
           ],
           "rotation": 0.0
         },
@@ -53,14 +61,14 @@
         "info": {
           "id": "Src-1.2",
           "level": -1,
-          "name": "Anthropic",
-          "description": "The lab that releases Opus and Fable."
+          "name": "Frontier labs",
+          "description": "Anthropic, OpenAI and Google as research arms: they release closed weights behind an API."
         },
         "type": "Source",
         "transform": {
           "translation": [
-            -71.03479,
-            1.8597412
+            -200.2381,
+            567.5865
           ],
           "rotation": 0.0
         },
@@ -73,114 +81,14 @@
         "info": {
           "id": "Src-1.3",
           "level": -1,
-          "name": "OpenAI",
-          "description": "The lab that releases GPT."
+          "name": "Open-weight labs",
+          "description": "Meta, Alibaba, DeepSeek, Google (Gemma) and the open-weight field as research arms: they release weights that copy freely."
         },
         "type": "Source",
         "transform": {
           "translation": [
-            -134.59955,
-            155.31853
-          ],
-          "rotation": 0.0
-        },
-        "equivalence": "",
-        "model": "",
-        "is_same_as_id": null,
-        "authored_direction": true
-      },
-      {
-        "info": {
-          "id": "Src-1.4",
-          "level": -1,
-          "name": "Google",
-          "description": "The lab that releases Gemini and Gemma."
-        },
-        "type": "Source",
-        "transform": {
-          "translation": [
-            -156.28027,
-            319.99994
-          ],
-          "rotation": 0.0
-        },
-        "equivalence": "",
-        "model": "",
-        "is_same_as_id": null,
-        "authored_direction": true
-      },
-      {
-        "info": {
-          "id": "Src-1.5",
-          "level": -1,
-          "name": "Meta",
-          "description": "The lab that releases Llama."
-        },
-        "type": "Source",
-        "transform": {
-          "translation": [
-            -134.59955,
-            484.6814
-          ],
-          "rotation": 0.0
-        },
-        "equivalence": "",
-        "model": "",
-        "is_same_as_id": null,
-        "authored_direction": true
-      },
-      {
-        "info": {
-          "id": "Src-1.6",
-          "level": -1,
-          "name": "Alibaba",
-          "description": "The lab that releases Qwen."
-        },
-        "type": "Source",
-        "transform": {
-          "translation": [
-            -71.03485,
-            638.14014
-          ],
-          "rotation": 0.0
-        },
-        "equivalence": "",
-        "model": "",
-        "is_same_as_id": null,
-        "authored_direction": true
-      },
-      {
-        "info": {
-          "id": "Src-1.7",
-          "level": -1,
-          "name": "DeepSeek (lab)",
-          "description": "The lab that releases DeepSeek."
-        },
-        "type": "Source",
-        "transform": {
-          "translation": [
-            30.08191,
-            769.9181
-          ],
-          "rotation": 0.0
-        },
-        "equivalence": "",
-        "model": "",
-        "is_same_as_id": null,
-        "authored_direction": true
-      },
-      {
-        "info": {
-          "id": "Src-1.8",
-          "level": -1,
-          "name": "Open-weight field",
-          "description": "The rest of the open-weight field, which releases models other than the named ones."
-        },
-        "type": "Source",
-        "transform": {
-          "translation": [
-            161.85983,
-            871.03485
+            118.052826,
+            946.9108
           ],
           "rotation": 0.0
         },
@@ -193,15 +101,15 @@
     "sinks": [
       {
         "info": {
-          "id": "Snk-1.9",
+          "id": "Snk-1.4",
           "level": -1,
-          "name": "Applications served",
-          "description": "Where served tokens land: the applications that receive what the models serve."
+          "name": "Customers",
+          "description": "Where served tokens land, routed and self-hosted alike."
         },
         "type": "Sink",
         "transform": {
           "translation": [
-            1116.2803,
+            1203.8943,
             320.0
           ],
           "rotation": 0.0
@@ -218,7 +126,7 @@
       "info": {
         "id": "S0",
         "level": 0,
-        "name": "LLM Market",
+        "name": "LLM Serving Market",
         "description": ""
       },
       "sources": [],
@@ -239,10 +147,10 @@
             "info": {
               "id": "I0.0",
               "level": 0,
-              "name": "Developer clearing",
-              "description": "Splits the developer workload across the models by declared shares."
+              "name": "Router",
+              "description": "The routed interface: splits the routed workload between frontier and open-weight serving by the shares a router reports."
             },
-            "protocol": "dev inference compute",
+            "protocol": "routed workload",
             "type": "Import",
             "exports_to": [],
             "receives_from": [
@@ -254,10 +162,10 @@
             "info": {
               "id": "I0.1",
               "level": 0,
-              "name": "Enterprise clearing",
-              "description": "Splits the enterprise workload across the models by declared shares."
+              "name": "Self-hosting",
+              "description": "The self-hosted interface: splits self-hosted workload across open-weight models only. Closed weights cannot be self-hosted."
             },
-            "protocol": "enterprise inference compute",
+            "protocol": "self-hosted workload",
             "type": "Import",
             "exports_to": [],
             "receives_from": [
@@ -269,10 +177,10 @@
             "info": {
               "id": "I0.2",
               "level": 0,
-              "name": "Anthropic release channel",
-              "description": "Where Anthropic's weights and API access enter the market."
+              "name": "Frontier release",
+              "description": "Where closed weights and API access enter serving."
             },
-            "protocol": "released weights & API",
+            "protocol": "closed weights & API",
             "type": "Import",
             "exports_to": [],
             "receives_from": [
@@ -284,40 +192,10 @@
             "info": {
               "id": "I0.3",
               "level": 0,
-              "name": "Google release channel",
-              "description": "Where Google's weights and API access enter the market."
+              "name": "Open-weight release",
+              "description": "Where open weights enter serving."
             },
-            "protocol": "released weights & API",
-            "type": "Import",
-            "exports_to": [],
-            "receives_from": [
-              "Src-1.4"
-            ],
-            "angle": null
-          },
-          {
-            "info": {
-              "id": "I0.4",
-              "level": 0,
-              "name": "Serving endpoint",
-              "description": "The one endpoint where every model's tokens leave for the applications."
-            },
-            "protocol": "tokens served",
-            "type": "Export",
-            "exports_to": [
-              "Snk-1.9"
-            ],
-            "receives_from": [],
-            "angle": null
-          },
-          {
-            "info": {
-              "id": "I0.5",
-              "level": 0,
-              "name": "OpenAI release channel",
-              "description": "Where OpenAI's weights and API access enter the market."
-            },
-            "protocol": "released weights & API",
+            "protocol": "open weights",
             "type": "Import",
             "exports_to": [],
             "receives_from": [
@@ -327,62 +205,17 @@
           },
           {
             "info": {
-              "id": "I0.6",
+              "id": "I0.4",
               "level": 0,
-              "name": "Meta release channel",
-              "description": "Where Meta's weights and API access enter the market."
+              "name": "Serving endpoint",
+              "description": "Where every model's tokens leave for the customers. One pass-way: the routed and self-hosted split is read on the demand side, where the sensors are."
             },
-            "protocol": "released weights & API",
-            "type": "Import",
-            "exports_to": [],
-            "receives_from": [
-              "Src-1.5"
+            "protocol": "tokens served",
+            "type": "Export",
+            "exports_to": [
+              "Snk-1.4"
             ],
-            "angle": null
-          },
-          {
-            "info": {
-              "id": "I0.7",
-              "level": 0,
-              "name": "Alibaba release channel",
-              "description": "Where Alibaba's weights and API access enter the market."
-            },
-            "protocol": "released weights & API",
-            "type": "Import",
-            "exports_to": [],
-            "receives_from": [
-              "Src-1.6"
-            ],
-            "angle": null
-          },
-          {
-            "info": {
-              "id": "I0.8",
-              "level": 0,
-              "name": "DeepSeek (lab) release channel",
-              "description": "Where DeepSeek (lab)'s weights and API access enter the market."
-            },
-            "protocol": "released weights & API",
-            "type": "Import",
-            "exports_to": [],
-            "receives_from": [
-              "Src-1.7"
-            ],
-            "angle": null
-          },
-          {
-            "info": {
-              "id": "I0.9",
-              "level": 0,
-              "name": "Open-weight field release channel",
-              "description": "Where Open-weight field's weights and API access enter the market."
-            },
-            "protocol": "released weights & API",
-            "type": "Import",
-            "exports_to": [],
-            "receives_from": [
-              "Src-1.8"
-            ],
+            "receives_from": [],
             "angle": null
           }
         ],
@@ -400,8 +233,12 @@
       "info": {
         "id": "C0.0",
         "level": 1,
-        "name": "Developer clearing",
-        "description": "Splits the developer workload across the models by declared shares."
+        "name": "Router",
+        "description": "The routed interface: splits the routed workload between frontier and open-weight serving by the shares a router reports.",
+        "grounding": {
+          "grade": "third-party",
+          "reference": "open-weight ≈60% of routed volume (Dirac digest of OpenRouter rankings, June–July 2026)"
+        }
       },
       "sources": [],
       "sinks": [],
@@ -422,8 +259,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          302.61206,
-          10.024628
+          271.16922,
+          -43.83441
         ],
         "rotation": 0.0
       },
@@ -443,8 +280,12 @@
       "info": {
         "id": "C0.1",
         "level": 1,
-        "name": "Enterprise clearing",
-        "description": "Splits the enterprise workload across the models by declared shares."
+        "name": "Self-hosting",
+        "description": "The self-hosted interface: splits self-hosted workload across open-weight models only. Closed weights cannot be self-hosted.",
+        "grounding": {
+          "grade": "asserted",
+          "reference": "split assumed to follow the routed open-weight split until a sensor says otherwise"
+        }
       },
       "sources": [],
       "sinks": [],
@@ -465,8 +306,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          228.7524,
-          66.027176
+          86.8472,
+          174.7802
         ],
         "rotation": 0.0
       },
@@ -486,8 +327,8 @@
       "info": {
         "id": "C0.2",
         "level": 1,
-        "name": "Opus",
-        "description": "A served model: it takes released weights and allocated compute in and serves tokens out."
+        "name": "Frontier release",
+        "description": "Where closed weights and API access enter serving."
       },
       "sources": [],
       "sinks": [],
@@ -503,13 +344,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": null
+        "parent_interface": "I0.2"
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          480.0,
-          115.333694
+          88.74036,
+          460.2691
         ],
         "rotation": 0.0
       },
@@ -521,16 +362,16 @@
       "archetype": "Agent",
       "agent": {
         "kind": "Reactive",
-        "agency_capacity": 0.5,
-        "primitive": "Amplifying"
+        "agency_capacity": 1.0,
+        "primitive": "Impeding"
       }
     },
     {
       "info": {
         "id": "C0.3",
         "level": 1,
-        "name": "Fable",
-        "description": "A served model: it takes released weights and allocated compute in and serves tokens out."
+        "name": "Open-weight release",
+        "description": "Where open weights enter serving."
       },
       "sources": [],
       "sinks": [],
@@ -546,13 +387,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": null
+        "parent_interface": "I0.3"
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          348.44305,
-          163.21649
+          273.67908,
+          675.1946
         ],
         "rotation": 0.0
       },
@@ -564,16 +405,16 @@
       "archetype": "Agent",
       "agent": {
         "kind": "Reactive",
-        "agency_capacity": 0.5,
-        "primitive": "Amplifying"
+        "agency_capacity": 1.0,
+        "primitive": "Impeding"
       }
     },
     {
       "info": {
         "id": "C0.4",
         "level": 1,
-        "name": "GPT",
-        "description": "A served model: it takes released weights and allocated compute in and serves tokens out."
+        "name": "Serving endpoint",
+        "description": "Where every model's tokens leave for the customers. One pass-way: the routed and self-hosted split is read on the demand side, where the sensors are."
       },
       "sources": [],
       "sinks": [],
@@ -589,13 +430,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.5"
+        "parent_interface": "I0.4"
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          611.557,
-          163.21652
+          897.79236,
+          317.8721
         ],
         "rotation": 0.0
       },
@@ -607,16 +448,16 @@
       "archetype": "Agent",
       "agent": {
         "kind": "Reactive",
-        "agency_capacity": 0.5,
-        "primitive": "Amplifying"
+        "agency_capacity": 1.0,
+        "primitive": "Impeding"
       }
     },
     {
       "info": {
         "id": "C0.5",
         "level": 1,
-        "name": "Gemini",
-        "description": "A served model: it takes released weights and allocated compute in and serves tokens out."
+        "name": "Frontier pool",
+        "description": "Frontier serving: divides routed frontier workload across the frontier models by their routed shares."
       },
       "sources": [],
       "sinks": [],
@@ -637,8 +478,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          681.55695,
-          284.46008
+          480.0,
+          71.537445
         ],
         "rotation": 0.0
       },
@@ -651,15 +492,15 @@
       "agent": {
         "kind": "Reactive",
         "agency_capacity": 0.5,
-        "primitive": "Amplifying"
+        "primitive": "Splitting"
       }
     },
     {
       "info": {
         "id": "C0.6",
         "level": 1,
-        "name": "Gemma",
-        "description": "A served model: it takes released weights and allocated compute in and serves tokens out."
+        "name": "Open-weight pool",
+        "description": "Open-weight serving: divides routed open-weight workload across the open models by their routed shares."
       },
       "sources": [],
       "sinks": [],
@@ -680,8 +521,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          278.44305,
-          284.46002
+          253.99051,
+          216.78494
         ],
         "rotation": 0.0
       },
@@ -694,15 +535,15 @@
       "agent": {
         "kind": "Reactive",
         "agency_capacity": 0.5,
-        "primitive": "Amplifying"
+        "primitive": "Splitting"
       }
     },
     {
       "info": {
         "id": "C0.7",
         "level": 1,
-        "name": "Llama",
-        "description": "A served model: it takes released weights and allocated compute in and serves tokens out."
+        "name": "Opus",
+        "description": "A served model: released weights and allocated compute in, tokens out."
       },
       "sources": [],
       "sinks": [],
@@ -718,13 +559,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.6"
+        "parent_interface": null
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          302.75378,
-          422.33316
+          614.329,
+          110.979996
         ],
         "rotation": 0.0
       },
@@ -744,8 +585,8 @@
       "info": {
         "id": "C0.8",
         "level": 1,
-        "name": "Qwen",
-        "description": "A served model: it takes released weights and allocated compute in and serves tokens out."
+        "name": "Fable",
+        "description": "A served model: released weights and allocated compute in, tokens out."
       },
       "sources": [],
       "sinks": [],
@@ -761,13 +602,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.7"
+        "parent_interface": null
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          409.99997,
-          512.3234
+          706.0095,
+          216.78493
         ],
         "rotation": 0.0
       },
@@ -787,8 +628,8 @@
       "info": {
         "id": "C0.9",
         "level": 1,
-        "name": "DeepSeek",
-        "description": "A served model: it takes released weights and allocated compute in and serves tokens out."
+        "name": "GPT",
+        "description": "A served model: released weights and allocated compute in, tokens out."
       },
       "sources": [],
       "sinks": [],
@@ -804,13 +645,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.8"
+        "parent_interface": null
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          550.0,
-          512.3234
+          725.9336,
+          355.35992
         ],
         "rotation": 0.0
       },
@@ -830,8 +671,8 @@
       "info": {
         "id": "C0.10",
         "level": 1,
-        "name": "Other open",
-        "description": "An aggregate served model standing for the open-weight field beyond the named models."
+        "name": "Gemini",
+        "description": "A served model: released weights and allocated compute in, tokens out."
       },
       "sources": [],
       "sinks": [],
@@ -847,13 +688,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.9"
+        "parent_interface": null
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          657.2462,
-          422.33316
+          667.77545,
+          482.70837
         ],
         "rotation": 0.0
       },
@@ -873,8 +714,8 @@
       "info": {
         "id": "C0.11",
         "level": 1,
-        "name": "Anthropic release channel",
-        "description": "Where Anthropic's weights and API access enter the market."
+        "name": "Gemma",
+        "description": "A served model: open weights and allocated compute in, tokens out."
       },
       "sources": [],
       "sinks": [],
@@ -890,13 +731,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.2"
+        "parent_interface": null
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          171.96252,
-          139.43288
+          549.99994,
+          558.3981
         ],
         "rotation": 0.0
       },
@@ -908,16 +749,16 @@
       "archetype": "Agent",
       "agent": {
         "kind": "Reactive",
-        "agency_capacity": 1.0,
-        "primitive": "Impeding"
+        "agency_capacity": 0.5,
+        "primitive": "Amplifying"
       }
     },
     {
       "info": {
         "id": "C0.12",
         "level": 1,
-        "name": "Google release channel",
-        "description": "Where Google's weights and API access enter the market."
+        "name": "Llama",
+        "description": "A served model: open weights and allocated compute in, tokens out."
       },
       "sources": [],
       "sinks": [],
@@ -933,13 +774,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.3"
+        "parent_interface": null
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          124.972565,
-          317.27203
+          409.99997,
+          558.3981
         ],
         "rotation": 0.0
       },
@@ -951,16 +792,16 @@
       "archetype": "Agent",
       "agent": {
         "kind": "Reactive",
-        "agency_capacity": 1.0,
-        "primitive": "Impeding"
+        "agency_capacity": 0.5,
+        "primitive": "Amplifying"
       }
     },
     {
       "info": {
         "id": "C0.13",
         "level": 1,
-        "name": "Serving endpoint",
-        "description": "The one endpoint where every model's tokens leave for the applications."
+        "name": "Qwen",
+        "description": "A served model: open weights and allocated compute in, tokens out."
       },
       "sources": [],
       "sinks": [],
@@ -976,13 +817,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.4"
+        "parent_interface": null
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          835.02747,
-          317.27206
+          292.2245,
+          482.7083
         ],
         "rotation": 0.0
       },
@@ -994,8 +835,94 @@
       "archetype": "Agent",
       "agent": {
         "kind": "Reactive",
-        "agency_capacity": 1.0,
-        "primitive": "Impeding"
+        "agency_capacity": 0.5,
+        "primitive": "Amplifying"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.14",
+        "level": 1,
+        "name": "DeepSeek",
+        "description": "A served model: open weights and allocated compute in, tokens out."
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.14",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": null
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          234.06644,
+          355.35986
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Amplifying"
+      }
+    },
+    {
+      "info": {
+        "id": "C0.15",
+        "level": 1,
+        "name": "Other open",
+        "description": "The open-weight field beyond the named models, served as one aggregate."
+      },
+      "sources": [],
+      "sinks": [],
+      "parent": "S0",
+      "complexity": "Atomic",
+      "boundary": {
+        "info": {
+          "id": "B0.15",
+          "level": 1,
+          "name": "",
+          "description": ""
+        },
+        "porosity": 0.0,
+        "perceptive_fuzziness": 0.0,
+        "interfaces": [],
+        "parent_interface": null
+      },
+      "radius": 34.0,
+      "transform": {
+        "translation": [
+          345.67102,
+          110.979965
+        ],
+        "rotation": 0.0
+      },
+      "equivalence": "",
+      "history": "",
+      "transformation": "",
+      "member_autonomy": 1.0,
+      "time_constant": "",
+      "archetype": "Agent",
+      "agent": {
+        "kind": "Reactive",
+        "agency_capacity": 0.5,
+        "primitive": "Amplifying"
       }
     }
   ],
@@ -1004,8 +931,12 @@
       "info": {
         "id": "F0",
         "level": 0,
-        "name": "dev inference compute",
-        "description": "The developer workload entering its clearing as inference compute."
+        "name": "routed workload",
+        "description": "The routed workload entering the router as inference compute.",
+        "grounding": {
+          "grade": "third-party",
+          "reference": "≈6 Ttok/day (OpenRouter via Dirac, June–July 2026)"
+        }
       },
       "substance": {
         "sub_type": "compute",
@@ -1025,8 +956,12 @@
       "info": {
         "id": "F1",
         "level": 0,
-        "name": "enterprise inference compute",
-        "description": "The enterprise workload entering its clearing as inference compute."
+        "name": "self-hosted workload",
+        "description": "The self-hosted workload entering the self-hosted interface as inference compute.",
+        "grounding": {
+          "grade": "unknown",
+          "reference": "placeholder, a round half of the routed figure; no sensor; replace before any finding quotes it"
+        }
       },
       "substance": {
         "sub_type": "compute",
@@ -1038,7 +973,7 @@
       "source_interface": null,
       "sink": "C0.1",
       "sink_interface": "I0.1",
-      "amount": "2000",
+      "amount": "3000",
       "unit": "Gtok/day",
       "parameters": []
     },
@@ -1046,8 +981,8 @@
       "info": {
         "id": "F2",
         "level": 0,
-        "name": "released weights & API",
-        "description": "Anthropic's released weights and API access passing into its release channel."
+        "name": "closed weights & API",
+        "description": "Closed weights and API access passing into serving."
       },
       "substance": {
         "sub_type": "weights",
@@ -1057,7 +992,7 @@
       "usability": "Resource",
       "source": "Src-1.2",
       "source_interface": null,
-      "sink": "C0.11",
+      "sink": "C0.2",
       "sink_interface": "I0.2",
       "amount": "1",
       "unit": "",
@@ -1068,8 +1003,8 @@
       "info": {
         "id": "F3",
         "level": 0,
-        "name": "released weights & API",
-        "description": "Weights and API access passing from the channel into Opus."
+        "name": "open weights",
+        "description": "Open weights passing into serving."
       },
       "substance": {
         "sub_type": "weights",
@@ -1077,10 +1012,10 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.11",
+      "source": "Src-1.3",
       "source_interface": null,
-      "sink": "C0.2",
-      "sink_interface": null,
+      "sink": "C0.3",
+      "sink_interface": "I0.3",
       "amount": "1",
       "unit": "",
       "ample": true,
@@ -1090,8 +1025,8 @@
       "info": {
         "id": "F4",
         "level": 0,
-        "name": "released weights & API",
-        "description": "Weights and API access passing from the channel into Fable."
+        "name": "closed weights & API",
+        "description": "API access into Opus."
       },
       "substance": {
         "sub_type": "weights",
@@ -1099,9 +1034,9 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.11",
+      "source": "C0.2",
       "source_interface": null,
-      "sink": "C0.3",
+      "sink": "C0.7",
       "sink_interface": null,
       "amount": "1",
       "unit": "",
@@ -1112,8 +1047,8 @@
       "info": {
         "id": "F5",
         "level": 0,
-        "name": "released weights & API",
-        "description": "OpenAI's released weights and API access passing into its release channel."
+        "name": "closed weights & API",
+        "description": "API access into Fable."
       },
       "substance": {
         "sub_type": "weights",
@@ -1121,10 +1056,32 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "Src-1.3",
+      "source": "C0.2",
       "source_interface": null,
-      "sink": "C0.4",
-      "sink_interface": "I0.5",
+      "sink": "C0.8",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "ample": true,
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F6",
+        "level": 0,
+        "name": "closed weights & API",
+        "description": "API access into GPT."
+      },
+      "substance": {
+        "sub_type": "weights",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.2",
+      "source_interface": null,
+      "sink": "C0.9",
+      "sink_interface": null,
       "amount": "1",
       "unit": "",
       "ample": true,
@@ -1134,8 +1091,8 @@
       "info": {
         "id": "F7",
         "level": 0,
-        "name": "released weights & API",
-        "description": "Google's released weights and API access passing into its release channel."
+        "name": "closed weights & API",
+        "description": "API access into Gemini."
       },
       "substance": {
         "sub_type": "weights",
@@ -1143,10 +1100,10 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "Src-1.4",
+      "source": "C0.2",
       "source_interface": null,
-      "sink": "C0.12",
-      "sink_interface": "I0.3",
+      "sink": "C0.10",
+      "sink_interface": null,
       "amount": "1",
       "unit": "",
       "ample": true,
@@ -1156,8 +1113,8 @@
       "info": {
         "id": "F8",
         "level": 0,
-        "name": "released weights & API",
-        "description": "Weights and API access passing from the channel into Gemini."
+        "name": "open weights",
+        "description": "Open weights into Gemma."
       },
       "substance": {
         "sub_type": "weights",
@@ -1165,9 +1122,9 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.12",
+      "source": "C0.3",
       "source_interface": null,
-      "sink": "C0.5",
+      "sink": "C0.11",
       "sink_interface": null,
       "amount": "1",
       "unit": "",
@@ -1178,8 +1135,8 @@
       "info": {
         "id": "F9",
         "level": 0,
-        "name": "released weights & API",
-        "description": "Weights and API access passing from the channel into Gemma."
+        "name": "open weights",
+        "description": "Open weights into Llama."
       },
       "substance": {
         "sub_type": "weights",
@@ -1187,9 +1144,9 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.12",
+      "source": "C0.3",
       "source_interface": null,
-      "sink": "C0.6",
+      "sink": "C0.12",
       "sink_interface": null,
       "amount": "1",
       "unit": "",
@@ -1200,8 +1157,8 @@
       "info": {
         "id": "F10",
         "level": 0,
-        "name": "released weights & API",
-        "description": "Meta's released weights and API access passing into its release channel."
+        "name": "open weights",
+        "description": "Open weights into Qwen."
       },
       "substance": {
         "sub_type": "weights",
@@ -1209,10 +1166,32 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "Src-1.5",
+      "source": "C0.3",
       "source_interface": null,
-      "sink": "C0.7",
-      "sink_interface": "I0.6",
+      "sink": "C0.13",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "",
+      "ample": true,
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F11",
+        "level": 0,
+        "name": "open weights",
+        "description": "Open weights into DeepSeek."
+      },
+      "substance": {
+        "sub_type": "weights",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.3",
+      "source_interface": null,
+      "sink": "C0.14",
+      "sink_interface": null,
       "amount": "1",
       "unit": "",
       "ample": true,
@@ -1222,8 +1201,8 @@
       "info": {
         "id": "F12",
         "level": 0,
-        "name": "released weights & API",
-        "description": "Alibaba's released weights and API access passing into its release channel."
+        "name": "open weights",
+        "description": "Open weights into the rest of the field."
       },
       "substance": {
         "sub_type": "weights",
@@ -1231,10 +1210,10 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "Src-1.6",
+      "source": "C0.3",
       "source_interface": null,
-      "sink": "C0.8",
-      "sink_interface": "I0.7",
+      "sink": "C0.15",
+      "sink_interface": null,
       "amount": "1",
       "unit": "",
       "ample": true,
@@ -1242,54 +1221,14 @@
     },
     {
       "info": {
-        "id": "F14",
+        "id": "F13",
         "level": 0,
-        "name": "released weights & API",
-        "description": "DeepSeek (lab)'s released weights and API access passing into its release channel."
-      },
-      "substance": {
-        "sub_type": "weights",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "Src-1.7",
-      "source_interface": null,
-      "sink": "C0.9",
-      "sink_interface": "I0.8",
-      "amount": "1",
-      "unit": "",
-      "ample": true,
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F16",
-        "level": 0,
-        "name": "released weights & API",
-        "description": "Open-weight field's released weights and API access passing into its release channel."
-      },
-      "substance": {
-        "sub_type": "weights",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "Src-1.8",
-      "source_interface": null,
-      "sink": "C0.10",
-      "sink_interface": "I0.9",
-      "amount": "1",
-      "unit": "",
-      "ample": true,
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F18",
-        "level": 0,
-        "name": "dev serving share",
-        "description": "The share of the developer workload the clearing allocates to Opus."
+        "name": "routed frontier workload",
+        "description": "The routed workload the router sends to frontier serving.",
+        "grounding": {
+          "grade": "third-party",
+          "reference": "Dirac digest of OpenRouter rankings, June–July 2026, summed over the frontier roster"
+        }
       },
       "substance": {
         "sub_type": "compute",
@@ -1299,7 +1238,57 @@
       "usability": "Resource",
       "source": "C0.0",
       "source_interface": null,
-      "sink": "C0.2",
+      "sink": "C0.5",
+      "sink_interface": null,
+      "amount": "35",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F14",
+        "level": 0,
+        "name": "routed open-weight workload",
+        "description": "The routed workload the router sends to open-weight serving.",
+        "grounding": {
+          "grade": "third-party",
+          "reference": "Dirac digest of OpenRouter rankings, June–July 2026, summed over the open roster"
+        }
+      },
+      "substance": {
+        "sub_type": "compute",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.0",
+      "source_interface": null,
+      "sink": "C0.6",
+      "sink_interface": null,
+      "amount": "54",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F15",
+        "level": 0,
+        "name": "routed serving share",
+        "description": "Opus's share of routed frontier workload.",
+        "grounding": {
+          "grade": "third-party",
+          "reference": "stockalarm and tech-insider digests of OpenRouter, June–July 2026; Anthropic 12–24%, midpoint"
+        }
+      },
+      "substance": {
+        "sub_type": "compute",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.5",
+      "source_interface": null,
+      "sink": "C0.7",
       "sink_interface": null,
       "amount": "9",
       "unit": "Gtok/day",
@@ -1307,10 +1296,14 @@
     },
     {
       "info": {
-        "id": "F19",
+        "id": "F16",
         "level": 0,
-        "name": "dev serving share",
-        "description": "The share of the developer workload the clearing allocates to Fable."
+        "name": "routed serving share",
+        "description": "Fable's share of routed frontier workload.",
+        "grounding": {
+          "grade": "third-party",
+          "reference": "same digests; in-lab split estimated"
+        }
       },
       "substance": {
         "sub_type": "compute",
@@ -1318,9 +1311,9 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.0",
+      "source": "C0.5",
       "source_interface": null,
-      "sink": "C0.3",
+      "sink": "C0.8",
       "sink_interface": null,
       "amount": "6",
       "unit": "Gtok/day",
@@ -1328,10 +1321,14 @@
     },
     {
       "info": {
-        "id": "F20",
+        "id": "F17",
         "level": 0,
-        "name": "dev serving share",
-        "description": "The share of the developer workload the clearing allocates to GPT."
+        "name": "routed serving share",
+        "description": "GPT's share of routed frontier workload.",
+        "grounding": {
+          "grade": "third-party",
+          "reference": "same digests"
+        }
       },
       "substance": {
         "sub_type": "compute",
@@ -1339,9 +1336,9 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.0",
+      "source": "C0.5",
       "source_interface": null,
-      "sink": "C0.4",
+      "sink": "C0.9",
       "sink_interface": null,
       "amount": "9",
       "unit": "Gtok/day",
@@ -1349,10 +1346,14 @@
     },
     {
       "info": {
-        "id": "F21",
+        "id": "F18",
         "level": 0,
-        "name": "dev serving share",
-        "description": "The share of the developer workload the clearing allocates to Gemini."
+        "name": "routed serving share",
+        "description": "Gemini's share of routed frontier workload.",
+        "grounding": {
+          "grade": "third-party",
+          "reference": "same digests"
+        }
       },
       "substance": {
         "sub_type": "compute",
@@ -1360,9 +1361,9 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.0",
+      "source": "C0.5",
       "source_interface": null,
-      "sink": "C0.5",
+      "sink": "C0.10",
       "sink_interface": null,
       "amount": "11",
       "unit": "Gtok/day",
@@ -1370,10 +1371,14 @@
     },
     {
       "info": {
-        "id": "F22",
+        "id": "F19",
         "level": 0,
-        "name": "dev serving share",
-        "description": "The share of the developer workload the clearing allocates to Gemma."
+        "name": "routed serving share",
+        "description": "Gemma's share of routed open-weight workload.",
+        "grounding": {
+          "grade": "third-party",
+          "reference": "Dirac digest of OpenRouter rankings, June–July 2026"
+        }
       },
       "substance": {
         "sub_type": "compute",
@@ -1381,9 +1386,9 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.0",
+      "source": "C0.6",
       "source_interface": null,
-      "sink": "C0.6",
+      "sink": "C0.11",
       "sink_interface": null,
       "amount": "2",
       "unit": "Gtok/day",
@@ -1391,10 +1396,14 @@
     },
     {
       "info": {
-        "id": "F23",
+        "id": "F20",
         "level": 0,
-        "name": "dev serving share",
-        "description": "The share of the developer workload the clearing allocates to Llama."
+        "name": "routed serving share",
+        "description": "Llama's share of routed open-weight workload.",
+        "grounding": {
+          "grade": "third-party",
+          "reference": "same digest"
+        }
       },
       "substance": {
         "sub_type": "compute",
@@ -1402,9 +1411,9 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.0",
+      "source": "C0.6",
       "source_interface": null,
-      "sink": "C0.7",
+      "sink": "C0.12",
       "sink_interface": null,
       "amount": "3",
       "unit": "Gtok/day",
@@ -1412,10 +1421,14 @@
     },
     {
       "info": {
-        "id": "F24",
+        "id": "F21",
         "level": 0,
-        "name": "dev serving share",
-        "description": "The share of the developer workload the clearing allocates to Qwen."
+        "name": "routed serving share",
+        "description": "Qwen's share of routed open-weight workload.",
+        "grounding": {
+          "grade": "third-party",
+          "reference": "same digest"
+        }
       },
       "substance": {
         "sub_type": "compute",
@@ -1423,9 +1436,9 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.0",
+      "source": "C0.6",
       "source_interface": null,
-      "sink": "C0.8",
+      "sink": "C0.13",
       "sink_interface": null,
       "amount": "13",
       "unit": "Gtok/day",
@@ -1433,10 +1446,14 @@
     },
     {
       "info": {
-        "id": "F25",
+        "id": "F22",
         "level": 0,
-        "name": "dev serving share",
-        "description": "The share of the developer workload the clearing allocates to DeepSeek."
+        "name": "routed serving share",
+        "description": "DeepSeek's share of routed open-weight workload.",
+        "grounding": {
+          "grade": "third-party",
+          "reference": "same digest; DeepSeek ≈16%"
+        }
       },
       "substance": {
         "sub_type": "compute",
@@ -1444,9 +1461,9 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.0",
+      "source": "C0.6",
       "source_interface": null,
-      "sink": "C0.9",
+      "sink": "C0.14",
       "sink_interface": null,
       "amount": "16",
       "unit": "Gtok/day",
@@ -1454,10 +1471,14 @@
     },
     {
       "info": {
-        "id": "F26",
+        "id": "F23",
         "level": 0,
-        "name": "dev serving share",
-        "description": "The share of the developer workload the clearing allocates to Other open."
+        "name": "routed serving share",
+        "description": "The rest of the field's share of routed open-weight workload.",
+        "grounding": {
+          "grade": "third-party",
+          "reference": "same digest; the long tail folded by the model's own structure"
+        }
       },
       "substance": {
         "sub_type": "compute",
@@ -1465,11 +1486,86 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.0",
+      "source": "C0.6",
       "source_interface": null,
-      "sink": "C0.10",
+      "sink": "C0.15",
       "sink_interface": null,
       "amount": "20",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F24",
+        "level": 0,
+        "name": "self-hosted serving share",
+        "description": "Gemma's share of self-hosted workload.",
+        "grounding": {
+          "grade": "asserted",
+          "reference": "mirrors the routed open split; no sensor"
+        }
+      },
+      "substance": {
+        "sub_type": "compute",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.11",
+      "sink_interface": null,
+      "amount": "2",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F25",
+        "level": 0,
+        "name": "self-hosted serving share",
+        "description": "Llama's share of self-hosted workload.",
+        "grounding": {
+          "grade": "asserted",
+          "reference": "mirrors the routed open split; no sensor"
+        }
+      },
+      "substance": {
+        "sub_type": "compute",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.12",
+      "sink_interface": null,
+      "amount": "3",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F26",
+        "level": 0,
+        "name": "self-hosted serving share",
+        "description": "Qwen's share of self-hosted workload.",
+        "grounding": {
+          "grade": "asserted",
+          "reference": "mirrors the routed open split; no sensor"
+        }
+      },
+      "substance": {
+        "sub_type": "compute",
+        "type": "Energy"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.1",
+      "source_interface": null,
+      "sink": "C0.13",
+      "sink_interface": null,
+      "amount": "13",
       "unit": "Gtok/day",
       "parameters": []
     },
@@ -1477,8 +1573,12 @@
       "info": {
         "id": "F27",
         "level": 0,
-        "name": "enterprise serving share",
-        "description": "The share of the enterprise workload the clearing allocates to Opus."
+        "name": "self-hosted serving share",
+        "description": "DeepSeek's share of self-hosted workload.",
+        "grounding": {
+          "grade": "asserted",
+          "reference": "mirrors the routed open split; no sensor"
+        }
       },
       "substance": {
         "sub_type": "compute",
@@ -1488,9 +1588,9 @@
       "usability": "Resource",
       "source": "C0.1",
       "source_interface": null,
-      "sink": "C0.2",
+      "sink": "C0.14",
       "sink_interface": null,
-      "amount": "30",
+      "amount": "16",
       "unit": "Gtok/day",
       "parameters": []
     },
@@ -1498,8 +1598,12 @@
       "info": {
         "id": "F28",
         "level": 0,
-        "name": "enterprise serving share",
-        "description": "The share of the enterprise workload the clearing allocates to Fable."
+        "name": "self-hosted serving share",
+        "description": "The rest of the field's share of self-hosted workload.",
+        "grounding": {
+          "grade": "asserted",
+          "reference": "mirrors the routed open split; no sensor"
+        }
       },
       "substance": {
         "sub_type": "compute",
@@ -1509,49 +1613,7 @@
       "usability": "Resource",
       "source": "C0.1",
       "source_interface": null,
-      "sink": "C0.3",
-      "sink_interface": null,
-      "amount": "10",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F29",
-        "level": 0,
-        "name": "enterprise serving share",
-        "description": "The share of the enterprise workload the clearing allocates to GPT."
-      },
-      "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.1",
-      "source_interface": null,
-      "sink": "C0.4",
-      "sink_interface": null,
-      "amount": "27",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F30",
-        "level": 0,
-        "name": "enterprise serving share",
-        "description": "The share of the enterprise workload the clearing allocates to Gemini."
-      },
-      "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.1",
-      "source_interface": null,
-      "sink": "C0.5",
+      "sink": "C0.15",
       "sink_interface": null,
       "amount": "20",
       "unit": "Gtok/day",
@@ -1559,20 +1621,62 @@
     },
     {
       "info": {
-        "id": "F31",
+        "id": "F29",
         "level": 0,
-        "name": "enterprise serving share",
-        "description": "The share of the enterprise workload the clearing allocates to Gemma."
+        "name": "tokens served",
+        "description": "Tokens served by Opus arriving at the endpoint."
       },
       "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
+        "sub_type": "tokens",
+        "type": "Message"
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.1",
+      "source": "C0.7",
       "source_interface": null,
-      "sink": "C0.6",
+      "sink": "C0.4",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F30",
+        "level": 0,
+        "name": "tokens served",
+        "description": "Tokens served by Fable arriving at the endpoint."
+      },
+      "substance": {
+        "sub_type": "tokens",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.8",
+      "source_interface": null,
+      "sink": "C0.4",
+      "sink_interface": null,
+      "amount": "1",
+      "unit": "Gtok/day",
+      "parameters": []
+    },
+    {
+      "info": {
+        "id": "F31",
+        "level": 0,
+        "name": "tokens served",
+        "description": "Tokens served by GPT arriving at the endpoint."
+      },
+      "substance": {
+        "sub_type": "tokens",
+        "type": "Message"
+      },
+      "type": "Flow",
+      "usability": "Resource",
+      "source": "C0.9",
+      "source_interface": null,
+      "sink": "C0.4",
       "sink_interface": null,
       "amount": "1",
       "unit": "Gtok/day",
@@ -1582,20 +1686,20 @@
       "info": {
         "id": "F32",
         "level": 0,
-        "name": "enterprise serving share",
-        "description": "The share of the enterprise workload the clearing allocates to Llama."
+        "name": "tokens served",
+        "description": "Tokens served by Gemini arriving at the endpoint."
       },
       "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
+        "sub_type": "tokens",
+        "type": "Message"
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.1",
+      "source": "C0.10",
       "source_interface": null,
-      "sink": "C0.7",
+      "sink": "C0.4",
       "sink_interface": null,
-      "amount": "4",
+      "amount": "1",
       "unit": "Gtok/day",
       "parameters": []
     },
@@ -1603,20 +1707,20 @@
       "info": {
         "id": "F33",
         "level": 0,
-        "name": "enterprise serving share",
-        "description": "The share of the enterprise workload the clearing allocates to Qwen."
+        "name": "tokens served",
+        "description": "Tokens served by Gemma arriving at the endpoint."
       },
       "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
+        "sub_type": "tokens",
+        "type": "Message"
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.1",
+      "source": "C0.11",
       "source_interface": null,
-      "sink": "C0.8",
+      "sink": "C0.4",
       "sink_interface": null,
-      "amount": "3",
+      "amount": "1",
       "unit": "Gtok/day",
       "parameters": []
     },
@@ -1624,20 +1728,20 @@
       "info": {
         "id": "F34",
         "level": 0,
-        "name": "enterprise serving share",
-        "description": "The share of the enterprise workload the clearing allocates to DeepSeek."
+        "name": "tokens served",
+        "description": "Tokens served by Llama arriving at the endpoint."
       },
       "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
+        "sub_type": "tokens",
+        "type": "Message"
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.1",
+      "source": "C0.12",
       "source_interface": null,
-      "sink": "C0.9",
+      "sink": "C0.4",
       "sink_interface": null,
-      "amount": "3",
+      "amount": "1",
       "unit": "Gtok/day",
       "parameters": []
     },
@@ -1645,20 +1749,20 @@
       "info": {
         "id": "F35",
         "level": 0,
-        "name": "enterprise serving share",
-        "description": "The share of the enterprise workload the clearing allocates to Other open."
+        "name": "tokens served",
+        "description": "Tokens served by Qwen arriving at the endpoint."
       },
       "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
+        "sub_type": "tokens",
+        "type": "Message"
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.1",
+      "source": "C0.13",
       "source_interface": null,
-      "sink": "C0.10",
+      "sink": "C0.4",
       "sink_interface": null,
-      "amount": "2",
+      "amount": "1",
       "unit": "Gtok/day",
       "parameters": []
     },
@@ -1667,7 +1771,7 @@
         "id": "F36",
         "level": 0,
         "name": "tokens served",
-        "description": "Tokens served by Opus arriving at the serving endpoint."
+        "description": "Tokens served by DeepSeek arriving at the endpoint."
       },
       "substance": {
         "sub_type": "tokens",
@@ -1675,9 +1779,9 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.2",
+      "source": "C0.14",
       "source_interface": null,
-      "sink": "C0.13",
+      "sink": "C0.4",
       "sink_interface": null,
       "amount": "1",
       "unit": "Gtok/day",
@@ -1688,7 +1792,7 @@
         "id": "F37",
         "level": 0,
         "name": "tokens served",
-        "description": "Tokens served by Fable arriving at the serving endpoint."
+        "description": "Tokens served by the rest of the field arriving at the endpoint."
       },
       "substance": {
         "sub_type": "tokens",
@@ -1696,9 +1800,9 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.3",
+      "source": "C0.15",
       "source_interface": null,
-      "sink": "C0.13",
+      "sink": "C0.4",
       "sink_interface": null,
       "amount": "1",
       "unit": "Gtok/day",
@@ -1709,7 +1813,7 @@
         "id": "F38",
         "level": 0,
         "name": "tokens served",
-        "description": "Tokens served by GPT arriving at the serving endpoint."
+        "description": "Tokens leaving the endpoint for the customers."
       },
       "substance": {
         "sub_type": "tokens",
@@ -1718,155 +1822,8 @@
       "type": "Flow",
       "usability": "Resource",
       "source": "C0.4",
-      "source_interface": null,
-      "sink": "C0.13",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F39",
-        "level": 0,
-        "name": "tokens served",
-        "description": "Tokens served by Gemini arriving at the serving endpoint."
-      },
-      "substance": {
-        "sub_type": "tokens",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.5",
-      "source_interface": null,
-      "sink": "C0.13",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F40",
-        "level": 0,
-        "name": "tokens served",
-        "description": "Tokens served by Gemma arriving at the serving endpoint."
-      },
-      "substance": {
-        "sub_type": "tokens",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.6",
-      "source_interface": null,
-      "sink": "C0.13",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F41",
-        "level": 0,
-        "name": "tokens served",
-        "description": "Tokens served by Llama arriving at the serving endpoint."
-      },
-      "substance": {
-        "sub_type": "tokens",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.7",
-      "source_interface": null,
-      "sink": "C0.13",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F42",
-        "level": 0,
-        "name": "tokens served",
-        "description": "Tokens served by Qwen arriving at the serving endpoint."
-      },
-      "substance": {
-        "sub_type": "tokens",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.8",
-      "source_interface": null,
-      "sink": "C0.13",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F43",
-        "level": 0,
-        "name": "tokens served",
-        "description": "Tokens served by DeepSeek arriving at the serving endpoint."
-      },
-      "substance": {
-        "sub_type": "tokens",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.9",
-      "source_interface": null,
-      "sink": "C0.13",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F44",
-        "level": 0,
-        "name": "tokens served",
-        "description": "Tokens served by Other open arriving at the serving endpoint."
-      },
-      "substance": {
-        "sub_type": "tokens",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.10",
-      "source_interface": null,
-      "sink": "C0.13",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F45",
-        "level": 0,
-        "name": "tokens served",
-        "description": "Tokens leaving the endpoint to the applications that receive them."
-      },
-      "substance": {
-        "sub_type": "tokens",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.13",
       "source_interface": "I0.4",
-      "sink": "Snk-1.9",
+      "sink": "Snk-1.4",
       "sink_interface": null,
       "amount": "1",
       "unit": "Gtok/day",

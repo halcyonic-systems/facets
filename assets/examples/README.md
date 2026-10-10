@@ -25,6 +25,15 @@ pass-ways (`interface` lines), and the barrel and the bed are plain
 residents, so the shelf carries one model where the boundary is not the
 same thing as the processors behind it.
 
+`llm-market.sl` ships as the one data-fed observatory model, rewritten
+2026-10-10 as a level-0 identification (Mobus ch. 6) and gated by
+`crates/bert-canvas/tests/llm_market.rs`. Its admission is the boundary it
+carries: served tokens leave through two interfaces that differ in what a
+sensor can see, a routed one with third-party counts and a self-hosted one
+with none, and every number in the file carries a `grounding` line saying
+which. No smaller shipped model has an output interface the sensors cannot
+see; the two-channel version it replaced is in the archive with its finding.
+
 A third shelf with its own test since 2026-10-10: `../bench/` — models that exist to test the instrument, each after a named model in the literature, admitted for what they exercise rather than what they are.
 
 Two consequences worth naming:

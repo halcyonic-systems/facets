@@ -128,8 +128,8 @@ MUTATIONS = [
         [("crates/bert-compose/src/circuit.rs",
           "            if matches!(sender.kind, NodeKind::Source) {\n                if let Some(r) = self.wire_declared_rate(k) {\n                    return self.crossing_factor(w.from) * r;\n                }\n            }\n            return sender_activity;",
           "            return sender_activity;")],
-        ["-p", "bert-canvas", "--test", "llm_market", "serving_shares_track_declared_weights"],
-        "a multi-outflow Message source signaling at the default rate — its declared emission ignored (llm-market)",
+        ["-p", "bert-canvas", "--test", "source_signal_rate"],
+        "a multi-outflow Message source signaling at the default rate — its declared emission ignored (the two-rate rig; llm-market's signals are all ample, so its trace cannot see this)",
     ),
 ]
 

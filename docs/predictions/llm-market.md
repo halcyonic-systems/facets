@@ -32,17 +32,33 @@ hash, so a prediction cannot silently inherit credit from a later model.
   with the measurement source>
 ```
 
-## Calibration state (2026-07-28)
+## Calibration state (2026-10-10)
 
-Current numbers and their provenance live in the model source
-(`assets/examples/llm-market.sl`) and demo bundle
-(`assets/demos/llm-market.json`): developer channel from OpenRouter-scale
-observations (~6 Ttok/day, mid-2026; sources disagree on Anthropic's share,
-midpoint taken), enterprise channel from Menlo Ventures spend shares used
-as a workload proxy (known bias: spend understates open-weight workload at
-one-tenth prices). The enterprise absolute level is the weakest number in
-the model and should be replaced by a measured series before any prediction
-touching it.
+The model is the level-0 identification of the serving market (Mobus ch. 6):
+one system that serves tokens, with its output leaving through two interfaces
+that differ in what a sensor can see. Every number in the source
+(`assets/examples/llm-market.sl`) carries a `grounding` line, and a finding
+quotes it.
+
+- **Routed interface — third-party.** The routed workload (≈6 Ttok/day) and
+  every routed share come from the Dirac labs-market-share digest of
+  OpenRouter rankings, June–July 2026; sources disagree on Anthropic's share
+  (12–24%) and the midpoint is taken. The demo bundle's forcing CSV
+  (`assets/demos/llm-market.json`) drives this interface and no other.
+- **Self-hosted interface — unknown.** No public sensor counts self-hosted
+  serving. The amount is a labelled placeholder (a round half of the routed
+  figure) and the split across the open models is asserted to mirror the
+  routed open split. No prediction may quote either number until a measured
+  series replaces them; the flow is in the model so that the boundary is not
+  cut to what the router sees, which would bias the open-weight share low on
+  exactly the flow the commoditization question is about.
+- **Price — absent.** The model draws no money counter-flow, so price cannot
+  be a readout of the run. It enters through the observatory's data until the
+  money plane is a word of the language (see `assets/examples/federal-reserve.sl`).
+
+The two-channel model this replaced (developer and enterprise channels,
+enterprise from spend surveys) is archived as
+`assets/archive/llm-market-channels.sl`; its calibration note is retired with it.
 
 ## Watch items
 
