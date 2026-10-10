@@ -1,5 +1,7 @@
 # Shelf fidelity audit — 2026-10-09
 
+**Status: LIVE** — the measured input to [#472](https://github.com/halcyonic-systems/facets/issues/472); re-measure after each conversion lands.
+
 Input to #472. Every shipped example and the field model, measured against the standard the newest models set (`rain-barrel-garden`, `translation-apparatus`): verdict under Mobus; merged stamps vs pass-ways (the #471 census); declared amounts on drivers (flows out of a source); `param` lines with ranges; a `metric`; descriptions; canonical form; whether it runs conserved from `bert bench`. Numbers are from the CLI on main at ae69dfa. The corpus is not audited here: its admission test is citation, not this standard.
 
 | model | errors | warnings | merged → pass-ways | drivers w/ amount | params w/ range | metrics | descriptions | canonical | runs |
