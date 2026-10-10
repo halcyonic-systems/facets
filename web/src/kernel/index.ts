@@ -469,6 +469,7 @@ export type SandboxNodeField =
   | "target"
   | "gain"
   | "above"
+  | "below"
   | "emit"
   | "else";
 

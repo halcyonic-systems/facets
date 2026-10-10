@@ -23,6 +23,7 @@
     "target",
     "threshold",
     "above",
+    "below",
     "emit",
     "else",
     "unresolved",
