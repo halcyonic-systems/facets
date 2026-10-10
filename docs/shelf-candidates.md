@@ -1,5 +1,7 @@
 # Shelf candidates: simple models complexity-science readers will recognise
 
+**Status: RESEARCH** — a running list for [#472](https://github.com/halcyonic-systems/facets/issues/472); rows flip to *staged* as files land in `assets/candidates/`, and to *shipped* when admitted to the shelf.
+
 A running list for #472 (the shelf overhaul). Started 2026-10-09 from a walk with Shingai; grows as entries are tried. Each entry is SL-sized: one to three stocks, a few flows, a couple of knobs, one readout worth watching. The test for an entry is the bench's: tweak an input, tweak an output, reason about the interior, get a result that is interesting and plausible.
 
 ## What the engine runs today, and what waits
