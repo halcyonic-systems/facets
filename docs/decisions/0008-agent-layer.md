@@ -109,7 +109,7 @@ on Mobus's ladder (§11.2.1.1) in order.**
 
 | Rule | Reading | Mobus type | Memory | Refusal |
 |---|---|---|---|---|
-| Threshold | reading ≥ a → emit x, else y | purely reactive ("a simple thermostat is an easy example") | none | x or y outside the managed process's reach |
+| Threshold | reading ≥ a → emit x, else y | purely reactive ("a simple thermostat is an easy example") | none; **note 2026-10-10 (#517):** the optional band `below b` adds one bit, the agent's own last command, read only between b and a; the engine already keeps it as the node's activity, so D2 and D6 hold unchanged and a line without `below` reads none | x or y outside the managed process's reach; b not under a |
 | Proportional | gain · (target − reading) | purely reactive; Wiener's error correction, §12.3.2 | none | zero gain, which watches nothing |
 | Table | a declared map from reading bins to outputs | purely reactive ("an algorithmic or heuristic program of response") | none | overlapping or gapped bins |
 | Trace | emit from a statistic over the agent's own past readings | adaptive reactive ("tracks the input variables and responds in kind. This is the homeostatic mechanism") | yes; the first use of H | a zero window |
