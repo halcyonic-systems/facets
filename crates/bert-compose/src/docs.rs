@@ -44,6 +44,14 @@ pub fn doc(kind: NodeKind) -> Doc {
             theory: "Environment output — beyond the boundary.",
             code: "total += inflow",
         },
+        NodeKind::Agent => Doc {
+            plain: "A decision-maker. It watches one stock's level, applies its rule, and commands the work process it manages.",
+            everyday: "A thermostat: reads the room, decides, and tells the furnace how hard to run.",
+            math: "out = rule(level)   — proportional: max(0, gain · (target − level))",
+            substance: "reads a level over an observation tap (never drains it); emits a command signal. Its goal is a declared parameter.",
+            theory: "Mobus ch. 11 Fig 11.1 — engine, decision model, memory; agency when its output commands an actuator with requisite variety (Ashby). First rung: purely reactive, no memory.",
+            code: "out = policy.decide(level)",
+        },
         NodeKind::Process(p) => match p {
             Buffering => Doc {
                 plain: "A store. It holds what flows in and releases at its own rate — the system's memory. A capacity bounds it: above the ceiling it overflows.",

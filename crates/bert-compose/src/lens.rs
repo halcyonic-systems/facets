@@ -14,12 +14,16 @@ use bert_core::ProcessPrimitive;
 
 /// A stable slot per primitive, so each lens is just a 12-name row.
 /// Order: Source, Sink, Buffering, Combining, Splitting, Amplifying,
-/// Modulating, Sensing, Inverting, Copying, Propelling, Impeding.
-fn slot(kind: NodeKind) -> usize {
+/// Modulating, Sensing, Inverting, Copying, Propelling, Impeding. An agent
+/// (facets#269) has no slot: a lens renames the work processes, and the
+/// agent keeps its own name and card under every lens until the lens packs
+/// grow a thirteenth row on purpose.
+fn slot(kind: NodeKind) -> Option<usize> {
     use ProcessPrimitive::*;
-    match kind {
+    Some(match kind {
         NodeKind::Source => 0,
         NodeKind::Sink => 1,
+        NodeKind::Agent => return None,
         NodeKind::Process(p) => match p {
             Buffering => 2,
             Combining => 3,
@@ -32,7 +36,7 @@ fn slot(kind: NodeKind) -> usize {
             Propelling => 10,
             Impeding => 11,
         },
-    }
+    })
 }
 
 pub struct Lens {
@@ -192,7 +196,7 @@ pub fn label(lens: usize, kind: NodeKind) -> String {
     LENSES
         .get(lens)
         .and_then(|l| l.vocab)
-        .map(|v| v[slot(kind)].to_string())
+        .and_then(|v| slot(kind).map(|i| v[i].to_string()))
         .unwrap_or_else(|| kind.label())
 }
 
@@ -202,7 +206,7 @@ pub fn gloss(lens: usize, kind: NodeKind) -> Option<&'static str> {
     LENSES
         .get(lens)
         .and_then(|l| l.glosses)
-        .map(|g| g[slot(kind)])
+        .and_then(|g| slot(kind).map(|i| g[i]))
 }
 
 /// What to paint under a node: re-skin only the *auto* names ("Sensing 5" →

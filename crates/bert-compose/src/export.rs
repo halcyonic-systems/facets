@@ -132,6 +132,48 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                 });
                 node_id.insert(i, eid);
             }
+            // An agent (facets#269) is a level-1 system whose model carries a
+            // policy and no primitive; the seam reads it back into its own
+            // list, so the round trip keeps the kind and the rule.
+            NodeKind::Agent => {
+                let sid = id(IdType::Subsystem, &[0, sub_n]);
+                sub_n += 1;
+                systems.push(System {
+                    info: info(sid.clone(), 1, &node.name, "agent (Mobus ch. 11 decision model)"),
+                    sources: Vec::new(),
+                    sinks: Vec::new(),
+                    parent: id(IdType::System, &[0]),
+                    complexity: Complexity::Atomic,
+                    boundary: Boundary {
+                        info: info(id(IdType::Boundary, &[0, sub_n - 1]), 1, "", ""),
+                        porosity: 0.0,
+                        perceptive_fuzziness: 0.0,
+                        interfaces: Vec::new(),
+                        parent_interface: None,
+                    },
+                    radius: 50.0,
+                    transform: transform(x, y),
+                    equivalence: String::new(),
+                    history: String::new(),
+                    transformation: String::new(),
+                    member_autonomy: 1.0,
+                    time_constant: String::new(),
+                    archetype: None,
+                    agent: Some(AgentModel {
+                        kind: AgentKind::Reactive,
+                        agency_capacity: node.param,
+                        primitive: None,
+                        policy: Some(node.policy.clone()),
+                        cognitive_params: HashMap::new(),
+                        process_configs: Vec::new(),
+                        initial_state: HashMap::new(),
+                        network_config: None,
+                        stock_unit: String::new(),
+                    }),
+                    child_model: None,
+                });
+                node_id.insert(i, sid);
+            }
             NodeKind::Process(primitive) => {
                 let sid = id(IdType::Subsystem, &[0, sub_n]);
                 sub_n += 1;
@@ -165,6 +207,7 @@ pub fn to_world_model(circuit: &Circuit, name: &str) -> WorldModel {
                         kind: AgentKind::Reactive,
                         agency_capacity: node.param,
                         primitive: Some(primitive),
+                        policy: None,
                         // Compose knobs with no canonical home ride in the
                         // extensible params so the round-trip is lossless.
                         cognitive_params: {
@@ -433,6 +476,15 @@ pub fn from_spec(spec: &bert_core::operational::OperationalSpec) -> Circuit {
         ids.push((p.id.clone(), c.nodes.len()));
         c.nodes.push(node);
     }
+    // Agents after the processes (facets#269); `from_world_model`'s position
+    // overlay walks the model's systems in the same two passes.
+    for a in &spec.agents {
+        let mut node = Node::new(NodeKind::Agent, ids.len() + 1, grid(ids.len()));
+        node.name = a.name.clone();
+        node.policy = a.policy.clone();
+        ids.push((a.id.clone(), c.nodes.len()));
+        c.nodes.push(node);
+    }
 
     let idx_of = |id: &Id| ids.iter().find(|(i, _)| i == id).map(|(_, n)| *n);
     // How many pushed flows leave each resolved sender, and whether any
@@ -541,6 +593,13 @@ pub fn from_spec(spec: &bert_core::operational::OperationalSpec) -> Circuit {
 /// reason. The loader has no projection logic of its own left to drift:
 /// positions are the only thing read off the model here, because the canvas
 /// cares where nodes sit and the contract deliberately does not.
+/// A level-1 system the seam projects as an agent (facets#269): its model
+/// carries a policy. Mirrors `validate_operational`'s split, so the position
+/// overlay zips in `from_spec`'s order (processes, then agents).
+fn is_agent(s: &System) -> bool {
+    s.agent.as_ref().is_some_and(|a| a.policy.is_some())
+}
+
 pub fn from_world_model(model: &WorldModel) -> Result<Circuit, String> {
     let spec = bert_core::operational::validate_operational(model).map_err(|errs| {
         errs.iter()
@@ -565,7 +624,14 @@ pub fn from_world_model(model: &WorldModel) -> Result<Circuit, String> {
             model
                 .systems
                 .iter()
-                .filter(|s| s.info.level > 0)
+                .filter(|s| s.info.level > 0 && !is_agent(s))
+                .map(|s| &s.transform),
+        )
+        .chain(
+            model
+                .systems
+                .iter()
+                .filter(|s| s.info.level > 0 && is_agent(s))
                 .map(|s| &s.transform),
         )
         .collect();
@@ -618,6 +684,7 @@ mod tests {
             dt_stride: None,
         };
         let spec = OperationalSpec {
+            agents: Vec::new(),
             processes: vec![],
             sources: vec![OperationalTerminal {
                 id: id(IdType::Source, 0),
@@ -711,6 +778,7 @@ mod tests {
                 dt_stride: None,
             };
             let spec = OperationalSpec {
+                agents: Vec::new(),
                 processes: vec![OperationalProcess {
                     id: id(IdType::Subsystem, 0),
                     name: "Model".into(),
@@ -785,6 +853,7 @@ mod tests {
 
         let id = |ty: IdType, n: i64| Id { ty, indices: vec![n] };
         let spec = OperationalSpec {
+            agents: Vec::new(),
             processes: vec![],
             sources: vec![OperationalTerminal {
                 id: id(IdType::Source, 0),
@@ -860,6 +929,7 @@ mod tests {
             dt_stride: None,
         };
         let spec = OperationalSpec {
+            agents: Vec::new(),
             processes: vec![OperationalProcess {
                 id: id(IdType::Subsystem, 1),
                 name: "Router".into(),
@@ -915,6 +985,7 @@ mod tests {
 
         let id = |ty: IdType, n: i64| Id { ty, indices: vec![n] };
         let spec = OperationalSpec {
+            agents: Vec::new(),
             processes: vec![],
             sources: vec![OperationalTerminal { id: id(IdType::Source, 0), name: "Demand".into(), reservoir: None }],
             sinks: vec![OperationalTerminal { id: id(IdType::Sink, 0), name: "Channel".into(), reservoir: None }],
@@ -1118,6 +1189,50 @@ mod tests {
             valve.back_pressure,
             "back-pressure survives via cognitive_params"
         );
+    }
+
+    /// Law (facets#269): an agent node and its policy survive the JSON seam
+    /// both ways, land in the spec's own agent list, and the position overlay
+    /// zips in the seam's order (processes, then agents) even when the model
+    /// declares the agent before a process.
+    #[test]
+    fn agent_round_trips_through_the_seam() {
+        let mut c = Circuit::default();
+        c.nodes.push(Node::new(NodeKind::Agent, 1, pos2(10.0, 20.0)));
+        c.nodes.push(Node::new(
+            NodeKind::Process(ProcessPrimitive::Modulating),
+            2,
+            pos2(60.0, 0.0),
+        ));
+        c.nodes.push(Node::new(NodeKind::Sink, 3, pos2(120.0, 0.0)));
+        c.nodes[0].policy = bert_core::Policy::Proportional {
+            target: 2.5,
+            gain: 0.25,
+        };
+        c.wires.push(Wire::new(0, 1)); // agent → valve (command)
+        c.wires.push(Wire::new(1, 2));
+        let model: WorldModel =
+            serde_json::from_str(&serde_json::to_string(&to_world_model(&c, "AG")).unwrap())
+                .unwrap();
+        let spec = bert_core::operational::validate_operational(&model).expect("projects");
+        assert_eq!(spec.agents.len(), 1, "the agent has its own list");
+        assert_eq!(spec.processes.len(), 1, "and is not counted as a process");
+        let r = from_world_model(&model).expect("loads");
+        let ag = r
+            .nodes
+            .iter()
+            .find(|n| n.kind == NodeKind::Agent)
+            .expect("agent survives");
+        assert_eq!(
+            ag.policy,
+            bert_core::Policy::Proportional {
+                target: 2.5,
+                gain: 0.25
+            }
+        );
+        // The agent was declared first in the model but is built after the
+        // process; its position must still be its own.
+        assert_eq!(ag.pos, pos2(10.0, 20.0), "position overlay zipped out of order");
     }
 
     /// Law: save→load preserves every knob the canvas can set and the
