@@ -19,11 +19,20 @@ source "Libido Reservoir"
 # Everything the psyche perceives and acts upon.
 environment "Outer World"
 
+# The psyche's two points of contact, as pass-ways (#472 split form):
+# attention is where the world's information enters consciousness, and
+# the libido uptake is where undifferentiated energy enters the stack.
+# Neither transforms what crosses; the functions behind them do.
+interface Attention
+    description "Where perception enters: the conscious attention through which the world reaches the dominant function."
+interface "Libido Uptake"
+    description "Where psychic energy enters the function stack, to be claimed by the dominant first."
+
 # The dominant function claims the largest share of energy and directs
 # it most forcefully — it amplifies whichever orientation (perceiving or
-# judging) the type favors. It sits on the boundary because it is the
-# primary channel of contact with the world.
-component Dominant primitive Amplifying interface
+# judging) the type favors. It is the first process behind the boundary,
+# not the boundary itself: attention and uptake are the pass-ways.
+component Dominant primitive Amplifying
 
 # The auxiliary supports the dominant, tempering and balancing it —
 # modulating the energy the dominant does not consume.
@@ -40,14 +49,16 @@ component Inferior primitive Impeding interface
 
 # Psychic energy is conserved as it cascades down the hierarchy: the
 # dominant takes its share first, passing the residue onward.
-flow "Libido Reservoir" -> Dominant : energy "psychic energy investment"
+flow "Libido Reservoir" -> "Libido Uptake" : energy "psychic energy investment"
+flow "Libido Uptake" -> Dominant : energy "psychic energy investment"
 flow Dominant -> Auxiliary : energy "residual energy"
 flow Auxiliary -> Tertiary : energy "residual energy"
 flow Tertiary -> Inferior : energy "residual energy"
 
 # Perceiving happens at the boundary: the dominant (here, the leading
 # orientation) takes in information from the world.
-flow "Outer World" -> Dominant : informational "perception"
+flow "Outer World" -> Attention : informational "perception"
+flow Attention -> Dominant : informational "perception"
 
 # Judging happens at the boundary too: the auxiliary function evaluates
 # and issues decisions back out into the world.
