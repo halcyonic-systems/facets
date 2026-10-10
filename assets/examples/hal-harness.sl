@@ -46,7 +46,13 @@ component Bench primitive Sensing
 # data into a trained LoRA adapter, then hands the adapter back to the
 # model store — the harness's only component that both reads from and
 # writes back into the local-models environment.
-component "Fine-tune Pipeline" primitive Combining interface
+component "Fine-tune Pipeline" primitive Combining
+
+# The pipeline's door to the model store (#472 split form): base weights
+# come in through it and tuned adapters go back out through it. The port
+# alters nothing; the pipeline behind it does the combining.
+interface "Model Store Port"
+    description "Where base weights are read from the local model store and tuned adapters are written back to it."
 
 # Homeostat is the re-bounded measurement-and-regulation subsystem —
 # bench + canary + guards + spec bundled as one thing at THIS level of
@@ -89,8 +95,10 @@ flow Council -> Proxy : informational "convened verdict"
 flow Proxy -> Bench : informational "call telemetry"
 flow Bench -> "Fine-tune Pipeline" : informational "benchmark results"
 
-flow "Local Models" -> "Fine-tune Pipeline" : informational "base weights"
-flow "Fine-tune Pipeline" -> "Local Models" : informational "tuned LoRA adapter"
+flow "Local Models" -> "Model Store Port" : informational "base weights" substance weights
+flow "Model Store Port" -> "Fine-tune Pipeline" : informational "base weights" substance weights
+flow "Fine-tune Pipeline" -> "Model Store Port" : informational "tuned LoRA adapter" substance adapter
+flow "Model Store Port" -> "Local Models" : informational "tuned LoRA adapter" substance adapter
 
 # The regulatory loop. This pair is ENDO under hal's single system of
 # interest — both endpoints are inside hal's boundary. That is the
