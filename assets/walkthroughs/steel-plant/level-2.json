@@ -6,8 +6,8 @@
     {
       "id": 1,
       "name": "Iron-LoadingDock",
-      "x": 107.11691,
-      "y": 319.99997,
+      "x": 161.69214,
+      "y": 107.7948,
       "role": "Environment",
       "env_kind": "Source",
       "interface": false
@@ -15,8 +15,8 @@
     {
       "id": 2,
       "name": "Production",
-      "x": 666.4415,
-      "y": -2.926239,
+      "x": 732.539,
+      "y": 32.641357,
       "role": "Environment",
       "env_kind": "Sink",
       "interface": false
@@ -24,8 +24,8 @@
     {
       "id": 3,
       "name": "Material-Purchasing",
-      "x": 666.4415,
-      "y": 642.9263,
+      "x": 842.3845,
+      "y": 197.40964,
       "role": "Environment",
       "env_kind": "Sink",
       "interface": false
@@ -33,8 +33,8 @@
     {
       "id": 4,
       "name": "Move-In",
-      "x": 480.0,
-      "y": 150.0,
+      "x": 330.23096,
+      "y": 220.15398,
       "role": "Component",
       "env_kind": "Neutral",
       "primitive": "Propelling",
@@ -43,8 +43,8 @@
     {
       "id": 5,
       "name": "Move-Out",
-      "x": 641.6796,
-      "y": 267.4671,
+      "x": 598.8237,
+      "y": 184.79306,
       "role": "Component",
       "env_kind": "Neutral",
       "primitive": "Propelling",
@@ -53,8 +53,8 @@
     {
       "id": 6,
       "name": "Iron-Stock",
-      "x": 318.32037,
-      "y": 267.4671,
+      "x": 557.78174,
+      "y": 242.21826,
       "role": "Component",
       "env_kind": "Neutral",
       "primitive": "Buffering",
@@ -64,8 +64,8 @@
     {
       "id": 7,
       "name": "Level-Sensor",
-      "x": 380.0765,
-      "y": 457.5329,
+      "x": 402.21826,
+      "y": 397.78174,
       "role": "Component",
       "env_kind": "Neutral",
       "primitive": "Sensing",
@@ -74,8 +74,8 @@
     {
       "id": 8,
       "name": "Inventory-Decider",
-      "x": 579.92346,
-      "y": 457.5329,
+      "x": 650.5078,
+      "y": 262.3192,
       "role": "Component",
       "env_kind": "Neutral",
       "interface": true
