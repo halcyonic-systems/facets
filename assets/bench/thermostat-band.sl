@@ -1,5 +1,5 @@
 # ── A thermostat and a room, on or off, with a dead band ────────────────────
-# bench · after the on–off controller with hysteresis — Åström & Murray 2008 §10.1; Mobus 2022 §11.2.1.1
+# bench · after the on–off controller with hysteresis — Åström & Murray, Feedback Systems, 2008; Mobus 2022 §11.2.1.1
 #
 # The relay of thermostat-relay.sl with the band a real one has (facets#517):
 # the switch shuts at or above 2.2 kWh, opens again under 1.8, and between
