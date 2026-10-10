@@ -413,19 +413,51 @@ pub enum AgentRule {
     /// `gain · (target − level)`, floored at zero: Wiener's error correction,
     /// Mobus §12.3.2. At gain 1 it is the Inverting comparator exactly.
     Proportional,
+    /// `emit` at or above `above`, else `else`: the on–off thermostat, Mobus
+    /// §11.2.1.1's purely reactive agent; a square wave no primitive makes.
+    Threshold,
 }
 
 impl AgentRule {
+    pub const ALL: [AgentRule; 2] = [AgentRule::Proportional, AgentRule::Threshold];
     /// The SL word.
     pub fn word(self) -> &'static str {
         match self {
             AgentRule::Proportional => "proportional",
+            AgentRule::Threshold => "threshold",
         }
     }
-    /// The kernel's policy over this rule's declared numbers.
-    pub fn policy(self, target: f64, gain: f64) -> bert_core::Policy {
+    /// The rule by its SL word.
+    pub fn from_word(w: &str) -> Option<AgentRule> {
+        AgentRule::ALL.into_iter().find(|r| r.word().eq_ignore_ascii_case(w))
+    }
+    /// The rule's clause words, in the order the line spells them; also the
+    /// bag keys its numbers ride under.
+    pub fn words(self) -> &'static [&'static str] {
         match self {
-            AgentRule::Proportional => bert_core::Policy::Proportional { target, gain },
+            AgentRule::Proportional => &["target", "gain"],
+            AgentRule::Threshold => &["above", "emit", "else"],
+        }
+    }
+    /// The rule of a kernel policy.
+    pub fn of(policy: &bert_core::Policy) -> AgentRule {
+        match policy {
+            bert_core::Policy::Proportional { .. } => AgentRule::Proportional,
+            bert_core::Policy::Threshold { .. } => AgentRule::Threshold,
+        }
+    }
+    /// The kernel's policy over this rule's declared numbers, read by word.
+    pub fn policy(self, num: impl Fn(&str) -> f64) -> bert_core::Policy {
+        match self {
+            AgentRule::Proportional => bert_core::Policy::Proportional {
+                target: num("target"),
+                gain: num("gain"),
+            },
+            AgentRule::Threshold => bert_core::Policy::Threshold {
+                above: num("above"),
+                emit: num("emit"),
+                otherwise: num("else"),
+            },
         }
     }
 }
@@ -472,6 +504,9 @@ pub enum EngineField {
     /// An agent's gain (facets#269): the rule's sensitivity to the error.
     #[serde(rename = "gain")]
     Gain,
+    /// A threshold agent's level (facets#269): where its output switches.
+    #[serde(rename = "above")]
+    Above,
 }
 
 impl EngineField {
@@ -485,6 +520,7 @@ impl EngineField {
             EngineField::Maintenance => "maintenance",
             EngineField::Target => "target",
             EngineField::Gain => "gain",
+            EngineField::Above => "above",
         }
     }
     /// The SL word(s) on the component line and on the param line.
@@ -497,6 +533,7 @@ impl EngineField {
             EngineField::Maintenance => "maintenance",
             EngineField::Target => "target",
             EngineField::Gain => "gain",
+            EngineField::Above => "above",
         }
     }
     /// The primitive that reads this field (the component line's own gate);
@@ -505,15 +542,15 @@ impl EngineField {
     pub fn reader(self) -> Option<bert_core::ProcessPrimitive> {
         match self {
             EngineField::Setpoint => Some(bert_core::ProcessPrimitive::Inverting),
-            EngineField::Target | EngineField::Gain => None,
+            EngineField::Target | EngineField::Gain | EngineField::Above => None,
             _ => Some(bert_core::ProcessPrimitive::Buffering),
         }
     }
     /// A field an agent line declares rather than a component line.
     pub fn is_agent_field(self) -> bool {
-        matches!(self, EngineField::Target | EngineField::Gain)
+        matches!(self, EngineField::Target | EngineField::Gain | EngineField::Above)
     }
-    pub const ALL: [EngineField; 7] = [
+    pub const ALL: [EngineField; 8] = [
         EngineField::Release,
         EngineField::Capacity,
         EngineField::TimeConstant,
@@ -521,6 +558,7 @@ impl EngineField {
         EngineField::Maintenance,
         EngineField::Target,
         EngineField::Gain,
+        EngineField::Above,
     ];
 }
 
@@ -1006,7 +1044,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                         .agent
                         .get_or_insert_with(AgentModel::default);
                     let num = |k: &str| t.cognitive_params.get(k).copied().unwrap_or(1.0);
-                    agent.policy = Some(rule.policy(num("target"), num("gain")));
+                    agent.policy = Some(rule.policy(num));
                     agent.primitive = None;
                 }
                 if t.interface {
@@ -1383,9 +1421,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
                 .agent
                 .as_ref()
                 .and_then(|a| a.policy.as_ref())
-                .map(|p| match p {
-                    bert_core::Policy::Proportional { .. } => AgentRule::Proportional,
-                }),
+                .map(AgentRule::of),
             // parent_interface is the designation's inverse: a level-1 system
             // attached to a root-membrane interface IS a designated member of I.
             interface: s.boundary.parent_interface.is_some(),
@@ -1441,11 +1477,10 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
                     .unwrap_or_default();
                 // The policy is the authority for an agent's numbers; a model
                 // the engine exported carries them nowhere else.
-                if let Some(bert_core::Policy::Proportional { target, gain }) =
-                    s.agent.as_ref().and_then(|a| a.policy.as_ref())
-                {
-                    bag.insert("target".to_string(), *target);
-                    bag.insert("gain".to_string(), *gain);
+                if let Some(policy) = s.agent.as_ref().and_then(|a| a.policy.as_ref()) {
+                    for (word, v) in policy.fields() {
+                        bag.insert(word.to_string(), v);
+                    }
                 }
                 bag
             },

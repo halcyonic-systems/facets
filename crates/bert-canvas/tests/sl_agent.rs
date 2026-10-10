@@ -139,16 +139,76 @@ fn the_agent_faults_are_named() {
     let e = errs(&swap("target 2", "target 0"));
     assert!(e.contains("`target` must be positive"), "{e}");
     // a rule the set does not have, a rule missing its numbers
-    let e = errs(&swap("rule proportional target 2 gain 0.5", "rule threshold above 1 emit 0 else 1"));
-    assert!(e.contains("unknown rule `threshold`"), "{e}");
+    let e = errs(&swap("rule proportional target 2 gain 0.5", "rule table bins 3"));
+    assert!(e.contains("unknown rule `table`"), "{e}");
     let e = errs(&swap("rule proportional target 2 gain 0.5", "rule proportional target 2"));
-    assert!(e.contains("declares both its numbers"), "{e}");
+    assert!(e.contains("`gain` is missing or out of place"), "{e}");
     // agent fields on a component, a component field on an agent
     let e = errs(&swap("target of Thermostat", "target of Switch"));
     assert!(e.contains("is not an agent"), "{e}");
     let e = errs(&swap("target of Thermostat", "setpoint of Thermostat"));
-    assert!(e.contains("is an agent — its parameters are `target` and `gain`"), "{e}");
+    assert!(e.contains("is an agent — its parameters are its rule's (target, gain)"), "{e}");
     // referents must be declared first
     let e = errs(&swap("watches Room", "watches Attic"));
     assert!(e.contains("`Attic` is not declared"), "{e}");
+}
+
+const RELAY: &str = "\
+system \"Room\" : Concrete/Technical
+interface Mains
+interface Walls
+component Room primitive Buffering stock kWh initial 0.5 time constant 5
+component Switch primitive Modulating backpressure
+agent Thermostat watches Room rule threshold above 2 emit 0 else 1 manages Switch
+source Grid
+sink Outdoors
+flow Grid -> Mains : energy \"electricity\" substance heat amount 2 unit \"kWh/h\"
+flow Mains -> Switch : energy \"electricity\" substance heat
+flow Switch -> Room : energy \"heat\" substance heat
+flow Room -> Walls : energy \"loss\" substance heat
+flow Walls -> Outdoors : energy \"loss\" substance heat
+param \"level\" : above of Thermostat range 0.4..4
+";
+
+#[test]
+fn a_threshold_rule_parses_projects_and_emits_back() {
+    let m = parse_sl(RELAY).unwrap();
+    let th = m.things.iter().find(|t| t.name == "Thermostat").unwrap();
+    assert_eq!(th.rule, Some(AgentRule::Threshold));
+    assert_eq!(th.cognitive_params.get("above"), Some(&2.0));
+    assert_eq!(th.cognitive_params.get("emit"), Some(&0.0));
+    assert_eq!(th.cognitive_params.get("else"), Some(&1.0));
+    assert!(m.params.iter().any(|p| p.anchor == ParamAnchor::Field { thing: th.id, field: EngineField::Above }));
+    let world = project(&m);
+    let agent = world.systems.iter().find(|s| s.info.name == "Thermostat").unwrap().agent.as_ref().unwrap();
+    assert_eq!(agent.policy, Some(Policy::Threshold { above: 2.0, emit: 0.0, otherwise: 1.0 }));
+    let text = emit_sl(&m).unwrap();
+    assert!(text.contains("agent Thermostat watches Room rule threshold above 2 emit 0 else 1 manages Switch"), "{text}");
+    assert_eq!(emit_sl(&parse_sl(&text).unwrap()).unwrap(), text);
+    let back = bert_canvas::canvas::to_canvas(&world);
+    assert_eq!(back.things.iter().find(|t| t.name == "Thermostat").unwrap().rule, Some(AgentRule::Threshold));
+}
+
+#[test]
+fn the_threshold_faults_are_named() {
+    let swap = |from: &str, to: &str| RELAY.replace(from, to);
+    // past a gate's reach: requisite variety as a parse fault
+    let e = errs(&swap("emit 0 else 1", "emit 0 else 2"));
+    assert!(e.contains("requisite variety") && e.contains("0..1"), "{e}");
+    // the same command on both sides decides nothing
+    let e = errs(&swap("emit 0 else 1", "emit 1 else 1"));
+    assert!(e.contains("decides nothing"), "{e}");
+    // a number missing or out of order
+    let e = errs(&swap("above 2 emit 0 else 1", "above 2 else 1 emit 0"));
+    assert!(e.contains("`emit` is missing or out of place"), "{e}");
+    let e = errs(&swap("above 2 emit 0 else 1", "above 2 emit 0"));
+    assert!(e.contains("`else` is missing or out of place"), "{e}");
+    // a param naming another rule's field
+    let e = errs(&swap("above of Thermostat", "target of Thermostat"));
+    assert!(e.contains("runs a threshold rule — its parameters are its rule's (above, emit, else)"), "{e}");
+    // a non-positive level, a negative command
+    let e = errs(&swap("above 2", "above 0"));
+    assert!(e.contains("`above` must be positive"), "{e}");
+    let e = errs(&swap("emit 0 else 1", "emit -1 else 1"));
+    assert!(e.contains("cannot be negative"), "{e}");
 }

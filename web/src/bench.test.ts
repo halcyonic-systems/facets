@@ -17,6 +17,7 @@ describe("the bench shelf", () => {
       "SIR Epidemic",
       "Thermostat Room",
       "Thermostat Room (agent)",
+      "Thermostat Room (relay)",
       "Traffic Bottleneck",
       "Two Tanks",
     ]);

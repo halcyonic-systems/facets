@@ -1535,6 +1535,18 @@ pub enum Policy {
     /// the Inverting comparator's `setpoint − reading`, which is why the
     /// thermostat traced both ways is the first proof the agent kind owes.
     Proportional { target: f64, gain: f64 },
+    /// Bang-bang: emit `emit` when the reading is at or above `above`, else
+    /// `otherwise`. Mobus §11.2.1.1's purely reactive agent — "a simple
+    /// thermostat is an easy example" — and the first trajectory none of the
+    /// ten primitives can produce: a square wave. Its refusal is requisite
+    /// variety (§12.3.2.2): a setting the managed process cannot reach is
+    /// not a command, and the language refuses it.
+    Threshold {
+        above: f64,
+        emit: f64,
+        #[serde(rename = "else")]
+        otherwise: f64,
+    },
 }
 
 impl Policy {
@@ -1542,6 +1554,13 @@ impl Policy {
     pub fn decide(&self, reading: f64) -> f64 {
         match self {
             Policy::Proportional { target, gain } => (gain * (target - reading)).max(0.0),
+            Policy::Threshold { above, emit, otherwise } => {
+                if reading >= *above {
+                    *emit
+                } else {
+                    *otherwise
+                }
+            }
         }
     }
 
@@ -1549,6 +1568,43 @@ impl Policy {
     pub fn rule(&self) -> &'static str {
         match self {
             Policy::Proportional { .. } => "proportional",
+            Policy::Threshold { .. } => "threshold",
+        }
+    }
+
+    /// The rule's numbers in the order the agent line spells them, each
+    /// under its SL word — the one list the parser, the emitter, the bag and
+    /// the session knob all read, so a rule is added in one place.
+    pub fn fields(&self) -> Vec<(&'static str, f64)> {
+        match self {
+            Policy::Proportional { target, gain } => vec![("target", *target), ("gain", *gain)],
+            Policy::Threshold { above, emit, otherwise } => {
+                vec![("above", *above), ("emit", *emit), ("else", *otherwise)]
+            }
+        }
+    }
+
+    /// Set one of this rule's numbers by its SL word; `false` when the word
+    /// is not one of this rule's.
+    pub fn set_field(&mut self, field: &str, v: f64) -> bool {
+        match (self, field) {
+            (Policy::Proportional { target, .. }, "target") => *target = v,
+            (Policy::Proportional { gain, .. }, "gain") => *gain = v,
+            (Policy::Threshold { above, .. }, "above") => *above = v,
+            (Policy::Threshold { emit, .. }, "emit") => *emit = v,
+            (Policy::Threshold { otherwise, .. }, "else") => *otherwise = v,
+            _ => return false,
+        }
+        true
+    }
+
+    /// The rule as the inspector states it, with its numbers substituted.
+    pub fn equation(&self) -> String {
+        match self {
+            Policy::Proportional { target, gain } => format!("out = max(0, {gain} · ({target} − level))"),
+            Policy::Threshold { above, emit, otherwise } => {
+                format!("out = {emit} if level ≥ {above} else {otherwise}")
+            }
         }
     }
 }

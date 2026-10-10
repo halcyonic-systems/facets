@@ -1932,8 +1932,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // Mobus §11.2.1: "The agent is given agency … when its output
                 // signals command an actuator having the necessary power to
                 // affect changes on those conditions."
-                let syntax = "agent syntax: `agent <Name> watches <stock> rule proportional \
-                              target <n> gain <n> manages <process>`";
+                let syntax = "agent syntax: `agent <Name> watches <stock> rule <rule> … manages \
+                              <process>` — rules: `proportional target <n> gain <n>`, \
+                              `threshold above <n> emit <n> else <n>`";
                 let Some((name_tok, tail)) = rest.split_first() else {
                     fail(syntax.into(), &mut errors);
                     continue;
@@ -1963,64 +1964,100 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         continue;
                     }
                 };
-                let (target, gain, tail) = match tail {
-                    [Tok::Word(r), Tok::Word(k), Tok::Word(tw), Tok::Word(tv), Tok::Word(gw), Tok::Word(gv), tail @ ..]
-                        if r.eq_ignore_ascii_case("rule")
-                            && k.eq_ignore_ascii_case("proportional")
-                            && tw.eq_ignore_ascii_case("target")
-                            && gw.eq_ignore_ascii_case("gain") =>
-                    {
-                        match (tv.parse::<f64>(), gv.parse::<f64>()) {
-                            (Ok(t), Ok(g)) if t.is_finite() && g.is_finite() => (t, g, tail),
-                            _ => {
-                                fail("`target` and `gain` take numbers — e.g. `target 2 gain 0.5`".into(), &mut errors);
+                // `rule <word>` then the rule's own clauses, every number
+                // declared in the order the rule spells them (`AgentRule::words`);
+                // nothing is defaulted, so a half-written rule is a fault that
+                // names the missing word.
+                let (rule, tail) = match tail {
+                    [Tok::Word(r), Tok::Word(k), tail @ ..] if r.eq_ignore_ascii_case("rule") => {
+                        match crate::canvas::AgentRule::from_word(k) {
+                            Some(rule) => (rule, tail),
+                            None => {
+                                fail(
+                                    format!(
+                                        "unknown rule `{k}` — the rules are: {} (ADR 0008 names table \
+                                         and trace as the next, not yet built)",
+                                        crate::canvas::AgentRule::ALL
+                                            .iter()
+                                            .map(|r| r.word())
+                                            .collect::<Vec<_>>()
+                                            .join(", ")
+                                    ),
+                                    &mut errors,
+                                );
                                 continue;
                             }
                         }
-                    }
-                    [Tok::Word(r), Tok::Word(k), ..]
-                        if r.eq_ignore_ascii_case("rule") && !k.eq_ignore_ascii_case("proportional") =>
-                    {
-                        fail(
-                            format!(
-                                "unknown rule `{k}` — the rules are: proportional (ADR 0008 names \
-                                 threshold, table and trace as the next, not yet built)"
-                            ),
-                            &mut errors,
-                        );
-                        continue;
-                    }
-                    [Tok::Word(r), Tok::Word(_), ..] if r.eq_ignore_ascii_case("rule") => {
-                        fail(
-                            "a proportional rule declares both its numbers, in this order: \
-                             `rule proportional target <n> gain <n>` (the goal, then the \
-                             sensitivity; neither is defaulted)"
-                                .into(),
-                            &mut errors,
-                        );
-                        continue;
                     }
                     _ => {
                         fail(syntax.into(), &mut errors);
                         continue;
                     }
                 };
-                if target <= 0.0 {
-                    fail(
-                        "`target` must be positive — it is the level the agent holds the \
-                         stock at, the same rule `setpoint` follows"
-                            .into(),
-                        &mut errors,
-                    );
+                let mut numbers: Vec<(&'static str, f64)> = Vec::new();
+                let mut tail = tail;
+                let mut clause_ok = true;
+                for word in rule.words() {
+                    match tail {
+                        [Tok::Word(w), Tok::Word(v), rest_tail @ ..] if w.eq_ignore_ascii_case(word) => {
+                            match v.parse::<f64>() {
+                                Ok(n) if n.is_finite() => numbers.push((word, n)),
+                                _ => {
+                                    fail(format!("`{word}` takes a number, not `{v}`"), &mut errors);
+                                    clause_ok = false;
+                                    break;
+                                }
+                            }
+                            tail = rest_tail;
+                        }
+                        _ => {
+                            fail(
+                                format!(
+                                    "a {} rule declares all its numbers, in this order: `rule {} {}` \
+                                     (nothing is defaulted); `{word}` is missing or out of place",
+                                    rule.word(),
+                                    rule.word(),
+                                    rule.words().iter().map(|w| format!("{w} <n>")).collect::<Vec<_>>().join(" ")
+                                ),
+                                &mut errors,
+                            );
+                            clause_ok = false;
+                            break;
+                        }
+                    }
+                }
+                if !clause_ok {
                     continue;
                 }
-                if gain <= 0.0 {
-                    fail(
-                        "`gain` must be positive — a zero gain watches nothing (the \
-                         proportional rule's own refusal, ADR 0008 D4)"
-                            .into(),
-                        &mut errors,
-                    );
+                let num = |k: &str| numbers.iter().find(|(w, _)| *w == k).map(|(_, v)| *v).unwrap_or(f64::NAN);
+                // Each rule's own refusals (ADR 0008 D4: one reading, one refusal).
+                let refused: Option<String> = match rule {
+                    crate::canvas::AgentRule::Proportional => {
+                        if num("target") <= 0.0 {
+                            Some("`target` must be positive — it is the level the agent holds the \
+                                  stock at, the same rule `setpoint` follows".into())
+                        } else if num("gain") <= 0.0 {
+                            Some("`gain` must be positive — a zero gain watches nothing (the \
+                                  proportional rule's own refusal, ADR 0008 D4)".into())
+                        } else {
+                            None
+                        }
+                    }
+                    crate::canvas::AgentRule::Threshold => {
+                        if num("above") <= 0.0 {
+                            Some("`above` must be positive — it is the level the switch turns at".into())
+                        } else if num("emit") < 0.0 || num("else") < 0.0 {
+                            Some("`emit` and `else` are commands and cannot be negative".into())
+                        } else if num("emit") == num("else") {
+                            Some("`emit` and `else` are equal — a threshold that commands the same \
+                                  thing on both sides decides nothing (ADR 0008 D4)".into())
+                        } else {
+                            None
+                        }
+                    }
+                };
+                if let Some(msg) = refused {
+                    fail(msg, &mut errors);
                     continue;
                 }
                 let (proc_name, tail) = match tail {
@@ -2095,12 +2132,36 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     continue;
                 }
+                // Requisite variety (Mobus §12.3.2.2, Ashby): a gate reads a
+                // command in [0, 1], so a threshold that would set it past 1
+                // commands a state the process cannot reach, and is not in
+                // control. Refused with the reach printed.
+                if rule == crate::canvas::AgentRule::Threshold
+                    && matches!(
+                        things[pi].primitive,
+                        Some(ProcessPrimitive::Modulating | ProcessPrimitive::Buffering)
+                    )
+                    && (num("emit") > 1.0 || num("else") > 1.0)
+                {
+                    fail(
+                        format!(
+                            "`{proc_name}` reads its command as a gate in 0..1 — a threshold emitting \
+                             {} / {} asks for a setting it cannot reach (requisite variety, Mobus \
+                             §12.3.2.2); keep both within 0..1",
+                            num("emit"),
+                            num("else")
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
                 let (stock_id, proc_id) = (things[si].id, things[pi].id);
                 by_name.insert(name.clone(), things.len());
                 carrier = Some(Carrier::Thing(things.len()));
                 let mut cognitive_params = std::collections::HashMap::new();
-                cognitive_params.insert("target".to_string(), target);
-                cognitive_params.insert("gain".to_string(), gain);
+                for (word, v) in &numbers {
+                    cognitive_params.insert(word.to_string(), *v);
+                }
                 let agent_id = next_id;
                 things.push(Thing {
                     id: agent_id,
@@ -2112,7 +2173,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     role: Role::Component,
                     env_kind: EnvKind::Neutral,
                     primitive: None,
-                    rule: Some(crate::canvas::AgentRule::Proportional),
+                    rule: Some(rule),
                     interface: false,
                     passway: false,
                     protocol: String::new(),
@@ -2697,19 +2758,36 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         fail(
                             if field.is_agent_field() {
                                 format!(
-                                    "`{thing_name}` is not an agent — `target` and `gain` are an \
-                                     agent line's own parameters (facets#269)"
+                                    "`{thing_name}` is not an agent — `{}` is an agent line's own \
+                                     parameter (facets#269)",
+                                    field.word()
                                 )
                             } else {
                                 format!(
-                                    "`{thing_name}` is an agent — its parameters are `target` and \
-                                     `gain`, not `{}`",
+                                    "`{thing_name}` is an agent — its parameters are its rule's \
+                                     ({}), not `{}`",
+                                    thing.rule.map(|r| r.words().join(", ")).unwrap_or_default(),
                                     field.word()
                                 )
                             },
                             &mut errors,
                         );
                         continue;
+                    }
+                    if let (true, Some(rule)) = (field.is_agent_field(), thing.rule) {
+                        if !rule.words().contains(&field.word()) {
+                            fail(
+                                format!(
+                                    "`{thing_name}` runs a {} rule — its parameters are its rule's \
+                                     ({}), not `{}`",
+                                    rule.word(),
+                                    rule.words().join(", "),
+                                    field.word()
+                                ),
+                                &mut errors,
+                            );
+                            continue;
+                        }
                     }
                     let Some(&value) = thing.cognitive_params.get(field.key()) else {
                         fail(
@@ -3767,30 +3845,33 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
         if let Some(rule) = t.rule {
             let anchor = Anchor::Thing(t.id);
             let (stock, proc) = agent_wires(t)?;
-            let (Some(target), Some(gain)) = (t.cognitive_params.get("target"), t.cognitive_params.get("gain")) else {
+            let words = rule.words();
+            let numbers: Vec<f64> = words
+                .iter()
+                .filter_map(|w| t.cognitive_params.get(*w).copied())
+                .collect();
+            if numbers.len() != words.len() || t.cognitive_params.len() != words.len() || t.primitive.is_some() {
                 return Err(format!(
-                    "`{}` is an agent whose rule has no `target` or `gain` — not expressible in SL; \
-                     export the model as kernel JSON instead",
-                    t.name
-                ));
-            };
-            if t.cognitive_params.len() != 2 || t.primitive.is_some() {
-                return Err(format!(
-                    "`{}` is an agent carrying parameters SL cannot express (an agent line declares \
-                     `target` and `gain` and no primitive) — export the model as kernel JSON instead",
-                    t.name
+                    "`{}` is an agent carrying parameters SL cannot express (a {} rule declares \
+                     exactly {} and no primitive) — export the model as kernel JSON instead",
+                    t.name,
+                    rule.word(),
+                    words.iter().map(|w| format!("`{w}`")).collect::<Vec<_>>().join(", ")
                 ));
             }
             lead(&mut out, &anchor);
             write!(
                 out,
-                "agent {} watches {} rule {} target {target} gain {gain} manages {}",
+                "agent {} watches {} rule {}",
                 name_token(&t.name)?,
                 name_token(&name_of(stock)?)?,
-                rule.word(),
-                name_token(&name_of(proc)?)?
+                rule.word()
             )
             .unwrap();
+            for (w, v) in words.iter().zip(numbers) {
+                write!(out, " {w} {v}").unwrap();
+            }
+            write!(out, " manages {}", name_token(&name_of(proc)?)?).unwrap();
             trail(&mut out, &anchor);
             out.push('\n');
             emit_description(&mut out, &t.description, prose_trail(&anchor).as_deref())?;
@@ -4459,7 +4540,7 @@ pub const POSITIONAL_KEYWORDS: &[&str] = &[
     "bunge", "mobus", "constant",
     // the agent line (facets#269): `proportional` is the word after `rule`, `target`
     // sits behind it; `gain` is already reserved from the Sensing clause
-    "proportional", "target",
+    "proportional", "target", "threshold", "above", "emit", "else",
     // the reserved pass-way (#308): only ever the word after `interface`
     "unresolved",
     // the grounding grades (#411): only ever the word after `grounding`

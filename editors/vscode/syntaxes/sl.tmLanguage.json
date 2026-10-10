@@ -65,7 +65,7 @@
       "name": "keyword.other.sl.grade"
     },
     "keyword": {
-      "match": "(?i)\\b(system|domain|component|source|sink|environment|flow|boundary|interface|milieu|value|protocol|primitive|decomposes|stock|scale|states|kind|time|unit|level|mere|weight|substance|amount|initial|release|capacity|setpoint|maintenance|backpressure|limiting|reservoir|gain|agent|watches|rule|manages|description|usability|porosity|fuzziness|energy|matter|field|informational|param|metric|ample|range|shares|from|share|of|sum|into|klir|bunge|mobus|constant|proportional|target|unresolved|grounding|chain|spec|observed|asserted|unknown)\\b",
+      "match": "(?i)\\b(system|domain|component|source|sink|environment|flow|boundary|interface|milieu|value|protocol|primitive|decomposes|stock|scale|states|kind|time|unit|level|mere|weight|substance|amount|initial|release|capacity|setpoint|maintenance|backpressure|limiting|reservoir|gain|agent|watches|rule|manages|description|usability|porosity|fuzziness|energy|matter|field|informational|param|metric|ample|range|shares|from|share|of|sum|into|klir|bunge|mobus|constant|proportional|target|threshold|above|emit|else|unresolved|grounding|chain|spec|observed|asserted|unknown)\\b",
       "name": "keyword.other.sl"
     },
     "number": {
