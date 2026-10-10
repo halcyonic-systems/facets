@@ -170,8 +170,12 @@ impl Session {
             }
             "limiting" => n.limiting = v != 0.0,
             // An agent's policy numbers are knobs like a setpoint (#269):
-            // the goal is declared, the procedure is the kernel's.
-            word if n.kind == NodeKind::Agent && n.policy.set_field(word, v as f64) => {}
+            // the goal is declared, the procedure is the kernel's, and the
+            // kernel names the refusal (a word not the rule's, a bin the
+            // table lacks, a window that is not a whole tick count).
+            word if n.kind == NodeKind::Agent => {
+                n.policy.set_field(word, v as f64).map_err(|e| format!("unknown node field: {e}"))?
+            }
             other => return Err(format!("unknown node field: {other}")),
         }
         Ok(())
