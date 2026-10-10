@@ -12,6 +12,8 @@ import {
   rebaseOutScale,
   wantsRebaseIn,
   wantsRebaseOut,
+  pastOutLine,
+  hasOutLine,
   type View,
 } from "./frameRebase";
 import { applyEmbed, compose, type Embed } from "./embed";
@@ -135,5 +137,28 @@ describe("where a ride is heading", () => {
 
   it("has nowhere to go for a frame with no extent", () => {
     expect(rebaseOutScale(900, 0)).toBe(0);
+  });
+});
+
+describe("the out line as a gesture", () => {
+  it("does not exist for a frame under the line at its natural scale", () => {
+    expect(hasOutLine(700, 136)).toBe(false);
+    expect(hasOutLine(700, 24)).toBe(false);
+    expect(hasOutLine(700, 600)).toBe(true);
+    expect(hasOutLine(0, 600)).toBe(false);
+  });
+  // A 700px viewport: the out line is 154px of drawn extent.
+  it("is never past for a frame smaller than the line at its natural scale", () => {
+    // an empty canvas (136px) and a one-node frame (140px) sit under the line
+    // at scale 1 — being small is not zooming out
+    expect(pastOutLine(1, 700, 136)).toBe(false);
+    expect(pastOutLine(1, 700, 140)).toBe(false);
+    expect(pastOutLine(0.5, 700, 140)).toBe(false);
+  });
+  it("is past once a frame that had room has been zoomed under the line", () => {
+    // a 600px frame: out line at scale 154/600 ≈ 0.257
+    expect(pastOutLine(1, 700, 600)).toBe(false);
+    expect(pastOutLine(0.3, 700, 600)).toBe(false);
+    expect(pastOutLine(0.25, 700, 600)).toBe(true);
   });
 });

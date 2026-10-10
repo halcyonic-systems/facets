@@ -119,3 +119,25 @@ export function rebaseInScale(minView: number, apertureR: number): number {
 export function rebaseOutScale(minView: number, extentWorld: number): number {
   return extentWorld > 0 ? (minView * RB_OUT) / extentWorld : 0;
 }
+
+/** Is `scale` past the frame's out line, as a gesture the author made? A
+ *  frame whose out line lies at or above its natural scale 1 — an empty
+ *  canvas, one or two nodes, anything smaller than the line's share of the
+ *  viewport — is not "zoomed out past": it is simply small, and no zoom has
+ *  happened. Reading smallness as a gesture sent a fresh Mobus canvas into the
+ *  opaque view on its first placed thing (2026-10-10 feel-test: nothing could
+ *  be moved or deleted until a third thing grew the frame past the exit). */
+export function pastOutLine(scale: number, minView: number, extentWorld: number): boolean {
+  return hasOutLine(minView, extentWorld) && scale <= rebaseOutScale(minView, extentWorld);
+}
+
+/** Does this frame have an out line at all — a scale below its natural 1 at
+ *  which it reads as left? An empty canvas or a one-node frame has none: it
+ *  sits under the line at every scale, and neither the armed decision nor the
+ *  fallback may read that as a gesture. (The 2026-10-10 feel-test caught the
+ *  armed path too: a first layout pass with a tiny viewport armed it, and the
+ *  fit that followed fired it, so a fresh canvas opened opaque.) */
+export function hasOutLine(minView: number, extentWorld: number): boolean {
+  const outScale = rebaseOutScale(minView, extentWorld);
+  return outScale > 0 && outScale < 1;
+}
