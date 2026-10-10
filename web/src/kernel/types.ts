@@ -478,10 +478,11 @@ export type EngineField =
   | "target"
   | "gain"
   | "above"
-  | "below";
+  | "below"
+  | "window";
 
 /** The closed set of agent rules (facets#269, ADR 0008 D4), grown one at a time. */
-export type AgentRule = "proportional" | "threshold";
+export type AgentRule = "proportional" | "threshold" | "table" | "trace";
 
 export type ParamAnchor =
   | { Flow: { relation: number } }

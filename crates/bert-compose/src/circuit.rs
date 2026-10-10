@@ -626,6 +626,16 @@ pub struct Circuit {
     /// `dissipated` is NaN when the model declines the ledger (axis D).
     /// Cleared with `history`; decoded per epoch after a topology change.
     pub node_flux_history: Vec<Vec<f32>>,
+    /// Each agent's own past readings, oldest first, one buffer per node
+    /// index (empty for every node whose policy reads none): the
+    /// experiential memory of Mobus Fig. 11.1, and the H a `Trace` rule
+    /// reads (ADR 0008 D4, facets#269). Run STATE, not a record: the step
+    /// reads it in the decision and writes it once after, so it sits in the
+    /// coalgebra's carrier beside the stocks (the product state ADR 0008 D6
+    /// names), unlike `history` and `spark`, which the step never reads.
+    /// Each buffer holds at most its policy's window and is cleared by
+    /// `reset`, so a run starts with nothing remembered.
+    pub agent_readings: Vec<std::collections::VecDeque<f32>>,
 }
 
 /// One node's flux over one tick, decoded from `node_flux_history`.
@@ -661,6 +671,7 @@ impl Circuit {
         self.ledger_history.clear();
         self.wire_history.clear();
         self.node_flux_history.clear();
+        self.agent_readings.clear();
         self.epochs.clear();
         self.emitted = 0.0;
         self.sunk = 0.0;
@@ -777,6 +788,9 @@ impl Circuit {
             name: self.nodes[i].name.clone(),
         };
         self.nodes.remove(i);
+        if i < self.agent_readings.len() {
+            self.agent_readings.remove(i);
+        }
         self.wires.retain(|w| w.from != i && w.to != i);
         for w in &mut self.wires {
             if w.from > i {
@@ -1415,6 +1429,11 @@ impl Circuit {
         let mut act = vec![0.0f32; n];
         let mut next_storage: Vec<f32> = self.nodes.iter().map(|x| x.storage).collect();
         let mut sink_add = vec![0.0f32; n];
+        // What each remembering agent read this tick, written to its buffer
+        // once every decision is made: observe, decide, remember, then the
+        // step. A rule never sees the reading it is deciding on in its own
+        // past (ADR 0008 D4's Trace; spec §4.7).
+        let mut observed: Vec<(usize, f32)> = Vec::new();
 
         for &i in &order {
             let node = &self.nodes[i];
@@ -1637,13 +1656,23 @@ impl Circuit {
                 // policy turns it into a command, and the command rides the
                 // agent's message outwire into the managed process the same
                 // way a comparator's error does. Read-before-write with the
-                // rest of the step. The one memory a rule may read is the
-                // agent's own last command (facets#517, a banded threshold
-                // inside its band), which is this node's activity from the
-                // completed step before; there is none before the first.
+                // rest of the step. Two memories a rule may read, both the
+                // engine's: the agent's own last command (facets#517, a
+                // banded threshold inside its band), which is this node's
+                // activity from the completed step before and none before
+                // the first; and its own past readings (`agent_readings`, a
+                // trace rule's window; ADR 0008 D4), written after every
+                // decision below, so this tick's reading is not yet among
+                // them.
                 NodeKind::Agent => {
                     let last = (self.tick > 0).then_some(node.activity as f64);
-                    node.policy.decide_with(physical as f64, last) as f32
+                    let past: Vec<f64> = if node.policy.window() > 0 {
+                        observed.push((i, physical));
+                        self.agent_readings.get(i).map(|m| m.iter().map(|&r| r as f64).collect()).unwrap_or_default()
+                    } else {
+                        Vec::new()
+                    };
+                    node.policy.decide_in(physical as f64, last, &past) as f32
                 }
             };
 
@@ -1789,6 +1818,23 @@ impl Circuit {
                 {
                     emitted_now += amount_on(k, &act);
                 }
+            }
+        }
+
+        // Remember, after every decision and before the state commits:
+        // each tracing agent's reading joins its buffer, trimmed to the
+        // policy's window (a window turned down mid-run forgets the oldest;
+        // turned up, the mean runs over what is there until the window
+        // fills, the same rule as the first ticks).
+        if self.agent_readings.len() < n {
+            self.agent_readings.resize_with(n, Default::default);
+        }
+        for (i, reading) in observed {
+            let window = self.nodes[i].policy.window();
+            let buffer = &mut self.agent_readings[i];
+            buffer.push_back(reading);
+            while buffer.len() > window {
+                buffer.pop_front();
             }
         }
 
@@ -3774,6 +3820,138 @@ mod tests {
             c.step();
         }
         assert!(c.balance().abs() < 1e-3, "agent form leaks: {}", c.balance());
+    }
+
+    /// Law (ADR 0008 D4, the table rule): the output is the bin's, bins are
+    /// contiguous under strictly increasing bounds, and the rule reads the
+    /// level alone. In the ward with a graded gate (under 20 open, under 36
+    /// half, else shut) occupancy saws across the first bound and never
+    /// nears the second, where the one-level gatekeeper of
+    /// `hospital-beds-agent.sl` settles well above it; the ledger balances.
+    #[test]
+    fn agent_table_reads_the_bin() {
+        let p = bert_core::Policy::Table { bounds: vec![20.0, 36.0], outputs: vec![1.0, 0.5], otherwise: 0.0 };
+        assert_eq!(p.decide(19.9), 1.0);
+        assert_eq!(p.decide(20.0), 0.5);
+        assert_eq!(p.decide(35.9), 0.5);
+        assert_eq!(p.decide(36.0), 0.0);
+        assert_eq!(p.decide(100.0), 0.0);
+        assert_eq!(p.decide_in(30.0, Some(1.0), &[1.0, 2.0]), p.decide(30.0), "a table reads no memory");
+        let (beds, balance) = ward(p, 24);
+        let tail = &beds[6..];
+        let (lo, hi) = tail.iter().fold((f32::MAX, f32::MIN), |(a, b), &x| (a.min(x), b.max(x)));
+        assert!(lo < 20.0 && hi > 20.0 && hi < 24.0, "the ward never sawed across the first bound: {beds:?}");
+        assert!(balance.abs() < 1e-3, "leak: {balance}");
+        let relay = bert_core::Policy::Threshold { above: 36.0, below: None, emit: 0.0, otherwise: 1.0 };
+        let (one_level, _) = ward(relay, 24);
+        assert!(one_level[6..].iter().all(|&b| b > 28.0), "{one_level:?}");
+    }
+
+    /// The ward of `hospital-beds-agent.sl` at the four-day stay: referrals
+    /// 8 a day through a back-pressured triage valve into a 40-bed stock
+    /// draining over four days, with `policy` on the gatekeeper. Returns
+    /// the occupancy series and the ledger balance.
+    fn ward(policy: bert_core::Policy, ticks: usize) -> (Vec<f32>, f32) {
+        use ProcessPrimitive::*;
+        let mut c = Circuit::default();
+        c.nodes.push(node(NodeKind::Source)); // 0 referrals
+        c.nodes.push(node(NodeKind::Process(Modulating))); // 1 triage
+        c.nodes.push(node(NodeKind::Process(Buffering))); // 2 ward
+        c.nodes.push(node(NodeKind::Sink)); // 3 home
+        c.nodes.push(node(NodeKind::Agent)); // 4 gatekeeper
+        c.nodes[0].param = 8.0;
+        c.nodes[1].back_pressure = true;
+        c.nodes[2].time_constant = 4.0;
+        c.nodes[2].capacity = 40.0;
+        c.nodes[2].initial_storage = 24.0;
+        c.nodes[2].storage = 24.0;
+        c.nodes[4].policy = policy;
+        for (f, t) in [(0, 1), (1, 2), (2, 3)] {
+            c.wires.push(Wire::new(f, t));
+        }
+        let mut tap = Wire::new(2, 4);
+        tap.substance_override = Some(SubstanceType::Message);
+        c.wires.push(tap);
+        c.wires.push(Wire::new(4, 1));
+        let mut beds = Vec::new();
+        for _ in 0..ticks {
+            c.step();
+            beds.push(c.nodes[2].storage);
+        }
+        (beds, c.balance())
+    }
+
+    /// Law (ADR 0008 D4, the trace rule; the first use of H): the agent's
+    /// window of past readings is run state the engine keeps — written once
+    /// per tick after the decision, so a decision never sees its own
+    /// reading in its past; cleared by `reset`, so a run starts with
+    /// nothing remembered; and never a node field. With `window` 1 the mean
+    /// is the reading and the rule is Proportional tick for tick; with a
+    /// longer window the room overshoots further and settles later.
+    #[test]
+    fn agent_trace_remembers_as_run_state_and_window_one_is_proportional() {
+        use ProcessPrimitive::*;
+        fn room(policy: bert_core::Policy) -> Circuit {
+            let mut c = Circuit::default();
+            c.nodes.push(node(NodeKind::Source)); // 0 grid
+            c.nodes.push(node(NodeKind::Process(Modulating))); // 1 switch
+            c.nodes.push(node(NodeKind::Process(Buffering))); // 2 room
+            c.nodes.push(node(NodeKind::Sink)); // 3 outdoors
+            c.nodes.push(node(NodeKind::Agent)); // 4 thermostat
+            c.nodes[0].param = 2.0;
+            c.nodes[1].back_pressure = true;
+            c.nodes[2].time_constant = 5.0;
+            c.nodes[2].initial_storage = 0.5;
+            c.nodes[2].storage = 0.5;
+            c.nodes[4].policy = policy;
+            for (f, t) in [(0, 1), (1, 2), (2, 3)] {
+                c.wires.push(Wire::new(f, t));
+            }
+            let mut tap = Wire::new(2, 4);
+            tap.substance_override = Some(SubstanceType::Message);
+            c.wires.push(tap);
+            c.wires.push(Wire::new(4, 1));
+            c
+        }
+        let trace = |c: &mut Circuit, ticks: usize| -> Vec<f32> {
+            (0..ticks)
+                .map(|_| {
+                    c.step();
+                    c.nodes[2].storage
+                })
+                .collect()
+        };
+        let proportional = bert_core::Policy::Proportional { target: 2.0, gain: 0.5 };
+        let one = bert_core::Policy::Trace { window: 1, target: 2.0, gain: 0.5 };
+        let three = bert_core::Policy::Trace { window: 3, target: 2.0, gain: 0.5 };
+        assert_eq!(trace(&mut room(proportional), 72), trace(&mut room(one.clone()), 72), "window 1 is not Proportional");
+        let mut c = room(three.clone());
+        let traced = trace(&mut c, 72);
+        let memoryless = trace(&mut room(bert_core::Policy::Proportional { target: 2.0, gain: 0.5 }), 72);
+        let peak = |s: &[f32]| s.iter().cloned().fold(f32::MIN, f32::max);
+        assert!(peak(&traced) > peak(&memoryless) + 0.3, "{} vs {}", peak(&traced), peak(&memoryless));
+        let settled = |s: &[f32]| (0..s.len()).find(|&i| s[i..].iter().all(|&x| (x - 5.0 / 3.0).abs() < 1.0 / 60.0)).unwrap_or(s.len());
+        assert!(settled(&traced) > settled(&memoryless) + 10, "{} vs {}", settled(&traced), settled(&memoryless));
+        assert!(c.balance().abs() < 1e-3, "leak: {}", c.balance());
+        // The memory is the engine's, holds at most the window, and the
+        // newest entry is the level the agent read this tick (the pre-tick
+        // level), not the one the step then produced.
+        assert_eq!(c.agent_readings[4].len(), 3);
+        assert_eq!(*c.agent_readings[4].back().unwrap(), traced[70], "the newest memory is last tick's reading");
+        assert!(c.agent_readings.iter().enumerate().all(|(i, m)| i == 4 || m.is_empty()));
+        // Reset forgets: a fresh run from the same circuit is the same run.
+        c.reset();
+        assert!(c.agent_readings.is_empty());
+        assert_eq!(trace(&mut c, 72), traced, "a reset run differs from a fresh one");
+        // The policy reads the past it is handed and nothing it is not.
+        assert_eq!(three.decide_in(2.0, None, &[]), 0.0);
+        assert_eq!(three.decide_in(1.0, None, &[]), 0.5);
+        assert_eq!(three.decide_in(1.0, None, &[3.0, 2.0]), 0.0, "mean of 3, 2, 1 is 2");
+        assert_eq!(three.decide_in(1.0, None, &[9.0, 9.0, 3.0, 2.0]), 0.0, "only the last window − 1 count");
+        assert_eq!(one.decide_in(1.0, None, &[9.0, 9.0]), proportional_decide(1.0), "window 1 ignores the past");
+        fn proportional_decide(level: f64) -> f64 {
+            bert_core::Policy::Proportional { target: 2.0, gain: 0.5 }.decide(level)
+        }
     }
 
     /// Law (facets#269, ADR 0008 D3/D4): a threshold agent produces what no

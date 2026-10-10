@@ -47,10 +47,10 @@ pub fn doc(kind: NodeKind) -> Doc {
         NodeKind::Agent => Doc {
             plain: "A decision-maker. It watches one stock's level, applies its rule, and commands the work process it manages.",
             everyday: "A thermostat: reads the room, decides, and tells the furnace how hard to run.",
-            math: "out = rule(level)   — proportional: max(0, gain · (target − level));  threshold: emit if level ≥ above else else",
-            substance: "reads a level over an observation tap (never drains it); emits a command signal. Its goal is a declared parameter.",
-            theory: "Mobus ch. 11 Fig 11.1 — engine, decision model, memory; agency when its output commands an actuator with requisite variety (Ashby). First rung: purely reactive, no memory.",
-            code: "out = policy.decide(level)",
+            math: "out = rule(level)   — proportional: max(0, gain · (target − level));  threshold: emit if level ≥ above else else;  table: the bin's output;  trace: max(0, gain · (target − mean of the last window levels))",
+            substance: "reads a level over an observation tap (never drains it); emits a command signal. Its goal is a declared parameter. A trace rule's window of past readings is the engine's run state, written after each decision.",
+            theory: "Mobus ch. 11 Fig 11.1 — engine, decision model, memory; agency when its output commands an actuator with requisite variety (Ashby). Proportional, threshold and table are purely reactive (§11.2.1.1); trace is adaptive reactive, the homeostatic mechanism, and the first rule to read its own history.",
+            code: "out = policy.decide_in(level, last_command, past_readings)",
         },
         NodeKind::Process(p) => match p {
             Buffering => Doc {

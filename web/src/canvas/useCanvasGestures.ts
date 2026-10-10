@@ -196,15 +196,21 @@ export function stampPrimitiveAt(model: CanvasModel, armed: PaletteTool, p: Pt):
   };
 }
 
+/** Each rule's starting numbers (facets#269, ADR 0008 D4), under the words
+ *  the agent line spells. A table starts with two bins because one bin is a
+ *  threshold and the compiler says so; its bins are numbered from one. */
+export const AGENT_RULE_DEFAULTS: Record<AgentRule, Record<string, number>> = {
+  proportional: { target: 1, gain: 1 },
+  threshold: { above: 1, emit: 0, else: 1 },
+  table: { under1: 1, emit1: 1, under2: 2, emit2: 0.5, else: 0 },
+  trace: { window: 3, target: 1, gain: 1 },
+};
+
 /** The fields an agent designation writes (facets#269): the rule and its
  *  numbers in the bag under the words the agent line spells, where the param
  *  layer and the session knob read them. */
 export function agentFields(rule: AgentRule): Pick<Thing, "rule" | "cognitive_params"> {
-  const numbers: Record<AgentRule, Record<string, number>> = {
-    proportional: { target: 1, gain: 1 },
-    threshold: { above: 1, emit: 0, else: 1 },
-  };
-  return { rule, cognitive_params: numbers[rule] };
+  return { rule, cognitive_params: { ...AGENT_RULE_DEFAULTS[rule] } };
 }
 
 /** What a pointer at `p` connects to: a node, else an interface port resolved to

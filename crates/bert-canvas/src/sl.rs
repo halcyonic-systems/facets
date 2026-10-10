@@ -1937,7 +1937,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // affect changes on those conditions."
                 let syntax = "agent syntax: `agent <Name> watches <stock> rule <rule> … manages \
                               <process>` — rules: `proportional target <n> gain <n>`, \
-                              `threshold above <n> [below <n>] emit <n> else <n>`";
+                              `threshold above <n> [below <n>] emit <n> else <n>`, \
+                              `table under <n> emit <n> [under <n> emit <n> …] else <n>`, \
+                              `trace window <n> target <n> gain <n>`";
                 let Some((name_tok, tail)) = rest.split_first() else {
                     fail(syntax.into(), &mut errors);
                     continue;
@@ -1978,8 +1980,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             None => {
                                 fail(
                                     format!(
-                                        "unknown rule `{k}` — the rules are: {} (ADR 0008 names table \
-                                         and trace as the next, not yet built)",
+                                        "unknown rule `{k}` — the rules are: {} (ADR 0008 D4 names \
+                                         Markov as the next, not yet built)",
                                         crate::canvas::AgentRule::ALL
                                             .iter()
                                             .map(|r| r.word())
@@ -1997,19 +1999,77 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         continue;
                     }
                 };
-                let mut numbers: Vec<(&'static str, f64)> = Vec::new();
+                let mut numbers: Vec<(String, f64)> = Vec::new();
                 let mut tail = tail;
                 let mut clause_ok = true;
+                let number = |w: &str, v: &str, errors: &mut Vec<SlError>| -> Option<f64> {
+                    match v.parse::<f64>() {
+                        Ok(n) if n.is_finite() => Some(n),
+                        _ => {
+                            fail(format!("`{w}` takes a number, not `{v}`"), errors);
+                            None
+                        }
+                    }
+                };
+                // A table's clauses repeat (ADR 0008 D4): one `under <b> emit
+                // <o>` pair per bin, in reading order, then `else <o>`. The
+                // bag numbers the pairs from one so every number has a word.
+                let table_syntax = "a table rule declares its bins in order: `rule table under <n> \
+                                    emit <n> [under <n> emit <n> …] else <n>` (nothing is defaulted)";
+                if rule == crate::canvas::AgentRule::Table {
+                    let mut bins = 0usize;
+                    loop {
+                        match tail {
+                            [Tok::Word(w), Tok::Word(v), rest_tail @ ..] if w.eq_ignore_ascii_case("else") => {
+                                match number("else", v, &mut errors) {
+                                    Some(n) => numbers.push(("else".to_string(), n)),
+                                    None => clause_ok = false,
+                                }
+                                tail = rest_tail;
+                                break;
+                            }
+                            [Tok::Word(u), Tok::Word(b), Tok::Word(e), Tok::Word(o), rest_tail @ ..]
+                                if u.eq_ignore_ascii_case("under") && e.eq_ignore_ascii_case("emit") =>
+                            {
+                                bins += 1;
+                                match (number("under", b, &mut errors), number("emit", o, &mut errors)) {
+                                    (Some(bn), Some(on)) => {
+                                        numbers.push((format!("under{bins}"), bn));
+                                        numbers.push((format!("emit{bins}"), on));
+                                    }
+                                    _ => {
+                                        clause_ok = false;
+                                        break;
+                                    }
+                                }
+                                tail = rest_tail;
+                            }
+                            _ => {
+                                fail(
+                                    format!(
+                                        "{table_syntax}; {} is missing or out of place",
+                                        if bins == 0 { "the first `under … emit …` pair" } else { "`under … emit …` or `else`" }
+                                    ),
+                                    &mut errors,
+                                );
+                                clause_ok = false;
+                                break;
+                            }
+                        }
+                    }
+                }
                 // An optional clause (`below`, facets#517) is taken when its
                 // word is next and skipped otherwise; a required one that is
                 // not next is the fault.
                 for (word, required) in rule.clauses() {
+                    if rule == crate::canvas::AgentRule::Table || !clause_ok {
+                        break;
+                    }
                     match tail {
                         [Tok::Word(w), Tok::Word(v), rest_tail @ ..] if w.eq_ignore_ascii_case(word) => {
-                            match v.parse::<f64>() {
-                                Ok(n) if n.is_finite() => numbers.push((word, n)),
-                                _ => {
-                                    fail(format!("`{word}` takes a number, not `{v}`"), &mut errors);
+                            match number(word, v, &mut errors) {
+                                Some(n) => numbers.push((word.to_string(), n)),
+                                None => {
                                     clause_ok = false;
                                     break;
                                 }
@@ -2040,8 +2100,8 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 if !clause_ok {
                     continue;
                 }
-                let has = |k: &str| numbers.iter().any(|(w, _)| *w == k);
-                let num = |k: &str| numbers.iter().find(|(w, _)| *w == k).map(|(_, v)| *v).unwrap_or(f64::NAN);
+                let has = |k: &str| numbers.iter().any(|(w, _)| w == k);
+                let num = |k: &str| numbers.iter().find(|(w, _)| w == k).map(|(_, v)| *v).unwrap_or(f64::NAN);
                 // Each rule's own refusals (ADR 0008 D4: one reading, one refusal).
                 let refused: Option<String> = match rule {
                     crate::canvas::AgentRule::Proportional => {
@@ -2076,6 +2136,72 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         } else if num("emit") == num("else") {
                             Some("`emit` and `else` are equal — a threshold that commands the same \
                                   thing on both sides decides nothing (ADR 0008 D4)".into())
+                        } else {
+                            None
+                        }
+                    }
+                    crate::canvas::AgentRule::Table => {
+                        let bins = numbers.iter().filter(|(w, _)| w.starts_with("under")).count();
+                        let bounds: Vec<f64> = (1..=bins).map(|i| num(&format!("under{i}"))).collect();
+                        let outputs: Vec<f64> = (1..=bins).map(|i| num(&format!("emit{i}"))).collect();
+                        if bins == 0 {
+                            Some(format!("a table declares at least one bin before `else` — {table_syntax}"))
+                        } else if bins == 1 {
+                            // One bin is one level with two commands, which
+                            // the threshold rule already is; the table rule
+                            // exists for the program of response a single
+                            // level cannot state.
+                            Some(format!(
+                                "a table with one bin is a threshold — write `rule threshold above {} \
+                                 emit {} else {}` (ADR 0008 D4: one reading per rule)",
+                                bounds[0],
+                                num("else"),
+                                outputs[0]
+                            ))
+                        } else if bounds.iter().any(|b| *b <= 0.0) {
+                            Some("every `under` bound must be positive — it is a level the reading is \
+                                  measured against".into())
+                        } else if bounds.windows(2).any(|w| w[1] <= w[0]) {
+                            // The bins are contiguous by construction, each
+                            // running from the bound before to its own, so
+                            // a bound that fails to rise is what ADR 0008
+                            // D4 calls overlapping or gapped bins.
+                            Some(format!(
+                                "`under` bounds must strictly increase, and {} do not — each bin runs \
+                                 from the bound before to its own, so a bound at or under the last \
+                                 overlaps or gaps the bins (ADR 0008 D4)",
+                                bounds.iter().map(|b| b.to_string()).collect::<Vec<_>>().join(", ")
+                            ))
+                        } else if outputs.iter().any(|o| *o < 0.0) || num("else") < 0.0 {
+                            Some("`emit` and `else` are commands and cannot be negative".into())
+                        } else if outputs.iter().all(|o| *o == num("else")) {
+                            // Threshold's equal emit/else refusal, at any
+                            // arity: the same command in every bin is no
+                            // program of response.
+                            Some(format!(
+                                "every `emit` and `else` is {} — a table that commands the same thing \
+                                 in every bin decides nothing (ADR 0008 D4); give at least one bin a \
+                                 different output, or drop the agent and declare the command on the \
+                                 process",
+                                num("else")
+                            ))
+                        } else {
+                            None
+                        }
+                    }
+                    crate::canvas::AgentRule::Trace => {
+                        let w = num("window");
+                        if w < 1.0 || w.fract() != 0.0 {
+                            Some(format!(
+                                "`window` must be a positive whole number of ticks, not {w} — a zero \
+                                 window remembers nothing (the trace rule's own refusal, ADR 0008 D4)"
+                            ))
+                        } else if num("target") <= 0.0 {
+                            Some("`target` must be positive — it is the level the agent holds the \
+                                  stock at, the same rule `setpoint` follows".into())
+                        } else if num("gain") <= 0.0 {
+                            Some("`gain` must be positive — a zero gain watches nothing (the \
+                                  proportional rule's own refusal, ADR 0008 D4)".into())
                         } else {
                             None
                         }
@@ -2158,23 +2284,27 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     continue;
                 }
                 // Requisite variety (Mobus §12.3.2.2, Ashby): a gate reads a
-                // command in [0, 1], so a threshold that would set it past 1
-                // commands a state the process cannot reach, and is not in
-                // control. Refused with the reach printed.
-                if rule == crate::canvas::AgentRule::Threshold
-                    && matches!(
-                        things[pi].primitive,
-                        Some(ProcessPrimitive::Modulating | ProcessPrimitive::Buffering)
-                    )
-                    && (num("emit") > 1.0 || num("else") > 1.0)
+                // command in [0, 1], so a declared command that would set it
+                // past 1 (a threshold's or a table's) commands a state the
+                // process cannot reach, and is not in control. Refused with
+                // the reach printed.
+                let commands: Vec<f64> = numbers
+                    .iter()
+                    .filter(|(w, _)| w.starts_with("emit") || w == "else")
+                    .map(|(_, v)| *v)
+                    .collect();
+                if matches!(
+                    things[pi].primitive,
+                    Some(ProcessPrimitive::Modulating | ProcessPrimitive::Buffering)
+                ) && commands.iter().any(|c| *c > 1.0)
                 {
                     fail(
                         format!(
-                            "`{proc_name}` reads its command as a gate in 0..1 — a threshold emitting \
-                             {} / {} asks for a setting it cannot reach (requisite variety, Mobus \
-                             §12.3.2.2); keep both within 0..1",
-                            num("emit"),
-                            num("else")
+                            "`{proc_name}` reads its command as a gate in 0..1 — a {} emitting \
+                             {} asks for a setting it cannot reach (requisite variety, Mobus \
+                             §12.3.2.2); keep every command within 0..1",
+                            rule.word(),
+                            commands.iter().map(|c| c.to_string()).collect::<Vec<_>>().join(" / ")
                         ),
                         &mut errors,
                     );
@@ -2183,10 +2313,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let (stock_id, proc_id) = (things[si].id, things[pi].id);
                 by_name.insert(name.clone(), things.len());
                 carrier = Some(Carrier::Thing(things.len()));
-                let mut cognitive_params = std::collections::HashMap::new();
-                for (word, v) in &numbers {
-                    cognitive_params.insert(word.to_string(), *v);
-                }
+                let cognitive_params: std::collections::HashMap<String, f64> = numbers.into_iter().collect();
                 let agent_id = next_id;
                 things.push(Thing {
                     id: agent_id,
@@ -3944,27 +4071,25 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             let anchor = Anchor::Thing(t.id);
             let (stock, proc) = agent_wires(t)?;
             // The clauses the bag carries, in the line's order: every
-            // required one, and an optional one (`below`, facets#517) only
-            // when declared.
-            let spelled: Vec<(&str, f64)> = rule
-                .clauses()
-                .iter()
-                .filter_map(|(w, _)| t.cognitive_params.get(*w).map(|v| (*w, *v)))
-                .collect();
-            let required_present = rule.words().iter().all(|w| t.cognitive_params.contains_key(*w));
-            if !required_present || t.cognitive_params.len() != spelled.len() || t.primitive.is_some() {
+            // required one, an optional one (`below`, facets#517) only when
+            // declared, and a table's numbered bins up to the first missing.
+            let Some(spelled) = rule.spelled(&t.cognitive_params).filter(|_| t.primitive.is_none()) else {
                 return Err(format!(
                     "`{}` is an agent carrying parameters SL cannot express (a {} rule declares \
                      exactly {} and no primitive) — export the model as kernel JSON instead",
                     t.name,
                     rule.word(),
-                    rule.clauses()
-                        .iter()
-                        .map(|(w, required)| if *required { format!("`{w}`") } else { format!("[`{w}`]") })
-                        .collect::<Vec<_>>()
-                        .join(", ")
+                    if rule == crate::canvas::AgentRule::Table {
+                        "`under1`, `emit1` … `underN`, `emitN`, `else`".to_string()
+                    } else {
+                        rule.clauses()
+                            .iter()
+                            .map(|(w, required)| if *required { format!("`{w}`") } else { format!("[`{w}`]") })
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    }
                 ));
-            }
+            };
             lead(&mut out, &anchor);
             write!(
                 out,
@@ -3975,6 +4100,8 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             )
             .unwrap();
             for (w, v) in spelled {
+                // A table's bag words carry the bin's number; the line does not.
+                let w = w.trim_end_matches(|c: char| c.is_ascii_digit());
                 write!(out, " {w} {v}").unwrap();
             }
             write!(out, " manages {}", name_token(&name_of(proc)?)?).unwrap();
@@ -4647,6 +4774,8 @@ pub const POSITIONAL_KEYWORDS: &[&str] = &[
     // the agent line (facets#269): `proportional` is the word after `rule`, `target`
     // sits behind it; `gain` is already reserved from the Sensing clause
     "proportional", "target", "threshold", "above", "below", "emit", "else",
+    // the table and trace rules (ADR 0008 D4): `under` repeats, one per bin
+    "table", "under", "trace", "window",
     // the reserved pass-way (#308): only ever the word after `interface`
     "unresolved",
     // the grounding grades (#411): only ever the word after `grounding`

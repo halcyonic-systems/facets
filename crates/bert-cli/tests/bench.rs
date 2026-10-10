@@ -215,6 +215,68 @@ fn the_banded_relay_switches_less_than_the_bare_one_and_less_again_as_the_band_w
     assert_eq!((bare_h, band_h), (13, 12));
 }
 
+/// The table and trace rules (ADR 0008 D4) from the terminal, each against
+/// its one-level or memoryless control; the numbers are the README's. The
+/// trace thermostat at `window` 1 is `thermostat-agent.sl` digit for digit,
+/// at 3 it overshoots further and settles later; the table ward saws across
+/// its first bound where the relay ward settles, and a bin's output is a
+/// knob by its numbered word.
+#[test]
+fn the_trace_and_table_forms_differ_from_their_controls_as_the_readme_says() {
+    let run = |file: &str, t: &str, sets: &[&str]| {
+        let mut args = vec!["bench", file, "--t", t, "--no-log"];
+        for s in sets {
+            args.push("--set");
+            args.push(s);
+        }
+        let out = bert(&args);
+        assert_eq!(code(&out), 0, "{}", stderr(&out));
+        let v = stdout_json(&out);
+        assert_eq!(v["conserved"], true, "{file}");
+        v
+    };
+    let series = |v: &serde_json::Value, name: &str| -> Vec<f64> {
+        v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap()["series"]
+            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+    };
+    let level = |v: &serde_json::Value, name: &str| -> f64 {
+        v["levels"].as_array().unwrap().iter().find(|l| l["name"] == name).unwrap()["value"].as_f64().unwrap()
+    };
+    let settles = |room: &[f64]| (0..room.len()).find(|&i| room[i..].iter().all(|&x| (x - 5.0 / 3.0).abs() < 1.0 / 60.0)).map(|i| i + 1);
+    let peak = |s: &[f64]| s.iter().cloned().fold(f64::MIN, f64::max);
+    let low = |s: &[f64]| s.iter().cloned().fold(f64::MAX, f64::min);
+    // The thermostat with a memory.
+    let agent = run("assets/bench/thermostat-agent.sl", "72", &[]);
+    let traced = run("assets/bench/thermostat-trace.sl", "72", &[]);
+    let one = run("assets/bench/thermostat-trace.sl", "72", &["Thermostat.window=1"]);
+    assert_eq!(series(&agent, "Room"), series(&one, "Room"), "window 1 is not the memoryless agent");
+    assert_eq!(series(&agent, "Thermostat"), series(&one, "Thermostat"));
+    let (a, t) = (series(&agent, "Room"), series(&traced, "Room"));
+    assert!((peak(&a) - 1.9).abs() < 0.01 && (peak(&t) - 2.32).abs() < 0.01, "{} vs {}", peak(&a), peak(&t));
+    assert!(low(&a) > 1.6 && low(&t) < 1.32, "{} vs {}", low(&a), low(&t));
+    assert_eq!((settles(&a), settles(&t)), (Some(3), Some(26)));
+    let six = run("assets/bench/thermostat-trace.sl", "72", &["Thermostat.window=6"]);
+    assert_eq!(six["edits"][0]["field"], "window");
+    assert_eq!(settles(&series(&six, "Room")), None, "a six-hour memory settles within three days");
+    // The ward with a table.
+    let relay = run("assets/bench/hospital-beds-agent.sl", "24", &[]);
+    let table = run("assets/bench/hospital-beds-table.sl", "24", &[]);
+    let (r, w) = (series(&relay, "Ward"), series(&table, "Ward"));
+    assert!(r[12..].iter().all(|&b| b > 31.0 && b < 32.0), "{r:?}");
+    assert!(low(&w[6..]) > 19.0 && low(&w[6..]) < 20.0 && peak(&w[6..]) > 22.5 && peak(&w[6..]) < 23.0, "{w:?}");
+    assert!((level(&relay, "Home") - 184.0).abs() < 0.5 && (level(&table, "Home") - 128.1).abs() < 0.5);
+    let six_day = run("assets/bench/hospital-beds-table.sl", "24", &["Ward.time_constant=6"]);
+    assert!(series(&six_day, "Ward").iter().all(|&b| (b - 24.0).abs() < 1e-6), "{:?}", series(&six_day, "Ward"));
+    let quarter = run("assets/bench/hospital-beds-table.sl", "24", &["Ward.time_constant=6", "Gatekeeper.emit2=0.25@12"]);
+    assert_eq!(quarter["edits"][1]["field"], "emit2");
+    let q = series(&quarter, "Ward");
+    assert!(low(&q[12..]) > 18.7 && low(&q[12..]) < 18.9 && peak(&q[12..]) > 23.7 && peak(&q[12..]) < 23.9, "{q:?}");
+    // A bin the table lacks is refused by name.
+    let out = bert(&["bench", "assets/bench/hospital-beds-table.sl", "--t", "3", "--no-log", "--set", "Gatekeeper.under3=50"]);
+    assert_eq!(code(&out), 4, "{}", stderr(&out));
+    assert!(stderr(&out).contains("`under3` is not a table rule's word"), "{}", stderr(&out));
+}
+
 /// ADR 0008 D3, the stress test: four bench models from the literature, each
 /// with its aggregate form as the control, and the difference is the finding.
 /// Each pair runs from the terminal; the numbers are the README's.

@@ -111,8 +111,8 @@ on Mobus's ladder (§11.2.1.1) in order.**
 |---|---|---|---|---|
 | Threshold | reading ≥ a → emit x, else y | purely reactive ("a simple thermostat is an easy example") | none; **note 2026-10-10 (#517):** the optional band `below b` adds one bit, the agent's own last command, read only between b and a; the engine already keeps it as the node's activity, so D2 and D6 hold unchanged and a line without `below` reads none | x or y outside the managed process's reach; b not under a |
 | Proportional | gain · (target − reading) | purely reactive; Wiener's error correction, §12.3.2 | none | zero gain, which watches nothing |
-| Table | a declared map from reading bins to outputs | purely reactive ("an algorithmic or heuristic program of response") | none | overlapping or gapped bins |
-| Trace | emit from a statistic over the agent's own past readings | adaptive reactive ("tracks the input variables and responds in kind. This is the homeostatic mechanism") | yes; the first use of H | a zero window |
+| Table | a declared map from reading bins to outputs | purely reactive ("an algorithmic or heuristic program of response") | none | overlapping or gapped bins; **note 2026-10-10 (built, spec v1.12):** the grammar is `under b1 emit o1 … else oN` with contiguous bins by construction, so this refusal IS "bounds not strictly increasing"; a single bin is refused as a threshold with that line spelled; **note 2026-10-10:** every output equal is refused as threshold's equal emit/else is, since it decides nothing |
+| Trace | emit from a statistic over the agent's own past readings | adaptive reactive ("tracks the input variables and responds in kind. This is the homeostatic mechanism") | yes; the first use of H | a zero window; **note 2026-10-10 (built, spec v1.12):** the statistic is the mean over `window n` readings, this tick's included, under `target` and `gain` as Proportional; the window is run state the engine owns (`Circuit::agent_readings`), written after the decision and cleared per run, never a policy or node field; `window` 1 is Proportional tick for tick |
 
 Named in the spec and not built: **Markov** (#67; changes the dynamics kind),
 **anticipatory** (a rule that rewrites its own table or gain from its trace;
@@ -155,6 +155,13 @@ Separating instance: the same statement with one Markov agent fails to
 typecheck as deterministic, which is the proof that homogeneity is a
 constraint and not a label. Not claimed: agents over agents, Markov, H beyond a
 finite trace. Each is written as a later obligation with its own name.
+
+Note 2026-10-10 (Trace built): Trace instantiates the agent-memory
+coordinate M nontrivially, a finite window of the agent's own readings. The
+obligation as stated already covers it, because M is arbitrary in
+`agent_step_is_product`: a deterministic rule over the stocks and a finite
+memory, with the memory written after the decision, is one transition on the
+product. No Lean change; the statement stays unwritten in SSF until its turn.
 
 ## The work-process taxonomy, sourced
 
