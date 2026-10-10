@@ -34,7 +34,13 @@ work-process row). The same table lives in the engine's teaching cards
 An **agent** (facets#269) is not an eleventh process: a decision-maker, drawn
 as Mobus's management oval, that watches a stock (Buffering) over a flow in
 and commands a valve (Modulating), an amplifier (Amplifying) or a stock's
-release over a flow out — the heavy dashed command line.
+release over a flow out — the heavy dashed command line. Its rule is one of
+four (ADR 0008 D4, spec §4.7): `proportional`, a dial; `threshold`, a switch,
+with an optional dead band; `table`, a graded response, one output per bin of
+the reading; `trace`, a dial over the mean of its last few readings — the
+only one with a memory, which the engine keeps as run state and clears each
+run. The bench shelf carries one witness per rule against its control
+(`assets/bench/README.md`).
 
 ## What actually makes a model run
 
