@@ -1071,7 +1071,10 @@ function SectionHead({ label, right, lead }: { label: string; right?: ReactNode;
   // pull the eye before any card does — the display face at a size above the
   // card names, not a folio whisper. The rule and the right-hand control stay.
   return (
-    <div className="flex items-baseline gap-4 pb-3">
+    <div
+      className="mb-4 flex items-baseline gap-4 border-b pb-2"
+      style={{ borderColor: "var(--ink)", borderBottomWidth: "2px" }}
+    >
       <span
         className="shrink-0 text-2xl leading-none"
         style={{ ...nameStyle, color: lead ? "var(--accent)" : "var(--ink)" }}
@@ -1079,7 +1082,7 @@ function SectionHead({ label, right, lead }: { label: string; right?: ReactNode;
       >
         {label}
       </span>
-      <span className="h-px min-w-6 flex-1" style={{ background: "var(--rule-soft)" }} />
+      <span className="min-w-6 flex-1" />
       {right}
     </div>
   );
@@ -1319,7 +1322,7 @@ export function LibraryBrowser({
             {/* No Recent means this is the first section, and a top margin
                 under the masthead rule would print as a gap rather than as
                 air. */}
-            <section className={recentCards.length > 0 ? "mt-8" : ""}>
+            <section className={recentCards.length > 0 ? "mt-14" : ""}>
               <SectionHead
                 label="Start from one of ours"
                 // A search has put the shelves away, and the toggle only cuts
@@ -1391,7 +1394,7 @@ export function LibraryBrowser({
                 control on every card: renaming and deleting are not what a
                 reader came here to do, and a × on every card invites the one
                 click this page cannot undo. */}
-            <section className="mt-8">
+            <section className="mt-14">
               <SectionHead
                 label="Yours"
                 right={
@@ -1475,7 +1478,7 @@ export function LibraryBrowser({
               )}
             </section>
 
-            <section className="mt-8">
+            <section className="mt-14">
               <SectionHead label="From a file" />
               <button
                 onClick={onOpenFile}
@@ -1817,7 +1820,7 @@ function LedgerView({
         <BlockHeader label="Yours" count={`${savedCount} model${savedCount === 1 ? "" : "s"}`} />
         {facet ? (
           <EmptyLine>your models carry no genus or tradition tag — clear the filter to see them</EmptyLine>
-        ) : tree.length === 0 ? (
+        ) : tree.length === 0 && drafted.length === 0 ? (
           <EmptyLine>no saved models yet</EmptyLine>
         ) : (
           <div style={{ borderTop: "1px solid var(--rule)" }}>
@@ -1847,39 +1850,21 @@ function LedgerView({
                 show all {tree.length} saved models
               </button>
             )}
+            {/* #472 fold: drafts are yours too — rows in the same list, the
+                chip saying so and naming the model that answered. */}
+            {drafted.map((d, i) => (
+              <LedgerRow
+                key={d.key}
+                index={shownRoots.length + i + 1}
+                name={d.description}
+                description={draftedGloss(d)}
+                tag={`drafted · ${d.model}`}
+                onClick={() => onOpenDrafted(d.sl)}
+              />
+            ))}
           </div>
         )}
       </section>
-
-      {/* Drafted. The third provenance (#324), and the only one that can be
-          absent: it is read from the reasoner, which is off until the user
-          turns it on. No turns means no section — not an empty state and not
-          an explanation, because a user who has never used the co-author is
-          not missing anything and should not be told that they are. */}
-      {drafted.length > 0 && (
-        <section className="mt-16">
-          <BlockHeader
-            label="Drafted with the co-author"
-            count={`${drafted.length} draft${drafted.length === 1 ? "" : "s"}`}
-          />
-          {facet ? (
-            <EmptyLine>your drafts carry no genus or tradition tag — clear the filter to see them</EmptyLine>
-          ) : (
-            <Ledger>
-              {drafted.map((d, i) => (
-                <LedgerRow
-                  key={d.key}
-                  index={i + 1}
-                  name={d.description}
-                  description={draftedGloss(d)}
-                  tag={d.model}
-                  onClick={() => onOpenDrafted(d.sl)}
-                />
-              ))}
-            </Ledger>
-          )}
-        </section>
-      )}
 
       <section className="mt-16">
         <BlockHeader label="From a file" />
@@ -1959,6 +1944,15 @@ function ModelRow({
               style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--seal)" }}
             >
               runs
+            </span>
+          )}
+          {model.with && (
+            <span
+              className="shrink-0 text-xs"
+              style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--ink-muted)" }}
+              data-testid="row-marker"
+            >
+              with {model.with}
             </span>
           )}
         </span>
