@@ -33,4 +33,5 @@ there under that shelf's rule and leaves this folder.
 
 | File | With | Date | Lens | What it is |
 |---|---|---|---|---|
+| `hal-harness.sl` | Shingai | 2026-07-24 | Bunge | hal, the sovereign-AI harness, one level down: proxy, council, bench, fine-tune pipeline, homeostat; the endo/exo split and the one-way mirror. Drawn for its author; moved here from the examples shelf 2026-10-10 (#472: "mostly for me"). |
 | `organic-universal-health-cover.sl` | Luke | 2026-10-01 | Mobus | A decentralised universal-coverage prototype: enrolment from civil records, income-proportional contributions split between member-owned risk pools and personal health accounts, catastrophic reinsurance across pools, posted prices and audited outcomes. Two Mobus warnings on message flows into non-consuming primitives, left for the exploration. |

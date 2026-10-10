@@ -13,7 +13,7 @@ use bert_canvas::sl::{emit_sl, emit_sl_with, format_sl, parse_sl, parse_sl_full}
 const COMMENTS: &str = include_str!("../../../fixtures/sl/stanza/comments.sl");
 const PINNED: &str = include_str!("../../../fixtures/sl/stanza/pinned.sl");
 const INTERLEAVED: &str = include_str!("../../../fixtures/sl/stanza/interleaved.sl");
-const HAL_HARNESS: &str = include_str!("../../../assets/examples/hal-harness.sl");
+const HAL_HARNESS: &str = include_str!("../../../assets/field/hal-harness.sl");
 
 fn json(m: &CanvasModel) -> serde_json::Value {
     serde_json::to_value(m).unwrap()
