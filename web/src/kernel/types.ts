@@ -477,7 +477,8 @@ export type EngineField =
   | "maintenance"
   | "target"
   | "gain"
-  | "above";
+  | "above"
+  | "below";
 
 /** The closed set of agent rules (facets#269, ADR 0008 D4), grown one at a time. */
 export type AgentRule = "proportional" | "threshold";

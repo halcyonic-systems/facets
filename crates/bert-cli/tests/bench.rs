@@ -167,6 +167,54 @@ fn the_relay_thermostat_switches_and_overshoots_from_the_terminal() {
     assert!(room[12..].iter().any(|&r| r > 3.0), "after raising the level the room never passed it: {room:?}");
 }
 
+/// The hysteresis band (facets#517) from the terminal: at the quarter-hour
+/// step, where the bare relay chatters, the banded relay switches fewer
+/// times a day and keeps the room inside its band; widening the band cuts
+/// the count again. The numbers are the README's.
+#[test]
+fn the_banded_relay_switches_less_than_the_bare_one_and_less_again_as_the_band_widens() {
+    let run = |file: &str, dt: &str, sets: &[&str]| {
+        let mut args = vec!["bench", file, "--t", "24", "--dt", dt, "--no-log"];
+        for s in sets {
+            args.push("--set");
+            args.push(s);
+        }
+        let out = bert(&args);
+        assert_eq!(code(&out), 0, "{}", stderr(&out));
+        let v = stdout_json(&out);
+        assert_eq!(v["conserved"], true, "{file}");
+        v
+    };
+    let series = |v: &serde_json::Value, name: &str| -> Vec<f64> {
+        v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == name).unwrap()["series"]
+            .as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()
+    };
+    let flips = |cmd: &[f64]| cmd.windows(2).filter(|w| w[0] != w[1]).count();
+    let swing = |room: &[f64]| {
+        let tail = &room[room.len() / 2..];
+        tail.iter().cloned().fold((f64::MAX, f64::MIN), |(lo, hi), x| (lo.min(x), hi.max(x)))
+    };
+    let bare = run("assets/bench/thermostat-relay.sl", "0.25", &[]);
+    let band = run("assets/bench/thermostat-band.sl", "0.25", &[]);
+    let wide = run("assets/bench/thermostat-band.sl", "0.25", &["Thermostat.below=1.4"]);
+    assert_eq!(wide["edits"][0]["field"], "below");
+    let (bare_n, band_n, wide_n) = (
+        flips(&series(&bare, "Thermostat")),
+        flips(&series(&band, "Thermostat")),
+        flips(&series(&wide, "Thermostat")),
+    );
+    assert_eq!((bare_n, band_n, wide_n), (39, 29, 14));
+    let (lo, hi) = swing(&series(&band, "Room"));
+    assert!(lo > 1.75 && hi < 2.25, "the banded room left its band: {lo} .. {hi}");
+    let (bare_lo, bare_hi) = swing(&series(&bare, "Room"));
+    assert!(bare_lo < 1.75 || bare_hi > 2.25, "the bare relay stayed inside the band: {bare_lo} .. {bare_hi}");
+    // At the hour step one hour's heating overshoots the whole band, so the
+    // band barely shows: the README says so, and this pins it.
+    let bare_h = flips(&series(&run("assets/bench/thermostat-relay.sl", "1", &[]), "Thermostat"));
+    let band_h = flips(&series(&run("assets/bench/thermostat-band.sl", "1", &[]), "Thermostat"));
+    assert_eq!((bare_h, band_h), (13, 12));
+}
+
 /// ADR 0008 D3, the stress test: four bench models from the literature, each
 /// with its aggregate form as the control, and the difference is the finding.
 /// Each pair runs from the terminal; the numbers are the README's.

@@ -28,9 +28,16 @@ export type DecomposeAffordance =
 
 /** The closed rule set (facets#269, ADR 0008 D4) and each rule's numbers, in
  *  the order the agent line spells them; the bag keys are the words. */
-const RULES: { rule: AgentRule; words: string[]; gloss: string }[] = [
+const RULES: { rule: AgentRule; words: string[]; optional?: string[]; gloss: string }[] = [
   { rule: "proportional", words: ["target", "gain"], gloss: "emits gain · (target − level), floored at zero — Wiener's error correction; at gain 1 it is the comparator exactly" },
-  { rule: "threshold", words: ["above", "emit", "else"], gloss: "emits `emit` at or above the level, `else` below it — the on–off thermostat; a square wave no primitive can make" },
+  {
+    rule: "threshold",
+    words: ["above", "below", "emit", "else"],
+    // facets#517: the hysteresis band is optional; blank means no band, the
+    // switch turning at one level as before.
+    optional: ["below"],
+    gloss: "emits `emit` at or above the level, `else` below it — the on–off thermostat; a square wave no primitive can make. With `below` set it holds its last command between the two levels: the relay's dead band, what stops it chattering",
+  },
 ];
 const RULE_DEFAULTS: Record<AgentRule, Record<string, number>> = {
   proportional: { target: 1, gain: 1 },
@@ -212,10 +219,17 @@ export function NodeEditorRows({
                 type="number"
                 step="any"
                 value={thing.cognitive_params?.[w] ?? ""}
+                placeholder={RULES.find((r) => r.rule === thing.rule)?.optional?.includes(w) ? "none" : undefined}
                 onChange={(e) => {
+                  const bag = { ...(thing.cognitive_params ?? {}) };
+                  if (e.target.value === "" && RULES.find((r) => r.rule === thing.rule)?.optional?.includes(w)) {
+                    delete bag[w];
+                    onUpdateThing({ ...thing, cognitive_params: bag });
+                    return;
+                  }
                   const n = Number(e.target.value);
                   if (!Number.isFinite(n)) return;
-                  onUpdateThing({ ...thing, cognitive_params: { ...(thing.cognitive_params ?? {}), [w]: n } });
+                  onUpdateThing({ ...thing, cognitive_params: { ...bag, [w]: n } });
                 }}
                 className="w-20 rounded-md px-1.5 py-0.5 text-xs"
                 style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}

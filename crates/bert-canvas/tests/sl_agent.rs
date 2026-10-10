@@ -181,7 +181,7 @@ fn a_threshold_rule_parses_projects_and_emits_back() {
     assert!(m.params.iter().any(|p| p.anchor == ParamAnchor::Field { thing: th.id, field: EngineField::Above }));
     let world = project(&m);
     let agent = world.systems.iter().find(|s| s.info.name == "Thermostat").unwrap().agent.as_ref().unwrap();
-    assert_eq!(agent.policy, Some(Policy::Threshold { above: 2.0, emit: 0.0, otherwise: 1.0 }));
+    assert_eq!(agent.policy, Some(Policy::Threshold { above: 2.0, below: None, emit: 0.0, otherwise: 1.0 }));
     let text = emit_sl(&m).unwrap();
     assert!(text.contains("agent Thermostat watches Room rule threshold above 2 emit 0 else 1 manages Switch"), "{text}");
     assert_eq!(emit_sl(&parse_sl(&text).unwrap()).unwrap(), text);
@@ -211,4 +211,54 @@ fn the_threshold_faults_are_named() {
     assert!(e.contains("`above` must be positive"), "{e}");
     let e = errs(&swap("emit 0 else 1", "emit -1 else 1"));
     assert!(e.contains("cannot be negative"), "{e}");
+}
+
+/// The hysteresis band (facets#517): `below` between the level and the
+/// commands is optional, parses into the bag and the policy, emits back in
+/// place, and a `param` may name it; without it the line means what it
+/// meant before and the policy carries no band.
+#[test]
+fn a_banded_threshold_parses_projects_and_emits_back() {
+    let banded = RELAY
+        .replace("above 2 emit 0 else 1", "above 2.2 below 1.8 emit 0 else 1")
+        .replace("param \"level\" : above of Thermostat range 0.4..4", "param \"floor\" : below of Thermostat range 0.4..2");
+    let m = parse_sl(&banded).unwrap();
+    let th = m.things.iter().find(|t| t.name == "Thermostat").unwrap();
+    assert_eq!(th.cognitive_params.get("below"), Some(&1.8));
+    assert!(m.params.iter().any(|p| p.anchor == ParamAnchor::Field { thing: th.id, field: EngineField::Below }));
+    let world = project(&m);
+    let agent = world.systems.iter().find(|s| s.info.name == "Thermostat").unwrap().agent.as_ref().unwrap();
+    assert_eq!(agent.policy, Some(Policy::Threshold { above: 2.2, below: Some(1.8), emit: 0.0, otherwise: 1.0 }));
+    let text = emit_sl(&m).unwrap();
+    assert!(text.contains("rule threshold above 2.2 below 1.8 emit 0 else 1 manages Switch"), "{text}");
+    assert_eq!(emit_sl(&parse_sl(&text).unwrap()).unwrap(), text);
+    let back = bert_canvas::canvas::to_canvas(&world);
+    assert_eq!(back.things.iter().find(|t| t.name == "Thermostat").unwrap().cognitive_params.get("below"), Some(&1.8));
+    // The bandless line projects to a policy with no band, so a model that
+    // never says `below` runs exactly as it did before the word existed.
+    let bare = project(&parse_sl(RELAY).unwrap());
+    let policy = bare.systems.iter().find(|s| s.info.name == "Thermostat").unwrap().agent.as_ref().unwrap().policy.clone();
+    assert!(matches!(policy, Some(Policy::Threshold { below: None, .. })));
+}
+
+#[test]
+fn the_band_faults_are_named() {
+    let swap = |from: &str, to: &str| RELAY.replace(from, to);
+    // the floor at or over the ceiling is no band
+    let e = errs(&swap("above 2 emit 0 else 1", "above 2 below 2 emit 0 else 1"));
+    assert!(e.contains("`below` 2 is not under `above` 2"), "{e}");
+    let e = errs(&swap("above 2 emit 0 else 1", "above 2 below 2.5 emit 0 else 1"));
+    assert!(e.contains("is not under `above`") && e.contains("drop `below`"), "{e}");
+    // a non-positive floor
+    let e = errs(&swap("above 2 emit 0 else 1", "above 2 below 0 emit 0 else 1"));
+    assert!(e.contains("`below` must be positive"), "{e}");
+    // out of place: the band sits between the level and the commands
+    let e = errs(&swap("above 2 emit 0 else 1", "above 2 emit 0 else 1 below 1"));
+    assert!(e.contains("`threshold above <n> [below <n>] emit <n> else <n>`"), "{e}");
+    // a param on a band the line never declared
+    let e = errs(&swap("param \"level\" : above of Thermostat range 0.4..4", "param \"floor\" : below of Thermostat range 0.4..2"));
+    assert!(e.contains("`Thermostat` declares no `below`"), "{e}");
+    // `below` is the threshold rule's word, not the proportional rule's
+    let e = errs(&ROOM.replace("param \"sensitivity\" : gain of Thermostat range 0.1..2", "param \"floor\" : below of Thermostat range 0.1..2"));
+    assert!(e.contains("runs a proportional rule — its parameters are its rule's (target, gain)"), "{e}");
 }

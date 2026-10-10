@@ -431,13 +431,25 @@ impl AgentRule {
     pub fn from_word(w: &str) -> Option<AgentRule> {
         AgentRule::ALL.into_iter().find(|r| r.word().eq_ignore_ascii_case(w))
     }
-    /// The rule's clause words, in the order the line spells them; also the
-    /// bag keys its numbers ride under.
-    pub fn words(self) -> &'static [&'static str] {
+    /// The rule's clause words, in the order the line spells them, each
+    /// marked required or optional; also the bag keys its numbers ride
+    /// under. The one place the order and the optionality live: the parser,
+    /// the emitter and the param check all read it.
+    pub fn clauses(self) -> &'static [(&'static str, bool)] {
         match self {
-            AgentRule::Proportional => &["target", "gain"],
-            AgentRule::Threshold => &["above", "emit", "else"],
+            AgentRule::Proportional => &[("target", true), ("gain", true)],
+            // `below` is the hysteresis band (facets#517): optional, and
+            // spelled between the level and the commands.
+            AgentRule::Threshold => &[("above", true), ("below", false), ("emit", true), ("else", true)],
         }
+    }
+    /// The rule's required clause words, in the order the line spells them.
+    pub fn words(self) -> Vec<&'static str> {
+        self.clauses().iter().filter(|(_, required)| *required).map(|(w, _)| *w).collect()
+    }
+    /// Whether `word` is one of this rule's clauses, required or not.
+    pub fn takes(self, word: &str) -> bool {
+        self.clauses().iter().any(|(w, _)| *w == word)
     }
     /// The rule of a kernel policy.
     pub fn of(policy: &bert_core::Policy) -> AgentRule {
@@ -446,17 +458,21 @@ impl AgentRule {
             bert_core::Policy::Threshold { .. } => AgentRule::Threshold,
         }
     }
-    /// The kernel's policy over this rule's declared numbers, read by word.
-    pub fn policy(self, num: impl Fn(&str) -> f64) -> bert_core::Policy {
+    /// The kernel's policy over this rule's declared numbers, read by word;
+    /// `None` for a word the bag does not carry. A required word that is
+    /// missing reads as 1, the bag's own default; an optional one as absent.
+    pub fn policy(self, num: impl Fn(&str) -> Option<f64>) -> bert_core::Policy {
+        let req = |w: &str| num(w).unwrap_or(1.0);
         match self {
             AgentRule::Proportional => bert_core::Policy::Proportional {
-                target: num("target"),
-                gain: num("gain"),
+                target: req("target"),
+                gain: req("gain"),
             },
             AgentRule::Threshold => bert_core::Policy::Threshold {
-                above: num("above"),
-                emit: num("emit"),
-                otherwise: num("else"),
+                above: req("above"),
+                below: num("below"),
+                emit: req("emit"),
+                otherwise: req("else"),
             },
         }
     }
@@ -507,6 +523,10 @@ pub enum EngineField {
     /// A threshold agent's level (facets#269): where its output switches.
     #[serde(rename = "above")]
     Above,
+    /// A threshold agent's lower level (facets#517): where a banded switch
+    /// turns back, the hysteresis band's floor.
+    #[serde(rename = "below")]
+    Below,
 }
 
 impl EngineField {
@@ -521,6 +541,7 @@ impl EngineField {
             EngineField::Target => "target",
             EngineField::Gain => "gain",
             EngineField::Above => "above",
+            EngineField::Below => "below",
         }
     }
     /// The SL word(s) on the component line and on the param line.
@@ -534,23 +555,27 @@ impl EngineField {
             EngineField::Target => "target",
             EngineField::Gain => "gain",
             EngineField::Above => "above",
+            EngineField::Below => "below",
         }
     }
     /// The primitive that reads this field (the component line's own gate);
-    /// `None` for the two an agent line declares (facets#269), which no work
-    /// process reads.
+    /// `None` for the ones an agent line declares (facets#269), which no
+    /// work process reads.
     pub fn reader(self) -> Option<bert_core::ProcessPrimitive> {
         match self {
             EngineField::Setpoint => Some(bert_core::ProcessPrimitive::Inverting),
-            EngineField::Target | EngineField::Gain | EngineField::Above => None,
+            EngineField::Target | EngineField::Gain | EngineField::Above | EngineField::Below => None,
             _ => Some(bert_core::ProcessPrimitive::Buffering),
         }
     }
     /// A field an agent line declares rather than a component line.
     pub fn is_agent_field(self) -> bool {
-        matches!(self, EngineField::Target | EngineField::Gain | EngineField::Above)
+        matches!(
+            self,
+            EngineField::Target | EngineField::Gain | EngineField::Above | EngineField::Below
+        )
     }
-    pub const ALL: [EngineField; 8] = [
+    pub const ALL: [EngineField; 9] = [
         EngineField::Release,
         EngineField::Capacity,
         EngineField::TimeConstant,
@@ -559,6 +584,7 @@ impl EngineField {
         EngineField::Target,
         EngineField::Gain,
         EngineField::Above,
+        EngineField::Below,
     ];
 }
 
@@ -1043,7 +1069,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                         .unwrap()
                         .agent
                         .get_or_insert_with(AgentModel::default);
-                    let num = |k: &str| t.cognitive_params.get(k).copied().unwrap_or(1.0);
+                    let num = |k: &str| t.cognitive_params.get(k).copied();
                     agent.policy = Some(rule.policy(num));
                     agent.primitive = None;
                 }

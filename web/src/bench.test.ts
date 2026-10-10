@@ -21,6 +21,7 @@ describe("the bench shelf", () => {
       "SIR Epidemic (public)",
       "Thermostat Room",
       "Thermostat Room (agent)",
+      "Thermostat Room (band)",
       "Thermostat Room (relay)",
       "Traffic Bottleneck",
       "Two Tanks",

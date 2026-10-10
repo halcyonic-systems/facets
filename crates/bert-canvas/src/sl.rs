@@ -1937,7 +1937,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 // affect changes on those conditions."
                 let syntax = "agent syntax: `agent <Name> watches <stock> rule <rule> … manages \
                               <process>` — rules: `proportional target <n> gain <n>`, \
-                              `threshold above <n> emit <n> else <n>`";
+                              `threshold above <n> [below <n>] emit <n> else <n>`";
                 let Some((name_tok, tail)) = rest.split_first() else {
                     fail(syntax.into(), &mut errors);
                     continue;
@@ -2000,7 +2000,10 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut numbers: Vec<(&'static str, f64)> = Vec::new();
                 let mut tail = tail;
                 let mut clause_ok = true;
-                for word in rule.words() {
+                // An optional clause (`below`, facets#517) is taken when its
+                // word is next and skipped otherwise; a required one that is
+                // not next is the fault.
+                for (word, required) in rule.clauses() {
                     match tail {
                         [Tok::Word(w), Tok::Word(v), rest_tail @ ..] if w.eq_ignore_ascii_case(word) => {
                             match v.parse::<f64>() {
@@ -2013,6 +2016,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             }
                             tail = rest_tail;
                         }
+                        _ if !*required => {}
                         _ => {
                             fail(
                                 format!(
@@ -2020,7 +2024,11 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                      (nothing is defaulted); `{word}` is missing or out of place",
                                     rule.word(),
                                     rule.word(),
-                                    rule.words().iter().map(|w| format!("{w} <n>")).collect::<Vec<_>>().join(" ")
+                                    rule.clauses()
+                                        .iter()
+                                        .map(|(w, required)| if *required { format!("{w} <n>") } else { format!("[{w} <n>]") })
+                                        .collect::<Vec<_>>()
+                                        .join(" ")
                                 ),
                                 &mut errors,
                             );
@@ -2032,6 +2040,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 if !clause_ok {
                     continue;
                 }
+                let has = |k: &str| numbers.iter().any(|(w, _)| *w == k);
                 let num = |k: &str| numbers.iter().find(|(w, _)| *w == k).map(|(_, v)| *v).unwrap_or(f64::NAN);
                 // Each rule's own refusals (ADR 0008 D4: one reading, one refusal).
                 let refused: Option<String> = match rule {
@@ -2049,6 +2058,19 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     crate::canvas::AgentRule::Threshold => {
                         if num("above") <= 0.0 {
                             Some("`above` must be positive — it is the level the switch turns at".into())
+                        } else if has("below") && num("below") <= 0.0 {
+                            Some("`below` must be positive — it is the level the switch turns back at".into())
+                        } else if has("below") && num("below") >= num("above") {
+                            // A band is a gap under the level (facets#517); a
+                            // floor at or over the ceiling is no band, and a
+                            // floor over it would switch back before it switched.
+                            Some(format!(
+                                "`below` {} is not under `above` {} — the hysteresis band is the gap \
+                                 between them, where the switch holds its last command; drop `below` \
+                                 for a switch that turns at one level (facets#517)",
+                                num("below"),
+                                num("above")
+                            ))
                         } else if num("emit") < 0.0 || num("else") < 0.0 {
                             Some("`emit` and `else` are commands and cannot be negative".into())
                         } else if num("emit") == num("else") {
@@ -2778,7 +2800,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         continue;
                     }
                     if let (true, Some(rule)) = (field.is_agent_field(), thing.rule) {
-                        if !rule.words().contains(&field.word()) {
+                        if !rule.takes(field.word()) {
                             fail(
                                 format!(
                                     "`{thing_name}` runs a {} rule — its parameters are its rule's \
@@ -2796,7 +2818,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         fail(
                             format!(
                                 "`{thing_name}` declares no `{}` — a param names an adjustable \
-                                 declared magnitude; add `{} <n>` to the component line",
+                                 declared magnitude; add `{} <n>` to the line that declares `{thing_name}`",
                                 field.word(),
                                 field.word()
                             ),
@@ -3921,18 +3943,26 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
         if let Some(rule) = t.rule {
             let anchor = Anchor::Thing(t.id);
             let (stock, proc) = agent_wires(t)?;
-            let words = rule.words();
-            let numbers: Vec<f64> = words
+            // The clauses the bag carries, in the line's order: every
+            // required one, and an optional one (`below`, facets#517) only
+            // when declared.
+            let spelled: Vec<(&str, f64)> = rule
+                .clauses()
                 .iter()
-                .filter_map(|w| t.cognitive_params.get(*w).copied())
+                .filter_map(|(w, _)| t.cognitive_params.get(*w).map(|v| (*w, *v)))
                 .collect();
-            if numbers.len() != words.len() || t.cognitive_params.len() != words.len() || t.primitive.is_some() {
+            let required_present = rule.words().iter().all(|w| t.cognitive_params.contains_key(*w));
+            if !required_present || t.cognitive_params.len() != spelled.len() || t.primitive.is_some() {
                 return Err(format!(
                     "`{}` is an agent carrying parameters SL cannot express (a {} rule declares \
                      exactly {} and no primitive) — export the model as kernel JSON instead",
                     t.name,
                     rule.word(),
-                    words.iter().map(|w| format!("`{w}`")).collect::<Vec<_>>().join(", ")
+                    rule.clauses()
+                        .iter()
+                        .map(|(w, required)| if *required { format!("`{w}`") } else { format!("[`{w}`]") })
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 ));
             }
             lead(&mut out, &anchor);
@@ -3944,7 +3974,7 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                 rule.word()
             )
             .unwrap();
-            for (w, v) in words.iter().zip(numbers) {
+            for (w, v) in spelled {
                 write!(out, " {w} {v}").unwrap();
             }
             write!(out, " manages {}", name_token(&name_of(proc)?)?).unwrap();
@@ -4616,7 +4646,7 @@ pub const POSITIONAL_KEYWORDS: &[&str] = &[
     "bunge", "mobus", "constant",
     // the agent line (facets#269): `proportional` is the word after `rule`, `target`
     // sits behind it; `gain` is already reserved from the Sensing clause
-    "proportional", "target", "threshold", "above", "emit", "else",
+    "proportional", "target", "threshold", "above", "below", "emit", "else",
     // the reserved pass-way (#308): only ever the word after `interface`
     "unresolved",
     // the grounding grades (#411): only ever the word after `grounding`
