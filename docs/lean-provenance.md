@@ -10,19 +10,16 @@
 
 ```
 repo:           https://github.com/halcyonic-systems/systems-science-foundations
-pinned-commit:  71a7883b3bbe15b91ad137b81bb80a77915e0da1
-pinned-date:    2026-07-20
+pinned-commit:  6ab7aba7443f82a1556d53b8b9e87a382e9cc019
+pinned-date:    2026-10-10
 lean-toolchain: leanprover/lean4:v4.28.0  (SSF's lean-toolchain file at the pin)
 ```
 
-**Staleness budget.** Pinned at `71a7883`; SSF HEAD replayed 2026-07-26 at `dbf4524`, **24 commits ahead**; the delta was reviewed declaration by declaration. Drift that touches a claim in the tables below:
+**Staleness budget.** Pinned at `6ab7aba`; SSF HEAD replayed 2026-10-10 at `6ab7aba`, **0 commits ahead**; the delta was reviewed declaration by declaration. Drift that touches a claim in the tables below:
 
-- **One material addition: `MobusSystem.interfaces_carry_flow`** (SSF #31, proven non-redundant in SSF #35). At the pin, `MobusSystem` carries five coherence constraints; at HEAD it carries six. Every claim in the tables below still holds — no theorem weakened, `Kernel.toMobus` discharges the new field — but *the pinned description of the 8-tuple contract under-reports it by one constraint*, and any statement that the constraints contain no interface ⇒ flow requirement is **false at HEAD**, not merely stale. Corrected in `design/lens-palettes.md` §Q2.
-- `Systems/Category/` — the categorification machinery, including the eight faithfulness theorems and the maximality repair — **did not exist at the pin** and is outside this repo's citation set. See the K≅2 scope fence below.
-- `Systems/Mobus/Lifecycle.lean`, `Systems/Mobus/Interface.lean`, `Systems/Dynamics/Transition.lean` are new at HEAD. This repo cites none of them.
-- No symbol in the tables below was renamed, deleted, or changed kind between the pin and HEAD (Gate B, run 2026-07-26).
+- Pin moved 2026-10-10 from 71a7883 (2026-07-20) to 6ab7aba (SSF #59, the agent layer's first obligation, facets#269). Gate A at the new pin: every symbol below resolves with its declared kind (67 before the move, 74 after). The earlier notes are retired by the move: `MobusSystem.interfaces_carry_flow` (SSF #31/#35) is at the pin; `Systems/Category/`, `Systems/Mobus/Lifecycle.lean`, `Systems/Mobus/Interface.lean` and `Systems/Dynamics/Transition.lean` are at the pin and stay outside this repo's citation set, except that the agent-layer table below cites `Systems/Dynamics/AgentStep.lean`, which builds on `Transition.lean`. The K ≅ 2 scope fence is unchanged: nothing here cites the categorification machinery.
 
-Next replay due 2026-08-26. This paragraph is the budget: the pin is allowed to be behind, and is not allowed to be behind *silently*. Gate B (below) fails when a manifest symbol stops resolving at HEAD, which is the trigger to replay and rewrite this paragraph.
+Next replay due 2026-11-10. This paragraph is the budget: the pin is allowed to be behind, and is not allowed to be behind *silently*. Gate B (below) fails when a manifest symbol stops resolving at HEAD, which is the trigger to replay and rewrite this paragraph.
 
 <!-- END GENERATED: pin -->
 
@@ -110,6 +107,21 @@ Stated in: `crates/bert-core/src/decomposition.rs` (header transcription table �
 | `decomp.substitution` | Substitution is sound; depth-1 assembly is well-formed | `Systems/Core/Decomposition.lean` | `Decomposition.substitution_sound` — *theorem*, `assembleDepth1` — *def*, `assembleDepth1_wellFormed` — *theorem*, `decompose_one_wellFormed` — *theorem* | Replacing the component by its child preserves the contract's guarantees; the depth-1 assembly of a decomposed model is itself a well-formed tuple. |
 
 <!-- END GENERATED: table-decomposition -->
+
+### The agent layer (facets#269, ADR 0008 D6)
+
+<!-- BEGIN GENERATED: table-agent-layer — from docs/lean-manifest.json, `just provenance` -->
+
+### The agent layer (facets#269, ADR 0008 D6)
+
+Stated in: [`decisions/0008-agent-layer.md`](decisions/0008-agent-layer.md) D6, [`language/spec.md`](language/spec.md) §4.7, `crates/bert-compose/src/circuit.rs` (`NodeKind::Agent`).
+
+| # | Claim | SSF file | Declaration(s) — *kind* | What the Lean gives |
+|---|---|---|---|---|
+| `agent.step_is_product` | A run with deterministic agents is one deterministic transition on the product of stock and agent-memory coordinates — no new functor | `Systems/Dynamics/AgentStep.lean` | `AgentLayer` — *structure*, `AgentLayer.step` — *def*, `AgentLayer.transition` — *def*, `AgentLayer.agent_step_is_product` — *theorem* | `transition` elaborates as `Transition (Dynamics.conservationExample (S × M))` — the deterministic coalgebra of Transition.lean; the type is the check — and `agent_step_is_product` is `rfl`. Axiom-free. The Rust equivalence (the thermostat traced two ways) is a pinned test, not a theorem. |
+| `agent.markov_is_other_kind` | A sampling agent has no deterministic typing: the Markov codomain is a different type, so a run mixing the two has no single kind (ADR 0008 D2) | `Systems/Dynamics/AgentStep.lean` | `MarkovAgentLayer` — *structure*, `MarkovAgentLayer.transition` — *def*, `markov_codomain_ne_deterministic` — *theorem* | The separating instance: `MarkovAgentLayer.transition` typechecks only as the Markov coalgebra, and `kindCodomain .markov Unit ≠ kindCodomain .deterministic Unit` (a subsingleton against a type with two distinct lists). Axiom-free. |
+
+<!-- END GENERATED: table-agent-layer -->
 
 ### Prose references (not proofs)
 
