@@ -13,7 +13,7 @@
 // the pointer, so the first click of a double-click can never flash a menu into
 // the gesture that enters a child.
 import type { AgentRule, Lens, ProcessPrimitive, Thing } from "../kernel/types";
-import { PRIMITIVE_GLOSS } from "./types";
+import { PRIMITIVE_GLOSS, PRIMITIVE_WORD } from "./types";
 import { DescriptionField, GroundingField, InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 
 /** The decomposition door as the shell hands it to the inspector (#89 step 5b).
@@ -224,7 +224,7 @@ export function NodeEditorRows({
             </Row>
           ))}
           <p className="mb-2 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }} data-testid="rule-gloss">
-            {RULES.find((r) => r.rule === thing.rule)?.gloss} · it watches a stock over an informational flow in and commands a Modulating, Amplifying or Buffering process over one out; the Review panel says when either is missing.
+            {RULES.find((r) => r.rule === thing.rule)?.gloss} · it watches a Buffering (a stock) over an informational flow in — its reading — and commands a Modulating (a valve), an Amplifying (an amplifier) or a Buffering's release over one out — its command, the heavy dashed line; the Review panel says when either is missing.
           </p>
         </>
       )}
@@ -232,7 +232,7 @@ export function NodeEditorRows({
         /* #418 item 4: what the stamped process IS, from the same table the
            rail's hover card reads. */
         <p className="mb-2 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }} data-testid="primitive-gloss">
-          {PRIMITIVE_GLOSS[thing.primitive]}
+          {thing.primitive} · {PRIMITIVE_WORD[thing.primitive]} — {PRIMITIVE_GLOSS[thing.primitive]}
         </p>
       )}
       {decompose && <DecomposeRows decompose={decompose} />}

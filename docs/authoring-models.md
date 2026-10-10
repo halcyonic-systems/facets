@@ -10,6 +10,32 @@ For *using* the app, start at [`quickstart.md`](quickstart.md). For the
 language itself, [`language/spec.md`](language/spec.md) is normative. This doc
 is the working loop between them.
 
+## The ten processes, in plain words
+
+Every component is one of Mobus's ten atomic work processes, and the rail
+names them by two-letter chips. Each has one plain word, and the app shows
+the pair wherever a primitive is named (hover a rail chip; the inspector's
+work-process row). The same table lives in the engine's teaching cards
+(`crates/bert-compose/src/docs.rs`) and the web gloss (`web/src/canvas/types.ts`).
+
+| Mobus word | Plain word | Everyday instance |
+|---|---|---|
+| Buffering | a stock | a reservoir, a savings account, a population |
+| Combining | a merge | tributaries joining, incomes pooling |
+| Splitting | a divider | splitting a bill, a river delta |
+| Impeding | a resistance | a bottleneck, bureaucracy, a resistor |
+| Propelling | a pump | a courier, an economy moving goods |
+| Copying | a broadcast | sharing a file, announcing a vote |
+| Sensing | a gauge | a thermometer, a vote count |
+| Modulating | a valve | a thermostat throttling heat, a quorum gate |
+| Amplifying | an amplifier | a megaphone, a transistor |
+| Inverting | a comparator | a thermostat's dial |
+
+An **agent** (facets#269) is not an eleventh process: a decision-maker, drawn
+as Mobus's management oval, that watches a stock (Buffering) over a flow in
+and commands a valve (Modulating), an amplifier (Amplifying) or a stock's
+release over a flow out — the heavy dashed command line.
+
 ## What actually makes a model run
 
 Excavated in the #318 library consolidation by putting every bundled model

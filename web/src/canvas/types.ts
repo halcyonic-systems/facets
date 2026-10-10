@@ -23,6 +23,23 @@ export const PRIMITIVE_GLOSS: Record<ProcessPrimitive, string> = {
   Inverting: "compares to a setpoint and emits the difference — the comparator, (setpoint − signal), Fig 4.12",
 };
 
+/** The plain word for each process — what a modeller calls the thing before
+ *  learning Mobus's word for it. Shown beside the Mobus word wherever a
+ *  primitive is named (the rail's hover card, the inspector), so "a stock" and
+ *  "Buffering" are never two vocabularies the reader has to bridge alone. */
+export const PRIMITIVE_WORD: Record<ProcessPrimitive, string> = {
+  Buffering: "a stock",
+  Modulating: "a valve",
+  Splitting: "a divider",
+  Combining: "a merge",
+  Impeding: "a resistance",
+  Propelling: "a pump",
+  Copying: "a broadcast",
+  Sensing: "a gauge",
+  Amplifying: "an amplifier",
+  Inverting: "a comparator",
+};
+
 export const PRIMITIVE_BADGE: Record<ProcessPrimitive, string> = {
   Buffering: "Bu",
   Modulating: "Mo",

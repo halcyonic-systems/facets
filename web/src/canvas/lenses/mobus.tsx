@@ -122,7 +122,8 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
   // manages. Drawn as its own line — not a substance moving, an instruction —
   // heavier and longer-dashed than a reading, in the lens accent.
   const fromAgent = model.things.find((t) => t.id === relation.a)?.rule !== undefined;
-  if (fromAgent && relation.is_bond && relation.kind === "Informational") {
+  const isCommand = fromAgent && relation.is_bond && relation.kind === "Informational";
+  if (isCommand) {
     style = { ...style, color: "var(--lens-accent)", width: STYLE.edge.info + 0.75, dash: "6 4", opacity: 1 };
   }
 
@@ -254,7 +255,11 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
       onSelect={onSelect}
       label={label}
       crowded={crowded}
-      title={title}
+      title={
+        isCommand
+          ? `command · ${relation.name ? `"${relation.name}"` : "flow"} — the agent's instruction to the work process it manages (Mobus §11.2.1: "its output signals command an actuator"); drawn heavy and long-dashed so it never reads as a substance moving`
+          : title
+      }
     />
   );
 }

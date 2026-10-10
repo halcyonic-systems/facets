@@ -282,7 +282,7 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
         verb: "designate" as const,
         id: "agent-proportional",
         label: "agent",
-        tip: "agent: a decision model — watches a stock's level, runs its rule, commands a work process (Mobus ch. 11) · click empty canvas to place one, or stamp onto a leaf component; set the rule and its numbers in the inspector",
+        tip: "agent: a decision model, drawn as Mobus's management oval — watches a Buffering (a stock) over a flow in, runs its rule, and commands a Modulating (a valve), an Amplifying or a Buffering's release over a flow out, the heavy dashed command line (Mobus ch. 11) · click empty canvas to place one, or stamp onto a leaf component; set the rule and its numbers in the inspector",
         designation: { type: "agent" as const, rule: "proportional" as const },
       },
     ],

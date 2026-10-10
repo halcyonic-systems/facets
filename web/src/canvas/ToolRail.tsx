@@ -7,7 +7,7 @@
 // At the foot, the SL text as a drawer over the canvas.
 import type { Lens } from "../kernel/types";
 import { LensPalette, type PaletteTool } from "./lenses/registry";
-import { PRIMITIVE_GLOSS } from "./types";
+import { PRIMITIVE_GLOSS, PRIMITIVE_WORD } from "./types";
 import { useState } from "react";
 import { GestureGlyph, GlyphChip, PasswayChip, RoleChip } from "./PaletteRail";
 
@@ -145,7 +145,7 @@ export function ToolRail({
                   style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", color: "var(--text-primary)", boxShadow: "var(--shadow-card)" }}
                 >
                   <span className="font-semibold">{t.designation.primitive}</span>
-                  <span style={{ color: "var(--text-secondary)" }}> · work process</span>
+                  <span style={{ color: "var(--text-secondary)" }}> · {PRIMITIVE_WORD[t.designation.primitive]} · work process</span>
                   <br />
                   <span style={{ color: "var(--text-secondary)" }}>{PRIMITIVE_GLOSS[t.designation.primitive]}</span>
                 </span>
