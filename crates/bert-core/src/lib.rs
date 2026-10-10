@@ -1404,6 +1404,14 @@ pub struct AgentModel {
     )]
     pub primitive: Option<ProcessPrimitive>,
 
+    /// The decision model that makes this thing an agent (facets#269). `Some`
+    /// and `primitive` together are a category error — an agent is a distinct
+    /// thing kind, not a badge on a work process — and the operational seam
+    /// refuses the pair. `skip` when `None` so every existing model
+    /// serializes byte-for-byte as before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub policy: Option<Policy>,
+
     /// Domain-agnostic cognitive parameters (e.g., "fee_threshold": 50.0)
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub cognitive_params: HashMap<String, f64>,
@@ -1471,6 +1479,7 @@ impl Default for AgentModel {
             kind: AgentKind::default(),
             agency_capacity: default_agency_capacity(),
             primitive: None,
+            policy: None,
             cognitive_params: HashMap::new(),
             process_configs: Vec::new(),
             initial_state: HashMap::new(),
@@ -1504,6 +1513,109 @@ pub enum ProcessPrimitive {
     Modulating,
     Amplifying,
     Inverting,
+}
+
+/// An agent's decision model (facets#269, ADR 0008): the rule a thing of the
+/// agent kind runs once per tick, reading the level of the stock it watches
+/// and emitting a command signal to the work process it manages. Mobus
+/// §11.3.4.1 splits the goal from the mechanism — "the set point represents
+/// the ideal value … the procedures are embodied in the response mechanisms"
+/// — so the numbers here are the policy the author declares and the arm in
+/// `decide` is the procedure the kernel supplies. The set is closed and grows
+/// one rule at a time, each with one reading and one refusal; the first rung
+/// carries the purely reactive rules (no memory), and every agent in a run is
+/// deterministic, so a run with agents is still one `Id`-kind transition on a
+/// larger product state.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(tag = "rule", rename_all = "lowercase")]
+pub enum Policy {
+    /// Wiener's error correction (Mobus §12.3.2): emit `gain · (target −
+    /// reading)`, floored at zero because a demand is non-negative — the
+    /// managed process clamps it to its own gate. At gain 1 this is exactly
+    /// the Inverting comparator's `setpoint − reading`, which is why the
+    /// thermostat traced both ways is the first proof the agent kind owes.
+    Proportional { target: f64, gain: f64 },
+    /// Bang-bang: emit `emit` when the reading is at or above `above`, else
+    /// `otherwise`. Mobus §11.2.1.1's purely reactive agent — "a simple
+    /// thermostat is an easy example" — and the first trajectory none of the
+    /// ten primitives can produce: a square wave. Its refusal is requisite
+    /// variety (§12.3.2.2): a setting the managed process cannot reach is
+    /// not a command, and the language refuses it.
+    Threshold {
+        above: f64,
+        emit: f64,
+        #[serde(rename = "else")]
+        otherwise: f64,
+    },
+}
+
+impl Policy {
+    /// The procedure: one reading in, one command out.
+    pub fn decide(&self, reading: f64) -> f64 {
+        match self {
+            Policy::Proportional { target, gain } => (gain * (target - reading)).max(0.0),
+            Policy::Threshold { above, emit, otherwise } => {
+                if reading >= *above {
+                    *emit
+                } else {
+                    *otherwise
+                }
+            }
+        }
+    }
+
+    /// The rule's name as the agent line spells it.
+    pub fn rule(&self) -> &'static str {
+        match self {
+            Policy::Proportional { .. } => "proportional",
+            Policy::Threshold { .. } => "threshold",
+        }
+    }
+
+    /// The rule's numbers in the order the agent line spells them, each
+    /// under its SL word — the one list the parser, the emitter, the bag and
+    /// the session knob all read, so a rule is added in one place.
+    pub fn fields(&self) -> Vec<(&'static str, f64)> {
+        match self {
+            Policy::Proportional { target, gain } => vec![("target", *target), ("gain", *gain)],
+            Policy::Threshold { above, emit, otherwise } => {
+                vec![("above", *above), ("emit", *emit), ("else", *otherwise)]
+            }
+        }
+    }
+
+    /// Set one of this rule's numbers by its SL word; `false` when the word
+    /// is not one of this rule's.
+    pub fn set_field(&mut self, field: &str, v: f64) -> bool {
+        match (self, field) {
+            (Policy::Proportional { target, .. }, "target") => *target = v,
+            (Policy::Proportional { gain, .. }, "gain") => *gain = v,
+            (Policy::Threshold { above, .. }, "above") => *above = v,
+            (Policy::Threshold { emit, .. }, "emit") => *emit = v,
+            (Policy::Threshold { otherwise, .. }, "else") => *otherwise = v,
+            _ => return false,
+        }
+        true
+    }
+
+    /// The rule as the inspector states it, with its numbers substituted.
+    pub fn equation(&self) -> String {
+        match self {
+            Policy::Proportional { target, gain } => format!("out = max(0, {gain} · ({target} − level))"),
+            Policy::Threshold { above, emit, otherwise } => {
+                format!("out = {emit} if level ≥ {above} else {otherwise}")
+            }
+        }
+    }
+}
+
+impl Default for Policy {
+    fn default() -> Self {
+        Policy::Proportional {
+            target: 1.0,
+            gain: 1.0,
+        }
+    }
 }
 
 /// Process behavior configuration with flexible parameters.

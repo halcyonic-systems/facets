@@ -77,6 +77,15 @@ pub enum NodeKind {
     /// Environment output: accumulates what arrives.
     Sink,
     Process(ProcessPrimitive),
+    /// A decision-maker (facets#269, ADR 0008): reads the level of the stock
+    /// it watches over an observation tap and emits a command signal to the
+    /// work process it manages. Mobus §11.2.1: "The agent is given agency …
+    /// when its output signals command an actuator having the necessary
+    /// power to affect changes on those conditions." Its rule lives on the
+    /// node (`Node::policy`), as a comparator's setpoint does; the ten work
+    /// processes stay ten, because Mobus separates a work process from the
+    /// agent that manages it.
+    Agent,
 }
 
 impl NodeKind {
@@ -85,6 +94,7 @@ impl NodeKind {
             NodeKind::Source => "Source".into(),
             NodeKind::Sink => "Sink".into(),
             NodeKind::Process(p) => format!("{p:?}"),
+            NodeKind::Agent => "Agent".into(),
         }
     }
 
@@ -119,7 +129,7 @@ impl NodeKind {
         use ProcessPrimitive::*;
         matches!(
             self,
-            NodeKind::Process(Sensing | Inverting | Copying | Amplifying)
+            NodeKind::Process(Sensing | Inverting | Copying | Amplifying) | NodeKind::Agent
         )
     }
 
@@ -145,7 +155,8 @@ impl NodeKind {
                 | ProcessPrimitive::Inverting
                 | ProcessPrimitive::Copying
                 | ProcessPrimitive::Amplifying,
-            ) => SubstanceType::Message,
+            )
+            | NodeKind::Agent => SubstanceType::Message,
             _ => SubstanceType::Material,
         }
     }
@@ -163,6 +174,10 @@ impl NodeKind {
             NodeKind::Process(Copying | Inverting) => s == SubstanceType::Message,
             // Sensing reads physical flow (Energy/Material), crosses to Message.
             NodeKind::Process(Sensing) => physical,
+            // An agent reads a level — a stock's state over an observation
+            // tap — never another agent's signal (ADR 0008: no agent over
+            // agent at the first rung).
+            NodeKind::Agent => physical,
             // Amplifying needs a Message signal and Energy power — Material is
             // dead weight to it.
             NodeKind::Process(Amplifying) => s != SubstanceType::Material,
@@ -327,6 +342,11 @@ pub struct Node {
     /// Impeding "slows the rate of flow with a consequent back-pressure". The
     /// push-model default (`false`) sheds; this makes the valve back up.
     pub back_pressure: bool,
+    /// An agent's decision model (facets#269). Only `NodeKind::Agent` reads
+    /// it, the way only Inverting reads `setpoint`; its numbers are the
+    /// declared policy (the goal) and the kernel's `Policy::decide` is the
+    /// procedure (Mobus §11.3.4.1).
+    pub policy: bert_core::Policy,
     /// A stock's declared unit (bert-lenses#76). A Buffering stock accumulates
     /// its inflow over Δt, so its dimension is not the feeding flow's unit
     /// (`out_substance.unit`) — a `kW` inflow accrues energy, not power. The
@@ -369,6 +389,7 @@ impl Node {
             time_constant: 0.0,   // 0 = fixed-rate drain
             maintenance: 0.0,     // 0 = no upkeep loss
             back_pressure: false, // false = push model sheds; true = backs up
+            policy: bert_core::Policy::default(),
             stock_unit: String::new(),
             process: None,
             storage: 0.0,
@@ -934,9 +955,9 @@ impl Circuit {
             .unwrap_or(self.nodes[w.from].out_substance.base)
     }
 
-    /// A PUSHED, INFORMATIONAL wire Buffer → Sensing is an observation tap:
-    /// the sensor reads the stock's LEVEL without draining it ("sensing is
-    /// very low power"). The kind is part of the criterion, not just the
+    /// A PUSHED, INFORMATIONAL wire Buffer → Sensing (or Buffer → Agent,
+    /// facets#269) is an observation tap: the reader takes the stock's LEVEL
+    /// without draining it ("sensing is very low power"). The kind is part of the criterion, not just the
     /// shape (#337): Energy/Material conserve and Message copies (module
     /// header), so only a Message wire may read without taking — a declared
     /// matter flow into a sensor is consumption, and tap-classifying it
@@ -952,7 +973,7 @@ impl Circuit {
             )
             && matches!(
                 self.nodes[w.to].kind,
-                NodeKind::Process(ProcessPrimitive::Sensing)
+                NodeKind::Process(ProcessPrimitive::Sensing) | NodeKind::Agent
             )
     }
 
@@ -1611,6 +1632,13 @@ impl Circuit {
                     ProcessPrimitive::Inverting => (node.setpoint - message).max(0.0),
                     ProcessPrimitive::Copying => message,
                 },
+                // The agent's decision model over the level it watches: the
+                // observation tap delivers the stock's pre-tick state, the
+                // policy turns it into a command, and the command rides the
+                // agent's message outwire into the managed process the same
+                // way a comparator's error does. Read-before-write with the
+                // rest of the step; no memory at this rung (ADR 0008 D4).
+                NodeKind::Agent => node.policy.decide(physical as f64) as f32,
             };
 
         }
@@ -1703,7 +1731,7 @@ impl Circuit {
                     // taking; everything else a pushed outwire delivers is
                     // what the node sent on. (A dead end — activity nothing
                     // reads — still sums to zero here and dissipates.)
-                    NodeKind::Process(_) => (0..nw)
+                    NodeKind::Process(_) | NodeKind::Agent => (0..nw)
                         .filter(|&k| {
                             let w = &self.wires[k];
                             w.from == i
@@ -1731,7 +1759,9 @@ impl Circuit {
                         node_diss[i] = 0.0;
                         sunk_now += delivered[i];
                     }
-                    NodeKind::Process(_) => {
+                    // An agent takes nothing physical (its tap is a read)
+                    // and sends only a message, so this arm charges it zero.
+                    NodeKind::Process(_) | NodeKind::Agent => {
                         let d = delivered[i]
                             - released[i]
                             - gradient_out[i]
@@ -3657,6 +3687,134 @@ mod tests {
             (lo - 3.3).abs() < 1.5,
             "setpoint 1.0 = bare 1−signal behavior, got {lo:.1}"
         );
+    }
+
+    /// Law (facets#269, ADR 0008 D3): an agent running the proportional rule
+    /// in the comparator's slot traces the comparator chain float for float.
+    /// The thermostat two ways — Room → Probe (Sensing) → Thermostat
+    /// (Inverting) → Switch, and Room → Thermostat (Agent) → Switch — hold the
+    /// same room heat on every tick when the agent's gain is the probe's gain
+    /// and its target is the setpoint over that gain. At probe gain 1 the two
+    /// arithmetic paths are the same operations in the same order, so the
+    /// equality is exact; at the shelf model's gain 0.5 the paths differ by
+    /// an association and agree to float rounding.
+    #[test]
+    fn agent_proportional_traces_the_comparator_chain() {
+        use ProcessPrimitive::*;
+        // Grid → Switch (back-pressured valve) → Room (τ-drained stock) →
+        // Outdoors, with the regulator closing the loop on the room's level.
+        fn body() -> Circuit {
+            let mut c = Circuit::default();
+            c.nodes.push(node(NodeKind::Source)); // 0 grid
+            c.nodes.push(node(NodeKind::Process(Modulating))); // 1 switch
+            c.nodes.push(node(NodeKind::Process(Buffering))); // 2 room
+            c.nodes.push(node(NodeKind::Sink)); // 3 outdoors
+            c.nodes[0].param = 2.0;
+            c.nodes[1].back_pressure = true;
+            c.nodes[2].time_constant = 5.0;
+            c.nodes[2].initial_storage = 0.5;
+            c.nodes[2].storage = 0.5;
+            for (f, t) in [(0, 1), (1, 2), (2, 3)] {
+                c.wires.push(Wire::new(f, t));
+            }
+            c
+        }
+        fn chain(probe_gain: f32, setpoint: f32) -> Circuit {
+            let mut c = body();
+            c.nodes.push(node(NodeKind::Process(Sensing))); // 4 probe
+            c.nodes.push(node(NodeKind::Process(Inverting))); // 5 thermostat
+            c.nodes[4].param = probe_gain;
+            c.nodes[5].setpoint = setpoint;
+            let mut tap = Wire::new(2, 4);
+            tap.substance_override = Some(SubstanceType::Message);
+            c.wires.push(tap);
+            c.wires.push(Wire::new(4, 5));
+            c.wires.push(Wire::new(5, 1));
+            c
+        }
+        fn agent(gain: f64, target: f64) -> Circuit {
+            let mut c = body();
+            c.nodes.push(node(NodeKind::Agent)); // 4 thermostat
+            c.nodes[4].policy = bert_core::Policy::Proportional { target, gain };
+            let mut tap = Wire::new(2, 4);
+            tap.substance_override = Some(SubstanceType::Message);
+            c.wires.push(tap);
+            c.wires.push(Wire::new(4, 1));
+            c
+        }
+        let trace = |c: &mut Circuit| -> Vec<f32> {
+            (0..200)
+                .map(|_| {
+                    c.step();
+                    c.nodes[2].storage
+                })
+                .collect()
+        };
+        // Probe gain 1, setpoint 1: `1 − level` on both paths, bit for bit.
+        let (a, b) = (trace(&mut chain(1.0, 1.0)), trace(&mut agent(1.0, 1.0)));
+        assert_eq!(a, b, "the agent form and the comparator chain diverge");
+        assert!(a.iter().any(|&h| (h - 0.5).abs() > 0.1), "the loop never moved");
+        // The shelf model's numbers: probe gain 0.5, setpoint 1 against
+        // gain 0.5, target 2. Same demand, one reassociation apart.
+        let (a, b) = (trace(&mut chain(0.5, 1.0)), trace(&mut agent(0.5, 2.0)));
+        for (t, (x, y)) in a.iter().zip(&b).enumerate() {
+            assert!((x - y).abs() <= 1e-5 * x.abs().max(1.0), "tick {t}: {x} vs {y}");
+        }
+        // The agent's command is on its outwire and is what the valve reads:
+        // it takes nothing from the room (a read), sends no mass, and the
+        // ledger charges it nothing.
+        let mut c = agent(1.0, 1.0);
+        for _ in 0..50 {
+            c.step();
+        }
+        assert!(c.balance().abs() < 1e-3, "agent form leaks: {}", c.balance());
+    }
+
+    /// Law (facets#269, ADR 0008 D3/D4): a threshold agent produces what no
+    /// primitive can — a square wave. Managing the thermostat's switch on or
+    /// off, its command takes only the two declared values, switches several
+    /// times, and the room swings across the level rather than settling on
+    /// it; the ledger still balances.
+    #[test]
+    fn agent_threshold_makes_a_square_wave() {
+        use ProcessPrimitive::*;
+        let mut c = Circuit::default();
+        c.nodes.push(node(NodeKind::Source)); // 0 grid
+        c.nodes.push(node(NodeKind::Process(Modulating))); // 1 switch
+        c.nodes.push(node(NodeKind::Process(Buffering))); // 2 room
+        c.nodes.push(node(NodeKind::Sink)); // 3 outdoors
+        c.nodes.push(node(NodeKind::Agent)); // 4 thermostat
+        c.nodes[0].param = 2.0;
+        c.nodes[1].back_pressure = true;
+        c.nodes[2].time_constant = 5.0;
+        c.nodes[2].initial_storage = 0.5;
+        c.nodes[2].storage = 0.5;
+        c.nodes[4].policy = bert_core::Policy::Threshold {
+            above: 2.0,
+            emit: 0.0,
+            otherwise: 1.0,
+        };
+        for (f, t) in [(0, 1), (1, 2), (2, 3)] {
+            c.wires.push(Wire::new(f, t));
+        }
+        let mut tap = Wire::new(2, 4);
+        tap.substance_override = Some(SubstanceType::Message);
+        c.wires.push(tap);
+        c.wires.push(Wire::new(4, 1));
+        let mut commands = Vec::new();
+        let mut room = Vec::new();
+        for _ in 0..48 {
+            c.step();
+            commands.push(c.nodes[4].activity);
+            room.push(c.nodes[2].storage);
+        }
+        assert!(commands.iter().all(|&x| x == 0.0 || x == 1.0), "{commands:?}");
+        let switches = commands.windows(2).filter(|w| w[0] != w[1]).count();
+        assert!(switches >= 6, "the switch flipped only {switches} times: {commands:?}");
+        let tail = &room[24..];
+        let (lo, hi) = tail.iter().fold((f32::MAX, f32::MIN), |(a, b), &x| (a.min(x), b.max(x)));
+        assert!(lo < 2.0 && hi > 2.0, "the room never crossed the level: {lo} .. {hi}");
+        assert!(c.balance().abs() < 1e-3, "leak: {}", c.balance());
     }
 
     /// Law: a buffer with a time constant drains exponentially (first-order

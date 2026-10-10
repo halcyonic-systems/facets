@@ -682,13 +682,23 @@ does it differ by type? The working answers, with status flags:
   computational engine," ch. 11 — the 2025-08-29 agents-from-primitives
   principle); Mobus's minimal reactive agent is the thermostat.
 
+**Sourced and corrected (ch. 3, 2026-10-10; ADR 0008):**
+1. **The two-family split, as Mobus actually draws it.** The earlier guess
+   here (matter/energy = combining, splitting, buffering, impeding, propelling;
+   information = sensing, copying, modulating, amplifying, inverting) was
+   wrong on one item and over-wide on the other. Fig. 3.18's "four simple work
+   processes" are combining, splitting, impeding, buffering, each shaping a
+   substance flow. Fig. 3.19's "additional atomic processes" are copying,
+   **propelling**, sensing, amplifying, modulating, and of the last three
+   Mobus says "when the input substance is a force or energy flow, we have the
+   sensor or amplifier effect" and the modulator "is in this same category":
+   his signal family is three members. Inverting is in neither figure; it
+   enters in ch. 4's comparator (Fig. 4.12). What an agent may *manage* is not
+   a family at all but a property, reading a control signal (Modulating,
+   Amplifying, Buffering's release), and it straddles both figures.
+   Decision: `../decisions/0008-agent-layer.md`.
+
 **Inferred (UNVERIFIED — do not build on without a source pass):**
-1. **The two-family split**: matter/energy primitives (combining, splitting,
-   buffering, impeding, propelling) run agent-free most naturally; information
-   primitives (sensing, copying, modulating, amplifying, inverting) are what
-   agents are composed of. Plausible from ch. 11's computational-engine
-   framing; NOT yet checked against Mobus's own primitive taxonomy (ch. 3 /
-   the process-vocabulary source the badges came from).
 2. **Reactive agent-hood as a kernel VERDICT**: a sensing → decision →
    actuation loop closing on system state matches ch. 10's agent definition
    ("any decision-making mechanism that affects the state of the system"),

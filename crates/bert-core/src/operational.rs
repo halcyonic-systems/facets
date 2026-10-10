@@ -41,7 +41,9 @@
 //! a real Impeding node); 4.2 ships only the identity default.
 
 use crate::validate::{validate_mode, Severity};
-use crate::{Id, IdType, InteractionType, Mode, ProcessPrimitive, SubstanceType, WorldModel};
+use crate::{
+    Id, IdType, InteractionType, Mode, Policy, ProcessPrimitive, SubstanceType, WorldModel,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -82,6 +84,18 @@ pub struct OperationalProcess {
     /// byte-for-byte as before.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub stock_unit: String,
+}
+
+/// An agent the executor must instantiate (facets#269, ADR 0008): a thing of
+/// its own kind, not a work process, carrying the decision model it runs. It
+/// reads the level of the stock its observation flow comes from and emits a
+/// command on its outgoing message flow; which stock and which process are
+/// the flows' endpoints, exactly as for any other thing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OperationalAgent {
+    pub id: Id,
+    pub name: String,
+    pub policy: Policy,
 }
 
 /// A boundary terminal: an environment source or sink a flow may cross.
@@ -155,6 +169,10 @@ pub struct OperationalFlow {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct OperationalSpec {
     pub processes: Vec<OperationalProcess>,
+    /// The agents, after the processes (facets#269). `skip` when empty so a
+    /// model with no agent serializes and hashes byte-for-byte as before.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub agents: Vec<OperationalAgent>,
     pub sources: Vec<OperationalTerminal>,
     pub sinks: Vec<OperationalTerminal>,
     pub flows: Vec<OperationalFlow>,
@@ -202,7 +220,8 @@ impl OperationalSpec {
 ///    modes and never execute.
 /// 2. The `Operational` mode's own validity: on-ness plus irreflexivity, via
 ///    [`validate_mode`].
-/// 3. Projection totality — every level-1 system carries a primitive, no
+/// 3. Projection totality — every level-1 system carries a primitive or a
+///    policy (an agent, facets#269), never both, no
 ///    hierarchy below level 1, every flow endpoint lands on a projected node,
 ///    boundary crossings run in the declared direction, gradient flows carry
 ///    a conductance, and no component is isolated from the flow graph.
@@ -309,6 +328,31 @@ pub fn validate_operational(model: &WorldModel) -> Result<OperationalSpec, Vec<O
             ));
             continue;
         };
+        // An agent (facets#269) is a level-1 system whose model carries a
+        // policy and no primitive: a distinct thing kind, projected into its
+        // own list. Carrying both is the badge-on-a-process reading ADR 0008
+        // rejects, and it is refused rather than guessed at.
+        if let Some(policy) = agent.policy.as_ref() {
+            if agent.primitive.is_some() {
+                errors.push(OperationalError::new(
+                    format!("systems[{i}]"),
+                    format!(
+                        "\"{}\" carries both a policy and a Mobus primitive — an agent is \
+                         its own kind of thing, not a work process with a rule",
+                        sys.info.name
+                    ),
+                    Some("Drop the primitive, or drop the policy and manage this process from an agent"),
+                ));
+                continue;
+            }
+            projected.insert(sys.info.id.clone());
+            spec.agents.push(OperationalAgent {
+                id: sys.info.id.clone(),
+                name: sys.info.name.clone(),
+                policy: policy.clone(),
+            });
+            continue;
+        }
         let Some(primitive) = agent.primitive else {
             errors.push(OperationalError::new(
                 format!("systems[{i}]"),
@@ -532,6 +576,7 @@ mod tests {
             kind: AgentKind::Reactive,
             agency_capacity: 1.0,
             primitive: Some(primitive),
+            policy: None,
             cognitive_params: HashMap::new(),
             process_configs: vec![],
             initial_state: HashMap::new(),
@@ -712,6 +757,30 @@ mod tests {
                 .any(|e| e.location == "mode" && e.reason.contains("Structural (Bunge)")),
             "the refusal names the mode: {errs:#?}"
         );
+    }
+
+    /// Law (facets#269): a system whose model carries a policy projects as an
+    /// agent, into the spec's own list, with no primitive asked of it; one
+    /// carrying both a policy and a primitive is refused by name.
+    #[test]
+    fn policy_projects_as_an_agent_and_never_beside_a_primitive() {
+        let mut m = mobus_model();
+        m.systems[1].agent = Some(AgentModel {
+            policy: Some(crate::Policy::default()),
+            ..agent(ProcessPrimitive::Buffering)
+        });
+        m.systems[1].agent.as_mut().unwrap().primitive = None;
+        let spec = validate_operational(&m).expect("an agent projects");
+        assert_eq!(spec.agents.len(), 1);
+        assert_eq!(spec.agents[0].name, m.systems[1].info.name);
+        assert!(spec.processes.iter().all(|p| p.id != m.systems[1].info.id));
+
+        let mut m = mobus_model();
+        m.systems[1].agent.as_mut().unwrap().policy = Some(crate::Policy::default());
+        let errs = validate_operational(&m).unwrap_err();
+        assert!(errs
+            .iter()
+            .any(|e| e.reason.contains("both a policy and a Mobus primitive")));
     }
 
     /// Law: a system with an agent but no Mobus primitive is refused, and the refusal names the offending component.

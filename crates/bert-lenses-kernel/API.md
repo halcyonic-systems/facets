@@ -763,7 +763,9 @@ unknown kind, or self-loop is a named `Error`, never a trap.
 ### Live tweaking: `set_node_param(i, field, v)` · `set_node_pos` · `set_node_name` · `set_substance(i, name, base, unit)` · `set_wire_param(k, field, v)` · `set_invariant(conserved)`
 Node fields: `param` | `release_rate` | `initial_storage` (also writes the live
 stock, so it's touchable mid-run) | `capacity` | `setpoint` | `time_constant` |
-`maintenance` | `back_pressure` (0/1). Wire fields: `conductance` | `rate`
+`maintenance` | `back_pressure` (0/1) | an agent's rule words (`target`, `gain`
+for proportional; `above`, `emit`, `else` for threshold — on an agent node only,
+facets#269; refused elsewhere). Wire fields: `conductance` | `rate`
 (negative clears to the shared fallback). `set_invariant(false)` declines the
 conservation ledger (axis D — ADR-0003): identical trajectory, no balance, no
 ledger rows. Tweaks never reset the clock or the stocks; the running system

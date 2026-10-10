@@ -169,6 +169,16 @@ pub struct Thing {
     pub env_kind: EnvKind,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub primitive: Option<ProcessPrimitive>,
+    /// The decision rule that makes this component an agent (facets#269, ADR
+    /// 0008): a thing of its own kind, never a work process with a badge, so
+    /// `rule` and `primitive` are exclusive and the parser refuses the pair.
+    /// The rule's numbers (`target`, `gain`) ride `cognitive_params` under
+    /// those keys, as a comparator's `setpoint` does, and `project()` builds
+    /// the kernel's `Policy` from them. The tap it watches through and the
+    /// command wire it manages through are ordinary relations drawn by the
+    /// `agent` line. `skip` when `None` so every earlier model is byte-identical.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rule: Option<AgentRule>,
     /// Authored interface designation — this component is a member of the root
     /// membrane's I (I ⊆ C, Boundary.lean / Tuple.lean). A flowless designation
     /// is authorable, and refused at Operational: `Tuple.lean` gained the
@@ -394,6 +404,64 @@ pub struct SystemType {
     pub domain: Option<String>,
 }
 
+/// The rule an agent runs (facets#269): the closed set of ADR 0008 D4, grown
+/// one rule at a time, each with one reading and one refusal. Spelled in SL
+/// as the word after `rule`.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AgentRule {
+    /// `gain · (target − level)`, floored at zero: Wiener's error correction,
+    /// Mobus §12.3.2. At gain 1 it is the Inverting comparator exactly.
+    Proportional,
+    /// `emit` at or above `above`, else `else`: the on–off thermostat, Mobus
+    /// §11.2.1.1's purely reactive agent; a square wave no primitive makes.
+    Threshold,
+}
+
+impl AgentRule {
+    pub const ALL: [AgentRule; 2] = [AgentRule::Proportional, AgentRule::Threshold];
+    /// The SL word.
+    pub fn word(self) -> &'static str {
+        match self {
+            AgentRule::Proportional => "proportional",
+            AgentRule::Threshold => "threshold",
+        }
+    }
+    /// The rule by its SL word.
+    pub fn from_word(w: &str) -> Option<AgentRule> {
+        AgentRule::ALL.into_iter().find(|r| r.word().eq_ignore_ascii_case(w))
+    }
+    /// The rule's clause words, in the order the line spells them; also the
+    /// bag keys its numbers ride under.
+    pub fn words(self) -> &'static [&'static str] {
+        match self {
+            AgentRule::Proportional => &["target", "gain"],
+            AgentRule::Threshold => &["above", "emit", "else"],
+        }
+    }
+    /// The rule of a kernel policy.
+    pub fn of(policy: &bert_core::Policy) -> AgentRule {
+        match policy {
+            bert_core::Policy::Proportional { .. } => AgentRule::Proportional,
+            bert_core::Policy::Threshold { .. } => AgentRule::Threshold,
+        }
+    }
+    /// The kernel's policy over this rule's declared numbers, read by word.
+    pub fn policy(self, num: impl Fn(&str) -> f64) -> bert_core::Policy {
+        match self {
+            AgentRule::Proportional => bert_core::Policy::Proportional {
+                target: num("target"),
+                gain: num("gain"),
+            },
+            AgentRule::Threshold => bert_core::Policy::Threshold {
+                above: num("above"),
+                emit: num("emit"),
+                otherwise: num("else"),
+            },
+        }
+    }
+}
+
 /// What a declared parameter is anchored to. A param never stores a value —
 /// the value IS the anchored declared amount; the param names it in the
 /// model's own domain terms (walkthrough #18). Anchors are by id, so a rename
@@ -430,6 +498,15 @@ pub enum EngineField {
     Setpoint,
     #[serde(rename = "maintenance")]
     Maintenance,
+    /// An agent's goal (facets#269): the level its rule holds the stock at.
+    #[serde(rename = "target")]
+    Target,
+    /// An agent's gain (facets#269): the rule's sensitivity to the error.
+    #[serde(rename = "gain")]
+    Gain,
+    /// A threshold agent's level (facets#269): where its output switches.
+    #[serde(rename = "above")]
+    Above,
 }
 
 impl EngineField {
@@ -441,6 +518,9 @@ impl EngineField {
             EngineField::TimeConstant => "time_constant",
             EngineField::Setpoint => "setpoint",
             EngineField::Maintenance => "maintenance",
+            EngineField::Target => "target",
+            EngineField::Gain => "gain",
+            EngineField::Above => "above",
         }
     }
     /// The SL word(s) on the component line and on the param line.
@@ -451,21 +531,34 @@ impl EngineField {
             EngineField::TimeConstant => "time constant",
             EngineField::Setpoint => "setpoint",
             EngineField::Maintenance => "maintenance",
+            EngineField::Target => "target",
+            EngineField::Gain => "gain",
+            EngineField::Above => "above",
         }
     }
-    /// The primitive that reads this field (the component line's own gate).
-    pub fn reader(self) -> bert_core::ProcessPrimitive {
+    /// The primitive that reads this field (the component line's own gate);
+    /// `None` for the two an agent line declares (facets#269), which no work
+    /// process reads.
+    pub fn reader(self) -> Option<bert_core::ProcessPrimitive> {
         match self {
-            EngineField::Setpoint => bert_core::ProcessPrimitive::Inverting,
-            _ => bert_core::ProcessPrimitive::Buffering,
+            EngineField::Setpoint => Some(bert_core::ProcessPrimitive::Inverting),
+            EngineField::Target | EngineField::Gain | EngineField::Above => None,
+            _ => Some(bert_core::ProcessPrimitive::Buffering),
         }
     }
-    pub const ALL: [EngineField; 5] = [
+    /// A field an agent line declares rather than a component line.
+    pub fn is_agent_field(self) -> bool {
+        matches!(self, EngineField::Target | EngineField::Gain | EngineField::Above)
+    }
+    pub const ALL: [EngineField; 8] = [
         EngineField::Release,
         EngineField::Capacity,
         EngineField::TimeConstant,
         EngineField::Setpoint,
         EngineField::Maintenance,
+        EngineField::Target,
+        EngineField::Gain,
+        EngineField::Above,
     ];
 }
 
@@ -791,6 +884,7 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
             && t.role == Role::Component
             && t.interface
             && t.primitive.is_none()
+            && t.rule.is_none()
             && t.stock_unit.is_empty()
             && t.cognitive_params.is_empty()
             && t.initial_state.is_empty()
@@ -939,6 +1033,19 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                     if let Some(ac) = t.agency_capacity {
                         agent.agency_capacity = ac;
                     }
+                }
+                // An agent (facets#269): its rule and the two numbers the
+                // agent line put in the bag become the kernel's policy, and
+                // the seam reads a policy-only system into its own list.
+                if let Some(rule) = t.rule {
+                    let agent = systems
+                        .last_mut()
+                        .unwrap()
+                        .agent
+                        .get_or_insert_with(AgentModel::default);
+                    let num = |k: &str| t.cognitive_params.get(k).copied().unwrap_or(1.0);
+                    agent.policy = Some(rule.policy(num));
+                    agent.primitive = None;
                 }
                 if t.interface {
                     designated.push((systems.len() - 1, t.id, &t.name, &t.protocol, &t.description));
@@ -1307,6 +1414,14 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             // Meaningless on a component; the field only speaks for env things.
             env_kind: EnvKind::default(),
             primitive: s.agent.as_ref().and_then(|a| a.primitive),
+            // The return leg of facets#269: a policy reads back as the rule,
+            // and its numbers land in the bag below where the agent line and
+            // the param layer expect them.
+            rule: s
+                .agent
+                .as_ref()
+                .and_then(|a| a.policy.as_ref())
+                .map(AgentRule::of),
             // parent_interface is the designation's inverse: a level-1 system
             // attached to a root-membrane interface IS a designated member of I.
             interface: s.boundary.parent_interface.is_some(),
@@ -1354,11 +1469,21 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
             // directions (#216). What this load still narrows, declared:
             // `process_configs` and `network_config` are NOT carried — no
             // shipped model uses them, and #112 owns their typed future.
-            cognitive_params: s
-                .agent
-                .as_ref()
-                .map(|a| a.cognitive_params.clone())
-                .unwrap_or_default(),
+            cognitive_params: {
+                let mut bag = s
+                    .agent
+                    .as_ref()
+                    .map(|a| a.cognitive_params.clone())
+                    .unwrap_or_default();
+                // The policy is the authority for an agent's numbers; a model
+                // the engine exported carries them nowhere else.
+                if let Some(policy) = s.agent.as_ref().and_then(|a| a.policy.as_ref()) {
+                    for (word, v) in policy.fields() {
+                        bag.insert(word.to_string(), v);
+                    }
+                }
+                bag
+            },
             initial_state: s
                 .agent
                 .as_ref()
@@ -1398,6 +1523,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
                 ExternalEntityType::Sink => EnvKind::Sink,
             },
             primitive: None,
+            rule: None,
             interface: false,
             passway: false,
             protocol: String::new(),
@@ -1668,6 +1794,7 @@ mod tests {
             y: 0.0,
             role,
             primitive: None,
+            rule: None,
             interface: false,
             passway: false,
             protocol: String::new(),

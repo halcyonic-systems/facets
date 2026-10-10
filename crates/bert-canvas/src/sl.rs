@@ -902,6 +902,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     role: Role::Component,
                     env_kind: EnvKind::Neutral,
                     primitive: None,
+                    rule: None,
                     interface: true,
                     passway: true,
                     protocol,
@@ -1903,6 +1904,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     role,
                     env_kind,
                     primitive,
+                    rule: None,
                     interface,
                     passway: false,
                     protocol,
@@ -1918,6 +1920,299 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     agency_capacity: gain.map(|g| g as f32),
                 });
                 next_id += 1;
+            }
+            "agent" => {
+                // agent <Name> watches <stock> rule proportional target <n> gain <n>
+                //       manages <process> [description "<prose>"]
+                //
+                // A decision-maker (facets#269, ADR 0008): a thing of its own
+                // kind that reads one stock's level, runs its rule, and
+                // commands one work process that takes a control signal. The
+                // clauses are the four decisions an agent is, in order —
+                // watch, rule, goal, manage — and the compiler draws the
+                // observation tap and the command wire from them, so a flow
+                // written by hand against an agent is refused as a duplicate.
+                // Mobus §11.2.1: "The agent is given agency … when its output
+                // signals command an actuator having the necessary power to
+                // affect changes on those conditions."
+                let syntax = "agent syntax: `agent <Name> watches <stock> rule <rule> … manages \
+                              <process>` — rules: `proportional target <n> gain <n>`, \
+                              `threshold above <n> emit <n> else <n>`";
+                let Some((name_tok, tail)) = rest.split_first() else {
+                    fail(syntax.into(), &mut errors);
+                    continue;
+                };
+                if !name_tok.is_name() {
+                    fail(syntax.into(), &mut errors);
+                    continue;
+                }
+                let name = name_tok.name();
+                if name.eq_ignore_ascii_case(UNRESOLVED) {
+                    fail(
+                        format!("`{name}` is reserved for the pass-way `interface unresolved` (#308)"),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                if by_name.contains_key(&name) {
+                    fail(format!("`{name}` is already declared — names are unique"), &mut errors);
+                    continue;
+                }
+                let (stock_name, tail) = match tail {
+                    [Tok::Word(w), st, tail @ ..] if w.eq_ignore_ascii_case("watches") && st.is_name() => {
+                        (st.name(), tail)
+                    }
+                    _ => {
+                        fail(syntax.into(), &mut errors);
+                        continue;
+                    }
+                };
+                // `rule <word>` then the rule's own clauses, every number
+                // declared in the order the rule spells them (`AgentRule::words`);
+                // nothing is defaulted, so a half-written rule is a fault that
+                // names the missing word.
+                let (rule, tail) = match tail {
+                    [Tok::Word(r), Tok::Word(k), tail @ ..] if r.eq_ignore_ascii_case("rule") => {
+                        match crate::canvas::AgentRule::from_word(k) {
+                            Some(rule) => (rule, tail),
+                            None => {
+                                fail(
+                                    format!(
+                                        "unknown rule `{k}` — the rules are: {} (ADR 0008 names table \
+                                         and trace as the next, not yet built)",
+                                        crate::canvas::AgentRule::ALL
+                                            .iter()
+                                            .map(|r| r.word())
+                                            .collect::<Vec<_>>()
+                                            .join(", ")
+                                    ),
+                                    &mut errors,
+                                );
+                                continue;
+                            }
+                        }
+                    }
+                    _ => {
+                        fail(syntax.into(), &mut errors);
+                        continue;
+                    }
+                };
+                let mut numbers: Vec<(&'static str, f64)> = Vec::new();
+                let mut tail = tail;
+                let mut clause_ok = true;
+                for word in rule.words() {
+                    match tail {
+                        [Tok::Word(w), Tok::Word(v), rest_tail @ ..] if w.eq_ignore_ascii_case(word) => {
+                            match v.parse::<f64>() {
+                                Ok(n) if n.is_finite() => numbers.push((word, n)),
+                                _ => {
+                                    fail(format!("`{word}` takes a number, not `{v}`"), &mut errors);
+                                    clause_ok = false;
+                                    break;
+                                }
+                            }
+                            tail = rest_tail;
+                        }
+                        _ => {
+                            fail(
+                                format!(
+                                    "a {} rule declares all its numbers, in this order: `rule {} {}` \
+                                     (nothing is defaulted); `{word}` is missing or out of place",
+                                    rule.word(),
+                                    rule.word(),
+                                    rule.words().iter().map(|w| format!("{w} <n>")).collect::<Vec<_>>().join(" ")
+                                ),
+                                &mut errors,
+                            );
+                            clause_ok = false;
+                            break;
+                        }
+                    }
+                }
+                if !clause_ok {
+                    continue;
+                }
+                let num = |k: &str| numbers.iter().find(|(w, _)| *w == k).map(|(_, v)| *v).unwrap_or(f64::NAN);
+                // Each rule's own refusals (ADR 0008 D4: one reading, one refusal).
+                let refused: Option<String> = match rule {
+                    crate::canvas::AgentRule::Proportional => {
+                        if num("target") <= 0.0 {
+                            Some("`target` must be positive — it is the level the agent holds the \
+                                  stock at, the same rule `setpoint` follows".into())
+                        } else if num("gain") <= 0.0 {
+                            Some("`gain` must be positive — a zero gain watches nothing (the \
+                                  proportional rule's own refusal, ADR 0008 D4)".into())
+                        } else {
+                            None
+                        }
+                    }
+                    crate::canvas::AgentRule::Threshold => {
+                        if num("above") <= 0.0 {
+                            Some("`above` must be positive — it is the level the switch turns at".into())
+                        } else if num("emit") < 0.0 || num("else") < 0.0 {
+                            Some("`emit` and `else` are commands and cannot be negative".into())
+                        } else if num("emit") == num("else") {
+                            Some("`emit` and `else` are equal — a threshold that commands the same \
+                                  thing on both sides decides nothing (ADR 0008 D4)".into())
+                        } else {
+                            None
+                        }
+                    }
+                };
+                if let Some(msg) = refused {
+                    fail(msg, &mut errors);
+                    continue;
+                }
+                let (proc_name, tail) = match tail {
+                    [Tok::Word(w), pr, tail @ ..] if w.eq_ignore_ascii_case("manages") && pr.is_name() => {
+                        (pr.name(), tail)
+                    }
+                    _ => {
+                        fail(syntax.into(), &mut errors);
+                        continue;
+                    }
+                };
+                let description = match tail {
+                    [] => String::new(),
+                    [Tok::Word(d), Tok::Str(prose)] if d.eq_ignore_ascii_case("description") => prose.clone(),
+                    [t, ..] => {
+                        fail(format!("unexpected `{}` at end of agent line — {syntax}", t.display()), &mut errors);
+                        continue;
+                    }
+                };
+                let Some(&si) = by_name.get(&stock_name) else {
+                    fail(
+                        format!("`{stock_name}` is not declared (declare the stock before the agent that watches it)"),
+                        &mut errors,
+                    );
+                    continue;
+                };
+                if things[si].role != Role::Component
+                    || things[si].primitive != Some(ProcessPrimitive::Buffering)
+                {
+                    fail(
+                        format!(
+                            "`{stock_name}` is not a Buffering component — an agent watches a \
+                             stock's level (Mobus: \"state information at time t\"); watching a \
+                             flow or another agent is a later rung (ADR 0008 D5)"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                let Some(&pi) = by_name.get(&proc_name) else {
+                    fail(
+                        format!("`{proc_name}` is not declared (declare the process before the agent that manages it)"),
+                        &mut errors,
+                    );
+                    continue;
+                };
+                if things[pi].rule.is_some() {
+                    fail(
+                        format!(
+                            "`{proc_name}` is an agent — no agent manages an agent at this rung; \
+                             coordination, an agent setting another's target, is the rung after \
+                             (ADR 0008 D2)"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                if things[pi].role != Role::Component
+                    || !matches!(
+                        things[pi].primitive,
+                        Some(ProcessPrimitive::Modulating | ProcessPrimitive::Amplifying | ProcessPrimitive::Buffering)
+                    )
+                {
+                    fail(
+                        format!(
+                            "`{proc_name}` reads no control signal — an agent manages a Modulating \
+                             valve, an Amplifying drive or a Buffering stock's release, the work \
+                             processes that take a command (ADR 0008 D2; Mobus §11.2.1, requisite \
+                             variety)"
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                // Requisite variety (Mobus §12.3.2.2, Ashby): a gate reads a
+                // command in [0, 1], so a threshold that would set it past 1
+                // commands a state the process cannot reach, and is not in
+                // control. Refused with the reach printed.
+                if rule == crate::canvas::AgentRule::Threshold
+                    && matches!(
+                        things[pi].primitive,
+                        Some(ProcessPrimitive::Modulating | ProcessPrimitive::Buffering)
+                    )
+                    && (num("emit") > 1.0 || num("else") > 1.0)
+                {
+                    fail(
+                        format!(
+                            "`{proc_name}` reads its command as a gate in 0..1 — a threshold emitting \
+                             {} / {} asks for a setting it cannot reach (requisite variety, Mobus \
+                             §12.3.2.2); keep both within 0..1",
+                            num("emit"),
+                            num("else")
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
+                let (stock_id, proc_id) = (things[si].id, things[pi].id);
+                by_name.insert(name.clone(), things.len());
+                carrier = Some(Carrier::Thing(things.len()));
+                let mut cognitive_params = std::collections::HashMap::new();
+                for (word, v) in &numbers {
+                    cognitive_params.insert(word.to_string(), *v);
+                }
+                let agent_id = next_id;
+                things.push(Thing {
+                    id: agent_id,
+                    name,
+                    description,
+                    grounding: None,
+                    x: 0.0,
+                    y: 0.0,
+                    role: Role::Component,
+                    env_kind: EnvKind::Neutral,
+                    primitive: None,
+                    rule: Some(rule),
+                    interface: false,
+                    passway: false,
+                    protocol: String::new(),
+                    child_model: None,
+                    stock_unit: String::new(),
+                    scale: None,
+                    states: None,
+                    variable_kind: None,
+                    cognitive_params,
+                    initial_state: std::collections::HashMap::new(),
+                    agency_capacity: None,
+                });
+                next_id += 1;
+                // The tap and the command wire, drawn from the line (ADR 0008
+                // D5). Both informational: a tap reads a level without draining
+                // it, and a command is a message the managed process gates on.
+                for (a, b, label) in [(stock_id, agent_id, "reading"), (agent_id, proc_id, "command")] {
+                    relations.push(Relation {
+                        id: next_id,
+                        a,
+                        b,
+                        name: label.to_string(),
+                        description: String::new(),
+                        grounding: None,
+                        usability: None,
+                        is_bond: true,
+                        kind: Kind::Informational,
+                        klir_directed: false,
+                        weight: None,
+                        amount: None,
+                        unit: String::new(),
+                        substance: String::new(),
+                        ample: false,
+                    });
+                    next_id += 1;
+                }
             }
             "flow" => {
                 // flow A -> B [: kind] ["label"] [mere] [weight <n>]
@@ -2286,6 +2581,18 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     );
                     continue;
                 };
+                if let Some(agent) = [ai, bi].into_iter().find(|&i| things[i].rule.is_some()) {
+                    fail(
+                        format!(
+                            "`{}` is an agent — its tap and its command wire are drawn by the \
+                             agent line (`watches`, `manages`), and a flow written against it \
+                             duplicates one of them (facets#269)",
+                            things[agent].name
+                        ),
+                        &mut errors,
+                    );
+                    continue;
+                }
                 carrier = Some(Carrier::Relation(relations.len()));
                 relations.push(Relation {
                     id: next_id,
@@ -2449,6 +2756,41 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             &mut errors,
                         );
                         continue;
+                    }
+                    if field.is_agent_field() != thing.rule.is_some() {
+                        fail(
+                            if field.is_agent_field() {
+                                format!(
+                                    "`{thing_name}` is not an agent — `{}` is an agent line's own \
+                                     parameter (facets#269)",
+                                    field.word()
+                                )
+                            } else {
+                                format!(
+                                    "`{thing_name}` is an agent — its parameters are its rule's \
+                                     ({}), not `{}`",
+                                    thing.rule.map(|r| r.words().join(", ")).unwrap_or_default(),
+                                    field.word()
+                                )
+                            },
+                            &mut errors,
+                        );
+                        continue;
+                    }
+                    if let (true, Some(rule)) = (field.is_agent_field(), thing.rule) {
+                        if !rule.words().contains(&field.word()) {
+                            fail(
+                                format!(
+                                    "`{thing_name}` runs a {} rule — its parameters are its rule's \
+                                     ({}), not `{}`",
+                                    rule.word(),
+                                    rule.words().join(", "),
+                                    field.word()
+                                ),
+                                &mut errors,
+                            );
+                            continue;
+                        }
                     }
                     let Some(&value) = thing.cognitive_params.get(field.key()) else {
                         fail(
@@ -2874,12 +3216,22 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
         trivia.entry(Anchor::End).or_default().leading = pending;
     }
 
+    // `@directed` counts the flow lines the author wrote; the tap and the
+    // command wire an agent line draws (facets#269) are never flow lines.
+    let agent_ids: std::collections::HashSet<u64> =
+        things.iter().filter(|t| t.rule.is_some()).map(|t| t.id).collect();
+    let authored: Vec<usize> = relations
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| !agent_ids.contains(&r.a) && !agent_ids.contains(&r.b))
+        .map(|(i, _)| i)
+        .collect();
     for (n, line_no) in &directed_marks {
-        match relations.get_mut(n.wrapping_sub(1)) {
-            Some(r) if *n >= 1 => r.klir_directed = true,
+        match authored.get(n.wrapping_sub(1)) {
+            Some(&i) if *n >= 1 => relations[i].klir_directed = true,
             _ => errors.push(SlError {
                 line: *line_no,
-                message: format!("@directed {n}: only {} flow(s) declared", relations.len()),
+                message: format!("@directed {n}: only {} flow(s) declared", authored.len()),
             }),
         }
     }
@@ -3512,7 +3864,96 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
     // helpers still serve the flow section below.
     let _originates = |id: u64| model.relations.iter().any(|r| r.is_bond && r.a == id);
     let _touched = |id: u64| model.relations.iter().any(|r| r.is_bond && (r.a == id || r.b == id));
-    for t in &model.things {
+    // Declaration order (facets#269): things as they stand, an agent inline
+    // where it sits when the stock it watches and the process it manages
+    // are already declared, else deferred to the end of the things block.
+    // A parsed file always meets the first case, so `format` keeps every
+    // line where the author wrote it and ids survive the round trip; a model
+    // built out of order (JSON, the canvas) still emits text that re-parses.
+    let agent_ids: std::collections::HashSet<u64> =
+        model.things.iter().filter(|t| t.rule.is_some()).map(|t| t.id).collect();
+    let agent_edge = |r: &Relation| agent_ids.contains(&r.a) || agent_ids.contains(&r.b);
+    let name_of = |id: u64| {
+        model
+            .things
+            .iter()
+            .find(|t| t.id == id)
+            .map(|t| t.name.clone())
+            .ok_or_else(|| format!("relation endpoint {id} names no thing"))
+    };
+    let agent_wires = |t: &Thing| -> Result<(u64, u64), String> {
+        let tap = model.relations.iter().find(|r| r.is_bond && r.b == t.id);
+        let cmd = model.relations.iter().find(|r| r.is_bond && r.a == t.id);
+        match (tap, cmd) {
+            (Some(tap), Some(cmd)) => Ok((tap.a, cmd.b)),
+            _ => Err(format!(
+                "`{}` is an agent with no observation tap or no command wire — the agent \
+                 line draws both, so it is not expressible in SL; export the model as kernel \
+                 JSON instead",
+                t.name
+            )),
+        }
+    };
+    let order: Vec<&Thing> = {
+        let mut emitted: std::collections::HashSet<u64> = std::collections::HashSet::new();
+        let mut order: Vec<&Thing> = Vec::with_capacity(model.things.len());
+        let mut deferred: Vec<&Thing> = Vec::new();
+        for t in &model.things {
+            if t.rule.is_some() {
+                let (stock, proc) = agent_wires(t)?;
+                if emitted.contains(&stock) && emitted.contains(&proc) {
+                    order.push(t);
+                    emitted.insert(t.id);
+                } else {
+                    deferred.push(t);
+                }
+            } else {
+                order.push(t);
+                emitted.insert(t.id);
+            }
+        }
+        order.extend(deferred);
+        order
+    };
+    for t in order.iter().copied() {
+        // An agent line (facets#269, ADR 0008 D5): watch, rule, goal, manage.
+        // Its tap and command wire are its `watches` and `manages`, never flows.
+        if let Some(rule) = t.rule {
+            let anchor = Anchor::Thing(t.id);
+            let (stock, proc) = agent_wires(t)?;
+            let words = rule.words();
+            let numbers: Vec<f64> = words
+                .iter()
+                .filter_map(|w| t.cognitive_params.get(*w).copied())
+                .collect();
+            if numbers.len() != words.len() || t.cognitive_params.len() != words.len() || t.primitive.is_some() {
+                return Err(format!(
+                    "`{}` is an agent carrying parameters SL cannot express (a {} rule declares \
+                     exactly {} and no primitive) — export the model as kernel JSON instead",
+                    t.name,
+                    rule.word(),
+                    words.iter().map(|w| format!("`{w}`")).collect::<Vec<_>>().join(", ")
+                ));
+            }
+            lead(&mut out, &anchor);
+            write!(
+                out,
+                "agent {} watches {} rule {}",
+                name_token(&t.name)?,
+                name_token(&name_of(stock)?)?,
+                rule.word()
+            )
+            .unwrap();
+            for (w, v) in words.iter().zip(numbers) {
+                write!(out, " {w} {v}").unwrap();
+            }
+            write!(out, " manages {}", name_token(&name_of(proc)?)?).unwrap();
+            trail(&mut out, &anchor);
+            out.push('\n');
+            emit_description(&mut out, &t.description, prose_trail(&anchor).as_deref())?;
+            emit_grounding(&mut out, t.grounding.as_ref())?;
+            continue;
+        }
         // Echo the author's word, do not re-derive it (#216). This used to read the
         // flow direction — `originates → "source"`, else `touched → "sink"` — which
         // silently rewrote a declared `sink y` as `source y` whenever `y` happened to
@@ -3748,15 +4189,10 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
     }
 
     // flows
-    let name_of = |id: u64| {
-        model
-            .things
-            .iter()
-            .find(|t| t.id == id)
-            .map(|t| t.name.clone())
-            .ok_or_else(|| format!("relation endpoint {id} names no thing"))
-    };
     for r in &model.relations {
+        if agent_edge(r) {
+            continue;
+        }
         let anchor = Anchor::Relation(r.id);
         lead(&mut out, &anchor);
         write!(out, "flow {} -> {}", name_token(&name_of(r.a)?)?, name_token(&name_of(r.b)?)?)
@@ -3928,13 +4364,18 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
         writeln!(out, "@lens {}", format!("{:?}", model.lens).to_ascii_lowercase()).unwrap();
     }
     // `@pos` only for things the author pinned (`layout: None`: every thing,
-    // as before — no invented pins on a formatted file, #302 ruling 5).
-    for t in &model.things {
+    // as before — no invented pins on a formatted file, #302 ruling 5). In
+    // declaration order as written above — things, then agents (facets#269) —
+    // so a re-parse lists them the same way and the canonical form is a
+    // fixpoint.
+    for t in order.iter().copied() {
         if layout.map(|l| l.pinned.contains(&t.name)).unwrap_or(true) {
             writeln!(out, "@pos {} {} {}", name_token(&t.name)?, t.x, t.y).unwrap();
         }
     }
-    for (i, r) in model.relations.iter().enumerate() {
+    // Indexed over the flow lines written above: the edges an agent line
+    // draws are not flow lines (facets#269), on either side of the round trip.
+    for (i, r) in model.relations.iter().filter(|r| !agent_edge(r)).enumerate() {
         if r.klir_directed {
             writeln!(out, "@directed {}", i + 1).unwrap();
         }
@@ -4122,6 +4563,10 @@ pub const RESERVED_WORDS: &[&str] = &[
     "limiting",
     "reservoir",
     "gain",
+    "agent",
+    "watches",
+    "rule",
+    "manages",
     "description",
     "grounding",
     "usability",
@@ -4169,6 +4614,9 @@ pub const UNRESOLVED: &str = "unresolved";
 pub const POSITIONAL_KEYWORDS: &[&str] = &[
     "param", "metric", "ample", "range", "shares", "from", "share", "of", "sum", "into", "klir",
     "bunge", "mobus", "constant",
+    // the agent line (facets#269): `proportional` is the word after `rule`, `target`
+    // sits behind it; `gain` is already reserved from the Sensing clause
+    "proportional", "target", "threshold", "above", "emit", "else",
     // the reserved pass-way (#308): only ever the word after `interface`
     "unresolved",
     // the grounding grades (#411): only ever the word after `grounding`
