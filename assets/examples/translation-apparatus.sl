@@ -44,7 +44,7 @@ interface "Exit Tunnel" protocol "nascent polypeptide, N-terminus first"
     description "The polypeptide exit tunnel through the large subunit, opening at the exit port where trigger-factor-class chaperones dock to receive the emerging chain."
 
 # ── The processors, inside ────────────────────────────────────────────────
-component "Decoding Site" primitive Sensing
+component "Decoding Site" primitive Sensing gain 0.5
     description "The decoding center on the small subunit, where each codon is read against the anticodon of an incoming charged tRNA — selection of the right carrier, not catalysis."
 component "Peptidyl Transferase Center" primitive Combining
     description "The catalytic heart of the large subunit, all rRNA: forges each peptide bond between the growing chain and the newly accommodated amino acid."

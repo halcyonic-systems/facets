@@ -34,7 +34,7 @@ component Breeding primitive Modulating backpressure
     description "Admits feed in proportion to the breeders, so no breeders means no growth."
 component Crowding primitive Modulating
     description "Admits recruits in proportion to the room left under the ceiling."
-component Count primitive Sensing
+component Count primitive Sensing gain 0.5
     description "Reads the stock level without removing fish; its gain is half."
 component Headroom primitive Inverting setpoint 1
     description "Reports the room left: one minus the crowding."

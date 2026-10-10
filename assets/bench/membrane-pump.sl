@@ -30,7 +30,7 @@ component Cytosol primitive Buffering stock mM initial 1 release 1.5
     description "Sodium inside the cell; the pump may take up to 1.5 mM a minute from it."
 component Pump primitive Modulating interface backpressure
     description "The membrane pump: opens in proportion to the sodium reading and passes the sodium out."
-component Meter primitive Sensing
+component Meter primitive Sensing gain 0.5
     description "Reads the cytosol without taking any; its gain is half."
 
 environment Bath

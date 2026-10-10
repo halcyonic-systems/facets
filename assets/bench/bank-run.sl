@@ -33,7 +33,7 @@ component Vault primitive Buffering stock share initial 0.9 release 0.2
     description "The reserves; the teller may draw up to 0.2 a day."
 component Teller primitive Modulating backpressure
     description "Pays out as far as the fear allows; what is not paid stays in the vault."
-component Rumour primitive Sensing
+component Rumour primitive Sensing gain 0.5
     description "Reads the vault without taking from it; its gain is half."
 component Nerves primitive Inverting setpoint 0.5
     description "Reports the setpoint minus the reading: low reserves read as high fear."

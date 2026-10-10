@@ -80,3 +80,34 @@ fn each_word_refuses_off_its_reader() {
     assert!(errs("system \"S\" : Concrete/Technical\nsource In reservoir -1\n").contains("reservoir syntax"), "negative");
     assert!(errs("system \"S\" : Concrete/Technical\nsource In reservoir 5 reservoir 6\n").contains("already given"), "twice");
 }
+
+
+#[test]
+fn gain_rides_a_sensor_and_refuses_elsewhere() {
+    // #496: `gain <n>` is a Sensing component's own parameter (the engine's
+    // `param`); it round-trips, and off a sensor it is a fault.
+    let m = parse_sl(
+        "system \"Room\" : Concrete/Technical\ninterface Vent\ncomponent Probe primitive Sensing gain 0.5\n\
+         component Heat primitive Buffering stock J initial 5 release 1\nsource Sun\nsink Air\n\
+         flow Sun -> Vent : energy \"sun\" substance heat amount 2\nflow Vent -> Heat : energy \"sun\" substance heat\n\
+         flow Heat -> Probe : informational \"read\" substance reading\nflow Heat -> Vent : energy \"loss\" substance heat\n\
+         flow Vent -> Air : energy \"loss\" substance heat\nflow Probe -> Vent : informational \"signal\" substance reading\n",
+    )
+    .unwrap();
+    let probe = m.things.iter().find(|t| t.name == "Probe").unwrap();
+    assert_eq!(probe.agency_capacity, Some(0.5));
+    let world = project(&m);
+    let sys = world.systems.iter().find(|s| s.info.name == "Probe").unwrap();
+    assert_eq!(sys.agent.as_ref().unwrap().agency_capacity, 0.5);
+    let text = emit_sl(&m).unwrap();
+    assert!(text.contains("component Probe primitive Sensing gain 0.5"), "{text}");
+    assert_eq!(parse_sl(&text).unwrap().things.iter().find(|t| t.name == "Probe").unwrap().agency_capacity, Some(0.5));
+
+    // A sensor with no gain projects at 1.0 — it reports what it sees.
+    let bare = parse_sl("system \"S\" : Concrete/Technical\ncomponent Eye primitive Sensing interface\nsource World\nflow World -> Eye : informational \"sight\"\n").unwrap();
+    let w = project(&bare);
+    assert_eq!(w.systems.iter().find(|s| s.info.name == "Eye").unwrap().agent.as_ref().unwrap().agency_capacity, 1.0);
+
+    assert!(errs("system \"S\" : Concrete/Technical\ncomponent X primitive Buffering gain 2 interface\nsource In\nflow In -> X : matter \"a\"\n").contains("Sensing component only"));
+    assert!(errs("system \"S\" : Concrete/Technical\ncomponent X primitive Sensing gain -1 interface\nsource In\nflow In -> X : matter \"a\"\n").contains("gain syntax"));
+}
