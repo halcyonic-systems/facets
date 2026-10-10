@@ -65,6 +65,9 @@ interface NodeBodyProps {
    *  Fig 4.17, drawn warm). No Klir/Bunge analog exists by design; neither
    *  lens ever sets this. */
   regulatorTriangle?: boolean;
+  /** facets#269: the thing is an agent — Mobus's management oval (ch. 12
+   *  figures) drawn inside the body, in place of a work-process glyph. */
+  agentOval?: boolean;
   /** Klir recesses labels (thinghood taken for granted; the relation is salient). */
   labelSmall: boolean;
   /** Bunge marks boundary components with a rim accent (kernel `isBoundary`). */
@@ -126,6 +129,7 @@ export function NodeBody({
   badge,
   badgeCentered = false,
   regulatorTriangle = false,
+  agentOval = false,
   labelSmall,
   boundaryRim,
   pending = false,
@@ -335,6 +339,17 @@ export function NodeBody({
           strokeDasharray={strokeDash}
           fillOpacity={frac !== null && !simPosition && !emitter ? 0 : 1}
         />
+      )}
+
+      {/* The management oval (facets#269, ADR 0008): an agent is a decision
+          model, not a work process, and Mobus draws management as its own
+          oval on the process (ch. 12). The oval is the face; no glyph. */}
+      {agentOval && (
+        <g data-glyph="agent-oval" pointerEvents="none">
+          <title>agent: a decision model — watches a stock, commands a process</title>
+          <ellipse rx={NODE_R * 0.62} ry={NODE_R * 0.36} fill="none" stroke="var(--lens-accent)" strokeWidth={1.6} />
+          <circle r={NODE_R * 0.09} fill="var(--lens-accent)" />
+        </g>
       )}
 
       {/* Process-primitive glyph, centered (#100 phase 4, #81 harvest): the

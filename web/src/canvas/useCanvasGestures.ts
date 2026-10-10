@@ -13,7 +13,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from "react";
-import type { CanvasModel, Relation, Thing } from "../kernel/types";
+import type { CanvasModel, Relation, Thing, AgentRule } from "../kernel/types";
 import type { PaletteTool } from "./lenses/registry";
 import { validateConnection } from "../kernel";
 import { observations, refusal } from "./connectionVerdict";
@@ -175,8 +175,18 @@ const CLICK_SLOP = 4;
  *  unary-on-existing; place tools have their own branch). The two-step path —
  *  place a component, then stamp it — is untouched. */
 export function stampPrimitiveAt(model: CanvasModel, armed: PaletteTool, p: Pt): CanvasModel | null {
-  if (armed.verb !== "designate" || armed.designation.type !== "primitive") return null;
+  if (armed.verb !== "designate") return null;
   const id = nextId(model.things.map((t) => t.id));
+  if (armed.designation.type === "agent") {
+    // facets#269: a new agent, its rule's numbers at the engine's own
+    // defaults, no primitive — the inspector edits the rule, the connect
+    // gesture draws its tap and its command wire.
+    return {
+      ...model,
+      things: [...model.things, { id, name: `A${id}`, x: p.x, y: p.y, role: "Component", ...agentFields(armed.designation.rule) }],
+    };
+  }
+  if (armed.designation.type !== "primitive") return null;
   return {
     ...model,
     things: [
@@ -184,6 +194,17 @@ export function stampPrimitiveAt(model: CanvasModel, armed: PaletteTool, p: Pt):
       { id, name: `T${id}`, x: p.x, y: p.y, role: "Component", primitive: armed.designation.primitive },
     ],
   };
+}
+
+/** The fields an agent designation writes (facets#269): the rule and its
+ *  numbers in the bag under the words the agent line spells, where the param
+ *  layer and the session knob read them. */
+export function agentFields(rule: AgentRule): Pick<Thing, "rule" | "cognitive_params"> {
+  const numbers: Record<AgentRule, Record<string, number>> = {
+    proportional: { target: 1, gain: 1 },
+    threshold: { above: 1, emit: 0, else: 1 },
+  };
+  return { rule, cognitive_params: numbers[rule] };
 }
 
 /** What a pointer at `p` connects to: a node, else an interface port resolved to
@@ -374,7 +395,32 @@ export function useCanvasGestures({
           const primitive = armed.designation.primitive;
           onModelChange({
             ...model,
-            things: model.things.map((t) => (t.id === thing.id ? { ...t, primitive } : t)),
+            things: model.things.map((t) => {
+              if (t.id !== thing.id) return t;
+              // A primitive stamp on an agent makes it a work process again
+              // (the two are exclusive, ADR 0008 D1).
+              const next = { ...t, primitive };
+              if (next.rule) {
+                delete next.rule;
+                delete next.cognitive_params;
+              }
+              return next;
+            }),
+          });
+          break;
+        }
+        case "agent": {
+          // An agent is its own kind of thing (ADR 0008): the stamp clears a
+          // primitive and the bag that primitive's words lived in.
+          const fields = agentFields(armed.designation.rule);
+          onModelChange({
+            ...model,
+            things: model.things.map((t) => {
+              if (t.id !== thing.id) return t;
+              const next = { ...t, ...fields };
+              delete next.primitive;
+              return next;
+            }),
           });
           break;
         }

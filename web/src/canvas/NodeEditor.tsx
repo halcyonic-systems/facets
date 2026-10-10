@@ -12,7 +12,7 @@
 // canvas, the register's own inline editor in a register. Nothing anchored at
 // the pointer, so the first click of a double-click can never flash a menu into
 // the gesture that enters a child.
-import type { Lens, ProcessPrimitive, Thing } from "../kernel/types";
+import type { AgentRule, Lens, ProcessPrimitive, Thing } from "../kernel/types";
 import { PRIMITIVE_GLOSS } from "./types";
 import { DescriptionField, GroundingField, InspectorRow as Row, InspectorTitle as Title, ToolButton as SmallButton } from "../ui";
 
@@ -25,6 +25,17 @@ import { DescriptionField, GroundingField, InspectorRow as Row, InspectorTitle a
 export type DecomposeAffordance =
   | { kind: "ready"; onDecompose: () => void }
   | { kind: "entered"; label: string; onEnter: () => void };
+
+/** The closed rule set (facets#269, ADR 0008 D4) and each rule's numbers, in
+ *  the order the agent line spells them; the bag keys are the words. */
+const RULES: { rule: AgentRule; words: string[]; gloss: string }[] = [
+  { rule: "proportional", words: ["target", "gain"], gloss: "emits gain · (target − level), floored at zero — Wiener's error correction; at gain 1 it is the comparator exactly" },
+  { rule: "threshold", words: ["above", "emit", "else"], gloss: "emits `emit` at or above the level, `else` below it — the on–off thermostat; a square wave no primitive can make" },
+];
+const RULE_DEFAULTS: Record<AgentRule, Record<string, number>> = {
+  proportional: { target: 1, gain: 1 },
+  threshold: { above: 1, emit: 0, else: 1 },
+};
 
 const PRIMITIVES: ProcessPrimitive[] = [
   "Combining",
@@ -135,7 +146,13 @@ export function NodeEditorRows({
               const v = e.target.value as ProcessPrimitive | "";
               const next = { ...thing };
               if (v === "") delete next.primitive;
-              else next.primitive = v;
+              else {
+                next.primitive = v;
+                if (next.rule) {
+                  delete next.rule;
+                  delete next.cognitive_params;
+                }
+              }
               onUpdateThing(next);
             }}
             className="rounded-md px-1.5 py-0.5 text-xs"
@@ -149,6 +166,67 @@ export function NodeEditorRows({
             ))}
           </select>
         </Row>
+      )}
+      {lens === "Mobus" && isComponent && (
+        /* facets#269: the decision rule. An agent is its own kind of thing, so
+           choosing a rule clears the work process and choosing a work process
+           clears the rule (the seam refuses the pair). The numbers live in
+           the bag under the rule's own words, where the param layer and the
+           run surface read them. */
+        <Row>
+          <span style={{ color: "var(--text-secondary)" }}>decision rule</span>
+          <select
+            value={thing.rule ?? ""}
+            onChange={(e) => {
+              const v = e.target.value as AgentRule | "";
+              const next = { ...thing };
+              if (v === "") {
+                delete next.rule;
+                delete next.cognitive_params;
+              } else {
+                next.rule = v;
+                next.cognitive_params = { ...RULE_DEFAULTS[v] };
+                delete next.primitive;
+              }
+              onUpdateThing(next);
+            }}
+            className="rounded-md px-1.5 py-0.5 text-xs"
+            style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+            data-testid="rule-select"
+          >
+            <option value="">none</option>
+            {RULES.map((r) => (
+              <option key={r.rule} value={r.rule}>
+                {r.rule}
+              </option>
+            ))}
+          </select>
+        </Row>
+      )}
+      {lens === "Mobus" && isComponent && thing.rule && (
+        <>
+          {RULES.find((r) => r.rule === thing.rule)?.words.map((w) => (
+            <Row key={w}>
+              <span style={{ color: "var(--text-secondary)" }}>{w}</span>
+              <input
+                type="number"
+                step="any"
+                value={thing.cognitive_params?.[w] ?? ""}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  if (!Number.isFinite(n)) return;
+                  onUpdateThing({ ...thing, cognitive_params: { ...(thing.cognitive_params ?? {}), [w]: n } });
+                }}
+                className="w-20 rounded-md px-1.5 py-0.5 text-xs"
+                style={{ border: "1px solid var(--border)", background: "var(--bg-primary)", color: "var(--text-primary)" }}
+                data-testid={`rule-${w}`}
+              />
+            </Row>
+          ))}
+          <p className="mb-2 text-[10px] leading-snug" style={{ color: "var(--text-muted)" }} data-testid="rule-gloss">
+            {RULES.find((r) => r.rule === thing.rule)?.gloss} · it watches a stock over an informational flow in and commands a Modulating, Amplifying or Buffering process over one out; the Review panel says when either is missing.
+          </p>
+        </>
       )}
       {lens === "Mobus" && isComponent && thing.primitive && (
         /* #418 item 4: what the stamped process IS, from the same table the

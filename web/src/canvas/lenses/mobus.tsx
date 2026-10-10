@@ -21,6 +21,9 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
   // see primitive-glyphs.tsx). Components only — a primitive on an env object
   // is dead state project() ignores, so it never earns the shape.
   const regulator = thing.role === "Component" && thing.primitive === "Modulating";
+  // facets#269: an agent is its own kind of thing — the management oval, no
+  // work-process glyph (the two are exclusive by the seam's refusal).
+  const agent = thing.role === "Component" && thing.rule !== undefined;
   // #306: an authored interface sits ON the membrane, so it renders compact —
   // a pass-way, not a peer of the interior processes — and drops the
   // composition halo (the C/E wash is wrong for a thing straddling the cut).
@@ -57,8 +60,9 @@ function NodeView({ thing, isOrphan, hovered, sim, onPointerDown, onHandlePointe
       // says Modulating, so it carries no glyph on top. Components only: a
       // primitive on an env object is dead state project() ignores (the
       // designate gesture already rejects it), so it is not drawn either.
-      badge={thing.role === "Component" && !regulator ? thing.primitive : undefined}
+      badge={thing.role === "Component" && !regulator && !agent ? thing.primitive : undefined}
       badgeCentered
+      agentOval={agent}
       labelSmall={false}
       boundaryRim={passway}
       envHint={thing.role === "Environment" && !inert}
@@ -113,7 +117,14 @@ function EdgeView({ model, relation, fact, ring, selected, driven, sim, crowded,
   const geo = edgeGeometry(model, relation, true);
   if (!geo) return null;
   let { d, labelAt } = geo;
-  const style = edgeStyle(relation, fact);
+  let style = edgeStyle(relation, fact);
+  // A command (facets#269): a message leaving an agent for the work process it
+  // manages. Drawn as its own line — not a substance moving, an instruction —
+  // heavier and longer-dashed than a reading, in the lens accent.
+  const fromAgent = model.things.find((t) => t.id === relation.a)?.rule !== undefined;
+  if (fromAgent && relation.is_bond && relation.kind === "Informational") {
+    style = { ...style, color: "var(--lens-accent)", width: STYLE.edge.info + 0.75, dash: "6 4", opacity: 1 };
+  }
 
   // Exo flows render as TWO segments — G is bipartite (Tuple.lean): the crossing
   // happens env-object ↔ port, never straight to an interior component. The
