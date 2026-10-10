@@ -1,0 +1,409 @@
+{
+  "format": "bert-lenses/canvas@1",
+  "lens": "Mobus",
+  "model_id": "5oJEAmzFReku6y9z8t5Ucu",
+  "things": [
+    {
+      "id": 1,
+      "name": "Router",
+      "x": 196.50256,
+      "y": -171.0321,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false,
+      "description": "The parent's routed interface, standing in for the routed frontier workload it sends this subsystem.",
+      "grounding": {
+        "grade": "asserted",
+        "reference": "the parent's realized flow: 6000 Gtok/day routed × 35/89 (Router → Frontier serving in ../../examples/llm-market.sl); recompute when the parent changes"
+      }
+    },
+    {
+      "id": 2,
+      "name": "Frontier labs",
+      "x": 196.50247,
+      "y": 811.0321,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false,
+      "description": "Anthropic, OpenAI and Google as research arms, the parent's source of closed weights and API access; the crossing counterparty once the parent's Frontier release pass-way fuses onto this subsystem."
+    },
+    {
+      "id": 3,
+      "name": "Serving endpoint",
+      "x": 1046.995,
+      "y": 320.0,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false,
+      "description": "The parent's serving endpoint, where this subsystem's tokens leave for the customers."
+    },
+    {
+      "id": 4,
+      "name": "Frontier pool",
+      "x": 324.79187,
+      "y": 51.17157,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Splitting",
+      "interface": true,
+      "description": "Frontier serving's pool: divides routed frontier workload across the frontier models by their routed shares."
+    },
+    {
+      "id": 5,
+      "name": "Frontier release",
+      "x": 324.79184,
+      "y": 588.82837,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true,
+      "passway": true,
+      "description": "Where closed weights and API access enter this subsystem: the parent's interface of the same name, refined to the four models it serves."
+    },
+    {
+      "id": 6,
+      "name": "Frontier endpoint",
+      "x": 790.4163,
+      "y": 320.0,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true,
+      "passway": true,
+      "description": "Where the frontier models' tokens gather before leaving for the parent's serving endpoint."
+    },
+    {
+      "id": 7,
+      "name": "Opus",
+      "x": 480.0,
+      "y": 150.0,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": false,
+      "description": "A served model: released weights and allocated compute in, tokens out."
+    },
+    {
+      "id": 8,
+      "name": "Fable",
+      "x": 650.0,
+      "y": 320.0,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": false,
+      "description": "A served model: released weights and allocated compute in, tokens out."
+    },
+    {
+      "id": 9,
+      "name": "GPT",
+      "x": 480.0,
+      "y": 490.0,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": false,
+      "description": "A served model: released weights and allocated compute in, tokens out."
+    },
+    {
+      "id": 10,
+      "name": "Gemini",
+      "x": 310.0,
+      "y": 320.00003,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": false,
+      "description": "A served model: released weights and allocated compute in, tokens out."
+    }
+  ],
+  "relations": [
+    {
+      "id": 11,
+      "a": 1,
+      "b": 4,
+      "name": "routed frontier workload",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "The routed frontier workload the parent's router sends this subsystem.",
+      "grounding": {
+        "grade": "asserted",
+        "reference": "6000 × 35/89 = 2359.55 Gtok/day, the parent's realized flow; the 6000 and the 35/89 are third-party (Dirac digest of OpenRouter rankings, June–July 2026)"
+      },
+      "klir_directed": false,
+      "amount": "2359.55",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 12,
+      "a": 2,
+      "b": 5,
+      "name": "closed weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "Closed weights and API access passing into this subsystem.",
+      "klir_directed": false,
+      "substance": "weights",
+      "ample": true
+    },
+    {
+      "id": 13,
+      "a": 5,
+      "b": 7,
+      "name": "closed weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "API access into Opus.",
+      "klir_directed": false,
+      "substance": "weights",
+      "ample": true
+    },
+    {
+      "id": 14,
+      "a": 5,
+      "b": 8,
+      "name": "closed weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "API access into Fable.",
+      "klir_directed": false,
+      "substance": "weights",
+      "ample": true
+    },
+    {
+      "id": 15,
+      "a": 5,
+      "b": 9,
+      "name": "closed weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "API access into GPT.",
+      "klir_directed": false,
+      "substance": "weights",
+      "ample": true
+    },
+    {
+      "id": 16,
+      "a": 5,
+      "b": 10,
+      "name": "closed weights & API",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "API access into Gemini.",
+      "klir_directed": false,
+      "substance": "weights",
+      "ample": true
+    },
+    {
+      "id": 17,
+      "a": 4,
+      "b": 7,
+      "name": "routed serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "Opus's share of routed frontier workload.",
+      "grounding": {
+        "grade": "third-party",
+        "reference": "stockalarm and tech-insider digests of OpenRouter, June–July 2026; Anthropic 12–24%, midpoint"
+      },
+      "klir_directed": false,
+      "amount": "9",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 18,
+      "a": 4,
+      "b": 8,
+      "name": "routed serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "Fable's share of routed frontier workload.",
+      "grounding": {
+        "grade": "third-party",
+        "reference": "same digests; in-lab split estimated"
+      },
+      "klir_directed": false,
+      "amount": "6",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 19,
+      "a": 4,
+      "b": 9,
+      "name": "routed serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "GPT's share of routed frontier workload.",
+      "grounding": {
+        "grade": "third-party",
+        "reference": "same digests"
+      },
+      "klir_directed": false,
+      "amount": "9",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 20,
+      "a": 4,
+      "b": 10,
+      "name": "routed serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "Gemini's share of routed frontier workload.",
+      "grounding": {
+        "grade": "third-party",
+        "reference": "same digests"
+      },
+      "klir_directed": false,
+      "amount": "11",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 21,
+      "a": 7,
+      "b": 6,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "Tokens served by Opus.",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+    },
+    {
+      "id": 22,
+      "a": 8,
+      "b": 6,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "Tokens served by Fable.",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+    },
+    {
+      "id": 23,
+      "a": 9,
+      "b": 6,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "Tokens served by GPT.",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+    },
+    {
+      "id": 24,
+      "a": 10,
+      "b": 6,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "Tokens served by Gemini.",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+    },
+    {
+      "id": 25,
+      "a": 6,
+      "b": 3,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "The frontier models' tokens leaving for the parent's serving endpoint.",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+    }
+  ],
+  "boundary": {
+    "porosity": 0.0,
+    "perceptive_fuzziness": 0.0
+  },
+  "system_type": {
+    "kingdom": "Concrete",
+    "genus": "Social",
+    "domain": "Routed frontier workload divided across Opus, Fable, GPT and Gemini by routed share, tokens served out, compute shed as heat"
+  },
+  "name": "Frontier serving",
+  "time_unit": "day",
+  "params": [
+    {
+      "name": "Routed frontier workload",
+      "anchor": {
+        "Flow": {
+          "relation": 11
+        }
+      },
+      "range": {
+        "min": "0",
+        "max": "12000"
+      }
+    },
+    {
+      "name": "Frontier models, routed",
+      "anchor": {
+        "Shares": {
+          "thing": 4
+        }
+      }
+    }
+  ],
+  "metrics": [
+    {
+      "name": "Opus share of routed frontier",
+      "expr": {
+        "ShareOfFlow": {
+          "relation": 17
+        }
+      }
+    },
+    {
+      "name": "Fable share of routed frontier",
+      "expr": {
+        "ShareOfFlow": {
+          "relation": 18
+        }
+      }
+    },
+    {
+      "name": "GPT share of routed frontier",
+      "expr": {
+        "ShareOfFlow": {
+          "relation": 19
+        }
+      }
+    },
+    {
+      "name": "Gemini share of routed frontier",
+      "expr": {
+        "ShareOfFlow": {
+          "relation": 20
+        }
+      }
+    },
+    {
+      "name": "Opus tokens served",
+      "expr": {
+        "SumInto": {
+          "thing": 7
+        }
+      }
+    },
+    {
+      "name": "Gemini tokens served",
+      "expr": {
+        "SumInto": {
+          "thing": 10
+        }
+      }
+    }
+  ],
+  "klir_level": "Structure"
+}

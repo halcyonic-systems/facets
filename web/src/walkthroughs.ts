@@ -3,7 +3,10 @@
 // The steel-plant walkthrough (Mobus ch. 4, Figs. 4.15–4.17) is the first
 // resident: its root lives in the examples gallery, and the deeper level sits
 // here as a pinned archive (assets/walkthroughs/, the projection of its own
-// `.sl` — held by the kernel's steel_walkthrough gate).
+// `.sl` — held by the kernel's steel_walkthrough gate). The llm-market
+// example's two serving subsystems resolve the same way: their children,
+// the per-model rosters, sit in assets/walkthroughs/llm-market/ under the
+// llm_market_walkthrough gate.
 //
 // This is the store layer's THIRD backend, and deliberately the last: the
 // library and the working folder both outrank it in `resolveModelRefs`, so a

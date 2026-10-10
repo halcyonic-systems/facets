@@ -1,0 +1,612 @@
+{
+  "format": "bert-lenses/canvas@1",
+  "lens": "Mobus",
+  "model_id": "pWAnTptPXdKY3x38yXpLn",
+  "things": [
+    {
+      "id": 1,
+      "name": "Router",
+      "x": 196.70618,
+      "y": -170.67941,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false,
+      "description": "The parent's routed interface, standing in for the routed open-weight workload it sends this subsystem.",
+      "grounding": {
+        "grade": "asserted",
+        "reference": "the parent's realized flow: 6000 Gtok/day routed × 54/89 (Router → Open-weight serving in ../../examples/llm-market.sl); recompute when the parent changes"
+      }
+    },
+    {
+      "id": 2,
+      "name": "Self-hosted demand",
+      "x": -86.58777,
+      "y": 319.99994,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false,
+      "description": "Customers who run open weights on their own hardware; the crossing counterparty once the parent's Self-hosting pass-way fuses onto this subsystem.",
+      "grounding": {
+        "grade": "unknown",
+        "reference": "no public sensor counts self-hosted serving; the amount below is the parent's placeholder, carried through"
+      }
+    },
+    {
+      "id": 3,
+      "name": "Open-weight labs",
+      "x": 196.70609,
+      "y": 810.6794,
+      "role": "Environment",
+      "env_kind": "Source",
+      "interface": false,
+      "description": "Meta, Alibaba, DeepSeek, Google (Gemma) and the open-weight field as research arms, the parent's source of open weights; the crossing counterparty once the parent's Open-weight release pass-way fuses onto this subsystem."
+    },
+    {
+      "id": 4,
+      "name": "Serving endpoint",
+      "x": 1046.5878,
+      "y": 320.0,
+      "role": "Environment",
+      "env_kind": "Sink",
+      "interface": false,
+      "description": "The parent's serving endpoint, where this subsystem's tokens leave for the customers."
+    },
+    {
+      "id": 5,
+      "name": "Open-weight pool",
+      "x": 331.1844,
+      "y": 54.537704,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Splitting",
+      "interface": true,
+      "description": "Open-weight serving's pool: divides routed open-weight workload across the open models by their routed shares."
+    },
+    {
+      "id": 6,
+      "name": "Self-hosting",
+      "x": 181.48267,
+      "y": 312.31937,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Splitting",
+      "interface": true,
+      "description": "The self-hosted interface, refined: divides self-hosted workload across the open models. Closed weights cannot be self-hosted, so nothing here reaches a frontier model.",
+      "grounding": {
+        "grade": "asserted",
+        "reference": "split assumed to follow the routed open-weight split until a sensor says otherwise"
+      }
+    },
+    {
+      "id": 7,
+      "name": "Open-weight release",
+      "x": 338.52084,
+      "y": 556.9227,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true,
+      "passway": true,
+      "description": "Where open weights enter this subsystem: the parent's interface of the same name, refined to the five models it serves."
+    },
+    {
+      "id": 8,
+      "name": "Open endpoint",
+      "x": 778.51733,
+      "y": 312.3194,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "interface": true,
+      "passway": true,
+      "description": "Where the open models' tokens gather before leaving for the parent's serving endpoint."
+    },
+    {
+      "id": 9,
+      "name": "Gemma",
+      "x": 480.0,
+      "y": 150.0,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": false,
+      "description": "A served model: open weights and allocated compute in, tokens out."
+    },
+    {
+      "id": 10,
+      "name": "Llama",
+      "x": 641.6796,
+      "y": 267.4671,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": false,
+      "description": "A served model: open weights and allocated compute in, tokens out."
+    },
+    {
+      "id": 11,
+      "name": "Qwen",
+      "x": 579.92346,
+      "y": 457.5329,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": false,
+      "description": "A served model: open weights and allocated compute in, tokens out."
+    },
+    {
+      "id": 12,
+      "name": "DeepSeek",
+      "x": 380.0765,
+      "y": 457.5329,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": false,
+      "description": "A served model: open weights and allocated compute in, tokens out."
+    },
+    {
+      "id": 13,
+      "name": "Other open",
+      "x": 318.32037,
+      "y": 267.4671,
+      "role": "Component",
+      "env_kind": "Neutral",
+      "primitive": "Amplifying",
+      "interface": false,
+      "description": "The open-weight field beyond the named models, served as one aggregate."
+    }
+  ],
+  "relations": [
+    {
+      "id": 14,
+      "a": 1,
+      "b": 5,
+      "name": "routed open-weight workload",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "The routed open-weight workload the parent's router sends this subsystem.",
+      "grounding": {
+        "grade": "asserted",
+        "reference": "6000 × 54/89 = 3640.45 Gtok/day, the parent's realized flow; the 6000 and the 54/89 are third-party (Dirac digest of OpenRouter rankings, June–July 2026)"
+      },
+      "klir_directed": false,
+      "amount": "3640.45",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 15,
+      "a": 2,
+      "b": 6,
+      "name": "self-hosted workload",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "The self-hosted workload entering the self-hosted interface as inference compute.",
+      "grounding": {
+        "grade": "unknown",
+        "reference": "the parent's placeholder, a round half of the routed figure; no sensor; replace before any finding quotes it"
+      },
+      "klir_directed": false,
+      "amount": "3000",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 16,
+      "a": 3,
+      "b": 7,
+      "name": "open weights",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "Open weights passing into this subsystem.",
+      "klir_directed": false,
+      "substance": "weights",
+      "ample": true
+    },
+    {
+      "id": 17,
+      "a": 7,
+      "b": 9,
+      "name": "open weights",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "Open weights into Gemma.",
+      "klir_directed": false,
+      "substance": "weights",
+      "ample": true
+    },
+    {
+      "id": 18,
+      "a": 7,
+      "b": 10,
+      "name": "open weights",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "Open weights into Llama.",
+      "klir_directed": false,
+      "substance": "weights",
+      "ample": true
+    },
+    {
+      "id": 19,
+      "a": 7,
+      "b": 11,
+      "name": "open weights",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "Open weights into Qwen.",
+      "klir_directed": false,
+      "substance": "weights",
+      "ample": true
+    },
+    {
+      "id": 20,
+      "a": 7,
+      "b": 12,
+      "name": "open weights",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "Open weights into DeepSeek.",
+      "klir_directed": false,
+      "substance": "weights",
+      "ample": true
+    },
+    {
+      "id": 21,
+      "a": 7,
+      "b": 13,
+      "name": "open weights",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "Open weights into the rest of the field.",
+      "klir_directed": false,
+      "substance": "weights",
+      "ample": true
+    },
+    {
+      "id": 22,
+      "a": 5,
+      "b": 9,
+      "name": "routed serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "Gemma's share of routed open-weight workload.",
+      "grounding": {
+        "grade": "third-party",
+        "reference": "Dirac digest of OpenRouter rankings, June–July 2026"
+      },
+      "klir_directed": false,
+      "amount": "2",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 23,
+      "a": 5,
+      "b": 10,
+      "name": "routed serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "Llama's share of routed open-weight workload.",
+      "grounding": {
+        "grade": "third-party",
+        "reference": "same digest"
+      },
+      "klir_directed": false,
+      "amount": "3",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 24,
+      "a": 5,
+      "b": 11,
+      "name": "routed serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "Qwen's share of routed open-weight workload.",
+      "grounding": {
+        "grade": "third-party",
+        "reference": "same digest"
+      },
+      "klir_directed": false,
+      "amount": "13",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 25,
+      "a": 5,
+      "b": 12,
+      "name": "routed serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "DeepSeek's share of routed open-weight workload.",
+      "grounding": {
+        "grade": "third-party",
+        "reference": "same digest; DeepSeek ≈16%"
+      },
+      "klir_directed": false,
+      "amount": "16",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 26,
+      "a": 5,
+      "b": 13,
+      "name": "routed serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "The rest of the field's share of routed open-weight workload.",
+      "grounding": {
+        "grade": "third-party",
+        "reference": "same digest; the long tail folded by the model's own structure"
+      },
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 27,
+      "a": 6,
+      "b": 9,
+      "name": "self-hosted serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "Gemma's share of self-hosted workload.",
+      "grounding": {
+        "grade": "asserted",
+        "reference": "mirrors the routed open split; no sensor"
+      },
+      "klir_directed": false,
+      "amount": "2",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 28,
+      "a": 6,
+      "b": 10,
+      "name": "self-hosted serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "Llama's share of self-hosted workload.",
+      "grounding": {
+        "grade": "asserted",
+        "reference": "mirrors the routed open split; no sensor"
+      },
+      "klir_directed": false,
+      "amount": "3",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 29,
+      "a": 6,
+      "b": 11,
+      "name": "self-hosted serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "Qwen's share of self-hosted workload.",
+      "grounding": {
+        "grade": "asserted",
+        "reference": "mirrors the routed open split; no sensor"
+      },
+      "klir_directed": false,
+      "amount": "13",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 30,
+      "a": 6,
+      "b": 12,
+      "name": "self-hosted serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "DeepSeek's share of self-hosted workload.",
+      "grounding": {
+        "grade": "asserted",
+        "reference": "mirrors the routed open split; no sensor"
+      },
+      "klir_directed": false,
+      "amount": "16",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 31,
+      "a": 6,
+      "b": 13,
+      "name": "self-hosted serving share",
+      "is_bond": true,
+      "kind": "Energy",
+      "description": "The rest of the field's share of self-hosted workload.",
+      "grounding": {
+        "grade": "asserted",
+        "reference": "mirrors the routed open split; no sensor"
+      },
+      "klir_directed": false,
+      "amount": "20",
+      "unit": "Gtok/day",
+      "substance": "compute"
+    },
+    {
+      "id": 32,
+      "a": 9,
+      "b": 8,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "Tokens served by Gemma.",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+    },
+    {
+      "id": 33,
+      "a": 10,
+      "b": 8,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "Tokens served by Llama.",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+    },
+    {
+      "id": 34,
+      "a": 11,
+      "b": 8,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "Tokens served by Qwen.",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+    },
+    {
+      "id": 35,
+      "a": 12,
+      "b": 8,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "Tokens served by DeepSeek.",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+    },
+    {
+      "id": 36,
+      "a": 13,
+      "b": 8,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "Tokens served by the rest of the field.",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+    },
+    {
+      "id": 37,
+      "a": 8,
+      "b": 4,
+      "name": "tokens served",
+      "is_bond": true,
+      "kind": "Informational",
+      "description": "The open models' tokens leaving for the parent's serving endpoint.",
+      "klir_directed": false,
+      "unit": "Gtok/day",
+      "substance": "tokens"
+    }
+  ],
+  "boundary": {
+    "porosity": 0.0,
+    "perceptive_fuzziness": 0.0
+  },
+  "system_type": {
+    "kingdom": "Concrete",
+    "genus": "Social",
+    "domain": "Routed and self-hosted open-weight workload divided across Gemma, Llama, Qwen, DeepSeek and the open field by share, tokens served out, compute shed as heat"
+  },
+  "name": "Open-weight serving",
+  "time_unit": "day",
+  "params": [
+    {
+      "name": "Routed open-weight workload",
+      "anchor": {
+        "Flow": {
+          "relation": 14
+        }
+      },
+      "range": {
+        "min": "0",
+        "max": "12000"
+      }
+    },
+    {
+      "name": "Self-hosted workload",
+      "anchor": {
+        "Flow": {
+          "relation": 15
+        }
+      },
+      "range": {
+        "min": "0",
+        "max": "12000"
+      }
+    },
+    {
+      "name": "Open-weight models, routed",
+      "anchor": {
+        "Shares": {
+          "thing": 5
+        }
+      }
+    },
+    {
+      "name": "Open-weight models, self-hosted",
+      "anchor": {
+        "Shares": {
+          "thing": 6
+        }
+      }
+    }
+  ],
+  "metrics": [
+    {
+      "name": "DeepSeek share of routed open",
+      "expr": {
+        "ShareOfFlow": {
+          "relation": 25
+        }
+      }
+    },
+    {
+      "name": "Qwen share of routed open",
+      "expr": {
+        "ShareOfFlow": {
+          "relation": 24
+        }
+      }
+    },
+    {
+      "name": "Other open share of routed open",
+      "expr": {
+        "ShareOfFlow": {
+          "relation": 26
+        }
+      }
+    },
+    {
+      "name": "DeepSeek tokens served",
+      "expr": {
+        "SumInto": {
+          "thing": 12
+        }
+      }
+    },
+    {
+      "name": "Qwen tokens served",
+      "expr": {
+        "SumInto": {
+          "thing": 11
+        }
+      }
+    },
+    {
+      "name": "Other open tokens served",
+      "expr": {
+        "SumInto": {
+          "thing": 13
+        }
+      }
+    }
+  ],
+  "klir_level": "Structure"
+}
