@@ -32,7 +32,7 @@ component Room primitive Buffering stock kWh initial 0.5 time constant 5
     description "The heat in the room; it leaks out at its size over 5 hours."
 component Switch primitive Modulating backpressure
     description "Draws electricity from the mains only as far as the thermostat's demand."
-component Probe primitive Sensing
+component Probe primitive Sensing gain 0.5
     description "Reads the room's heat without removing any; its gain is half."
 component Thermostat primitive Inverting setpoint 1
     description "Reports how far the reading is below the setpoint."

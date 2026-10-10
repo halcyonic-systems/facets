@@ -38,9 +38,9 @@ component Insulin primitive Buffering stock U initial 1 time constant 10
     description "Blood insulin; cleared at its level over 10 minutes."
 component Secretion primitive Modulating backpressure
     description "The pancreas: opens in proportion to the glucose reading, so more glucose makes more insulin."
-component GlucoseGauge primitive Sensing
+component GlucoseGauge primitive Sensing gain 0.5
     description "Reads blood glucose without taking any; its gain is half."
-component InsulinGauge primitive Sensing
+component InsulinGauge primitive Sensing gain 0.5
     description "Reads blood insulin without taking any; its gain is half."
 
 source Meal

@@ -1025,6 +1025,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                 let mut back_pressure = false;
                 let mut limiting = false;
                 let mut reservoir: Option<f64> = None;
+                let mut gain: Option<f64> = None;
                 let mut description = String::new();
                 let mut grounding: Option<Grounding> = None;
                 let mut scale: Option<ScaleType> = None;
@@ -1478,6 +1479,42 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                             limiting = true;
                             i += 1;
                         }
+                        // `gain <n>` — a Sensing process's gain k (#496): the
+                        // multiplier between the level it reads and the signal
+                        // it reports. The engine's `param` on a sensor; default
+                        // 1.0 (a sensor reports what it sees). Sensing-only.
+                        Tok::Word(w) if w.eq_ignore_ascii_case("gain") => {
+                            if role == Role::Environment {
+                                fail(
+                                    "`gain` applies to components only (environment \
+                                     internals are opaque)"
+                                        .into(),
+                                    &mut errors,
+                                );
+                                ok = false;
+                            }
+                            if gain.is_some() {
+                                fail("`gain` already given on this component".into(), &mut errors);
+                                ok = false;
+                            }
+                            match attrs.get(i + 1) {
+                                Some(Tok::Word(n))
+                                    if n.parse::<f64>().is_ok_and(|v| v.is_finite() && v > 0.0) =>
+                                {
+                                    gain = Some(n.parse::<f64>().unwrap());
+                                }
+                                _ => {
+                                    fail(
+                                        "gain syntax: `gain <positive number>` — the sensor's \
+                                         multiplier from level to signal (e.g. `gain 1`)"
+                                            .into(),
+                                        &mut errors,
+                                    );
+                                    ok = false;
+                                }
+                            }
+                            i += 2;
+                        }
                         // `reservoir <n>` — a source's finite supply (#260,
                         // #463 move 5): the total it can emit over a run; the
                         // engine's Node.reservoir, after which its flows stop.
@@ -1684,7 +1721,7 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                                      `primitive <Name>`, `interface`, `stock \"<unit>\"`, \
                                      `release <n>`, `capacity <n>`, `time constant <n>`, \
                                      `setpoint <n>`, `maintenance <n>`, `backpressure`, `limiting`, \
-                                     `reservoir <n>` (source lines), \
+                                     `reservoir <n>` (source lines), `gain <n>` (Sensing), \
                                      `scale <Scale>`, `states {{…}}`, `kind <Basic|Support>` \
                                      and `decomposes …` may follow",
                                     other.display()
@@ -1743,6 +1780,15 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                         "`maintenance` applies to a Buffering component only — it is \
                          the stock's per-tick upkeep loss, and no other primitive \
                          reads it"
+                            .into(),
+                        &mut errors,
+                    );
+                    ok = false;
+                }
+                if gain.is_some() && primitive != Some(ProcessPrimitive::Sensing) {
+                    fail(
+                        "`gain` applies to a Sensing component only — it is the sensor's \
+                         multiplier from level to signal, and no other primitive reads it"
                             .into(),
                         &mut errors,
                     );
@@ -1864,7 +1910,9 @@ pub fn parse_sl_full(text: &str) -> Result<SlParse, Vec<SlError>> {
                     variable_kind,
                     cognitive_params,
                     initial_state,
-                    agency_capacity: None,
+                    // `gain <n>` on a Sensing component (#496) is the engine's
+                    // own parameter for a sensor, so it rides agency_capacity.
+                    agency_capacity: gain.map(|g| g as f32),
                 });
                 next_id += 1;
             }
@@ -3444,6 +3492,9 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
                     "limiting" => t.primitive == Some(ProcessPrimitive::Combining),
                     _ => false,
                 }));
+        // An agency parameter is sayable in SL only as a sensor's `gain`
+        // (#496); on any other primitive it came from a JSON bag or the
+        // sandbox and is carried, not written — as before this word existed.
         if !(initial_expressible && cognitive_expressible) {
             return Err(format!(
                 "`{}` carries engine parameters SL cannot express (#112 covers \
@@ -3530,6 +3581,11 @@ pub fn emit_sl_with(model: &CanvasModel, layout: Option<&SlLayout>) -> Result<St
             }
             if let Some(sp) = t.cognitive_params.get("setpoint") {
                 write!(out, " setpoint {sp}").unwrap();
+            }
+            if t.primitive == Some(ProcessPrimitive::Sensing) {
+                if let Some(g) = t.agency_capacity {
+                    write!(out, " gain {g}").unwrap();
+                }
             }
             if let Some(m) = t.cognitive_params.get("maintenance") {
                 write!(out, " maintenance {m}").unwrap();
@@ -3989,6 +4045,7 @@ pub const RESERVED_WORDS: &[&str] = &[
     "backpressure",
     "limiting",
     "reservoir",
+    "gain",
     "description",
     "grounding",
     "usability",

@@ -893,6 +893,18 @@ pub fn project_with_map(model: &CanvasModel) -> Projection {
                         .get_or_insert_with(AgentModel::default)
                         .agency_capacity = 1.0;
                 }
+                // #496: a sensor reports what it sees. The projection's blanket
+                // agency default (0.5) was meant for gains and efficiencies and
+                // halved every SL-authored Sensing silently; the sandbox palette
+                // has always said 1.0. Authored `gain <n>` overrides below.
+                if t.primitive == Some(ProcessPrimitive::Sensing) && t.agency_capacity.is_none() {
+                    systems
+                        .last_mut()
+                        .unwrap()
+                        .agent
+                        .get_or_insert_with(AgentModel::default)
+                        .agency_capacity = 1.0;
+                }
                 systems.last_mut().unwrap().info.grounding = t.grounding.clone();
                 // The `decomposes` reference carries its id into the kernel; the
                 // human label stays surface-side (the kernel keys on the id).

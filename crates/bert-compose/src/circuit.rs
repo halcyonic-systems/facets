@@ -1693,18 +1693,26 @@ impl Circuit {
                         })
                         .map(|k| amount_on(k, &act))
                         .sum(),
-                    NodeKind::Process(_) => {
-                        let has_outlet = (0..nw).any(|k| {
-                            self.wires[k].from == i
-                                && self.wires[k].mode == FlowMode::Pushed
-                                && !self.is_observation(&self.wires[k])
-                        });
-                        if node.out_substance.base == SubstanceType::Message || !has_outlet {
-                            0.0
-                        } else {
-                            act[i]
-                        }
-                    }
+                    // Per wire, by the wire's own substance (#496): the node's
+                    // `out_substance` is whichever outwire was declared FIRST,
+                    // so reading it here made a stock whose level read was
+                    // declared before its drain release nothing — the ledger
+                    // then charged the drain as dissipation, −1 per tick, and
+                    // swapping two lines of SL flipped `conserved`. A Message
+                    // wire carries no mass; an observation tap reads without
+                    // taking; everything else a pushed outwire delivers is
+                    // what the node sent on. (A dead end — activity nothing
+                    // reads — still sums to zero here and dissipates.)
+                    NodeKind::Process(_) => (0..nw)
+                        .filter(|&k| {
+                            let w = &self.wires[k];
+                            w.from == i
+                                && w.mode == FlowMode::Pushed
+                                && !self.is_observation(w)
+                                && self.wire_substance(w) != SubstanceType::Message
+                        })
+                        .map(|k| amount_on(k, &act))
+                        .sum(),
                 }
             })
             .collect();
@@ -2732,6 +2740,63 @@ mod tests {
             old.step();
         }
         assert!((old.sunk - 20.0).abs() < 1e-6, "an unbounded source sinks 20, got {}", old.sunk);
+    }
+
+    /// #496: a stock's release is the physical mass on its wires, whichever
+    /// wire was declared first. Before, the node's out_substance (set from
+    /// the first wire) decided, so a level read declared before the drain
+    /// made the stock "release" nothing and the ledger charged the drain as
+    /// dissipation — conservation flipped with the order of two lines.
+    #[test]
+    fn a_level_read_declared_first_does_not_break_the_ledger() {
+        fn rig(read_first: bool) -> Circuit {
+            let mut c = Circuit::default();
+            c.nodes.push(node(NodeKind::Source)); // 0 tap
+            c.nodes.push(node(NodeKind::Process(ProcessPrimitive::Buffering))); // 1 tank
+            c.nodes.push(node(NodeKind::Process(ProcessPrimitive::Sensing))); // 2 gauge
+            c.nodes.push(node(NodeKind::Sink)); // 3 drain
+            c.nodes[0].param = 2.0;
+            c.nodes[1].initial_storage = 10.0;
+            c.nodes[1].release_rate = 1.0;
+            c.wires.push(Wire::new(0, 1));
+            let mut read = Wire::new(1, 2);
+            read.substance_override = Some(SubstanceType::Message);
+            // The exporter stamps every wire with its flow's own substance
+            // (export.rs); the rig does the same, so only the NODE's
+            // first-wire substance differs between the two orders.
+            let mut drain = Wire::new(1, 3);
+            drain.substance_override = Some(SubstanceType::Material);
+            if read_first {
+                c.wires.push(read);
+                c.wires.push(drain);
+                // The first-declared wire's substance is what the node reports
+                // — the very thing the ledger must no longer read.
+                c.nodes[1].out_substance =
+                    DeclaredSubstance { name: "reading".into(), base: SubstanceType::Message, unit: String::new() };
+            } else {
+                c.wires.push(drain);
+                c.wires.push(read);
+                c.nodes[1].out_substance =
+                    DeclaredSubstance { name: "water".into(), base: SubstanceType::Material, unit: "L".into() };
+            }
+            c.reset();
+            c
+        }
+        for read_first in [true, false] {
+            let mut c = rig(read_first);
+            for _ in 0..4 {
+                c.step();
+            }
+            assert!(
+                c.balance().abs() < 1e-4,
+                "read_first={read_first}: balance {} (emitted {} sunk {} dissipated {})",
+                c.balance(),
+                c.emitted,
+                c.sunk,
+                c.dissipated
+            );
+            assert!((c.sunk - 4.0).abs() < 1e-6, "read_first={read_first}: the drain took 1 a tick, sunk {}", c.sunk);
+        }
     }
 
     /// #342 (#463 move 5): a limiting Combining is bounded by its scarcest

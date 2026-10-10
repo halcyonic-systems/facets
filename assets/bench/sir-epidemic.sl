@@ -44,7 +44,7 @@ component Removed primitive Buffering stock share
     description "People who have recovered and cannot catch it again."
 component Contact primitive Modulating backpressure
     description "Lets susceptibles through in proportion to the infected share."
-component Gauge primitive Sensing
+component Gauge primitive Sensing gain 0.5
     description "Reads the infected share without removing anyone; its gain is half."
 
 source Imports
