@@ -93,7 +93,6 @@ describe("the shipped library", () => {
     expect(genusOf("Federal Reserve")).toBe("Social");
     expect(genusOf("Bitcoin")).toBe("Social");
     expect(genusOf("Jungian Cognitive Function Stack")).toBe("Social"); // Conceptual/
-    expect(genusOf("hal")).toBe("Technical");
   });
 
   // The consolidation is load-bearing, so it is asserted rather than assumed:
@@ -122,7 +121,6 @@ describe("the shipped library", () => {
       // root is the transparent box; the level-0 wrapper is gone).
       "The Steel-Plant, two levels deep",
       "Translation Apparatus",
-      "hal",
     ]);
   });
 });

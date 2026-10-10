@@ -1,3 +1,4 @@
+# field · with Shingai · 2026-07-24
 # ── hal, the sovereign-AI harness — structural face ──────────────────
 # hal is Halcyonic's local-model harness: a proxy that routes requests,
 # a council that convenes multiple models to deliberate, a bench that
