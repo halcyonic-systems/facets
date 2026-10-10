@@ -2979,28 +2979,6 @@ function Workspace() {
           </button>
         ))}
       </div>
-      {workMode === "structure" && canvasModel?.lens === "Mobus" && !view3d && (
-        <div
-          className="flex items-center gap-0.5 p-0.5"
-          style={{ background: "var(--bg-surface)", borderRadius: "var(--radius-pill)" }}
-        >
-          <button
-            onClick={() => setOpaque((o) => !o)}
-            aria-pressed={opaque}
-            className="px-2 py-0.5 text-xs font-body transition-colors"
-            style={{
-              borderRadius: "var(--radius-pill)",
-              background: opaque ? "var(--lens-accent)" : "transparent",
-              color: opaque ? "var(--text-on-accent)" : "var(--text-secondary)",
-              transition: "var(--transition-base)",
-            }}
-            title="Opaque view — the model seen from outside: membrane, interfaces, crossings; interior hidden. Ctrl+Alt+O, or zoom out past the membrane."
-            data-testid="view-opaque-toggle"
-          >
-            Opaque
-          </button>
-        </div>
-      )}
       {view3dEnabled() && workMode === "structure" && (
         <div
           className="flex items-center gap-0.5 p-0.5"
@@ -4100,6 +4078,15 @@ function Workspace() {
           onToggleFocus={() => setFocus((f) => !f)}
           grounding={groundingOverlay}
           onToggleGrounding={() => setGroundingOverlay((g) => !g)}
+          // #462 item 2: the opaque view is a reading of the open model (the
+          // zoom-out gesture is the feature; the pill is the state), so it
+          // sits beside Grounding, not beside 3D as a view.
+          opaque={opaque}
+          onToggleOpaque={
+            workMode === "structure" && canvasModel?.lens === "Mobus" && !view3d
+              ? () => setOpaque((o) => !o)
+              : undefined
+          }
           secondary={narrow ? { label: secondaryOf(mode), open: sheet } : undefined}
           onToggleSecondary={() => setSheet((s) => !s)}
           onVerdict={openRead}
