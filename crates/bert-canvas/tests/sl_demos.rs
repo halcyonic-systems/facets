@@ -126,10 +126,32 @@ fn sl_demos_run_conserve_and_are_dt_invariant() {
         let stored = std::fs::read_to_string(&model_path).unwrap_or_else(|_| {
             panic!("{name}: model not minted — run once with BLESS_SL_DEMOS=1")
         });
+        // Compared as values with floats rounded, not as strings: an
+        // auto-placed coordinate differs in its last f32 digit between an
+        // Apple-silicon mint and a Linux runner (751.60583 vs 751.6059, #500),
+        // and the staleness this gate exists to catch is structural — things,
+        // flows, amounts — not the seventh digit of a layout position.
         assert_eq!(
-            stored, json,
+            rounded(serde_json::from_str::<serde_json::Value>(&stored).unwrap()),
+            rounded(serde_json::from_str::<serde_json::Value>(&json).unwrap()),
             "{name}: the stored model is not the projection of its .sl — \
              re-mint with BLESS_SL_DEMOS=1"
         );
+    }
+}
+
+
+/// Every number rounded to three decimals, recursively, so a platform's last
+/// f32 digit cannot fail the staleness gate.
+fn rounded(v: serde_json::Value) -> serde_json::Value {
+    use serde_json::Value;
+    match v {
+        Value::Number(n) => match n.as_f64() {
+            Some(f) if n.is_f64() => serde_json::json!((f * 1000.0).round() / 1000.0),
+            _ => Value::Number(n),
+        },
+        Value::Array(a) => Value::Array(a.into_iter().map(rounded).collect()),
+        Value::Object(o) => Value::Object(o.into_iter().map(|(k, v)| (k, rounded(v))).collect()),
+        other => other,
     }
 }
