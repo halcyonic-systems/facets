@@ -5,6 +5,7 @@
 // ladder, ports), SVG out. NO systems fact is decided in these files.
 import type { ComponentType } from "react";
 import type {
+  AgentRule,
   CanvasModel,
   CanvasRole,
   EdgeFact,
@@ -110,7 +111,11 @@ export const LensRegistry: Record<Lens, LensViews> = {
  *  entries, not new mechanisms. */
 export type Designation =
   | { type: "primitive"; primitive: ProcessPrimitive }
-  | { type: "interface" };
+  | { type: "interface" }
+  /** facets#269 (ADR 0008): an agent is a distinct thing kind — a decision
+   *  model that watches a stock and commands a work process — never a badge
+   *  on a primitive. Stamping it clears any primitive, and vice versa. */
+  | { type: "agent"; rule: AgentRule };
 
 export type PaletteTool =
   | {
@@ -268,6 +273,18 @@ export const LensPalette: Record<Lens, LensPaletteSpec> = {
       tip: `${p}: ${PRIMITIVE_GLOSS[p]} · click empty canvas to place one, or stamp onto a leaf component`,
       designation: { type: "primitive" as const, primitive: p },
       })),
+      // The agent (facets#269, ADR 0008 D1): Mobus ch. 11 Fig 11.1, drawn as
+      // the management oval of ch. 12. It watches one stock's level over an
+      // informational flow and commands one control-reading work process
+      // (Modulating, Amplifying, a Buffering stock's release) over another;
+      // the Review panel says when either wire is missing (`agent_unwired`).
+      {
+        verb: "designate" as const,
+        id: "agent-proportional",
+        label: "agent",
+        tip: "agent: a decision model, drawn as Mobus's management oval — watches a Buffering (a stock) over a flow in, runs its rule, and commands a Modulating (a valve), an Amplifying or a Buffering's release over a flow out, the heavy dashed command line (Mobus ch. 11) · click empty canvas to place one, or stamp onto a leaf component; set the rule and its numbers in the inspector",
+        designation: { type: "agent" as const, rule: "proportional" as const },
+      },
     ],
     connect: [
       {

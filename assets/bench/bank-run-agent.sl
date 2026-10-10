@@ -1,5 +1,5 @@
 # ── A bank whose depositors panic all at once ───────────────────────────────
-# bench · after the bank run (bank-run.sl) with a threshold crowd — Diamond & Dybvig 1983 (the run as a switch); Mobus 2022 §11.2.1.1
+# bench · after Diamond & Dybvig 1983 as a switch — Mobus 2022 §11.2.1.1
 #
 # The same bank as bank-run.sl with the depositors' nerves written as one
 # switch instead of a gauge and a comparator: a crowd watches the reserves

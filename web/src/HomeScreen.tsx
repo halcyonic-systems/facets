@@ -1018,9 +1018,14 @@ function ModelCard({
             </span>
           )}
           {marker && (
+            /* A bench card's provenance can run long ("after X 1983 (the run as
+               a switch); Mobus §11.2.1.1"); the marker truncates in its row and
+               carries the full text as its title, instead of drifting past the
+               card into the next column. */
             <span
-              className="shrink-0 text-[10px]"
+              className="min-w-0 truncate text-[10px]"
               style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--ink-muted)" }}
+              title={marker}
               data-testid="card-marker"
             >
               {marker}

@@ -1,5 +1,5 @@
 # ── A fishery with a closed season ──────────────────────────────────────────
-# bench · after the logistic fishery (logistic-harvest.sl) with a quota rule — Mobus 2022 §12.2.3.1; Gordon–Schaefer fishery with a closure
+# bench · after the logistic fishery with a closed season — Gordon–Schaefer; Mobus 2022 §12.2.3.1
 #
 # The same fish stock as logistic-harvest.sl, fished hard (a two-day catch
 # time, which in the control collapses the stock to a yield of 0.02 t/day),

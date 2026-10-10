@@ -3844,7 +3844,7 @@ function Workspace() {
                       >
                         {mode === "read"
                           ? "click an element to read about it · click empty space for the whole model · double-click to enter"
-                          : "arm a tool to stamp (Esc disarms) · click a node to edit it in the Element tab · double-click to enter it · drag the handle dot to connect · click a flow to drive it"}
+                          : "hover a rail chip for what it is · arm a tool to stamp (Esc disarms) · click a node to edit it in the Element tab · double-click to enter it · drag the handle dot to connect · click a flow to drive it"}
                       </div>
                     )}
                     {/* In Run mode the dock owns the lower band, so the

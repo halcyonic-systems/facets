@@ -7,7 +7,7 @@
 // At the foot, the SL text as a drawer over the canvas.
 import type { Lens } from "../kernel/types";
 import { LensPalette, type PaletteTool } from "./lenses/registry";
-import { PRIMITIVE_GLOSS } from "./types";
+import { PRIMITIVE_GLOSS, PRIMITIVE_WORD } from "./types";
 import { useState } from "react";
 import { GestureGlyph, GlyphChip, PasswayChip, RoleChip } from "./PaletteRail";
 
@@ -26,6 +26,7 @@ function RailButton({
   label,
   children,
   testId,
+  nativeTip = true,
 }: {
   active?: boolean;
   title: string;
@@ -33,11 +34,15 @@ function RailButton({
   label?: string;
   children: React.ReactNode;
   testId?: string;
+  /** false when a hover card beside the rail already carries the words:
+      the browser's own tooltip would then appear a second later as a
+      second box saying the same thing. The aria-label stays. */
+  nativeTip?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      title={title}
+      title={nativeTip ? title : undefined}
       aria-pressed={active}
       aria-label={title}
       className="flex w-12 flex-col items-center gap-0.5 rounded-md py-1.5"
@@ -120,6 +125,7 @@ export function ToolRail({
               <RailButton
                 active={armed?.id === t.id}
                 title={`${t.label}: ${t.tip}`}
+                nativeTip={false}
                 onClick={() => onArm(armed?.id === t.id ? null : t)}
                 testId={`tool-${t.id}`}
               >
@@ -137,17 +143,28 @@ export function ToolRail({
                   to this rail (#410), and a two-letter stamp with a native
                   tooltip taught nobody what Buffering is. A card beside the
                   rail, instant on hover, from the same registry. */}
-              {hoverTool === t.id && t.verb === "designate" && t.designation.type === "primitive" && (
+              {hoverTool === t.id && t.verb === "designate" && (
                 <span
                   role="tooltip"
-                  data-testid={`gloss-${t.designation.primitive}`}
+                  data-testid={`gloss-${t.designation.type === "primitive" ? t.designation.primitive : "agent"}`}
                   className="pointer-events-none absolute left-full top-0 z-20 ml-2 block w-64 rounded-md px-2.5 py-2 text-left text-[11px] leading-snug"
                   style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", color: "var(--text-primary)", boxShadow: "var(--shadow-card)" }}
                 >
-                  <span className="font-semibold">{t.designation.primitive}</span>
-                  <span style={{ color: "var(--text-secondary)" }}> · work process</span>
-                  <br />
-                  <span style={{ color: "var(--text-secondary)" }}>{PRIMITIVE_GLOSS[t.designation.primitive]}</span>
+                  {t.designation.type === "primitive" ? (
+                    <>
+                      <span className="font-semibold">{t.designation.primitive}</span>
+                      <span style={{ color: "var(--text-secondary)" }}> · {PRIMITIVE_WORD[t.designation.primitive]} · work process</span>
+                      <br />
+                      <span style={{ color: "var(--text-secondary)" }}>{PRIMITIVE_GLOSS[t.designation.primitive]}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-semibold">{t.label}</span>
+                      <span style={{ color: "var(--text-secondary)" }}> · a decision maker · watches a stock, commands a process</span>
+                      <br />
+                      <span style={{ color: "var(--text-secondary)" }}>{t.tip}</span>
+                    </>
+                  )}
                 </span>
               )}
             </span>
