@@ -23,8 +23,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            118.05292,
-            -306.9109
+            288.72083,
+            -11.305328
           ],
           "rotation": 0.0
         },
@@ -47,8 +47,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            -200.2381,
-            72.41339
+            120.512695,
+            189.15723
           ],
           "rotation": 0.0
         },
@@ -67,8 +67,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            -200.2381,
-            567.5865
+            120.512695,
+            450.8427
           ],
           "rotation": 0.0
         },
@@ -87,8 +87,8 @@
         "type": "Source",
         "transform": {
           "translation": [
-            118.052826,
-            946.9108
+            288.72076,
+            651.3053
           ],
           "rotation": 0.0
         },
@@ -109,7 +109,7 @@
         "type": "Sink",
         "transform": {
           "translation": [
-            1203.8943,
+            862.5584,
             320.0
           ],
           "rotation": 0.0
@@ -162,8 +162,23 @@
             "info": {
               "id": "I0.1",
               "level": 0,
+              "name": "Serving endpoint",
+              "description": "Where every subsystem's tokens leave for the customers. One pass-way: the routed and self-hosted split is read on the demand side, where the sensors are."
+            },
+            "protocol": "tokens served",
+            "type": "Export",
+            "exports_to": [
+              "Snk-1.4"
+            ],
+            "receives_from": [],
+            "angle": null
+          },
+          {
+            "info": {
+              "id": "I0.2",
+              "level": 0,
               "name": "Self-hosting",
-              "description": "The self-hosted interface: splits self-hosted workload across open-weight models only. Closed weights cannot be self-hosted."
+              "description": "The self-hosted interface: passes self-hosted workload to open-weight serving only. Closed weights cannot be self-hosted."
             },
             "protocol": "self-hosted workload",
             "type": "Import",
@@ -175,7 +190,7 @@
           },
           {
             "info": {
-              "id": "I0.2",
+              "id": "I0.3",
               "level": 0,
               "name": "Frontier release",
               "description": "Where closed weights and API access enter serving."
@@ -190,7 +205,7 @@
           },
           {
             "info": {
-              "id": "I0.3",
+              "id": "I0.4",
               "level": 0,
               "name": "Open-weight release",
               "description": "Where open weights enter serving."
@@ -201,21 +216,6 @@
             "receives_from": [
               "Src-1.3"
             ],
-            "angle": null
-          },
-          {
-            "info": {
-              "id": "I0.4",
-              "level": 0,
-              "name": "Serving endpoint",
-              "description": "Where every model's tokens leave for the customers. One pass-way: the routed and self-hosted split is read on the demand side, where the sensors are."
-            },
-            "protocol": "tokens served",
-            "type": "Export",
-            "exports_to": [
-              "Snk-1.4"
-            ],
-            "receives_from": [],
             "angle": null
           }
         ],
@@ -259,8 +259,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          271.16922,
-          -43.83441
+          390.00003,
+          164.11543
         ],
         "rotation": 0.0
       },
@@ -280,12 +280,8 @@
       "info": {
         "id": "C0.1",
         "level": 1,
-        "name": "Self-hosting",
-        "description": "The self-hosted interface: splits self-hosted workload across open-weight models only. Closed weights cannot be self-hosted.",
-        "grounding": {
-          "grade": "asserted",
-          "reference": "split assumed to follow the routed open-weight split until a sensor says otherwise"
-        }
+        "name": "Serving endpoint",
+        "description": "Where every subsystem's tokens leave for the customers. One pass-way: the routed and self-hosted split is read on the demand side, where the sensors are."
       },
       "sources": [],
       "sinks": [],
@@ -306,8 +302,8 @@
       "radius": 34.0,
       "transform": {
         "translation": [
-          86.8472,
-          174.7802
+          660.0,
+          320.0
         ],
         "rotation": 0.0
       },
@@ -319,16 +315,16 @@
       "archetype": "Agent",
       "agent": {
         "kind": "Reactive",
-        "agency_capacity": 0.5,
-        "primitive": "Splitting"
+        "agency_capacity": 1.0,
+        "primitive": "Impeding"
       }
     },
     {
       "info": {
         "id": "C0.2",
         "level": 1,
-        "name": "Frontier release",
-        "description": "Where closed weights and API access enter serving."
+        "name": "Frontier serving",
+        "description": "Frontier serving as one process: closed weights and routed frontier workload in, tokens out. Its interior, the frontier roster behind a pool, is the child model."
       },
       "sources": [],
       "sinks": [],
@@ -344,13 +340,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.2"
+        "parent_interface": "I0.3"
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          88.74036,
-          460.2691
+          557.78174,
+          242.21826
         ],
         "rotation": 0.0
       },
@@ -362,16 +358,17 @@
       "archetype": "Agent",
       "agent": {
         "kind": "Reactive",
-        "agency_capacity": 1.0,
-        "primitive": "Impeding"
-      }
+        "agency_capacity": 0.5,
+        "primitive": "Amplifying"
+      },
+      "child_model": "5oJEAmzFReku6y9z8t5Ucu"
     },
     {
       "info": {
         "id": "C0.3",
         "level": 1,
-        "name": "Open-weight release",
-        "description": "Where open weights enter serving."
+        "name": "Open-weight serving",
+        "description": "Open-weight serving as one process: open weights, routed open-weight workload and self-hosted workload in, tokens out. Its interior, the open roster behind a pool, is the child model."
       },
       "sources": [],
       "sinks": [],
@@ -387,185 +384,13 @@
         "porosity": 0.0,
         "perceptive_fuzziness": 0.0,
         "interfaces": [],
-        "parent_interface": "I0.3"
-      },
-      "radius": 34.0,
-      "transform": {
-        "translation": [
-          273.67908,
-          675.1946
-        ],
-        "rotation": 0.0
-      },
-      "equivalence": "",
-      "history": "",
-      "transformation": "",
-      "member_autonomy": 1.0,
-      "time_constant": "",
-      "archetype": "Agent",
-      "agent": {
-        "kind": "Reactive",
-        "agency_capacity": 1.0,
-        "primitive": "Impeding"
-      }
-    },
-    {
-      "info": {
-        "id": "C0.4",
-        "level": 1,
-        "name": "Serving endpoint",
-        "description": "Where every model's tokens leave for the customers. One pass-way: the routed and self-hosted split is read on the demand side, where the sensors are."
-      },
-      "sources": [],
-      "sinks": [],
-      "parent": "S0",
-      "complexity": "Atomic",
-      "boundary": {
-        "info": {
-          "id": "B0.4",
-          "level": 1,
-          "name": "",
-          "description": ""
-        },
-        "porosity": 0.0,
-        "perceptive_fuzziness": 0.0,
-        "interfaces": [],
         "parent_interface": "I0.4"
       },
       "radius": 34.0,
       "transform": {
         "translation": [
-          897.79236,
-          317.8721
-        ],
-        "rotation": 0.0
-      },
-      "equivalence": "",
-      "history": "",
-      "transformation": "",
-      "member_autonomy": 1.0,
-      "time_constant": "",
-      "archetype": "Agent",
-      "agent": {
-        "kind": "Reactive",
-        "agency_capacity": 1.0,
-        "primitive": "Impeding"
-      }
-    },
-    {
-      "info": {
-        "id": "C0.5",
-        "level": 1,
-        "name": "Frontier pool",
-        "description": "Frontier serving: divides routed frontier workload across the frontier models by their routed shares."
-      },
-      "sources": [],
-      "sinks": [],
-      "parent": "S0",
-      "complexity": "Atomic",
-      "boundary": {
-        "info": {
-          "id": "B0.5",
-          "level": 1,
-          "name": "",
-          "description": ""
-        },
-        "porosity": 0.0,
-        "perceptive_fuzziness": 0.0,
-        "interfaces": [],
-        "parent_interface": null
-      },
-      "radius": 34.0,
-      "transform": {
-        "translation": [
-          480.0,
-          71.537445
-        ],
-        "rotation": 0.0
-      },
-      "equivalence": "",
-      "history": "",
-      "transformation": "",
-      "member_autonomy": 1.0,
-      "time_constant": "",
-      "archetype": "Agent",
-      "agent": {
-        "kind": "Reactive",
-        "agency_capacity": 0.5,
-        "primitive": "Splitting"
-      }
-    },
-    {
-      "info": {
-        "id": "C0.6",
-        "level": 1,
-        "name": "Open-weight pool",
-        "description": "Open-weight serving: divides routed open-weight workload across the open models by their routed shares."
-      },
-      "sources": [],
-      "sinks": [],
-      "parent": "S0",
-      "complexity": "Atomic",
-      "boundary": {
-        "info": {
-          "id": "B0.6",
-          "level": 1,
-          "name": "",
-          "description": ""
-        },
-        "porosity": 0.0,
-        "perceptive_fuzziness": 0.0,
-        "interfaces": [],
-        "parent_interface": null
-      },
-      "radius": 34.0,
-      "transform": {
-        "translation": [
-          253.99051,
-          216.78494
-        ],
-        "rotation": 0.0
-      },
-      "equivalence": "",
-      "history": "",
-      "transformation": "",
-      "member_autonomy": 1.0,
-      "time_constant": "",
-      "archetype": "Agent",
-      "agent": {
-        "kind": "Reactive",
-        "agency_capacity": 0.5,
-        "primitive": "Splitting"
-      }
-    },
-    {
-      "info": {
-        "id": "C0.7",
-        "level": 1,
-        "name": "Opus",
-        "description": "A served model: released weights and allocated compute in, tokens out."
-      },
-      "sources": [],
-      "sinks": [],
-      "parent": "S0",
-      "complexity": "Atomic",
-      "boundary": {
-        "info": {
-          "id": "B0.7",
-          "level": 1,
-          "name": "",
-          "description": ""
-        },
-        "porosity": 0.0,
-        "perceptive_fuzziness": 0.0,
-        "interfaces": [],
-        "parent_interface": null
-      },
-      "radius": 34.0,
-      "transform": {
-        "translation": [
-          614.329,
-          110.979996
+          402.21826,
+          397.78174
         ],
         "rotation": 0.0
       },
@@ -579,351 +404,8 @@
         "kind": "Reactive",
         "agency_capacity": 0.5,
         "primitive": "Amplifying"
-      }
-    },
-    {
-      "info": {
-        "id": "C0.8",
-        "level": 1,
-        "name": "Fable",
-        "description": "A served model: released weights and allocated compute in, tokens out."
       },
-      "sources": [],
-      "sinks": [],
-      "parent": "S0",
-      "complexity": "Atomic",
-      "boundary": {
-        "info": {
-          "id": "B0.8",
-          "level": 1,
-          "name": "",
-          "description": ""
-        },
-        "porosity": 0.0,
-        "perceptive_fuzziness": 0.0,
-        "interfaces": [],
-        "parent_interface": null
-      },
-      "radius": 34.0,
-      "transform": {
-        "translation": [
-          706.0095,
-          216.78493
-        ],
-        "rotation": 0.0
-      },
-      "equivalence": "",
-      "history": "",
-      "transformation": "",
-      "member_autonomy": 1.0,
-      "time_constant": "",
-      "archetype": "Agent",
-      "agent": {
-        "kind": "Reactive",
-        "agency_capacity": 0.5,
-        "primitive": "Amplifying"
-      }
-    },
-    {
-      "info": {
-        "id": "C0.9",
-        "level": 1,
-        "name": "GPT",
-        "description": "A served model: released weights and allocated compute in, tokens out."
-      },
-      "sources": [],
-      "sinks": [],
-      "parent": "S0",
-      "complexity": "Atomic",
-      "boundary": {
-        "info": {
-          "id": "B0.9",
-          "level": 1,
-          "name": "",
-          "description": ""
-        },
-        "porosity": 0.0,
-        "perceptive_fuzziness": 0.0,
-        "interfaces": [],
-        "parent_interface": null
-      },
-      "radius": 34.0,
-      "transform": {
-        "translation": [
-          725.9336,
-          355.35992
-        ],
-        "rotation": 0.0
-      },
-      "equivalence": "",
-      "history": "",
-      "transformation": "",
-      "member_autonomy": 1.0,
-      "time_constant": "",
-      "archetype": "Agent",
-      "agent": {
-        "kind": "Reactive",
-        "agency_capacity": 0.5,
-        "primitive": "Amplifying"
-      }
-    },
-    {
-      "info": {
-        "id": "C0.10",
-        "level": 1,
-        "name": "Gemini",
-        "description": "A served model: released weights and allocated compute in, tokens out."
-      },
-      "sources": [],
-      "sinks": [],
-      "parent": "S0",
-      "complexity": "Atomic",
-      "boundary": {
-        "info": {
-          "id": "B0.10",
-          "level": 1,
-          "name": "",
-          "description": ""
-        },
-        "porosity": 0.0,
-        "perceptive_fuzziness": 0.0,
-        "interfaces": [],
-        "parent_interface": null
-      },
-      "radius": 34.0,
-      "transform": {
-        "translation": [
-          667.77545,
-          482.70837
-        ],
-        "rotation": 0.0
-      },
-      "equivalence": "",
-      "history": "",
-      "transformation": "",
-      "member_autonomy": 1.0,
-      "time_constant": "",
-      "archetype": "Agent",
-      "agent": {
-        "kind": "Reactive",
-        "agency_capacity": 0.5,
-        "primitive": "Amplifying"
-      }
-    },
-    {
-      "info": {
-        "id": "C0.11",
-        "level": 1,
-        "name": "Gemma",
-        "description": "A served model: open weights and allocated compute in, tokens out."
-      },
-      "sources": [],
-      "sinks": [],
-      "parent": "S0",
-      "complexity": "Atomic",
-      "boundary": {
-        "info": {
-          "id": "B0.11",
-          "level": 1,
-          "name": "",
-          "description": ""
-        },
-        "porosity": 0.0,
-        "perceptive_fuzziness": 0.0,
-        "interfaces": [],
-        "parent_interface": null
-      },
-      "radius": 34.0,
-      "transform": {
-        "translation": [
-          549.99994,
-          558.3981
-        ],
-        "rotation": 0.0
-      },
-      "equivalence": "",
-      "history": "",
-      "transformation": "",
-      "member_autonomy": 1.0,
-      "time_constant": "",
-      "archetype": "Agent",
-      "agent": {
-        "kind": "Reactive",
-        "agency_capacity": 0.5,
-        "primitive": "Amplifying"
-      }
-    },
-    {
-      "info": {
-        "id": "C0.12",
-        "level": 1,
-        "name": "Llama",
-        "description": "A served model: open weights and allocated compute in, tokens out."
-      },
-      "sources": [],
-      "sinks": [],
-      "parent": "S0",
-      "complexity": "Atomic",
-      "boundary": {
-        "info": {
-          "id": "B0.12",
-          "level": 1,
-          "name": "",
-          "description": ""
-        },
-        "porosity": 0.0,
-        "perceptive_fuzziness": 0.0,
-        "interfaces": [],
-        "parent_interface": null
-      },
-      "radius": 34.0,
-      "transform": {
-        "translation": [
-          409.99997,
-          558.3981
-        ],
-        "rotation": 0.0
-      },
-      "equivalence": "",
-      "history": "",
-      "transformation": "",
-      "member_autonomy": 1.0,
-      "time_constant": "",
-      "archetype": "Agent",
-      "agent": {
-        "kind": "Reactive",
-        "agency_capacity": 0.5,
-        "primitive": "Amplifying"
-      }
-    },
-    {
-      "info": {
-        "id": "C0.13",
-        "level": 1,
-        "name": "Qwen",
-        "description": "A served model: open weights and allocated compute in, tokens out."
-      },
-      "sources": [],
-      "sinks": [],
-      "parent": "S0",
-      "complexity": "Atomic",
-      "boundary": {
-        "info": {
-          "id": "B0.13",
-          "level": 1,
-          "name": "",
-          "description": ""
-        },
-        "porosity": 0.0,
-        "perceptive_fuzziness": 0.0,
-        "interfaces": [],
-        "parent_interface": null
-      },
-      "radius": 34.0,
-      "transform": {
-        "translation": [
-          292.2245,
-          482.7083
-        ],
-        "rotation": 0.0
-      },
-      "equivalence": "",
-      "history": "",
-      "transformation": "",
-      "member_autonomy": 1.0,
-      "time_constant": "",
-      "archetype": "Agent",
-      "agent": {
-        "kind": "Reactive",
-        "agency_capacity": 0.5,
-        "primitive": "Amplifying"
-      }
-    },
-    {
-      "info": {
-        "id": "C0.14",
-        "level": 1,
-        "name": "DeepSeek",
-        "description": "A served model: open weights and allocated compute in, tokens out."
-      },
-      "sources": [],
-      "sinks": [],
-      "parent": "S0",
-      "complexity": "Atomic",
-      "boundary": {
-        "info": {
-          "id": "B0.14",
-          "level": 1,
-          "name": "",
-          "description": ""
-        },
-        "porosity": 0.0,
-        "perceptive_fuzziness": 0.0,
-        "interfaces": [],
-        "parent_interface": null
-      },
-      "radius": 34.0,
-      "transform": {
-        "translation": [
-          234.06644,
-          355.35986
-        ],
-        "rotation": 0.0
-      },
-      "equivalence": "",
-      "history": "",
-      "transformation": "",
-      "member_autonomy": 1.0,
-      "time_constant": "",
-      "archetype": "Agent",
-      "agent": {
-        "kind": "Reactive",
-        "agency_capacity": 0.5,
-        "primitive": "Amplifying"
-      }
-    },
-    {
-      "info": {
-        "id": "C0.15",
-        "level": 1,
-        "name": "Other open",
-        "description": "The open-weight field beyond the named models, served as one aggregate."
-      },
-      "sources": [],
-      "sinks": [],
-      "parent": "S0",
-      "complexity": "Atomic",
-      "boundary": {
-        "info": {
-          "id": "B0.15",
-          "level": 1,
-          "name": "",
-          "description": ""
-        },
-        "porosity": 0.0,
-        "perceptive_fuzziness": 0.0,
-        "interfaces": [],
-        "parent_interface": null
-      },
-      "radius": 34.0,
-      "transform": {
-        "translation": [
-          345.67102,
-          110.979965
-        ],
-        "rotation": 0.0
-      },
-      "equivalence": "",
-      "history": "",
-      "transformation": "",
-      "member_autonomy": 1.0,
-      "time_constant": "",
-      "archetype": "Agent",
-      "agent": {
-        "kind": "Reactive",
-        "agency_capacity": 0.5,
-        "primitive": "Amplifying"
-      }
+      "child_model": "pWAnTptPXdKY3x38yXpLn"
     }
   ],
   "interactions": [
@@ -971,8 +453,8 @@
       "usability": "Resource",
       "source": "Src-1.1",
       "source_interface": null,
-      "sink": "C0.1",
-      "sink_interface": "I0.1",
+      "sink": "C0.3",
+      "sink_interface": "I0.2",
       "amount": "3000",
       "unit": "Gtok/day",
       "parameters": []
@@ -993,7 +475,7 @@
       "source": "Src-1.2",
       "source_interface": null,
       "sink": "C0.2",
-      "sink_interface": "I0.2",
+      "sink_interface": "I0.3",
       "amount": "1",
       "unit": "",
       "ample": true,
@@ -1015,51 +497,7 @@
       "source": "Src-1.3",
       "source_interface": null,
       "sink": "C0.3",
-      "sink_interface": "I0.3",
-      "amount": "1",
-      "unit": "",
-      "ample": true,
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F4",
-        "level": 0,
-        "name": "closed weights & API",
-        "description": "API access into Opus."
-      },
-      "substance": {
-        "sub_type": "weights",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.2",
-      "source_interface": null,
-      "sink": "C0.7",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "",
-      "ample": true,
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F5",
-        "level": 0,
-        "name": "closed weights & API",
-        "description": "API access into Fable."
-      },
-      "substance": {
-        "sub_type": "weights",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.2",
-      "source_interface": null,
-      "sink": "C0.8",
-      "sink_interface": null,
+      "sink_interface": "I0.4",
       "amount": "1",
       "unit": "",
       "ample": true,
@@ -1068,160 +506,6 @@
     {
       "info": {
         "id": "F6",
-        "level": 0,
-        "name": "closed weights & API",
-        "description": "API access into GPT."
-      },
-      "substance": {
-        "sub_type": "weights",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.2",
-      "source_interface": null,
-      "sink": "C0.9",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "",
-      "ample": true,
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F7",
-        "level": 0,
-        "name": "closed weights & API",
-        "description": "API access into Gemini."
-      },
-      "substance": {
-        "sub_type": "weights",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.2",
-      "source_interface": null,
-      "sink": "C0.10",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "",
-      "ample": true,
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F8",
-        "level": 0,
-        "name": "open weights",
-        "description": "Open weights into Gemma."
-      },
-      "substance": {
-        "sub_type": "weights",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.3",
-      "source_interface": null,
-      "sink": "C0.11",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "",
-      "ample": true,
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F9",
-        "level": 0,
-        "name": "open weights",
-        "description": "Open weights into Llama."
-      },
-      "substance": {
-        "sub_type": "weights",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.3",
-      "source_interface": null,
-      "sink": "C0.12",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "",
-      "ample": true,
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F10",
-        "level": 0,
-        "name": "open weights",
-        "description": "Open weights into Qwen."
-      },
-      "substance": {
-        "sub_type": "weights",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.3",
-      "source_interface": null,
-      "sink": "C0.13",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "",
-      "ample": true,
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F11",
-        "level": 0,
-        "name": "open weights",
-        "description": "Open weights into DeepSeek."
-      },
-      "substance": {
-        "sub_type": "weights",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.3",
-      "source_interface": null,
-      "sink": "C0.14",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "",
-      "ample": true,
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F12",
-        "level": 0,
-        "name": "open weights",
-        "description": "Open weights into the rest of the field."
-      },
-      "substance": {
-        "sub_type": "weights",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.3",
-      "source_interface": null,
-      "sink": "C0.15",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "",
-      "ample": true,
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F13",
         "level": 0,
         "name": "routed frontier workload",
         "description": "The routed workload the router sends to frontier serving.",
@@ -1238,7 +522,7 @@
       "usability": "Resource",
       "source": "C0.0",
       "source_interface": null,
-      "sink": "C0.5",
+      "sink": "C0.2",
       "sink_interface": null,
       "amount": "35",
       "unit": "Gtok/day",
@@ -1246,7 +530,7 @@
     },
     {
       "info": {
-        "id": "F14",
+        "id": "F7",
         "level": 0,
         "name": "routed open-weight workload",
         "description": "The routed workload the router sends to open-weight serving.",
@@ -1263,7 +547,7 @@
       "usability": "Resource",
       "source": "C0.0",
       "source_interface": null,
-      "sink": "C0.6",
+      "sink": "C0.3",
       "sink_interface": null,
       "amount": "54",
       "unit": "Gtok/day",
@@ -1271,360 +555,10 @@
     },
     {
       "info": {
-        "id": "F15",
-        "level": 0,
-        "name": "routed serving share",
-        "description": "Opus's share of routed frontier workload.",
-        "grounding": {
-          "grade": "third-party",
-          "reference": "stockalarm and tech-insider digests of OpenRouter, June–July 2026; Anthropic 12–24%, midpoint"
-        }
-      },
-      "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.5",
-      "source_interface": null,
-      "sink": "C0.7",
-      "sink_interface": null,
-      "amount": "9",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F16",
-        "level": 0,
-        "name": "routed serving share",
-        "description": "Fable's share of routed frontier workload.",
-        "grounding": {
-          "grade": "third-party",
-          "reference": "same digests; in-lab split estimated"
-        }
-      },
-      "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.5",
-      "source_interface": null,
-      "sink": "C0.8",
-      "sink_interface": null,
-      "amount": "6",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F17",
-        "level": 0,
-        "name": "routed serving share",
-        "description": "GPT's share of routed frontier workload.",
-        "grounding": {
-          "grade": "third-party",
-          "reference": "same digests"
-        }
-      },
-      "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.5",
-      "source_interface": null,
-      "sink": "C0.9",
-      "sink_interface": null,
-      "amount": "9",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F18",
-        "level": 0,
-        "name": "routed serving share",
-        "description": "Gemini's share of routed frontier workload.",
-        "grounding": {
-          "grade": "third-party",
-          "reference": "same digests"
-        }
-      },
-      "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.5",
-      "source_interface": null,
-      "sink": "C0.10",
-      "sink_interface": null,
-      "amount": "11",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F19",
-        "level": 0,
-        "name": "routed serving share",
-        "description": "Gemma's share of routed open-weight workload.",
-        "grounding": {
-          "grade": "third-party",
-          "reference": "Dirac digest of OpenRouter rankings, June–July 2026"
-        }
-      },
-      "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.6",
-      "source_interface": null,
-      "sink": "C0.11",
-      "sink_interface": null,
-      "amount": "2",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F20",
-        "level": 0,
-        "name": "routed serving share",
-        "description": "Llama's share of routed open-weight workload.",
-        "grounding": {
-          "grade": "third-party",
-          "reference": "same digest"
-        }
-      },
-      "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.6",
-      "source_interface": null,
-      "sink": "C0.12",
-      "sink_interface": null,
-      "amount": "3",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F21",
-        "level": 0,
-        "name": "routed serving share",
-        "description": "Qwen's share of routed open-weight workload.",
-        "grounding": {
-          "grade": "third-party",
-          "reference": "same digest"
-        }
-      },
-      "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.6",
-      "source_interface": null,
-      "sink": "C0.13",
-      "sink_interface": null,
-      "amount": "13",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F22",
-        "level": 0,
-        "name": "routed serving share",
-        "description": "DeepSeek's share of routed open-weight workload.",
-        "grounding": {
-          "grade": "third-party",
-          "reference": "same digest; DeepSeek ≈16%"
-        }
-      },
-      "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.6",
-      "source_interface": null,
-      "sink": "C0.14",
-      "sink_interface": null,
-      "amount": "16",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F23",
-        "level": 0,
-        "name": "routed serving share",
-        "description": "The rest of the field's share of routed open-weight workload.",
-        "grounding": {
-          "grade": "third-party",
-          "reference": "same digest; the long tail folded by the model's own structure"
-        }
-      },
-      "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.6",
-      "source_interface": null,
-      "sink": "C0.15",
-      "sink_interface": null,
-      "amount": "20",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F24",
-        "level": 0,
-        "name": "self-hosted serving share",
-        "description": "Gemma's share of self-hosted workload.",
-        "grounding": {
-          "grade": "asserted",
-          "reference": "mirrors the routed open split; no sensor"
-        }
-      },
-      "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.1",
-      "source_interface": null,
-      "sink": "C0.11",
-      "sink_interface": null,
-      "amount": "2",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F25",
-        "level": 0,
-        "name": "self-hosted serving share",
-        "description": "Llama's share of self-hosted workload.",
-        "grounding": {
-          "grade": "asserted",
-          "reference": "mirrors the routed open split; no sensor"
-        }
-      },
-      "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.1",
-      "source_interface": null,
-      "sink": "C0.12",
-      "sink_interface": null,
-      "amount": "3",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F26",
-        "level": 0,
-        "name": "self-hosted serving share",
-        "description": "Qwen's share of self-hosted workload.",
-        "grounding": {
-          "grade": "asserted",
-          "reference": "mirrors the routed open split; no sensor"
-        }
-      },
-      "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.1",
-      "source_interface": null,
-      "sink": "C0.13",
-      "sink_interface": null,
-      "amount": "13",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F27",
-        "level": 0,
-        "name": "self-hosted serving share",
-        "description": "DeepSeek's share of self-hosted workload.",
-        "grounding": {
-          "grade": "asserted",
-          "reference": "mirrors the routed open split; no sensor"
-        }
-      },
-      "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.1",
-      "source_interface": null,
-      "sink": "C0.14",
-      "sink_interface": null,
-      "amount": "16",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F28",
-        "level": 0,
-        "name": "self-hosted serving share",
-        "description": "The rest of the field's share of self-hosted workload.",
-        "grounding": {
-          "grade": "asserted",
-          "reference": "mirrors the routed open split; no sensor"
-        }
-      },
-      "substance": {
-        "sub_type": "compute",
-        "type": "Energy"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.1",
-      "source_interface": null,
-      "sink": "C0.15",
-      "sink_interface": null,
-      "amount": "20",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F29",
+        "id": "F9",
         "level": 0,
         "name": "tokens served",
-        "description": "Tokens served by Opus arriving at the endpoint."
+        "description": "Tokens served by the frontier models arriving at the endpoint."
       },
       "substance": {
         "sub_type": "tokens",
@@ -1632,9 +566,9 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.7",
+      "source": "C0.2",
       "source_interface": null,
-      "sink": "C0.4",
+      "sink": "C0.1",
       "sink_interface": null,
       "amount": "1",
       "unit": "Gtok/day",
@@ -1642,10 +576,10 @@
     },
     {
       "info": {
-        "id": "F30",
+        "id": "F10",
         "level": 0,
         "name": "tokens served",
-        "description": "Tokens served by Fable arriving at the endpoint."
+        "description": "Tokens served by the open-weight models arriving at the endpoint."
       },
       "substance": {
         "sub_type": "tokens",
@@ -1653,9 +587,9 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.8",
+      "source": "C0.3",
       "source_interface": null,
-      "sink": "C0.4",
+      "sink": "C0.1",
       "sink_interface": null,
       "amount": "1",
       "unit": "Gtok/day",
@@ -1663,154 +597,7 @@
     },
     {
       "info": {
-        "id": "F31",
-        "level": 0,
-        "name": "tokens served",
-        "description": "Tokens served by GPT arriving at the endpoint."
-      },
-      "substance": {
-        "sub_type": "tokens",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.9",
-      "source_interface": null,
-      "sink": "C0.4",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F32",
-        "level": 0,
-        "name": "tokens served",
-        "description": "Tokens served by Gemini arriving at the endpoint."
-      },
-      "substance": {
-        "sub_type": "tokens",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.10",
-      "source_interface": null,
-      "sink": "C0.4",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F33",
-        "level": 0,
-        "name": "tokens served",
-        "description": "Tokens served by Gemma arriving at the endpoint."
-      },
-      "substance": {
-        "sub_type": "tokens",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.11",
-      "source_interface": null,
-      "sink": "C0.4",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F34",
-        "level": 0,
-        "name": "tokens served",
-        "description": "Tokens served by Llama arriving at the endpoint."
-      },
-      "substance": {
-        "sub_type": "tokens",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.12",
-      "source_interface": null,
-      "sink": "C0.4",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F35",
-        "level": 0,
-        "name": "tokens served",
-        "description": "Tokens served by Qwen arriving at the endpoint."
-      },
-      "substance": {
-        "sub_type": "tokens",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.13",
-      "source_interface": null,
-      "sink": "C0.4",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F36",
-        "level": 0,
-        "name": "tokens served",
-        "description": "Tokens served by DeepSeek arriving at the endpoint."
-      },
-      "substance": {
-        "sub_type": "tokens",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.14",
-      "source_interface": null,
-      "sink": "C0.4",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F37",
-        "level": 0,
-        "name": "tokens served",
-        "description": "Tokens served by the rest of the field arriving at the endpoint."
-      },
-      "substance": {
-        "sub_type": "tokens",
-        "type": "Message"
-      },
-      "type": "Flow",
-      "usability": "Resource",
-      "source": "C0.15",
-      "source_interface": null,
-      "sink": "C0.4",
-      "sink_interface": null,
-      "amount": "1",
-      "unit": "Gtok/day",
-      "parameters": []
-    },
-    {
-      "info": {
-        "id": "F38",
+        "id": "F11",
         "level": 0,
         "name": "tokens served",
         "description": "Tokens leaving the endpoint for the customers."
@@ -1821,8 +608,8 @@
       },
       "type": "Flow",
       "usability": "Resource",
-      "source": "C0.4",
-      "source_interface": "I0.4",
+      "source": "C0.1",
+      "source_interface": "I0.1",
       "sink": "Snk-1.4",
       "sink_interface": null,
       "amount": "1",

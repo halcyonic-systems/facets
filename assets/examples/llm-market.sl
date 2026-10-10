@@ -1,6 +1,9 @@
 # ── The LLM serving market, Mobus lens ──────────────────────────────
 # Level-0 identification (2026-10-10, Mobus ch. 6 §6.5), replacing the
-# two-channel model now in ../archive/llm-market-channels.sl.
+# two-channel model now in ../archive/llm-market-channels.sl. Drawn at
+# pool grain since the same day: the per-model roster lives one level
+# down (see "One level down" below); the flat single-level version is
+# ../archive/llm-market-flat.sl.
 #
 # What the system does: it serves tokens. Compute is spent, weights are
 # read, tokens leave for the customers who asked for them, and the
@@ -25,8 +28,8 @@
 #                   the router sees would bias the open-weight share low
 #                   on exactly the flow the question is about. Only
 #                   open weights can be self-hosted; the structure says
-#                   so (the Self-hosting interface reaches no frontier
-#                   model).
+#                   so (the Self-hosting interface reaches the
+#                   open-weight subsystem and nothing else).
 # Every finding quotes the grounding: third-party on the routed
 # interface, unknown on the self-hosted one, until a sensor exists.
 #
@@ -43,13 +46,25 @@
 # price enters through the observatory's data, not the engine, until the
 # money plane is a word (see ../examples/federal-reserve.sl).
 #
-# Minimal subsystems, one level down: the two interfaces, two pools
-# (frontier serving, open-weight serving) and the served models. The
-# pools are where the next decomposition goes (`decomposes`, spec §4.6):
-# a model's serving arm is itself a system of hosts, and the per-model
-# grain here is the first cut, not the last.
+# Minimal subsystems, one level down: the two interfaces and two
+# serving subsystems, frontier and open-weight. Each is one Amplifying
+# process here, and each `decomposes` (spec §4.6) into its own model
+# in ../walkthroughs/llm-market/, where the roster lives: Opus, Fable,
+# GPT and Gemini behind the frontier pool; Gemma, Llama, Qwen, DeepSeek
+# and the open field behind the open-weight pool. The roster is kept a
+# level down because the question is asked at pool grain (open against
+# frontier, by interface), and a model that reasons about inputs and
+# outputs reads best with a handful of each; the children carry the
+# per-model shares and groundings in full, and each reproduces the
+# flat model's per-model numbers from this level's realized flows.
+#
+# One honest caveat about the two levels: a run is per level. A knob
+# turned here (the Router's split, a workload) changes this trace and
+# nothing below it; the children declare the realized flows as their
+# own source amounts, so a change here is carried down by hand until
+# single-run substitution exists.
 system "LLM Serving Market" : Concrete/Social
-domain "Inference compute cleared across frontier and open-weight models through a routed interface and a self-hosted one, tokens served out, heat shed"
+domain "Inference compute cleared across frontier and open-weight serving through a routed interface and a self-hosted one, tokens served out, heat shed"
 time unit day
 
 level Structure
@@ -76,41 +91,21 @@ sink Customers
 component Router primitive Splitting interface
     description "The routed interface: splits the routed workload between frontier and open-weight serving by the shares a router reports."
     grounding third-party "open-weight ≈60% of routed volume (Dirac digest of OpenRouter rankings, June–July 2026)"
-component Self-hosting primitive Splitting interface
-    description "The self-hosted interface: splits self-hosted workload across open-weight models only. Closed weights cannot be self-hosted."
-    grounding asserted "split assumed to follow the routed open-weight split until a sensor says otherwise"
+interface Self-hosting
+    description "The self-hosted interface: passes self-hosted workload to open-weight serving only. Closed weights cannot be self-hosted."
+    grounding unknown "no sensor on this interface; its workload is the placeholder declared on the flow into it"
 interface "Frontier release"
     description "Where closed weights and API access enter serving."
 interface "Open-weight release"
     description "Where open weights enter serving."
 interface "Serving endpoint"
-    description "Where every model's tokens leave for the customers. One pass-way: the routed and self-hosted split is read on the demand side, where the sensors are."
+    description "Where every subsystem's tokens leave for the customers. One pass-way: the routed and self-hosted split is read on the demand side, where the sensors are."
 
-# ── Pools: the two serving subsystems ────────────────────────────────
-component "Frontier pool" primitive Splitting
-    description "Frontier serving: divides routed frontier workload across the frontier models by their routed shares."
-component "Open-weight pool" primitive Splitting
-    description "Open-weight serving: divides routed open-weight workload across the open models by their routed shares."
-
-# ── The served models, each an Amplifying serving process ────────────
-component Opus primitive Amplifying
-    description "A served model: released weights and allocated compute in, tokens out."
-component Fable primitive Amplifying
-    description "A served model: released weights and allocated compute in, tokens out."
-component GPT primitive Amplifying
-    description "A served model: released weights and allocated compute in, tokens out."
-component Gemini primitive Amplifying
-    description "A served model: released weights and allocated compute in, tokens out."
-component Gemma primitive Amplifying
-    description "A served model: open weights and allocated compute in, tokens out."
-component Llama primitive Amplifying
-    description "A served model: open weights and allocated compute in, tokens out."
-component Qwen primitive Amplifying
-    description "A served model: open weights and allocated compute in, tokens out."
-component DeepSeek primitive Amplifying
-    description "A served model: open weights and allocated compute in, tokens out."
-component "Other open" primitive Amplifying
-    description "The open-weight field beyond the named models, served as one aggregate."
+# ── The two serving subsystems, each decomposed one level down ───────
+component "Frontier serving" primitive Amplifying decomposes "Frontier serving" @5oJEAmzFReku6y9z8t5Ucu
+    description "Frontier serving as one process: closed weights and routed frontier workload in, tokens out. Its interior, the frontier roster behind a pool, is the child model."
+component "Open-weight serving" primitive Amplifying decomposes "Open-weight serving" @pWAnTptPXdKY3x38yXpLn
+    description "Open-weight serving as one process: open weights, routed open-weight workload and self-hosted workload in, tokens out. Its interior, the open roster behind a pool, is the child model."
 
 # ── Workload in, by interface ────────────────────────────────────────
 flow "Routed demand" -> Router : energy "routed workload" substance compute amount 6000 unit "Gtok/day"
@@ -125,137 +120,52 @@ flow "Frontier labs" -> "Frontier release" : informational "closed weights & API
     description "Closed weights and API access passing into serving."
 flow "Open-weight labs" -> "Open-weight release" : informational "open weights" substance weights ample
     description "Open weights passing into serving."
-flow "Frontier release" -> Opus : informational "closed weights & API" substance weights ample
-    description "API access into Opus."
-flow "Frontier release" -> Fable : informational "closed weights & API" substance weights ample
-    description "API access into Fable."
-flow "Frontier release" -> GPT : informational "closed weights & API" substance weights ample
-    description "API access into GPT."
-flow "Frontier release" -> Gemini : informational "closed weights & API" substance weights ample
-    description "API access into Gemini."
-flow "Open-weight release" -> Gemma : informational "open weights" substance weights ample
-    description "Open weights into Gemma."
-flow "Open-weight release" -> Llama : informational "open weights" substance weights ample
-    description "Open weights into Llama."
-flow "Open-weight release" -> Qwen : informational "open weights" substance weights ample
-    description "Open weights into Qwen."
-flow "Open-weight release" -> DeepSeek : informational "open weights" substance weights ample
-    description "Open weights into DeepSeek."
-flow "Open-weight release" -> "Other open" : informational "open weights" substance weights ample
-    description "Open weights into the rest of the field."
+flow "Frontier release" -> "Frontier serving" : informational "closed weights & API" substance weights ample
+    description "API access into frontier serving."
+flow "Open-weight release" -> "Open-weight serving" : informational "open weights" substance weights ample
+    description "Open weights into open-weight serving."
 
 # ── The router's split: frontier against open weight ─────────────────
 # Relative weights, the routed shares of June–July 2026 summed by pool
 # (frontier 9+6+9+11, open 2+3+13+16+20); they need not sum to 100.
-flow Router -> "Frontier pool" : energy "routed frontier workload" substance compute amount 35 unit "Gtok/day"
+flow Router -> "Frontier serving" : energy "routed frontier workload" substance compute amount 35 unit "Gtok/day"
     description "The routed workload the router sends to frontier serving."
     grounding third-party "Dirac digest of OpenRouter rankings, June–July 2026, summed over the frontier roster"
-flow Router -> "Open-weight pool" : energy "routed open-weight workload" substance compute amount 54 unit "Gtok/day"
+flow Router -> "Open-weight serving" : energy "routed open-weight workload" substance compute amount 54 unit "Gtok/day"
     description "The routed workload the router sends to open-weight serving."
     grounding third-party "Dirac digest of OpenRouter rankings, June–July 2026, summed over the open roster"
 
-# ── Frontier pool: routed shares among the frontier models ───────────
-# Sources disagree on Anthropic's share (12–24%); the midpoint is taken.
-flow "Frontier pool" -> Opus : energy "routed serving share" substance compute amount 9 unit "Gtok/day"
-    description "Opus's share of routed frontier workload."
-    grounding third-party "stockalarm and tech-insider digests of OpenRouter, June–July 2026; Anthropic 12–24%, midpoint"
-flow "Frontier pool" -> Fable : energy "routed serving share" substance compute amount 6 unit "Gtok/day"
-    description "Fable's share of routed frontier workload."
-    grounding third-party "same digests; in-lab split estimated"
-flow "Frontier pool" -> GPT : energy "routed serving share" substance compute amount 9 unit "Gtok/day"
-    description "GPT's share of routed frontier workload."
-    grounding third-party "same digests"
-flow "Frontier pool" -> Gemini : energy "routed serving share" substance compute amount 11 unit "Gtok/day"
-    description "Gemini's share of routed frontier workload."
-    grounding third-party "same digests"
-
-# ── Open-weight pool: routed shares among the open models ────────────
-flow "Open-weight pool" -> Gemma : energy "routed serving share" substance compute amount 2 unit "Gtok/day"
-    description "Gemma's share of routed open-weight workload."
-    grounding third-party "Dirac digest of OpenRouter rankings, June–July 2026"
-flow "Open-weight pool" -> Llama : energy "routed serving share" substance compute amount 3 unit "Gtok/day"
-    description "Llama's share of routed open-weight workload."
-    grounding third-party "same digest"
-flow "Open-weight pool" -> Qwen : energy "routed serving share" substance compute amount 13 unit "Gtok/day"
-    description "Qwen's share of routed open-weight workload."
-    grounding third-party "same digest"
-flow "Open-weight pool" -> DeepSeek : energy "routed serving share" substance compute amount 16 unit "Gtok/day"
-    description "DeepSeek's share of routed open-weight workload."
-    grounding third-party "same digest; DeepSeek ≈16%"
-flow "Open-weight pool" -> "Other open" : energy "routed serving share" substance compute amount 20 unit "Gtok/day"
-    description "The rest of the field's share of routed open-weight workload."
-    grounding third-party "same digest; the long tail folded by the model's own structure"
-
-# ── Self-hosting: open weights only, split assumed to follow routed ──
-flow Self-hosting -> Gemma : energy "self-hosted serving share" substance compute amount 2 unit "Gtok/day"
-    description "Gemma's share of self-hosted workload."
-    grounding asserted "mirrors the routed open split; no sensor"
-flow Self-hosting -> Llama : energy "self-hosted serving share" substance compute amount 3 unit "Gtok/day"
-    description "Llama's share of self-hosted workload."
-    grounding asserted "mirrors the routed open split; no sensor"
-flow Self-hosting -> Qwen : energy "self-hosted serving share" substance compute amount 13 unit "Gtok/day"
-    description "Qwen's share of self-hosted workload."
-    grounding asserted "mirrors the routed open split; no sensor"
-flow Self-hosting -> DeepSeek : energy "self-hosted serving share" substance compute amount 16 unit "Gtok/day"
-    description "DeepSeek's share of self-hosted workload."
-    grounding asserted "mirrors the routed open split; no sensor"
-flow Self-hosting -> "Other open" : energy "self-hosted serving share" substance compute amount 20 unit "Gtok/day"
-    description "The rest of the field's share of self-hosted workload."
-    grounding asserted "mirrors the routed open split; no sensor"
+# ── Self-hosting: open weights only ──────────────────────────────────
+flow Self-hosting -> "Open-weight serving" : energy "self-hosted workload" substance compute unit "Gtok/day"
+    description "The self-hosted workload passing to open-weight serving, the only subsystem that can take it."
+    grounding asserted "closed weights cannot be self-hosted, so the interface reaches one subsystem"
 
 # ── Served output: information delivered, compute already spent ──────
 # Token output is a message: it lands and is never ledgered. The ledger
 # shows every Gtok/day of compute dissipating as heat, which is what a
-# GPU does. Share is read off each model's activity in the trace.
-flow Opus -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by Opus arriving at the endpoint."
-flow Fable -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by Fable arriving at the endpoint."
-flow GPT -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by GPT arriving at the endpoint."
-flow Gemini -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by Gemini arriving at the endpoint."
-flow Gemma -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by Gemma arriving at the endpoint."
-flow Llama -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by Llama arriving at the endpoint."
-flow Qwen -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by Qwen arriving at the endpoint."
-flow DeepSeek -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by DeepSeek arriving at the endpoint."
-flow "Other open" -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
-    description "Tokens served by the rest of the field arriving at the endpoint."
+# GPU does. Share is read off each subsystem's activity in the trace.
+flow "Frontier serving" -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
+    description "Tokens served by the frontier models arriving at the endpoint."
+flow "Open-weight serving" -> "Serving endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
+    description "Tokens served by the open-weight models arriving at the endpoint."
 flow "Serving endpoint" -> Customers : informational "tokens served" substance tokens unit "Gtok/day"
     description "Tokens leaving the endpoint for the customers."
 
 # ── Declared parameters: the knobs, in market words ──────────────────
 # Price is absent on purpose: it needs the money counter-flow this
-# model does not draw. It enters through the observatory's data.
+# model does not draw. It enters through the observatory's data. The
+# per-model shares are the children's knobs, declared there.
 param "Routed workload" : flow "Routed demand" -> Router "routed workload" range 0..12000
 param "Self-hosted workload" : flow "Self-hosted demand" -> Self-hosting "self-hosted workload" range 0..12000
 param shares "Routed split, frontier against open weight" : from Router
-param shares "Frontier models, routed" : from "Frontier pool"
-param shares "Open-weight models, routed" : from "Open-weight pool"
-param shares "Open-weight models, self-hosted" : from Self-hosting
 
 # ── Declared metrics: the readouts the question is measured on ───────
-# The first two are the hypothesis's own variable. The per-model shares
-# are the leaderboard reading. Tokens served are the totals across both
-# interfaces, which is the only place the self-hosted flow adds to a
-# frontier-against-open comparison.
-metric "Open-weight share, routed" : share of flow Router -> "Open-weight pool" "routed open-weight workload"
-metric "Frontier share, routed" : share of flow Router -> "Frontier pool" "routed frontier workload"
-metric "Opus share of routed frontier" : share of flow "Frontier pool" -> Opus "routed serving share"
-metric "Fable share of routed frontier" : share of flow "Frontier pool" -> Fable "routed serving share"
-metric "GPT share of routed frontier" : share of flow "Frontier pool" -> GPT "routed serving share"
-metric "Gemini share of routed frontier" : share of flow "Frontier pool" -> Gemini "routed serving share"
-metric "DeepSeek share of routed open" : share of flow "Open-weight pool" -> DeepSeek "routed serving share"
-metric "Qwen share of routed open" : share of flow "Open-weight pool" -> Qwen "routed serving share"
-metric "Other open share of routed open" : share of flow "Open-weight pool" -> "Other open" "routed serving share"
-metric "Opus tokens served" : sum into Opus
-metric "Gemini tokens served" : sum into Gemini
-metric "DeepSeek tokens served" : sum into DeepSeek
-metric "Qwen tokens served" : sum into Qwen
-metric "Other open tokens served" : sum into "Other open"
+# The first two are the hypothesis's own variable. Tokens served are
+# the totals across both interfaces, which is the only place the
+# self-hosted flow adds to a frontier-against-open comparison.
+metric "Open-weight share, routed" : share of flow Router -> "Open-weight serving" "routed open-weight workload"
+metric "Frontier share, routed" : share of flow Router -> "Frontier serving" "routed frontier workload"
+metric "Frontier tokens served" : sum into "Frontier serving"
+metric "Open-weight tokens served" : sum into "Open-weight serving"
 
 @lens mobus
