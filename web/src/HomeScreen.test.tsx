@@ -366,7 +366,13 @@ describe("the doors", () => {
     const domain = doors({ initialArrange: "domain" });
     for (const shelf of shelves(shipped, "lens")) {
       expect(lens).toContain(escapeHtml(shelf.note));
-      // A tradition shelf wears its world hue; a domain shelf wears none.
+      // A tradition shelf wears its world hue; a domain shelf wears none; the
+      // Bench shelf (kind "role", #472) wears neither channel — it is cut on
+      // what a model is for, not what it reads or is about.
+      if (shelf.kind === "role") {
+        expect(lens).toContain(`>${escapeHtml(shelf.label)}<`);
+        continue;
+      }
       expect(lens).toContain(`var(--world-${shelf.id})`);
       expect(domain).not.toContain(`var(--world-${shelf.id})`);
     }

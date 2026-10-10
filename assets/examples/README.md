@@ -25,6 +25,8 @@ pass-ways (`interface` lines), and the barrel and the bed are plain
 residents, so the shelf carries one model where the boundary is not the
 same thing as the processors behind it.
 
+A third shelf with its own test since 2026-10-10: `../bench/` — models that exist to test the instrument, each after a named model in the literature, admitted for what they exercise rather than what they are.
+
 Two consequences worth naming:
 
 - **Retirement is not deletion.** An archived model keeps compiling, keeps

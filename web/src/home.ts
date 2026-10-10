@@ -19,6 +19,7 @@ import { groupedExamples } from "./examples";
 import { groupedCorpus, firstSentence, TRADITIONS, type CorpusEntry } from "./corpus";
 import { isRunnable, type Demo } from "./demos";
 import { FIELD } from "./field";
+import { BENCH } from "./bench";
 
 export const EXAMPLES_NOTE =
   "Models we wrote to show what the language can express.";
@@ -29,7 +30,9 @@ export const CORPUS_NOTE =
  *  concrete systems; `tradition` is the author whose reading a corpus entry
  *  transcribes. Both are derived from the model's own file. */
 export interface Tag {
-  kind: "genus" | "tradition";
+  /** `role` (#472): a shelf cut by what a model is FOR rather than what it is
+   *  about — the bench shelf, whose admission test is its own. */
+  kind: "genus" | "tradition" | "role";
   /** Filter key — the genus name ("Social") or the tradition key ("klir"). */
   id: string;
   label: string;
@@ -59,10 +62,19 @@ export interface ShippedModel {
    *  model sits on its domain shelf and wears the name. */
   with?: string;
   date?: string;
+  /** Bench shelf (#472): the literature model this one is after. */
+  after?: string;
   /** What opening this row means. The caller picks the seam; nothing here
    *  knows how a model is loaded. */
   open: { kind: "example"; demo: Demo } | { kind: "corpus"; entry: CorpusEntry };
 }
+
+export const BENCH_TAG: Tag = {
+  kind: "role",
+  id: "bench",
+  label: "Bench",
+  note: "Models that exist to test the instrument, each after a named model in the literature.",
+};
 
 function genusTag(genus: string): Tag {
   return { kind: "genus", id: genus, label: genus, note: "" };
@@ -121,6 +133,21 @@ export function shippedModels(): ShippedModel[] {
       with: f.with,
       date: f.date,
       open: { kind: "example", demo: f.demo },
+    });
+  }
+  for (const b of BENCH) {
+    // A bench model carries ONLY the role tag: it is on the Bench shelf in
+    // both cuts and on no domain or lens shelf — it is there for what it
+    // tests, not for what it is about (decision 2026-10-10).
+    rows.push({
+      key: b.demo.key,
+      name: b.demo.title,
+      description: b.demo.blurb,
+      tags: [BENCH_TAG],
+      tradition: exampleTradition(b.demo),
+      runs: isRunnable(b.demo),
+      after: b.after,
+      open: { kind: "example", demo: b.demo },
     });
   }
   for (const g of groupedCorpus()) {
@@ -190,7 +217,7 @@ export type Arrange = "lens" | "domain";
 /** One shelf on the "start from one of ours" section: a facet, and the models
  *  carrying it in the order the shelf offers them. */
 export interface Shelf {
-  kind: "genus" | "tradition";
+  kind: "genus" | "tradition" | "role";
   id: string;
   label: string;
   /** The author's reading, on a lens shelf. Empty on a domain shelf, which
@@ -229,6 +256,12 @@ export function shelves(rows: ShippedModel[] = shippedModels(), arrange: Arrange
     const pinned = lead ? (carried.find((r) => r.key === lead) ?? rows.find((r) => r.key === lead)) : undefined;
     const models = pinned ? [pinned, ...carried.filter((r) => r.key !== pinned.key)] : carried;
     out.push({ kind: f.kind, id: f.id, label: f.label, note: f.note, models });
+  }
+  // The Bench shelf comes last in either cut: its models are there for what
+  // they exercise, after the shelves that say what a model is about.
+  const bench = rows.filter((r) => matchesFacet(r, BENCH_TAG));
+  if (bench.length > 0) {
+    out.push({ kind: "role", id: BENCH_TAG.id, label: BENCH_TAG.label, note: BENCH_TAG.note, models: bench });
   }
   return out;
 }
