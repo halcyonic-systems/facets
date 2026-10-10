@@ -1637,8 +1637,14 @@ impl Circuit {
                 // policy turns it into a command, and the command rides the
                 // agent's message outwire into the managed process the same
                 // way a comparator's error does. Read-before-write with the
-                // rest of the step; no memory at this rung (ADR 0008 D4).
-                NodeKind::Agent => node.policy.decide(physical as f64) as f32,
+                // rest of the step. The one memory a rule may read is the
+                // agent's own last command (facets#517, a banded threshold
+                // inside its band), which is this node's activity from the
+                // completed step before; there is none before the first.
+                NodeKind::Agent => {
+                    let last = (self.tick > 0).then_some(node.activity as f64);
+                    node.policy.decide_with(physical as f64, last) as f32
+                }
             };
 
         }
@@ -3777,6 +3783,20 @@ mod tests {
     /// it; the ledger still balances.
     #[test]
     fn agent_threshold_makes_a_square_wave() {
+        let (commands, room, balance) = relay(None, 48);
+        assert!(commands.iter().all(|&x| x == 0.0 || x == 1.0), "{commands:?}");
+        let switches = commands.windows(2).filter(|w| w[0] != w[1]).count();
+        assert!(switches >= 6, "the switch flipped only {switches} times: {commands:?}");
+        let tail = &room[24..];
+        let (lo, hi) = tail.iter().fold((f32::MAX, f32::MIN), |(a, b), &x| (a.min(x), b.max(x)));
+        assert!(lo < 2.0 && hi > 2.0, "the room never crossed the level: {lo} .. {hi}");
+        assert!(balance.abs() < 1e-3, "leak: {balance}");
+    }
+
+    /// The relay thermostat of `agent_threshold_makes_a_square_wave`, shut
+    /// at or above 2 and open under `below` (or under 2 with no band), run
+    /// for `ticks`: the commands, the room, the ledger balance.
+    fn relay(below: Option<f64>, ticks: usize) -> (Vec<f32>, Vec<f32>, f32) {
         use ProcessPrimitive::*;
         let mut c = Circuit::default();
         c.nodes.push(node(NodeKind::Source)); // 0 grid
@@ -3791,6 +3811,7 @@ mod tests {
         c.nodes[2].storage = 0.5;
         c.nodes[4].policy = bert_core::Policy::Threshold {
             above: 2.0,
+            below,
             emit: 0.0,
             otherwise: 1.0,
         };
@@ -3803,18 +3824,42 @@ mod tests {
         c.wires.push(Wire::new(4, 1));
         let mut commands = Vec::new();
         let mut room = Vec::new();
-        for _ in 0..48 {
+        for _ in 0..ticks {
             c.step();
             commands.push(c.nodes[4].activity);
             room.push(c.nodes[2].storage);
         }
-        assert!(commands.iter().all(|&x| x == 0.0 || x == 1.0), "{commands:?}");
-        let switches = commands.windows(2).filter(|w| w[0] != w[1]).count();
-        assert!(switches >= 6, "the switch flipped only {switches} times: {commands:?}");
-        let tail = &room[24..];
-        let (lo, hi) = tail.iter().fold((f32::MAX, f32::MIN), |(a, b), &x| (a.min(x), b.max(x)));
-        assert!(lo < 2.0 && hi > 2.0, "the room never crossed the level: {lo} .. {hi}");
-        assert!(c.balance().abs() < 1e-3, "leak: {}", c.balance());
+        (commands, room, c.balance())
+    }
+
+    /// Law (facets#517): a hysteresis band is one bit of memory and nothing
+    /// else. Inside the band the banded relay repeats its last command, so
+    /// it switches fewer times than the bandless one over the same run and
+    /// its room swings wider; `below` equal to `above` is the bandless rule
+    /// tick for tick; and the ledger balances either way.
+    #[test]
+    fn a_banded_threshold_holds_inside_its_band_and_switches_less() {
+        let flips = |cmds: &[f32]| cmds.windows(2).filter(|w| w[0] != w[1]).count();
+        let (bare, bare_room, _) = relay(None, 48);
+        let (same, same_room, _) = relay(Some(2.0), 48);
+        assert_eq!(bare, same, "a band of zero width is no band");
+        assert_eq!(bare_room, same_room);
+        let (banded, room, balance) = relay(Some(1.0), 48);
+        assert!(banded.iter().all(|&x| x == 0.0 || x == 1.0), "{banded:?}");
+        assert!(flips(&banded) < flips(&bare), "band {} vs bare {}: {banded:?}", flips(&banded), flips(&bare));
+        let low = room.iter().cloned().fold(f32::MAX, f32::min);
+        assert!(low < 1.0, "the room never fell under the band: {room:?}");
+        assert!(bare_room.iter().cloned().fold(f32::MAX, f32::min) > low);
+        assert!(balance.abs() < 1e-3, "leak: {balance}");
+        // The hold is the last command and only that: a reading inside the
+        // band after `emit` keeps emitting, after `else` keeps `else`, and
+        // before any command takes `else`.
+        let p = bert_core::Policy::Threshold { above: 2.0, below: Some(1.0), emit: 0.0, otherwise: 1.0 };
+        assert_eq!(p.decide_with(1.5, Some(0.0)), 0.0);
+        assert_eq!(p.decide_with(1.5, Some(1.0)), 1.0);
+        assert_eq!(p.decide_with(1.5, None), 1.0);
+        assert_eq!(p.decide_with(2.0, Some(1.0)), 0.0);
+        assert_eq!(p.decide_with(0.9, Some(0.0)), 1.0);
     }
 
     /// Law: a buffer with a time constant drains exponentially (first-order

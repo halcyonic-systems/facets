@@ -1543,6 +1543,16 @@ pub enum Policy {
     /// not a command, and the language refuses it.
     Threshold {
         above: f64,
+        /// The hysteresis band (facets#517): with `below` set, the rule emits
+        /// `emit` at or above `above`, `otherwise` under `below`, and between
+        /// the two holds its last command. That hold is one bit of memory,
+        /// the agent's own last output, which the engine already keeps as
+        /// the node's activity; without a band the rule never reads it, so
+        /// the bandless rule stays the memoryless one ADR 0008 D4 describes.
+        /// A relay thermostat has this band; it is what stops it chattering
+        /// at the level.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        below: Option<f64>,
         emit: f64,
         #[serde(rename = "else")]
         otherwise: f64,
@@ -1550,15 +1560,27 @@ pub enum Policy {
 }
 
 impl Policy {
-    /// The procedure: one reading in, one command out.
+    /// The procedure: one reading in, one command out, with no last command
+    /// in hand; the same as `decide_with(reading, None)`.
     pub fn decide(&self, reading: f64) -> f64 {
+        self.decide_with(reading, None)
+    }
+
+    /// The procedure with the agent's last command in hand (facets#517).
+    /// Only a banded threshold reads `last`, and only inside its band: there
+    /// it keeps emitting if it was emitting, else keeps the `else` command,
+    /// which is also what it takes before any command exists (the resting
+    /// state). Every other rule is a function of the reading alone.
+    pub fn decide_with(&self, reading: f64, last: Option<f64>) -> f64 {
         match self {
             Policy::Proportional { target, gain } => (gain * (target - reading)).max(0.0),
-            Policy::Threshold { above, emit, otherwise } => {
+            Policy::Threshold { above, below, emit, otherwise } => {
                 if reading >= *above {
                     *emit
-                } else {
+                } else if reading < below.unwrap_or(*above) || last != Some(*emit) {
                     *otherwise
+                } else {
+                    *emit
                 }
             }
         }
@@ -1578,8 +1600,14 @@ impl Policy {
     pub fn fields(&self) -> Vec<(&'static str, f64)> {
         match self {
             Policy::Proportional { target, gain } => vec![("target", *target), ("gain", *gain)],
-            Policy::Threshold { above, emit, otherwise } => {
-                vec![("above", *above), ("emit", *emit), ("else", *otherwise)]
+            Policy::Threshold { above, below, emit, otherwise } => {
+                let mut fields = vec![("above", *above)];
+                if let Some(b) = below {
+                    fields.push(("below", *b));
+                }
+                fields.push(("emit", *emit));
+                fields.push(("else", *otherwise));
+                fields
             }
         }
     }
@@ -1591,6 +1619,7 @@ impl Policy {
             (Policy::Proportional { target, .. }, "target") => *target = v,
             (Policy::Proportional { gain, .. }, "gain") => *gain = v,
             (Policy::Threshold { above, .. }, "above") => *above = v,
+            (Policy::Threshold { below, .. }, "below") => *below = Some(v),
             (Policy::Threshold { emit, .. }, "emit") => *emit = v,
             (Policy::Threshold { otherwise, .. }, "else") => *otherwise = v,
             _ => return false,
@@ -1602,8 +1631,11 @@ impl Policy {
     pub fn equation(&self) -> String {
         match self {
             Policy::Proportional { target, gain } => format!("out = max(0, {gain} · ({target} − level))"),
-            Policy::Threshold { above, emit, otherwise } => {
+            Policy::Threshold { above, below: None, emit, otherwise } => {
                 format!("out = {emit} if level ≥ {above} else {otherwise}")
+            }
+            Policy::Threshold { above, below: Some(below), emit, otherwise } => {
+                format!("out = {emit} if level ≥ {above}, {otherwise} if level < {below}, else last tick's")
             }
         }
     }
