@@ -494,3 +494,22 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#x27;");
 }
+
+
+describe("#472 fold: three doors, provenance as markers", () => {
+  it("a field model sits on its domain shelf wearing the name it was drawn with; no field section", () => {
+    const rows = shippedModels();
+    const field = rows.filter((r) => r.with);
+    expect(field.length).toBeGreaterThan(0);
+    for (const f of field) {
+      const onDomain = shelves(rows, "domain").some((sh) => sh.models.some((m) => m.key === f.key));
+      expect(onDomain).toBe(true);
+    }
+    const doors = page({});
+    expect(doors).not.toContain("From the field");
+    expect(doors).not.toContain("drafted with the co-author");
+    // The marker rides the card wherever the card shows — here, found by name.
+    const found = page({ initialQuery: field[0].name });
+    expect(found).toContain(`with ${field[0].with}`);
+  });
+});

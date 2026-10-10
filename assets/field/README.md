@@ -1,5 +1,7 @@
 # From the field — models drawn with someone, for them
 
+*Since the #472 fold (2026-10-09) these models have no shelf of their own: each sits on its domain shelf in the library wearing a `with <name>` marker, and search finds it by name. Provenance is a fact about the card, not a section.*
+
 A model ships here because it was **drawn with a person, on a call or across a
 table, and that person should be able to open it afterwards and keep going.**
 That is the whole admission test. It is not the examples' test (the smallest

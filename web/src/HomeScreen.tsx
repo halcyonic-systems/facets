@@ -48,7 +48,6 @@ import type { Demo } from "./demos";
 import type { CorpusEntry } from "./corpus";
 import type { LibraryNode } from "./libraryTree";
 import { draftedModels, type DraftedModel } from "./drafted";
-import { FIELD } from "./field";
 import {
   facets,
   matchesFacet,
@@ -975,6 +974,7 @@ function ModelCard({
   name,
   sub,
   runs,
+  marker,
   cacheKey,
   source,
   sourceKind,
@@ -986,6 +986,8 @@ function ModelCard({
   name: string;
   sub: ReactNode;
   runs?: boolean;
+  /** Provenance worn on the card (#472 fold): "with Nora", "drafted". */
+  marker?: string;
   cacheKey: string;
   source?: string;
   sourceKind?: "sl" | "archive";
@@ -1013,6 +1015,15 @@ function ModelCard({
               style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--seal)" }}
             >
               runs
+            </span>
+          )}
+          {marker && (
+            <span
+              className="shrink-0 text-[10px]"
+              style={{ fontFamily: mono, letterSpacing: "0.12em", color: "var(--ink-muted)" }}
+              data-testid="card-marker"
+            >
+              {marker}
             </span>
           )}
         </span>
@@ -1187,9 +1198,6 @@ export function LibraryBrowser({
   const shownShipped = all.filter((m) => matchesQuery(m, q));
   const shownSaved = saved.filter((n) => n.name.toLowerCase().includes(q));
   const shownDrafted = drafted.filter((d) => d.description.toLowerCase().includes(q));
-  const shownField = FIELD.filter((m) =>
-    [m.demo.title, m.demo.blurb, m.with].join(" ").toLowerCase().includes(q),
-  );
 
   // A visit becomes a card only if its address still resolves — a deleted slot
   // or a renamed one simply drops out, which is why nothing here migrates the
@@ -1327,6 +1335,7 @@ export function LibraryBrowser({
                       source={slOf(m)}
                       name={m.name}
                       runs={m.runs}
+                      marker={m.with ? `with ${m.with}` : undefined}
                       sub={m.description}
                       onClick={() => openShipped(m)}
                     />
@@ -1355,6 +1364,7 @@ export function LibraryBrowser({
                             source={slOf(m)}
                             name={m.name}
                             runs={m.runs}
+                            marker={m.with ? `with ${m.with}` : undefined}
                             sub={m.description}
                             onClick={() => openShipped(m)}
                           />
@@ -1365,30 +1375,6 @@ export function LibraryBrowser({
                 })
               )}
             </section>
-
-            {/* From the field: models drawn with someone, shipped so they can
-                keep going (assets/field/README.md). Its own shelf because its
-                admission test is its own — provenance, not a kernel distinction
-                — and a reader looking for the one drawn with them should not
-                have to know which genus it fell into. Absent when empty. */}
-            {shownField.length > 0 && (
-              <section className="mt-8">
-                <SectionHead label="From the field" />
-                <CardGrid across={3}>
-                  {shownField.map((m) => (
-                    <ModelCard
-                      key={m.demo.key}
-                      cacheKey={m.demo.key}
-                      source={m.demo.sl}
-                      name={m.demo.title}
-                      runs={false}
-                      sub={`with ${m.with} · ${m.date} · ${m.demo.blurb}`}
-                      onClick={() => onOpenExample(m.demo)}
-                    />
-                  ))}
-                </CardGrid>
-              </section>
-            )}
 
             {/* Yours. The half that grows. Manage is a MODE rather than a
                 control on every card: renaming and deleting are not what a
@@ -1457,19 +1443,10 @@ export function LibraryBrowser({
                   )}
                 </>
               )}
-              {/* Drafted models are the reader's own asks, answered — they
-                  belong under Yours and keep their marker, which is the model
-                  that answered. Absent, not empty, when the co-author has never
-                  been used (#324). */}
+              {/* #472 fold: a draft is one of yours; no shelf head, the
+                  marker says it was drafted and the gloss says by which model. */}
               {shownDrafted.length > 0 && (
-                <div className="mt-5">
-                  <ShelfHead
-                    label="drafted with the co-author"
-                    note=""
-                    total={shownDrafted.length}
-                    shown={shownDrafted.length}
-                    onExpand={() => {}}
-                  />
+                <div className="mt-3" data-testid="drafted-cards">
                   <CardGrid across={3}>
                     {shownDrafted.slice(0, q ? shownDrafted.length : SHELF_CARDS).map((d) => (
                       <ModelCard
@@ -1477,6 +1454,7 @@ export function LibraryBrowser({
                         cacheKey={d.key}
                         source={d.sl}
                         name={d.description}
+                        marker="drafted"
                         sub={`${draftedGloss(d)} · ${d.model}`}
                         onClick={() => onOpenDrafted(d.sl)}
                       />
