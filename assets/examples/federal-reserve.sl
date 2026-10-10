@@ -28,14 +28,23 @@ component FOMC primitive Modulating interface
 
 # The work process. The desk executes the directive by buying and
 # selling in the open market — the one place policy touches the flows.
-# Interface because the purchase crosses the boundary here: securities
-# arrive from the Primary Dealers at the desk, and a crossing must land
-# on the membrane (kernel precondition; QA 8/11).
-component "Open Market Desk" primitive Modulating interface
+# The purchase crosses the boundary at the Dealer Window, which passes
+# it to the desk (a crossing must land on the membrane; QA 8/11).
+component "Open Market Desk" primitive Modulating
 
 # The stock. Assets accumulate on one side, and the reserves and
 # remittances they generate leave from the other.
-component "Balance Sheet" primitive Buffering interface
+component "Balance Sheet" primitive Buffering
+
+# The pass-ways. The desk and the balance sheet are residents; what
+# crosses the membrane lands on these first (Mobus ch. 4: an interface
+# passes, the process behind it works).
+interface "Dealer Window"
+    description "Where the desk and the primary dealers trade: securities one way, reserves the other."
+interface "Reserve Accounts"
+    description "Where the banks hold and draw on their balances at the Fed."
+interface "Treasury Account"
+    description "The Treasury's checking account at the Fed."
 
 # The Fed's counterparties differ BY INSTRUMENT, so they are two entities.
 # Primary dealers are the desk's counterparty in open market operations —
@@ -87,51 +96,61 @@ flow "Financial Markets" -> FOMC : informational "market expectations"
     description "Breakevens and the futures-implied path — what the markets say the path is now expected to be."
 
 # The purchase, side one: securities move from the dealers to the desk...
-flow "Primary Dealers" -> "Open Market Desk" : matter "securities bought" substance securities
+flow "Primary Dealers" -> "Dealer Window" : matter "securities bought" substance securities
     description "The purchase, side one — securities move from the dealers to the desk."
+flow "Dealer Window" -> "Open Market Desk" : matter "securities bought" substance securities
 
 # ...and onto the asset side of the balance sheet.
 flow "Open Market Desk" -> "Balance Sheet" : matter "securities held"
 
 # The purchase, side two: the reserves that pay for it — created, not
 # transferred. This is the money-creation flow.
-flow "Open Market Desk" -> "Primary Dealers" : matter "reserves minted" substance reserves
+flow "Open Market Desk" -> "Dealer Window" : matter "reserves minted" substance reserves
     description "The reserves that pay for the purchase — created, not transferred. This is the money-creation flow."
+flow "Dealer Window" -> "Primary Dealers" : matter "reserves minted" substance reserves
 
 # And the same operation run backwards — the desk sells from the
 # portfolio and the reserves paid to it are extinguished. Dormant in an
 # easing regime, structurally present always; the balance sheet has been
 # shrinking since 2022 and this is the arrow that does it.
-flow "Open Market Desk" -> "Primary Dealers" : matter "securities sold" substance portfolio
+flow "Open Market Desk" -> "Dealer Window" : matter "securities sold" substance portfolio
     description "The same purchase run backwards — the desk sells from the portfolio. Dormant in an easing regime, structurally present always; this is one of the arrows that has been shrinking the balance sheet since 2022."
-flow "Primary Dealers" -> "Open Market Desk" : matter "reserves extinguished" substance settlement
+flow "Dealer Window" -> "Primary Dealers" : matter "securities sold" substance portfolio
+flow "Primary Dealers" -> "Dealer Window" : matter "reserves extinguished" substance settlement
     description "Paid to the desk in the reverse purchase and extinguished, not transferred — the other arrow shrinking the balance sheet since 2022."
+flow "Dealer Window" -> "Open Market Desk" : matter "reserves extinguished" substance settlement
 
 # What holding the reserves earns the banks — the rate the Fed
 # administers directly.
-flow "Balance Sheet" -> "Banking System" : matter "interest on reserves" substance interest
+flow "Balance Sheet" -> "Reserve Accounts" : matter "interest on reserves" substance interest
+flow "Reserve Accounts" -> "Banking System" : matter "interest on reserves" substance interest
 
 # What the portfolio earns, net of expenses, goes back to the fisc.
-flow "Balance Sheet" -> "U.S. Treasury" : matter "remittances" unit "USD millions"
+flow "Balance Sheet" -> "Treasury Account" : matter "remittances" unit "USD millions"
     description "Net income returned — what the portfolio earns, net of expenses, goes back to the fisc."
+flow "Treasury Account" -> "U.S. Treasury" : matter "remittances" unit "USD millions"
 
 # The window: a standing channel, structurally present even when
 # dormant — the channel is structure, its activation rate is dynamics.
-flow "Banking System" -> "Balance Sheet" : matter "collateral pledged"
+flow "Banking System" -> "Reserve Accounts" : matter "collateral pledged"
     description "Pledged at the discount window — a standing channel, structurally present even when dormant; the channel is structure, its activation rate is dynamics."
-flow "Balance Sheet" -> "Banking System" : matter "reserves lent" substance credit
+flow "Reserve Accounts" -> "Balance Sheet" : matter "collateral pledged"
+flow "Balance Sheet" -> "Reserve Accounts" : matter "reserves lent" substance credit
     description "Lent at the discount window."
+flow "Reserve Accounts" -> "Banking System" : matter "reserves lent" substance credit
 
 # Currency: notes reach the public only through the banks — a swap,
 # reserves debited as notes ship. The public stays behind the banks,
 # as households stay behind the markets.
-flow "Balance Sheet" -> "Banking System" : matter "currency issued" substance banknotes
+flow "Balance Sheet" -> "Reserve Accounts" : matter "currency issued" substance banknotes
     description "Notes issued against reserves — a swap, reserves debited as notes ship. The public reaches currency only through the banks, staying behind them as households stay behind the markets."
+flow "Reserve Accounts" -> "Banking System" : matter "currency issued" substance banknotes
 
 # The fisc's checking account: TGA drawdowns and rebuilds move the
 # same reserve stock policy steers, with no policy decision anywhere.
-flow "U.S. Treasury" -> "Balance Sheet" : matter "TGA deposits" unit "USD millions"
+flow "U.S. Treasury" -> "Treasury Account" : matter "TGA deposits" unit "USD millions"
     description "The Treasury's checking account — TGA drawdowns and rebuilds move the same reserve stock policy steers, with no policy decision anywhere."
+flow "Treasury Account" -> "Balance Sheet" : matter "TGA deposits" unit "USD millions"
 
 # ── Open forks ───────────────────────────────────────────────────────
 # 1. ON RRP: its counterparties are money-market funds, not banks — a
