@@ -19,9 +19,16 @@
 # case Bunge did not anticipate. Social wins because the loops this
 # model exists to draw run through people's decisions; the machinery
 # below them is Technical and says so in every flow label.
+# Numbers (2026-10-10, #472): magnitudes per day, rounded to read by eye,
+# each with the source it rests on. They make the structure runnable and
+# comparable, not a forecast; where a quantity is a market outcome rather
+# than a protocol fact (coins sold), the grounding says it is a toy
+# assumption. The price and the feerate are signals and carry no number.
 system "Bitcoin" : Concrete/Social
 
 domain "Proof-of-work settlement — energy in, ordered history out, a fee market clearing queue position"
+
+time unit day
 
 # Its own pass-2 note says it: until the tether arrives this entry is
 # structure only. Two loops drawn as flows, no rule in the file — the
@@ -73,8 +80,9 @@ source "Energy Market"
 environment "Asset Market"
 
 # Submission: transactions enter the queue.
-flow Transactors -> "Node RPC" : informational "submitted transactions" substance transactions
+flow Transactors -> "Node RPC" : informational "submitted transactions" substance transactions amount 530000 unit "tx/day"
     description "Bidding for queue position."
+    grounding asserted "2026 year-to-date average ~534k/day through July 5 (news.bitcoin.com, 2026-07); June 2026 average 652k"
 flow "Node RPC" -> Mempool : informational "submitted transactions" substance transactions
 
 # Selection: highest feerate first — the fee market clearing.
@@ -82,8 +90,9 @@ flow Mempool -> Mining : informational "selected by feerate"
     description "Highest feerate first — the fee market clearing."
 
 # The burn: hashes are bought with electricity.
-flow "Energy Market" -> "Power Connection" : energy "electricity burned" substance electricity
+flow "Energy Market" -> "Power Connection" : energy "electricity burned" substance electricity amount 380 unit "GWh/day"
     description "Bought with electricity, burned into proof of work."
+    grounding asserted "Cambridge CBECI live estimate 138 TWh/yr (2026-07-29) ≈ 380 GWh/day; Cambridge's range 74–242 TWh"
 flow "Power Connection" -> Mining : energy "electricity burned" substance electricity
 
 # Settlement: blocks append to the chain.
@@ -114,13 +123,15 @@ flow "Node RPC" -> Transactors : informational "feerate signal" substance feerat
 # Issuance: the subsidy plus collected fees, minted to the miner by
 # protocol rule. Structurally the Fed parallel: created in payment,
 # not transferred (see federal-reserve.sl, same shelf).
-flow "Chain State" -> Mining : matter "block reward"
+flow "Chain State" -> Mining : matter "block reward" amount 450 unit "BTC/day"
     description "Subsidy and fees, minted in payment to the miner by protocol rule. Structurally the Fed parallel: created in payment, not transferred (see federal-reserve.sl, same shelf)."
+    grounding spec "protocol subsidy 3.125 BTC/block × ~144 blocks/day since the April 2024 halving; fees add <1% (The Block, 2026)"
 
 # The asset face: miners sell to cover the energy bill...
 flow Mining -> "Exchange Link" : matter "coins sold" substance coins
     description "Sold to cover costs — the energy bill."
-flow "Exchange Link" -> "Asset Market" : matter "coins sold" substance coins
+    grounding asserted "toy assumption: miners sell the day's subsidy; actual treasury behaviour varies and is not modelled"
+flow "Exchange Link" -> "Asset Market" : matter "coins sold" substance coins amount 450 unit "BTC/day"
 
 # ...and the price comes back to everyone as information.
 flow "Asset Market" -> Transactors : informational "the price"
@@ -152,5 +163,8 @@ flow "Asset Market" -> Transactors : informational "the price"
 # ✓ The displacement response stays hidden inside Transactors: the
 #   model declares a mechanism it cannot see, and the ML work is the
 #   test of exactly that mechanism.
+
+param "transactions" : flow Transactors -> "Node RPC" "submitted transactions" range 0..1000000
+param "electricity" : flow "Energy Market" -> "Power Connection" "electricity burned" range 0..800
 
 @lens mobus
