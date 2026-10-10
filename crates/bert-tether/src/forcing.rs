@@ -418,7 +418,7 @@ pub fn summarize(
                 // `param` is an orphaned default — the readout must present
                 // the DECLARED emission the dynamics actually honor.
                 NodeKind::Source => ("resource", circuit.source_readout(i)),
-                NodeKind::Process(_) => ("internal", circuit.level(i)),
+                NodeKind::Process(_) | NodeKind::Agent => ("internal", circuit.level(i)),
             };
             let (unit, unit_derived) = unit_of(node);
             Level {

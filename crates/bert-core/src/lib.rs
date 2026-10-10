@@ -1404,6 +1404,14 @@ pub struct AgentModel {
     )]
     pub primitive: Option<ProcessPrimitive>,
 
+    /// The decision model that makes this thing an agent (facets#269). `Some`
+    /// and `primitive` together are a category error — an agent is a distinct
+    /// thing kind, not a badge on a work process — and the operational seam
+    /// refuses the pair. `skip` when `None` so every existing model
+    /// serializes byte-for-byte as before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub policy: Option<Policy>,
+
     /// Domain-agnostic cognitive parameters (e.g., "fee_threshold": 50.0)
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub cognitive_params: HashMap<String, f64>,
@@ -1471,6 +1479,7 @@ impl Default for AgentModel {
             kind: AgentKind::default(),
             agency_capacity: default_agency_capacity(),
             primitive: None,
+            policy: None,
             cognitive_params: HashMap::new(),
             process_configs: Vec::new(),
             initial_state: HashMap::new(),
@@ -1504,6 +1513,53 @@ pub enum ProcessPrimitive {
     Modulating,
     Amplifying,
     Inverting,
+}
+
+/// An agent's decision model (facets#269, ADR 0008): the rule a thing of the
+/// agent kind runs once per tick, reading the level of the stock it watches
+/// and emitting a command signal to the work process it manages. Mobus
+/// §11.3.4.1 splits the goal from the mechanism — "the set point represents
+/// the ideal value … the procedures are embodied in the response mechanisms"
+/// — so the numbers here are the policy the author declares and the arm in
+/// `decide` is the procedure the kernel supplies. The set is closed and grows
+/// one rule at a time, each with one reading and one refusal; the first rung
+/// carries the purely reactive rules (no memory), and every agent in a run is
+/// deterministic, so a run with agents is still one `Id`-kind transition on a
+/// larger product state.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(tag = "rule", rename_all = "lowercase")]
+pub enum Policy {
+    /// Wiener's error correction (Mobus §12.3.2): emit `gain · (target −
+    /// reading)`, floored at zero because a demand is non-negative — the
+    /// managed process clamps it to its own gate. At gain 1 this is exactly
+    /// the Inverting comparator's `setpoint − reading`, which is why the
+    /// thermostat traced both ways is the first proof the agent kind owes.
+    Proportional { target: f64, gain: f64 },
+}
+
+impl Policy {
+    /// The procedure: one reading in, one command out.
+    pub fn decide(&self, reading: f64) -> f64 {
+        match self {
+            Policy::Proportional { target, gain } => (gain * (target - reading)).max(0.0),
+        }
+    }
+
+    /// The rule's name as the agent line spells it.
+    pub fn rule(&self) -> &'static str {
+        match self {
+            Policy::Proportional { .. } => "proportional",
+        }
+    }
+}
+
+impl Default for Policy {
+    fn default() -> Self {
+        Policy::Proportional {
+            target: 1.0,
+            gain: 1.0,
+        }
+    }
 }
 
 /// Process behavior configuration with flexible parameters.
