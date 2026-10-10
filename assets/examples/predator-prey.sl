@@ -11,10 +11,14 @@ domain "Population dynamics of rabbits and foxes in a grassland"
 level Structure
 
 # Rabbits and Foxes are the two accumulating stocks in this system —
-# their numbers rise and fall as biomass flows in and out. Both sit on
-# the boundary because grazing/predation/death cross it directly.
-component Rabbits primitive Buffering interface
-component Foxes primitive Buffering interface
+# their numbers rise and fall as biomass flows in and out. Grazing and
+# death cross the boundary, so each stock has a pass-way of its own: the
+# pasture edge where rabbits graze, and the edge of the foxes' range where
+# their biomass leaves.
+component Rabbits primitive Buffering
+component Foxes primitive Buffering
+interface "Pasture Edge"
+interface "Fox Range Edge"
 
 # Sunlight is the ultimate external source of all energy in the system.
 source Sunlight
@@ -32,13 +36,15 @@ flow Sunlight -> Grass : energy "photosynthesis"
 
 # Rabbits graze grass, converting plant matter into rabbit biomass —
 # this is what lets the Rabbits stock grow.
-flow Grass -> Rabbits : matter "grazing"
+flow Grass -> "Pasture Edge" : matter "grazing"
+flow "Pasture Edge" -> Rabbits : matter "grazing"
 
 # Foxes eat rabbits, converting prey biomass into predator biomass —
 # this simultaneously depletes Rabbits and grows Foxes.
 flow Rabbits -> Foxes : matter "predation"
 
 # Foxes die off over time; their biomass exits the system entirely.
-flow Foxes -> Decomposition : matter "mortality"
+flow Foxes -> "Fox Range Edge" : matter "mortality"
+flow "Fox Range Edge" -> Decomposition : matter "mortality"
 
 @lens mobus

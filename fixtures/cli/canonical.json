@@ -6259,8 +6259,8 @@
         "env_kind": "Neutral",
         "name": "Rabbits",
         "role": "Component",
-        "x": 310.0,
-        "y": 320.0
+        "x": 480.0,
+        "y": 150.0
       },
       {
         "env_kind": "Neutral",
@@ -6268,6 +6268,20 @@
         "role": "Component",
         "x": 650.0,
         "y": 320.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Pasture Edge",
+        "role": "Component",
+        "x": 310.0,
+        "y": 320.0
+      },
+      {
+        "env_kind": "Neutral",
+        "name": "Fox Range Edge",
+        "role": "Component",
+        "x": 480.0,
+        "y": 490.0
       },
       {
         "env_kind": "Source",
@@ -6287,12 +6301,12 @@
         "env_kind": "Sink",
         "name": "Decomposition",
         "role": "Environment",
-        "x": 848.0,
-        "y": 320.0
+        "x": 664.0,
+        "y": 639.0
       }
     ],
     "pins": "Mobus",
-    "relations": 4,
+    "relations": 6,
     "run": {
       "answer": {
         "dt": 1.0,
@@ -6400,23 +6414,27 @@
       },
       "outcome": "runs"
     },
-    "things": 5,
+    "things": 7,
     "verdict_under": {
       "bunge": {
         "description": {
-          "bondage": 4,
+          "bondage": 6,
           "boundary_components": [
             "Rabbits",
             "Foxes"
           ],
           "composition": [
             "Rabbits",
-            "Foxes"
+            "Foxes",
+            "Pasture Edge",
+            "Fox Range Edge"
           ],
           "endo_bonds": [
-            "Foxes — Rabbits"
+            "Pasture Edge — Rabbits",
+            "Foxes — Rabbits",
+            "Fox Range Edge — Foxes"
           ],
-          "endostructure": 1,
+          "endostructure": 3,
           "environment": [
             "Sunlight",
             "Grass",
@@ -6424,8 +6442,8 @@
           ],
           "exo_bonds": [
             "Grass — Sunlight",
-            "Grass — Rabbits",
-            "Decomposition — Foxes"
+            "Grass — Pasture Edge",
+            "Decomposition — Fox Range Edge"
           ],
           "exostructure": 3,
           "lens": "Bunge",
@@ -6437,8 +6455,8 @@
         "facts": {
           "aggregate": false,
           "authored_interface_thing_ids": [
-            1,
-            2
+            3,
+            4
           ],
           "boundary_props": {
             "perceptive_fuzziness": 0.0,
@@ -6450,24 +6468,35 @@
           ],
           "edges": [
             {
-              "a": 3,
-              "b": 4,
+              "a": 5,
+              "b": 6,
               "bond": true,
               "channel": null,
-              "id": 6,
+              "id": 8,
               "kind": "Energy",
               "locus": "Exo",
               "mobus_ok": true,
               "self_loop": false
             },
             {
-              "a": 4,
-              "b": 1,
+              "a": 6,
+              "b": 3,
               "bond": true,
               "channel": "Input",
-              "id": 7,
+              "id": 9,
               "kind": "Matter",
               "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 1,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 10,
+              "kind": "Matter",
+              "locus": "Endo",
               "mobus_ok": true,
               "self_loop": false
             },
@@ -6476,7 +6505,7 @@
               "b": 2,
               "bond": true,
               "channel": "Internuncial",
-              "id": 8,
+              "id": 11,
               "kind": "Matter",
               "locus": "Endo",
               "mobus_ok": true,
@@ -6484,10 +6513,21 @@
             },
             {
               "a": 2,
-              "b": 5,
+              "b": 4,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 12,
+              "kind": "Matter",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 7,
               "bond": true,
               "channel": "Output",
-              "id": 9,
+              "id": 13,
               "kind": "Matter",
               "locus": "Exo",
               "mobus_ok": true,
@@ -6495,28 +6535,28 @@
             }
           ],
           "environment_thing_ids": [
-            3,
-            4,
-            5
+            5,
+            6,
+            7
           ],
           "orphan_env_thing_ids": [],
           "ports": [
             {
-              "component": 1,
+              "component": 3,
               "direction": "Receives",
-              "env": 4,
+              "env": 6,
               "protocol": "grazing",
               "relation_ids": [
-                7
+                9
               ]
             },
             {
-              "component": 2,
+              "component": 4,
               "direction": "Exports",
-              "env": 5,
+              "env": 7,
               "protocol": "mortality",
               "relation_ids": [
-                9
+                13
               ]
             }
           ],
@@ -6549,9 +6589,11 @@
         "description": {
           "dependencies": [
             "Grass — Sunlight",
-            "Grass — Rabbits",
+            "Grass — Pasture Edge",
+            "Pasture Edge — Rabbits",
             "Foxes — Rabbits",
-            "Decomposition — Foxes"
+            "Fox Range Edge — Foxes",
+            "Decomposition — Fox Range Edge"
           ],
           "directed": 0,
           "ladder": {
@@ -6562,17 +6604,17 @@
           },
           "lens": "Klir",
           "level": "Structure",
-          "neutral": 4,
+          "neutral": 6,
           "note": "a system is what is distinguished as a system by the investigator; the distinction frame is the observer's act, not a boundary",
           "question": "what does the data commit me to? — the behavior function answers, and deliberately refuses to say what is behind it",
-          "relations": 4,
-          "things": 5
+          "relations": 6,
+          "things": 7
         },
         "facts": {
           "aggregate": false,
           "authored_interface_thing_ids": [
-            1,
-            2
+            3,
+            4
           ],
           "boundary_props": {
             "perceptive_fuzziness": 0.0,
@@ -6584,24 +6626,35 @@
           ],
           "edges": [
             {
-              "a": 3,
-              "b": 4,
+              "a": 5,
+              "b": 6,
               "bond": true,
               "channel": null,
-              "id": 6,
+              "id": 8,
               "kind": "Energy",
               "locus": "Exo",
               "mobus_ok": true,
               "self_loop": false
             },
             {
-              "a": 4,
-              "b": 1,
+              "a": 6,
+              "b": 3,
               "bond": true,
               "channel": "Input",
-              "id": 7,
+              "id": 9,
               "kind": "Matter",
               "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 1,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 10,
+              "kind": "Matter",
+              "locus": "Endo",
               "mobus_ok": true,
               "self_loop": false
             },
@@ -6610,7 +6663,7 @@
               "b": 2,
               "bond": true,
               "channel": "Internuncial",
-              "id": 8,
+              "id": 11,
               "kind": "Matter",
               "locus": "Endo",
               "mobus_ok": true,
@@ -6618,10 +6671,21 @@
             },
             {
               "a": 2,
-              "b": 5,
+              "b": 4,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 12,
+              "kind": "Matter",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 7,
               "bond": true,
               "channel": "Output",
-              "id": 9,
+              "id": 13,
               "kind": "Matter",
               "locus": "Exo",
               "mobus_ok": true,
@@ -6629,28 +6693,28 @@
             }
           ],
           "environment_thing_ids": [
-            3,
-            4,
-            5
+            5,
+            6,
+            7
           ],
           "orphan_env_thing_ids": [],
           "ports": [
             {
-              "component": 1,
+              "component": 3,
               "direction": "Receives",
-              "env": 4,
+              "env": 6,
               "protocol": "grazing",
               "relation_ids": [
-                7
+                9
               ]
             },
             {
-              "component": 2,
+              "component": 4,
               "direction": "Exports",
-              "env": 5,
+              "env": 7,
               "protocol": "mortality",
               "relation_ids": [
-                9
+                13
               ]
             }
           ],
@@ -6664,7 +6728,7 @@
               "label": "environment roles"
             },
             {
-              "count": 4,
+              "count": 6,
               "label": "connection kinds"
             },
             {
@@ -6672,7 +6736,7 @@
               "label": "process primitives"
             },
             {
-              "count": 2,
+              "count": 4,
               "label": "interfaces"
             }
           ],
@@ -6685,12 +6749,14 @@
       "mobus": {
         "description": {
           "b_interfaces": [
-            "Rabbits",
-            "Foxes"
+            "Pasture Edge",
+            "Fox Range Edge"
           ],
           "c": [
             "Rabbits",
-            "Foxes"
+            "Foxes",
+            "Pasture Edge",
+            "Fox Range Edge"
           ],
           "dt_note": "Δt: time scale — a parametric field on the system",
           "e_objects": [
@@ -6702,7 +6768,7 @@
           "h_note": "H: history (accumulated state conditioning T) — NOT hierarchy",
           "lens": "Mobus",
           "milieu_note": "μ (milieu) is parametric/opaque — the one element with no cross-lens preimage (milieuOnly_bunge_empty)",
-          "n": 1,
+          "n": 3,
           "perceptive_fuzziness": 0.0,
           "porosity": 0.0,
           "question": "how is the mechanism built, and what happens when it runs?",
@@ -6712,8 +6778,8 @@
         "facts": {
           "aggregate": false,
           "authored_interface_thing_ids": [
-            1,
-            2
+            3,
+            4
           ],
           "boundary_props": {
             "perceptive_fuzziness": 0.0,
@@ -6725,24 +6791,35 @@
           ],
           "edges": [
             {
-              "a": 3,
-              "b": 4,
+              "a": 5,
+              "b": 6,
               "bond": true,
               "channel": null,
-              "id": 6,
+              "id": 8,
               "kind": "Energy",
               "locus": "Exo",
               "mobus_ok": true,
               "self_loop": false
             },
             {
-              "a": 4,
-              "b": 1,
+              "a": 6,
+              "b": 3,
               "bond": true,
               "channel": "Input",
-              "id": 7,
+              "id": 9,
               "kind": "Matter",
               "locus": "Exo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 3,
+              "b": 1,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 10,
+              "kind": "Matter",
+              "locus": "Endo",
               "mobus_ok": true,
               "self_loop": false
             },
@@ -6751,7 +6828,7 @@
               "b": 2,
               "bond": true,
               "channel": "Internuncial",
-              "id": 8,
+              "id": 11,
               "kind": "Matter",
               "locus": "Endo",
               "mobus_ok": true,
@@ -6759,10 +6836,21 @@
             },
             {
               "a": 2,
-              "b": 5,
+              "b": 4,
+              "bond": true,
+              "channel": "Internuncial",
+              "id": 12,
+              "kind": "Matter",
+              "locus": "Endo",
+              "mobus_ok": true,
+              "self_loop": false
+            },
+            {
+              "a": 4,
+              "b": 7,
               "bond": true,
               "channel": "Output",
-              "id": 9,
+              "id": 13,
               "kind": "Matter",
               "locus": "Exo",
               "mobus_ok": true,
@@ -6770,68 +6858,40 @@
             }
           ],
           "environment_thing_ids": [
-            3,
-            4,
-            5
+            5,
+            6,
+            7
           ],
           "orphan_env_thing_ids": [],
           "ports": [
             {
-              "component": 1,
+              "component": 3,
               "direction": "Receives",
-              "env": 4,
+              "env": 6,
               "protocol": "grazing",
               "relation_ids": [
-                7
+                9
               ]
             },
             {
-              "component": 2,
+              "component": 4,
               "direction": "Exports",
-              "env": 5,
+              "env": 7,
               "protocol": "mortality",
               "relation_ids": [
-                9
+                13
               ]
             }
           ],
           "unresolved_thing_id": null
         },
-        "issue_targets": [
-          {
-            "disregarded_relations": 0,
-            "relation": null,
-            "thing": 1
-          },
-          {
-            "disregarded_relations": 0,
-            "relation": null,
-            "thing": 2
-          }
-        ],
+        "issue_targets": [],
         "residue": {
           "hidden": [],
           "unspecified": []
         },
         "validation": {
-          "issues": [
-            {
-              "code": "interface_does_work",
-              "doc": "docs/language/spec.md#43-thing-lines",
-              "location": "things[1]",
-              "message": "'Rabbits' is marked interface and buffers (primitive Buffering). Mobus ch. 4: an interface passes, gates or filters what crosses the boundary and does not alter it; the thing that stores or transforms is the receiver or exporter process behind the interface, a resident of its own (facets#471).",
-              "severity": "Warning",
-              "suggestion": "Split it: `interface \"Rabbits inlet\"` (or `interface unresolved`) takes the crossing, and `component \"Rabbits\"` keeps the work; route the crossing flow through the pass-way to the component."
-            },
-            {
-              "code": "interface_does_work",
-              "doc": "docs/language/spec.md#43-thing-lines",
-              "location": "things[2]",
-              "message": "'Foxes' is marked interface and buffers (primitive Buffering). Mobus ch. 4: an interface passes, gates or filters what crosses the boundary and does not alter it; the thing that stores or transforms is the receiver or exporter process behind the interface, a resident of its own (facets#471).",
-              "severity": "Warning",
-              "suggestion": "Split it: `interface \"Foxes inlet\"` (or `interface unresolved`) takes the crossing, and `component \"Foxes\"` keeps the work; route the crossing flow through the pass-way to the component."
-            }
-          ]
+          "issues": []
         }
       }
     }
