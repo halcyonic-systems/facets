@@ -106,3 +106,36 @@ fn a_pass_way_serving_two_residents_runs_as_an_identity_door() {
     let last = |n: &str| traj.iter().find(|s| s["name"] == n).unwrap()["series"][4].as_f64().unwrap();
     assert_eq!((last("Tank A"), last("Tank B")), (20.0, 25.0));
 }
+
+#[test]
+fn the_thermostat_traced_two_ways_is_one_system() {
+    // ADR 0008 D3: the agent form of the thermostat (one `agent` line) and the
+    // probe-plus-comparator form hold the same room heat on every tick, and
+    // the agent's goal turns from the terminal like any setpoint.
+    let room = |file: &str| {
+        let out = bert(&["bench", file, "--t", "12", "--no-log"]);
+        assert_eq!(code(&out), 0, "{}", stderr(&out));
+        let v = stdout_json(&out);
+        assert_eq!(v["conserved"], true, "{file}");
+        v["trajectories"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|t| t["name"] == "Room")
+            .unwrap()["series"]
+            .clone()
+    };
+    assert_eq!(
+        room("assets/bench/thermostat-room.sl"),
+        room("assets/bench/thermostat-agent.sl"),
+        "the agent form and the comparator form diverge"
+    );
+    let out = bert(&["bench", "assets/bench/thermostat-agent.sl", "--t", "24", "--no-log", "--set", "Thermostat.target=3@12"]);
+    assert_eq!(code(&out), 0, "{}", stderr(&out));
+    let v = stdout_json(&out);
+    assert_eq!(v["edits"][0]["field"], "target");
+    let series = v["trajectories"].as_array().unwrap().iter().find(|t| t["name"] == "Room").unwrap()["series"].as_array().unwrap();
+    let before = series[11].as_f64().unwrap();
+    let after = series[23].as_f64().unwrap();
+    assert!((before - 1.6667).abs() < 1e-3 && (after - 2.5).abs() < 1e-3, "{before} -> {after}");
+}

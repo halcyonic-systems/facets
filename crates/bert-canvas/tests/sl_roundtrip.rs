@@ -69,6 +69,7 @@ fn canvas_born_model_canonicalizes() {
         role,
         env_kind: Default::default(),
         primitive: None,
+        rule: None,
         interface: false,
         passway: false,
         protocol: String::new(),

@@ -294,6 +294,12 @@ export interface Thing {
    *  a component. Rust always serializes it; absent (old JSON) reads Neutral. */
   env_kind?: EnvKind;
   primitive?: ProcessPrimitive;
+  /** The rule that makes this component an agent (facets#269, ADR 0008): its
+   *  own kind of thing, never a work process with a badge, so `rule` and
+   *  `primitive` are exclusive. Its numbers (`target`, `gain`) ride
+   *  `cognitive_params`, where the param layer already reads a field's value.
+   *  Absent = not an agent; serde skip-if-None on the Rust side. */
+  rule?: AgentRule;
   /** Authored interface designation (I ⊆ C). Must carry a boundary-crossing flow —
    *  flowless is refused at Operational (`interfaces_carry_flow`, SSF #31). */
   interface?: boolean;
@@ -463,7 +469,17 @@ export interface CanvasModel {
 /** A component line's engine parameter a `param … of <component>` may name
  *  (#343): keyed as the engine, the session knob and `bert bench --set` read
  *  it, and as the thing's `cognitive_params` stores it. */
-export type EngineField = "release_rate" | "capacity" | "time_constant" | "setpoint" | "maintenance";
+export type EngineField =
+  | "release_rate"
+  | "capacity"
+  | "time_constant"
+  | "setpoint"
+  | "maintenance"
+  | "target"
+  | "gain";
+
+/** The closed set of agent rules (facets#269, ADR 0008 D4), grown one at a time. */
+export type AgentRule = "proportional";
 
 export type ParamAnchor =
   | { Flow: { relation: number } }
