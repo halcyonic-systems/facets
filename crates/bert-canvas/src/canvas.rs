@@ -416,15 +416,27 @@ pub enum AgentRule {
     /// `emit` at or above `above`, else `else`: the on–off thermostat, Mobus
     /// §11.2.1.1's purely reactive agent; a square wave no primitive makes.
     Threshold,
+    /// `under b1 emit o1 … else oN`: a declared map from reading bins to
+    /// outputs, Mobus §11.2.1.1's "algorithmic or heuristic program of
+    /// response". Contiguous bins under strictly increasing bounds.
+    Table,
+    /// `window n target t gain g`: Proportional over the mean of the last
+    /// `n` readings, Mobus §11.2.1.1's adaptive reactive agent ("tracks the
+    /// input variables and responds in kind. This is the homeostatic
+    /// mechanism"); the first rule with a memory, which the engine keeps.
+    Trace,
 }
 
 impl AgentRule {
-    pub const ALL: [AgentRule; 2] = [AgentRule::Proportional, AgentRule::Threshold];
+    pub const ALL: [AgentRule; 4] =
+        [AgentRule::Proportional, AgentRule::Threshold, AgentRule::Table, AgentRule::Trace];
     /// The SL word.
     pub fn word(self) -> &'static str {
         match self {
             AgentRule::Proportional => "proportional",
             AgentRule::Threshold => "threshold",
+            AgentRule::Table => "table",
+            AgentRule::Trace => "trace",
         }
     }
     /// The rule by its SL word.
@@ -441,6 +453,10 @@ impl AgentRule {
             // `below` is the hysteresis band (facets#517): optional, and
             // spelled between the level and the commands.
             AgentRule::Threshold => &[("above", true), ("below", false), ("emit", true), ("else", true)],
+            // A table repeats its first two clauses, one pair per bin; the
+            // bag numbers them (`under1`, `emit1`, …), see `spelled`.
+            AgentRule::Table => &[("under", true), ("emit", true), ("else", true)],
+            AgentRule::Trace => &[("window", true), ("target", true), ("gain", true)],
         }
     }
     /// The rule's required clause words, in the order the line spells them.
@@ -451,16 +467,52 @@ impl AgentRule {
     pub fn takes(self, word: &str) -> bool {
         self.clauses().iter().any(|(w, _)| *w == word)
     }
+    /// The rule's numbers as the line spells them, read out of a thing's
+    /// bag: each clause word with its value, in order, and `None` when the
+    /// bag is not exactly this rule's declaration (a required word missing,
+    /// a stray key, a table whose bins are not numbered 1..k without a gap).
+    /// The one reading of the bag the emitter and the kernel policy share,
+    /// so parse → emit → parse is a fixpoint for every arity.
+    pub fn spelled(self, bag: &std::collections::HashMap<String, f64>) -> Option<Vec<(String, f64)>> {
+        let mut out = Vec::new();
+        match self {
+            AgentRule::Table => {
+                let mut i = 1;
+                while let Some(b) = bag.get(&format!("under{i}")) {
+                    out.push((format!("under{i}"), *b));
+                    out.push((format!("emit{i}"), *bag.get(&format!("emit{i}"))?));
+                    i += 1;
+                }
+                if i == 1 {
+                    return None;
+                }
+                out.push(("else".to_string(), *bag.get("else")?));
+            }
+            _ => {
+                for (w, required) in self.clauses() {
+                    match bag.get(*w) {
+                        Some(v) => out.push((w.to_string(), *v)),
+                        None if *required => return None,
+                        None => {}
+                    }
+                }
+            }
+        }
+        (out.len() == bag.len()).then_some(out)
+    }
     /// The rule of a kernel policy.
     pub fn of(policy: &bert_core::Policy) -> AgentRule {
         match policy {
             bert_core::Policy::Proportional { .. } => AgentRule::Proportional,
             bert_core::Policy::Threshold { .. } => AgentRule::Threshold,
+            bert_core::Policy::Table { .. } => AgentRule::Table,
+            bert_core::Policy::Trace { .. } => AgentRule::Trace,
         }
     }
     /// The kernel's policy over this rule's declared numbers, read by word;
     /// `None` for a word the bag does not carry. A required word that is
-    /// missing reads as 1, the bag's own default; an optional one as absent.
+    /// missing reads as 1, the bag's own default; an optional one as absent;
+    /// a table's bins run from `under1` to the first bin the bag lacks.
     pub fn policy(self, num: impl Fn(&str) -> Option<f64>) -> bert_core::Policy {
         let req = |w: &str| num(w).unwrap_or(1.0);
         match self {
@@ -473,6 +525,19 @@ impl AgentRule {
                 below: num("below"),
                 emit: req("emit"),
                 otherwise: req("else"),
+            },
+            AgentRule::Table => {
+                let (mut bounds, mut outputs) = (Vec::new(), Vec::new());
+                while let Some(b) = num(&format!("under{}", bounds.len() + 1)) {
+                    bounds.push(b);
+                    outputs.push(req(&format!("emit{}", bounds.len())));
+                }
+                bert_core::Policy::Table { bounds, outputs, otherwise: req("else") }
+            }
+            AgentRule::Trace => bert_core::Policy::Trace {
+                window: req("window").max(1.0) as usize,
+                target: req("target"),
+                gain: req("gain"),
             },
         }
     }
@@ -527,6 +592,10 @@ pub enum EngineField {
     /// turns back, the hysteresis band's floor.
     #[serde(rename = "below")]
     Below,
+    /// A trace agent's window (facets#269, ADR 0008 D4): how many of its own
+    /// readings its mean runs over.
+    #[serde(rename = "window")]
+    Window,
 }
 
 impl EngineField {
@@ -542,6 +611,7 @@ impl EngineField {
             EngineField::Gain => "gain",
             EngineField::Above => "above",
             EngineField::Below => "below",
+            EngineField::Window => "window",
         }
     }
     /// The SL word(s) on the component line and on the param line.
@@ -556,6 +626,7 @@ impl EngineField {
             EngineField::Gain => "gain",
             EngineField::Above => "above",
             EngineField::Below => "below",
+            EngineField::Window => "window",
         }
     }
     /// The primitive that reads this field (the component line's own gate);
@@ -564,7 +635,11 @@ impl EngineField {
     pub fn reader(self) -> Option<bert_core::ProcessPrimitive> {
         match self {
             EngineField::Setpoint => Some(bert_core::ProcessPrimitive::Inverting),
-            EngineField::Target | EngineField::Gain | EngineField::Above | EngineField::Below => None,
+            EngineField::Target
+            | EngineField::Gain
+            | EngineField::Above
+            | EngineField::Below
+            | EngineField::Window => None,
             _ => Some(bert_core::ProcessPrimitive::Buffering),
         }
     }
@@ -572,10 +647,14 @@ impl EngineField {
     pub fn is_agent_field(self) -> bool {
         matches!(
             self,
-            EngineField::Target | EngineField::Gain | EngineField::Above | EngineField::Below
+            EngineField::Target
+                | EngineField::Gain
+                | EngineField::Above
+                | EngineField::Below
+                | EngineField::Window
         )
     }
-    pub const ALL: [EngineField; 9] = [
+    pub const ALL: [EngineField; 10] = [
         EngineField::Release,
         EngineField::Capacity,
         EngineField::TimeConstant,
@@ -585,6 +664,7 @@ impl EngineField {
         EngineField::Gain,
         EngineField::Above,
         EngineField::Below,
+        EngineField::Window,
     ];
 }
 
@@ -1505,7 +1585,7 @@ pub fn to_canvas(model: &WorldModel) -> CanvasModel {
                 // the engine exported carries them nowhere else.
                 if let Some(policy) = s.agent.as_ref().and_then(|a| a.policy.as_ref()) {
                     for (word, v) in policy.fields() {
-                        bag.insert(word.to_string(), v);
+                        bag.insert(word, v);
                     }
                 }
                 bag

@@ -139,8 +139,8 @@ fn the_agent_faults_are_named() {
     let e = errs(&swap("target 2", "target 0"));
     assert!(e.contains("`target` must be positive"), "{e}");
     // a rule the set does not have, a rule missing its numbers
-    let e = errs(&swap("rule proportional target 2 gain 0.5", "rule table bins 3"));
-    assert!(e.contains("unknown rule `table`"), "{e}");
+    let e = errs(&swap("rule proportional target 2 gain 0.5", "rule markov states 3"));
+    assert!(e.contains("unknown rule `markov`"), "{e}");
     let e = errs(&swap("rule proportional target 2 gain 0.5", "rule proportional target 2"));
     assert!(e.contains("`gain` is missing or out of place"), "{e}");
     // agent fields on a component, a component field on an agent
@@ -260,5 +260,135 @@ fn the_band_faults_are_named() {
     assert!(e.contains("`Thermostat` declares no `below`"), "{e}");
     // `below` is the threshold rule's word, not the proportional rule's
     let e = errs(&ROOM.replace("param \"sensitivity\" : gain of Thermostat range 0.1..2", "param \"floor\" : below of Thermostat range 0.1..2"));
+    assert!(e.contains("runs a proportional rule — its parameters are its rule's (target, gain)"), "{e}");
+}
+
+const WARD: &str = "\
+system \"Ward\" : Concrete/Technical
+interface Admissions
+interface Discharge
+component Triage primitive Modulating backpressure
+component Ward primitive Buffering stock beds initial 24 capacity 40 time constant 4
+agent Gatekeeper watches Ward rule table under 20 emit 1 under 36 emit 0.5 else 0 manages Triage
+source Referrals
+sink Home
+flow Referrals -> Admissions : matter \"arrivals\" substance patients amount 8 unit \"patients/day\"
+flow Admissions -> Triage : matter \"arrivals\" substance patients
+flow Triage -> Ward : matter \"admitted\" substance patients
+flow Ward -> Discharge : matter \"discharged\" substance patients
+flow Discharge -> Home : matter \"discharged\" substance patients
+";
+
+/// The table rule (ADR 0008 D4): one `under … emit …` pair per bin, then
+/// `else`; the bag numbers the pairs, the policy carries them as two lists,
+/// the line emits back with the numbers stripped, and the round trip is a
+/// fixpoint at any arity.
+#[test]
+fn a_table_rule_parses_projects_and_emits_back() {
+    let m = parse_sl(WARD).unwrap();
+    let g = m.things.iter().find(|t| t.name == "Gatekeeper").unwrap();
+    assert_eq!(g.rule, Some(AgentRule::Table));
+    assert_eq!(g.cognitive_params.get("under1"), Some(&20.0));
+    assert_eq!(g.cognitive_params.get("emit1"), Some(&1.0));
+    assert_eq!(g.cognitive_params.get("under2"), Some(&36.0));
+    assert_eq!(g.cognitive_params.get("emit2"), Some(&0.5));
+    assert_eq!(g.cognitive_params.get("else"), Some(&0.0));
+    assert_eq!(g.cognitive_params.len(), 5);
+    let world = project(&m);
+    let agent = world.systems.iter().find(|s| s.info.name == "Gatekeeper").unwrap().agent.as_ref().unwrap();
+    assert_eq!(
+        agent.policy,
+        Some(Policy::Table { bounds: vec![20.0, 36.0], outputs: vec![1.0, 0.5], otherwise: 0.0 })
+    );
+    let text = emit_sl(&m).unwrap();
+    assert!(text.contains("rule table under 20 emit 1 under 36 emit 0.5 else 0 manages Triage"), "{text}");
+    assert_eq!(emit_sl(&parse_sl(&text).unwrap()).unwrap(), text);
+    let back = bert_canvas::canvas::to_canvas(&world);
+    let g = back.things.iter().find(|t| t.name == "Gatekeeper").unwrap();
+    assert_eq!(g.rule, Some(AgentRule::Table));
+    assert_eq!(g.cognitive_params.get("under2"), Some(&36.0));
+    assert!(emit_sl(&back).unwrap().contains("rule table under 20 emit 1 under 36 emit 0.5 else 0"));
+    // Three bins round-trip the same way: the arity is the line's, not the rule's.
+    let three = WARD.replace("under 20 emit 1 under 36 emit 0.5 else 0", "under 10 emit 1 under 20 emit 0.75 under 36 emit 0.5 else 0");
+    let text = emit_sl(&parse_sl(&three).unwrap()).unwrap();
+    assert!(text.contains("under 10 emit 1 under 20 emit 0.75 under 36 emit 0.5 else 0"), "{text}");
+    assert_eq!(emit_sl(&parse_sl(&text).unwrap()).unwrap(), text);
+}
+
+#[test]
+fn the_table_faults_are_named() {
+    let swap = |from: &str, to: &str| WARD.replace(from, to);
+    let bins = "under 20 emit 1 under 36 emit 0.5 else 0";
+    // one bin is a threshold, and the hint spells it
+    let e = errs(&swap(bins, "under 36 emit 1 else 0"));
+    assert!(e.contains("a table with one bin is a threshold"), "{e}");
+    assert!(e.contains("`rule threshold above 36 emit 0 else 1`"), "{e}");
+    // bounds that do not rise: ADR 0008 D4's overlapping or gapped bins
+    let e = errs(&swap(bins, "under 36 emit 1 under 20 emit 0.5 else 0"));
+    assert!(e.contains("`under` bounds must strictly increase") && e.contains("overlaps or gaps"), "{e}");
+    let e = errs(&swap(bins, "under 20 emit 1 under 20 emit 0.5 else 0"));
+    assert!(e.contains("strictly increase"), "{e}");
+    // a non-positive bound, a negative output
+    let e = errs(&swap(bins, "under 0 emit 1 under 36 emit 0.5 else 0"));
+    assert!(e.contains("`under` bound must be positive"), "{e}");
+    let e = errs(&swap(bins, "under 20 emit 1 under 36 emit -0.5 else 0"));
+    assert!(e.contains("cannot be negative"), "{e}");
+    // requisite variety: a gate reads 0..1
+    let e = errs(&swap(bins, "under 20 emit 2 under 36 emit 0.5 else 0"));
+    assert!(e.contains("requisite variety") && e.contains("a table emitting 2 / 0.5 / 0"), "{e}");
+    // no bin at all, a pair out of order, a missing else
+    let e = errs(&swap(bins, "else 0"));
+    assert!(e.contains("at least one bin"), "{e}");
+    let e = errs(&swap(bins, "emit 1 under 20 under 36 emit 0.5 else 0"));
+    assert!(e.contains("the first `under … emit …` pair is missing or out of place"), "{e}");
+    let e = errs(&swap(bins, "under 20 emit 1 under 36 emit 0.5"));
+    assert!(e.contains("`under … emit …` or `else` is missing or out of place"), "{e}");
+    // a param names no table bin: the bins are the line's and the session's
+    let e = errs(&format!("{WARD}param \"closes at\" : above of Gatekeeper range 10..40\n"));
+    assert!(e.contains("runs a table rule — its parameters are its rule's (under, emit, else), not `above`"), "{e}");
+}
+
+/// The trace rule (ADR 0008 D4, the first use of H): `window`, `target`,
+/// `gain` parse into the bag and the policy, emit back, and `window` may be
+/// named by a `param`.
+#[test]
+fn a_trace_rule_parses_projects_and_emits_back() {
+    let traced = ROOM
+        .replace("rule proportional target 2 gain 0.5", "rule trace window 3 target 2 gain 0.5")
+        .replace("param \"setpoint\" : target of Thermostat range 0.4..4", "param \"memory\" : window of Thermostat range 1..12");
+    let m = parse_sl(&traced).unwrap();
+    let th = m.things.iter().find(|t| t.name == "Thermostat").unwrap();
+    assert_eq!(th.rule, Some(AgentRule::Trace));
+    assert_eq!(th.cognitive_params.get("window"), Some(&3.0));
+    assert!(m.params.iter().any(|p| p.anchor == ParamAnchor::Field { thing: th.id, field: EngineField::Window }));
+    let world = project(&m);
+    let agent = world.systems.iter().find(|s| s.info.name == "Thermostat").unwrap().agent.as_ref().unwrap();
+    assert_eq!(agent.policy, Some(Policy::Trace { window: 3, target: 2.0, gain: 0.5 }));
+    let text = emit_sl(&m).unwrap();
+    assert!(text.contains("rule trace window 3 target 2 gain 0.5 manages Switch"), "{text}");
+    assert_eq!(emit_sl(&parse_sl(&text).unwrap()).unwrap(), text);
+    let back = bert_canvas::canvas::to_canvas(&world);
+    assert_eq!(back.things.iter().find(|t| t.name == "Thermostat").unwrap().cognitive_params.get("window"), Some(&3.0));
+}
+
+#[test]
+fn the_trace_faults_are_named() {
+    let traced = ROOM.replace("rule proportional target 2 gain 0.5", "rule trace window 3 target 2 gain 0.5");
+    let swap = |from: &str, to: &str| traced.replace(from, to);
+    // a zero window remembers nothing; a fractional one is no tick count
+    let e = errs(&swap("window 3", "window 0"));
+    assert!(e.contains("`window` must be a positive whole number") && e.contains("remembers nothing"), "{e}");
+    let e = errs(&swap("window 3", "window 1.5"));
+    assert!(e.contains("`window` must be a positive whole number"), "{e}");
+    // the proportional refusals carry over
+    let e = errs(&swap("gain 0.5", "gain 0"));
+    assert!(e.contains("zero gain watches nothing"), "{e}");
+    let e = errs(&swap("target 2", "target 0"));
+    assert!(e.contains("`target` must be positive"), "{e}");
+    // the clauses in order
+    let e = errs(&swap("window 3 target 2 gain 0.5", "target 2 gain 0.5 window 3"));
+    assert!(e.contains("`window` is missing or out of place"), "{e}");
+    // `window` is the trace rule's word, not the proportional rule's
+    let e = errs(&ROOM.replace("param \"sensitivity\" : gain of Thermostat range 0.1..2", "param \"memory\" : window of Thermostat range 1..12"));
     assert!(e.contains("runs a proportional rule — its parameters are its rule's (target, gain)"), "{e}");
 }
