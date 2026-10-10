@@ -69,15 +69,39 @@ component "Enterprise clearing" primitive Splitting interface
 # processes: eight named models plus an aggregate for the open-weight
 # field (GLM, Kimi, Mistral and the rest) that mid-2026 data shows
 # carrying too much developer volume to omit.
-component Opus primitive Amplifying interface
-component Fable primitive Amplifying interface
-component GPT primitive Amplifying interface
-component Gemini primitive Amplifying interface
-component Gemma primitive Amplifying interface
-component Llama primitive Amplifying interface
-component Qwen primitive Amplifying interface
-component DeepSeek primitive Amplifying interface
-component "Other open" primitive Amplifying interface
+component Opus primitive Amplifying
+component Fable primitive Amplifying
+component GPT primitive Amplifying
+component Gemini primitive Amplifying
+component Gemma primitive Amplifying
+component Llama primitive Amplifying
+component Qwen primitive Amplifying
+component DeepSeek primitive Amplifying
+component "Other open" primitive Amplifying
+
+# ── Pass-ways: the boundary objects the crossings go through ─────────
+# One release channel per model (where its weights and API access arrive)
+# and one serving endpoint per model (where its tokens leave). The models
+# are residents; no crossing touches them. The clearing processes keep the
+# merged stamp: a Splitting divides what it receives and does not alter it.
+interface "Opus release channel"
+interface "Fable release channel"
+interface "GPT release channel"
+interface "Gemini release channel"
+interface "Gemma release channel"
+interface "Llama release channel"
+interface "Qwen release channel"
+interface "DeepSeek release channel"
+interface "Other open release channel"
+interface "Opus endpoint"
+interface "Fable endpoint"
+interface "GPT endpoint"
+interface "Gemini endpoint"
+interface "Gemma endpoint"
+interface "Llama endpoint"
+interface "Qwen endpoint"
+interface "DeepSeek endpoint"
+interface "Other open endpoint"
 
 # ── Environment: where served tokens land ────────────────────────────
 sink "Applications served"
@@ -97,15 +121,24 @@ flow "Enterprise workload" -> "Enterprise clearing" : energy "enterprise inferen
 # to be said with `amount 100000 unit avail/day`, a magic number the
 # diagram then displayed; `ample` (#9) is that engineering fact as a
 # word, and the engine holds the equivalence.
-flow Anthropic -> Opus : informational "released weights & API" ample
-flow Anthropic -> Fable : informational "released weights & API" ample
-flow OpenAI -> GPT : informational "released weights & API" ample
-flow Google -> Gemini : informational "released weights & API" ample
-flow Google -> Gemma : informational "released weights & API" ample
-flow Meta -> Llama : informational "released weights & API" ample
-flow Alibaba -> Qwen : informational "released weights & API" ample
-flow "DeepSeek (lab)" -> DeepSeek : informational "released weights & API" ample
-flow "Open-weight field" -> "Other open" : informational "released weights & API" ample
+flow Anthropic -> "Opus release channel" : informational "released weights & API" ample
+flow "Opus release channel" -> Opus : informational "released weights & API" ample
+flow Anthropic -> "Fable release channel" : informational "released weights & API" ample
+flow "Fable release channel" -> Fable : informational "released weights & API" ample
+flow OpenAI -> "GPT release channel" : informational "released weights & API" ample
+flow "GPT release channel" -> GPT : informational "released weights & API" ample
+flow Google -> "Gemini release channel" : informational "released weights & API" ample
+flow "Gemini release channel" -> Gemini : informational "released weights & API" ample
+flow Google -> "Gemma release channel" : informational "released weights & API" ample
+flow "Gemma release channel" -> Gemma : informational "released weights & API" ample
+flow Meta -> "Llama release channel" : informational "released weights & API" ample
+flow "Llama release channel" -> Llama : informational "released weights & API" ample
+flow Alibaba -> "Qwen release channel" : informational "released weights & API" ample
+flow "Qwen release channel" -> Qwen : informational "released weights & API" ample
+flow "DeepSeek (lab)" -> "DeepSeek release channel" : informational "released weights & API" ample
+flow "DeepSeek release channel" -> DeepSeek : informational "released weights & API" ample
+flow "Open-weight field" -> "Other open release channel" : informational "released weights & API" ample
+flow "Other open release channel" -> "Other open" : informational "released weights & API" ample
 
 # ── Developer clearing: relative weights = observed dev-channel share ─
 # Calibration, June–July 2026, renormalized to this roster. Sources:
@@ -145,15 +178,24 @@ flow "Enterprise clearing" -> "Other open" : energy "enterprise serving share" a
 # instead shows every Gtok/day of compute dissipating as heat, which is
 # the thermodynamic truth of inference. Market share is read off each
 # model's activity in the trace.
-flow Opus -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
-flow Fable -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
-flow GPT -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
-flow Gemini -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
-flow Gemma -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
-flow Llama -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
-flow Qwen -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
-flow DeepSeek -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
-flow "Other open" -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow Opus -> "Opus endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
+flow "Opus endpoint" -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow Fable -> "Fable endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
+flow "Fable endpoint" -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow GPT -> "GPT endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
+flow "GPT endpoint" -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow Gemini -> "Gemini endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
+flow "Gemini endpoint" -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow Gemma -> "Gemma endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
+flow "Gemma endpoint" -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow Llama -> "Llama endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
+flow "Llama endpoint" -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow Qwen -> "Qwen endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
+flow "Qwen endpoint" -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow DeepSeek -> "DeepSeek endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
+flow "DeepSeek endpoint" -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
+flow "Other open" -> "Other open endpoint" : informational "tokens served" substance tokens unit "Gtok/day"
+flow "Other open endpoint" -> "Applications served" : informational "tokens served" substance tokens unit "Gtok/day"
 
 # ── Declared parameters: the model's own vocabulary for its knobs ────
 # What a user of this simulation actually wants to slide (walkthrough
