@@ -1014,6 +1014,154 @@ mod tests {
         }
     }
 
+    /// Law (facets#523): a forced series on a SPLITTING process's outwires
+    /// drives the split, not only a source's emission. The shipped llm-market
+    /// Router has two outwires whose amounts are relative weights (35/54); a
+    /// per-tick weight series on each must move the routed open-weight share
+    /// over the run while the ledger still balances, and nothing on the tether
+    /// path (manifest, draft gates, `force_and_run`) may refuse or ignore the
+    /// mapping because the forced flow leaves a process rather than a source.
+    ///
+    /// The model is the stored projection of `assets/examples/llm-market.sl`,
+    /// which `bert-canvas/tests/sl_demos.rs` pins to the `.sl` (re-minted with
+    /// `BLESS_SL_DEMOS=1`), so this reads the shipped model without a canvas
+    /// dependency. One CSV row is one tick here; a monthly series over a
+    /// daily tick would ride `every` (rung 3), which is not what is under test.
+    #[test]
+    fn forcing_a_splitters_outwires_moves_the_routed_share_and_conserves() {
+        let json = include_str!("../../../assets/models/demos/llm-market.json");
+        let model: WorldModel = serde_json::from_str(json).unwrap();
+
+        // Six observations: the open weight rises 55 → 70 against a frontier
+        // weight falling 45 → 30 (weights, not rates — they need not sum to
+        // 100, but do here so the share reads off the open column directly).
+        let frontier = [45.0f32, 42.0, 39.0, 36.0, 33.0, 30.0];
+        let open = [55.0f32, 58.0, 61.0, 64.0, 67.0, 70.0];
+        let mut csv = String::from("month,frontier_weight,open_weight\n");
+        for (i, (f, o)) in frontier.iter().zip(&open).enumerate() {
+            csv.push_str(&format!("{i},{f},{o}\n"));
+        }
+        let manifest: RunManifest = serde_json::from_str(
+            r#"{"model":"","data":"","t":8.0,"mapping":[
+                {"column":"month","as":"time"},
+                {"column":"frontier_weight","as":"flow","element":"routed frontier workload","unit":"weight","force":true},
+                {"column":"open_weight","as":"flow","element":"routed open-weight workload","unit":"weight","force":true}
+            ]}"#,
+        )
+        .unwrap();
+
+        // The wizard's own gates, as the web Run button reads them: a mapping
+        // onto two process outwires must clear T1/T2/T4 and resolve.
+        let status = mapping_status(&model, &csv, &manifest).expect("CSV parses");
+        assert!(
+            status.can_finish && status.apply_error.is_none(),
+            "the wizard must accept process outwires as forcing targets: {:?} / {:?} / {:?}",
+            status.apply_error,
+            status.t2_msg,
+            status.t4_msg
+        );
+
+        // Two ticks past the series' end, so the data-horizon rule is exercised.
+        let ticks = 8usize;
+        let forced = force_and_run(model.clone(), &csv, &manifest, 1.0, ticks as f64, "2026-10-10")
+            .expect("the forced run must not be refused");
+        assert_eq!(forced.ticks, ticks);
+        assert!(forced.conserved, "forced split leaks: residual {}", forced.residual);
+
+        let router = |r: &RunReadout| -> Vec<f32> {
+            r.trajectories
+                .iter()
+                .find(|t| t.name == "Router")
+                .expect("the Router records a trajectory")
+                .series
+                .clone()
+        };
+        let wire = |r: &RunReadout, to: &str| -> Vec<f32> {
+            r.flows
+                .iter()
+                .find(|f| f.from == "Router" && f.to == to)
+                .unwrap_or_else(|| panic!("no recorded flow Router -> {to}"))
+                .series
+                .clone()
+        };
+        let activity = router(&forced);
+        let to_frontier = wire(&forced, "Frontier serving");
+        let to_open = wire(&forced, "Open-weight serving");
+        assert!(
+            activity[1..].iter().all(|a| *a > 0.0),
+            "the Router must carry workload for the split to mean anything: {activity:?}"
+        );
+
+        // Each outwire delivers the Router's activity times its weight's share
+        // of the pair, tick by tick; past the series the last weight holds.
+        let last = frontier.len() - 1;
+        for t in 0..ticks {
+            let k = t.min(last);
+            let total = frontier[k] + open[k];
+            let want_f = activity[t] * frontier[k] / total;
+            let want_o = activity[t] * open[k] / total;
+            let tol = 1e-3 * activity[t].max(1.0);
+            assert!(
+                (to_frontier[t] - want_f).abs() <= tol,
+                "tick {t}: frontier delivery {} != {want_f}",
+                to_frontier[t]
+            );
+            assert!(
+                (to_open[t] - want_o).abs() <= tol,
+                "tick {t}: open delivery {} != {want_o}",
+                to_open[t]
+            );
+        }
+
+        // The metric "Open-weight share, routed" is evaluated by the face from
+        // these per-wire series (web/src/metrics.ts: the wire over everything
+        // leaving the Router), so the same quotient is what moves 0.55 → 0.70.
+        let share: Vec<f32> = to_open
+            .iter()
+            .zip(&to_frontier)
+            .map(|(o, f)| if o + f > 0.0 { o / (o + f) } else { 0.0 })
+            .collect();
+        let first = share
+            .iter()
+            .copied()
+            .find(|s| *s > 0.0)
+            .expect("the share is read on at least one tick");
+        assert!((first - 0.55).abs() < 1e-3, "the share starts at the first weight: {first}");
+        assert!(
+            (share[last] - 0.70).abs() < 1e-3,
+            "the share reaches the last weight: {}",
+            share[last]
+        );
+        assert!(
+            share[last + 1..].iter().all(|s| (s - 0.70).abs() < 1e-3),
+            "past the series the last share holds: {share:?}"
+        );
+
+        // Forcing the split redistributes the Router's throughput, never
+        // changes it, and the unforced run keeps the declared 54/89 split.
+        let unforced = run_unforced(model, 1.0, ticks as f64).expect("the shipped model runs");
+        assert_eq!(
+            router(&unforced),
+            activity,
+            "the split does not alter what the Router carries"
+        );
+        let base_o = wire(&unforced, "Open-weight serving");
+        let base_f = wire(&unforced, "Frontier serving");
+        let declared = 54.0 / (35.0 + 54.0);
+        for t in 1..ticks {
+            let s = base_o[t] / (base_o[t] + base_f[t]);
+            assert!(
+                (s - declared).abs() < 1e-3,
+                "unforced tick {t}: share {s} != {declared}"
+            );
+        }
+        assert!(unforced.comparisons.is_empty());
+        assert!(
+            forced.comparisons.is_empty(),
+            "weights are control inputs, not observables — no comparison row (rung 2)"
+        );
+    }
+
     /// Law: `force_and_run` must refuse an incomplete (T1-failing) mapping with a legible reason rather than running the model.
     #[test]
     fn incomplete_mapping_is_refused_with_a_reason() {
