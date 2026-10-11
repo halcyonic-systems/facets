@@ -106,6 +106,13 @@ channel_bias`. **Channel-bias caveat**: this is a self-selected
 routing-platform slice — it over-represents open-weights models and
 excludes direct-API enterprise traffic. See the cross-cutting note below.
 
+The fetch and paging (`page_windows`, `fetch_daily_rows`) are shared with
+the routed-share sensor (facets#529, `scripts/openrouter_rankings_vintage.py`),
+which commits the same rows raw as a dated vintage under `assets/data/` and
+classifies open weight per model from a sourced table rather than per
+author; `assets/data/README.md` has the sensor, and its table supersedes
+leg 7's `AUTHOR_BUCKET` for open-weight share.
+
 ### 7. Target-4 tether (wide) — `target4_dev_wide.py` → `target4_dev_wide.csv`
 Derived leg — no external source, reshapes leg 4's output. The BERT import
 wizard requires a wide panel (one row per timestep, unique time values);

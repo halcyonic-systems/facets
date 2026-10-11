@@ -1,0 +1,21 @@
+# The routed-share sensor's self-test (facets#529), its own file per
+# CONTRIBUTING's one-gate-one-file rule. `scripts/openrouter_rankings_vintage.py`
+# turns an OpenRouter rankings-daily vintage into the open-weight share series
+# and the forcing bundle the pooled llm-market reads; this runs its arithmetic
+# against the committed fixture under scripts/fixtures/ and never the network.
+# Locally it is the second line of `just check`.
+
+name: routed-share-sensor
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  self-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: sensor self-test (fixture, no network)
+        run: python3 scripts/openrouter_rankings_vintage.py self-test

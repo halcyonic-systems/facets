@@ -112,6 +112,7 @@ dev: web-deps wasm
 # The full gate: everything CI enforces that can run on this machine.
 check: web-deps
     python3 scripts/doc_lint.py
+    python3 scripts/openrouter_rankings_vintage.py self-test
     cargo test --workspace
     node scripts/check_tm_grammar.mjs
     node scripts/check_chat_css.mjs
