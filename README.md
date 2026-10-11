@@ -196,11 +196,14 @@ counts-hold invariant is **machine-tested at runtime**, not Lean-proven. The
 canonical scope of what's proven vs tested is
 [`docs/theory-fidelity.md`](docs/theory-fidelity.md).
 
-**One dynamics-kind, and it says so.** Where a model holds, you can run it: a
-deterministic run under a model-declared invariant, driven by your own data. The
-current engine implements exactly one dynamics-kind — an Id-functor over ℝⁿ
-stocks with an additive conservation invariant — and further kinds are
-*declarable*, not implemented. Conservation is a property the model declares, not
+**Two dynamics-kinds, each saying which it is.** Where a model holds, you can
+run it: a deterministic run under a model-declared invariant, driven by your own
+data. The conservation engine implements one dynamics-kind — an Id-functor over
+ℝⁿ stocks with an additive conservation invariant — and a Klir model with
+weighted directed relations runs as a discrete-time Markov chain instead
+(`bert-compose/src/markov.rs`, #67), kept deliberately separate: a distribution
+over states, no conserved quantity. A run has one kind, never a mix (ADR 0008
+D2); further kinds are *declarable*, not implemented. Conservation is a property the model declares, not
 one the engine assumes; the position of record is
 [`docs/design/dynamics-principled-position.md`](docs/design/dynamics-principled-position.md).
 Time is honest too (#258/#259): rates are per unit time, **wires transmit and
